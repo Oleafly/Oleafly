@@ -3760,7 +3760,7 @@ ${sandboxedCustom}`;
                             {activePersona ? (
                               <span
                                 data-testid="ai-active-persona-indicator"
-                                className="size-2.5 shrink-0 rounded-full ring-1 ring-background"
+                                className="size-2.5 shrink-0 rounded-full border border-background"
                                 style={{
                                   background: personaGradient(activePersona.color),
                                 }}

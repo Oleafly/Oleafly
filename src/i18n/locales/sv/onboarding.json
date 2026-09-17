@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Kom igång",
+    "overview": {
+      "title": "Start",
+      "content": "Här börjar dina projekt och skapandet av nya projekt."
+    },
+    "create": {
+      "title": "Skapa ett riktigt projekt",
+      "content": "Välj Nytt projekt för att se hur ett arbete kan börja."
+    },
+    "kind": {
+      "title": "Tre sätt att börja",
+      "content": "Starta ett forskningsprojekt, ta in ett manus du redan har, eller utgå från en färdig mall."
+    },
+    "kindTemplate": {
+      "title": "Utgå från en mall",
+      "content": "Välj Använd en mall för att öppna galleriet. De andra två startpunkterna finns kvar när du behöver dem."
+    },
+    "gallery": {
+      "title": "Hitta din startpunkt",
+      "content": "Bläddra bland kategorier, sök på namn och filtrera mallar efter kompilator eller tillgänglighet offline."
+    },
+    "template": {
+      "title": "Välj en mall",
+      "content": "Välj vilken riktig mall som helst för att fortsätta. Dess filer blir ditt nya projekt."
+    },
+    "name": {
+      "title": "Ge projektet ett namn",
+      "content": "Ange ett projektnamn. Nästa blir tillgängligt när namnet inte är tomt."
+    },
+    "color": {
+      "title": "Välj en omslagsfärg",
+      "content": "Färgen gör projektet lätt att hitta på startsidan. Du kan behålla mallens standardfärg."
+    },
+    "createProject": {
+      "title": "Skapa ditt projekt",
+      "content": "Klicka på \"Skapa projekt\" för att skapa ett projekt med den valda mallen."
+    }
+  },
+  "workspace": {
+    "label": "Din arbetsyta",
+    "toolbar": {
+      "title": "Projektets verktygsfält",
+      "content": "Här finns projektåtgärder och reglage för kompilering."
+    },
+    "sidebar": {
+      "title": "Navigering i arbetsytan",
+      "content": "Växla mellan filer, sökning, versionshantering, förkontroll, referenser och MCP-aktivitet."
+    },
+    "editor": {
+      "title": "Redigerare",
+      "content": "Skriv och navigera i källkoden med komplettering, diagnostik, formatering och kodintelligens."
+    },
+    "wysiwygToggle": {
+      "title": "Prova WYSIWYG-läget",
+      "content": "Växla mellan ren källkod och en formaterad vy av dokumentet i stil med Google Docs."
+    },
+    "compile": {
+      "title": "Kompilera och kompilera om",
+      "content": "Bygg det aktuella projektet här. Rundturen kompilerar aldrig och ändrar aldrig din källkod."
+    },
+    "logs": {
+      "title": "Byggloggar",
+      "content": "Öppna byggloggarna för att granska fel utan att ändra projektets innehåll. Statusen bredvid visar den senaste kompileringstiden."
+    },
+    "preview": {
+      "title": "PDF-förhandsvisning",
+      "content": "Det kompilerade dokumentet ligger kvar bredvid källkoden i delad vy."
+    },
+    "zoom": {
+      "title": "Hela din PDF-verktygslåda",
+      "content": "Öppna innehållsförteckningen, sök i texten, hoppa mellan sidor, välj en eller två sidor i bredd, zooma eller anpassa sidan, invertera färgerna, använd den tillgängliga läsvyn, rotera, ladda ner, spara i projektet, gå till helskärm eller öppna förhandsvisningen i ett eget fönster."
+    },
+    "sourceNavigation": {
+      "title": "Från PDF till källkod",
+      "content": "Klicka på innehåll i den kompilerade PDF:en för att hoppa direkt till motsvarande källkod."
+    }
+  },
+  "research": {
+    "label": "Forskningsyta",
+    "open": {
+      "title": "Forskningsyta",
+      "content": "Öppna den för att lämna över forskningsuppgifter till en agent och för att länka läsmappar och datamängder som du har någon annanstans. Den är ny och i beta, så rapportera gärna allt som går sönder."
+    },
+    "tasks": {
+      "title": "Köa forskningsuppgifter",
+      "content": "Beskriv ett arbete och lämna över det till en agent. Varje uppgift har en egen konversation, egna resultat och egna granskningsanteckningar."
+    },
+    "folders": {
+      "title": "Länka mappar du redan har",
+      "content": "Peka ut läsmappar och datamängder utanför projektet. Ingenting kopieras eller flyttas."
+    }
+  },
+  "settings": {
+    "label": "Inställningar",
+    "navigation": {
+      "title": "Inställningar",
+      "content": "Växla mellan inställningar och integrationer här."
+    },
+    "general": {
+      "title": "Allmänna inställningar",
+      "content": "Styr redigeringsbeteende, offlineläge, kortkommandon och rundturer."
+    },
+    "appearance": {
+      "title": "Utseende",
+      "content": "Välj tema, typografi, standardlayout för arbetsytan och accentfärg."
+    },
+    "dictionary": {
+      "title": "Ordlista",
+      "content": "Gå igenom de projektspecifika och globala ord som stavnings- och grammatikkontrollen hoppar över."
+    },
+    "data": {
+      "title": "Datalagring",
+      "content": "Granska den lokala projektlagringen och hantera appens data."
+    },
+    "ai": {
+      "title": "AI-assistent",
+      "content": "Konfigurera leverantörer, modeller, uppgifter för inloggning och de MCP-servrar som assistenten får använda."
+    },
+    "compiler": {
+      "title": "Kompilator",
+      "content": "Välj och konfigurera den LaTeX-motor som används för att bygga projekt."
+    },
+    "downloads": {
+      "title": "Nedladdningar",
+      "content": "Hantera paket och resurser som är tillgängliga för arbete offline."
+    },
+    "integrations": {
+      "title": "Integrationer",
+      "content": "Anslut GitHub, alphaXiv, Zotero, citeringssökning och Oleaflys lokala MCP-server."
+    },
+    "shortcuts": {
+      "title": "Kortkommandon",
+      "content": "Granska, redigera, ange och återställ appens kortkommandon."
+    },
+    "mcp": {
+      "title": "MCP för assistenten",
+      "content": "Välj vilka MCP-servrar assistenten får använda."
+    },
+    "help": {
+      "title": "Hjälp och om",
+      "content": "Starta om den kontextuella rundturen, öppna dokumentationen, visa kortkommandon eller rapportera ett problem."
+    }
+  },
+  "aiSettings": {
+    "label": "AI-inställningar",
+    "tabs": {
+      "title": "Inställningar för AI-assistenten",
+      "content": "Här hanterar du leverantörer och nycklar, instruktioner, personas, återanvändbara färdigheter och MCP-servrar."
+    },
+    "providers": {
+      "title": "Anslut leverantörer",
+      "content": "Klistra in en nyckel, så valideras den mot leverantören innan den sparas. Anslutna leverantörer får en grön markering och fälls ut till en modellista som du kan slå av och på, utöka eller återställa. Nycklarna förblir krypterade på den här datorn."
+    },
+    "customProvider": {
+      "title": "Använd din egen slutpunkt",
+      "content": "Alla bas-URL:er som är kompatibla med OpenAI fungerar här, även lokala servrar som Ollama eller LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instruktioner",
+      "content": "Klicka på fliken Instruktioner för att fortsätta."
+    },
+    "defaultModel": {
+      "title": "Standardmodell",
+      "content": "Nya chattar startar med den här modellen. Du kan fortfarande byta modell per konversation i chattpanelen."
+    },
+    "instructions": {
+      "title": "Egna instruktioner",
+      "content": "Dina stående stilpreferenser, som läggs till i varje förfrågan assistenten gör."
+    },
+    "openPersonas": {
+      "title": "Personas",
+      "content": "Klicka på fliken Personas för att fortsätta."
+    },
+    "personas": {
+      "title": "Skapa personas",
+      "content": "Namngivna instruktionsuppsättningar med en färg, som du växlar mellan i chattens Persona-meny. Prova en språkgranskare, en granskare eller en LaTeX-purist."
+    }
+  },
+  "ai": {
+    "label": "AI-assistent",
+    "assistant": {
+      "title": "AI-assistent",
+      "content": "Arbeta med en assistent som känner till projektet, utan att något skickas under rundturen."
+    },
+    "runtime": {
+      "title": "Två sorters agent",
+      "content": "Oleafly-agenten körs på den modelleverantör du konfigurerar. CLI-agenten, som är i beta, styr en kodagent som redan är installerad på den här datorn."
+    },
+    "connectProvider": {
+      "title": "Anslut en leverantör",
+      "content": "Börja här om ingen leverantör är konfigurerad. Rundturen frågar aldrig efter och ändrar aldrig dina uppgifter för inloggning."
+    },
+    "providerModel": {
+      "title": "Leverantör och modell",
+      "content": "Byt modell för den här konversationen. Ändringen gäller bara den här sessionen. Din standardmodell ställs in i Inställningar. Logotyperna visar vilken leverantör varje modell kommer från."
+    },
+    "prompts": {
+      "title": "Snabbprompter",
+      "content": "Välj en färdig prompt för att lägga in den i chattfältet."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Välj hur assistenten ska arbeta. En aktiv persona ersätter dina standardinstruktioner tills du stänger av den."
+    },
+    "input": {
+      "title": "Chattfält",
+      "content": "Beskriv vad du behöver. Assistenten kan använda projektets sammanhang, men rundturen skickar aldrig någon förfrågan."
+    },
+    "attachments": {
+      "title": "Bilagor",
+      "content": "Bifoga bilder, PDF-filer och källfiler när en konversation behöver mer sammanhang."
+    },
+    "history": {
+      "title": "Konversationshistorik",
+      "content": "Öppna senaste chattar och hela historiken igen, samtidigt som varje konversation hålls kopplad till sitt projekttillstånd."
+    },
+    "usage": {
+      "title": "Användning",
+      "content": "Konfigurerade konversationer visar körningar, tokens och uppskattad kostnad här när uppgifterna finns."
+    },
+    "restore": {
+      "title": "Återställ projektets tillstånd",
+      "content": "Efter en AI-redigering kan en kontrollpunkt återställa projektfilerna utan att konversationen tas bort."
+    }
+  },
+  "diagram": {
+    "label": "Diagramverktyg",
+    "composer": {
+      "title": "Diagramverktyg",
+      "content": "Bygg diagram visuellt eller från TikZ-kod. Rundturen ändrar eller sparar inte ditt arbete."
+    },
+    "import": {
+      "title": "Importera en TikZ-fil",
+      "content": "Har du redan en .tikz- eller .tex-fil? Importera den för att ersätta den här startteckningen. Den förblir ett utkast tills du väljer att spara den."
+    },
+    "modes": {
+      "title": "Rita och Kod",
+      "content": "I ritläget arbetar du direkt på arbetsytan. Kodläget visar den genererade TikZ-koden och återanvändbara kodsnuttar."
+    },
+    "palette": {
+      "title": "Formpalett",
+      "content": "Välj en form, klicka sedan och dra på arbetsytan för att placera den och ange storleken."
+    },
+    "handles": {
+      "title": "Koppla ihop och ändra storlek",
+      "content": "En markerad form visar handtag för kopplingar och storlek, för exakt struktur och storlek."
+    },
+    "inspector": {
+      "title": "Inspektör",
+      "content": "Markera en form eller en koppling för att justera stil, text, linjedragning och staplingsordning."
+    },
+    "preview": {
+      "title": "Kompilerad förhandsvisning",
+      "content": "Kompilera öppnar en förhandsvisning bredvid redigeraren, med reglage för skala och bakgrund."
+    },
+    "compile": {
+      "title": "Kompilera",
+      "content": "Kompilera renderar en fristående förhandsvisning utan att infoga diagrammet i dokumentet."
+    },
+    "saveProject": {
+      "title": "Spara som projekt",
+      "content": "Spara ett färdigt diagram som ett återanvändbart bildprojekt som visas på startsidan."
+    },
+    "download": {
+      "title": "Ladda ner",
+      "content": "Ladda ner det kompilerade diagrammet som en PNG-fil utan att spara det som ett projekt."
+    }
+  }
+}

@@ -1,0 +1,1471 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Körbar fil",
+      "bridgeSourceLabel": "Källa",
+      "bridgeTitle": "ACP-brygga",
+      "bridgeUnresolved": "Ingen körbar brygga har hittats än.",
+      "checkAgain": "Kontrollera igen",
+      "checkFailedTitle": "Det gick inte att kontrollera installerade agenter",
+      "checkInstalled": "Kontrollera installerade agenter",
+      "checkingAction": "Kontrollerar",
+      "checkingDescription": "Det kan ta en stund medan Oleafly kontrollerar kommandoradsverktygen på den här datorn.",
+      "checkingInstalled": "Kontrollerar installerade agenter",
+      "checkingTitle": "Letar efter kommandoradsagenter",
+      "cliNotOnPath": "{{command}} hittades inte i din PATH.",
+      "cliPathLabel": "Hittades i",
+      "cliTitle": "Kommandoradsverktyg",
+      "copySignInCommand": "Kopiera inloggningskommandot",
+      "emptyDescription": "Installera en kommandoradsagent som stöds och kontrollera igen.",
+      "emptyTitle": "Inga kommandoradsagenter hittades",
+      "custom": {
+        "description": "Klistra in en agentdefinition för att registrera en agent som inte följer med Oleafly.",
+        "hint": "Klistra in en agentdefinition med ett fastnålat npm- eller uv-paket, en verifierad binär eller en installerad körbar fil. Håll lösenord och API-nycklar utanför den här JSON-koden.",
+        "label": "Registrera en egen agent",
+        "submit": "Registrera definitionen",
+        "title": "Lägg till en egen agent",
+        "useExample": "Använd exemplet"
+      },
+      "install": {
+        "confirm": "Installera",
+        "description": "Oleafly laddar ner det här fastnålade paketet till sin egen agentmapp. Agenten körs sedan med ditt CLI-konto när du startar en konversation.",
+        "installing": "Installerar",
+        "location": "Oleaflys agentmapp, {{id}}/{{version}}",
+        "locationLabel": "Installeras i",
+        "packageLabel": "Paket",
+        "title": "Installera bryggan {{name}} {{version}}"
+      },
+      "installBridge": "Installera bryggan",
+      "installBridgeNextStep": "Installera ACP-bryggan och logga sedan in via kommandoradsverktyget.",
+      "intro": "Anslut en lokal agent via ACP. Varje agent hanterar sina egna modeller, verktyg och sin egen inloggning, och inställningarna för API-leverantörer hålls separata. Använd det officiella CLI-kontot för inloggning: Oleafly importerar inga kontotokens och uppskattar inga abonnemangskvoter.",
+      "nextStepTitle": "Nästa steg",
+      "notReported": "Inte rapporterad",
+      "notice": {
+        "installed": "{{name}} är installerad. Logga in via dess CLI innan du startar en konversation.",
+        "registered": "{{name}} är registrerad. Registreringen varken installerar eller startar den.",
+        "removed": "Agentdefinitionen är borttagen. Installerade filer och sparade konversationer finns kvar.",
+        "terminalOpen": "Projektets terminal är öppen. Kör inloggningskommandot som visas för din agent och återanslut sedan konversationen."
+      },
+      "openSignInTerminal": "Öppna terminal för inloggning",
+      "openTerminal": "Öppna terminal",
+      "platformLabel": "Plattform",
+      "refreshingStatus": "Uppdaterar agenternas status. Den aktuella listan ligger kvar.",
+      "registry": {
+        "description": "Sök i ACP-registret efter agenter som publicerats av andra team.",
+        "hideDistribution": "Dölj distributionen",
+        "register": "Registrera agenten",
+        "registered": "Registrerad",
+        "reviewHint": "Poster i registret beskriver programvara utifrån dess utgivare. Granska distributionen innan du registrerar eller installerar den.",
+        "search": "Sök",
+        "searchLabel": "Hitta en ACP-agent",
+        "searchPlaceholder": "Sök i ACP-registret",
+        "searching": "Söker",
+        "showDistribution": "Visa distributionen",
+        "title": "Hitta fler agenter"
+      },
+      "sectionLabel": "ACP-agenter",
+      "signInCommandLabel": "Inloggningskommando",
+      "versionLabel": "Version",
+      "updateBridge": "Uppdatera bryggan"
+    },
+    "approvals": {
+      "file": {
+        "description": "Godkännandeläget Anpassad läser den här filen. Den ligger i ~/.oleafly/approvals.toml och gäller alla projekt på den här enheten.",
+        "discard": "Släng ändringarna",
+        "emptyFile": "Filen är tom än så länge.",
+        "help": {
+          "comments": "Kommentarer som börjar med # behålls när du sparar här, men valet \"Alltid i det här projektet\" på ett godkännandekort skriver om filen utan dem.",
+          "modes": "Den första tabellen, <modesTable>[\"$approval_modes\"]</modesTable>, anger godkännandeläget per projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Ett projekt som inte listas använder Godkänn åt mig.",
+          "openProject": "Det öppna projektet, {{name}}, har id <projectId>{{id}}</projectId>.",
+          "projectIds": "Projekt-id är mappnamnen under ~/.oleafly/projects.",
+          "rules": "Sedan en tabell per projekt-id, med en regel per verktyg: <allow>\"allow\"</allow> kör verktyget utan att fråga, och <deny>\"deny\"</deny> vägrar det. Deny-regler följs i alla lägen, medan allow-regler gäller i läget Anpassad, och för run_command hoppar de även över frågan i de andra lägena.",
+          "toolNames": "Verktygsnamn du kan använda: <names>{{names}}</names> och alla MCP-verktyg med sitt fullständiga namn ur listan Verktyg."
+        },
+        "helpToggle": "Så fungerar filen",
+        "insertExample": "Infoga ett exempel",
+        "reload": "Läs in på nytt",
+        "saved": "Sparat. Reglerna gäller från nästa verktygsanrop.",
+        "saving": "Sparar",
+        "title": "Fil med godkännanderegler"
+      },
+      "project": {
+        "allowed": "Alltid tillåtet",
+        "denied": "Alltid nekat",
+        "description": "Sparade regler för {{name}}. De gäller när godkännandeläget är Anpassad. Ta bort en regel för att använda standardpolicyn för risk för det verktyget.",
+        "empty": "Inga sparade regler än. Använd \"Alltid i det här projektet\" i en godkännandefråga för att lägga till en.",
+        "removeRule": "Ta bort regeln för {{tool}}",
+        "thisProject": "det här projektet",
+        "title": "Godkännanden för verktyg"
+      }
+    },
+    "budget": {
+      "clear": "Ta bort budgeten",
+      "inputLabel": "AI-budget i amerikanska dollar",
+      "inputPlaceholder": "Ingen budget",
+      "limit": "Körningar pausas när budgeten är nådd.",
+      "save": "Spara budgeten",
+      "spent": "Uppskattad förbrukning hittills: {{amount}}. Körningar pausas när budgeten är nådd.",
+      "title": "AI-budget"
+    },
+    "customProvider": {
+      "addDescription": "Anslut valfri slutpunkt som är kompatibel med OpenAI via dess bas-URL.",
+      "addTitle": "Lägg till egen leverantör",
+      "baseUrlLabel": "Bas-URL",
+      "baseUrlNote": "Din sparade API-nyckel skickas till den här nya adressen.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Ändra namnet eller bas-URL:en.",
+      "editTitle": "Redigera egen leverantör",
+      "errors": {
+        "addFailed": "Det gick inte att lägga till den leverantören.",
+        "baseUrlHost": "URL:en saknar en värd.",
+        "baseUrlInvalid": "Ange en fullständig URL, t.ex. https://api.example.com/v1 eller http://localhost:1234/v1.",
+        "baseUrlProtocol": "Använd https://, eller http:// för en lokal server.",
+        "baseUrlRequired": "Bas-URL krävs.",
+        "idFormat": "Använd bara små bokstäver, siffror och bindestreck, t.ex. acme.",
+        "idRequired": "ID krävs.",
+        "nameRequired": "Namn krävs.",
+        "saveFailed": "Det gick inte att spara den leverantören."
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API-nyckel (valfritt)",
+      "keyLabelKeepSaved": "API-nyckel (lämna tomt för att behålla den sparade nyckeln)",
+      "keyPlaceholder": "Lämna tomt om ingen krävs",
+      "keyPlaceholderStored": "Den sparade nyckeln blir kvar om du inte anger en ny",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Lägg till leverantör"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Agentens förmågor",
+      "customDescription": "Läggs till i varje AI-förfrågan som din personliga stil och dina preferenser. Assistenten följer dem utöver sitt inbyggda beteende. De kan inte åsidosätta dess verktyg eller säkerhetsregler.",
+      "customPlaceholder": "t.ex. Skriv alltid på brittisk engelska. Håll förklaringarna korta. Använd helst paketet enumitem för listor.",
+      "customTitle": "Egna instruktioner",
+      "defaultModelDescription": "Används varje gång du startar en ny chatt. Du kan fortfarande byta modell för en enskild konversation i chattpanelen.",
+      "defaultModelTitle": "Standardmodell för chatt",
+      "pdfCaptureDescription": "Låter agenten rastrera kompilerade sidor (verify_pdf_pages) för layoutkontroller med bildmodeller. Stäng av om du hellre slipper skicka sidbilder till din leverantör.",
+      "pdfCaptureLabel": "Tillåt att AI:n fångar PDF-sidor",
+      "save": "Spara instruktionerna",
+      "saved": "Sparat",
+      "toolsHint": "Be den om saker som \"rätta LaTeX-felen\", \"lägg till ett avsnitt om publikationer\" eller \"kompilera om och kontrollera PDF:en\".",
+      "toolsTitle": "Assistenten stöder just nu de här verktygen"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Modellen finns redan i listan.",
+        "empty": "Ange ett modell-id.",
+        "spaces": "Modell-id får inte innehålla mellanslag."
+      },
+      "addPlaceholder": "Lägg till ett modell-id",
+      "changeSummary": "{{added}} tillagda, {{removed}} borttagna",
+      "custom": "Egen",
+      "deleteAriaLabel": "Radera modellen {{model}}",
+      "deleteDialog": {
+        "description": "Vill du ta bort \"{{model}}\" från leverantörens modellista? Inbyggda modeller kan komma tillbaka via Återställ standard. Egna modeller kan läggas till igen med sitt ID.",
+        "title": "Radera modell"
+      },
+      "deleteTooltip": "Radera modellen",
+      "empty": "Inga modeller än. Lägg till en nedan.",
+      "invalidKey": "Ogiltig API-nyckel.",
+      "metadata": {
+        "refreshFailed": "Det gick inte att uppdatera modelldata.",
+        "unknownDate": "okänt datum",
+        "updated": "Modelldata uppdaterade {{date}}",
+        "updatedBundled": "Modelldata uppdaterade {{date}}, medföljer appen",
+        "updatedFromCache": "Modelldata uppdaterade {{date}}, från den senaste nedladdningen"
+      },
+      "noChanges": "Inga ändringar",
+      "refresh": "Uppdatera",
+      "restore": "Återställ standard",
+      "restoreTooltip": "Lägg tillbaka leverantörens inbyggda modeller",
+      "title": "Modeller",
+      "unreachable": "Det gick inte att nå leverantören.",
+      "unreadableList": "Leverantören lämnade modeller som Oleafly inte kunde läsa.",
+      "updated": "Uppdaterad {{time}}"
+    },
+    "personas": {
+      "addStarter": "Lägg till persona",
+      "addStarterFailed": "Det gick inte att lägga till {{name}}. {{error}}",
+      "addStarterNamed": "Lägg till personan {{name}}",
+      "colors": {
+        "forest": "Skog",
+        "grape": "Druva",
+        "ocean": "Hav",
+        "slate": "Skiffer",
+        "sunset": "Solnedgång"
+      },
+      "create": "Skapa persona",
+      "delete": "Radera persona",
+      "deleteDescription": "Vill du radera \"{{name}}\"? Dess prompt tas bort permanent, och chattar som använder den faller tillbaka på dina standardinstruktioner.",
+      "deleteNamed": "Radera personan {{name}}",
+      "description": "Återanvändbara instruktioner för hur assistenten ska arbeta. Välj en i chatten för en uppgift. Medan den är vald ersätter den dina standardinstruktioner.",
+      "edit": "Redigera persona",
+      "editNamed": "Redigera personan {{name}}",
+      "empty": "Inga personas tillagda än.",
+      "form": {
+        "color": "Färg",
+        "create": "Skapa",
+        "createTitle": "Skapa persona",
+        "description": "Ange återanvändbara instruktioner för hur assistenten ska arbeta.",
+        "editTitle": "Redigera persona",
+        "instructions": "Instruktioner",
+        "instructionsPlaceholder": "Granska min text för tydlighet och lista de viktigaste problemen först.",
+        "namePlaceholder": "Kortfattad redaktör",
+        "required": "Namn och prompt krävs.",
+        "saveFailed": "Det gick inte att spara den personan."
+      },
+      "starters": {
+        "criticalReviewer": "Hitta svagheter i argument, metoder, underlag och framställning.",
+        "documentEditor": "Rätta prosa, struktur, citeringar och LaTeX med fokuserade, säkra ändringar.",
+        "figure": "Skapa figurer och diagram av publiceringskvalitet som LaTeX med TikZ eller PGFPlots.",
+        "researchWriter": "Skriv och strukturera vetenskaplig text utan att hitta på underlag eller citeringar."
+      },
+      "suggestedDescription": "Börja med en av dessa och redigera sedan dess instruktioner så att de passar ditt arbetssätt.",
+      "suggestedTitle": "Föreslagna personas",
+      "title": "Personas"
+    },
+    "providers": {
+      "addCustom": "Lägg till egen leverantör",
+      "badge": {
+        "connected": "Ansluten",
+        "notRunning": "Körs inte",
+        "running": "Körs"
+      },
+      "blurbs": {
+        "anthropic": "Claude-modeller, starka på kod och skrivande.",
+        "custom": "Egen leverantör.",
+        "deepseek": "DeepSeek V4-modeller.",
+        "google": "Gemini-modeller från Google AI Studio.",
+        "groq": "Mycket snabb körning av öppna modeller.",
+        "mistral": "Mistral- och Codestral-modeller.",
+        "ollama": "Kör modeller på din dator. Ingen nyckel behövs, installera bara Ollama och hämta en modell.",
+        "openai": "GPT-modeller. Standardvalet.",
+        "openrouter": "En nyckel, tillgång till modeller från många labb.",
+        "perplexity": "Sonar-modeller med aktuell webbförankring.",
+        "xai": "Grok-modeller från xAI.",
+        "zai": "GLM-modeller via ett abonnemang på Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Radera nyckeln för {{provider}}",
+      "deleteKeyTooltip": "Radera nyckeln",
+      "docs": "Dokumentation",
+      "editAriaLabel": "Redigera {{provider}}",
+      "editTooltip": "Redigera namn eller slutpunkt",
+      "getKey": "Hämta nyckel",
+      "intro": "Anslut de leverantörer du använder nedan. Nycklarna lagras bara lokalt. När du sparar en blir den standard. Du kan växla mellan konfigurerade leverantörer och modeller i rullgardinsmenyn i chattpanelen.",
+      "keyPlaceholder": "Klistra in din API-nyckel här",
+      "modelLabel": "Modell",
+      "ollama": {
+        "active": "Aktiv",
+        "changeHost": "Byt värd (avancerat)",
+        "check": "Sök efter Ollama",
+        "checking": "Kontrollerar…",
+        "disconnect": "Koppla från",
+        "hideHost": "Dölj värden",
+        "installedHint": "Ollama är installerat här. Det tar en stund att starta.",
+        "modelPlaceholder": "Välj en modell att använda",
+        "noModels": "Ollama körs men inga modeller är installerade. Kör <pull>ollama pull llama3.2</pull> och kontrollera sedan igen.",
+        "noneResponding": "Ingen Ollama svarar på <host>{{host}}</host>.",
+        "notChecked": "Inte kontrollerad än",
+        "notDetected": "Hittades inte",
+        "recheck": "Kontrollera igen",
+        "runningModels_one": "Körs · {{count}} modell",
+        "runningModels_other": "Körs · {{count}} modeller",
+        "setupSteps": "1. Installera från <download>ollama.com <icon></icon></download> · 2. Det startar automatiskt (eller kör <serve>ollama serve</serve>) · 3. Hämta en modell, t.ex. <pull>ollama pull llama3.2</pull> · 4. Kontrollera igen.",
+        "start": "Starta Ollama"
+      },
+      "removeAriaLabel": "Ta bort {{provider}}",
+      "removeDialog": {
+        "description": "Vill du ta bort \"{{provider}}\"? Dess sparade nyckel och modellista raderas tillsammans med den.",
+        "title": "Ta bort egen leverantör"
+      },
+      "removeTooltip": "Ta bort egen leverantör",
+      "replaceKey": "Byt ut nyckeln",
+      "status": {
+        "error": "Fel: {{message}}",
+        "errorFallback": "Det gick inte att validera nyckeln.",
+        "valid": "Nyckeln är giltig. Modellerna är klara nedan.",
+        "validating": "Kontrollerar nyckeln..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Läser in agenter…",
+      "errors": {
+        "invalidKey": "Ogiltig API-nyckel.",
+        "keyNotKept": "Bas-URL:en sparades men inte nyckeln. Ange nyckeln igen.",
+        "providerGone": "Den leverantören finns inte längre.",
+        "providerIdInUse": "Det leverantörs-ID:t används redan."
+      },
+      "messages": {
+        "keyRemoved": "Nyckeln för {{provider}} är borttagen.",
+        "keyRemovedAccessDisabled": "Nyckeln för {{provider}} är borttagen. AI-åtkomsten är avstängd.",
+        "keySavedAddModels": "Nyckeln för {{provider}} är sparad. Lägg till modeller manuellt nedan.",
+        "keySavedCheckedOnUse": "Nyckeln för {{provider}} är sparad. Den kontrolleras vid första användningen.",
+        "ollamaConnected": "Ollama anslutet · {{model}}",
+        "preferencesReset": "Inställningarna för AI-assistenten är återställda till standard.",
+        "providerAdded": "{{provider}} är tillagd.",
+        "providerConnected": "{{provider}} är ansluten.",
+        "providerUpdated": "{{provider}} är uppdaterad.",
+        "providerUpdatedWithoutModels": "{{provider}} är uppdaterad. Dess modellista kunde inte uppdateras."
+      },
+      "reset": {
+        "confirmWithProject": "Återställ inställningarna för AI-assistenten till standard, inklusive vilka modeller som är tillgängliga, aktiverade färdigheter och det här projektets budget. Den aktiva leverantören och modellen, leverantörsnycklar, personas, godkännanderegler, användningshistorik och MCP-servrar lämnas oförändrade.",
+        "confirmWithoutProject": "Återställ inställningarna för AI-assistenten till standard, inklusive vilka modeller som är tillgängliga och aktiverade färdigheter. Den aktiva leverantören och modellen, leverantörsnycklar, personas, godkännanderegler, användningshistorik och MCP-servrar lämnas oförändrade.",
+        "sectionName": "AI-assistent"
+      },
+      "tabs": {
+        "agents": "CLI-agenter",
+        "instructions": "Instruktioner",
+        "mcp": "MCP",
+        "personas": "Personas",
+        "providers": "Leverantörer och nycklar",
+        "skills": "Färdigheter"
+      }
+    },
+    "skills": {
+      "addFolder": "Lägg till mapp",
+      "addFolderDialogTitle": "Lägg till färdighetsmapp",
+      "catalog": {
+        "description": "Extra färdigheter för särskilda forskningsområden. Installera en för att lägga till den i listan ovan.",
+        "empty": "Katalogen har inga extra färdigheter att installera.",
+        "install": "Installera",
+        "loading": "Läser in katalogen...",
+        "messages": {
+          "installed": "Installerade {{name}}.",
+          "removed": "Tog bort {{name}}."
+        },
+        "progress": {
+          "downloading": "Laddar ner...",
+          "downloadingPercent": "Laddar ner {{percent}} %",
+          "extracting": "Packar upp...",
+          "extractingPercent": "Packar upp {{percent}} %",
+          "failed": "Installationen misslyckades.",
+          "finishing": "Slutför installationen..."
+        },
+        "refresh": "Uppdatera",
+        "source": {
+          "bundled": "Inbyggd katalog",
+          "bundledOffline": "Inbyggd katalog, nätverket kunde inte nås",
+          "cached": "Cachad katalog från cdn.oleafly.com, senast hämtad {{when}}",
+          "cachedOffline": "Cachad katalog från cdn.oleafly.com, senast hämtad {{when}}, nätverket kunde inte nås",
+          "cachedUnknown": "Cachad katalog från cdn.oleafly.com, senast hämtad vid en okänd tidpunkt",
+          "cachedUnknownOffline": "Cachad katalog från cdn.oleafly.com, senast hämtad vid en okänd tidpunkt, nätverket kunde inte nås",
+          "remote": "Katalog från cdn.oleafly.com, hämtad {{when}}",
+          "remoteUnknown": "Katalog från cdn.oleafly.com, hämtad vid en okänd tidpunkt"
+        },
+        "title": "Domänhylla",
+        "uninstall": "Avinstallera",
+        "update": "Uppdatera"
+      },
+      "createSkill": "Skapa färdighet",
+      "description": "Assistenten läser in en färdighets fullständiga instruktioner först när den bedömer att den behöver dem, eller direkt om du skriver /färdighets-id i chatten. En färdighet du slår på här är på i alla projekt tills ett projekt åsidosätter det.",
+      "editAria": "Redigera {{name}}",
+      "editor": {
+        "createDescription": "Skapa ett utkast till SKILL.md i din Oleafly-mapp för färdigheter.",
+        "createTitle": "Skapa färdighet",
+        "descriptionPlaceholder": "Kontrollera om varje påstående har stöd.",
+        "editDescription": "Finslipa metadata och instruktionerna som lagras i SKILL.md.",
+        "editTitle": "Redigera färdighet",
+        "instructions": "Instruktioner",
+        "instructionsHint": "Lämna tomt för att skapa ett minimalt instruktionsskelett.",
+        "instructionsPlaceholder": "Beskriv när färdigheten ska användas och vilka steg assistenten ska följa.",
+        "namePlaceholder": "Påståendekontroll",
+        "requiredAll": "Namn, beskrivning och instruktioner krävs.",
+        "requiredBasics": "Namn och beskrivning krävs.",
+        "submitCreate": "Skapa"
+      },
+      "empty": "Inga färdigheter hittades. Lägg till en mapp, eller skapa en.",
+      "enableAria": "Aktivera {{name}}",
+      "fileCount_one": "{{count}} fil",
+      "fileCount_other": "{{count}} filer",
+      "groups": {
+        "shelf": "Domänhylla",
+        "user": "Dina färdigheter"
+      },
+      "inheritsDevice": "Ärver enhetens inställning",
+      "invalidBadge": "Ogiltig",
+      "loadFailed": "Det gick inte att läsa in färdigheterna. {{message}}",
+      "loading": "Läser in färdigheter...",
+      "messages": {
+        "added": "Lade till {{name}}.",
+        "created": "Skapade {{name}}.",
+        "editorClosed": "Färdighetsredigeraren är inte öppen längre.",
+        "removed": "Tog bort {{name}}.",
+        "saved": "Sparade {{name}}.",
+        "updated": "Uppdaterade {{name}}."
+      },
+      "missingDescription": "Den här färdigheten behöver en beskrivning.",
+      "offForProject": "Av för det här projektet",
+      "onForProject": "På för det här projektet",
+      "phases": {
+        "authoring": "Skrivande",
+        "communication": "Kommunikation",
+        "figures": "Figurer",
+        "research": "Forskning",
+        "review": "Granskning",
+        "submission": "Inlämning",
+        "tooling": "Verktyg"
+      },
+      "removeAria": "Ta bort {{name}}",
+      "removeDialog": {
+        "description": "Vill du ta bort \"{{name}}\" och dess mapp från Oleafly? Det går inte att ångra.",
+        "title": "Ta bort färdighet"
+      },
+      "share": {
+        "description": "Länka in dina färdigheter i de mappar som andra kodagenter på den här datorn redan läser, så att du skriver en färdighet en gång och alla agenter kan använda den.",
+        "emptyBody": "Inga andra agentmappar hittades på den här datorn.",
+        "status": {
+          "linked": "{{linked}} av {{total}} länkade",
+          "undetected": "Hittades inte på den här enheten",
+          "unsupported": "Stöds inte på det här systemet"
+        },
+        "summary": {
+          "checking": "Kontrollerar agentmappar",
+          "linked_one": "{{linked}} av {{count}} agent länkad",
+          "linked_other": "{{linked}} av {{count}} agenter länkade",
+          "none": "Inga andra agentmappar hittades"
+        },
+        "title": "Dela färdigheter med andra agenter på den här datorn"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Tillagd",
+        "bundled": "Inbyggd",
+        "catalog": "Installerad"
+      },
+      "tier": {
+        "credits": "Från {{credits}}",
+        "native": "Oleafly-arbetsflöde",
+        "shelf": "Färdighet från domänhyllan",
+        "shelfWithLicense": "Domänhylla, {{license}}",
+        "user": "Din egen färdighet",
+        "vendored": "Medlevererad färdighet"
+      },
+      "title": "Färdigheter",
+      "updateAction": "Uppdatera",
+      "updateDialog": {
+        "description": "Vill du ersätta \"{{name}}\" med den senaste medföljande versionen? Lokala ändringar i dess filer går förlorade.",
+        "title": "Uppdatera färdighet"
+      },
+      "useDeviceSetting": "Använd enhetens inställning",
+      "useDeviceSettingAria": "Använd enhetens inställning för {{name}}",
+      "useInProject": "Använd i det här projektet",
+      "useInProjectAria": "Använd {{name}} i det här projektet",
+      "validateAria": "Validera {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Används för knappar, markeringar och redigerarens markör.",
+        "label": "Accentfärg",
+        "swatchAriaLabel": "Accentfärgen {{name}}"
+      },
+      "bgPattern": {
+        "description": "Välj mönstret bakom projekthyllan.",
+        "dots": "Prickar",
+        "grid": "Rutnät",
+        "label": "Bakgrundsmönster"
+      },
+      "dock": {
+        "bottom": "Nederkant",
+        "description": "Välj var dockan på startsidan ska sitta.",
+        "label": "Dockans placering",
+        "left": "Vänster",
+        "right": "Höger"
+      },
+      "font": {
+        "description": "Använder systemets reservtypsnitt när ett typsnitt inte är installerat.",
+        "label": "Appens typsnitt"
+      },
+      "fontSize": {
+        "description": "Skala texten i menyer, paneler och knappar.",
+        "label": "Appens teckenstorlek"
+      },
+      "theme": {
+        "description": "System följer operativsystemet och ändras när det gör det.",
+        "label": "Utseende"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Webbläsarens startsida",
+        "description": "Välj sidan som öppnas med webbläsardockan.",
+        "label": "Startsida"
+      },
+      "searchEngine": {
+        "description": "Välj sökmotorn som används för textsökningar.",
+        "label": "Standardsökmotor"
+      }
+    },
+    "customTheme": {
+      "cleared": "Temaanpassningen är rensad.",
+      "customCss": {
+        "description": "Valfria deklarationer gäller bara inuti appen. Regler, importer och URL:er blockeras.",
+        "label": "Avgränsade CSS-deklarationer"
+      },
+      "darkRestored": "Värdena för mörkt läge är återställda.",
+      "description": "Ändra appens färgvärden för varje läge. Ändringarna sparas lokalt och börjar gälla direkt.",
+      "exportTheme": "Exportera tema",
+      "fileTooLarge": "Temafilen är större än 128 KiB.",
+      "importFileAriaLabel": "Importera temafil",
+      "importTheme": "Importera tema",
+      "imported": "Temat är importerat och tillämpat.",
+      "importedSkippedMore_one": "Temat är importerat och tillämpat. Hoppade över {{count}} värde som Oleafly inte använder: {{tokens}}, med flera.",
+      "importedSkippedMore_other": "Temat är importerat och tillämpat. Hoppade över {{count}} värden som Oleafly inte använder: {{tokens}}, med flera.",
+      "importedSkipped_one": "Temat är importerat och tillämpat. Hoppade över {{count}} värde som Oleafly inte använder: {{tokens}}.",
+      "importedSkipped_other": "Temat är importerat och tillämpat. Hoppade över {{count}} värden som Oleafly inte använder: {{tokens}}.",
+      "lightRestored": "Värdena för ljust läge är återställda.",
+      "modeDark": "Mörkt läge",
+      "modeFieldsetAriaLabel": "Temaläge att redigera",
+      "modeLight": "Ljust läge",
+      "pickColorDark": "Välj färgen för {{token}} i mörkt läge",
+      "pickColorLight": "Välj färgen för {{token}} i ljust läge",
+      "radius": {
+        "description": "Använd ett värde som 8px, 0.5rem eller 1em. Lämna tomt för standard.",
+        "label": "Hörnradie"
+      },
+      "resetAll": "Återställ allt",
+      "resetMode": "Återställ det här läget",
+      "title": "Temaanpassning",
+      "tokenInputDark": "Värdet {{token}} för mörkt läge",
+      "tokenInputLight": "Värdet {{token}} för ljust läge",
+      "tokens": {
+        "accent": "Accent",
+        "accentForeground": "Accenttext",
+        "background": "Bakgrund",
+        "border": "Ram",
+        "card": "Panel",
+        "cardForeground": "Paneltext",
+        "destructive": "Fara",
+        "destructiveForeground": "Faratext",
+        "foreground": "Text",
+        "input": "Fältram",
+        "muted": "Dämpad",
+        "mutedForeground": "Dämpad text",
+        "popover": "Popover",
+        "popoverForeground": "Popover-text",
+        "primary": "Primär",
+        "primaryForeground": "Primär text",
+        "ring": "Fokusring",
+        "secondary": "Sekundär",
+        "secondaryForeground": "Sekundär text",
+        "sidebar": "Sidofält",
+        "sidebarAccent": "Sidofältets accent",
+        "sidebarAccentForeground": "Text på sidofältets accent",
+        "sidebarBorder": "Sidofältets ram",
+        "sidebarForeground": "Sidofältets text"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Infoga avslutande klamrar och parenteser automatiskt.",
+        "label": "Stäng klamrar automatiskt"
+      },
+      "autoCloseEnvironments": {
+        "description": "Infoga \\end när du trycker på Enter efter \\begin.",
+        "label": "Stäng miljöer automatiskt"
+      },
+      "autoCloseMath": {
+        "description": "Para ihop $, \\( och \\[ medan du skriver.",
+        "label": "Stäng matematik automatiskt"
+      },
+      "autocomplete": {
+        "description": "Visa kodkompletteringar medan du skriver. Ctrl+Space öppnar dem ändå när det här är av.",
+        "label": "Automatisk komplettering"
+      },
+      "font": {
+        "description": "Välj typsnittet med fast bredd som används för källfiler.",
+        "label": "Redigerarens typsnitt"
+      },
+      "fontSize": {
+        "description": "Ange textstorleken i källkodsredigeraren.",
+        "label": "Redigerarens teckenstorlek"
+      },
+      "ghostCompletion": {
+        "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
+        "label": "Förslag i löptext"
+      },
+      "nonBlinkingCursor": {
+        "description": "Håll redigerarens markör stadig.",
+        "label": "Markör utan blinkning"
+      },
+      "stickyScroll": {
+        "description": "Håll kvar aktuella LaTeX-avsnitt och miljöer högst upp medan du rullar.",
+        "label": "Klistrig rullning"
+      },
+      "theme": {
+        "description": "Ange syntaxfärgerna för källkod separat från appens tema.",
+        "label": "Redigerarens tema"
+      },
+      "keymap": {
+        "description": "Välj den uppsättning tangentbindningar som källkodsredigeraren använder.",
+        "label": "Tangentbindningar",
+        "options": {
+          "default": "Standard",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Ange det lodräta avståndet mellan källkodsrader.",
+        "label": "Radhöjd",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "wide": "Bred"
+        }
+      },
+      "lineWrap": {
+        "description": "Bryt långa rader i stället för att rulla i sidled.",
+        "label": "Bryt långa rader"
+      },
+      "tabSize": {
+        "description": "Antal mellanslag per indragsnivå, och bredden en tabb ritas med.",
+        "label": "Tabbstorlek"
+      },
+      "mathPreview": {
+        "description": "Visa den renderade ekvationen ovanför den som markören står i.",
+        "label": "Förhandsvisning av matematik"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Lägg till mönster för dolda filer",
+        "description": "Välj vilka genererade filer och mappar som hålls utanför projektträdet.",
+        "inputAriaLabel": "Filnamn eller mönster att dölja",
+        "placeholder": "Lägg till ett filnamn eller mönster",
+        "removeAriaLabel": "Ta bort {{pattern}} från dolda filer",
+        "title": "Dölj filer i filträdet"
+      },
+      "homeView": {
+        "description": "Välj hur projekten ordnas i biblioteket.",
+        "grid": "Rutnät",
+        "label": "Standardvy på startsidan",
+        "list": "Lista"
+      },
+      "openIn": {
+        "description": "Välj layouten som används när ett projekt öppnas.",
+        "label": "Öppna projekt i"
+      },
+      "showTree": {
+        "description": "Öppna filträdet för källkod varje gång du går in i ett projekt.",
+        "label": "Visa filträdet vid öppning"
+      }
+    },
+    "fontSizeOption": "{{size}} px",
+    "preview": {
+      "darkMode": {
+        "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
+        "label": "Mörkt läge för PDF"
+      },
+      "hoverPreview": {
+        "description": "Visa den senast kompilerade sidan när du håller muspekaren över ett projekt i biblioteket.",
+        "label": "Förhandsvisa PDF vid hovring"
+      },
+      "zoomShortcuts": {
+        "description": "Använd Cmd/Ctrl +, - och 0 för att zooma PDF:en i stället för appfönstret.",
+        "label": "Kortkommandon för PDF-zoom"
+      }
+    },
+    "sectionName": "Utseende",
+    "tabs": {
+      "app": "App",
+      "browser": "Webbläsare",
+      "editor": "Redigerare",
+      "files": "Projekt",
+      "pdf": "PDF-förhandsvisning",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Terminalens färgtema",
+        "description": "Välj terminalens ANSI-färgpalett.",
+        "label": "Färgtema",
+        "optionDark": "{{name}} · mörkt",
+        "optionLight": "{{name}} · ljust"
+      },
+      "colors": {
+        "background": "Bakgrund",
+        "backgroundAriaLabel": "Terminalens bakgrundsfärg",
+        "cursor": "Markör",
+        "cursorAriaLabel": "Terminalens markörfärg",
+        "description": "Justera grundfärgerna men behåll den valda ANSI-paletten.",
+        "followingAppTheme": "Följer appens tema: mörk palett i mörkt läge, ljus palett i ljust läge. Välj en specifik palett ovan för att anpassa de här färgerna.",
+        "foreground": "Text",
+        "foregroundAriaLabel": "Terminalens textfärg",
+        "label": "Terminalens färger"
+      },
+      "cursorBlink": {
+        "description": "Låt terminalens markör blinka.",
+        "label": "Blinkande markör"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Terminalens markörstil",
+        "bar": "Streck",
+        "block": "Block",
+        "description": "Välj formen på terminalens markör.",
+        "label": "Markörstil",
+        "underline": "Understreck"
+      },
+      "font": {
+        "ariaLabel": "Terminalens typsnittsfamilj",
+        "description": "Välj typsnittet med fast bredd som terminalen använder.",
+        "label": "Terminalens typsnitt"
+      },
+      "fontSize": {
+        "description": "Ange textstorleken i terminalen.",
+        "label": "Terminalens teckenstorlek"
+      },
+      "fontWeight": {
+        "description": "Ange tjockleken för vanlig terminaltext.",
+        "label": "Tjocklek för vanlig text"
+      },
+      "fontWeightBold": {
+        "description": "Ange tjockleken för fet terminaltext.",
+        "label": "Tjocklek för fet text"
+      },
+      "startWithProject": {
+        "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
+        "label": "Starta shell med projektet"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly sparar den i bakgrunden och bara när källkoden har ändrats.",
+      "label": "Spara en kontrollpunkt efter varje lyckad kompilering"
+    },
+    "config": {
+      "loadFailed": "Det gick inte att läsa in inställningarna för kontrollpunkter.",
+      "saveFailed": "Det gick inte att spara inställningarna för kontrollpunkter."
+    },
+    "description": "En kontrollpunkt registrerar de källfiler som en lyckad kompilering använde.",
+    "notifyOnFailure": {
+      "description": "Oleafly säger till när en kontrollpunkt inte kan sparas, till exempel vid lagringsproblem eller filer som inte gick att fånga.",
+      "label": "Visa ett meddelande när en kontrollpunkt inte kan sparas"
+    },
+    "title": "Kontrollpunkter"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Ta bort API-nyckeln",
+      "removeEmail": "Ta bort e-postadressen",
+      "removeKey": "Ta bort nyckeln",
+      "saveApiKey": "Spara API-nyckeln",
+      "saveEmail": "Spara e-postadressen",
+      "saveKey": "Spara nyckeln"
+    },
+    "connected": "Ansluten",
+    "description": "Hantera uppgifterna som vetenskapliga sökkällor använder.",
+    "keyFree": {
+      "description": "De här källorna är tillgängliga utan API-nyckel.",
+      "title": "Källor utan uppgifter"
+    },
+    "openAlex": {
+      "docsLink": "Gränser för OpenAlex",
+      "emailLabel": "Kontakt-e-post för OpenAlex",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Det gick inte att ta bort kontakt-e-posten för OpenAlex.",
+      "emailRemoved": "Kontakt-e-posten för OpenAlex är borttagen",
+      "emailSaveFailed": "Det gick inte att spara kontakt-e-posten för OpenAlex.",
+      "emailSaved": "Kontakt-e-posten för OpenAlex är sparad",
+      "hint": "En API-nyckel rekommenderas. OpenAlex kräver nycklar för regelbunden åtkomst, medan sökningar utan nyckel delar en liten daglig pott. En kontakt-e-post ger också tillgång till den artiga poolen. Båda stannar på den här enheten.",
+      "keyLabel": "API-nyckel för OpenAlex",
+      "keyRemoveFailed": "Det gick inte att ta bort API-nyckeln för OpenAlex.",
+      "keyRemoved": "API-nyckeln för OpenAlex är borttagen",
+      "keySaveFailed": "Det gick inte att spara API-nyckeln för OpenAlex.",
+      "keySaved": "API-nyckeln för OpenAlex är sparad"
+    },
+    "semanticScholar": {
+      "docsLink": "Information om Semantic Scholars API",
+      "hint": "En API-nyckel är valfri. Anonyma sökningar använder Semantic Scholars publika gränser.",
+      "keyLabel": "API-nyckel för Semantic Scholar",
+      "keyRemoveFailed": "Det gick inte att ta bort API-nyckeln för Semantic Scholar.",
+      "keyRemoved": "API-nyckeln för Semantic Scholar är borttagen",
+      "keySaveFailed": "Det gick inte att spara API-nyckeln för Semantic Scholar.",
+      "keySaved": "API-nyckeln för Semantic Scholar är sparad"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Valfritt. Aktiverar källan Google Scholar i Citeringssökning via Serper. Utan nyckel hoppas den källan över när den är vald.",
+      "keyLabel": "API-nyckel för Serper",
+      "keyRemoveFailed": "Det gick inte att ta bort API-nyckeln för Serper.",
+      "keyRemoved": "API-nyckeln för Serper är borttagen",
+      "keySaveFailed": "Det gick inte att spara API-nyckeln för Serper.",
+      "keySaved": "API-nyckeln för Serper är sparad"
+    },
+    "title": "Citeringssökning"
+  },
+  "cite": {
+    "apa": "Samma referens i APA ligger bakom Cite this repository på GitHub",
+    "copyBibtex": "Kopiera BibTeX",
+    "description": "Oleafly är gratis och har öppen källkod, och förblir det så länge folk vet att programmet finns. Om det hjälpte en artikel på traven talar en rad i din bibliografi om för nästa forskare var verktyget kom ifrån. Kopiera den, klistra in den i din .bib-fil och citera nyckeln <citeKey>oleafly</citeKey>.",
+    "title": "Citera Oleafly i din artikel"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Allt är nedladdat",
+      "download": "Ladda ner",
+      "downloadAll": "Ladda ner allt"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Vill du radera \"{{name}}\" från ditt bibliotek? Projekt som redan skapats från den har en egen kopia och påverkas inte.",
+      "deleteTitle": "Radera AI-genererad mall",
+      "deleted": "Raderade \"{{name}}\" från ditt bibliotek",
+      "empty": "Inga AI-genererade mallar än. Skapa en i mallgalleriet.",
+      "fallbackDescription": "AI-genererad mall",
+      "toggle": "Hantera AI-genererade mallar"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Ett varmt humanistiskt sans-serif-typsnitt som används i många moderna CV-mallar.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Ett rent och neutralt sans-serif-typsnitt som läses bra både på skärm och i tryck.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Ett förfinat transitionellt serif-typsnitt som passar akademiska och formella dokument.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Inga typsnitt att ladda ner.",
+      "engineNote": "LuaLaTeX-motorn (för taggade, tillgängliga PDF-filer) hanteras i avsnittet LaTeX-motor.",
+      "heading": "Typsnitt",
+      "tooltip": "Vissa mallar använder öppna premiumtypsnitt. För att hålla Oleafly litet laddas de typsnitten ner vid behov: när du skapar en sådan mall hämtas typsnitten och kopieras in i projektet, så att det förblir fristående och kompilerar offline. Du kan också ladda ner dem i förväg här, eller ta bort dem för att frigöra utrymme."
+    },
+    "packProgress": "{{index}} av {{total}}",
+    "progress": "{{label}} ({{index}} av {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Typsnitt",
+      "templates": "Mallar",
+      "dictionaries": "Ordlistor"
+    },
+    "templates": {
+      "empty": "Inga mallpaket att ladda ner.",
+      "heading": "Mallar",
+      "tooltip": "Extra mallpaket laddas ner vid behov så att Oleafly förblir litet. Ladda ner ett paket här för att använda dess mallar offline, eller ta bort dem senare för att frigöra utrymme."
+    },
+    "dictionaries": {
+      "empty": "Inga extra språk är nedladdade än.",
+      "heading": "Stavningsordlistor",
+      "note": "Välj ett språk i avsnittet Allmänt för att ladda ner det. De fem medföljande paketen är alltid tillgängliga och listas inte här.",
+      "tooltip": "Fem språkpaket följer med Oleafly. Alla andra språk laddas ner vid behov när du väljer dem som stavningsordlista, och sparas här så att de fungerar offline efteråt. Att ta bort ett frigör utrymmet och gör att appens inställning används i stället."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Endast för projekt du litar på. Kör en lokal TeX-distribution som kan läsa filer som ditt konto kommer åt. Stöder fullständiga paketuppsättningar och arbetsflöden med flera pass. Körning av kommandon på värden är fortfarande en separat behörighet per projekt.",
+        "name": "latexmk (systemets TeX)"
+      },
+      "tectonic": {
+        "detail": "Följer med Oleafly. Snabb, offline, ingen konfiguration. Täcker vanlig LaTeX och de flesta vanliga paket.",
+        "name": "Tectonic (inbyggd)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Standardmotor för kompilering",
+      "tooltip": "Gäller nya projekt. Varje projekt nålar fast sin egen motor i project.json, så medarbetare som öppnar samma projekt kompilerar det på samma sätt oavsett den här inställningen."
+    },
+    "distributions": {
+      "empty": "Ingen TeX-distribution hittades på den här datorn.",
+      "heading": "Hantera TeX-distributioner",
+      "rowTooltip": "Följer med {{tools}}. Oleafly kör sina TeX-verktyg från {{binDir}}.",
+      "rowTooltipNoTools": "Ingen latexmk eller tlmgr hittades i den här installationen. Oleafly kör sina TeX-verktyg från {{binDir}}.",
+      "tooltip": "Allt som latexmk-motorn kan använda på den här datorn. TinyTeX installeras i din hemmapp utan administratörsrättigheter. Systeminstallationer (MacTeX, TeX Live, MiKTeX) hittas automatiskt."
+    },
+    "latexmkMissing": "ingen latexmk hittades",
+    "markdown": {
+      "downloading": "Laddar ner…",
+      "heading": "Markdown-kompilator",
+      "install": "Installera pandoc",
+      "repair": "Reparera Pandoc",
+      "note": "Att välja en annan PDF-bakänd för Markdown, eller en pandoc från systemet i stället för den hanterade, är inte möjligt än.",
+      "status": {
+        "checking": "Söker efter pandoc…",
+        "installing": "Hämtar en fastnålad pandoc-utgåva. Det tar en stund första gången.",
+        "missing": "Hittades inte på den här datorn. Oleafly laddar ner en kompatibel pandoc (2.19 eller senare) till sin egen mapp, inget annat på ditt system ändras.",
+        "ready": "Hittad. Markdown-projekt konverteras till LaTeX med pandoc och kompileras sedan med den medföljande Tectonic."
+      },
+      "tectonicDetail": "Sätter den LaTeX som pandoc producerar. Följer med Oleafly, inget att konfigurera.",
+      "tooltip": "Markdown-projekt konverteras med pandoc (Pandoc Markdown: tabeller, fotnoter, citeringar, matematik) till LaTeX och sätts sedan till PDF av den medföljande Tectonic. Pandoc laddas ner vid behov första gången det används."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX-paket",
+      "badge": {
+        "breaks": "förstör taggning",
+        "caution": "taggning: var försiktig"
+      },
+      "emptySearch": "Inga paket hittades. Prova ett annat namn eller nyckelord.",
+      "emptySuggested": "Inga föreslagna paket matchar. Sök i TeX Live för att kontrollera hela katalogen.",
+      "error": {
+        "install": "Det gick inte att installera {{name}}.",
+        "read": "Det gick inte att läsa de installerade paketen.",
+        "remove": "Det gick inte att ta bort {{name}}.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Hitta LaTeX-paket",
+      "filterPlaceholder": "Filtrera paket…",
+      "heading": "Paket",
+      "includedIn": "Ingår i {{package}}. Att ta bort det tar också bort de andra filerna i paketet.",
+      "intro": {
+        "available": "De här paketen gäller projekt som använder latexmk (systemets TeX). Tectonic använder sitt eget paketbunt.",
+        "unavailable": "Pakethantering kräver TeX Live eller TinyTeX. För MiKTeX använder du MiKTeX Console."
+      },
+      "refreshInstalled": "Uppdatera installerade paket",
+      "resultsCapped": "{{total}} träffar i TeX Live. Använd en mer specifik sökning för att smalna av listan.",
+      "results_one": "{{count}} träff i TeX Live.",
+      "results_other": "{{count}} träffar i TeX Live.",
+      "search": "Sök i TeX Live",
+      "searching": "Söker…",
+      "suggested": "Föreslagna paket. Sök i TeX Live för fler.",
+      "tree": {
+        "both": "i båda träden",
+        "system": "i systemträdet",
+        "user": "i ditt personliga träd"
+      }
+    },
+    "sectionName": "Motorer",
+    "tagging": {
+      "heading": "Taggad och tillgänglig export",
+      "hint": {
+        "none": "Installera TinyTeX under ”Hantera TeX-distributioner” ovan för att aktivera taggad export.",
+        "system": "Hittad på ditt system. Inget att installera.",
+        "tinytex": "Tillhandahålls av TinyTeX (hanteras ovan)."
+      },
+      "status": {
+        "none": "Ingen taggningsmotor installerad",
+        "system": "Använder systemets LuaLaTeX / TeX Live",
+        "tinytex": "TinyTeX är installerat"
+      },
+      "tooltip": "Standardmotorn (Tectonic) är snabb och fungerar offline men kan inte skapa taggade PDF-filer enligt Section 508 eller PDF/UA. Det kräver systemets LuaLaTeX, som kan läsa lokala filer som ditt konto kommer åt och bara bör användas med projekt du litar på. Oleafly kan använda en befintlig distribution eller hanterad TinyTeX."
+    },
+    "tinytex": {
+      "detail": "Ett kompakt TeX Live i din hemmapp. Kärnnedladdningen är cirka 250 MB. Tidskriftsmallar kan lägga till paket senare, upp till ungefär 1 GB totalt. Att installera i förväg gör systemets LaTeX tillgänglig när du uttryckligen väljer den.",
+      "download": "Ladda ner TinyTeX (~250 MB)",
+      "resume": "Återuppta nedladdningen ({{size}} MB klart)"
+    },
+    "typst": {
+      "detail": "Följer med Oleafly. Snabb, offline, ingen konfiguration. Kompilerar Typst-dokument till PDF.",
+      "heading": "Typst-kompilator",
+      "name": "Typst (inbyggd)",
+      "note": "Typst-projekt använder alltid den medföljande kompilatorn. Att välja kompilatorversion, och att använda systemets Typst, är inte möjligt än.",
+      "tooltip": "Typst finns inuti Oleafly, så det finns inget att installera eller konfigurera. Varje Typst-projekt kompileras med den medföljande kompilatorn."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Ansluten",
+      "disconnect": "Koppla från",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Anslut",
+      "toggle": "Avancerat: använd en personlig åtkomsttoken",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Nya och öppnade projekt får ett Git-repositorium så att Git-panelen kan följa ändringar. Oleafly checkar aldrig in på egen hand.",
+      "label": "Initiera Git för varje projekt"
+    },
+    "config": {
+      "loadFailed": "Det gick inte att läsa in Git-inställningarna.",
+      "saveFailed": "Det gick inte att spara Git-inställningarna."
+    },
+    "connect": "Anslut GitHub",
+    "description": "Säkerhetskopiera projekt, synkronisera mellan enheter och pusha eller pulla från Git-panelen.",
+    "device": {
+      "openGithub": "Öppna GitHub",
+      "opened": "Vi öppnade <verificationLink>{{url}}</verificationLink> i din webbläsare. Klistra in koden där för att ge Oleafly behörighet.",
+      "timedOut": "Inloggningen på GitHub tog för lång tid. Försök igen.",
+      "title": "Ange den här koden på GitHub",
+      "waiting": "Väntar på behörighet…"
+    },
+    "hint": {
+      "oauth": "Loggar in dig med en engångskod i webbläsaren.",
+      "token": "OAuth-inloggning är inte konfigurerad i det här bygget än, så klistra in en token i stället."
+    },
+    "notice": {
+      "connected": "Ansluten som @{{login}}",
+      "disconnected": "Frånkopplad."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Anslut",
+      "disconnect": "Koppla från"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>alphaxiv.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink>, generera en nyckel (den börjar med <keyPrefix>axv1_</keyPrefix>) och klistra in den nedan.",
+      "apiKeyLabel": "API-nyckel för alphaXiv",
+      "description": "Verktyg för litteratursökning och artikelanalys åt assistenten."
+    },
+    "cookies": {
+      "action": "Importera cookies",
+      "confirmAllDomains": "Du är på väg att importera cookies från profilen {{profile}} i {{browser}} för alla domäner. Cookievärdena lagras i den inbyggda webbläsaren och skickas bara till de webbplatser de hör till. Oleafly ber dig bekräfta en gång till i en systemdialog innan profilen läses.",
+      "confirmDomain": "Du är på väg att importera cookies från profilen {{profile}} i {{browser}} för {{domain}}. Cookievärdena lagras i den inbyggda webbläsaren och skickas bara till de webbplatser de hör till. Oleafly ber dig bekräfta en gång till i en systemdialog innan profilen läses.",
+      "confirmTitle": "Bekräfta import av cookies",
+      "description": "Använd en befintlig inloggning i webbläsaren i Oleaflys inbyggda webbläsare.",
+      "detecting": "Letar efter installerade webbläsarprofiler...",
+      "dialogDescription": "Välj en installerad webbläsarprofil. Oleafly läser den först när du har granskat och bekräftat importen. Chromium-cookies låses upp lokalt via macOS nyckelring. Oleafly skickar inga cookievärden till någon Oleafly-tjänst.",
+      "dialogTitle": "Importera webbläsarcookies",
+      "empty": "Inga webbläsarprofiler som stöds hittades.",
+      "errors": {
+        "chooseProfile": "Välj en tillgänglig webbläsarprofil.",
+        "hostname": "Ange ett värdnamn som example.com."
+      },
+      "hostnameHint": "Ange en webbplats värdnamn för att bara importera cookies som den platsen kan använda. Lämna tomt för att importera alla behöriga cookies i profilen.",
+      "hostnameLabel": "Värdnamn (valfritt)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "Importerade {{count}} cookie från {{browser}} för {{domain}}.",
+      "importedDomain_other": "Importerade {{count}} cookies från {{browser}} för {{domain}}.",
+      "importedProfileDomain_one": "Importerade {{count}} cookie från {{browser}}, {{profile}} för {{domain}}.",
+      "importedProfileDomain_other": "Importerade {{count}} cookies från {{browser}}, {{profile}} för {{domain}}.",
+      "importedProfile_one": "Importerade {{count}} cookie från {{browser}}, {{profile}}.",
+      "importedProfile_other": "Importerade {{count}} cookies från {{browser}}, {{profile}}.",
+      "imported_one": "Importerade {{count}} cookie från {{browser}}.",
+      "imported_other": "Importerade {{count}} cookies från {{browser}}.",
+      "importing": "Importerar cookies...",
+      "profileGroupLabel": "Webbläsarprofiler",
+      "profileLegend": "Webbläsarprofil",
+      "review": "Granska importen",
+      "status": {
+        "available": "Tillgänglig",
+        "comingSoon": "Kommer snart",
+        "noCookieStore": "Inget cookielager",
+        "notInstalled": "Inte installerad"
+      },
+      "title": "Importera cookies",
+      "tryAgain": "Försök igen"
+    },
+    "zotero": {
+      "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",
+      "apiKeyLabel": "API-nyckel för Zotero",
+      "description": "Importera citeringar och referenser från ditt Zotero-bibliotek.",
+      "userIdLabel": "Användar-ID i Zotero",
+      "userIdPlaceholder": "Användar-ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "Gränssnittsspråk",
+    "description": "Välj gränssnittets språk. Systemstandard följer ditt operativsystem.",
+    "label": "Språk",
+    "note": "Att byta gränssnittsspråk ändrar inte dokumentets språk eller inställningarna för korrekturläsning.",
+    "system": "Systemstandard"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Importera {{name}} från {{source}}",
+      "description": "Välj servrar bland verktygen som är installerade på den här datorn.",
+      "detecting": "Letar efter MCP-servrar...",
+      "duplicateOverwritten": "Finns redan. Den skrivs över.",
+      "duplicateSkipped": "Finns redan. Den hoppas över.",
+      "duplicates": {
+        "legend": "När namnen är lika",
+        "overwrite": {
+          "description": "Ersätt den med den valda servern.",
+          "label": "Skriv över befintlig"
+        },
+        "skip": {
+          "description": "Behåll servern som redan är sparad i Oleafly.",
+          "label": "Hoppa över befintlig"
+        }
+      },
+      "emptyState": "Inga konfigurationer för MCP-servrar hittades.",
+      "importing": "Importerar...",
+      "keys": {
+        "environment": "Miljö: {{names}}",
+        "headers": "Huvuden: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Importera valda",
+      "summary": {
+        "commandFallback": "Lokalt kommando",
+        "remote": "Fjärrserver: {{origin}}.",
+        "remoteUnknown": "Fjärrserver.",
+        "stdio_one": "Lokalt kommando: {{command}}. {{count}} argument.",
+        "stdio_other": "Lokalt kommando: {{command}}. {{count}} argument."
+      },
+      "title": "Importera MCP-servrar"
+    },
+    "registry": {
+      "argumentsLine": "Argument: {{args}}",
+      "description": "Sök i publika servermetadata. Ingenting installeras eller startas här. Granska kommandot eller URL:en innan du lägger till den.",
+      "emptyQuery": "Ange ett servernamn för att söka i det officiella MCP-registret.",
+      "environmentLine": "Miljö: {{names}}",
+      "loadMore": "Läs in fler",
+      "noResults": "Inga matchande poster returnerades från registret.",
+      "review": "Granska innan du lägger till",
+      "searchLabel": "Sök i det officiella MCP-registret",
+      "searchPlaceholder": "Sök servernamn",
+      "title": "Officiellt MCP-register",
+      "unsupportedEntry": "Den här posten anger inget paket och ingen fjärrtransport som Oleafly kan granska.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Anslut dina appar"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor och andra MCP-klienter kan läsa, redigera och kompilera det öppna projektet, med ditt godkännande för varje ändring.",
+      "enable": {
+        "ariaLabel": "Aktivera MCP-servern",
+        "description": "Lyssnar bara på den här datorn medan Oleafly är öppet.",
+        "label": "Aktivera MCP-servern"
+      },
+      "footer": "Servern lyssnar bara på den här datorn (127.0.0.1) och kräver token ovan. Under de två första policyerna frågar Oleafly alltid efter din bekräftelse innan filer raderas. claude.ai i webbläsaren kan inte nå en lokal server. Använd Claude Desktop i stället.",
+      "policy": {
+        "ask": {
+          "description": "Skrivningar, namnbyten och raderingar visar ett godkännandekort i Oleafly med en jämförelse innan något tillämpas.",
+          "label": "Bekräfta varje ändring"
+        },
+        "autoWrites": {
+          "description": "Skrivningar och namnbyten tillämpas direkt. Raderingar visar fortfarande ett godkännandekort.",
+          "label": "Godkänn ändringar automatiskt, bekräfta raderingar"
+        },
+        "legend": "Godkännandepolicy",
+        "trust": {
+          "description": "Filändringar frågar inte. Shell-kommandon och datorstyrning kräver alltid godkännande. Din MCP-klient är fortfarande en extra spärr.",
+          "label": "Lita på den här anslutningen"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automatiskt vald port för MCP-servern",
+        "label": "Port",
+        "restartAriaLabel": "Starta om MCP-servern och välj en ledig port",
+        "restartTooltip": "Starta om MCP-servern. Oleafly återanvänder den här porten om den är ledig, annars väljs en annan ledig port."
+      },
+      "readOnly": {
+        "ariaLabel": "Skrivskyddat läge",
+        "description": "Externa appar kan läsa och kompilera men aldrig ändra filer.",
+        "label": "Skrivskyddat"
+      },
+      "status": {
+        "restartedAt": "Omstartad på {{url}}",
+        "runningAt": "Körs på {{url}}"
+      },
+      "title": "Oleaflys MCP-server",
+      "token": {
+        "copyUrl": "Kopiera URL",
+        "enableToView": "Aktivera servern för att se token.",
+        "help": "Visa eller kopiera bearer-token, kopiera serverns URL, eller generera en ny token för anslutna MCP-klienter.",
+        "hide": "Dölj",
+        "label": "Bearer-token",
+        "regenerate": "Generera ny",
+        "regenerateWarning": "Befintliga klienter behöver den nya token.",
+        "reveal": "Visa"
+      }
+    },
+    "servers": {
+      "addServer": "Lägg till server",
+      "browseRegistry": "Bläddra i registret",
+      "card": {
+        "editLabel": "Redigera {{name}}",
+        "enableLabel": "Aktivera {{name}}",
+        "noTools": "Inga verktyg rapporterade.",
+        "removeLabel": "Ta bort {{name}}",
+        "toolCount_one": "{{count}} verktyg",
+        "toolCount_other": "{{count}} verktyg",
+        "toolsLabel": "Verktyg från {{name}}",
+        "validate": "Validera",
+        "validateLabel": "Validera {{name}}"
+      },
+      "description": "Anslut AI-assistenten till lokala kommandon eller fjärrslutpunkter för MCP. Oleafly kontrollerar varje aktiverad server när den här sidan öppnas, varje minut och på begäran. Programmet visar också vilka verktyg varje server erbjuder.",
+      "editor": {
+        "addAndValidate": "Lägg till och validera",
+        "argsHint": "Ange ett argument per rad.",
+        "argsLabel": "Argument",
+        "commandLabel": "Kommando",
+        "description": "Aktiverade servrar kontrolleras innan deras inställningar sparas.",
+        "formView": "Formulär",
+        "jsonHint": "Klistra in en server med namnet som nyckel, eller ett block inneslutet i mcpServers.",
+        "jsonLabel": "Fullständig konfiguration",
+        "jsonView": "JSON",
+        "nameLabel": "Servernamn",
+        "pairs": {
+          "addHeader": "Lägg till huvud",
+          "addVariable": "Lägg till variabel",
+          "environmentKeyLabel": "Miljönyckel {{index}}",
+          "environmentTitle": "Miljövariabler",
+          "environmentValueLabel": "Miljövärde {{index}}",
+          "headerKeyLabel": "Huvudnyckel {{index}}",
+          "headerValueLabel": "Huvudvärde {{index}}",
+          "headersTitle": "Förfrågningshuvuden",
+          "removeHeaderLabel": "Ta bort huvud {{index}}",
+          "removeVariableLabel": "Ta bort variabel {{index}}",
+          "storedValuePlaceholder": "Sparat värde",
+          "valuePlaceholder": "Värde"
+        },
+        "saveAndValidate": "Spara och validera",
+        "saveChanges": "Spara ändringarna",
+        "titleAdd": "Lägg till MCP-server",
+        "titleEdit": "Redigera MCP-server",
+        "transportLegend": "Transport",
+        "transportRemote": "Fjärr-URL",
+        "transportStdio": "Lokalt kommando",
+        "urlLabel": "Fjärr-URL",
+        "viewSwitchLabel": "Konfigurationsredigerare"
+      },
+      "empty": {
+        "description": "Lägg till en server för att ge assistenten nya verktyg, eller importera dem du redan använder i en annan redigerare.",
+        "title": "Inga servrar tillagda"
+      },
+      "hideRegistry": "Dölj registret",
+      "importButton": "Importera från andra verktyg",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Importerade {{imported}}, hoppade över {{skipped}}, misslyckades med {{failed}}.",
+      "live": {
+        "checking": "Kontrollerar {{name}}.",
+        "connected_one": "{{name}} är ansluten. {{count}} verktyg tillgängligt.",
+        "connected_other": "{{name}} är ansluten. {{count}} verktyg tillgängliga.",
+        "disabled": "{{name}} är avstängd.",
+        "disabledLastCheckFailed": "{{name}} är avstängd. Den senaste kontrollen misslyckades.",
+        "disabledLastCheckFound_one": "{{name}} är avstängd. Den senaste kontrollen hittade {{count}} verktyg.",
+        "disabledLastCheckFound_other": "{{name}} är avstängd. Den senaste kontrollen hittade {{count}} verktyg.",
+        "failed": "Valideringen av {{name}} misslyckades."
+      },
+      "loading": "Läser in servrar...",
+      "remove": {
+        "confirm": "Ta bort servern",
+        "description": "Det här tar bort {{name}} från Oleafly. Du kan lägga till den igen senare.",
+        "descriptionFallback": "Det här tar bort servern från Oleafly. Du kan lägga till den igen senare.",
+        "title": "Vill du ta bort servern?"
+      },
+      "status": {
+        "checking": "Kontrollerar...",
+        "connected": "Ansluten",
+        "disabled": "Avstängd",
+        "error": "Fel"
+      },
+      "title": "MCP-servrar för assistenten"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Lägg till ett ord som ignoreras överallt",
+      "placeholder": "Lägg till ett ord eller uttryck",
+      "projectAriaLabel": "Lägg till ett ord som ignoreras i {{project}}",
+      "submitAriaLabel": "Lägg till ignorerat ord"
+    },
+    "clear": {
+      "confirm": "Rensa orden",
+      "descriptionFallback": "Det här tar bort alla uttryck ur den här ordlistan. De kontrolleras igen direkt.",
+      "descriptionGlobal": "Det här tar bort alla uttryck ur den globala ordlistan. De kontrolleras igen direkt.",
+      "descriptionProject": "Det här tar bort alla uttryck ur {{project}}. De kontrolleras igen direkt.",
+      "descriptionSuppressed": "Det här tar bort alla uttryck ur de bortvalda fynden i {{project}}. De kontrolleras igen direkt.",
+      "suppressedConfirm": "Visa igen",
+      "suppressedTitle": "Vill du visa de bortvalda fynden igen?",
+      "title": "Vill du rensa ignorerade ord?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} bortvalda, av {{limit}} som projektet kan komma ihåg",
+      "hidden_one": "{{count}} grammatikfynd är dolt i det här projektet eftersom du valde Ignorera i det här projektet. Om du visar dem igen stryks de under på nytt.",
+      "hidden_other": "{{count}} grammatikfynd är dolda i det här projektet eftersom du valde Ignorera i det här projektet. Om du visar dem igen stryks de under på nytt.",
+      "none": "Inget är bortvalt. När du väljer Ignorera i det här projektet på ett grammatikfynd listas det här.",
+      "showAgain": "Visa dem igen",
+      "title": "Bortvalda fynd",
+      "titleInProject": "Bortvalda fynd i {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Ord du lägger till här hoppas över av korrekturläsaren i alla projekt.",
+      "scope": "Gäller alla projekt"
+    },
+    "intro": "Lägg till ord i din personliga ordlista för stavningskontroll. Orden lagras i lokala inställningar och ignoreras i alla projekt. Matchningen är Unicode-normaliserad och skiljer inte på gemener och versaler.",
+    "profileRules": {
+      "description": "Avstängda som standard eftersom de är i vägen för artiklar. Slå på dem du vill ha.",
+      "example": "Exempel: {{example}}",
+      "help": "Harper är anpassad för chatt och e-post. De här reglerna driver antingen en stil som artiklar inte följer, som att skriva ut kB och min, eller snubblar på platshållarna som står i stället för LaTeX-uppmärkning, så Oleafly håller dem avstängda. Varje regel visar vad den skulle flagga. Slå på den om du vill ha de fynden.",
+      "reasons": {
+        "AvoidContractions": "Ber dig skriva ut varje sammandragning.",
+        "CompoundNouns": "Slår ihop ett sammansatt substantiv som skrivits som två ord.",
+        "Dashes": "Ersätter ett skrivet -- eller --- med rätt tankstreckstecken.",
+        "DiscourseMarkers": "Flaggar en mening som inleds med en markör som however och saknar komma efter den.",
+        "EllipsisLength": "Rättar en ellips som inte består av tre punkter.",
+        "ExpandAlgorithm": "Vill att algo skrivs ut.",
+        "ExpandArgument": "Vill att arg skrivs ut.",
+        "ExpandCoordinate": "Vill att coord skrivs ut.",
+        "ExpandMemoryShorthands": "Vill att KB och MB skrivs ut.",
+        "ExpandParameter": "Vill att param skrivs ut.",
+        "ExpandStandardInputAndOutput": "Vill att stdin och stdout skrivs ut.",
+        "ExpandTimeShorthands": "Vill att min och sec skrivs ut.",
+        "ExplainLikeImFive": "Skriver ut en initialförkortning i sin helhet.",
+        "FillerWords": "Flaggar ord som den räknar som utfyllnad.",
+        "Hedging": "Flaggar garderande uttryck som I would argue that och to a certain degree.",
+        "LongSentences": "Flaggar varje mening som är längre än gränsen.",
+        "MergeWords": "Slår ihop ett ord som ett felplacerat mellanslag delat i två, som to gether.",
+        "MoreAdjective": "Föredrar komparativformen framför more plus ett adjektiv.",
+        "NoFrenchSpaces": "Tar bort mellanslaget före skiljetecken som fransk typografi använder.",
+        "NoOxfordComma": "Tar bort oxfordkommat.",
+        "NumericRangeEnDash": "Vill ha ett tankstreck mellan ändpunkterna i ett talintervall.",
+        "OxfordComma": "Kräver oxfordkomma.",
+        "SentenceCapitalization": "Gör första ordet i en mening till versal, även när meningen börjar efter maskerad uppmärkning.",
+        "Spaces": "Slår ihop upprepade mellanslag, som prosamasken lämnar kvar där uppmärkning tömts ut.",
+        "SplitWords": "Delar ett ord som borde vara två, som alot.",
+        "TransposedSpace": "Flyttar ett mellanslag som hamnat på fel sida om ett skiljetecken, vilket maskeringen ofta orsakar."
+      },
+      "title": "Regler som den akademiska profilen håller avstängda",
+      "toggleAriaLabel": "Slå på {{rule}}"
+    },
+    "projects": {
+      "empty": "Öppna ett projekt för att lägga till projektspecifika uttryck.",
+      "emptyDescription": "Ord som läggs till för det här projektet hoppas över av korrekturläsaren bara här.",
+      "terms_one": "{{used}} / {{limit}} uttryck",
+      "terms_other": "{{used}} / {{limit}} uttryck"
+    },
+    "reset": {
+      "confirmationDescription": "Det här tar permanent bort varje ignorerat ord, både globalt och per projekt, och slår på alla grammatikregler du stängt av. Den akademiska profilen håller sina egna regler avstängda. Korrekturläsningen kommer att flagga de orden igen.",
+      "sectionName": "Ordlista"
+    },
+    "search": {
+      "ariaLabel": "Sök ignorerade ord",
+      "placeholder": "Sök i ordlistan"
+    },
+    "tabs": {
+      "global": "Globalt",
+      "projects": "Projekt"
+    },
+    "turnedOff": {
+      "description": "Regler du stängt av och fynd du ignorerat i det här projektet.",
+      "help": "Håll muspekaren över ett understruket ord eller en understruken mening i redigeraren, så visar ett litet kort vad Harper hittade, med åtgärder för att rätta eller ignorera det. Regler du stängt av från det kortet och fynd du ignorerat i det här projektet listas här, så att du kan ta tillbaka dem.",
+      "listAriaLabel": "Avstängda grammatikregler",
+      "none": "Du har inte stängt av några regler.",
+      "restoreAriaLabel": "Slå på regeln {{rule}} igen",
+      "restoreTitle": "Slå på regeln ”{{rule}}” igen",
+      "title": "Grammatikregler och bortvalda fynd"
+    },
+    "words": {
+      "emptyCompact": "Inget ignoreras än.",
+      "emptyTitle": "Inget ignoreras än",
+      "listAriaLabel": "Ignorerade ord",
+      "noMatches": "Inga ignorerade ord matchar den här sökningen.",
+      "removeAriaLabel": "Sluta ignorera {{word}}",
+      "removeTitle": "Sluta ignorera ”{{word}}”"
+    }
+  },
+  "reset": {
+    "button": "Återställ till standard",
+    "confirmDescription": "Återställ inställningarna för {{sectionName}} till standard. Övriga inställningar lämnas oförändrade.",
+    "confirmTitle": "Vill du återställa inställningarna för {{sectionName}}?",
+    "description": "Återställ inställningarna för {{sectionName}} till standard.",
+    "label": "Återställ inställningar"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Sök och kör kommandon i Oleafly.",
+        "label": "Kommandopalett"
+      },
+      "forwardSync": {
+        "description": "Hoppa från markören i redigeraren till den kompilerade PDF:en.",
+        "label": "Gå till PDF"
+      },
+      "recompile": {
+        "description": "Kompilera det aktuella projektet och visa dess PDF.",
+        "label": "Kompilera om"
+      },
+      "searchDocuments": {
+        "description": "Sök i alla projekt och dokument.",
+        "label": "Sök i alla dokument"
+      },
+      "shortcutReference": {
+        "description": "Öppna projektets kortkommandoreferens.",
+        "label": "Kortkommandoreferens"
+      },
+      "toggleBrowser": {
+        "description": "Visa eller dölj projektets webbläsare.",
+        "label": "Visa eller dölj webbläsaren"
+      },
+      "toggleSidebar": {
+        "description": "Visa eller dölj projektets sidofält.",
+        "label": "Visa eller dölj sidofältet"
+      },
+      "toggleTerminal": {
+        "description": "Visa eller dölj projektets terminal.",
+        "label": "Visa eller dölj terminalen"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Redigera {{action}}, just nu {{shortcut}}",
+      "heading": "Kortkommandon i appen",
+      "prompt": "Tryck på den nya tangentkombinationen",
+      "recordAriaLabel": "Spelar in {{action}}. Tryck på ett kortkommando.",
+      "recording": "Spelar in",
+      "resetAriaLabel": "Återställ {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Be AI redigera markeringen",
+        "bold": "Fet",
+        "findAndReplace": "Sök och ersätt",
+        "findReferences": "Hitta referenser",
+        "goToDefinition": "Gå till definitionen",
+        "goToDefinitionWithPointer": "Gå till definitionen med pekaren",
+        "indentOrAcceptAutocomplete": "Indrag eller acceptera komplettering",
+        "italic": "Kursiv",
+        "jumpToSourceFromPdf": "Hoppa till källkoden från PDF:en",
+        "redo": "Gör om",
+        "renameSymbol": "Byt namn på symbolen i hela projektet",
+        "slashCommandMenu": "Infogningsmeny med snedstreckskommandon",
+        "triggerAutocomplete": "Utlös komplettering",
+        "undo": "Ångra"
+      },
+      "managed": "Hanteras av redigeraren"
+    },
+    "categories": {
+      "codeIntelligence": "Kodintelligens",
+      "editor": "Redigerare",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Redan tilldelat {{action}}.",
+      "reserved": "{{shortcut}} är reserverat av operativsystemet."
+    },
+    "intro": "Anpassa appens kortkommandon och gå igenom redigerarens egna tangentkombinationer.",
+    "reserved": {
+      "closeWindow": "Stäng fönster",
+      "copy": "Kopiera",
+      "cut": "Klipp ut",
+      "paste": "Klistra in",
+      "quit": "Avsluta",
+      "save": "Spara",
+      "selectAll": "Markera allt",
+      "systemSearch": "Systemsökning",
+      "windowSwitching": "Fönsterväxling"
+    },
+    "reset": {
+      "sectionName": "Kortkommandon"
+    },
+    "tabs": {
+      "application": "App"
+    },
+    "editorKeys": {
+      "clearHint": "Tryck på Backspace för att lämna åtgärden utan tangentbindning.",
+      "heading": "Redigerarens tangenter",
+      "intro": "De här tangenterna fungerar inuti källkodsredigeraren. Vim- och Emacs-lägena behåller sina egna bindningar.",
+      "labels": {
+        "addCursorAbove": "Lägg till markör ovanför",
+        "addCursorBelow": "Lägg till markör nedanför",
+        "deleteLine": "Radera raden",
+        "duplicate": "Duplicera markeringen eller raden",
+        "gotoLine": "Gå till rad",
+        "indentLess": "Minska indraget",
+        "indentMore": "Öka indraget",
+        "lowercase": "Gemener",
+        "selectNextOccurrence": "Markera nästa förekomst",
+        "titleCase": "Inledande versaler",
+        "toggleComment": "Kommentera eller avkommentera",
+        "uppercase": "Versaler"
+      },
+      "unbound": "Inte angiven"
+    }
+  }
+}

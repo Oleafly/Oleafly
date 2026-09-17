@@ -274,4 +274,12 @@ const bibtexParser: StreamParser<BibtexState> = {
   },
 };
 
-export const bibtexLanguage = () => new LanguageSupport(StreamLanguage.define(bibtexParser));
+const bibtexLanguageData = {
+  commentTokens: { line: "%" },
+  closeBrackets: { brackets: ["{", '"', "("] },
+};
+
+export const bibtexLanguage = () =>
+  new LanguageSupport(
+    StreamLanguage.define({ ...bibtexParser, languageData: bibtexLanguageData }),
+  );

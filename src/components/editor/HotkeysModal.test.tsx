@@ -3,6 +3,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import { EDITOR_KEY_DEFAULTS, useEditorKeymapStore } from "@/store/editor-keymap";
 import { useSettingsStore } from "@/store/settings";
 
 const platform = vi.hoisted(() => ({ mac: false }));
@@ -131,6 +133,38 @@ describe("HotkeysModal", () => {
 
     fireEvent.change(search, { target: { value: "no such shortcut" } });
     expect(screen.getByText(hotkeys.empty)).toBeInTheDocument();
+  });
+
+  it("derives its editor-key rows from the remappable bindings", () => {
+    useEditorKeymapStore.setState({ keys: { ...EDITOR_KEY_DEFAULTS } });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+    const editorKeyLabels = enSettings.shortcuts.editorKeys.labels;
+
+    expect(rowFor(editorKeyLabels.deleteLine).textContent).toBe(
+      `${editorKeyLabels.deleteLine}CtrlD`,
+    );
+    expect(rowFor(editorKeyLabels.addCursorBelow).textContent).toBe(
+      `${editorKeyLabels.addCursorBelow}CtrlAlt↓`,
+    );
+    expect(screen.queryByText(editorKeyLabels.titleCase)).not.toBeInTheDocument();
+  });
+
+  it("follows a remapped editor key instead of a hardcoded glyph", () => {
+    useEditorKeymapStore.setState({
+      keys: { ...EDITOR_KEY_DEFAULTS, deleteLine: "Mod-Shift-k", titleCase: "Ctrl-Alt-t" },
+    });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+    const editorKeyLabels = enSettings.shortcuts.editorKeys.labels;
+
+    expect(rowFor(editorKeyLabels.deleteLine).textContent).toBe(
+      `${editorKeyLabels.deleteLine}CtrlShiftK`,
+    );
+    expect(rowFor(editorKeyLabels.titleCase).textContent).toBe(
+      `${editorKeyLabels.titleCase}CtrlAltT`,
+    );
+    useEditorKeymapStore.setState({ keys: { ...EDITOR_KEY_DEFAULTS } });
   });
 
   it("closes from the backdrop", () => {

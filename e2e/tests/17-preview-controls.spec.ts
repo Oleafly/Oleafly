@@ -193,11 +193,16 @@ test("zoom controls change the zoom level", async ({ tauriPage }) => {
   // compare against a level the app never actually returns to. Poll until two
   // consecutive reads agree before treating it as the stable baseline.
   let before = await zoom();
-  for (let i = 0; i < 20; i++) {
+  let stableReads = 0;
+  for (let i = 0; i < 40 && stableReads < 5; i++) {
     await new Promise((r) => setTimeout(r, 100));
     const reread = await zoom();
-    if (reread === before) break;
-    before = reread;
+    if (reread === before) {
+      stableReads++;
+    } else {
+      before = reread;
+      stableReads = 0;
+    }
   }
   await tauriPage.click('[aria-label="Zoom in"]');
   const after = await zoom();

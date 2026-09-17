@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Loggar",
+    "showLogs": "Visa kompileringsloggar",
+    "showPdf": "Visa PDF-förhandsvisning",
+    "askAi": "Fråga AI",
+    "more": "Fler reglage för förhandsvisningen",
+    "duration": "{{seconds}} s",
+    "failed": "Misslyckades",
+    "compiledWithErrors": "Kompilerad med fel",
+    "compiledWithWarnings": "Kompilerad med varningar",
+    "compiledSuccessfully": "Kompilerad utan problem"
+  },
+  "pageLayout": {
+    "group": "Sidlayout",
+    "single": "Enkelsidig vy",
+    "double": "Tvåsidig vy"
+  },
+  "pages": {
+    "previous": "Föregående sida",
+    "next": "Nästa sida",
+    "number": "Sidnummer",
+    "ofTotal": "av {{total}}",
+    "pageOfTotal": "Sida {{page}} av {{total}}"
+  },
+  "zoom": {
+    "in": "Zooma in",
+    "out": "Zooma ut",
+    "fitToWidth": "Anpassa till bredden",
+    "fitToHeight": "Anpassa till höjden",
+    "reset": "Återställ till 100 %",
+    "percent": "{{percent}} %",
+    "percentLabel": "Zooma {{percent}} procent",
+    "menuLabel": "Zoom · {{percent}} %"
+  },
+  "outline": {
+    "open": "Dokumentets disposition",
+    "panel": "PDF-dokumentets disposition",
+    "title": "Dokumentets disposition",
+    "close": "Stäng dokumentets disposition",
+    "loading": "Läser in dispositionen…",
+    "empty": "Den här PDF:en innehåller ingen disposition.",
+    "externalLink": "Extern länk",
+    "externalBadge": "Länk"
+  },
+  "search": {
+    "open": "Sök i PDF",
+    "panel": "Sök i den här PDF:en",
+    "placeholder": "Sök i dokumentet",
+    "input": "Sök i PDF-texten",
+    "previous": "Föregående sökträff",
+    "next": "Nästa sökträff",
+    "close": "Stäng PDF-sökningen"
+  },
+  "viewer": {
+    "scrollArea": "Kontinuerligt rullningsområde för PDF",
+    "crashedTitle": "PDF-förhandsvisningen kraschade",
+    "crashedDetail": "Kompilera om den aktuella revisionen eller försök med visaren igen.",
+    "retry": "Försök med visaren igen",
+    "loadingLatest": "Läser in den senast kompilerade PDF:en…",
+    "retryingLoad": "Försöker läsa in PDF:en igen…",
+    "retainedFailure": "{{detail}} Visar den senast inlästa PDF:en i stället.",
+    "retainedFailureDetail": "Den aktuella PDF:en kunde inte läsas in",
+    "invalidTitle": "Ogiltig PDF",
+    "emptyTitle": "Tom PDF",
+    "unavailableTitle": "PDF-visaren är inte tillgänglig",
+    "loadFailedTitle": "PDF:en kunde inte läsas in",
+    "loadFailedDetail": "PDF:en kunde inte läsas in."
+  },
+  "password": {
+    "title": "Lösenord krävs",
+    "label": "PDF-lösenord",
+    "placeholder": "PDF-lösenord",
+    "submit": "Lås upp PDF"
+  },
+  "actions": {
+    "downloadImage": "Ladda ner bild",
+    "downloadPdf": "Ladda ner PDF",
+    "downloadDisplayedPdf": "Ladda ner den visade PDF:en",
+    "downloadStalePdf": "Ladda ner den inaktuella PDF:en",
+    "saveImage": "Spara bilden i projektet",
+    "savePdf": "Spara PDF:en i projektet",
+    "invert": "Invertera färgerna i PDF-förhandsvisningen",
+    "restoreColors": "Återställ färgerna",
+    "readerView": "Läsvy",
+    "exitReaderView": "Lämna läsvyn",
+    "rotate": "Rotera medurs",
+    "rotateTooltip": "Rotera PDF:en medurs (90°). Just nu {{degrees}}°",
+    "openWindow": "Öppna förhandsvisningen i ett nytt fönster",
+    "hideToolbar": "Dölj verktygsfältet",
+    "showToolbar": "Visa verktygsfältet",
+    "settings": "Inställningar för PDF-förhandsvisning",
+    "fullscreen": "Förhandsvisning i helskärm",
+    "exitFullscreen": "Lämna helskärm",
+    "retryCompile": "Kompilera igen"
+  },
+  "stale": {
+    "badge": "Inaktuell",
+    "badgeLabel": "Inaktuell förhandsvisning. Kompilera om.",
+    "tooltip": "Förhandsvisningen är inaktuell jämfört med ändringarna i redigeraren. {{explanation}} {{syncTex}} Klicka för att kompilera om.",
+    "explanation": "Den här PDF:en motsvarar inte den aktiva projektrevisionen.",
+    "revisionExplanation": "Visar projektrevision {{displayed}}. Det aktiva projektet är revision {{active}}.",
+    "noIdentity": "Den visade PDF:en har ingen verifierad kompileringsidentitet för den aktiva revisionen.",
+    "syncTexAvailable": "SyncTeX använder närmaste oförändrade rad vid ändringar.",
+    "syncTexUnavailable": "SyncTeX kräver en aktuell kompilering."
+  },
+  "save": {
+    "title": "Spara PDF:en i projektet",
+    "imageTitle": "Spara bilden i projektet",
+    "close": "Stäng spardialogen",
+    "staleDescription": "Sparar den visade inaktuella PDF:en i projektträdet. Den motsvarar inte den aktiva revisionen.",
+    "description": "Sparar den visade PDF:en i projektträdet (checkas in via Git).",
+    "nameLabel": "Namn att spara i projektet",
+    "namePlaceholder": "dokument.pdf",
+    "imageSaved": "Bilden sparades i projektet.",
+    "pdfSaved": "PDF:en sparades i projektet.",
+    "failed": "Det gick inte att spara i projektet."
+  },
+  "download": {
+    "pngFilter": "PNG-bild",
+    "imageSaved": "Bilden sparad · {{name}}",
+    "pdfSaved": "PDF sparad · {{name}}",
+    "showInFolder": "Visa i mappen",
+    "folderUnavailable": "Filen sparades, men Oleafly kunde inte öppna dess mapp (åtkomst nekad). Kontrollera platsen du valde i spardialogen.",
+    "imageFailed": "Det gick inte att ladda ner bilden.",
+    "imageFailedDetail": "Det gick inte att ladda ner bilden: {{detail}}",
+    "pdfFailed": "Det gick inte att ladda ner PDF:en.",
+    "pdfFailedDetail": "Det gick inte att ladda ner PDF:en: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF-kompilering är inte tillgänglig just nu.",
+    "compileFailed": "Kompileringen misslyckades. Öppna fliken Loggar för att se vad som gick fel."
+  },
+  "a11y": {
+    "stale": "Inaktuell PDF. {{explanation}}",
+    "page": "PDF-sida {{page}} av {{total}}.",
+    "searchResult": "Sökträff {{current}} av {{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF-förhandsvisningen är klar",
+    "headingPreparing": "Förbereder PDF-förhandsvisningen",
+    "headingAttention": "Starten kräver åtgärd",
+    "progressLabel": "Dokumentstart: {{completed}} av {{total}} steg klara eller överhoppade",
+    "doneCount": "{{completed}}/{{total}} klara",
+    "metaRunning": "{{stages}} pågår",
+    "metaQueued": "{{stages}} i kö",
+    "metaFailed": "{{stages}} misslyckades",
+    "compileNow": "Kompilera nu",
+    "noProject": "Inget aktivt projekt",
+    "waitingForEngine": "Väntar på dokumentmotorn",
+    "orPress": "eller tryck på <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "klart",
+      "running": "pågår",
+      "queued": "i kö",
+      "skipped": "överhoppat",
+      "failed": "misslyckades"
+    },
+    "language": {
+      "serviceLabel": "Språktjänst",
+      "analysisLabel": "Språkanalys",
+      "openingFiles": "Öppnar projektfiler",
+      "starting": "Startar språktjänsten",
+      "restarting": "Startar om språktjänsten",
+      "installing": "Installerar språktjänsten",
+      "connected": "Startad och ansluten",
+      "ready": "Klar",
+      "localOnly": "Krävs inte. Använder lokal analys.",
+      "notApplicable": "Gäller inte det här projektet",
+      "unavailable": "Inte tillgänglig. Lokal analys är fortfarande tillgänglig.",
+      "waitingToStart": "Väntar på att starta",
+      "waitingForFiles": "Väntar på projektfiler",
+      "syncing": "Synkroniserar aktuella projektfiler",
+      "analyzing": "Analyserar projektets struktur",
+      "analyzed": "Den aktuella projektrevisionen är analyserad",
+      "partial": "En användbar delanalys är klar",
+      "needsAttention": "Analysen kräver åtgärd",
+      "notAvailable": "Inte tillgänglig för det här projektet",
+      "queued": "I kö för den aktuella revisionen",
+      "waitingForService": "Väntar på språktjänsten"
+    },
+    "compile": {
+      "label": "Kompilerar",
+      "saving": "Sparar aktuella ändringar",
+      "downloading": "Laddar ner nödvändiga LaTeX-paket",
+      "producing": "Skapar och verifierar PDF-utdata",
+      "unavailable": "Kompilatorn är inte tillgänglig",
+      "failed": "Kompileringen misslyckades. Öppna Loggar för mer information.",
+      "accepted": "Verifierad utdata godkänd",
+      "waiting": "Väntar på att kompilera den aktuella revisionen"
+    },
+    "render": {
+      "label": "Renderar PDF",
+      "preparing": "Förbereder sidor, text och länkar",
+      "reading": "Läser PDF · {{percent}} %",
+      "passwordRequired": "Lösenord krävs",
+      "needsAttention": "PDF-renderingen kräver åtgärd",
+      "ready": "Förhandsvisningen är klar",
+      "waitingForRenderer": "Väntar på den verifierade PDF-renderaren",
+      "waitingForCompile": "Väntar på verifierad kompileringsutdata"
+    }
+  },
+  "window": {
+    "fitWidth": "Anpassa till bredden",
+    "fitHeight": "Anpassa till höjden",
+    "invert": "Invertera färgerna",
+    "invertLabel": "Invertera PDF-färgerna",
+    "rotateLabel": "Rotera PDF:en medurs",
+    "staleHeading": "Inaktuell · förhandsvisningen är inte aktuell",
+    "staleCompiling": "En nyare projektrevision kompileras. Det här är den senaste verifierade PDF:en för revision {{revision}}.",
+    "staleUnknownRevision": "okänd",
+    "staleCompileFailed": "{{detail}} Den senaste verifierade PDF:en visas fortfarande.",
+    "staleCompileFailedDetail": "Den nyare kompileringen gav ingen användbar PDF",
+    "staleIdentity": "Den här PDF:en motsvarar inte den senast godkända kompileringsidentiteten.",
+    "crashedDetail": "Försök med den här visaren igen, eller kompilera om i huvudfönstret.",
+    "compilingTitle": "Kompilerar PDF",
+    "compileFailedTitle": "Kompileringen misslyckades",
+    "compileUnavailableTitle": "Kompilering är inte tillgänglig",
+    "artifactUnavailableTitle": "PDF är inte tillgänglig",
+    "noVerifiedTitle": "Ingen verifierad PDF",
+    "compilingDetail": "Den verifierade PDF:en visas när kompileringen är klar.",
+    "noVerifiedDetail": "Kompilera projektet i huvudfönstret. Det här fönstret visar bara utdata med en verifierad kompileringsidentitet.",
+    "loadingTitle": "Läser in PDF",
+    "loadingVerified": "Läser in verifierad PDF…",
+    "restoringLast": "Återställer den senast inlästa PDF:en…",
+    "retryingLoad": "Försöker läsa in PDF:en igen…",
+    "unlocking": "Låser upp PDF:en…",
+    "rotating": "Roterar PDF:en…",
+    "retainedFailureDetail": "Den senaste PDF:en kunde inte läsas in",
+    "artifactFailure": "Den kompilerade PDF:en kunde inte verifieras eller läsas. Den senast inlästa PDF:en behålls när det går.",
+    "downloadStarted": "Nedladdningen av PDF:en har startat.",
+    "downloadSaved": "PDF:en sparades.",
+    "downloadFailed": "Den visade PDF:en kunde inte sparas."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF-lösenordet godtogs inte.",
+      "passwordRequired": "Den här PDF:en är lösenordsskyddad.",
+      "invalid": "Den kompilerade utdatan är inte en giltig PDF. Kompilera om eller granska kompileringsloggen.",
+      "unavailable": "PDF-renderaren är inte tillgänglig i det här fönstret. Försök igen när du har återställt fönstret eller startat om appen.",
+      "generic": "PDF:en kunde inte läsas in. Kompilera om den aktuella revisionen och försök igen.",
+      "empty": "Den kompilerade PDF:en är tom.",
+      "firstPage": "PDF:en öppnades, men dess första sida kunde inte renderas."
+    },
+    "link": {
+      "blockedScheme": "Den här PDF-länken använder ett blockerat URL-schema."
+    },
+    "search": {
+      "failed": "Sökningen kunde inte läsa alla sidor. Försök igen när du har läst in PDF:en på nytt."
+    },
+    "outline": {
+      "empty": "Den här PDF:en innehåller ingen disposition.",
+      "failed": "PDF-dispositionen kunde inte läsas in.",
+      "destinationUnavailable": "Det målet i dispositionen är inte tillgängligt.",
+      "blockedScheme": "Den här länken använder ett blockerat URL-schema.",
+      "noDestination": "Den här posten i dispositionen har inget mål.",
+      "untitled": "Namnlöst avsnitt"
+    },
+    "status": {
+      "loading": "Läser in PDF…"
+    },
+    "a11y": {
+      "document": "Förhandsvisning av PDF-dokument",
+      "page": "PDF-sida {{page}} av {{total}}",
+      "textLayer": "Markerbar text för PDF-sida {{page}}"
+    },
+    "screenReader": {
+      "layer": "Skärmläsarvy, sida {{page}} av {{total}}",
+      "title": "Skärmläsarläge",
+      "pageLabel": "Sida {{page}} av {{total}}",
+      "empty": "Ingen läsbar text hittades på den här sidan."
+    }
+  }
+}

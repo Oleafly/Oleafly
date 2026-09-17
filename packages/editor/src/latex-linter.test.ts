@@ -206,3 +206,65 @@ Text }` + "\n\\",
     ).toBe(true);
   });
 });
+
+describe("lintLatexText: %novalidate", () => {
+  const BROKEN = "\\begin{itemize}\n  \\item one\n";
+
+  it("reports the file without the escape hatch", () => {
+    expect(lintLatexText(BROKEN)).toHaveLength(1);
+  });
+
+  it("disables the whole file from anywhere in it", () => {
+    expect(lintLatexText(`%novalidate\n${BROKEN}`)).toHaveLength(0);
+    expect(lintLatexText(`${BROKEN}%novalidate\n`)).toHaveLength(0);
+    expect(lintLatexText(`  % novalidate  \n${BROKEN}`)).toHaveLength(0);
+  });
+
+  it("ignores the marker when it is not the whole comment line", () => {
+    expect(lintLatexText(`% novalidate soon, not yet\n${BROKEN}`)).toHaveLength(1);
+    expect(lintLatexText(`x % novalidate\n${BROKEN}`)).toHaveLength(1);
+  });
+
+  it("ignores an escaped percent", () => {
+    expect(lintLatexText(`\\%novalidate\n${BROKEN}`)).toHaveLength(1);
+  });
+
+  it("disables only the marked region", () => {
+    const source = [
+      "%begin novalidate",
+      "\\begin{itemize}",
+      "  \\item generated",
+      "%end novalidate",
+      "\\begin{enumerate}",
+    ].join("\n");
+    const found = lintLatexText(source);
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("\\begin{enumerate}");
+  });
+
+  it("does not interpret tokens inside the region", () => {
+    const source = [
+      "%begin novalidate",
+      "$ \\begin{a} } \\unfinished{",
+      "%end novalidate",
+      "after",
+    ].join("\n");
+    expect(lintLatexText(source)).toHaveLength(0);
+  });
+
+  it("runs to the end of the file when a region is never closed", () => {
+    expect(lintLatexText(`%begin novalidate\n${BROKEN}`)).toHaveLength(0);
+  });
+
+  it("keeps reporting before a region that starts later", () => {
+    const source = [
+      "\\begin{itemize}",
+      "%begin novalidate",
+      "\\begin{enumerate}",
+      "%end novalidate",
+    ].join("\n");
+    const found = lintLatexText(source);
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("\\begin{itemize}");
+  });
+});

@@ -78,7 +78,7 @@ function ViewButton({
         {badge > 0 && (
           <output
             aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
-            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-1 ring-background"
+            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white border border-background"
           >
             {badge > 99 ? "99+" : badge}
           </output>

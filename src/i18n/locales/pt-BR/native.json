@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Sobre o Oleafly",
+    "checkUpdates": "Verificar atualizações…",
+    "reloadViews": "Recarregar visualizações",
+    "restartApp": "Reiniciar aplicativo",
+    "quit": "Encerrar o Oleafly",
+    "edit": "Editar",
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "cut": "Recortar",
+    "copy": "Copiar",
+    "paste": "Colar",
+    "selectAll": "Selecionar tudo",
+    "view": "Exibir",
+    "toggleTerminal": "Alternar terminal",
+    "toggleBrowser": "Alternar navegador"
+  },
+  "window": {
+    "browser": "Navegador do Oleafly",
+    "browserTitled": "{{title}} - Navegador do Oleafly"
+  },
+  "dialog": {
+    "cancel": "Cancelar",
+    "fullAccess": {
+      "title": "Ativar acesso total?",
+      "message": "O acesso total permite que o assistente execute comandos shell e edite arquivos sem pedir aprovação a cada vez. Deseja ativar o acesso total?",
+      "confirm": "Ativar acesso total"
+    },
+    "cookieImport": {
+      "title": "Confirmar importação de cookies",
+      "messageHost": "Importar os cookies de {{hostname}} do perfil \"{{profile}}\" do {{browser}} para o navegador interno do Oleafly? Os cookies importados podem conectar você a sites.",
+      "messageAll": "Importar todos os cookies do perfil \"{{profile}}\" do {{browser}} para o navegador interno do Oleafly? Os cookies importados podem conectar você a sites.",
+      "confirm": "Importar cookies"
+    },
+    "mcpApprove": {
+      "title": "Aprovar ferramenta MCP",
+      "confirm": "Usar ferramenta"
+    },
+    "tableImport": {
+      "title": "Escolha uma planilha para importar",
+      "filter": "Planilhas"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "O menu do aplicativo não está disponível",
+    "viewMenuUnavailable": "O menu Exibir não está disponível",
+    "menuItemUnavailable": "O item de menu {{id}} não está disponível",
+    "fullAccessDismissed": "A confirmação de acesso total foi dispensada.",
+    "fullAccessDeclined": "O acesso total não foi ativado.",
+    "approvalDialogClosed": "A caixa de diálogo nativa de aprovação fechou inesperadamente."
+  }
+}

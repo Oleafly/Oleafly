@@ -1,0 +1,624 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "雙欄版面",
+      "detailTwoColumn": "履歷解析器常會用錯誤的順序把雙欄內容拉成一條序列。必須交給 ATS 解析的文件，建議使用單欄版面。",
+      "titleMultiColumn": "多欄版面",
+      "detailMultiColumn": "履歷解析器常會用錯誤的順序把多欄內容拉成一條序列。面向 ATS 的文件請使用單欄。"
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "確認雙欄的閱讀順序",
+      "detailTwoColumn": "只要 PDF 標記樹保留了原本的順序，多欄出版版面一樣可以無障礙。請編譯後確認實際的閱讀順序，不要單憑視覺上的分欄就判定為失敗。",
+      "titleMultiColumn": "確認多欄的閱讀順序",
+      "detailMultiColumn": "分欄本身不必然造成無障礙問題，但它的標記與內容順序必須保持合理。請編譯後檢查實際的閱讀順序。"
+    },
+    "no-glyphtounicode": {
+      "title": "未宣告 Unicode 擷取對應表",
+      "detailEngineNeedsMap": "XeTeX 以及以它為基礎的內建引擎不會自動產生字符對 Unicode 的對應表，因此擷取出的文字可能無法閱讀。請編譯後檢查閱讀器檢視，並優先選用具備完整 Unicode 對應的字型。",
+      "detailAutomatic": "自 LaTeX 2021-06-01 版起，pdfLaTeX 與 LuaLaTeX 會自動產生這張對應表，不需要另外宣告。請編譯後確認擷取出的閱讀器文字。使用 XeTeX 時，請載入 cmap 或改用其他引擎。"
+    },
+    "icon-near-contact": {
+      "title": "聯絡資訊旁有圖示",
+      "detail": "字型圖示（例如 \\faPhone 或 \\faEnvelope）會畫成解析器讀成未知字元、螢幕閱讀器也無法標示的字符，旁邊的聯絡資訊因此可能遺失。請確認電子郵件或電話也有以可選取的純文字呈現。"
+    },
+    "layout-table": {
+      "titleTable": "表格內容可能無法解析成履歷欄位",
+      "detailTable": "ATS 工具常會用難以預期的方式把表格內容攤平。請避免用表格把履歷文字並排；真正的研究資料表格會在「無障礙」中另行評估。",
+      "titleTikz": "TikZ 內容需要語意上的替代方案",
+      "detailTikz": "TikZ 只畫出視覺內容，不會把它的意義以一般文字呈現。出版用的輸出請提供無障礙說明，面向 ATS 的履歷內容則請避免使用。"
+    },
+    "contact-in-header": {
+      "title": "聯絡資訊位於頁首",
+      "detail": "有些履歷解析器會略過頁首與頁尾。請把電子郵件與電話放進文件內文，擷取出的文字才會保留它們。"
+    },
+    "figure-alt": {
+      "title": "圖片沒有替代文字",
+      "detail": "這張圖片沒有描述性的替代文字，螢幕閱讀器無法傳達它的內容。請加上說明，例如 \\includegraphics[alt={A headshot of the author}]{...}。純裝飾用的圖片請改標示為 artifact。"
+    },
+    "link-text": {
+      "title": "連結文字沒有描述性",
+      "detail": "像「click here」這樣的連結文字或裸露的 URL，無法讓螢幕閱讀器使用者知道連結會通往哪裡。請改用能說明目標的文字，例如「my portfolio」。"
+    },
+    "mathml-export-hint": {
+      "title": "匯出含 MathML 的 HTML 版本以檢查數學無障礙",
+      "detail": "這份文件含有數學內容。方程式採用 MathML 時，螢幕閱讀器才能穩定朗讀。請使用「匯出為 HTML」，pandoc 會以 --mathml 寫出檔案，投稿前再用螢幕閱讀器或無障礙檢查工具開啟它。"
+    },
+    "no-lang": {
+      "title": "未設定文件語言",
+      "detail": "這個 PDF 沒有語言設定，螢幕閱讀器可能會用錯誤的發音規則朗讀。請設定一個，例如 \\usepackage[english]{babel} 或 hyperref 的 pdflang=en-US。"
+    },
+    "no-title": {
+      "title": "沒有 PDF 標題",
+      "detail": "這個 PDF 的中繼資料中沒有標題，而輔助科技與瀏覽器會用它來播報文件。請用 hyperref 設定，例如 \\hypersetup{pdftitle={Your Name, CV}}。"
+    },
+    "heading-skip": {
+      "title": "跳過了標題層級",
+      "detail": "這個標題比前一個往下跳了超過一層，破壞了螢幕閱讀器與解析器仰賴的文件大綱。請不要跳層，例如依序使用 section、subsection、subsubsection。"
+    },
+    "nonstandard-headings": {
+      "title": "非標準的章節標題：「{{heading}}」",
+      "detail": "解析器是靠辨識 Experience、Education、Skills 這類標準標題來對應章節。太有創意的標題會讓該章節無法歸類。建議改用慣用的標題。"
+    },
+    "color-only": {
+      "title": "確認顏色不是唯一的辨識線索",
+      "detail": "預檢找到了帶顏色的內容，但無法自動判斷它的意義。如果顏色用來區分狀態或分類，請同時搭配文字、形狀、粗細或其他可感知的線索。"
+    },
+    "reading-order-risk": {
+      "title": "可能打亂閱讀順序的版面",
+      "detail": "邊注與文繞圖會把內容放在主要流程之外，解析器與螢幕閱讀器可能因此讀錯順序。請在編譯後於下方預覽中檢查閱讀順序。"
+    },
+    "ua-standard-without-title": {
+      "title": "宣告了 PDF/UA 卻沒有文件標題",
+      "detailBoth": "這份文件宣告了 pdfstandard=ua，卻沒有設定 pdftitle，也沒有設定 pdfdisplaydoctitle=true。PDF/UA 需要 XMP 中繼資料中的標題，以及會顯示該標題的閱讀器偏好設定，否則輸出等於宣稱了它其實不符合的標準。請載入 hyperref 並設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+      "detailTitle": "這份文件宣告了 pdfstandard=ua，卻沒有設定 pdftitle。PDF/UA 需要 XMP 中繼資料中的標題，以及會顯示該標題的閱讀器偏好設定，否則輸出等於宣稱了它其實不符合的標準。請載入 hyperref 並設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+      "detailDisplay": "這份文件宣告了 pdfstandard=ua，卻沒有設定 pdfdisplaydoctitle=true。PDF/UA 需要 XMP 中繼資料中的標題，以及會顯示該標題的閱讀器偏好設定，否則輸出等於宣稱了它其實不符合的標準。請載入 hyperref 並設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。"
+    },
+    "ua-standard-on-tectonic": {
+      "title": "內建引擎無法產生所宣告的 PDF/UA 輸出",
+      "detail": "這份文件宣告了 pdfstandard=ua，但內建引擎無法寫出標記樹，PDF 會帶著它其實不符合的 PDF/UA 宣告。請改用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯，或移除 pdfstandard 鍵。"
+    },
+    "table-header-rows": {
+      "title": "表格的標頭列未標記為標頭",
+      "detail": "這個表格在第一列下方加了橫線，看起來像標頭，但 LaTeX 預設會把每個儲存格都標記成資料儲存格。螢幕閱讀器因此無法把數值對應到它所屬的欄。請宣告標頭列，例如 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "pdf-reading-order": {
+      "title": "輸出中的分欄被橫向讀取",
+      "detail": "在這一頁，兩欄的文字落在同一行上，解析器會直接橫向讀過去而讀出錯亂的文字，螢幕閱讀器也會用錯誤的順序播報。必須被解析的內容請改用單欄版面。請參考下方的閱讀器檢視。"
+    },
+    "pdf-garbled": {
+      "title": "輸出中有亂碼或未對應的文字",
+      "detail": "擷取出的文字含有未對應到 Unicode 的字元，因此複製貼上與解析器看到的都是亂碼，螢幕閱讀器也無法朗讀。這通常代表缺少字符對 Unicode 的對應表，或字型沒有以文字方式嵌入。"
+    },
+    "pdf-selectable": {
+      "title": "這一頁沒有可選取的文字",
+      "detail": "這一頁幾乎沒有可擷取的文字，解析器與螢幕閱讀器看不到任何內容。它很可能是以圖片方式畫出，或使用了沒有以文字嵌入的字型。請確認內容是真正可選取的文字。"
+    },
+    "output-clipped-content": {
+      "title": "文字超出頁面範圍",
+      "detail": "有可選取的文字超出這一頁的 media box，在列印與出版社處理時可能被裁切或遺失。請檢查過寬的方程式、表格、URL 與定位過的內容。"
+    },
+    "output-small-text": {
+      "title": "偵測到非常小的文字",
+      "detail_other": "有 {{count}} 段文字小於約 7 pt。小字在列印與一般縮放下都不好讀。請確認該會議允許這樣的字級，並把不必要縮小的標籤或註腳放大。"
+    },
+    "pdf-no-bookmarks": {
+      "title": "長篇 PDF 沒有書籤",
+      "detail": "長文件應該提供階層式的書籤大綱，讓使用鍵盤與輔助科技的人不必逐頁閱讀就能在章節之間瀏覽。這是 WCAG 的最佳做法，而不是 PDF/UA 的要求。請載入 hyperref 或 bookmark 來產生書籤。"
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "無法檢查 PDF 中繼資料",
+      "detail": "預檢無法讀取 PDF 中繼資料，因此無法驗證文件標題或語言。這是未知的結果，並不代表那些欄位真的缺少。請重新編譯後再執行一次檢查。"
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF 缺少語言與標題",
+      "titleLang": "PDF 缺少語言",
+      "titleTitle": "PDF 缺少標題",
+      "detail": "輔助科技與瀏覽器會用 PDF 目錄中的語言與標題來正確播報文件。請用 hyperref 設定，例如 \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}。"
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "無法檢查 PDF 的標記狀態",
+      "detail": "預檢無法讀取 PDF 的 MarkInfo 字典。這是未知的結果，不構成任何一方的證據，因此不會只憑這項檢查就判定輸出有沒有標記。"
+    },
+    "compile-failed": {
+      "title": "最近一次編譯失敗",
+      "detail": "投稿用的輸出必須來自成功的建置。請修正第一個編譯器錯誤，重新編譯，再執行一次預檢。"
+    },
+    "compile-overfull-box": {
+      "title_other": "輸出中有 {{count}} 行溢出",
+      "detail": "編譯器回報有內容超出文字框，最多達 {{width}} pt。請檢查這些位置是否有被裁切的文字、方程式、表格或連結。"
+    },
+    "compile-missing-glyph": {
+      "title_other": "缺少 {{count}} 個字符",
+      "detail": "選用的字型無法畫出所有字元。缺少的字符可能會無聲無息地從 PDF 中消失，包括姓名、方程式與引用中的符號。"
+    },
+    "compile-unresolved-references": {
+      "title": "編譯輸出中有未解析的參照",
+      "detail": "編譯後至少還有一個引用或交互參照沒有解析。投稿的 PDF 中可能出現 [?] 或 ??。請查看記錄檔，並執行必要的參考文獻與 LaTeX 編譯回合。"
+    },
+    "compile-rerun-required": {
+      "title": "需要再編譯一次",
+      "detail": "最新的記錄檔顯示標籤、引用或目錄尚未穩定。匯出前請持續重新編譯，直到重跑警告消失為止。"
+    },
+    "compile-duplicate-destination": {
+      "title": "PDF 目的地重複",
+      "detail": "有兩個錨點共用同一個目的地，連結或書籤可能會跳到錯誤的位置。這通常來自重複的標籤或頁碼重設。"
+    },
+    "compile-mixed-page-sizes": {
+      "title": "同一個 PDF 中混用了不同頁面大小",
+      "detail_other": "這個 PDF 含有 {{count}} 種頁面大小（{{sizes}}）。media box 不一致通常代表引入了錯誤的頁面或圖片，也可能無法通過出版社的製作檢查。"
+    },
+    "output-tagpdf-warning": {
+      "title_other": "標記回報了 {{count}} 個問題",
+      "detail": "標記程式碼把這些警告寫進了記錄檔：{{warnings}} 每一項都代表結構樹與內容不符的地方。請在原始碼中修正後重新編譯。"
+    },
+    "output-tagging-status": {
+      "title_other": "標記狀態報告標出了 {{count}} 個項目",
+      "detail": "LaTeX 在建置結束時寫下了它自己的標記狀態報告。",
+      "partClass": "{{name}} 類別的狀態為 {{status}}。",
+      "partBlocking": "不相容於標記：{{files}}。",
+      "partUnproven": "沒有記錄結論：{{files}}。",
+      "partPartial": "只有部分標記：{{files}}。",
+      "partAdvice": "無法標記的東西可能讓整個章節都不在結構樹中，能替換的請盡量替換。"
+    },
+    "pdf-structure-single-pass": {
+      "title": "標記樹看起來只有第一次編譯的結果",
+      "detail": "這個 PDF 標示為已加標記，但結構樹幾乎是空的，而這正是只編譯一次的結果。標記式輸出需要編譯兩次。請重新編譯後再檢查一次。"
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "這個 PDF 宣稱符合 PDF/UA-{{part}}，但實際上並不符合",
+      "detail": "XMP 中繼資料宣告了 pdfuaid:part {{part}}，但檔案本身並不支持這項宣告。",
+      "partNoXmpTitle": "XMP 中繼資料中沒有文件標題。",
+      "partNoDisplayDocTitle": "DisplayDocTitle 未設定為 true。",
+      "partNotTagged": "這個檔案沒有加上標記。",
+      "partAdvice": "任何信任這項宣告的工具都會把這個 PDF 報成符合標準，實際上卻不符合，所以請補齊缺口或拿掉宣告。使用 hyperref 時，請設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} 並開啟標記進行編譯。"
+    },
+    "pdf-xmp-title": {
+      "title": "標題只存在於 Info 字典中",
+      "detail": "文件標題設在 Info 字典中，卻沒有以 dc:title 寫入 XMP 中繼資料，而那才是 PDF/UA 查看的位置。載入 hyperref 並設定 pdftitle 會同時寫入兩處。"
+    },
+    "pdf-display-doc-title": {
+      "title": "閱讀器會顯示檔名，而不是標題",
+      "detail": "ViewerPreferences 中沒有把 DisplayDocTitle 設為 true，因此 PDF 閱讀器會在視窗中、也會對輔助科技播報檔名。請用 hyperref 設定，例如 \\hypersetup{pdfdisplaydoctitle=true}。"
+    },
+    "pdf-suspects": {
+      "title": "PDF 自行標示它的標記並不可靠",
+      "detail": "MarkInfo 把 Suspects 設為 true，等於產生者表示標記樹可能與看得見的內容不符。請用較新的引擎重新編譯，並檢查記錄檔中的標記警告。"
+    },
+    "pdf-link-alt": {
+      "title_other": "有 {{count}} 個連結註解沒有說明",
+      "detail": "連結註解沒有 Contents 項目時，螢幕閱讀器列出頁面上的連結時就沒有內容可以播報。請在連結文字中說明目的地，並讓 hyperref 把那段文字帶進註解。"
+    },
+    "pdf-untagged-content": {
+      "title": "有 {{percent}}% 的文字位於標記樹之外",
+      "detail": "{{total}} 段文字中有 {{untagged}} 段沒有連到標記樹的任何節點，螢幕閱讀器會直接略過。artifact 不列入計算。實際內容必須加上標記，裝飾性內容則必須標示為 artifact，例如 \\includegraphics[artifact]{...}。"
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "無法完整檢查 PDF 結構",
+      "detail_other": "第 {{pages}} 頁的無障礙結構樹無法擷取。預檢不會把取不到的結構當成 PDF 沒有標記的證據。"
+    },
+    "pdf-untagged-output": {
+      "title": "這個 PDF 沒有加上標記",
+      "detail": "編譯出的 PDF 沒有結構樹，螢幕閱讀器因此拿不到標題、清單、表格與閱讀順序，這個檔案也無法滿足 PDF/UA-1 的 7.1 條款。標記式輸出需要 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX，並加上 \\DocumentMetadata{tagging=on}。內建引擎無法產生標記。在此之前，上面的原始碼與輸出檢查仍然適用。"
+    },
+    "pdf-structure-missing": {
+      "title": "標記式 PDF 沒有可讀的結構樹",
+      "detail": "這個 PDF 宣稱自己已加標記，但預檢找不到可供瀏覽的文件結構。螢幕閱讀器可能收不到標題、清單、表格與閱讀順序。標記需要編譯兩次，請再編譯一次並重新檢查，再把這視為最終結果。"
+    },
+    "output-figure-alt": {
+      "title": "已標記的圖片沒有替代文字",
+      "detail": "這張圖片已加上標記，但沒有替代文字，螢幕閱讀器無法描述它。請在原始碼中加上說明，例如 \\includegraphics[alt={...}]{...}。裝飾性圖片請改用 [artifact] 標示。"
+    },
+    "output-formula-alt": {
+      "title": "方程式沒有文字替代",
+      "detail": "依 PDF/UA-1，Formula 需要 Alt 或 ActualText。請在原始碼中加上，例如使用 \\tagpdfsetup 或在方程式上加 alt 鍵。在 PDF/UA-2 下，也可以改用 LuaLaTeX 搭配 \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}} 編譯來關聯 MathML。"
+    },
+    "output-table-headers": {
+      "title": "已標記的表格沒有標頭儲存格",
+      "detail": "這個表格沒有標頭（TH）儲存格，螢幕閱讀器無法把資料對應到它的欄標題或列標題。請標記標頭列，例如 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "output-heading-skip": {
+      "title": "標記樹中跳過了標題層級",
+      "detail": "已標記的標題往下跳了超過一層（例如從 H1 直接到 H3），破壞了螢幕閱讀器用來瀏覽的大綱。請不要跳過標題層級。"
+    },
+    "ats-no-name": {
+      "title": "解析器無法辨識你的姓名",
+      "detail": "擷取出的文字中找不到合理的人名。請把姓名以純文字放在文件開頭附近，不要放進頁首、圖形或定位過的文字框。"
+    },
+    "ats-no-email": {
+      "title": "解析器找不到你的電子郵件",
+      "detail": "擷取出的文字中找不到電子郵件地址，而那是解析器最仰賴的欄位。如果你的電子郵件放在圖示旁或頁首裡，可能不是可選取的文字。請把它以純文字放在內文中。"
+    },
+    "ats-no-phone": {
+      "title": "解析器找不到電話號碼",
+      "detail": "擷取出的文字中找不到電話號碼。如果它其實存在，只是被圖示擋住或放在頁首裡，請在內文中補上可選取的純文字。"
+    },
+    "ats-no-experience": {
+      "title": "解析器未偵測到工作經歷章節",
+      "detail": "找不到標準的 Experience 標題，解析器可能無法把你的職務歸進工作經歷。請用 Experience 或 Work Experience 這類慣用標題，並以真正可選取的文字呈現。"
+    },
+    "ats-long-resume": {
+      "title_other": "履歷共 {{count}} 頁",
+      "detail": "許多招募流程預期一到兩頁，不過資深、學術與公部門的履歷可以更長。請確認這個長度適合該職務與文件類型。"
+    },
+    "refs-incomplete-metadata": {
+      "title_other": "有 {{count}} 筆參考文獻條目的中繼資料不完整",
+      "detail": "不完整的記錄在出版社樣式下可能產生破損或語意不明的參考文獻。{{examples}}。",
+      "detailTruncated": "不完整的記錄在出版社樣式下可能產生破損或語意不明的參考文獻。{{examples}}；…"
+    },
+    "refs-malformed-doi": {
+      "title_other": "有 {{count}} 個 DOI 值格式可能有誤",
+      "detail": "請檢查 {{keys}} 的 DOI 欄位。只儲存 DOI 識別碼本身，例如 10.1000/example，不要放說明文字。"
+    },
+    "refs-duplicate-title": {
+      "title_other": "有 {{count}} 組可能重複的參考文獻",
+      "detail": "這些鍵的正規化標題相同：{{groups}}。請合併真正重複的條目，讓引用樣式與中繼資料保持一致。"
+    },
+    "refs-uncited-entries": {
+      "title_other": "有 {{count}} 筆未被引用的參考文獻條目",
+      "detail": "沒用到的條目會讓投稿中繼資料變得雜亂，也讓重複管理更困難。請檢查 {{keys}}。",
+      "detailTruncated": "沒用到的條目會讓投稿中繼資料變得雜亂，也讓重複管理更困難。請檢查 {{keys}}、…"
+    },
+    "refs-project-duplicate-label": {
+      "title_other": "有 {{count}} 個標籤在多個檔案中定義",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_other": "有 {{count}} 個圖片、表格或方程式標籤從未被參照",
+      "detail": "請確認每個編號的結果都有在稿件中討論到：{{labels}}。",
+      "detailTruncated": "請確認每個編號的結果都有在稿件中討論到：{{labels}}、…"
+    },
+    "refs-undefined-cite": {
+      "title": "引用「{{key}}」不在任何 .bib 中",
+      "detail": "載入的參考文獻中找不到這個引用鍵，PDF 中會顯示成 [?]。請檢查這個鍵，或把條目加進你的 .bib（「新增引用」可以幫你抓取）。"
+    },
+    "refs-undefined-ref": {
+      "title": "指向「{{label}}」的參照沒有對應的 \\label",
+      "detail": "這個交互參照指向未定義的標籤，PDF 中會顯示成 ??。請檢查標籤名稱，或補上缺少的 \\label。"
+    },
+    "refs-duplicate-label": {
+      "title": "標籤「{{label}}」重複",
+      "detail": "同一個標籤被定義了不只一次，指向它的參照因此語意不明。請讓每個標籤都是唯一的。"
+    },
+    "refs-missing-asset": {
+      "titleImage": "找不到圖片：{{file}}",
+      "detailImage": "這個 \\includegraphics 指向專案中不存在的檔案，圖片會因此缺少。請檢查檔名與路徑。",
+      "titleInclude": "找不到引入的檔案：{{file}}",
+      "detailInclude": "這個 \\input 或 \\include 指向專案中不存在的檔案。請檢查檔名與路徑。"
+    },
+    "refs-bib-missing": {
+      "title": "找不到參考文獻檔案：{{file}}",
+      "detail": "這個 \\bibliography 或 \\addbibresource 指向專案中不存在的檔案，所有引用都會顯示成 [?]。請檢查檔名，或匯入參考文獻庫來建立它。"
+    },
+    "refs-duplicate-bib": {
+      "title": "重複的參考文獻條目：{{keys}}",
+      "detail": "這些條目共用 DOI {{doi}}，其實是同一篇文獻用了不同的鍵。請保留一筆並引用它，否則參考文獻會列出兩次。"
+    },
+    "submission-path-case": {
+      "title": "檔名大小寫不符：{{target}}",
+      "detailFigure": "這張圖片只有在不區分大小寫的檔案系統上才找得到。專案中的檔案是「{{match}}」，投稿到以 Linux 為基礎的建置系統前，請讓大小寫完全一致。",
+      "detailInclude": "這個引入的檔案只有在不區分大小寫的檔案系統上才找得到。專案中的檔案是「{{match}}」，投稿到以 Linux 為基礎的建置系統前，請讓大小寫完全一致。"
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "缺少圖片：{{target}}",
+      "titleInclude": "缺少引入的檔案：{{target}}",
+      "detail": "專案中沒有檔案能解析 {{file}} 裡的這個參照。即使本機快取目前讓文件編譯得過，乾淨的投稿建置仍然會失敗。"
+    },
+    "submission-missing-caption": {
+      "titleFigure": "沒有圖說的圖片",
+      "titleTable": "沒有說明的表格",
+      "detail": "出版用的圖片與表格都應該有編號且具描述性的圖說，才能被參照，也能獨立看懂。"
+    },
+    "submission-label-before-caption": {
+      "title": "標籤出現在圖說之前",
+      "detail": "請把標籤放在圖說之後。否則 LaTeX 可能把它綁到前一個計數器，產生錯誤的圖片或表格編號。"
+    },
+    "privacy-sensitive-file": {
+      "title": "包含了機敏檔案：{{file}}",
+      "detail": "在匯出、同步或發布原始碼封存檔之前，請把憑證與私密金鑰檔案從專案中移除。"
+    },
+    "privacy-credential": {
+      "title": "{{file}} 中可能有憑證",
+      "detail": "專案中有形似 API 權杖、雲端存取金鑰或私密金鑰的文字。請先撤銷已外洩的憑證，再把它們從專案與 Git 歷史記錄中移除。"
+    },
+    "privacy-internal-comment": {
+      "title": "{{file}} 中仍留有內部註記",
+      "detail": "原始碼註解不會出現在 PDF 中，但在研討會、期刊或預印本的原始碼封存檔裡可能是公開的。請檢查並移除私人的編輯註記。"
+    },
+    "privacy-draft-artifact": {
+      "title": "草稿標記仍然開啟",
+      "detail": "原始碼啟用了草稿、TODO、修訂追蹤、浮水印或標籤除錯輸出。投稿前請關閉它們，並親自看過最終的 PDF。"
+    },
+    "privacy-blind-author": {
+      "title": "匿名審查的原始碼中仍留有作者身分",
+      "detail": "原始碼中含有未匿名的作者、單位、電子郵件、地址或誌謝欄位。請改用該會議的匿名審查模式，取代可識別身分的內容。"
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "誌謝可能洩漏作者身分",
+      "detail": "誌謝常會指出機構、經費、合作者或設施。除非該會議明確允許，否則請從匿名審查的投稿中移除。"
+    },
+    "privacy-pdf-author": {
+      "title": "PDF 中繼資料指出了作者",
+      "detail": "PDF 的 Author 欄位是「{{author}}」。上傳匿名審查用的 PDF 前，請清除作者中繼資料。"
+    },
+    "submission-nonportable-filename": {
+      "title": "不可攜的檔名：{{file}}",
+      "detail": "這個設定檔只允許英文字母、數字、底線、加號、減號、點、逗號、等號與目錄分隔符號。請重新命名檔案並更新對它的參照。"
+    },
+    "submission-absolute-path": {
+      "title": "{{file}} 中有特定電腦才有的路徑",
+      "detail": "出版社的建置伺服器上不存在本機的絕對路徑。請把相依檔案移進專案，並用相對路徑參照它。"
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} 需要執行外部指令",
+      "detail": "許多出版社與典藏平台的建置環境會停用 shell escape。請先產生好輸出，或確認目標會議支援這個套件與指令。"
+    },
+    "submission-generated-file": {
+      "title": "包含了建置產生的檔案：{{file}}",
+      "detail": "自動產生的輔助檔案會讓原始碼封裝變得雜亂，也可能留下過期的狀態。除非所選的會議明確需要該檔案，否則請把它排除。"
+    },
+    "submission-document-class": {
+      "title": "未使用 {{profile}} 的文件類別",
+      "detail": "這個設定檔預期使用 {{expected}}，但專案使用的是 {{actual}}。請從該會議目前的官方範本開始。",
+      "detailNoClass": "這個設定檔預期使用 {{expected}}，但沒有偵測到文件類別。請從該會議目前的官方範本開始。"
+    },
+    "submission-no-abstract": {
+      "title": "未偵測到摘要",
+      "detail": "這個出版設定檔預期摘要要放在標準的 abstract 環境中。請補上摘要，或確認該會議並不要求。"
+    },
+    "submission-no-keywords": {
+      "title": "未偵測到出版關鍵字",
+      "detail": "{{profile}} 設定檔預期使用它範本中的標準指令或環境來標示關鍵字。"
+    },
+    "submission-figure-format": {
+      "title": "不支援的圖片格式：{{file}}",
+      "detail": "{{profile}} 在它支援的 TeX 流程中只接受 {{formats}} 圖片檔。請在上傳前轉換這張圖片。"
+    },
+    "submission-placeholder": {
+      "title": "稿件中仍留有草稿預留內容",
+      "detail": "原始碼中含有 TODO、TBD、FIXME、預留文字或問號標記。產生最終投稿版本前，請逐一檢查。"
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} 低於要求的版本",
+      "detail": "{{profile}} 需要 PDF {{minimum}} 或更新的版本。請更新編譯器的 PDF 設定並重新產生檔案。"
+    },
+    "submission-bookmarks": {
+      "title": "不允許 PDF 書籤",
+      "detail": "{{profile}} 不接受 PDF 書籤。請為這個投稿設定檔移除文件大綱。"
+    },
+    "submission-links": {
+      "title": "不允許 PDF 連結",
+      "detail": "{{profile}} 不接受連結註解。投稿用的 PDF 請停用自動產生的超連結。"
+    },
+    "submission-attachments": {
+      "title": "PDF 含有嵌入的附件",
+      "detail": "{{profile}} 不接受 PDF 附件與封裝。投稿前請移除所有嵌入的檔案。"
+    },
+    "submission-security": {
+      "title": "已啟用 PDF 安全性限制",
+      "detail": "{{profile}} 要求 PDF 不得設有密碼或權限限制。"
+    },
+    "submission-unembedded-font": {
+      "title_other": "有 {{count}} 個字型未嵌入",
+      "detail": "{{profile}} 要求每個字型都必須嵌入或建立子集，文字與數學才能穩定呈現。請修正 {{fonts}}。"
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "部分字型的嵌入狀態無法驗證",
+      "detail": "預檢無法確認 {{fonts}} 的嵌入狀態。請用該會議的官方 PDF 檢查工具確認。"
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "無障礙",
+    "both": "ATS + 無障礙",
+    "refs": "參考文獻",
+    "compile": "編譯",
+    "submission": "投稿",
+    "privacy": "隱私"
+  },
+  "severity": {
+    "error": "錯誤",
+    "warning": "警告",
+    "info": "提示"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "建置",
+    "a11y": "無障礙",
+    "refs": "參考",
+    "submission": "投稿",
+    "privacy": "隱私"
+  },
+  "checks": {
+    "compile": {
+      "label": "編譯與版面",
+      "who": "適用於每一份定稿文件",
+      "info": "建置錯誤、未解析的參照、缺少的字符與頁面版面問題。",
+      "detail": "檢查最新的編譯器記錄檔與 PDF，找出失敗的建置、未解析的參照、缺少的字符、溢出或被裁切的內容、未清除的重跑警告，以及混用的頁面大小。"
+    },
+    "submission": {
+      "label": "投稿就緒度",
+      "who": "適用於研討會、期刊、預印本與學位論文",
+      "info": "出版設定檔的規則，以及不該隨原始碼封裝一起送出的檔案。",
+      "detail": "對整個專案套用出版設定檔：官方文件類別、可攜的原始碼路徑、圖片格式、摘要與關鍵字、PDF 限制、圖說，以及乾淨的原始碼封裝。"
+    },
+    "ats": {
+      "label": "ATS 就緒度",
+      "who": "適用於履歷與 CV",
+      "info": "履歷解析器能還原的聯絡資訊與章節。",
+      "detail": "模擬求職者追蹤系統（Workday、Taleo、Greenhouse）會從你的 PDF 擷取到什麼，並標出會打亂結果的版面與格式。研究論文不適用。"
+    },
+    "a11y": {
+      "label": "無障礙",
+      "who": "適用於研究、公部門與正式出版的 PDF",
+      "info": "標記、替代文字、文件語言與標題、閱讀器設定、結構、連結與閱讀順序。",
+      "detail": "依 PDF/UA-1（ISO 14289-1）中可由機器檢查的部分，以及 WCAG 2.2 的 PDF 技術來檢查編譯出的 PDF：標記、替代文字、文件語言與標題、閱讀器設定、標題與表格結構、連結說明、閱讀順序與可選取的文字。原始碼檢查會在你編譯前先標出可能的問題。"
+    },
+    "refs": {
+      "label": "參考文獻與資源檔",
+      "who": "適用於研究與多檔案文件",
+      "info": "破損的引用、重複的標籤、不完整的參考文獻條目與缺少的資源檔。",
+      "detail": "在投稿時弄壞 PDF 之前，先找出未定義的引用與交互參照、重複的標籤，以及缺少的圖片或引入檔案。"
+    },
+    "privacy": {
+      "label": "隱私與匿名審查",
+      "who": "適用於分享原始碼或匿名投稿之前",
+      "info": "密鑰、草稿註記、機敏檔案，以及匿名審查時的身分洩漏。",
+      "detail": "找出匿名審查投稿中的憑證、私密金鑰、內部註解、草稿標記、機敏專案檔案、作者中繼資料與身分洩漏。"
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "一般出版",
+      "description": "可攜的原始碼、乾淨的輸出、完整的中繼資料，以及常見的出版風險。"
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "可在 arXiv 區分大小寫的投稿系統上重新建置的可攜原始碼。"
+    },
+    "ieee": {
+      "label": "IEEE 研討會／期刊",
+      "description": "IEEEtran 原始碼，加上 IEEE Xplore 出版所檢查的 PDF 限制。"
+    },
+    "acm": {
+      "label": "ACM 研討會／期刊",
+      "description": "ACM acmart 的原始碼結構，以及可供出版的研究中繼資料。"
+    },
+    "journal": {
+      "label": "其他期刊",
+      "description": "不限出版社的期刊檢查。投稿前請補上該期刊的確切規定。"
+    },
+    "thesis": {
+      "label": "學位論文",
+      "description": "長文件的結構、導覽、參考文獻與可攜原始碼檢查。"
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "工作經歷",
+      "education": "學歷",
+      "skills": "技能",
+      "projects": "專案",
+      "summary": "摘要"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1：已驗證 {{total}} 項可由機器檢查的規則中的 {{passed}} 項。這是子集檢查，不是符合性聲明。",
+    "coverageWithBlindSpots": "PDF/UA-1：已驗證 {{total}} 項可由機器檢查的規則中的 {{passed}} 項。Oleafly 會讀取其中 {{covered}} 項規則，而這個檔案中有 {{unavailable}} 項無法檢查。這是子集檢查，不是符合性聲明。"
+  },
+  "taggingGate": {
+    "noSupport": "{{name}} 類別無法產生標記式輸出，LaTeX Project 也不預期它做得到。",
+    "noSupportWithNote": "{{name}} 類別無法產生標記式輸出，LaTeX Project 也不預期它做得到。{{note}}",
+    "currentlyIncompatible": "{{name}} 類別目前還不相容於 LaTeX 標記，因此準備這份原始碼並不會產生無障礙 PDF。",
+    "currentlyIncompatibleWithNote": "{{name}} 類別目前還不相容於 LaTeX 標記，因此準備這份原始碼並不會產生無障礙 PDF。{{note}}",
+    "partiallyCompatible": "{{name}} 類別只有部分相容於標記，結構樹中會出現缺漏。",
+    "partiallyCompatibleWithNote": "{{name}} 類別只有部分相容於標記，結構樹中會出現缺漏。{{note}}",
+    "unrecorded": "LaTeX Project 沒有記錄 {{name}} 類別的標記狀態，因此結果尚無定論。請編譯後檢查輸出。"
+  },
+  "prep": {
+    "metadataUpdated": "已在你的 \\DocumentMetadata 中加入必要的標記鍵。",
+    "metadataAdded": "已把 \\DocumentMetadata 加為第一行（必要，且必須在 \\documentclass 之前）。",
+    "headerRows": "已將 table/header-rows 設為 1，讓每個表格的第一列標記為標頭儲存格。若某個表格的標頭深度不同，請自行調整數字。",
+    "unicodeMath": "已加入 \\usepackage{unicode-math}，這個引擎的標記式數學需要它。",
+    "altPlaceholders_other": "已為 {{count}} 張圖片加入替代文字的預留位置。請把 TODO 文字換成實際的說明。",
+    "titleRequired": "PDF/UA 需要一個閱讀器會顯示的文件標題。請載入 hyperref 並設定 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+    "incompatiblePackages_other": "這些套件不相容於標記：{{packages}}。它們的內容可能未加標記就進入 PDF。可以的話請替換掉。",
+    "cautionPackages": "這些套件只有部分標記，或沒有記錄標記結論：{{packages}}。請編譯後檢查結構樹是否有缺漏。",
+    "compileLua": "請用 TeX Live 2025 或更新版本的 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。",
+    "compileAny": "請用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼，然後重新檢查輸出。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。"
+  },
+  "gate": {
+    "incompatiblePackages_other": "這些套件不相容於標記：{{packages}}。它們的內容可能未加標記就進入 PDF。",
+    "incompatiblePackagesTruncated": "這些套件不相容於標記：{{packages}} 以及另外 {{more}} 個。它們的內容可能未加標記就進入 PDF。",
+    "partialPackages": "這些套件只有部分標記：{{packages}}。",
+    "partialPackagesTruncated": "這些套件只有部分標記：{{packages}} 以及另外 {{more}} 個。",
+    "unknownPackages": "沒有 {{packages}} 的標記結論記錄。",
+    "unknownPackagesTruncated": "沒有 {{packages}} 以及另外 {{more}} 個套件的標記結論記錄。",
+    "cautionAdvice": "請編譯後檢查結構樹是否有缺漏。"
+  },
+  "panel": {
+    "title": "預檢",
+    "readerDisabled": "請先編譯並執行一次輸出檢查",
+    "readerEnabled": "開啟從 PDF 擷取出的文字",
+    "readerButton": "顯示閱讀器看到的內容",
+    "aboutLabel": "關於預檢",
+    "aboutTitle": "預檢會檢查什麼",
+    "aboutIntro": "預檢會讀取專案原始碼、編譯器記錄檔與目前的 PDF。只要開啟適合這份文件的檢查即可。",
+    "aboutFooter": "已驗證的檢查結果來自直接觀察，建議性的檢查結果仍需要你自行判斷。報告乾淨有助於審閱，但並不代表保證被接受或符合無障礙標準。所有檢查都在本機執行。",
+    "enableCheck": "啟用 {{check}}",
+    "runCheck": "執行 {{check}}",
+    "rerunCheck": "重新執行 {{check}}",
+    "run": "執行",
+    "rerun": "重新執行",
+    "collapse": "收合",
+    "expand": "展開",
+    "publicationProfile": "出版設定檔",
+    "anonymousReview": "匿名審查",
+    "anonymousReviewHint": "一併檢查作者欄位、誌謝與 PDF 中繼資料。",
+    "anonymousReviewToggle": "檢查匿名審查的身分資訊",
+    "engineUnsupported": "{{engine}} 的原始碼檢查尚未實作。這項檢查只使用編譯出的 PDF，不會把缺少原始碼支援視為失敗。",
+    "runToSeeResults": "執行這項檢查即可看到結果。",
+    "analyzing": "分析中…",
+    "runEnabled_other": "執行 {{count}} 項已啟用的檢查",
+    "rerunEnabled_other": "重新執行 {{count}} 項已啟用的檢查",
+    "failed": "預檢失敗：{{error}}",
+    "standardsCaveat": "Oleafly 只會檢查 PDF/UA 與 WCAG 中能從檔案本身驗證的部分。它無法判斷替代文字是否有意義、閱讀順序是否合理，或色彩對比是否足夠，這些都要由人來判斷。若需要正式的符合性聲明，請用 veraPDF 或 PAC 2024 驗證。",
+    "pdfRequired": "需要 PDF。請先編譯專案再執行一次。這項檢查尚未評估。",
+    "compileFirst": "請先編譯專案。預檢需要目前的編譯器記錄檔或 PDF 才能評估建置品質。",
+    "partialCoverage": "原始碼檢查已完成。請編譯專案並再執行一次，以完成 PDF 層級的檢查。",
+    "unsupportedCoverage": "尚未評估。這個引擎的原始碼檢查尚未實作。",
+    "groupSource": "專案與原始碼",
+    "groupOutput": "編譯輸出",
+    "fixAll_other": "用 AI 修正全部 {{count}} 項",
+    "noProblems": "沒有發現問題。"
+  },
+  "finding": {
+    "review": "待審閱",
+    "manual": "需手動",
+    "page": "第 {{page}} 頁",
+    "needsJudgment": "需要你自行判斷。沒有工具能單憑檔案判定這一項。",
+    "jumpToSource": "跳至原始碼",
+    "fixWithAi": "用 AI 修正"
+  },
+  "score": {
+    "notEvaluated": "未評估 {{label}}",
+    "readiness": "{{label}} 就緒度 {{score}} 分（滿分 100）",
+    "notScored": "未評分"
+  },
+  "reader": {
+    "title": "閱讀器看到的內容",
+    "description": "依閱讀順序從目前的 PDF 擷取出的文字。這很接近螢幕閱讀器或自動解析器收到的內容。",
+    "pagesNav": "PDF 頁面",
+    "page": "第 {{page}} 頁",
+    "empty": "空白",
+    "extractedFrom": "從第 {{page}} 頁擷取出的文字",
+    "pageOf": "第 {{page}} 頁，共 {{total}} 頁",
+    "noText": "這一頁找不到可選取的文字。"
+  },
+  "atsCard": {
+    "title": "解析器擷取到的內容",
+    "notFound": "找不到",
+    "links_other": "{{count}} 個連結",
+    "detected": "{{section}}：已偵測到",
+    "requiredMissing": "{{section}}：未偵測到必要章節",
+    "optionalMissing": "{{section}}：未偵測到選填章節",
+    "detectedTitle": "已偵測到 {{section}} 章節",
+    "requiredMissingTitle": "預期會有 {{section}}，但未偵測到",
+    "optionalMissingTitle": "{{section}} 為選填，且未偵測到",
+    "optionalSuffix": "，選填"
+  },
+  "prepExport": {
+    "title": "無障礙匯出",
+    "intro": "為這份文件準備以 PDF/UA-2 為目標的標記式輸出。Oleafly 會加入 \\DocumentMetadata 並設定 pdfstandard=ua-2 與 tagging=on，同時補上它能填入的替代文字與表格設定。請用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯結果，然後重新檢查。無障礙數學需要 LuaLaTeX。內建引擎無法產生標記。",
+    "activeFileFallback": "Oleafly 無法載入主要文件，因此改為檢查你正在編輯的檔案。請開啟主要文件，才能看到建置實際載入的文件類別與套件。",
+    "prepare": "準備無障礙匯出",
+    "unavailable": "這個文件類別無法進行準備。請改用標記程式碼支援的類別，再執行一次檢查。相容性資料來自 LaTeX Project，取得時間為 {{retrieved}}。",
+    "unavailableUndated": "這個文件類別無法進行準備。請改用標記程式碼支援的類別，再執行一次檢查。相容性資料來自 LaTeX Project。",
+    "applied": "已套用",
+    "apply": "套用到文件",
+    "copied": "已複製",
+    "copy": "複製原始碼",
+    "compileTagged": "編譯標記式輸出並驗證",
+    "compileTaggedWarning": "系統的 LuaLaTeX 可以讀取本機檔案。請只在你信任的專案上執行。",
+    "noEngine": "若要在應用程式內產生標記式 PDF，請在設定的「LaTeX 引擎」中啟用引擎。或者用你自己的 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼。"
+  }
+}

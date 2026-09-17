@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Annuller",
+    "close": "Luk",
+    "save": "Gem",
+    "delete": "Slet",
+    "remove": "Fjern",
+    "rename": "Omdøb",
+    "open": "Åbn",
+    "copy": "Kopier",
+    "copied": "Kopieret",
+    "retry": "Prøv igen",
+    "back": "Tilbage",
+    "next": "Næste",
+    "done": "Færdig",
+    "edit": "Rediger",
+    "add": "Tilføj",
+    "search": "Søg",
+    "clear": "Ryd",
+    "apply": "Anvend",
+    "confirm": "Bekræft",
+    "ok": "OK",
+    "yes": "Ja",
+    "no": "Nej",
+    "learnMore": "Læs mere",
+    "showMore": "Vis mere",
+    "showLess": "Vis mindre"
+  },
+  "state": {
+    "loading": "Indlæser…",
+    "saving": "Gemmer…",
+    "none": "Ingen",
+    "unknown": "Ukendt",
+    "enabled": "Aktiveret",
+    "disabled": "Deaktiveret",
+    "on": "Til",
+    "off": "Fra",
+    "beta": "Beta",
+    "new": "Ny",
+    "default": "Standard"
+  },
+  "labels": {
+    "name": "Navn",
+    "type": "Type",
+    "size": "Størrelse",
+    "date": "Dato",
+    "status": "Status",
+    "description": "Beskrivelse",
+    "optional": "Valgfri",
+    "required": "Påkrævet"
+  }
+}

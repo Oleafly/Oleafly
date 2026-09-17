@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Avustajan ajoympäristö",
+    "builtIn": "Oleafly-agentti",
+    "cli": "Komentoriviagentti"
+  },
+  "shell": {
+    "float": "Irrota avustaja kelluvaksi",
+    "floatAriaLabel": "Irrota avustaja kellumaan sovelluksen päälle",
+    "overlayTitle": "Tekoälyavustaja",
+    "dockAriaLabel": "Telakoi keskustelu takaisin sivupalkkiin",
+    "floatingNotice": "Avustaja kelluu sovelluksen päällä.",
+    "dockBack": "Telakoi takaisin",
+    "loadingAgents": "Ladataan agentteja…",
+    "openProjectForCli": "Avaa projekti, niin komentoriviagentin kanssa voi työskennellä."
+  },
+  "minimap": {
+    "ariaLabel": "Keskustelun vuorot",
+    "jumpTo": "Siirry kohtaan: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Kysy hyväksyntää",
+        "description": "Kysy ennen tiedostomuokkauksia, verkkoyhteyttä ja komentoja."
+      },
+      "approveForMe": {
+        "label": "Hyväksy puolestani",
+        "description": "Kysy vain ennen riskialttiiksi luokiteltuja toimia."
+      },
+      "fullAccess": {
+        "label": "Täysi käyttöoikeus",
+        "description": "Suorita työkalutoiminnot kysymättä hyväksyntää."
+      },
+      "custom": {
+        "label": "Mukautettu (approvals.toml)",
+        "description": "Käytä approvals.toml-tiedoston sääntöjä. Muokkaa niitä kohdassa Asetukset, Tekoälyavustaja."
+      }
+    },
+    "selectorAriaLabel": "Hyväksyntätila. {{mode}}",
+    "editProjectRules": "Muokkaa projektin sääntöjä",
+    "confirm": {
+      "command": "Vahvista komento",
+      "externalTool": "Vahvista ulkoisen työkalun toiminto",
+      "internet": "Vahvista verkkoyhteys",
+      "edit": "Vahvista tekoälyn muokkaus"
+    },
+    "headline": {
+      "command": "Avustaja haluaa suorittaa tämän komennon",
+      "externalTool": "Avustaja haluaa käyttää ulkoista työkalua",
+      "internet": "Avustaja haluaa käyttää verkkoyhteyttä",
+      "edit": "Avustaja haluaa muuttaa tiedostoja"
+    },
+    "mcpNote": "Tämä lähettää alla olevat argumentit määritetylle MCP-palvelimelle.",
+    "line": "rivi {{line}}",
+    "sessionAutoApprove": "Istunnon automaattinen hyväksyntä on päällä kirjoituksille (poistot vaativat yhä napsautuksen).",
+    "commandLabel": "Komento",
+    "workingDirectory": "Työhakemisto",
+    "mcpServer": "MCP-palvelin",
+    "toolLabel": "Työkalu",
+    "arguments": "Argumentit",
+    "figureAlt": "Kuvan esikatselu",
+    "firstChange": "ensimmäinen muutos · L{{line}}",
+    "reject": "Hylkää",
+    "alwaysInProject": "Aina tässä projektissa",
+    "alwaysInProjectAriaLabel": "Salli aina tässä projektissa",
+    "alwaysAllow": "Salli aina",
+    "approve": "Hyväksy",
+    "external": {
+      "title": "Ulkoisen agentin pyyntö (MCP)",
+      "moreWaiting_one": "{{count}} muu odottaa",
+      "moreWaiting_other": "{{count}} muuta odottaa"
+    }
+  },
+  "attachments": {
+    "remove": "Poista {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "SUUNNITELMA",
+      "step": "VAIHE {{current}}/{{total}}",
+      "review": "TARKISTUS"
+    },
+    "plan": {
+      "detailsAriaLabel": "Suunnitelman tiedot",
+      "headingPlan": "Suunnitelma",
+      "headingChanges": "Muutokset",
+      "approve": "Hyväksy suunnitelma",
+      "revise": "Muokkaa",
+      "statusAwaiting": "Odottaa hyväksyntää",
+      "statusApproved": "Hyväksytty"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "valmis",
+        "inProgress": "työn alla",
+        "pending": "odottaa",
+        "cancelled": "peruutettu"
+      }
+    },
+    "fileChanges": {
+      "changed": "Muutettu",
+      "committed": "Vahvistettu {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Suunnitelma",
+      "stepsDone": "{{done}}/{{total}} valmiina",
+      "filesChanged_one": "{{count}} tiedosto muuttui",
+      "filesChanged_other": "{{count}} tiedostoa muuttui"
+    },
+    "copyMessage": "Kopioi viesti",
+    "exploration": {
+      "explored": "Tutkittu",
+      "exploredItems": "Tutkittu: {{items}}",
+      "files_one": "yksi tiedosto",
+      "files_other": "{{count}} tiedostoa",
+      "searches_one": "yksi haku",
+      "searches_other": "{{count}} hakua",
+      "lists_one": "yksi listaus",
+      "lists_other": "{{count}} listausta"
+    },
+    "reasoning": {
+      "thinking": "Ajattelee…",
+      "thoughtFor": "Ajatteli {{seconds}} s",
+      "label": "Päättely"
+    },
+    "subagent": {
+      "finished": "Valmis",
+      "failed": "Epäonnistui",
+      "stopped": "Pysäytetty",
+      "usingTool": "Käyttää työkalua {{tool}}",
+      "working": "Työn alla",
+      "errorBody": "Agentti ei saanut tätä tehtävää valmiiksi.",
+      "stoppedBody": "Tehtävä pysäytettiin ennen vastausta.",
+      "openTask": "Avaa tehtävä"
+    },
+    "workedSteps": {
+      "duration": "Työskenteli {{seconds}} s",
+      "steps_one": "Kävi läpi {{count}} vaiheen",
+      "steps_other": "Kävi läpi {{count}} vaihetta"
+    },
+    "steered": "Ohjattu",
+    "toolOutputError": "Virhe: {{message}}",
+    "errorHints": {
+      "invalidKey": "API-avain vaikuttaa virheelliseltä tai vanhentuneelta. Päivitä se kohdassa Asetukset → Tekoälyavustaja tai vaihda palvelua {{where}}.",
+      "outOfCredits": "Tekoälypalvelun saldo tai kiintiö on lopussa. Lataa tiliä tai vaihda toiseen palveluun (tai paikalliseen Ollamaan) {{where}}.",
+      "overloaded": "Palvelun palvelimet ovat juuri nyt ylikuormitettuja (tätä on jo yritetty uudelleen). Odota hetki ja yritä uudelleen tai vaihda saman perheen malliin {{where}}.",
+      "rateLimited": "Palvelu rajoittaa pyyntöjen määrää. Odota hetki ja yritä uudelleen tai vaihda palvelua {{where}}.",
+      "retiredModel": "Palvelu on poistanut tämän mallin käytöstä tai rajoittanut sitä. Valitse uudempi malli {{where}} (Asetukset → Tekoälyavustaja listaa, mitä avaimellasi voi käyttää).",
+      "unreachable": "Tekoälypalveluun ei saatu yhteyttä. Tarkista verkkoyhteys, tai jos käytät Ollamaa, varmista että se on käynnissä (Asetukset → Tekoälyavustaja → Etsi Ollama).",
+      "where": {
+        "inSettings": "kohdassa Asetukset, Tekoälyavustaja",
+        "modelMenu": "yllä olevasta mallivalikosta"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Lisää taustatietoa",
+    "mentionMenuAgentsAndFiles": "Agentit ja projektin tiedostot",
+    "mentionMenuFiles": "Projektin tiedostot",
+    "mentionHeadingAgents": "Delegoi agentille",
+    "mentionHeadingFiles": "Projektin tiedostot",
+    "slashMenuAriaLabel": "Kauttaviivakomennot",
+    "placeholderEngineUnavailable": "Dokumenttimoottori ei ole käytettävissä. Tekoälymuokkaus on pois käytöstä",
+    "placeholderDefault": "Pyydä tekoälyltä apua dokumenttiin…",
+    "planRevisionPlaceholder": "Kuvaile, mitä suunnitelmassa pitäisi muuttaa",
+    "prompts": "Kehotteet",
+    "promptShortcutsAriaLabel": "Kehotteiden pikavalinnat",
+    "persona": "Persoona",
+    "personaActiveTooltip": "{{name}} on aktiivinen ja korvaa oletusohjeet.",
+    "personaChoose": "Valitse persoona",
+    "personaActiveAriaLabel": "Persoona. {{name}} on aktiivinen ja korvaa oletusohjeet.",
+    "personaCreate": "Luo persoona asetuksissa",
+    "personaNone": "Ei mitään",
+    "planModeOn": "Suunnittelutila päällä",
+    "planModeOff": "Suunnittelutila pois",
+    "planModeAriaLabel": "Suunnittelutila",
+    "plan": "Suunnittele",
+    "planModeInfo": "Tietoja suunnittelutilasta",
+    "planModeHint": "Suunnittelutila: avustaja ehdottaa suunnitelman ennen muokkaamista. Ota suunnittelutila pois päältä, niin avustaja saa suoran pääsyn kaikkiin työkaluihin.",
+    "stop": "Pysäytä",
+    "stopTitle": "Pysäytä tuottaminen",
+    "send": "Lähetä",
+    "checkAgain": "Tarkista uudelleen"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Taidot"
+    },
+    "archive": {
+      "label": "Arkistoi",
+      "description": "Arkistoi tämä keskustelu"
+    },
+    "forkChat": {
+      "label": "Haaroita keskustelu",
+      "description": "Luo uusi keskustelu tämän pohjalta"
+    },
+    "goal": {
+      "label": "Tavoite",
+      "description": "Aseta, mitä kohti avustajan tulee työskennellä"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Katso yhdistetyt MCP-palvelimet ja niiden tila"
+    },
+    "model": {
+      "label": "Malli",
+      "description": "Valitse tämän keskustelun malli"
+    },
+    "planMode": {
+      "enableLabel": "Ota suunnittelutila käyttöön",
+      "disableLabel": "Poista suunnittelutila käytöstä",
+      "description": "Kytke jäsennelty suunnittelu päälle tai pois"
+    },
+    "recordSkill": {
+      "label": "Tallenna taito",
+      "description": "Tallenna tämän keskustelun toimintatapa muokattavaksi luonnokseksi"
+    },
+    "files": {
+      "label": "Tiedostot",
+      "description": "Liitä tiedostoja seuraavaan viestiin"
+    },
+    "browser": {
+      "label": "Liitä selain",
+      "description": "Avaa selain dokumentin viereen"
+    }
+  },
+  "models": {
+    "ariaLabel": "Tekoälymalli",
+    "placeholder": "Valitse malli",
+    "triggerTooltip": "{{model}}. Vaihda palvelua tai mallia",
+    "searchLabel": "Hae malleja",
+    "searchPlaceholder": "Hae malleja…",
+    "emptyTitle": "Malleja ei löytynyt",
+    "emptyHint": "Kokeile toista hakua.",
+    "trust": {
+      "verified": "Varmennettu",
+      "untested": "Testaamaton",
+      "blocked": "Estetty"
+    },
+    "trustTitle": {
+      "verified": "Oleafly on ajanut avustajaa tällä mallilla",
+      "untested": "Avustajaa ei ole vielä kokeiltu tällä mallilla. Se tarkistetaan ensimmäisellä käyttökerralla",
+      "blocked": "Avustaja ei voi toimia tällä mallilla"
+    },
+    "chatOnlyHint": "Vain keskustelu, tämä malli ei osaa käyttää työkaluja",
+    "checkingHint": "Tarkistetaan tätä mallia",
+    "blockedWithReason": "Tämä malli on estetty avustajalta: {{reason}}",
+    "blocked": "Tämä malli on estetty avustajalta.",
+    "probeFailedWithDetail": "Tätä mallia ei voitu tarkistaa. {{detail}}",
+    "probeFailed": "Tätä mallia ei voitu tarkistaa."
+  },
+  "history": {
+    "title": "Keskusteluhistoria",
+    "closeBackdrop": "Sulje keskusteluhistoria",
+    "searchLabel": "Hae keskusteluja",
+    "searchPlaceholder": "Hae otsikoista ja viesteistä",
+    "emptyProject": "Tähän projektiin ei ole vielä tallennettuja keskusteluja.",
+    "emptySearch": "Mikään keskustelu ei vastaa hakua.",
+    "untitled": "Uusi keskustelu",
+    "staleTitle": "Tämä keskustelu aloitettiin projektin vanhemmasta versiosta",
+    "staleBadge": "vanhempi versio",
+    "messages_one": "{{count}} viesti",
+    "messages_other": "{{count}} viestiä",
+    "tokens": "~{{amount}} tok",
+    "deleteAriaLabel": "Poista {{title}}",
+    "deleteFallbackTitle": "keskustelu",
+    "deleteTitle": "Poista keskustelu",
+    "relative": {
+      "justNow": "juuri nyt",
+      "minutes": "{{count}} min sitten",
+      "hours": "{{count}} h sitten",
+      "days": "{{count}} pv sitten"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Ei koskaan",
+      "everyTime": "Joka kerta, keskustelussa",
+      "askModeOnly": "Vain Kysy hyväksyntää -tilassa",
+      "unlessAllowed": "Kyllä, ellei sallittu projektille"
+    },
+    "catalog": {
+      "readFile": "Lue projektin tiedosto, pitkät pala kerrallaan.",
+      "writeFile": "Kirjoita koko tiedosto ja korvaa entinen sisältö.",
+      "replaceInFile": "Etsi tiedostosta tarkka kohta ja korvaa se.",
+      "createFile": "Luo projektiin uusi tiedosto tai kansio.",
+      "renameFile": "Nimeä tai siirrä tiedosto tai kansio.",
+      "deleteFile": "Poista tiedosto tai kansio.",
+      "listFiles": "Listaa projektin kaikki tiedostot ja kansiot.",
+      "searchProject": "Hae projektin tekstistä ja saa tiedosto- ja riviosumat.",
+      "projectMap": "Lue dokumentin jäsennys: luvut, nimikkeet, viiteavaimet, makrot, sisällytykset ja kaikki ratkaisematon.",
+      "showLocation": "Avaa tiedosto tietyltä riviltä editorissa ja siirrä PDF-esikatselu samaan kohtaan.",
+      "compile": "Käännä projekti sen moottorilla ja raportoi virheet.",
+      "getLog": "Lue viimeisin käännösloki.",
+      "getPdfText": "Lue käännetyn PDF:n teksti sivu kerrallaan.",
+      "verifyPdfPages": "Piirrä käännetyt sivut kuviksi, jotta konenäkömalli voi tarkistaa taiton.",
+      "setMainDoc": "Vaihda tiedosto, josta projekti käännetään.",
+      "literatureSearch": "Hae artikkeleita OpenAlexista hakusanoilla, avainta ei tarvita.",
+      "verifyCitation": "Muunna DOI tai otsikko varmennetuksi BibTeX-viitteeksi doi.orgin tai Crossrefin kautta.",
+      "projectLibrarySearch": "Hae projektin omasta tekstistä ja muistiinpanoista hakusanoilla.",
+      "alphaxivSearch": "Hae arXiv-artikkeleita alphaXivin kautta.",
+      "alphaxivPaperContent": "Nouda arXiv-artikkelin koko teksti alphaXivin kautta.",
+      "previewFigure": "Käännä TikZ- tai PGFPlots-kuva erikseen ja näytä tulos keskustelussa.",
+      "insertFigure": "Lisää valmis kuva kohdistimen kohdalle kuvatekstin ja nimikkeen kera ja tallenna PNG hakemistoon figures/.",
+      "loadImage": "Katso kuvaa, joka on jo projektissa.",
+      "updateTodos": "Kirjoita tai päivitä keskustelussa näkyvä vaiheittainen suunnitelma.",
+      "getTodos": "Lue nykyinen suunnitelma.",
+      "rememberNote": "Tallenna projektimuistiinpano, jonka myöhemmät keskustelut näkevät.",
+      "forgetNote": "Poista tallennettu projektimuistiinpano.",
+      "listNotes": "Listaa tallennetut projektimuistiinpanot.",
+      "loadSkill": "Lataa yhden taidon täydet ohjeet ennen sen noudattamista.",
+      "readSkillFile": "Lue taidon mukana tuleva viitetiedosto tai skripti.",
+      "spawnAgent": "Käynnistä apuagentti omalla tehtävällään ja työkaluillaan.",
+      "sendMessage": "Lähetä viesti käynnissä olevalle apuagentille.",
+      "followupTask": "Anna apuagentille uusi tehtävä, kun se on valmis.",
+      "waitAgent": "Odota apuagentin valmistumista ja lue sen tulos.",
+      "interruptAgent": "Pysäytä apuagentin työ.",
+      "listAgents": "Listaa apuagentit ja niiden tila.",
+      "closeAgent": "Sulje apuagentti.",
+      "runCommand": "Suorita shell-komento projektikansiossa, kahden minuutin rajalla.",
+      "computerUse": "Avaa verkkosivu avustajan selainikkunassa.",
+      "toggleTheme": "Vaihda vaalean ja tumman tilan välillä."
+    },
+    "disableAll": "Poista kaikki käytöstä",
+    "emptyContext": "Tässä yhteydessä ei ole käytettävissä työkaluja.",
+    "enableAll": "Ota kaikki käyttöön",
+    "enableTool": "Ota käyttöön {{name}}",
+    "enabledCount": "{{enabled}}/{{total}} käytössä",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agentit",
+      "buildAndPdf": "Käännös ja PDF",
+      "figures": "Kuvat",
+      "files": "Tiedostot",
+      "planAndMemory": "Suunnitelma ja muisti",
+      "research": "Tutkimus",
+      "skills": "Taidot",
+      "system": "Järjestelmä"
+    },
+    "managerAriaLabel": "Hallitse agentin työkaluja",
+    "managerHeading": "Työkalut",
+    "managerTooltip": "Työkalut",
+    "noDescription": "Kuvausta ei ole annettu.",
+    "notes": {
+      "latexOnly": "Vain LaTeX-projekteissa",
+      "pdfCaptureSetting": "Vaatii PDF-sivujen kaappausasetuksen",
+      "alphaxivKey": "Vaatii alphaXiv-avaimen integraatioissa",
+      "chatApproval": "Hyväksytään keskustelussa, yksi komento kerrallaan",
+      "browserSetting": "Vaatii verkkoselainasetuksen"
+    },
+    "sourceGroups": {
+      "figure": "Kuva",
+      "mcp": "MCP",
+      "project": "Projektityökalut",
+      "skills": "Taidot"
+    },
+    "table": {
+      "tool": "Työkalu",
+      "whatItDoes": "Mitä se tekee",
+      "asksFirst": "Kysyy ensin"
+    }
+  },
+  "toolCard": {
+    "approved": "Hyväksytty",
+    "rejected": "Hylätty",
+    "binaryPreview": "Tämä linkitetty tiedosto on binäärinen, joten sitä ei voi esikatsella tässä.",
+    "previewTruncated": "Esikatselu katkaistiin 256 KiB:n kohdalla.",
+    "previewFailed": "Tätä linkitettyä lähdettä ei voitu esikatsella.",
+    "showAll": "Näytä kaikki {{characters}} merkkiä",
+    "loadingSource": "Ladataan lähdettä",
+    "inspectSource": "Tarkastele lähdettä",
+    "openFile": "Avaa tiedosto",
+    "openSource": "Avaa lähde",
+    "openSourceTitled": "Avaa lähde: {{title}}",
+    "openTask": "Avaa tehtävä",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Piirretyn kuvan esikatselu",
+    "toolImageAlt": "Työkalun tuottama kuva",
+    "showFigure": "Näytä piirretty kuva",
+    "showTikz": "Näytä TikZ-lähdekoodi",
+    "figureTab": "Kuva",
+    "tikzTab": "TikZ",
+    "saving": "Tallennetaan",
+    "saveToProject": "Tallenna projektiin",
+    "copyCode": "Kopioi koodi",
+    "saved": "Tallennettu kohteeseen {{path}}",
+    "saveNeedsProject": "Avaa projekti, niin tämän kuvan voi tallentaa.",
+    "saveFailed": "Kuvaa ei voitu tallentaa."
+  },
+  "transcript": {
+    "dialogTitle": "Delegoidun tehtävän tapahtumaloki",
+    "dialogDescription": "Kaikki, mitä delegoitu agentti luki, ajoi ja vastasi työskennellessään tämän tehtävän parissa.",
+    "loading": "Ladataan tapahtumalokia",
+    "failed": "Tapahtumalokia ei voitu ladata.",
+    "empty": "Tämä tehtävä ei kirjannut tapahtumalokia."
+  },
+  "subagents": {
+    "working": "Aliagentit työskentelevät",
+    "count": "Aliagentit ({{count}})",
+    "stopAll": "Pysäytä kaikki",
+    "stopFailed": "Aliagentteja ei voitu pysäyttää.",
+    "updates": "{{count}} päivitystä",
+    "openTask": "Avaa tehtävä",
+    "awaitingPermission": "Delegoitu agentti odottaa lupaa.",
+    "taskFailed": "Delegoitu tehtävä epäonnistui. Avaa se ja lue virhe.",
+    "transcriptTruncated": "Tämä tapahtumaloki on pidempi kuin tässä näkyvä osa.",
+    "noTranscriptYet": "Tämä tehtävä ei ole vielä raportoinut tapahtumia.",
+    "noSessionInfo": "Tämä tehtävä ei kirjannut riittävästi istuntotietoa tapahtumalokin avaamiseen.",
+    "loadingTranscript": "Ladataan tapahtumalokia…",
+    "transcriptFailed": "Tapahtumalokia ei voitu ladata.",
+    "stillWorking": "Tämä aliagentti työskentelee yhä. Koko tapahtumaloki avautuu, kun se on valmis.",
+    "noFinalAnswer": "Tämä agentti ei kirjannut lopullista vastausta.",
+    "latest": "Viimeisin: {{text}}",
+    "workingDetail": "työskentelee",
+    "status": {
+      "active": "työskentelee",
+      "awaiting": "tarvitsee luvan",
+      "updated": "päivittyi",
+      "interrupted": "pysäytetty",
+      "completed": "valmis",
+      "failed": "epäonnistui"
+    }
+  },
+  "acp": {
+    "newConversation": "Uusi keskustelu",
+    "savedConversations": "Tallennetut keskustelut",
+    "untitledConversation": "Nimetön keskustelu",
+    "agentSetup": "Agentin käyttöönotto",
+    "usageReport": "Käyttöraportti",
+    "permission": {
+      "ariaLabel": "Agentin lupa",
+      "namedHeadline": "{{agent}} tarvitsee luvan",
+      "headline": "Agentti tarvitsee luvan",
+      "expired": "Tämä pyyntö vanheni. Pyydä agenttia yrittämään uudelleen.",
+      "dismiss": "Sulje"
+    },
+    "readiness": {
+      "managedBridge": "Oleaflyn asentama silta {{version}}.",
+      "bridgeOnPath": "Silta löytyi PATH-polusta.",
+      "bridgeMissingWithCli": "{{cli}} löytyi polusta {{path}}. Asenna ACP-silta {{version}}, niin yhteys onnistuu.",
+      "bridgeMissing": "Asenna ACP-silta {{version}}, niin tämän agentin voi yhdistää.",
+      "cliMissing": "{{cli}} ei ole PATH-polussa. Asenna se ja aja sitten {{command}}.",
+      "cliNotFound": "Tämän agentin komentorivityökalua ei löytynyt.",
+      "unavailable": "Tämä agentti ei voi toimia tällä koneella."
+    },
+    "bridgeSource": {
+      "notInstalled": "Ei asennettu",
+      "managed": "Oleaflyn hallinnoima",
+      "onPath": "PATH-polussa"
+    },
+    "installing": "Asennetaan",
+    "installBridge": "Asenna silta",
+    "assistantAriaLabel": "Komentoriviagentin avustaja",
+    "loadEarlier": "Lataa aiemmat tapahtumat",
+    "starting": "Käynnistetään {{agent}}",
+    "startingFallback": "agentti",
+    "startingHint": "Agentin komentorivityökalu käynnistyy. Ensimmäisellä kerralla tämä kestää muutaman sekunnin.",
+    "readySubtitle": "{{agent}} on valmiina tässä projektissa",
+    "projectSubtitle": "Työn alla \"{{project}}\"",
+    "signInFallback": "Kirjaudu sisään tämän agentin komentorivityökalulla ja yhdistä sitten uudelleen.",
+    "reconnectAfterSignIn": "Yhdistä uudelleen kirjautumisen jälkeen",
+    "reconnect": "Yhdistä keskusteluun uudelleen",
+    "resumeTask": "Jatka työtä avaamalla tutkimustehtävä.",
+    "delegatedConversation": "Tämä keskustelu kuuluu delegoidun agentin ajoon.",
+    "noResume": "Tämä agentti ei voi jatkaa tallennettuja keskusteluja. Aloita uusi keskustelu, kun olet valmis.",
+    "imageTooLarge": "Valitse kuva, joka on pienempi kuin 480 KiB. Liittää voi enintään neljä kuvaa.",
+    "imageReadFailed": "Kuvaa ei voitu lukea.",
+    "removeImage": "Poista {{name}}",
+    "composerAriaLabel": "Viesti komentoriviagentille",
+    "composerPlaceholderReady": "Pyydä agenttia työskentelemään tämän projektin parissa",
+    "composerPlaceholderIdle": "Aloita tai yhdistä keskustelu uudelleen, niin viestin voi lähettää",
+    "attachImage": "Liitä kuva",
+    "startConversation": "Aloita keskustelu agentin {{agent}} kanssa",
+    "startConversationFallback": "agentti",
+    "agentModel": "Agentin malli",
+    "modelManaged": "Agentti hallitsee mallia",
+    "stop": "Pysäytä",
+    "stopTitle": "Pysäytä agentti",
+    "send": "Lähetä",
+    "connecting": "Yhdistetään",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "yhdistetään",
+      "authRequired": "vaatii kirjautumisen",
+      "ready": "valmiina",
+      "running": "käynnissä",
+      "cancelling": "pysäytetään",
+      "cancelled": "peruutettu",
+      "disconnected": "yhteys katkennut",
+      "failed": "epäonnistui"
+    },
+    "roster": {
+      "bridgeMissing": "asenna silta kohdassa Agentin käyttöönotto",
+      "cliMissing": "komentorivityökalua ei löydy tältä koneelta",
+      "unavailable": "ei käytettävissä tällä koneella",
+      "comingSoon": "tulossa pian"
+    },
+    "messageTooLarge": "Tämä viesti ja sen kuvat ovat liian suuria. Lyhennä viestiä tai poista jokin kuva.",
+    "terminalCommand": "Agentti suorittaa päätekomentoa.",
+    "agentToolFallback": "Agentin työkalu",
+    "agentReported": "Agentti ilmoitti: {{detail}}",
+    "imageAttachmentName": "Kuva {{index}}",
+    "agentImage": "[Agentti palautti kuvan.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "Komentoriviagentti",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "ei asennettu",
+    "cliDetail": "Komentoriviagentti · käyttää omaa tiliään",
+    "builtInDetail": "{{provider}} · Oleafly-agentti"
+  },
+  "home": {
+    "heading": "Mitä tehdään tänään?",
+    "headingAccent": "tehdään tänään?",
+    "skillCategories": "Taitojen kategoriat",
+    "skillLockedTitle": "{{name}} on pois käytöstä tässä projektissa",
+    "recentChats": "Viimeisimmät keskustelut",
+    "recentStaleTitle": "Aloitettu projektin vanhemmasta versiosta",
+    "recentUntitled": "Uusi keskustelu",
+    "recentStaleBadge": "Vanhempi versio",
+    "recentMessages_one": "{{count}} viesti",
+    "recentMessages_other": "{{count}} viestiä",
+    "showAllHistory": "Näytä koko historia ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Tässä tuloksessa ei ole linkkiä lähteeseen.",
+    "sourceOpenFailed": "Lähdettä ei voitu avata.",
+    "noProjectPath": "Tässä tuloksessa ei ole projektitiedoston polkua.",
+    "resultOpenFailed": "Tulostiedostoa ei voitu avata."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Kirjoittaminen ja muokkaus",
+      "citationsAndLiterature": "Viittaukset ja kirjallisuus",
+      "review": "Arviointi",
+      "figuresAndTables": "Kuvat ja taulukot"
+    },
+    "improveWriting": {
+      "label": "Paranna tekstiä",
+      "description": "Hio selkeyttä, sävyä ja sujuvuutta"
+    },
+    "fixGrammar": {
+      "label": "Korjaa kielioppi",
+      "description": "Korjaa kielioppi ja välimerkit"
+    },
+    "fixLatexErrors": {
+      "label": "Korjaa LaTeX-virheet",
+      "description": "Korjaa rikkinäinen koodi ja käännösvirheet"
+    },
+    "writeEquation": {
+      "label": "Kirjoita kaava",
+      "description": "Luonnollisesta kielestä LaTeX-matematiikaksi"
+    },
+    "draftSection": {
+      "label": "Luonnostele luku",
+      "description": "Kirjoita uusi luku omalla tyylilläsi"
+    },
+    "paraphrase": {
+      "label": "Muotoile uudelleen",
+      "description": "Sanoita toisin merkitys säilyttäen"
+    },
+    "shorten": {
+      "label": "Lyhennä",
+      "description": "Tiivistä tekstiä"
+    },
+    "expand": {
+      "label": "Laajenna",
+      "description": "Täydennä yksityiskohdilla"
+    },
+    "journalFormat": {
+      "label": "Lehtimuotoilu",
+      "description": "Muotoile uudelleen kohdefoorumia varten"
+    },
+    "writeAbstract": {
+      "label": "Kirjoita tiivistelmä",
+      "description": "Luonnostele tiivistelmä artikkelista"
+    },
+    "generateTitle": {
+      "label": "Ehdota otsikkoa",
+      "description": "Kiinnostavia artikkelin otsikoita"
+    },
+    "keywords": {
+      "label": "Avainsanat",
+      "description": "Poimi haettavat avainsanat"
+    },
+    "continueWriting": {
+      "label": "Jatka kirjoittamista",
+      "description": "Jatka siitä mihin jäit"
+    },
+    "citationSearch": {
+      "label": "Viitehaku",
+      "description": "Hae artikkeleita alphaXivistä ja OpenAlexista"
+    },
+    "literatureReview": {
+      "label": "Kirjallisuuskatsaus",
+      "description": "Kartoita aiempi tutkimus oikeilla lähteillä"
+    },
+    "citeClaim": {
+      "label": "Viittaa tähän väitteeseen",
+      "description": "Etsi ja lisää varmennettu viite"
+    },
+    "myLibrary": {
+      "label": "Oma kirjasto",
+      "description": "Hae tuoduista viitteistäsi"
+    },
+    "labSearch": {
+      "label": "Tutkimusryhmähaku",
+      "description": "Etsi tutkimusryhmiä ja organisaatioita"
+    },
+    "friendlyReview": {
+      "label": "Ystävällinen arvio",
+      "description": "Rakentavaa mentorin palautetta tästä artikkelista"
+    },
+    "fireReview": {
+      "label": "Tiukka arvio",
+      "description": "Ankaran arvioijan stressitesti väitteille ja menetelmille"
+    },
+    "academicPresentation": {
+      "label": "Tieteellinen esitys",
+      "description": "Beamer-kalvosarja artikkelista"
+    },
+    "academicPoster": {
+      "label": "Tieteellinen posteri",
+      "description": "Konferenssiposteri artikkelista"
+    },
+    "generateTable": {
+      "label": "Luo taulukko",
+      "description": "Luonnostele LaTeX-taulukko keskustelussa"
+    },
+    "tikzFigure": {
+      "label": "TikZ-kuva",
+      "description": "Luonnostele TikZ-koodi keskustelussa"
+    }
+  },
+  "turn": {
+    "thinking": "Ajattelee…",
+    "continuing": "Jatkaa…",
+    "reasoning": "Päättelee…",
+    "runningTool": "Suorittaa työkalua {{name}}…",
+    "processingResult": "Käsittelee tulosta…",
+    "summarizing": "Tiivistää aiempaa keskustelua…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Agentin istuntoa ei voitu avata.",
+    "approvalModeSaveFailed": "Hyväksyntätilaa ei voitu tallentaa.",
+    "skillDraftSaved": "Taidon luonnos tallennettiin. Tarkista se ennen käyttöönottoa.",
+    "skillDraftFailed": "Taidon luonnosta ei voitu tallentaa. {{error}}",
+    "chatArchived": "Keskustelu arkistoitiin.",
+    "chatArchiveFailed": "Tätä keskustelua ei voitu arkistoida.",
+    "chatForked": "Keskustelu haaroitettiin.",
+    "chatForkFailed": "Tätä keskustelua ei voitu haaroittaa.",
+    "engineNotLoaded": "Dokumenttimoottorin tietoja ei ole ladattu. Tekoälymuokkaus on turvallisuuden vuoksi pois käytöstä.",
+    "skillsLoadFailed": "Käytössä olevia taitoja ei voitu ladata. Yritä uudelleen.",
+    "approvalModeLoadFailed": "Hyväksyntätilaa ei voitu ladata.",
+    "approvalRulesLoadFailed": "Projektin hyväksyntäsääntöjä ei voitu ladata.",
+    "restored": "Projektitiedostot palautettiin. Keskustelu säilytettiin.",
+    "restoreFailed": "Palautus ei onnistunut: {{error}}",
+    "steerFailed": "Käynnissä olevaa vuoroa ei voitu ohjata.",
+    "approvalRuleSaveFailed": "Projektin hyväksyntäsääntöä ei voitu tallentaa.",
+    "attachmentTooLarge": "{{name}} on liian suuri (enintään 10 MB).",
+    "attachmentReadFailed": "Kohdetta {{name}} ei voitu lukea.",
+    "tooManyTools": "Käytössä on {{enabled}} työkalua, mutta yksi ajo tukee enintään {{max}}. Poista käytöstä vähintään {{excess}} kohdassa Työkalut ja yritä uudelleen."
+  },
+  "header": {
+    "mcpTooltip": "Määritä avustajan MCP-palvelimet",
+    "mcpAriaLabel": "Avustajan MCP-asetukset",
+    "settings": "Avustajan asetukset",
+    "usageAriaLabel": "Katso tekoälyn käyttö",
+    "usageReport": "Käyttöraportti",
+    "newChat": "Uusi keskustelu",
+    "chatHistory": "Keskusteluhistoria",
+    "staleChatHint": "Tämä keskustelu alkoi projektin vanhemmasta versiosta. Tiedostojen sisältö voi poiketa siitä, mitä tekoäly näki."
+  },
+  "usage": {
+    "lastRun": "Viimeisin ajo",
+    "steps": "Vaiheita",
+    "input": "Syöte",
+    "output": "Tuloste",
+    "thisChat": "Tämä keskustelu",
+    "runs": "Ajoja",
+    "tokens": "Tokeneita",
+    "cacheNote": "Välimuistin käyttö ja kustannusarviot ovat käyttöraportissa.",
+    "summaryRunWithTokens_one": "Viimeisin ajo: {{count}} vaihe, {{tokens}} raportoitua tokenia",
+    "summaryRunWithTokens_other": "Viimeisin ajo: {{count}} vaihetta, {{tokens}} raportoitua tokenia",
+    "summaryRunNoTokens_one": "Viimeisin ajo: {{count}} vaihe, tokenien summa ei saatavilla",
+    "summaryRunNoTokens_other": "Viimeisin ajo: {{count}} vaihetta, tokenien summa ei saatavilla",
+    "summaryChat": "Tämä keskustelu: {{steps}} vaihetta, {{tokens}} tokenia",
+    "summaryFallback": "Tekoälyn käyttö"
+  },
+  "provider": {
+    "connectTitle": "Yhdistä tekoälypalvelu jatkaaksesi",
+    "connectBody": "Käytä omaa API-avaintasi (OpenAI, Anthropic, Groq ja muut) tai aja malli paikallisesti Ollamalla. Avustaja voi lukea ja muokata tiedostoja, kääntää projektin ja tarkistaa PDF:n.",
+    "connectButton": "Yhdistä palvelu",
+    "runLocal": "Aja paikallinen malli Ollamalla",
+    "quotaWarning": "Keskusteluhistorian tallennustila on täynnä. Vanhempia keskusteluja karsittiin, eivätkä uudet viestit välttämättä tallennu. Vapauta tilaa poistamalla vanhoja keskusteluja historiasta."
+  },
+  "conversation": {
+    "renderFailed": "Tätä keskustelua ei voitu piirtää. Aloita uusi keskustelu tai avaa se uudelleen historiasta.",
+    "checkpointRestored": "Projekti palautettiin tähän tarkistuspisteeseen",
+    "restoring": "Palautetaan…",
+    "restoreCheckpoint": "Palauta koodi tätä vastausta edeltäneeseen tilaan",
+    "restoreConfirm": "Palautetaanko projektitiedostot tätä vastausta edeltäneeseen tilaan? Tämä hylkää myös myöhempien tekoälyvastausten tekemät koodimuutokset. Keskustelu jää tähän.",
+    "noResponse": "Tähän viestiin ei saapunut vastausta. Tietovirta katkesi. Lähetä se uudelleen tai aloita uusi keskustelu.",
+    "scrollToBottom": "Vieritä alas",
+    "projectSubtitle": "Työn alla \"{{project}}\"",
+    "noOutput": "Malli ei palauttanut tulostetta. Tarkista Asetukset → Tekoälyavustaja."
+  },
+  "followUps": {
+    "steered": "Ohjattiin käynnissä olevaan vuoroon: {{summary}}",
+    "sending": "Lähetettiin seuraavana vuorona: {{summary}}",
+    "waiting": "Odotetaan turvallista kohtaa ajossa: {{summary}}",
+    "queued": "Jonossa seuraavaan vuoroon: {{summary}}",
+    "steerNow": "Ohjaa nyt",
+    "startingRun": "Käynnistetään ajoa",
+    "discard": "Hylkää jonossa oleva viesti"
+  },
+  "goal": {
+    "editAriaLabel": "Muokkaa tavoitetta: {{goal}}",
+    "clear": "Tyhjennä tavoite",
+    "formAriaLabel": "Aseta pysyvä tavoite",
+    "label": "Tavoite",
+    "placeholder": "Mitä kohti avustajan tulee työskennellä?",
+    "save": "Tallenna tavoite"
+  },
+  "suggestions": {
+    "literatureSweep": "Kartoita tämän projektin kirjallisuus",
+    "relatedWork": "Luonnostele aiemman tutkimuksen luku",
+    "verifyClaims": "Tarkista jokainen väite lähdettään vasten",
+    "reviewManuscript": "Arvioi se kuin vertaisarvioija",
+    "latexBuild": "Korjaa dokumenttini lähdekoodin virheet",
+    "preSubmission": "Saata se lähetysvalmiiksi",
+    "slides": "Tee tästä artikkelista esitys",
+    "recompile": "Käännä uudelleen ja tarkista virheet"
+  }
+}

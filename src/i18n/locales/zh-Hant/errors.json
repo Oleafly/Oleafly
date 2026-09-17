@@ -1,0 +1,31 @@
+{
+  "unknown": "發生錯誤。詳情請查看應用程式記錄檔。",
+  "withDetail": "{{message}}（{{detail}}）",
+  "project": {
+    "name_empty": "專案名稱不可為空白。",
+    "name_conflict": "已有名為 {{name}} 的專案。",
+    "folder_unavailable": "無法保留新的專案資料夾。"
+  },
+  "settings": {
+    "locale_unsupported": "語言 {{locale}} 無法使用。"
+  },
+  "literature": {
+    "query_empty": "搜尋內容不可為空白。",
+    "query_too_long": "搜尋內容過長（最多 {{max}} 個字元）。",
+    "unknown_source": "未知的文獻來源。"
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",
+    "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。"
+  },
+  "github": {
+    "sign_in_expired": "登入碼已過期。請再試一次。",
+    "sign_in_cancelled": "GitHub 授權已取消。",
+    "sign_in_failed": "GitHub 登入失敗。",
+    "repositories_unavailable": "無法載入儲存庫。",
+    "create_repo_failed": "無法建立儲存庫（{{status}}）。"
+  },
+  "approvals": {
+    "full_access_declined": "未啟用完整存取權。"
+  }
+}

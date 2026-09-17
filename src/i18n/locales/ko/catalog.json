@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "빈 문서",
+    "diagramsAndFigures": "다이어그램 및 그림",
+    "cvsAndResumes": "이력서 및 CV",
+    "journalsAndConferences": "저널 및 학회",
+    "bibliographies": "참고문헌",
+    "assignments": "과제",
+    "thesesAndReports": "학위논문 및 보고서",
+    "books": "도서",
+    "presentations": "프레젠테이션",
+    "posters": "포스터",
+    "newsletters": "뉴스레터",
+    "calendars": "달력",
+    "letters": "편지",
+    "aiGenerated": "AI 생성"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "이력서",
+    "diagramsAndFigures": "다이어그램",
+    "journalsAndConferences": "저널"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "최신 이력서와 CV 템플릿에서 널리 쓰이는 따뜻한 느낌의 휴머니스트 산세리프입니다."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "화면과 인쇄물 모두에서 잘 읽히는 깔끔하고 중립적인 산세리프입니다."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "학술 문서와 공식 문서에 잘 어울리는 정제된 트랜지셔널 세리프입니다."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "학술 글쓰기 팩",
+      "description": "연구 계획서와 연구비 신청서, 문헌 검토, 학업 계획서, 추천서, 백서, 학위논문을 담았습니다."
+    },
+    "beamer-themes": {
+      "label": "Beamer 테마 모음",
+      "description": "Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla, Pittsburgh beamer 슬라이드입니다."
+    },
+    "business-documents": {
+      "label": "비즈니스 문서",
+      "description": "청구서, 메모, 회의록, 사업 계획서와 보고서, 증명서, 3단 접지 브로슈어입니다."
+    },
+    "conference-preprints": {
+      "label": "학회 프리프린트 스타일",
+      "description": "NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv, Interspeech 스타일 프리프린트입니다."
+    },
+    "coursework": {
+      "label": "수업 과제 팩",
+      "description": "숙제, 학습지, 쪽지 시험, 채점 기준표, 강의 노트, 강의 계획서, 수학 참고 자료, 시험지, 의사 코드 설명서입니다."
+    },
+    "creative-misc": {
+      "label": "창작 및 기타",
+      "description": "요리책, 초대장, RPG 캐릭터 시트, 연간 달력, 표와 TikZ 갤러리, 현장 기록입니다."
+    },
+    "cv-collection": {
+      "label": "CV 및 이력서 스타일 모음",
+      "description": "ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds, Jake 스타일 이력서입니다."
+    },
+    "reports-lab": {
+      "label": "실험 및 기술 보고서",
+      "description": "실험 보고서, 과학 및 기술 보고서, 프로젝트와 인턴십 보고서, 연차 보고서입니다."
+    },
+    "resume-plus": {
+      "label": "이력서 및 CV 확장팩",
+      "description": "2단 기술 이력서, 미니멀 이력서, 긴 형식의 학술 CV, 자기소개서, Typst 이력서입니다."
+    },
+    "slides-posters": {
+      "label": "슬라이드 및 포스터",
+      "description": "Metropolis beamer 슬라이드, tikzposter 세로형과 가로형, better-poster 레이아웃입니다."
+    },
+    "venue-classes": {
+      "label": "저널 및 학회 문서 클래스",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf, Typst 저널 스타터입니다."
+    }
+  }
+}

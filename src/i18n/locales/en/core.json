@@ -464,7 +464,8 @@
     "staleResponse": "Offline proofreading returned a stale response.",
     "stopped": "Offline proofreading stopped unexpectedly.",
     "superseded": "A newer proofreading request replaced this one.",
-    "timedOut": "Offline proofreading timed out and will restart on the next edit."
+    "timedOut": "Offline proofreading timed out and will restart on the next edit.",
+    "dictionaryUnavailable": "The selected spelling dictionary is not installed. Download it in Settings."
   },
   "skillGroups": {
     "shelf": "Domain shelf",

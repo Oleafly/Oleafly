@@ -8,8 +8,12 @@ import {
 } from "./locale";
 
 describe("locale resolution", () => {
-  it("declares English and Simplified Chinese", () => {
-    expect(SUPPORTED_LOCALES).toEqual(["en", "zh-Hans"]);
+  it("declares every shipped interface language once", () => {
+    expect(SUPPORTED_LOCALES[0]).toBe("en");
+    expect(new Set(SUPPORTED_LOCALES).size).toBe(SUPPORTED_LOCALES.length);
+    expect(SUPPORTED_LOCALES).toEqual(
+      expect.arrayContaining(["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "ja", "ko", "pt-BR", "nb"]),
+    );
   });
 
   it("canonicalizes Chinese tags by script and region", () => {
@@ -32,9 +36,14 @@ describe("locale resolution", () => {
 
   it("resolves to a supported locale with fallbacks", () => {
     expect(resolveLocale("zh-CN")).toBe("zh-Hans");
-    expect(resolveLocale("zh-TW")).toBe("zh-Hans");
+    expect(resolveLocale("zh-TW")).toBe("zh-Hant");
     expect(resolveLocale("en-GB")).toBe("en");
-    expect(resolveLocale("fr-FR")).toBe("en");
+    expect(resolveLocale("fr-FR")).toBe("fr");
+    expect(resolveLocale("pt-PT")).toBe("pt-BR");
+    expect(resolveLocale("pt")).toBe("pt-BR");
+    expect(resolveLocale("nn-NO")).toBe("nb");
+    expect(resolveLocale("no")).toBe("nb");
+    expect(resolveLocale("xx-YY")).toBe("en");
     expect(resolveLocale(undefined)).toBe("en");
   });
 

@@ -1,0 +1,639 @@
+{
+  "accents": {
+    "blue": "Modrá",
+    "green": "Zelená",
+    "orange": "Oranžová",
+    "purple": "Fialová",
+    "rose": "Růžová",
+    "teal": "Modrozelená"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Chybí most",
+      "cliMissing": "CLI nenalezeno",
+      "ready": "Připraveno",
+      "unavailable": "Není k dispozici"
+    },
+    "requestFailed": "Požadavek ACP se nepodařilo dokončit."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Tento projekt vyčerpal svůj rozpočet na AI ve výši {{budget}}. Chcete-li pokračovat, zvyšte nebo zrušte rozpočet v Nastavení.",
+    "warned": "Tento projekt využil {{spent}} ze svého rozpočtu na AI ve výši {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Pro tuto akci se přepnulo na asistenta Oleafly."
+  },
+  "bibtex": {
+    "duplicateDoi": "Duplicitní DOI sdílené s: {{keys}}",
+    "duplicateKey": "Duplicitní klíč citace",
+    "invalidYear": "Rok „{{year}}“ není čtyřmístné číslo",
+    "missingField": "Chybí povinné pole: {{fields}}",
+    "missingKey": "Záznamu typu @{{type}} chybí klíč citace",
+    "unknownType": "Neznámý typ záznamu @{{type}}",
+    "unreadableFields": "Nepodařilo se přečíst pole záznamu „{{entry}}“",
+    "unterminatedEntry": "Neukončený záznam poblíž znaku {{position}}",
+    "unusualField": "Neobvyklé pole pro @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} se během importu citace změnil. Zkuste to znovu.",
+    "noArxivEntry": "Nebyl nalezen žádný záznam na arXiv.",
+    "noReferences": "V tomto souboru nebyly nalezeny žádné reference.",
+    "offline": "Vyhledání citace vyžaduje síť. Vypněte v Nastavení režim offline.",
+    "parseFailed": "Citaci se nepodařilo zpracovat.",
+    "projectChanged": "Projekt se během importu citace změnil.",
+    "projectChangedNotInserted": "Projekt se během importu citace změnil. Citace nebyla vložena.",
+    "projectChangedRetry": "Projekt se během importu citace změnil. Zkuste to znovu v původním projektu.",
+    "readFailed": "Nepodařilo se přečíst {{path}}: {{detail}}",
+    "unrecognizedFile": "Nerozpoznaný typ souboru: {{name}}",
+    "writeFailed": "Nepodařilo se zapsat {{path}}: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Záznam Oleafly byl přidán do {{path}}. Citujte jej pomocí {{markup}}.",
+    "failed": "Citaci Oleafly se nepodařilo přidat. Zkopírujte ji z Nastavení, Nápověda a informace.",
+    "present": "{{path}} už záznam Oleafly obsahuje. Citujte jej pomocí {{markup}}.",
+    "undo": "Vrátit zpět"
+  },
+  "compatibility": {
+    "biblatexBiber": "Tento projekt používá pro bibliografii biblatex/Biber.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_few": "{{title}} (+{{more}} dalších)",
+    "blockerFinding_many": "{{title}} (+{{more}} dalších)",
+    "blockerFinding_other": "{{title}} (+{{more}} dalších)",
+    "chooseEngine": "Vybrat engine…",
+    "importNotes_one": "{{count}} poznámka k importu: {{title}}",
+    "importNotes_few": "{{count}} poznámky k importu: {{title}} (+{{more}} dalších)",
+    "importNotes_many": "{{count}} poznámky k importu: {{title}} (+{{more}} dalších)",
+    "importNotes_other": "{{count}} poznámek k importu: {{title}} (+{{more}} dalších)"
+  },
+  "compile": {
+    "engineNotLoaded": "Kompilace je zakázaná, dokud se nenačte dokumentový engine.",
+    "noOfflineMode": "{{engine}} nenabízí offline režim překladače. Kompiluje se běžným způsobem.",
+    "retry": "Kompilovat znovu"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Přesune každý vývojový projekt do koše. Nic se trvale nesmaže.",
+        "title": "Vymazat projekty"
+      },
+      "replayFirstRun": {
+        "description": "Vynuluje všechny prohlídky, zavře aktuální projekt a vrátí se na uvítací obrazovku.",
+        "title": "Přehrát první spuštění"
+      },
+      "resetAndSeed": {
+        "description": "Přesune aktuální projekty do koše a pak zkopíruje všech {{count}} připnutých reálných fixtur z místní mezipaměti.",
+        "title": "Vynulovat a naplnit"
+      },
+      "resetUiState": {
+        "description": "Vymaže místní nastavení Oleafly a uložený stav rozhraní, aniž by smazala projekty.",
+        "title": "Vynulovat stav rozhraní"
+      },
+      "seedCorpus": {
+        "action": "Naplnit korpus",
+        "description": "Zkopíruje {{count}} výzkumných projektů z ~/Codespace/Oleafly/oleafly-seed. Články, kvalifikační práce, knihy, přednášky, plakáty a obrázky v LaTeXu i Typstu, u všech je ověřeno, že se zkompilují dodávanými enginy. Stávající fixtury zůstanou zachovány.",
+        "title": "Naplnit výzkumný korpus"
+      }
+    },
+    "closeProjectFailed": "Otevřený projekt se nepodařilo bezpečně zavřít.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Vymazat projekty",
+        "description": "Každý projekt v izolované vývojové knihovně se přesune do jejího koše. Vaší produkční knihovny Oleafly se to nedotkne.",
+        "title": "Vymazat všechny vývojové projekty?"
+      },
+      "fallbackTitle": "Potvrdit vývojovou akci",
+      "resetAndSeed": {
+        "action": "Vynulovat a naplnit",
+        "description": "Každý aktuální vývojový projekt se přesune do koše a poté Oleafly zkopíruje {{count}} výzkumných fixtur z místní mezipaměti oleafly-seed.",
+        "title": "Vynulovat a naplnit vývojovou knihovnu?"
+      },
+      "resetBrowser": {
+        "action": "Vynulovat stav rozhraní",
+        "description": "Vymaže nastavení Oleafly, prohlídky a další stav prohlížeče pro tento vývojový původ a pak aplikaci znovu načte. Soubory projektů zůstanou na disku.",
+        "title": "Vynulovat stav vývojového rozhraní?"
+      }
+    },
+    "debugOnly": {
+      "description": "Tyto ovládací prvky načítá jen vývojové sestavení Vite. Produkční sestavení tento modul odmítnou, pokud se jeho značka objeví v kterémkoli vygenerovaném souboru.",
+      "title": "Jen ladicí sestavení"
+    },
+    "library": {
+      "checking": "Kontroluje se cesta ke knihovně…",
+      "label": "Vývojová knihovna",
+      "locked": "Ovládání projektů je uzamčeno, protože toto není izolované prostředí .oleafly-dev."
+    },
+    "nav": "Vývojář",
+    "projectsRecycled_one": "{{count}} projekt byl přesunut do koše.",
+    "projectsRecycled_few": "{{count}} projekty byly přesunuty do koše.",
+    "projectsRecycled_many": "{{count}} projektu bylo přesunuto do koše.",
+    "projectsRecycled_other": "{{count}} projektů bylo přesunuto do koše.",
+    "replayFailed": "Prohlídku prvního spuštění se nepodařilo vynulovat.",
+    "resetAndSeedSummary": "Do koše bylo přesunuto {{removed}} projektů a výzkumný korpus byl naplněn: {{created}} vytvořeno, {{skipped}} už existovalo.",
+    "resetFailed": "Vývojové prostředí se nepodařilo vynulovat.",
+    "sandboxOnly": "Výzkumné fixtury lze kopírovat jen do prostředí .oleafly-dev.",
+    "seedFailed": "Výzkumný korpus se nepodařilo naplnit.",
+    "seedFailures_one": "{{summary}} {{count}} fixtura selhala. První selhání: {{name}}: {{message}}",
+    "seedFailures_few": "{{summary}} {{count}} fixtury selhaly. První selhání: {{name}}: {{message}}",
+    "seedFailures_many": "{{summary}} {{count}} fixtury selhalo. První selhání: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} fixtur selhalo. První selhání: {{name}}: {{message}}",
+    "seedSummary": "Výzkumný korpus byl naplněn: {{created}} vytvořeno, {{skipped}} už existovalo.",
+    "unknownSeedError": "Neznámá chyba při plnění"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "Obrázek PNG",
+      "zipArchive": "Archiv ZIP"
+    }
+  },
+  "dictionary": {
+    "full": "Váš slovník je plný, takže se toto slovo místo uložení jen skryje v tomto dokumentu. Uvolněte místo odebráním jiného v Nastavení.",
+    "wordTooLong": "Tohle je na uložení jako slovo příliš dlouhé, proto se jen skryje v tomto dokumentu. Slovo může mít nejvýše {{max}} znaků."
+  },
+  "documentScan": {
+    "complete": "Kontrola dokončena",
+    "failed": "Kontrola dokumentu selhala",
+    "processed": "Zpracováno {{current}}/{{total}} odstavců…",
+    "processing": "Zpracovává se {{current}}/{{total}} odstavců…",
+    "skippedEmpty": "Přeskočen prázdný dotaz ({{current}}/{{total}})",
+    "splitting": "Dokument se dělí na odstavce…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Podrobnosti o dokumentovém enginu se nepodařilo načíst. Akce závislé na enginu jsou zakázané.",
+      "renameReloadFailed": "Po přejmenování hlavního dokumentu se nepodařilo načíst podrobnosti o dokumentovém enginu.",
+      "stillLoading": "Podrobnosti o dokumentovém enginu se stále načítají."
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF se nepodařilo uložit",
+    "pdfFailedDetail": "PDF se nepodařilo uložit: {{detail}}",
+    "pngFailed": "PNG se nepodařilo uložit",
+    "pngFailedDetail": "PNG se nepodařilo uložit: {{detail}}",
+    "revealFailed": "Soubor byl uložen, ale Oleafly nedokázal otevřít jeho složku (přístup byl odepřen). Zkontrolujte umístění, které jste zvolili v dialogu ukládání.",
+    "saved": "{{kind}} uloženo · {{fileName}}",
+    "showInFolder": "Zobrazit ve složce"
+  },
+  "externalChange": {
+    "deletionRestored": "Smazání zvenčí se střetlo s neuloženými úpravami. Vaše místní úpravy byly obnoveny.",
+    "localEditKept": "Zvenčí přišla úprava souboru „{{path}}“, zatímco jste měli neuložené změny. Vaše místní úprava byla zachována.",
+    "persistExternalFailed": "Nejnovější externí aktualizaci souboru „{{path}}“ se nepodařilo uložit.",
+    "preserveLocalFailed": "Vaši místní aktualizaci souboru „{{path}}“ se nepodařilo zachovat.",
+    "reloadFailed": "Nastavení projektu bylo aktualizováno, ale některé změněné soubory se nepodařilo znovu načíst.",
+    "restoreLocalFailed": "Vaši neuloženou aktualizaci souboru „{{path}}“ se nepodařilo obnovit."
+  },
+  "fonts": {
+    "systemDefault": "Výchozí systémové",
+    "terminalDefault": "Výchozí pro terminál"
+  },
+  "imageToLatex": {
+    "failed": "Převod obrázku do LaTeXu selhal: {{detail}}",
+    "inserted": "LaTeX z obrázku byl vložen",
+    "transcribing": "Přepisuje se obrázek…"
+  },
+  "import": {
+    "arxivImported": "Zdroj z arXiv byl importován. Zkompilujte projekt a zkontrolujte výsledek.",
+    "chooseOfferedProjectType": "Vyberte některý z typů projektu nabízených pro tento soubor.",
+    "invalidArxivId": "Vložte odkaz na článek na arXiv nebo identifikátor, například 2301.01234.",
+    "supportedDocumentTypes": "Vyberte některý z podporovaných typů dokumentů.",
+    "conversionNotice": "Váš obsah jsme převedli do LaTeXu. Možná bude potřeba upravit formátování, hlavně u tabulek, obrázků a citací.",
+    "figureSaved": "Uloženo {{name}}",
+    "pdfProjectCreated": "Projekt byl vytvořen z PDF. Než rekonstrukci uvěříte, zkontrolujte ji.",
+    "pickPdfOrDocx": "Vyberte soubor .pdf nebo .docx",
+    "texSaved": "Uloženo .tex",
+    "unsupportedFile": "Vyberte soubor .zip, .docx, .md nebo .markdown.",
+    "zipSaveFailed": "Archiv ZIP se nepodařilo uložit.",
+    "zipSaved": "Uloženo .zip"
+  },
+  "inlineAi": {
+    "concise": "Zkrátit",
+    "expand": "Rozvést",
+    "fixSource": "Opravit zdroj",
+    "grammar": "Opravit gramatiku",
+    "improve": "Vylepšit",
+    "translate": "Přeložit"
+  },
+  "intelligence": {
+    "analysisFailed": "Analýza projektu pro aktuální revizi selhala.",
+    "analyzing": "Inteligence projektu analyzuje aktuální revizi.",
+    "couldNotSend": "Analýzu projektu se nepodařilo odeslat pracovnímu procesu.",
+    "disposed": "Pracovní proces inteligence projektu je ukončen.",
+    "disposedDuringRequest": "Pracovní proces inteligence projektu byl ukončen.",
+    "failed": "Inteligence projektu selhala.",
+    "identityMismatch": "Identita odpovědi inteligence projektu neodpovídala požadavku.",
+    "malformedResponse": "Pracovní proces inteligence projektu vrátil poškozenou odpověď.",
+    "malformedSnapshotIdentity": "Identita snímku inteligence projektu byla poškozená.",
+    "noProject": "Není aktivní žádný projekt.",
+    "partialFiles_one": "{{count}} soubor poskytl použitelnou částečnou analýzu.",
+    "partialFiles_few": "{{count}} soubory poskytly použitelnou částečnou analýzu.",
+    "partialFiles_many": "{{count}} souboru poskytlo použitelnou částečnou analýzu.",
+    "partialFiles_other": "{{count}} souborů poskytlo použitelnou částečnou analýzu.",
+    "retainedStale": "Obsah projektu se změnil. Ponechaná analýza je zastaralá, dokud neproběhne aktuální revize.",
+    "sourceGraphRefreshing": "Soubory projektu se změnily. Graf zdrojů se obnovuje.",
+    "sourceSnapshotsLoading": "Soubory projektu se změnily. Pro aktuální analýzu se načítají snímky zdrojů.",
+    "staleSnapshot": "Pracovní proces inteligence projektu nemá pro tento snímek žádnou analýzu.",
+    "stopped": "Inteligence projektu je zastavena.",
+    "timedOut": "Inteligence projektu vypršela.",
+    "typeMismatch": "Typ odpovědi inteligence projektu neodpovídal požadavku.",
+    "unexpectedResponse": "Pracovní proces inteligence projektu vrátil neočekávanou odpověď.",
+    "workerFailed": "Pracovní proces inteligence projektu selhal.",
+    "workerRestarted": "Pracovní proces inteligence projektu byl po vypršení času restartován.",
+    "workerUnavailable": "Pracovní proces inteligence projektu není k dispozici."
+  },
+  "latexPackages": {
+    "algorithm2e": "Sazba algoritmů",
+    "amsmath": "Pokročilá sazba matematiky",
+    "amssymb": "Rozšířené matematické symboly",
+    "amsthm": "Prostředí pro věty a důkazy",
+    "array": "Rozšířená pole a tabulky",
+    "authblk": "Bloky autorů a jejich pracovišť",
+    "babel": "Vícejazyčná podpora a jazyk dokumentu",
+    "biblatex": "Pokročilá podpora bibliografie",
+    "bookmark": "Vylepšené záložky v PDF",
+    "booktabs": "Profesionální linky v tabulkách",
+    "caption": "Úpravy popisků",
+    "cleveref": "Chytré křížové odkazy (načtěte po hyperref)",
+    "csquotes": "Kontextové uvozovky (potřebuje biblatex)",
+    "enumitem": "Úpravy seznamů",
+    "fancyhdr": "Vlastní záhlaví a zápatí",
+    "float": "Vylepšené umísťování plovoucích objektů",
+    "fontspec": "Výběr písem OpenType (Xe/LuaLaTeX)",
+    "geometry": "Úpravy rozvržení stránky",
+    "graphicx": "Vkládání grafiky a obrázků",
+    "hyperref": "Hypertextové odkazy, záložky a metadata PDF",
+    "inputenc": "Kódování vstupu (na Xe/LuaLaTeX zbytečné)",
+    "lineno": "Číslování řádků pro recenzní verze",
+    "lipsum": "Výplňový text (lorem ipsum)",
+    "listings": "Výpisy kódu (jejich obsah se netaguje)",
+    "mathtools": "Nadstavba amsmath s opravami a nástroji",
+    "microtype": "Mikrotypografické vylepšení",
+    "minted": "Výpisy kódu zvýrazněné pomocí Pygments",
+    "multirow": "Buňky tabulky přes více řádků",
+    "natbib": "Citace autor-rok i číselné",
+    "parskip": "Mezery mezi odstavci",
+    "pdfpages": "Vkládání celých stránek z jiného PDF",
+    "setspace": "Řízení řádkování",
+    "siunitx": "Jednotky SI a formátování čísel",
+    "subcaption": "Dílčí obrázky a tabulky",
+    "subfig": "Starší balíček pro dílčí obrázky",
+    "tabularx": "Tabulky s automatickou šířkou",
+    "threeparttable": "Tabulky s poznámkami pod nimi",
+    "tikz": "Programovatelná vektorová grafika (vyžaduje ruční alternativní text)",
+    "titlesec": "Formátování nadpisů kapitol",
+    "todonotes": "Poznámky na okraji pro koncepty",
+    "unicode-math": "Matematika v Unicode pro Xe/LuaLaTeX (nutné pro tagovanou matematiku)",
+    "url": "Sazba adres URL",
+    "wrapfig": "Obrázky obtékané textem",
+    "xcolor": "Podpora barev"
+  },
+  "literatureSources": {
+    "arxiv": "Přes 2,4 milionu preprintů z fyziky, matematiky, informatiky, kvantitativní biologie a příbuzných oborů.",
+    "crossref": "Registr DOI s metadaty více než 150 milionů výzkumných výstupů.",
+    "googleScholar": "Výsledky z Google Scholar přes Serper. Vyžaduje klíč API pro Serper v Nastavení → Integrace → Vyhledávání citací.",
+    "openalex": "Otevřený katalog odborných prací, autorů, zdrojů, institucí, témat, vydavatelů a poskytovatelů financí.",
+    "pubmed": "Přes 40 milionů citací a abstraktů z biomedicínské a biologické literatury, včetně MEDLINE.",
+    "semanticScholar": "Odborný rejstřík s citačními grafy, daty o vlivných citacích a shrnutími TLDR.",
+    "uspto": "Udělené americké patenty a zveřejněné přihlášky pro rešerše a aplikovaný výzkum. Vyhledávání je během přechodu na PatentsView pozastaveno.",
+    "usptoPaused": "USPTO během přechodu na svůj Open Data Portal dočasně pozastavil vyhledávací API PatentsView.",
+    "yearRangeInvalid": "Počáteční rok nemůže být pozdější než koncový."
+  },
+  "mcp": {
+    "openProjectSummary": "Otevřít projekt {{id}}",
+    "useToolSummary": "Použít {{tool}} ze serveru MCP {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "Server MCP '{{name}}' má rozporné deklarace typu a přenosu.",
+    "exactlyOneServer": "JSON serveru MCP musí obsahovat právě jeden server.",
+    "fieldBoolean": "Pole '{{field}}' serveru MCP '{{name}}' musí být logická hodnota.",
+    "fieldString": "Pole '{{field}}' serveru MCP '{{name}}' musí být řetězec.",
+    "fieldStringArray": "Pole '{{field}}' serveru MCP '{{name}}' musí být pole řetězců.",
+    "fieldStringRecord": "Pole '{{field}}' serveru MCP '{{name}}' musí být objekt s řetězcovými hodnotami.",
+    "jsonMalformed": "JSON serveru MCP je poškozený.",
+    "jsonNotObject": "JSON serveru MCP musí být objekt.",
+    "mcpServersNotObject": "Pole 'mcpServers' v JSON serveru MCP musí být objekt.",
+    "serverNotObject": "Server MCP '{{name}}' musí být objekt.",
+    "structural": "{{detail}} Očekává se buď {\"server-name\": {...}}, nebo {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Neznámý server",
+    "unsupportedTransport": "Server MCP '{{name}}' má nepodporovaný přenos '{{transport}}'.",
+    "unsupportedType": "Server MCP '{{name}}' má nepodporovaný typ '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Diagram",
+    "renderFailed": "Diagram nelze vykreslit.",
+    "rendering": "Vykresluje se diagram"
+  },
+  "missingPackages": {
+    "action_one": "Najít a nainstalovat {{name}}",
+    "action_few": "Najít a nainstalovat {{count}} soubory",
+    "action_many": "Najít a nainstalovat {{count}} souboru",
+    "action_other": "Najít a nainstalovat {{count}} souborů",
+    "installing_one": "Instaluje se {{name}}. Po dokončení se kompilace spustí znovu.",
+    "installing_few": "Instalují se {{count}} balíčky. Po dokončení se kompilace spustí znovu.",
+    "installing_many": "Instaluje se {{count}} balíčku. Po dokončení se kompilace spustí znovu.",
+    "installing_other": "Instaluje se {{count}} balíčků. Po dokončení se kompilace spustí znovu.",
+    "summary_one": "Kompilace nenašla „{{name}}“. Vyhledejte v TeX Live balíček, který jej poskytuje.",
+    "summary_few": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
+    "summary_many": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
+    "summary_other": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Kontextové okno {{tokens}} tokenů",
+      "deprecated": {
+        "label": "Zastaralé",
+        "title": "Poskytovatel tento model označil za zastaralý"
+      },
+      "reasoning": {
+        "label": "Uvažování",
+        "title": "Model s uvažováním"
+      },
+      "tools": {
+        "label": "Nástroje",
+        "title": "Umí volat nástroje"
+      },
+      "vision": {
+        "label": "Vidění",
+        "title": "Přijímá obrázky"
+      }
+    },
+    "listChange": {
+      "none": "Žádné změny",
+      "summary": "{{added}} přidáno, {{removed}} odebráno"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Analýza referencí projektu není k dispozici.",
+    "analysisUpdating": "Reference projektu se aktualizují.",
+    "definitionsFor": "Definice pro {{name}}",
+    "edits_one": "{{count}} úprava",
+    "edits_few": "{{count}} úpravy",
+    "edits_many": "{{count}} úpravy",
+    "edits_other": "{{count}} úprav",
+    "files_one": "{{count}} soubor",
+    "files_few": "{{count}} soubory",
+    "files_many": "{{count}} souboru",
+    "files_other": "{{count}} souborů",
+    "nameExists": "„{{name}}“ už existuje.",
+    "noDefinition": "Pro „{{name}}“ nebyla nalezena žádná definice",
+    "noReferences": "Na „{{name}}“ nevedou žádné reference",
+    "notRenamable": "Tento symbol nelze přejmenovat.",
+    "nothingToRename": "Není co přejmenovat.",
+    "referencesFor": "Reference na {{name}}",
+    "renamePartial": "Přejmenováno na „{{name}}“ v {{edited}} z {{total}} souborů. Nepodařilo se zapsat {{files}}.",
+    "renamed": "Přejmenováno na „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) · $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Pandoc se nepodařilo stáhnout. Nainstalujte jej ručně a zkuste to znovu",
+    "downloadingPercent": "Stahuje se pandoc… {{progress}} %",
+    "downloadingSize": "Stahuje se pandoc… {{megabytes}} MB",
+    "installGuide": "Návod k instalaci",
+    "installed": "pandoc nainstalován"
+  },
+  "project": {
+    "copyFailed": "Nepodařilo se zkopírovat „{{path}}“.",
+    "dateUnavailable": "Není k dispozici",
+    "importFailed": "Import se nezdařil. Podrobnosti najdete v protokolu aplikace.",
+    "imported": "Projekt byl importován.",
+    "openFailed": "Projekt se nepodařilo otevřít. Podrobnosti najdete v protokolu aplikace.",
+    "restoringUnsavedFiles": "Aktualizace projektu odstranila soubory s neuloženými úpravami. Oleafly vaše úpravy zachoval a tyto soubory obnovuje.",
+    "saveBlockedClose": "Projekt zůstal otevřený, protože jeden nebo více souborů se nepodařilo uložit.",
+    "saveBlockedDiscard": "Zahodit změny a odejít",
+    "saveBlockedMany": "{{count}} souborů se nepodařilo uložit: {{files}}. První z nich je otevřený v editoru s neuloženými změnami ({{reason}}). Zůstaňte a problém vyřešte, nebo neuložené změny v těchto souborech zahoďte a odejděte.",
+    "saveBlockedOne": "{{file}} se nepodařilo uložit ({{reason}}). Je otevřený v editoru s vašimi neuloženými změnami. Zůstaňte a problém vyřešte, nebo tyto změny zahoďte a odejděte.",
+    "saveBlockedStay": "Zůstat",
+    "saveBlockedSwitch": "Projekt zůstal otevřený, protože jeden nebo více souborů se nepodařilo uložit.",
+    "saveBlockedTitle": "Některé soubory se nepodařilo uložit",
+    "updatedDaysAgo_one": "Aktualizováno před {{count}} dnem",
+    "updatedDaysAgo_few": "Aktualizováno před {{count}} dny",
+    "updatedDaysAgo_many": "Aktualizováno před {{count}} dne",
+    "updatedDaysAgo_other": "Aktualizováno před {{count}} dny",
+    "updatedOn": "Aktualizováno {{date}}",
+    "updatedToday": "Aktualizováno dnes",
+    "updatedYesterday": "Aktualizováno včera"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analýza selhala: {{message}}",
+    "beginIsHere": "{{command}} je zde.",
+    "beginWithoutEnd": "{{command}} nemá odpovídající \\end.",
+    "bibliographyFileMissing": "Soubor bibliografie „{{file}}“ nebyl v projektu nalezen.",
+    "citationHasManyDefinitions_one": "Citace „{{name}}“ má {{count}} možnou definici.",
+    "citationHasManyDefinitions_few": "Citace „{{name}}“ má {{count}} možné definice.",
+    "citationHasManyDefinitions_many": "Citace „{{name}}“ má {{count}} možné definice.",
+    "citationHasManyDefinitions_other": "Citace „{{name}}“ má {{count}} možných definic.",
+    "citationKeyDuplicated_one": "Klíč citace „{{name}}“ je definován {{count}}krát.",
+    "citationKeyDuplicated_few": "Klíč citace „{{name}}“ je definován {{count}}krát.",
+    "citationKeyDuplicated_many": "Klíč citace „{{name}}“ je definován {{count}}krát.",
+    "citationKeyDuplicated_other": "Klíč citace „{{name}}“ je definován {{count}}krát.",
+    "citationUnresolved": "Citaci „{{name}}“ se nepodařilo vyřešit.",
+    "definedHere": "{{kind}} „{{name}}“ je definován zde.",
+    "duplicateTargetDefined_one": "Cíl {{kind}} „{{name}}“ je definován {{count}}krát.",
+    "duplicateTargetDefined_few": "Cíl {{kind}} „{{name}}“ je definován {{count}}krát.",
+    "duplicateTargetDefined_many": "Cíl {{kind}} „{{name}}“ je definován {{count}}krát.",
+    "duplicateTargetDefined_other": "Cíl {{kind}} „{{name}}“ je definován {{count}}krát.",
+    "endWithoutBegin": "{{command}} nemá odpovídající \\begin.",
+    "entryMissingFieldList": "Záznam bibliografie „{{key}}“ nemá seznam polí.",
+    "expectedEndBefore": "Před {{found}} se očekávalo {{expected}}.",
+    "fieldIncompleteValue": "Pole „{{name}}“ má neúplnou hodnotu.",
+    "fieldMissingEquals": "Poli „{{name}}“ chybí „=“.",
+    "fieldRepeated": "Pole „{{name}}“ se v záznamu bibliografie „{{key}}“ opakuje.",
+    "fileNotLoaded": "Zdrojový soubor nebyl pro aktuální analýzu projektu načten.",
+    "fileUnreadable": "Soubor se nepodařilo přečíst.",
+    "incompleteEntry": "Neúplný záznam @{{type}}.",
+    "invalidYear": "Rok „{{year}}“ není čtyřmístný rok podle BibTeX.",
+    "kinds": {
+      "anchor": "kotva",
+      "asset": "prostředek",
+      "bibentry": "záznam bibliografie",
+      "bibliography": "bibliografie",
+      "environment": "prostředí",
+      "file": "soubor",
+      "glossary": "položka glosáře",
+      "import": "import",
+      "include": "vložení",
+      "label": "návěští",
+      "link": "odkaz",
+      "macro": "makro",
+      "section": "kapitola"
+    },
+    "malformedDirective": "Poškozená direktiva nebo typ záznamu BibTeX.",
+    "missingCitationKey": "@{{type}} chybí klíč citace.",
+    "missingRequiredField": "{{entry}} chybí povinné pole {{fields}}.",
+    "possibleTarget": "Možný cíl: {{file}}",
+    "projectFileUnreadable": "Soubor projektu se nepodařilo přečíst.",
+    "referenceHasManyDefinitions_one": "Reference „{{name}}“ má {{count}} možnou definici.",
+    "referenceHasManyDefinitions_few": "Reference „{{name}}“ má {{count}} možné definice.",
+    "referenceHasManyDefinitions_many": "Reference „{{name}}“ má {{count}} možné definice.",
+    "referenceHasManyDefinitions_other": "Reference „{{name}}“ má {{count}} možných definic.",
+    "referenceUnresolved": "Referenci „{{name}}“ se nepodařilo vyřešit.",
+    "targetMatchesManyFiles_one": "Cíl {{kind}} „{{target}}“ odpovídá {{count}} souboru projektu.",
+    "targetMatchesManyFiles_few": "Cíl {{kind}} „{{target}}“ odpovídá {{count}} souborům projektu.",
+    "targetMatchesManyFiles_many": "Cíl {{kind}} „{{target}}“ odpovídá {{count}} souboru projektu.",
+    "targetMatchesManyFiles_other": "Cíl {{kind}} „{{target}}“ odpovídá {{count}} souborům projektu.",
+    "targetUnresolved": "Cíl {{kind}} „{{target}}“ se nepodařilo vyřešit.",
+    "typeDelimiterExpected": "Po @{{type}} musí následovat otevírací složená nebo kulatá závorka.",
+    "unclosedDelimiter": "Oddělovač „{{char}}“ není uzavřen znakem „{{expected}}“.",
+    "unclosedDirective": "Direktiva @{{type}} není uzavřená.",
+    "unclosedEntry": "Záznam @{{type}} není uzavřený.",
+    "unclosedEntryNamed": "Záznam bibliografie „{{key}}“ není uzavřený.",
+    "unclosedFence": "Oplocený blok kódu není uzavřený.",
+    "unclosedFrontMatter": "Hlavička YAML není uzavřená.",
+    "unclosedString": "Řetězcový literál není uzavřený.",
+    "unclosedTypstComment": "Blokový komentář Typst není uzavřený.",
+    "unexpectedClosingDelimiter": "Neočekávaný uzavírací oddělovač „{{char}}“.",
+    "unknownEntryType": "Neznámý typ záznamu bibliografie @{{type}}.",
+    "unparsableField": "Nepodařilo se zpracovat pole v @{{type}}.",
+    "unparsableFieldNamed": "Nepodařilo se zpracovat pole v „{{key}}“."
+  },
+  "proofreading": {
+    "cancelled": "Korektura byla zrušena.",
+    "couldNotStart": "Offline korekturu se nepodařilo spustit.",
+    "disposed": "Offline korektura byla ukončena.",
+    "invalidResponse": "Offline korektura vrátila neplatnou odpověď.",
+    "outOfRangeDiagnostic": "Offline korektura vrátila diagnostiku mimo rozsah.",
+    "postFailed": "Dokument se nepodařilo odeslat offline korektuře.",
+    "restarted": "Offline korektura byla restartována.",
+    "restartedAfterTimeout": "Offline korektura byla po vypršení času restartována.",
+    "staleResponse": "Offline korektura vrátila zastaralou odpověď.",
+    "stopped": "Offline korektura se neočekávaně zastavila.",
+    "superseded": "Tento požadavek na korekturu nahradil novější.",
+    "timedOut": "Offline korektuře vypršel čas a při další úpravě se restartuje.",
+    "dictionaryUnavailable": "Vybraný slovník pravopisu není nainstalovaný. Stáhněte si jej v Nastavení."
+  },
+  "skillGroups": {
+    "shelf": "Oborová police",
+    "user": "Vaše dovednosti"
+  },
+  "tagged": {
+    "compileFailed": "Tagovaná kompilace selhala. Zkontrolujte engine a zkuste to znovu.",
+    "compiled": "Tagované PDF bylo zkompilováno. Verdikt přístupnosti najdete níže.",
+    "compiledWithErrors": "Tagovaná kompilace skončila s chybami. Zkontrolujte protokol.",
+    "engineRequired": "Nejprve povolte tagovací engine v Nastavení, Engine LaTeX."
+  },
+  "terminal": {
+    "defaultTitle": "Terminál {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Tento projekt byl připnut s {{pinned}}. Aktivní {{local}} postrádá {{count}} jeho balíčků, takže kompilace mohou selhávat, dokud se znovu nepoužije původní distribuce.",
+    "distributionSkew": "Tento projekt byl připnut s {{pinned}} a tento počítač kompiluje s {{local}}. Výstup se může mírně lišit.",
+    "installPinned_one": "Nainstalovat",
+    "installPinned_few": "Nainstalovat všechny {{count}}",
+    "installPinned_many": "Nainstalovat všechny {{count}}",
+    "installPinned_other": "Nainstalovat všech {{count}}",
+    "installingPinned_one": "Instaluje se {{count}} připnutý balíček…",
+    "installingPinned_few": "Instalují se {{count}} připnuté balíčky…",
+    "installingPinned_many": "Instaluje se {{count}} připnutého balíčku…",
+    "installingPinned_other": "Instaluje se {{count}} připnutých balíčků…",
+    "pinnedPackagesFailed": "Některé připnuté balíčky se nepodařilo nainstalovat. Podívejte se do Nastavení → Engine LaTeX.",
+    "pinnedPackagesInstalled": "Připnuté balíčky LaTeX byly nainstalovány.",
+    "pinnedPackagesMissing_one": "Tento projekt připíná {{count}} balíček LaTeX, který tu není nainstalovaný.",
+    "pinnedPackagesMissing_few": "Tento projekt připíná {{count}} balíčky LaTeX, které tu nejsou nainstalované.",
+    "pinnedPackagesMissing_many": "Tento projekt připíná {{count}} balíčku LaTeX, které tu nejsou nainstalované.",
+    "pinnedPackagesMissing_other": "Tento projekt připíná {{count}} balíčků LaTeX, které tu nejsou nainstalované."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Vlastní CSS nesmí používat at-pravidla, adresy URL ani selektory.",
+    "cssNotSimple": "Vlastní CSS musí obsahovat jednoduché deklarace vlastností.",
+    "cssNotText": "Vlastní CSS musí být text.",
+    "cssPropertyNotAllowed": "Tato vlastnost CSS není povolena: {{property}}.",
+    "cssTooLarge": "Vlastní CSS je větší než 64 KiB.",
+    "cssTooManyDeclarations": "Vlastní CSS smí obsahovat nejvýše 64 deklarací.",
+    "cssUnsafeValue": "Vlastní CSS obsahuje nebezpečnou hodnotu.",
+    "customizationNotObject": "Přizpůsobení motivu musí být objekt.",
+    "dark": {
+      "notObject": "Proměnné CSS pro tmavý režim musí být objekt.",
+      "tooManyEntries": "Proměnné CSS pro tmavý režim mají více než {{max}} položek."
+    },
+    "fileMissingCssVars": "Soubor motivu musí obsahovat cssVars s položkami pro světlý a tmavý režim.",
+    "fileMissingModes": "Soubor motivu musí obsahovat proměnné CSS pro světlý a tmavý režim.",
+    "fileNotJson": "Soubor motivu není platný JSON.",
+    "fileNotObject": "Soubor motivu musí obsahovat objekt.",
+    "fileNotText": "Soubor motivu musí být text.",
+    "fileTooLarge": "Soubor motivu je větší než 128 KiB.",
+    "invalidColor": "Token motivu {{token}} má neplatnou hodnotu barvy.",
+    "invalidRadius": "Zaoblení rohů musí používat px, rem, em nebo procenta.",
+    "light": {
+      "notObject": "Proměnné CSS pro světlý režim musí být objekt.",
+      "tooManyEntries": "Proměnné CSS pro světlý režim mají více než {{max}} položek."
+    },
+    "tokens": {
+      "notObject": "Tokeny motivu musí být objekt.",
+      "tooManyEntries": "Tokeny motivu mají více než {{max}} položek."
+    },
+    "unknownProperty": "neznámá",
+    "unsupportedToken": "Nepodporovaný token motivu: {{token}}.",
+    "unsupportedVersion": "Tento soubor motivu používá nepodporovanou verzi."
+  },
+  "themes": {
+    "matchApp": "Podle motivu aplikace"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeX se nepodařilo nainstalovat.",
+    "installGuide": "Návod k instalaci",
+    "installed": "TinyTeX nainstalován.",
+    "phase": {
+      "addingPackages": "Přidávají se balíčky…",
+      "downloading": "Stahuje se…",
+      "downloadingPercent": "Stahuje se… {{progress}} %",
+      "installing": "Instaluje se…",
+      "unpacking": "Rozbaluje se…"
+    },
+    "removeFailed": "TinyTeX se nepodařilo odebrat",
+    "removed": "TinyTeX odebrán"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Přečíst článek",
+      "alphaxivSearch": "Hledat články",
+      "compile": "Zkompilovat dokument",
+      "getLog": "Přečíst protokol kompilace",
+      "insertFigure": "Vložit obrázek",
+      "listFiles": "Vypsat soubory projektu",
+      "literatureSearch": "Hledat v literatuře",
+      "previewFigure": "Náhled obrázku",
+      "projectLibrarySearch": "Hledat ve zdrojích projektu",
+      "projectMap": "Zmapovat projekt",
+      "readFile": "Přečíst soubor",
+      "readLinkedFile": "Přečíst propojený soubor",
+      "readPdfText": "Přečíst zkompilované PDF",
+      "readResearchRootFile": "Přečíst propojený soubor",
+      "runCommand": "Spustit příkaz",
+      "searchProject": "Hledat v projektu",
+      "sendMessage": "Aktualizovat delegovanou úlohu",
+      "spawnAgent": "Spustit delegovanou úlohu",
+      "verifyCitation": "Zkontrolovat citaci",
+      "verifyPdfPages": "Zkontrolovat stránky PDF",
+      "waitAgent": "Počkat na delegovanou úlohu"
+    },
+    "skillsBudgetNotice": "Codex nedokázal vypsat všechny své dovednosti. Na popisy dovedností si drží 2 % kontextu, proto složku s dovednostmi zeštíhlete nebo si o dovednost řekněte jménem.",
+    "status": {
+      "cancelled": "Zastaveno",
+      "declined": "Odmítnuto",
+      "done": "Hotovo",
+      "failed": "Selhalo",
+      "failedWithCode": "Selhalo s návratovým kódem {{code}}",
+      "interrupted": "Přerušeno",
+      "running": "Probíhá",
+      "timedOut": "Vypršel čas"
+    },
+    "summary": {
+      "citationUnverified": "Nebyl nalezen odpovídající záznam",
+      "citationVerified": "Ověřeno citační službou",
+      "compileFailed": "Kompilace selhala",
+      "compileSucceeded": "Zkompilováno úspěšně",
+      "diagnostics_one": "{{count}} diagnostika",
+      "diagnostics_few": "{{count}} diagnostiky",
+      "diagnostics_many": "{{count}} diagnostiky",
+      "diagnostics_other": "{{count}} diagnostik",
+      "papers_one": "{{count}} článek",
+      "papers_few": "{{count}} články",
+      "papers_many": "{{count}} článku",
+      "papers_other": "{{count}} článků"
+    }
+  },
+  "ui": {
+    "transparent": "Průhledná"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Projekt se během ukládání změnil. Zkuste aktualizaci prosím znovu."
+  }
+}

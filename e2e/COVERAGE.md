@@ -37,7 +37,10 @@ operator-list names. A source assertion alone is never labeled Render.
 | Toolbar (legacy smoke) | bold on selection, undo/redo, insert figure/table, add-citation dialog; source/UI assertions only | 16 |
 | Toolbar inventory activation | italic, underline, inline code, link, cross-reference, footnote, blockquote, align, equation, fraction, all 6 heading levels, both list kinds, symbol search/insertion, word count, find; source/UI assertions only | 33 |
 | Toolbar compiled/rendered semantics | class-valid book Part/Chapter; article Section/Subsection/Subsubsection/Paragraph; bold/italic/underline/code; URL annotation; resolved ref; footnote; quote; undo/redo absence/presence; deterministic citation + `.bib` + bibliography; real PNG figure; toolbar-generated 2×2 table structure/captions/cells/geometry; lists; align/equation/fraction; representative symbol from every category plus every inventory macro compiled | 51 |
-| Toolbar workflow semantics | exact word-count mutation; complete Find/Replace filters, navigation, selection, disclosure, close and preserve-case actions; definition/references + committed rename + resolved compile; WYSIWYG toolbar/keyboard history; every native and raw-backed Visual formatting branch serialized and compiled | 52 |
+| Toolbar workflow semantics | exact word-count mutation; complete Find/Replace filters, navigation, selection, disclosure, close and preserve-case actions; definition/references + committed rename + resolved compile; WYSIWYG toolbar/keyboard history; every Visual formatting branch (native headings from Part to Paragraph, figure via the dialog placeholder, fraction as inline math) serialized and compiled | 52 |
+| Visual editor native nodes | inline and display math render KaTeX and commit edits; part, chapter and subparagraph headings; footnote editor; theorem title; `\textcolor` computed colour; pasted HTML becomes `\textbf`, `itemize` and `tabular` | 88 |
+| Visual figure dialog and image paste | the dialog inserts a real PNG with width, caption and label, the source is canonical and the compiled PDF shows the caption; a pasted PNG lands in the project tree; the source editor paste inserts the snippet | 88 |
+| Visual table toolbar | size-picker table, toolbar adds a row and a column, booktabs rules, caption and label; the tabular compiles and renders its caption | 88 |
 | Toolbar code intelligence (legacy smoke) | go to definition, find references, rename dialog cancel | 33 |
 | Toolbar overflow | ResizeObserver-driven overflow moves controls into the More menu and keeps them available | 47 |
 | Toolbar image transcription | real toolbar invokes its hidden input in both Code and Visual views; valid synthetic PNG (native-picker seam) -> local mock vision model -> production transcription -> compile/render | 41 |
@@ -48,6 +51,17 @@ operator-list names. A source assertion alone is never labeled Render.
 | Semantic delimiter pairing | `\left`, `\bigl`, `\Biggl` and the symmetric `\big` families close their glyph as the user types, including the escaped `\{` and `\|` and a spaced `\left (`; `\middle`/`\bigm` separators, closing size commands and a symmetric `\big|` stay unpaired; a size command typed against a word or a `\frac` stays open; Backspace clears an empty pair; a selection is wrapped and several carets pair at once; the paired output compiles | 87 |
 | Closer overtyping | typing the closing glyph steps over the closer the editor wrote, an inner `(a+b)` keeps its own closer, a closer spelled out in full (`\right)`, `\right\}`, `\bigr)`, `\big)`) or as its escaped glyph (`\}`, `\|`) is consumed instead of duplicated, and a closer the user typed themselves is never stepped over | 87 |
 | Delimiter completion | the dropdown offers the named families, Enter inserts both halves and tracks the closer so it can be spelled or stepped over, accepting the matching closer consumes the pending one, an open size command scopes the list (`\left\`, `\middle\`, `\right\`) without doubling the prefix, an accepted brace delimiter keeps its backslash, and a standalone `\langle` pair clears on Backspace | 87 |
+| BibTeX entry editing | `@art` in a `.bib` file offers the entry types; accepting `@article` writes the skeleton with a line per required field and the caret in the key | 89 |
+| BibTeX entry checks | an entry missing `year` marks its key and the message names the field; `%%novalidate` at the top clears it | 89 |
+| Bibliography style completion | `\bibliographystyle{pla` offers `plain` and `plainnat`, and accepting writes `plain` | 89 |
+| Syntax check escape hatch | an unclosed `\begin{itemize}` is marked, `%novalidate` clears the whole file, and a `%begin novalidate` region hides only its own errors | 89 |
+| Editor keybinding modes | Default/Vim/Emacs select; Emacs adds its scroller class and `Ctrl-A` moves to line start; Vim shows its status line; Default shows neither | 65 |
+| Editor layout preferences | tab size 2 indents two spaces and reports `state.tabSize`; wrap off drops the wrapping class and back on restores it; compact versus wide changes the computed `.cm-line` height | 65 |
+| Editor command keys | `Ctrl-U` uppercases a selection, `Mod-Shift-D` duplicates a line, `Mod-D` deletes one, `Ctrl-Alt-Down` adds a cursor, `Mod-Shift-L` opens the go-to-line dialog | 65 |
+| Editor key remapping | Settings > Shortcuts > Editor records `Mod-Shift-K` for delete line and the editor obeys without a reload | 65 |
+| Shortcut reference versus comment toggle | `Mod-/` in the editor comments the line and leaves the reference closed | 65 |
+| Spell-check language per project | a project pinned to French flags a French typo while the app setting stays English, a second project still flags English, and the override survives reopening | 91 |
+| Dictionary download | picking Spanish in Settings downloads and verifies the pack, then `hola` is accepted and `holaa` is flagged with a suggestion | 🔑 91 |
 | Environment argument shapes | `alignat` and `tabularx` complete with the arguments their `\begin` needs | 87 |
 | Editor tabs | close button removes the tab, main.tex stays active | 34 |
 | Context menu | every LaTeX insertion/heading/list action; Ask AI widget; SyncTeX; definition/references/rename activation; every Typst/Markdown profile action | 53 (activation/navigation), 16 (legacy smoke) |
@@ -88,7 +102,10 @@ operator-list names. A source assertion alone is never labeled Render.
 | Find / Replace | A | 52 | Next/previous, replace-next/all, case, whole-word, regex/invalid-regex, select-all exact ranges, preserve-case, disclosure, close button/Escape, live status and keyboard-visible focus are asserted; no PDF claim. |
 | Code intelligence | A + C + R | 52 | Definition/references and committed rename; both label/ref mutate and the recompiled PDF remains resolved. |
 | WYSIWYG native formatting | A + C + R | 52 | Bold, italic, code, Section/Subsection/Subsubsection, both list kinds, and blockquote use toolbar controls, serialize to LaTeX, then render with outline/font/coordinate evidence. |
-| WYSIWYG raw-backed actions | A + C + R | 52 | Part/Chapter/Paragraph, underline, link, ref, footnote, citation, figure, table, align, equation, fraction and symbol controls serialize after placeholder entry and compile together; word-count UI is activated. Source-only Find/code-intelligence/SyncTeX controls are hidden in Visual view and unit-asserted. |
+| WYSIWYG toolbar actions | A + C + R | 52 | Part/Chapter/Paragraph as native headings; underline, link, ref, footnote, citation, figure (dialog placeholder), table, align, equation, fraction and symbol controls serialize and compile together; word-count UI is activated. Source-only Find/code-intelligence/SyncTeX controls are hidden in Visual view and unit-asserted. |
+| Visual editor native nodes | A | 88 | Math, headings, footnote, theorem, colour and HTML paste verified through the serialized source and computed styles. |
+| Visual figure dialog and image paste | A + C + R | 88 | Dialog insert of a real PNG compiles and the caption appears in the PDF; pasted PNG appears in the tree; source-mode paste inserts the snippet. |
+| Visual table toolbar | A + C + R | 88 | Toolbar-edited table compiles and its caption renders. |
 | Go to PDF (SyncTeX) | A | 47, 53 | Verifies source-only → split view and a PDF location highlight; it does not mutate document content. |
 | LaTeX context-menu insertions | A | 53 | Every direct action plus all six heading and both list submenu actions; semantic compile assertions are shared with 51. |
 | Typst / Markdown context menus | A | 53 | Every profile-appropriate action and Ask AI widget activation; source effects only. |
@@ -149,6 +166,7 @@ operator-list names. A source assertion alone is never labeled Render.
 | Hotkeys reference | open + search filter | 10, 18 |
 | Word count / History / About modals | open/close | 18 |
 | Settings modal | all sections render, toggle effect (compile label), persistence across restart (vim) | 07 |
+| Interface language | boots in Simplified Chinese and switches live both ways; every shipped language switches from the picker, sets `html[lang]` and renders its own settings copy | 97, 98 |
 | Appearance matrix | EVERY option: editor/app font sizes, app/editor fonts, accent colors, open-projects-in (all 3 layouts), show-file-tree-on-open | 32 |
 | General matrix | offline mode (real --only-cached compile), shortcuts row, reset-to-defaults round-trip | 32 |
 | Rail chrome | theme toggle, sidebar collapse/restore, editor/preview resize handle | 34 |

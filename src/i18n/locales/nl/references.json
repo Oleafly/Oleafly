@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Oleafly citeren in dit artikel",
+  "empty": {
+    "citations": {
+      "detail": "Importeer een referentiebibliotheek of voeg een citatie toe om te beginnen.",
+      "title": "Nog geen citaties"
+    },
+    "symbols": {
+      "detail": "Koppen, labels, commando's en omgevingen verschijnen hier terwijl je aan het project werkt.",
+      "title": "Nog geen symbolen"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Citaties filteren",
+    "ariaLabelResults": "Resultaten filteren",
+    "ariaLabelSymbols": "Symbolen filteren",
+    "clear": "Filter wissen",
+    "noCitation": "Geen citatie komt overeen met “{{query}}”.",
+    "noResult": "Geen resultaat komt overeen met “{{query}}”.",
+    "noSymbol": "Geen symbool komt overeen met “{{query}}”.",
+    "placeholderCitations": "Filter op sleutels, titels, auteurs…",
+    "placeholderResults": "Filter op locaties…",
+    "placeholderSymbols": "Filter op labels en commando's…"
+  },
+  "import": {
+    "added_one": "{{count}} referentie toegevoegd aan {{target}}.",
+    "added_other": "{{count}} referenties toegevoegd aan {{target}}.",
+    "addedWithDuplicates_one": "{{count}} referentie toegevoegd aan {{target}}, {{duplicates}} stonden er al in.",
+    "addedWithDuplicates_other": "{{count}} referenties toegevoegd aan {{target}}, {{duplicates}} stonden er al in.",
+    "allDuplicates_one": "Die referentie staat al in {{target}}.",
+    "allDuplicates_other": "Die {{count}} referenties staan al in {{target}}.",
+    "defaultTarget": "de bibliografie",
+    "description": "Voeg referenties uit een referentiemanager of bibliografiebestand toe aan dit project.",
+    "duplicateNote": "Referenties met een DOI die al in de bibliografie staat worden overgeslagen.",
+    "empty": "Geen referenties gevonden in dat bestand.",
+    "endnote": {
+      "button": "Kies een XML-, RIS- of BibTeX-bestand",
+      "description": "Kies een EndNote XML-, RIS- of BibTeX-bestand. Oleafly voegt de referenties toe aan de bibliografie van het project.",
+      "title": "EndNote, RIS of BibTeX"
+    },
+    "failed": "Kon die referenties niet importeren.",
+    "nothingNew": "Niets nieuws om aan {{target}} toe te voegen.",
+    "problems_one": "{{count}} probleem tijdens het importeren. {{details}}",
+    "problems_other": "{{count}} problemen tijdens het importeren. {{details}}",
+    "readFailed": "Kon dat bestand niet lezen.",
+    "title": "Referentiebibliotheek importeren",
+    "unrecognized": "Onbekend bestandstype: {{name}}",
+    "zotero": {
+      "button": "Kies een Zotero RDF-bestand",
+      "description": "Kies in Zotero Bestand → Bibliotheek exporteren → Zotero RDF. Kies daarna het geëxporteerde bestand.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Gedeeltelijke resultaten. Onjuiste of onleesbare bestanden kunnen sommige voorkomens weglaten.",
+    "stale": "Bezig met bijwerken. Citaties, symbolen en bereiken uit de vorige revisie zijn verborgen."
+  },
+  "panel": {
+    "ariaLabel": "Referenties (Shift-F12)",
+    "clearQuery": "Referentiezoekopdracht wissen",
+    "cleanLibrary": "Referentiebibliotheek opschonen",
+    "importAriaLabel": "Referenties importeren",
+    "issues_one": "{{count}} probleem met een referentie of citatie",
+    "issues_other": "{{count}} problemen met referenties of citaties",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referenties",
+    "viewTabs": "Weergave van het referentiepaneel"
+  },
+  "cleanLibrary": {
+    "title": "De referentiebibliotheek opschonen",
+    "description": "Bekijk citatiesleutels en dubbele items voordat je je bestanden wijzigt.",
+    "library": "Referentiebibliotheek",
+    "entryCount_one": "{{count}} item",
+    "entryCount_other": "{{count}} items",
+    "footer": "Bij een voorbeeld worden je geopende bestanden opgeslagen. Bij toepassen wordt gecontroleerd of ze nog met het voorbeeld overeenkomen en wordt er een reservekopie van de originelen gemaakt.",
+    "noBib": "Dit project heeft geen .bib-bestand om op te schonen.",
+    "entriesKept": "Er blijven {{kept}} van de {{total}} items over.",
+    "changes": "Wijzigingen en opmerkingen",
+    "noChanges": "Geen bestandswijzigingen om toe te passen.",
+    "filesToUpdate": "Bij te werken bestanden: {{files}}",
+    "none": "Geen",
+    "introSafeChanges": "Citatiesleutels worden gestandaardiseerd. Dubbele DOI's worden alleen verwijderd als alle gegevens behouden kunnen blijven.",
+    "introReview": "Vergelijkbare titels en tegenstrijdige metagegevens blijven in de bibliotheek staan om te beoordelen.",
+    "preview": "Voorbeeld",
+    "reviewTitle": "Beoordelen voordat je toepast",
+    "reviewBody": "Bekijk een voorbeeld van de wijzigingen om te zien welke items en citaties worden bijgewerkt.",
+    "statusAttention": "Vraagt aandacht",
+    "statusWorking": "Bezig…",
+    "statusPreviewReady": "Voorbeeld klaar",
+    "statusReady": "Klaar om een voorbeeld te maken",
+    "refreshPreview": "Voorbeeld vernieuwen",
+    "previewChanges": "Wijzigingen bekijken",
+    "apply": "Toepassen en citaties herschrijven",
+    "truncated": "Het voorbeeld toont de eerste 500 regels van elke versie.",
+    "actionRenamed": "{{old}} hernoemd naar {{new}}",
+    "actionDuplicate": "{{removed}} verwijderd als duplicaat van {{kept}} (gevonden via {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "De opgeschoonde bestanden konden niet opnieuw worden geladen. Open het project opnieuw voordat je gaat bewerken.",
+    "cleaned": "Bibliotheek opgeschoond. {{kept}} van de {{total}} items behouden.",
+    "cleanedWithBackup": "Bibliotheek opgeschoond. {{kept}} van de {{total}} items behouden. De originele bestanden staan in {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Het project is na deze zoekopdracht gewijzigd. Voer Referenties zoeken opnieuw uit om actuele bronbereiken te gebruiken.",
+      "title": "Referentieresultaten verlopen"
+    },
+    "noLocations": {
+      "detail": "Het symbool bestaat in deze revisie, maar heeft geen bijbehorende definities of voorkomens.",
+      "title": "Geen locaties gevonden"
+    },
+    "none": {
+      "detail": "Zet de cursor op een label, citatie, commando of omgeving en druk op Shift-F12.",
+      "title": "Geen referentiezoekopdracht"
+    }
+  },
+  "tabs": {
+    "citations": "Citaties",
+    "results": "Referenties",
+    "symbols": "Symbolen"
+  },
+  "trees": {
+    "citations": "Citaties in het project",
+    "noCitations": "Er zijn geen bibliografie-items of gebruikte citaties gevonden.",
+    "noSymbols": "Er zijn geen door het project gedefinieerde symbolen gevonden.",
+    "symbols": "Symbolen in het project"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "De nieuwste projectrevisie kon niet worden geanalyseerd. De bronbestanden zijn niet gewijzigd.",
+      "title": "Projectanalyse mislukt"
+    },
+    "indexing": {
+      "detail": "Referenties en citaties verschijnen zodra de huidige projectrevisie klaar is.",
+      "title": "Projectintelligentie indexeren"
+    },
+    "noProject": {
+      "detail": "Open een documentproject om citaties, symbolen en referenties tussen bestanden te bekijken.",
+      "title": "Geen project geopend"
+    },
+    "offline": {
+      "detail": "Referenties en citaties kunnen op dit moment niet in deze werkruimte worden gecontroleerd.",
+      "title": "Analysedienst niet beschikbaar"
+    },
+    "unsupported": {
+      "detail": "Het actieve project gebruikt geen ondersteunde document-engine.",
+      "title": "Projectintelligentie niet beschikbaar"
+    },
+    "waiting": {
+      "detail": "De nieuwste projectrevisie is nog niet geïndexeerd.",
+      "title": "Wachten op projectanalyse"
+    }
+  }
+}

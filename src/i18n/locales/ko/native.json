@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Oleafly 정보",
+    "checkUpdates": "업데이트 확인…",
+    "reloadViews": "뷰 다시 불러오기",
+    "restartApp": "응용 프로그램 다시 시작",
+    "quit": "Oleafly 종료",
+    "edit": "편집",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "cut": "잘라내기",
+    "copy": "복사",
+    "paste": "붙여넣기",
+    "selectAll": "모두 선택",
+    "view": "보기",
+    "toggleTerminal": "터미널 전환",
+    "toggleBrowser": "브라우저 전환"
+  },
+  "window": {
+    "browser": "Oleafly 브라우저",
+    "browserTitled": "{{title}} - Oleafly 브라우저"
+  },
+  "dialog": {
+    "cancel": "취소",
+    "fullAccess": {
+      "title": "전체 접근 권한을 활성화할까요?",
+      "message": "전체 접근 권한을 사용하면 어시스턴트가 매번 승인을 요청하지 않고 shell 명령을 실행하고 파일을 편집할 수 있습니다. 전체 접근 권한을 활성화할까요?",
+      "confirm": "전체 접근 권한 활성화"
+    },
+    "cookieImport": {
+      "title": "Cookie 가져오기 확인",
+      "messageHost": "{{browser}} 프로필 \"{{profile}}\"에 있는 {{hostname}}의 Cookie를 Oleafly 내장 브라우저로 가져올까요? 가져온 Cookie 때문에 웹사이트에 자동으로 로그인될 수 있습니다.",
+      "messageAll": "{{browser}} 프로필 \"{{profile}}\"에 있는 모든 Cookie를 Oleafly 내장 브라우저로 가져올까요? 가져온 Cookie 때문에 웹사이트에 자동으로 로그인될 수 있습니다.",
+      "confirm": "Cookie 가져오기"
+    },
+    "mcpApprove": {
+      "title": "MCP 도구 승인",
+      "confirm": "도구 사용"
+    },
+    "tableImport": {
+      "title": "가져올 스프레드시트 선택",
+      "filter": "스프레드시트"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "응용 프로그램 메뉴를 사용할 수 없습니다",
+    "viewMenuUnavailable": "보기 메뉴를 사용할 수 없습니다",
+    "menuItemUnavailable": "메뉴 항목 {{id}}을(를) 사용할 수 없습니다",
+    "fullAccessDismissed": "전체 접근 권한 확인 창을 닫았습니다.",
+    "fullAccessDeclined": "전체 접근 권한이 활성화되지 않았습니다.",
+    "approvalDialogClosed": "네이티브 승인 대화 상자가 예기치 않게 닫혔습니다."
+  }
+}

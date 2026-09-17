@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "İptal",
+    "close": "Kapat",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "remove": "Kaldır",
+    "rename": "Yeniden adlandır",
+    "open": "Aç",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "retry": "Yeniden dene",
+    "back": "Geri",
+    "next": "İleri",
+    "done": "Bitti",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "search": "Ara",
+    "clear": "Temizle",
+    "apply": "Uygula",
+    "confirm": "Onayla",
+    "ok": "Tamam",
+    "yes": "Evet",
+    "no": "Hayır",
+    "learnMore": "Daha fazla bilgi",
+    "showMore": "Daha fazla göster",
+    "showLess": "Daha az göster"
+  },
+  "state": {
+    "loading": "Yükleniyor…",
+    "saving": "Kaydediliyor…",
+    "none": "Yok",
+    "unknown": "Bilinmiyor",
+    "enabled": "Etkin",
+    "disabled": "Devre dışı",
+    "on": "Açık",
+    "off": "Kapalı",
+    "beta": "Beta",
+    "new": "Yeni",
+    "default": "Varsayılan"
+  },
+  "labels": {
+    "name": "Ad",
+    "type": "Tür",
+    "size": "Boyut",
+    "date": "Tarih",
+    "status": "Durum",
+    "description": "Açıklama",
+    "optional": "İsteğe bağlı",
+    "required": "Zorunlu"
+  }
+}

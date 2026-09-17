@@ -1,0 +1,597 @@
+{
+  "accents": {
+    "blue": "Blauw",
+    "green": "Groen",
+    "orange": "Oranje",
+    "purple": "Paars",
+    "rose": "Roze",
+    "teal": "Turquoise"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Bridge nodig",
+      "cliMissing": "CLI niet gevonden",
+      "ready": "Klaar",
+      "unavailable": "Niet beschikbaar"
+    },
+    "requestFailed": "Het ACP-verzoek kon niet worden voltooid."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Dit project heeft zijn AI-budget van {{budget}} bereikt. Verhoog of wis het budget bij Instellingen om door te gaan.",
+    "warned": "Dit project heeft {{spent}} van zijn AI-budget van {{budget}} gebruikt."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Voor deze actie is overgeschakeld naar de Oleafly-assistent."
+  },
+  "bibtex": {
+    "duplicateDoi": "Dezelfde DOI als: {{keys}}",
+    "duplicateKey": "Dubbele citatiesleutel",
+    "invalidYear": "Jaar \"{{year}}\" is geen getal van vier cijfers",
+    "missingField": "Verplicht veld ontbreekt: {{fields}}",
+    "missingKey": "Item van type @{{type}} heeft geen citatiesleutel",
+    "unknownType": "Onbekend itemtype @{{type}}",
+    "unreadableFields": "Kon de velden van \"{{entry}}\" niet lezen",
+    "unterminatedEntry": "Niet-afgesloten item bij teken {{position}}",
+    "unusualField": "Ongebruikelijk veld voor @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} is tijdens het importeren van de citatie gewijzigd. Probeer het opnieuw.",
+    "noArxivEntry": "Geen arXiv-item gevonden.",
+    "noReferences": "Geen referenties gevonden in dat bestand.",
+    "offline": "Citaties opzoeken werkt alleen met een netwerkverbinding. Zet de offlinemodus uit bij Instellingen.",
+    "parseFailed": "Kon de citatie niet lezen.",
+    "projectChanged": "Het project is tijdens het importeren van de citatie gewijzigd.",
+    "projectChangedNotInserted": "Het project is tijdens het importeren van de citatie gewijzigd. De citatie is niet ingevoegd.",
+    "projectChangedRetry": "Het project is tijdens het importeren van de citatie gewijzigd. Probeer het opnieuw in het oorspronkelijke project.",
+    "readFailed": "Kon {{path}} niet lezen: {{detail}}",
+    "unrecognizedFile": "Onbekend bestandstype: {{name}}",
+    "writeFailed": "Kon {{path}} niet schrijven: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Het Oleafly-item is toegevoegd aan {{path}}. Citeer het met {{markup}}.",
+    "failed": "Kon de Oleafly-citatie niet toevoegen. Kopieer hem in plaats daarvan uit Instellingen, Help en Over.",
+    "present": "{{path}} bevat het Oleafly-item al. Citeer het met {{markup}}.",
+    "undo": "Ongedaan maken"
+  },
+  "compatibility": {
+    "biblatexBiber": "Dit project gebruikt biblatex/Biber voor de bibliografie.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_other": "{{title}} (+{{more}} meer)",
+    "chooseEngine": "Engine kiezen…",
+    "importNotes_one": "{{count}} importopmerking: {{title}}",
+    "importNotes_other": "{{count}} importopmerkingen: {{title}} (+{{more}} meer)"
+  },
+  "compile": {
+    "engineNotLoaded": "Compileren is uitgeschakeld totdat de document-engine is geladen.",
+    "noOfflineMode": "{{engine}} heeft geen offline compileermodus. Er wordt normaal gecompileerd.",
+    "retry": "Opnieuw compileren"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Verplaats elk ontwikkelproject naar de Prullenbak. Er wordt niets definitief verwijderd.",
+        "title": "Projecten wissen"
+      },
+      "replayFirstRun": {
+        "description": "Zet elke rondleiding terug, sluit het huidige project en ga terug naar het welkomstscherm.",
+        "title": "Eerste start opnieuw afspelen"
+      },
+      "resetAndSeed": {
+        "description": "Verplaats de huidige projecten naar de Prullenbak en kopieer daarna alle {{count}} vastgezette praktijkvoorbeelden uit de lokale cache.",
+        "title": "Resetten en vullen"
+      },
+      "resetUiState": {
+        "description": "Wis de lokale instellingen en de bewaarde interfacestatus van Oleafly zonder projecten te verwijderen.",
+        "title": "Interfacestatus resetten"
+      },
+      "seedCorpus": {
+        "action": "Corpus vullen",
+        "description": "Kopieer {{count}} onderzoeksprojecten uit ~/Codespace/Oleafly/oleafly-seed. Artikelen, scripties, boeken, lezingen, posters en figuren in LaTeX en Typst, stuk voor stuk gecontroleerd op compileren met de meegeleverde engines. Bestaande voorbeelden blijven staan.",
+        "title": "Onderzoekscorpus vullen"
+      }
+    },
+    "closeProjectFailed": "Het geopende project kon niet veilig worden gesloten.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Projecten wissen",
+        "description": "Elk project in de geïsoleerde ontwikkelbibliotheek gaat naar de Prullenbak. Je gewone Oleafly-bibliotheek blijft ongemoeid.",
+        "title": "Alle ontwikkelprojecten wissen?"
+      },
+      "fallbackTitle": "Ontwikkelactie bevestigen",
+      "resetAndSeed": {
+        "action": "Resetten en vullen",
+        "description": "Elk huidig ontwikkelproject gaat naar de Prullenbak, daarna kopieert Oleafly {{count}} onderzoeksvoorbeelden uit de lokale oleafly-seed-cache.",
+        "title": "De ontwikkelbibliotheek resetten en vullen?"
+      },
+      "resetBrowser": {
+        "action": "Interfacestatus resetten",
+        "description": "Dit wist de instellingen, rondleidingen en overige browserstatus van Oleafly voor deze ontwikkelomgeving en laadt daarna de app opnieuw. Projectbestanden blijven op schijf staan.",
+        "title": "De interfacestatus van de ontwikkelomgeving resetten?"
+      }
+    },
+    "debugOnly": {
+      "description": "Deze knoppen worden alleen geladen door de Vite-ontwikkelbuild. Productiebuilds weigeren deze module als het kenmerk ervan in een uitgevoerd bestand voorkomt.",
+      "title": "Alleen debugbuild"
+    },
+    "library": {
+      "checking": "Bibliotheekpad controleren…",
+      "label": "Ontwikkelbibliotheek",
+      "locked": "De projectknoppen zijn vergrendeld omdat dit niet de .oleafly-dev-sandbox is."
+    },
+    "nav": "Ontwikkelaar",
+    "projectsRecycled_one": "{{count}} project naar de Prullenbak verplaatst.",
+    "projectsRecycled_other": "{{count}} projecten naar de Prullenbak verplaatst.",
+    "replayFailed": "Kon de rondleiding voor de eerste start niet resetten.",
+    "resetAndSeedSummary": "{{removed}} projecten naar de Prullenbak verplaatst en het onderzoekscorpus gevuld: {{created}} aangemaakt, {{skipped}} al aanwezig.",
+    "resetFailed": "Kon de ontwikkelsandbox niet resetten.",
+    "sandboxOnly": "Onderzoeksvoorbeelden kunnen alleen naar de .oleafly-dev-sandbox worden gekopieerd.",
+    "seedFailed": "Kon het onderzoekscorpus niet vullen.",
+    "seedFailures_one": "{{summary}} {{count}} voorbeeld is mislukt. Eerste fout: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} voorbeelden zijn mislukt. Eerste fout: {{name}}: {{message}}",
+    "seedSummary": "Onderzoekscorpus gevuld: {{created}} aangemaakt, {{skipped}} al aanwezig.",
+    "unknownSeedError": "Onbekende fout bij het vullen"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG-afbeelding",
+      "zipArchive": "Zip-archief"
+    }
+  },
+  "dictionary": {
+    "full": "Je woordenboek is vol, daarom is dat woord alleen in dit document verborgen. Verwijder er een bij Instellingen om het op te slaan.",
+    "wordTooLong": "Dat is te lang om als woord op te slaan, daarom is het alleen in dit document verborgen. Een woord mag maximaal {{max}} tekens hebben."
+  },
+  "documentScan": {
+    "complete": "Scan voltooid",
+    "failed": "Documentscan mislukt",
+    "processed": "{{current}}/{{total}} alinea's verwerkt…",
+    "processing": "{{current}}/{{total}} alinea's verwerken…",
+    "skippedEmpty": "Lege zoekopdracht overgeslagen ({{current}}/{{total}})",
+    "splitting": "Document in alinea's splitsen…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "De gegevens van de document-engine konden niet worden geladen. Engine-specifieke acties zijn uitgeschakeld.",
+      "renameReloadFailed": "De gegevens van de document-engine konden na het hernoemen van het hoofddocument niet worden geladen.",
+      "stillLoading": "De gegevens van de document-engine worden nog geladen."
+    }
+  },
+  "export": {
+    "pdfFailed": "Opslaan van de PDF is niet gelukt",
+    "pdfFailedDetail": "Opslaan van de PDF is niet gelukt: {{detail}}",
+    "pngFailed": "Opslaan van de PNG is niet gelukt",
+    "pngFailedDetail": "Opslaan van de PNG is niet gelukt: {{detail}}",
+    "revealFailed": "Het bestand is opgeslagen, maar Oleafly kon de map niet openen (geen toestemming). Kijk op de locatie die je in het opslaanvenster koos.",
+    "saved": "{{kind}} opgeslagen · {{fileName}}",
+    "showInFolder": "In map tonen"
+  },
+  "externalChange": {
+    "deletionRestored": "Een verwijdering van buitenaf botste met niet-opgeslagen bewerkingen. Je lokale bewerkingen zijn hersteld.",
+    "localEditKept": "Er kwam een externe wijziging in \"{{path}}\" binnen terwijl je niet-opgeslagen wijzigingen had. Jouw lokale bewerking is behouden.",
+    "persistExternalFailed": "Kon de laatste externe wijziging in \"{{path}}\" niet vastleggen.",
+    "preserveLocalFailed": "Kon jouw lokale wijziging in \"{{path}}\" niet behouden.",
+    "reloadFailed": "De projectinstellingen zijn bijgewerkt, maar sommige gewijzigde bestanden konden niet opnieuw worden geladen.",
+    "restoreLocalFailed": "Kon jouw niet-opgeslagen wijziging in \"{{path}}\" niet herstellen."
+  },
+  "fonts": {
+    "systemDefault": "Systeemstandaard",
+    "terminalDefault": "Terminalstandaard"
+  },
+  "imageToLatex": {
+    "failed": "Afbeelding naar LaTeX is mislukt: {{detail}}",
+    "inserted": "LaTeX uit afbeelding ingevoegd",
+    "transcribing": "Afbeelding overnemen…"
+  },
+  "import": {
+    "arxivImported": "arXiv-broncode geïmporteerd. Compileer het project om het resultaat te controleren.",
+    "chooseOfferedProjectType": "Kies een van de projecttypen die voor dit bestand worden aangeboden.",
+    "invalidArxivId": "Plak een arXiv-link naar een artikel of een id zoals 2301.01234.",
+    "supportedDocumentTypes": "Kies een van de ondersteunde documenttypen.",
+    "conversionNotice": "We hebben je inhoud omgezet naar LaTeX. Mogelijk moet je de opmaak nog bijwerken, vooral bij tabellen, figuren en citaties.",
+    "figureSaved": "{{name}} opgeslagen",
+    "pdfProjectCreated": "Project aangemaakt vanuit een PDF. Controleer de reconstructie voordat je erop vertrouwt.",
+    "pickPdfOrDocx": "Kies een .pdf- of .docx-bestand",
+    "texSaved": ".tex opgeslagen",
+    "unsupportedFile": "Kies een .zip-, .docx-, .md- of .markdown-bestand.",
+    "zipSaveFailed": "Kon het ZIP-archief niet opslaan.",
+    "zipSaved": ".zip opgeslagen"
+  },
+  "inlineAi": {
+    "concise": "Beknopter maken",
+    "expand": "Uitbreiden",
+    "fixSource": "Broncode herstellen",
+    "grammar": "Grammatica verbeteren",
+    "improve": "Verbeteren",
+    "translate": "Vertalen"
+  },
+  "intelligence": {
+    "analysisFailed": "De projectanalyse van de huidige revisie is mislukt.",
+    "analyzing": "Projectintelligentie analyseert de huidige revisie.",
+    "couldNotSend": "Kon de projectanalyse niet naar de worker sturen.",
+    "disposed": "De projectintelligentie-worker is afgesloten.",
+    "disposedDuringRequest": "De projectintelligentie-worker is tijdens het verzoek afgesloten.",
+    "failed": "Projectintelligentie is mislukt.",
+    "identityMismatch": "De identiteit van het antwoord van projectintelligentie kwam niet overeen met het verzoek.",
+    "malformedResponse": "De projectintelligentie-worker gaf een onjuist opgebouwd antwoord terug.",
+    "malformedSnapshotIdentity": "De snapshot-identiteit van projectintelligentie was onjuist opgebouwd.",
+    "noProject": "Er is geen project actief.",
+    "partialFiles_one": "{{count}} bestand leverde een herstelbare gedeeltelijke analyse op.",
+    "partialFiles_other": "{{count}} bestanden leverden een herstelbare gedeeltelijke analyse op.",
+    "retainedStale": "De inhoud van het project is gewijzigd. De bewaarde analyse is verouderd zolang de huidige revisie draait.",
+    "sourceGraphRefreshing": "De projectbestanden zijn gewijzigd. De brongrafiek wordt vernieuwd.",
+    "sourceSnapshotsLoading": "De projectbestanden zijn gewijzigd. Er worden bronsnapshots geladen voor de huidige analyse.",
+    "staleSnapshot": "De projectintelligentie-worker heeft geen analyse voor dit snapshot.",
+    "stopped": "Projectintelligentie is gestopt.",
+    "timedOut": "Projectintelligentie kreeg een time-out.",
+    "typeMismatch": "Het type van het antwoord van projectintelligentie kwam niet overeen met het verzoek.",
+    "unexpectedResponse": "De projectintelligentie-worker gaf een onverwacht antwoord terug.",
+    "workerFailed": "De projectintelligentie-worker is mislukt.",
+    "workerRestarted": "De projectintelligentie-worker is na een time-out herstart.",
+    "workerUnavailable": "De projectintelligentie-worker is niet beschikbaar."
+  },
+  "latexPackages": {
+    "algorithm2e": "Algoritmen zetten",
+    "amsmath": "Geavanceerd wiskundig zetwerk",
+    "amssymb": "Uitgebreide wiskundesymbolen",
+    "amsthm": "Omgevingen voor stellingen en bewijzen",
+    "array": "Uitgebreide array en tabular",
+    "authblk": "Blokken voor auteurs en affiliaties",
+    "babel": "Meertalige ondersteuning en documenttaal",
+    "biblatex": "Geavanceerde ondersteuning voor bibliografieën",
+    "bookmark": "Verbeterde PDF-bladwijzers",
+    "booktabs": "Professionele tabellijnen",
+    "caption": "Bijschriften aanpassen",
+    "cleveref": "Slimme kruisverwijzingen (na hyperref laden)",
+    "csquotes": "Contextgevoelige aanhalingstekens (nodig voor biblatex)",
+    "enumitem": "Lijsten aanpassen",
+    "fancyhdr": "Eigen kop- en voetteksten",
+    "float": "Betere plaatsing van floats",
+    "fontspec": "OpenType-lettertypen kiezen (Xe/LuaLaTeX)",
+    "geometry": "Pagina-indeling aanpassen",
+    "graphicx": "Afbeeldingen en illustraties opnemen",
+    "hyperref": "Hyperlinks, bladwijzers en PDF-metagegevens",
+    "inputenc": "Invoercodering (niet nodig bij Xe/LuaLaTeX)",
+    "lineno": "Regelnummers voor reviewversies",
+    "lipsum": "Blindtekst (lorem ipsum)",
+    "listings": "Codefragmenten (de inhoud wordt niet getagd)",
+    "mathtools": "Uitbreiding van amsmath met correcties en hulpmiddelen",
+    "microtype": "Microtypografische verfijningen",
+    "minted": "Codefragmenten met Pygments-kleuring",
+    "multirow": "Tabelcellen over meerdere rijen",
+    "natbib": "Citaties op auteur-jaar en op nummer",
+    "parskip": "Witruimte tussen alinea's",
+    "pdfpages": "Hele pagina's uit een andere PDF opnemen",
+    "setspace": "Regelafstand instellen",
+    "siunitx": "SI-eenheden en getalopmaak",
+    "subcaption": "Deelfiguren en deeltabellen",
+    "subfig": "Ouder pakket voor deelfiguren",
+    "tabularx": "Tabellen met automatische breedte",
+    "threeparttable": "Tabellen met noten eronder",
+    "tikz": "Programmeerbare vectorafbeeldingen (alt-tekst voeg je zelf toe)",
+    "titlesec": "Opmaak van sectiekoppen",
+    "todonotes": "To-do-notities in de marge voor concepten",
+    "unicode-math": "Unicode-wiskunde voor Xe/LuaLaTeX (nodig voor getagde wiskunde)",
+    "url": "URL's zetten",
+    "wrapfig": "Figuren met tekst eromheen",
+    "xcolor": "Kleurondersteuning"
+  },
+  "literatureSources": {
+    "arxiv": "Meer dan 2,4 miljoen preprints in natuurkunde, wiskunde, informatica, kwantitatieve biologie en verwante vakgebieden.",
+    "crossref": "Het DOI-register met metagegevens van meer dan 150 miljoen onderzoeksresultaten.",
+    "googleScholar": "Resultaten van Google Scholar via Serper. Vereist een Serper API-sleutel bij Instellingen → Integraties → Citaties zoeken.",
+    "openalex": "Een open catalogus van wetenschappelijke werken, auteurs, bronnen, instellingen, onderwerpen, uitgevers en financiers.",
+    "pubmed": "Meer dan 40 miljoen verwijzingen en samenvattingen uit biomedische en levenswetenschappelijke literatuur, inclusief MEDLINE.",
+    "semanticScholar": "Een wetenschappelijke index met citatiegrafieken, gegevens over invloedrijke citaties en TLDR-samenvattingen.",
+    "uspto": "Amerikaanse octrooien en gepubliceerde aanvragen voor stand van de techniek en toegepast onderzoek. Het zoeken is gepauzeerd tijdens de migratie van PatentsView.",
+    "usptoPaused": "USPTO heeft de zoek-API's van PatentsView tijdelijk gepauzeerd tijdens de migratie naar het Open Data Portal.",
+    "yearRangeInvalid": "Het beginjaar mag niet later zijn dan het eindjaar."
+  },
+  "mcp": {
+    "openProjectSummary": "Project {{id}} openen",
+    "useToolSummary": "{{tool}} gebruiken van de MCP-server {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP-server '{{name}}' heeft tegenstrijdige declaraties voor type en transport.",
+    "exactlyOneServer": "De MCP-server-JSON moet precies één server bevatten.",
+    "fieldBoolean": "Veld '{{field}}' van MCP-server '{{name}}' moet een boolean zijn.",
+    "fieldString": "Veld '{{field}}' van MCP-server '{{name}}' moet een string zijn.",
+    "fieldStringArray": "Veld '{{field}}' van MCP-server '{{name}}' moet een array van strings zijn.",
+    "fieldStringRecord": "Veld '{{field}}' van MCP-server '{{name}}' moet een object met stringwaarden zijn.",
+    "jsonMalformed": "De MCP-server-JSON is onjuist opgebouwd.",
+    "jsonNotObject": "De MCP-server-JSON moet een object zijn.",
+    "mcpServersNotObject": "Het veld 'mcpServers' in de MCP-server-JSON moet een object zijn.",
+    "serverNotObject": "MCP-server '{{name}}' moet een object zijn.",
+    "structural": "{{detail}} Verwacht werd {\"server-name\": {...}} of {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Onbekende server",
+    "unsupportedTransport": "MCP-server '{{name}}' gebruikt het niet-ondersteunde transport '{{transport}}'.",
+    "unsupportedType": "MCP-server '{{name}}' heeft het niet-ondersteunde type '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Diagram",
+    "renderFailed": "Kan het diagram niet weergeven.",
+    "rendering": "Diagram wordt getekend"
+  },
+  "missingPackages": {
+    "action_one": "{{name}} zoeken en installeren",
+    "action_other": "{{count}} bestanden zoeken en installeren",
+    "installing_one": "{{name}} installeren. Het compileren start opnieuw zodra dat klaar is.",
+    "installing_other": "{{count}} pakketten installeren. Het compileren start opnieuw zodra ze klaar zijn.",
+    "summary_one": "Het compileren kon \"{{name}}\" niet vinden. Zoek in TeX Live het pakket dat dit levert.",
+    "summary_other": "Het compileren kon {{names}} niet vinden. Zoek in TeX Live de bijbehorende pakketten."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Contextvenster van {{tokens}} tokens",
+      "deprecated": {
+        "label": "Verouderd",
+        "title": "De provider heeft dit model afgeschaft"
+      },
+      "reasoning": {
+        "label": "Redeneren",
+        "title": "Redeneermodel"
+      },
+      "tools": {
+        "label": "Tools",
+        "title": "Kan tools aanroepen"
+      },
+      "vision": {
+        "label": "Beeld",
+        "title": "Accepteert afbeeldingen"
+      }
+    },
+    "listChange": {
+      "none": "Geen wijzigingen",
+      "summary": "{{added}} toegevoegd, {{removed}} verwijderd"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "De referentieanalyse van het project is niet beschikbaar.",
+    "analysisUpdating": "De projectreferenties worden bijgewerkt.",
+    "definitionsFor": "Definities van {{name}}",
+    "edits_one": "{{count}} bewerking",
+    "edits_other": "{{count}} bewerkingen",
+    "files_one": "{{count}} bestand",
+    "files_other": "{{count}} bestanden",
+    "nameExists": "\"{{name}}\" bestaat al.",
+    "noDefinition": "Geen definitie gevonden voor \"{{name}}\"",
+    "noReferences": "Geen referenties naar \"{{name}}\"",
+    "notRenamable": "Dit symbool kan niet worden hernoemd.",
+    "nothingToRename": "Niets om te hernoemen.",
+    "referencesFor": "Referenties naar {{name}}",
+    "renamePartial": "Hernoemd naar \"{{name}}\" in {{edited}} van {{total}} bestanden. Kon {{files}} niet schrijven.",
+    "renamed": "Hernoemd naar \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Downloaden van pandoc is niet gelukt. Installeer het zelf en probeer het opnieuw",
+    "downloadingPercent": "pandoc downloaden… {{progress}}%",
+    "downloadingSize": "pandoc downloaden… {{megabytes}} MB",
+    "installGuide": "Installatiegids",
+    "installed": "pandoc geïnstalleerd"
+  },
+  "project": {
+    "copyFailed": "Kon \"{{path}}\" niet kopiëren.",
+    "dateUnavailable": "Niet beschikbaar",
+    "importFailed": "Importeren is niet gelukt. Bekijk het app-logboek voor details.",
+    "imported": "Project geïmporteerd.",
+    "openFailed": "Kon het project niet openen. Bekijk het app-logboek voor details.",
+    "restoringUnsavedFiles": "Door een projectupdate zijn bestanden met niet-opgeslagen bewerkingen verwijderd. Oleafly heeft je bewerkingen bewaard en zet die bestanden terug.",
+    "saveBlockedClose": "Het project is open gebleven omdat een of meer bestanden niet konden worden opgeslagen.",
+    "saveBlockedDiscard": "Wijzigingen weggooien en afsluiten",
+    "saveBlockedMany": "{{count}} bestanden konden niet worden opgeslagen: {{files}}. Het eerste staat met zijn niet-opgeslagen wijzigingen open in de editor ({{reason}}). Blijf om het probleem op te lossen, of gooi de niet-opgeslagen wijzigingen in die bestanden weg en sluit af.",
+    "saveBlockedOne": "{{file}} kon niet worden opgeslagen ({{reason}}). Het staat met jouw niet-opgeslagen wijzigingen open in de editor. Blijf om het probleem op te lossen, of gooi die wijzigingen weg en sluit af.",
+    "saveBlockedStay": "Blijven",
+    "saveBlockedSwitch": "Het project is open gebleven omdat een of meer bestanden niet konden worden opgeslagen.",
+    "saveBlockedTitle": "Sommige bestanden konden niet worden opgeslagen",
+    "updatedDaysAgo_one": "{{count}} dag geleden bijgewerkt",
+    "updatedDaysAgo_other": "{{count}} dagen geleden bijgewerkt",
+    "updatedOn": "Bijgewerkt op {{date}}",
+    "updatedToday": "Vandaag bijgewerkt",
+    "updatedYesterday": "Gisteren bijgewerkt"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analyse mislukt: {{message}}",
+    "beginIsHere": "{{command}} staat hier.",
+    "beginWithoutEnd": "{{command}} heeft geen bijbehorende \\end.",
+    "bibliographyFileMissing": "Bibliografiebestand \"{{file}}\" is niet in het project gevonden.",
+    "citationHasManyDefinitions_one": "Citatie \"{{name}}\" heeft {{count}} mogelijke definitie.",
+    "citationHasManyDefinitions_other": "Citatie \"{{name}}\" heeft {{count}} mogelijke definities.",
+    "citationKeyDuplicated_one": "Citatiesleutel \"{{name}}\" is {{count}} keer gedefinieerd.",
+    "citationKeyDuplicated_other": "Citatiesleutel \"{{name}}\" is {{count}} keer gedefinieerd.",
+    "citationUnresolved": "Citatie \"{{name}}\" kon niet worden gevonden.",
+    "definedHere": "{{kind}} \"{{name}}\" is hier gedefinieerd.",
+    "duplicateTargetDefined_one": "Doel \"{{name}}\" van {{kind}} is {{count}} keer gedefinieerd.",
+    "duplicateTargetDefined_other": "Doel \"{{name}}\" van {{kind}} is {{count}} keer gedefinieerd.",
+    "endWithoutBegin": "{{command}} heeft geen bijbehorende \\begin.",
+    "entryMissingFieldList": "Bibliografie-item \"{{key}}\" heeft geen veldenlijst.",
+    "expectedEndBefore": "{{expected}} werd verwacht vóór {{found}}.",
+    "fieldIncompleteValue": "Veld \"{{name}}\" heeft een onvolledige waarde.",
+    "fieldMissingEquals": "Veld \"{{name}}\" mist \"=\".",
+    "fieldRepeated": "Veld \"{{name}}\" komt meerdere keren voor in bibliografie-item \"{{key}}\".",
+    "fileNotLoaded": "Het bronbestand is niet geladen voor de huidige projectanalyse.",
+    "fileUnreadable": "Het bestand kon niet worden gelezen.",
+    "incompleteEntry": "Onvolledig @{{type}}-item.",
+    "invalidYear": "Jaar \"{{year}}\" is geen BibTeX-jaar van vier cijfers.",
+    "kinds": {
+      "anchor": "anker",
+      "asset": "mediabestand",
+      "bibentry": "bibliografie-item",
+      "bibliography": "bibliografie",
+      "environment": "omgeving",
+      "file": "bestand",
+      "glossary": "woordenlijstitem",
+      "import": "import",
+      "include": "include",
+      "label": "label",
+      "link": "link",
+      "macro": "macro",
+      "section": "sectie"
+    },
+    "malformedDirective": "Onjuiste BibTeX-directive of onjuist itemtype.",
+    "missingCitationKey": "@{{type}} heeft geen citatiesleutel.",
+    "missingRequiredField": "{{entry}} mist het verplichte veld {{fields}}.",
+    "possibleTarget": "Mogelijk doel: {{file}}",
+    "projectFileUnreadable": "Het projectbestand kon niet worden gelezen.",
+    "referenceHasManyDefinitions_one": "Referentie \"{{name}}\" heeft {{count}} mogelijke definitie.",
+    "referenceHasManyDefinitions_other": "Referentie \"{{name}}\" heeft {{count}} mogelijke definities.",
+    "referenceUnresolved": "Referentie \"{{name}}\" kon niet worden gevonden.",
+    "targetMatchesManyFiles_one": "Doel \"{{target}}\" van {{kind}} komt overeen met {{count}} projectbestand.",
+    "targetMatchesManyFiles_other": "Doel \"{{target}}\" van {{kind}} komt overeen met {{count}} projectbestanden.",
+    "targetUnresolved": "Doel \"{{target}}\" van {{kind}} kon niet worden gevonden.",
+    "typeDelimiterExpected": "@{{type}} moet worden gevolgd door een openende accolade of een openend haakje.",
+    "unclosedDelimiter": "Scheidingsteken \"{{char}}\" is niet afgesloten met \"{{expected}}\".",
+    "unclosedDirective": "De @{{type}}-directive is niet afgesloten.",
+    "unclosedEntry": "Het @{{type}}-item is niet afgesloten.",
+    "unclosedEntryNamed": "Bibliografie-item \"{{key}}\" is niet afgesloten.",
+    "unclosedFence": "Het afgebakende codeblok is niet afgesloten.",
+    "unclosedFrontMatter": "De YAML-front matter is niet afgesloten.",
+    "unclosedString": "De string is niet afgesloten.",
+    "unclosedTypstComment": "Het Typst-blokcommentaar is niet afgesloten.",
+    "unexpectedClosingDelimiter": "Onverwacht sluitteken \"{{char}}\".",
+    "unknownEntryType": "Onbekend type bibliografie-item @{{type}}.",
+    "unparsableField": "Kon een veld van @{{type}} niet lezen.",
+    "unparsableFieldNamed": "Kon een veld in \"{{key}}\" niet lezen."
+  },
+  "proofreading": {
+    "cancelled": "Het proeflezen is geannuleerd.",
+    "couldNotStart": "Offline proeflezen kon niet starten.",
+    "disposed": "Offline proeflezen is afgesloten.",
+    "invalidResponse": "Offline proeflezen gaf een ongeldig antwoord terug.",
+    "outOfRangeDiagnostic": "Offline proeflezen gaf een diagnose buiten het bereik terug.",
+    "postFailed": "Het document kon niet naar offline proeflezen worden gestuurd.",
+    "restarted": "Offline proeflezen is herstart.",
+    "restartedAfterTimeout": "Offline proeflezen is na een time-out herstart.",
+    "staleResponse": "Offline proeflezen gaf een verouderd antwoord terug.",
+    "stopped": "Offline proeflezen is onverwacht gestopt.",
+    "superseded": "Een nieuwer verzoek om te proeflezen heeft dit verzoek vervangen.",
+    "timedOut": "Offline proeflezen kreeg een time-out en start opnieuw bij de volgende bewerking.",
+    "dictionaryUnavailable": "Het gekozen spellingwoordenboek is niet geïnstalleerd. Download het bij Instellingen."
+  },
+  "skillGroups": {
+    "shelf": "Vakgebieden",
+    "user": "Jouw vaardigheden"
+  },
+  "tagged": {
+    "compileFailed": "Getagd compileren is mislukt. Controleer de engine en probeer het opnieuw.",
+    "compiled": "Getagde PDF gecompileerd. Zie het toegankelijkheidsoordeel hieronder.",
+    "compiledWithErrors": "Getagd compileren is met fouten afgerond. Bekijk het logboek.",
+    "engineRequired": "Schakel eerst een tagging-engine in bij Instellingen, LaTeX-engine."
+  },
+  "terminal": {
+    "defaultTitle": "Terminal {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Dit project is vastgezet met {{pinned}}. In het actieve {{local}} ontbreken {{count}} van die pakketten, dus compileren kan mislukken totdat die distributie weer wordt gebruikt.",
+    "distributionSkew": "Dit project is vastgezet met {{pinned}} en deze computer compileert met {{local}}. De uitvoer kan iets afwijken.",
+    "installPinned_one": "Installeren",
+    "installPinned_other": "Alle {{count}} installeren",
+    "installingPinned_one": "{{count}} vastgezet pakket installeren…",
+    "installingPinned_other": "{{count}} vastgezette pakketten installeren…",
+    "pinnedPackagesFailed": "Sommige vastgezette pakketten konden niet worden geïnstalleerd. Zie Instellingen → LaTeX-engine.",
+    "pinnedPackagesInstalled": "Vastgezette LaTeX-pakketten geïnstalleerd.",
+    "pinnedPackagesMissing_one": "Dit project zet {{count}} LaTeX-pakket vast dat hier niet is geïnstalleerd.",
+    "pinnedPackagesMissing_other": "Dit project zet {{count}} LaTeX-pakketten vast die hier niet zijn geïnstalleerd."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Eigen CSS mag geen at-regels, URL's of selectors gebruiken.",
+    "cssNotSimple": "Eigen CSS moet eenvoudige eigenschapsdeclaraties bevatten.",
+    "cssNotText": "Eigen CSS moet tekst zijn.",
+    "cssPropertyNotAllowed": "Deze CSS-eigenschap is niet toegestaan: {{property}}.",
+    "cssTooLarge": "Eigen CSS is groter dan 64 KiB.",
+    "cssTooManyDeclarations": "Eigen CSS mag maximaal 64 declaraties bevatten.",
+    "cssUnsafeValue": "Eigen CSS bevat een onveilige waarde.",
+    "customizationNotObject": "De thema-aanpassing moet een object zijn.",
+    "dark": {
+      "notObject": "De CSS-variabelen voor donker moeten een object zijn.",
+      "tooManyEntries": "De CSS-variabelen voor donker bevatten meer dan {{max}} items."
+    },
+    "fileMissingCssVars": "Het themabestand moet cssVars met items voor licht en donker bevatten.",
+    "fileMissingModes": "Het themabestand moet CSS-variabelen voor licht en donker bevatten.",
+    "fileNotJson": "Het themabestand is geen geldige JSON.",
+    "fileNotObject": "Het themabestand moet een object bevatten.",
+    "fileNotText": "Het themabestand moet tekst zijn.",
+    "fileTooLarge": "Het themabestand is groter dan 128 KiB.",
+    "invalidColor": "Thematoken {{token}} heeft een ongeldige kleurwaarde.",
+    "invalidRadius": "De hoekradius moet px, rem, em of procent gebruiken.",
+    "light": {
+      "notObject": "De CSS-variabelen voor licht moeten een object zijn.",
+      "tooManyEntries": "De CSS-variabelen voor licht bevatten meer dan {{max}} items."
+    },
+    "tokens": {
+      "notObject": "Thematokens moeten een object zijn.",
+      "tooManyEntries": "De thematokens bevatten meer dan {{max}} items."
+    },
+    "unknownProperty": "onbekend",
+    "unsupportedToken": "Niet-ondersteund thematoken: {{token}}.",
+    "unsupportedVersion": "Dit themabestand gebruikt een niet-ondersteunde versie."
+  },
+  "themes": {
+    "matchApp": "Thema van de app volgen"
+  },
+  "tinytex": {
+    "installFailed": "Kon TinyTeX niet installeren.",
+    "installGuide": "Installatiegids",
+    "installed": "TinyTeX geïnstalleerd.",
+    "phase": {
+      "addingPackages": "Pakketten toevoegen…",
+      "downloading": "Downloaden…",
+      "downloadingPercent": "Downloaden… {{progress}}%",
+      "installing": "Installeren…",
+      "unpacking": "Uitpakken…"
+    },
+    "removeFailed": "Kon TinyTeX niet verwijderen",
+    "removed": "TinyTeX verwijderd"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Artikel lezen",
+      "alphaxivSearch": "Artikelen zoeken",
+      "compile": "Document compileren",
+      "getLog": "Compileerlogboek lezen",
+      "insertFigure": "Figuur invoegen",
+      "listFiles": "Projectbestanden opsommen",
+      "literatureSearch": "Literatuur zoeken",
+      "previewFigure": "Figuur bekijken",
+      "projectLibrarySearch": "Projectbronnen doorzoeken",
+      "projectMap": "Project in kaart brengen",
+      "readFile": "Bestand lezen",
+      "readLinkedFile": "Gekoppeld bestand lezen",
+      "readPdfText": "Gecompileerde PDF lezen",
+      "readResearchRootFile": "Gekoppeld bestand lezen",
+      "runCommand": "Opdracht uitvoeren",
+      "searchProject": "Project doorzoeken",
+      "sendMessage": "Gedelegeerde taak bijwerken",
+      "spawnAgent": "Gedelegeerde taak starten",
+      "verifyCitation": "Citatie controleren",
+      "verifyPdfPages": "PDF-pagina's controleren",
+      "waitAgent": "Wachten op gedelegeerde taak"
+    },
+    "skillsBudgetNotice": "Codex kon niet al zijn vaardigheden opsommen. Het houdt 2% van de context vrij voor beschrijvingen van vaardigheden, dus maak de map met vaardigheden kleiner of vraag een vaardigheid bij naam.",
+    "status": {
+      "cancelled": "Gestopt",
+      "declined": "Geweigerd",
+      "done": "Klaar",
+      "failed": "Mislukt",
+      "failedWithCode": "Mislukt met afsluitcode {{code}}",
+      "interrupted": "Onderbroken",
+      "running": "Bezig",
+      "timedOut": "Time-out"
+    },
+    "summary": {
+      "citationUnverified": "Geen overeenkomend record gevonden",
+      "citationVerified": "Geverifieerd door de citatiedienst",
+      "compileFailed": "Compileren mislukt",
+      "compileSucceeded": "Succesvol gecompileerd",
+      "diagnostics_one": "{{count}} diagnose",
+      "diagnostics_other": "{{count}} diagnoses",
+      "papers_one": "{{count}} artikel",
+      "papers_other": "{{count}} artikelen"
+    }
+  },
+  "ui": {
+    "transparent": "Transparant"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Het project is tijdens het opslaan gewijzigd. Probeer de update opnieuw."
+  }
+}

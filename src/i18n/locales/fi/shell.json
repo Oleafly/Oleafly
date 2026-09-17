@@ -1,0 +1,919 @@
+{
+  "about": {
+    "close": "Sulje Tietoja-ikkuna",
+    "closeBackdrop": "Sulje Tietoja Oleaflystä",
+    "connect": "Pidä yhteyttä Oleaflyyn",
+    "links": {
+      "discussions": {
+        "description": "Kysy ja jaa ideoita",
+        "label": "Keskustelut"
+      },
+      "docs": {
+        "description": "Opi Oleaflyn kaikki osat",
+        "label": "Dokumentaatio"
+      },
+      "issues": {
+        "description": "Ilmoita viasta tai ehdota ominaisuutta",
+        "label": "Ongelmat"
+      },
+      "social": {
+        "description": "Seuraa julkaisuja ja kehitystä",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Tähditä GitHubissa",
+    "tagline": "Avoimen lähdekoodin työtila koko artikkelille. Kirjoita, käännä, oikolue, hallitse viittauksia, tarkista PDF-tiedostoja, seuraa muutoksia Git-versionhallinnassa ja työskentele valitsemiesi tekoälymallien kanssa.",
+    "version": "Versio {{version}}",
+    "viewSource": "Katso lähdekoodi"
+  },
+  "addCitation": {
+    "added": "{{cite}} lisättiin",
+    "adding": "Lisätään…",
+    "close": "Sulje viittausikkuna",
+    "confirm": "Lisää .bib-tiedostoon ja viittaa",
+    "entry": "Viite",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Otsikko"
+    },
+    "hint": "Liitä DOI, arXiv-tunnus tai URL, niin viite haetaan suoraan, tai kirjoita otsikko, niin Crossrefistä haetaan. Kokeile jotakin näistä:",
+    "lookUp": "Hae",
+    "lookingUp": "Haetaan \"{{query}}\"…",
+    "matches_one": "{{count}} osuma Crossrefistä. Valitse yksi:",
+    "matches_other": "{{count}} osumaa Crossrefistä. Valitse yksi:",
+    "noResults": "Tuloksia ei löytynyt. Tarkista tunniste tai kokeile toisia otsikon sanoja.",
+    "placeholder": "DOI, arXiv-tunnus, URL tai artikkelin otsikko…",
+    "privacyNote": "Vain tunniste tai otsikko lähetetään, ja vain doi.orgille, arXiville tai Crossrefille.",
+    "title": "Lisää viittaus"
+  },
+  "backendProtocol": {
+    "mismatch": "Tämä ikkuna ja sen taustaosa on koostettu eri Oleafly-versioille, joten kaikki toiminnot eivät ehkä toimi. Sovelluksen uudelleenasennus korjaa tämän."
+  },
+  "branding": {
+    "assistantMascot": "Oleaflyn tekoälyavustajan maskotti"
+  },
+  "browser": {
+    "address": "Hae tai kirjoita URL",
+    "back": "Takaisin",
+    "closeTab": "Sulje välilehti",
+    "copyUrl": "Kopioi URL",
+    "forward": "Eteenpäin",
+    "moreOptions": "Lisää vaihtoehtoja",
+    "newTab": "Uusi välilehti",
+    "openExternal": "Avaa omassa selaimessa",
+    "openTabs": "Avoimet välilehdet",
+    "reload": "Lataa uudelleen",
+    "setHomePage": "Aseta aloitussivuksi"
+  },
+  "citeOleafly": {
+    "description": "Tästä projektista ei löytynyt lähdeluettelotiedostoa, joten mitään ei muutettu. Kopioi alla oleva viite lähdeluetteloosi tai etsi se myöhemmin kohdasta Asetukset, Ohje ja tietoja.",
+    "openHelp": "Avaa Ohje ja tietoja",
+    "title": "Viittaa Oleaflyyn tässä artikkelissa"
+  },
+  "commandGroups": {
+    "commands": "Komennot",
+    "compile": "Kääntäminen",
+    "editor": "Editori",
+    "insert": "Lisää",
+    "project": "Projekti",
+    "settings": "Asetukset",
+    "tools": "Työkalut"
+  },
+  "commandPalette": {
+    "empty": "Tuloksia ei löytynyt.",
+    "label": "Komentopaletti",
+    "placeholder": "Kirjoita komento tai hae…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / otsikko",
+      "label": "Lisää viittaus"
+    },
+    "appearance": {
+      "keywords": "teema ulkoasu tila theme appearance mode",
+      "useDark": "Käytä tummaa ulkoasua",
+      "useLight": "Käytä vaaleaa ulkoasua",
+      "useSystem": "Käytä järjestelmän ulkoasua"
+    },
+    "autoCompile": {
+      "disable": "Poista automaattikäännös käytöstä",
+      "enable": "Ota automaattikäännös käyttöön"
+    },
+    "bold": {
+      "label": "Lihavointi"
+    },
+    "checkpoints": {
+      "label": "Tarkistuspisteet"
+    },
+    "citeOleafly": {
+      "keywords": "viittaus bibtex lähdeluettelo kiitos oleafly citation bibliography acknowledge",
+      "label": "Viittaa Oleaflyyn tässä artikkelissa"
+    },
+    "clearCache": {
+      "keywords": "tyhjennä käännösvälimuisti puhdista uudelleenkäännös vanhentunut nollaa clear build cache clean rebuild stale reset aux",
+      "label": "Tyhjennä käännösvälimuisti ja käännä uudelleen"
+    },
+    "closeEnvironment": {
+      "keywords": "sulje lopeta ympäristö aloita latex close end environment begin",
+      "label": "Sulje LaTeX-ympäristö"
+    },
+    "createProject": {
+      "keywords": "uusi projekti luo mallipohja galleria new project create template gallery",
+      "label": "Luo uusi projekti"
+    },
+    "diagramComposer": {
+      "keywords": "kaavio kuva tikz editori piirrä piirtoalusta diagram figure composer draw canvas",
+      "label": "Avaa kaavioeditori"
+    },
+    "documentCitationScan": {
+      "keywords": "viittaukset kirjallisuus haku dokumentti kappale viitteet etsi citations literature scan document paragraph references find",
+      "label": "Etsi viittaukset dokumentista"
+    },
+    "equation": {
+      "label": "Kaava"
+    },
+    "exportPdf": {
+      "label": "Vie PDF…"
+    },
+    "figure": {
+      "label": "Kuva"
+    },
+    "generateFigure": {
+      "keywords": "kuva kaavio piirrä tikz kuvaaja diagrammi kuvitus figure diagram draw plot chart illustration",
+      "label": "Luo kuva tekoälyllä"
+    },
+    "gitHistory": {
+      "label": "Git-historia"
+    },
+    "italic": {
+      "label": "Kursivointi"
+    },
+    "label": {
+      "label": "Nimike"
+    },
+    "list": {
+      "label": "Merkitty luettelo"
+    },
+    "newProject": {
+      "label": "Uusi projekti…"
+    },
+    "newTerminal": {
+      "keywords": "pääte shell konsoli uusi terminal console new",
+      "label": "Uusi pääte"
+    },
+    "offline": {
+      "offline": "Offline-tila (--only-cached)",
+      "online": "Verkkotila (salli pakettien haku)"
+    },
+    "openTool": "Avaa {{name}}",
+    "recompile": {
+      "label": "Käännä uudelleen"
+    },
+    "section": {
+      "label": "Luku"
+    },
+    "settings": {
+      "keywords": "asetukset valinnat settings preferences options",
+      "label": "Avaa asetukset"
+    },
+    "spellcheck": {
+      "disable": "Poista oikoluku käytöstä",
+      "enable": "Ota oikoluku käyttöön"
+    },
+    "surroundEnvironment": {
+      "keywords": "ympäröi kääri ympäristö aloita lopeta latex surround wrap environment begin end",
+      "label": "Ympäröi ympäristöllä"
+    },
+    "synctex": {
+      "label": "Siirry PDF:ään (SyncTeX)"
+    },
+    "table": {
+      "label": "Taulukko"
+    },
+    "theme": {
+      "keywords": "teema tumma vaalea ulkoasu tila theme dark light appearance mode",
+      "toDark": "Vaihda tummaan teemaan",
+      "toLight": "Vaihda vaaleaan teemaan"
+    },
+    "tools": {
+      "keywords": "työkalut latex pdf kaava bibtex taulukko labrahaku määräajat galleria tools equation table lab search deadlines gallery",
+      "label": "Avaa Oleafly Tools"
+    },
+    "vim": {
+      "disable": "Poista Vim-tila käytöstä",
+      "enable": "Ota Vim-tila käyttöön"
+    },
+    "wordCount": {
+      "label": "Sanamäärä"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "poista rivi delete line remove",
+        "duplicate": "kahdenna rivi valinta kopioi duplicate line selection copy",
+        "lowercase": "pienet kirjaimet kirjainkoko teksti lowercase case text",
+        "titleCase": "alkukirjaimet isoiksi kirjainkoko teksti title case capitalize",
+        "uppercase": "isot kirjaimet kirjainkoko teksti uppercase case text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Pois",
+      "on": "Päällä",
+      "title": "Automaattikäännös"
+    },
+    "compile": "Käännä",
+    "compiler": {
+      "auto": "Automaattinen <note>[järjestelmän TeX]</note>",
+      "help": "Tectonic on sisäänrakennettu eikä vaadi asennusta. Muut vaihtoehdot käyttävät järjestelmän TeX-asennusta, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä niitä vain luotettujen projektien kanssa. Automaattinen valitsee kääntäjän lähdekoodin perusteella. pdfLaTeX sopii useimpiin lehtien mallipohjiin. XeLaTeX ja LuaLaTeX tuovat mukaan järjestelmän fontit ja Unicoden.",
+      "lualatex": "LuaLaTeX <note>[järjestelmän TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[järjestelmän TeX]</note>",
+      "tectonic": "Tectonic <note>[sisäänrakennettu]</note>",
+      "title": "Kääntäjä (tämä projekti)",
+      "xelatex": "XeLaTeX <note>[järjestelmän TeX]</note>"
+    },
+    "errors": {
+      "continue": "Yritä kääntää virheistä huolimatta",
+      "stop": "Pysähdy ensimmäiseen virheeseen",
+      "title": "Käännösvirheiden käsittely"
+    },
+    "fromScratch": "Käännä alusta uudelleen",
+    "mode": {
+      "fast": "Nopea <note>[luonnos]</note>",
+      "normal": "Normaali",
+      "title": "Käännöstila"
+    },
+    "options": "Käännösasetukset",
+    "recompile": "Käännä uudelleen",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Pysäytä kääntäminen",
+    "syntax": {
+      "check": "Tarkista syntaksi ennen kääntämistä",
+      "skip": "Älä tarkista syntaksia",
+      "title": "Syntaksitarkistukset"
+    },
+    "texRootBroken": "% !TEX root tiedostossa {{file}} osoittaa puuttuvaan tiedostoon ({{target}})",
+    "texRootLabel": "TEX root",
+    "texRootName": "juuri: {{name}}",
+    "texRootOverride": "juuri: {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Valitse päivämäärä"
+  },
+  "devMenu": {
+    "inspect": "Tarkastele",
+    "refreshApp": "Päivitä sovellus"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Piilota tekoälyavustaja",
+      "show": "Näytä tekoälyavustaja"
+    },
+    "browser": {
+      "close": "Sulje selain ({{shortcut}})",
+      "open": "Avaa selain ({{shortcut}})"
+    },
+    "settings": "Asetukset",
+    "sidebar": {
+      "hide": "Piilota sivupalkki ({{shortcut}})",
+      "show": "Näytä sivupalkki ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Piilota pääte ({{shortcut}})",
+      "show": "Näytä pääte ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Virhe vastaa tunnettua puutetta mukana tulevassa Tectonic-moottorissa. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
+    "descriptionImportScan": "Tuontitarkistus löysi ominaisuuksia, joita mukana tuleva Tectonic-moottori ei hallitse. Valitse, miten tämä projekti käännetään. Valinta tallennetaan projektiin, joten yhteistyökumppanit saavat saman asetuksen.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX latexmkin kautta"
+    },
+    "recommended": "Suositus",
+    "shellEscape": {
+      "label": "Salli ulkoiset komennot tällä koneella",
+      "needed": "Tämä projekti käyttää ominaisuuksia, jotka vaativat mielivaltaisia ulkoisia komentoja. Ne pysyvät estettyinä, kunnes ne sallitaan.",
+      "warning": "Vaaditaan mintedissä ja joissakin PythonTeX-dokumenteissa. LaTeX voi ajaa ohjelmia käyttäjäoikeuksillasi, joten ota tämä käyttöön vain projektissa, johon luotat. TeX Liven omat apuohjelmat, kuten EPS-muunnos, toimivat ilman tätä."
+    },
+    "shellEscapeAllowed": "Ulkoiset komennot ovat sallittuja tälle projektille tällä koneella.",
+    "shellEscapeBlocked": "Mielivaltaiset ulkoiset komennot on estetty tältä projektilta. TeX Liven omat apuohjelmat, kuten EPS-muunnos, toimivat yhä.",
+    "shellEscapeFailed": "Ulkoisten komentojen käyttöoikeutta ei voitu päivittää.",
+    "switchFailed": "Käännösmoottoria ei voitu vaihtaa.",
+    "switched": "Tämä projekti kääntyy nyt moottorilla {{engine}}.",
+    "switchedAfterInstall": "TinyTeX asennettiin. Tämä projekti kääntyy nyt moottorilla {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Jo valittuna",
+      "found": "Tältä koneelta löytyi TeX-jakelu. Järjestelmän TeX voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä sitä vain projekteissa, joihin luotat. Mielivaltaiset ulkoiset komennot pysyvät estettyinä, ellet salli niitä alla. TeX Live ajaa silti oman sallittujen listansa apuohjelmat, kuten EPS-muunnoksen.",
+      "missing": "Tältä koneelta ei löytynyt TeX-jakelua (MacTeX, TeX Live, MiKTeX, TinyTeX).",
+      "switchPdflatex": "Vaihda pdfLaTeXiin ja käännä uudelleen",
+      "title": "Käytä järjestelmän LaTeXia (latexmk)",
+      "titlePdflatex": "Käytä pdfLaTeXia järjestelmän LaTeXissa (latexmk)",
+      "use": "Käytä järjestelmän LaTeXia"
+    },
+    "tectonic": {
+      "description": "Ei asennusta, toimii ilman verkkoa. Sopii tavalliseen LaTeXiin ja useimpiin yleisiin paketteihin.",
+      "keep": "Pidä Tectonic",
+      "switchBack": "Vaihda takaisin Tectonicin",
+      "title": "Jatka Tectonicin käyttöä",
+      "withFailures_one": "Ei asennusta, toimii ilman verkkoa. {{features}} todennäköisesti epäonnistuu jatkossakin.",
+      "withFailures_other": "Ei asennusta, toimii ilman verkkoa. {{features}} todennäköisesti epäonnistuvat jatkossakin."
+    },
+    "tinytex": {
+      "description": "Asentaa kompaktin TeX Live -jakelun kotikansioosi ilman pääkäyttäjän oikeuksia. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat hakea lisää paketteja myöhemmin, yhteensä noin 1 GB asti.",
+      "download": "Lataa ja ota TinyTeX käyttöön",
+      "resume": "Jatka latausta ({{megabytes}} MB valmiina)",
+      "title": "Lataa TinyTeX"
+    },
+    "titleCompileFailure": "Tämä käännös vaatii enemmän kuin sisäänrakennettu moottori",
+    "titleImportScan": "Tämä projekti vaatii enemmän kuin sisäänrakennettu moottori"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Kopioi diagnostiikka",
+    "description": "Oleaflyssä tapahtui odottamaton virhe, eikä tätä näkymää voitu piirtää. Projektitiedostot ovat tallessa levyllä. Diagnostiikkatiedot ovat alla.",
+    "halted": "Pysähtynyt",
+    "logSaved": "Loki tallennettiin kohteeseen <path>{{path}}</path>",
+    "reload": "Lataa Oleafly uudelleen",
+    "report": "Ilmoita GitHubissa",
+    "runtimeError": "Ajonaikainen virhe",
+    "specimen": {
+      "diagramLabel": "Koristeellinen näytekaavio",
+      "layer": "KERROS {{current}}/{{total}}",
+      "specimen": "NÄYTE:",
+      "transversePlane": "POIKKILEIKKAUSTASO",
+      "veinDensity": "SUONITIHEYS:"
+    },
+    "specimenViewer": "Näytekatselin",
+    "stackTrace": "Kutsupino",
+    "surfaceCrashed": "Kaatui: {{surface}}.",
+    "surfaces": {
+      "aiAssistant": "tekoälyavustaja",
+      "assistantPanel": "avustajapaneeli",
+      "chat": "keskustelu",
+      "diagramComposer": "kaavioeditori",
+      "editor": "editori",
+      "pdfPreview": "PDF-esikatselu",
+      "researchAssistant": "tutkimusavustaja",
+      "terminalDock": "päätetelakka"
+    },
+    "title": "Jokin meni vikaan"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "GitHub-toiminnot",
+    "connect": "Yhdistä GitHub…",
+    "connectedAs": "Yhdistetty tunnuksella @{{login}}",
+    "copyRepositoryLink": "Kopioi repositorion linkki",
+    "openInGithub": "Avaa GitHubissa",
+    "pushHint": "Työnnä GitHubiin, niin nämä tulevat käyttöön",
+    "settings": "GitHub-asetukset",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Aloitusnäkymä",
+    "label": "Aloitus",
+    "title": "Takaisin kirjastoon",
+    "tooltip": "Palaa projektikirjastoon"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Tyhjennä loki",
+    "clearLogAriaLabel": "Tyhjennä MCP-loki",
+    "live": "Käynnissä",
+    "off": "Pois",
+    "openSettings": "Avaa MCP-asetukset",
+    "serverOff": "MCP-palvelin on pois päältä.",
+    "timeWithDuration": "{{time}} · {{ms}} ms",
+    "toolsTitle": "MCP:n kautta käytettävissä olevat työkalut",
+    "waiting": "Odotetaan ulkoisia agentteja…",
+    "waitingHint": "MCP:n kautta kutsutut työkalut (Claude, Cursor, Grok, …) näkyvät tässä reaaliajassa."
+  },
+  "omnibar": {
+    "bookmarked": "Kirjanmerkitty",
+    "createProject": "Luo uusi projekti",
+    "groups": {
+      "action": "Toiminto",
+      "documents": "Dokumentit",
+      "references": "Viitteet"
+    },
+    "label": "Haku",
+    "noMatches": "Osumia ei löytynyt.",
+    "openReferences": "Avaa tämän projektin viitteet",
+    "placeholder": "Hae projekteja, dokumentteja tai kirjoita / komentoja varten…",
+    "placeholderDocuments": "Hae dokumenttien sisältä…",
+    "placeholderProjects": "Hae projekteja nimen, moottorin, lajin, päivämäärän tai metatietojen mukaan…",
+    "referencesNeedProject": "Avaa ensin projekti, niin sen viitteitä voi selata.",
+    "slash": {
+      "create": "avaa mallipohjagalleria",
+      "docs": "hae dokumenttien sisältä",
+      "projects": "hae omista projekteista",
+      "refs": "avaa tämän projektin viitteet",
+      "settings": "avaa asetukset",
+      "theme": "vaihda väriteemaa"
+    },
+    "tryCommand": "Kokeile komentoa",
+    "unknownCommand": "Tuntematon komento. Kirjoita / nähdäksesi käytettävissä olevat komennot."
+  },
+  "projectSearch": {
+    "hint": "Hae tämän projektin tiedostoista.",
+    "noResults": "Ei tuloksia.",
+    "placeholder": "Etsi projektista…",
+    "title": "Haku"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai lopeta silti ja menetä ne.",
+      "descriptionRestart": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai käynnistä silti uudelleen ja menetä ne.",
+      "quitAnyway": "Lopeta silti",
+      "restartAnyway": "Käynnistä silti uudelleen",
+      "stay": "Jää",
+      "title": "Joitakin tiedostoja ei voitu tallentaa"
+    },
+    "flushTimeout": "Tallennus ei valmistunut viidessä sekunnissa.",
+    "installing": {
+      "description": "Tallennetaan tiedostoja ja asennetaan päivitystä. Oleafly käynnistyy uudelleen, kun se on valmis.",
+      "title": "Valmistellaan uudelleenkäynnistystä"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Resurssienhallinta",
+    "mcp": "MCP-toiminta",
+    "pendingBadge_one": "{{count}} odottaa",
+    "pendingBadge_other": "{{count}} odottaa",
+    "preflight": "Esitarkistukset",
+    "references": "Viitteet ja viittaukset",
+    "research": "Tutkimustyötila",
+    "search": "Hae projektista",
+    "sourceControl": "Versionhallinta",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Sulje uudelleennimeämisikkuna",
+    "collision": "{{kind}} nimeltä \"{{name}}\" on jo olemassa.",
+    "commit": "Vahvista uudelleennimeäminen",
+    "newName": "Uusi nimi",
+    "planFiles_one": "{{count}} tiedostossa",
+    "planFiles_other": "{{count}} tiedostossa",
+    "planSummary_one": "{{count}} muokkaus $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} muokkausta $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "viite",
+      "bibentry": "lähdeviite",
+      "cite": "viittaus",
+      "environment": "ympäristö",
+      "envuse": "ympäristön käyttö",
+      "file": "tiedosto",
+      "glossary": "sanastokohta",
+      "glossaryuse": "sanastokohdan käyttö",
+      "inputedge": "sisällytys",
+      "label": "nimike",
+      "macro": "makro",
+      "macrouse": "makron käyttö",
+      "ref": "viite",
+      "section": "luku",
+      "theorem": "lause"
+    },
+    "title": "Nimeä uudelleen: <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Sulje asetukset",
+    "data": {
+      "cloud": {
+        "comingSoon": "Tulossa pian",
+        "description": "Pidä projektit synkronoituina laitteiden välillä ilman Git-etäosoitteen määrittämistä. Jokainen siirto salataan päästä päähän, joten työ pysyy yksityisenä matkalla. Paikalliset projektikansiot pysyvät totuuden lähteenä.",
+        "title": "Pilvisynkronointi"
+      },
+      "danger": {
+        "closeFailed": "Avointa projektia ei voitu sulkea turvallisesti.",
+        "confirmDeleteAllAction": "Poista kaikki projektit",
+        "confirmDeleteAllDescription": "Jokainen nykyinen projekti siirtyy roskakoriin, mukaan lukien sen tiedostot ja Git-historia. Projektit voi palauttaa jälkeenpäin yksitellen.",
+        "confirmDeleteAllTitle_one": "Poistetaanko kaikki {{count}} projekti?",
+        "confirmDeleteAllTitle_other": "Poistetaanko kaikki {{count}} projektia?",
+        "deleteAll": "Poista kaikki projektit",
+        "deleteAllAction": "Poista kaikki",
+        "deleteAllDescription": "Siirtää jokaisen projektin roskakoriin. Mitään ei poisteta pysyvästi.",
+        "deleting": "Poistetaan…",
+        "moveFailed": "Projekteja ei voitu siirtää roskakoriin.",
+        "movePartial": "{{count}} projektia siirrettiin, mutta toimintoa ei voitu viedä loppuun.",
+        "movedCount_one": "{{count}} projekti siirrettiin roskakoriin.",
+        "movedCount_other": "{{count}} projektia siirrettiin roskakoriin.",
+        "title": "Vaaravyöhyke"
+      },
+      "githubHint": "Varmuuskopioi tai synkronoi projekti laitteiden välillä: yhdistä GitHub ja käytä sitten versionhallinnassa <push>Työnnä</push> / <pull>Nouda</pull>. <setup>Ota GitHub käyttöön →</setup>",
+      "localFirst": "Oleafly on paikallisuutta korostava. Kaikki projektit ovat omalla levylläsi:",
+      "plainFolders": "Jokainen projekti on tavallinen kansio. Git-historia on valinnainen, eikä mikään lähde koneeltasi, ellet työnnä sitä GitHubiin.",
+      "recycleBin": {
+        "clearAll": "Tyhjennä kaikki",
+        "clearFailed": "Roskakoria ei voitu tyhjentää.",
+        "clearPartial": "{{count}} projektia poistettiin pysyvästi, mutta koko roskakoria ei voitu tyhjentää.",
+        "clearedCount_one": "{{count}} projekti poistettiin pysyvästi.",
+        "clearedCount_other": "{{count}} projektia poistettiin pysyvästi.",
+        "clearing": "Tyhjennetään…",
+        "confirmClearAction": "Tyhjennä roskakori",
+        "confirmClearDescription": "Tämä poistaa pysyvästi jokaisen roskakorissa olevan projektin, mukaan lukien sen tiedostot ja Git-historian. Tätä toimintoa ei voi kumota.",
+        "confirmClearTitle_one": "Poistetaanko roskakorista {{count}} projekti?",
+        "confirmClearTitle_other": "Poistetaanko roskakorista {{count}} projektia?",
+        "confirmDeleteAction": "Poista pysyvästi",
+        "confirmDeleteDescription": "Tämä poistaa projektin, sen tiedostot ja Git-historian roskakorista. Tätä toimintoa ei voi kumota.",
+        "confirmDeleteTitle": "Poistetaanko ”{{name}}” pysyvästi?",
+        "deleteFailed": "Kohdetta \"{{name}}\" ei voitu poistaa pysyvästi.",
+        "deleteOne": "Poista {{name}} pysyvästi",
+        "deleted": "\"{{name}}\" poistettiin pysyvästi.",
+        "deletedAt": "Poistettu {{date}} · {{size}}",
+        "empty": "Roskakori on tyhjä.",
+        "loading": "Ladataan roskakoria…",
+        "restore": "Palauta",
+        "restoreFailed": "Kohdetta \"{{name}}\" ei voitu palauttaa.",
+        "restored": "\"{{name}}\" palautettiin.",
+        "size": "{{size}} · ei automaattista siivousta",
+        "subtitle": "Poistetut projektit säilyvät täällä, kunnes ne poistetaan",
+        "title": "Roskakori"
+      },
+      "reveal": "Näytä projektikansio Finderissa",
+      "storage": {
+        "calculating": "Lasketaan tallennustilan käyttöä…",
+        "desktopOnly": "Tallennustilan tiedot ovat saatavilla työpöytäsovelluksessa.",
+        "error": "Tallennustilan tietoja ei voitu laskea.",
+        "refresh": "Päivitä tallennustilan käyttö",
+        "stats": {
+          "appData": "Sovellustiedot",
+          "appDataDetail": "Resurssit ja asetukset",
+          "buildCache": "Käännösvälimuisti",
+          "buildCacheDetail": "Muodostettu tuloste",
+          "files": "Tiedostot",
+          "folders_one": "{{count}} kansio",
+          "folders_other": "{{count}} kansiota",
+          "gitHistory": "Git-historia",
+          "gitHistoryDetail": "Paikalliset versiot",
+          "images": "Kuvat",
+          "pdfs": "PDF-tiedostot",
+          "projectFiles": "Projektitiedostot",
+          "projectFilesDetail": "Lähteet ja metatiedot",
+          "projects": "Projektit"
+        },
+        "subtitle": "Projektit, esikatselut, historia ja sovellustiedot",
+        "title": "Tallennustilan käyttö",
+        "total": "{{size}} Oleaflyn datakansiossa",
+        "unreadable_one": "{{count}} kohde jätettiin pois, koska siihen ei päästy käsiksi.",
+        "unreadable_other": "{{count}} kohdetta jätettiin pois, koska niihin ei päästy käsiksi."
+      },
+      "tabs": {
+        "cloud": "Pilvisynkronointi",
+        "local": "Paikallinen tallennus"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
+        "label": "LaTeX-työkalut"
+      },
+      "visualEditor": {
+        "description": "Näytä dokumenttieditorissa Visuaalinen/Koodi-valitsin. Oletuksena pois, joten dokumentit avautuvat vain koodieditoriin. Kaavioilla on aina oma piirtoalustavalitsimensa.",
+        "label": "Visuaalinen editori"
+      },
+      "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä.",
+      "webBrowser": {
+        "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
+        "label": "Verkkoselain"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Kielentarkistuksen englannin muunnos",
+        "description": "Käytä valittua oikeinkirjoitusta, kielioppia ja alueellisia käytäntöjä.",
+        "label": "Englannin muunnos"
+      },
+      "dictionary": {
+        "ariaLabel": "Kielentarkistuksen oikolukusanakirja",
+        "description": "Hunspell-paketti, jota lähdekoodin ja visuaalisen tilan oikoluku käyttää. Viiden mukana tulevan paketin ulkopuoliset kielet ladataan tarvittaessa.",
+        "label": "Oikolukusanakirja",
+        "downloadFailed": "Sanakirjaa {{name}} ei voitu ladata.",
+        "downloaded": "{{name}} on valmiina oikolukuun.",
+        "downloading": "Ladataan {{name}}",
+        "offlineRefused": "Offline-tila on päällä. Poista se käytöstä, niin {{name}} voidaan ladata."
+      },
+      "harper": {
+        "description": "Tarkista englannin kielioppi ja tyyli LaTeXin ja Markdownin lähdekoodi- ja visuaalisessa muokkauksessa sekä Typstin lähdekoodissa, yhden napsautuksen korjauksilla.",
+        "label": "Kielioppi ja tyyli (Harper)"
+      },
+      "offline": {
+        "description": "Käännä valitsimella --only-cached äläkä koskaan hae paketteja verkosta.",
+        "label": "Offline-tila"
+      },
+      "proofreadingNote": "Kielentarkistus ajetaan paikallisesti taustaprosessissa. Harper noudattaa valittua englannin muunnosta; oikoluku käyttää aina täsmälleen valittua Hunspell-pakettia. Matematiikka, koodi, kommentit, viittausten syntaksi, metatiedot ja URL-osoitteet jätetään pois.",
+      "regionalism": {
+        "description": "Nosta esiin termit, jotka eivät vastaa valittua englannin muunnosta. Poista käytöstä, jos käytät tällaisia termejä tuote- tai koodiniminä.",
+        "label": "Aluemuotoehdotukset"
+      },
+      "spellcheck": {
+        "description": "Alleviivaa väärin kirjoitetut sanat valitulla offline-Hunspell-sanakirjalla ja tarjoa korvausehdotuksia lähdekoodi- ja visuaalisessa muokkauksessa.",
+        "label": "Oikoluku"
+      },
+      "wordChoice": {
+        "description": "Ehdota vaihtoehtoisia sanoja (esimerkiksi ”too” ja ”to”). Poista käytöstä, jos haluat vain oikeinkirjoituksen ja kieliopin.",
+        "label": "Sanavalintaehdotukset"
+      }
+    },
+    "help": {
+      "community": "Yhteisö",
+      "copyInfo": "Kopioi tiedot",
+      "forksTitle": "GitHub-haarautukset",
+      "forks_one": "{{count}} GitHub-haarautus",
+      "forks_other": "{{count}} GitHub-haarautusta",
+      "logoAlt": "Oleafly",
+      "project": "Projekti",
+      "resources": {
+        "documentation": "Dokumentaatio",
+        "learn": "Opi",
+        "license": "Lisenssi",
+        "reportCrash": "Ilmoita kaatumisesta (liitä lokit)",
+        "startTour": "Aloita esittely",
+        "whatsNew": "Mitä uutta"
+      },
+      "resourcesTitle": "Resurssit",
+      "starRepo": "Tähditä ja tutustu GitHubissa",
+      "starsTitle": "GitHub-tähdet",
+      "stars_one": "{{count}} GitHub-tähti",
+      "stars_other": "{{count}} GitHub-tähteä",
+      "support": "Jos Oleafly auttaa työssäsi, <star>tähditä projekti GitHubissa</star>. Se pieni napsautus auttaa useampia tutkijoita löytämään sen ja tukee kehityksen jatkumista.",
+      "supportAriaLabel": "Tue Oleaflyä",
+      "tagline": "Kirjoita, käännä, oikolue, hallitse viittauksia, tarkista PDF-tiedostoja, seuraa muutoksia Git-versionhallinnassa ja käytä valitsemiasi tekoälymalleja. Kaikki yhdessä avoimen lähdekoodin työtilassa.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "Tekoälyavustaja",
+      "appearance": "Ulkoasu",
+      "data": "Tietojen tallennus",
+      "dictionary": "Sanakirja",
+      "downloads": "Lataukset",
+      "engine": "Moottorit",
+      "experimentation": "Kokeilut",
+      "general": "Yleiset",
+      "help": "Ohje ja tietoja",
+      "integrations": "Integraatiot",
+      "shortcuts": "Pikanäppäimet"
+    },
+    "sectionsNav": "Asetusten osiot",
+    "title": "Asetukset",
+    "tours": {
+      "confirmDescription": "Tämä sulkee kaikki jäljellä olevat esittelyt ja poistaa esittelyoppaat käytöstä. Ne voi ottaa uudelleen käyttöön yleisissä asetuksissa ja aloittaa alusta.",
+      "disableConfirm": "Poista esittelyt käytöstä",
+      "disableTitle": "Poistetaanko esittelyoppaat käytöstä?",
+      "dismissAll": "Sulje kaikki esittelyt",
+      "dismissAllConfirm": "Sulje kaikki",
+      "dismissAllTitle": "Suljetaanko kaikki esittelyt?",
+      "enable": "Ota esittelyoppaat käyttöön",
+      "enableAll": "Ota kaikki esittelyoppaat käyttöön",
+      "enableOne": "Ota käyttöön esittely {{name}}",
+      "progress": "Esittelyiden eteneminen",
+      "progressDetail": "{{completed}} suoritettu ja {{dismissed}} suljettu.",
+      "status": {
+        "completed": "Suoritettu",
+        "dismissed": "Suljettu",
+        "pending": "Aloittamatta"
+      },
+      "summary": "{{completed}} suoritettu · {{dismissed}} suljettu · {{total}} yhteensä"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Keskeytä yhdistäminen",
+    "abortMergeDescription": "Tähän mennessä tehdyt ristiriitojen ratkaisut hylätään ja tiedostot palaavat yhdistämistä edeltäneeseen tilaan.",
+    "abortMergeTitle": "Keskeytetäänkö tämä yhdistäminen?",
+    "aheadBehind": "{{ahead}} edellä · {{behind}} jäljessä haaraa origin/{{branch}}",
+    "branch": "Haarat",
+    "branchName": "Haaran nimi",
+    "changeRepo": "Vaihda repositoriota",
+    "changes": "Muutokset",
+    "checking": "Tarkistetaan versionhallintaa…",
+    "clean": "Ei muutoksia. Työhakemisto on siisti.",
+    "commit": "Vahvista",
+    "commitActions": "Lisää vahvistustoimintoja",
+    "commitAmend": "Muuta viimeisintä commitia",
+    "amendedKeptMessage": "Viimeisintä commitia muutettiin ja sen viesti säilytettiin.",
+    "commitAndPush": "Vahvista ja työnnä",
+    "commitAndSync": "Vahvista ja synkronoi",
+    "commitDescription": "Commitin kuvaus",
+    "commitDescriptionPlaceholder": "Kuvaus (valinnainen)",
+    "commitTitle": "Commitin otsikko",
+    "committed": "Vahvistettu: \"{{subject}}\"",
+    "committedRemoteFailed": "Vahvistettiin paikallisesti, mutta {{step}} epäonnistui: {{reason}}",
+    "committedWithConflicts": "Vahvistettiin paikallisesti. Ratkaise noudetut ristiriidat ennen työntämistä.",
+    "confirmDiscard": "Vahvista hylkäys",
+    "confirmDiscardTitle": "Hylkää kaikki tämän tiedoston muutokset",
+    "continueMerge": "Viimeistele yhdistäminen",
+    "copyCommitId": "Kopioi commitin tunnus",
+    "create": "Luo",
+    "createBranch": "Luo haara…",
+    "credentialRemoved": "Tallennettu tunnistetieto poistettiin tästä Git-etäosoitteesta.",
+    "credentialWarning": "Vanhemmat Oleafly-versiot tallensivat tunnistetiedon tähän Git-etäosoitteeseen.",
+    "discard": "Hylkää muutokset",
+    "discardFor": "Hylkää kohteen {{path}} muutokset",
+    "discardAll": "Hylkää kaikki muutokset",
+    "discardChangesDescription": "Nämä työhakemiston muutokset menetetään. Tätä ei voi kumota.",
+    "discardChangesTitle": "Hylätäänkö valitut muutokset?",
+    "discardTitle": "Hylkää muutokset (palauta viimeisin versio)",
+    "enterTitle": "Kirjoita commitin otsikko",
+    "finishMergeToCommit": "Viimeistele yhdistäminen ennen vahvistamista.",
+    "fetch": "Nouda",
+    "graph": "Kaavio",
+    "commitCount_one": "{{count}} commit",
+    "commitCount_other": "{{count}} commitia",
+    "initialize": "Alusta repositorio",
+    "initialized": "Git alustettiin haaraan {{branch}}.",
+    "linkCopied": "GitHub-linkki kopioitiin",
+    "markResolved": "Merkitse ratkaistuksi",
+    "mergeNeedsAttention": "Ratkaise yhdistämisristiriidat",
+    "moreActions": "Lisää versionhallinnan toimintoja",
+    "noHistory": "Ei vielä commiteja",
+    "noProject": "Avaa projekti, niin versionhallintaa voi käyttää.",
+    "noStagedChanges": "Ei valmisteltuja muutoksia",
+    "notInitialized": "Versionhallintaa ei ole alustettu",
+    "notInitializedHint": "Oleafly ei vahvista muutoksia Git-repositorioon automaattisesti.",
+    "nothingStaged": "Vahvistettavaksi ei ole valmisteltu mitään.",
+    "openAllChanges": "Avaa kaikki muutokset",
+    "openFile": "Avaa tiedosto",
+    "openFileFor": "Avaa {{path}}",
+    "popStash": "Ota käyttöön viimeisin varasto",
+    "publish": "Julkaise GitHubiin",
+    "published": "Julkaistiin kohteeseen {{url}}",
+    "pull": "Nouda origin-etäosoitteesta",
+    "pullShort": "Nouda",
+    "push": "Vahvista ja työnnä origin-etäosoitteeseen",
+    "pushShort": "Työnnä",
+    "pushSkippedNoRemote": "⚠ Työntö ohitettiin - alla ei ole asetettu origin-etäosoitetta.",
+    "pushSkippedNoToken": "⚠ Työntö ohitettiin - ei GitHub-tokenia (Asetukset → GitHub).",
+    "refresh": "Päivitä",
+    "remote": "Etäosoite",
+    "remoteHint": "Luo uusi repositorio tai linkitä olemassa oleva tämän projektin etäosoitteeksi ja työnnä sitten.",
+    "removeCredential": "Poista tallennettu tunnistetieto",
+    "restoreCommit": "Palauta versio",
+    "restoreCommitDescription": "Tämä korvaa jokaisen seuratun projektitiedoston tällä versiolla ja poistaa myöhemmin lisätyt tiedostot. Haara pysyy nykyisessä commitissaan.",
+    "restoreCommitTitle": "Palautetaanko tämä versio?",
+    "sectionActions": "Lisää toimintoja osiolle {{section}}",
+    "stage": "Valmistele",
+    "stageFor": "Valmistele {{path}}",
+    "stageAll": "Valmistele kaikki",
+    "stageFirst": "Valmistele ensin jokin tiedosto",
+    "stageToCommit": "Valmistele tiedosto vahvistusta varten.",
+    "staged": "Valmisteltu",
+    "stagedChanges": "Valmistellut muutokset",
+    "stagedChangeCount_one": "{{count}} valmisteltu muutos",
+    "stagedChangeCount_other": "{{count}} valmisteltua muutosta",
+    "stash": "Varastoi muutokset",
+    "stashNeedsAttention": "Ratkaise varaston ristiriidat",
+    "sync": "Synkronoi",
+    "title": "Versionhallinta",
+    "titleRequired": "Commitin otsikko vaaditaan.",
+    "titleRequiredStatus": "Kirjoita commitin otsikko ennen vahvistamista.",
+    "unlink": "Poista linkitys",
+    "unlinked": "Linkitys GitHubiin poistettiin.",
+    "unstage": "Peru valmistelu",
+    "unstageFor": "Peru kohteen {{path}} valmistelu",
+    "unstageAll": "Peru kaikkien valmistelu",
+    "workingChangeCount_one": "{{count}} työhakemiston muutos",
+    "workingChangeCount_other": "{{count}} työhakemiston muutosta",
+    "useCurrent": "Käytä nykyistä",
+    "useIncoming": "Käytä saapuvaa"
+  },
+  "splash": {
+    "initializing": "Alustetaan Oleaflyä",
+    "loadingCore": "Ladataan Oleafly Corea",
+    "loadingHarness": "Ladataan Oleafly Harnessia",
+    "loadingParsers": "Ladataan Oleafly Parsersia",
+    "starting": "Käynnistetään Oleaflyä"
+  },
+  "theme": {
+    "dark": "Tumma",
+    "light": "Vaalea",
+    "menuLabel": "Ulkoasu: {{name}}",
+    "system": "Järjestelmä",
+    "useDark": "Käytä tummaa teemaa",
+    "useLight": "Käytä vaaleaa teemaa",
+    "useSystem": "Käytä järjestelmän teemaa"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Lopeta silti",
+      "description": "{{phase}} juuri nyt. Jos lopetat, asennus keskeytyy. Ladattu osa säilyy ja jatkuu, kun Oleafly avataan seuraavan kerran.",
+      "title": "TinyTeX asentuu yhä"
+    },
+    "wait": {
+      "description": "{{phase}} Käännös on jonossa ja alkaa automaattisesti heti, kun moottori on valmis.",
+      "title": "TinyTeX latautuu yhä"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Peruuta (Esc)",
+    "closeForkDialog": "Sulje haaroitusikkuna",
+    "compileFigureFirst": "Käännä kuva ensin",
+    "compilePdfFirst": "PDF vaatii ensin käännöksen",
+    "export": "Vie",
+    "exportComplete": "Vienti valmis: {{format}}",
+    "exportDocx": "Vie Word-muodossa (.docx)",
+    "exportEpub": "Vie EPUB-muodossa (.epub)",
+    "exportHtml": "Vie HTML-muodossa (.html)",
+    "exportMarkdown": "Vie Markdown-muodossa (.md)",
+    "exportPdf": "Vie PDF-muodossa",
+    "exportPdfVector": "Vie PDF-muodossa (vektorikuva)",
+    "exportPngRaster": "Vie PNG-muodossa (rasterikuva)",
+    "exportPagePng": "Vie sivu PNG-muodossa (rasterikuva)",
+    "exportAs": "Vie muodossa {{format}}",
+    "exportPptx": "Vie PowerPoint-muodossa (.pptx)",
+    "exportSourceZip": "Vie lähdekoodi (.zip)",
+    "exportTxt": "Vie pelkkänä tekstinä (.txt)",
+    "exportZipFailed": "Projektin zip-vienti ei onnistunut",
+    "exporting": "Viedään .{{format}}…",
+    "fork": "Haaroita",
+    "forkDescription": "Kopioi projektin <name>{{name}}</name> ja sen Git-historian uudeksi projektiksi. Tarkistuspisteet alkavat tyhjinä.",
+    "forkFailed": "Projektin haaroittaminen ei onnistunut.",
+    "forkProject": "Haaroita projekti",
+    "layout": "Asettelu",
+    "layouts": {
+      "aiOnly": "Vain tekoäly",
+      "editorAi": "Editori ja tekoäly",
+      "editorOnly": "Vain editori",
+      "editorPreview": "Editori ja esikatselu",
+      "editorPreviewAi": "Editori, esikatselu ja tekoäly",
+      "previewAi": "Esikatselu ja tekoäly",
+      "previewOnly": "Vain esikatselu"
+    },
+    "newProjectName": "Uuden projektin nimi",
+    "projectName": "Projektin nimi",
+    "projectRenamed": "Projekti nimettiin uudelleen",
+    "saveName": "Tallenna (Enter)",
+    "saveNameAriaLabel": "Tallenna nimi",
+    "untitledProject": "projekti",
+    "versioning": "Versiointi",
+    "viewFile": "Näytä tiedosto",
+    "views": {
+      "editor": "Lähdekoodinäkymä",
+      "pdf": "PDF-näkymä",
+      "split": "Jaettu näkymä"
+    }
+  },
+  "tour": {
+    "chooseColor": "Valitse oma tunnusvärisi",
+    "diagramArrow": "Kaareva nuoli, joka osoittaa kaavion piirtoalustaan",
+    "pointer": "Esittelyn vinkkiosoitin",
+    "quitConfirm": "Lopeta esittely",
+    "quitDescription": "Edistymistä ei tallenneta. Minkä tahansa esittelyn voi käynnistää myöhemmin uudelleen Ohje-valikosta.",
+    "quitTitle": "Lopetetaanko esittely?",
+    "setMood": "Aseta tunnelma",
+    "showMeAround": "Näytä minulle ympäriinsä",
+    "skip": "Ohita",
+    "step": "Vaihe {{step}}",
+    "stepOfTotal": "Vaihe {{step}}/{{total}}",
+    "stepOfTour": "Vaihe {{step}} · {{tour}}",
+    "useAccent": "Käytä korostusväriä {{name}}",
+    "welcomeArrow": "Käsin piirretty nuoli, joka osoittaa tervetulokappaleeseen",
+    "welcomeBody": "Vie artikkeli ensimmäisestä luonnoksesta valmiiksi PDF:ksi yhdessä avoimen lähdekoodin työtilassa. Kirjoita, käännä, oikolue, hallitse viittauksia, rakenna kuvia, tarkastele jokaista muutosta Git-versionhallinnassa ja käytä valitsemiasi tekoälymalleja. Projektit pysyvät omalla koneellasi.",
+    "welcomeTitle": "Tervetuloa Oleaflyyn"
+  },
+  "updateChecker": {
+    "available": "Päivitys saatavilla · v{{version}}",
+    "check": "Etsi päivityksiä",
+    "checkAgain": "Tarkista uudelleen",
+    "checkFailed": "Päivityksiä ei voitu tarkistaa.",
+    "checking": "Tarkistetaan…",
+    "downloadFromGithub": "Lataa GitHubista",
+    "downloading": "Ladataan… {{percent}} %",
+    "installing": "Asennetaan…",
+    "lastCheckFailed": "Viimeisin automaattinen tarkistus epäonnistui.",
+    "lastCheckFailedAt": "Viimeisin automaattinen tarkistus epäonnistui · {{when}}.",
+    "latest": "Käytössä on uusin versio",
+    "releaseNotes": "Julkaisutiedot",
+    "restartNotice": "Oleafly käynnistyy uudelleen viimeistelläkseen.",
+    "tryAgain": "Yritä uudelleen",
+    "unsupported": "Työpöytäsovellus hallitsee päivityksiä.",
+    "updateNow": "Päivitä nyt"
+  },
+  "updateWindow": {
+    "checking": "Etsitään päivityksiä…",
+    "currentVersion": "Käytössä on v{{version}}",
+    "error": "Päivitystä ei voitu viedä loppuun. Yritä myöhemmin uudelleen.",
+    "later": "Myöhemmin",
+    "looking": "Etsitään uusinta versiota…",
+    "packageInstall": "Asennettu paketista. Päivitä lataamalla uusi versio.",
+    "ready": "Uusi versio on valmiina asennettavaksi.",
+    "upToDate": "Kaikki on ajan tasalla",
+    "upToDateGeneric": "Käytössä on Oleaflyn uusin versio",
+    "upToDateHeadline": "Kaikki on ajan tasalla!",
+    "upToDateVersion": "Oleafly v{{version}} on uusin versio",
+    "viewRelease": "Katso julkaisu"
+  },
+  "windowControls": {
+    "group": "Ikkunan hallinta",
+    "maximize": "Suurenna",
+    "minimize": "Pienennä",
+    "restore": "Palauta"
+  },
+  "windows": {
+    "preview": "Esikatselu: {{title}}",
+    "update": "Oleafly-päivitys"
+  }
+}

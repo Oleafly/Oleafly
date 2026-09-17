@@ -1,0 +1,165 @@
+{
+  "citeOleafly": "Citovat Oleafly v tomto článku",
+  "empty": {
+    "citations": {
+      "detail": "Začněte importem knihovny referencí nebo přidáním citace.",
+      "title": "Zatím žádné citace"
+    },
+    "symbols": {
+      "detail": "Nadpisy, návěští, příkazy a prostředí se tu objeví, jak budete projekt psát.",
+      "title": "Zatím žádné symboly"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtrovat citace",
+    "ariaLabelResults": "Filtrovat výsledky",
+    "ariaLabelSymbols": "Filtrovat symboly",
+    "clear": "Vymazat filtr",
+    "noCitation": "Dotazu „{{query}}“ neodpovídá žádná citace.",
+    "noResult": "Dotazu „{{query}}“ neodpovídá žádný výsledek.",
+    "noSymbol": "Dotazu „{{query}}“ neodpovídá žádný symbol.",
+    "placeholderCitations": "Filtrovat klíče, názvy, autory…",
+    "placeholderResults": "Filtrovat místa výskytu…",
+    "placeholderSymbols": "Filtrovat návěští a příkazy…"
+  },
+  "import": {
+    "added_one": "{{count}} reference přidána do {{target}}.",
+    "added_few": "{{count}} reference přidány do {{target}}.",
+    "added_many": "{{count}} reference přidáno do {{target}}.",
+    "added_other": "{{count}} referencí přidáno do {{target}}.",
+    "addedWithDuplicates_one": "{{count}} reference přidána do {{target}}, {{duplicates}} už tam bylo.",
+    "addedWithDuplicates_few": "{{count}} reference přidány do {{target}}, {{duplicates}} už tam bylo.",
+    "addedWithDuplicates_many": "{{count}} reference přidáno do {{target}}, {{duplicates}} už tam bylo.",
+    "addedWithDuplicates_other": "{{count}} referencí přidáno do {{target}}, {{duplicates}} už tam bylo.",
+    "allDuplicates_one": "Tuto referenci už {{target}} obsahuje.",
+    "allDuplicates_few": "Tyto {{count}} reference už {{target}} obsahuje.",
+    "allDuplicates_many": "Těchto {{count}} reference už {{target}} obsahuje.",
+    "allDuplicates_other": "Těchto {{count}} referencí už {{target}} obsahuje.",
+    "defaultTarget": "bibliografie",
+    "description": "Přidejte do tohoto projektu reference ze správce citací nebo ze souboru bibliografie.",
+    "duplicateNote": "Reference s DOI, které už v bibliografii je, se přeskočí.",
+    "empty": "V tomto souboru nebyly nalezeny žádné reference.",
+    "endnote": {
+      "button": "Vybrat soubor XML, RIS nebo BibTeX",
+      "description": "Vyberte soubor EndNote XML, RIS nebo BibTeX. Oleafly přidá reference do bibliografie projektu.",
+      "title": "EndNote, RIS nebo BibTeX"
+    },
+    "failed": "Tyto reference se nepodařilo importovat.",
+    "nothingNew": "Do {{target}} není co nového přidat.",
+    "problems_one": "{{count}} problém při importu. {{details}}",
+    "problems_few": "{{count}} problémy při importu. {{details}}",
+    "problems_many": "{{count}} problému při importu. {{details}}",
+    "problems_other": "{{count}} problémů při importu. {{details}}",
+    "readFailed": "Tento soubor se nepodařilo přečíst.",
+    "title": "Import knihovny referencí",
+    "unrecognized": "Nerozpoznaný typ souboru: {{name}}",
+    "zotero": {
+      "button": "Vybrat soubor Zotero RDF",
+      "description": "V Zoteru zvolte Soubor → Exportovat knihovnu → Zotero RDF. Potom vyberte exportovaný soubor.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Neúplné výsledky. U poškozených nebo nečitelných souborů mohou některé výskyty chybět.",
+    "stale": "Probíhá aktualizace. Citace, symboly a rozsahy z předchozí revize jsou skryté."
+  },
+  "panel": {
+    "ariaLabel": "Reference (Shift-F12)",
+    "clearQuery": "Vymazat dotaz na reference",
+    "cleanLibrary": "Vyčistit knihovnu referencí",
+    "importAriaLabel": "Importovat reference",
+    "issues_one": "{{count}} problém s referencí nebo citací",
+    "issues_few": "{{count}} problémy s referencemi nebo citacemi",
+    "issues_many": "{{count}} problému s referencemi nebo citacemi",
+    "issues_other": "{{count}} problémů s referencemi nebo citacemi",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Reference",
+    "viewTabs": "Zobrazení panelu referencí"
+  },
+  "cleanLibrary": {
+    "title": "Vyčištění knihovny referencí",
+    "description": "Než změníte své soubory, projděte si klíče citací a duplicitní záznamy.",
+    "library": "Knihovna referencí",
+    "entryCount_one": "{{count}} záznam",
+    "entryCount_few": "{{count}} záznamy",
+    "entryCount_many": "{{count}} záznamu",
+    "entryCount_other": "{{count}} záznamů",
+    "footer": "Náhled uloží vaše otevřené soubory. Při použití se ověří, že stále odpovídají náhledu, a originály se zazálohují.",
+    "noBib": "Tento projekt nemá žádný soubor .bib k vyčištění.",
+    "entriesKept": "Zůstane {{kept}} z {{total}} záznamů.",
+    "changes": "Změny a poznámky",
+    "noChanges": "Žádné změny souborů k použití.",
+    "filesToUpdate": "Soubory k aktualizaci: {{files}}",
+    "none": "Žádné",
+    "introSafeChanges": "Klíče citací se sjednotí. Duplicity podle DOI se odstraní jen tehdy, když lze zachovat všechny jejich údaje.",
+    "introReview": "Podobné názvy a rozporná metadata zůstanou v knihovně k posouzení.",
+    "preview": "Náhled",
+    "reviewTitle": "Posouzení před použitím",
+    "reviewBody": "Zobrazte si náhled změn a uvidíte, které záznamy a citace se aktualizují.",
+    "statusAttention": "Vyžaduje pozornost",
+    "statusWorking": "Pracuje se…",
+    "statusPreviewReady": "Náhled je připraven",
+    "statusReady": "Připraveno k náhledu",
+    "refreshPreview": "Obnovit náhled",
+    "previewChanges": "Zobrazit náhled změn",
+    "apply": "Použít a přepsat citace",
+    "truncated": "Náhled ukazuje prvních 500 řádků každé verze.",
+    "actionRenamed": "{{old}} přejmenováno na {{new}}",
+    "actionDuplicate": "{{removed}} odstraněno jako duplicita záznamu {{kept}} (shoda podle {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Vyčištěné soubory se nepodařilo znovu načíst. Před úpravami projekt znovu otevřete.",
+    "cleaned": "Knihovna vyčištěna. Zachováno {{kept}} z {{total}} záznamů.",
+    "cleanedWithBackup": "Knihovna vyčištěna. Zachováno {{kept}} z {{total}} záznamů. Původní soubory jsou uložené v {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Projekt se po tomto dotazu změnil. Spusťte Najít reference znovu, aby se použily aktuální rozsahy ve zdroji.",
+      "title": "Výsledky hledání referencí vypršely"
+    },
+    "noLocations": {
+      "detail": "Symbol v této revizi existuje, ale nemá žádné odpovídající definice ani výskyty.",
+      "title": "Nebyla nalezena žádná místa"
+    },
+    "none": {
+      "detail": "Umístěte kurzor na návěští, citaci, příkaz nebo prostředí a stiskněte Shift-F12.",
+      "title": "Žádný dotaz na reference"
+    }
+  },
+  "tabs": {
+    "citations": "Citace",
+    "results": "Reference",
+    "symbols": "Symboly"
+  },
+  "trees": {
+    "citations": "Citace v projektu",
+    "noCitations": "Nebyly nalezeny žádné záznamy bibliografie ani použití citací.",
+    "noSymbols": "Nebyly nalezeny žádné symboly definované projektem.",
+    "symbols": "Symboly projektu"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Nejnovější revizi projektu se nepodařilo analyzovat. Zdrojové soubory zůstaly beze změny.",
+      "title": "Analýza projektu selhala"
+    },
+    "indexing": {
+      "detail": "Reference a citace se objeví, jakmile bude aktuální revize projektu připravená.",
+      "title": "Indexuje se inteligence projektu"
+    },
+    "noProject": {
+      "detail": "Otevřete projekt dokumentu a můžete zkoumat citace, symboly a reference mezi soubory.",
+      "title": "Není otevřený žádný projekt"
+    },
+    "offline": {
+      "detail": "Reference a citace teď v tomto pracovním prostoru nelze kontrolovat.",
+      "title": "Služba analýzy není k dispozici"
+    },
+    "unsupported": {
+      "detail": "Aktivní projekt nepoužívá podporovaný dokumentový engine.",
+      "title": "Inteligence projektu není k dispozici"
+    },
+    "waiting": {
+      "detail": "Nejnovější revize projektu zatím nebyla naindexována.",
+      "title": "Čeká se na analýzu projektu"
+    }
+  }
+}

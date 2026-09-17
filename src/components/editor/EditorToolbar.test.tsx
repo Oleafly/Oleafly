@@ -89,7 +89,7 @@ describe("EditorToolbar wysiwyg toggle", () => {
     ).toBeTruthy();
   });
 
-  it("does not expose CodeMirror-only navigation while Visual mode is active", () => {
+  it("keeps find and SyncTeX available in both modes", () => {
     useFilesStore.setState({
       projectKind: "",
       engineLoaded: true,
@@ -102,8 +102,8 @@ describe("EditorToolbar wysiwyg toggle", () => {
     expect(screen.getByLabelText("Go to PDF (SyncTeX)")).toBeInTheDocument();
 
     rerender(<EditorToolbar wysiwyg={true} onToggleWysiwyg={vi.fn()} />);
-    expect(screen.queryByLabelText(/^Find \(/u)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Go to PDF (SyncTeX)")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Find \(/u)).toBeInTheDocument();
+    expect(screen.getByLabelText("Go to PDF (SyncTeX)")).toBeInTheDocument();
     expect(screen.getByLabelText("Project info")).toBeInTheDocument();
   });
 

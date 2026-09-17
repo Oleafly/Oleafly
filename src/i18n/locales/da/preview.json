@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Logfiler",
+    "showLogs": "Vis kompileringslogfiler",
+    "showPdf": "Vis PDF-forhåndsvisning",
+    "askAi": "Spørg AI",
+    "more": "Flere knapper til forhåndsvisningen",
+    "duration": "{{seconds}} s",
+    "failed": "Mislykkedes",
+    "compiledWithErrors": "Kompileret med fejl",
+    "compiledWithWarnings": "Kompileret med advarsler",
+    "compiledSuccessfully": "Kompileret uden problemer"
+  },
+  "pageLayout": {
+    "group": "Sidelayout",
+    "single": "Én side ad gangen",
+    "double": "To sider ad gangen"
+  },
+  "pages": {
+    "previous": "Forrige side",
+    "next": "Næste side",
+    "number": "Sidetal",
+    "ofTotal": "af {{total}}",
+    "pageOfTotal": "Side {{page}} af {{total}}"
+  },
+  "zoom": {
+    "in": "Zoom ind",
+    "out": "Zoom ud",
+    "fitToWidth": "Tilpas til bredden",
+    "fitToHeight": "Tilpas til højden",
+    "reset": "Tilbage til 100 %",
+    "percent": "{{percent}} %",
+    "percentLabel": "Zoom {{percent}} procent",
+    "menuLabel": "Zoom · {{percent}} %"
+  },
+  "outline": {
+    "open": "Dokumentets disposition",
+    "panel": "Disposition for PDF-dokumentet",
+    "title": "Dokumentets disposition",
+    "close": "Luk dokumentets disposition",
+    "loading": "Indlæser disposition…",
+    "empty": "Denne PDF indeholder ikke nogen disposition.",
+    "externalLink": "Eksternt link",
+    "externalBadge": "Link"
+  },
+  "search": {
+    "open": "Søg i PDF",
+    "panel": "Søg i denne PDF",
+    "placeholder": "Søg i dokumentet",
+    "input": "Søg i teksten i PDF",
+    "previous": "Forrige søgeresultat",
+    "next": "Næste søgeresultat",
+    "close": "Luk søgningen i PDF"
+  },
+  "viewer": {
+    "scrollArea": "Løbende rulleområde for PDF",
+    "crashedTitle": "PDF-forhåndsvisningen gik ned",
+    "crashedDetail": "Kompiler den aktuelle revision igen, eller prøv fremviseren igen.",
+    "retry": "Prøv fremviseren igen",
+    "loadingLatest": "Indlæser den senest kompilerede PDF…",
+    "retryingLoad": "Prøver at indlæse PDF igen…",
+    "retainedFailure": "{{detail}} Viser i stedet den seneste PDF, der blev indlæst uden fejl.",
+    "retainedFailureDetail": "Den aktuelle PDF kunne ikke indlæses",
+    "invalidTitle": "Ugyldig PDF",
+    "emptyTitle": "Tom PDF",
+    "unavailableTitle": "PDF-fremviseren er ikke tilgængelig",
+    "loadFailedTitle": "Indlæsningen af PDF mislykkedes",
+    "loadFailedDetail": "PDF'en kunne ikke indlæses."
+  },
+  "password": {
+    "title": "Adgangskode påkrævet",
+    "label": "Adgangskode til PDF",
+    "placeholder": "Adgangskode til PDF",
+    "submit": "Lås PDF op"
+  },
+  "actions": {
+    "downloadImage": "Download billedet",
+    "downloadPdf": "Download PDF",
+    "downloadDisplayedPdf": "Download den viste PDF",
+    "downloadStalePdf": "Download forældet PDF, der ikke er aktuel",
+    "saveImage": "Gem billedet i projektet",
+    "savePdf": "Gem PDF i projektet",
+    "invert": "Inverter farverne i PDF-forhåndsvisningen",
+    "restoreColors": "Gendan farverne",
+    "readerView": "Læsevisning",
+    "exitReaderView": "Forlad læsevisningen",
+    "rotate": "Roter med uret",
+    "rotateTooltip": "Roter PDF med uret (90°). Lige nu {{degrees}}°",
+    "openWindow": "Åbn forhåndsvisningen i et nyt vindue",
+    "hideToolbar": "Skjul værktøjslinjen",
+    "showToolbar": "Vis værktøjslinjen",
+    "settings": "Indstillinger for PDF-forhåndsvisning",
+    "fullscreen": "Forhåndsvisning i fuld skærm",
+    "exitFullscreen": "Forlad fuld skærm",
+    "retryCompile": "Kompiler igen"
+  },
+  "stale": {
+    "badge": "Forældet",
+    "badgeLabel": "Forældet forhåndsvisning, der ikke er aktuel. Kompiler igen.",
+    "tooltip": "Forhåndsvisningen er forældet i forhold til ændringerne i editoren. {{explanation}} {{syncTex}} Klik for at kompilere igen.",
+    "explanation": "Denne PDF svarer ikke til den aktive projektrevision.",
+    "revisionExplanation": "Viser projektrevision {{displayed}}. Det aktive projekt er revision {{active}}.",
+    "noIdentity": "Den viste PDF har ingen verificeret kompileringsidentitet for den aktive revision.",
+    "syncTexAvailable": "SyncTeX bruger den nærmeste uændrede linje ved redigeringer.",
+    "syncTexUnavailable": "SyncTeX kræver en aktuel kompilering."
+  },
+  "save": {
+    "title": "Gem PDF i projektet",
+    "imageTitle": "Gem billedet i projektet",
+    "close": "Luk dialogen Gem",
+    "staleDescription": "Gemmer den viste, forældede PDF i projekttræet. Den svarer ikke til den aktive revision.",
+    "description": "Gemmer den viste PDF i projekttræet (committes via Git).",
+    "nameLabel": "Navn i projektet",
+    "namePlaceholder": "dokument.pdf",
+    "imageSaved": "Billedet er gemt i projektet.",
+    "pdfSaved": "PDF'en er gemt i projektet.",
+    "failed": "Kunne ikke gemme i projektet."
+  },
+  "download": {
+    "pngFilter": "PNG-billede",
+    "imageSaved": "Billedet er gemt · {{name}}",
+    "pdfSaved": "PDF'en er gemt · {{name}}",
+    "showInFolder": "Vis i mappen",
+    "folderUnavailable": "Filen blev gemt, men Oleafly kunne ikke åbne dens mappe (adgang nægtet). Se efter på den placering, du valgte i dialogen.",
+    "imageFailed": "Kunne ikke downloade billedet.",
+    "imageFailedDetail": "Kunne ikke downloade billedet: {{detail}}",
+    "pdfFailed": "Kunne ikke downloade PDF'en.",
+    "pdfFailedDetail": "Kunne ikke downloade PDF'en: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF-kompilering er ikke tilgængelig lige nu.",
+    "compileFailed": "Kompileringen mislykkedes. Åbn fanen Logfiler for at se, hvad der gik galt."
+  },
+  "a11y": {
+    "stale": "Forældet PDF, der ikke er aktuel. {{explanation}}",
+    "page": "PDF-side {{page}} af {{total}}.",
+    "searchResult": "Søgeresultat {{current}} af {{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF-forhåndsvisningen er klar",
+    "headingPreparing": "Forbereder PDF-forhåndsvisningen",
+    "headingAttention": "Opstarten kræver opmærksomhed",
+    "progressLabel": "Dokumentopstart: {{completed}} af {{total}} trin er færdige eller sprunget over",
+    "doneCount": "{{completed}}/{{total}} færdige",
+    "metaRunning": "{{stages}} kører",
+    "metaQueued": "{{stages}} i kø",
+    "metaFailed": "{{stages}} mislykkedes",
+    "compileNow": "Kompiler nu",
+    "noProject": "Intet aktivt projekt",
+    "waitingForEngine": "Venter på dokumentmotoren",
+    "orPress": "eller tryk på <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "færdig",
+      "running": "kører",
+      "queued": "i kø",
+      "skipped": "sprunget over",
+      "failed": "mislykkedes"
+    },
+    "language": {
+      "serviceLabel": "Sprogtjeneste",
+      "analysisLabel": "Sproganalyse",
+      "openingFiles": "Åbner projektets filer",
+      "starting": "Starter sprogtjenesten",
+      "restarting": "Genstarter sprogtjenesten",
+      "installing": "Installerer sprogtjenesten",
+      "connected": "Startet og forbundet",
+      "ready": "Klar",
+      "localOnly": "Ikke nødvendig. Bruger den lokale analyse.",
+      "notApplicable": "Gælder ikke for dette projekt",
+      "unavailable": "Ikke tilgængelig. Den lokale analyse virker stadig.",
+      "waitingToStart": "Venter på at starte",
+      "waitingForFiles": "Venter på projektets filer",
+      "syncing": "Synkroniserer projektets aktuelle filer",
+      "analyzing": "Analyserer projektets struktur",
+      "analyzed": "Den aktuelle projektrevision er analyseret",
+      "partial": "En brugbar delvis analyse er klar",
+      "needsAttention": "Analysen kræver opmærksomhed",
+      "notAvailable": "Ikke tilgængelig for dette projekt",
+      "queued": "I kø for den aktuelle revision",
+      "waitingForService": "Venter på sprogtjenesten"
+    },
+    "compile": {
+      "label": "Kompilerer",
+      "saving": "Gemmer de aktuelle ændringer",
+      "downloading": "Downloader de nødvendige LaTeX-pakker",
+      "producing": "Danner og verificerer PDF-resultatet",
+      "unavailable": "Kompilatoren er ikke tilgængelig",
+      "failed": "Kompileringen mislykkedes. Åbn Logfiler for detaljer.",
+      "accepted": "Det verificerede resultat er godkendt",
+      "waiting": "Venter på at kompilere den aktuelle revision"
+    },
+    "render": {
+      "label": "Gengiver PDF",
+      "preparing": "Forbereder sider, tekst og links",
+      "reading": "Læser PDF · {{percent}} %",
+      "passwordRequired": "Adgangskode påkrævet",
+      "needsAttention": "Gengivelsen af PDF kræver opmærksomhed",
+      "ready": "Forhåndsvisningen er klar",
+      "waitingForRenderer": "Venter på den verificerede PDF-gengiver",
+      "waitingForCompile": "Venter på et verificeret kompileringsresultat"
+    }
+  },
+  "window": {
+    "fitWidth": "Tilpas bredden",
+    "fitHeight": "Tilpas til højden",
+    "invert": "Inverter farverne",
+    "invertLabel": "Inverter farverne i PDF",
+    "rotateLabel": "Roter PDF med uret",
+    "staleHeading": "Forældet · forhåndsvisning, der ikke er aktuel",
+    "staleCompiling": "En nyere projektrevision er ved at blive kompileret. Dette er den seneste verificerede PDF for revision {{revision}}.",
+    "staleUnknownRevision": "ukendt",
+    "staleCompileFailed": "{{detail}} Den seneste verificerede PDF bliver ved med at være synlig.",
+    "staleCompileFailedDetail": "Den nyere kompilering gav ikke en brugbar PDF",
+    "staleIdentity": "Denne PDF svarer ikke til den senest godkendte kompileringsidentitet.",
+    "crashedDetail": "Prøv denne fremviser igen, eller kompiler igen i hovedvinduet.",
+    "compilingTitle": "Kompilerer PDF",
+    "compileFailedTitle": "Kompileringen mislykkedes",
+    "compileUnavailableTitle": "Kompilering er ikke tilgængelig",
+    "artifactUnavailableTitle": "PDF er ikke tilgængelig",
+    "noVerifiedTitle": "Ingen verificeret PDF",
+    "compilingDetail": "Den verificerede PDF dukker op, når kompileringen er færdig.",
+    "noVerifiedDetail": "Kompiler projektet i hovedvinduet. Dette vindue viser kun resultater med en verificeret kompileringsidentitet.",
+    "loadingTitle": "Indlæser PDF",
+    "loadingVerified": "Indlæser verificeret PDF…",
+    "restoringLast": "Gendanner den seneste PDF, der blev indlæst uden fejl…",
+    "retryingLoad": "Prøver at indlæse PDF igen…",
+    "unlocking": "Låser PDF op…",
+    "rotating": "Roterer PDF…",
+    "retainedFailureDetail": "Den nyeste PDF kunne ikke indlæses",
+    "artifactFailure": "Den kompilerede PDF kunne ikke verificeres eller læses. Den seneste PDF, der blev indlæst uden fejl, bevares, hvis den findes.",
+    "downloadStarted": "Downloaden af PDF er gået i gang.",
+    "downloadSaved": "PDF'en er gemt.",
+    "downloadFailed": "Den viste PDF kunne ikke gemmes."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Adgangskoden til PDF blev ikke accepteret.",
+      "passwordRequired": "Denne PDF er beskyttet med en adgangskode.",
+      "invalid": "Det kompilerede resultat er ikke en gyldig PDF. Kompiler igen, eller se kompileringsloggen.",
+      "unavailable": "PDF-gengiveren er ikke tilgængelig i dette vindue. Prøv igen, når du har gendannet vinduet eller genstartet appen.",
+      "generic": "PDF'en kunne ikke indlæses. Kompiler den aktuelle revision igen, og prøv så igen.",
+      "empty": "Den kompilerede PDF er tom.",
+      "firstPage": "PDF'en blev åbnet, men dens første side kunne ikke gengives."
+    },
+    "link": {
+      "blockedScheme": "Dette PDF-link bruger et blokeret URL-skema."
+    },
+    "search": {
+      "failed": "Søgningen kunne ikke læse alle sider. Prøv igen, når du har genindlæst PDF'en."
+    },
+    "outline": {
+      "empty": "Denne PDF indeholder ikke nogen disposition.",
+      "failed": "Dispositionen for PDF'en kunne ikke indlæses.",
+      "destinationUnavailable": "Den destination i dispositionen er ikke tilgængelig.",
+      "blockedScheme": "Dette link bruger et blokeret URL-skema.",
+      "noDestination": "Dette punkt i dispositionen har ingen destination.",
+      "untitled": "Afsnit uden titel"
+    },
+    "status": {
+      "loading": "Indlæser PDF…"
+    },
+    "a11y": {
+      "document": "Forhåndsvisning af PDF-dokument",
+      "page": "PDF-side {{page}} af {{total}}",
+      "textLayer": "Markerbar tekst på PDF-side {{page}}"
+    },
+    "screenReader": {
+      "layer": "Skærmlæservisning, side {{page}} af {{total}}",
+      "title": "Skærmlæsertilstand",
+      "pageLabel": "Side {{page}} af {{total}}",
+      "empty": "Der blev ikke fundet læsbar tekst på denne side."
+    }
+  }
+}

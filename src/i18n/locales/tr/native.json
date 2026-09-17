@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Oleafly Hakkında",
+    "checkUpdates": "Güncellemeleri Denetle…",
+    "reloadViews": "Görünümleri Yeniden Yükle",
+    "restartApp": "Uygulamayı Yeniden Başlat",
+    "quit": "Oleafly'den Çık",
+    "edit": "Düzen",
+    "undo": "Geri Al",
+    "redo": "Yinele",
+    "cut": "Kes",
+    "copy": "Kopyala",
+    "paste": "Yapıştır",
+    "selectAll": "Tümünü Seç",
+    "view": "Görünüm",
+    "toggleTerminal": "Terminali Aç/Kapat",
+    "toggleBrowser": "Tarayıcıyı Aç/Kapat"
+  },
+  "window": {
+    "browser": "Oleafly Tarayıcı",
+    "browserTitled": "{{title}} - Oleafly Tarayıcı"
+  },
+  "dialog": {
+    "cancel": "İptal",
+    "fullAccess": {
+      "title": "Tam erişim etkinleştirilsin mi?",
+      "message": "Tam erişim, asistanın her seferinde onay istemeden shell komutları çalıştırmasına ve dosyaları düzenlemesine izin verir. Tam erişim etkinleştirilsin mi?",
+      "confirm": "Tam erişimi etkinleştir"
+    },
+    "cookieImport": {
+      "title": "Cookie içe aktarmayı onaylayın",
+      "messageHost": "{{hostname}} için cookie'ler, {{browser}} tarayıcısının \"{{profile}}\" profilinden Oleafly'nin uygulama içi tarayıcısına aktarılsın mı? Aktarılan cookie'ler sizi web sitelerinde oturum açmış duruma getirebilir.",
+      "messageAll": "{{browser}} tarayıcısının \"{{profile}}\" profilindeki tüm cookie'ler Oleafly'nin uygulama içi tarayıcısına aktarılsın mı? Aktarılan cookie'ler sizi web sitelerinde oturum açmış duruma getirebilir.",
+      "confirm": "Cookie'leri içe aktar"
+    },
+    "mcpApprove": {
+      "title": "MCP aracını onaylayın",
+      "confirm": "Aracı kullan"
+    },
+    "tableImport": {
+      "title": "İçe aktarılacak bir elektronik tablo seçin",
+      "filter": "Elektronik tablolar"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Uygulama menüsü kullanılamıyor",
+    "viewMenuUnavailable": "Görünüm menüsü kullanılamıyor",
+    "menuItemUnavailable": "{{id}} menü ögesi kullanılamıyor",
+    "fullAccessDismissed": "Tam erişim onayı kapatıldı.",
+    "fullAccessDeclined": "Tam erişim etkinleştirilmedi.",
+    "approvalDialogClosed": "Yerel onay penceresi beklenmedik biçimde kapandı."
+  }
+}

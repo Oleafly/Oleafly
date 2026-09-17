@@ -205,6 +205,15 @@
     },
     "wordCount": {
       "label": "字数统计"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "删除 整行 移除",
+        "duplicate": "复制 整行 所选 副本",
+        "lowercase": "小写 大小写 文本",
+        "titleCase": "标题大小写 首字母大写 文本",
+        "uppercase": "大写 大小写 文本"
+      }
     }
   },
   "compile": {
@@ -570,8 +579,12 @@
       },
       "dictionary": {
         "ariaLabel": "校对拼写词典",
-        "description": "源码和可视化编辑器拼写检查所使用的离线 Hunspell 词库包。",
-        "label": "拼写词典"
+        "description": "源码和可视化编辑器拼写检查所使用的 Hunspell 词库包。除内置的五种语言外，其他语言按需下载。",
+        "label": "拼写词典",
+        "downloadFailed": "无法下载 {{name}} 词典。",
+        "downloaded": "{{name}} 已可用于拼写检查。",
+        "downloading": "正在下载 {{name}}",
+        "offlineRefused": "离线模式已开启，请关闭后再下载 {{name}}。"
       },
       "harper": {
         "description": "在 LaTeX 与 Markdown 的源码和可视化编辑以及 Typst 源码编辑中检查英语语法和风格，并提供一键修复。",

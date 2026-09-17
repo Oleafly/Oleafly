@@ -57,13 +57,23 @@ import {
   spellLintExtensions,
   refreshEditorLints,
 } from "./spellcheck";
-import { liveMathPreview } from "./math-preview";
+import { mathPreviewEnabled, mathPreviewTooltip, setMathPreviewEnabled } from "./visual/math-preview";
 import { createLatexLinter } from "./latex-linter";
+import { bibtexCompletions } from "./bibtex-completions";
+import { createBibtexLinter } from "./bibtex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { stickyScroll } from "./sticky-scroll";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
+import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
+import { emacsModeExtension } from "./emacs-mode";
+import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
+import type { VisualPorts } from "./visual/types";
+
+export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
+
+export type EditorKeymapMode = "default" | "vim" | "emacs";
 
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
@@ -75,7 +85,6 @@ export interface EditorHost {
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
-  /** Flush the active buffer when Vim's `:w` command is run. */
   saveActive?(): void;
   isEditLocked?(): boolean;
   registerMutationOwner?(owner: {
@@ -83,10 +92,12 @@ export interface EditorHost {
     reconcile: () => void;
   }): () => void;
   useSettings(): {
-    vim: boolean;
+    keymap: EditorKeymapMode;
     spellcheck: boolean;
     harper: boolean;
     editorTheme: string;
+    tabSize: number;
+    lineWrap: boolean;
     /** Completion popups while typing; explicit Ctrl+Space always works. */
     autocomplete: boolean;
     /** Auto-insert closing brackets, parentheses, and quotes. */
@@ -98,17 +109,21 @@ export interface EditorHost {
     ghostCompletion: boolean;
     /** Pin the enclosing sections and environments to the top while scrolling. */
     stickyScroll: boolean;
+    /** Render the equation the cursor is in above the source. */
+    mathPreview: boolean;
   };
   useLintRefreshDeps(): readonly unknown[];
+  useEditorKeymap(): Readonly<Partial<Record<EditorCommandId, string>>>;
+  useVisualMode(): boolean;
+  visualPorts?: VisualPorts;
+  setMathPreview?(enabled: boolean): void;
 }
-
-const vimSaveHandlers = new WeakMap<EditorView, () => void>();
 
 // codemirror-vim's built-in :write/:w command calls this CM5-compatible save
 // hook. Route it back to the host that owns the EditorView so the reusable
 // editor package does not need to know about the app's file store.
 CodeMirror.commands.save = (cm: CodeMirror) => {
-  vimSaveHandlers.get(cm.cm6)?.();
+  runHostSave(cm.cm6);
 };
 
 const runVimHistory = (
@@ -146,8 +161,20 @@ function vimModeExtension(): Extension {
   ]);
 }
 
+function keymapModeExtension(mode: EditorKeymapMode): Extension {
+  if (mode === "vim") return vimModeExtension();
+  if (mode === "emacs") return emacsModeExtension();
+  return [];
+}
+
+function indentExtensions(tabSize: number): Extension {
+  return [indentUnit.of(" ".repeat(tabSize)), EditorState.tabSize.of(tabSize)];
+}
+
 export const isLatexSourcePath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx|sty|cls)$/i.test(path);
+export const isBibtexSourcePath = (path: string | null): boolean =>
+  !!path && /\.bib$/i.test(path);
 export const isProseSourcePath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx|md|markdown|typ)$/i.test(path);
 const isLatexDocumentPath = (path: string | null): boolean =>
@@ -155,9 +182,90 @@ const isLatexDocumentPath = (path: string | null): boolean =>
 const isMarkdownDocumentPath = (path: string | null): boolean =>
   !!path && /\.(?:md|markdown)$/i.test(path);
 
-function mathPreviewForPath(path: string | null): Extension[] {
-  if (isLatexDocumentPath(path)) return [liveMathPreview("latex")];
-  if (isMarkdownDocumentPath(path)) return [liveMathPreview("markdown")];
+export function supportsVisualMode(path: string | null): boolean {
+  return isLatexDocumentPath(path);
+}
+
+function visualRendersPath(
+  path: string | null,
+  visualActive: boolean,
+  ports: VisualPorts | undefined,
+): boolean {
+  return visualActive && !!ports && supportsVisualMode(path);
+}
+
+type VisualModule = Pick<typeof import("./visual"), "latexTreeSupport" | "visualMode">;
+
+let visualModule: VisualModule | null = null;
+let visualModuleLoading: Promise<VisualModule> | null = null;
+
+function loadVisualModule(): Promise<VisualModule> {
+  visualModuleLoading ??= import("./visual").then((module) => {
+    visualModule = module;
+    return module;
+  });
+  return visualModuleLoading;
+}
+
+function languageExtensionFor(path: string | null, visual: VisualModule | null): Extension {
+  if (!path) return [];
+  if (visual) return visual.latexTreeSupport();
+  return languageForPath(path) ?? [];
+}
+
+function visualExtensionFor(visual: VisualModule | null, ports: VisualPorts | undefined): Extension {
+  return visual && ports ? visual.visualMode(ports) : [];
+}
+
+interface VisualCompartments {
+  language: Compartment;
+  visual: Compartment;
+  wrap: Compartment;
+}
+
+function applyVisualCompartments(
+  view: EditorView,
+  compartments: VisualCompartments,
+  path: string | null,
+  rendered: boolean,
+  ports: VisualPorts | undefined,
+  lineWrap: boolean,
+): void {
+  view.dispatch({
+    effects: [
+      compartments.language.reconfigure(languageExtensionFor(path, rendered ? visualModule : null)),
+      compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports)),
+      compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
+    ],
+  });
+  view.requestMeasure();
+}
+
+function applyVisualModeWhenLoaded(
+  rendered: boolean,
+  isCurrent: () => boolean,
+  apply: () => void,
+): void {
+  if (!rendered || visualModule) return;
+  loadVisualModule().then(
+    () => {
+      if (isCurrent()) apply();
+    },
+    () => undefined,
+  );
+}
+
+function lineWrapExtensionFor(lineWrap: boolean, visualRendered: boolean): Extension {
+  return lineWrap || visualRendered ? EditorView.lineWrapping : [];
+}
+
+function mathPreviewForPath(path: string | null, enabled: boolean): Extension[] {
+  if (isLatexDocumentPath(path)) {
+    return [mathPreviewTooltip("latex"), mathPreviewEnabled.of(enabled)];
+  }
+  if (isMarkdownDocumentPath(path)) {
+    return [mathPreviewTooltip("markdown"), mathPreviewEnabled.of(enabled)];
+  }
   return [];
 }
 
@@ -168,12 +276,13 @@ function sourceToolsForPath(
   ghostCompletionSources: CompletionSource[],
   autocompleteWhileTyping: boolean,
   ghostCompletionEnabled: boolean,
+  mathPreview: boolean,
 ): Extension[] {
   const synchronousSources = new Set(ghostCompletionSources);
   const gatedCompletionSources = completionSources.map((source) =>
     synchronousSources.has(source) ? gateCompletionSource(source, completionSyntax) : source,
   );
-  const mathPreview = mathPreviewForPath(path);
+  const mathPreviewExtensions = mathPreviewForPath(path, mathPreview);
 
   if (isLatexSourcePath(path)) {
     const staticLatexSource =
@@ -201,13 +310,30 @@ function sourceToolsForPath(
         closeOnBlur: true,
       }),
       ...(autocompleteWhileTyping ? [openEnvironmentCompletion] : []),
-      ...mathPreview,
+      ...mathPreviewExtensions,
       createLatexLinter(),
     ];
   }
 
+  if (isBibtexSourcePath(path)) {
+    return [
+      ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
+        ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
+        : []),
+      autocompletion({
+        override: [
+          ...gatedCompletionSources,
+          gateCompletionSource(bibtexCompletions, completionSyntax),
+        ],
+        activateOnTyping: autocompleteWhileTyping,
+        closeOnBlur: true,
+      }),
+      createBibtexLinter(),
+    ];
+  }
+
   return [
-    ...mathPreview,
+    ...mathPreviewExtensions,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
       ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
       : []),
@@ -292,7 +418,14 @@ export function CodeMirrorEditor({
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
   const editabilityCompartmentRef = useRef<Compartment | null>(null);
+  const indentCompartmentRef = useRef<Compartment | null>(null);
+  const lineWrapCompartmentRef = useRef<Compartment | null>(null);
+  const editorKeymapCompartmentRef = useRef<Compartment | null>(null);
+  const visualCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
+  const visualActive = host.useVisualMode();
+  const visualActiveRef = useRef(visualActive);
+  visualActiveRef.current = visualActive;
   const completionSyntax = host.useCompletionSyntax(activePath);
   // NB: the active file's content is read imperatively (host.getContent) inside
   // the file-swap effect below, NOT subscribed to. Subscribing here would
@@ -301,17 +434,27 @@ export function CodeMirrorEditor({
   // effect only needs the content when the file or docVersion actually changes.
   const docVersion = host.useDocVersion();
   const {
-    vim: vimEnabled,
+    keymap: keymapMode,
     spellcheck,
     harper,
     editorTheme: editorThemeId,
+    tabSize,
+    lineWrap,
     autocomplete,
     autoCloseBrackets,
     autoCloseMath = true,
     nonBlinkingCursor,
     ghostCompletion: ghostCompletionEnabled,
     stickyScroll: stickyScrollEnabled,
+    mathPreview,
   } = host.useSettings();
+  const lineWrapRef = useRef(lineWrap);
+  lineWrapRef.current = lineWrap;
+  const vimEnabled = keymapMode === "vim";
+  const editorKeys = host.useEditorKeymap();
+  const editorKeysSignature = JSON.stringify(editorKeys);
+  const editorKeysRef = useRef(editorKeys);
+  editorKeysRef.current = editorKeys;
   const lintDeps = host.useLintRefreshDeps();
 
   const detachVimModeBridge = () => {
@@ -389,8 +532,20 @@ export function CodeMirrorEditor({
     editorPrefsCompartmentRef.current = editorPrefsCompartment;
     const stickyCompartment = new Compartment();
     stickyCompartmentRef.current = stickyCompartment;
+    const indentCompartment = new Compartment();
+    indentCompartmentRef.current = indentCompartment;
+    const lineWrapCompartment = new Compartment();
+    lineWrapCompartmentRef.current = lineWrapCompartment;
+    const editorKeymapCompartment = new Compartment();
+    editorKeymapCompartmentRef.current = editorKeymapCompartment;
+    const visualCompartment = new Compartment();
+    visualCompartmentRef.current = visualCompartment;
     prevPathRef.current = initialPath;
-    const initialLang = initialPath ? languageForPath(initialPath) : null;
+    const initialVisual = visualRendersPath(
+      initialPath,
+      visualActiveRef.current,
+      host.visualPorts,
+    );
     const initialCompletionSources =
       extraCompletionSourcesForPath?.(initialPath) ?? [];
     const initialGhostCompletionSources =
@@ -401,10 +556,7 @@ export function CodeMirrorEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
-        // Vim must see a key before every ordinary editor keymap. When it
-        // declines a key in insert mode, the later completion, indentation,
-        // search, and host keymaps still get their normal chance to handle it.
-        vimCompartment.of(vimEnabled ? vimModeExtension() : []),
+        vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightSpecialChars(),
@@ -424,15 +576,16 @@ export function CodeMirrorEditor({
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
         indentOnInput(),
-        indentUnit.of("    "),
+        indentCompartment.of(indentExtensions(tabSize)),
         bracketMatching(),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLineWhenCollapsed(),
         highlightSelectionMatches(),
         ...diagnosticPresentationExtensions(),
-        EditorView.lineWrapping,
-        langCompartment.of(initialLang ?? []),
+        lineWrapCompartment.of(lineWrapExtensionFor(lineWrap, initialVisual)),
+        langCompartment.of(languageExtensionFor(initialPath, initialVisual ? visualModule : null)),
+        visualCompartment.of(visualExtensionFor(initialVisual ? visualModule : null, host.visualPorts)),
         editorTheme(),
         historyCompartment.of(history()),
         vscodeSearch(host.t),
@@ -444,6 +597,7 @@ export function CodeMirrorEditor({
             initialGhostCompletionSources,
             autocomplete,
             ghostCompletionEnabled,
+            mathPreview,
           ),
         ),
         editability.of(editabilityExtensions(host.isEditLocked?.() ?? false)),
@@ -451,8 +605,9 @@ export function CodeMirrorEditor({
           transaction.docChanged && host.isEditLocked?.() ? [] : transaction),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
+        keymap.of([...completionKeymap]),
+        editorKeymapCompartment.of(keymap.of(editorCommandKeymap(editorKeys))),
         keymap.of([
-          ...completionKeymap,
           ...(extraKeymap ?? []),
           indentWithTab,
           ...closeBracketsKeymap,
@@ -471,13 +626,34 @@ export function CodeMirrorEditor({
             const path = host.getActivePath();
             if (path) host.setContent(path, vu.state.doc.toString());
           }
+          for (const transaction of vu.transactions) {
+            for (const effect of transaction.effects) {
+              if (effect.is(setMathPreviewEnabled)) host.setMathPreview?.(effect.value);
+            }
+          }
         }),
       ],
     });
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
-    if (host.saveActive) vimSaveHandlers.set(view, host.saveActive);
+    applyVisualModeWhenLoaded(
+      initialVisual,
+      () => viewRef.current === view,
+      () => {
+        const path = host.getActivePath();
+        const rendered = visualRendersPath(path, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          { language: langCompartment, visual: visualCompartment, wrap: lineWrapCompartment },
+          path,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
+    if (host.saveActive) registerHostSave(view, host.saveActive);
     if (vimEnabled) attachVimModeBridge(view);
     setEditorView(view);
     setEditorDocumentPath(initialPath);
@@ -493,7 +669,7 @@ export function CodeMirrorEditor({
       setEditorDocumentPath(null);
       detachVimModeBridge();
       view.setTabFocusMode(false);
-      vimSaveHandlers.delete(view);
+      unregisterHostSave(view);
       view.destroy();
       setEditorView(null);
       viewRef.current = null;
@@ -540,6 +716,7 @@ export function CodeMirrorEditor({
         },
         effects: [
           langCompartmentRef.current!.reconfigure([]),
+          visualCompartmentRef.current!.reconfigure([]),
           sourceToolsCompartmentRef.current!.reconfigure([]),
           hostToolsCompartmentRef.current!.reconfigure([]),
           spellCompartmentRef.current!.reconfigure([]),
@@ -565,12 +742,45 @@ export function CodeMirrorEditor({
     }
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
-    const lang = languageForPath(activePath);
+    const visualRendered = visualRendersPath(
+      activePath,
+      visualActiveRef.current,
+      host.visualPorts,
+    );
     const completionSources =
       extraCompletionSourcesForPath?.(activePath) ?? [];
     const ghostCompletionSources =
       extraGhostCompletionSourcesForPath?.(activePath) ?? [];
-    const effects = [langCompartmentRef.current!.reconfigure(lang ?? [])];
+    const effects = [
+      langCompartmentRef.current!.reconfigure(
+        languageExtensionFor(activePath, visualRendered ? visualModule : null),
+      ),
+      visualCompartmentRef.current!.reconfigure(
+        visualExtensionFor(visualRendered ? visualModule : null, host.visualPorts),
+      ),
+      lineWrapCompartmentRef.current!.reconfigure(
+        lineWrapExtensionFor(lineWrap, visualRendered),
+      ),
+    ];
+    applyVisualModeWhenLoaded(
+      visualRendered,
+      () => viewRef.current === view && host.getActivePath() === activePath,
+      () => {
+        const rendered = visualRendersPath(activePath, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          {
+            language: langCompartmentRef.current!,
+            visual: visualCompartmentRef.current!,
+            wrap: lineWrapCompartmentRef.current!,
+          },
+          activePath,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
         sourceToolsForPath(
@@ -580,6 +790,7 @@ export function CodeMirrorEditor({
           ghostCompletionSources,
           autocomplete,
           ghostCompletionEnabled,
+          mathPreview,
         ),
       ),
       hostToolsCompartmentRef.current!.reconfigure(extraExtensionsForPath?.(activePath) ?? []),
@@ -638,7 +849,6 @@ export function CodeMirrorEditor({
     });
   }, [activePath, stickyScrollEnabled]);
 
-  // Toggle vim without recreating the editor.
   useEffect(() => {
     const view = viewRef.current;
     const compartment = vimCompartmentRef.current;
@@ -646,10 +856,64 @@ export function CodeMirrorEditor({
     detachVimModeBridge();
     view.setTabFocusMode(false);
     view.dispatch({
-      effects: compartment.reconfigure(vimEnabled ? vimModeExtension() : []),
+      effects: compartment.reconfigure(keymapModeExtension(keymapMode)),
     });
-    if (vimEnabled) attachVimModeBridge(view);
-  }, [vimEnabled]);
+    if (keymapMode === "vim") attachVimModeBridge(view);
+  }, [keymapMode]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = indentCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({ effects: compartment.reconfigure(indentExtensions(tabSize)) });
+  }, [tabSize]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    const languageCompartment = langCompartmentRef.current;
+    const visualCompartment = visualCompartmentRef.current;
+    const wrapCompartment = lineWrapCompartmentRef.current;
+    if (!view || !languageCompartment || !visualCompartment || !wrapCompartment) {
+      return;
+    }
+    const path = host.getActivePath();
+    const visualRendered = visualRendersPath(path, visualActive, host.visualPorts);
+    applyVisualCompartments(
+      view,
+      { language: languageCompartment, visual: visualCompartment, wrap: wrapCompartment },
+      path,
+      visualRendered,
+      host.visualPorts,
+      lineWrap,
+    );
+    applyVisualModeWhenLoaded(
+      visualRendered,
+      () => viewRef.current === view && host.getActivePath() === path,
+      () => {
+        const rendered = visualRendersPath(path, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          { language: languageCompartment, visual: visualCompartment, wrap: wrapCompartment },
+          path,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineWrap, visualActive]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = editorKeymapCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({
+      effects: compartment.reconfigure(
+        keymap.of(editorCommandKeymap(editorKeysRef.current)),
+      ),
+    });
+  }, [editorKeysSignature]);
 
   // Toggle bracket auto-closing and cursor blinking without recreating the
   // editor.
@@ -686,11 +950,12 @@ export function CodeMirrorEditor({
           extraGhostCompletionSourcesForPath?.(path) ?? [],
           autocomplete,
           ghostCompletionEnabled,
+          mathPreview,
         ),
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autocomplete, ghostCompletionEnabled, completionSyntax]);
+  }, [autocomplete, ghostCompletionEnabled, completionSyntax, mathPreview]);
 
   // Toggle spellcheck / Harper grammar without recreating the editor.
   useEffect(() => {

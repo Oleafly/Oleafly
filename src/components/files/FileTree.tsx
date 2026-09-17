@@ -739,7 +739,7 @@ export function FileTree({
             aria-label={t(($) => $.workspace.files.treeAriaLabel)}
             className={cn(
               "flex-1 overflow-auto p-1.5",
-              dragOver === ROOT && "rounded-md ring-1 ring-inset ring-primary/40"
+              dragOver === ROOT && "rounded-md bg-primary/10"
             )}
             onDragOver={(e) => {
               if (!e.dataTransfer.types.includes("text/plain")) return;
@@ -1070,7 +1070,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
         "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
         isActive && "bg-sidebar-accent",
         isSelected && !isActive && "bg-sidebar-accent/60",
-        isDropTarget && "ring-1 ring-inset ring-primary/60 bg-sidebar-accent"
+        isDropTarget && "bg-primary/15"
       )}
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
       onClick={activate}

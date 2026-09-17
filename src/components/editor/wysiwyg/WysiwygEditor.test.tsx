@@ -2,11 +2,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
-import { WysiwygEditor } from "./WysiwygEditor";
+import { documentContextForPreamble, WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import {
   flushWysiwygPendingEdits,
+  getWysiwygDocumentContext,
   invalidateWysiwygProjectSession,
 } from "./controller";
 
@@ -403,4 +404,44 @@ it("blocks visual commands while leased and flushes edits made before acquisitio
     mounted.unmount();
     useFilesStore.setState({ projectId: null });
   }
+});
+
+describe("WysiwygEditor native nodes", () => {
+  beforeEach(() => {
+    lastEditor = null;
+    useFilesStore.setState({ projectId: null });
+  });
+
+  it("derives theorem environments and booktabs from the preamble", () => {
+    expect(
+      documentContextForPreamble(
+        "\\usepackage[T1]{fontenc}\n\\usepackage{booktabs,graphicx}\n\\newtheorem{claim}{Claim}\n",
+      ),
+    ).toEqual({ theoremEnvironments: ["claim"], booktabs: true });
+    expect(documentContextForPreamble("\\usepackage{amsmath}\n")).toEqual({
+      theoremEnvironments: [],
+      booktabs: false,
+    });
+  });
+
+  it("renders math through KaTeX and theorem environments declared in the preamble", () => {
+    setFiles(
+      {
+        "main.tex": {
+          content:
+            "\\documentclass{article}\n\\newtheorem{observation}{Observation}\n\\begin{document}\nInline $a^2$ here.\n\n\\begin{observation}[Main]\nBody.\n\\end{observation}\n\\end{document}\n",
+          dirty: false,
+        },
+      },
+      "main.tex",
+    );
+    const { container } = render(<WysiwygEditor wysiwyg={true} />);
+    expect(container.querySelector('[data-type="math-inline"] .math-rendered .katex')).not.toBeNull();
+    const theorem = container.querySelector('[data-type="theorem"][data-environment="observation"]');
+    expect(theorem).not.toBeNull();
+    expect(theorem?.querySelector(".theorem-name")?.textContent).toBe("Observation");
+    expect(theorem?.querySelector(".theorem-title")?.textContent).toBe("(Main)");
+    expect(getWysiwygDocumentContext()).toEqual({ theoremEnvironments: ["observation"], booktabs: false });
+  });
+
 });

@@ -15,6 +15,14 @@ import {
   type ShortcutId,
   useShortcutStore,
 } from "@/store/shortcuts";
+import {
+  EDITOR_KEY_DEFINITIONS,
+  editorKeyFromEvent,
+  editorKeyTokens,
+  sameEditorKey,
+  useEditorKeymapStore,
+  type EditorKeyId,
+} from "@/store/editor-keymap";
 
 function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -29,18 +37,7 @@ function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
     binding.key === " " ? "Space" : namedKey,
   ].filter((key): key is string => Boolean(key)))];
 
-  return (
-    <KbdGroup>
-      {keys.map((key) => (
-        <Kbd
-          key={key}
-          className="h-8 min-w-8 rounded-md border px-2 text-sm text-foreground"
-        >
-          {key}
-        </Kbd>
-      ))}
-    </KbdGroup>
-  );
+  return <KeyTokens tokens={keys} />;
 }
 
 type BuiltInCategory = "editor" | "codeIntelligence" | "pdf";
@@ -93,18 +90,7 @@ const CATEGORY_TEST_IDS: Record<BuiltInCategory, string> = {
 function BuiltInKeys({ keys }: Readonly<{ keys: readonly string[] }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const modSymbol = mac ? "⌘" : "Ctrl";
-  return (
-    <KbdGroup>
-      {keys.map((key) => (
-        <Kbd
-          key={key}
-          className="h-8 min-w-8 rounded-md border px-2 text-sm text-foreground"
-        >
-          {key === "Mod" ? modSymbol : key}
-        </Kbd>
-      ))}
-    </KbdGroup>
-  );
+  return <KeyTokens tokens={keys.map((key) => (key === "Mod" ? modSymbol : key))} />;
 }
 
 function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
@@ -121,27 +107,217 @@ function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
   };
 }
 
+function KeyTokens({ tokens }: Readonly<{ tokens: readonly string[] }>) {
+  return (
+    <KbdGroup>
+      {tokens.map((token) => (
+        <Kbd
+          key={token}
+          className="h-8 min-w-8 rounded-md border px-2 text-sm text-foreground"
+        >
+          {token}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
+
+function appShortcutKey(binding: ShortcutBinding): string {
+  const parts: string[] = [];
+  if (binding.mod) parts.push("Mod");
+  if (binding.ctrl) parts.push("Ctrl");
+  if (binding.alt) parts.push("Alt");
+  if (binding.shift) parts.push("Shift");
+  parts.push(binding.key === " " ? "Space" : binding.key);
+  return parts.join("-");
+}
+
+function useDismissOnPointerDown(
+  active: boolean,
+  ref: React.RefObject<HTMLButtonElement | null>,
+  dismiss: () => void,
+) {
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  useEffect(() => {
+    if (!active) return;
+    ref.current?.focus({ preventScroll: true });
+    const onPointerDown = (event: PointerEvent) => {
+      if (ref.current?.contains(event.target as Node)) return;
+      dismissRef.current();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [active, ref]);
+}
+
+function EditorKeyRows() {
+  const { t } = useTranslation(["common", "settings"]);
+  const keys = useEditorKeymapStore((state) => state.keys);
+  const setKey = useEditorKeymapStore((state) => state.setKey);
+  const resetKey = useEditorKeymapStore((state) => state.resetKey);
+  const appBindings = useShortcutStore((state) => state.bindings);
+  const [editing, setEditing] = useState<EditorKeyId | null>(null);
+  const [error, setError] = useState("");
+  const captureRef = useRef<HTMLButtonElement>(null);
+
+  useDismissOnPointerDown(editing !== null, captureRef, () => {
+    setEditing(null);
+    setError("");
+  });
+
+  const actionLabel = (id: EditorKeyId) =>
+    t(($) => $.settings.shortcuts.editorKeys.labels[id]);
+
+  const conflictLabel = (candidate: string, current: EditorKeyId): string => {
+    const app = SHORTCUT_DEFINITIONS.find(({ id }) =>
+      sameEditorKey(appShortcutKey(appBindings[id]), candidate),
+    );
+    if (app) return t(($) => $.settings.shortcuts.actions[app.id].label);
+    const editor = EDITOR_KEY_DEFINITIONS.find(
+      ({ id }) => id !== current && sameEditorKey(keys[id], candidate),
+    );
+    return editor ? actionLabel(editor.id) : "";
+  };
+
+  const capture = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!editing) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      setEditing(null);
+      setError("");
+      return;
+    }
+    if (event.key === "Backspace" || event.key === "Delete") {
+      setKey(editing, "");
+      setEditing(null);
+      setError("");
+      return;
+    }
+    const next = editorKeyFromEvent(event.nativeEvent);
+    const asBinding = bindingFromEvent(event.nativeEvent);
+    if (!next || !asBinding) return;
+    const reserved = reservedShortcutAction(asBinding);
+    if (reserved) {
+      setError(
+        t(($) => $.settings.shortcuts.error.reserved, {
+          shortcut: t(($) => $.settings.shortcuts.reserved[reserved]),
+        }),
+      );
+      return;
+    }
+    const conflict = conflictLabel(next, editing);
+    if (conflict) {
+      setError(t(($) => $.settings.shortcuts.error.conflict, { action: conflict }));
+      return;
+    }
+    setKey(editing, next);
+    setEditing(null);
+    setError("");
+  };
+
+  return (
+    <section className="flex flex-col gap-2" aria-labelledby="editor-keys">
+      <div>
+        <h3 id="editor-keys" className="sr-only">
+          {t(($) => $.settings.shortcuts.editorKeys.heading)}
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.shortcuts.editorKeys.intro)}
+        </p>
+      </div>
+      {EDITOR_KEY_DEFINITIONS.map((definition) => {
+        const active = editing === definition.id;
+        const label = actionLabel(definition.id);
+        const current = keys[definition.id];
+        const tokens = editorKeyTokens(current);
+        return (
+          <div
+            key={definition.id}
+            data-testid={`editor-key-row-${definition.id}`}
+            className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{label}</p>
+              {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+              {active && !error && (
+                <p className="mt-1 text-xs text-primary">
+                  {`${t(($) => $.settings.shortcuts.application.prompt)} ${t(
+                    ($) => $.settings.shortcuts.editorKeys.clearHint,
+                  )}`}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                ref={active ? captureRef : undefined}
+                onKeyDown={active ? capture : undefined}
+                aria-label={
+                  active
+                    ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
+                        action: label,
+                      })
+                    : t(($) => $.settings.shortcuts.application.editAriaLabel, {
+                        action: label,
+                        shortcut:
+                          tokens.length > 0
+                            ? tokens.join(" ")
+                            : t(($) => $.settings.shortcuts.editorKeys.unbound),
+                      })
+                }
+                onClick={() => {
+                  setEditing(definition.id);
+                  setError("");
+                }}
+                className="rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                {active && (
+                  <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
+                    {t(($) => $.settings.shortcuts.application.recording)}
+                  </Kbd>
+                )}
+                {!active && tokens.length > 0 && <KeyTokens tokens={tokens} />}
+                {!active && tokens.length === 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {t(($) => $.settings.shortcuts.editorKeys.unbound)}
+                  </span>
+                )}
+              </button>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                  action: label,
+                })}
+                onClick={() => resetKey(definition.id)}
+              >
+                <RotateCcw data-icon="inline-start" />
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function ShortcutsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const bindings = useShortcutStore((state) => state.bindings);
   const setBinding = useShortcutStore((state) => state.setBinding);
   const resetBinding = useShortcutStore((state) => state.resetBinding);
   const resetAll = useShortcutStore((state) => state.resetAll);
+  const resetEditorKeys = useEditorKeymapStore((state) => state.resetAll);
   const [editing, setEditing] = useState<ShortcutId | null>(null);
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!editing) return;
-    captureRef.current?.focus({ preventScroll: true });
-    const dismiss = (event: PointerEvent) => {
-      if (captureRef.current?.contains(event.target as Node)) return;
-      setEditing(null);
-      setError("");
-    };
-    document.addEventListener("pointerdown", dismiss, true);
-    return () => document.removeEventListener("pointerdown", dismiss, true);
-  }, [editing]);
+  useDismissOnPointerDown(editing !== null, captureRef, () => {
+    setEditing(null);
+    setError("");
+  });
 
   const actionLabel = (id: ShortcutId) => t(($) => $.settings.shortcuts.actions[id].label);
 
@@ -285,6 +461,7 @@ export function ShortcutsSection() {
       {categories.map((category) => (
         <TabsContent key={category} value={category}>
         <section className="flex flex-col gap-2" aria-labelledby={`shortcut-category-${category}`}>
+          {category === "editor" && <EditorKeyRows />}
           <div>
             <h3
               id={`shortcut-category-${category}`}
@@ -315,7 +492,10 @@ export function ShortcutsSection() {
       </Tabs>
       <ResetToDefaults
         sectionName={t(($) => $.settings.shortcuts.reset.sectionName)}
-        onReset={resetAll}
+        onReset={() => {
+          resetAll();
+          resetEditorKeys();
+        }}
       />
     </div>
   );

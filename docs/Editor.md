@@ -21,8 +21,9 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 4. **Live inline preview**: renders supported inline math and visual content
    without replacing the editable source representation.
 5. **LaTeX command completion and syntax checking**: completes commands,
-   labels, citation keys, environments, and project file paths, while compile
-   and parser diagnostics remain attached to source locations.
+   labels, citation keys, environments, bibliography styles, and project file
+   paths, while compile and parser diagnostics remain attached to source
+   locations.
 6. **Live grammar checking**: runs the configured offline proofing pipeline on
    prose while excluding commands, comments, and mathematical syntax.
 7. **Local and global structure view**: exposes headings, symbols, labels,
@@ -77,6 +78,15 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   once `\left\`, `\middle\` or `\right\` is typed the list narrows to the
   delimiters that can follow. Accepting `\right\rangle` while that closer is
   already pending replaces it rather than adding a second one.
+- Turning the syntax check off: a comment line that reads `%novalidate` and
+  nothing else silences the LaTeX syntax check for the whole file, wherever
+  it sits. `%begin novalidate` and `%end novalidate` silence a region, and
+  the text between them is not read at all, so an environment that generated
+  code opens in there is never reported as unclosed. A `.bib` file uses two
+  percent signs for the same three markers. The marker has to be the whole
+  comment, so `% novalidate later, not yet` stays an ordinary comment.
+  Compile errors, spelling, grammar and project diagnostics carry on as
+  before.
 - Rich hovers: references whose label sits in a math environment render the
   equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
   display their number and page from the last successful compile. Label
@@ -84,6 +94,73 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 - Word count (toolbar popover and command palette) uses the spellchecker's
   prose mask, so math bodies, verbatim blocks, and machine arguments are not
   counted; a non-empty selection adds a selection count.
+
+## Visual editor
+
+Visual mode is the same editor with a different set of decorations. The
+`.tex` file is still the only copy of your work. The toolbar toggle switches
+between Code and Visual, and the choice is remembered per project. Line
+numbers, folding, find and replace, spelling, grammar and the compile
+diagnostics all keep working.
+
+Markup is hidden while you read and comes back while you write. Put the
+cursor inside a heading, an equation or a command and its source appears on
+that line, with syntax colours. Move away and the rendered form returns.
+Everything below behaves that way, so there is no separate edit step and
+nothing to commit.
+
+What renders:
+
+- Sectioning commands from `\part` to `\subparagraph` as headings, sized by
+  level.
+- Inline math and display math through KaTeX. Display environments such as
+  `equation`, `align`, `gather` and `multline` become centred blocks.
+- Footnotes and endnotes as a small grey marker.
+- Theorem-like environments, including ones declared with `\newtheorem`,
+  with the name in bold, the optional title in parentheses and a rule across
+  the line. `\theoremstyle` decides whether the body is italic.
+- `\textcolor` and `\colorbox` in their colours, named, HTML, `rgb`, `gray`
+  and `xcolor` mixes alike.
+- `figure` and `table` environments as a panel. The `\centering` line is
+  hidden, the caption shows as its text and the label as a small chip.
+- `\includegraphics` as the image itself, resolved from the project the way
+  LaTeX resolves it. An edit button opens the figure dialog to swap the image
+  or change its width.
+- `tabular` as a grid you can type into. Select a cell and a toolbar appears
+  above the table for rows, columns, alignment, border styles including
+  booktabs, the caption, the label and merged cells.
+- Lists with their markers, quotes with a left border, `verbatim` and
+  `lstlisting` as monospace panels, and `abstract` with its heading.
+- Citations, references and labels as chips, links underlined, `\LaTeX` and
+  `\TeX` as their logos, `~` as a space you cannot break, and the usual
+  character and spacing commands as the characters they produce.
+
+Everything before `\begin{document}` collapses into a "Show document
+preamble" bar at the top. Click it to expand the preamble in place, click
+again to collapse it. `\end{document}` becomes a centred "End of document"
+bar. Both show their source when the cursor is on them, and a file opens with
+the cursor after the preamble.
+
+Above the editor, a breadcrumb bar names the file and the sections the cursor
+sits in, for example `main.tex > Widgets > Rendering > Inline and display
+math`. Click a crumb to jump to that heading. The bar is there in Code mode
+too.
+
+In both modes, the math preview shows the rendered result of the equation the
+cursor is in. Its menu can hide the preview until you leave the equation, or
+switch it off entirely. Settings > Appearance > Editor > Math preview brings
+it back.
+
+Pasting formatted text from a browser or an office suite converts it to
+LaTeX. Pasting or dropping an image file saves it into the project
+(`figures/` when that folder exists, otherwise next to the main document) and
+inserts a figure snippet.
+
+Every toolbar action writes ordinary LaTeX into the document, in Visual mode
+exactly as in Code mode. Insert figure opens a dialog to choose an image from
+the project or import one from disk, then set its width, caption and label.
+
+Markdown files keep the rich-text visual editor they have always had.
 
 ## LaTeX controls at a glance
 
@@ -121,6 +198,16 @@ lists every category and command.
 
 - Two checkers share one worker pass. Hunspell owns spelling against the
   selected dictionary pack. Harper owns grammar and style.
+- Five dictionary packs ship with the app: English (United States, United
+  Kingdom, Australia), German and French. The rest of the list, more than
+  sixty languages, downloads on demand and then stays on disk, so it works
+  offline afterwards. Every download is checked against its published
+  SHA-256 before it is used, and a language that is not installed says so
+  instead of falling back to another one.
+- A project can pin its own spell-check language in the Project info panel.
+  The choice lives in `project.json`, travels with the project, and overrides
+  the app setting for that project only. The grammar checker's English
+  dialect still follows the app setting.
 - LaTeX reaches Harper through a prose mask the same length as the source, so
   a lint span is already a document offset. Markup that reads as a noun in the
   sentence, such as a citation, a reference, a `\gls` term or inline math,
@@ -180,6 +267,23 @@ lists every category and command.
   of findings dismissed in the open project, and takes either back. Under
   them it lists every rule the academic profile turns off, each with a switch
   that turns it back on.
+
+## Editor settings
+
+Settings > Appearance > Editor holds the editor's own preferences. All of
+them are stored locally, survive a reload, and go back to their defaults with
+Reset appearance.
+
+- Keybindings: Default, Vim or Emacs. See
+  [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
+- Editor font size, editor font and editor theme.
+- Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
+  literal tab renders at.
+- Line height: compact (1.4), normal (1.7) or wide (2.0).
+- Wrap long lines: on by default. Turn it off and the editor scrolls
+  sideways instead.
+- Auto-complete, auto-close brackets, auto-close math, auto-close
+  environments, inline suggestion, non-blinking cursor and sticky scroll.
 
 ## Engineering boundaries
 

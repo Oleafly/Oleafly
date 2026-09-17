@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Forbrugsrapport",
+    "description": "Registreret tokenforbrug fordelt på projekt, agent, udbyder, model og session.",
+    "from": "Fra",
+    "through": "Til og med",
+    "quickRangesLegend": "Hurtige perioder",
+    "utcNote": "Datoer og klokkeslæt er i UTC.",
+    "apply": "Anvend",
+    "refresh": "Opdater",
+    "refreshLabel": "Opdater forbrugsrapporten",
+    "loading": "Indlæser forbrug…",
+    "loadFailed": "Forbrugsrapporten kunne ikke indlæses.",
+    "loadFailedHint": "Prøv igen om lidt.",
+    "tryAgain": "Prøv igen",
+    "emptyTitle": "Der blev ikke registreret forbrug for disse filtre.",
+    "emptyDescription": "Ændr datointervallet, eller fjern et filter."
+  },
+  "quickRanges": {
+    "days7": "7 d",
+    "days30": "30 d",
+    "days90": "90 d",
+    "month": "Denne måned"
+  },
+  "filters": {
+    "project": "Projekt",
+    "projectAll": "Alle projekter",
+    "agent": "Agent",
+    "agentAll": "Alle agenter",
+    "provider": "Udbyder",
+    "providerAll": "Alle udbydere",
+    "model": "Model",
+    "modelAll": "Alle modeller",
+    "session": "Session",
+    "sessionAll": "Alle sessioner"
+  },
+  "report": {
+    "range": "{{start}} til {{end}} (UTC)",
+    "costDisclaimer": "Prisoverslag bygger på gemte prisdata, ikke på din regning fra udbyderen eller din kvote på et abonnement.",
+    "exportCsv": "Eksporter CSV",
+    "exportSaved": "Gemt {{path}}",
+    "exportFailed": "Forbrugsrapporten kunne ikke gemmes.",
+    "inputTokens": "Input-tokens",
+    "inputIncludesCache": "Inkluderer cachet input",
+    "outputTokens": "Output-tokens",
+    "outputIncludesReasoning": "Inkluderer tokens til ræsonnement",
+    "cacheReads": "Cachelæsninger",
+    "costEstimate": "Prisoverslag",
+    "allRecordsPriced": "Alle poster er prissat",
+    "sessions": "Sessioner",
+    "dailyTokens": "Tokens pr. dag",
+    "activityByHour": "Aktivitet pr. time",
+    "projects": "Projekter",
+    "agents": "Agenter",
+    "providers": "Udbydere",
+    "models": "Modeller"
+  },
+  "counts": {
+    "records_one": "{{total}} post",
+    "records_other": "{{total}} poster",
+    "sessions_one": "{{total}} session",
+    "sessions_other": "{{total}} sessioner",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokens",
+    "inputUnknown_one": "{{total}} post uden inputantal",
+    "inputUnknown_other": "{{total}} poster uden inputantal",
+    "outputUnknown_one": "{{total}} post uden outputantal",
+    "outputUnknown_other": "{{total}} poster uden outputantal",
+    "cacheUnknown_one": "{{total}} post uden sammenlignelige cachedata",
+    "cacheUnknown_other": "{{total}} poster uden sammenlignelige cachedata",
+    "unpriced_one": "{{total}} post uden pris",
+    "unpriced_other": "{{total}} poster uden pris",
+    "partlyUnpriced_one": "{{unpriced}} af {{total}} post uden pris",
+    "partlyUnpriced_other": "{{unpriced}} af {{total}} poster uden pris",
+    "onPlan_one": "{{total}} post på et abonnement eller lokalt",
+    "onPlan_other": "{{total}} poster på et abonnement eller lokalt",
+    "childRuns_one": "{{total}} underkørsel",
+    "childRuns_other": "{{total}} underkørsler",
+    "usageRecords_one": "{{total}} forbrugspost",
+    "usageRecords_other": "{{total}} forbrugsposter",
+    "excludedChildRecords_one": "{{total}} underpost er allerede talt med i en overordnet sum og tælles derfor ikke to gange.",
+    "excludedChildRecords_other": "{{total}} underposter er allerede talt med i en overordnet sum og tælles derfor ikke to gange.",
+    "unmeasured_one": "{{total}} post uden målte tokental.",
+    "unmeasured_other": "{{total}} poster uden målte tokental."
+  },
+  "cache": {
+    "rate": "{{percent}} % af sammenligneligt input",
+    "rateWithUnknown": "{{percent}} % af sammenligneligt input, {{unknown}} kan ikke sammenlignes"
+  },
+  "cost": {
+    "local": "Lokal",
+    "plan": "Abonnement",
+    "notBilledPerToken": "Afregnes ikke pr. token",
+    "noEstimate": "Intet overslag",
+    "noSavedPrice": "Ingen gemt pris for disse poster",
+    "priceSource": "Priskilde: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Daglig udvikling i input- og output-tokens",
+    "chartTitle": "Dagligt tokenforbrug",
+    "empty": "Ingen daglig aktivitet.",
+    "tokensUnavailable": "Tokental er ikke tilgængelige",
+    "inOut": "{{input}} ind, {{output}} ud",
+    "incompleteDays": "Dage med ufuldstændige tokental er udeladt af kurven.",
+    "day": "Dag",
+    "inputTokens": "Input-tokens",
+    "outputTokens": "Output-tokens"
+  },
+  "heatmap": {
+    "label": "Tokenaktivitet fordelt på ugedag og time i UTC",
+    "cell": "{{weekday}} kl. {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Ingen registreret aktivitet",
+    "tokenUnavailable": "Tokental er ikke tilgængeligt",
+    "hoursInUtc": "Timer i UTC",
+    "less": "Mindre",
+    "more": "Mere",
+    "weekdays": {
+      "sun": "søn",
+      "mon": "man",
+      "tue": "tir",
+      "wed": "ons",
+      "thu": "tor",
+      "fri": "fre",
+      "sat": "lør"
+    }
+  },
+  "breakdown": {
+    "empty": "Intet registreret forbrug.",
+    "name": "Navn",
+    "tokens": "Tokens",
+    "cost": "Pris",
+    "sessions": "Sessioner"
+  },
+  "sessions": {
+    "title": "Sessioner",
+    "subtitle": "Chats, opgaver, underagentkørsler og hjælpekald, nyeste først.",
+    "emptyTitle": "Ingen sessioner matcher disse filtre",
+    "emptyDescription": "Ændr datointervallet, eller fjern et filter.",
+    "session": "Session",
+    "project": "Projekt",
+    "agent": "Agent",
+    "model": "Model",
+    "lastActivity": "Seneste aktivitet (UTC)",
+    "input": "Input",
+    "output": "Output",
+    "cost": "Pris",
+    "billing": "Afregning",
+    "status": "Status",
+    "rowsPerPage": "Rækker pr. side",
+    "page": "Side {{page}} af {{pageCount}}",
+    "previous": "Forrige",
+    "next": "Næste"
+  },
+  "labels": {
+    "unknown": "Ukendt",
+    "mixed": "Blandet",
+    "generalProject": "Generelt",
+    "runtimeBuiltIn": "Oleafly-assistent",
+    "runtimeHelper": "Hjælpekald",
+    "runtimeAcp": "CLI-agenter"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Abonnement",
+    "local": "Lokal",
+    "unknown": "Ukendt",
+    "mixed": "Blandet"
+  },
+  "scope": {
+    "child": "Underagent",
+    "task": "Opgave",
+    "helper": "Hjælpekald"
+  },
+  "status": {
+    "in_progress": "I gang",
+    "completed": "Fuldført",
+    "failed": "Mislykkedes",
+    "cancelled": "Annulleret",
+    "interrupted": "Afbrudt"
+  },
+  "measurement": {
+    "provider_reported": "Talt af udbyderen",
+    "runtime_reported": "Talt af agenten",
+    "estimated": "Estimeret lokalt",
+    "unavailable": "Ikke målt",
+    "mixed_or_unavailable": "Delvist målt"
+  }
+}

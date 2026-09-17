@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Näin pääset alkuun",
+    "overview": {
+      "title": "Aloitusnäkymä",
+      "content": "Täältä löytyvät projektit, ja täältä myös luodaan uudet."
+    },
+    "create": {
+      "title": "Luo oikea projekti",
+      "content": "Valitse Uusi projekti, niin näkyviin tulevat eri tavat aloittaa työ."
+    },
+    "kind": {
+      "title": "Kolme tapaa aloittaa",
+      "content": "Aloita tutkimusprojekti, tuo jo olemassa oleva käsikirjoitus tai käytä valmista mallipohjaa."
+    },
+    "kindTemplate": {
+      "title": "Aloita mallipohjasta",
+      "content": "Valitse Käytä mallipohjaa, niin galleria avautuu. Kaksi muuta aloitustapaa ovat käytettävissä milloin tahansa."
+    },
+    "gallery": {
+      "title": "Löydä aloituskohta",
+      "content": "Selaa kategorioita, hae nimellä ja rajaa mallipohjia kääntäjän tai offline-saatavuuden mukaan."
+    },
+    "template": {
+      "title": "Valitse mallipohja",
+      "content": "Jatka valitsemalla mikä tahansa oikea mallipohja. Sen tiedostoista syntyy uusi projekti."
+    },
+    "name": {
+      "title": "Nimeä projekti",
+      "content": "Kirjoita projektin nimi. Seuraava-painike aktivoituu, kun nimi ei ole tyhjä."
+    },
+    "color": {
+      "title": "Valitse kansiväri",
+      "content": "Väri erottaa projektin helposti aloitusnäkymässä. Mallipohjan oletusvärin voi myös säilyttää."
+    },
+    "createProject": {
+      "title": "Luo projekti",
+      "content": "Napsauta \"Luo projekti\", niin valitusta mallipohjasta syntyy projekti."
+    }
+  },
+  "workspace": {
+    "label": "Työtila",
+    "toolbar": {
+      "title": "Projektin työkalupalkki",
+      "content": "Projektin toiminnot ja kääntämisen säätimet ovat täällä."
+    },
+    "sidebar": {
+      "title": "Työtilan navigointi",
+      "content": "Siirry tiedostojen, haun, versionhallinnan, esitarkistuksen, viitteiden ja MCP-toiminnan välillä."
+    },
+    "editor": {
+      "title": "Editori",
+      "content": "Kirjoita ja selaa lähdekoodia täydennyksen, diagnostiikan, muotoilun ja koodiälyn avulla."
+    },
+    "wysiwygToggle": {
+      "title": "Kokeile WYSIWYG-tilaa",
+      "content": "Vaihda raa'an lähdekoodin ja muotoillun, Google Docs -tyylisen dokumenttinäkymän välillä."
+    },
+    "compile": {
+      "title": "Käännä ja käännä uudelleen",
+      "content": "Käännä nykyinen projekti täältä. Esittely ei koskaan käännä eikä muuta lähdekoodia."
+    },
+    "logs": {
+      "title": "Käännöslokit",
+      "content": "Avaa käännöslokit ja tutki virheitä muuttamatta projektin sisältöä. Vieressä oleva tila kertoo viimeisimmän käännösajan."
+    },
+    "preview": {
+      "title": "PDF-esikatselu",
+      "content": "Käännetty dokumentti pysyy lähdekoodin rinnalla jaetussa näkymässä."
+    },
+    "zoom": {
+      "title": "Täysi PDF-työkalupakki",
+      "content": "Avaa jäsennys, hae tekstiä, siirry sivulta toiselle, valitse yhden tai kahden sivun taitto, zoomaa tai sovita sivu, käännä värit, käytä saavutettavaa lukunäkymää, kierrä, lataa, tallenna projektiin, siirry koko näyttöön tai avaa esikatselu omaan ikkunaansa."
+    },
+    "sourceNavigation": {
+      "title": "PDF:stä lähdekoodiin",
+      "content": "Napsauta käännetyn PDF:n sisältöä, niin näkymä siirtyy suoraan vastaavaan kohtaan lähdekoodissa."
+    }
+  },
+  "research": {
+    "label": "Tutkimustyötila",
+    "open": {
+      "title": "Tutkimustyötila",
+      "content": "Avaa se, niin tutkimustehtäviä voi antaa agentille ja muualla säilytettäviä lukukansioita ja aineistoja voi linkittää. Tämä on uutta ja beta-vaiheessa, joten ongelmista kannattaa ilmoittaa."
+    },
+    "tasks": {
+      "title": "Jonota tutkimustehtäviä",
+      "content": "Kuvaile työ ja anna se agentille. Jokaisella tehtävällä on oma keskustelunsa, tuotoksensa ja arviointimuistiinpanonsa."
+    },
+    "folders": {
+      "title": "Linkitä jo olemassa olevat kansiot",
+      "content": "Osoita työtilalle projektin ulkopuolisia lukukansioita ja aineistoja. Mitään ei kopioida eikä siirretä."
+    }
+  },
+  "settings": {
+    "label": "Asetukset",
+    "navigation": {
+      "title": "Asetukset",
+      "content": "Siirry asetusten ja integraatioiden välillä täällä."
+    },
+    "general": {
+      "title": "Yleiset asetukset",
+      "content": "Hallitse muokkauksen toimintaa, offline-tilaa, pikanäppäimiä ja esittelyoppaita."
+    },
+    "appearance": {
+      "title": "Ulkoasu",
+      "content": "Valitse teema, typografia, työtilan oletusasettelu ja korostusväri."
+    },
+    "dictionary": {
+      "title": "Sanakirja",
+      "content": "Käy läpi projektikohtaiset ja yleiset sanat, jotka oikoluku ja kieliopin tarkistus ohittavat."
+    },
+    "data": {
+      "title": "Tietojen tallennus",
+      "content": "Tarkastele paikallista projektitallennusta ja hallitse sovelluksen tietoja."
+    },
+    "ai": {
+      "title": "Tekoälyavustaja",
+      "content": "Määritä palvelut, mallit, tunnistetiedot ja MCP-palvelimet, joita avustaja voi käyttää."
+    },
+    "compiler": {
+      "title": "Kääntäjä",
+      "content": "Valitse ja määritä LaTeX-moottori, jolla projektit käännetään."
+    },
+    "downloads": {
+      "title": "Lataukset",
+      "content": "Hallitse paketteja ja resursseja, jotka ovat käytettävissä offline-työskentelyssä."
+    },
+    "integrations": {
+      "title": "Integraatiot",
+      "content": "Yhdistä GitHub, alphaXiv, Zotero, viitehaku ja Oleaflyn paikallinen MCP-palvelin."
+    },
+    "shortcuts": {
+      "title": "Pikanäppäimet",
+      "content": "Tarkastele, muokkaa, aseta ja palauta sovelluksen pikanäppäimiä."
+    },
+    "mcp": {
+      "title": "Avustajan MCP",
+      "content": "Valitse, mitä MCP-palvelimia avustaja voi käyttää."
+    },
+    "help": {
+      "title": "Ohje ja tietoja",
+      "content": "Käynnistä tilannekohtainen esittely uudelleen, avaa dokumentaatio, katso pikanäppäimet tai ilmoita ongelmasta."
+    }
+  },
+  "aiSettings": {
+    "label": "Tekoälyasetukset",
+    "tabs": {
+      "title": "Tekoälyavustajan asetukset",
+      "content": "Hallitse täällä palveluita ja avaimia, ohjeita, persoonia, uudelleenkäytettäviä taitoja ja MCP-palvelimia."
+    },
+    "providers": {
+      "title": "Yhdistä palvelut",
+      "content": "Liitä avain, niin se tarkistetaan palvelulta ennen tallennusta. Yhdistetyt palvelut saavat vihreän merkin ja laajenevat mallilistaksi, jota voi rajata, täydentää tai palauttaa. Avaimet pysyvät salattuina tällä koneella."
+    },
+    "customProvider": {
+      "title": "Käytä omaa päätepistettä",
+      "content": "Mikä tahansa OpenAI-yhteensopiva perus-URL käy, myös paikalliset palvelimet kuten Ollama tai LM Studio."
+    },
+    "openInstructions": {
+      "title": "Ohjeet",
+      "content": "Jatka napsauttamalla Ohjeet-välilehteä."
+    },
+    "defaultModel": {
+      "title": "Oletusmalli",
+      "content": "Uudet keskustelut alkavat tällä mallilla. Mallin voi silti vaihtaa keskustelukohtaisesti keskustelupaneelista."
+    },
+    "instructions": {
+      "title": "Omat ohjeet",
+      "content": "Pysyvät tyylitoiveet, jotka liitetään jokaiseen avustajan pyyntöön."
+    },
+    "openPersonas": {
+      "title": "Persoonat",
+      "content": "Jatka napsauttamalla Persoonat-välilehteä."
+    },
+    "personas": {
+      "title": "Luo persoonia",
+      "content": "Nimettyjä ohjekokonaisuuksia, joilla on oma väri ja jotka voi vaihtaa keskustelun Persoona-valikosta. Kokeile kielenhuoltajaa, arvioijaa tai LaTeX-puristia."
+    }
+  },
+  "ai": {
+    "label": "Tekoälyavustaja",
+    "assistant": {
+      "title": "Tekoälyavustaja",
+      "content": "Työskentele projektin tuntevan avustajan kanssa lähettämättä mitään tämän esittelyn aikana."
+    },
+    "runtime": {
+      "title": "Kahdenlaisia agentteja",
+      "content": "Oleafly-agentti toimii määritetyllä mallipalvelulla. Beta-vaiheessa oleva komentoriviagentti ohjaa tälle koneelle jo asennettua koodiagenttia."
+    },
+    "connectProvider": {
+      "title": "Yhdistä palvelu",
+      "content": "Jos yhtään palvelua ei ole määritetty, aloita täältä. Esittely ei koskaan kysy eikä muuta tunnistetietoja."
+    },
+    "providerModel": {
+      "title": "Palvelu ja malli",
+      "content": "Vaihda tämän keskustelun malli. Muutokset koskevat vain tätä istuntoa. Oletusmalli asetetaan asetuksissa. Logot kertovat kunkin mallin palvelun."
+    },
+    "prompts": {
+      "title": "Kehotteiden pikavalinnat",
+      "content": "Valitse valmis kehote, niin se siirtyy keskustelukenttään."
+    },
+    "persona": {
+      "title": "Persoona",
+      "content": "Valitse, miten avustajan tulee työskennellä. Aktiivinen persoona korvaa oletusohjeet, kunnes se otetaan pois käytöstä."
+    },
+    "input": {
+      "title": "Keskustelukenttä",
+      "content": "Kuvaile tarve. Avustaja voi käyttää projektin taustatietoja, mutta tämä esittely ei lähetä yhtään pyyntöä."
+    },
+    "attachments": {
+      "title": "Liitteet",
+      "content": "Liitä kuvia, PDF-tiedostoja ja lähdetiedostoja, kun keskustelu kaipaa lisää taustaa."
+    },
+    "history": {
+      "title": "Keskusteluhistoria",
+      "content": "Avaa viimeaikaiset keskustelut ja koko historia uudelleen niin, että jokainen keskustelu pysyy sidottuna projektinsa tilaan."
+    },
+    "usage": {
+      "title": "Käyttö",
+      "content": "Määritetyissä keskusteluissa näkyvät täällä ajojen, tokenien ja arvioitujen kustannusten tiedot, kun ne ovat saatavilla."
+    },
+    "restore": {
+      "title": "Palauta projektin tila",
+      "content": "Tekoälyn tekemän muokkauksen jälkeen tarkistuspiste voi palauttaa projektitiedostot poistamatta keskustelua."
+    }
+  },
+  "diagram": {
+    "label": "Kaavioeditori",
+    "composer": {
+      "title": "Kaavioeditori",
+      "content": "Rakenna kaavioita visuaalisesti tai TikZ-koodista. Esittely ei muokkaa eikä tallenna työtä."
+    },
+    "import": {
+      "title": "Tuo TikZ-tiedosto",
+      "content": "Onko .tikz- tai .tex-tiedosto jo valmiina? Tuo se, niin se korvaa tämän aloituspiirroksen. Se pysyy luonnoksena, kunnes se tallennetaan."
+    },
+    "modes": {
+      "title": "Piirrä ja Koodi",
+      "content": "Piirtotilassa työskennellään suoraan piirtoalustalla. Koodi-tila näyttää muodostetun TikZ-koodin ja valmiit katkelmat."
+    },
+    "palette": {
+      "title": "Muotovalikoima",
+      "content": "Valitse muoto ja sijoita se napsauttamalla ja vetämällä piirtoalustalla."
+    },
+    "handles": {
+      "title": "Yhdistä ja muuta kokoa",
+      "content": "Valitussa muodossa näkyvät yhdistämis- ja kokokahvat tarkkaa rakennetta ja mitoitusta varten."
+    },
+    "inspector": {
+      "title": "Ominaisuudet",
+      "content": "Valitse muoto tai yhteys, niin sen tyyliä, tekstiä, reititystä ja pinoamisjärjestystä voi säätää."
+    },
+    "preview": {
+      "title": "Käännetty esikatselu",
+      "content": "Kääntäminen avaa editorin viereen esikatselun, jossa on skaalan ja taustan säätimet."
+    },
+    "compile": {
+      "title": "Käännä",
+      "content": "Kääntäminen piirtää erillisen esikatselun lisäämättä kaaviota dokumenttiin."
+    },
+    "saveProject": {
+      "title": "Tallenna projektiksi",
+      "content": "Tallenna valmis kaavio uudelleenkäytettäväksi kuvaprojektiksi, joka näkyy aloitusnäkymässä."
+    },
+    "download": {
+      "title": "Lataa",
+      "content": "Lataa käännetty kaavio PNG-tiedostona tallentamatta sitä projektiksi."
+    }
+  }
+}

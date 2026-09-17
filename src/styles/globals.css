@@ -336,17 +336,18 @@
   width: 100%;
   margin: 0.75em 0;
   overflow: hidden;
+  font-size: 0.9em;
 }
 .wysiwyg-content .ProseMirror th,
 .wysiwyg-content .ProseMirror td {
   position: relative;
-  min-width: 3em;
-  border: 1px solid var(--border);
-  padding: 0.35em 0.6em;
+  min-width: 2rem;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0.25rem 0.6rem;
   vertical-align: top;
 }
 .wysiwyg-content .ProseMirror th {
-  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
   font-weight: 600;
   text-align: left;
 }
@@ -363,7 +364,7 @@
   border-radius: 0.375rem;
 }
 .wysiwyg-content .ProseMirror img.ProseMirror-selectednode {
-  outline: 2px solid var(--primary);
+  filter: brightness(0.94);
 }
 
 .wysiwyg-content .ProseMirror > * + * {
@@ -487,8 +488,7 @@
   white-space: pre;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-block"].ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 3px;
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"] {
   display: inline-flex;
@@ -516,8 +516,7 @@
   padding: 0;
   font: inherit;
 }
-.wysiwyg-content .ProseMirror .raw-inline-edit,
-.wysiwyg-content .ProseMirror .math-preview-edit {
+.wysiwyg-content .ProseMirror .raw-inline-edit {
   appearance: none;
   flex: none;
   border: 0;
@@ -530,17 +529,14 @@
   line-height: 1;
   padding: 0.1rem 0.15rem;
 }
-.wysiwyg-content .ProseMirror .raw-inline-edit:hover,
-.wysiwyg-content .ProseMirror .math-preview-edit:hover {
+.wysiwyg-content .ProseMirror .raw-inline-edit:hover {
   color: var(--foreground);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 .wysiwyg-content .ProseMirror .raw-inline-edit:focus-visible,
-.wysiwyg-content .ProseMirror .math-preview-edit:focus-visible,
 .wysiwyg-content .ProseMirror .raw-inline-input:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 .wysiwyg-content .ProseMirror .raw-inline-input {
   box-sizing: border-box;
@@ -558,58 +554,9 @@
   white-space: pre;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"].ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
 }
-.wysiwyg-content
-  .ProseMirror
-  [data-raw-inline-kind="math"]:not([data-raw-inline-editing="true"])
-  .raw-inline-source {
-  max-width: min(28rem, 52vw);
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: pre;
-  color: color-mix(in srgb, var(--muted-foreground) 82%, transparent);
-  scrollbar-width: thin;
-}
-.wysiwyg-content .ProseMirror .wysiwyg-math-source {
-  text-decoration-line: underline;
-  text-decoration-style: dotted;
-  text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
-  text-underline-offset: 0.2em;
-}
-.wysiwyg-content .ProseMirror .wysiwyg-math-source.is-incomplete {
-  text-decoration-color: var(--destructive);
-  text-decoration-style: wavy;
-}
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview.math-preview {
-  position: relative;
-  box-sizing: border-box;
-  align-items: center;
-  gap: 0;
-  max-width: min(100%, 42rem);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--foreground);
-}
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview.math-preview.is-inline {
-  display: inline-flex;
-  margin-inline: 0.12em;
-  padding: 0;
-  vertical-align: middle;
-}
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview.math-preview.is-display {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  min-height: 2.75rem;
-  margin-block: 0.5rem;
-  overflow-x: auto;
-  padding: 0.35rem 0;
-}
-.wysiwyg-content .ProseMirror [data-type="raw-inline"] .raw-inline-edit,
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview .math-preview-edit {
+.wysiwyg-content .ProseMirror [data-type="raw-inline"] .raw-inline-edit {
   position: absolute;
   z-index: 4;
   top: 50%;
@@ -626,29 +573,9 @@
   white-space: nowrap;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"]:hover .raw-inline-edit,
-.wysiwyg-content .ProseMirror [data-type="raw-inline"] .raw-inline-edit:focus-visible,
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview:hover .math-preview-edit,
-.wysiwyg-content .ProseMirror .wysiwyg-math-preview .math-preview-edit:focus-visible {
+.wysiwyg-content .ProseMirror [data-type="raw-inline"] .raw-inline-edit:focus-visible {
   opacity: 1;
   pointer-events: auto;
-}
-.wysiwyg-content .ProseMirror .math-preview-output {
-  min-width: 0;
-  overflow-x: auto;
-}
-.wysiwyg-content .ProseMirror .math-preview-error {
-  color: var(--destructive);
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1.35;
-}
-.wysiwyg-content .ProseMirror .math-preview-loading {
-  color: var(--muted-foreground);
-  font-family: var(--font-sans);
-  font-size: 0.625rem;
-  font-weight: 500;
-  line-height: 1.35;
 }
 .wysiwyg-content .ProseMirror .wysiwyg-project-intelligence {
   cursor: pointer;
@@ -670,8 +597,7 @@
   text-decoration-style: wavy;
 }
 .wysiwyg-content .ProseMirror .wysiwyg-project-intelligence:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 .wysiwyg-content .ProseMirror .wysiwyg-proofreading {
   cursor: pointer;
@@ -699,8 +625,7 @@
   background: color-mix(in srgb, var(--accent) 72%, transparent);
 }
 .wysiwyg-content .ProseMirror .wysiwyg-proofreading:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 
 @theme inline {
@@ -759,6 +684,22 @@
     --app-surface: color-mix(in srgb, var(--background) 32%, transparent);
     --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
   }
+  html:lang(zh-Hans) {
+    --font-sans: "Geist", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+      "Noto Sans CJK SC", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  }
+  html:lang(zh-Hant) {
+    --font-sans: "Geist", "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
+      "Noto Sans CJK TC", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  }
+  html:lang(ja) {
+    --font-sans: "Geist", "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+      "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  }
+  html:lang(ko) {
+    --font-sans: "Geist", "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
+      "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
+  }
   body {
     margin: 0;
     background-color: var(--app-surface, var(--background));
@@ -791,8 +732,7 @@
   button:focus-visible,
   [role="button"]:focus-visible,
   [role="menuitem"]:focus-visible {
-    outline: 1px solid var(--ring);
-    outline-offset: 2px;
+    background: color-mix(in srgb, var(--ring) 10%, transparent);
   }
   input,
   textarea,
@@ -1670,4 +1610,361 @@ body[data-tour-active] [data-tour-hide] {
 .oleafly-diff-resizer:focus-visible::after {
   background: var(--primary);
   width: 2px;
+}
+
+/* ---- Visual editor: native LaTeX nodes (math, footnotes, theorems, figures, tables, colours) ---- */
+.wysiwyg-content .ProseMirror h4,
+.wysiwyg-content .ProseMirror h5 {
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 0.75em;
+}
+.wysiwyg-content .ProseMirror h1[data-command="part"] {
+  font-size: 1.75em;
+  letter-spacing: 0.01em;
+}
+.wysiwyg-content .ProseMirror h1[data-command="chapter"] {
+  font-size: 1.55em;
+}
+.wysiwyg-content .ProseMirror [data-starred="true"]::after {
+  content: "*";
+  margin-left: 0.2em;
+  color: var(--muted-foreground);
+  font-size: 0.6em;
+  font-weight: 400;
+  vertical-align: super;
+}
+.wysiwyg-content .ProseMirror [data-type="math-inline"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 100%;
+  vertical-align: middle;
+  padding-inline: 0.1em;
+  border-radius: 0.2em;
+  cursor: text;
+}
+.wysiwyg-content .ProseMirror [data-type="math-inline"]:hover .math-rendered {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.wysiwyg-content .ProseMirror [data-type="math-display"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: text;
+}
+.wysiwyg-content .ProseMirror [data-type="math-display"]:hover {
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+.wysiwyg-content .ProseMirror .math-rendered {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  color: var(--foreground);
+}
+.wysiwyg-content .ProseMirror [data-type="math-display"] .math-rendered {
+  width: 100%;
+  text-align: center;
+}
+.wysiwyg-content .ProseMirror .math-source {
+  background: transparent;
+  padding: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wysiwyg-content .ProseMirror .math-error {
+  display: block;
+  color: var(--destructive);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+.wysiwyg-content .ProseMirror .math-input,
+.wysiwyg-content .ProseMirror .footnote-input,
+.wysiwyg-content .ProseMirror .theorem-title-input {
+  box-sizing: border-box;
+  border: 1px solid var(--ring);
+  border-radius: 0.25rem;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.25rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+.wysiwyg-content .ProseMirror [data-type="math-inline"] .math-input {
+  min-width: min(18rem, 50vw);
+}
+.wysiwyg-content .ProseMirror [data-type="math-display"] .math-input {
+  width: 100%;
+  max-width: 48rem;
+  resize: vertical;
+  white-space: pre;
+}
+.wysiwyg-content .ProseMirror .math-live-preview {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  color: var(--foreground);
+}
+.wysiwyg-content .ProseMirror [data-type="math-display"] .math-live-preview {
+  justify-content: center;
+  width: 100%;
+  min-height: 2rem;
+}
+.wysiwyg-content .ProseMirror [data-type="math-inline"].ProseMirror-selectednode,
+.wysiwyg-content .ProseMirror [data-type="math-display"].ProseMirror-selectednode,
+.wysiwyg-content .ProseMirror [data-type="footnote"].ProseMirror-selectednode,
+.wysiwyg-content .ProseMirror [data-type="figure"].ProseMirror-selectednode {
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
+  border-radius: 0.25rem;
+}
+.wysiwyg-content .ProseMirror [data-type="footnote"] {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  vertical-align: super;
+  font-size: 0.72em;
+  line-height: 1;
+}
+.wysiwyg-content .ProseMirror .footnote-marker {
+  appearance: none;
+  border: 0;
+  padding: 0 0.15em;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+.wysiwyg-content .ProseMirror .footnote-marker:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.wysiwyg-content .ProseMirror .footnote-input {
+  min-width: min(20rem, 60vw);
+  max-width: min(36rem, 80vw);
+  vertical-align: baseline;
+  resize: both;
+  font-size: 0.75rem;
+}
+.wysiwyg-content .ProseMirror [data-type="theorem"] {
+  margin-block: 0.75rem;
+  border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  padding: 0.375rem 0 0.375rem 0.875rem;
+}
+.wysiwyg-content .ProseMirror .theorem-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+.wysiwyg-content .ProseMirror .theorem-name {
+  font-weight: 700;
+}
+.wysiwyg-content .ProseMirror [data-environment="proof"] .theorem-name {
+  font-style: italic;
+  font-weight: 500;
+}
+.wysiwyg-content .ProseMirror .theorem-title {
+  color: var(--muted-foreground);
+  cursor: text;
+}
+.wysiwyg-content .ProseMirror .theorem-title-input {
+  min-width: min(16rem, 50vw);
+  font-family: var(--font-sans);
+}
+.wysiwyg-content .ProseMirror .theorem-body > :first-child {
+  margin-top: 0;
+}
+.wysiwyg-content .ProseMirror .theorem-edit-title,
+.wysiwyg-content .ProseMirror .figure-add-caption,
+.wysiwyg-content .ProseMirror .table-float-add-caption {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  padding: 0.125rem 0;
+}
+.wysiwyg-content .ProseMirror .theorem-edit-title:hover,
+.wysiwyg-content .ProseMirror .figure-add-caption:hover,
+.wysiwyg-content .ProseMirror .table-float-add-caption:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.wysiwyg-content .ProseMirror .theorem-edit-title {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.wysiwyg-content .ProseMirror [data-type="theorem"]:hover .theorem-edit-title,
+.wysiwyg-content .ProseMirror [data-type="theorem"]:focus-within .theorem-edit-title,
+.wysiwyg-content .ProseMirror .theorem-edit-title:focus-visible {
+  opacity: 1;
+}
+.wysiwyg-content .ProseMirror [data-type="figure"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.wysiwyg-content .ProseMirror .figure-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+.wysiwyg-content .ProseMirror .figure-image {
+  max-width: 100%;
+  height: auto;
+}
+.wysiwyg-content .ProseMirror .figure-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 24rem);
+  min-height: 6rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+}
+.wysiwyg-content .ProseMirror .figure-controls,
+.wysiwyg-content .ProseMirror .table-float-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.wysiwyg-content .ProseMirror [data-type="figure"]:hover .figure-controls,
+.wysiwyg-content .ProseMirror [data-type="figure"]:focus-within .figure-controls,
+.wysiwyg-content .ProseMirror [data-type="figure"].ProseMirror-selectednode .figure-controls,
+.wysiwyg-content .ProseMirror [data-type="table-float"]:hover .table-float-controls,
+.wysiwyg-content .ProseMirror [data-type="table-float"]:focus-within .table-float-controls {
+  opacity: 1;
+}
+.wysiwyg-content .ProseMirror .figure-control,
+.wysiwyg-content .ProseMirror .table-float-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.wysiwyg-content .ProseMirror .figure-width,
+.wysiwyg-content .ProseMirror .figure-label,
+.wysiwyg-content .ProseMirror .table-float-label {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.15rem 0.35rem;
+  font: inherit;
+}
+.wysiwyg-content .ProseMirror .figure-label,
+.wysiwyg-content .ProseMirror .table-float-label {
+  width: 9rem;
+  font-family: var(--font-mono);
+}
+.wysiwyg-content .ProseMirror .figure-width:focus-visible,
+.wysiwyg-content .ProseMirror .figure-label:focus-visible,
+.wysiwyg-content .ProseMirror .table-float-label:focus-visible,
+.wysiwyg-content .ProseMirror .math-input:focus-visible,
+.wysiwyg-content .ProseMirror .footnote-input:focus-visible,
+.wysiwyg-content .ProseMirror .theorem-title-input:focus-visible {
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
+}
+.wysiwyg-content .ProseMirror [data-type="figure-caption"],
+.wysiwyg-content .ProseMirror [data-type="table-caption"] {
+  position: relative;
+  max-width: 42rem;
+  color: var(--foreground);
+  font-size: 0.9em;
+  text-align: center;
+}
+.wysiwyg-content .ProseMirror [data-type="figure-caption"]:has(> .ProseMirror-trailingBreak:only-child)::before,
+.wysiwyg-content .ProseMirror [data-type="table-caption"]:has(> .ProseMirror-trailingBreak:only-child)::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+.wysiwyg-content .ProseMirror [data-type="table-float"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.wysiwyg-content .ProseMirror .table-float-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.wysiwyg-content .ProseMirror [data-caption-position="above"] .table-float-content {
+  flex-direction: column-reverse;
+}
+.wysiwyg-content .ProseMirror tr[data-border-top] > td,
+.wysiwyg-content .ProseMirror tr[data-border-top] > th {
+  border-top: 2px solid var(--foreground);
+}
+.wysiwyg-content .ProseMirror tr[data-border-bottom] > td,
+.wysiwyg-content .ProseMirror tr[data-border-bottom] > th {
+  border-bottom: 2px solid var(--foreground);
+}
+.wysiwyg-content .ProseMirror td > p,
+.wysiwyg-content .ProseMirror th > p {
+  margin: 0;
+}
+.wysiwyg-content .ProseMirror .selectedCell {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.wysiwyg-content .ProseMirror span[data-color-box] {
+  border-radius: 0.15em;
+  padding: 0 0.15em;
+}
+/* ---- end visual editor native LaTeX nodes ---- */
+
+*,
+*::before,
+*::after {
+  outline: none !important;
+}
+:focus,
+:focus-visible,
+:focus-within {
+  outline: none !important;
+}
+:focus,
+:focus-visible {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }

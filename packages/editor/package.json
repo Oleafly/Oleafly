@@ -13,7 +13,9 @@
     "./math-render": "./src/math-render.ts",
     "./math-source": "./src/math-source.ts",
     "./math-preview": "./src/math-preview.ts",
-    "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx"
+    "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx",
+    "./visual": "./src/visual/index.ts",
+    "./latex-tree": "./src/latex-tree.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",
@@ -27,9 +29,12 @@
     "@codemirror/search": "*",
     "@codemirror/state": "*",
     "@codemirror/view": "^6.43.6",
+    "@lezer/common": "*",
     "@lezer/highlight": "*",
     "@lezer/markdown": "*",
+    "@replit/codemirror-emacs": "^6.1.0",
     "@replit/codemirror-vim": "^6.4.0",
+    "codemirror-lang-latex": "*",
     "katex": "*",
     "react": "*"
   }

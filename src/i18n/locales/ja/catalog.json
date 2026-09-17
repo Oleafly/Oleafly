@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "白紙",
+    "diagramsAndFigures": "図とダイアグラム",
+    "cvsAndResumes": "履歴書・職務経歴書",
+    "journalsAndConferences": "論文誌・国際会議",
+    "bibliographies": "参考文献",
+    "assignments": "課題",
+    "thesesAndReports": "学位論文・レポート",
+    "books": "書籍",
+    "presentations": "プレゼンテーション",
+    "posters": "ポスター",
+    "newsletters": "ニュースレター",
+    "calendars": "カレンダー",
+    "letters": "レター",
+    "aiGenerated": "AI 生成"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "履歴書",
+    "diagramsAndFigures": "ダイアグラム",
+    "journalsAndConferences": "論文誌"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "多くの現代的な履歴書・職務経歴書テンプレートで使われる、温かみのあるヒューマニストサンセリフ体です。"
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "画面でも印刷でも読みやすい、すっきりとした中立的なサンセリフ体です。"
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "洗練されたトランジショナルセリフ体で、学術文書やビジネス文書によく合います。"
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "学術ライティングパック",
+      "description": "研究計画書、助成金申請書、文献レビュー、志望理由書、推薦状、ホワイトペーパー、学位論文。"
+    },
+    "beamer-themes": {
+      "label": "Beamer テーマ集",
+      "description": "Madrid、Warsaw、Berkeley、Singapore、Copenhagen、Frankfurt、Boadilla、Pittsburgh の beamer スライド。"
+    },
+    "business-documents": {
+      "label": "ビジネス文書",
+      "description": "請求書、社内文書、議事録、事業計画書と報告書、証明書、三つ折りパンフレット。"
+    },
+    "conference-preprints": {
+      "label": "国際会議プレプリントのスタイル",
+      "description": "NeurIPS、ICML、ICLR、ACL、CVPR、AAAI、IJCAI、Springer LNCS、JMLR、arXiv、Interspeech のスタイルのプレプリント。"
+    },
+    "coursework": {
+      "label": "授業課題パック",
+      "description": "宿題、ワークシート、小テスト、評価基準表、講義ノート、シラバス、数学の要点シート、試験、擬似コードの解説。"
+    },
+    "creative-misc": {
+      "label": "クリエイティブとその他",
+      "description": "レシピ集、招待状、RPG のキャラクターシート、年間カレンダー、表と TikZ のギャラリー、フィールドノート。"
+    },
+    "cv-collection": {
+      "label": "CV・履歴書スタイル集",
+      "description": "ModernCV、AltaCV、Awesome-CV、Europass、Friggeri、Plasmati、Twenty Seconds、Jake 風の履歴書。"
+    },
+    "reports-lab": {
+      "label": "実験・技術レポート",
+      "description": "実験レポート、科学技術レポート、プロジェクト報告書とインターンシップ報告書、年次報告書。"
+    },
+    "resume-plus": {
+      "label": "履歴書・CV の拡張",
+      "description": "2 段組の技術職向け履歴書、ミニマルな履歴書、詳細な学術用 CV、カバーレター、Typst 版 CV。"
+    },
+    "slides-posters": {
+      "label": "スライドとポスター",
+      "description": "Metropolis の beamer スライド、tikzposter の縦向きと横向き、better-poster レイアウト。"
+    },
+    "venue-classes": {
+      "label": "論文誌・国際会議のクラスファイル",
+      "description": "REVTeX、ACS achemso、Elsevier、ACM sigconf、Typst の論文誌向けひな形。"
+    }
+  }
+}

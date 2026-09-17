@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "ログ",
+    "showLogs": "コンパイルログを表示",
+    "showPdf": "PDF プレビューを表示",
+    "askAi": "AI に聞く",
+    "more": "その他のプレビュー操作",
+    "duration": "{{seconds}} 秒",
+    "failed": "失敗",
+    "compiledWithErrors": "エラーありでコンパイルしました",
+    "compiledWithWarnings": "警告ありでコンパイルしました",
+    "compiledSuccessfully": "コンパイルに成功しました"
+  },
+  "pageLayout": {
+    "group": "ページレイアウト",
+    "single": "単ページ表示",
+    "double": "見開き表示"
+  },
+  "pages": {
+    "previous": "前のページ",
+    "next": "次のページ",
+    "number": "ページ番号",
+    "ofTotal": "/ {{total}}",
+    "pageOfTotal": "{{total}} ページ中 {{page}} ページ目"
+  },
+  "zoom": {
+    "in": "拡大",
+    "out": "縮小",
+    "fitToWidth": "幅に合わせる",
+    "fitToHeight": "高さに合わせる",
+    "reset": "100% に戻す",
+    "percent": "{{percent}}%",
+    "percentLabel": "ズーム {{percent}} パーセント",
+    "menuLabel": "ズーム · {{percent}}%"
+  },
+  "outline": {
+    "open": "文書のアウトライン",
+    "panel": "PDF 文書のアウトライン",
+    "title": "文書のアウトライン",
+    "close": "文書のアウトラインを閉じる",
+    "loading": "アウトラインを読み込み中…",
+    "empty": "この PDF にはアウトラインが含まれていません。",
+    "externalLink": "外部リンク",
+    "externalBadge": "リンク"
+  },
+  "search": {
+    "open": "PDF を検索",
+    "panel": "この PDF を検索",
+    "placeholder": "文書を検索",
+    "input": "PDF のテキストを検索",
+    "previous": "前の検索結果",
+    "next": "次の検索結果",
+    "close": "PDF の検索を閉じる"
+  },
+  "viewer": {
+    "scrollArea": "PDF の連続スクロール領域",
+    "crashedTitle": "PDF プレビューがクラッシュしました",
+    "crashedDetail": "現在のリビジョンを再コンパイルするか、ビューアを再試行してください。",
+    "retry": "ビューアを再試行",
+    "loadingLatest": "最新のコンパイル済み PDF を読み込み中…",
+    "retryingLoad": "PDF の読み込みを再試行しています…",
+    "retainedFailure": "{{detail}}。代わりに、最後に読み込めた PDF を表示しています。",
+    "retainedFailureDetail": "現在の PDF を読み込めませんでした",
+    "invalidTitle": "不正な PDF",
+    "emptyTitle": "空の PDF",
+    "unavailableTitle": "PDF ビューアを利用できません",
+    "loadFailedTitle": "PDF の読み込みに失敗しました",
+    "loadFailedDetail": "PDF を読み込めませんでした。"
+  },
+  "password": {
+    "title": "パスワードが必要です",
+    "label": "PDF のパスワード",
+    "placeholder": "PDF のパスワード",
+    "submit": "PDF のロックを解除"
+  },
+  "actions": {
+    "downloadImage": "画像をダウンロード",
+    "downloadPdf": "PDF をダウンロード",
+    "downloadDisplayedPdf": "表示中の PDF をダウンロード",
+    "downloadStalePdf": "古い（最新ではない）PDF をダウンロード",
+    "saveImage": "画像をプロジェクトに保存",
+    "savePdf": "PDF をプロジェクトに保存",
+    "invert": "PDF プレビューの色を反転",
+    "restoreColors": "色を元に戻す",
+    "readerView": "リーダー表示",
+    "exitReaderView": "リーダー表示を終了",
+    "rotate": "時計回りに回転",
+    "rotateTooltip": "PDF を時計回りに 90° 回転します。現在は {{degrees}}°",
+    "openWindow": "プレビューを新しいウィンドウで開く",
+    "hideToolbar": "ツールバーを隠す",
+    "showToolbar": "ツールバーを表示",
+    "settings": "PDF プレビューの設定",
+    "fullscreen": "全画面プレビュー",
+    "exitFullscreen": "全画面を終了",
+    "retryCompile": "コンパイルを再試行"
+  },
+  "stale": {
+    "badge": "古い",
+    "badgeLabel": "古い（最新ではない）プレビューです。再コンパイルしてください。",
+    "tooltip": "エディタの変更に対してプレビューが古くなっています。{{explanation}} {{syncTex}} クリックすると再コンパイルします。",
+    "explanation": "この PDF は現在のプロジェクトリビジョンを反映していません。",
+    "revisionExplanation": "プロジェクトのリビジョン {{displayed}} を表示しています。現在のプロジェクトはリビジョン {{active}} です。",
+    "noIdentity": "表示中の PDF には、現在のリビジョンに対する検証済みのコンパイル識別子がありません。",
+    "syncTexAvailable": "SyncTeX は、編集した箇所については最も近い未変更の行を使います。",
+    "syncTexUnavailable": "SyncTeX には最新のコンパイルが必要です。"
+  },
+  "save": {
+    "title": "PDF をプロジェクトに保存",
+    "imageTitle": "画像をプロジェクトに保存",
+    "close": "保存ダイアログを閉じる",
+    "staleDescription": "表示中の古い PDF をプロジェクトツリーに保存します。この PDF は現在のリビジョンを反映していません。",
+    "description": "表示中の PDF をプロジェクトツリーに保存します（Git でコミットされます）。",
+    "nameLabel": "プロジェクト内での保存名",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "画像をプロジェクトに保存しました。",
+    "pdfSaved": "PDF をプロジェクトに保存しました。",
+    "failed": "プロジェクトに保存できませんでした。"
+  },
+  "download": {
+    "pngFilter": "PNG 画像",
+    "imageSaved": "画像を保存しました · {{name}}",
+    "pdfSaved": "PDF を保存しました · {{name}}",
+    "showInFolder": "フォルダに表示",
+    "folderUnavailable": "ファイルは保存されましたが、Oleafly はそのフォルダを開けませんでした（権限がありません）。保存ダイアログで選んだ場所を確認してください。",
+    "imageFailed": "画像をダウンロードできませんでした。",
+    "imageFailedDetail": "画像をダウンロードできませんでした: {{detail}}",
+    "pdfFailed": "PDF をダウンロードできませんでした。",
+    "pdfFailedDetail": "PDF をダウンロードできませんでした: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "現在、PDF のコンパイルを利用できません。",
+    "compileFailed": "コンパイルに失敗しました。「ログ」タブを開いて原因を確認してください。"
+  },
+  "a11y": {
+    "stale": "古い（最新ではない）PDF です。{{explanation}}",
+    "page": "PDF の {{total}} ページ中 {{page}} ページ目。",
+    "searchResult": "検索結果 {{total}} 件中 {{current}} 件目。"
+  },
+  "startup": {
+    "headingReady": "PDF プレビューの準備ができました",
+    "headingPreparing": "PDF プレビューを準備しています",
+    "headingAttention": "起動処理で確認が必要です",
+    "progressLabel": "文書の起動処理: {{total}} 段階中 {{completed}} 段階が完了またはスキップ",
+    "doneCount": "{{completed}}/{{total}} 完了",
+    "metaRunning": "実行中 {{stages}}",
+    "metaQueued": "待機中 {{stages}}",
+    "metaFailed": "失敗 {{stages}}",
+    "compileNow": "今すぐコンパイル",
+    "noProject": "アクティブなプロジェクトがありません",
+    "waitingForEngine": "ドキュメントエンジンを待っています",
+    "orPress": "または <shortcutKey>{{keys}}</shortcutKey> を押します",
+    "status": {
+      "done": "完了",
+      "running": "実行中",
+      "queued": "待機中",
+      "skipped": "スキップ",
+      "failed": "失敗"
+    },
+    "language": {
+      "serviceLabel": "言語サービス",
+      "analysisLabel": "言語解析",
+      "openingFiles": "プロジェクトのファイルを開いています",
+      "starting": "言語サービスを起動しています",
+      "restarting": "言語サービスを再起動しています",
+      "installing": "言語サービスをインストールしています",
+      "connected": "起動して接続しました",
+      "ready": "準備完了",
+      "localOnly": "不要です。ローカル解析を使います。",
+      "notApplicable": "このプロジェクトには該当しません",
+      "unavailable": "利用できません。ローカル解析は引き続き使えます。",
+      "waitingToStart": "起動を待っています",
+      "waitingForFiles": "プロジェクトのファイルを待っています",
+      "syncing": "現在のプロジェクトファイルを同期しています",
+      "analyzing": "プロジェクトの構造を解析しています",
+      "analyzed": "現在のプロジェクトリビジョンを解析しました",
+      "partial": "利用できる部分的な解析が用意できました",
+      "needsAttention": "解析で確認が必要です",
+      "notAvailable": "このプロジェクトでは利用できません",
+      "queued": "現在のリビジョンについて待機中",
+      "waitingForService": "言語サービスを待っています"
+    },
+    "compile": {
+      "label": "コンパイル中",
+      "saving": "現在の変更を保存しています",
+      "downloading": "必要な LaTeX パッケージをダウンロードしています",
+      "producing": "PDF 出力を生成して検証しています",
+      "unavailable": "コンパイラを利用できません",
+      "failed": "コンパイルに失敗しました。詳細はログを開いてください。",
+      "accepted": "検証済みの出力を受け入れました",
+      "waiting": "現在のリビジョンのコンパイルを待っています"
+    },
+    "render": {
+      "label": "PDF を描画中",
+      "preparing": "ページ、テキスト、リンクを準備しています",
+      "reading": "PDF を読み込み中 · {{percent}}%",
+      "passwordRequired": "パスワードが必要です",
+      "needsAttention": "PDF の描画で確認が必要です",
+      "ready": "プレビューの準備ができました",
+      "waitingForRenderer": "検証済みの PDF レンダラーを待っています",
+      "waitingForCompile": "検証済みのコンパイル結果を待っています"
+    }
+  },
+  "window": {
+    "fitWidth": "幅に合わせる",
+    "fitHeight": "高さに合わせる",
+    "invert": "色を反転",
+    "invertLabel": "PDF の色を反転",
+    "rotateLabel": "PDF を時計回りに回転",
+    "staleHeading": "古い · 最新ではないプレビュー",
+    "staleCompiling": "新しいプロジェクトリビジョンをコンパイルしています。これはリビジョン {{revision}} の最後の検証済み PDF です。",
+    "staleUnknownRevision": "不明",
+    "staleCompileFailed": "{{detail}}。最後に検証された PDF を表示したままにします。",
+    "staleCompileFailedDetail": "新しいコンパイルでは使える PDF ができませんでした",
+    "staleIdentity": "この PDF は、最後に受け入れられたコンパイル識別子を反映していません。",
+    "crashedDetail": "このビューアを再試行するか、メインウィンドウでもう一度コンパイルしてください。",
+    "compilingTitle": "PDF をコンパイル中",
+    "compileFailedTitle": "コンパイルに失敗しました",
+    "compileUnavailableTitle": "コンパイルを利用できません",
+    "artifactUnavailableTitle": "PDF を利用できません",
+    "noVerifiedTitle": "検証済みの PDF がありません",
+    "compilingDetail": "コンパイルが完了すると、検証済みの PDF が表示されます。",
+    "noVerifiedDetail": "メインウィンドウでプロジェクトをコンパイルしてください。このウィンドウは、検証済みのコンパイル識別子を持つ出力だけを表示します。",
+    "loadingTitle": "PDF を読み込み中",
+    "loadingVerified": "検証済みの PDF を読み込み中…",
+    "restoringLast": "最後に読み込めた PDF を復元しています…",
+    "retryingLoad": "PDF の読み込みを再試行しています…",
+    "unlocking": "PDF のロックを解除しています…",
+    "rotating": "PDF を回転しています…",
+    "retainedFailureDetail": "最新の PDF を読み込めませんでした",
+    "artifactFailure": "コンパイルされた PDF を検証または読み取りできませんでした。可能な場合は、最後に読み込めた PDF を表示したままにします。",
+    "downloadStarted": "PDF のダウンロードを開始しました。",
+    "downloadSaved": "PDF を保存しました。",
+    "downloadFailed": "表示中の PDF を保存できませんでした。"
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF のパスワードが受け付けられませんでした。",
+      "passwordRequired": "この PDF はパスワードで保護されています。",
+      "invalid": "コンパイル結果は正しい PDF ではありません。再コンパイルするか、コンパイルログを確認してください。",
+      "unavailable": "このウィンドウでは PDF レンダラーを利用できません。ウィンドウを元に戻すか、アプリを再起動してから再試行してください。",
+      "generic": "PDF を読み込めませんでした。現在のリビジョンを再コンパイルしてからもう一度お試しください。",
+      "empty": "コンパイルされた PDF は空です。",
+      "firstPage": "PDF は開きましたが、最初のページを描画できませんでした。"
+    },
+    "link": {
+      "blockedScheme": "この PDF のリンクは、ブロックされた URL スキームを使っています。"
+    },
+    "search": {
+      "failed": "検索ですべてのページを読み取れませんでした。PDF を再読み込みしてから再試行してください。"
+    },
+    "outline": {
+      "empty": "この PDF にはアウトラインが含まれていません。",
+      "failed": "PDF のアウトラインを読み込めませんでした。",
+      "destinationUnavailable": "そのアウトラインの移動先を利用できません。",
+      "blockedScheme": "このリンクは、ブロックされた URL スキームを使っています。",
+      "noDestination": "このアウトライン項目には移動先がありません。",
+      "untitled": "無題のセクション"
+    },
+    "status": {
+      "loading": "PDF を読み込み中…"
+    },
+    "a11y": {
+      "document": "PDF 文書のプレビュー",
+      "page": "PDF の {{total}} ページ中 {{page}} ページ目",
+      "textLayer": "PDF の {{page}} ページ目の選択できるテキスト"
+    },
+    "screenReader": {
+      "layer": "スクリーンリーダー表示、{{total}} ページ中 {{page}} ページ目",
+      "title": "スクリーンリーダーモード",
+      "pageLabel": "{{total}} ページ中 {{page}} ページ目",
+      "empty": "このページに読み取れるテキストは見つかりませんでした。"
+    }
+  }
+}

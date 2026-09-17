@@ -1,0 +1,670 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Layout em duas colunas",
+      "detailTwoColumn": "Os leitores de currículo costumam linearizar duas colunas na ordem errada. Prefira o layout de coluna única em documentos que precisam ser lidos por um ATS.",
+      "titleMultiColumn": "Layout em várias colunas",
+      "detailMultiColumn": "Os leitores de currículo costumam linearizar as colunas na ordem errada. Use uma coluna só em documentos voltados a ATS."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Confira a ordem de leitura das duas colunas",
+      "detailTwoColumn": "Layouts editoriais em várias colunas podem ser acessíveis quando a árvore de marcação do PDF preserva a sequência pretendida. Compile e confirme a ordem real de leitura, em vez de tratar as colunas visuais como falha por si só.",
+      "titleMultiColumn": "Confira a ordem de leitura das várias colunas",
+      "detailMultiColumn": "Colunas não são automaticamente inacessíveis, mas a ordem das marcações e do conteúdo precisa continuar fazendo sentido. Compile e inspecione a sequência real de leitura."
+    },
+    "no-glyphtounicode": {
+      "title": "O mapa de extração Unicode não está declarado",
+      "detailEngineNeedsMap": "O XeTeX, e o motor embutido que se baseia nele, não geram o mapa de glifo para Unicode automaticamente, então o texto extraído pode sair ilegível. Compile e confira o modo de leitura, e prefira uma fonte com mapeamento Unicode completo.",
+      "detailAutomatic": "O pdfLaTeX e o LuaLaTeX geram esse mapa automaticamente desde a versão do LaTeX de 2021-06-01, então não é preciso declarar nada. Compile e confira o texto extraído no modo de leitura. No XeTeX, carregue o cmap ou troque de motor."
+    },
+    "icon-near-contact": {
+      "title": "Ícone ao lado dos dados de contato",
+      "detail": "Ícones de fonte (como \\faPhone ou \\faEnvelope) são desenhados como glifos que um analisador lê como caracteres desconhecidos e um leitor de tela não consegue nomear, então o dado de contato ao lado deles pode se perder. Garanta que o e-mail ou o telefone também apareçam como texto simples selecionável."
+    },
+    "layout-table": {
+      "titleTable": "O conteúdo da tabela pode não ser lido como campos do currículo",
+      "detailTable": "As ferramentas de ATS costumam achatar o conteúdo tabular de forma imprevisível. Evite usar uma tabela para posicionar o texto do currículo lado a lado; tabelas de dados de pesquisa de verdade são avaliadas à parte, em Acessibilidade.",
+      "titleTikz": "O conteúdo TikZ precisa de uma alternativa semântica",
+      "detailTikz": "O TikZ desenha conteúdo visual sem expor o significado dele como texto normal. Forneça uma descrição acessível para a saída de publicação e evite usá-lo em conteúdo de currículo voltado a ATS."
+    },
+    "contact-in-header": {
+      "title": "Dados de contato no cabeçalho da página",
+      "detail": "Alguns leitores de currículo ignoram cabeçalhos e rodapés. Coloque seu e-mail e telefone no corpo do documento para que o texto extraído preserve os dois."
+    },
+    "figure-alt": {
+      "title": "Imagem sem texto alternativo",
+      "detail": "Esta imagem não tem texto alternativo descritivo, então um leitor de tela não consegue transmiti-la. Adicione uma descrição, por exemplo \\includegraphics[alt={Um retrato do autor}]{...}. Marque as imagens puramente decorativas como artefatos."
+    },
+    "link-text": {
+      "title": "Texto de link pouco descritivo",
+      "detail": "Um texto de link como 'clique aqui' ou uma URL crua não diz nada a quem usa leitor de tela sobre o destino. Use um texto que nomeie o alvo, por exemplo 'meu portfólio'."
+    },
+    "mathml-export-hint": {
+      "title": "Exporte uma cópia HTML com MathML para conferir a acessibilidade da matemática",
+      "detail": "O documento contém matemática. Os leitores de tela leem equações com confiabilidade quando elas estão em MathML. Use Exportar como HTML, que o pandoc gera com --mathml, e abra o arquivo com um leitor de tela ou um verificador de acessibilidade antes de submeter."
+    },
+    "no-lang": {
+      "title": "Nenhum idioma definido para o documento",
+      "detail": "O PDF não tem idioma, então um leitor de tela pode lê-lo com as regras de pronúncia erradas. Defina um, por exemplo \\usepackage[brazilian]{babel} ou pdflang=pt-BR do hyperref."
+    },
+    "no-title": {
+      "title": "PDF sem título",
+      "detail": "O PDF não tem título nos metadados, e é ele que a tecnologia assistiva e os navegadores usam para anunciar o documento. Defina um com o hyperref, por exemplo \\hypersetup{pdftitle={Seu nome, CV}}."
+    },
+    "heading-skip": {
+      "title": "Nível de título pulado",
+      "detail": "Este título desce mais de um nível em relação ao anterior, o que quebra o sumário do documento em que leitores de tela e analisadores se apoiam. Não pule níveis: vá de section para subsection e depois subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Título de seção fora do padrão: \"{{heading}}\"",
+      "detail": "Os analisadores mapeiam as seções reconhecendo títulos padrão como Experiência, Formação e Competências. Um título criativo pode deixar a seção sem categoria. Considere um título convencional."
+    },
+    "color-only": {
+      "title": "Confira se a cor não é a única pista",
+      "detail": "A pré-verificação encontrou conteúdo colorido, mas não consegue determinar o significado dele automaticamente. Se a cor distingue status ou categorias, acompanhe-a de texto, forma, peso ou outra pista perceptível."
+    },
+    "reading-order-risk": {
+      "title": "Layout que pode atrapalhar a ordem de leitura",
+      "detail": "Notas de margem e figuras contornadas colocam conteúdo fora do fluxo principal, então analisadores e leitores de tela podem lê-lo fora de ordem. Confira a ordem de leitura na visualização abaixo depois de compilar."
+    },
+    "ua-standard-without-title": {
+      "title": "O PDF/UA é declarado sem um título de documento",
+      "detailBoth": "Este documento declara pdfstandard=ua, mas não define pdftitle nem pdfdisplaydoctitle=true. O PDF/UA exige um título nos metadados XMP e uma preferência de visualização que o exiba, então a saída reivindicaria um padrão que não cumpre. Carregue o hyperref e defina \\hypersetup{pdftitle={Seu título}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Este documento declara pdfstandard=ua, mas não define pdftitle. O PDF/UA exige um título nos metadados XMP e uma preferência de visualização que o exiba, então a saída reivindicaria um padrão que não cumpre. Carregue o hyperref e defina \\hypersetup{pdftitle={Seu título}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Este documento declara pdfstandard=ua, mas não define pdfdisplaydoctitle=true. O PDF/UA exige um título nos metadados XMP e uma preferência de visualização que o exiba, então a saída reivindicaria um padrão que não cumpre. Carregue o hyperref e defina \\hypersetup{pdftitle={Seu título}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "O motor embutido não consegue produzir a saída PDF/UA declarada",
+      "detail": "Este documento declara pdfstandard=ua, mas o motor embutido não grava árvore de marcação, então o PDF carregaria uma alegação de PDF/UA que não cumpre. Compile com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo, ou remova a chave pdfstandard."
+    },
+    "table-header-rows": {
+      "title": "A linha de cabeçalho da tabela não está marcada como cabeçalho",
+      "detail": "Esta tabela traça um filete depois da primeira linha, então ela se lê como cabeçalho, mas o LaTeX marca toda célula como célula de dados por padrão. Um leitor de tela então não consegue ligar um valor à coluna dele. Declare a linha de cabeçalho, por exemplo \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "As colunas são lidas de lado a lado na saída",
+      "detail": "Nesta página o texto de duas colunas cai nas mesmas linhas, então um analisador as lê de ponta a ponta e produz texto embaralhado, e um leitor de tela as anuncia fora de ordem. Use um layout de coluna única em conteúdo que precisa ser lido por máquina. Veja o modo de leitura abaixo."
+    },
+    "pdf-garbled": {
+      "title": "Texto ilegível ou sem mapeamento na saída",
+      "detail": "O texto extraído contém caracteres que não foram mapeados para Unicode, então copiar e colar e os analisadores veem uma saída embaralhada, e um leitor de tela não consegue lê-la. Isso normalmente significa um mapa de glifo para Unicode ausente ou uma fonte que não foi embutida como texto."
+    },
+    "pdf-selectable": {
+      "title": "A página não tem texto selecionável",
+      "detail": "Esta página contém pouco ou nenhum texto extraível, então um analisador e um leitor de tela não veem nada. É provável que ela esteja renderizada como imagem ou use fontes que não foram embutidas como texto. Garanta que o conteúdo seja texto real e selecionável."
+    },
+    "output-clipped-content": {
+      "title": "Texto para fora da página",
+      "detail": "Há texto selecionável além da media box desta página, que pode ser cortado ou sumir na impressão e no processamento da editora. Inspecione equações largas, tabelas, URLs e conteúdo posicionado."
+    },
+    "output-small-text": {
+      "title": "Texto muito pequeno detectado",
+      "detail_one": "{{count}} trecho de texto mede menos de aproximadamente 7 pt. Corpos pequenos são difíceis de ler no papel e no zoom normal. Confirme se o veículo permite isso e aumente rótulos ou notas de rodapé pequenos sem necessidade.",
+      "detail_many": "{{count}} trechos de texto medem menos de aproximadamente 7 pt. Corpos pequenos são difíceis de ler no papel e no zoom normal. Confirme se o veículo permite isso e aumente rótulos ou notas de rodapé pequenos sem necessidade.",
+      "detail_other": "{{count}} trechos de texto medem menos de aproximadamente 7 pt. Corpos pequenos são difíceis de ler no papel e no zoom normal. Confirme se o veículo permite isso e aumente rótulos ou notas de rodapé pequenos sem necessidade."
+    },
+    "pdf-no-bookmarks": {
+      "title": "O PDF longo não tem marcadores",
+      "detail": "Documentos longos devem expor um sumário hierárquico de marcadores, para que quem usa teclado e tecnologia assistiva navegue pelas seções sem ler todas as páginas em sequência. Isso é uma boa prática de WCAG, não uma exigência do PDF/UA. Carregue o hyperref, ou o bookmark, para gerar um."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "Não foi possível inspecionar os metadados do PDF",
+      "detail": "A pré-verificação não conseguiu ler os metadados do PDF, então não consegue confirmar o título ou o idioma do documento. Isso é um resultado desconhecido, não uma prova de que esses campos estão faltando. Compile de novo e rode a verificação outra vez."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "O PDF está sem idioma e sem título",
+      "titleLang": "O PDF está sem idioma",
+      "titleTitle": "O PDF está sem título",
+      "detail": "A tecnologia assistiva e os navegadores usam o idioma e o título do catálogo do PDF para anunciar o documento corretamente. Defina os dois com o hyperref, por exemplo \\hypersetup{pdftitle={Seu nome, CV}, pdflang=pt-BR}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "Não foi possível inspecionar o status de marcação do PDF",
+      "detail": "A pré-verificação não conseguiu ler o dicionário MarkInfo do PDF. Isso é um resultado desconhecido, e não prova nada em nenhum dos sentidos, então a saída não será chamada de marcada nem de não marcada só por causa dessa verificação."
+    },
+    "compile-failed": {
+      "title": "A última compilação falhou",
+      "detail": "A saída de submissão precisa vir de uma compilação bem-sucedida. Corrija o primeiro erro do compilador, compile de novo e rode a pré-verificação outra vez."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} linha extrapolada na saída",
+      "title_many": "{{count}} linhas extrapoladas na saída",
+      "title_other": "{{count}} linhas extrapoladas na saída",
+      "detail": "O compilador relata conteúdo que passa da caixa de texto dele, em até {{width}} pt. Inspecione esses pontos em busca de texto, equações, tabelas ou links cortados."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} glifo ausente",
+      "title_many": "{{count}} glifos ausentes",
+      "title_other": "{{count}} glifos ausentes",
+      "detail": "As fontes escolhidas não conseguem desenhar todos os caracteres. Glifos ausentes podem sumir do PDF em silêncio, inclusive símbolos em nomes, equações e citações."
+    },
+    "compile-unresolved-references": {
+      "title": "A saída compilada tem referências não resolvidas",
+      "detail": "Ao menos uma citação ou referência cruzada continuou sem resolução depois da compilação. O PDF submetido pode conter [?] ou ??. Confira o log e rode as passagens necessárias de bibliografia e de LaTeX."
+    },
+    "compile-rerun-required": {
+      "title": "É preciso mais uma passagem de compilação",
+      "detail": "O último log diz que rótulos, citações ou o sumário ainda não se estabilizaram. Compile de novo até o aviso de nova passagem sumir, antes de exportar."
+    },
+    "compile-duplicate-destination": {
+      "title": "Destinos duplicados no PDF",
+      "detail": "Duas âncoras compartilham o mesmo destino, então links ou marcadores podem levar ao lugar errado. Isso costuma vir de rótulos duplicados ou de reinícios na numeração de páginas."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Tamanhos de página misturados em um só PDF",
+      "detail_one": "O PDF contém {{count}} tamanho de página ({{sizes}}). Media boxes misturadas costumam indicar uma página ou figura incluída incorretamente e podem reprovar nas conferências de produção da editora.",
+      "detail_many": "O PDF contém {{count}} tamanhos de página ({{sizes}}). Media boxes misturadas costumam indicar uma página ou figura incluída incorretamente e podem reprovar nas conferências de produção da editora.",
+      "detail_other": "O PDF contém {{count}} tamanhos de página ({{sizes}}). Media boxes misturadas costumam indicar uma página ou figura incluída incorretamente e podem reprovar nas conferências de produção da editora."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "A marcação relatou {{count}} problema",
+      "title_many": "A marcação relatou {{count}} problemas",
+      "title_other": "A marcação relatou {{count}} problemas",
+      "detail": "O código de marcação gravou estes avisos no log: {{warnings}} Cada um é um ponto em que a árvore de estrutura não bate com o conteúdo. Corrija na origem e compile de novo."
+    },
+    "output-tagging-status": {
+      "title_one": "O relatório de status da marcação apontou {{count}} item",
+      "title_many": "O relatório de status da marcação apontou {{count}} itens",
+      "title_other": "O relatório de status da marcação apontou {{count}} itens",
+      "detail": "O LaTeX gravou o próprio relatório de status da marcação no fim da compilação.",
+      "partClass": "A classe {{name}} está {{status}}.",
+      "partBlocking": "Não é compatível com marcação: {{files}}.",
+      "partUnproven": "Nenhum veredicto registrado para: {{files}}.",
+      "partPartial": "Marcação apenas em parte: {{files}}.",
+      "partAdvice": "Tudo o que não consegue ser marcado pode deixar seções inteiras fora da árvore de estrutura, então substitua o que der."
+    },
+    "pdf-structure-single-pass": {
+      "title": "A árvore de marcação parece de uma primeira passagem",
+      "detail": "O PDF está marcado como marcado, mas a árvore de estrutura dele quase não tem nada, que é o que uma única passagem produz. Saída marcada precisa de duas passagens. Compile de novo e verifique outra vez."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Este PDF alega PDF/UA-{{part}}, mas não cumpre",
+      "detail": "Os metadados XMP declaram pdfuaid:part {{part}}, mas o arquivo não sustenta isso.",
+      "partNoXmpTitle": "Não há título de documento nos metadados XMP.",
+      "partNoDisplayDocTitle": "O DisplayDocTitle não está definido como true.",
+      "partNotTagged": "O arquivo não está marcado.",
+      "partAdvice": "Tudo o que confiar nessa alegação vai relatar este PDF como conforme quando ele não é, então feche as lacunas ou tire a alegação. Com o hyperref, defina \\hypersetup{pdftitle={Seu título}, pdfdisplaydoctitle=true} e compile com a marcação ligada."
+    },
+    "pdf-xmp-title": {
+      "title": "O título só está no dicionário Info",
+      "detail": "O título do documento está definido no dicionário Info, mas não como dc:title nos metadados XMP, que é onde o PDF/UA procura por ele. Carregar o hyperref com pdftitle grava nos dois lugares."
+    },
+    "pdf-display-doc-title": {
+      "title": "O leitor vai mostrar o nome do arquivo, não o título",
+      "detail": "O ViewerPreferences não tem a entrada DisplayDocTitle definida como true, então um leitor de PDF anuncia o nome do arquivo na janela dele e para a tecnologia assistiva. Defina isso com o hyperref, por exemplo \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "O PDF marca a própria marcação como pouco confiável",
+      "detail": "O MarkInfo define Suspects como true, o que é o produtor dizendo que a árvore de marcação pode não bater com o conteúdo visível. Compile de novo com um motor atual e confira os avisos de marcação no log."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} anotação de link não tem descrição",
+      "title_many": "{{count}} anotações de link não têm descrição",
+      "title_other": "{{count}} anotações de link não têm descrição",
+      "detail": "Uma anotação de link sem a entrada Contents não dá nada para um leitor de tela anunciar quando ele lista os links de uma página. Descreva o destino no texto do link e deixe o hyperref levar esse texto para a anotação."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% do texto está fora da árvore de marcação",
+      "detail": "{{untagged}} de {{total}} trechos de texto não estão ligados a nada na árvore de marcação, então um leitor de tela os pula. Artefatos não entram na conta. Conteúdo real precisa ser marcado, e conteúdo decorativo precisa ser marcado como artefato, por exemplo \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "Não foi possível inspecionar toda a estrutura do PDF",
+      "detail_one": "Não foi possível extrair a árvore de estrutura de acessibilidade da página {{pages}}. A pré-verificação não vai tratar a estrutura indisponível como prova de que o PDF não está marcado.",
+      "detail_many": "Não foi possível extrair a árvore de estrutura de acessibilidade das páginas {{pages}}. A pré-verificação não vai tratar a estrutura indisponível como prova de que o PDF não está marcado.",
+      "detail_other": "Não foi possível extrair a árvore de estrutura de acessibilidade das páginas {{pages}}. A pré-verificação não vai tratar a estrutura indisponível como prova de que o PDF não está marcado."
+    },
+    "pdf-untagged-output": {
+      "title": "Este PDF não está marcado",
+      "detail": "O PDF compilado não carrega árvore de estrutura, então um leitor de tela não recebe títulos, listas, tabelas nem ordem de leitura, e o arquivo não consegue cumprir a cláusula 7.1 do PDF/UA-1. Saída marcada precisa de pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo, com \\DocumentMetadata{tagging=on}. O motor embutido não produz marcação. As verificações de código e de saída acima continuam valendo enquanto isso."
+    },
+    "pdf-structure-missing": {
+      "title": "O PDF marcado não tem árvore de estrutura legível",
+      "detail": "O PDF se declara marcado, mas a pré-verificação não encontrou estrutura de documento para navegar. Os leitores de tela podem não receber títulos, listas, tabelas nem ordem de leitura. A marcação precisa de duas passagens de compilação, então compile de novo e verifique outra vez antes de considerar isso definitivo."
+    },
+    "output-figure-alt": {
+      "title": "A figura marcada não tem texto alternativo",
+      "detail": "Esta figura está marcada, mas não carrega texto alternativo, então um leitor de tela não consegue descrevê-la. Adicione uma descrição na origem, por exemplo \\includegraphics[alt={...}]{...}. Marque as imagens decorativas com [artifact]."
+    },
+    "output-formula-alt": {
+      "title": "A equação não tem alternativa textual",
+      "detail": "Pelo PDF/UA-1, uma Formula precisa de Alt ou ActualText. Adicione uma na origem, por exemplo com \\tagpdfsetup ou uma chave alt na equação. Pelo PDF/UA-2 você pode associar MathML, compilando com LuaLaTeX e \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "A tabela marcada não tem células de cabeçalho",
+      "detail": "Esta tabela não tem células de cabeçalho (TH), então um leitor de tela não consegue associar os dados aos títulos de coluna ou de linha. Marque a linha de cabeçalho, por exemplo \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Nível de título pulado na árvore de marcação",
+      "detail": "Os títulos marcados saltam mais de um nível (por exemplo, de H1 direto para H3), o que quebra o sumário por onde um leitor de tela navega. Não pule níveis de título."
+    },
+    "ats-no-name": {
+      "title": "Um analisador não conseguiu identificar seu nome",
+      "detail": "Nenhum nome de pessoa plausível foi encontrado no texto extraído. Mantenha seu nome como texto simples perto do começo do documento, fora de cabeçalhos de página, gráficos e caixas de texto posicionadas."
+    },
+    "ats-no-email": {
+      "title": "Um analisador não encontrou seu e-mail",
+      "detail": "Nenhum endereço de e-mail foi encontrado no texto extraído, e esse é o campo em que um analisador mais se apoia. Se o seu e-mail fica ao lado de um ícone ou dentro de um cabeçalho, pode não ser texto selecionável. Coloque-o no corpo, como texto simples."
+    },
+    "ats-no-phone": {
+      "title": "Um analisador não encontrou um telefone",
+      "detail": "Nenhum número de telefone foi encontrado no texto extraído. Se ele existe, mas está escondido atrás de um ícone ou em um cabeçalho, acrescente-o como texto simples e selecionável no corpo."
+    },
+    "ats-no-experience": {
+      "title": "Um analisador não detectou uma seção de Experiência profissional",
+      "detail": "Nenhum título padrão de Experiência foi encontrado, então um analisador pode não agrupar seus cargos em um histórico profissional. Use um título convencional como Experiência ou Experiência profissional, em texto real e selecionável."
+    },
+    "ats-long-resume": {
+      "title_one": "O currículo tem {{count}} página",
+      "title_many": "O currículo tem {{count}} páginas",
+      "title_other": "O currículo tem {{count}} páginas",
+      "detail": "Muitos processos seletivos esperam uma ou duas páginas, embora CVs sêniores, acadêmicos e do setor público possam ser mais longos. Confirme se este tamanho combina com a vaga e com o tipo de documento."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} entrada de bibliografia tem metadados incompletos",
+      "title_many": "{{count}} entradas de bibliografia têm metadados incompletos",
+      "title_other": "{{count}} entradas de bibliografia têm metadados incompletos",
+      "detail": "Registros incompletos podem gerar referências quebradas ou ambíguas nos estilos das editoras. {{examples}}.",
+      "detailTruncated": "Registros incompletos podem gerar referências quebradas ou ambíguas nos estilos das editoras. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} valor de DOI parece malformado",
+      "title_many": "{{count}} valores de DOI parecem malformados",
+      "title_other": "{{count}} valores de DOI parecem malformados",
+      "detail": "Revise os campos de DOI de {{keys}}. Guarde só o identificador DOI, por exemplo 10.1000/example, e não um texto descritivo."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} possível referência duplicada",
+      "title_many": "{{count}} possíveis grupos de referências duplicadas",
+      "title_other": "{{count}} possíveis grupos de referências duplicadas",
+      "detail": "Estas chaves têm o mesmo título normalizado: {{groups}}. Junte as duplicatas reais para o estilo de citação e os metadados continuarem consistentes."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} entrada de bibliografia não citada",
+      "title_many": "{{count}} entradas de bibliografia não citadas",
+      "title_other": "{{count}} entradas de bibliografia não citadas",
+      "detail": "Entradas sem uso poluem os metadados de submissão e dificultam o controle de duplicatas. Revise {{keys}}.",
+      "detailTruncated": "Entradas sem uso poluem os metadados de submissão e dificultam o controle de duplicatas. Revise {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} rótulo está definido em vários arquivos",
+      "title_many": "{{count}} rótulos estão definidos em vários arquivos",
+      "title_other": "{{count}} rótulos estão definidos em vários arquivos",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} rótulo de figura, tabela ou equação nunca é referenciado",
+      "title_many": "{{count}} rótulos de figura, tabela ou equação nunca são referenciados",
+      "title_other": "{{count}} rótulos de figura, tabela ou equação nunca são referenciados",
+      "detail": "Confirme que cada resultado numerado é discutido no manuscrito: {{labels}}.",
+      "detailTruncated": "Confirme que cada resultado numerado é discutido no manuscrito: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "A citação \"{{key}}\" não está em nenhum .bib",
+      "detail": "Esta chave de citação não foi encontrada na bibliografia carregada, então ela vai aparecer como [?] no PDF. Confira a chave ou acrescente a entrada ao seu .bib (Adicionar citação consegue buscá-la)."
+    },
+    "refs-undefined-ref": {
+      "title": "A referência a \"{{label}}\" não tem um \\label correspondente",
+      "detail": "Esta referência cruzada aponta para um rótulo que não está definido, então ela vai aparecer como ?? no PDF. Confira o nome do rótulo ou acrescente o \\label que falta."
+    },
+    "refs-duplicate-label": {
+      "title": "Rótulo duplicado \"{{label}}\"",
+      "detail": "O mesmo rótulo está definido mais de uma vez, então as referências a ele ficam ambíguas. Deixe cada rótulo único."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Imagem não encontrada: {{file}}",
+      "detailImage": "Este \\includegraphics aponta para um arquivo que não está no projeto, então a figura vai faltar. Confira o nome do arquivo e o caminho.",
+      "titleInclude": "Arquivo incluído não encontrado: {{file}}",
+      "detailInclude": "Este \\input ou \\include aponta para um arquivo que não está no projeto. Confira o nome do arquivo e o caminho."
+    },
+    "refs-bib-missing": {
+      "title": "Arquivo de bibliografia não encontrado: {{file}}",
+      "detail": "Este \\bibliography ou \\addbibresource aponta para um arquivo que não está no projeto, então toda citação vai aparecer como [?]. Confira o nome do arquivo ou importe uma biblioteca de referências para criá-lo."
+    },
+    "refs-duplicate-bib": {
+      "title": "Entradas de bibliografia duplicadas: {{keys}}",
+      "detail": "Estas entradas compartilham o DOI {{doi}}, então são a mesma referência com chaves diferentes. Fique com uma e cite-a, senão sua bibliografia vai listá-la duas vezes."
+    },
+    "submission-path-case": {
+      "title": "As maiúsculas do nome do arquivo não batem: {{target}}",
+      "detailFigure": "Esta figura só é encontrada em um sistema de arquivos que ignora maiúsculas. O projeto contém \"{{match}}\", então use exatamente essa grafia antes de submeter a sistemas de build baseados em Linux.",
+      "detailInclude": "Este arquivo incluído só é encontrado em um sistema de arquivos que ignora maiúsculas. O projeto contém \"{{match}}\", então use exatamente essa grafia antes de submeter a sistemas de build baseados em Linux."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Figura ausente: {{target}}",
+      "titleInclude": "Arquivo incluído ausente: {{target}}",
+      "detail": "Nenhum arquivo do projeto resolve esta referência a partir de {{file}}. Uma compilação limpa de submissão vai falhar, mesmo que um cache local permita que o documento compile agora."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figura sem legenda",
+      "titleTable": "tabela sem legenda",
+      "detail": "Figuras e tabelas de publicação devem ter uma legenda numerada e descritiva, para poderem ser referenciadas e entendidas de forma independente."
+    },
+    "submission-label-before-caption": {
+      "title": "O rótulo aparece antes da legenda",
+      "detail": "Coloque o rótulo depois da legenda. Senão o LaTeX pode ligá-lo ao contador anterior e produzir o número errado de figura ou de tabela."
+    },
+    "privacy-sensitive-file": {
+      "title": "Arquivo sensível incluído: {{file}}",
+      "detail": "Remova credenciais e arquivos de chave privada do projeto antes de exportar, sincronizar ou publicar o pacote de código."
+    },
+    "privacy-credential": {
+      "title": "Possível credencial em {{file}}",
+      "detail": "O projeto contém texto com a cara de um token de API, chave de acesso de nuvem ou chave privada. Revogue as credenciais expostas e depois remova-as do projeto e do histórico do Git."
+    },
+    "privacy-internal-comment": {
+      "title": "Nota interna ainda presente em {{file}}",
+      "detail": "Os comentários no código não aparecem no PDF, mas podem ficar públicos no pacote de código de uma conferência, periódico ou preprint. Revise e remova as notas editoriais privadas."
+    },
+    "privacy-draft-artifact": {
+      "title": "A marcação de rascunho ainda está ligada",
+      "detail": "O código ativa saída de rascunho, TODO, controle de alterações, marca d'água ou depuração de rótulos. Desative isso e inspecione visualmente o PDF final antes de submeter."
+    },
+    "privacy-blind-author": {
+      "title": "A identidade do autor continua no código de revisão cega",
+      "detail": "O código contém um autor, afiliação, e-mail, endereço ou agradecimento não anônimo. Substitua o conteúdo identificável usando o modo de revisão anônima do veículo."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Os agradecimentos podem revelar os autores",
+      "detail": "Os agradecimentos costumam identificar instituições, financiamentos, colaboradores ou instalações. Remova-os de uma submissão de revisão cega, a menos que o veículo permita explicitamente."
+    },
+    "privacy-pdf-author": {
+      "title": "Os metadados do PDF identificam um autor",
+      "detail": "O campo Author do PDF é \"{{author}}\". Limpe os metadados de autoria antes de enviar um PDF para revisão cega."
+    },
+    "submission-nonportable-filename": {
+      "title": "Nome de arquivo não portável: {{file}}",
+      "detail": "Este perfil permite apenas letras, números, sublinhados, mais, menos, pontos, vírgulas, sinais de igual e separadores de diretório. Renomeie o arquivo e atualize as referências a ele."
+    },
+    "submission-absolute-path": {
+      "title": "Caminho específico da máquina em {{file}}",
+      "detail": "Caminhos locais absolutos não existem nos servidores de build das editoras. Traga a dependência para dentro do projeto e referencie-a com um caminho relativo."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} exige a execução de comandos externos",
+      "detail": "Muitos sistemas de build de editoras e repositórios desativam o shell escape. Gere a saída de antemão ou confirme que o veículo de destino aceita este pacote e comando."
+    },
+    "submission-generated-file": {
+      "title": "Arquivo de build gerado foi incluído: {{file}}",
+      "detail": "Arquivos auxiliares gerados deixam o pacote de código poluído e podem preservar estado desatualizado. Deixe-os de fora, a menos que o veículo escolhido exija explicitamente aquele arquivo."
+    },
+    "submission-document-class": {
+      "title": "A classe de documento de {{profile}} não está ativa",
+      "detail": "Este perfil espera {{expected}}, mas o projeto usa {{actual}}. Comece pelo modelo oficial atual do veículo.",
+      "detailNoClass": "Este perfil espera {{expected}}, mas nenhuma classe de documento foi detectada. Comece pelo modelo oficial atual do veículo."
+    },
+    "submission-no-abstract": {
+      "title": "Nenhum resumo detectado",
+      "detail": "Este perfil de publicação espera um resumo em um ambiente abstract padrão. Adicione um ou confirme que o veículo específico não exige."
+    },
+    "submission-no-keywords": {
+      "title": "Nenhuma palavra-chave de publicação detectada",
+      "detail": "O perfil {{profile}} espera palavras-chave pelo comando ou ambiente padrão do modelo dele."
+    },
+    "submission-figure-format": {
+      "title": "Formato de figura incompatível: {{file}}",
+      "detail": "O {{profile}} aceita arquivos de figura {{formats}} nos fluxos TeX que suporta. Converta esta figura antes de enviar."
+    },
+    "submission-placeholder": {
+      "title": "Ainda há texto provisório no manuscrito",
+      "detail": "O código contém TODO, TBD, FIXME, texto de preenchimento ou marcadores de interrogação. Revise cada ocorrência antes de produzir a submissão final."
+    },
+    "submission-pdf-version": {
+      "title": "O PDF {{version}} está abaixo da versão exigida",
+      "detail": "O {{profile}} exige PDF {{minimum}} ou mais recente. Atualize as configurações de PDF do compilador e gere o arquivo de novo."
+    },
+    "submission-bookmarks": {
+      "title": "Marcadores de PDF não são permitidos",
+      "detail": "O {{profile}} rejeita marcadores de PDF. Remova o sumário do documento para este perfil de submissão."
+    },
+    "submission-links": {
+      "title": "Links de PDF não são permitidos",
+      "detail": "O {{profile}} rejeita anotações de link. Desative os hiperlinks gerados no PDF submetido."
+    },
+    "submission-attachments": {
+      "title": "O PDF contém anexos embutidos",
+      "detail": "O {{profile}} rejeita anexos e pacotes em PDF. Remova todos os arquivos embutidos antes de submeter."
+    },
+    "submission-security": {
+      "title": "As restrições de segurança do PDF estão ativadas",
+      "detail": "O {{profile}} exige um PDF sem senha e sem restrições de permissão."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} fonte não está embutida",
+      "title_many": "{{count}} fontes não estão embutidas",
+      "title_other": "{{count}} fontes não estão embutidas",
+      "detail": "O {{profile}} exige que toda fonte seja embutida ou reduzida a subconjunto, para o texto e a matemática saírem de forma confiável. Corrija {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Não foi possível verificar a incorporação de algumas fontes",
+      "detail": "A pré-verificação não conseguiu comprovar o status de incorporação de {{fonts}}. Confirme com o verificador oficial de PDF do veículo."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Acessibilidade",
+    "both": "ATS + Acessibilidade",
+    "refs": "Referências",
+    "compile": "Compilação",
+    "submission": "Submissão",
+    "privacy": "Privacidade"
+  },
+  "severity": {
+    "error": "Erro",
+    "warning": "Aviso",
+    "info": "Nota"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Build",
+    "a11y": "Acesso",
+    "refs": "Refs",
+    "submission": "Envio",
+    "privacy": "Sigilo"
+  },
+  "checks": {
+    "compile": {
+      "label": "Compilação e layout",
+      "who": "Para todo documento final",
+      "info": "Erros de compilação, referências não resolvidas, glifos ausentes e problemas de layout de página.",
+      "detail": "Inspeciona o log mais recente do compilador e o PDF em busca de compilações falhas, referências não resolvidas, glifos ausentes, conteúdo extrapolado ou cortado, avisos de nova passagem pendentes e tamanhos de página misturados."
+    },
+    "submission": {
+      "label": "Prontidão para submissão",
+      "who": "Para conferências, periódicos, preprints e teses",
+      "info": "Regras do perfil de publicação e arquivos que não deveriam ir no pacote de código.",
+      "detail": "Aplica um perfil de publicação ao projeto inteiro: classe de documento oficial, caminhos de código portáveis, formatos de figura, resumo e palavras-chave, restrições do PDF, legendas e empacotamento limpo do código."
+    },
+    "ats": {
+      "label": "Prontidão para ATS",
+      "who": "Para currículos e CVs",
+      "info": "Os dados de contato e as seções que um leitor de currículos consegue recuperar.",
+      "detail": "Simula o que um sistema de triagem de candidatos (Workday, Taleo, Greenhouse) extrai do seu PDF e aponta o layout e a formatação que embaralham isso. Não se aplica a artigos de pesquisa."
+    },
+    "a11y": {
+      "label": "Acessibilidade",
+      "who": "Para PDFs de pesquisa, do setor público e publicados",
+      "info": "Marcação, texto alternativo, idioma e título do documento, preferências do leitor, estrutura, links e ordem de leitura.",
+      "detail": "Confere o PDF compilado contra a parte verificável por máquina do PDF/UA-1 (ISO 14289-1) e as técnicas de PDF do WCAG 2.2: marcação, texto alternativo, idioma e título do documento, preferências do leitor, estrutura de títulos e tabelas, descrição de links, ordem de leitura e texto selecionável. As verificações no código apontam problemas prováveis antes de você compilar."
+    },
+    "refs": {
+      "label": "Referências e recursos",
+      "who": "Para documentos de pesquisa e com vários arquivos",
+      "info": "Citações quebradas, rótulos duplicados, entradas de bibliografia incompletas e recursos ausentes.",
+      "detail": "Encontra citações e referências cruzadas não definidas, rótulos duplicados e arquivos de figura ou incluídos que faltam, antes que quebrem seu PDF na submissão."
+    },
+    "privacy": {
+      "label": "Privacidade e revisão cega",
+      "who": "Antes de compartilhar o código ou submeter anonimamente",
+      "info": "Segredos, notas de rascunho, arquivos sensíveis e vazamentos de identidade na revisão cega.",
+      "detail": "Encontra credenciais, chaves privadas, comentários internos, marcação de rascunho, arquivos sensíveis do projeto, metadados de autoria e vazamentos de identidade em submissões de revisão anônima."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Publicação em geral",
+      "description": "Código portável, saída limpa, metadados completos e os riscos comuns de publicação."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Código portável que pode ser recompilado no sistema de submissão do arXiv, que diferencia maiúsculas."
+    },
+    "ieee": {
+      "label": "Conferência / periódico IEEE",
+      "description": "Código IEEEtran mais as restrições de PDF verificadas para a publicação no IEEE Xplore."
+    },
+    "acm": {
+      "label": "Conferência / periódico ACM",
+      "description": "Estrutura de código acmart da ACM e metadados de pesquisa prontos para publicação."
+    },
+    "journal": {
+      "label": "Outro periódico",
+      "description": "Verificações de periódico independentes de editora. Acrescente os limites exatos do periódico antes de submeter."
+    },
+    "thesis": {
+      "label": "Tese / dissertação",
+      "description": "Estrutura de documento longo, navegação, referências e verificações de código portável."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Experiência",
+      "education": "Formação",
+      "skills": "Competências",
+      "projects": "Projetos",
+      "summary": "Resumo"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}} de {{total}} regras verificáveis por máquina conferidas. É uma verificação parcial, não uma declaração de conformidade.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}} de {{total}} regras verificáveis por máquina conferidas. O Oleafly lê {{covered}} dessas regras, e {{unavailable}} delas não puderam ser verificadas neste arquivo. É uma verificação parcial, não uma declaração de conformidade."
+  },
+  "taggingGate": {
+    "noSupport": "A classe {{name}} não consegue produzir saída marcada, e o LaTeX Project não espera que ela consiga.",
+    "noSupportWithNote": "A classe {{name}} não consegue produzir saída marcada, e o LaTeX Project não espera que ela consiga. {{note}}",
+    "currentlyIncompatible": "A classe {{name}} ainda não é compatível com a marcação do LaTeX, então preparar este código não daria a você um PDF acessível.",
+    "currentlyIncompatibleWithNote": "A classe {{name}} ainda não é compatível com a marcação do LaTeX, então preparar este código não daria a você um PDF acessível. {{note}}",
+    "partiallyCompatible": "A classe {{name}} é só parcialmente compatível com a marcação, então espere lacunas na árvore de estrutura.",
+    "partiallyCompatibleWithNote": "A classe {{name}} é só parcialmente compatível com a marcação, então espere lacunas na árvore de estrutura. {{note}}",
+    "unrecorded": "O LaTeX Project não registrou um status de marcação para a classe {{name}}, então o resultado é indefinido. Compile e confira a saída."
+  },
+  "prep": {
+    "metadataUpdated": "Acrescentamos as chaves de marcação necessárias ao seu \\DocumentMetadata.",
+    "metadataAdded": "Acrescentamos \\DocumentMetadata como primeira linha (obrigatório, precisa vir antes de \\documentclass).",
+    "headerRows": "Definimos table/header-rows como 1, para a primeira linha de cada tabela ser marcada como células de cabeçalho. Mude o número se alguma tabela tiver outra profundidade de cabeçalho.",
+    "unicodeMath": "Acrescentamos \\usepackage{unicode-math}, de que este motor precisa para matemática marcada.",
+    "altPlaceholders_one": "Acrescentamos textos alternativos provisórios a {{count}} imagem. Substitua o texto TODO por uma descrição de verdade.",
+    "altPlaceholders_many": "Acrescentamos textos alternativos provisórios a {{count}} imagens. Substitua o texto TODO por uma descrição de verdade.",
+    "altPlaceholders_other": "Acrescentamos textos alternativos provisórios a {{count}} imagens. Substitua o texto TODO por uma descrição de verdade.",
+    "titleRequired": "O PDF/UA precisa de um título de documento que o leitor exiba. Carregue o hyperref e defina \\hypersetup{pdftitle={Seu título}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Este pacote não é compatível com a marcação: {{packages}}. O conteúdo vindo dele pode cair no PDF sem marcação. Substitua onde der.",
+    "incompatiblePackages_many": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação. Substitua onde der.",
+    "incompatiblePackages_other": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação. Substitua onde der.",
+    "cautionPackages": "Estes pacotes marcam só em parte, ou não têm veredicto de marcação registrado: {{packages}}. Compile e confira a árvore de estrutura em busca de lacunas.",
+    "compileLua": "Compile o código preparado com o LuaLaTeX do TeX Live 2025 ou mais novo e depois confira a saída outra vez.",
+    "compileAny": "Compile o código preparado com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo e depois confira a saída outra vez. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Este pacote não é compatível com a marcação: {{packages}}. O conteúdo vindo dele pode cair no PDF sem marcação.",
+    "incompatiblePackages_many": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação.",
+    "incompatiblePackages_other": "Estes pacotes não são compatíveis com a marcação: {{packages}}. O conteúdo vindo deles pode cair no PDF sem marcação.",
+    "incompatiblePackagesTruncated": "Estes pacotes não são compatíveis com a marcação: {{packages}} e mais {{more}}. O conteúdo vindo deles pode cair no PDF sem marcação.",
+    "partialPackages": "Estes pacotes marcam só em parte: {{packages}}.",
+    "partialPackagesTruncated": "Estes pacotes marcam só em parte: {{packages}} e mais {{more}}.",
+    "unknownPackages": "Nenhum veredicto de marcação foi registrado para {{packages}}.",
+    "unknownPackagesTruncated": "Nenhum veredicto de marcação foi registrado para {{packages}} e mais {{more}}.",
+    "cautionAdvice": "Compile e confira a árvore de estrutura em busca de lacunas."
+  },
+  "panel": {
+    "title": "Pré-verificação",
+    "readerDisabled": "Compile e rode antes uma verificação de saída",
+    "readerEnabled": "Abrir o texto extraído do PDF",
+    "readerButton": "Mostrar o que o leitor vê",
+    "aboutLabel": "Sobre a pré-verificação",
+    "aboutTitle": "O que a pré-verificação confere",
+    "aboutIntro": "A pré-verificação lê o código do projeto, o log do compilador e o PDF atual. Ligue só as verificações que fazem sentido para este documento.",
+    "aboutFooter": "As ocorrências verificadas vêm de observações diretas. As ocorrências de aviso ainda dependem do seu julgamento. Um relatório limpo ajuda na avaliação, mas não certifica aceitação nem acessibilidade. Todas as verificações rodam localmente.",
+    "enableCheck": "Ativar {{check}}",
+    "runCheck": "Rodar {{check}}",
+    "rerunCheck": "Rodar {{check}} de novo",
+    "run": "Rodar",
+    "rerun": "Rodar de novo",
+    "collapse": "Recolher",
+    "expand": "Expandir",
+    "publicationProfile": "Perfil de publicação",
+    "anonymousReview": "Revisão anônima",
+    "anonymousReviewHint": "Inspecionar também campos de autoria, agradecimentos e metadados do PDF.",
+    "anonymousReviewToggle": "Verificar a identidade na revisão anônima",
+    "engineUnsupported": "As verificações de código para {{engine}} ainda não foram implementadas. Esta verificação usa apenas o PDF compilado e não trata a falta de suporte ao código como falha.",
+    "runToSeeResults": "Rode esta verificação para ver os resultados.",
+    "analyzing": "Analisando…",
+    "runEnabled_one": "Rodar {{count}} verificação ativa",
+    "runEnabled_many": "Rodar {{count}} verificações ativas",
+    "runEnabled_other": "Rodar {{count}} verificações ativas",
+    "rerunEnabled_one": "Rodar de novo {{count}} verificação ativa",
+    "rerunEnabled_many": "Rodar de novo {{count}} verificações ativas",
+    "rerunEnabled_other": "Rodar de novo {{count}} verificações ativas",
+    "failed": "A pré-verificação falhou: {{error}}",
+    "standardsCaveat": "O Oleafly lê a parte do PDF/UA e do WCAG que pode ser verificada no próprio arquivo. Ele não sabe dizer se um texto alternativo é significativo, se a ordem de leitura faz sentido ou se o contraste de cor é suficiente. Isso uma pessoa precisa julgar. Para uma declaração formal de conformidade, valide com o veraPDF ou o PAC 2024.",
+    "pdfRequired": "É preciso um PDF. Compile o projeto e rode de novo. Esta verificação ainda não foi avaliada.",
+    "compileFirst": "Compile o projeto primeiro. A pré-verificação precisa do log ou do PDF atual do compilador para avaliar a qualidade da compilação.",
+    "partialCoverage": "As verificações de código terminaram. Compile o projeto e rode de novo para concluir as verificações no PDF.",
+    "unsupportedCoverage": "Não avaliada. As verificações de código para este motor não foram implementadas.",
+    "groupSource": "Projeto e código",
+    "groupOutput": "Saída compilada",
+    "fixAll_one": "Corrigir {{count}} com IA",
+    "fixAll_many": "Corrigir todas as {{count}} com IA",
+    "fixAll_other": "Corrigir todas as {{count}} com IA",
+    "noProblems": "Nenhum problema encontrado."
+  },
+  "finding": {
+    "review": "Avaliar",
+    "manual": "Manual",
+    "page": "p.{{page}}",
+    "needsJudgment": "Depende do seu julgamento. Nenhuma ferramenta decide isso só pelo arquivo.",
+    "jumpToSource": "Ir para o código",
+    "fixWithAi": "Corrigir com IA"
+  },
+  "score": {
+    "notEvaluated": "{{label}} não avaliado",
+    "readiness": "Prontidão de {{label}}: {{score}} de 100",
+    "notScored": "Sem pontuação"
+  },
+  "reader": {
+    "title": "O que o leitor vê",
+    "description": "Texto extraído do PDF atual, na ordem de leitura. Isso é próximo do que um leitor de tela ou um analisador automático recebe.",
+    "pagesNav": "Páginas do PDF",
+    "page": "Página {{page}}",
+    "empty": "vazia",
+    "extractedFrom": "Texto extraído da página {{page}}",
+    "pageOf": "Página {{page}} de {{total}}",
+    "noText": "Nenhum texto selecionável foi encontrado nesta página."
+  },
+  "atsCard": {
+    "title": "O que um analisador extraiu",
+    "notFound": "Não encontrado",
+    "links_one": "{{count}} link",
+    "links_many": "{{count}} links",
+    "links_other": "{{count}} links",
+    "detected": "{{section}}: detectada",
+    "requiredMissing": "{{section}}: seção obrigatória não detectada",
+    "optionalMissing": "{{section}}: seção opcional não detectada",
+    "detectedTitle": "Seção {{section}} detectada",
+    "requiredMissingTitle": "{{section}} é esperada, mas não foi detectada",
+    "optionalMissingTitle": "{{section}} é opcional e não foi detectada",
+    "optionalSuffix": ", opcional"
+  },
+  "prepExport": {
+    "title": "Exportação acessível",
+    "intro": "Prepare este documento para uma saída marcada que mira o PDF/UA-2. O Oleafly acrescenta \\DocumentMetadata com pdfstandard=ua-2 e tagging=on, mais a configuração de texto alternativo e de tabelas que ele consegue preencher. Compile o resultado com pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo e confira de novo. Matemática acessível precisa de LuaLaTeX. O motor embutido não produz marcação.",
+    "activeFileFallback": "O Oleafly não conseguiu carregar o documento principal, então conferiu o arquivo que você está editando. Abra o documento principal para ver a classe e os pacotes que a sua compilação realmente carrega.",
+    "prepare": "Preparar para exportação acessível",
+    "unavailable": "A preparação está desligada para esta classe de documento. Mude para uma classe compatível com o código de marcação e rode a verificação de novo. Dados de compatibilidade do LaTeX Project, obtidos em {{retrieved}}.",
+    "unavailableUndated": "A preparação está desligada para esta classe de documento. Mude para uma classe compatível com o código de marcação e rode a verificação de novo. Dados de compatibilidade do LaTeX Project.",
+    "applied": "Aplicado",
+    "apply": "Aplicar ao documento",
+    "copied": "Copiado",
+    "copy": "Copiar o código",
+    "compileTagged": "Compilar com marcação e conferir",
+    "compileTaggedWarning": "O LuaLaTeX do sistema pode ler arquivos locais. Só rode isso em um projeto em que você confia.",
+    "noEngine": "Para produzir o PDF marcado dentro do aplicativo, ative um motor em Configurações, Motor LaTeX. Ou compile o código preparado com o seu próprio pdfLaTeX ou LuaLaTeX do TeX Live 2025 ou mais novo."
+  }
+}

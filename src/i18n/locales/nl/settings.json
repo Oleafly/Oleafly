@@ -1,0 +1,1471 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Programma",
+      "bridgeSourceLabel": "Bron",
+      "bridgeTitle": "ACP-bridge",
+      "bridgeUnresolved": "Er is nog geen bridge-programma gevonden.",
+      "checkAgain": "Opnieuw controleren",
+      "checkFailedTitle": "Kon de geïnstalleerde agents niet controleren",
+      "checkInstalled": "Geïnstalleerde agents controleren",
+      "checkingAction": "Controleren",
+      "checkingDescription": "Dit kan even duren terwijl Oleafly de opdrachtregeltools op deze computer nakijkt.",
+      "checkingInstalled": "Geïnstalleerde agents controleren",
+      "checkingTitle": "Zoeken naar opdrachtregelagents",
+      "cliNotOnPath": "{{command}} is niet op je PATH gevonden.",
+      "cliPathLabel": "Gevonden in",
+      "cliTitle": "Opdrachtregeltool",
+      "copySignInCommand": "Aanmeldopdracht kopiëren",
+      "emptyDescription": "Installeer een ondersteunde opdrachtregelagent en controleer het opnieuw.",
+      "emptyTitle": "Geen opdrachtregelagents gevonden",
+      "custom": {
+        "description": "Plak een agentdefinitie om een agent te registreren die niet met Oleafly meekomt.",
+        "hint": "Plak een agentdefinitie met een vastgezet npm- of uv-pakket, een geverifieerd programma of een geïnstalleerd programma. Houd wachtwoorden en API-sleutels uit deze JSON.",
+        "label": "Een eigen agent registreren",
+        "submit": "Definitie registreren",
+        "title": "Een eigen agent toevoegen",
+        "useExample": "Voorbeeld gebruiken"
+      },
+      "install": {
+        "confirm": "Installeren",
+        "description": "Oleafly downloadt dit vastgezette pakket naar zijn eigen agentmap. De agent draait daarna met jouw CLI-account zodra je een gesprek start.",
+        "installing": "Installeren",
+        "location": "Agentmap van Oleafly, {{id}}/{{version}}",
+        "locationLabel": "Installeert in",
+        "packageLabel": "Pakket",
+        "title": "Bridge {{version}} van {{name}} installeren"
+      },
+      "installBridge": "Bridge installeren",
+      "installBridgeNextStep": "Installeer de ACP-bridge en meld je daarna aan via de opdrachtregeltool.",
+      "intro": "Verbind een lokale agent via ACP. Elke agent beheert zijn eigen modellen, tools en aanmelding, en de instellingen van API-providers blijven apart. Gebruik het officiële CLI-account om je aan te melden: Oleafly importeert geen accounttokens en schat geen abonnementsquota.",
+      "nextStepTitle": "Volgende stap",
+      "notReported": "Niet gemeld",
+      "notice": {
+        "installed": "{{name}} is geïnstalleerd. Meld je aan via de CLI voordat je een gesprek begint.",
+        "registered": "{{name}} is geregistreerd. Registreren installeert of start hem niet.",
+        "removed": "Agentdefinitie verwijderd. Geïnstalleerde bestanden en bewaarde gesprekken blijven beschikbaar.",
+        "terminalOpen": "De projectterminal is open. Voer de aanmeldopdracht van je agent uit en verbind daarna het gesprek opnieuw."
+      },
+      "openSignInTerminal": "Aanmeldterminal openen",
+      "openTerminal": "Terminal openen",
+      "platformLabel": "Platform",
+      "refreshingStatus": "De agentstatus wordt vernieuwd. De huidige lijst blijft staan.",
+      "registry": {
+        "description": "Doorzoek het ACP-register naar agents die andere teams hebben gepubliceerd.",
+        "hideDistribution": "Distributie verbergen",
+        "register": "Agent registreren",
+        "registered": "Geregistreerd",
+        "reviewHint": "Vermeldingen in het register beschrijven software volgens de uitgevers ervan. Bekijk de distributie voordat je hem registreert of installeert.",
+        "search": "Zoeken",
+        "searchLabel": "Een ACP-agent zoeken",
+        "searchPlaceholder": "Zoek in het ACP-register",
+        "searching": "Zoeken",
+        "showDistribution": "Distributie tonen",
+        "title": "Meer agents vinden"
+      },
+      "sectionLabel": "ACP-agents",
+      "signInCommandLabel": "Aanmeldopdracht",
+      "versionLabel": "Versie",
+      "updateBridge": "Bridge bijwerken"
+    },
+    "approvals": {
+      "file": {
+        "description": "De modus Aangepast leest dit bestand. Het staat in ~/.oleafly/approvals.toml en geldt voor elk project op dit apparaat.",
+        "discard": "Wijzigingen weggooien",
+        "emptyFile": "Het bestand is nog leeg.",
+        "help": {
+          "comments": "Commentaar dat met # begint blijft bewaard als je hier opslaat, maar een keuze \"Altijd in dit project\" op een goedkeuringskaart herschrijft het bestand zonder dat commentaar.",
+          "modes": "De eerste tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stelt de goedkeuringsmodus per project in: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> of <custom>\"custom\"</custom>. Een project dat er niet in staat gebruikt Voor mij goedkeuren.",
+          "openProject": "Het geopende project, {{name}}, heeft het id <projectId>{{id}}</projectId>.",
+          "projectIds": "Project-id's zijn de mapnamen onder ~/.oleafly/projects.",
+          "rules": "Daarna één tabel per project-id, met een regel per tool: <allow>\"allow\"</allow> voert de tool uit zonder te vragen en <deny>\"deny\"</deny> weigert hem. Deny-regels gelden in elke modus. Allow-regels werken in de modus Aangepast, en bij run_command slaan ze ook in de andere modi de vraag over.",
+          "toolNames": "Toolnamen die je kunt gebruiken: <names>{{names}}</names> en elke MCP-tool onder zijn volledige naam uit de lijst Tools."
+        },
+        "helpToggle": "Hoe het bestand werkt",
+        "insertExample": "Een voorbeeld invoegen",
+        "reload": "Opnieuw laden",
+        "saved": "Opgeslagen. De regels gelden vanaf de volgende toolaanroep.",
+        "saving": "Opslaan",
+        "title": "Bestand met goedkeuringsregels"
+      },
+      "project": {
+        "allowed": "Altijd toegestaan",
+        "denied": "Altijd geweigerd",
+        "description": "Bewaarde regels voor {{name}}. Ze gelden wanneer de goedkeuringsmodus Aangepast is. Haal een regel weg om voor die tool het gewone risicobeleid te gebruiken.",
+        "empty": "Nog geen bewaarde regels. Gebruik \"Altijd in dit project\" op een goedkeuringsvraag om er een toe te voegen.",
+        "removeRule": "Regel voor {{tool}} weghalen",
+        "thisProject": "dit project",
+        "title": "Toolgoedkeuringen"
+      }
+    },
+    "budget": {
+      "clear": "Budget wissen",
+      "inputLabel": "AI-budget in Amerikaanse dollars",
+      "inputPlaceholder": "Geen budget",
+      "limit": "Runs pauzeren zodra het budget is bereikt.",
+      "save": "Budget opslaan",
+      "spent": "Geschatte uitgaven tot nu toe: {{amount}}. Runs pauzeren zodra het budget is bereikt.",
+      "title": "AI-budget"
+    },
+    "customProvider": {
+      "addDescription": "Verbind elk OpenAI-compatibel endpoint via de basis-URL.",
+      "addTitle": "Eigen provider toevoegen",
+      "baseUrlLabel": "Basis-URL",
+      "baseUrlNote": "Je opgeslagen API-sleutel wordt naar dit nieuwe adres gestuurd.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Wijzig de naam of de basis-URL.",
+      "editTitle": "Eigen provider bewerken",
+      "errors": {
+        "addFailed": "Kon die provider niet toevoegen.",
+        "baseUrlHost": "In de URL ontbreekt een host.",
+        "baseUrlInvalid": "Vul een volledige URL in, bijvoorbeeld https://api.example.com/v1 of http://localhost:1234/v1.",
+        "baseUrlProtocol": "Gebruik https://, of http:// voor een lokale server.",
+        "baseUrlRequired": "De basis-URL is verplicht.",
+        "idFormat": "Gebruik alleen kleine letters, cijfers en streepjes, bijvoorbeeld acme.",
+        "idRequired": "Het ID is verplicht.",
+        "nameRequired": "De naam is verplicht.",
+        "saveFailed": "Kon die provider niet opslaan."
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API-sleutel (optioneel)",
+      "keyLabelKeepSaved": "API-sleutel (laat leeg om de opgeslagen sleutel te houden)",
+      "keyPlaceholder": "Laat leeg als er geen nodig is",
+      "keyPlaceholderStored": "De opgeslagen sleutel blijft staan tenzij je een nieuwe invult",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Provider toevoegen"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Wat de agent kan",
+      "customDescription": "Wordt aan elk AI-verzoek toegevoegd als jouw persoonlijke stijl en voorkeuren. De assistent volgt deze bovenop zijn ingebouwde gedrag. Ze kunnen zijn tools of veiligheidsregels niet overrulen.",
+      "customPlaceholder": "Bijvoorbeeld: Schrijf altijd in Brits-Engels. Houd uitleg kort. Gebruik het pakket enumitem voor lijsten.",
+      "customTitle": "Eigen instructies",
+      "defaultModelDescription": "Wordt gebruikt telkens als je een nieuwe chat begint. Je kunt per gesprek nog van model wisselen in het chatpaneel.",
+      "defaultModelTitle": "Standaardmodel voor chats",
+      "pdfCaptureDescription": "Laat de agent gecompileerde pagina's omzetten in afbeeldingen (verify_pdf_pages) om de opmaak visueel te controleren. Zet dit uit als je liever geen pagina-afbeeldingen naar je provider stuurt.",
+      "pdfCaptureLabel": "PDF-pagina's laten vastleggen voor AI",
+      "save": "Instructies opslaan",
+      "saved": "Opgeslagen",
+      "toolsHint": "Vraag bijvoorbeeld \"los de LaTeX-fouten op\", \"voeg een sectie Publicaties toe\" of \"compileer opnieuw en controleer de PDF\".",
+      "toolsTitle": "De assistent ondersteunt op dit moment deze tools"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Dat model staat al in de lijst.",
+        "empty": "Vul een model-id in.",
+        "spaces": "Model-id's mogen geen spaties bevatten."
+      },
+      "addPlaceholder": "Een model-id toevoegen",
+      "changeSummary": "{{added}} toegevoegd, {{removed}} verwijderd",
+      "custom": "Aangepast",
+      "deleteAriaLabel": "Model {{model}} verwijderen",
+      "deleteDialog": {
+        "description": "\"{{model}}\" uit de modellijst van deze provider halen? Ingebouwde modellen kun je terugkrijgen met Standaardwaarden herstellen. Eigen modellen kun je opnieuw op ID toevoegen.",
+        "title": "Model verwijderen"
+      },
+      "deleteTooltip": "Model verwijderen",
+      "empty": "Nog geen modellen. Voeg er hieronder een toe.",
+      "invalidKey": "Ongeldige API-sleutel.",
+      "metadata": {
+        "refreshFailed": "Kon de modelgegevens niet vernieuwen.",
+        "unknownDate": "onbekende datum",
+        "updated": "Modelgegevens bijgewerkt op {{date}}",
+        "updatedBundled": "Modelgegevens bijgewerkt op {{date}}, meegeleverd met de app",
+        "updatedFromCache": "Modelgegevens bijgewerkt op {{date}}, uit de laatste download"
+      },
+      "noChanges": "Geen wijzigingen",
+      "refresh": "Vernieuwen",
+      "restore": "Standaardwaarden herstellen",
+      "restoreTooltip": "De ingebouwde modellen van deze provider opnieuw toevoegen",
+      "title": "Modellen",
+      "unreachable": "Kon de provider niet bereiken.",
+      "unreadableList": "De provider gaf modellen terug die Oleafly niet kon lezen.",
+      "updated": "Bijgewerkt {{time}}"
+    },
+    "personas": {
+      "addStarter": "Persona toevoegen",
+      "addStarterFailed": "Kon {{name}} niet toevoegen. {{error}}",
+      "addStarterNamed": "Persona {{name}} toevoegen",
+      "colors": {
+        "forest": "Bosgroen",
+        "grape": "Druif",
+        "ocean": "Oceaan",
+        "slate": "Leigrijs",
+        "sunset": "Zonsondergang"
+      },
+      "create": "Persona maken",
+      "delete": "Persona verwijderen",
+      "deleteDescription": "\"{{name}}\" verwijderen? De prompt verdwijnt definitief en elke chat die hem gebruikt valt terug op je standaardinstructies.",
+      "deleteNamed": "Persona {{name}} verwijderen",
+      "description": "Herbruikbare instructies voor hoe de assistent moet werken. Kies er een in de chat voor een taak. Zolang hij gekozen is, vervangt hij je standaardinstructies.",
+      "edit": "Persona bewerken",
+      "editNamed": "Persona {{name}} bewerken",
+      "empty": "Nog geen persona's toegevoegd.",
+      "form": {
+        "color": "Kleur",
+        "create": "Maken",
+        "createTitle": "Persona maken",
+        "description": "Stel herbruikbare instructies in voor hoe de assistent moet werken.",
+        "editTitle": "Persona bewerken",
+        "instructions": "Instructies",
+        "instructionsPlaceholder": "Bekijk mijn tekst op helderheid en noem de belangrijkste problemen eerst.",
+        "namePlaceholder": "Bondige redacteur",
+        "required": "Naam en prompt zijn verplicht.",
+        "saveFailed": "Kon die persona niet opslaan."
+      },
+      "starters": {
+        "criticalReviewer": "Zoekt zwakke plekken in argumenten, methoden, bewijs en presentatie.",
+        "documentEditor": "Verbetert tekst, structuur, citaties en LaTeX met gerichte, veilige wijzigingen.",
+        "figure": "Maakt publicatieklare figuren en diagrammen als LaTeX TikZ of PGFPlots.",
+        "researchWriter": "Schrijft en structureert wetenschappelijke tekst zonder bewijs of citaties te verzinnen."
+      },
+      "suggestedDescription": "Begin met een van deze en pas de instructies daarna aan je manier van werken aan.",
+      "suggestedTitle": "Voorgestelde persona's",
+      "title": "Persona's"
+    },
+    "providers": {
+      "addCustom": "Eigen provider toevoegen",
+      "badge": {
+        "connected": "Verbonden",
+        "notRunning": "Draait niet",
+        "running": "Draait"
+      },
+      "blurbs": {
+        "anthropic": "Claude-modellen, sterk in code en schrijven.",
+        "custom": "Eigen provider.",
+        "deepseek": "DeepSeek V4-modellen.",
+        "google": "Gemini-modellen uit Google AI Studio.",
+        "groq": "Zeer snelle inferentie met open modellen.",
+        "mistral": "Mistral- en Codestral-modellen.",
+        "ollama": "Draait modellen op je eigen computer. Geen sleutel nodig: installeer Ollama en haal een model op.",
+        "openai": "GPT-modellen. De standaardkeuze.",
+        "openrouter": "Eén sleutel, toegang tot modellen van veel labs.",
+        "perplexity": "Sonar-modellen met actuele informatie van het web.",
+        "xai": "Grok-modellen van xAI.",
+        "zai": "GLM-modellen via een abonnement op het Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Sleutel van {{provider}} verwijderen",
+      "deleteKeyTooltip": "Sleutel verwijderen",
+      "docs": "Documentatie",
+      "editAriaLabel": "{{provider}} bewerken",
+      "editTooltip": "Naam of endpoint bewerken",
+      "getKey": "Sleutel ophalen",
+      "intro": "Verbind hieronder de providers die je gebruikt. Sleutels worden alleen lokaal bewaard. De eerste die je opslaat wordt de standaard. Je kunt in het chatpaneel via het uitklapmenu wisselen tussen ingestelde providers en modellen.",
+      "keyPlaceholder": "Plak hier je API-sleutel",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Actief",
+        "changeHost": "Host wijzigen (geavanceerd)",
+        "check": "Controleren op Ollama",
+        "checking": "Controleren…",
+        "disconnect": "Verbinding verbreken",
+        "hideHost": "Host verbergen",
+        "installedHint": "Ollama is hier geïnstalleerd. Het starten duurt even.",
+        "modelPlaceholder": "Kies een model om te gebruiken",
+        "noModels": "Ollama draait, maar er zijn geen modellen geïnstalleerd. Voer <pull>ollama pull llama3.2</pull> uit en controleer het opnieuw.",
+        "noneResponding": "Geen Ollama die antwoordt op <host>{{host}}</host>.",
+        "notChecked": "Nog niet gecontroleerd",
+        "notDetected": "Niet gevonden",
+        "recheck": "Opnieuw controleren",
+        "runningModels_one": "Draait · {{count}} model",
+        "runningModels_other": "Draait · {{count}} modellen",
+        "setupSteps": "1. Installeer via <download>ollama.com <icon></icon></download> · 2. Het start vanzelf (of voer <serve>ollama serve</serve> uit) · 3. Haal een model op, bijvoorbeeld <pull>ollama pull llama3.2</pull> · 4. Controleer opnieuw.",
+        "start": "Ollama starten"
+      },
+      "removeAriaLabel": "{{provider}} weghalen",
+      "removeDialog": {
+        "description": "\"{{provider}}\" weghalen? De opgeslagen sleutel en de modellijst verdwijnen mee.",
+        "title": "Eigen provider weghalen"
+      },
+      "removeTooltip": "Eigen provider weghalen",
+      "replaceKey": "Sleutel vervangen",
+      "status": {
+        "error": "Fout: {{message}}",
+        "errorFallback": "Kon de sleutel niet controleren.",
+        "valid": "Sleutel geldig. De modellen staan hieronder klaar.",
+        "validating": "Sleutel controleren..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Agents laden…",
+      "errors": {
+        "invalidKey": "Ongeldige API-sleutel.",
+        "keyNotKept": "De basis-URL is opgeslagen, maar de sleutel niet. Vul de sleutel opnieuw in.",
+        "providerGone": "Die provider bestaat niet meer.",
+        "providerIdInUse": "Dat provider-ID is al in gebruik."
+      },
+      "messages": {
+        "keyRemoved": "Sleutel van {{provider}} verwijderd.",
+        "keyRemovedAccessDisabled": "Sleutel van {{provider}} verwijderd. AI-toegang is uitgeschakeld.",
+        "keySavedAddModels": "Sleutel van {{provider}} opgeslagen. Voeg hieronder handmatig modellen toe.",
+        "keySavedCheckedOnUse": "Sleutel van {{provider}} opgeslagen. Hij wordt bij het eerste gebruik gecontroleerd.",
+        "ollamaConnected": "Ollama verbonden · {{model}}",
+        "preferencesReset": "De voorkeuren van de AI-assistent zijn hersteld naar de standaardwaarden.",
+        "providerAdded": "{{provider}} toegevoegd.",
+        "providerConnected": "{{provider}} verbonden.",
+        "providerUpdated": "{{provider}} bijgewerkt.",
+        "providerUpdatedWithoutModels": "{{provider}} bijgewerkt. De modellijst kon niet worden vernieuwd."
+      },
+      "reset": {
+        "confirmWithProject": "Herstel de voorkeuren van de AI-assistent naar de standaardwaarden, inclusief de beschikbaarheid van modellen, de ingeschakelde vaardigheden en het budget van dit project. Het actieve model en de actieve provider, providersleutels, persona's, goedkeuringsregels, verbruiksgeschiedenis en MCP-servers blijven ongewijzigd.",
+        "confirmWithoutProject": "Herstel de voorkeuren van de AI-assistent naar de standaardwaarden, inclusief de beschikbaarheid van modellen en de ingeschakelde vaardigheden. Het actieve model en de actieve provider, providersleutels, persona's, goedkeuringsregels, verbruiksgeschiedenis en MCP-servers blijven ongewijzigd.",
+        "sectionName": "AI-assistent"
+      },
+      "tabs": {
+        "agents": "CLI-agents",
+        "instructions": "Instructies",
+        "mcp": "MCP",
+        "personas": "Persona's",
+        "providers": "Providers en sleutels",
+        "skills": "Vaardigheden"
+      }
+    },
+    "skills": {
+      "addFolder": "Map toevoegen",
+      "addFolderDialogTitle": "Map met vaardigheden toevoegen",
+      "catalog": {
+        "description": "Extra vaardigheden voor specifieke onderzoeksgebieden. Installeer er een om hem aan je lijst hierboven toe te voegen.",
+        "empty": "De catalogus heeft geen extra vaardigheden om te installeren.",
+        "install": "Installeren",
+        "loading": "De catalogus laden...",
+        "messages": {
+          "installed": "{{name}} geïnstalleerd.",
+          "removed": "{{name}} verwijderd."
+        },
+        "progress": {
+          "downloading": "Downloaden...",
+          "downloadingPercent": "Downloaden {{percent}}%",
+          "extracting": "Uitpakken...",
+          "extractingPercent": "Uitpakken {{percent}}%",
+          "failed": "De installatie is mislukt.",
+          "finishing": "De installatie afronden..."
+        },
+        "refresh": "Vernieuwen",
+        "source": {
+          "bundled": "Ingebouwde catalogus",
+          "bundledOffline": "Ingebouwde catalogus, het netwerk was niet bereikbaar",
+          "cached": "Catalogus uit de cache van cdn.oleafly.com, laatst opgehaald {{when}}",
+          "cachedOffline": "Catalogus uit de cache van cdn.oleafly.com, laatst opgehaald {{when}}, het netwerk was niet bereikbaar",
+          "cachedUnknown": "Catalogus uit de cache van cdn.oleafly.com, laatst opgehaald op een onbekend moment",
+          "cachedUnknownOffline": "Catalogus uit de cache van cdn.oleafly.com, laatst opgehaald op een onbekend moment, het netwerk was niet bereikbaar",
+          "remote": "Catalogus van cdn.oleafly.com, opgehaald {{when}}",
+          "remoteUnknown": "Catalogus van cdn.oleafly.com, opgehaald op een onbekend moment"
+        },
+        "title": "Vakgebieden",
+        "uninstall": "Verwijderen",
+        "update": "Bijwerken"
+      },
+      "createSkill": "Vaardigheid maken",
+      "description": "De assistent laadt de volledige instructies van een vaardigheid pas als hij besluit er een nodig te hebben, of meteen als je /skill-id in de chat typt. Een vaardigheid die je hier aanzet staat in elk project aan, tenzij een project dat overschrijft.",
+      "editAria": "{{name}} bewerken",
+      "editor": {
+        "createDescription": "Maak een concept-SKILL.md in je map met Oleafly-vaardigheden.",
+        "createTitle": "Vaardigheid maken",
+        "descriptionPlaceholder": "Controleer of elke bewering onderbouwd is.",
+        "editDescription": "Werk de metagegevens en instructies in SKILL.md bij.",
+        "editTitle": "Vaardigheid bewerken",
+        "instructions": "Instructies",
+        "instructionsHint": "Laat dit leeg om een minimaal instructiegeraamte te maken.",
+        "instructionsPlaceholder": "Beschrijf wanneer je deze vaardigheid gebruikt en welke stappen de assistent moet volgen.",
+        "namePlaceholder": "Beweringencontrole",
+        "requiredAll": "Naam, beschrijving en instructies zijn verplicht.",
+        "requiredBasics": "Naam en beschrijving zijn verplicht.",
+        "submitCreate": "Maken"
+      },
+      "empty": "Geen vaardigheden gevonden. Voeg een map toe of maak er zelf een.",
+      "enableAria": "{{name}} inschakelen",
+      "fileCount_one": "{{count}} bestand",
+      "fileCount_other": "{{count}} bestanden",
+      "groups": {
+        "shelf": "Vakgebieden",
+        "user": "Jouw vaardigheden"
+      },
+      "inheritsDevice": "Volgt de apparaatinstelling",
+      "invalidBadge": "Ongeldig",
+      "loadFailed": "Kon de vaardigheden niet laden. {{message}}",
+      "loading": "Vaardigheden laden...",
+      "messages": {
+        "added": "{{name}} toegevoegd.",
+        "created": "{{name}} gemaakt.",
+        "editorClosed": "De editor voor vaardigheden staat niet meer open.",
+        "removed": "{{name}} verwijderd.",
+        "saved": "{{name}} opgeslagen.",
+        "updated": "{{name}} bijgewerkt."
+      },
+      "missingDescription": "Deze vaardigheid heeft een beschrijving nodig.",
+      "offForProject": "Uit voor dit project",
+      "onForProject": "Aan voor dit project",
+      "phases": {
+        "authoring": "Schrijven",
+        "communication": "Communicatie",
+        "figures": "Figuren",
+        "research": "Onderzoek",
+        "review": "Beoordelen",
+        "submission": "Inzenden",
+        "tooling": "Gereedschap"
+      },
+      "removeAria": "{{name}} weghalen",
+      "removeDialog": {
+        "description": "\"{{name}}\" en de bijbehorende map uit Oleafly weghalen? Dit kan niet ongedaan worden gemaakt.",
+        "title": "Vaardigheid weghalen"
+      },
+      "share": {
+        "description": "Koppel je vaardigheden aan de mappen die andere codeeragents op deze computer al lezen, zodat je een vaardigheid één keer schrijft en elke agent hem kan gebruiken.",
+        "emptyBody": "Er zijn geen andere agentmappen op deze computer gevonden.",
+        "status": {
+          "linked": "{{linked}} van {{total}} gekoppeld",
+          "undetected": "Niet gevonden op dit apparaat",
+          "unsupported": "Niet ondersteund op dit systeem"
+        },
+        "summary": {
+          "checking": "Agentmappen controleren",
+          "linked_one": "{{linked}} van {{count}} agent gekoppeld",
+          "linked_other": "{{linked}} van {{count}} agents gekoppeld",
+          "none": "Er zijn geen andere agentmappen gevonden"
+        },
+        "title": "Vaardigheden delen met andere agents op deze computer"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Toegevoegd",
+        "bundled": "Ingebouwd",
+        "catalog": "Geïnstalleerd"
+      },
+      "tier": {
+        "credits": "Van {{credits}}",
+        "native": "Oleafly-werkwijze",
+        "shelf": "Vaardigheid uit de vakgebieden",
+        "shelfWithLicense": "Vakgebieden, {{license}}",
+        "user": "Je eigen vaardigheid",
+        "vendored": "Meegeleverde vaardigheid"
+      },
+      "title": "Vaardigheden",
+      "updateAction": "Bijwerken",
+      "updateDialog": {
+        "description": "\"{{name}}\" vervangen door de nieuwste meegeleverde versie? Lokale wijzigingen in de bestanden gaan verloren.",
+        "title": "Vaardigheid bijwerken"
+      },
+      "useDeviceSetting": "Apparaatinstelling gebruiken",
+      "useDeviceSettingAria": "De apparaatinstelling voor {{name}} gebruiken",
+      "useInProject": "In dit project gebruiken",
+      "useInProjectAria": "{{name}} in dit project gebruiken",
+      "validateAria": "{{name}} valideren"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Wordt gebruikt voor knoppen, selecties en de cursor in de editor.",
+        "label": "Accentkleur",
+        "swatchAriaLabel": "Accent {{name}}"
+      },
+      "bgPattern": {
+        "description": "Kies het patroon achter de projectplank.",
+        "dots": "Stippen",
+        "grid": "Raster",
+        "label": "Achtergrondpatroon"
+      },
+      "dock": {
+        "bottom": "Onder",
+        "description": "Kies waar het dock op het startscherm staat.",
+        "label": "Plaats van het dock",
+        "left": "Links",
+        "right": "Rechts"
+      },
+      "font": {
+        "description": "Gebruikt het systeemlettertype als een lettertype niet is geïnstalleerd.",
+        "label": "Lettertype van de app"
+      },
+      "fontSize": {
+        "description": "Schaal de tekst in menu's, panelen en knoppen.",
+        "label": "Tekstgrootte van de app"
+      },
+      "theme": {
+        "description": "Systeem volgt het besturingssysteem en verandert mee.",
+        "label": "Weergave"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Startpagina van de browser",
+        "description": "Kies de pagina die opent met het browserdock.",
+        "label": "Startpagina"
+      },
+      "searchEngine": {
+        "description": "Kies de zoekmachine voor tekstzoekopdrachten.",
+        "label": "Standaardzoekmachine"
+      }
+    },
+    "customTheme": {
+      "cleared": "Thema-aanpassing gewist.",
+      "customCss": {
+        "description": "Optionele declaraties gelden alleen binnen de app. Regels, imports en URL's worden geblokkeerd.",
+        "label": "Afgeschermde CSS-declaraties"
+      },
+      "darkRestored": "Donkere tokens hersteld.",
+      "description": "Wijzig de kleurtokens van de app per modus. Wijzigingen worden lokaal bewaard en zijn meteen zichtbaar.",
+      "exportTheme": "Thema exporteren",
+      "fileTooLarge": "Het themabestand is groter dan 128 KiB.",
+      "importFileAriaLabel": "Themabestand importeren",
+      "importTheme": "Thema importeren",
+      "imported": "Thema geïmporteerd en toegepast.",
+      "importedSkippedMore_one": "Thema geïmporteerd en toegepast. {{count}} token dat Oleafly niet gebruikt is overgeslagen: {{tokens}}, en meer.",
+      "importedSkippedMore_other": "Thema geïmporteerd en toegepast. {{count}} tokens die Oleafly niet gebruikt zijn overgeslagen: {{tokens}}, en meer.",
+      "importedSkipped_one": "Thema geïmporteerd en toegepast. {{count}} token dat Oleafly niet gebruikt is overgeslagen: {{tokens}}.",
+      "importedSkipped_other": "Thema geïmporteerd en toegepast. {{count}} tokens die Oleafly niet gebruikt zijn overgeslagen: {{tokens}}.",
+      "lightRestored": "Lichte tokens hersteld.",
+      "modeDark": "Donkere modus",
+      "modeFieldsetAriaLabel": "Themamodus om te bewerken",
+      "modeLight": "Lichte modus",
+      "pickColorDark": "Kleur van {{token}} kiezen voor de donkere modus",
+      "pickColorLight": "Kleur van {{token}} kiezen voor de lichte modus",
+      "radius": {
+        "description": "Gebruik een waarde als 8px, 0.5rem of 1em. Laat leeg voor de standaardwaarde.",
+        "label": "Hoekradius"
+      },
+      "resetAll": "Alles resetten",
+      "resetMode": "Deze modus resetten",
+      "title": "Thema aanpassen",
+      "tokenInputDark": "Token {{token}} voor de donkere modus",
+      "tokenInputLight": "Token {{token}} voor de lichte modus",
+      "tokens": {
+        "accent": "Accent",
+        "accentForeground": "Accenttekst",
+        "background": "Achtergrond",
+        "border": "Rand",
+        "card": "Paneel",
+        "cardForeground": "Paneeltekst",
+        "destructive": "Gevaar",
+        "destructiveForeground": "Gevaartekst",
+        "foreground": "Tekst",
+        "input": "Rand van invoervelden",
+        "muted": "Gedempt",
+        "mutedForeground": "Gedempte tekst",
+        "popover": "Pop-over",
+        "popoverForeground": "Pop-overtekst",
+        "primary": "Primair",
+        "primaryForeground": "Primaire tekst",
+        "ring": "Focusring",
+        "secondary": "Secundair",
+        "secondaryForeground": "Secundaire tekst",
+        "sidebar": "Zijbalk",
+        "sidebarAccent": "Accent van de zijbalk",
+        "sidebarAccentForeground": "Accenttekst van de zijbalk",
+        "sidebarBorder": "Rand van de zijbalk",
+        "sidebarForeground": "Tekst van de zijbalk"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Sluit haakjes en blokhaken automatisch.",
+        "label": "Haakjes automatisch sluiten"
+      },
+      "autoCloseEnvironments": {
+        "description": "Voeg \\end in als je na \\begin op Enter drukt.",
+        "label": "Omgevingen automatisch sluiten"
+      },
+      "autoCloseMath": {
+        "description": "Vul $, \\( en \\[ aan terwijl je typt.",
+        "label": "Wiskunde automatisch sluiten"
+      },
+      "autocomplete": {
+        "description": "Toon code-aanvullingen terwijl je typt. Ctrl+Space opent ze nog steeds als dit uitstaat.",
+        "label": "Automatisch aanvullen"
+      },
+      "font": {
+        "description": "Kies het lettertype met vaste breedte voor bronbestanden.",
+        "label": "Lettertype van de editor"
+      },
+      "fontSize": {
+        "description": "Stel de tekstgrootte van de broncode-editor in.",
+        "label": "Tekstgrootte van de editor"
+      },
+      "ghostCompletion": {
+        "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
+        "label": "Suggestie in de tekst"
+      },
+      "nonBlinkingCursor": {
+        "description": "Houd de cursor in de editor onafgebroken zichtbaar.",
+        "label": "Niet-knipperende cursor"
+      },
+      "stickyScroll": {
+        "description": "Houd de huidige LaTeX-secties en -omgevingen bovenaan terwijl je scrolt.",
+        "label": "Vastgezette scrollkoppen"
+      },
+      "theme": {
+        "description": "Stel de syntaxiskleuren los van het app-thema in.",
+        "label": "Thema van de editor"
+      },
+      "keymap": {
+        "description": "Kies de set toetsenbindingen die de broncode-editor gebruikt.",
+        "label": "Toetsenbindingen",
+        "options": {
+          "default": "Standaard",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Stel de verticale ruimte tussen broncoderegels in.",
+        "label": "Regelhoogte",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normaal",
+          "wide": "Ruim"
+        }
+      },
+      "lineWrap": {
+        "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
+        "label": "Lange regels afbreken"
+      },
+      "tabSize": {
+        "description": "Het aantal spaties per inspringniveau, en de breedte waarop een tab wordt getoond.",
+        "label": "Tabgrootte"
+      },
+      "mathPreview": {
+        "description": "Toon de opgemaakte vergelijking boven de vergelijking waarin de cursor staat.",
+        "label": "Wiskundevoorbeeld"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Patroon voor verborgen bestanden toevoegen",
+        "description": "Kies welke gegenereerde bestanden en mappen buiten de projectboom blijven.",
+        "inputAriaLabel": "Bestandsnaam of patroon om te verbergen",
+        "placeholder": "Voeg een bestandsnaam of patroon toe",
+        "removeAriaLabel": "{{pattern}} uit de verborgen bestanden halen",
+        "title": "Bestanden verbergen in de bestandsboom"
+      },
+      "homeView": {
+        "description": "Kies hoe projecten in de bibliotheek worden gerangschikt.",
+        "grid": "Raster",
+        "label": "Standaardweergave op Start",
+        "list": "Lijst"
+      },
+      "openIn": {
+        "description": "Kies de indeling die wordt gebruikt als een project opent.",
+        "label": "Projecten openen in"
+      },
+      "showTree": {
+        "description": "Open de bestandsboom telkens als je een project binnengaat.",
+        "label": "Bestandsboom tonen bij openen"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",
+        "label": "Donkere modus voor PDF"
+      },
+      "hoverPreview": {
+        "description": "Toon de laatst gecompileerde pagina als je in de bibliotheek over een project beweegt.",
+        "label": "PDF tonen bij aanwijzen"
+      },
+      "zoomShortcuts": {
+        "description": "Gebruik Cmd/Ctrl +, - en 0 om in de PDF te zoomen in plaats van in het appvenster.",
+        "label": "Zoomsneltoetsen voor de PDF"
+      }
+    },
+    "sectionName": "Weergave",
+    "tabs": {
+      "app": "App",
+      "browser": "Browser",
+      "editor": "Editor",
+      "files": "Project",
+      "pdf": "PDF-voorbeeld",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Kleurthema van de terminal",
+        "description": "Kies het ANSI-kleurenpalet van de terminal.",
+        "label": "Kleurthema",
+        "optionDark": "{{name}} · donker",
+        "optionLight": "{{name}} · licht"
+      },
+      "colors": {
+        "background": "Achtergrond",
+        "backgroundAriaLabel": "Achtergrondkleur van de terminal",
+        "cursor": "Cursor",
+        "cursorAriaLabel": "Cursorkleur van de terminal",
+        "description": "Pas de basiskleuren aan terwijl het gekozen ANSI-palet blijft staan.",
+        "followingAppTheme": "Volgt het app-thema: het donkere palet in de donkere modus, het lichte palet in de lichte modus. Kies hierboven een specifiek palet om deze aan te passen.",
+        "foreground": "Tekst",
+        "foregroundAriaLabel": "Tekstkleur van de terminal",
+        "label": "Terminalkleuren"
+      },
+      "cursorBlink": {
+        "description": "Laat de cursor in de terminal knipperen.",
+        "label": "Knipperende cursor"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Cursorstijl van de terminal",
+        "bar": "Streepje",
+        "block": "Blok",
+        "description": "Kies de vorm van de cursor in de terminal.",
+        "label": "Cursorstijl",
+        "underline": "Onderstreping"
+      },
+      "font": {
+        "ariaLabel": "Lettertypefamilie van de terminal",
+        "description": "Kies het lettertype met vaste breedte voor de terminal.",
+        "label": "Lettertype van de terminal"
+      },
+      "fontSize": {
+        "description": "Stel de tekstgrootte in de terminal in.",
+        "label": "Tekstgrootte van de terminal"
+      },
+      "fontWeight": {
+        "description": "Stel de dikte in voor gewone terminaltekst.",
+        "label": "Dikte van gewone tekst"
+      },
+      "fontWeightBold": {
+        "description": "Stel de dikte in voor vette terminaltekst.",
+        "label": "Dikte van vette tekst"
+      },
+      "startWithProject": {
+        "description": "Start de shell zodra een project opent in plaats van bij de eerste keer dat je de terminal toont.",
+        "label": "De shell starten met het project"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly slaat het op de achtergrond op, en alleen als de broncode is gewijzigd.",
+      "label": "Na elke geslaagde compilatie een checkpoint opslaan"
+    },
+    "config": {
+      "loadFailed": "Kon de checkpointinstellingen niet laden.",
+      "saveFailed": "Kon de checkpointinstellingen niet opslaan."
+    },
+    "description": "Een checkpoint legt vast welke bronbestanden een geslaagde compilatie gebruikte.",
+    "notifyOnFailure": {
+      "description": "Oleafly laat het weten als een checkpoint niet kan worden opgeslagen, bijvoorbeeld bij opslagproblemen of bestanden die het niet kon vastleggen.",
+      "label": "Een melding tonen als een checkpoint niet kan worden opgeslagen"
+    },
+    "title": "Checkpoints"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "API-sleutel verwijderen",
+      "removeEmail": "E-mailadres verwijderen",
+      "removeKey": "Sleutel verwijderen",
+      "saveApiKey": "API-sleutel opslaan",
+      "saveEmail": "E-mailadres opslaan",
+      "saveKey": "Sleutel opslaan"
+    },
+    "connected": "Verbonden",
+    "description": "Beheer de gegevens waarmee wetenschappelijke zoekbronnen worden benaderd.",
+    "keyFree": {
+      "description": "Deze bronnen zijn beschikbaar zonder API-sleutel.",
+      "title": "Bronnen zonder inloggegevens"
+    },
+    "openAlex": {
+      "docsLink": "Limieten van OpenAlex",
+      "emailLabel": "Contact-e-mailadres voor OpenAlex",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Kon het contact-e-mailadres voor OpenAlex niet verwijderen.",
+      "emailRemoved": "Contact-e-mailadres voor OpenAlex verwijderd",
+      "emailSaveFailed": "Kon het contact-e-mailadres voor OpenAlex niet opslaan.",
+      "emailSaved": "Contact-e-mailadres voor OpenAlex opgeslagen",
+      "hint": "Een API-sleutel wordt aanbevolen. OpenAlex vereist sleutels voor regelmatig gebruik, terwijl zoekopdrachten zonder sleutel een kleine dagelijkse pool delen. Een contact-e-mailadres geeft bovendien toegang tot de nette pool. Beide blijven op dit apparaat.",
+      "keyLabel": "OpenAlex API-sleutel",
+      "keyRemoveFailed": "Kon de OpenAlex API-sleutel niet verwijderen.",
+      "keyRemoved": "OpenAlex API-sleutel verwijderd",
+      "keySaveFailed": "Kon de OpenAlex API-sleutel niet opslaan.",
+      "keySaved": "OpenAlex API-sleutel opgeslagen"
+    },
+    "semanticScholar": {
+      "docsLink": "Informatie over de API van Semantic Scholar",
+      "hint": "Een API-sleutel is optioneel. Anonieme zoekopdrachten vallen onder de publieke limieten van Semantic Scholar.",
+      "keyLabel": "Semantic Scholar API-sleutel",
+      "keyRemoveFailed": "Kon de Semantic Scholar API-sleutel niet verwijderen.",
+      "keyRemoved": "Semantic Scholar API-sleutel verwijderd",
+      "keySaveFailed": "Kon de Semantic Scholar API-sleutel niet opslaan.",
+      "keySaved": "Semantic Scholar API-sleutel opgeslagen"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Optioneel. Maakt de bron Google Scholar in Citaties zoeken beschikbaar via Serper. Zonder sleutel wordt die bron overgeslagen als je hem kiest.",
+      "keyLabel": "Serper API-sleutel",
+      "keyRemoveFailed": "Kon de Serper API-sleutel niet verwijderen.",
+      "keyRemoved": "Serper API-sleutel verwijderd",
+      "keySaveFailed": "Kon de Serper API-sleutel niet opslaan.",
+      "keySaved": "Serper API-sleutel opgeslagen"
+    },
+    "title": "Citaties zoeken"
+  },
+  "cite": {
+    "apa": "Dezelfde referentie in APA staat achter Cite this repository op GitHub",
+    "copyBibtex": "BibTeX kopiëren",
+    "description": "Oleafly is gratis en opensource, en dat blijft zo zolang mensen weten dat het bestaat. Heeft het je artikel geholpen, dan wijst één item in je bibliografie de volgende onderzoeker de weg naar deze tool. Kopieer het, plak het in je .bib-bestand en citeer de sleutel <citeKey>oleafly</citeKey>.",
+    "title": "Oleafly citeren in je artikel"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Alles gedownload",
+      "download": "Downloaden",
+      "downloadAll": "Alles downloaden"
+    },
+    "aiTemplates": {
+      "deleteDescription": "\"{{name}}\" uit je bibliotheek verwijderen? Projecten die er al mee zijn gemaakt houden hun eigen kopie en veranderen niet.",
+      "deleteTitle": "Door AI gemaakt sjabloon verwijderen",
+      "deleted": "\"{{name}}\" uit je bibliotheek verwijderd",
+      "empty": "Nog geen sjablonen die met AI zijn gemaakt. Maak er een via de sjabloongalerij.",
+      "fallbackDescription": "Door AI gemaakt sjabloon",
+      "toggle": "Door AI gemaakte sjablonen beheren"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Een warme humanistische schreefloze letter die veel moderne cv-sjablonen gebruiken.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Een strakke, neutrale schreefloze letter die prettig leest op het scherm en op papier.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Een verfijnde transitionele schreefletter, een goede keuze voor academische en zakelijke documenten.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Geen lettertypen om te downloaden.",
+      "engineNote": "De LuaLaTeX-engine (voor getagde, toegankelijke PDF's) beheer je in de sectie LaTeX-engine.",
+      "heading": "Lettertypen",
+      "tooltip": "Sommige sjablonen gebruiken premium opensource-lettertypen. Om Oleafly klein te houden worden die op verzoek gedownload: maak je zo'n sjabloon, dan worden de lettertypen opgehaald en in het project gekopieerd, zodat het op zichzelf staat en offline compileert. Je kunt ze hier ook vooraf downloaden, of weghalen om ruimte vrij te maken."
+    },
+    "packProgress": "{{index}} van {{total}}",
+    "progress": "{{label}} ({{index}} van {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Lettertypen",
+      "templates": "Sjablonen",
+      "dictionaries": "Woordenboeken"
+    },
+    "templates": {
+      "empty": "Geen sjabloonpakketten om te downloaden.",
+      "heading": "Sjablonen",
+      "tooltip": "Extra sjabloonpakketten worden op verzoek gedownload zodat Oleafly klein blijft. Download hier een pakket om de sjablonen offline te gebruiken, of haal ze later weg om ruimte vrij te maken."
+    },
+    "dictionaries": {
+      "empty": "Er zijn nog geen extra talen gedownload.",
+      "heading": "Spellingwoordenboeken",
+      "note": "Kies een taal in de sectie Algemeen om die te downloaden. De vijf meegeleverde pakketten zijn altijd beschikbaar en staan hier niet bij.",
+      "tooltip": "Er komen vijf taalpakketten met Oleafly mee. Elke andere taal wordt op verzoek gedownload zodra je die als spellingwoordenboek kiest, en blijft daarna hier staan zodat hij offline werkt. Er een weghalen maakt de ruimte vrij en valt terug op de app-instelling."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Alleen voor projecten die je vertrouwt. Draait een lokale TeX-distributie die bestanden kan lezen waar jouw account bij kan. Ondersteunt volledige pakketsets en werkwijzen met meerdere doorgangen. Het uitvoeren van opdrachten op de computer blijft een aparte toestemming per project.",
+        "name": "latexmk (systeem-TeX)"
+      },
+      "tectonic": {
+        "detail": "Komt met Oleafly mee. Snel, offline, geen installatie. Dekt gewone LaTeX en de meeste gangbare pakketten.",
+        "name": "Tectonic (ingebouwd)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Standaard compileerengine",
+      "tooltip": "Geldt voor nieuwe projecten. Elk project zet zijn eigen engine vast in project.json, zodat medewerkers die hetzelfde project openen het op dezelfde manier compileren, ongeacht deze instelling."
+    },
+    "distributions": {
+      "empty": "Geen TeX-distributie op deze computer gevonden.",
+      "heading": "TeX-distributies beheren",
+      "rowTooltip": "Meegeleverd met {{tools}}. Oleafly draait zijn TeX-tools vanuit {{binDir}}.",
+      "rowTooltipNoTools": "In deze installatie is geen latexmk of tlmgr gevonden. Oleafly draait zijn TeX-tools vanuit {{binDir}}.",
+      "tooltip": "Alles wat de latexmk-engine op deze computer kan gebruiken. TinyTeX installeert in je thuismap zonder beheerdersrechten. Systeeminstallaties (MacTeX, TeX Live, MiKTeX) worden automatisch gevonden."
+    },
+    "latexmkMissing": "geen latexmk gevonden",
+    "markdown": {
+      "downloading": "Downloaden…",
+      "heading": "Markdown-compiler",
+      "install": "pandoc installeren",
+      "repair": "Pandoc repareren",
+      "note": "Een ander PDF-backend voor Markdown kiezen, of een pandoc van het systeem in plaats van de beheerde versie, kan nog niet.",
+      "status": {
+        "checking": "Controleren op pandoc…",
+        "installing": "Een vastgezette pandoc-release ophalen. De eerste keer duurt dat even.",
+        "missing": "Niet gevonden op deze Mac. Oleafly downloadt een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map; verder verandert er niets aan je systeem.",
+        "ready": "Gevonden. Markdown-projecten worden met pandoc naar LaTeX omgezet en daarna met de meegeleverde Tectonic gecompileerd."
+      },
+      "tectonicDetail": "Zet de LaTeX die pandoc maakt om in drukwerk. Komt met Oleafly mee, er valt niets in te stellen.",
+      "tooltip": "Markdown-projecten worden met pandoc (Pandoc Markdown: tabellen, voetnoten, citaties, wiskunde) omgezet naar LaTeX en daarna door de meegeleverde Tectonic tot PDF gezet. Pandoc wordt op verzoek gedownload zodra het voor het eerst nodig is."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX-pakketten",
+      "badge": {
+        "breaks": "breekt taggen",
+        "caution": "taggen: let op"
+      },
+      "emptySearch": "Geen pakketten gevonden. Probeer een andere naam of een ander trefwoord.",
+      "emptySuggested": "Geen passende voorgestelde pakketten. Doorzoek TeX Live om de volledige catalogus te bekijken.",
+      "error": {
+        "install": "Kon {{name}} niet installeren.",
+        "read": "Kon de geïnstalleerde pakketten niet lezen.",
+        "remove": "Kon {{name}} niet verwijderen.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "LaTeX-pakketten zoeken",
+      "filterPlaceholder": "Pakketten filteren…",
+      "heading": "Pakketten",
+      "includedIn": "Zit in {{package}}. Als je het weghaalt, verdwijnen ook de andere bestanden uit dat pakket.",
+      "intro": {
+        "available": "Deze pakketten zijn voor projecten die latexmk (systeem-TeX) gebruiken. Tectonic gebruikt zijn eigen pakketbundel.",
+        "unavailable": "Pakketbeheer vereist TeX Live of TinyTeX. Gebruik bij MiKTeX de MiKTeX Console."
+      },
+      "refreshInstalled": "Geïnstalleerde pakketten vernieuwen",
+      "resultsCapped": "{{total}} resultaten uit TeX Live. Zoek specifieker om deze lijst in te perken.",
+      "results_one": "{{count}} resultaat uit TeX Live.",
+      "results_other": "{{count}} resultaten uit TeX Live.",
+      "search": "TeX Live doorzoeken",
+      "searching": "Zoeken…",
+      "suggested": "Voorgestelde pakketten. Doorzoek TeX Live voor meer.",
+      "tree": {
+        "both": "in beide bomen",
+        "system": "in de systeemboom",
+        "user": "in je persoonlijke boom"
+      }
+    },
+    "sectionName": "Engines",
+    "tagging": {
+      "heading": "Getagde of toegankelijke export",
+      "hint": {
+        "none": "Installeer TinyTeX bij “TeX-distributies beheren” hierboven om getagde export mogelijk te maken.",
+        "system": "Gevonden op je systeem. Er valt niets te installeren.",
+        "tinytex": "Geleverd door TinyTeX (hierboven beheerd)."
+      },
+      "status": {
+        "none": "Geen tagging-engine geïnstalleerd",
+        "system": "Gebruikt een LuaLaTeX of TeX Live van het systeem",
+        "tinytex": "TinyTeX geïnstalleerd"
+      },
+      "tooltip": "De standaardengine (Tectonic) is snel en werkt offline, maar kan geen getagde PDF's volgens Section 508 of PDF-UA maken. Daarvoor is de LuaLaTeX van je systeem nodig, die lokale bestanden kan lezen waar jouw account bij kan en die je alleen voor vertrouwde projecten moet gebruiken. Oleafly kan een bestaande distributie of het beheerde TinyTeX gebruiken."
+    },
+    "tinytex": {
+      "detail": "Een compacte TeX Live in je thuismap. De kerndownload is ongeveer 250 MB. Tijdschriftsjablonen kunnen later pakketten toevoegen, tot ongeveer 1 GB in totaal. Vooraf installeren zorgt dat systeem-LaTeX klaarstaat wanneer je die bewust kiest.",
+      "download": "TinyTeX downloaden (~250 MB)",
+      "resume": "Download hervatten ({{size}} MB klaar)"
+    },
+    "typst": {
+      "detail": "Komt met Oleafly mee. Snel, offline, geen installatie. Compileert Typst-documenten naar PDF.",
+      "heading": "Typst-compiler",
+      "name": "Typst (ingebouwd)",
+      "note": "Typst-projecten gebruiken altijd de meegeleverde compiler. Een compilerversie kiezen, of de Typst van je systeem gebruiken, kan nog niet.",
+      "tooltip": "Typst zit in Oleafly zelf, dus er valt niets te installeren of in te stellen. Elk Typst-project compileert met de meegeleverde compiler."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Verbonden",
+      "disconnect": "Verbinding verbreken",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Verbinden",
+      "toggle": "Geavanceerd: een personal access token gebruiken",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Nieuwe en geopende projecten krijgen een Git-repository zodat het Git-paneel wijzigingen kan volgen. Oleafly commit nooit uit zichzelf.",
+      "label": "Git initialiseren voor elk project"
+    },
+    "config": {
+      "loadFailed": "Kon de Git-instellingen niet laden.",
+      "saveFailed": "Kon de Git-instellingen niet opslaan."
+    },
+    "connect": "GitHub verbinden",
+    "description": "Maak back-ups van projecten, synchroniseer tussen apparaten en push of pull vanuit het Git-paneel.",
+    "device": {
+      "openGithub": "GitHub openen",
+      "opened": "We hebben <verificationLink>{{url}}</verificationLink> in je browser geopend. Plak de code daar om Oleafly te autoriseren.",
+      "timedOut": "Het aanmelden bij GitHub duurde te lang. Probeer het opnieuw.",
+      "title": "Vul deze code in op GitHub",
+      "waiting": "Wachten op autorisatie…"
+    },
+    "hint": {
+      "oauth": "Meldt je aan met een eenmalige code in je browser.",
+      "token": "Aanmelden met OAuth is in deze build nog niet ingesteld, plak daarom een token."
+    },
+    "notice": {
+      "connected": "Verbonden als @{{login}}",
+      "disconnected": "Verbinding verbroken."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Verbinden",
+      "disconnect": "Verbinding verbreken"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>alphaxiv.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink>, maak een sleutel aan (die begint met <keyPrefix>axv1_</keyPrefix>) en plak hem hieronder.",
+      "apiKeyLabel": "alphaXiv API-sleutel",
+      "description": "Tools voor literatuuronderzoek en artikelanalyse voor de assistent."
+    },
+    "cookies": {
+      "action": "Cookies importeren",
+      "confirmAllDomains": "Je staat op het punt cookies voor alle domeinen te importeren uit het profiel {{profile}} in {{browser}}. Cookie-waarden worden in de ingebouwde browser bewaard en alleen naar de bijbehorende websites gestuurd. Oleafly vraagt je nog één keer om bevestiging in een systeemvenster voordat het profiel wordt gelezen.",
+      "confirmDomain": "Je staat op het punt cookies voor {{domain}} te importeren uit het profiel {{profile}} in {{browser}}. Cookie-waarden worden in de ingebouwde browser bewaard en alleen naar de bijbehorende websites gestuurd. Oleafly vraagt je nog één keer om bevestiging in een systeemvenster voordat het profiel wordt gelezen.",
+      "confirmTitle": "Cookie-import bevestigen",
+      "description": "Gebruik een bestaande browseraanmelding in de ingebouwde browser van Oleafly.",
+      "detecting": "Zoeken naar geïnstalleerde browserprofielen...",
+      "dialogDescription": "Kies één geïnstalleerd browserprofiel. Oleafly leest het pas nadat je de import hebt bekeken en bevestigd. Chromium-cookies worden lokaal ontgrendeld via de macOS-sleutelhanger. Oleafly stuurt geen cookiewaarden naar een Oleafly-dienst.",
+      "dialogTitle": "Browsercookies importeren",
+      "empty": "Er zijn geen ondersteunde browserprofielen gevonden.",
+      "errors": {
+        "chooseProfile": "Kies een beschikbaar browserprofiel.",
+        "hostname": "Vul een hostnaam in, bijvoorbeeld example.com."
+      },
+      "hostnameHint": "Vul de hostnaam van een site in om alleen cookies te importeren die die site kan gebruiken. Laat leeg om elke geschikte cookie in dit profiel te importeren.",
+      "hostnameLabel": "Doelhostnaam (optioneel)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "{{count}} cookie uit {{browser}} geïmporteerd voor {{domain}}.",
+      "importedDomain_other": "{{count}} cookies uit {{browser}} geïmporteerd voor {{domain}}.",
+      "importedProfileDomain_one": "{{count}} cookie uit {{browser}}, {{profile}} geïmporteerd voor {{domain}}.",
+      "importedProfileDomain_other": "{{count}} cookies uit {{browser}}, {{profile}} geïmporteerd voor {{domain}}.",
+      "importedProfile_one": "{{count}} cookie uit {{browser}}, {{profile}} geïmporteerd.",
+      "importedProfile_other": "{{count}} cookies uit {{browser}}, {{profile}} geïmporteerd.",
+      "imported_one": "{{count}} cookie uit {{browser}} geïmporteerd.",
+      "imported_other": "{{count}} cookies uit {{browser}} geïmporteerd.",
+      "importing": "Cookies importeren...",
+      "profileGroupLabel": "Browserprofielen",
+      "profileLegend": "Browserprofiel",
+      "review": "Import bekijken",
+      "status": {
+        "available": "Beschikbaar",
+        "comingSoon": "Binnenkort",
+        "noCookieStore": "Geen cookieopslag",
+        "notInstalled": "Niet geïnstalleerd"
+      },
+      "title": "Cookies importeren",
+      "tryAgain": "Opnieuw proberen"
+    },
+    "zotero": {
+      "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
+      "apiKeyLabel": "Zotero API-sleutel",
+      "description": "Importeer citaties en referenties uit je Zotero-bibliotheek.",
+      "userIdLabel": "Zotero-gebruikers-ID",
+      "userIdPlaceholder": "Gebruikers-ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "Taal van de interface",
+    "description": "Kies de taal van de interface. Systeemstandaard volgt je besturingssysteem.",
+    "label": "Taal",
+    "note": "De taal van de interface wijzigen verandert niets aan de documenttaal of de instellingen voor het proeflezen.",
+    "system": "Systeemstandaard"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "{{name}} importeren uit {{source}}",
+      "description": "Kies servers uit de tools die op deze computer zijn geïnstalleerd.",
+      "detecting": "Zoeken naar MCP-servers...",
+      "duplicateOverwritten": "Bestaat al. Hij wordt overschreven.",
+      "duplicateSkipped": "Bestaat al. Hij wordt overgeslagen.",
+      "duplicates": {
+        "legend": "Als namen overeenkomen",
+        "overwrite": {
+          "description": "Vervang hem door de gekozen server.",
+          "label": "Bestaande overschrijven"
+        },
+        "skip": {
+          "description": "Houd de server die al in Oleafly staat.",
+          "label": "Bestaande overslaan"
+        }
+      },
+      "emptyState": "Er zijn geen MCP-serverconfiguraties gevonden.",
+      "importing": "Importeren...",
+      "keys": {
+        "environment": "Omgeving: {{names}}",
+        "headers": "Headers: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Selectie importeren",
+      "summary": {
+        "commandFallback": "Lokale opdracht",
+        "remote": "Externe server: {{origin}}.",
+        "remoteUnknown": "Externe server.",
+        "stdio_one": "Lokale opdracht: {{command}}. {{count}} argument.",
+        "stdio_other": "Lokale opdracht: {{command}}. {{count}} argumenten."
+      },
+      "title": "MCP-servers importeren"
+    },
+    "registry": {
+      "argumentsLine": "Argumenten: {{args}}",
+      "description": "Doorzoek de openbare servergegevens. Er wordt hier niets geïnstalleerd of gestart. Bekijk de opdracht of URL voordat je hem toevoegt.",
+      "emptyQuery": "Vul een servernaam in om het officiële MCP-register te doorzoeken.",
+      "environmentLine": "Omgeving: {{names}}",
+      "loadMore": "Meer laden",
+      "noResults": "Er zijn geen passende vermeldingen in het register gevonden.",
+      "review": "Bekijken voordat je toevoegt",
+      "searchLabel": "Het officiële MCP-register doorzoeken",
+      "searchPlaceholder": "Zoek op servernaam",
+      "title": "Officieel MCP-register",
+      "unsupportedEntry": "Deze vermelding noemt geen pakket of extern transport dat Oleafly kan beoordelen.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Je apps verbinden"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor en andere MCP-clients kunnen het geopende project lezen, bewerken en compileren, met jouw goedkeuring voor elke wijziging.",
+      "enable": {
+        "ariaLabel": "MCP-server inschakelen",
+        "description": "Luistert alleen op deze computer zolang Oleafly open is.",
+        "label": "MCP-server inschakelen"
+      },
+      "footer": "De server luistert alleen op deze computer (127.0.0.1) en vereist het token hierboven. Bij de eerste twee beleidsregels vraagt Oleafly altijd om bevestiging voor het verwijderen van bestanden. claude.ai in de browser kan een lokale server niet bereiken. Gebruik in plaats daarvan Claude Desktop.",
+      "policy": {
+        "ask": {
+          "description": "Schrijven, hernoemen en verwijderen tonen in Oleafly een goedkeuringskaart met een diff voordat er iets wordt toegepast.",
+          "label": "Elke wijziging bevestigen"
+        },
+        "autoWrites": {
+          "description": "Schrijven en hernoemen gebeurt meteen. Verwijderen toont nog wel een goedkeuringskaart.",
+          "label": "Bewerkingen automatisch goedkeuren, verwijderen bevestigen"
+        },
+        "legend": "Goedkeuringsbeleid",
+        "trust": {
+          "description": "Bestandswijzigingen vragen niets. Shell-opdrachten en computerbesturing vragen altijd om goedkeuring. Je MCP-client blijft een extra controle.",
+          "label": "Deze verbinding vertrouwen"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automatisch gekozen poort van de MCP-server",
+        "label": "Poort",
+        "restartAriaLabel": "MCP-server herstarten en een vrije poort kiezen",
+        "restartTooltip": "Herstart de MCP-server. Oleafly gebruikt deze poort opnieuw als die vrij is, of kiest een andere vrije poort."
+      },
+      "readOnly": {
+        "ariaLabel": "Alleen-lezenmodus",
+        "description": "Externe apps kunnen lezen en compileren, maar nooit bestanden wijzigen.",
+        "label": "Alleen-lezen"
+      },
+      "status": {
+        "restartedAt": "Herstart op {{url}}",
+        "runningAt": "Draait op {{url}}"
+      },
+      "title": "Oleafly MCP-server",
+      "token": {
+        "copyUrl": "URL kopiëren",
+        "enableToView": "Schakel de server in om het token te bekijken.",
+        "help": "Toon of kopieer het bearer-token, kopieer de server-URL, of maak een nieuw token aan voor verbonden MCP-clients.",
+        "hide": "Verbergen",
+        "label": "Bearer-token",
+        "regenerate": "Opnieuw aanmaken",
+        "regenerateWarning": "Bestaande clients hebben het nieuwe token nodig.",
+        "reveal": "Tonen"
+      }
+    },
+    "servers": {
+      "addServer": "Server toevoegen",
+      "browseRegistry": "Register doorbladeren",
+      "card": {
+        "editLabel": "{{name}} bewerken",
+        "enableLabel": "{{name}} inschakelen",
+        "noTools": "Geen tools gemeld.",
+        "removeLabel": "{{name}} weghalen",
+        "toolCount_one": "{{count}} tool",
+        "toolCount_other": "{{count}} tools",
+        "toolsLabel": "Tools van {{name}}",
+        "validate": "Valideren",
+        "validateLabel": "{{name}} valideren"
+      },
+      "description": "Verbind de AI-assistent met lokale opdrachten of externe MCP-endpoints. Oleafly controleert elke ingeschakelde server wanneer deze pagina opent, elke minuut en op verzoek. Het toont ook welke tools elke server levert.",
+      "editor": {
+        "addAndValidate": "Toevoegen en valideren",
+        "argsHint": "Vul één argument per regel in.",
+        "argsLabel": "Argumenten",
+        "commandLabel": "Opdracht",
+        "description": "Ingeschakelde servers worden gecontroleerd voordat hun instellingen worden opgeslagen.",
+        "formView": "Formulier",
+        "jsonHint": "Plak één server met zijn naam als sleutel, of een blok verpakt in mcpServers.",
+        "jsonLabel": "Volledige configuratie",
+        "jsonView": "JSON",
+        "nameLabel": "Servernaam",
+        "pairs": {
+          "addHeader": "Header toevoegen",
+          "addVariable": "Variabele toevoegen",
+          "environmentKeyLabel": "Omgevingssleutel {{index}}",
+          "environmentTitle": "Omgevingsvariabelen",
+          "environmentValueLabel": "Omgevingswaarde {{index}}",
+          "headerKeyLabel": "Headersleutel {{index}}",
+          "headerValueLabel": "Headerwaarde {{index}}",
+          "headersTitle": "Verzoekheaders",
+          "removeHeaderLabel": "Header {{index}} weghalen",
+          "removeVariableLabel": "Variabele {{index}} weghalen",
+          "storedValuePlaceholder": "Opgeslagen waarde",
+          "valuePlaceholder": "Waarde"
+        },
+        "saveAndValidate": "Opslaan en valideren",
+        "saveChanges": "Wijzigingen opslaan",
+        "titleAdd": "MCP-server toevoegen",
+        "titleEdit": "MCP-server bewerken",
+        "transportLegend": "Transport",
+        "transportRemote": "Externe URL",
+        "transportStdio": "Lokale opdracht",
+        "urlLabel": "Externe URL",
+        "viewSwitchLabel": "Configuratie-editor"
+      },
+      "empty": {
+        "description": "Voeg een server toe om de assistent nieuwe tools te geven, of importeer de servers die je al in een andere editor gebruikt.",
+        "title": "Geen servers toegevoegd"
+      },
+      "hideRegistry": "Register verbergen",
+      "importButton": "Importeren uit andere tools",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "{{imported}} geïmporteerd, {{skipped}} overgeslagen, {{failed}} mislukt.",
+      "live": {
+        "checking": "{{name}} controleren.",
+        "connected_one": "{{name}} verbonden. {{count}} tool beschikbaar.",
+        "connected_other": "{{name}} verbonden. {{count}} tools beschikbaar.",
+        "disabled": "{{name}} is uitgeschakeld.",
+        "disabledLastCheckFailed": "{{name}} is uitgeschakeld. De laatste controle is mislukt.",
+        "disabledLastCheckFound_one": "{{name}} is uitgeschakeld. De laatste controle vond {{count}} tool.",
+        "disabledLastCheckFound_other": "{{name}} is uitgeschakeld. De laatste controle vond {{count}} tools.",
+        "failed": "Validatie van {{name}} is mislukt."
+      },
+      "loading": "Servers laden...",
+      "remove": {
+        "confirm": "Server weghalen",
+        "description": "Hiermee verdwijnt {{name}} uit Oleafly. Je kunt hem later opnieuw toevoegen.",
+        "descriptionFallback": "Hiermee verdwijnt de server uit Oleafly. Je kunt hem later opnieuw toevoegen.",
+        "title": "Server weghalen?"
+      },
+      "status": {
+        "checking": "Controleren...",
+        "connected": "Verbonden",
+        "disabled": "Uitgeschakeld",
+        "error": "Fout"
+      },
+      "title": "MCP-servers voor de assistent"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Een woord toevoegen dat overal wordt genegeerd",
+      "placeholder": "Voeg een woord of term toe",
+      "projectAriaLabel": "Een woord toevoegen dat in {{project}} wordt genegeerd",
+      "submitAriaLabel": "Genegeerd woord toevoegen"
+    },
+    "clear": {
+      "confirm": "Woorden wissen",
+      "descriptionFallback": "Hiermee verdwijnen alle termen uit dit woordenboek. Ze worden meteen weer gecontroleerd.",
+      "descriptionGlobal": "Hiermee verdwijnen alle termen uit het algemene woordenboek. Ze worden meteen weer gecontroleerd.",
+      "descriptionProject": "Hiermee verdwijnen alle termen uit {{project}}. Ze worden meteen weer gecontroleerd.",
+      "descriptionSuppressed": "Hiermee verdwijnen alle termen uit de gesloten bevindingen in {{project}}. Ze worden meteen weer gecontroleerd.",
+      "suppressedConfirm": "Weer tonen",
+      "suppressedTitle": "Gesloten bevindingen weer tonen?",
+      "title": "Genegeerde woorden wissen?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} gesloten, van de {{limit}} die het project kan onthouden",
+      "hidden_one": "{{count}} grammaticabevinding is in dit project verborgen omdat je Negeren in dit project koos. Weer tonen onderstreept hem opnieuw.",
+      "hidden_other": "{{count}} grammaticabevindingen zijn in dit project verborgen omdat je Negeren in dit project koos. Weer tonen onderstreept ze opnieuw.",
+      "none": "Er is niets gesloten. Kies je Negeren in dit project bij een grammaticabevinding, dan komt die hier te staan.",
+      "showAgain": "Weer tonen",
+      "title": "Gesloten bevindingen",
+      "titleInProject": "Gesloten bevindingen in {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Woorden die je hier toevoegt slaat de proeflezer in elk project over.",
+      "scope": "Geldt voor elk project"
+    },
+    "intro": "Voeg woorden toe aan je persoonlijke spellingwoordenboek. Deze woorden staan in je lokale instellingen en worden in alle projecten genegeerd. Het vergelijken is Unicode-genormaliseerd en niet hoofdlettergevoelig.",
+    "profileRules": {
+      "description": "Staan standaard uit omdat ze bij artikelen in de weg zitten. Zet aan wat je wilt gebruiken.",
+      "example": "Voorbeeld: {{example}}",
+      "help": "Harper is afgestemd op chat en e-mail. Deze regels duwen een stijl door die artikelen niet volgen, zoals kB en min voluit schrijven, of struikelen over de plaatshouders die voor LaTeX-opmaak staan. Daarom houdt Oleafly ze uit. Bij elke regel zie je wat hij zou markeren. Zet hem aan als je die bevindingen wilt.",
+      "reasons": {
+        "AvoidContractions": "Vraagt je elke samentrekking voluit te schrijven.",
+        "CompoundNouns": "Plakt een samenstelling aan elkaar die als twee woorden was geschreven.",
+        "Dashes": "Vervangt een getypte -- of --- door het juiste streepje.",
+        "DiscourseMarkers": "Markeert een zin die begint met een signaalwoord zoals however en daarna de komma weglaat.",
+        "EllipsisLength": "Corrigeert een beletselteken dat niet uit drie punten bestaat.",
+        "ExpandAlgorithm": "Wil algo voluit.",
+        "ExpandArgument": "Wil arg voluit.",
+        "ExpandCoordinate": "Wil coord voluit.",
+        "ExpandMemoryShorthands": "Wil KB en MB voluit.",
+        "ExpandParameter": "Wil param voluit.",
+        "ExpandStandardInputAndOutput": "Wil stdin en stdout voluit.",
+        "ExpandTimeShorthands": "Wil min en sec voluit.",
+        "ExplainLikeImFive": "Schrijft een initiaalwoord voluit.",
+        "FillerWords": "Markeert woorden die het als stopwoord telt.",
+        "Hedging": "Markeert slagen om de arm zoals I would argue that en to a certain degree.",
+        "LongSentences": "Markeert elke zin die langer is dan de ingestelde lengte.",
+        "MergeWords": "Plakt een woord aan elkaar dat door een losse spatie in tweeën viel, zoals to gether.",
+        "MoreAdjective": "Geeft de vergrotende trap de voorkeur boven more plus een bijvoeglijk naamwoord.",
+        "NoFrenchSpaces": "Haalt de spatie weg vóór leestekens die de Franse typografie gebruikt.",
+        "NoOxfordComma": "Haalt de komma vóór het laatste opsommingslid weg.",
+        "NumericRangeEnDash": "Wil een en-streepje tussen de uiteinden van een getallenbereik.",
+        "OxfordComma": "Vereist de komma vóór het laatste opsommingslid.",
+        "SentenceCapitalization": "Zet het eerste woord van een zin met een hoofdletter, ook als die zin na gemaskeerde opmaak begint.",
+        "Spaces": "Trekt herhaalde spaties samen, die het proza-masker achterlaat waar opmaak is weggehaald.",
+        "SplitWords": "Splitst een woord dat uit twee woorden hoort te bestaan, zoals alot.",
+        "TransposedSpace": "Verplaatst een spatie die aan de verkeerde kant van een leesteken staat, wat maskeren vaak oplevert."
+      },
+      "title": "Regels die het academische profiel uit laat staan",
+      "toggleAriaLabel": "{{rule}} aanzetten"
+    },
+    "projects": {
+      "empty": "Open een project om projectspecifieke termen toe te voegen.",
+      "emptyDescription": "Woorden die je voor dit project toevoegt slaat de proeflezer alleen hier over.",
+      "terms_one": "{{used}} / {{limit}} term",
+      "terms_other": "{{used}} / {{limit}} termen"
+    },
+    "reset": {
+      "confirmationDescription": "Hiermee verdwijnt elk genegeerd woord definitief, zowel algemeen als per project, en gaat elke grammaticaregel die je hebt uitgezet weer aan. Het academische profiel houdt zijn eigen regels uit. Het proeflezen markeert die woorden weer.",
+      "sectionName": "Woordenboek"
+    },
+    "search": {
+      "ariaLabel": "Genegeerde woorden zoeken",
+      "placeholder": "Zoek in het woordenboek"
+    },
+    "tabs": {
+      "global": "Algemeen",
+      "projects": "Projecten"
+    },
+    "turnedOff": {
+      "description": "Regels die je hebt uitgezet en bevindingen die je in dit project hebt genegeerd.",
+      "help": "Beweeg in de editor over een onderstreept woord of een onderstreepte zin en een klein kaartje toont wat Harper vond, met acties om het op te lossen of te negeren. Regels die je via dat kaartje uitzette en bevindingen die je in dit project negeerde staan hier, zodat je ze kunt terughalen.",
+      "listAriaLabel": "Uitgezette grammaticaregels",
+      "none": "Je hebt nog geen regels uitgezet.",
+      "restoreAriaLabel": "De regel {{rule}} weer aanzetten",
+      "restoreTitle": "De regel “{{rule}}” weer aanzetten",
+      "title": "Grammaticaregels en gesloten bevindingen"
+    },
+    "words": {
+      "emptyCompact": "Nog niets genegeerd.",
+      "emptyTitle": "Nog niets genegeerd",
+      "listAriaLabel": "Genegeerde woorden",
+      "noMatches": "Geen genegeerde woorden komen overeen met deze zoekopdracht.",
+      "removeAriaLabel": "{{word}} niet langer negeren",
+      "removeTitle": "“{{word}}” niet langer negeren"
+    }
+  },
+  "reset": {
+    "button": "Terugzetten naar standaardwaarden",
+    "confirmDescription": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden. De overige instellingen blijven ongewijzigd.",
+    "confirmTitle": "Instellingen van {{sectionName}} resetten?",
+    "description": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden.",
+    "label": "Instellingen resetten"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Zoek en voer opdrachten van Oleafly uit.",
+        "label": "Opdrachtenpalet"
+      },
+      "forwardSync": {
+        "description": "Spring van de cursor in de editor naar de gecompileerde PDF.",
+        "label": "Naar de PDF"
+      },
+      "recompile": {
+        "description": "Compileer het huidige project en toon de PDF.",
+        "label": "Opnieuw compileren"
+      },
+      "searchDocuments": {
+        "description": "Zoek in projecten en documenten.",
+        "label": "Alle documenten doorzoeken"
+      },
+      "shortcutReference": {
+        "description": "Open het overzicht met sneltoetsen van het project.",
+        "label": "Sneltoetsenoverzicht"
+      },
+      "toggleBrowser": {
+        "description": "Toon of verberg de projectbrowser.",
+        "label": "Browser tonen of verbergen"
+      },
+      "toggleSidebar": {
+        "description": "Toon of verberg de projectzijbalk.",
+        "label": "Zijbalk tonen of verbergen"
+      },
+      "toggleTerminal": {
+        "description": "Toon of verberg de projectterminal.",
+        "label": "Terminal tonen of verbergen"
+      }
+    },
+    "application": {
+      "editAriaLabel": "{{action}} bewerken, nu {{shortcut}}",
+      "heading": "Sneltoetsen van de applicatie",
+      "prompt": "Druk op de nieuwe toetsencombinatie",
+      "recordAriaLabel": "{{action}} opnemen. Druk op een sneltoets.",
+      "recording": "Opnemen",
+      "resetAriaLabel": "{{action}} resetten"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "AI vragen de selectie te bewerken",
+        "bold": "Vet",
+        "findAndReplace": "Zoeken en vervangen",
+        "findReferences": "Referenties zoeken",
+        "goToDefinition": "Naar de definitie",
+        "goToDefinitionWithPointer": "Naar de definitie met de muis",
+        "indentOrAcceptAutocomplete": "Inspringen of aanvulling accepteren",
+        "italic": "Cursief",
+        "jumpToSourceFromPdf": "Vanuit de PDF naar de broncode springen",
+        "redo": "Opnieuw",
+        "renameSymbol": "Symbool in het hele project hernoemen",
+        "slashCommandMenu": "Invoegmenu met slash-opdrachten",
+        "triggerAutocomplete": "Automatisch aanvullen oproepen",
+        "undo": "Ongedaan maken"
+      },
+      "managed": "Beheerd door de editor"
+    },
+    "categories": {
+      "codeIntelligence": "Code-intelligentie",
+      "editor": "Editor",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Al toegewezen aan {{action}}.",
+      "reserved": "{{shortcut}} is gereserveerd door het besturingssysteem."
+    },
+    "intro": "Pas de sneltoetsen van de applicatie aan en bekijk de toetsencombinaties van de editor zelf.",
+    "reserved": {
+      "closeWindow": "Venster sluiten",
+      "copy": "Kopiëren",
+      "cut": "Knippen",
+      "paste": "Plakken",
+      "quit": "Afsluiten",
+      "save": "Opslaan",
+      "selectAll": "Alles selecteren",
+      "systemSearch": "Systeemzoeken",
+      "windowSwitching": "Wisselen van venster"
+    },
+    "reset": {
+      "sectionName": "Sneltoetsen"
+    },
+    "tabs": {
+      "application": "Applicatie"
+    },
+    "editorKeys": {
+      "clearHint": "Druk op Backspace om deze actie zonder toets te laten.",
+      "heading": "Editortoetsen",
+      "intro": "Deze toetsen werken in de broncode-editor. De Vim- en Emacs-modus houden hun eigen bindingen.",
+      "labels": {
+        "addCursorAbove": "Cursor erboven toevoegen",
+        "addCursorBelow": "Cursor eronder toevoegen",
+        "deleteLine": "Regel verwijderen",
+        "duplicate": "Selectie of regel dupliceren",
+        "gotoLine": "Naar regel gaan",
+        "indentLess": "Minder inspringen",
+        "indentMore": "Meer inspringen",
+        "lowercase": "Kleine letters",
+        "selectNextOccurrence": "Volgende voorkomen selecteren",
+        "titleCase": "Beginhoofdletters",
+        "toggleComment": "Commentaar aan- of uitzetten",
+        "uppercase": "Hoofdletters"
+      },
+      "unbound": "Niet ingesteld"
+    }
+  }
+}

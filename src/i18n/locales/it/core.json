@@ -1,0 +1,618 @@
+{
+  "accents": {
+    "blue": "Blu",
+    "green": "Verde",
+    "orange": "Arancione",
+    "purple": "Viola",
+    "rose": "Rosa antico",
+    "teal": "Verde acqua"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Serve il bridge",
+      "cliMissing": "CLI non trovata",
+      "ready": "Pronto",
+      "unavailable": "Non disponibile"
+    },
+    "requestFailed": "Non è stato possibile completare la richiesta ACP."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Questo progetto ha raggiunto il suo budget AI di {{budget}}. Aumenta o azzera il budget nelle impostazioni per continuare.",
+    "warned": "Questo progetto ha usato {{spent}} del suo budget AI di {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Per questa azione è stato usato l'assistente Oleafly."
+  },
+  "bibtex": {
+    "duplicateDoi": "DOI duplicato, condiviso con: {{keys}}",
+    "duplicateKey": "Chiave di citazione duplicata",
+    "invalidYear": "L'anno \"{{year}}\" non è un numero di quattro cifre",
+    "missingField": "Campo obbligatorio mancante: {{fields}}",
+    "missingKey": "La voce di tipo @{{type}} non ha una chiave di citazione",
+    "unknownType": "Tipo di voce sconosciuto @{{type}}",
+    "unreadableFields": "Impossibile leggere i campi di \"{{entry}}\"",
+    "unterminatedEntry": "Voce non terminata vicino al carattere {{position}}",
+    "unusualField": "Campo insolito per @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} è cambiato durante l'importazione della citazione. Riprova.",
+    "noArxivEntry": "Nessuna voce arXiv trovata.",
+    "noReferences": "Nessun riferimento trovato in quel file.",
+    "offline": "La ricerca delle citazioni richiede la rete. Disattiva la modalità offline nelle impostazioni.",
+    "parseFailed": "Impossibile analizzare la citazione.",
+    "projectChanged": "Il progetto è cambiato durante l'importazione della citazione.",
+    "projectChangedNotInserted": "Il progetto è cambiato durante l'importazione della citazione. La citazione non è stata inserita.",
+    "projectChangedRetry": "Il progetto è cambiato durante l'importazione della citazione. Riprova nel progetto originale.",
+    "readFailed": "Impossibile leggere {{path}}: {{detail}}",
+    "unrecognizedFile": "Tipo di file non riconosciuto: {{name}}",
+    "writeFailed": "Impossibile scrivere {{path}}: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Voce Oleafly aggiunta a {{path}}. Citala con {{markup}}.",
+    "failed": "Impossibile aggiungere la citazione di Oleafly. Copiala invece dalle impostazioni, in Aiuto e informazioni.",
+    "present": "{{path}} ha già la voce Oleafly. Citala con {{markup}}.",
+    "undo": "Annulla"
+  },
+  "compatibility": {
+    "biblatexBiber": "Questo progetto usa biblatex/Biber per la bibliografia.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_many": "{{title}} (+{{more}} altri)",
+    "blockerFinding_other": "{{title}} (+{{more}} altri)",
+    "chooseEngine": "Scegli il motore…",
+    "importNotes_one": "{{count}} nota di importazione: {{title}}",
+    "importNotes_many": "{{count}} note di importazione: {{title}} (+{{more}} altre)",
+    "importNotes_other": "{{count}} note di importazione: {{title}} (+{{more}} altre)"
+  },
+  "compile": {
+    "engineNotLoaded": "La compilazione è disattivata finché non viene caricato il motore del documento.",
+    "noOfflineMode": "{{engine}} non espone una modalità di compilazione offline. La compilazione procede normalmente.",
+    "retry": "Compila di nuovo"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Sposta nel cestino tutti i progetti di sviluppo. Niente viene eliminato definitivamente.",
+        "title": "Svuota i progetti"
+      },
+      "replayFirstRun": {
+        "description": "Reimposta tutti i tour, chiude il progetto attuale e torna alla schermata di benvenuto.",
+        "title": "Ripeti il primo avvio"
+      },
+      "resetAndSeed": {
+        "description": "Sposta i progetti attuali nel cestino, poi copia tutti i {{count}} fixture reali fissati dalla cache locale.",
+        "title": "Reimposta e popola"
+      },
+      "resetUiState": {
+        "description": "Cancella le impostazioni locali di Oleafly e lo stato salvato dell'interfaccia senza eliminare i progetti.",
+        "title": "Reimposta lo stato dell'interfaccia"
+      },
+      "seedCorpus": {
+        "action": "Popola il corpus",
+        "description": "Copia {{count}} progetti di ricerca da ~/Codespace/Oleafly/oleafly-seed. Articoli, tesi, libri, interventi, poster e figure in LaTeX e Typst, tutti verificati e compilabili con i motori inclusi. I fixture esistenti vengono mantenuti.",
+        "title": "Popola il corpus di ricerca"
+      }
+    },
+    "closeProjectFailed": "Non è stato possibile chiudere in sicurezza il progetto aperto.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Svuota i progetti",
+        "description": "Tutti i progetti della libreria di sviluppo isolata finiscono nel suo cestino. La tua libreria Oleafly di produzione non viene toccata.",
+        "title": "Vuoi svuotare tutti i progetti di sviluppo?"
+      },
+      "fallbackTitle": "Conferma l'azione di sviluppo",
+      "resetAndSeed": {
+        "action": "Reimposta e popola",
+        "description": "Tutti i progetti di sviluppo attuali finiscono nel cestino, poi Oleafly copia {{count}} fixture di ricerca dalla cache locale oleafly-seed.",
+        "title": "Vuoi reimpostare e popolare la libreria di sviluppo?"
+      },
+      "resetBrowser": {
+        "action": "Reimposta lo stato dell'interfaccia",
+        "description": "Questa operazione cancella impostazioni, tour e altro stato del browser di Oleafly per questa origine di sviluppo, poi ricarica l'app. I file di progetto restano sul disco.",
+        "title": "Vuoi reimpostare lo stato dell'interfaccia di sviluppo?"
+      }
+    },
+    "debugOnly": {
+      "description": "Questi controlli vengono caricati solo dalla build di sviluppo Vite. Le build di produzione rifiutano questo modulo se il suo sentinella compare in un asset generato.",
+      "title": "Solo build di debug"
+    },
+    "library": {
+      "checking": "Controllo del percorso della libreria…",
+      "label": "Libreria di sviluppo",
+      "locked": "I controlli dei progetti sono bloccati perché questa non è la sandbox .oleafly-dev."
+    },
+    "nav": "Sviluppatore",
+    "projectsRecycled_one": "{{count}} progetto spostato nel cestino.",
+    "projectsRecycled_many": "{{count}} progetti spostati nel cestino.",
+    "projectsRecycled_other": "{{count}} progetti spostati nel cestino.",
+    "replayFailed": "Non è stato possibile reimpostare il tour del primo avvio.",
+    "resetAndSeedSummary": "Spostati {{removed}} progetti nel cestino e popolato il corpus di ricerca: {{created}} creati, {{skipped}} già presenti.",
+    "resetFailed": "Non è stato possibile reimpostare la sandbox di sviluppo.",
+    "sandboxOnly": "I fixture di ricerca possono essere copiati solo nella sandbox .oleafly-dev.",
+    "seedFailed": "Non è stato possibile popolare il corpus di ricerca.",
+    "seedFailures_one": "{{summary}} {{count}} fixture non riuscito. Primo errore: {{name}}: {{message}}",
+    "seedFailures_many": "{{summary}} {{count}} fixture non riusciti. Primo errore: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} fixture non riusciti. Primo errore: {{name}}: {{message}}",
+    "seedSummary": "Corpus di ricerca popolato: {{created}} creati, {{skipped}} già presenti.",
+    "unknownSeedError": "Errore di popolamento sconosciuto"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "Immagine PNG",
+      "zipArchive": "Archivio Zip"
+    }
+  },
+  "dictionary": {
+    "full": "Il tuo dizionario è pieno, quindi quella parola viene solo nascosta in questo documento. Rimuovine una nelle impostazioni per salvarla.",
+    "wordTooLong": "È troppo lunga per essere salvata come parola, quindi viene solo nascosta in questo documento. Una parola può avere al massimo {{max}} caratteri."
+  },
+  "documentScan": {
+    "complete": "Scansione completata",
+    "failed": "Scansione del documento non riuscita",
+    "processed": "Elaborati {{current}}/{{total}} paragrafi…",
+    "processing": "Elaborazione di {{current}}/{{total}} paragrafi…",
+    "skippedEmpty": "Ricerca vuota saltata ({{current}}/{{total}})",
+    "splitting": "Suddivisione del documento in paragrafi…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Non è stato possibile caricare i dettagli del motore del documento. Le azioni specifiche del motore sono disattivate.",
+      "renameReloadFailed": "Non è stato possibile caricare i dettagli del motore del documento dopo la rinomina del documento principale.",
+      "stillLoading": "I dettagli del motore del documento sono ancora in caricamento."
+    }
+  },
+  "export": {
+    "pdfFailed": "Non è stato possibile salvare il PDF",
+    "pdfFailedDetail": "Non è stato possibile salvare il PDF: {{detail}}",
+    "pngFailed": "Non è stato possibile salvare il PNG",
+    "pngFailedDetail": "Non è stato possibile salvare il PNG: {{detail}}",
+    "revealFailed": "Il file è stato salvato, ma Oleafly non è riuscito ad aprirne la cartella (permesso negato). Controlla la posizione che hai scelto nella finestra di salvataggio.",
+    "saved": "{{kind}} salvato · {{fileName}}",
+    "showInFolder": "Mostra nella cartella"
+  },
+  "externalChange": {
+    "deletionRestored": "Un'eliminazione esterna si è sovrapposta a modifiche non salvate. Le tue modifiche locali sono state ripristinate.",
+    "localEditKept": "È arrivata una modifica esterna a \"{{path}}\" mentre avevi cambiamenti non salvati. La tua modifica locale è stata mantenuta.",
+    "persistExternalFailed": "Non è stato possibile salvare l'ultimo aggiornamento esterno di \"{{path}}\".",
+    "preserveLocalFailed": "Non è stato possibile conservare il tuo aggiornamento locale di \"{{path}}\".",
+    "reloadFailed": "Le impostazioni del progetto sono state aggiornate, ma alcuni file modificati non sono stati ricaricati.",
+    "restoreLocalFailed": "Non è stato possibile ripristinare il tuo aggiornamento non salvato di \"{{path}}\"."
+  },
+  "fonts": {
+    "systemDefault": "Predefinito di sistema",
+    "terminalDefault": "Predefinito del terminale"
+  },
+  "imageToLatex": {
+    "failed": "Conversione da immagine a LaTeX non riuscita: {{detail}}",
+    "inserted": "LaTeX inserito dall'immagine",
+    "transcribing": "Trascrizione dell'immagine…"
+  },
+  "import": {
+    "arxivImported": "Sorgente arXiv importato. Compila il progetto per controllare il risultato.",
+    "chooseOfferedProjectType": "Scegli uno dei tipi di progetto proposti per questo file.",
+    "invalidArxivId": "Incolla il link a un articolo arXiv oppure un identificativo come 2301.01234.",
+    "supportedDocumentTypes": "Scegli uno dei tipi di documento supportati.",
+    "conversionNotice": "Abbiamo convertito il tuo contenuto in LaTeX. Potresti dover sistemare lo stile, soprattutto per tabelle, figure e citazioni.",
+    "figureSaved": "{{name}} salvata",
+    "pdfProjectCreated": "Progetto creato dal PDF. Controllalo prima di fidarti della ricostruzione.",
+    "pickPdfOrDocx": "Scegli un file .pdf o .docx",
+    "texSaved": "File .tex salvato",
+    "unsupportedFile": "Scegli un file .zip, .docx, .md o .markdown.",
+    "zipSaveFailed": "Impossibile salvare l'archivio ZIP.",
+    "zipSaved": "File .zip salvato"
+  },
+  "inlineAi": {
+    "concise": "Rendi conciso",
+    "expand": "Amplia",
+    "fixSource": "Correggi il sorgente",
+    "grammar": "Correggi la grammatica",
+    "improve": "Migliora",
+    "translate": "Traduci"
+  },
+  "intelligence": {
+    "analysisFailed": "L'analisi del progetto per la revisione attuale non è riuscita.",
+    "analyzing": "L'analisi del progetto sta esaminando la revisione attuale.",
+    "couldNotSend": "Non è stato possibile inviare l'analisi del progetto al worker.",
+    "disposed": "Il worker di analisi del progetto è stato chiuso.",
+    "disposedDuringRequest": "Il worker di analisi del progetto è stato chiuso.",
+    "failed": "Analisi del progetto non riuscita.",
+    "identityMismatch": "L'identità della risposta di analisi del progetto non corrisponde alla richiesta.",
+    "malformedResponse": "Il worker di analisi del progetto ha restituito una risposta malformata.",
+    "malformedSnapshotIdentity": "L'identità dell'istantanea di analisi del progetto era malformata.",
+    "noProject": "Nessun progetto attivo.",
+    "partialFiles_one": "{{count}} file ha prodotto un'analisi parziale recuperabile.",
+    "partialFiles_many": "{{count}} file hanno prodotto un'analisi parziale recuperabile.",
+    "partialFiles_other": "{{count}} file hanno prodotto un'analisi parziale recuperabile.",
+    "retainedStale": "Il contenuto del progetto è cambiato. L'analisi conservata è obsoleta mentre viene elaborata la revisione attuale.",
+    "sourceGraphRefreshing": "I file del progetto sono cambiati. Il grafo dei sorgenti si sta aggiornando.",
+    "sourceSnapshotsLoading": "I file del progetto sono cambiati. Le istantanee dei sorgenti si stanno caricando per l'analisi attuale.",
+    "staleSnapshot": "Il worker di analisi del progetto non ha nessuna analisi per questa istantanea.",
+    "stopped": "L'analisi del progetto è ferma.",
+    "timedOut": "L'analisi del progetto è scaduta.",
+    "typeMismatch": "Il tipo della risposta di analisi del progetto non corrisponde alla richiesta.",
+    "unexpectedResponse": "Il worker di analisi del progetto ha restituito una risposta imprevista.",
+    "workerFailed": "Il worker di analisi del progetto non è riuscito.",
+    "workerRestarted": "Il worker di analisi del progetto è stato riavviato dopo un timeout.",
+    "workerUnavailable": "Il worker di analisi del progetto non è disponibile."
+  },
+  "latexPackages": {
+    "algorithm2e": "Composizione di algoritmi",
+    "amsmath": "Composizione matematica avanzata",
+    "amssymb": "Simboli matematici estesi",
+    "amsthm": "Ambienti per teoremi e dimostrazioni",
+    "array": "Array e tabulati estesi",
+    "authblk": "Blocchi di autori e affiliazioni",
+    "babel": "Supporto multilingue e lingua del documento",
+    "biblatex": "Supporto bibliografico avanzato",
+    "bookmark": "Segnalibri PDF migliorati",
+    "booktabs": "Filetti professionali per le tabelle",
+    "caption": "Personalizzazione delle didascalie",
+    "cleveref": "Riferimenti incrociati intelligenti (da caricare dopo hyperref)",
+    "csquotes": "Virgolette sensibili al contesto (richiesto da biblatex)",
+    "enumitem": "Personalizzazione degli elenchi",
+    "fancyhdr": "Intestazioni e piè di pagina personalizzati",
+    "float": "Posizionamento migliorato dei flottanti",
+    "fontspec": "Selezione di font OpenType (Xe/LuaLaTeX)",
+    "geometry": "Personalizzazione del layout di pagina",
+    "graphicx": "Inclusione di grafica e immagini",
+    "hyperref": "Collegamenti, segnalibri e metadati PDF",
+    "inputenc": "Codifica di input (non necessaria con Xe/LuaLaTeX)",
+    "lineno": "Numeri di riga per le copie di revisione",
+    "lipsum": "Testo segnaposto (lorem ipsum)",
+    "listings": "Listati di codice (il loro contenuto non viene taggato)",
+    "mathtools": "Superset di amsmath con correzioni e strumenti",
+    "microtype": "Rifiniture microtipografiche",
+    "minted": "Listati di codice evidenziati con Pygments",
+    "multirow": "Celle di tabella su più righe",
+    "natbib": "Citazioni autore-anno e numeriche",
+    "parskip": "Spaziatura tra i paragrafi",
+    "pdfpages": "Inclusione di pagine intere da un altro PDF",
+    "setspace": "Controllo dell'interlinea",
+    "siunitx": "Unità SI e formattazione dei numeri",
+    "subcaption": "Sottofigure e sottotabelle",
+    "subfig": "Vecchio pacchetto per il layout delle sottofigure",
+    "tabularx": "Tabelle a larghezza automatica",
+    "threeparttable": "Tabelle con note sotto",
+    "tikz": "Grafica vettoriale programmabile (richiede testo alternativo manuale)",
+    "titlesec": "Formattazione dei titoli di sezione",
+    "todonotes": "Note di lavoro a margine per le bozze",
+    "unicode-math": "Matematica Unicode per Xe/LuaLaTeX (necessaria per la matematica taggata)",
+    "url": "Composizione degli URL",
+    "wrapfig": "Figure con il testo che le circonda",
+    "xcolor": "Supporto per i colori"
+  },
+  "literatureSources": {
+    "arxiv": "Oltre 2,4 milioni di preprint di fisica, matematica, informatica, biologia quantitativa e ambiti affini.",
+    "crossref": "Il registro DOI con i metadati di oltre 150 milioni di prodotti della ricerca.",
+    "googleScholar": "Risultati di Google Scholar tramite Serper. Richiede una chiave API Serper in Impostazioni → Integrazioni → Ricerca citazioni.",
+    "openalex": "Un catalogo aperto di lavori scientifici, autori, fonti, istituzioni, argomenti, editori e finanziatori.",
+    "pubmed": "Oltre 40 milioni di citazioni e abstract dalla letteratura biomedica e delle scienze della vita, MEDLINE compreso.",
+    "semanticScholar": "Un indice scientifico con grafi delle citazioni, dati sulle citazioni influenti e riassunti TLDR.",
+    "uspto": "Brevetti concessi e domande pubblicate negli Stati Uniti, per stato dell'arte e ricerca applicata. La ricerca è sospesa durante la migrazione a PatentsView.",
+    "usptoPaused": "USPTO ha sospeso temporaneamente le API di ricerca PatentsView durante la migrazione al suo Open Data Portal.",
+    "yearRangeInvalid": "L'anno iniziale non può essere successivo all'anno finale."
+  },
+  "mcp": {
+    "openProjectSummary": "Apri il progetto {{id}}",
+    "useToolSummary": "Usa {{tool}} dal server MCP {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "Il server MCP '{{name}}' ha dichiarazioni di tipo e di trasporto in conflitto.",
+    "exactlyOneServer": "Il JSON del server MCP deve contenere esattamente un server.",
+    "fieldBoolean": "Il campo '{{field}}' del server MCP '{{name}}' deve essere un booleano.",
+    "fieldString": "Il campo '{{field}}' del server MCP '{{name}}' deve essere una stringa.",
+    "fieldStringArray": "Il campo '{{field}}' del server MCP '{{name}}' deve essere un array di stringhe.",
+    "fieldStringRecord": "Il campo '{{field}}' del server MCP '{{name}}' deve essere un oggetto di valori stringa.",
+    "jsonMalformed": "Il JSON del server MCP è malformato.",
+    "jsonNotObject": "Il JSON del server MCP deve essere un oggetto.",
+    "mcpServersNotObject": "Il campo 'mcpServers' del JSON del server MCP deve essere un oggetto.",
+    "serverNotObject": "Il server MCP '{{name}}' deve essere un oggetto.",
+    "structural": "{{detail}} Atteso {\"server-name\": {...}} oppure {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Server sconosciuto",
+    "unsupportedTransport": "Il server MCP '{{name}}' ha un trasporto non supportato: '{{transport}}'.",
+    "unsupportedType": "Il server MCP '{{name}}' ha un tipo non supportato: '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Diagramma",
+    "renderFailed": "Impossibile visualizzare il diagramma.",
+    "rendering": "Visualizzazione del diagramma"
+  },
+  "missingPackages": {
+    "action_one": "Trova e installa {{name}}",
+    "action_many": "Trova e installa {{count}} file",
+    "action_other": "Trova e installa {{count}} file",
+    "installing_one": "Installazione di {{name}}. La compilazione riparte al termine.",
+    "installing_many": "Installazione di {{count}} pacchetti. La compilazione riparte al termine.",
+    "installing_other": "Installazione di {{count}} pacchetti. La compilazione riparte al termine.",
+    "summary_one": "La compilazione non ha trovato \"{{name}}\". Cerca in TeX Live il pacchetto che lo fornisce.",
+    "summary_many": "La compilazione non ha trovato {{names}}. Cerca in TeX Live i pacchetti che li forniscono.",
+    "summary_other": "La compilazione non ha trovato {{names}}. Cerca in TeX Live i pacchetti che li forniscono."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Finestra di contesto da {{tokens}} token",
+      "deprecated": {
+        "label": "Deprecato",
+        "title": "Il provider ha deprecato questo modello"
+      },
+      "reasoning": {
+        "label": "Ragionamento",
+        "title": "Modello di ragionamento"
+      },
+      "tools": {
+        "label": "Strumenti",
+        "title": "Può chiamare strumenti"
+      },
+      "vision": {
+        "label": "Visione",
+        "title": "Accetta immagini"
+      }
+    },
+    "listChange": {
+      "none": "Nessuna modifica",
+      "summary": "{{added}} aggiunti, {{removed}} rimossi"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "L'analisi dei riferimenti del progetto non è disponibile.",
+    "analysisUpdating": "I riferimenti del progetto si stanno aggiornando.",
+    "definitionsFor": "Definizioni di {{name}}",
+    "edits_one": "{{count}} modifica",
+    "edits_many": "{{count}} modifiche",
+    "edits_other": "{{count}} modifiche",
+    "files_one": "{{count}} file",
+    "files_many": "{{count}} file",
+    "files_other": "{{count}} file",
+    "nameExists": "\"{{name}}\" esiste già.",
+    "noDefinition": "Nessuna definizione trovata per \"{{name}}\"",
+    "noReferences": "Nessun riferimento a \"{{name}}\"",
+    "notRenamable": "Questo simbolo non può essere rinominato.",
+    "nothingToRename": "Niente da rinominare.",
+    "referencesFor": "Riferimenti a {{name}}",
+    "renamePartial": "Rinominato in \"{{name}}\" in {{edited}} file su {{total}}. Impossibile scrivere {{files}}.",
+    "renamed": "Rinominato in \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Non è stato possibile scaricare pandoc. Installalo manualmente, poi riprova",
+    "downloadingPercent": "Download di pandoc… {{progress}}%",
+    "downloadingSize": "Download di pandoc… {{megabytes}} MB",
+    "installGuide": "Guida all'installazione",
+    "installed": "pandoc installato"
+  },
+  "project": {
+    "copyFailed": "Impossibile copiare \"{{path}}\".",
+    "dateUnavailable": "Non disponibile",
+    "importFailed": "Impossibile importare. Controlla il log dell'app per i dettagli.",
+    "imported": "Progetto importato.",
+    "openFailed": "Impossibile aprire il progetto. Controlla il log dell'app per i dettagli.",
+    "restoringUnsavedFiles": "Un aggiornamento del progetto ha rimosso file con modifiche non salvate. Oleafly ha conservato le tue modifiche e sta ripristinando quei file.",
+    "saveBlockedClose": "Il progetto è rimasto aperto perché uno o più file non sono stati salvati.",
+    "saveBlockedDiscard": "Scarta le modifiche ed esci",
+    "saveBlockedMany": "{{count}} file non sono stati salvati: {{files}}. Il primo è aperto nell'editor con le sue modifiche non salvate ({{reason}}). Resta per risolvere il problema oppure scarta le modifiche non salvate di quei file ed esci.",
+    "saveBlockedOne": "{{file}} non è stato salvato ({{reason}}). È aperto nell'editor con le tue modifiche non salvate. Resta per risolvere il problema oppure scarta quelle modifiche ed esci.",
+    "saveBlockedStay": "Resta",
+    "saveBlockedSwitch": "Il progetto è rimasto aperto perché uno o più file non sono stati salvati.",
+    "saveBlockedTitle": "Alcuni file non sono stati salvati",
+    "updatedDaysAgo_one": "Aggiornato {{count}} giorno fa",
+    "updatedDaysAgo_many": "Aggiornato {{count}} giorni fa",
+    "updatedDaysAgo_other": "Aggiornato {{count}} giorni fa",
+    "updatedOn": "Aggiornato il {{date}}",
+    "updatedToday": "Aggiornato oggi",
+    "updatedYesterday": "Aggiornato ieri"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analisi non riuscita: {{message}}",
+    "beginIsHere": "{{command}} è qui.",
+    "beginWithoutEnd": "{{command}} non ha un \\end corrispondente.",
+    "bibliographyFileMissing": "Il file bibliografico \"{{file}}\" non è stato trovato nel progetto.",
+    "citationHasManyDefinitions_one": "La citazione \"{{name}}\" ha {{count}} definizione possibile.",
+    "citationHasManyDefinitions_many": "La citazione \"{{name}}\" ha {{count}} definizioni possibili.",
+    "citationHasManyDefinitions_other": "La citazione \"{{name}}\" ha {{count}} definizioni possibili.",
+    "citationKeyDuplicated_one": "La chiave di citazione \"{{name}}\" è definita {{count}} volta.",
+    "citationKeyDuplicated_many": "La chiave di citazione \"{{name}}\" è definita {{count}} volte.",
+    "citationKeyDuplicated_other": "La chiave di citazione \"{{name}}\" è definita {{count}} volte.",
+    "citationUnresolved": "Non è stato possibile risolvere la citazione \"{{name}}\".",
+    "definedHere": "Definizione di {{kind}} \"{{name}}\".",
+    "duplicateTargetDefined_one": "Il target {{kind}} \"{{name}}\" è definito {{count}} volta.",
+    "duplicateTargetDefined_many": "Il target {{kind}} \"{{name}}\" è definito {{count}} volte.",
+    "duplicateTargetDefined_other": "Il target {{kind}} \"{{name}}\" è definito {{count}} volte.",
+    "endWithoutBegin": "{{command}} non ha un \\begin corrispondente.",
+    "entryMissingFieldList": "La voce bibliografica \"{{key}}\" non ha un elenco di campi.",
+    "expectedEndBefore": "Atteso {{expected}} prima di {{found}}.",
+    "fieldIncompleteValue": "Il campo \"{{name}}\" ha un valore incompleto.",
+    "fieldMissingEquals": "Al campo \"{{name}}\" manca \"=\".",
+    "fieldRepeated": "Il campo \"{{name}}\" è ripetuto nella voce bibliografica \"{{key}}\".",
+    "fileNotLoaded": "Il file sorgente non è stato caricato per l'analisi attuale del progetto.",
+    "fileUnreadable": "Non è stato possibile leggere il file.",
+    "incompleteEntry": "Voce @{{type}} incompleta.",
+    "invalidYear": "L'anno \"{{year}}\" non è un anno BibTeX di quattro cifre.",
+    "kinds": {
+      "anchor": "ancora",
+      "asset": "risorsa",
+      "bibentry": "voce bibliografica",
+      "bibliography": "bibliografia",
+      "environment": "ambiente",
+      "file": "file",
+      "glossary": "voce di glossario",
+      "import": "importazione",
+      "include": "inclusione",
+      "label": "etichetta",
+      "link": "collegamento",
+      "macro": "macro",
+      "section": "sezione"
+    },
+    "malformedDirective": "Direttiva BibTeX o tipo di voce malformato.",
+    "missingCitationKey": "A @{{type}} manca una chiave di citazione.",
+    "missingRequiredField": "A {{entry}} manca il campo obbligatorio {{fields}}.",
+    "possibleTarget": "Possibile target: {{file}}",
+    "projectFileUnreadable": "Non è stato possibile leggere il file del progetto.",
+    "referenceHasManyDefinitions_one": "Il riferimento \"{{name}}\" ha {{count}} definizione possibile.",
+    "referenceHasManyDefinitions_many": "Il riferimento \"{{name}}\" ha {{count}} definizioni possibili.",
+    "referenceHasManyDefinitions_other": "Il riferimento \"{{name}}\" ha {{count}} definizioni possibili.",
+    "referenceUnresolved": "Non è stato possibile risolvere il riferimento \"{{name}}\".",
+    "targetMatchesManyFiles_one": "Il target {{kind}} \"{{target}}\" corrisponde a {{count}} file del progetto.",
+    "targetMatchesManyFiles_many": "Il target {{kind}} \"{{target}}\" corrisponde a {{count}} file del progetto.",
+    "targetMatchesManyFiles_other": "Il target {{kind}} \"{{target}}\" corrisponde a {{count}} file del progetto.",
+    "targetUnresolved": "Non è stato possibile risolvere il target {{kind}} \"{{target}}\".",
+    "typeDelimiterExpected": "@{{type}} deve essere seguito da una parentesi graffa o tonda aperta.",
+    "unclosedDelimiter": "Il delimitatore \"{{char}}\" non è chiuso con \"{{expected}}\".",
+    "unclosedDirective": "La direttiva @{{type}} non è chiusa.",
+    "unclosedEntry": "La voce @{{type}} non è chiusa.",
+    "unclosedEntryNamed": "La voce bibliografica \"{{key}}\" non è chiusa.",
+    "unclosedFence": "Il blocco di codice delimitato non è chiuso.",
+    "unclosedFrontMatter": "Il front matter YAML non è chiuso.",
+    "unclosedString": "La stringa letterale non è chiusa.",
+    "unclosedTypstComment": "Il commento a blocco Typst non è chiuso.",
+    "unexpectedClosingDelimiter": "Delimitatore di chiusura \"{{char}}\" inatteso.",
+    "unknownEntryType": "Tipo di voce bibliografica sconosciuto @{{type}}.",
+    "unparsableField": "Non è stato possibile analizzare un campo di @{{type}}.",
+    "unparsableFieldNamed": "Non è stato possibile analizzare un campo in \"{{key}}\"."
+  },
+  "proofreading": {
+    "cancelled": "La revisione è stata annullata.",
+    "couldNotStart": "La revisione offline non è riuscita ad avviarsi.",
+    "disposed": "La revisione offline è stata chiusa.",
+    "invalidResponse": "La revisione offline ha restituito una risposta non valida.",
+    "outOfRangeDiagnostic": "La revisione offline ha restituito una diagnostica fuori intervallo.",
+    "postFailed": "Non è stato possibile inviare il documento alla revisione offline.",
+    "restarted": "La revisione offline è stata riavviata.",
+    "restartedAfterTimeout": "La revisione offline è stata riavviata dopo un timeout.",
+    "staleResponse": "La revisione offline ha restituito una risposta obsoleta.",
+    "stopped": "La revisione offline si è fermata in modo imprevisto.",
+    "superseded": "Una richiesta di revisione più recente ha sostituito questa.",
+    "timedOut": "La revisione offline è scaduta e ripartirà alla prossima modifica.",
+    "dictionaryUnavailable": "Il dizionario ortografico selezionato non è installato. Scaricalo nelle impostazioni."
+  },
+  "skillGroups": {
+    "shelf": "Scaffale tematico",
+    "user": "Le tue skill"
+  },
+  "tagged": {
+    "compileFailed": "La compilazione taggata non è riuscita. Controlla il motore e riprova.",
+    "compiled": "PDF taggato compilato. Vedi il verdetto di accessibilità qui sotto.",
+    "compiledWithErrors": "La compilazione taggata è terminata con errori. Controlla il log.",
+    "engineRequired": "Abilita prima un motore di tagging nelle impostazioni, in Motore LaTeX."
+  },
+  "terminal": {
+    "defaultTitle": "Terminale {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Questo progetto è stato fissato con {{pinned}}. Nella distribuzione attiva {{local}} mancano {{count}} dei suoi pacchetti, quindi le compilazioni potrebbero non riuscire finché non torni a usare quella distribuzione.",
+    "distributionSkew": "Questo progetto è stato fissato con {{pinned}} e questa macchina compila con {{local}}. L'output potrebbe risultare leggermente diverso.",
+    "installPinned_one": "Installalo",
+    "installPinned_many": "Installali tutti e {{count}}",
+    "installPinned_other": "Installali tutti e {{count}}",
+    "installingPinned_one": "Installazione di {{count}} pacchetto fissato…",
+    "installingPinned_many": "Installazione di {{count}} pacchetti fissati…",
+    "installingPinned_other": "Installazione di {{count}} pacchetti fissati…",
+    "pinnedPackagesFailed": "Alcuni pacchetti fissati non sono stati installati. Vedi Impostazioni → Motore LaTeX.",
+    "pinnedPackagesInstalled": "Pacchetti LaTeX fissati installati.",
+    "pinnedPackagesMissing_one": "Questo progetto fissa {{count}} pacchetto LaTeX che qui non è installato.",
+    "pinnedPackagesMissing_many": "Questo progetto fissa {{count}} pacchetti LaTeX che qui non sono installati.",
+    "pinnedPackagesMissing_other": "Questo progetto fissa {{count}} pacchetti LaTeX che qui non sono installati."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Il CSS personalizzato non può usare at-rule, URL o selettori.",
+    "cssNotSimple": "Il CSS personalizzato deve contenere semplici dichiarazioni di proprietà.",
+    "cssNotText": "Il CSS personalizzato deve essere testo.",
+    "cssPropertyNotAllowed": "Proprietà CSS personalizzata non consentita: {{property}}.",
+    "cssTooLarge": "Il CSS personalizzato supera i 64 KiB.",
+    "cssTooManyDeclarations": "Il CSS personalizzato può contenere al massimo 64 dichiarazioni.",
+    "cssUnsafeValue": "Il CSS personalizzato contiene un valore non sicuro.",
+    "customizationNotObject": "La personalizzazione del tema deve essere un oggetto.",
+    "dark": {
+      "notObject": "Le variabili CSS del tema scuro devono essere un oggetto.",
+      "tooManyEntries": "Le variabili CSS del tema scuro superano le {{max}} voci."
+    },
+    "fileMissingCssVars": "Il file del tema deve includere cssVars con le voci light e dark.",
+    "fileMissingModes": "Il file del tema deve includere le variabili CSS light e dark.",
+    "fileNotJson": "Il file del tema non è JSON valido.",
+    "fileNotObject": "Il file del tema deve contenere un oggetto.",
+    "fileNotText": "Il file del tema deve essere testo.",
+    "fileTooLarge": "Il file del tema supera i 128 KiB.",
+    "invalidColor": "Il token del tema {{token}} ha un valore di colore non valido.",
+    "invalidRadius": "Il raggio degli angoli deve usare px, rem, em o percentuale.",
+    "light": {
+      "notObject": "Le variabili CSS del tema chiaro devono essere un oggetto.",
+      "tooManyEntries": "Le variabili CSS del tema chiaro superano le {{max}} voci."
+    },
+    "tokens": {
+      "notObject": "I token del tema devono essere un oggetto.",
+      "tooManyEntries": "I token del tema superano le {{max}} voci."
+    },
+    "unknownProperty": "sconosciuta",
+    "unsupportedToken": "Token del tema non supportato: {{token}}.",
+    "unsupportedVersion": "Questo file del tema usa una versione non supportata."
+  },
+  "themes": {
+    "matchApp": "Usa il tema dell'app"
+  },
+  "tinytex": {
+    "installFailed": "Impossibile installare TinyTeX.",
+    "installGuide": "Guida all'installazione",
+    "installed": "TinyTeX installato.",
+    "phase": {
+      "addingPackages": "Aggiunta dei pacchetti…",
+      "downloading": "Download…",
+      "downloadingPercent": "Download… {{progress}}%",
+      "installing": "Installazione…",
+      "unpacking": "Estrazione…"
+    },
+    "removeFailed": "Impossibile rimuovere TinyTeX",
+    "removed": "TinyTeX rimosso"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Leggi l'articolo",
+      "alphaxivSearch": "Cerca articoli",
+      "compile": "Compila il documento",
+      "getLog": "Leggi il log di compilazione",
+      "insertFigure": "Inserisci una figura",
+      "listFiles": "Elenca i file del progetto",
+      "literatureSearch": "Cerca nella letteratura",
+      "previewFigure": "Anteprima della figura",
+      "projectLibrarySearch": "Cerca nelle fonti del progetto",
+      "projectMap": "Mappa il progetto",
+      "readFile": "Leggi il file",
+      "readLinkedFile": "Leggi il file collegato",
+      "readPdfText": "Leggi il PDF compilato",
+      "readResearchRootFile": "Leggi il file collegato",
+      "runCommand": "Esegui il comando",
+      "searchProject": "Cerca nel progetto",
+      "sendMessage": "Aggiorna l'attività delegata",
+      "spawnAgent": "Avvia un'attività delegata",
+      "verifyCitation": "Controlla la citazione",
+      "verifyPdfPages": "Controlla le pagine del PDF",
+      "waitAgent": "Attendi l'attività delegata"
+    },
+    "skillsBudgetNotice": "Codex non è riuscito a elencare tutte le sue skill. Riserva il 2% del contesto alle descrizioni delle skill, quindi riduci la cartella delle skill oppure chiedine una per nome.",
+    "status": {
+      "cancelled": "Fermato",
+      "declined": "Rifiutato",
+      "done": "Completato",
+      "failed": "Non riuscito",
+      "failedWithCode": "Non riuscito con codice di uscita {{code}}",
+      "interrupted": "Interrotto",
+      "running": "In esecuzione",
+      "timedOut": "Scaduto"
+    },
+    "summary": {
+      "citationUnverified": "Nessun record corrispondente trovato",
+      "citationVerified": "Verificata dal servizio di citazioni",
+      "compileFailed": "Compilazione non riuscita",
+      "compileSucceeded": "Compilato senza errori",
+      "diagnostics_one": "{{count}} diagnostica",
+      "diagnostics_many": "{{count}} diagnostiche",
+      "diagnostics_other": "{{count}} diagnostiche",
+      "papers_one": "{{count}} articolo",
+      "papers_many": "{{count}} articoli",
+      "papers_other": "{{count}} articoli"
+    }
+  },
+  "ui": {
+    "transparent": "Trasparente"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Il progetto è cambiato durante il salvataggio. Riprova l'aggiornamento."
+  }
+}

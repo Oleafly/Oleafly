@@ -25,12 +25,33 @@
           ) {
             theme = "light";
           }
+          var shipped = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"];
+          var aliases = { "zh-Hant": "zh-Hans", "pt": "pt-BR", "pt-PT": "pt-BR", "no": "nb", "nn": "nb" };
+          var resolveTag = function (tag) {
+            var parts = String(tag || "").toLowerCase().split(/[.@]/)[0].split(/[-_]/).filter(Boolean);
+            var language = parts[0];
+            if (!language) return null;
+            var canonical = language;
+            if (language === "zh") {
+              canonical = /hant|tw|hk|mo/.test(parts.slice(1).join("-")) ? "zh-Hant" : "zh-Hans";
+            } else {
+              for (var i = 1; i < parts.length; i += 1) {
+                if (/^[a-z]{2}$/.test(parts[i])) { canonical = language + "-" + parts[i].toUpperCase(); break; }
+              }
+            }
+            var candidates = [canonical, language];
+            for (var j = 0; j < candidates.length; j += 1) {
+              if (shipped.indexOf(candidates[j]) >= 0) return candidates[j];
+              var alias = aliases[candidates[j]];
+              if (alias && shipped.indexOf(alias) >= 0) return alias;
+            }
+            return null;
+          };
           var preference = localStorage.getItem("oleafly.locale");
-          if (preference === "zh-Hans") {
+          if (shipped.indexOf(preference) >= 0) {
             locale = preference;
           } else if (preference === null || preference === "system") {
-            var nav = (navigator.language || "").toLowerCase();
-            if (nav.indexOf("zh") === 0 && !/tw|hk|mo|hant/.test(nav)) locale = "zh-Hans";
+            locale = resolveTag(navigator.language) || locale;
           }
         } catch (e) {
           /* storage unavailable: keep defaults */
@@ -78,6 +99,177 @@
               "正在加载 Oleafly Parsers"
             ],
             "starting": "正在启动 Oleafly"
+          },
+          "zh-Hant": {
+            "stages": [
+              "正在初始化 Oleafly",
+              "正在載入 Oleafly Core",
+              "正在載入 Oleafly Harness",
+              "正在載入 Oleafly Parsers"
+            ],
+            "starting": "正在啟動 Oleafly"
+          },
+          "de": {
+            "stages": [
+              "Oleafly wird vorbereitet",
+              "Oleafly Core wird geladen",
+              "Oleafly Harness wird geladen",
+              "Oleafly Parsers werden geladen"
+            ],
+            "starting": "Oleafly startet"
+          },
+          "fr": {
+            "stages": [
+              "Initialisation d'Oleafly",
+              "Chargement d'Oleafly Core",
+              "Chargement d'Oleafly Harness",
+              "Chargement d'Oleafly Parsers"
+            ],
+            "starting": "Démarrage d'Oleafly"
+          },
+          "es": {
+            "stages": [
+              "Iniciando Oleafly",
+              "Cargando Oleafly Core",
+              "Cargando Oleafly Harness",
+              "Cargando Oleafly Parsers"
+            ],
+            "starting": "Arrancando Oleafly"
+          },
+          "it": {
+            "stages": [
+              "Inizializzazione di Oleafly",
+              "Caricamento di Oleafly Core",
+              "Caricamento di Oleafly Harness",
+              "Caricamento di Oleafly Parsers"
+            ],
+            "starting": "Avvio di Oleafly"
+          },
+          "nl": {
+            "stages": [
+              "Oleafly initialiseren",
+              "Oleafly Core laden",
+              "Oleafly Harness laden",
+              "Oleafly Parsers laden"
+            ],
+            "starting": "Oleafly starten"
+          },
+          "pt-BR": {
+            "stages": [
+              "Inicializando o Oleafly",
+              "Carregando o núcleo do Oleafly",
+              "Carregando o ambiente do Oleafly",
+              "Carregando os analisadores do Oleafly"
+            ],
+            "starting": "Iniciando o Oleafly"
+          },
+          "pl": {
+            "stages": [
+              "Inicjowanie Oleafly",
+              "Wczytywanie Oleafly Core",
+              "Wczytywanie Oleafly Harness",
+              "Wczytywanie Oleafly Parsers"
+            ],
+            "starting": "Uruchamianie Oleafly"
+          },
+          "ru": {
+            "stages": [
+              "Инициализация Oleafly",
+              "Загрузка ядра Oleafly",
+              "Загрузка оснастки Oleafly",
+              "Загрузка парсеров Oleafly"
+            ],
+            "starting": "Запуск Oleafly"
+          },
+          "uk": {
+            "stages": [
+              "Ініціалізація Oleafly",
+              "Завантаження Oleafly Core",
+              "Завантаження Oleafly Harness",
+              "Завантаження Oleafly Parsers"
+            ],
+            "starting": "Запуск Oleafly"
+          },
+          "tr": {
+            "stages": [
+              "Oleafly başlatılıyor",
+              "Oleafly Core yükleniyor",
+              "Oleafly Harness yükleniyor",
+              "Oleafly Parsers yükleniyor"
+            ],
+            "starting": "Oleafly açılıyor"
+          },
+          "cs": {
+            "stages": [
+              "Inicializuje se Oleafly",
+              "Načítá se Oleafly Core",
+              "Načítá se Oleafly Harness",
+              "Načítají se Oleafly Parsers"
+            ],
+            "starting": "Spouští se Oleafly"
+          },
+          "da": {
+            "stages": [
+              "Initialiserer Oleafly",
+              "Indlæser Oleafly Core",
+              "Indlæser Oleafly Harness",
+              "Indlæser Oleafly Parsers"
+            ],
+            "starting": "Starter Oleafly"
+          },
+          "sv": {
+            "stages": [
+              "Initierar Oleafly",
+              "Läser in Oleafly Core",
+              "Läser in Oleafly Harness",
+              "Läser in Oleafly Parsers"
+            ],
+            "starting": "Startar Oleafly"
+          },
+          "nb": {
+            "stages": [
+              "Starter opp Oleafly",
+              "Laster Oleafly Core",
+              "Laster Oleafly Harness",
+              "Laster Oleafly Parsers"
+            ],
+            "starting": "Starter Oleafly"
+          },
+          "fi": {
+            "stages": [
+              "Alustetaan Oleaflyä",
+              "Ladataan Oleafly Corea",
+              "Ladataan Oleafly Harnessia",
+              "Ladataan Oleafly Parsersia"
+            ],
+            "starting": "Käynnistetään Oleaflyä"
+          },
+          "ro": {
+            "stages": [
+              "Se inițializează Oleafly",
+              "Se încarcă nucleul Oleafly",
+              "Se încarcă structura Oleafly",
+              "Se încarcă analizatoarele Oleafly"
+            ],
+            "starting": "Pornește Oleafly"
+          },
+          "ja": {
+            "stages": [
+              "Oleafly を初期化しています",
+              "Oleafly Core を読み込んでいます",
+              "Oleafly Harness を読み込んでいます",
+              "Oleafly Parsers を読み込んでいます"
+            ],
+            "starting": "Oleafly を起動しています"
+          },
+          "ko": {
+            "stages": [
+              "Oleafly를 초기화하는 중",
+              "Oleafly Core를 불러오는 중",
+              "Oleafly Harness를 불러오는 중",
+              "Oleafly Parsers를 불러오는 중"
+            ],
+            "starting": "Oleafly를 시작하는 중"
           }
         };
         var texts = narration[window.__oleaflyBootLocale] || narration.en;

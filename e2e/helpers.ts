@@ -1918,3 +1918,85 @@ export async function expectCompletedReadFile(page: Page) {
     return !!message?.querySelector('[data-tool-name="read_file"][data-tool-status="done"]');
   })()`, 20_000);
 }
+
+export async function pressKey(page: Page, init: Record<string, unknown>) {
+  await page.evaluate(
+    `(document.querySelector('.cm-content').dispatchEvent(
+      new KeyboardEvent('keydown', ${JSON.stringify({ bubbles: true, cancelable: true, ...init })})
+    ), 1)`,
+  );
+}
+
+export async function waitForCompletion(page: Page, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const open = await page.evaluate<boolean>(
+      `!!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+    );
+    if (open) return;
+    if (Date.now() > deadline) throw new Error("completion popup did not open");
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+}
+
+export async function completionLabels(page: Page): Promise<string[]> {
+  return page.evaluate<string[]>(
+    `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')]
+      .map((li) => li.querySelector('.cm-completionLabel')?.textContent ?? '')`,
+  );
+}
+
+export async function selectedLabel(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `document.querySelector('.cm-tooltip-autocomplete li[aria-selected="true"] .cm-completionLabel')?.textContent ?? ''`,
+  );
+}
+
+export async function settledCompletionLabels(
+  page: Page,
+  label: string,
+  timeoutMs: number,
+): Promise<string[]> {
+  const deadline = Date.now() + timeoutMs;
+  let previous = "";
+  for (;;) {
+    const labels = await completionLabels(page);
+    const current = labels.join("\n");
+    if (labels.includes(label) && current === previous) return labels;
+    previous = current;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `completion never settled on ${label}; it offered ${labels.slice(0, 16).join(", ")}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+}
+
+export async function acceptCompletion(
+  page: Page,
+  label: string,
+  timeoutMs = 10_000,
+) {
+  await waitForCompletion(page);
+  const labels = await settledCompletionLabels(page, label, timeoutMs);
+  for (let hop = 0; hop <= labels.length; hop += 1) {
+    const selected = await selectedLabel(page);
+    if (selected === label) break;
+    if (selected === "") {
+      throw new Error(`completion closed while walking to ${label}`);
+    }
+    if (hop === labels.length) {
+      throw new Error(
+        `completion never highlighted ${label}; it offered ${labels.join(", ")}`,
+      );
+    }
+    await page.press(".cm-content", "ArrowDown");
+  }
+  await page.press(".cm-content", "Enter");
+  await waitLong(
+    page,
+    `!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+    10_000,
+  );
+}

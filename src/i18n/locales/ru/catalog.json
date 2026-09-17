@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Пустой",
+    "diagramsAndFigures": "Диаграммы и рисунки",
+    "cvsAndResumes": "Резюме и CV",
+    "journalsAndConferences": "Журналы и конференции",
+    "bibliographies": "Библиографии",
+    "assignments": "Учебные задания",
+    "thesesAndReports": "Диссертации и отчёты",
+    "books": "Книги",
+    "presentations": "Презентации",
+    "posters": "Постеры",
+    "newsletters": "Бюллетени",
+    "calendars": "Календари",
+    "letters": "Письма",
+    "aiGenerated": "Создано ИИ"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Резюме",
+    "diagramsAndFigures": "Диаграммы",
+    "journalsAndConferences": "Журналы"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Тёплый гуманистический гротеск, который используют многие современные шаблоны резюме и CV."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Чистый нейтральный гротеск, хорошо читается и на экране, и в печати."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Изящная переходная антиква, удачный выбор для академических и деловых документов."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Набор для академических текстов",
+      "description": "Научные заявки и заявки на гранты, обзоры литературы, мотивационные письма, рекомендательные письма, аналитические записки и диссертации."
+    },
+    "beamer-themes": {
+      "label": "Коллекция тем beamer",
+      "description": "Презентации beamer в темах Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla и Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Деловые документы",
+      "description": "Счета, служебные записки, протоколы встреч, бизнес-планы и отчёты, сертификаты и буклет-трёхстворка."
+    },
+    "conference-preprints": {
+      "label": "Стили препринтов для конференций",
+      "description": "Препринты в стилях NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv и Interspeech."
+    },
+    "coursework": {
+      "label": "Набор для учебных курсов",
+      "description": "Домашние задания, рабочие листы, тесты, критерии оценивания, конспекты лекций, программы курсов, справочные листы по математике, экзамены и описания псевдокода."
+    },
+    "creative-misc": {
+      "label": "Творчество и разное",
+      "description": "Книги рецептов, приглашения, листы персонажей для настольных игр, годовой календарь, галереи таблиц и TikZ, полевые заметки."
+    },
+    "cv-collection": {
+      "label": "Коллекция стилей CV и резюме",
+      "description": "Резюме в стилях ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds и Jake's."
+    },
+    "reports-lab": {
+      "label": "Лабораторные и технические отчёты",
+      "description": "Лабораторные работы, научные и технические отчёты, отчёты по проектам и практике, годовой отчёт."
+    },
+    "resume-plus": {
+      "label": "Расширение для резюме и CV",
+      "description": "Двухколоночное резюме для ИТ, минималистичное резюме, развёрнутое академическое CV, сопроводительное письмо и CV на Typst."
+    },
+    "slides-posters": {
+      "label": "Слайды и постеры",
+      "description": "Презентация beamer в теме Metropolis, tikzposter в книжной и альбомной ориентации, макет better-poster."
+    },
+    "venue-classes": {
+      "label": "Классы журналов и конференций",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf и заготовки журнальных статей на Typst."
+    }
+  }
+}

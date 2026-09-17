@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Başlarken",
+    "overview": {
+      "title": "Ana ekran",
+      "content": "Projeleriniz ve yeni proje oluşturma burada başlar."
+    },
+    "create": {
+      "title": "Gerçek bir proje oluşturun",
+      "content": "Bir çalışmanın başlayabileceği yolları görmek için Yeni proje'yi seçin."
+    },
+    "kind": {
+      "title": "Başlamanın üç yolu",
+      "content": "Bir araştırma projesi başlatın, hâlihazırda yazdığınız bir metni içe aktarın veya hazır bir şablondan ilerleyin."
+    },
+    "kindTemplate": {
+      "title": "Şablondan ilerleyin",
+      "content": "Galeriyi açmak için Şablon kullan'ı seçin. Diğer iki başlangıç noktası, ihtiyaç duyduğunuzda hep orada."
+    },
+    "gallery": {
+      "title": "Başlangıç noktanızı bulun",
+      "content": "Kategorilere göz atın, ada göre arayın ve şablonları derleyiciye veya çevrimdışı kullanılabilirliğe göre daraltın."
+    },
+    "template": {
+      "title": "Bir şablon seçin",
+      "content": "Devam etmek için gerçek bir şablon seçin. Dosyaları yeni projeniz olacak."
+    },
+    "name": {
+      "title": "Projenize ad verin",
+      "content": "Bir proje adı girin. Ad boş olmadığında İleri düğmesi kullanılabilir hale gelir."
+    },
+    "color": {
+      "title": "Kapak rengi seçin",
+      "content": "Bu renk, projeyi Ana ekranda kolayca ayırt etmenizi sağlar. Şablonun varsayılanını da kullanabilirsiniz."
+    },
+    "createProject": {
+      "title": "Projenizi oluşturun",
+      "content": "Seçili şablonla bir proje oluşturmak için \"Proje oluştur\" düğmesine tıklayın."
+    }
+  },
+  "workspace": {
+    "label": "Çalışma alanınız",
+    "toolbar": {
+      "title": "Proje araç çubuğu",
+      "content": "Proje eylemleri ve derleme denetimleri burada."
+    },
+    "sidebar": {
+      "title": "Çalışma alanında gezinme",
+      "content": "Dosyalar, arama, kaynak denetimi, ön denetim, kaynaklar ve MCP etkinliği arasında geçiş yapın."
+    },
+    "editor": {
+      "title": "Düzenleyici",
+      "content": "Tamamlama, tanılama, biçimlendirme ve kod zekasıyla kaynağı yazın ve içinde gezinin."
+    },
+    "wysiwygToggle": {
+      "title": "WYSIWYG kipini deneyin",
+      "content": "Ham kaynak ile belgenizin Google Docs tarzı biçimlendirilmiş görünümü arasında geçiş yapın."
+    },
+    "compile": {
+      "title": "Derleyin ve yeniden derleyin",
+      "content": "Geçerli projeyi burada derleyin. Tur hiçbir zaman kaynağınızı derlemez veya değiştirmez."
+    },
+    "logs": {
+      "title": "Derleme günlükleri",
+      "content": "Proje içeriğini değiştirmeden hataları incelemek için derleme günlüklerini açın. Yanındaki durum, en son derleme süresini gösterir."
+    },
+    "preview": {
+      "title": "PDF önizlemesi",
+      "content": "Derlenen belge, bölünmüş görünümde kaynağınızın yanında durur."
+    },
+    "zoom": {
+      "title": "Eksiksiz PDF araç setiniz",
+      "content": "Anahattı açın, metinde arayın, sayfalar arasında geçin, tek veya çift sayfa düzeni seçin, yakınlaştırın veya sayfayı sığdırın, renkleri tersine çevirin, erişilebilir okuyucu görünümünü kullanın, döndürün, indirin, projeye kaydedin, tam ekrana geçin ya da önizlemeyi kendi penceresinde açın."
+    },
+    "sourceNavigation": {
+      "title": "PDF'ten kaynağa",
+      "content": "Doğrudan ilgili kaynağa gitmek için derlenmiş PDF içeriğine tıklayın."
+    }
+  },
+  "research": {
+    "label": "Araştırma çalışma alanı",
+    "open": {
+      "title": "Araştırma çalışma alanı",
+      "content": "Araştırma görevlerini bir ajana vermek ve başka yerde tuttuğunuz okuma klasörlerini ve veri kümelerini bağlamak için açın. Bu yeni bir özellik ve beta aşamasında, bozulan bir şey olursa lütfen bildirin."
+    },
+    "tasks": {
+      "title": "Araştırma görevlerini sıraya alın",
+      "content": "Bir işi tarif edip bir ajana verin. Her görev kendi konuşmasını, çıktılarını ve inceleme notlarını tutar."
+    },
+    "folders": {
+      "title": "Zaten kullandığınız klasörleri bağlayın",
+      "content": "Çalışma alanını projenin dışındaki okuma klasörlerine ve veri kümelerine yönlendirin. Hiçbir şey kopyalanmaz veya taşınmaz."
+    }
+  },
+  "settings": {
+    "label": "Ayarlar",
+    "navigation": {
+      "title": "Ayarlar",
+      "content": "Tercihler ve tümleştirmeler arasında burada geçiş yapın."
+    },
+    "general": {
+      "title": "Genel tercihler",
+      "content": "Düzenleme davranışını, çevrimdışı kipi, kısayolları ve tanıtım turlarını denetleyin."
+    },
+    "appearance": {
+      "title": "Görünüm",
+      "content": "Temayı, tipografiyi, varsayılan çalışma alanı düzenini ve vurgu rengini seçin."
+    },
+    "dictionary": {
+      "title": "Sözlük",
+      "content": "Yazım ve dil bilgisi denetimlerinin yok saydığı projeye özel ve genel sözcükleri gözden geçirin."
+    },
+    "data": {
+      "title": "Veri depolama",
+      "content": "Yerel proje depolamasını inceleyin ve uygulama verilerini yönetin."
+    },
+    "ai": {
+      "title": "Yapay zeka asistanı",
+      "content": "Sağlayıcıları, modelleri, kimlik bilgilerini ve asistanın kullanabileceği MCP sunucularını yapılandırın."
+    },
+    "compiler": {
+      "title": "Derleyici",
+      "content": "Projeleri derlemek için kullanılan LaTeX motorunu seçin ve yapılandırın."
+    },
+    "downloads": {
+      "title": "İndirilenler",
+      "content": "Çevrimdışı çalışma için kullanılabilen paketleri ve kaynakları yönetin."
+    },
+    "integrations": {
+      "title": "Tümleştirmeler",
+      "content": "GitHub, alphaXiv, Zotero, atıf aramasını ve Oleafly'nin yerel MCP sunucusunu bağlayın."
+    },
+    "shortcuts": {
+      "title": "Klavye kısayolları",
+      "content": "Uygulama klavye kısayollarını gözden geçirin, düzenleyin, atayın ve sıfırlayın."
+    },
+    "mcp": {
+      "title": "Asistan MCP",
+      "content": "Asistanın hangi MCP sunucularını kullanabileceğini seçin."
+    },
+    "help": {
+      "title": "Yardım ve hakkında",
+      "content": "Bağlama duyarlı turu yeniden başlatın, belgeleri açın, kısayolları görüntüleyin veya sorun bildirin."
+    }
+  },
+  "aiSettings": {
+    "label": "Yapay zeka ayarları",
+    "tabs": {
+      "title": "Yapay zeka asistanı ayarları",
+      "content": "Sağlayıcıları ve anahtarları, yönergeleri, personaları, yeniden kullanılabilir becerileri ve MCP sunucularını burada yönetin."
+    },
+    "providers": {
+      "title": "Sağlayıcıları bağlayın",
+      "content": "Bir anahtar yapıştırın; kaydedilmeden önce sağlayıcı üzerinde doğrulanır. Bağlı sağlayıcılar yeşil bir rozet gösterir ve açıp kapatabileceğiniz, genişletebileceğiniz veya geri yükleyebileceğiniz bir model listesine açılır. Anahtarlar bu bilgisayarda şifreli kalır."
+    },
+    "customProvider": {
+      "title": "Kendi uç noktanızı getirin",
+      "content": "OpenAI uyumlu her temel URL burada çalışır, Ollama veya LM Studio gibi yerel sunucular dahil."
+    },
+    "openInstructions": {
+      "title": "Yönergeler",
+      "content": "Devam etmek için Yönergeler sekmesine tıklayın."
+    },
+    "defaultModel": {
+      "title": "Varsayılan model",
+      "content": "Yeni sohbetler bu modelle başlar. Yine de sohbet panelinden her konuşma için modeli değiştirebilirsiniz."
+    },
+    "instructions": {
+      "title": "Özel yönergeler",
+      "content": "Asistanın yaptığı her isteğe eklenen kalıcı üslup tercihleriniz."
+    },
+    "openPersonas": {
+      "title": "Personalar",
+      "content": "Devam etmek için Personalar sekmesine tıklayın."
+    },
+    "personas": {
+      "title": "Persona oluşturun",
+      "content": "Renkli, adlandırılmış yönerge kümeleri; sohbetin Persona menüsünden değiştirilebilir. Bir redaktör, bir hakem veya katı bir LaTeX savunucusu deneyin."
+    }
+  },
+  "ai": {
+    "label": "Yapay zeka asistanı",
+    "assistant": {
+      "title": "Yapay zeka asistanı",
+      "content": "Bu tur sırasında hiçbir şey göndermeden, projeyi tanıyan bir asistanla çalışın."
+    },
+    "runtime": {
+      "title": "İki tür ajan",
+      "content": "Oleafly ajanı, yapılandırdığınız model sağlayıcısı üzerinde çalışır. Beta aşamasındaki CLI ajanı ise bu bilgisayarda kurulu olan bir kodlama ajanını sürer."
+    },
+    "connectProvider": {
+      "title": "Bir sağlayıcı bağlayın",
+      "content": "Yapılandırılmış bir sağlayıcı yoksa buradan başlayın. Tur hiçbir zaman kimlik bilgisi istemez veya değiştirmez."
+    },
+    "providerModel": {
+      "title": "Sağlayıcı ve model",
+      "content": "Bu konuşma için modeli değiştirin. Değişiklikler yalnızca bu oturum için geçerlidir. Varsayılan modeliniz Ayarlar'da belirlenir. Logolar her modelin sağlayıcısını gösterir."
+    },
+    "prompts": {
+      "title": "İstem kısayolları",
+      "content": "Sohbet girdisine yerleştirmek için hazır bir istem seçin."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Asistanın nasıl çalışacağını seçin. Etkin bir persona, siz kapatana kadar varsayılan yönergelerinizin yerine geçer."
+    },
+    "input": {
+      "title": "Sohbet girdisi",
+      "content": "Neye ihtiyacınız olduğunu anlatın. Asistan proje bağlamını kullanabilir, ancak bu tur hiçbir zaman istek göndermez."
+    },
+    "attachments": {
+      "title": "Ekler",
+      "content": "Bir konuşmanın ek bağlama ihtiyacı olduğunda görseller, PDF'ler ve kaynak dosyalar ekleyin."
+    },
+    "history": {
+      "title": "Konuşma geçmişi",
+      "content": "Her konuşmayı kendi proje durumuna bağlı tutarken son ve tüm sohbet geçmişini yeniden açın."
+    },
+    "usage": {
+      "title": "Kullanım",
+      "content": "Yapılandırılmış konuşmalar, veri bulunduğunda çalıştırma, token ve tahmini maliyet kullanımını burada gösterir."
+    },
+    "restore": {
+      "title": "Proje durumunu geri yükleyin",
+      "content": "Yapay zekanın yaptığı bir düzenlemeden sonra bir kontrol noktası, konuşmayı silmeden proje dosyalarını geri yükleyebilir."
+    }
+  },
+  "diagram": {
+    "label": "Diyagram Oluşturucu",
+    "composer": {
+      "title": "Diyagram Oluşturucu",
+      "content": "Diyagramları görsel olarak veya TikZ kodundan oluşturun. Tur çalışmanızı değiştirmez ve kaydetmez."
+    },
+    "import": {
+      "title": "TikZ dosyası içe aktarın",
+      "content": "Elinizde bir .tikz veya .tex dosyası mı var? Bu başlangıç çiziminin yerine koymak için içe aktarın. Siz kaydetmeyi seçene kadar taslak olarak kalır."
+    },
+    "modes": {
+      "title": "Çiz ve Kod",
+      "content": "Çiz kipi doğrudan tuval üzerinde çalışmanızı sağlar. Kod kipi, üretilen TikZ kodunu ve yeniden kullanılabilir parçacıkları gösterir."
+    },
+    "palette": {
+      "title": "Şekil paleti",
+      "content": "Bir şekil seçin, sonra yerleştirmek ve boyutlandırmak için tuvale tıklayıp sürükleyin."
+    },
+    "handles": {
+      "title": "Bağlayın ve yeniden boyutlandırın",
+      "content": "Seçili bir şekil, hassas yapı ve boyutlandırma için bağlantı ve yeniden boyutlandırma tutamaçları gösterir."
+    },
+    "inspector": {
+      "title": "Denetçi",
+      "content": "Stilini, metnini, yönlendirmesini ve yığın sırasını ayarlamak için bir şekil veya bağlantı seçin."
+    },
+    "preview": {
+      "title": "Derlenmiş önizleme",
+      "content": "Derleme, düzenleyicinin yanında ölçek ve arka plan denetimleri olan bir önizleme açar."
+    },
+    "compile": {
+      "title": "Derle",
+      "content": "Derleme, diyagramı belgenize eklemeden ayrı bir önizleme oluşturur."
+    },
+    "saveProject": {
+      "title": "Proje olarak kaydedin",
+      "content": "Bitmiş bir diyagramı, Ana ekranda görünen yeniden kullanılabilir bir görsel projesi olarak kaydedin."
+    },
+    "download": {
+      "title": "İndir",
+      "content": "Derlenmiş diyagramı proje olarak kaydetmeden PNG dosyası olarak indirin."
+    }
+  }
+}

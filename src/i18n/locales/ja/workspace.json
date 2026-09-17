@@ -1,0 +1,194 @@
+{
+  "files": {
+    "collapseAll": "すべてのフォルダを折りたたむ",
+    "confirmDelete": "{{path}} を削除しますか？この操作は取り消せません。",
+    "conflict": {
+      "cancelAriaLabel": "ファイルの移動をキャンセル",
+      "createBody": "<destination>{{destination}}</destination> はすでに存在します。<suggestion>{{suggestion}}</suggestion> という名前にして両方を残します。作成時に既存のファイルが置き換えられることはありません。",
+      "dialogAriaLabel": "ファイル移動の衝突",
+      "keepBoth": "両方を残す",
+      "renameBody": "<destination>{{destination}}</destination> はすでに存在します。<suggestion>{{suggestion}}</suggestion> という名前にして両方を残すか、移動先のファイルを置き換えてください。「置き換える」を選ばない限り、Oleafly が置き換えることはありません。",
+      "replace": "置き換える",
+      "title": "その名前はすでに使われています",
+      "unchanged": "元のパスと移動先のパスは変更されていません。"
+    },
+    "createFailed": "「{{path}}」を作成できませんでした。",
+    "deleteFailed": "「{{path}}」を削除できませんでした。",
+    "expandAll": "すべてのフォルダを展開",
+    "importAriaLabel": "選択したフォルダに読み込む",
+    "importFiles": "ファイルを読み込む",
+    "importFolder": "フォルダを読み込む",
+    "importTitle": "ファイルまたはフォルダを読み込む（選択したフォルダ内へ）",
+    "makeCopy": "複製を作成",
+    "moreActions": "{{name}} のその他の操作",
+    "moveFailed": "「{{path}}」を移動できませんでした。元のパスは変更されていません。",
+    "newEntry": {
+      "fileInFolder": "フォルダ {{folder}} 内の新しいファイル名",
+      "fileInRoot": "プロジェクトルート内の新しいファイル名",
+      "filePlaceholder": "新しいファイル名",
+      "folderInFolder": "フォルダ {{folder}} 内の新しいフォルダ名",
+      "folderInRoot": "プロジェクトルート内の新しいフォルダ名",
+      "folderPlaceholder": "新しいフォルダ名"
+    },
+    "newFile": "新規ファイル",
+    "newFileAriaLabel": "選択したフォルダに新規ファイル",
+    "newFileTitle": "新規ファイル（選択したフォルダ内）",
+    "newFolder": "新規フォルダ",
+    "newFolderAriaLabel": "選択したフォルダに新規フォルダ",
+    "newFolderTitle": "新規フォルダ（選択したフォルダ内）",
+    "renameAriaLabel": "ファイル名を変更",
+    "renameFailed": "「{{path}}」の名前を変更できませんでした。元のパスは変更されていません。",
+    "setMain": "メイン文書に設定",
+    "title": "エクスプローラー",
+    "treeAriaLabel": "エクスプローラーのファイルツリー"
+  },
+  "explorer": {
+    "resizeSections": "{{first}} と {{second}} のサイズを変更"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "あいまい",
+      "cycle": "循環",
+      "definitions_other": "定義 {{count}} 件",
+      "duplicate": "重複",
+      "external": "外部",
+      "folded": "折りたたみ",
+      "incomplete": "不完全",
+      "missing": "見つかりません"
+    },
+    "bibEntryIn": "{{file}} 内の {{type}} 項目",
+    "duplicateKey": "キーが重複しています。",
+    "duplicateKeyIn": "{{file}} 内でキー {{key}} が重複しています",
+    "folded": {
+      "description": "非常に大きなプロジェクトグラフでも動作を軽く保つため、この枝は折りたたまれています。",
+      "label": "リンク先のソースを開いて続ける"
+    },
+    "fromFile": "{{file}} からの {{kind}}",
+    "groups": {
+      "bibliography": "参考文献",
+      "bibtexEntries": "BibTeX の項目",
+      "commands": "コマンド",
+      "definitions_other": "定義",
+      "dependencies": "リンクと依存関係",
+      "duplicateCitations": "重複する引用キー",
+      "environments": "環境",
+      "labels": "ラベルとアンカー",
+      "occurrences": "出現箇所",
+      "sections": "セクション",
+      "unlinked": "リンクされていないファイル",
+      "unresolvedCitations": "未解決の引用",
+      "unresolvedDuplicate": "未解決と重複"
+    },
+    "inFile": "{{file}} 内の {{kind}}",
+    "incompleteEntry": "項目が不完全です。",
+    "kinds": {
+      "anchor": "アンカー",
+      "asset": "アセット",
+      "bibentry": "文献項目",
+      "bibliography": "参考文献",
+      "citation": "引用",
+      "environment": "環境",
+      "file": "ファイル",
+      "glossary": "用語集",
+      "import": "インポート",
+      "include": "インクルード",
+      "label": "ラベル",
+      "link": "リンク",
+      "macro": "マクロ",
+      "reference": "参照",
+      "section": "セクション"
+    }
+  },
+  "outline": {
+    "ariaLabel": "文書のアウトライン",
+    "collapseHeading": "{{title}} を折りたたむ",
+    "collapseAll": "すべての見出しを折りたたむ",
+    "empty": "この文書にセクションやインクルードはありません。",
+    "emptyDetail": "セクション見出しを追加すると、たどれるアウトラインができます。",
+    "entryCount_other": "アウトラインの項目 {{count}} 件",
+    "expandHeading": "{{title}} を展開",
+    "expandAll": "すべての見出しを展開",
+    "title": "アウトライン"
+  },
+  "panelError": {
+    "message": "パネルのレイアウトに問題が起きました。プロジェクトのファイルはディスク上で無事です。",
+    "reload": "Oleafly を再読み込み"
+  },
+  "structure": {
+    "ariaLabel": "文書の構造",
+    "collapseAll": "すべての構造項目を折りたたむ",
+    "empty": "プロジェクトマップに対応するファイルがありません。",
+    "filterLabel": "プロジェクトの構造を絞り込む",
+    "filterPlaceholder": "プロジェクトマップを絞り込み…",
+    "expandAll": "すべての構造項目を展開",
+    "itemCount_other": "構造の項目 {{count}} 件",
+    "noMatch": "「{{query}}」に一致する構造はありません。",
+    "notice": {
+      "partial": "部分的なマップです。読み取れないファイルや形式が不正なファイルも、可能な範囲で表示しています。",
+      "stale": "更新中です。現在のソース範囲が用意できるまで、以前のリビジョンの構造は表示されません。"
+    },
+    "title": "構造",
+    "treeLabel": "プロジェクトの構造",
+    "unavailable": {
+      "failed": {
+        "detail": "プロジェクトを解析できませんでした。ソースファイルは変更されていません。",
+        "title": "構造を作成できませんでした"
+      },
+      "mapping": {
+        "detail": "Oleafly が見出し、リンクされたファイル、シンボル、参考文献の項目を索引付けしています。",
+        "title": "プロジェクトの構造を作成中"
+      },
+      "noProject": {
+        "detail": "ローカルとプロジェクトの構造を見るには、ドキュメントプロジェクトを開いてください。",
+        "title": "プロジェクトが開かれていません"
+      },
+      "noSource": {
+        "detail": "構造を見るには、対応しているソースファイルまたは参考文献ファイルを開いてください。",
+        "title": "アクティブなソースがありません"
+      },
+      "offline": {
+        "detail": "このワークスペースでは現在、プロジェクトの解析を利用できません。",
+        "title": "構造サービスを利用できません"
+      },
+      "unsupported": {
+        "detail": "このファイル形式にはプロジェクト構造のプロバイダがありません。",
+        "title": "構造を利用できません"
+      },
+      "waiting": {
+        "detail": "最新のプロジェクトリビジョンはまだ索引付けされていません。",
+        "title": "プロジェクトの構造を待っています"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "アシスタントを読み込み中",
+    "editor": "エディタを読み込み中",
+    "preview": "プレビューを読み込み中",
+    "terminal": "ターミナルを読み込み中"
+  },
+  "terminal": {
+    "closeCurrent": "現在のタブを閉じる",
+    "closeLeft": "左側をすべて閉じる",
+    "closeOthers": "ほかを閉じる",
+    "closeRight": "右側をすべて閉じる",
+    "closeTab": "{{title}} を閉じる",
+    "color": "色",
+    "errors": {
+      "input": "shell が入力を受け付けられませんでした",
+      "resize": "ターミナルのサイズを変更できませんでした",
+      "start": "shell を起動できませんでした"
+    },
+    "limitReached": "別のターミナルを開くには、どれかを閉じてください",
+    "newTerminal": "新規ターミナル",
+    "settings": "ターミナルの設定",
+    "starting": "プロジェクトの shell を起動しています…",
+    "tabs": "ターミナル",
+    "titleInput": "ターミナルのタイトル"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}、{{path}}",
+    "clearFilter": "絞り込みを解除",
+    "filterPlaceholder": "絞り込み…",
+    "noProject": "プロジェクトなし"
+  }
+}

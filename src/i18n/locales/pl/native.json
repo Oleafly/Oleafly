@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "O programie Oleafly",
+    "checkUpdates": "Sprawdź aktualizacje…",
+    "reloadViews": "Przeładuj widoki",
+    "restartApp": "Uruchom aplikację ponownie",
+    "quit": "Zakończ Oleafly",
+    "edit": "Edycja",
+    "undo": "Cofnij",
+    "redo": "Ponów",
+    "cut": "Wytnij",
+    "copy": "Kopiuj",
+    "paste": "Wklej",
+    "selectAll": "Zaznacz wszystko",
+    "view": "Widok",
+    "toggleTerminal": "Przełącz terminal",
+    "toggleBrowser": "Przełącz przeglądarkę"
+  },
+  "window": {
+    "browser": "Przeglądarka Oleafly",
+    "browserTitled": "{{title}} - przeglądarka Oleafly"
+  },
+  "dialog": {
+    "cancel": "Anuluj",
+    "fullAccess": {
+      "title": "Włączyć pełny dostęp?",
+      "message": "Pełny dostęp pozwala asystentowi uruchamiać polecenia shell i edytować pliki bez pytania o zgodę za każdym razem. Włączyć pełny dostęp?",
+      "confirm": "Włącz pełny dostęp"
+    },
+    "cookieImport": {
+      "title": "Potwierdź import plików cookie",
+      "messageHost": "Zaimportować pliki cookie witryny {{hostname}} z profilu \"{{profile}}\" przeglądarki {{browser}} do wbudowanej przeglądarki Oleafly? Zaimportowane pliki cookie mogą automatycznie logować do witryn.",
+      "messageAll": "Zaimportować wszystkie pliki cookie z profilu \"{{profile}}\" przeglądarki {{browser}} do wbudowanej przeglądarki Oleafly? Zaimportowane pliki cookie mogą automatycznie logować do witryn.",
+      "confirm": "Importuj pliki cookie"
+    },
+    "mcpApprove": {
+      "title": "Zatwierdź narzędzie MCP",
+      "confirm": "Użyj narzędzia"
+    },
+    "tableImport": {
+      "title": "Wybierz arkusz kalkulacyjny do zaimportowania",
+      "filter": "Arkusze kalkulacyjne"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Menu aplikacji jest niedostępne",
+    "viewMenuUnavailable": "Menu Widok jest niedostępne",
+    "menuItemUnavailable": "Element menu {{id}} jest niedostępny",
+    "fullAccessDismissed": "Potwierdzenie pełnego dostępu zostało zamknięte.",
+    "fullAccessDeclined": "Pełny dostęp nie został włączony.",
+    "approvalDialogClosed": "Natywne okno zatwierdzania zostało nieoczekiwanie zamknięte."
+  }
+}

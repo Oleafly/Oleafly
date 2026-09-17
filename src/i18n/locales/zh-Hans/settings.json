@@ -595,9 +595,35 @@
         "description": "独立于应用主题单独设置源码语法颜色。",
         "label": "编辑器主题"
       },
-      "vim": {
-        "description": "在源码编辑器中使用 Vim 键位绑定。",
-        "label": "Vim 模式"
+      "keymap": {
+        "description": "选择源码编辑器使用的键位方案。",
+        "label": "键位绑定",
+        "options": {
+          "default": "默认",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "设置源码行之间的垂直间距。",
+        "label": "行高",
+        "options": {
+          "compact": "紧凑",
+          "normal": "标准",
+          "wide": "宽松"
+        }
+      },
+      "lineWrap": {
+        "description": "自动换行显示长行，而不是左右滚动。",
+        "label": "长行自动换行"
+      },
+      "tabSize": {
+        "description": "每级缩进插入的空格数，也是制表符的显示宽度。",
+        "label": "制表符宽度"
+      },
+      "mathPreview": {
+        "description": "在光标所在的公式上方显示渲染后的公式。",
+        "label": "公式预览"
       }
     },
     "files": {
@@ -816,12 +842,19 @@
     },
     "tabs": {
       "fonts": "字体",
-      "templates": "模板"
+      "templates": "模板",
+      "dictionaries": "词典"
     },
     "templates": {
       "empty": "暂无可下载的模板包。",
       "heading": "模板",
       "tooltip": "额外的模板包按需下载，让 Oleafly 保持小巧。在此下载模板包即可离线使用其中的模板，之后也可将其删除以释放空间。"
+    },
+    "dictionaries": {
+      "empty": "尚未下载其他语言。",
+      "heading": "拼写词典",
+      "note": "在“常规”部分选择语言即可下载。内置的五种语言包始终可用，不在此列出。",
+      "tooltip": "Oleafly 内置五种语言包。选择其他语言作为拼写词典时会按需下载，并保存在此处，之后即可离线使用。移除后可释放空间，并回退到应用设置。"
     }
   },
   "engine": {
@@ -1397,6 +1430,26 @@
     },
     "tabs": {
       "application": "应用"
+    },
+    "editorKeys": {
+      "clearHint": "按 Backspace 可将该操作设为未绑定。",
+      "heading": "编辑器按键",
+      "intro": "这些按键在源码编辑器中生效。Vim 和 Emacs 模式保留各自的键位。",
+      "labels": {
+        "addCursorAbove": "在上方添加光标",
+        "addCursorBelow": "在下方添加光标",
+        "deleteLine": "删除整行",
+        "duplicate": "复制所选内容或整行",
+        "gotoLine": "跳转到行",
+        "indentLess": "减少缩进",
+        "indentMore": "增加缩进",
+        "lowercase": "转为小写",
+        "selectNextOccurrence": "选择下一处匹配",
+        "titleCase": "转为标题大小写",
+        "toggleComment": "切换注释",
+        "uppercase": "转为大写"
+      },
+      "unbound": "未设置"
     }
   }
 }

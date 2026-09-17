@@ -1,0 +1,576 @@
+{
+  "accents": {
+    "blue": "파랑",
+    "green": "초록",
+    "orange": "주황",
+    "purple": "보라",
+    "rose": "장미",
+    "teal": "청록"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "브리지 필요",
+      "cliMissing": "CLI를 찾을 수 없음",
+      "ready": "준비됨",
+      "unavailable": "사용할 수 없음"
+    },
+    "requestFailed": "ACP 요청을 완료하지 못했습니다."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "이 프로젝트가 AI 예산 {{budget}}에 도달했습니다. 계속하려면 설정에서 예산을 올리거나 해제하세요.",
+    "warned": "이 프로젝트는 AI 예산 {{budget}} 중 {{spent}}을(를) 썼습니다."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "이 작업을 위해 Oleafly 어시스턴트로 전환했습니다."
+  },
+  "bibtex": {
+    "duplicateDoi": "다음 항목과 DOI가 중복됩니다: {{keys}}",
+    "duplicateKey": "인용 키가 중복됩니다",
+    "invalidYear": "연도 \"{{year}}\"이(가) 네 자리 숫자가 아닙니다",
+    "missingField": "필수 필드가 없습니다: {{fields}}",
+    "missingKey": "@{{type}} 형식 항목에 인용 키가 없습니다",
+    "unknownType": "알 수 없는 항목 형식 @{{type}}",
+    "unreadableFields": "\"{{entry}}\"의 필드를 읽지 못했습니다",
+    "unterminatedEntry": "{{position}}번째 문자 근처에서 항목이 끝나지 않았습니다",
+    "unusualField": "@{{type}}에 흔치 않은 필드입니다: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "인용을 가져오는 동안 {{path}}이(가) 바뀌었습니다. 다시 시도하세요.",
+    "noArxivEntry": "arXiv 항목을 찾지 못했습니다.",
+    "noReferences": "해당 파일에서 참고문헌을 찾지 못했습니다.",
+    "offline": "인용 검색에는 네트워크가 필요합니다. 설정에서 오프라인 모드를 끄세요.",
+    "parseFailed": "인용을 해석하지 못했습니다.",
+    "projectChanged": "인용을 가져오는 동안 프로젝트가 바뀌었습니다.",
+    "projectChangedNotInserted": "인용을 가져오는 동안 프로젝트가 바뀌었습니다. 인용은 삽입되지 않았습니다.",
+    "projectChangedRetry": "인용을 가져오는 동안 프로젝트가 바뀌었습니다. 원래 프로젝트에서 다시 시도하세요.",
+    "readFailed": "{{path}}을(를) 읽지 못했습니다: {{detail}}",
+    "unrecognizedFile": "인식할 수 없는 파일 형식: {{name}}",
+    "writeFailed": "{{path}}에 쓰지 못했습니다: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "{{path}}에 Oleafly 항목을 추가했습니다. {{markup}}으로 인용하세요.",
+    "failed": "Oleafly 인용을 추가하지 못했습니다. 대신 설정의 도움말 및 정보에서 복사하세요.",
+    "present": "{{path}}에 이미 Oleafly 항목이 있습니다. {{markup}}으로 인용하세요.",
+    "undo": "실행 취소"
+  },
+  "compatibility": {
+    "biblatexBiber": "이 프로젝트는 참고문헌에 biblatex/Biber를 씁니다.",
+    "blockerFinding_other": "{{title}}(외 {{more}}건)",
+    "chooseEngine": "엔진 선택…",
+    "importNotes_other": "가져오기 참고 {{count}}건: {{title}}(외 {{more}}건)"
+  },
+  "compile": {
+    "engineNotLoaded": "문서 엔진을 불러올 때까지 컴파일을 쓸 수 없습니다.",
+    "noOfflineMode": "{{engine}}에는 오프라인 컴파일러 모드가 없습니다. 일반 방식으로 컴파일합니다.",
+    "retry": "다시 컴파일"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "모든 개발 프로젝트를 휴지통으로 옮깁니다. 완전히 삭제되는 것은 없습니다.",
+        "title": "프로젝트 비우기"
+      },
+      "replayFirstRun": {
+        "description": "모든 둘러보기를 초기화하고 현재 프로젝트를 닫은 뒤 환영 화면으로 돌아갑니다.",
+        "title": "첫 실행 다시 보기"
+      },
+      "resetAndSeed": {
+        "description": "현재 프로젝트를 휴지통으로 옮긴 뒤, 로컬 캐시에서 고정된 실제 예제 {{count}}개를 모두 복사합니다.",
+        "title": "초기화 후 예제 채우기"
+      },
+      "resetUiState": {
+        "description": "프로젝트는 삭제하지 않고 Oleafly 로컬 설정과 저장된 UI 상태를 지웁니다.",
+        "title": "UI 상태 초기화"
+      },
+      "seedCorpus": {
+        "action": "코퍼스 채우기",
+        "description": "~/Codespace/Oleafly/oleafly-seed에서 연구 프로젝트 {{count}}개를 복사합니다. LaTeX와 Typst로 된 논문, 학위논문, 도서, 발표 자료, 포스터, 그림이 들어 있으며 모두 내장 엔진으로 컴파일되는 것을 확인했습니다. 기존 예제는 그대로 둡니다.",
+        "title": "연구 코퍼스 채우기"
+      }
+    },
+    "closeProjectFailed": "열려 있는 프로젝트를 안전하게 닫지 못했습니다.",
+    "confirm": {
+      "clearProjects": {
+        "action": "프로젝트 비우기",
+        "description": "격리된 개발 라이브러리의 모든 프로젝트가 해당 휴지통으로 이동합니다. 실제 Oleafly 라이브러리는 건드리지 않습니다.",
+        "title": "모든 개발 프로젝트를 비울까요?"
+      },
+      "fallbackTitle": "개발 작업 확인",
+      "resetAndSeed": {
+        "action": "초기화 후 예제 채우기",
+        "description": "현재 개발 프로젝트가 모두 휴지통으로 이동한 뒤, Oleafly가 로컬 oleafly-seed 캐시에서 연구 예제 {{count}}개를 복사합니다.",
+        "title": "개발 라이브러리를 초기화하고 예제를 채울까요?"
+      },
+      "resetBrowser": {
+        "action": "UI 상태 초기화",
+        "description": "이 개발 origin의 Oleafly 설정, 둘러보기, 기타 브라우저 상태를 지운 뒤 앱을 다시 불러옵니다. 프로젝트 파일은 디스크에 남습니다.",
+        "title": "개발 UI 상태를 초기화할까요?"
+      }
+    },
+    "debugOnly": {
+      "description": "이 제어 항목은 Vite 개발 빌드에서만 불러옵니다. 배포 빌드는 방출된 에셋에 이 모듈의 표식이 나타나면 모듈을 거부합니다.",
+      "title": "디버그 빌드 전용"
+    },
+    "library": {
+      "checking": "라이브러리 경로를 확인하는 중…",
+      "label": "개발 라이브러리",
+      "locked": ".oleafly-dev 샌드박스가 아니므로 프로젝트 제어가 잠겨 있습니다."
+    },
+    "nav": "개발자",
+    "projectsRecycled_other": "프로젝트 {{count}}개를 휴지통으로 옮겼습니다.",
+    "replayFailed": "첫 실행 둘러보기를 초기화하지 못했습니다.",
+    "resetAndSeedSummary": "프로젝트 {{removed}}개를 휴지통으로 옮기고 연구 코퍼스를 채웠습니다. {{created}}개 생성, {{skipped}}개 이미 있음.",
+    "resetFailed": "개발 샌드박스를 초기화하지 못했습니다.",
+    "sandboxOnly": "연구 예제는 .oleafly-dev 샌드박스에만 복사할 수 있습니다.",
+    "seedFailed": "연구 코퍼스를 채우지 못했습니다.",
+    "seedFailures_other": "{{summary}} 예제 {{count}}개가 실패했습니다. 첫 번째 실패: {{name}}: {{message}}",
+    "seedSummary": "연구 코퍼스를 채웠습니다. {{created}}개 생성, {{skipped}}개 이미 있음.",
+    "unknownSeedError": "알 수 없는 예제 채우기 오류"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG 이미지",
+      "zipArchive": "Zip 압축 파일"
+    }
+  },
+  "dictionary": {
+    "full": "사전이 가득 차서 그 단어는 이 문서에서만 숨깁니다. 저장하려면 설정에서 단어를 하나 제거하세요.",
+    "wordTooLong": "단어로 저장하기에는 너무 길어서 이 문서에서만 숨깁니다. 단어는 최대 {{max}}자까지 가능합니다."
+  },
+  "documentScan": {
+    "complete": "검사 완료",
+    "failed": "문서 검사 실패",
+    "processed": "문단 {{current}}/{{total}}개 처리 완료…",
+    "processing": "문단 {{current}}/{{total}}개 처리하는 중…",
+    "skippedEmpty": "빈 질의를 건너뛰었습니다({{current}}/{{total}})",
+    "splitting": "문서를 문단으로 나누는 중…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "문서 엔진 정보를 불러오지 못했습니다. 엔진별 작업을 쓸 수 없습니다.",
+      "renameReloadFailed": "주 문서 이름을 바꾼 뒤 문서 엔진 정보를 불러오지 못했습니다.",
+      "stillLoading": "문서 엔진 정보를 아직 불러오는 중입니다."
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF를 저장하지 못했습니다",
+    "pdfFailedDetail": "PDF를 저장하지 못했습니다: {{detail}}",
+    "pngFailed": "PNG를 저장하지 못했습니다",
+    "pngFailedDetail": "PNG를 저장하지 못했습니다: {{detail}}",
+    "revealFailed": "파일은 저장했지만 Oleafly가 해당 폴더를 열지 못했습니다(권한 거부). 저장 대화 상자에서 선택한 위치를 확인하세요.",
+    "saved": "{{kind}} 저장됨 · {{fileName}}",
+    "showInFolder": "폴더에서 보기"
+  },
+  "externalChange": {
+    "deletionRestored": "외부에서 삭제가 저장하지 않은 편집과 겹쳤습니다. 로컬 편집 내용을 복원했습니다.",
+    "localEditKept": "저장하지 않은 변경 사항이 있는 동안 \"{{path}}\"에 외부 편집이 도착했습니다. 로컬 편집 내용을 유지했습니다.",
+    "persistExternalFailed": "\"{{path}}\"의 최신 외부 업데이트를 저장하지 못했습니다.",
+    "preserveLocalFailed": "\"{{path}}\"의 로컬 업데이트를 보존하지 못했습니다.",
+    "reloadFailed": "프로젝트 설정은 업데이트했지만 바뀐 파일 일부를 다시 불러오지 못했습니다.",
+    "restoreLocalFailed": "\"{{path}}\"에 저장하지 않은 업데이트를 복원하지 못했습니다."
+  },
+  "fonts": {
+    "systemDefault": "시스템 기본값",
+    "terminalDefault": "터미널 기본값"
+  },
+  "imageToLatex": {
+    "failed": "이미지를 LaTeX로 변환하지 못했습니다: {{detail}}",
+    "inserted": "이미지에서 얻은 LaTeX를 삽입했습니다",
+    "transcribing": "이미지를 옮겨 적는 중…"
+  },
+  "import": {
+    "arxivImported": "arXiv 소스를 가져왔습니다. 프로젝트를 컴파일해 결과를 확인하세요.",
+    "chooseOfferedProjectType": "이 파일에 제시된 프로젝트 형식 중 하나를 고르세요.",
+    "invalidArxivId": "arXiv 논문 링크나 2301.01234 같은 아이디를 붙여 넣으세요.",
+    "supportedDocumentTypes": "지원되는 문서 형식 중 하나를 고르세요.",
+    "conversionNotice": "내용을 LaTeX로 변환했습니다. 특히 표, 그림, 인용은 서식을 손봐야 할 수 있습니다.",
+    "figureSaved": "{{name}}을(를) 저장했습니다",
+    "pdfProjectCreated": "PDF로 프로젝트를 만들었습니다. 재구성 결과를 믿고 쓰기 전에 검토하세요.",
+    "pickPdfOrDocx": ".pdf 또는 .docx 파일을 고르세요",
+    "texSaved": ".tex 파일을 저장했습니다",
+    "unsupportedFile": ".zip, .docx, .md 또는 .markdown 파일을 고르세요.",
+    "zipSaveFailed": "ZIP 압축 파일을 저장하지 못했습니다.",
+    "zipSaved": ".zip 파일을 저장했습니다"
+  },
+  "inlineAi": {
+    "concise": "간결하게",
+    "expand": "자세히 풀기",
+    "fixSource": "소스 고치기",
+    "grammar": "문법 고치기",
+    "improve": "다듬기",
+    "translate": "번역"
+  },
+  "intelligence": {
+    "analysisFailed": "현재 리비전의 프로젝트 분석에 실패했습니다.",
+    "analyzing": "프로젝트 인텔리전스가 현재 리비전을 분석하고 있습니다.",
+    "couldNotSend": "프로젝트 분석을 워커로 보내지 못했습니다.",
+    "disposed": "프로젝트 인텔리전스 워커가 해제되었습니다.",
+    "disposedDuringRequest": "프로젝트 인텔리전스 워커가 해제되었습니다.",
+    "failed": "프로젝트 인텔리전스에 실패했습니다.",
+    "identityMismatch": "프로젝트 인텔리전스 응답의 식별자가 요청과 맞지 않았습니다.",
+    "malformedResponse": "프로젝트 인텔리전스 워커가 형식이 잘못된 응답을 반환했습니다.",
+    "malformedSnapshotIdentity": "프로젝트 인텔리전스 스냅숏 식별자의 형식이 잘못되었습니다.",
+    "noProject": "활성 프로젝트가 없습니다.",
+    "partialFiles_other": "파일 {{count}}개에서 복구 가능한 부분 분석 결과가 나왔습니다.",
+    "retainedStale": "프로젝트 내용이 바뀌었습니다. 현재 리비전을 분석하는 동안 남아 있는 분석 결과는 최신이 아닙니다.",
+    "sourceGraphRefreshing": "프로젝트 파일이 바뀌었습니다. 소스 그래프를 새로 고치고 있습니다.",
+    "sourceSnapshotsLoading": "프로젝트 파일이 바뀌었습니다. 현재 분석을 위해 소스 스냅숏을 불러오고 있습니다.",
+    "staleSnapshot": "프로젝트 인텔리전스 워커에 이 스냅숏에 대한 분석 결과가 없습니다.",
+    "stopped": "프로젝트 인텔리전스가 멈췄습니다.",
+    "timedOut": "프로젝트 인텔리전스가 시간 초과되었습니다.",
+    "typeMismatch": "프로젝트 인텔리전스 응답의 형식이 요청과 맞지 않았습니다.",
+    "unexpectedResponse": "프로젝트 인텔리전스 워커가 예상치 못한 응답을 반환했습니다.",
+    "workerFailed": "프로젝트 인텔리전스 워커에 오류가 발생했습니다.",
+    "workerRestarted": "시간 초과 후 프로젝트 인텔리전스 워커를 다시 시작했습니다.",
+    "workerUnavailable": "프로젝트 인텔리전스 워커를 사용할 수 없습니다."
+  },
+  "latexPackages": {
+    "algorithm2e": "알고리즘 조판",
+    "amsmath": "고급 수식 조판",
+    "amssymb": "확장 수학 기호",
+    "amsthm": "정리와 증명 환경",
+    "array": "확장 array 및 tabular",
+    "authblk": "저자와 소속 블록",
+    "babel": "다국어 지원과 문서 언어",
+    "biblatex": "고급 참고문헌 지원",
+    "bookmark": "개선된 PDF 북마크",
+    "booktabs": "전문적인 표 괘선",
+    "caption": "캡션 사용자 지정",
+    "cleveref": "똑똑한 상호 참조(hyperref 뒤에 불러오기)",
+    "csquotes": "문맥에 맞는 인용 부호(biblatex에 필요)",
+    "enumitem": "목록 사용자 지정",
+    "fancyhdr": "사용자 지정 머리말과 꼬리말",
+    "float": "개선된 플로트 배치",
+    "fontspec": "OpenType 글꼴 선택(Xe/LuaLaTeX)",
+    "geometry": "페이지 배치 사용자 지정",
+    "graphicx": "그래픽과 이미지 삽입",
+    "hyperref": "하이퍼링크, 북마크, PDF 메타데이터",
+    "inputenc": "입력 인코딩(Xe/LuaLaTeX에서는 필요 없음)",
+    "lineno": "심사본용 줄 번호",
+    "lipsum": "자리 표시용 더미 텍스트",
+    "listings": "코드 목록(내용에는 태그가 붙지 않음)",
+    "mathtools": "amsmath 확장판, 수정과 도구 포함",
+    "microtype": "미세 조판 개선",
+    "minted": "Pygments로 강조한 코드 목록",
+    "multirow": "여러 행에 걸친 표 칸",
+    "natbib": "저자-연도 및 번호 인용",
+    "parskip": "문단 간격",
+    "pdfpages": "다른 PDF의 페이지 전체 삽입",
+    "setspace": "줄 간격 조절",
+    "siunitx": "SI 단위와 숫자 서식",
+    "subcaption": "부속 그림과 부속 표",
+    "subfig": "예전 방식의 부속 그림 패키지",
+    "tabularx": "너비 자동 조절 표",
+    "threeparttable": "아래에 주석이 붙는 표",
+    "tikz": "프로그래밍 가능한 벡터 그래픽(대체 텍스트를 직접 넣어야 함)",
+    "titlesec": "절 제목 서식",
+    "todonotes": "초안용 여백 할 일 메모",
+    "unicode-math": "Xe/LuaLaTeX용 유니코드 수식(태그된 수식에 필요)",
+    "url": "URL 조판",
+    "wrapfig": "글이 둘러싸는 그림",
+    "xcolor": "색상 지원"
+  },
+  "literatureSources": {
+    "arxiv": "물리학, 수학, 전산학, 계량생물학 및 관련 분야의 프리프린트 240만 편 이상.",
+    "crossref": "1억 5천만 건이 넘는 연구 성과의 메타데이터를 담은 DOI 등록 기관.",
+    "googleScholar": "Serper를 거친 Google Scholar 결과입니다. 설정 → 연동 → 인용 검색에서 Serper API 키가 필요합니다.",
+    "openalex": "학술 저작물, 저자, 출처, 기관, 주제, 출판사, 후원 기관을 담은 공개 목록.",
+    "pubmed": "MEDLINE을 포함한 생의학 및 생명과학 문헌의 인용 정보와 초록 4천만 건 이상.",
+    "semanticScholar": "인용 그래프, 영향력 있는 인용 데이터, TLDR 요약을 제공하는 학술 색인.",
+    "uspto": "선행 기술과 응용 연구를 위한 미국 특허 등록 및 공개 출원. PatentsView 이전 작업 동안 검색이 중단되었습니다.",
+    "usptoPaused": "USPTO가 Open Data Portal 이전 작업 동안 PatentsView 검색 API를 일시적으로 중단했습니다.",
+    "yearRangeInvalid": "시작 연도가 종료 연도보다 늦을 수 없습니다."
+  },
+  "mcp": {
+    "openProjectSummary": "프로젝트 {{id}} 열기",
+    "useToolSummary": "{{server}} MCP 서버의 {{tool}} 사용"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP 서버 '{{name}}'의 type과 transport 선언이 서로 충돌합니다.",
+    "exactlyOneServer": "MCP 서버 JSON에는 서버가 정확히 하나만 있어야 합니다.",
+    "fieldBoolean": "MCP 서버 '{{name}}'의 '{{field}}' 필드는 불리언이어야 합니다.",
+    "fieldString": "MCP 서버 '{{name}}'의 '{{field}}' 필드는 문자열이어야 합니다.",
+    "fieldStringArray": "MCP 서버 '{{name}}'의 '{{field}}' 필드는 문자열 배열이어야 합니다.",
+    "fieldStringRecord": "MCP 서버 '{{name}}'의 '{{field}}' 필드는 문자열 값을 담은 객체여야 합니다.",
+    "jsonMalformed": "MCP 서버 JSON의 형식이 잘못되었습니다.",
+    "jsonNotObject": "MCP 서버 JSON은 객체여야 합니다.",
+    "mcpServersNotObject": "MCP 서버 JSON의 'mcpServers' 필드는 객체여야 합니다.",
+    "serverNotObject": "MCP 서버 '{{name}}'은(는) 객체여야 합니다.",
+    "structural": "{{detail}} {\"server-name\": {...}} 또는 {\"mcpServers\": {\"server-name\": {...}}} 형태여야 합니다.",
+    "unknownServer": "알 수 없는 서버",
+    "unsupportedTransport": "MCP 서버 '{{name}}'의 transport '{{transport}}'은(는) 지원되지 않습니다.",
+    "unsupportedType": "MCP 서버 '{{name}}'의 type '{{type}}'은(는) 지원되지 않습니다."
+  },
+  "mermaid": {
+    "diagram": "다이어그램",
+    "renderFailed": "다이어그램을 렌더링할 수 없습니다.",
+    "rendering": "다이어그램을 렌더링하는 중"
+  },
+  "missingPackages": {
+    "action_other": "파일 {{count}}개 찾아서 설치",
+    "installing_other": "패키지 {{count}}개를 설치하는 중입니다. 설치가 끝나면 컴파일을 다시 시작합니다.",
+    "summary_other": "컴파일이 {{names}}을(를) 찾지 못했습니다. TeX Live에서 해당 패키지를 찾아보세요."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "{{tokens}} 토큰 컨텍스트 창",
+      "deprecated": {
+        "label": "지원 종료",
+        "title": "제공자가 이 모델의 지원을 종료했습니다"
+      },
+      "reasoning": {
+        "label": "추론",
+        "title": "추론 모델"
+      },
+      "tools": {
+        "label": "도구",
+        "title": "도구를 호출할 수 있음"
+      },
+      "vision": {
+        "label": "비전",
+        "title": "이미지를 받을 수 있음"
+      }
+    },
+    "listChange": {
+      "none": "변경 없음",
+      "summary": "{{added}}개 추가, {{removed}}개 제거"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "프로젝트 참조 분석을 사용할 수 없습니다.",
+    "analysisUpdating": "프로젝트 참조를 업데이트하는 중입니다.",
+    "definitionsFor": "{{name}}의 정의",
+    "edits_other": "{{count}}곳 수정",
+    "files_other": "파일 {{count}}개",
+    "nameExists": "\"{{name}}\"이(가) 이미 있습니다.",
+    "noDefinition": "\"{{name}}\"의 정의를 찾지 못했습니다",
+    "noReferences": "\"{{name}}\"을(를) 참조하는 곳이 없습니다",
+    "notRenamable": "이 심볼은 이름을 바꿀 수 없습니다.",
+    "nothingToRename": "이름을 바꿀 대상이 없습니다.",
+    "referencesFor": "{{name}} 참조",
+    "renamePartial": "전체 {{total}}개 파일 중 {{edited}}개에서 \"{{name}}\"(으)로 이름을 바꿨습니다. {{files}}에는 쓰지 못했습니다.",
+    "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요",
+    "downloadingPercent": "pandoc을 내려받는 중… {{progress}}%",
+    "downloadingSize": "pandoc을 내려받는 중… {{megabytes}} MB",
+    "installGuide": "설치 안내",
+    "installed": "pandoc을 설치했습니다"
+  },
+  "project": {
+    "copyFailed": "\"{{path}}\"을(를) 복사하지 못했습니다.",
+    "dateUnavailable": "알 수 없음",
+    "importFailed": "가져오지 못했습니다. 자세한 내용은 앱 로그를 확인하세요.",
+    "imported": "프로젝트를 가져왔습니다.",
+    "openFailed": "프로젝트를 열지 못했습니다. 자세한 내용은 앱 로그를 확인하세요.",
+    "restoringUnsavedFiles": "프로젝트 업데이트로 저장하지 않은 편집이 있는 파일이 사라졌습니다. Oleafly가 편집 내용을 유지한 채 해당 파일을 복원하고 있습니다.",
+    "saveBlockedClose": "파일을 하나 이상 저장하지 못해 프로젝트를 계속 열어 두었습니다.",
+    "saveBlockedDiscard": "변경 사항을 버리고 나가기",
+    "saveBlockedMany": "파일 {{count}}개를 저장하지 못했습니다: {{files}}. 첫 번째 파일이 저장하지 않은 변경 사항과 함께 편집기에 열려 있습니다({{reason}}). 남아서 문제를 해결하거나, 해당 파일의 저장하지 않은 변경 사항을 버리고 나가세요.",
+    "saveBlockedOne": "{{file}}을(를) 저장하지 못했습니다({{reason}}). 저장하지 않은 변경 사항과 함께 편집기에 열려 있습니다. 남아서 문제를 해결하거나, 변경 사항을 버리고 나가세요.",
+    "saveBlockedStay": "남기",
+    "saveBlockedSwitch": "파일을 하나 이상 저장하지 못해 프로젝트를 계속 열어 두었습니다.",
+    "saveBlockedTitle": "일부 파일을 저장하지 못했습니다",
+    "updatedDaysAgo_other": "{{count}}일 전 업데이트",
+    "updatedOn": "{{date}} 업데이트",
+    "updatedToday": "오늘 업데이트",
+    "updatedYesterday": "어제 업데이트"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "분석에 실패했습니다: {{message}}",
+    "beginIsHere": "{{command}}이(가) 여기에 있습니다.",
+    "beginWithoutEnd": "{{command}}에 대응하는 \\end가 없습니다.",
+    "bibliographyFileMissing": "참고문헌 파일 \"{{file}}\"을(를) 프로젝트에서 찾지 못했습니다.",
+    "citationHasManyDefinitions_other": "인용 \"{{name}}\"에 가능한 정의가 {{count}}개 있습니다.",
+    "citationKeyDuplicated_other": "인용 키 \"{{name}}\"이(가) {{count}}번 정의되었습니다.",
+    "citationUnresolved": "인용 \"{{name}}\"을(를) 확인하지 못했습니다.",
+    "definedHere": "{{kind}} \"{{name}}\"이(가) 여기에 정의되어 있습니다.",
+    "duplicateTargetDefined_other": "{{kind}} 대상 \"{{name}}\"이(가) {{count}}번 정의되었습니다.",
+    "endWithoutBegin": "{{command}}에 대응하는 \\begin이 없습니다.",
+    "entryMissingFieldList": "참고문헌 항목 \"{{key}}\"에 필드 목록이 없습니다.",
+    "expectedEndBefore": "{{found}} 앞에 {{expected}}이(가) 와야 합니다.",
+    "fieldIncompleteValue": "\"{{name}}\" 필드의 값이 완전하지 않습니다.",
+    "fieldMissingEquals": "\"{{name}}\" 필드에 \"=\"이 없습니다.",
+    "fieldRepeated": "참고문헌 항목 \"{{key}}\"에서 \"{{name}}\" 필드가 반복됩니다.",
+    "fileNotLoaded": "현재 프로젝트 분석을 위해 소스 파일을 아직 불러오지 않았습니다.",
+    "fileUnreadable": "파일을 읽지 못했습니다.",
+    "incompleteEntry": "@{{type}} 항목이 완전하지 않습니다.",
+    "invalidYear": "연도 \"{{year}}\"이(가) 네 자리 BibTeX 연도가 아닙니다.",
+    "kinds": {
+      "anchor": "앵커",
+      "asset": "에셋",
+      "bibentry": "참고문헌 항목",
+      "bibliography": "참고문헌",
+      "environment": "환경",
+      "file": "파일",
+      "glossary": "용어집 항목",
+      "import": "가져오기",
+      "include": "포함",
+      "label": "레이블",
+      "link": "링크",
+      "macro": "매크로",
+      "section": "절"
+    },
+    "malformedDirective": "BibTeX 지시자나 항목 형식의 형태가 잘못되었습니다.",
+    "missingCitationKey": "@{{type}}에 인용 키가 없습니다.",
+    "missingRequiredField": "{{entry}}에 필수 필드 {{fields}}이(가) 없습니다.",
+    "possibleTarget": "가능한 대상: {{file}}",
+    "projectFileUnreadable": "프로젝트 파일을 읽지 못했습니다.",
+    "referenceHasManyDefinitions_other": "참조 \"{{name}}\"에 가능한 정의가 {{count}}개 있습니다.",
+    "referenceUnresolved": "참조 \"{{name}}\"을(를) 확인하지 못했습니다.",
+    "targetMatchesManyFiles_other": "{{kind}} 대상 \"{{target}}\"이(가) 프로젝트 파일 {{count}}개와 일치합니다.",
+    "targetUnresolved": "{{kind}} 대상 \"{{target}}\"을(를) 확인하지 못했습니다.",
+    "typeDelimiterExpected": "@{{type}} 뒤에는 여는 중괄호나 괄호가 와야 합니다.",
+    "unclosedDelimiter": "구분자 \"{{char}}\"이(가) \"{{expected}}\"(으)로 닫히지 않았습니다.",
+    "unclosedDirective": "@{{type}} 지시자가 닫히지 않았습니다.",
+    "unclosedEntry": "@{{type}} 항목이 닫히지 않았습니다.",
+    "unclosedEntryNamed": "참고문헌 항목 \"{{key}}\"이(가) 닫히지 않았습니다.",
+    "unclosedFence": "펜스 코드 블록이 닫히지 않았습니다.",
+    "unclosedFrontMatter": "YAML 프런트매터가 닫히지 않았습니다.",
+    "unclosedString": "문자열 리터럴이 닫히지 않았습니다.",
+    "unclosedTypstComment": "Typst 블록 주석이 닫히지 않았습니다.",
+    "unexpectedClosingDelimiter": "예상치 못한 닫는 구분자 \"{{char}}\"입니다.",
+    "unknownEntryType": "알 수 없는 참고문헌 항목 형식 @{{type}}입니다.",
+    "unparsableField": "@{{type}} 필드를 해석하지 못했습니다.",
+    "unparsableFieldNamed": "\"{{key}}\"의 필드를 해석하지 못했습니다."
+  },
+  "proofreading": {
+    "cancelled": "교정을 취소했습니다.",
+    "couldNotStart": "오프라인 교정을 시작하지 못했습니다.",
+    "disposed": "오프라인 교정이 해제되었습니다.",
+    "invalidResponse": "오프라인 교정이 올바르지 않은 응답을 반환했습니다.",
+    "outOfRangeDiagnostic": "오프라인 교정이 범위를 벗어난 진단을 반환했습니다.",
+    "postFailed": "문서를 오프라인 교정으로 보내지 못했습니다.",
+    "restarted": "오프라인 교정을 다시 시작했습니다.",
+    "restartedAfterTimeout": "시간 초과 후 오프라인 교정을 다시 시작했습니다.",
+    "staleResponse": "오프라인 교정이 오래된 응답을 반환했습니다.",
+    "stopped": "오프라인 교정이 예기치 않게 멈췄습니다.",
+    "superseded": "더 새로운 교정 요청이 이 요청을 대체했습니다.",
+    "timedOut": "오프라인 교정이 시간 초과되었으며 다음 편집 때 다시 시작합니다.",
+    "dictionaryUnavailable": "선택한 맞춤법 사전이 설치되어 있지 않습니다. 설정에서 내려받으세요."
+  },
+  "skillGroups": {
+    "shelf": "분야별 모음",
+    "user": "내 스킬"
+  },
+  "tagged": {
+    "compileFailed": "태그 컴파일에 실패했습니다. 엔진을 확인하고 다시 시도하세요.",
+    "compiled": "태그된 PDF를 컴파일했습니다. 아래에서 접근성 판정을 확인하세요.",
+    "compiledWithErrors": "태그 컴파일이 오류와 함께 끝났습니다. 로그를 확인하세요.",
+    "engineRequired": "먼저 설정의 LaTeX 엔진에서 태그 지원 엔진을 켜세요."
+  },
+  "terminal": {
+    "defaultTitle": "터미널 {{index}}"
+  },
+  "tex": {
+    "distributionGap": "이 프로젝트는 {{pinned}}에 고정되어 있습니다. 현재 쓰는 {{local}}에는 그중 패키지 {{count}}개가 없어, 해당 배포판을 다시 쓸 때까지 컴파일이 실패할 수 있습니다.",
+    "distributionSkew": "이 프로젝트는 {{pinned}}에 고정되어 있는데 이 컴퓨터는 {{local}}(으)로 컴파일합니다. 결과물이 조금 다를 수 있습니다.",
+    "installPinned_other": "{{count}}개 모두 설치",
+    "installingPinned_other": "고정된 패키지 {{count}}개를 설치하는 중…",
+    "pinnedPackagesFailed": "고정된 패키지 일부를 설치하지 못했습니다. 설정 → LaTeX 엔진을 확인하세요.",
+    "pinnedPackagesInstalled": "고정된 LaTeX 패키지를 설치했습니다.",
+    "pinnedPackagesMissing_other": "이 프로젝트가 고정한 LaTeX 패키지 {{count}}개가 여기에 설치되어 있지 않습니다."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "사용자 지정 CSS에는 at 규칙, URL, 선택자를 쓸 수 없습니다.",
+    "cssNotSimple": "사용자 지정 CSS에는 단순한 속성 선언만 들어가야 합니다.",
+    "cssNotText": "사용자 지정 CSS는 텍스트여야 합니다.",
+    "cssPropertyNotAllowed": "허용되지 않는 사용자 지정 CSS 속성입니다: {{property}}.",
+    "cssTooLarge": "사용자 지정 CSS가 64 KiB보다 큽니다.",
+    "cssTooManyDeclarations": "사용자 지정 CSS에는 선언을 최대 64개까지 넣을 수 있습니다.",
+    "cssUnsafeValue": "사용자 지정 CSS에 안전하지 않은 값이 있습니다.",
+    "customizationNotObject": "테마 사용자 지정 값은 객체여야 합니다.",
+    "dark": {
+      "notObject": "어두운 테마 CSS 변수는 객체여야 합니다.",
+      "tooManyEntries": "어두운 테마 CSS 변수가 {{max}}개를 넘습니다."
+    },
+    "fileMissingCssVars": "테마 파일에는 light와 dark 항목이 있는 cssVars가 있어야 합니다.",
+    "fileMissingModes": "테마 파일에는 밝은 테마와 어두운 테마 CSS 변수가 있어야 합니다.",
+    "fileNotJson": "테마 파일이 올바른 JSON이 아닙니다.",
+    "fileNotObject": "테마 파일에는 객체가 들어 있어야 합니다.",
+    "fileNotText": "테마 파일은 텍스트여야 합니다.",
+    "fileTooLarge": "테마 파일이 128 KiB보다 큽니다.",
+    "invalidColor": "테마 토큰 {{token}}의 색상 값이 올바르지 않습니다.",
+    "invalidRadius": "모서리 반경은 px, rem, em 또는 퍼센트를 써야 합니다.",
+    "light": {
+      "notObject": "밝은 테마 CSS 변수는 객체여야 합니다.",
+      "tooManyEntries": "밝은 테마 CSS 변수가 {{max}}개를 넘습니다."
+    },
+    "tokens": {
+      "notObject": "테마 토큰은 객체여야 합니다.",
+      "tooManyEntries": "테마 토큰이 {{max}}개를 넘습니다."
+    },
+    "unknownProperty": "알 수 없음",
+    "unsupportedToken": "지원되지 않는 테마 토큰입니다: {{token}}.",
+    "unsupportedVersion": "이 테마 파일은 지원되지 않는 버전을 씁니다."
+  },
+  "themes": {
+    "matchApp": "앱 테마 따르기"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeX를 설치하지 못했습니다.",
+    "installGuide": "설치 안내",
+    "installed": "TinyTeX를 설치했습니다.",
+    "phase": {
+      "addingPackages": "패키지를 추가하는 중…",
+      "downloading": "내려받는 중…",
+      "downloadingPercent": "내려받는 중… {{progress}}%",
+      "installing": "설치하는 중…",
+      "unpacking": "압축을 푸는 중…"
+    },
+    "removeFailed": "TinyTeX를 제거하지 못했습니다",
+    "removed": "TinyTeX를 제거했습니다"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "논문 읽기",
+      "alphaxivSearch": "논문 검색",
+      "compile": "문서 컴파일",
+      "getLog": "컴파일 로그 읽기",
+      "insertFigure": "그림 삽입",
+      "listFiles": "프로젝트 파일 목록",
+      "literatureSearch": "문헌 검색",
+      "previewFigure": "그림 미리보기",
+      "projectLibrarySearch": "프로젝트 자료 검색",
+      "projectMap": "프로젝트 구조 파악",
+      "readFile": "파일 읽기",
+      "readLinkedFile": "연결된 파일 읽기",
+      "readPdfText": "컴파일된 PDF 읽기",
+      "readResearchRootFile": "연결된 파일 읽기",
+      "runCommand": "명령 실행",
+      "searchProject": "프로젝트 검색",
+      "sendMessage": "위임한 작업 업데이트",
+      "spawnAgent": "위임 작업 시작",
+      "verifyCitation": "인용 확인",
+      "verifyPdfPages": "PDF 페이지 확인",
+      "waitAgent": "위임한 작업 대기"
+    },
+    "skillsBudgetNotice": "Codex가 모든 스킬을 나열하지 못했습니다. 스킬 설명에 컨텍스트의 2%만 배정하므로, 스킬 폴더를 줄이거나 스킬을 이름으로 지정해 요청하세요.",
+    "status": {
+      "cancelled": "중지됨",
+      "declined": "거부됨",
+      "done": "완료",
+      "failed": "실패",
+      "failedWithCode": "종료 코드 {{code}}(으)로 실패",
+      "interrupted": "중단됨",
+      "running": "실행 중",
+      "timedOut": "시간 초과"
+    },
+    "summary": {
+      "citationUnverified": "일치하는 기록을 찾지 못함",
+      "citationVerified": "인용 서비스에서 확인함",
+      "compileFailed": "컴파일 실패",
+      "compileSucceeded": "컴파일 성공",
+      "diagnostics_other": "진단 {{count}}건",
+      "papers_other": "논문 {{count}}편"
+    }
+  },
+  "ui": {
+    "transparent": "투명"
+  },
+  "update": {
+    "projectChangedWhileSaving": "저장하는 동안 프로젝트가 바뀌었습니다. 업데이트를 다시 시도하세요."
+  }
+}

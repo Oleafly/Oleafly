@@ -51,6 +51,7 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await caretIn(tauriPage, "here.", 1, "end");
 
   await clickToolbarControl(tauriPage, '[aria-label="Insert figure"]', "Insert figure");
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
   await expectSourceRestoredAndSaved(tauriPage, original);

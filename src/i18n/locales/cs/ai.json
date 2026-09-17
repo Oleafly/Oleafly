@@ -1,0 +1,759 @@
+{
+  "runtime": {
+    "ariaLabel": "Běhové prostředí asistenta",
+    "builtIn": "Agent Oleafly",
+    "cli": "Agent CLI"
+  },
+  "shell": {
+    "float": "Odepnout asistenta",
+    "floatAriaLabel": "Nechat asistenta plavat nad aplikací",
+    "overlayTitle": "Asistent AI",
+    "dockAriaLabel": "Ukotvit chat zpět do postranního panelu",
+    "floatingNotice": "Asistent teď plave nad aplikací.",
+    "dockBack": "Ukotvit zpět",
+    "loadingAgents": "Načítají se agenti…",
+    "openProjectForCli": "Otevřete projekt a můžete pracovat s agentem CLI."
+  },
+  "minimap": {
+    "ariaLabel": "Tahy konverzace",
+    "jumpTo": "Přejít na: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Ptát se na schválení",
+        "description": "Zeptat se před úpravami souborů, přístupem na internet a příkazy."
+      },
+      "approveForMe": {
+        "label": "Schvalovat za mě",
+        "description": "Ptát se jen před akcemi označenými za rizikové."
+      },
+      "fullAccess": {
+        "label": "Úplný přístup",
+        "description": "Spouštět akce nástrojů bez žádosti o schválení."
+      },
+      "custom": {
+        "label": "Vlastní (approvals.toml)",
+        "description": "Použít pravidla z approvals.toml. Upravíte je v Nastavení, Asistent AI."
+      }
+    },
+    "selectorAriaLabel": "Režim schvalování. {{mode}}",
+    "editProjectRules": "Upravit pravidla projektu",
+    "confirm": {
+      "command": "Potvrdit příkaz",
+      "externalTool": "Potvrdit akci externího nástroje",
+      "internet": "Potvrdit přístup na internet",
+      "edit": "Potvrdit úpravu od AI"
+    },
+    "headline": {
+      "command": "Asistent chce spustit tento příkaz",
+      "externalTool": "Asistent chce použít externí nástroj",
+      "internet": "Asistent chce přístup na internet",
+      "edit": "Asistent chce změnit vaše soubory"
+    },
+    "mcpNote": "Tím se níže uvedené argumenty odešlou nastavenému serveru MCP.",
+    "line": "řádek {{line}}",
+    "sessionAutoApprove": "Pro zápisy je zapnuté automatické schvalování v této relaci (mazání stále vyžaduje kliknutí).",
+    "commandLabel": "Příkaz",
+    "workingDirectory": "Pracovní adresář",
+    "mcpServer": "Server MCP",
+    "toolLabel": "Nástroj",
+    "arguments": "Argumenty",
+    "figureAlt": "Náhled obrázku",
+    "firstChange": "první změna · ř. {{line}}",
+    "reject": "Zamítnout",
+    "alwaysInProject": "Vždy v tomto projektu",
+    "alwaysInProjectAriaLabel": "Vždy povolit v tomto projektu",
+    "alwaysAllow": "Vždy povolit",
+    "approve": "Schválit",
+    "external": {
+      "title": "Požadavek externího agenta (MCP)",
+      "moreWaiting_one": "{{count}} další čeká",
+      "moreWaiting_few": "{{count}} další čekají",
+      "moreWaiting_many": "{{count}} dalšího čeká",
+      "moreWaiting_other": "{{count}} dalších čeká"
+    }
+  },
+  "attachments": {
+    "remove": "Odebrat {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLÁN",
+      "step": "KROK {{current}}/{{total}}",
+      "review": "REVIZE"
+    },
+    "plan": {
+      "detailsAriaLabel": "Podrobnosti plánu",
+      "headingPlan": "Plán",
+      "headingChanges": "Změny",
+      "approve": "Schválit plán",
+      "revise": "Přepracovat",
+      "statusAwaiting": "Čeká na schválení",
+      "statusApproved": "Schváleno"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "dokončeno",
+        "inProgress": "probíhá",
+        "pending": "čeká",
+        "cancelled": "zrušeno"
+      }
+    },
+    "fileChanges": {
+      "changed": "Změněno",
+      "committed": "Commitnuto {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plán",
+      "stepsDone": "{{done}}/{{total}} hotovo",
+      "filesChanged_one": "{{count}} změněný soubor",
+      "filesChanged_few": "{{count}} změněné soubory",
+      "filesChanged_many": "{{count}} změněného souboru",
+      "filesChanged_other": "{{count}} změněných souborů"
+    },
+    "copyMessage": "Kopírovat zprávu",
+    "exploration": {
+      "explored": "Prozkoumáno",
+      "exploredItems": "Prozkoumáno: {{items}}",
+      "files_one": "jeden soubor",
+      "files_few": "{{count}} soubory",
+      "files_many": "{{count}} souboru",
+      "files_other": "{{count}} souborů",
+      "searches_one": "jedno hledání",
+      "searches_few": "{{count}} hledání",
+      "searches_many": "{{count}} hledání",
+      "searches_other": "{{count}} hledání",
+      "lists_one": "jeden výpis",
+      "lists_few": "{{count}} výpisy",
+      "lists_many": "{{count}} výpisu",
+      "lists_other": "{{count}} výpisů"
+    },
+    "reasoning": {
+      "thinking": "Přemýšlí…",
+      "thoughtFor": "Přemýšlel {{seconds}} s",
+      "label": "Uvažování"
+    },
+    "subagent": {
+      "finished": "Dokončeno",
+      "failed": "Selhalo",
+      "stopped": "Zastaveno",
+      "usingTool": "Používá {{tool}}",
+      "working": "Pracuje na tom",
+      "errorBody": "Agent nedokázal tuto úlohu dokončit.",
+      "stoppedBody": "Úloha byla zastavena dřív, než odpověděla.",
+      "openTask": "Otevřít úlohu"
+    },
+    "workedSteps": {
+      "duration": "Pracoval {{seconds}} s",
+      "steps_one": "Zpracován {{count}} krok",
+      "steps_few": "Zpracovány {{count}} kroky",
+      "steps_many": "Zpracováno {{count}} kroku",
+      "steps_other": "Zpracováno {{count}} kroků"
+    },
+    "steered": "Nasměrováno",
+    "toolOutputError": "Chyba: {{message}}",
+    "errorHints": {
+      "invalidKey": "Váš klíč API vypadá neplatně nebo vypršel. Aktualizujte jej v Nastavení → Asistent AI, nebo přepněte poskytovatele {{where}}.",
+      "outOfCredits": "Vašemu poskytovateli AI došly kredity nebo limit. Dobijte účet, nebo přepněte na jiného poskytovatele (případně na místní Ollama) {{where}}.",
+      "overloaded": "Servery poskytovatele jsou teď přetížené (požadavek už byl zopakován). Počkejte chvíli a zkuste to znovu, nebo přepněte na příbuzný model {{where}}.",
+      "rateLimited": "Poskytovatel omezuje četnost požadavků. Chvíli počkejte a opakujte to, nebo přepněte poskytovatele {{where}}.",
+      "retiredModel": "Poskytovatel tento model vyřadil nebo omezil. Vyberte novější model {{where}} (v Nastavení → Asistent AI je seznam toho, co váš klíč umí použít).",
+      "unreachable": "Poskytovatele AI se nepodařilo kontaktovat. Zkontrolujte připojení, a pokud používáte Ollama, ověřte, že běží (Nastavení → Asistent AI → Zkontrolovat Ollama).",
+      "where": {
+        "inSettings": "v Nastavení, Asistent AI",
+        "modelMenu": "v nabídce modelů výše"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Přidat kontext",
+    "mentionMenuAgentsAndFiles": "Agenti a soubory projektu",
+    "mentionMenuFiles": "Soubory projektu",
+    "mentionHeadingAgents": "Delegovat agentovi",
+    "mentionHeadingFiles": "Soubory projektu",
+    "slashMenuAriaLabel": "Příkazy s lomítkem",
+    "placeholderEngineUnavailable": "Dokumentový engine není k dispozici. Úpravy AI jsou vypnuté",
+    "placeholderDefault": "Požádejte AI o pomoc s dokumentem…",
+    "planRevisionPlaceholder": "Popište, co se má v plánu změnit",
+    "prompts": "Prompty",
+    "promptShortcutsAriaLabel": "Zkratky k promptům",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} je aktivní a nahrazuje vaše výchozí instrukce.",
+    "personaChoose": "Vybrat personu",
+    "personaActiveAriaLabel": "Persona. {{name}} je aktivní a nahrazuje výchozí instrukce.",
+    "personaCreate": "Vytvořit personu v Nastavení",
+    "personaNone": "Žádná",
+    "planModeOn": "Režim plánu zapnut",
+    "planModeOff": "Režim plánu vypnut",
+    "planModeAriaLabel": "Režim plánu",
+    "plan": "Plán",
+    "planModeInfo": "O režimu plánu",
+    "planModeHint": "Režim plánu: asistent před úpravami navrhne plán. Vypnutím plánu dáte asistentovi přímý přístup ke všem nástrojům.",
+    "stop": "Zastavit",
+    "stopTitle": "Zastavit generování",
+    "send": "Odeslat",
+    "checkAgain": "Zkontrolovat znovu"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Dovednosti"
+    },
+    "archive": {
+      "label": "Archivovat",
+      "description": "Založit tento chat do archivu"
+    },
+    "forkChat": {
+      "label": "Rozvětvit chat",
+      "description": "Vytvořit z této konverzace nový chat"
+    },
+    "goal": {
+      "label": "Cíl",
+      "description": "Nastavit, k čemu má asistent trvale směřovat"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Zobrazit připojené servery MCP a jejich stav"
+    },
+    "model": {
+      "label": "Model",
+      "description": "Vybrat model pro tento chat"
+    },
+    "planMode": {
+      "enableLabel": "Zapnout režim plánu",
+      "disableLabel": "Vypnout režim plánu",
+      "description": "Zapnout nebo vypnout strukturované plánování"
+    },
+    "recordSkill": {
+      "label": "Zaznamenat dovednost",
+      "description": "Uložit postup z tohoto chatu jako upravitelný koncept"
+    },
+    "files": {
+      "label": "Soubory",
+      "description": "Připojit soubory k příští zprávě"
+    },
+    "browser": {
+      "label": "Připojit prohlížeč",
+      "description": "Otevřít prohlížeč vedle dokumentu"
+    }
+  },
+  "models": {
+    "ariaLabel": "Model AI",
+    "placeholder": "Vyberte model",
+    "triggerTooltip": "{{model}}. Přepnout poskytovatele nebo model",
+    "searchLabel": "Hledat modely",
+    "searchPlaceholder": "Hledat modely…",
+    "emptyTitle": "Nebyly nalezeny žádné modely",
+    "emptyHint": "Zkuste jiné hledání.",
+    "trust": {
+      "verified": "Ověřený",
+      "untested": "Neotestovaný",
+      "blocked": "Blokovaný"
+    },
+    "trustTitle": {
+      "verified": "Oleafly asistenta na tomto modelu vyzkoušel",
+      "untested": "S asistentem zatím nevyzkoušeno. Zkontroluje se při prvním použití",
+      "blocked": "Asistent na tomto modelu nemůže běžet"
+    },
+    "chatOnlyHint": "Jen konverzace, tento model neumí volat nástroje",
+    "checkingHint": "Kontroluje se tento model",
+    "blockedWithReason": "Tento model je pro asistenta blokován: {{reason}}",
+    "blocked": "Tento model je pro asistenta blokován.",
+    "probeFailedWithDetail": "Tento model se nepodařilo zkontrolovat. {{detail}}",
+    "probeFailed": "Tento model se nepodařilo zkontrolovat."
+  },
+  "history": {
+    "title": "Historie chatů",
+    "closeBackdrop": "Zavřít historii chatů",
+    "searchLabel": "Hledat v chatech",
+    "searchPlaceholder": "Hledat v názvech a zprávách",
+    "emptyProject": "Pro tento projekt zatím nejsou uložené žádné chaty.",
+    "emptySearch": "Tomuto hledání neodpovídá žádný chat.",
+    "untitled": "Nový chat",
+    "staleTitle": "Tento chat začal ze starší verze projektu",
+    "staleBadge": "starší verze",
+    "messages_one": "{{count}} zpráva",
+    "messages_few": "{{count}} zprávy",
+    "messages_many": "{{count}} zprávy",
+    "messages_other": "{{count}} zpráv",
+    "tokens": "~{{amount}} tok.",
+    "deleteAriaLabel": "Smazat {{title}}",
+    "deleteFallbackTitle": "chat",
+    "deleteTitle": "Smazat chat",
+    "relative": {
+      "justNow": "právě teď",
+      "minutes": "před {{count}} min",
+      "hours": "před {{count}} h",
+      "days": "před {{count}} dny"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Nikdy",
+      "everyTime": "Pokaždé, v chatu",
+      "askModeOnly": "Jen v režimu Ptát se na schválení",
+      "unlessAllowed": "Ano, pokud to není pro projekt povoleno"
+    },
+    "catalog": {
+      "readFile": "Přečíst soubor projektu, u dlouhých po částech.",
+      "writeFile": "Zapsat celý soubor a nahradit jeho obsah.",
+      "replaceInFile": "Najít v souboru přesnou pasáž a nahradit ji.",
+      "createFile": "Vytvořit v projektu nový soubor nebo složku.",
+      "renameFile": "Přejmenovat nebo přesunout soubor či složku.",
+      "deleteFile": "Smazat soubor nebo složku.",
+      "listFiles": "Vypsat všechny soubory a složky v projektu.",
+      "searchProject": "Prohledat text projektu a získat zásahy podle souborů a řádků.",
+      "projectMap": "Přečíst osnovu dokumentu: kapitoly, návěští, klíče citací, makra, vložené soubory a vše nevyřešené.",
+      "showLocation": "Otevřít soubor na daném řádku v editoru a posunout náhled PDF na odpovídající místo.",
+      "compile": "Zkompilovat projekt jeho enginem a nahlásit chyby.",
+      "getLog": "Přečíst poslední protokol kompilace.",
+      "getPdfText": "Přečíst text zkompilovaného PDF stránku po stránce.",
+      "verifyPdfPages": "Vykreslit zkompilované stránky jako obrázky, aby obrazový model zkontroloval rozvržení.",
+      "setMainDoc": "Změnit, ze kterého souboru se projekt kompiluje.",
+      "literatureSearch": "Vyhledat články v OpenAlex podle klíčových slov, bez potřeby klíče.",
+      "verifyCitation": "Převést DOI nebo název na ověřený BibTeX přes doi.org nebo Crossref.",
+      "projectLibrarySearch": "Prohledat vlastní text a poznámky projektu podle klíčových slov.",
+      "alphaxivSearch": "Vyhledat články z arXiv přes alphaXiv.",
+      "alphaxivPaperContent": "Načíst plný text článku z arXiv přes alphaXiv.",
+      "previewFigure": "Zkompilovat obrázek TikZ nebo PGFPlots samostatně a ukázat výsledek v chatu.",
+      "insertFigure": "Vložit hotový obrázek na pozici kurzoru s popiskem a návěštím a uložit PNG do figures/.",
+      "loadImage": "Podívat se na obrázek, který už v projektu je.",
+      "updateTodos": "Zapsat nebo aktualizovat plán po krocích zobrazený v chatu.",
+      "getTodos": "Přečíst aktuální plán.",
+      "rememberNote": "Uložit poznámku k projektu, kterou uvidí i pozdější chaty.",
+      "forgetNote": "Odebrat uloženou poznámku k projektu.",
+      "listNotes": "Vypsat uložené poznámky k projektu.",
+      "loadSkill": "Načíst úplné instrukce jedné dovednosti, než se podle nich bude postupovat.",
+      "readSkillFile": "Přečíst referenční soubor nebo skript, který je součástí dovednosti.",
+      "spawnAgent": "Spustit pomocného agenta s vlastní úlohou a nástroji.",
+      "sendMessage": "Poslat zprávu běžícímu pomocnému agentovi.",
+      "followupTask": "Zadat pomocnému agentovi po dokončení další úlohu.",
+      "waitAgent": "Počkat, až pomocný agent doběhne, a přečíst jeho výsledek.",
+      "interruptAgent": "Zastavit to, co pomocný agent právě dělá.",
+      "listAgents": "Vypsat pomocné agenty a jejich stav.",
+      "closeAgent": "Zavřít pomocného agenta.",
+      "runCommand": "Spustit příkaz shell ve složce projektu s dvouminutovým limitem.",
+      "computerUse": "Otevřít webovou stránku v okně prohlížeče asistenta.",
+      "toggleTheme": "Přepnout mezi světlým a tmavým režimem."
+    },
+    "disableAll": "Vypnout vše",
+    "emptyContext": "V tomto kontextu nejsou k dispozici žádné nástroje.",
+    "enableAll": "Zapnout vše",
+    "enableTool": "Zapnout {{name}}",
+    "enabledCount": "Zapnuto {{enabled}} z {{total}}",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agenti",
+      "buildAndPdf": "Sestavení a PDF",
+      "figures": "Obrázky",
+      "files": "Soubory",
+      "planAndMemory": "Plán a paměť",
+      "research": "Výzkum",
+      "skills": "Dovednosti",
+      "system": "Systém"
+    },
+    "managerAriaLabel": "Spravovat nástroje agenta",
+    "managerHeading": "Nástroje",
+    "managerTooltip": "Nástroje",
+    "noDescription": "Popis není k dispozici.",
+    "notes": {
+      "latexOnly": "Jen projekty LaTeX",
+      "pdfCaptureSetting": "Vyžaduje nastavení snímání stránek PDF",
+      "alphaxivKey": "Vyžaduje klíč alphaXiv v Integracích",
+      "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz",
+      "browserSetting": "Vyžaduje nastavení webového prohlížeče"
+    },
+    "sourceGroups": {
+      "figure": "Obrázek",
+      "mcp": "MCP",
+      "project": "Nástroje projektu",
+      "skills": "Dovednosti"
+    },
+    "table": {
+      "tool": "Nástroj",
+      "whatItDoes": "Co dělá",
+      "asksFirst": "Ptá se předem"
+    }
+  },
+  "toolCard": {
+    "approved": "Schváleno",
+    "rejected": "Zamítnuto",
+    "binaryPreview": "Tento propojený soubor je binární, takže se tu nedá zobrazit náhled.",
+    "previewTruncated": "Náhled skončil na 256 KiB.",
+    "previewFailed": "U tohoto propojeného zdroje se nepodařilo zobrazit náhled.",
+    "showAll": "Zobrazit všech {{characters}} znaků",
+    "loadingSource": "Načítá se zdroj",
+    "inspectSource": "Prohlédnout zdroj",
+    "openFile": "Otevřít soubor",
+    "openSource": "Otevřít zdroj",
+    "openSourceTitled": "Otevřít zdroj: {{title}}",
+    "openTask": "Otevřít úlohu",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Náhled vykresleného obrázku",
+    "toolImageAlt": "Obrázek z nástroje",
+    "showFigure": "Zobrazit vykreslený obrázek",
+    "showTikz": "Zobrazit zdroj TikZ",
+    "figureTab": "Obrázek",
+    "tikzTab": "TikZ",
+    "saving": "Ukládá se",
+    "saveToProject": "Uložit do projektu",
+    "copyCode": "Kopírovat kód",
+    "saved": "Uloženo {{path}}",
+    "saveNeedsProject": "Otevřete projekt, abyste mohli tento obrázek uložit.",
+    "saveFailed": "Obrázek se nepodařilo uložit."
+  },
+  "transcript": {
+    "dialogTitle": "Přepis delegované úlohy",
+    "dialogDescription": "Vše, co delegovaný agent při práci na této úloze přečetl, spustil a odpověděl.",
+    "loading": "Načítá se přepis",
+    "failed": "Přepis se nepodařilo načíst.",
+    "empty": "Tato úloha nezaznamenala žádný přepis."
+  },
+  "subagents": {
+    "working": "Pracují podagenti",
+    "count": "Podagenti ({{count}})",
+    "stopAll": "Zastavit vše",
+    "stopFailed": "Podagenty se nepodařilo zastavit.",
+    "updates": "{{count}} aktualizací",
+    "openTask": "Otevřít úlohu",
+    "awaitingPermission": "Delegovaný agent čeká na svolení.",
+    "taskFailed": "Delegovaná úloha selhala. Otevřete ji a přečtěte si chybu.",
+    "transcriptTruncated": "Tento přepis je delší než část zobrazená zde.",
+    "noTranscriptYet": "Tato úloha zatím nenahlásila žádnou aktivitu v přepisu.",
+    "noSessionInfo": "Tato úloha nezaznamenala dost informací o relaci, aby se dal otevřít její přepis.",
+    "loadingTranscript": "Načítá se přepis…",
+    "transcriptFailed": "Přepis se nepodařilo načíst.",
+    "stillWorking": "Tento podagent stále pracuje. Úplný přepis se otevře, až skončí.",
+    "noFinalAnswer": "Tento agent nezaznamenal konečnou odpověď.",
+    "latest": "Naposledy: {{text}}",
+    "workingDetail": "pracuje",
+    "status": {
+      "active": "pracuje",
+      "awaiting": "potřebuje svolení",
+      "updated": "aktualizováno",
+      "interrupted": "zastaveno",
+      "completed": "hotovo",
+      "failed": "selhalo"
+    }
+  },
+  "acp": {
+    "newConversation": "Nová konverzace",
+    "savedConversations": "Uložené konverzace",
+    "untitledConversation": "Konverzace bez názvu",
+    "agentSetup": "Nastavení agenta",
+    "usageReport": "Přehled využití",
+    "permission": {
+      "ariaLabel": "Svolení pro agenta",
+      "namedHeadline": "{{agent}} potřebuje svolení",
+      "headline": "Agent potřebuje svolení",
+      "expired": "Tento požadavek vypršel. Požádejte agenta, ať to zkusí znovu.",
+      "dismiss": "Zavřít"
+    },
+    "readiness": {
+      "managedBridge": "Most {{version}} nainstalovaný aplikací Oleafly.",
+      "bridgeOnPath": "Most nalezen v PATH.",
+      "bridgeMissingWithCli": "{{cli}} nalezeno v {{path}}. Pro připojení nainstalujte most ACP {{version}}.",
+      "bridgeMissing": "Pro připojení tohoto agenta nainstalujte most ACP {{version}}.",
+      "cliMissing": "{{cli}} není ve vaší proměnné PATH. Nainstalujte jej a pak spusťte {{command}}.",
+      "cliNotFound": "Nástroj příkazové řádky tohoto agenta nebyl nalezen.",
+      "unavailable": "Tento agent nemůže v tomto počítači běžet."
+    },
+    "bridgeSource": {
+      "notInstalled": "Nenainstalováno",
+      "managed": "Spravuje Oleafly",
+      "onPath": "V PATH"
+    },
+    "installing": "Instaluje se",
+    "installBridge": "Nainstalovat most",
+    "assistantAriaLabel": "Asistent agenta CLI",
+    "loadEarlier": "Načíst starší aktivitu",
+    "starting": "Spouští se {{agent}}",
+    "startingFallback": "agent",
+    "startingHint": "Spouští se nástroj příkazové řádky agenta. Poprvé to trvá pár sekund.",
+    "readySubtitle": "{{agent}} je v tomto projektu připraven",
+    "projectSubtitle": "Pracuje se na projektu „{{project}}“",
+    "signInFallback": "Přihlaste se přes CLI tohoto agenta a pak se znovu připojte.",
+    "reconnectAfterSignIn": "Znovu připojit po přihlášení",
+    "reconnect": "Znovu se připojit ke konverzaci",
+    "resumeTask": "Otevřete výzkumnou úlohu a v práci pokračujte.",
+    "delegatedConversation": "Tato konverzace patří k běhu delegovaného agenta.",
+    "noResume": "Tento agent neumí navázat na uložené konverzace. Až budete připraveni, začněte novou konverzaci.",
+    "imageTooLarge": "Vyberte obrázek menší než 480 KiB. Připojit můžete až čtyři obrázky.",
+    "imageReadFailed": "Obrázek se nepodařilo přečíst.",
+    "removeImage": "Odebrat {{name}}",
+    "composerAriaLabel": "Zpráva agentovi CLI",
+    "composerPlaceholderReady": "Požádejte agenta, ať na tomto projektu zapracuje",
+    "composerPlaceholderIdle": "Zprávu odešlete po zahájení nebo obnovení konverzace",
+    "attachImage": "Připojit obrázek",
+    "startConversation": "Zahájit konverzaci s agentem {{agent}}",
+    "startConversationFallback": "agentem",
+    "agentModel": "Model agenta",
+    "modelManaged": "Model spravuje agent",
+    "stop": "Zastavit",
+    "stopTitle": "Zastavit agenta",
+    "send": "Odeslat",
+    "connecting": "Připojuje se",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "připojuje se",
+      "authRequired": "vyžaduje přihlášení",
+      "ready": "připraven",
+      "running": "běží",
+      "cancelling": "ruší se",
+      "cancelled": "zrušeno",
+      "disconnected": "odpojeno",
+      "failed": "selhalo"
+    },
+    "roster": {
+      "bridgeMissing": "nainstalujte most v Nastavení agenta",
+      "cliMissing": "CLI nebylo v tomto počítači nalezeno",
+      "unavailable": "v tomto počítači není k dispozici",
+      "comingSoon": "již brzy"
+    },
+    "messageTooLarge": "Tato zpráva i s obrázky je příliš velká. Zkraťte zprávu nebo odeberte obrázek.",
+    "terminalCommand": "Agent spouští příkaz v terminálu.",
+    "agentToolFallback": "Nástroj agenta",
+    "agentReported": "Agent hlásí: {{detail}}",
+    "imageAttachmentName": "Obrázek {{index}}",
+    "agentImage": "[Agent vrátil obrázek.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "Agent CLI",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "nenainstalováno",
+    "cliDetail": "Agent CLI · používá vlastní účet",
+    "builtInDetail": "{{provider}} · agent Oleafly"
+  },
+  "home": {
+    "heading": "Co byste dnes chtěli dělat?",
+    "headingAccent": "chtěli dělat?",
+    "skillCategories": "Kategorie dovedností",
+    "skillLockedTitle": "{{name}} je pro tento projekt vypnuto",
+    "recentChats": "Nedávné chaty",
+    "recentStaleTitle": "Začalo ze starší verze projektu",
+    "recentUntitled": "Nový chat",
+    "recentStaleBadge": "Starší verze",
+    "recentMessages_one": "{{count}} zpráva",
+    "recentMessages_few": "{{count}} zprávy",
+    "recentMessages_many": "{{count}} zprávy",
+    "recentMessages_other": "{{count}} zpráv",
+    "showAllHistory": "Zobrazit celou historii ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Tento výsledek neobsahuje odkaz na zdroj.",
+    "sourceOpenFailed": "Zdroj se nepodařilo otevřít.",
+    "noProjectPath": "Tento výsledek neobsahuje cestu k souboru projektu.",
+    "resultOpenFailed": "Soubor s výsledkem se nepodařilo otevřít."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Psaní a úpravy",
+      "citationsAndLiterature": "Citace a literatura",
+      "review": "Revize",
+      "figuresAndTables": "Obrázky a tabulky"
+    },
+    "improveWriting": {
+      "label": "Vylepšit text",
+      "description": "Vypilovat srozumitelnost, tón a plynulost"
+    },
+    "fixGrammar": {
+      "label": "Opravit gramatiku",
+      "description": "Opravit gramatiku a interpunkci"
+    },
+    "fixLatexErrors": {
+      "label": "Opravit chyby LaTeX",
+      "description": "Spravit rozbitý kód a chyby kompilace"
+    },
+    "writeEquation": {
+      "label": "Napsat rovnici",
+      "description": "Z přirozeného jazyka do matematiky v LaTeXu"
+    },
+    "draftSection": {
+      "label": "Navrhnout kapitolu",
+      "description": "Napsat novou kapitolu ve vašem stylu"
+    },
+    "paraphrase": {
+      "label": "Parafrázovat",
+      "description": "Přeformulovat se zachováním významu"
+    },
+    "shorten": {
+      "label": "Zkrátit",
+      "description": "Zestručnit text"
+    },
+    "expand": {
+      "label": "Rozvést",
+      "description": "Doplnit podrobnosti"
+    },
+    "journalFormat": {
+      "label": "Formát časopisu",
+      "description": "Přeformátovat pro cílový časopis"
+    },
+    "writeAbstract": {
+      "label": "Napsat abstrakt",
+      "description": "Sepsat abstrakt z článku"
+    },
+    "generateTitle": {
+      "label": "Vytvořit název",
+      "description": "Poutavé názvy článku"
+    },
+    "keywords": {
+      "label": "Klíčová slova",
+      "description": "Vytáhnout klíčová slova pro vyhledávání"
+    },
+    "continueWriting": {
+      "label": "Pokračovat v psaní",
+      "description": "Navázat tam, kde jste skončili"
+    },
+    "citationSearch": {
+      "label": "Hledání citací",
+      "description": "Hledat články na alphaXiv a OpenAlex"
+    },
+    "literatureReview": {
+      "label": "Literární přehled",
+      "description": "Zmapovat související práce se skutečnými zdroji"
+    },
+    "citeClaim": {
+      "label": "Citovat toto tvrzení",
+      "description": "Najít a přidat ověřenou referenci"
+    },
+    "myLibrary": {
+      "label": "Moje knihovna",
+      "description": "Hledat ve vašich importovaných referencích"
+    },
+    "labSearch": {
+      "label": "Hledání laboratoří",
+      "description": "Najít výzkumné laboratoře a instituce"
+    },
+    "friendlyReview": {
+      "label": "Přátelská recenze",
+      "description": "Konstruktivní zpětná vazba v duchu mentora"
+    },
+    "fireReview": {
+      "label": "Ostrá recenze",
+      "description": "Přísná zátěžová zkouška tvrzení a metod od recenzenta č. 2"
+    },
+    "academicPresentation": {
+      "label": "Akademická prezentace",
+      "description": "Prezentace v Beameru z vašeho článku"
+    },
+    "academicPoster": {
+      "label": "Akademický plakát",
+      "description": "Konferenční plakát z vašeho článku"
+    },
+    "generateTable": {
+      "label": "Vytvořit tabulku",
+      "description": "Navrhnout tabulku v LaTeXu přímo v chatu"
+    },
+    "tikzFigure": {
+      "label": "Obrázek TikZ",
+      "description": "Navrhnout kód TikZ přímo v chatu"
+    }
+  },
+  "turn": {
+    "thinking": "Přemýšlí…",
+    "continuing": "Pokračuje…",
+    "reasoning": "Uvažuje…",
+    "runningTool": "Spouští se {{name}}…",
+    "processingResult": "Zpracovává se výsledek…",
+    "summarizing": "Shrnuje se dřívější konverzace…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Relaci agenta se nepodařilo otevřít.",
+    "approvalModeSaveFailed": "Režim schvalování se nepodařilo uložit.",
+    "skillDraftSaved": "Koncept dovednosti byl uložen. Před zapnutím si jej projděte.",
+    "skillDraftFailed": "Koncept dovednosti se nepodařilo uložit. {{error}}",
+    "chatArchived": "Chat byl archivován.",
+    "chatArchiveFailed": "Tento chat se nepodařilo archivovat.",
+    "chatForked": "Chat byl rozvětven.",
+    "chatForkFailed": "Tento chat se nepodařilo rozvětvit.",
+    "engineNotLoaded": "Podrobnosti o dokumentovém enginu nejsou načtené. Úpravy AI jsou pro jistotu vypnuté.",
+    "skillsLoadFailed": "Zapnuté dovednosti se nepodařilo načíst. Zkuste to znovu.",
+    "approvalModeLoadFailed": "Režim schvalování se nepodařilo načíst.",
+    "approvalRulesLoadFailed": "Pravidla schvalování pro projekt se nepodařilo načíst.",
+    "restored": "Soubory projektu byly obnoveny. Konverzace zůstala zachována.",
+    "restoreFailed": "Obnovení se nezdařilo: {{error}}",
+    "steerFailed": "Probíhající tah se nepodařilo nasměrovat.",
+    "approvalRuleSaveFailed": "Pravidlo schvalování pro projekt se nepodařilo uložit.",
+    "attachmentTooLarge": "{{name}} je příliš velký (max. 10 MB).",
+    "attachmentReadFailed": "Soubor {{name}} se nepodařilo přečíst.",
+    "tooManyTools": "Zapnuto je {{enabled}} nástrojů, ale jeden běh jich zvládne nejvýše {{max}}. Vypněte v Nástrojích alespoň {{excess}} a zkuste to znovu."
+  },
+  "header": {
+    "mcpTooltip": "Nastavit servery MCP pro asistenta",
+    "mcpAriaLabel": "Nastavení MCP asistenta",
+    "settings": "Nastavení asistenta",
+    "usageAriaLabel": "Zobrazit využití AI",
+    "usageReport": "Přehled využití",
+    "newChat": "Nový chat",
+    "chatHistory": "Historie chatů",
+    "staleChatHint": "Tento chat začal ze starší verze projektu. Obsah souborů se může lišit od toho, co AI viděla."
+  },
+  "usage": {
+    "lastRun": "Poslední běh",
+    "steps": "Kroky",
+    "input": "Vstup",
+    "output": "Výstup",
+    "thisChat": "Tento chat",
+    "runs": "Běhy",
+    "tokens": "Tokeny",
+    "cacheNote": "Využití mezipaměti a odhady nákladů najdete v přehledu využití.",
+    "summaryRunWithTokens_one": "Poslední běh: {{count}} krok, {{tokens}} hlášených tokenů",
+    "summaryRunWithTokens_few": "Poslední běh: {{count}} kroky, {{tokens}} hlášených tokenů",
+    "summaryRunWithTokens_many": "Poslední běh: {{count}} kroku, {{tokens}} hlášených tokenů",
+    "summaryRunWithTokens_other": "Poslední běh: {{count}} kroků, {{tokens}} hlášených tokenů",
+    "summaryRunNoTokens_one": "Poslední běh: {{count}} krok, celkový počet tokenů není k dispozici",
+    "summaryRunNoTokens_few": "Poslední běh: {{count}} kroky, celkový počet tokenů není k dispozici",
+    "summaryRunNoTokens_many": "Poslední běh: {{count}} kroku, celkový počet tokenů není k dispozici",
+    "summaryRunNoTokens_other": "Poslední běh: {{count}} kroků, celkový počet tokenů není k dispozici",
+    "summaryChat": "Tento chat: {{steps}} kroků, {{tokens}} tokenů",
+    "summaryFallback": "Využití AI"
+  },
+  "provider": {
+    "connectTitle": "Pokračujte připojením poskytovatele AI",
+    "connectBody": "Použijte vlastní klíč API (OpenAI, Anthropic, Groq a další) nebo spusťte model místně přes Ollama. Asistent umí číst a upravovat soubory, kompilovat váš projekt a ověřit PDF.",
+    "connectButton": "Připojit poskytovatele",
+    "runLocal": "Spustit místní model přes Ollama",
+    "quotaWarning": "Úložiště historie chatů je plné. Starší chaty byly promazány a nové zprávy se nemusí uložit. Uvolněte místo smazáním starých chatů z historie."
+  },
+  "conversation": {
+    "renderFailed": "Tuto konverzaci se nepodařilo vykreslit. Začněte nový chat nebo ji znovu otevřete z historie.",
+    "checkpointRestored": "Projekt byl obnoven do tohoto záchytného bodu",
+    "restoring": "Obnovuje se…",
+    "restoreCheckpoint": "Obnovit kód do stavu před touto odpovědí",
+    "restoreConfirm": "Obnovit soubory projektu do stavu před touto odpovědí? Zahodí se tím i změny kódu z pozdějších odpovědí AI. Konverzace zůstane zachována.",
+    "noResponse": "Na tuto zprávu nepřišla žádná odpověď. Přenos byl přerušen. Odešlete ji znovu, nebo začněte nový chat.",
+    "scrollToBottom": "Přejít dolů",
+    "projectSubtitle": "Pracuje se na projektu „{{project}}“",
+    "noOutput": "Model nevrátil žádný výstup. Zkontrolujte Nastavení → Asistent AI."
+  },
+  "followUps": {
+    "steered": "Nasměrováno do probíhajícího tahu: {{summary}}",
+    "sending": "Odesláno jako další tah: {{summary}}",
+    "waiting": "Čeká se na bezpečné místo v běhu: {{summary}}",
+    "queued": "Zařazeno do dalšího tahu: {{summary}}",
+    "steerNow": "Nasměrovat hned",
+    "startingRun": "Spouští se běh",
+    "discard": "Zahodit zprávu ve frontě"
+  },
+  "goal": {
+    "editAriaLabel": "Upravit cíl: {{goal}}",
+    "clear": "Zrušit cíl",
+    "formAriaLabel": "Nastavit trvalý cíl",
+    "label": "Cíl",
+    "placeholder": "K čemu má asistent trvale směřovat?",
+    "save": "Uložit cíl"
+  },
+  "suggestions": {
+    "literatureSweep": "Projdi literaturu k tomuto projektu",
+    "relatedWork": "Naformuluj kapitolu o souvisejících pracích",
+    "verifyClaims": "Zkontroluj každé tvrzení proti jeho zdroji",
+    "reviewManuscript": "Zrecenzuj to jako oponent",
+    "latexBuild": "Oprav chyby ve zdroji mého dokumentu",
+    "preSubmission": "Připrav to k odeslání",
+    "slides": "Udělej z tohoto článku přednášku",
+    "recompile": "Zkompiluj znovu a zkontroluj chyby"
+  }
+}

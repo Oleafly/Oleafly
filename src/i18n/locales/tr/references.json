@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Bu makalede Oleafly'ye atıf ver",
+  "empty": {
+    "citations": {
+      "detail": "Başlamak için bir kaynak kitaplığı içe aktarın veya bir atıf ekleyin.",
+      "title": "Henüz atıf yok"
+    },
+    "symbols": {
+      "detail": "Başlıklar, etiketler, komutlar ve ortamlar proje yazıldıkça burada görünür.",
+      "title": "Henüz sembol yok"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Atıfları filtrele",
+    "ariaLabelResults": "Sonuçları filtrele",
+    "ariaLabelSymbols": "Sembolleri filtrele",
+    "clear": "Filtreyi temizle",
+    "noCitation": "“{{query}}” ile eşleşen atıf yok.",
+    "noResult": "“{{query}}” ile eşleşen sonuç yok.",
+    "noSymbol": "“{{query}}” ile eşleşen sembol yok.",
+    "placeholderCitations": "Anahtarları, başlıkları, yazarları filtrele…",
+    "placeholderResults": "Konumları filtrele…",
+    "placeholderSymbols": "Etiketleri ve komutları filtrele…"
+  },
+  "import": {
+    "added_one": "{{count}} kaynak şuraya eklendi: {{target}}.",
+    "added_other": "{{count}} kaynak şuraya eklendi: {{target}}.",
+    "addedWithDuplicates_one": "{{count}} kaynak şuraya eklendi: {{target}}. {{duplicates}} tanesi zaten vardı.",
+    "addedWithDuplicates_other": "{{count}} kaynak şuraya eklendi: {{target}}. {{duplicates}} tanesi zaten vardı.",
+    "allDuplicates_one": "Bu kaynak zaten şurada var: {{target}}.",
+    "allDuplicates_other": "Bu {{count}} kaynak zaten şurada var: {{target}}.",
+    "defaultTarget": "kaynakça",
+    "description": "Bir atıf yöneticisinden veya kaynakça dosyasından bu projeye kaynak ekleyin.",
+    "duplicateNote": "Kaynakçada zaten bulunan bir DOI'ye sahip kaynaklar atlanır.",
+    "empty": "Bu dosyada kaynak bulunamadı.",
+    "endnote": {
+      "button": "XML, RIS veya BibTeX dosyası seçin",
+      "description": "Bir EndNote XML, RIS veya BibTeX dosyası seçin. Oleafly kaynakları proje kaynakçasına ekler.",
+      "title": "EndNote, RIS veya BibTeX"
+    },
+    "failed": "Bu kaynaklar içe aktarılamadı.",
+    "nothingNew": "Şuraya eklenecek yeni bir şey yok: {{target}}.",
+    "problems_one": "İçe aktarma sırasında {{count}} sorun oluştu. {{details}}",
+    "problems_other": "İçe aktarma sırasında {{count}} sorun oluştu. {{details}}",
+    "readFailed": "Bu dosya okunamadı.",
+    "title": "Kaynak kitaplığını içe aktar",
+    "unrecognized": "Tanınmayan dosya türü: {{name}}",
+    "zotero": {
+      "button": "Zotero RDF dosyası seçin",
+      "description": "Zotero'da Dosya → Kitaplığı Dışa Aktar → Zotero RDF yolunu izleyin. Ardından dışa aktarılan dosyayı seçin.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Kısmi sonuçlar. Bozuk veya okunamayan dosyalar bazı geçişleri dışarıda bırakabilir.",
+    "stale": "Güncelleniyor. Önceki sürüme ait atıflar, semboller ve aralıklar gizlendi."
+  },
+  "panel": {
+    "ariaLabel": "Kaynaklar (Shift-F12)",
+    "clearQuery": "Kaynak sorgusunu temizle",
+    "cleanLibrary": "Kaynak kitaplığını temizle",
+    "importAriaLabel": "Kaynakları içe aktar",
+    "issues_one": "{{count}} kaynak veya atıf sorunu",
+    "issues_other": "{{count}} kaynak veya atıf sorunu",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Kaynaklar",
+    "viewTabs": "Kaynak paneli görünümü"
+  },
+  "cleanLibrary": {
+    "title": "Kaynak kitaplığını temizleyin",
+    "description": "Dosyalarınızı değiştirmeden önce atıf anahtarlarını ve yinelenen kayıtları gözden geçirin.",
+    "library": "Kaynak kitaplığı",
+    "entryCount_one": "{{count}} kayıt",
+    "entryCount_other": "{{count}} kayıt",
+    "footer": "Önizleme açık dosyalarınızı kaydeder. Uygulama, dosyaların hâlâ önizlemeyle eşleştiğini denetler ve orijinalleri yedekler.",
+    "noBib": "Bu projede temizlenecek bir .bib dosyası yok.",
+    "entriesKept": "{{total}} kaydın {{kept}} tanesi kalacak.",
+    "changes": "Değişiklikler ve notlar",
+    "noChanges": "Uygulanacak dosya değişikliği yok.",
+    "filesToUpdate": "Güncellenecek dosyalar: {{files}}",
+    "none": "Yok",
+    "introSafeChanges": "Atıf anahtarları standartlaştırılır. DOI yinelemeleri yalnızca tüm ayrıntıları korunabildiğinde kaldırılır.",
+    "introReview": "Benzer başlıklar ve çelişen üst veriler gözden geçirilmek üzere kitaplıkta kalır.",
+    "preview": "Önizleme",
+    "reviewTitle": "Uygulamadan önce gözden geçirin",
+    "reviewBody": "Hangi kayıtların ve atıfların güncelleneceğini görmek için değişiklikleri önizleyin.",
+    "statusAttention": "İlgi gerekiyor",
+    "statusWorking": "Çalışıyor…",
+    "statusPreviewReady": "Önizleme hazır",
+    "statusReady": "Önizlemeye hazır",
+    "refreshPreview": "Önizlemeyi yenile",
+    "previewChanges": "Değişiklikleri önizle",
+    "apply": "Uygula ve atıfları yeniden yaz",
+    "truncated": "Önizleme, her sürümün ilk 500 satırını gösterir.",
+    "actionRenamed": "{{old}}, {{new}} olarak yeniden adlandırıldı",
+    "actionDuplicate": "{{removed}}, {{kept}} kaydının kopyası olduğu için kaldırıldı ({{by}} ile eşleşti)",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Temizlenen dosyalar yeniden yüklenemedi. Düzenlemeye başlamadan önce projeyi yeniden açın.",
+    "cleaned": "Kitaplık temizlendi. {{total}} kaydın {{kept}} tanesi tutuldu.",
+    "cleanedWithBackup": "Kitaplık temizlendi. {{total}} kaydın {{kept}} tanesi tutuldu. Orijinal dosyalar {{path}} içine kaydedildi."
+  },
+  "query": {
+    "expired": {
+      "detail": "Bu sorgudan sonra proje değişti. Güncel kaynak aralıklarını kullanmak için Kaynakları Bul komutunu yeniden çalıştırın.",
+      "title": "Kaynak sonuçlarının süresi doldu"
+    },
+    "noLocations": {
+      "detail": "Sembol bu sürümde var, ancak eşleşen bir tanımı veya geçişi yok.",
+      "title": "Konum bulunamadı"
+    },
+    "none": {
+      "detail": "İmleci bir etiketin, atıfın, komutun veya ortamın üzerine getirip Shift-F12 tuşlarına basın.",
+      "title": "Kaynak sorgusu yok"
+    }
+  },
+  "tabs": {
+    "citations": "Atıflar",
+    "results": "Kaynaklar",
+    "symbols": "Semboller"
+  },
+  "trees": {
+    "citations": "Proje atıfları",
+    "noCitations": "Kaynakça kaydı veya atıf kullanımı bulunamadı.",
+    "noSymbols": "Projede tanımlı sembol bulunamadı.",
+    "symbols": "Proje sembolleri"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "En son proje sürümü çözümlenemedi. Kaynak dosyalar değiştirilmedi.",
+      "title": "Proje çözümlemesi başarısız oldu"
+    },
+    "indexing": {
+      "detail": "Kaynaklar ve atıflar, geçerli proje sürümü hazır olduğunda görünecek.",
+      "title": "Proje zekası dizinleniyor"
+    },
+    "noProject": {
+      "detail": "Atıfları, sembolleri ve dosyalar arası kaynakları incelemek için bir belge projesi açın.",
+      "title": "Açık proje yok"
+    },
+    "offline": {
+      "detail": "Bu çalışma alanında kaynaklar ve atıflar şu anda denetlenemiyor.",
+      "title": "Çözümleme hizmeti kullanılamıyor"
+    },
+    "unsupported": {
+      "detail": "Etkin proje, desteklenen bir belge motoru kullanmıyor.",
+      "title": "Proje zekası kullanılamıyor"
+    },
+    "waiting": {
+      "detail": "En son proje sürümü henüz dizinlenmedi.",
+      "title": "Proje çözümlemesi bekleniyor"
+    }
+  }
+}

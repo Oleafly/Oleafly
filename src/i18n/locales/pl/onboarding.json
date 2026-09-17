@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Pierwsze kroki",
+    "overview": {
+      "title": "Ekran główny",
+      "content": "Tutaj zaczynają się projekty i tworzenie nowych projektów."
+    },
+    "create": {
+      "title": "Utwórz prawdziwy projekt",
+      "content": "Wybierz Nowy projekt, aby zobaczyć, na ile sposobów można zacząć pracę."
+    },
+    "kind": {
+      "title": "Trzy sposoby na start",
+      "content": "Rozpocznij projekt badawczy, wczytaj gotowy maszynopis albo skorzystaj z przygotowanego szablonu."
+    },
+    "kindTemplate": {
+      "title": "Praca na szablonie",
+      "content": "Wybierz Użyj szablonu, aby otworzyć galerię. Pozostałe dwa punkty startowe są dostępne w każdej chwili."
+    },
+    "gallery": {
+      "title": "Znajdź swój punkt startowy",
+      "content": "Przeglądaj kategorie, szukaj po nazwie i zawężaj szablony według kompilatora lub dostępności bez internetu."
+    },
+    "template": {
+      "title": "Wybierz szablon",
+      "content": "Wskaż dowolny prawdziwy szablon, aby przejść dalej. Jego pliki staną się nowym projektem."
+    },
+    "name": {
+      "title": "Nazwij projekt",
+      "content": "Wpisz nazwę projektu. Przycisk Dalej włączy się, gdy nazwa nie będzie pusta."
+    },
+    "color": {
+      "title": "Wybierz kolor okładki",
+      "content": "Ten kolor ułatwia odnalezienie projektu na ekranie głównym. Można zostawić ustawienie domyślne szablonu."
+    },
+    "createProject": {
+      "title": "Utwórz projekt",
+      "content": "Kliknij \"Utwórz projekt\", aby założyć projekt na wybranym szablonie."
+    }
+  },
+  "workspace": {
+    "label": "Obszar roboczy",
+    "toolbar": {
+      "title": "Pasek narzędzi projektu",
+      "content": "Tutaj znajdują się działania na projekcie i sterowanie kompilacją."
+    },
+    "sidebar": {
+      "title": "Nawigacja w obszarze roboczym",
+      "content": "Przechodź między plikami, wyszukiwaniem, kontrolą wersji, kontrolą wstępną, odwołaniami i aktywnością MCP."
+    },
+    "editor": {
+      "title": "Edytor",
+      "content": "Pisz i poruszaj się po kodzie źródłowym z uzupełnianiem, diagnostyką, formatowaniem i podpowiedziami kontekstowymi."
+    },
+    "wysiwygToggle": {
+      "title": "Wypróbuj tryb WYSIWYG",
+      "content": "Przełączaj się między surowym kodem źródłowym a sformatowanym widokiem dokumentu w stylu Google Docs."
+    },
+    "compile": {
+      "title": "Kompilacja i ponowna kompilacja",
+      "content": "Tutaj budujesz bieżący projekt. Samouczek niczego nie kompiluje ani nie zmienia w kodzie źródłowym."
+    },
+    "logs": {
+      "title": "Dzienniki kompilacji",
+      "content": "Otwórz dzienniki kompilacji, aby przejrzeć błędy bez zmiany zawartości projektu. Sąsiedni status pokazuje czas ostatniej kompilacji."
+    },
+    "preview": {
+      "title": "Podgląd PDF",
+      "content": "Skompilowany dokument pozostaje obok kodu źródłowego w widoku podzielonym."
+    },
+    "zoom": {
+      "title": "Kompletny zestaw narzędzi PDF",
+      "content": "Otwórz konspekt, przeszukaj tekst, przeskocz między stronami, wybierz układ jedno lub dwustronicowy, przybliż lub dopasuj stronę, odwróć kolory, skorzystaj z dostępnego widoku czytnika, obróć, pobierz, zapisz w projekcie, przejdź na pełny ekran albo otwórz podgląd w osobnym oknie."
+    },
+    "sourceNavigation": {
+      "title": "Z PDF do źródła",
+      "content": "Kliknij treść w skompilowanym PDF, aby przejść wprost do odpowiadającego jej miejsca w źródle."
+    }
+  },
+  "research": {
+    "label": "Badawczy obszar roboczy",
+    "open": {
+      "title": "Badawczy obszar roboczy",
+      "content": "Otwórz go, aby przekazywać zadania badawcze agentowi i podłączać foldery z lekturami oraz zbiory danych trzymane gdzie indziej. To nowość w wersji beta, więc zgłaszaj wszystko, co nie działa."
+    },
+    "tasks": {
+      "title": "Kolejkuj zadania badawcze",
+      "content": "Opisz fragment pracy i przekaż go agentowi. Każde zadanie ma własną rozmowę, wyniki i notatki z przeglądu."
+    },
+    "folders": {
+      "title": "Podłącz foldery, które już prowadzisz",
+      "content": "Wskaż obszarowi roboczemu foldery z lekturami i zbiory danych spoza projektu. Nic nie jest kopiowane ani przenoszone."
+    }
+  },
+  "settings": {
+    "label": "Ustawienia",
+    "navigation": {
+      "title": "Ustawienia",
+      "content": "Tutaj przechodzisz między preferencjami i integracjami."
+    },
+    "general": {
+      "title": "Preferencje ogólne",
+      "content": "Steruj zachowaniem edycji, trybem offline, skrótami i samouczkami."
+    },
+    "appearance": {
+      "title": "Wygląd",
+      "content": "Wybierz motyw, typografię, domyślny układ obszaru roboczego i kolor akcentu."
+    },
+    "dictionary": {
+      "title": "Słownik",
+      "content": "Przejrzyj słowa pomijane przez sprawdzanie pisowni i gramatyki, zarówno dla projektu, jak i globalnie."
+    },
+    "data": {
+      "title": "Przechowywanie danych",
+      "content": "Sprawdź lokalne miejsce na projekty i zarządzaj danymi aplikacji."
+    },
+    "ai": {
+      "title": "Asystent AI",
+      "content": "Skonfiguruj dostawców, modele, poświadczenia oraz serwery MCP, z których może korzystać asystent."
+    },
+    "compiler": {
+      "title": "Kompilator",
+      "content": "Wybierz i skonfiguruj silnik LaTeX używany do budowania projektów."
+    },
+    "downloads": {
+      "title": "Pobrane",
+      "content": "Zarządzaj pakietami i zasobami dostępnymi do pracy bez internetu."
+    },
+    "integrations": {
+      "title": "Integracje",
+      "content": "Połącz GitHub, alphaXiv, Zotero, wyszukiwanie cytowań oraz lokalny serwer MCP Oleafly."
+    },
+    "shortcuts": {
+      "title": "Skróty klawiaturowe",
+      "content": "Przejrzyj, zmień, ustaw i przywróć skróty klawiaturowe aplikacji."
+    },
+    "mcp": {
+      "title": "MCP asystenta",
+      "content": "Wybierz serwery MCP, z których może korzystać asystent."
+    },
+    "help": {
+      "title": "Pomoc i informacje",
+      "content": "Uruchom ponownie samouczek kontekstowy, otwórz dokumentację, sprawdź skróty albo zgłoś problem."
+    }
+  },
+  "aiSettings": {
+    "label": "Ustawienia AI",
+    "tabs": {
+      "title": "Ustawienia asystenta AI",
+      "content": "Tutaj zarządzasz dostawcami i kluczami, instrukcjami, personami, umiejętnościami wielokrotnego użytku oraz serwerami MCP."
+    },
+    "providers": {
+      "title": "Podłącz dostawców",
+      "content": "Wklej klucz, a zostanie zweryfikowany u dostawcy przed zapisaniem. Podłączeni dostawcy mają zieloną plakietkę i rozwijają się do listy modeli, którą można przełączać, rozszerzać lub przywracać. Klucze pozostają zaszyfrowane na tym komputerze."
+    },
+    "customProvider": {
+      "title": "Własny punkt końcowy",
+      "content": "Działa tu każdy bazowy adres URL zgodny z OpenAI, w tym serwery lokalne, takie jak Ollama czy LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instrukcje",
+      "content": "Kliknij kartę Instrukcje, aby przejść dalej."
+    },
+    "defaultModel": {
+      "title": "Model domyślny",
+      "content": "Nowe czaty zaczynają się od tego modelu. Model można nadal zmieniać w każdej rozmowie z poziomu panelu czatu."
+    },
+    "instructions": {
+      "title": "Instrukcje własne",
+      "content": "Stałe preferencje stylu, dołączane do każdego żądania asystenta."
+    },
+    "openPersonas": {
+      "title": "Persony",
+      "content": "Kliknij kartę Persony, aby przejść dalej."
+    },
+    "personas": {
+      "title": "Twórz persony",
+      "content": "Nazwane zestawy instrukcji z kolorem, przełączane z menu Persona w czacie. Wypróbuj redaktora, recenzenta albo purystę LaTeX."
+    }
+  },
+  "ai": {
+    "label": "Asystent AI",
+    "assistant": {
+      "title": "Asystent AI",
+      "content": "Pracuj z asystentem, który zna projekt, bez wysyłania czegokolwiek podczas tego samouczka."
+    },
+    "runtime": {
+      "title": "Dwa rodzaje agenta",
+      "content": "Agent Oleafly działa na skonfigurowanym dostawcy modeli. Agent wiersza poleceń, w wersji beta, steruje agentem programistycznym zainstalowanym już na tym komputerze."
+    },
+    "connectProvider": {
+      "title": "Podłącz dostawcę",
+      "content": "Jeśli żaden dostawca nie jest skonfigurowany, zacznij tutaj. Samouczek nigdy nie prosi o poświadczenia ani ich nie zmienia."
+    },
+    "providerModel": {
+      "title": "Dostawca i model",
+      "content": "Zmieniaj modele na potrzeby tej rozmowy. Zmiany dotyczą tylko tej sesji. Model domyślny ustawia się w Ustawieniach. Logo wskazuje dostawcę każdego modelu."
+    },
+    "prompts": {
+      "title": "Skróty do poleceń",
+      "content": "Wybierz gotowe polecenie, aby wstawić je do pola czatu."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Wybierz sposób pracy asystenta. Aktywna persona zastępuje domyślne instrukcje, dopóki nie zostanie wyłączona."
+    },
+    "input": {
+      "title": "Pole czatu",
+      "content": "Opisz, czego potrzebujesz. Asystent może korzystać z kontekstu projektu, ale ten samouczek nigdy nie wysyła żądania."
+    },
+    "attachments": {
+      "title": "Załączniki",
+      "content": "Dołączaj obrazy, pliki PDF i pliki źródłowe, gdy rozmowa wymaga dodatkowego kontekstu."
+    },
+    "history": {
+      "title": "Historia rozmów",
+      "content": "Otwieraj ponownie ostatnie rozmowy i pełną historię czatu, zachowując powiązanie każdej rozmowy ze stanem jej projektu."
+    },
+    "usage": {
+      "title": "Zużycie",
+      "content": "Skonfigurowane rozmowy pokazują tutaj liczbę uruchomień, tokenów i szacowany koszt, jeśli są dostępne."
+    },
+    "restore": {
+      "title": "Przywróć stan projektu",
+      "content": "Po edycji wykonanej przez AI punkt kontrolny może przywrócić pliki projektu bez usuwania rozmowy."
+    }
+  },
+  "diagram": {
+    "label": "Kreator diagramów",
+    "composer": {
+      "title": "Kreator diagramów",
+      "content": "Buduj diagramy wizualnie albo z kodu TikZ. Samouczek nie zmienia ani nie zapisuje Twojej pracy."
+    },
+    "import": {
+      "title": "Importuj plik TikZ",
+      "content": "Masz już plik .tikz albo .tex? Zaimportuj go, aby zastąpić ten startowy rysunek. Pozostanie szkicem do czasu zapisania."
+    },
+    "modes": {
+      "title": "Rysowanie i kod",
+      "content": "Tryb rysowania pozwala pracować bezpośrednio na obszarze roboczym. Tryb kodu pokazuje wygenerowany TikZ i gotowe fragmenty."
+    },
+    "palette": {
+      "title": "Paleta kształtów",
+      "content": "Wybierz kształt, a potem kliknij i przeciągnij po obszarze roboczym, aby go umieścić i ustalić rozmiar."
+    },
+    "handles": {
+      "title": "Łączenie i zmiana rozmiaru",
+      "content": "Zaznaczony kształt pokazuje uchwyty połączeń i zmiany rozmiaru, co pozwala precyzyjnie budować strukturę."
+    },
+    "inspector": {
+      "title": "Inspektor",
+      "content": "Zaznacz kształt lub połączenie, aby dopasować jego styl, tekst, prowadzenie i kolejność nakładania."
+    },
+    "preview": {
+      "title": "Skompilowany podgląd",
+      "content": "Kompilacja otwiera podgląd obok edytora, ze sterowaniem skalą i tłem."
+    },
+    "compile": {
+      "title": "Kompilacja",
+      "content": "Kompilacja renderuje osobny podgląd bez wstawiania diagramu do dokumentu."
+    },
+    "saveProject": {
+      "title": "Zapisz jako projekt",
+      "content": "Zapisz gotowy diagram jako projekt graficzny wielokrotnego użytku, który pojawi się na ekranie głównym."
+    },
+    "download": {
+      "title": "Pobieranie",
+      "content": "Pobierz skompilowany diagram jako plik PNG, bez zapisywania go jako projekt."
+    }
+  }
+}

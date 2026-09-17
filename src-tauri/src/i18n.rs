@@ -4,7 +4,10 @@ use std::sync::{OnceLock, RwLock};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
-pub const SUPPORTED: &[&str] = &["en", "zh-Hans"];
+pub const SUPPORTED: &[&str] = &[
+    "en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr",
+    "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko",
+];
 pub const DEFAULT: &str = "en";
 pub const LOCALE_CHANGED_EVENT: &str = "i18n:locale-changed";
 
@@ -14,6 +17,31 @@ const SOURCES: &[(&str, &str)] = &[
         "zh-Hans",
         include_str!("../../src/i18n/locales/zh-Hans/native.json"),
     ),
+    (
+        "zh-Hant",
+        include_str!("../../src/i18n/locales/zh-Hant/native.json"),
+    ),
+    ("de", include_str!("../../src/i18n/locales/de/native.json")),
+    ("fr", include_str!("../../src/i18n/locales/fr/native.json")),
+    ("es", include_str!("../../src/i18n/locales/es/native.json")),
+    ("it", include_str!("../../src/i18n/locales/it/native.json")),
+    ("nl", include_str!("../../src/i18n/locales/nl/native.json")),
+    (
+        "pt-BR",
+        include_str!("../../src/i18n/locales/pt-BR/native.json"),
+    ),
+    ("pl", include_str!("../../src/i18n/locales/pl/native.json")),
+    ("ru", include_str!("../../src/i18n/locales/ru/native.json")),
+    ("uk", include_str!("../../src/i18n/locales/uk/native.json")),
+    ("tr", include_str!("../../src/i18n/locales/tr/native.json")),
+    ("cs", include_str!("../../src/i18n/locales/cs/native.json")),
+    ("da", include_str!("../../src/i18n/locales/da/native.json")),
+    ("sv", include_str!("../../src/i18n/locales/sv/native.json")),
+    ("nb", include_str!("../../src/i18n/locales/nb/native.json")),
+    ("fi", include_str!("../../src/i18n/locales/fi/native.json")),
+    ("ro", include_str!("../../src/i18n/locales/ro/native.json")),
+    ("ja", include_str!("../../src/i18n/locales/ja/native.json")),
+    ("ko", include_str!("../../src/i18n/locales/ko/native.json")),
 ];
 
 type Catalog = HashMap<String, String>;
@@ -80,18 +108,32 @@ pub fn resolve(tag: Option<&str>) -> &'static str {
             "zh-Hans".to_string()
         }
     } else {
-        language.to_string()
+        let region = parts[1..]
+            .iter()
+            .find(|part| part.len() == 2 && part.chars().all(|c| c.is_ascii_alphabetic()));
+        match region {
+            Some(region) => format!("{language}-{}", region.to_ascii_uppercase()),
+            None => language.to_string(),
+        }
     };
-    let fallback = match canonical.as_str() {
+    [canonical.as_str(), language]
+        .iter()
+        .find_map(|candidate| supported_or_fallback(candidate))
+        .unwrap_or(DEFAULT)
+}
+
+fn supported_or_fallback(candidate: &str) -> Option<&'static str> {
+    let fallback = match candidate {
         "zh-Hant" => Some("zh-Hans"),
+        "pt" | "pt-PT" => Some("pt-BR"),
+        "no" | "nn" => Some("nb"),
         _ => None,
     };
     SUPPORTED
         .iter()
         .copied()
-        .find(|supported| supported.eq_ignore_ascii_case(&canonical))
-        .or_else(|| fallback.filter(|candidate| SUPPORTED.contains(candidate)))
-        .unwrap_or(DEFAULT)
+        .find(|supported| supported.eq_ignore_ascii_case(candidate))
+        .or_else(|| fallback.filter(|locale| SUPPORTED.contains(locale)))
 }
 
 pub fn resolve_preference(preference: &str) -> &'static str {
@@ -202,9 +244,14 @@ mod tests {
     fn resolves_chinese_tags_like_the_frontend() {
         assert_eq!(resolve(Some("zh-CN")), "zh-Hans");
         assert_eq!(resolve(Some("zh_CN.UTF-8")), "zh-Hans");
-        assert_eq!(resolve(Some("zh-Hant-TW")), "zh-Hans");
+        assert_eq!(resolve(Some("zh-Hant-TW")), "zh-Hant");
         assert_eq!(resolve(Some("en-GB")), "en");
-        assert_eq!(resolve(Some("fr")), "en");
+        assert_eq!(resolve(Some("fr")), "fr");
+        assert_eq!(resolve(Some("fr-CA")), "fr");
+        assert_eq!(resolve(Some("pt-PT")), "pt-BR");
+        assert_eq!(resolve(Some("pt")), "pt-BR");
+        assert_eq!(resolve(Some("nn-NO")), "nb");
+        assert_eq!(resolve(Some("xx-YY")), "en");
         assert_eq!(resolve(None), "en");
     }
 
@@ -244,7 +291,7 @@ mod tests {
 
     #[test]
     fn an_unknown_locale_reads_the_default_catalog() {
-        assert_eq!(catalog("fr")["menu.quit"], catalog(DEFAULT)["menu.quit"]);
+        assert_eq!(catalog("xx")["menu.quit"], catalog(DEFAULT)["menu.quit"]);
         assert_ne!(catalog("zh-Hans")["menu.quit"], catalog("en")["menu.quit"]);
     }
 
@@ -256,17 +303,19 @@ mod tests {
         assert_eq!(resolve(Some("  EN-gb  ")), "en");
         assert_eq!(resolve(Some("en_US.UTF-8@euro")), "en");
         assert_eq!(resolve(Some("ZH")), "zh-Hans");
-        assert_eq!(resolve(Some("zh-Hant-HK")), "zh-Hans");
-        assert_eq!(resolve(Some("zh_MO")), "zh-Hans");
+        assert_eq!(resolve(Some("zh-Hant-HK")), "zh-Hant");
+        assert_eq!(resolve(Some("zh_MO")), "zh-Hant");
         assert_eq!(resolve(Some("zh-Hans-CN")), "zh-Hans");
-        assert_eq!(resolve(Some("de-DE")), DEFAULT);
+        assert_eq!(resolve(Some("de-DE")), "de");
+        assert_eq!(resolve(Some("pt_BR.UTF-8")), "pt-BR");
     }
 
     #[test]
     fn a_preference_resolves_explicitly_or_from_the_system() {
         assert_eq!(resolve_preference("zh-Hans"), "zh-Hans");
         assert_eq!(resolve_preference("en"), "en");
-        assert_eq!(resolve_preference("pt-BR"), DEFAULT);
+        assert_eq!(resolve_preference("pt-BR"), "pt-BR");
+        assert_eq!(resolve_preference("xx"), DEFAULT);
         assert!(SUPPORTED.contains(&resolve_preference("system")));
     }
 

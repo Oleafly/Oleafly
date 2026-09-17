@@ -1,18 +1,36 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
+import type { DictionaryInfo } from "@oleafly/backend-port";
 import type { ProofreadingSurface } from "@oleafly/editor";
 import { Popover } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   collectProjectInfo,
   type ProjectInfoSnapshot,
 } from "@/components/editor/project-info-data";
+import { currentLocale } from "@/i18n";
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { formatNumber } from "@/lib/intl";
+import { logError } from "@/lib/log";
+import {
+  dictionaryLabel,
+  loadDictionaryCatalog,
+} from "@/lib/proofreading/dictionary-catalog";
+import { notifyError } from "@/lib/toast";
+import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
+
+const APP_SETTING = "__app__";
 
 function basename(path: string): string {
   const index = path.lastIndexOf("/");
@@ -111,6 +129,86 @@ function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurfac
   );
 }
 
+function ProjectSpellLanguage() {
+  const { t } = useTranslation(["common", "editor"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const projectLocale = useFilesStore((state) => state.projectDictionaryLocale);
+  const spellcheck = useSettingsStore((state) => state.spellcheck);
+  const [entries, setEntries] = useState<DictionaryInfo[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    loadDictionaryCatalog()
+      .then(setEntries)
+      .catch((error) => void logError("list spelling dictionaries", error));
+  }, []);
+
+  const choose = useCallback(
+    async (value: string) => {
+      if (!projectId) return;
+      setBusy(true);
+      try {
+        const meta = await setProjectDictionaryLocaleCmd(
+          projectId,
+          value === APP_SETTING ? null : value,
+        );
+        useFilesStore.setState({
+          projectDictionaryLocale: meta.dictionary_locale ?? null,
+        });
+      } catch (error) {
+        notifyError("set the spelling language", error);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [projectId],
+  );
+
+  if (!spellcheck || !projectId) return null;
+
+  const uiLocale = currentLocale();
+  const usable = entries.filter(
+    (entry) => entry.state !== "available" || entry.id === projectLocale,
+  );
+
+  return (
+    <>
+      <SectionLabel>{t(($) => $.editor.projectInfo.spellLanguage)}</SectionLabel>
+      <Select
+        value={projectLocale ?? APP_SETTING}
+        onValueChange={(value) => void choose(value)}
+        disabled={busy}
+      >
+        <SelectTrigger
+          data-testid="project-dictionary-locale"
+          aria-label={t(($) => $.editor.projectInfo.spellLanguageAriaLabel)}
+          className="h-8 w-full text-xs"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100] max-h-[280px]">
+          <SelectItem value={APP_SETTING} data-dictionary-id={APP_SETTING}>
+            {t(($) => $.editor.projectInfo.spellLanguageAppSetting)}
+          </SelectItem>
+          {usable.map((entry) => (
+            <SelectItem
+              key={entry.id}
+              value={entry.id}
+              data-dictionary-id={entry.id}
+              data-label={dictionaryLabel(entry, uiLocale)}
+            >
+              {dictionaryLabel(entry, uiLocale)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
+        {t(($) => $.editor.projectInfo.spellLanguageHint)}
+      </p>
+    </>
+  );
+}
+
 export function ProjectInfoContent({
   snapshot,
   surface,
@@ -173,6 +271,7 @@ export function ProjectInfoContent({
           <div className="divide-y divide-border/60">
             <ProofreadingSection surface={surface} />
           </div>
+          <ProjectSpellLanguage />
         </>
       ) : (
         <div className="py-6 text-center text-xs text-muted-foreground/70">

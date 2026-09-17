@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Peruuta",
+    "close": "Sulje",
+    "save": "Tallenna",
+    "delete": "Poista",
+    "remove": "Poista",
+    "rename": "Nimeä uudelleen",
+    "open": "Avaa",
+    "copy": "Kopioi",
+    "copied": "Kopioitu",
+    "retry": "Yritä uudelleen",
+    "back": "Takaisin",
+    "next": "Seuraava",
+    "done": "Valmis",
+    "edit": "Muokkaa",
+    "add": "Lisää",
+    "search": "Hae",
+    "clear": "Tyhjennä",
+    "apply": "Käytä",
+    "confirm": "Vahvista",
+    "ok": "OK",
+    "yes": "Kyllä",
+    "no": "Ei",
+    "learnMore": "Lue lisää",
+    "showMore": "Näytä enemmän",
+    "showLess": "Näytä vähemmän"
+  },
+  "state": {
+    "loading": "Ladataan…",
+    "saving": "Tallennetaan…",
+    "none": "Ei mitään",
+    "unknown": "Tuntematon",
+    "enabled": "Käytössä",
+    "disabled": "Ei käytössä",
+    "on": "Päällä",
+    "off": "Pois",
+    "beta": "Beta",
+    "new": "Uusi",
+    "default": "Oletus"
+  },
+  "labels": {
+    "name": "Nimi",
+    "type": "Tyyppi",
+    "size": "Koko",
+    "date": "Päivämäärä",
+    "status": "Tila",
+    "description": "Kuvaus",
+    "optional": "Valinnainen",
+    "required": "Pakollinen"
+  }
+}

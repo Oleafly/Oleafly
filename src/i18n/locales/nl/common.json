@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Annuleren",
+    "close": "Sluiten",
+    "save": "Opslaan",
+    "delete": "Verwijderen",
+    "remove": "Weghalen",
+    "rename": "Naam wijzigen",
+    "open": "Openen",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd",
+    "retry": "Opnieuw proberen",
+    "back": "Terug",
+    "next": "Volgende",
+    "done": "Klaar",
+    "edit": "Bewerken",
+    "add": "Toevoegen",
+    "search": "Zoeken",
+    "clear": "Wissen",
+    "apply": "Toepassen",
+    "confirm": "Bevestigen",
+    "ok": "OK",
+    "yes": "Ja",
+    "no": "Nee",
+    "learnMore": "Meer informatie",
+    "showMore": "Meer tonen",
+    "showLess": "Minder tonen"
+  },
+  "state": {
+    "loading": "Laden…",
+    "saving": "Opslaan…",
+    "none": "Geen",
+    "unknown": "Onbekend",
+    "enabled": "Ingeschakeld",
+    "disabled": "Uitgeschakeld",
+    "on": "Aan",
+    "off": "Uit",
+    "beta": "Bèta",
+    "new": "Nieuw",
+    "default": "Standaard"
+  },
+  "labels": {
+    "name": "Naam",
+    "type": "Type",
+    "size": "Grootte",
+    "date": "Datum",
+    "status": "Status",
+    "description": "Beschrijving",
+    "optional": "Optioneel",
+    "required": "Vereist"
+  }
+}

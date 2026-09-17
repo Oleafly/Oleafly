@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Forbruksrapport",
+    "description": "Registrert tokenaktivitet fordelt på prosjekt, agent, leverandør, modell og økt.",
+    "from": "Fra",
+    "through": "Til og med",
+    "quickRangesLegend": "Hurtigvalg",
+    "utcNote": "Datoer og klokkeslett er i UTC.",
+    "apply": "Bruk",
+    "refresh": "Oppdater",
+    "refreshLabel": "Oppdater forbruksrapporten",
+    "loading": "Laster forbruk…",
+    "loadFailed": "Forbruksrapporten kunne ikke lastes.",
+    "loadFailedHint": "Prøv igjen om litt.",
+    "tryAgain": "Prøv igjen",
+    "emptyTitle": "Det er ikke registrert forbruk for disse filtrene.",
+    "emptyDescription": "Endre datoperioden eller fjern et filter."
+  },
+  "quickRanges": {
+    "days7": "7 d",
+    "days30": "30 d",
+    "days90": "90 d",
+    "month": "Denne måneden"
+  },
+  "filters": {
+    "project": "Prosjekt",
+    "projectAll": "Alle prosjekter",
+    "agent": "Agent",
+    "agentAll": "Alle agenter",
+    "provider": "Leverandør",
+    "providerAll": "Alle leverandører",
+    "model": "Modell",
+    "modelAll": "Alle modeller",
+    "session": "Økt",
+    "sessionAll": "Alle økter"
+  },
+  "report": {
+    "range": "{{start}} til {{end}} (UTC)",
+    "costDisclaimer": "Kostnadsanslagene bygger på lagrede prisdata, ikke på fakturaen eller kvoten hos leverandøren din.",
+    "exportCsv": "Eksporter CSV",
+    "exportSaved": "Lagret {{path}}",
+    "exportFailed": "Forbruksrapporten kunne ikke lagres.",
+    "inputTokens": "Inn-tokener",
+    "inputIncludesCache": "Inkluderer mellomlagret inndata",
+    "outputTokens": "Ut-tokener",
+    "outputIncludesReasoning": "Inkluderer resonneringstokener",
+    "cacheReads": "Lesinger fra mellomlager",
+    "costEstimate": "Kostnadsanslag",
+    "allRecordsPriced": "Alle oppføringer er priset",
+    "sessions": "Økter",
+    "dailyTokens": "Tokener per dag",
+    "activityByHour": "Aktivitet per time",
+    "projects": "Prosjekter",
+    "agents": "Agenter",
+    "providers": "Leverandører",
+    "models": "Modeller"
+  },
+  "counts": {
+    "records_one": "{{total}} oppføring",
+    "records_other": "{{total}} oppføringer",
+    "sessions_one": "{{total}} økt",
+    "sessions_other": "{{total}} økter",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokener",
+    "inputUnknown_one": "{{total}} oppføring uten antall inn-tokener",
+    "inputUnknown_other": "{{total}} oppføringer uten antall inn-tokener",
+    "outputUnknown_one": "{{total}} oppføring uten antall ut-tokener",
+    "outputUnknown_other": "{{total}} oppføringer uten antall ut-tokener",
+    "cacheUnknown_one": "{{total}} oppføring uten sammenlignbare mellomlagerdata",
+    "cacheUnknown_other": "{{total}} oppføringer uten sammenlignbare mellomlagerdata",
+    "unpriced_one": "{{total}} oppføring uten pris",
+    "unpriced_other": "{{total}} oppføringer uten pris",
+    "partlyUnpriced_one": "{{unpriced}} av {{total}} oppføring uten pris",
+    "partlyUnpriced_other": "{{unpriced}} av {{total}} oppføringer uten pris",
+    "onPlan_one": "{{total}} oppføring på et abonnement eller lokalt",
+    "onPlan_other": "{{total}} oppføringer på et abonnement eller lokalt",
+    "childRuns_one": "{{total}} underkjøring",
+    "childRuns_other": "{{total}} underkjøringer",
+    "usageRecords_one": "{{total}} forbruksoppføring",
+    "usageRecords_other": "{{total}} forbruksoppføringer",
+    "excludedChildRecords_one": "{{total}} underoppføring er allerede med i en overordnet sum, så den telles ikke to ganger.",
+    "excludedChildRecords_other": "{{total}} underoppføringer er allerede med i en overordnet sum, så de telles ikke to ganger.",
+    "unmeasured_one": "{{total}} oppføring uten målte tokentall.",
+    "unmeasured_other": "{{total}} oppføringer uten målte tokentall."
+  },
+  "cache": {
+    "rate": "{{percent}} % av sammenlignbare inndata",
+    "rateWithUnknown": "{{percent}} % av sammenlignbare inndata, {{unknown}} er ikke sammenlignbare"
+  },
+  "cost": {
+    "local": "Lokalt",
+    "plan": "Abonnement",
+    "notBilledPerToken": "Faktureres ikke per token",
+    "noEstimate": "Ingen anslag",
+    "noSavedPrice": "Ingen lagret pris for disse oppføringene",
+    "priceSource": "Priskilde: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Daglig utvikling i inn- og ut-tokener",
+    "chartTitle": "Tokenbruk per dag",
+    "empty": "Ingen daglig aktivitet.",
+    "tokensUnavailable": "Tokentall er utilgjengelige",
+    "inOut": "{{input}} inn, {{output}} ut",
+    "incompleteDays": "Dager med ufullstendige tokentall er utelatt fra linjen.",
+    "day": "Dag",
+    "inputTokens": "Inn-tokener",
+    "outputTokens": "Ut-tokener"
+  },
+  "heatmap": {
+    "label": "Tokenaktivitet etter ukedag og time i UTC",
+    "cell": "{{weekday}} kl. {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Ingen registrert aktivitet",
+    "tokenUnavailable": "Tokentallet er utilgjengelig",
+    "hoursInUtc": "Timer i UTC",
+    "less": "Mindre",
+    "more": "Mer",
+    "weekdays": {
+      "sun": "søn",
+      "mon": "man",
+      "tue": "tir",
+      "wed": "ons",
+      "thu": "tor",
+      "fri": "fre",
+      "sat": "lør"
+    }
+  },
+  "breakdown": {
+    "empty": "Ingen registrert bruk.",
+    "name": "Navn",
+    "tokens": "Tokener",
+    "cost": "Kostnad",
+    "sessions": "Økter"
+  },
+  "sessions": {
+    "title": "Økter",
+    "subtitle": "Samtaler, oppgaver, underagentkjøringer og hjelpekall, nyeste først.",
+    "emptyTitle": "Ingen økter passer disse filtrene",
+    "emptyDescription": "Endre datoperioden eller fjern et filter.",
+    "session": "Økt",
+    "project": "Prosjekt",
+    "agent": "Agent",
+    "model": "Modell",
+    "lastActivity": "Siste aktivitet (UTC)",
+    "input": "Inn",
+    "output": "Ut",
+    "cost": "Kostnad",
+    "billing": "Fakturering",
+    "status": "Status",
+    "rowsPerPage": "Rader per side",
+    "page": "Side {{page}} av {{pageCount}}",
+    "previous": "Forrige",
+    "next": "Neste"
+  },
+  "labels": {
+    "unknown": "Ukjent",
+    "mixed": "Blandet",
+    "generalProject": "Generelt",
+    "runtimeBuiltIn": "Oleafly-assistent",
+    "runtimeHelper": "Hjelpekall",
+    "runtimeAcp": "CLI-agenter"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Abonnement",
+    "local": "Lokalt",
+    "unknown": "Ukjent",
+    "mixed": "Blandet"
+  },
+  "scope": {
+    "child": "Underagent",
+    "task": "Oppgave",
+    "helper": "Hjelper"
+  },
+  "status": {
+    "in_progress": "Pågår",
+    "completed": "Fullført",
+    "failed": "Mislyktes",
+    "cancelled": "Avbrutt",
+    "interrupted": "Avbrutt underveis"
+  },
+  "measurement": {
+    "provider_reported": "Telt av leverandøren",
+    "runtime_reported": "Telt av agenten",
+    "estimated": "Anslått lokalt",
+    "unavailable": "Ikke målt",
+    "mixed_or_unavailable": "Delvis målt"
+  }
+}

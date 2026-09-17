@@ -1,0 +1,576 @@
+{
+  "accents": {
+    "blue": "藍色",
+    "green": "綠色",
+    "orange": "橙色",
+    "purple": "紫色",
+    "rose": "玫瑰色",
+    "teal": "藍綠色"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "需要安裝 Bridge",
+      "cliMissing": "找不到 CLI",
+      "ready": "就緒",
+      "unavailable": "無法使用"
+    },
+    "requestFailed": "無法完成 ACP 請求。"
+  },
+  "aiBudget": {
+    "approximateCost": "約 {{amount}}",
+    "blocked": "本專案已達到 {{budget}} 的 AI 預算上限。若要繼續，請在設定中提高或清除預算。",
+    "warned": "本專案的 AI 預算為 {{budget}}，已使用 {{spent}}。"
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "此動作已切換至 Oleafly 助理。"
+  },
+  "bibtex": {
+    "duplicateDoi": "DOI 與下列條目重複：{{keys}}",
+    "duplicateKey": "重複的引用鍵",
+    "invalidYear": "年份「{{year}}」不是四位數字",
+    "missingField": "缺少必填欄位：{{fields}}",
+    "missingKey": "類型為 @{{type}} 的條目缺少引用鍵",
+    "unknownType": "未知的條目類型 @{{type}}",
+    "unreadableFields": "無法讀取「{{entry}}」的欄位",
+    "unterminatedEntry": "條目在第 {{position}} 個字元附近未結束",
+    "unusualField": "@{{type}} 的不常見欄位：{{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} 在引用匯入期間有變動。請重試。",
+    "noArxivEntry": "找不到 arXiv 條目。",
+    "noReferences": "該檔案中找不到參考文獻。",
+    "offline": "引用查詢需要網路。請在設定中關閉離線模式。",
+    "parseFailed": "無法解析這筆引用。",
+    "projectChanged": "引用匯入期間專案有變動。",
+    "projectChangedNotInserted": "引用匯入期間專案有變動，引用未插入。",
+    "projectChangedRetry": "引用匯入期間專案有變動。請在原專案中重試。",
+    "readFailed": "無法讀取 {{path}}：{{detail}}",
+    "unrecognizedFile": "無法辨識的檔案類型：{{name}}",
+    "writeFailed": "無法寫入 {{path}}：{{detail}}"
+  },
+  "citeOleafly": {
+    "added": "已將 Oleafly 條目新增至 {{path}}。請用 {{markup}} 引用。",
+    "failed": "無法新增 Oleafly 引用。請改從設定的「說明與關於」複製。",
+    "present": "{{path}} 已有 Oleafly 條目。請用 {{markup}} 引用。",
+    "undo": "復原"
+  },
+  "compatibility": {
+    "biblatexBiber": "本專案使用 biblatex/Biber 處理參考文獻。",
+    "blockerFinding_other": "{{title}}（另有 {{more}} 項）",
+    "chooseEngine": "選擇引擎…",
+    "importNotes_other": "{{count}} 則匯入說明：{{title}}（另有 {{more}} 項）"
+  },
+  "compile": {
+    "engineNotLoaded": "在文件引擎載入完成前，編譯功能會停用。",
+    "noOfflineMode": "{{engine}} 未提供離線編譯模式，將以一般方式編譯。",
+    "retry": "重新編譯"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "將所有開發專案移至資源回收筒。不會永久刪除任何內容。",
+        "title": "清除專案"
+      },
+      "replayFirstRun": {
+        "description": "重設所有導覽、關閉目前的專案，並回到歡迎流程。",
+        "title": "重播首次執行"
+      },
+      "resetAndSeed": {
+        "description": "將目前的專案移至資源回收筒，然後從本機快取複製全部 {{count}} 個釘選的真實範例。",
+        "title": "重設並填入"
+      },
+      "resetUiState": {
+        "description": "清除 Oleafly 的本機設定與保留的介面狀態，但不刪除專案。",
+        "title": "重設介面狀態"
+      },
+      "seedCorpus": {
+        "action": "填入語料庫",
+        "description": "從 ~/Codespace/Oleafly/oleafly-seed 複製 {{count}} 個研究專案。涵蓋 LaTeX 與 Typst 的論文、學位論文、書籍、演講、海報與圖片，每一個都已驗證可用內建引擎編譯。既有範例會保留。",
+        "title": "填入研究語料庫"
+      }
+    },
+    "closeProjectFailed": "無法安全關閉目前開啟的專案。",
+    "confirm": {
+      "clearProjects": {
+        "action": "清除專案",
+        "description": "隔離開發專案庫中的每個專案都會移至其資源回收筒。你正式的 Oleafly 專案庫不受影響。",
+        "title": "要清除所有開發專案嗎？"
+      },
+      "fallbackTitle": "確認開發操作",
+      "resetAndSeed": {
+        "action": "重設並填入",
+        "description": "目前所有開發專案都會移至資源回收筒，接著 Oleafly 會從本機 oleafly-seed 快取複製 {{count}} 個研究範例。",
+        "title": "要重設並填入開發專案庫嗎？"
+      },
+      "resetBrowser": {
+        "action": "重設介面狀態",
+        "description": "這會清除此開發來源的 Oleafly 設定、導覽與其他瀏覽器狀態，然後重新載入應用程式。專案檔案會保留在磁碟上。",
+        "title": "要重設開發介面狀態嗎？"
+      }
+    },
+    "debugOnly": {
+      "description": "這些控制項只會由 Vite 開發建置載入。若哨兵值出現在任何產出的資源中，正式建置會拒絕載入這個模組。",
+      "title": "僅限偵錯建置"
+    },
+    "library": {
+      "checking": "正在檢查專案庫路徑…",
+      "label": "開發專案庫",
+      "locked": "專案控制項已鎖定，因為這裡不是 .oleafly-dev 沙箱。"
+    },
+    "nav": "開發者",
+    "projectsRecycled_other": "已將 {{count}} 個專案移至資源回收筒。",
+    "replayFailed": "無法重設首次執行導覽。",
+    "resetAndSeedSummary": "已將 {{removed}} 個專案移至資源回收筒，並填入研究語料庫：新建 {{created}} 個，已存在 {{skipped}} 個。",
+    "resetFailed": "無法重設開發沙箱。",
+    "sandboxOnly": "研究範例只能複製到 .oleafly-dev 沙箱。",
+    "seedFailed": "無法填入研究語料庫。",
+    "seedFailures_other": "{{summary}} 有 {{count}} 個範例失敗。第一個失敗項：{{name}}：{{message}}",
+    "seedSummary": "已填入研究語料庫：新建 {{created}} 個，已存在 {{skipped}} 個。",
+    "unknownSeedError": "未知的填入錯誤"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG 圖片",
+      "zipArchive": "Zip 壓縮檔"
+    }
+  },
+  "dictionary": {
+    "full": "你的字典已滿，因此改為在這份文件中隱藏該字詞。請在設定中移除一個字詞，才能儲存它。",
+    "wordTooLong": "內容太長，無法存成字詞，因此改為在這份文件中隱藏。一個字詞最多 {{max}} 個字元。"
+  },
+  "documentScan": {
+    "complete": "掃描完成",
+    "failed": "文件掃描失敗",
+    "processed": "已處理 {{current}}/{{total}} 個段落…",
+    "processing": "正在處理 {{current}}/{{total}} 個段落…",
+    "skippedEmpty": "已略過空白查詢（{{current}}/{{total}}）",
+    "splitting": "正在將文件拆分成段落…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "無法載入文件引擎的詳細資料，引擎專屬的動作已停用。",
+      "renameReloadFailed": "重新命名主文件後，無法載入文件引擎的詳細資料。",
+      "stillLoading": "文件引擎的詳細資料仍在載入中。"
+    }
+  },
+  "export": {
+    "pdfFailed": "無法儲存 PDF",
+    "pdfFailedDetail": "無法儲存 PDF：{{detail}}",
+    "pngFailed": "無法儲存 PNG",
+    "pngFailedDetail": "無法儲存 PNG：{{detail}}",
+    "revealFailed": "檔案已儲存，但 Oleafly 無法開啟所在的資料夾（權限遭拒）。請確認你在儲存對話框中選擇的位置。",
+    "saved": "{{kind}} 已儲存 · {{fileName}}",
+    "showInFolder": "在資料夾中顯示"
+  },
+  "externalChange": {
+    "deletionRestored": "外部刪除與未儲存的編輯發生衝突。你的本機編輯已還原。",
+    "localEditKept": "你有未儲存的變更時，「{{path}}」收到了外部編輯。已保留你的本機編輯。",
+    "persistExternalFailed": "無法儲存「{{path}}」最新的外部更新。",
+    "preserveLocalFailed": "無法保留你對「{{path}}」的本機更新。",
+    "reloadFailed": "專案設定已更新，但部分變更過的檔案無法重新載入。",
+    "restoreLocalFailed": "無法還原你對「{{path}}」未儲存的更新。"
+  },
+  "fonts": {
+    "systemDefault": "系統預設",
+    "terminalDefault": "終端機預設"
+  },
+  "imageToLatex": {
+    "failed": "圖片轉 LaTeX 失敗：{{detail}}",
+    "inserted": "已插入從圖片轉換的 LaTeX",
+    "transcribing": "正在轉錄圖片…"
+  },
+  "import": {
+    "arxivImported": "已匯入 arXiv 原始碼。請編譯專案以檢查結果。",
+    "chooseOfferedProjectType": "請選擇這個檔案可用的專案類型之一。",
+    "invalidArxivId": "請貼上 arXiv 論文連結，或類似 2301.01234 的編號。",
+    "supportedDocumentTypes": "請選擇支援的文件類型之一。",
+    "conversionNotice": "我們已將你的內容轉換成 LaTeX。你可能需要調整樣式，尤其是表格、圖片與引用。",
+    "figureSaved": "已儲存 {{name}}",
+    "pdfProjectCreated": "已從 PDF 建立專案。請先檢查重建結果再採用。",
+    "pickPdfOrDocx": "請選擇 .pdf 或 .docx 檔案",
+    "texSaved": "已儲存 .tex",
+    "unsupportedFile": "請選擇 .zip、.docx、.md 或 .markdown 檔案。",
+    "zipSaveFailed": "無法儲存 ZIP 壓縮檔。",
+    "zipSaved": "已儲存 .zip"
+  },
+  "inlineAi": {
+    "concise": "精簡",
+    "expand": "擴寫",
+    "fixSource": "修正原始碼",
+    "grammar": "修正文法",
+    "improve": "潤飾",
+    "translate": "翻譯"
+  },
+  "intelligence": {
+    "analysisFailed": "目前修訂版本的專案分析失敗。",
+    "analyzing": "專案智慧正在分析目前的修訂版本。",
+    "couldNotSend": "無法將專案分析傳送給工作執行緒。",
+    "disposed": "專案智慧工作執行緒已釋放。",
+    "disposedDuringRequest": "專案智慧工作執行緒已被釋放。",
+    "failed": "專案智慧分析失敗。",
+    "identityMismatch": "專案智慧回應的識別碼與其請求不符。",
+    "malformedResponse": "專案智慧工作執行緒傳回格式錯誤的回應。",
+    "malformedSnapshotIdentity": "專案智慧快照的識別碼格式錯誤。",
+    "noProject": "目前沒有作用中的專案。",
+    "partialFiles_other": "{{count}} 個檔案產生了可復原的部分分析結果。",
+    "retainedStale": "專案內容已變更。目前修訂版本分析執行期間，保留的分析結果已過期。",
+    "sourceGraphRefreshing": "專案檔案已變更，正在重新整理原始碼關聯圖。",
+    "sourceSnapshotsLoading": "專案檔案已變更，正在為目前的分析載入原始碼快照。",
+    "staleSnapshot": "專案智慧工作執行緒沒有這個快照的分析結果。",
+    "stopped": "專案智慧已停止。",
+    "timedOut": "專案智慧逾時。",
+    "typeMismatch": "專案智慧回應的類型與其請求不符。",
+    "unexpectedResponse": "專案智慧工作執行緒傳回非預期的回應。",
+    "workerFailed": "專案智慧工作執行緒失敗。",
+    "workerRestarted": "專案智慧工作執行緒在逾時後已重新啟動。",
+    "workerUnavailable": "專案智慧工作執行緒無法使用。"
+  },
+  "latexPackages": {
+    "algorithm2e": "演算法排版",
+    "amsmath": "進階數學排版",
+    "amssymb": "擴充數學符號",
+    "amsthm": "定理與證明環境",
+    "array": "擴充的 array 與 tabular 環境",
+    "authblk": "作者與單位區塊",
+    "babel": "多語言支援與文件語言",
+    "biblatex": "進階參考文獻支援",
+    "bookmark": "改良的 PDF 書籤",
+    "booktabs": "專業表格線",
+    "caption": "圖說自訂",
+    "cleveref": "智慧型交互參照（需在 hyperref 之後載入）",
+    "csquotes": "依上下文調整的引號（biblatex 需要）",
+    "enumitem": "清單自訂",
+    "fancyhdr": "自訂頁首與頁尾",
+    "float": "改良的浮動物件排放",
+    "fontspec": "OpenType 字型選擇（Xe/LuaLaTeX）",
+    "geometry": "頁面版面配置自訂",
+    "graphicx": "插入圖形與影像",
+    "hyperref": "超連結、書籤與 PDF 中繼資料",
+    "inputenc": "輸入編碼（Xe/LuaLaTeX 不需要）",
+    "lineno": "為審閱版加上行號",
+    "lipsum": "佔位文字（lorem ipsum）",
+    "listings": "程式碼清單（內容不會加上標記）",
+    "mathtools": "amsmath 的超集，附帶修正與工具",
+    "microtype": "微排版最佳化",
+    "minted": "以 Pygments 標示語法的程式碼清單",
+    "multirow": "跨列的表格儲存格",
+    "natbib": "作者年份式與數字式引用",
+    "parskip": "段落間距",
+    "pdfpages": "插入其他 PDF 的整頁內容",
+    "setspace": "行距控制",
+    "siunitx": "SI 單位與數字格式",
+    "subcaption": "子圖與子表格",
+    "subfig": "較舊的子圖版面配置套件",
+    "tabularx": "自動寬度表格",
+    "threeparttable": "可在下方加註解的表格",
+    "tikz": "可程式化的向量圖形（需手動填寫替代文字）",
+    "titlesec": "章節標題格式",
+    "todonotes": "草稿用的邊界待辦註記",
+    "unicode-math": "適用於 Xe/LuaLaTeX 的 Unicode 數學（標記式數學所需）",
+    "url": "URL 排版",
+    "wrapfig": "讓文字環繞的圖片",
+    "xcolor": "色彩支援"
+  },
+  "literatureSources": {
+    "arxiv": "超過 240 萬篇預印本，涵蓋物理、數學、電腦科學、計量生物學及相關領域。",
+    "crossref": "DOI 註冊機構，提供超過 1.5 億筆研究成果的中繼資料。",
+    "googleScholar": "透過 Serper 取得 Google Scholar 結果。需要在「設定 → 整合 → 引用搜尋」中設定 Serper API 金鑰。",
+    "openalex": "涵蓋學術成果、作者、來源、機構、主題、出版商與贊助機構的開放目錄。",
+    "pubmed": "收錄超過 4000 萬筆生物醫學與生命科學文獻的引用與摘要，包含 MEDLINE。",
+    "semanticScholar": "提供引用關係圖、重要引用資料與 TLDR 摘要的學術索引。",
+    "uspto": "美國專利核准案與公開申請案，可用於前案技術與應用研究。PatentsView 轉移期間暫停搜尋。",
+    "usptoPaused": "USPTO 在 Open Data Portal 轉移期間暫時停用了 PatentsView 搜尋 API。",
+    "yearRangeInvalid": "起始年份不能晚於結束年份。"
+  },
+  "mcp": {
+    "openProjectSummary": "開啟專案 {{id}}",
+    "useToolSummary": "使用 {{server}} MCP 伺服器的 {{tool}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP 伺服器「{{name}}」的類型與傳輸宣告互相衝突。",
+    "exactlyOneServer": "MCP 伺服器 JSON 必須只包含一個伺服器。",
+    "fieldBoolean": "MCP 伺服器「{{name}}」的欄位「{{field}}」必須是布林值。",
+    "fieldString": "MCP 伺服器「{{name}}」的欄位「{{field}}」必須是字串。",
+    "fieldStringArray": "MCP 伺服器「{{name}}」的欄位「{{field}}」必須是字串陣列。",
+    "fieldStringRecord": "MCP 伺服器「{{name}}」的欄位「{{field}}」必須是由字串值組成的物件。",
+    "jsonMalformed": "MCP 伺服器 JSON 格式錯誤。",
+    "jsonNotObject": "MCP 伺服器 JSON 必須是物件。",
+    "mcpServersNotObject": "MCP 伺服器 JSON 的欄位「mcpServers」必須是物件。",
+    "serverNotObject": "MCP 伺服器「{{name}}」必須是物件。",
+    "structural": "{{detail}} 應為 {\"server-name\": {...}} 或 {\"mcpServers\": {\"server-name\": {...}}}。",
+    "unknownServer": "未知的伺服器",
+    "unsupportedTransport": "MCP 伺服器「{{name}}」使用了不支援的傳輸方式「{{transport}}」。",
+    "unsupportedType": "MCP 伺服器「{{name}}」的類型「{{type}}」不受支援。"
+  },
+  "mermaid": {
+    "diagram": "圖表",
+    "renderFailed": "無法繪製圖表。",
+    "rendering": "正在繪製圖表"
+  },
+  "missingPackages": {
+    "action_other": "尋找並安裝 {{count}} 個檔案",
+    "installing_other": "正在安裝 {{count}} 個套件。安裝完成後會重新開始編譯。",
+    "summary_other": "編譯時找不到 {{names}}。請在 TeX Live 中尋找對應的套件。"
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "{{tokens}} token 上下文視窗",
+      "deprecated": {
+        "label": "已淘汰",
+        "title": "供應商已淘汰這個模型"
+      },
+      "reasoning": {
+        "label": "推理",
+        "title": "推理模型"
+      },
+      "tools": {
+        "label": "工具",
+        "title": "可呼叫工具"
+      },
+      "vision": {
+        "label": "視覺",
+        "title": "可接受圖片"
+      }
+    },
+    "listChange": {
+      "none": "無變更",
+      "summary": "新增 {{added}} 個，移除 {{removed}} 個"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "無法使用專案參照分析。",
+    "analysisUpdating": "專案參照正在更新。",
+    "definitionsFor": "{{name}} 的定義",
+    "edits_other": "{{count}} 處編輯",
+    "files_other": "{{count}} 個檔案",
+    "nameExists": "「{{name}}」已存在。",
+    "noDefinition": "找不到「{{name}}」的定義",
+    "noReferences": "沒有對「{{name}}」的參照",
+    "notRenamable": "這個符號無法重新命名。",
+    "nothingToRename": "沒有可重新命名的項目。",
+    "referencesFor": "對 {{name}} 的參照",
+    "renamePartial": "已在 {{total}} 個檔案中的 {{edited}} 個重新命名為「{{name}}」。無法寫入 {{files}}。",
+    "renamed": "已重新命名為「{{name}}」（$t(core:navigation.files, {\"count\": {{files}} }) 中的 $t(core:navigation.edits, {\"count\": {{edits}} })）"
+  },
+  "pandoc": {
+    "downloadFailed": "無法下載 pandoc。請手動安裝後再試一次",
+    "downloadingPercent": "正在下載 pandoc… {{progress}}%",
+    "downloadingSize": "正在下載 pandoc… {{megabytes}} MB",
+    "installGuide": "安裝指南",
+    "installed": "已安裝 pandoc"
+  },
+  "project": {
+    "copyFailed": "無法複製「{{path}}」。",
+    "dateUnavailable": "無法取得",
+    "importFailed": "無法匯入。詳情請查看應用程式記錄檔。",
+    "imported": "專案已匯入。",
+    "openFailed": "無法開啟專案。詳情請查看應用程式記錄檔。",
+    "restoringUnsavedFiles": "專案更新移除了含有未儲存編輯的檔案。Oleafly 已保留你的編輯，正在還原這些檔案。",
+    "saveBlockedClose": "由於有一個以上的檔案無法儲存，專案仍保持開啟。",
+    "saveBlockedDiscard": "捨棄變更並離開",
+    "saveBlockedMany": "{{count}} 個檔案無法儲存：{{files}}。第一個檔案已在編輯器中開啟，並保留未儲存的變更（{{reason}}）。留下來解決問題，或捨棄這些檔案中未儲存的變更後離開。",
+    "saveBlockedOne": "{{file}} 無法儲存（{{reason}}）。該檔案已在編輯器中開啟，並保留你未儲存的變更。留下來解決問題，或捨棄這些變更後離開。",
+    "saveBlockedStay": "留下",
+    "saveBlockedSwitch": "由於有一個以上的檔案無法儲存，專案仍保持開啟。",
+    "saveBlockedTitle": "部分檔案無法儲存",
+    "updatedDaysAgo_other": "{{count}} 天前更新",
+    "updatedOn": "更新於 {{date}}",
+    "updatedToday": "今天更新",
+    "updatedYesterday": "昨天更新"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "分析失敗：{{message}}",
+    "beginIsHere": "{{command}} 在這裡。",
+    "beginWithoutEnd": "{{command}} 沒有對應的 \\end。",
+    "bibliographyFileMissing": "專案中找不到參考文獻檔案「{{file}}」。",
+    "citationHasManyDefinitions_other": "引用「{{name}}」有 {{count}} 個可能的定義。",
+    "citationKeyDuplicated_other": "引用鍵「{{name}}」被定義了 {{count}} 次。",
+    "citationUnresolved": "無法解析引用「{{name}}」。",
+    "definedHere": "{{kind}}「{{name}}」在此處定義。",
+    "duplicateTargetDefined_other": "{{kind}}目標「{{name}}」被定義了 {{count}} 次。",
+    "endWithoutBegin": "{{command}} 沒有對應的 \\begin。",
+    "entryMissingFieldList": "參考文獻條目「{{key}}」沒有欄位清單。",
+    "expectedEndBefore": "應在 {{found}} 之前出現 {{expected}}。",
+    "fieldIncompleteValue": "欄位「{{name}}」的值不完整。",
+    "fieldMissingEquals": "欄位「{{name}}」缺少「=」。",
+    "fieldRepeated": "欄位「{{name}}」在參考文獻條目「{{key}}」中重複出現。",
+    "fileNotLoaded": "尚未載入原始碼檔案以進行目前的專案分析。",
+    "fileUnreadable": "無法讀取這個檔案。",
+    "incompleteEntry": "不完整的 @{{type}} 條目。",
+    "invalidYear": "年份「{{year}}」不是四位數的 BibTeX 年份。",
+    "kinds": {
+      "anchor": "錨點",
+      "asset": "資源",
+      "bibentry": "參考文獻條目",
+      "bibliography": "參考文獻",
+      "environment": "環境",
+      "file": "檔案",
+      "glossary": "詞彙表條目",
+      "import": "匯入",
+      "include": "引入",
+      "label": "標籤",
+      "link": "連結",
+      "macro": "巨集",
+      "section": "章節"
+    },
+    "malformedDirective": "BibTeX 指示詞或條目類型格式錯誤。",
+    "missingCitationKey": "@{{type}} 缺少引用鍵。",
+    "missingRequiredField": "{{entry}} 缺少必填欄位 {{fields}}。",
+    "possibleTarget": "可能的目標：{{file}}",
+    "projectFileUnreadable": "無法讀取專案檔案。",
+    "referenceHasManyDefinitions_other": "交互參照「{{name}}」有 {{count}} 個可能的定義。",
+    "referenceUnresolved": "無法解析交互參照「{{name}}」。",
+    "targetMatchesManyFiles_other": "{{kind}}目標「{{target}}」符合 {{count}} 個專案檔案。",
+    "targetUnresolved": "無法解析{{kind}}目標「{{target}}」。",
+    "typeDelimiterExpected": "@{{type}} 後面必須接左大括號或左括號。",
+    "unclosedDelimiter": "分隔符號「{{char}}」未以「{{expected}}」結束。",
+    "unclosedDirective": "@{{type}} 指示詞未結束。",
+    "unclosedEntry": "@{{type}} 條目未結束。",
+    "unclosedEntryNamed": "參考文獻條目「{{key}}」未結束。",
+    "unclosedFence": "圍欄式程式碼區塊未結束。",
+    "unclosedFrontMatter": "YAML front matter 未結束。",
+    "unclosedString": "字串常值未結束。",
+    "unclosedTypstComment": "Typst 區塊註解未結束。",
+    "unexpectedClosingDelimiter": "出現非預期的結束分隔符號「{{char}}」。",
+    "unknownEntryType": "未知的參考文獻條目類型 @{{type}}。",
+    "unparsableField": "無法解析 @{{type}} 的欄位。",
+    "unparsableFieldNamed": "無法解析「{{key}}」中的欄位。"
+  },
+  "proofreading": {
+    "cancelled": "校對已取消。",
+    "couldNotStart": "離線校對無法啟動。",
+    "disposed": "離線校對已釋放。",
+    "invalidResponse": "離線校對傳回無效的回應。",
+    "outOfRangeDiagnostic": "離線校對傳回超出範圍的診斷結果。",
+    "postFailed": "無法將文件傳送至離線校對。",
+    "restarted": "離線校對已重新啟動。",
+    "restartedAfterTimeout": "離線校對在逾時後已重新啟動。",
+    "staleResponse": "離線校對傳回過期的回應。",
+    "stopped": "離線校對意外停止。",
+    "superseded": "較新的校對請求已取代這次請求。",
+    "timedOut": "離線校對逾時，會在下次編輯時重新啟動。",
+    "dictionaryUnavailable": "所選的拼字字典尚未安裝。請在設定中下載。"
+  },
+  "skillGroups": {
+    "shelf": "領域技能庫",
+    "user": "你的技能"
+  },
+  "tagged": {
+    "compileFailed": "標記式編譯失敗。請檢查引擎後再試一次。",
+    "compiled": "已編譯標記式 PDF。請查看下方的無障礙評估結果。",
+    "compiledWithErrors": "標記式編譯已完成，但有錯誤。請查看記錄檔。",
+    "engineRequired": "請先在設定的「LaTeX 引擎」中啟用標記引擎。"
+  },
+  "terminal": {
+    "defaultTitle": "終端機 {{index}}"
+  },
+  "tex": {
+    "distributionGap": "本專案釘選了 {{pinned}}。目前使用的 {{local}} 缺少其中 {{count}} 個套件，在重新使用該發行版之前，編譯可能會失敗。",
+    "distributionSkew": "本專案釘選了 {{pinned}}，而這台電腦使用 {{local}} 編譯。輸出結果可能略有差異。",
+    "installPinned_other": "全部安裝 {{count}} 個",
+    "installingPinned_other": "正在安裝 {{count}} 個釘選的套件…",
+    "pinnedPackagesFailed": "部分釘選的套件無法安裝。請查看「設定 → LaTeX 引擎」。",
+    "pinnedPackagesInstalled": "已安裝釘選的 LaTeX 套件。",
+    "pinnedPackagesMissing_other": "本專案釘選了 {{count}} 個尚未在此安裝的 LaTeX 套件。"
+  },
+  "theme": {
+    "cssForbiddenSyntax": "自訂 CSS 不能使用 at 規則、URL 或選擇器。",
+    "cssNotSimple": "自訂 CSS 只能包含簡單的屬性宣告。",
+    "cssNotText": "自訂 CSS 必須是文字。",
+    "cssPropertyNotAllowed": "不允許的自訂 CSS 屬性：{{property}}。",
+    "cssTooLarge": "自訂 CSS 超過 64 KiB。",
+    "cssTooManyDeclarations": "自訂 CSS 最多只能包含 64 條宣告。",
+    "cssUnsafeValue": "自訂 CSS 含有不安全的值。",
+    "customizationNotObject": "佈景主題的自訂設定必須是物件。",
+    "dark": {
+      "notObject": "深色 CSS 變數必須是物件。",
+      "tooManyEntries": "深色 CSS 變數列出超過 {{max}} 項。"
+    },
+    "fileMissingCssVars": "佈景主題檔案必須包含 cssVars，且含有 light 與 dark 項目。",
+    "fileMissingModes": "佈景主題檔案必須包含 light 與 dark 的 CSS 變數。",
+    "fileNotJson": "佈景主題檔案不是有效的 JSON。",
+    "fileNotObject": "佈景主題檔案必須包含一個物件。",
+    "fileNotText": "佈景主題檔案必須是文字。",
+    "fileTooLarge": "佈景主題檔案超過 128 KiB。",
+    "invalidColor": "佈景主題權杖 {{token}} 的色彩值無效。",
+    "invalidRadius": "圓角半徑必須使用 px、rem、em 或百分比。",
+    "light": {
+      "notObject": "淺色 CSS 變數必須是物件。",
+      "tooManyEntries": "淺色 CSS 變數列出超過 {{max}} 項。"
+    },
+    "tokens": {
+      "notObject": "佈景主題權杖必須是物件。",
+      "tooManyEntries": "佈景主題權杖列出超過 {{max}} 項。"
+    },
+    "unknownProperty": "未知",
+    "unsupportedToken": "不支援的佈景主題權杖：{{token}}。",
+    "unsupportedVersion": "這個佈景主題檔案使用了不支援的版本。"
+  },
+  "themes": {
+    "matchApp": "跟隨應用程式主題"
+  },
+  "tinytex": {
+    "installFailed": "無法安裝 TinyTeX。",
+    "installGuide": "安裝指南",
+    "installed": "已安裝 TinyTeX。",
+    "phase": {
+      "addingPackages": "正在新增套件…",
+      "downloading": "正在下載…",
+      "downloadingPercent": "正在下載… {{progress}}%",
+      "installing": "正在安裝…",
+      "unpacking": "正在解壓縮…"
+    },
+    "removeFailed": "無法移除 TinyTeX",
+    "removed": "已移除 TinyTeX"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "讀取論文",
+      "alphaxivSearch": "搜尋論文",
+      "compile": "編譯文件",
+      "getLog": "讀取編譯記錄檔",
+      "insertFigure": "插入圖片",
+      "listFiles": "列出專案檔案",
+      "literatureSearch": "搜尋文獻",
+      "previewFigure": "預覽圖片",
+      "projectLibrarySearch": "搜尋專案文獻",
+      "projectMap": "繪製專案結構",
+      "readFile": "讀取檔案",
+      "readLinkedFile": "讀取連結的檔案",
+      "readPdfText": "讀取編譯後的 PDF",
+      "readResearchRootFile": "讀取連結的檔案",
+      "runCommand": "執行指令",
+      "searchProject": "搜尋專案",
+      "sendMessage": "更新委派的任務",
+      "spawnAgent": "啟動委派的任務",
+      "verifyCitation": "檢查引用",
+      "verifyPdfPages": "檢查 PDF 頁面",
+      "waitAgent": "等待委派的任務"
+    },
+    "skillsBudgetNotice": "Codex 無法列出全部技能。它只保留 2% 的上下文預算給技能說明，請精簡技能資料夾，或直接指名要用的技能。",
+    "status": {
+      "cancelled": "已停止",
+      "declined": "已拒絕",
+      "done": "已完成",
+      "failed": "失敗",
+      "failedWithCode": "失敗，結束代碼 {{code}}",
+      "interrupted": "已中斷",
+      "running": "執行中",
+      "timedOut": "已逾時"
+    },
+    "summary": {
+      "citationUnverified": "找不到相符的記錄",
+      "citationVerified": "已由引用服務驗證",
+      "compileFailed": "編譯失敗",
+      "compileSucceeded": "編譯成功",
+      "diagnostics_other": "{{count}} 項診斷",
+      "papers_other": "{{count}} 篇論文"
+    }
+  },
+  "ui": {
+    "transparent": "透明"
+  },
+  "update": {
+    "projectChangedWhileSaving": "儲存時專案有變動。請重新嘗試更新。"
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Tiivistä kaikki kansiot",
+    "confirmDelete": "Poistetaanko {{path}}? Tätä ei voi kumota.",
+    "conflict": {
+      "cancelAriaLabel": "Peruuta tiedoston siirto",
+      "createBody": "<destination>{{destination}}</destination> on jo olemassa. Säilytä molemmat tiedostot nimellä <suggestion>{{suggestion}}</suggestion>. Luominen ei koskaan korvaa olemassa olevaa tiedostoa.",
+      "dialogAriaLabel": "Tiedoston siirron ristiriita",
+      "keepBoth": "Säilytä molemmat",
+      "renameBody": "<destination>{{destination}}</destination> on jo olemassa. Säilytä molemmat tiedostot nimellä <suggestion>{{suggestion}}</suggestion> tai korvaa olemassa oleva kohde. Oleafly ei korvaa sitä ilman erillistä Korvaa-valintaa.",
+      "replace": "Korvaa",
+      "title": "Nimi on jo käytössä",
+      "unchanged": "Alkuperäinen ja kohdepolku jäivät ennalleen."
+    },
+    "createFailed": "Kohdetta \"{{path}}\" ei voitu luoda.",
+    "deleteFailed": "Kohdetta \"{{path}}\" ei voitu poistaa.",
+    "expandAll": "Laajenna kaikki kansiot",
+    "importAriaLabel": "Tuo valittuun kansioon",
+    "importFiles": "Tuo tiedostoja",
+    "importFolder": "Tuo kansio",
+    "importTitle": "Tuo tiedosto tai kansio (valittuun kansioon)",
+    "makeCopy": "Tee kopio",
+    "moreActions": "Lisää toimintoja kohteelle {{name}}",
+    "moveFailed": "Kohdetta \"{{path}}\" ei voitu siirtää. Alkuperäinen polku jäi ennalleen.",
+    "newEntry": {
+      "fileInFolder": "Uuden tiedoston nimi kansiossa {{folder}}",
+      "fileInRoot": "Uuden tiedoston nimi projektin juuressa",
+      "filePlaceholder": "Uuden tiedoston nimi",
+      "folderInFolder": "Uuden kansion nimi kansiossa {{folder}}",
+      "folderInRoot": "Uuden kansion nimi projektin juuressa",
+      "folderPlaceholder": "Uuden kansion nimi"
+    },
+    "newFile": "Uusi tiedosto",
+    "newFileAriaLabel": "Uusi tiedosto valittuun kansioon",
+    "newFileTitle": "Uusi tiedosto (valittuun kansioon)",
+    "newFolder": "Uusi kansio",
+    "newFolderAriaLabel": "Uusi kansio valittuun kansioon",
+    "newFolderTitle": "Uusi kansio (valittuun kansioon)",
+    "renameAriaLabel": "Nimeä tiedosto uudelleen",
+    "renameFailed": "Kohdetta \"{{path}}\" ei voitu nimetä uudelleen. Alkuperäinen polku jäi ennalleen.",
+    "setMain": "Aseta päädokumentiksi",
+    "title": "Resurssienhallinta",
+    "treeAriaLabel": "Resurssienhallinnan tiedostopuu"
+  },
+  "explorer": {
+    "resizeSections": "Muuta osioiden {{first}} ja {{second}} kokoa"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "monitulkintainen",
+      "cycle": "kehä",
+      "definitions_one": "{{count}} määritelmä",
+      "definitions_other": "{{count}} määritelmää",
+      "duplicate": "kaksoiskappale",
+      "external": "ulkoinen",
+      "folded": "tiivistetty",
+      "incomplete": "puutteellinen",
+      "missing": "puuttuu"
+    },
+    "bibEntryIn": "{{type}}-viite tiedostossa {{file}}",
+    "duplicateKey": "Avain on kahteen kertaan.",
+    "duplicateKeyIn": "Avain {{key}} on kahteen kertaan tiedostossa {{file}}",
+    "folded": {
+      "description": "Tämä haara on tiivistetty, jotta hyvin suuret projektikaaviot pysyvät sujuvina.",
+      "label": "Jatka avaamalla linkitetty lähde"
+    },
+    "fromFile": "{{kind}} tiedostosta {{file}}",
+    "groups": {
+      "bibliography": "Lähdeluettelo",
+      "bibtexEntries": "BibTeX-viitteet",
+      "commands": "Komennot",
+      "definitions_one": "Määritelmä",
+      "definitions_other": "Määritelmät",
+      "dependencies": "Linkit ja riippuvuudet",
+      "duplicateCitations": "Kahteen kertaan olevat viiteavaimet",
+      "environments": "Ympäristöt",
+      "labels": "Nimikkeet ja ankkurit",
+      "occurrences": "Esiintymät",
+      "sections": "Luvut",
+      "unlinked": "Linkittämättömät tiedostot",
+      "unresolvedCitations": "Ratkaisemattomat viittaukset",
+      "unresolvedDuplicate": "Ratkaisemattomat ja kahteen kertaan olevat"
+    },
+    "inFile": "{{kind}} tiedostossa {{file}}",
+    "incompleteEntry": "Puutteellinen viite.",
+    "kinds": {
+      "anchor": "ankkuri",
+      "asset": "resurssi",
+      "bibentry": "lähdeviite",
+      "bibliography": "lähdeluettelo",
+      "citation": "viittaus",
+      "environment": "ympäristö",
+      "file": "tiedosto",
+      "glossary": "sanasto",
+      "import": "tuonti",
+      "include": "sisällytys",
+      "label": "nimike",
+      "link": "linkki",
+      "macro": "makro",
+      "reference": "viite",
+      "section": "luku"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dokumentin jäsennys",
+    "collapseHeading": "Tiivistä {{title}}",
+    "collapseAll": "Tiivistä kaikki otsikot",
+    "empty": "Tässä dokumentissa ei ole lukuja eikä sisällytyksiä.",
+    "emptyDetail": "Lisää luvun otsikko, niin jäsennyksestä tulee navigoitava.",
+    "entryCount_one": "{{count}} jäsennyskohta",
+    "entryCount_other": "{{count}} jäsennyskohtaa",
+    "expandHeading": "Laajenna {{title}}",
+    "expandAll": "Laajenna kaikki otsikot",
+    "title": "Jäsennys"
+  },
+  "panelError": {
+    "message": "Paneelien asettelussa tuli häiriö. Projektitiedostot ovat tallessa levyllä.",
+    "reload": "Lataa Oleafly uudelleen"
+  },
+  "structure": {
+    "ariaLabel": "Dokumentin rakenne",
+    "collapseAll": "Tiivistä kaikki rakennekohdat",
+    "empty": "Projektikartassa ei ole yhtään tuettua tiedostoa.",
+    "filterLabel": "Suodata projektin rakennetta",
+    "filterPlaceholder": "Suodata projektikarttaa…",
+    "expandAll": "Laajenna kaikki rakennekohdat",
+    "itemCount_one": "{{count}} rakennekohta",
+    "itemCount_other": "{{count}} rakennekohtaa",
+    "noMatch": "Mikään rakennekohta ei vastaa hakua ”{{query}}”.",
+    "notice": {
+      "partial": "Osittainen kartta. Lukukelvottomat tai virheelliset tiedostot näkyvät mahdollisuuksien mukaan.",
+      "stale": "Päivitetään. Edellisen version rakenne on piilossa, kunnes nykyiset lähdekohdat ovat valmiit."
+    },
+    "title": "Rakenne",
+    "treeLabel": "Projektin rakenne",
+    "unavailable": {
+      "failed": {
+        "detail": "Projektia ei voitu analysoida. Lähdetiedostoihin ei koskettu.",
+        "title": "Rakennetta ei voitu muodostaa"
+      },
+      "mapping": {
+        "detail": "Oleafly indeksoi otsikoita, linkitettyjä tiedostoja, symboleja ja lähdeviitteitä.",
+        "title": "Kartoitetaan projektin rakennetta"
+      },
+      "noProject": {
+        "detail": "Avaa dokumenttiprojekti, niin sen paikallinen ja projektitason rakenne tulee selattavaksi.",
+        "title": "Yhtään projektia ei ole auki"
+      },
+      "noSource": {
+        "detail": "Avaa tuettu lähde- tai lähdeluettelotiedosto, niin sen rakenne tulee näkyviin.",
+        "title": "Ei aktiivista lähdettä"
+      },
+      "offline": {
+        "detail": "Projektianalyysi ei ole juuri nyt käytettävissä tässä työtilassa.",
+        "title": "Rakennepalvelu ei ole käytettävissä"
+      },
+      "unsupported": {
+        "detail": "Tälle tiedostotyypille ei ole projektirakenteen tarjoajaa.",
+        "title": "Rakenne ei ole käytettävissä"
+      },
+      "waiting": {
+        "detail": "Projektin uusinta versiota ei ole vielä indeksoitu.",
+        "title": "Odotetaan projektin rakennetta"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Ladataan avustajaa",
+    "editor": "Ladataan editoria",
+    "preview": "Ladataan esikatselua",
+    "terminal": "Ladataan päätettä"
+  },
+  "terminal": {
+    "closeCurrent": "Sulje nykyinen",
+    "closeLeft": "Sulje kaikki vasemmalta",
+    "closeOthers": "Sulje muut",
+    "closeRight": "Sulje kaikki oikealta",
+    "closeTab": "Sulje {{title}}",
+    "color": "Väri",
+    "errors": {
+      "input": "Syötettä ei voitu välittää shell-prosessille",
+      "resize": "Päätteen kokoa ei voitu muuttaa",
+      "start": "Päätteen shell-prosessia ei voitu käynnistää"
+    },
+    "limitReached": "Sulje jokin pääte, niin voit avata uuden",
+    "newTerminal": "Uusi pääte",
+    "settings": "Päätteen asetukset",
+    "starting": "Käynnistetään projektin shell-prosessia…",
+    "tabs": "Päätteet",
+    "titleInput": "Päätteen otsikko"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Tyhjennä suodatin",
+    "filterPlaceholder": "Suodata…",
+    "noProject": "Ei projektia"
+  }
+}

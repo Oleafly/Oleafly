@@ -1186,8 +1186,9 @@ The integrated preview renders a second page.
     })`,
     90_000,
   );
+  await setEditorCaretAfter(tauriPage, "a^2+b^2");
   await tauriPage.waitForFunction(
-    `!!document.querySelector(".math-preview .katex")`,
+    `!!document.querySelector(".ofl-visual-math-tooltip .katex")`,
     20_000,
   );
   const liveHighlighting = await tauriPage.evaluate<{
@@ -1283,7 +1284,9 @@ The integrated preview renders a second page.
   await expect(tauriPage.getByText("Core section", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(tauriPage.locator(".wysiwyg-math-preview .katex").first()).toBeVisible({
+  await expect(
+    tauriPage.locator(".cm-content .ofl-visual-math-inline .katex").first(),
+  ).toBeVisible({
     timeout: 20_000,
   });
   await tauriPage.click('[aria-label="Switch to source view"]');

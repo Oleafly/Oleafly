@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Tüm klasörleri daralt",
+    "confirmDelete": "{{path}} silinsin mi? Bu işlem geri alınamaz.",
+    "conflict": {
+      "cancelAriaLabel": "Dosya taşımayı iptal et",
+      "createBody": "<destination>{{destination}}</destination> zaten var. <suggestion>{{suggestion}}</suggestion> adını kullanarak iki dosyayı da tutabilirsiniz. Oluşturma işlemi var olan bir dosyanın yerine hiçbir zaman geçmez.",
+      "dialogAriaLabel": "Dosya taşıma çakışması",
+      "keepBoth": "İkisini de tut",
+      "renameBody": "<destination>{{destination}}</destination> zaten var. <suggestion>{{suggestion}}</suggestion> adını kullanarak iki dosyayı da tutabilir veya var olan hedefin yerine yazabilirsiniz. Siz Değiştir seçeneğini seçmedikçe Oleafly onun yerine yazmaz.",
+      "replace": "Değiştir",
+      "title": "Bu ad zaten kullanılıyor",
+      "unchanged": "Özgün ve hedef yollar değiştirilmeden bırakıldı."
+    },
+    "createFailed": "\"{{path}}\" oluşturulamadı.",
+    "deleteFailed": "\"{{path}}\" silinemedi.",
+    "expandAll": "Tüm klasörleri genişlet",
+    "importAriaLabel": "Seçili klasöre içe aktar",
+    "importFiles": "Dosya içe aktar",
+    "importFolder": "Klasör içe aktar",
+    "importTitle": "Bir dosyayı veya klasörü içe aktar (seçili klasöre)",
+    "makeCopy": "Kopyasını oluştur",
+    "moreActions": "{{name}} için diğer eylemler",
+    "moveFailed": "\"{{path}}\" taşınamadı. Özgün yol değiştirilmeden bırakıldı.",
+    "newEntry": {
+      "fileInFolder": "{{folder}} klasöründe yeni dosya adı",
+      "fileInRoot": "Proje kökünde yeni dosya adı",
+      "filePlaceholder": "Yeni dosya adı",
+      "folderInFolder": "{{folder}} klasöründe yeni klasör adı",
+      "folderInRoot": "Proje kökünde yeni klasör adı",
+      "folderPlaceholder": "Yeni klasör adı"
+    },
+    "newFile": "Yeni dosya",
+    "newFileAriaLabel": "Seçili klasörde yeni dosya",
+    "newFileTitle": "Yeni dosya (seçili klasörde)",
+    "newFolder": "Yeni klasör",
+    "newFolderAriaLabel": "Seçili klasörde yeni klasör",
+    "newFolderTitle": "Yeni klasör (seçili klasörde)",
+    "renameAriaLabel": "Dosyayı yeniden adlandır",
+    "renameFailed": "\"{{path}}\" yeniden adlandırılamadı. Özgün yol değiştirilmeden bırakıldı.",
+    "setMain": "Ana belge olarak ayarla",
+    "title": "Gezgin",
+    "treeAriaLabel": "Gezgin dosya ağacı"
+  },
+  "explorer": {
+    "resizeSections": "{{first}} ve {{second}} bölümlerini yeniden boyutlandır"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "belirsiz",
+      "cycle": "döngü",
+      "definitions_one": "{{count}} tanım",
+      "definitions_other": "{{count}} tanım",
+      "duplicate": "yinelenen",
+      "external": "dış",
+      "folded": "katlanmış",
+      "incomplete": "eksik",
+      "missing": "bulunamadı"
+    },
+    "bibEntryIn": "{{file}} içinde {{type}} kaydı",
+    "duplicateKey": "Yinelenen anahtar.",
+    "duplicateKeyIn": "{{file}} içinde yinelenen {{key}} anahtarı",
+    "folded": {
+      "description": "Çok büyük proje grafiklerinin akıcı kalması için bu dal katlandı.",
+      "label": "Devam etmek için bağlantılı kaynağı açın"
+    },
+    "fromFile": "{{file}} dosyasından {{kind}}",
+    "groups": {
+      "bibliography": "Kaynakça",
+      "bibtexEntries": "BibTeX kayıtları",
+      "commands": "Komutlar",
+      "definitions_one": "Tanım",
+      "definitions_other": "Tanımlar",
+      "dependencies": "Bağlantılar ve bağımlılıklar",
+      "duplicateCitations": "Yinelenen atıf anahtarları",
+      "environments": "Ortamlar",
+      "labels": "Etiketler ve çapalar",
+      "occurrences": "Geçişler",
+      "sections": "Bölümler",
+      "unlinked": "Bağlantısız dosyalar",
+      "unresolvedCitations": "Çözümlenmemiş atıflar",
+      "unresolvedDuplicate": "Çözümlenmemiş ve yinelenen"
+    },
+    "inFile": "{{file}} içinde {{kind}}",
+    "incompleteEntry": "Eksik kayıt.",
+    "kinds": {
+      "anchor": "çapa",
+      "asset": "varlık",
+      "bibentry": "kaynakça kaydı",
+      "bibliography": "kaynakça",
+      "citation": "atıf",
+      "environment": "ortam",
+      "file": "dosya",
+      "glossary": "sözlük",
+      "import": "içe aktarma",
+      "include": "dahil etme",
+      "label": "etiket",
+      "link": "bağlantı",
+      "macro": "makro",
+      "reference": "kaynak",
+      "section": "bölüm"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Belge anahattı",
+    "collapseHeading": "{{title}} başlığını daralt",
+    "collapseAll": "Tüm başlıkları daralt",
+    "empty": "Bu belgede bölüm veya dahil etme yok.",
+    "emptyDetail": "Gezilebilir bir anahat oluşturmak için bir bölüm başlığı ekleyin.",
+    "entryCount_one": "{{count}} anahat ögesi",
+    "entryCount_other": "{{count}} anahat ögesi",
+    "expandHeading": "{{title}} başlığını genişlet",
+    "expandAll": "Tüm başlıkları genişlet",
+    "title": "Anahat"
+  },
+  "panelError": {
+    "message": "Panel düzeninde bir aksaklık oldu. Proje dosyalarınız diskte güvende.",
+    "reload": "Oleafly'yi yeniden yükle"
+  },
+  "structure": {
+    "ariaLabel": "Belge yapısı",
+    "collapseAll": "Tüm yapı ögelerini daralt",
+    "empty": "Proje haritasında desteklenen dosya yok.",
+    "filterLabel": "Proje yapısını filtrele",
+    "filterPlaceholder": "Proje haritasını filtrele…",
+    "expandAll": "Tüm yapı ögelerini genişlet",
+    "itemCount_one": "{{count}} yapı ögesi",
+    "itemCount_other": "{{count}} yapı ögesi",
+    "noMatch": "“{{query}}” ile eşleşen yapı yok.",
+    "notice": {
+      "partial": "Kısmi harita. Okunamayan veya bozuk dosyalar mümkün olduğunca görünür kalır.",
+      "stale": "Güncelleniyor. Güncel kaynak aralıkları hazır olana kadar önceki sürümün yapısı gizlenir."
+    },
+    "title": "Yapı",
+    "treeLabel": "Proje yapısı",
+    "unavailable": {
+      "failed": {
+        "detail": "Proje çözümlenemedi. Kaynak dosyalarınız değiştirilmedi.",
+        "title": "Yapı oluşturulamadı"
+      },
+      "mapping": {
+        "detail": "Oleafly başlıkları, bağlantılı dosyaları, sembolleri ve kaynakça kayıtlarını dizinliyor.",
+        "title": "Proje yapısı çıkarılıyor"
+      },
+      "noProject": {
+        "detail": "Yerel ve proje yapısına göz atmak için bir belge projesi açın.",
+        "title": "Açık proje yok"
+      },
+      "noSource": {
+        "detail": "Yapısını görmek için desteklenen bir kaynak veya kaynakça dosyası açın.",
+        "title": "Etkin kaynak yok"
+      },
+      "offline": {
+        "detail": "Bu çalışma alanı için proje çözümlemesi şu anda kullanılamıyor.",
+        "title": "Yapı hizmeti kullanılamıyor"
+      },
+      "unsupported": {
+        "detail": "Bu dosya türü için proje yapısı sağlayıcısı yok.",
+        "title": "Yapı kullanılamıyor"
+      },
+      "waiting": {
+        "detail": "En son proje sürümü henüz dizinlenmedi.",
+        "title": "Proje yapısı bekleniyor"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Asistan yükleniyor",
+    "editor": "Düzenleyici yükleniyor",
+    "preview": "Önizleme yükleniyor",
+    "terminal": "Terminal yükleniyor"
+  },
+  "terminal": {
+    "closeCurrent": "Geçerli olanı kapat",
+    "closeLeft": "Soldakilerin tümünü kapat",
+    "closeOthers": "Diğerlerini kapat",
+    "closeRight": "Sağdakilerin tümünü kapat",
+    "closeTab": "{{title}} sekmesini kapat",
+    "color": "Renk",
+    "errors": {
+      "input": "Proje shell'i girdiyi kabul edemedi",
+      "resize": "Terminal yeniden boyutlandırılamadı",
+      "start": "Proje shell'i başlatılamadı"
+    },
+    "limitReached": "Başka bir terminal açmak için birini kapatın",
+    "newTerminal": "Yeni terminal",
+    "settings": "Terminal ayarları",
+    "starting": "Proje shell'i başlatılıyor…",
+    "tabs": "Terminaller",
+    "titleInput": "Terminal başlığı"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Filtreyi temizle",
+    "filterPlaceholder": "Filtrele…",
+    "noProject": "Proje yok"
+  }
+}

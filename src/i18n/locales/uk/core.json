@@ -1,0 +1,639 @@
+{
+  "accents": {
+    "blue": "Синій",
+    "green": "Зелений",
+    "orange": "Помаранчевий",
+    "purple": "Фіолетовий",
+    "rose": "Трояндовий",
+    "teal": "Бірюзовий"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Потрібен міст",
+      "cliMissing": "CLI не знайдено",
+      "ready": "Готово",
+      "unavailable": "Недоступно"
+    },
+    "requestFailed": "Не вдалося виконати запит ACP."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Цей проєкт вичерпав свій бюджет на ШІ ({{budget}}). Підвищте або зніміть бюджет у налаштуваннях, щоб продовжити.",
+    "warned": "Цей проєкт використав {{spent}} зі свого бюджету на ШІ ({{budget}})."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Для цієї дії перемкнулися на асистента Oleafly."
+  },
+  "bibtex": {
+    "duplicateDoi": "Дубльований DOI, спільний із: {{keys}}",
+    "duplicateKey": "Дубльований ключ цитування",
+    "invalidYear": "Рік «{{year}}» не є чотирицифровим числом",
+    "missingField": "Бракує обов’язкового поля: {{fields}}",
+    "missingKey": "У запису типу @{{type}} немає ключа цитування",
+    "unknownType": "Невідомий тип запису @{{type}}",
+    "unreadableFields": "Не вдалося прочитати поля «{{entry}}»",
+    "unterminatedEntry": "Незавершений запис біля символу {{position}}",
+    "unusualField": "Незвичне поле для @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} змінився під час імпорту цитувань. Спробуйте ще раз.",
+    "noArxivEntry": "Запису arXiv не знайдено.",
+    "noReferences": "У цьому файлі не знайдено джерел.",
+    "offline": "Пошук цитувань потребує мережі. Вимкніть режим офлайн у налаштуваннях.",
+    "parseFailed": "Не вдалося розібрати цитування.",
+    "projectChanged": "Проєкт змінився під час імпорту цитувань.",
+    "projectChangedNotInserted": "Проєкт змінився під час імпорту цитувань. Цитування не вставлено.",
+    "projectChangedRetry": "Проєкт змінився під час імпорту цитувань. Спробуйте ще раз у початковому проєкті.",
+    "readFailed": "Не вдалося прочитати {{path}}: {{detail}}",
+    "unrecognizedFile": "Нерозпізнаний тип файлу: {{name}}",
+    "writeFailed": "Не вдалося записати {{path}}: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Запис Oleafly додано до {{path}}. Цитуйте його через {{markup}}.",
+    "failed": "Не вдалося додати цитування Oleafly. Скопіюйте його з налаштувань, розділ «Довідка та про застосунок».",
+    "present": "{{path}} уже містить запис Oleafly. Цитуйте його через {{markup}}.",
+    "undo": "Скасувати"
+  },
+  "compatibility": {
+    "biblatexBiber": "Цей проєкт використовує biblatex/Biber для бібліографії.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_few": "{{title}} (+ще {{more}})",
+    "blockerFinding_many": "{{title}} (+ще {{more}})",
+    "blockerFinding_other": "{{title}} (+ще {{more}})",
+    "chooseEngine": "Вибрати рушій…",
+    "importNotes_one": "{{count}} примітка імпорту: {{title}}",
+    "importNotes_few": "{{count}} примітки імпорту: {{title}} (+ще {{more}})",
+    "importNotes_many": "{{count}} приміток імпорту: {{title}} (+ще {{more}})",
+    "importNotes_other": "{{count}} примітки імпорту: {{title}} (+ще {{more}})"
+  },
+  "compile": {
+    "engineNotLoaded": "Компіляція вимкнена, доки не завантажиться рушій документа.",
+    "noOfflineMode": "{{engine}} не має офлайн-режиму компіляції. Компілюємо звичайним способом.",
+    "retry": "Скомпілювати ще раз"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Перемістити всі проєкти розробки до кошика. Нічого не видаляється остаточно.",
+        "title": "Очистити проєкти"
+      },
+      "replayFirstRun": {
+        "description": "Скинути всі тури, закрити поточний проєкт і повернутися до вітального сценарію.",
+        "title": "Повторити перший запуск"
+      },
+      "resetAndSeed": {
+        "description": "Перемістити поточні проєкти до кошика, потім скопіювати всі {{count}} закріплених реальних фікстур із локального кешу.",
+        "title": "Скинути і заповнити"
+      },
+      "resetUiState": {
+        "description": "Очистити локальні налаштування Oleafly і збережений стан інтерфейсу, не видаляючи проєкти.",
+        "title": "Скинути стан інтерфейсу"
+      },
+      "seedCorpus": {
+        "action": "Заповнити корпус",
+        "description": "Скопіювати {{count}} дослідницьких проєктів із ~/Codespace/Oleafly/oleafly-seed. Статті, дисертації, книги, доповіді, постери та рисунки на LaTeX і Typst, кожен перевірено на компіляцію з вкладеними рушіями. Наявні фікстури лишаються.",
+        "title": "Заповнити дослідницький корпус"
+      }
+    },
+    "closeProjectFailed": "Не вдалося безпечно закрити відкритий проєкт.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Очистити проєкти",
+        "description": "Усі проєкти з ізольованої бібліотеки розробки перемістяться до її кошика. Вашу робочу бібліотеку Oleafly це не зачіпає.",
+        "title": "Очистити всі проєкти розробки?"
+      },
+      "fallbackTitle": "Підтвердьте дію розробника",
+      "resetAndSeed": {
+        "action": "Скинути і заповнити",
+        "description": "Усі поточні проєкти розробки перемістяться до кошика, потім Oleafly скопіює {{count}} дослідницьких фікстур із локального кешу oleafly-seed.",
+        "title": "Скинути і заповнити бібліотеку розробки?"
+      },
+      "resetBrowser": {
+        "action": "Скинути стан інтерфейсу",
+        "description": "Це очистить налаштування Oleafly, тури та інший стан браузера для цього джерела розробки, а потім перезавантажить застосунок. Файли проєктів залишаться на диску.",
+        "title": "Скинути стан інтерфейсу розробки?"
+      }
+    },
+    "debugOnly": {
+      "description": "Ці елементи керування завантажує лише збірка розробки Vite. Робочі збірки відхиляють цей модуль, якщо його маркер потрапляє в будь-який згенерований ресурс.",
+      "title": "Лише для збірки з налагодженням"
+    },
+    "library": {
+      "checking": "Перевірка шляху бібліотеки…",
+      "label": "Бібліотека розробки",
+      "locked": "Керування проєктами заблоковано, бо це не пісочниця .oleafly-dev."
+    },
+    "nav": "Розробник",
+    "projectsRecycled_one": "Переміщено {{count}} проєкт до кошика.",
+    "projectsRecycled_few": "Переміщено {{count}} проєкти до кошика.",
+    "projectsRecycled_many": "Переміщено {{count}} проєктів до кошика.",
+    "projectsRecycled_other": "Переміщено {{count}} проєкта до кошика.",
+    "replayFailed": "Не вдалося скинути тур першого запуску.",
+    "resetAndSeedSummary": "Переміщено {{removed}} проєктів до кошика і заповнено дослідницький корпус: {{created}} створено, {{skipped}} уже було.",
+    "resetFailed": "Не вдалося скинути пісочницю розробки.",
+    "sandboxOnly": "Дослідницькі фікстури можна копіювати лише в пісочницю .oleafly-dev.",
+    "seedFailed": "Не вдалося заповнити дослідницький корпус.",
+    "seedFailures_one": "{{summary}} {{count}} фікстура не вдалася. Перша помилка: {{name}}: {{message}}",
+    "seedFailures_few": "{{summary}} {{count}} фікстури не вдалися. Перша помилка: {{name}}: {{message}}",
+    "seedFailures_many": "{{summary}} {{count}} фікстур не вдалося. Перша помилка: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} фікстури не вдалося. Перша помилка: {{name}}: {{message}}",
+    "seedSummary": "Дослідницький корпус заповнено: {{created}} створено, {{skipped}} уже було.",
+    "unknownSeedError": "Невідома помилка заповнення"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "Зображення PNG",
+      "zipArchive": "Архів ZIP"
+    }
+  },
+  "dictionary": {
+    "full": "Ваш словник заповнений, тож це слово натомість приховано в цьому документі. Вилучіть одне слово в налаштуваннях, щоб зберегти нове.",
+    "wordTooLong": "Це задовге, щоб зберегти як слово, тож його натомість приховано в цьому документі. Слово може містити до {{max}} символів."
+  },
+  "documentScan": {
+    "complete": "Сканування завершено",
+    "failed": "Не вдалося просканувати документ",
+    "processed": "Оброблено {{current}}/{{total}} абзаців…",
+    "processing": "Обробка {{current}}/{{total}} абзаців…",
+    "skippedEmpty": "Пропущено порожній запит ({{current}}/{{total}})",
+    "splitting": "Ділимо документ на абзаци…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Не вдалося завантажити дані про рушій документа. Дії, специфічні для рушія, вимкнено.",
+      "renameReloadFailed": "Не вдалося завантажити дані про рушій документа після перейменування головного документа.",
+      "stillLoading": "Дані про рушій документа ще завантажуються."
+    }
+  },
+  "export": {
+    "pdfFailed": "Не вдалося зберегти PDF",
+    "pdfFailedDetail": "Не вдалося зберегти PDF: {{detail}}",
+    "pngFailed": "Не вдалося зберегти PNG",
+    "pngFailedDetail": "Не вдалося зберегти PNG: {{detail}}",
+    "revealFailed": "Файл збережено, але Oleafly не зміг відкрити його папку (немає дозволу). Перевірте розташування, яке ви вибрали в діалозі збереження.",
+    "saved": "{{kind}} збережено · {{fileName}}",
+    "showInFolder": "Показати в папці"
+  },
+  "externalChange": {
+    "deletionRestored": "Зовнішнє видалення зіткнулося з незбереженими правками. Ваші локальні правки відновлено.",
+    "localEditKept": "Зовнішня правка файлу «{{path}}» надійшла, коли у вас були незбережені зміни. Вашу локальну правку збережено.",
+    "persistExternalFailed": "Не вдалося зберегти останнє зовнішнє оновлення файлу «{{path}}».",
+    "preserveLocalFailed": "Не вдалося зберегти ваше локальне оновлення файлу «{{path}}».",
+    "reloadFailed": "Налаштування проєкту оновлено, але деякі змінені файли не вдалося перезавантажити.",
+    "restoreLocalFailed": "Не вдалося відновити ваше незбережене оновлення файлу «{{path}}»."
+  },
+  "fonts": {
+    "systemDefault": "Системний шрифт",
+    "terminalDefault": "Шрифт термінала"
+  },
+  "imageToLatex": {
+    "failed": "Не вдалося перетворити зображення на LaTeX: {{detail}}",
+    "inserted": "Вставлено LaTeX із зображення",
+    "transcribing": "Розшифрування зображення…"
+  },
+  "import": {
+    "arxivImported": "Код з arXiv імпортовано. Скомпілюйте проєкт, щоб перевірити результат.",
+    "chooseOfferedProjectType": "Виберіть один із типів проєкту, запропонованих для цього файлу.",
+    "invalidArxivId": "Вставте посилання на статтю arXiv або ідентифікатор на кшталт 2301.01234.",
+    "supportedDocumentTypes": "Виберіть один із підтримуваних типів документів.",
+    "conversionNotice": "Ми перетворили ваш вміст на LaTeX. Можливо, доведеться підправити оформлення, особливо для таблиць, рисунків і цитувань.",
+    "figureSaved": "Збережено {{name}}",
+    "pdfProjectCreated": "Проєкт створено з PDF. Перевірте реконструкцію, перш ніж їй довіряти.",
+    "pickPdfOrDocx": "Виберіть файл .pdf або .docx",
+    "texSaved": "Збережено .tex",
+    "unsupportedFile": "Виберіть файл .zip, .docx, .md або .markdown.",
+    "zipSaveFailed": "Не вдалося зберегти архів ZIP.",
+    "zipSaved": "Збережено .zip"
+  },
+  "inlineAi": {
+    "concise": "Зробити стислішим",
+    "expand": "Розширити текст",
+    "fixSource": "Виправити код",
+    "grammar": "Виправити граматику",
+    "improve": "Покращити",
+    "translate": "Перекласти"
+  },
+  "intelligence": {
+    "analysisFailed": "Не вдалося проаналізувати поточну ревізію проєкту.",
+    "analyzing": "Аналітика проєкту аналізує поточну ревізію.",
+    "couldNotSend": "Не вдалося надіслати аналіз проєкту робочому процесу.",
+    "disposed": "Робочий процес аналітики проєкту вже завершено.",
+    "disposedDuringRequest": "Робочий процес аналітики проєкту було завершено.",
+    "failed": "Аналітика проєкту завершилася помилкою.",
+    "identityMismatch": "Ідентичність відповіді аналітики проєкту не збіглася із запитом.",
+    "malformedResponse": "Робочий процес аналітики проєкту повернув пошкоджену відповідь.",
+    "malformedSnapshotIdentity": "Ідентичність знімка аналітики проєкту була пошкоджена.",
+    "noProject": "Немає активного проєкту.",
+    "partialFiles_one": "{{count}} файл дав придатний частковий аналіз.",
+    "partialFiles_few": "{{count}} файли дали придатний частковий аналіз.",
+    "partialFiles_many": "{{count}} файлів дали придатний частковий аналіз.",
+    "partialFiles_other": "{{count}} файла дали придатний частковий аналіз.",
+    "retainedStale": "Вміст проєкту змінився. Збережений аналіз застарів, доки виконується поточна ревізія.",
+    "sourceGraphRefreshing": "Файли проєкту змінилися. Граф коду оновлюється.",
+    "sourceSnapshotsLoading": "Файли проєкту змінилися. Знімки коду завантажуються для поточного аналізу.",
+    "staleSnapshot": "Робочий процес аналітики проєкту не має аналізу для цього знімка.",
+    "stopped": "Аналітику проєкту зупинено.",
+    "timedOut": "Час очікування аналітики проєкту вичерпано.",
+    "typeMismatch": "Тип відповіді аналітики проєкту не збігся із запитом.",
+    "unexpectedResponse": "Робочий процес аналітики проєкту повернув неочікувану відповідь.",
+    "workerFailed": "Робочий процес аналітики проєкту завершився помилкою.",
+    "workerRestarted": "Робочий процес аналітики проєкту перезапущено після перевищення часу очікування.",
+    "workerUnavailable": "Робочий процес аналітики проєкту недоступний."
+  },
+  "latexPackages": {
+    "algorithm2e": "Набір алгоритмів",
+    "amsmath": "Розширений набір математики",
+    "amssymb": "Розширені математичні символи",
+    "amsthm": "Середовища теорем і доведень",
+    "array": "Розширені array і tabular",
+    "authblk": "Блоки авторів та афіліацій",
+    "babel": "Багатомовність і мова документа",
+    "biblatex": "Розширена підтримка бібліографії",
+    "bookmark": "Покращені закладки PDF",
+    "booktabs": "Професійні лінійки таблиць",
+    "caption": "Налаштування підписів",
+    "cleveref": "Розумні перехресні посилання (підключайте після hyperref)",
+    "csquotes": "Контекстні лапки (потрібні для biblatex)",
+    "enumitem": "Налаштування списків",
+    "fancyhdr": "Власні колонтитули",
+    "float": "Покращене розміщення плаваючих об’єктів",
+    "fontspec": "Вибір шрифтів OpenType (Xe/LuaLaTeX)",
+    "geometry": "Налаштування макета сторінки",
+    "graphicx": "Вставлення графіки та зображень",
+    "hyperref": "Гіперпосилання, закладки та метадані PDF",
+    "inputenc": "Кодування введення (непотрібне в Xe/LuaLaTeX)",
+    "lineno": "Нумерація рядків для рецензування",
+    "lipsum": "Текст-заповнювач (lorem ipsum)",
+    "listings": "Лістинги коду (їхній вміст не тегується)",
+    "mathtools": "Надбудова над amsmath з виправленнями та інструментами",
+    "microtype": "Мікротипографічні вдосконалення",
+    "minted": "Лістинги коду з підсвічуванням Pygments",
+    "multirow": "Комірки таблиць на кілька рядків",
+    "natbib": "Цитування у форматі автор-рік і числове",
+    "parskip": "Відступи між абзацами",
+    "pdfpages": "Вставлення цілих сторінок з іншого PDF",
+    "setspace": "Керування міжрядковим інтервалом",
+    "siunitx": "Одиниці SI та форматування чисел",
+    "subcaption": "Підрисунки та підтаблиці",
+    "subfig": "Старіший пакунок для підрисунків",
+    "tabularx": "Таблиці з автоматичною шириною",
+    "threeparttable": "Таблиці з примітками знизу",
+    "tikz": "Програмована векторна графіка (потребує альтернативного тексту вручну)",
+    "titlesec": "Форматування заголовків розділів",
+    "todonotes": "Нотатки на полях для чернеток",
+    "unicode-math": "Математика Unicode для Xe/LuaLaTeX (потрібна для тегованої математики)",
+    "url": "Набір URL",
+    "wrapfig": "Рисунки з обтіканням текстом",
+    "xcolor": "Підтримка кольору"
+  },
+  "literatureSources": {
+    "arxiv": "Понад 2,4 мільйона препринтів з фізики, математики, комп’ютерних наук, кількісної біології та суміжних галузей.",
+    "crossref": "Реєстр DOI з метаданими понад 150 мільйонів наукових результатів.",
+    "googleScholar": "Результати Google Scholar через Serper. Потрібен ключ API Serper у налаштуваннях, розділ «Інтеграції», підрозділ «Пошук цитувань».",
+    "openalex": "Відкритий каталог наукових праць, авторів, джерел, установ, тем, видавців і грантодавців.",
+    "pubmed": "Понад 40 мільйонів цитувань і анотацій з біомедичної літератури та наук про життя, зокрема MEDLINE.",
+    "semanticScholar": "Науковий індекс із графами цитувань, даними про впливові цитування та короткими підсумками TLDR.",
+    "uspto": "Патенти США та опубліковані заявки для пошуку попереднього рівня техніки та прикладних досліджень. Пошук призупинено на час міграції PatentsView.",
+    "usptoPaused": "USPTO тимчасово призупинило роботу пошукових API PatentsView на час міграції свого порталу відкритих даних.",
+    "yearRangeInvalid": "Початковий рік не може бути пізнішим за кінцевий."
+  },
+  "mcp": {
+    "openProjectSummary": "Відкрити проєкт {{id}}",
+    "useToolSummary": "Використати {{tool}} із сервера MCP {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "Сервер MCP '{{name}}' має суперечливі оголошення типу та транспорту.",
+    "exactlyOneServer": "JSON сервера MCP має містити рівно один сервер.",
+    "fieldBoolean": "Поле '{{field}}' сервера MCP '{{name}}' має бути булевим.",
+    "fieldString": "Поле '{{field}}' сервера MCP '{{name}}' має бути рядком.",
+    "fieldStringArray": "Поле '{{field}}' сервера MCP '{{name}}' має бути масивом рядків.",
+    "fieldStringRecord": "Поле '{{field}}' сервера MCP '{{name}}' має бути об’єктом зі значеннями-рядками.",
+    "jsonMalformed": "JSON сервера MCP пошкоджено.",
+    "jsonNotObject": "JSON сервера MCP має бути об’єктом.",
+    "mcpServersNotObject": "Поле 'mcpServers' у JSON сервера MCP має бути об’єктом.",
+    "serverNotObject": "Сервер MCP '{{name}}' має бути об’єктом.",
+    "structural": "{{detail}} Очікується або {\"server-name\": {...}}, або {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Невідомий сервер",
+    "unsupportedTransport": "Сервер MCP '{{name}}' має непідтримуваний транспорт '{{transport}}'.",
+    "unsupportedType": "Сервер MCP '{{name}}' має непідтримуваний тип '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Діаграма",
+    "renderFailed": "Не вдалося відтворити діаграму.",
+    "rendering": "Відтворення діаграми"
+  },
+  "missingPackages": {
+    "action_one": "Знайти і встановити {{name}}",
+    "action_few": "Знайти і встановити {{count}} файли",
+    "action_many": "Знайти і встановити {{count}} файлів",
+    "action_other": "Знайти і встановити {{count}} файла",
+    "installing_one": "Встановлюємо {{name}}. Компіляція перезапуститься, коли це завершиться.",
+    "installing_few": "Встановлюємо {{count}} пакунки. Компіляція перезапуститься, коли вони встановляться.",
+    "installing_many": "Встановлюємо {{count}} пакунків. Компіляція перезапуститься, коли вони встановляться.",
+    "installing_other": "Встановлюємо {{count}} пакунка. Компіляція перезапуститься, коли вони встановляться.",
+    "summary_one": "Компіляція не знайшла «{{name}}». Пошукайте в TeX Live пакунок, який його містить.",
+    "summary_few": "Компіляція не знайшла {{names}}. Пошукайте в TeX Live пакунки, які їх містять.",
+    "summary_many": "Компіляція не знайшла {{names}}. Пошукайте в TeX Live пакунки, які їх містять.",
+    "summary_other": "Компіляція не знайшла {{names}}. Пошукайте в TeX Live пакунки, які їх містять."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Контекстне вікно на {{tokens}} токенів",
+      "deprecated": {
+        "label": "Застаріла",
+        "title": "Постачальник визнав цю модель застарілою"
+      },
+      "reasoning": {
+        "label": "Міркування",
+        "title": "Модель з міркуваннями"
+      },
+      "tools": {
+        "label": "Інструменти",
+        "title": "Може викликати інструменти"
+      },
+      "vision": {
+        "label": "Зір",
+        "title": "Приймає зображення"
+      }
+    },
+    "listChange": {
+      "none": "Без змін",
+      "summary": "Додано: {{added}}, вилучено: {{removed}}"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Аналіз посилань проєкту недоступний.",
+    "analysisUpdating": "Посилання проєкту оновлюються.",
+    "definitionsFor": "Визначення для {{name}}",
+    "edits_one": "{{count}} правка",
+    "edits_few": "{{count}} правки",
+    "edits_many": "{{count}} правок",
+    "edits_other": "{{count}} правки",
+    "files_one": "{{count}} файл",
+    "files_few": "{{count}} файли",
+    "files_many": "{{count}} файлів",
+    "files_other": "{{count}} файла",
+    "nameExists": "«{{name}}» вже існує.",
+    "noDefinition": "Визначення для «{{name}}» не знайдено",
+    "noReferences": "Посилань на «{{name}}» немає",
+    "notRenamable": "Цей символ не можна перейменувати.",
+    "nothingToRename": "Немає чого перейменовувати.",
+    "referencesFor": "Посилання на {{name}}",
+    "renamePartial": "Перейменовано на «{{name}}» у {{edited}} з {{total}} файлів. Не вдалося записати {{files}}.",
+    "renamed": "Перейменовано на «{{name}}» ($t(core:navigation.edits, {\"count\": {{edits}} }) у $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Не вдалося завантажити pandoc. Встановіть його вручну і спробуйте ще раз",
+    "downloadingPercent": "Завантаження pandoc… {{progress}}%",
+    "downloadingSize": "Завантаження pandoc… {{megabytes}} МБ",
+    "installGuide": "Посібник зі встановлення",
+    "installed": "pandoc встановлено"
+  },
+  "project": {
+    "copyFailed": "Не вдалося скопіювати «{{path}}».",
+    "dateUnavailable": "Недоступно",
+    "importFailed": "Не вдалося імпортувати. Подробиці дивіться в журналі застосунку.",
+    "imported": "Проєкт імпортовано.",
+    "openFailed": "Не вдалося відкрити проєкт. Подробиці дивіться в журналі застосунку.",
+    "restoringUnsavedFiles": "Оновлення проєкту вилучило файли з незбереженими правками. Oleafly зберіг ваші правки і відновлює ці файли.",
+    "saveBlockedClose": "Проєкт залишився відкритим, бо один або кілька файлів не вдалося зберегти.",
+    "saveBlockedDiscard": "Відкинути зміни і вийти",
+    "saveBlockedMany": "Не вдалося зберегти {{count}} файлів: {{files}}. Перший з них відкрито в редакторі з незбереженими змінами ({{reason}}). Залишіться, щоб усунути проблему, або відкиньте незбережені зміни в цих файлах і вийдіть.",
+    "saveBlockedOne": "Не вдалося зберегти {{file}} ({{reason}}). Він відкритий у редакторі з вашими незбереженими змінами. Залишіться, щоб усунути проблему, або відкиньте ці зміни і вийдіть.",
+    "saveBlockedStay": "Залишитися",
+    "saveBlockedSwitch": "Проєкт залишився відкритим, бо один або кілька файлів не вдалося зберегти.",
+    "saveBlockedTitle": "Деякі файли не вдалося зберегти",
+    "updatedDaysAgo_one": "Оновлено {{count}} день тому",
+    "updatedDaysAgo_few": "Оновлено {{count}} дні тому",
+    "updatedDaysAgo_many": "Оновлено {{count}} днів тому",
+    "updatedDaysAgo_other": "Оновлено {{count}} дня тому",
+    "updatedOn": "Оновлено {{date}}",
+    "updatedToday": "Оновлено сьогодні",
+    "updatedYesterday": "Оновлено вчора"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Не вдалося виконати аналіз: {{message}}",
+    "beginIsHere": "{{command}} знаходиться тут.",
+    "beginWithoutEnd": "{{command}} не має відповідного \\end.",
+    "bibliographyFileMissing": "Файл бібліографії «{{file}}» не знайдено в проєкті.",
+    "citationHasManyDefinitions_one": "Цитування «{{name}}» має {{count}} можливе визначення.",
+    "citationHasManyDefinitions_few": "Цитування «{{name}}» має {{count}} можливі визначення.",
+    "citationHasManyDefinitions_many": "Цитування «{{name}}» має {{count}} можливих визначень.",
+    "citationHasManyDefinitions_other": "Цитування «{{name}}» має {{count}} можливого визначення.",
+    "citationKeyDuplicated_one": "Ключ цитування «{{name}}» визначено {{count}} раз.",
+    "citationKeyDuplicated_few": "Ключ цитування «{{name}}» визначено {{count}} рази.",
+    "citationKeyDuplicated_many": "Ключ цитування «{{name}}» визначено {{count}} разів.",
+    "citationKeyDuplicated_other": "Ключ цитування «{{name}}» визначено {{count}} раза.",
+    "citationUnresolved": "Не вдалося розпізнати цитування «{{name}}».",
+    "definedHere": "{{kind}} «{{name}}» визначено тут.",
+    "duplicateTargetDefined_one": "Ціль {{kind}} «{{name}}» визначено {{count}} раз.",
+    "duplicateTargetDefined_few": "Ціль {{kind}} «{{name}}» визначено {{count}} рази.",
+    "duplicateTargetDefined_many": "Ціль {{kind}} «{{name}}» визначено {{count}} разів.",
+    "duplicateTargetDefined_other": "Ціль {{kind}} «{{name}}» визначено {{count}} раза.",
+    "endWithoutBegin": "{{command}} не має відповідного \\begin.",
+    "entryMissingFieldList": "Запис бібліографії «{{key}}» не має списку полів.",
+    "expectedEndBefore": "Очікувалося {{expected}} перед {{found}}.",
+    "fieldIncompleteValue": "Поле «{{name}}» має неповне значення.",
+    "fieldMissingEquals": "У полі «{{name}}» бракує «=».",
+    "fieldRepeated": "Поле «{{name}}» повторюється в записі бібліографії «{{key}}».",
+    "fileNotLoaded": "Файл коду не завантажено для поточного аналізу проєкту.",
+    "fileUnreadable": "Не вдалося прочитати файл.",
+    "incompleteEntry": "Неповний запис @{{type}}.",
+    "invalidYear": "Рік «{{year}}» не є чотирицифровим роком BibTeX.",
+    "kinds": {
+      "anchor": "якір",
+      "asset": "ресурс",
+      "bibentry": "запис бібліографії",
+      "bibliography": "бібліографія",
+      "environment": "середовище",
+      "file": "файл",
+      "glossary": "запис глосарія",
+      "import": "імпорт",
+      "include": "включення",
+      "label": "мітка",
+      "link": "посилання",
+      "macro": "макрос",
+      "section": "розділ"
+    },
+    "malformedDirective": "Пошкоджена директива або тип запису BibTeX.",
+    "missingCitationKey": "У @{{type}} бракує ключа цитування.",
+    "missingRequiredField": "У {{entry}} бракує обов’язкового поля {{fields}}.",
+    "possibleTarget": "Можлива ціль: {{file}}",
+    "projectFileUnreadable": "Не вдалося прочитати файл проєкту.",
+    "referenceHasManyDefinitions_one": "Посилання «{{name}}» має {{count}} можливе визначення.",
+    "referenceHasManyDefinitions_few": "Посилання «{{name}}» має {{count}} можливі визначення.",
+    "referenceHasManyDefinitions_many": "Посилання «{{name}}» має {{count}} можливих визначень.",
+    "referenceHasManyDefinitions_other": "Посилання «{{name}}» має {{count}} можливого визначення.",
+    "referenceUnresolved": "Не вдалося розпізнати посилання «{{name}}».",
+    "targetMatchesManyFiles_one": "Ціль {{kind}} «{{target}}» збігається з {{count}} файлом проєкту.",
+    "targetMatchesManyFiles_few": "Ціль {{kind}} «{{target}}» збігається з {{count}} файлами проєкту.",
+    "targetMatchesManyFiles_many": "Ціль {{kind}} «{{target}}» збігається з {{count}} файлами проєкту.",
+    "targetMatchesManyFiles_other": "Ціль {{kind}} «{{target}}» збігається з {{count}} файла проєкту.",
+    "targetUnresolved": "Не вдалося розпізнати ціль {{kind}} «{{target}}».",
+    "typeDelimiterExpected": "Після @{{type}} має бути відкривна фігурна або кругла дужка.",
+    "unclosedDelimiter": "Роздільник «{{char}}» не закрито через «{{expected}}».",
+    "unclosedDirective": "Директиву @{{type}} не закрито.",
+    "unclosedEntry": "Запис @{{type}} не закрито.",
+    "unclosedEntryNamed": "Запис бібліографії «{{key}}» не закрито.",
+    "unclosedFence": "Блок коду в огорожі не закрито.",
+    "unclosedFrontMatter": "Заголовок YAML не закрито.",
+    "unclosedString": "Рядковий літерал не закрито.",
+    "unclosedTypstComment": "Блоковий коментар Typst не закрито.",
+    "unexpectedClosingDelimiter": "Неочікуваний закривний роздільник «{{char}}».",
+    "unknownEntryType": "Невідомий тип запису бібліографії @{{type}}.",
+    "unparsableField": "Не вдалося розібрати поле @{{type}}.",
+    "unparsableFieldNamed": "Не вдалося розібрати поле в «{{key}}»."
+  },
+  "proofreading": {
+    "cancelled": "Вичитування скасовано.",
+    "couldNotStart": "Не вдалося запустити офлайн-вичитування.",
+    "disposed": "Офлайн-вичитування завершено.",
+    "invalidResponse": "Офлайн-вичитування повернуло недійсну відповідь.",
+    "outOfRangeDiagnostic": "Офлайн-вичитування повернуло діагностику поза межами діапазону.",
+    "postFailed": "Не вдалося надіслати документ на офлайн-вичитування.",
+    "restarted": "Офлайн-вичитування перезапущено.",
+    "restartedAfterTimeout": "Офлайн-вичитування перезапущено після перевищення часу очікування.",
+    "staleResponse": "Офлайн-вичитування повернуло застарілу відповідь.",
+    "stopped": "Офлайн-вичитування несподівано зупинилося.",
+    "superseded": "Новіший запит на вичитування замінив цей.",
+    "timedOut": "Час очікування офлайн-вичитування вичерпано, воно перезапуститься після наступної правки.",
+    "dictionaryUnavailable": "Вибраний словник орфографії не встановлено. Завантажте його в налаштуваннях."
+  },
+  "skillGroups": {
+    "shelf": "Галузева полиця",
+    "user": "Ваші навички"
+  },
+  "tagged": {
+    "compileFailed": "Теговану компіляцію не вдалося виконати. Перевірте рушій і спробуйте ще раз.",
+    "compiled": "Тегований PDF скомпільовано. Висновок щодо доступності дивіться нижче.",
+    "compiledWithErrors": "Тегована компіляція завершилася з помилками. Перегляньте журнал.",
+    "engineRequired": "Спершу увімкніть рушій тегування в налаштуваннях, розділ «Рушій LaTeX»."
+  },
+  "terminal": {
+    "defaultTitle": "Термінал {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Цей проєкт закріплено за {{pinned}}. В активному {{local}} бракує {{count}} з його пакунків, тож компіляція може не вдаватися, доки не повернетеся до того дистрибутива.",
+    "distributionSkew": "Цей проєкт закріплено за {{pinned}}, а ця машина компілює через {{local}}. Результат може дещо відрізнятися.",
+    "installPinned_one": "Встановити",
+    "installPinned_few": "Встановити всі {{count}}",
+    "installPinned_many": "Встановити всі {{count}}",
+    "installPinned_other": "Встановити всі {{count}}",
+    "installingPinned_one": "Встановлюємо {{count}} закріплений пакунок…",
+    "installingPinned_few": "Встановлюємо {{count}} закріплені пакунки…",
+    "installingPinned_many": "Встановлюємо {{count}} закріплених пакунків…",
+    "installingPinned_other": "Встановлюємо {{count}} закріпленого пакунка…",
+    "pinnedPackagesFailed": "Деякі закріплені пакунки не вдалося встановити. Дивіться налаштування, розділ «Рушій LaTeX».",
+    "pinnedPackagesInstalled": "Закріплені пакунки LaTeX встановлено.",
+    "pinnedPackagesMissing_one": "Цей проєкт закріплює {{count}} пакунок LaTeX, який тут не встановлено.",
+    "pinnedPackagesMissing_few": "Цей проєкт закріплює {{count}} пакунки LaTeX, які тут не встановлено.",
+    "pinnedPackagesMissing_many": "Цей проєкт закріплює {{count}} пакунків LaTeX, які тут не встановлено.",
+    "pinnedPackagesMissing_other": "Цей проєкт закріплює {{count}} пакунка LaTeX, які тут не встановлено."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Власний CSS не може містити at-правила, URL чи селектори.",
+    "cssNotSimple": "Власний CSS має містити прості оголошення властивостей.",
+    "cssNotText": "Власний CSS має бути текстом.",
+    "cssPropertyNotAllowed": "Ця властивість CSS не дозволена: {{property}}.",
+    "cssTooLarge": "Власний CSS більший за 64 КіБ.",
+    "cssTooManyDeclarations": "Власний CSS може містити щонайбільше 64 оголошення.",
+    "cssUnsafeValue": "Власний CSS містить небезпечне значення.",
+    "customizationNotObject": "Налаштування теми мають бути об’єктом.",
+    "dark": {
+      "notObject": "Змінні CSS для темної теми мають бути об’єктом.",
+      "tooManyEntries": "Змінні CSS для темної теми містять понад {{max}} записів."
+    },
+    "fileMissingCssVars": "Файл теми має містити cssVars із записами light і dark.",
+    "fileMissingModes": "Файл теми має містити змінні CSS для світлої і темної тем.",
+    "fileNotJson": "Файл теми не є дійсним JSON.",
+    "fileNotObject": "Файл теми має містити об’єкт.",
+    "fileNotText": "Файл теми має бути текстом.",
+    "fileTooLarge": "Файл теми більший за 128 КіБ.",
+    "invalidColor": "Токен теми {{token}} має недійсне значення кольору.",
+    "invalidRadius": "Радіус заокруглення має бути в px, rem, em або відсотках.",
+    "light": {
+      "notObject": "Змінні CSS для світлої теми мають бути об’єктом.",
+      "tooManyEntries": "Змінні CSS для світлої теми містять понад {{max}} записів."
+    },
+    "tokens": {
+      "notObject": "Токени теми мають бути об’єктом.",
+      "tooManyEntries": "Токени теми містять понад {{max}} записів."
+    },
+    "unknownProperty": "невідома",
+    "unsupportedToken": "Непідтримуваний токен теми: {{token}}.",
+    "unsupportedVersion": "Цей файл теми використовує непідтримувану версію."
+  },
+  "themes": {
+    "matchApp": "Як у застосунку"
+  },
+  "tinytex": {
+    "installFailed": "Не вдалося встановити TinyTeX.",
+    "installGuide": "Посібник зі встановлення",
+    "installed": "TinyTeX встановлено.",
+    "phase": {
+      "addingPackages": "Додавання пакунків…",
+      "downloading": "Завантаження…",
+      "downloadingPercent": "Завантаження… {{progress}}%",
+      "installing": "Встановлення…",
+      "unpacking": "Розпакування…"
+    },
+    "removeFailed": "Не вдалося видалити TinyTeX",
+    "removed": "TinyTeX видалено"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Прочитати статтю",
+      "alphaxivSearch": "Шукати статті",
+      "compile": "Скомпілювати документ",
+      "getLog": "Прочитати журнал компіляції",
+      "insertFigure": "Вставити рисунок",
+      "listFiles": "Перелічити файли проєкту",
+      "literatureSearch": "Шукати літературу",
+      "previewFigure": "Переглянути рисунок",
+      "projectLibrarySearch": "Шукати джерела проєкту",
+      "projectMap": "Побудувати карту проєкту",
+      "readFile": "Прочитати файл",
+      "readLinkedFile": "Прочитати пов’язаний файл",
+      "readPdfText": "Прочитати скомпільований PDF",
+      "readResearchRootFile": "Прочитати пов’язаний файл",
+      "runCommand": "Виконати команду",
+      "searchProject": "Шукати в проєкті",
+      "sendMessage": "Оновити делеговане завдання",
+      "spawnAgent": "Почати делеговане завдання",
+      "verifyCitation": "Перевірити цитування",
+      "verifyPdfPages": "Перевірити сторінки PDF",
+      "waitAgent": "Дочекатися делегованого завдання"
+    },
+    "skillsBudgetNotice": "Codex не зміг перелічити всі свої навички. Він тримає 2% бюджету контексту на описи навичок, тож скоротіть теку навичок або попросіть навичку за назвою.",
+    "status": {
+      "cancelled": "Зупинено",
+      "declined": "Відхилено",
+      "done": "Готово",
+      "failed": "Не вдалося",
+      "failedWithCode": "Помилка, код виходу {{code}}",
+      "interrupted": "Перервано",
+      "running": "Виконується",
+      "timedOut": "Час вичерпано"
+    },
+    "summary": {
+      "citationUnverified": "Відповідного запису не знайдено",
+      "citationVerified": "Перевірено службою цитувань",
+      "compileFailed": "Компіляція не вдалася",
+      "compileSucceeded": "Успішно скомпільовано",
+      "diagnostics_one": "{{count}} діагностика",
+      "diagnostics_few": "{{count}} діагностики",
+      "diagnostics_many": "{{count}} діагностик",
+      "diagnostics_other": "{{count}} діагностики",
+      "papers_one": "{{count}} стаття",
+      "papers_few": "{{count}} статті",
+      "papers_many": "{{count}} статей",
+      "papers_other": "{{count}} статті"
+    }
+  },
+  "ui": {
+    "transparent": "Прозорий"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Проєкт змінився під час збереження. Спробуйте оновити ще раз."
+  }
+}

@@ -3,12 +3,18 @@ import {
   wrapSelectionOrPlaceholder as coreWrapSelectionOrPlaceholder,
   insertTemplate as coreInsertTemplate,
   insertEnvironment as coreInsertEnvironment,
+  insertListEnvironment as coreInsertListEnvironment,
   editorUndo as coreEditorUndo,
   editorRedo as coreEditorRedo,
   editorVimUndo as coreEditorVimUndo,
   editorVimRedo as coreEditorVimRedo,
 } from "@oleafly/editor";
-import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import {
+  getWysiwygDocumentContext,
+  getWysiwygEditor,
+  getWysiwygInsertions,
+  isWysiwygActive,
+} from "@/components/editor/wysiwyg/controller";
 
 export {
   setEditorView,
@@ -26,12 +32,9 @@ export {
 
 function insertRawIntoWysiwyg(source: string, block: boolean): boolean {
   const editor = getWysiwygEditor();
-  if (!editor) return false;
-  editor
-    .chain()
-    .focus()
-    .insertContent({ type: block ? "rawBlock" : "rawInline", attrs: { source } })
-    .run();
+  const insertions = getWysiwygInsertions();
+  if (!editor || !insertions) return false;
+  insertions.insertLatex(editor.view, source, block, getWysiwygDocumentContext().theoremEnvironments);
   return true;
 }
 
@@ -45,21 +48,19 @@ export function insertText(text: string) {
 }
 
 export function wrapSelectionOrPlaceholder(before: string, after: string, placeholder: string) {
-  if (isWysiwygActive() && insertRawIntoWysiwyg(`${before}${placeholder}${after}`, false)) return;
   coreWrapSelectionOrPlaceholder(before, after, placeholder);
 }
 
 export function insertTemplate(template: string, selStart: number, selEnd: number) {
-  if (isWysiwygActive() && insertRawIntoWysiwyg(template, template.includes("\n"))) return;
   coreInsertTemplate(template, selStart, selEnd);
 }
 
 export function insertEnvironment(name: string) {
-  if (isWysiwygActive()) {
-    const template = `\\begin{${name}}\n  \n\\end{${name}}\n`;
-    if (insertRawIntoWysiwyg(template, true)) return;
-  }
   coreInsertEnvironment(name);
+}
+
+export function insertListEnvironment(name: string) {
+  coreInsertListEnvironment(name);
 }
 
 export function editorUndo() {

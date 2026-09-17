@@ -32,6 +32,7 @@ mod connectors;
 mod conversion;
 mod cua_policy;
 mod deadlines;
+mod dictionaries;
 mod document_engine;
 mod document_stats;
 mod fsperm;
@@ -568,6 +569,11 @@ pub fn run() {
             assets::download_all_fonts,
             assets::template_prerequisites,
             assets::ensure_template_assets,
+            project::set_project_dictionary_locale,
+            dictionaries::list_dictionaries,
+            dictionaries::install_dictionary,
+            dictionaries::remove_dictionary,
+            dictionaries::read_dictionary,
             template_packs::list_template_packs,
             template_packs::refresh_pack_catalog,
             template_packs::install_template_pack,

@@ -21,6 +21,9 @@ import {
   APP_FONTS,
   BROWSER_SEARCH_ENGINES,
   EDITOR_FONTS,
+  EDITOR_KEYMAP_MODES,
+  EDITOR_LINE_HEIGHT_OPTIONS,
+  EDITOR_TAB_SIZES,
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
@@ -176,7 +179,7 @@ function AppAppearanceTab() {
                 className={cn(
                   "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
                   active
-                    ? "border-foreground ring-1 ring-foreground/20"
+                    ? "border-foreground"
                     : "border-border",
                 )}
                 style={{ backgroundColor: accent.color }}
@@ -274,8 +277,14 @@ function AppAppearanceTab() {
 
 function EditorAppearanceTab() {
   const { t } = useTranslation(["common", "settings"]);
-  const vim = useSettingsStore((state) => state.vim);
-  const toggleVim = useSettingsStore((state) => state.toggleVim);
+  const editorKeymap = useSettingsStore((state) => state.editorKeymap);
+  const setEditorKeymap = useSettingsStore((state) => state.setEditorKeymap);
+  const editorTabSize = useSettingsStore((state) => state.editorTabSize);
+  const setEditorTabSize = useSettingsStore((state) => state.setEditorTabSize);
+  const editorLineWrap = useSettingsStore((state) => state.editorLineWrap);
+  const setEditorLineWrap = useSettingsStore((state) => state.setEditorLineWrap);
+  const editorLineHeight = useSettingsStore((state) => state.editorLineHeight);
+  const setEditorLineHeight = useSettingsStore((state) => state.setEditorLineHeight);
   const editorAutocomplete = useSettingsStore((state) => state.editorAutocomplete);
   const setEditorAutocomplete = useSettingsStore((state) => state.setEditorAutocomplete);
   const editorAutoCloseBrackets = useSettingsStore(
@@ -307,6 +316,10 @@ function EditorAppearanceTab() {
   );
   const setEditorNonBlinkingCursor = useSettingsStore(
     (state) => state.setEditorNonBlinkingCursor,
+  );
+  const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
+  const setEditorMathPreview = useSettingsStore(
+    (state) => state.setEditorMathPreview,
   );
   const editorStickyScroll = useSettingsStore((state) => state.editorStickyScroll);
   const setEditorStickyScroll = useSettingsStore(
@@ -416,11 +429,98 @@ function EditorAppearanceTab() {
         </Select>
       </div>
 
+      <div
+        data-testid="settings-row-editor-keymap"
+        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      >
+        <div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.keymap.label)}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {t(($) => $.settings.appearance.editor.keymap.description)}
+          </div>
+        </div>
+        <Select
+          value={editorKeymap}
+          onValueChange={(value) => setEditorKeymap(value as typeof editorKeymap)}
+        >
+          <SelectTrigger className="w-[168px]" data-testid="settings-editor-keymap-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {EDITOR_KEYMAP_MODES.map((mode) => (
+              <SelectItem key={mode} value={mode}>
+                {t(($) => $.settings.appearance.editor.keymap.options[mode])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div
+        data-testid="settings-row-editor-tab-size"
+        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      >
+        <div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.tabSize.label)}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {t(($) => $.settings.appearance.editor.tabSize.description)}
+          </div>
+        </div>
+        <Select
+          value={String(editorTabSize)}
+          onValueChange={(value) => setEditorTabSize(Number(value))}
+        >
+          <SelectTrigger className="w-[88px]" data-testid="settings-editor-tab-size-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {EDITOR_TAB_SIZES.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {String(size)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div
+        data-testid="settings-row-editor-line-height"
+        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      >
+        <div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.lineHeight.label)}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {t(($) => $.settings.appearance.editor.lineHeight.description)}
+          </div>
+        </div>
+        <Select
+          value={editorLineHeight}
+          onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+        >
+          <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <SettingsToggleRow
-        label={t(($) => $.settings.appearance.editor.vim.label)}
-        description={t(($) => $.settings.appearance.editor.vim.description)}
-        checked={vim}
-        onChange={toggleVim}
+        label={t(($) => $.settings.appearance.editor.lineWrap.label)}
+        description={t(($) => $.settings.appearance.editor.lineWrap.description)}
+        checked={editorLineWrap}
+        onChange={setEditorLineWrap}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.autocomplete.label)}
@@ -463,6 +563,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.stickyScroll.description)}
         checked={editorStickyScroll}
         onChange={setEditorStickyScroll}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.mathPreview.label)}
+        description={t(($) => $.settings.appearance.editor.mathPreview.description)}
+        checked={editorMathPreview}
+        onChange={setEditorMathPreview}
       />
     </div>
   );

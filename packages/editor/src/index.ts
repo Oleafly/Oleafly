@@ -61,6 +61,19 @@ export {
   latexStructureKeymap,
 } from "./latex-structure-commands";
 export { createLatexLinter, lintLatexText } from "./latex-linter";
+export { createBibtexLinter, lintBibtexText } from "./bibtex-linter";
+export {
+  bibtexCompletions,
+  bibtexEntryCompletions,
+  bibtexFieldCompletions,
+} from "./bibtex-completions";
+export {
+  BIBLIOGRAPHY_STYLES,
+  bibliographyStyles,
+  setBibStyleProvider,
+  type BibliographyStyle,
+  type BibliographyStyleFamily,
+} from "./bibliography-styles";
 export * from "./latex-mask";
 // math-preview / math-render are deliberately NOT exported here: they import
 // KaTeX (plus its CSS), which would ride in every chunk that touches this
@@ -129,3 +142,14 @@ export {
   type ProofreadingActionHost,
 } from "./spellcheck";
 export { isStandardLatexEnvironment } from "./latex";
+export {
+  EDITOR_COMMANDS,
+  EDITOR_COMMAND_IDS,
+  deleteLineCommand,
+  duplicateSelection,
+  editorCommandKeymap,
+  lowercaseSelection,
+  titleCaseSelection,
+  uppercaseSelection,
+  type EditorCommandId,
+} from "./editor-commands";

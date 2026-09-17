@@ -24,6 +24,8 @@ const TYPST_REFERENCE =
   /#(?:ref|link)\(\s*<[\p{L}\p{N}_:.+/-]*$/u;
 const BIBTEX_REFERENCE =
   /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*[\p{L}\p{N}_:.+/-]*$/iu;
+const BIBTEX_ENTRY_TYPE = /(?:^|\n)[ \t]*@[A-Za-z]*$/u;
+const BIBTEX_FIELD_NAME = /,[ \t\r\n]*[A-Za-z]*$/u;
 
 export function boundedCompletionContext(
   state: EditorState,
@@ -135,7 +137,11 @@ function typstTriggered(before: string): boolean {
 }
 
 function bibtexTriggered(before: string): boolean {
-  return BIBTEX_REFERENCE.test(before);
+  return (
+    BIBTEX_REFERENCE.test(before) ||
+    BIBTEX_ENTRY_TYPE.test(before) ||
+    BIBTEX_FIELD_NAME.test(before)
+  );
 }
 
 export function isCompletionLexicallyTriggered(

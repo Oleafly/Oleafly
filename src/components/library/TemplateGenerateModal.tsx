@@ -485,7 +485,7 @@ export function TemplateGenerateModal({
                     className={cn(
                       "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
                       view === "code"
-                        ? "bg-accent text-accent-foreground ring-1 ring-border"
+                        ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >

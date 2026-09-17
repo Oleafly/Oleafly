@@ -1,0 +1,670 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Diseño a dos columnas",
+      "detailTwoColumn": "Los analizadores de currículums suelen linealizar dos columnas en el orden equivocado. Usa un diseño de una sola columna en los documentos que tenga que leer un ATS.",
+      "titleMultiColumn": "Diseño a varias columnas",
+      "detailMultiColumn": "Los analizadores de currículums suelen linealizar las columnas en el orden equivocado. Usa una sola columna en los documentos destinados a un ATS."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Comprueba el orden de lectura de las dos columnas",
+      "detailTwoColumn": "Los diseños editoriales a varias columnas pueden ser accesibles si el árbol de etiquetas del PDF conserva la secuencia prevista. Compila y confirma el orden de lectura real en lugar de dar por fallido el diseño visual.",
+      "titleMultiColumn": "Comprueba el orden de lectura de las columnas",
+      "detailMultiColumn": "Las columnas no son inaccesibles por sí solas, pero su orden de etiquetas y de contenido tiene que seguir teniendo sentido. Compila y revisa la secuencia de lectura real."
+    },
+    "no-glyphtounicode": {
+      "title": "No se declara el mapa de extracción a Unicode",
+      "detailEngineNeedsMap": "XeTeX, y el motor incluido que se basa en él, no generan automáticamente el mapa de glifos a Unicode, así que el texto extraído puede salir ilegible. Compila y revisa la vista de lectura, y usa preferiblemente una tipografía con un mapa Unicode completo.",
+      "detailAutomatic": "pdfLaTeX y LuaLaTeX generan este mapa automáticamente desde la versión de LaTeX 2021-06-01, así que no hace falta declararlo. Compila y confirma el texto extraído en la vista de lectura. En XeTeX, carga cmap o cambia de motor."
+    },
+    "icon-near-contact": {
+      "title": "Icono junto a los datos de contacto",
+      "detail": "Los iconos tipográficos (como \\faPhone o \\faEnvelope) se dibujan como glifos que un analizador lee como caracteres desconocidos y que un lector de pantalla no puede nombrar, así que el dato de contacto que los acompaña se puede perder. Asegúrate de que el correo o el teléfono también estén como texto seleccionable normal."
+    },
+    "layout-table": {
+      "titleTable": "El contenido de la tabla puede no leerse como campos del currículum",
+      "detailTable": "Las herramientas ATS suelen aplanar el contenido tabular de forma impredecible. No uses una tabla para colocar texto del currículum en paralelo; las tablas de datos de investigación de verdad se evalúan aparte en Accesibilidad.",
+      "titleTikz": "El contenido de TikZ necesita una alternativa semántica",
+      "detailTikz": "TikZ dibuja contenido visual sin exponer su significado como texto normal. Aporta una descripción accesible para las publicaciones y evítalo en el contenido de currículum destinado a un ATS."
+    },
+    "contact-in-header": {
+      "title": "Datos de contacto en el encabezado de página",
+      "detail": "Algunos analizadores de currículums descartan los encabezados y los pies de página. Pon tu correo y tu teléfono en el cuerpo del documento para que el texto extraído los conserve."
+    },
+    "figure-alt": {
+      "title": "Imagen sin texto alternativo",
+      "detail": "Esta imagen no tiene texto alternativo descriptivo, así que un lector de pantalla no puede transmitirla. Añade una descripción, por ejemplo \\includegraphics[alt={Retrato del autor}]{...}. Marca como artefactos las imágenes puramente decorativas."
+    },
+    "link-text": {
+      "title": "Texto de enlace poco descriptivo",
+      "detail": "Un texto de enlace como 'haz clic aquí' o una URL desnuda no dice nada sobre el destino a quien usa un lector de pantalla. Usa un texto que nombre el destino, por ejemplo 'mi portafolio'."
+    },
+    "mathml-export-hint": {
+      "title": "Exporta una copia HTML con MathML para comprobar la accesibilidad de las fórmulas",
+      "detail": "El documento contiene fórmulas. Los lectores de pantalla leen bien las ecuaciones cuando están en MathML. Usa Exportar como HTML, que pandoc escribe con --mathml, y abre el archivo con un lector de pantalla o un comprobador de accesibilidad antes de enviarlo."
+    },
+    "no-lang": {
+      "title": "No se ha definido el idioma del documento",
+      "detail": "El PDF no tiene idioma, así que un lector de pantalla puede leerlo con las reglas de pronunciación equivocadas. Define uno, por ejemplo \\usepackage[spanish]{babel} o pdflang=es-ES con hyperref."
+    },
+    "no-title": {
+      "title": "El PDF no tiene título",
+      "detail": "El PDF no tiene título en sus metadatos, que es lo que usan las tecnologías de apoyo y los navegadores para anunciar el documento. Defínelo con hyperref, por ejemplo \\hypersetup{pdftitle={Tu nombre, CV}}."
+    },
+    "heading-skip": {
+      "title": "Se saltó un nivel de título",
+      "detail": "Este título baja más de un nivel respecto al anterior, lo que rompe el esquema del documento en el que se apoyan los lectores de pantalla y los analizadores. No te saltes niveles: ve de section a subsection y luego a subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Título de sección poco habitual: \"{{heading}}\"",
+      "detail": "Los analizadores identifican las secciones reconociendo títulos estándar como Experiencia, Formación y Competencias. Un título creativo puede dejar esa sección sin clasificar. Valora usar un título convencional."
+    },
+    "color-only": {
+      "title": "Comprueba que el color no sea la única señal",
+      "detail": "Preflight encontró contenido con color, pero no puede determinar su significado automáticamente. Si el color distingue estados o categorías, acompáñalo de texto, forma, grosor u otra señal perceptible."
+    },
+    "reading-order-risk": {
+      "title": "Diseño que puede alterar el orden de lectura",
+      "detail": "Las notas al margen y las figuras con texto alrededor colocan contenido fuera del flujo principal, así que los analizadores y los lectores de pantalla pueden leerlo desordenado. Comprueba el orden de lectura en la vista previa de abajo después de compilar."
+    },
+    "ua-standard-without-title": {
+      "title": "Se declara PDF/UA sin título de documento",
+      "detailBoth": "Este documento declara pdfstandard=ua pero no define pdftitle ni pdfdisplaydoctitle=true. PDF/UA exige un título en los metadatos XMP y una preferencia del visor que lo muestre, así que el resultado afirmaría cumplir una norma que no cumple. Carga hyperref y define \\hypersetup{pdftitle={Tu título}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Este documento declara pdfstandard=ua pero no define pdftitle. PDF/UA exige un título en los metadatos XMP y una preferencia del visor que lo muestre, así que el resultado afirmaría cumplir una norma que no cumple. Carga hyperref y define \\hypersetup{pdftitle={Tu título}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Este documento declara pdfstandard=ua pero no define pdfdisplaydoctitle=true. PDF/UA exige un título en los metadatos XMP y una preferencia del visor que lo muestre, así que el resultado afirmaría cumplir una norma que no cumple. Carga hyperref y define \\hypersetup{pdftitle={Tu título}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "El motor incluido no puede producir la salida PDF/UA declarada",
+      "detail": "Este documento declara pdfstandard=ua, pero el motor incluido no puede escribir un árbol de etiquetas, así que el PDF llevaría una declaración PDF/UA que no cumple. Compila con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior, o quita la clave pdfstandard."
+    },
+    "table-header-rows": {
+      "title": "La fila de encabezado de la tabla no está marcada como encabezado",
+      "detail": "Esta tabla lleva un filete bajo su primera fila, así que se lee como encabezado, pero LaTeX etiqueta todas las celdas como celdas de datos por omisión. Entonces un lector de pantalla no puede asociar un valor con su columna. Declara la fila de encabezado, por ejemplo \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Las columnas se leen de lado a lado en la salida",
+      "detail": "En esta página el texto de dos columnas cae en las mismas líneas, así que un analizador las lee de lado a lado y produce texto revuelto, y un lector de pantalla las anuncia desordenadas. Usa un diseño de una sola columna para el contenido que tenga que analizarse. Mira la vista de lectura de abajo."
+    },
+    "pdf-garbled": {
+      "title": "Texto ilegible o sin correspondencia en la salida",
+      "detail": "El texto extraído contiene caracteres que no se corresponden con Unicode, así que al copiar y pegar y en los analizadores sale texto ilegible, y un lector de pantalla no puede leerlo. Suele deberse a que falta el mapa de glifos a Unicode o a una tipografía que no está incrustada como texto."
+    },
+    "pdf-selectable": {
+      "title": "La página no tiene texto seleccionable",
+      "detail": "Esta página contiene poco o ningún texto extraíble, así que un analizador y un lector de pantalla no ven nada. Es probable que esté generada como imagen o que use tipografías que no están incrustadas como texto. Asegúrate de que el contenido sea texto real y seleccionable."
+    },
+    "output-clipped-content": {
+      "title": "Hay texto fuera de la página",
+      "detail": "Hay texto seleccionable más allá de la caja de medios de esta página que puede quedar cortado o desaparecer en la impresión y en el procesado de la editorial. Revisa las ecuaciones anchas, las tablas, las URL y el contenido colocado con posición fija."
+    },
+    "output-small-text": {
+      "title": "Se detectó texto muy pequeño",
+      "detail_one": "{{count}} fragmento de texto mide menos de unos 7 pt. La letra pequeña cuesta de leer impresa y con el zoom normal. Confirma que la revista o el congreso lo permite y agranda las etiquetas o notas que no necesiten ser tan pequeñas.",
+      "detail_many": "{{count}} fragmentos de texto miden menos de unos 7 pt. La letra pequeña cuesta de leer impresa y con el zoom normal. Confirma que la revista o el congreso lo permite y agranda las etiquetas o notas que no necesiten ser tan pequeñas.",
+      "detail_other": "{{count}} fragmentos de texto miden menos de unos 7 pt. La letra pequeña cuesta de leer impresa y con el zoom normal. Confirma que la revista o el congreso lo permite y agranda las etiquetas o notas que no necesiten ser tan pequeñas."
+    },
+    "pdf-no-bookmarks": {
+      "title": "El PDF es largo y no tiene marcadores",
+      "detail": "Los documentos largos deberían ofrecer un esquema jerárquico de marcadores para que quien navega con teclado o con tecnologías de apoyo pueda moverse entre secciones sin leer todas las páginas en orden. Es una buena práctica de WCAG, no un requisito de PDF/UA. Carga hyperref, o bookmark, para generarlo."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "No se pudieron inspeccionar los metadatos del PDF",
+      "detail": "Preflight no pudo leer los metadatos del PDF, así que no puede verificar el título ni el idioma del documento. Es un resultado desconocido, no una prueba de que falten esos campos. Vuelve a compilar y ejecuta la comprobación otra vez."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "Al PDF le faltan el idioma y el título",
+      "titleLang": "Al PDF le falta el idioma",
+      "titleTitle": "Al PDF le falta el título",
+      "detail": "Las tecnologías de apoyo y los navegadores usan el idioma y el título del catálogo del PDF para anunciar el documento correctamente. Defínelos con hyperref, por ejemplo \\hypersetup{pdftitle={Tu nombre, CV}, pdflang=es-ES}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "No se pudo inspeccionar el estado de etiquetado del PDF",
+      "detail": "Preflight no pudo leer el diccionario MarkInfo del PDF. Es un resultado desconocido, no una prueba en ningún sentido, así que no dirá que la salida está etiquetada o sin etiquetar basándose solo en esa comprobación."
+    },
+    "compile-failed": {
+      "title": "La última compilación falló",
+      "detail": "La salida que se envía tiene que venir de una compilación correcta. Corrige el primer error del compilador, vuelve a compilar y ejecuta Preflight otra vez."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} línea desbordada en la salida",
+      "title_many": "{{count}} líneas desbordadas en la salida",
+      "title_other": "{{count}} líneas desbordadas en la salida",
+      "detail": "El compilador informa de contenido que sobresale de su caja de texto, hasta {{width}} pt. Revisa esos puntos por si hay texto, ecuaciones, tablas o enlaces cortados."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} glifo ausente",
+      "title_many": "{{count}} glifos ausentes",
+      "title_other": "{{count}} glifos ausentes",
+      "detail": "Las tipografías elegidas no pueden dibujar todos los caracteres. Los glifos que faltan pueden desaparecer sin aviso del PDF, incluidos símbolos en nombres, ecuaciones y citas."
+    },
+    "compile-unresolved-references": {
+      "title": "La salida compilada tiene referencias sin resolver",
+      "detail": "Al menos una cita o referencia cruzada quedó sin resolver después de compilar. El PDF enviado puede contener [?] o ??. Revisa el registro y ejecuta las pasadas de bibliografía y de LaTeX necesarias."
+    },
+    "compile-rerun-required": {
+      "title": "Hace falta otra pasada de compilación",
+      "detail": "El último registro dice que las etiquetas, las citas o el índice no están estabilizados. Vuelve a compilar hasta que desaparezca el aviso de repetición antes de exportar."
+    },
+    "compile-duplicate-destination": {
+      "title": "Destinos de PDF duplicados",
+      "detail": "Dos anclas comparten el mismo destino, así que los enlaces o los marcadores pueden saltar al sitio equivocado. Suele venir de etiquetas duplicadas o de reinicios de la numeración de páginas."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Tamaños de página mezclados en un mismo PDF",
+      "detail_one": "El PDF contiene {{count}} tamaño de página ({{sizes}}). Las cajas de medios mezcladas suelen indicar una página o una figura incluida por error y pueden no superar los controles de producción de la editorial.",
+      "detail_many": "El PDF contiene {{count}} tamaños de página ({{sizes}}). Las cajas de medios mezcladas suelen indicar una página o una figura incluida por error y pueden no superar los controles de producción de la editorial.",
+      "detail_other": "El PDF contiene {{count}} tamaños de página ({{sizes}}). Las cajas de medios mezcladas suelen indicar una página o una figura incluida por error y pueden no superar los controles de producción de la editorial."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "El etiquetado informó de {{count}} problema",
+      "title_many": "El etiquetado informó de {{count}} problemas",
+      "title_other": "El etiquetado informó de {{count}} problemas",
+      "detail": "El código de etiquetado escribió estos avisos en el registro: {{warnings}} Cada uno es un punto donde el árbol de estructura no coincide con el contenido. Corrígelos en el código y vuelve a compilar."
+    },
+    "output-tagging-status": {
+      "title_one": "El informe de estado del etiquetado señaló {{count}} elemento",
+      "title_many": "El informe de estado del etiquetado señaló {{count}} elementos",
+      "title_other": "El informe de estado del etiquetado señaló {{count}} elementos",
+      "detail": "LaTeX escribió su propio informe de estado del etiquetado al final de la compilación.",
+      "partClass": "La clase {{name}} está {{status}}.",
+      "partBlocking": "No es compatible con el etiquetado: {{files}}.",
+      "partUnproven": "No hay veredicto registrado para: {{files}}.",
+      "partPartial": "Etiquetado solo parcial: {{files}}.",
+      "partAdvice": "Todo lo que no se puede etiquetar puede dejar secciones enteras fuera del árbol de estructura, así que sustituye lo que puedas."
+    },
+    "pdf-structure-single-pass": {
+      "title": "El árbol de etiquetas parece de una primera pasada",
+      "detail": "El PDF está marcado como etiquetado, pero su árbol de estructura casi no contiene nada, que es lo que produce una sola pasada. La salida etiquetada necesita dos pasadas. Vuelve a compilar y comprueba otra vez."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Este PDF declara PDF/UA-{{part}} pero no lo cumple",
+      "detail": "Los metadatos XMP declaran pdfuaid:part {{part}}, pero el archivo no lo respalda.",
+      "partNoXmpTitle": "No hay título de documento en los metadatos XMP.",
+      "partNoDisplayDocTitle": "DisplayDocTitle no está en true.",
+      "partNotTagged": "El archivo no está etiquetado.",
+      "partAdvice": "Cualquier herramienta que se fíe de la declaración dará este PDF por conforme sin serlo, así que cierra las carencias o quita la declaración. Con hyperref, define \\hypersetup{pdftitle={Tu título}, pdfdisplaydoctitle=true} y compila con el etiquetado activado."
+    },
+    "pdf-xmp-title": {
+      "title": "El título solo está en el diccionario Info",
+      "detail": "El título del documento está en el diccionario Info, pero no como dc:title en los metadatos XMP, que es donde lo busca PDF/UA. Cargar hyperref con pdftitle escribe los dos."
+    },
+    "pdf-display-doc-title": {
+      "title": "El visor mostrará el nombre del archivo, no el título",
+      "detail": "ViewerPreferences no tiene la entrada DisplayDocTitle en true, así que un visor de PDF anuncia el nombre del archivo en su ventana y a las tecnologías de apoyo. Actívalo con hyperref, por ejemplo \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "El PDF marca su propio etiquetado como poco fiable",
+      "detail": "MarkInfo pone Suspects en true, que es el generador diciendo que el árbol de etiquetas puede no coincidir con el contenido visible. Vuelve a compilar con un motor actual y revisa los avisos de etiquetado del registro."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} anotación de enlace no tiene descripción",
+      "title_many": "{{count}} anotaciones de enlace no tienen descripción",
+      "title_other": "{{count}} anotaciones de enlace no tienen descripción",
+      "detail": "Una anotación de enlace sin entrada Contents no da nada que anunciar a un lector de pantalla cuando lista los enlaces de una página. Describe el destino en el texto del enlace y deja que hyperref lo lleve a la anotación."
+    },
+    "pdf-untagged-content": {
+      "title": "El {{percent}} % del texto queda fuera del árbol de etiquetas",
+      "detail": "{{untagged}} de {{total}} fragmentos de texto no están enlazados a nada del árbol de etiquetas, así que un lector de pantalla los salta. Los artefactos no cuentan. El contenido real tiene que estar etiquetado y el decorativo marcado como artefacto, por ejemplo \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "No se pudo inspeccionar del todo la estructura del PDF",
+      "detail_one": "No se pudo extraer el árbol de estructura de accesibilidad de la página {{pages}}. Preflight no tomará esa estructura no disponible como prueba de que el PDF no está etiquetado.",
+      "detail_many": "No se pudo extraer el árbol de estructura de accesibilidad de las páginas {{pages}}. Preflight no tomará esa estructura no disponible como prueba de que el PDF no está etiquetado.",
+      "detail_other": "No se pudo extraer el árbol de estructura de accesibilidad de las páginas {{pages}}. Preflight no tomará esa estructura no disponible como prueba de que el PDF no está etiquetado."
+    },
+    "pdf-untagged-output": {
+      "title": "Este PDF no está etiquetado",
+      "detail": "El PDF compilado no lleva árbol de estructura, así que un lector de pantalla no recibe títulos, listas, tablas ni orden de lectura, y el archivo no puede cumplir la cláusula 7.1 de PDF/UA-1. La salida etiquetada necesita pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior con \\DocumentMetadata{tagging=on}. El motor incluido no puede generar etiquetas. Mientras tanto, las comprobaciones de código y de salida de arriba siguen siendo válidas."
+    },
+    "pdf-structure-missing": {
+      "title": "El PDF etiquetado no tiene un árbol de estructura legible",
+      "detail": "El PDF se declara etiquetado, pero Preflight no encontró ninguna estructura de documento por la que navegar. Puede que los lectores de pantalla no reciban títulos, listas, tablas ni orden de lectura. El etiquetado necesita dos pasadas de compilación, así que vuelve a compilar y comprueba otra vez antes de darlo por definitivo."
+    },
+    "output-figure-alt": {
+      "title": "La figura etiquetada no tiene texto alternativo",
+      "detail": "Esta figura está etiquetada pero no lleva texto alternativo, así que un lector de pantalla no puede describirla. Añade una descripción en el código, por ejemplo \\includegraphics[alt={...}]{...}. Marca las imágenes decorativas con [artifact] en su lugar."
+    },
+    "output-formula-alt": {
+      "title": "La ecuación no tiene alternativa textual",
+      "detail": "Con PDF/UA-1, una Formula necesita Alt o ActualText. Añade una en el código, por ejemplo con \\tagpdfsetup o con una clave alt en la ecuación. Con PDF/UA-2 puedes asociar MathML compilando con LuaLaTeX y \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "La tabla etiquetada no tiene celdas de encabezado",
+      "detail": "Esta tabla no tiene celdas de encabezado (TH), así que un lector de pantalla no puede asociar los datos con los encabezados de su columna o fila. Marca la fila de encabezado, por ejemplo \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Se saltó un nivel de título en el árbol de etiquetas",
+      "detail": "Los títulos etiquetados saltan más de un nivel (por ejemplo, de H1 directamente a H3), lo que rompe el esquema por el que navega un lector de pantalla. No te saltes niveles de título."
+    },
+    "ats-no-name": {
+      "title": "Un analizador no pudo identificar tu nombre",
+      "detail": "No se encontró ningún nombre de persona plausible en el texto extraído. Pon tu nombre como texto normal cerca del principio del documento, fuera de los encabezados de página, los gráficos y las cajas de texto con posición fija."
+    },
+    "ats-no-email": {
+      "title": "Un analizador no pudo encontrar tu correo",
+      "detail": "No se encontró ninguna dirección de correo en el texto extraído, que es el campo del que más depende un analizador. Si tu correo está junto a un icono o dentro de un encabezado, puede que no sea texto seleccionable. Ponlo en el cuerpo como texto normal."
+    },
+    "ats-no-phone": {
+      "title": "Un analizador no pudo encontrar un teléfono",
+      "detail": "No se encontró ningún número de teléfono en el texto extraído. Si está pero oculto tras un icono o en un encabezado, añádelo como texto seleccionable normal en el cuerpo."
+    },
+    "ats-no-experience": {
+      "title": "Un analizador no detectó una sección de experiencia laboral",
+      "detail": "No se encontró ningún título estándar de Experiencia, así que puede que un analizador no agrupe tus puestos como historial laboral. Usa un título convencional como Experiencia o Experiencia laboral, escrito como texto real y seleccionable."
+    },
+    "ats-long-resume": {
+      "title_one": "El currículum tiene {{count}} página",
+      "title_many": "El currículum tiene {{count}} páginas",
+      "title_other": "El currículum tiene {{count}} páginas",
+      "detail": "Muchos procesos de selección esperan una o dos páginas, aunque los CV sénior, académicos y de la administración pueden ser más largos. Confirma que esta extensión encaja con el puesto y el tipo de documento."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} entrada de bibliografía tiene metadatos incompletos",
+      "title_many": "{{count}} entradas de bibliografía tienen metadatos incompletos",
+      "title_other": "{{count}} entradas de bibliografía tienen metadatos incompletos",
+      "detail": "Los registros incompletos pueden producir referencias rotas o ambiguas en los estilos de las editoriales. {{examples}}.",
+      "detailTruncated": "Los registros incompletos pueden producir referencias rotas o ambiguas en los estilos de las editoriales. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} valor de DOI parece mal formado",
+      "title_many": "{{count}} valores de DOI parecen mal formados",
+      "title_other": "{{count}} valores de DOI parecen mal formados",
+      "detail": "Revisa los campos DOI de {{keys}}. Guarda solo el identificador DOI, por ejemplo 10.1000/example, y no texto descriptivo."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} referencia posiblemente duplicada",
+      "title_many": "{{count}} grupos de referencias posiblemente duplicadas",
+      "title_other": "{{count}} grupos de referencias posiblemente duplicadas",
+      "detail": "Estas claves tienen el mismo título normalizado: {{groups}}. Fusiona los duplicados reales para que el estilo de cita y los metadatos sigan siendo coherentes."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} entrada de bibliografía sin citar",
+      "title_many": "{{count}} entradas de bibliografía sin citar",
+      "title_other": "{{count}} entradas de bibliografía sin citar",
+      "detail": "Las entradas sin usar añaden ruido a los metadatos del envío y complican la gestión de duplicados. Revisa {{keys}}.",
+      "detailTruncated": "Las entradas sin usar añaden ruido a los metadatos del envío y complican la gestión de duplicados. Revisa {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} etiqueta está definida en varios archivos",
+      "title_many": "{{count}} etiquetas están definidas en varios archivos",
+      "title_other": "{{count}} etiquetas están definidas en varios archivos",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} etiqueta de figura, tabla o ecuación no se referencia nunca",
+      "title_many": "{{count}} etiquetas de figura, tabla o ecuación no se referencian nunca",
+      "title_other": "{{count}} etiquetas de figura, tabla o ecuación no se referencian nunca",
+      "detail": "Confirma que cada resultado numerado se comenta en el manuscrito: {{labels}}.",
+      "detailTruncated": "Confirma que cada resultado numerado se comenta en el manuscrito: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "La cita \"{{key}}\" no está en ningún .bib",
+      "detail": "Esta clave de cita no se encontró en la bibliografía cargada, así que saldrá como [?] en el PDF. Revisa la clave o añade la entrada a tu .bib (Añadir cita puede buscarla)."
+    },
+    "refs-undefined-ref": {
+      "title": "La referencia a \"{{label}}\" no tiene ninguna \\label que le corresponda",
+      "detail": "Esta referencia cruzada apunta a una etiqueta que no está definida, así que saldrá como ?? en el PDF. Revisa el nombre de la etiqueta o añade la \\label que falta."
+    },
+    "refs-duplicate-label": {
+      "title": "Etiqueta duplicada \"{{label}}\"",
+      "detail": "La misma etiqueta está definida más de una vez, así que las referencias a ella son ambiguas. Haz que cada etiqueta sea única."
+    },
+    "refs-missing-asset": {
+      "titleImage": "No se encontró la imagen: {{file}}",
+      "detailImage": "Este \\includegraphics apunta a un archivo que no está en el proyecto, así que la figura faltará. Revisa el nombre y la ruta del archivo.",
+      "titleInclude": "No se encontró el archivo incluido: {{file}}",
+      "detailInclude": "Este \\input o \\include apunta a un archivo que no está en el proyecto. Revisa el nombre y la ruta del archivo."
+    },
+    "refs-bib-missing": {
+      "title": "No se encontró el archivo de bibliografía: {{file}}",
+      "detail": "Este \\bibliography o \\addbibresource apunta a un archivo que no está en el proyecto, así que todas las citas saldrán como [?]. Revisa el nombre del archivo o importa una biblioteca de referencias para crearlo."
+    },
+    "refs-duplicate-bib": {
+      "title": "Entradas de bibliografía duplicadas: {{keys}}",
+      "detail": "Estas entradas comparten el DOI {{doi}}, así que son la misma referencia con claves distintas. Quédate con una y cítala, o tu bibliografía la listará dos veces."
+    },
+    "submission-path-case": {
+      "title": "Las mayúsculas del nombre de archivo no coinciden: {{target}}",
+      "detailFigure": "Esta figura solo se resuelve en un sistema de archivos que no distingue mayúsculas. El proyecto contiene \"{{match}}\", así que usa exactamente esas mayúsculas antes de enviarlo a sistemas de compilación basados en Linux.",
+      "detailInclude": "Este archivo incluido solo se resuelve en un sistema de archivos que no distingue mayúsculas. El proyecto contiene \"{{match}}\", así que usa exactamente esas mayúsculas antes de enviarlo a sistemas de compilación basados en Linux."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Falta la figura: {{target}}",
+      "titleInclude": "Falta el archivo incluido: {{target}}",
+      "detail": "Ningún archivo del proyecto resuelve esta referencia desde {{file}}. Una compilación limpia del envío fallará aunque una caché local permita ahora compilar el documento."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figura sin pie",
+      "titleTable": "tabla sin pie",
+      "detail": "Las figuras y las tablas de una publicación deberían llevar un pie numerado y descriptivo para poder referenciarlas y entenderlas por sí solas."
+    },
+    "submission-label-before-caption": {
+      "title": "La etiqueta aparece antes de su pie",
+      "detail": "Coloca la etiqueta después del pie. Si no, LaTeX puede asociarla al contador anterior y producir el número de figura o de tabla equivocado."
+    },
+    "privacy-sensitive-file": {
+      "title": "Se incluye un archivo sensible: {{file}}",
+      "detail": "Quita del proyecto las credenciales y los archivos de clave privada antes de exportar, sincronizar o publicar el paquete de código."
+    },
+    "privacy-credential": {
+      "title": "Posible credencial en {{file}}",
+      "detail": "El proyecto contiene texto con la forma de un token de API, una clave de acceso a la nube o una clave privada. Revoca las credenciales expuestas y luego quítalas del proyecto y de su historial de Git."
+    },
+    "privacy-internal-comment": {
+      "title": "Queda una nota interna en {{file}}",
+      "detail": "Los comentarios del código no se ven en el PDF, pero pueden ser públicos en el paquete de código de un congreso, una revista o un preprint. Revisa y quita las notas editoriales privadas."
+    },
+    "privacy-draft-artifact": {
+      "title": "El marcado de borrador sigue activado",
+      "detail": "El código activa la salida de borrador, TODO, control de cambios, marca de agua o depuración de etiquetas. Desactívalo y revisa el PDF final a ojo antes de enviarlo."
+    },
+    "privacy-blind-author": {
+      "title": "Queda la identidad del autor en un código para revisión ciega",
+      "detail": "El código contiene un autor, una filiación, un correo, una dirección o un agradecimiento no anónimos. Sustituye el contenido identificativo usando el modo de revisión anónima de la convocatoria."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Los agradecimientos pueden revelar a los autores",
+      "detail": "Los agradecimientos suelen identificar instituciones, proyectos financiados, colaboradores o instalaciones. Quítalos de un envío para revisión ciega salvo que la convocatoria los permita expresamente."
+    },
+    "privacy-pdf-author": {
+      "title": "Los metadatos del PDF identifican a un autor",
+      "detail": "El campo Author del PDF es \"{{author}}\". Borra los metadatos de autoría antes de subir un PDF para revisión ciega."
+    },
+    "submission-nonportable-filename": {
+      "title": "Nombre de archivo no portable: {{file}}",
+      "detail": "Este perfil solo permite letras, números, guiones bajos, signos más, guiones, puntos, comas, signos igual y separadores de directorio. Cambia el nombre del archivo y actualiza sus referencias."
+    },
+    "submission-absolute-path": {
+      "title": "Ruta específica de este equipo en {{file}}",
+      "detail": "Las rutas locales absolutas no existen en los servidores de compilación de las editoriales. Mueve la dependencia al proyecto y refiérete a ella con una ruta relativa."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} necesita ejecutar comandos externos",
+      "detail": "Muchos sistemas de compilación de editoriales y repositorios desactivan el shell escape. Genera la salida por adelantado o confirma que el destino admite este paquete y este comando."
+    },
+    "submission-generated-file": {
+      "title": "Se incluye un archivo generado en la compilación: {{file}}",
+      "detail": "Los archivos auxiliares generados ensucian los paquetes de código y pueden conservar estados antiguos. Exclúyelos salvo que el destino elegido exija expresamente ese archivo."
+    },
+    "submission-document-class": {
+      "title": "La clase de documento de {{profile}} no está activa",
+      "detail": "Este perfil espera {{expected}}, pero el proyecto usa {{actual}}. Empieza desde la plantilla oficial actual del destino.",
+      "detailNoClass": "Este perfil espera {{expected}}, pero no se detectó ninguna clase de documento. Empieza desde la plantilla oficial actual del destino."
+    },
+    "submission-no-abstract": {
+      "title": "No se detectó ningún resumen",
+      "detail": "Este perfil de publicación espera un resumen en un entorno abstract estándar. Añádelo o confirma que ese destino concreto no lo exige."
+    },
+    "submission-no-keywords": {
+      "title": "No se detectaron palabras clave de publicación",
+      "detail": "El perfil {{profile}} espera palabras clave con el comando o el entorno estándar de su plantilla."
+    },
+    "submission-figure-format": {
+      "title": "Formato de figura no admitido: {{file}}",
+      "detail": "{{profile}} acepta figuras en {{formats}} para sus flujos de trabajo de TeX compatibles. Convierte esta figura antes de subirla."
+    },
+    "submission-placeholder": {
+      "title": "Queda un marcador de borrador en el manuscrito",
+      "detail": "El código contiene TODO, TBD, FIXME, texto de relleno o signos de interrogación como marcadores. Revisa cada aparición antes de generar el envío definitivo."
+    },
+    "submission-pdf-version": {
+      "title": "El PDF {{version}} está por debajo de la versión exigida",
+      "detail": "{{profile}} exige PDF {{minimum}} o posterior. Actualiza los ajustes de PDF del compilador y vuelve a generar el archivo."
+    },
+    "submission-bookmarks": {
+      "title": "No se permiten marcadores en el PDF",
+      "detail": "{{profile}} rechaza los marcadores del PDF. Quita el esquema del documento para este perfil de envío."
+    },
+    "submission-links": {
+      "title": "No se permiten enlaces en el PDF",
+      "detail": "{{profile}} rechaza las anotaciones de enlace. Desactiva los hipervínculos generados en el PDF que envíes."
+    },
+    "submission-attachments": {
+      "title": "El PDF contiene archivos adjuntos incrustados",
+      "detail": "{{profile}} rechaza los adjuntos y los paquetes en el PDF. Quita todos los archivos incrustados antes de enviarlo."
+    },
+    "submission-security": {
+      "title": "El PDF tiene restricciones de seguridad activadas",
+      "detail": "{{profile}} exige un PDF sin contraseña ni restricciones de permisos."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} tipografía no está incrustada",
+      "title_many": "{{count}} tipografías no están incrustadas",
+      "title_other": "{{count}} tipografías no están incrustadas",
+      "detail": "{{profile}} exige que todas las tipografías estén incrustadas o subincluidas para que el texto y las matemáticas se representen de forma fiable. Corrige {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "No se pudo verificar la incrustación de algunas tipografías",
+      "detail": "Preflight no pudo demostrar el estado de incrustación de {{fonts}}. Confírmalo con el comprobador de PDF oficial del destino."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Accesibilidad",
+    "both": "ATS y accesibilidad",
+    "refs": "Referencias",
+    "compile": "Compilación",
+    "submission": "Envío",
+    "privacy": "Privacidad"
+  },
+  "severity": {
+    "error": "Error",
+    "warning": "Advertencia",
+    "info": "Nota"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Compil.",
+    "a11y": "Acces.",
+    "refs": "Refs.",
+    "submission": "Envío",
+    "privacy": "Privac."
+  },
+  "checks": {
+    "compile": {
+      "label": "Compilación y maquetación",
+      "who": "Para cualquier documento definitivo",
+      "info": "Errores de compilación, referencias sin resolver, glifos ausentes y problemas de maquetación.",
+      "detail": "Revisa el último registro del compilador y el PDF en busca de compilaciones fallidas, referencias sin resolver, glifos ausentes, contenido desbordado o cortado, avisos de repetición pendientes y tamaños de página mezclados."
+    },
+    "submission": {
+      "label": "Preparación del envío",
+      "who": "Para congresos, revistas, preprints y tesis",
+      "info": "Reglas del perfil de publicación y archivos que no deberían ir en el paquete de código.",
+      "detail": "Aplica un perfil de publicación a todo el proyecto: clase de documento oficial, rutas de código portables, formatos de figura, resumen y palabras clave, restricciones del PDF, pies y limpieza del paquete de código."
+    },
+    "ats": {
+      "label": "Preparación para ATS",
+      "who": "Para currículums y CV",
+      "info": "Los datos de contacto y las secciones que un analizador de currículums puede recuperar.",
+      "detail": "Simula lo que un sistema de seguimiento de candidatos (Workday, Taleo, Greenhouse) extrae de tu PDF y señala el diseño y el formato que lo revuelven. No es relevante para artículos de investigación."
+    },
+    "a11y": {
+      "label": "Accesibilidad",
+      "who": "Para PDF de investigación, de la administración y publicados",
+      "info": "Etiquetado, texto alternativo, idioma y título del documento, ajustes del visor, estructura, enlaces y orden de lectura.",
+      "detail": "Comprueba el PDF compilado con la parte verificable por máquina de PDF/UA-1 (ISO 14289-1) y las técnicas de PDF de WCAG 2.2: etiquetado, texto alternativo, idioma y título del documento, ajustes del visor, estructura de títulos y tablas, descripciones de enlaces, orden de lectura y texto seleccionable. Las comprobaciones sobre el código señalan problemas probables antes de compilar."
+    },
+    "refs": {
+      "label": "Referencias y recursos",
+      "who": "Para investigación y documentos de varios archivos",
+      "info": "Citas rotas, etiquetas duplicadas, entradas de bibliografía incompletas y recursos que faltan.",
+      "detail": "Encuentra citas y referencias cruzadas sin definir, etiquetas duplicadas y figuras o archivos incluidos que faltan, antes de que te rompan el PDF en el envío."
+    },
+    "privacy": {
+      "label": "Privacidad y revisión ciega",
+      "who": "Antes de compartir el código o enviar de forma anónima",
+      "info": "Secretos, notas de borrador, archivos sensibles y filtraciones de identidad en la revisión ciega.",
+      "detail": "Encuentra credenciales, claves privadas, comentarios internos, marcado de borrador, archivos sensibles del proyecto, metadatos de autoría y filtraciones de identidad en los envíos para revisión anónima."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Publicación general",
+      "description": "Código portable, salida limpia, metadatos completos y riesgos habituales de publicación."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Código portable que se pueda recompilar en el sistema de envíos de arXiv, que distingue mayúsculas."
+    },
+    "ieee": {
+      "label": "Congreso o revista IEEE",
+      "description": "Código IEEEtran y las restricciones del PDF que se comprueban para publicar en IEEE Xplore."
+    },
+    "acm": {
+      "label": "Congreso o revista ACM",
+      "description": "Estructura del código acmart de ACM y metadatos de investigación listos para publicar."
+    },
+    "journal": {
+      "label": "Otra revista",
+      "description": "Comprobaciones de revista sin editorial concreta. Añade los límites exactos de la revista antes de enviar."
+    },
+    "thesis": {
+      "label": "Tesis o disertación",
+      "description": "Estructura de documento largo, navegación, referencias y comprobaciones de código portable."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Experiencia",
+      "education": "Formación",
+      "skills": "Competencias",
+      "projects": "Proyectos",
+      "summary": "Resumen"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}} de {{total}} reglas verificables por máquina comprobadas. Es una comprobación parcial, no una declaración de conformidad.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}} de {{total}} reglas verificables por máquina comprobadas. Oleafly lee {{covered}} de esas reglas y {{unavailable}} de ellas no se pudieron comprobar en este archivo. Es una comprobación parcial, no una declaración de conformidad."
+  },
+  "taggingGate": {
+    "noSupport": "La clase {{name}} no puede producir salida etiquetada y el Proyecto LaTeX no prevé que lo haga.",
+    "noSupportWithNote": "La clase {{name}} no puede producir salida etiquetada y el Proyecto LaTeX no prevé que lo haga. {{note}}",
+    "currentlyIncompatible": "La clase {{name}} todavía no es compatible con el etiquetado de LaTeX, así que preparar este código no te daría un PDF accesible.",
+    "currentlyIncompatibleWithNote": "La clase {{name}} todavía no es compatible con el etiquetado de LaTeX, así que preparar este código no te daría un PDF accesible. {{note}}",
+    "partiallyCompatible": "La clase {{name}} solo es parcialmente compatible con el etiquetado, así que habrá huecos en el árbol de estructura.",
+    "partiallyCompatibleWithNote": "La clase {{name}} solo es parcialmente compatible con el etiquetado, así que habrá huecos en el árbol de estructura. {{note}}",
+    "unrecorded": "El Proyecto LaTeX no ha registrado un estado de etiquetado para la clase {{name}}, así que el resultado no está probado. Compila y revisa la salida."
+  },
+  "prep": {
+    "metadataUpdated": "Se añadieron las claves de etiquetado necesarias a tu \\DocumentMetadata.",
+    "metadataAdded": "Se añadió \\DocumentMetadata como primera línea (obligatorio, tiene que ir antes de \\documentclass).",
+    "headerRows": "Se puso table/header-rows en 1 para que la primera fila de cada tabla se etiquete como celdas de encabezado. Cambia el número si alguna tabla tiene otra profundidad de encabezado.",
+    "unicodeMath": "Se añadió \\usepackage{unicode-math}, que este motor necesita para las fórmulas etiquetadas.",
+    "altPlaceholders_one": "Se añadieron marcadores de texto alternativo a {{count}} imagen. Sustituye el texto TODO por una descripción real.",
+    "altPlaceholders_many": "Se añadieron marcadores de texto alternativo a {{count}} imágenes. Sustituye el texto TODO por una descripción real.",
+    "altPlaceholders_other": "Se añadieron marcadores de texto alternativo a {{count}} imágenes. Sustituye el texto TODO por una descripción real.",
+    "titleRequired": "PDF/UA necesita un título de documento que el visor muestre. Carga hyperref y define \\hypersetup{pdftitle={Tu título}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Este paquete no es compatible con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF. Sustitúyelo donde puedas.",
+    "incompatiblePackages_many": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF. Sustitúyelos donde puedas.",
+    "incompatiblePackages_other": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF. Sustitúyelos donde puedas.",
+    "cautionPackages": "Estos paquetes solo etiquetan en parte o no tienen un veredicto de etiquetado registrado: {{packages}}. Compila y revisa si hay huecos en el árbol de estructura.",
+    "compileLua": "Compila el código preparado con LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobar la salida.",
+    "compileAny": "Compila el código preparado con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobar la salida. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Este paquete no es compatible con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF.",
+    "incompatiblePackages_many": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF.",
+    "incompatiblePackages_other": "Estos paquetes no son compatibles con el etiquetado: {{packages}}. Su contenido puede acabar sin etiquetar en el PDF.",
+    "incompatiblePackagesTruncated": "Estos paquetes no son compatibles con el etiquetado: {{packages}} y {{more}} más. Su contenido puede acabar sin etiquetar en el PDF.",
+    "partialPackages": "Estos paquetes solo etiquetan en parte: {{packages}}.",
+    "partialPackagesTruncated": "Estos paquetes solo etiquetan en parte: {{packages}} y {{more}} más.",
+    "unknownPackages": "No hay ningún veredicto de etiquetado registrado para {{packages}}.",
+    "unknownPackagesTruncated": "No hay ningún veredicto de etiquetado registrado para {{packages}} y {{more}} más.",
+    "cautionAdvice": "Compila y revisa si hay huecos en el árbol de estructura."
+  },
+  "panel": {
+    "title": "Preflight",
+    "readerDisabled": "Compila y ejecuta antes una comprobación de la salida",
+    "readerEnabled": "Abrir el texto extraído del PDF",
+    "readerButton": "Ver lo que ve el lector",
+    "aboutLabel": "Sobre Preflight",
+    "aboutTitle": "Qué comprueba Preflight",
+    "aboutIntro": "Preflight lee el código del proyecto, el registro del compilador y el PDF actual. Activa solo las comprobaciones que encajen con este documento.",
+    "aboutFooter": "Los hallazgos verificados vienen de observaciones directas. Los hallazgos orientativos siguen necesitando tu criterio. Un informe limpio ayuda en la revisión, pero no certifica la aceptación ni la accesibilidad. Todas las comprobaciones se ejecutan en local.",
+    "enableCheck": "Activar {{check}}",
+    "runCheck": "Ejecutar {{check}}",
+    "rerunCheck": "Volver a ejecutar {{check}}",
+    "run": "Ejecutar",
+    "rerun": "Repetir",
+    "collapse": "Contraer",
+    "expand": "Expandir",
+    "publicationProfile": "Perfil de publicación",
+    "anonymousReview": "Revisión anónima",
+    "anonymousReviewHint": "Revisa también los campos de autoría, los agradecimientos y los metadatos del PDF.",
+    "anonymousReviewToggle": "Comprobar la identidad en la revisión anónima",
+    "engineUnsupported": "Las comprobaciones sobre el código de {{engine}} todavía no están implementadas. Esta comprobación usa solo el PDF compilado y no da por fallida la falta de soporte para el código.",
+    "runToSeeResults": "Ejecuta esta comprobación para ver los resultados.",
+    "analyzing": "Analizando…",
+    "runEnabled_one": "Ejecutar {{count}} comprobación activada",
+    "runEnabled_many": "Ejecutar {{count}} comprobaciones activadas",
+    "runEnabled_other": "Ejecutar {{count}} comprobaciones activadas",
+    "rerunEnabled_one": "Repetir {{count}} comprobación activada",
+    "rerunEnabled_many": "Repetir {{count}} comprobaciones activadas",
+    "rerunEnabled_other": "Repetir {{count}} comprobaciones activadas",
+    "failed": "Preflight falló: {{error}}",
+    "standardsCaveat": "Oleafly lee la parte de PDF/UA y de WCAG que se puede comprobar en el propio archivo. No puede saber si el texto alternativo es significativo, si el orden de lectura tiene sentido o si el contraste de color es suficiente. Eso lo tiene que juzgar una persona. Para una declaración formal de conformidad, valida con veraPDF o PAC 2024.",
+    "pdfRequired": "Hace falta el PDF. Compila el proyecto y vuelve a ejecutarlo. Esta comprobación aún no se ha evaluado.",
+    "compileFirst": "Compila primero el proyecto. Preflight necesita el registro del compilador o el PDF actuales para evaluar la calidad de la compilación.",
+    "partialCoverage": "Se completaron las comprobaciones sobre el código. Compila el proyecto y vuelve a ejecutarlo para terminar las comprobaciones sobre el PDF.",
+    "unsupportedCoverage": "Sin evaluar. Las comprobaciones sobre el código de este motor no están implementadas.",
+    "groupSource": "Proyecto y código",
+    "groupOutput": "Salida compilada",
+    "fixAll_one": "Corregir {{count}} con IA",
+    "fixAll_many": "Corregir los {{count}} con IA",
+    "fixAll_other": "Corregir los {{count}} con IA",
+    "noProblems": "No se encontró ningún problema."
+  },
+  "finding": {
+    "review": "Revisar",
+    "manual": "Manual",
+    "page": "p. {{page}}",
+    "needsJudgment": "Necesita tu criterio. Ninguna herramienta puede decidir esto solo con el archivo.",
+    "jumpToSource": "Ir al código",
+    "fixWithAi": "Corregir con IA"
+  },
+  "score": {
+    "notEvaluated": "{{label}} sin evaluar",
+    "readiness": "{{label}}: preparación {{score}} sobre 100",
+    "notScored": "Sin puntuar"
+  },
+  "reader": {
+    "title": "Lo que ve el lector",
+    "description": "Texto extraído del PDF actual en orden de lectura. Esto se parece a lo que recibe un lector de pantalla o un analizador automático.",
+    "pagesNav": "Páginas del PDF",
+    "page": "Página {{page}}",
+    "empty": "vacía",
+    "extractedFrom": "Texto extraído de la página {{page}}",
+    "pageOf": "Página {{page}} de {{total}}",
+    "noText": "No se encontró texto seleccionable en esta página."
+  },
+  "atsCard": {
+    "title": "Lo que extrajo un analizador",
+    "notFound": "No se encontró",
+    "links_one": "{{count}} enlace",
+    "links_many": "{{count}} enlaces",
+    "links_other": "{{count}} enlaces",
+    "detected": "{{section}}: detectada",
+    "requiredMissing": "{{section}}: sección obligatoria no detectada",
+    "optionalMissing": "{{section}}: sección opcional no detectada",
+    "detectedTitle": "Se detectó la sección {{section}}",
+    "requiredMissingTitle": "Se esperaba {{section}} pero no se detectó",
+    "optionalMissingTitle": "{{section}} es opcional y no se detectó",
+    "optionalSuffix": ", opcional"
+  },
+  "prepExport": {
+    "title": "Exportación accesible",
+    "intro": "Prepara este documento para una salida etiquetada que apunte a PDF/UA-2. Oleafly añade \\DocumentMetadata con pdfstandard=ua-2 y tagging=on, además del texto alternativo y la configuración de tablas que puede rellenar. Compila el resultado con pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior y vuelve a comprobarlo. Las matemáticas accesibles necesitan LuaLaTeX. El motor incluido no puede generar etiquetas.",
+    "activeFileFallback": "Oleafly no pudo cargar el documento principal, así que comprobó el archivo que estás editando. Abre el documento principal para ver la clase y los paquetes que carga tu compilación de verdad.",
+    "prepare": "Preparar para la exportación accesible",
+    "unavailable": "La preparación está desactivada para esta clase de documento. Cambia a una clase compatible con el código de etiquetado y vuelve a ejecutar la comprobación. Datos de compatibilidad del Proyecto LaTeX, obtenidos el {{retrieved}}.",
+    "unavailableUndated": "La preparación está desactivada para esta clase de documento. Cambia a una clase compatible con el código de etiquetado y vuelve a ejecutar la comprobación. Datos de compatibilidad del Proyecto LaTeX.",
+    "applied": "Aplicado",
+    "apply": "Aplicar al documento",
+    "copied": "Copiado",
+    "copy": "Copiar el código",
+    "compileTagged": "Compilar con etiquetado y verificar",
+    "compileTaggedWarning": "El LuaLaTeX del sistema puede leer archivos locales. Ejecútalo solo con proyectos en los que confíes.",
+    "noEngine": "Para generar el PDF etiquetado dentro de la aplicación, activa un motor en Ajustes, Motor de LaTeX. O compila el código preparado con tu propio pdfLaTeX o LuaLaTeX de TeX Live 2025 o posterior."
+  }
+}

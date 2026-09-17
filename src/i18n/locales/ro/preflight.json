@@ -1,0 +1,670 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Aspect pe două coloane",
+      "detailTwoColumn": "Programele care citesc CV-uri liniarizează de obicei cele două coloane în ordinea greșită. Preferă un aspect pe o singură coloană pentru documentele care trebuie citite de un sistem ATS.",
+      "titleMultiColumn": "Aspect pe mai multe coloane",
+      "detailMultiColumn": "Programele care citesc CV-uri liniarizează de obicei coloanele în ordinea greșită. Folosește o singură coloană pentru documentele destinate unui sistem ATS."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Verifică ordinea de citire pe două coloane",
+      "detailTwoColumn": "Aspectele editoriale pe mai multe coloane pot fi accesibile dacă arborele de etichete al PDF-ului păstrează succesiunea dorită. Compilează și confirmă ordinea reală de citire, în loc să tratezi coloanele vizuale ca pe un eșec în sine.",
+      "titleMultiColumn": "Verifică ordinea de citire pe mai multe coloane",
+      "detailMultiColumn": "Coloanele nu sunt automat inaccesibile, dar ordinea etichetelor și a conținutului lor trebuie să rămână logică. Compilează și inspectează succesiunea reală de citire."
+    },
+    "no-glyphtounicode": {
+      "title": "Harta de extragere Unicode nu este declarată",
+      "detailEngineNeedsMap": "XeTeX, împreună cu motorul inclus care se bazează pe el, nu generează automat harta de la glife la Unicode, așa că textul extras poate ieși ilizibil. Compilează și verifică vizualizarea de lectură și preferă un font cu o mapare Unicode completă.",
+      "detailAutomatic": "pdfLaTeX și LuaLaTeX generează automat această hartă începând cu versiunea LaTeX 2021-06-01, așa că nu este nevoie de nicio declarație. Compilează și verifică textul extras din vizualizarea de lectură. Pe XeTeX, încarcă cmap sau schimbă motorul."
+    },
+    "icon-near-contact": {
+      "title": "Pictogramă lângă datele de contact",
+      "detail": "Pictogramele din fonturi (precum \\faPhone sau \\faEnvelope) se randează ca glife pe care un program de citire le vede drept caractere necunoscute și pe care un cititor de ecran nu le poate denumi, așa că detaliul de contact de lângă ele se poate pierde. Asigură-te că adresa de e-mail sau numărul de telefon apar și ca text simplu, selectabil."
+    },
+    "layout-table": {
+      "titleTable": "Conținutul din tabel s-ar putea să nu fie citit ca date de CV",
+      "detailTable": "Programele ATS aplatizează adesea conținutul tabelar în mod imprevizibil. Nu folosi un tabel ca să așezi textul CV-ului pe coloane alăturate; tabelele reale cu date de cercetare sunt evaluate separat în secțiunea Accesibilitate.",
+      "titleTikz": "Conținutul TikZ are nevoie de o alternativă semantică",
+      "detailTikz": "TikZ desenează conținut vizual fără să îi expună sensul ca text obișnuit. Oferă o descriere accesibilă pentru documentele publicate și evită-l în CV-urile destinate sistemelor ATS."
+    },
+    "contact-in-header": {
+      "title": "Date de contact în antetul paginii",
+      "detail": "Unele programe care citesc CV-uri ignoră antetele și subsolurile paginii. Pune-ți adresa de e-mail și numărul de telefon în corpul documentului, ca textul extras să le păstreze."
+    },
+    "figure-alt": {
+      "title": "Imagine fără text alternativ",
+      "detail": "Această imagine nu are text alternativ descriptiv, așa că un cititor de ecran nu o poate reda. Adaugă o descriere, de exemplu \\includegraphics[alt={Portretul autorului}]{...}. Marchează imaginile pur decorative ca artefacte."
+    },
+    "link-text": {
+      "title": "Text de legătură nedescriptiv",
+      "detail": "Un text de legătură precum „apasă aici” sau un URL simplu nu îi spune nimic despre destinație celui care folosește un cititor de ecran. Folosește un text care numește ținta, de exemplu „portofoliul meu”."
+    },
+    "mathml-export-hint": {
+      "title": "Exportă o copie HTML cu MathML ca să verifici accesibilitatea formulelor",
+      "detail": "Documentul conține formule matematice. Cititoarele de ecran citesc ecuațiile fiabil atunci când sunt în MathML. Folosește Exportă ca HTML, pe care pandoc îl scrie cu --mathml, și deschide fișierul cu un cititor de ecran sau cu un instrument de verificare a accesibilității înainte de trimitere."
+    },
+    "no-lang": {
+      "title": "Documentul nu are limbă setată",
+      "detail": "PDF-ul nu are o limbă, așa că un cititor de ecran îl poate citi cu reguli de pronunție greșite. Setează una, de exemplu \\usepackage[romanian]{babel} sau pdflang=ro-RO din hyperref."
+    },
+    "no-title": {
+      "title": "PDF-ul nu are titlu",
+      "detail": "PDF-ul nu are titlu în metadate, iar tehnologiile asistive și browserele îl folosesc ca să anunțe documentul. Setează unul cu hyperref, de exemplu \\hypersetup{pdftitle={Numele tău, CV}}."
+    },
+    "heading-skip": {
+      "title": "S-a sărit peste un nivel de titlu",
+      "detail": "Acest titlu coboară cu mai mult de un nivel față de cel anterior, ceea ce strică structura documentului pe care se bazează cititoarele de ecran și programele de analiză. Nu sări peste niveluri: mergi de la section la subsection, apoi la subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Titlu de secțiune nestandard: „{{heading}}”",
+      "detail": "Programele de analiză identifică secțiunile recunoscând titluri standard precum Experiență, Educație și Competențe. Un titlu creativ poate lăsa secțiunea neclasificată. Ia în calcul un titlu convențional."
+    },
+    "color-only": {
+      "title": "Verifică dacă nu cumva culoarea este singurul indiciu",
+      "detail": "Preverificarea a găsit conținut colorat, dar nu îi poate stabili automat sensul. Dacă o culoare distinge o stare sau o categorie, însoțește-o cu text, formă, grosime sau alt indiciu perceptibil."
+    },
+    "reading-order-risk": {
+      "title": "Aspect care poate tulbura ordinea de citire",
+      "detail": "Notele marginale și figurile înconjurate de text scot conținutul din fluxul principal, așa că programele de analiză și cititoarele de ecran îl pot citi în altă ordine. Verifică ordinea de citire în previzualizarea de mai jos, după compilare."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA este declarat fără un titlu de document",
+      "detailBoth": "Acest document declară pdfstandard=ua, dar nu setează nici pdftitle, nici pdfdisplaydoctitle=true. PDF/UA cere un titlu în metadatele XMP și o preferință de vizualizare care să îl afișeze, așa că rezultatul ar pretinde un standard pe care nu îl îndeplinește. Încarcă hyperref și setează \\hypersetup{pdftitle={Titlul tău}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Acest document declară pdfstandard=ua, dar nu setează pdftitle. PDF/UA cere un titlu în metadatele XMP și o preferință de vizualizare care să îl afișeze, așa că rezultatul ar pretinde un standard pe care nu îl îndeplinește. Încarcă hyperref și setează \\hypersetup{pdftitle={Titlul tău}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Acest document declară pdfstandard=ua, dar nu setează pdfdisplaydoctitle=true. PDF/UA cere un titlu în metadatele XMP și o preferință de vizualizare care să îl afișeze, așa că rezultatul ar pretinde un standard pe care nu îl îndeplinește. Încarcă hyperref și setează \\hypersetup{pdftitle={Titlul tău}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Motorul inclus nu poate produce rezultatul PDF/UA declarat",
+      "detail": "Acest document declară pdfstandard=ua, dar motorul inclus nu poate scrie un arbore de etichete, așa că PDF-ul ar purta o pretenție PDF/UA pe care nu o îndeplinește. Compilează cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou sau elimină cheia pdfstandard."
+    },
+    "table-header-rows": {
+      "title": "Rândul de antet al tabelului nu este marcat ca antet",
+      "detail": "Acest tabel trage o linie sub primul rând, deci se citește ca antet, însă LaTeX etichetează implicit fiecare celulă drept celulă de date. Un cititor de ecran nu poate atunci lega o valoare de coloana ei. Declară rândul de antet, de exemplu \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Coloanele se citesc de-a curmezișul în rezultat",
+      "detail": "Pe această pagină, textul celor două coloane ajunge pe aceleași linii, așa că un program de analiză le citește de-a curmezișul, într-un text amestecat, iar un cititor de ecran le anunță în altă ordine. Folosește un aspect pe o singură coloană pentru conținutul care trebuie analizat automat. Vezi vizualizarea de lectură de mai jos."
+    },
+    "pdf-garbled": {
+      "title": "Text deformat sau nemapat în rezultat",
+      "detail": "Textul extras conține caractere care nu au fost mapate la Unicode, așa că la copiere și la analiza automată rezultatul apare deformat, iar un cititor de ecran nu îl poate citi. De obicei asta înseamnă că lipsește harta de la glife la Unicode sau că fontul nu este inclus ca text."
+    },
+    "pdf-selectable": {
+      "title": "Pagina nu are text selectabil",
+      "detail": "Această pagină conține puțin text extractibil sau deloc, așa că un program de analiză și un cititor de ecran nu văd nimic. Probabil este randată ca imagine sau folosește fonturi care nu sunt incluse ca text. Asigură-te că este vorba de text real, selectabil."
+    },
+    "output-clipped-content": {
+      "title": "Textul iese în afara paginii",
+      "detail": "Text selectabil se află în afara casetei de pagină și poate fi tăiat sau poate lipsi la tipărire și la procesarea de către editură. Inspectează ecuațiile late, tabelele, adresele URL și conținutul poziționat."
+    },
+    "output-small-text": {
+      "title": "S-a detectat text foarte mic",
+      "detail_one": "{{count}} secvență de text măsoară sub aproximativ 7 pt. Literele mici se citesc greu la tipar și la mărire normală. Confirmă că locul de publicare permite asta și mărește etichetele sau notele care nu trebuie neapărat să fie atât de mici.",
+      "detail_few": "{{count}} secvențe de text măsoară sub aproximativ 7 pt. Literele mici se citesc greu la tipar și la mărire normală. Confirmă că locul de publicare permite asta și mărește etichetele sau notele care nu trebuie neapărat să fie atât de mici.",
+      "detail_other": "{{count}} de secvențe de text măsoară sub aproximativ 7 pt. Literele mici se citesc greu la tipar și la mărire normală. Confirmă că locul de publicare permite asta și mărește etichetele sau notele care nu trebuie neapărat să fie atât de mici."
+    },
+    "pdf-no-bookmarks": {
+      "title": "PDF-ul lung nu are semne de carte",
+      "detail": "Documentele lungi ar trebui să expună un cuprins ierarhic de semne de carte, ca utilizatorii de tastatură și de tehnologii asistive să poată naviga printre secțiuni fără să citească fiecare pagină la rând. Aceasta este o bună practică WCAG, nu o cerință PDF/UA. Încarcă hyperref sau bookmark ca să îl generezi."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "Metadatele PDF nu au putut fi inspectate",
+      "detail": "Preverificarea nu a putut citi metadatele PDF, așa că nu poate confirma titlul sau limba documentului. Acesta este un rezultat necunoscut, nu o dovadă că acele câmpuri lipsesc. Recompilează și rulează verificarea din nou."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF-ului îi lipsesc limba și titlul",
+      "titleLang": "PDF-ului îi lipsește limba",
+      "titleTitle": "PDF-ului îi lipsește titlul",
+      "detail": "Tehnologiile asistive și browserele folosesc limba și titlul din catalogul PDF-ului ca să anunțe corect documentul. Setează-le cu hyperref, de exemplu \\hypersetup{pdftitle={Numele tău, CV}, pdflang=ro-RO}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "Starea etichetării PDF nu a putut fi inspectată",
+      "detail": "Preverificarea nu a putut citi dicționarul MarkInfo al PDF-ului. Acesta este un rezultat necunoscut, nu o dovadă într-un sens sau altul, așa că nu va declara rezultatul etichetat sau neetichetat doar pe baza acestei verificări."
+    },
+    "compile-failed": {
+      "title": "Ultima compilare a eșuat",
+      "detail": "Materialul trimis trebuie să provină dintr-o compilare reușită. Repară prima eroare de compilare, compilează din nou și rulează iar Preverificarea."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} linie prea plină în rezultat",
+      "title_few": "{{count}} linii prea pline în rezultat",
+      "title_other": "{{count}} de linii prea pline în rezultat",
+      "detail": "Compilatorul raportează conținut care iese din caseta lui de text, cu până la {{width}} pt. Inspectează aceste locuri pentru text, ecuații, tabele sau legături tăiate."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} glifă lipsă",
+      "title_few": "{{count}} glife lipsă",
+      "title_other": "{{count}} de glife lipsă",
+      "detail": "Fonturile alese nu pot reda toate caracterele. Glifele lipsă pot dispărea pe tăcute din PDF, inclusiv simboluri din nume, ecuații și citări."
+    },
+    "compile-unresolved-references": {
+      "title": "Rezultatul compilării are referințe nerezolvate",
+      "detail": "Cel puțin o citare sau o referință încrucișată a rămas nerezolvată după compilare. PDF-ul trimis poate conține [?] sau ??. Verifică jurnalul și rulează trecerile necesare pentru bibliografie și LaTeX."
+    },
+    "compile-rerun-required": {
+      "title": "Mai este nevoie de o trecere de compilare",
+      "detail": "Ultimul jurnal spune că etichetele, citările sau cuprinsul nu s-au stabilizat. Recompilează până dispare avertismentul de recompilare, înainte să exporți."
+    },
+    "compile-duplicate-destination": {
+      "title": "Destinații PDF duplicate",
+      "detail": "Două ancore au aceeași destinație, așa că legăturile sau semnele de carte pot sări în locul greșit. De obicei asta vine din etichete duplicate sau din resetarea numerotării paginilor."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Dimensiuni de pagină amestecate într-un singur PDF",
+      "detail_one": "PDF-ul conține {{count}} dimensiune de pagină ({{sizes}}). Casetele de pagină amestecate indică adesea o pagină sau o figură inclusă greșit și pot pica verificările de producție ale editurii.",
+      "detail_few": "PDF-ul conține {{count}} dimensiuni de pagină ({{sizes}}). Casetele de pagină amestecate indică adesea o pagină sau o figură inclusă greșit și pot pica verificările de producție ale editurii.",
+      "detail_other": "PDF-ul conține {{count}} de dimensiuni de pagină ({{sizes}}). Casetele de pagină amestecate indică adesea o pagină sau o figură inclusă greșit și pot pica verificările de producție ale editurii."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Etichetarea a raportat {{count}} problemă",
+      "title_few": "Etichetarea a raportat {{count}} probleme",
+      "title_other": "Etichetarea a raportat {{count}} de probleme",
+      "detail": "Codul de etichetare a scris aceste avertismente în jurnal: {{warnings}} Fiecare este un loc în care arborele de structură nu se potrivește cu conținutul. Repară-le la sursă și compilează din nou."
+    },
+    "output-tagging-status": {
+      "title_one": "Raportul de stare a etichetării a semnalat {{count}} element",
+      "title_few": "Raportul de stare a etichetării a semnalat {{count}} elemente",
+      "title_other": "Raportul de stare a etichetării a semnalat {{count}} de elemente",
+      "detail": "LaTeX a scris propriul raport de stare a etichetării la sfârșitul compilării.",
+      "partClass": "Clasa {{name}} este {{status}}.",
+      "partBlocking": "Incompatibile cu etichetarea: {{files}}.",
+      "partUnproven": "Niciun verdict înregistrat pentru: {{files}}.",
+      "partPartial": "Etichetare doar parțială: {{files}}.",
+      "partAdvice": "Tot ce nu se poate eticheta poate lăsa secțiuni întregi în afara arborelui de structură, așa că înlocuiește ce poți."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Arborele de etichete arată ca după o singură trecere de compilare",
+      "detail": "PDF-ul este marcat ca etichetat, dar arborele lui de structură nu conține aproape nimic, exact cum iese după o singură trecere. Rezultatul etichetat are nevoie de două treceri. Compilează din nou și verifică iar."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Acest PDF pretinde PDF/UA-{{part}}, dar nu îl îndeplinește",
+      "detail": "Metadatele XMP declară pdfuaid:part {{part}}, dar fișierul nu susține asta.",
+      "partNoXmpTitle": "Nu există niciun titlu de document în metadatele XMP.",
+      "partNoDisplayDocTitle": "DisplayDocTitle nu este setat pe true.",
+      "partNotTagged": "Fișierul nu este etichetat.",
+      "partAdvice": "Orice program care are încredere în această pretenție va raporta PDF-ul drept conform, deși nu este, așa că fie acoperi lipsurile, fie renunți la pretenție. Cu hyperref, setează \\hypersetup{pdftitle={Titlul tău}, pdfdisplaydoctitle=true} și compilează cu etichetarea activă."
+    },
+    "pdf-xmp-title": {
+      "title": "Titlul se află doar în dicționarul Info",
+      "detail": "Titlul documentului este setat în dicționarul Info, dar nu și ca dc:title în metadatele XMP, adică exact acolo unde îl caută PDF/UA. Încărcarea hyperref cu pdftitle le scrie pe amândouă."
+    },
+    "pdf-display-doc-title": {
+      "title": "Cititorul va afișa numele fișierului, nu titlul",
+      "detail": "ViewerPreferences nu are o intrare DisplayDocTitle setată pe true, așa că un cititor PDF anunță numele fișierului în fereastra lui și către tehnologiile asistive. Setează-l cu hyperref, de exemplu \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF-ul își marchează propria etichetare drept nesigură",
+      "detail": "MarkInfo setează Suspects pe true, adică producătorul spune că arborele de etichete s-ar putea să nu corespundă conținutului vizibil. Recompilează cu un motor actual și verifică avertismentele de etichetare din jurnal."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} adnotare de legătură nu are descriere",
+      "title_few": "{{count}} adnotări de legătură nu au descriere",
+      "title_other": "{{count}} de adnotări de legătură nu au descriere",
+      "detail": "O adnotare de legătură fără o intrare Contents nu îi dă nimic de anunțat unui cititor de ecran atunci când listează legăturile de pe o pagină. Descrie destinația în textul legăturii și lasă hyperref să ducă acel text în adnotare."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% din text se află în afara arborelui de etichete",
+      "detail": "{{untagged}} din {{total}} secvențe de text nu sunt legate de nimic din arborele de etichete, așa că un cititor de ecran le sare. Artefactele nu se numără. Conținutul real trebuie etichetat, iar cel decorativ trebuie marcat ca artefact, de exemplu \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "Structura PDF nu a putut fi inspectată complet",
+      "detail_one": "Arborele de structură pentru accesibilitate nu a putut fi extras pentru pagina {{pages}}. Preverificarea nu va trata structura indisponibilă ca dovadă că PDF-ul nu este etichetat.",
+      "detail_few": "Arborele de structură pentru accesibilitate nu a putut fi extras pentru paginile {{pages}}. Preverificarea nu va trata structura indisponibilă ca dovadă că PDF-ul nu este etichetat.",
+      "detail_other": "Arborele de structură pentru accesibilitate nu a putut fi extras pentru paginile {{pages}}. Preverificarea nu va trata structura indisponibilă ca dovadă că PDF-ul nu este etichetat."
+    },
+    "pdf-untagged-output": {
+      "title": "Acest PDF nu este etichetat",
+      "detail": "PDF-ul compilat nu are niciun arbore de structură, așa că un cititor de ecran nu primește titluri, liste, tabele sau ordine de citire, iar fișierul nu poate satisface clauza 7.1 din PDF/UA-1. Rezultatul etichetat are nevoie de pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou, cu \\DocumentMetadata{tagging=on}. Motorul inclus nu poate produce etichete. Verificările de sursă și de rezultat de mai sus rămân valabile între timp."
+    },
+    "pdf-structure-missing": {
+      "title": "PDF-ul etichetat nu are un arbore de structură lizibil",
+      "detail": "PDF-ul se declară etichetat, dar Preverificarea nu a găsit nicio structură de document prin care să se poată naviga. Cititoarele de ecran s-ar putea să nu primească titluri, liste, tabele sau ordine de citire. Etichetarea are nevoie de două treceri de compilare, așa că mai compilează o dată și verifică iar înainte să consideri asta definitiv."
+    },
+    "output-figure-alt": {
+      "title": "Figura etichetată nu are text alternativ",
+      "detail": "Această figură este etichetată, dar nu are text alternativ, așa că un cititor de ecran nu o poate descrie. Adaugă o descriere la sursă, de exemplu \\includegraphics[alt={...}]{...}. Marchează imaginile decorative cu [artifact]."
+    },
+    "output-formula-alt": {
+      "title": "Ecuația nu are o alternativă textuală",
+      "detail": "Conform PDF/UA-1, un element Formula are nevoie de Alt sau de ActualText. Adaugă unul la sursă, de exemplu cu \\tagpdfsetup sau cu o cheie alt pe ecuație. Conform PDF/UA-2 poți asocia în schimb MathML, compilând cu LuaLaTeX și \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Tabelul etichetat nu are celule de antet",
+      "detail": "Acest tabel nu are celule de antet (TH), așa că un cititor de ecran nu poate lega datele de titlurile coloanei sau ale rândului. Marchează rândul de antet, de exemplu \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "S-a sărit peste un nivel de titlu în arborele de etichete",
+      "detail": "Titlurile etichetate coboară cu mai mult de un nivel (de exemplu de la H1 direct la H3), ceea ce strică structura după care navighează un cititor de ecran. Nu sări peste niveluri de titlu."
+    },
+    "ats-no-name": {
+      "title": "Un program de analiză nu ți-a putut identifica numele",
+      "detail": "În textul extras nu s-a găsit niciun nume de persoană plauzibil. Păstrează-ți numele ca text simplu, aproape de începutul documentului, în afara antetelor, a graficelor și a casetelor de text poziționate."
+    },
+    "ats-no-email": {
+      "title": "Un program de analiză nu ți-a găsit adresa de e-mail",
+      "detail": "În textul extras nu s-a găsit nicio adresă de e-mail, iar acesta este câmpul pe care se bazează cel mai mult un program de analiză. Dacă adresa stă lângă o pictogramă sau într-un antet, s-ar putea să nu fie text selectabil. Pune-o în corpul documentului, ca text simplu."
+    },
+    "ats-no-phone": {
+      "title": "Un program de analiză nu a găsit un număr de telefon",
+      "detail": "În textul extras nu s-a găsit niciun număr de telefon. Dacă există, dar este ascuns în spatele unei pictograme sau într-un antet, adaugă-l ca text simplu, selectabil, în corpul documentului."
+    },
+    "ats-no-experience": {
+      "title": "Un program de analiză nu a detectat o secțiune de experiență profesională",
+      "detail": "Nu s-a găsit niciun titlu standard de experiență, așa că un program de analiză s-ar putea să nu îți grupeze rolurile într-un istoric profesional. Folosește un titlu convențional precum Experiență sau Experiență profesională, scris ca text real, selectabil."
+    },
+    "ats-long-resume": {
+      "title_one": "CV-ul are {{count}} pagină",
+      "title_few": "CV-ul are {{count}} pagini",
+      "title_other": "CV-ul are {{count}} de pagini",
+      "detail": "Multe procese de recrutare așteaptă una sau două pagini, deși CV-urile pentru poziții de conducere, academice și din administrație pot fi mai lungi. Confirmă că această lungime se potrivește cu rolul și cu tipul documentului."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} intrare bibliografică are metadate incomplete",
+      "title_few": "{{count}} intrări bibliografice au metadate incomplete",
+      "title_other": "{{count}} de intrări bibliografice au metadate incomplete",
+      "detail": "Înregistrările incomplete pot produce referințe stricate sau ambigue în stilurile editurilor. {{examples}}.",
+      "detailTruncated": "Înregistrările incomplete pot produce referințe stricate sau ambigue în stilurile editurilor. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} valoare DOI pare greșit formatată",
+      "title_few": "{{count}} valori DOI par greșit formatate",
+      "title_other": "{{count}} de valori DOI par greșit formatate",
+      "detail": "Verifică câmpurile DOI pentru {{keys}}. Păstrează doar identificatorul DOI, de exemplu 10.1000/example, nu text descriptiv."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} posibilă referință duplicată",
+      "title_few": "{{count}} grupuri de referințe posibil duplicate",
+      "title_other": "{{count}} de grupuri de referințe posibil duplicate",
+      "detail": "Aceste chei au același titlu normalizat: {{groups}}. Unește duplicatele reale, ca stilul de citare și metadatele să rămână consecvente."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} intrare bibliografică necitată",
+      "title_few": "{{count}} intrări bibliografice necitate",
+      "title_other": "{{count}} de intrări bibliografice necitate",
+      "detail": "Intrările nefolosite adaugă zgomot în metadatele trimiterii și îngreunează gestionarea duplicatelor. Verifică {{keys}}.",
+      "detailTruncated": "Intrările nefolosite adaugă zgomot în metadatele trimiterii și îngreunează gestionarea duplicatelor. Verifică {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} etichetă este definită în mai multe fișiere",
+      "title_few": "{{count}} etichete sunt definite în mai multe fișiere",
+      "title_other": "{{count}} de etichete sunt definite în mai multe fișiere",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} etichetă de figură, tabel sau ecuație nu este referită niciodată",
+      "title_few": "{{count}} etichete de figură, tabel sau ecuație nu sunt referite niciodată",
+      "title_other": "{{count}} de etichete de figură, tabel sau ecuație nu sunt referite niciodată",
+      "detail": "Confirmă că fiecare rezultat numerotat este discutat în manuscris: {{labels}}.",
+      "detailTruncated": "Confirmă că fiecare rezultat numerotat este discutat în manuscris: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Citarea „{{key}}” nu se află în niciun fișier .bib",
+      "detail": "Această cheie de citare nu a fost găsită în bibliografia încărcată, așa că se va randa ca [?] în PDF. Verifică cheia sau adaugă intrarea în fișierul tău .bib (Adaugă citare o poate aduce)."
+    },
+    "refs-undefined-ref": {
+      "title": "Referința la „{{label}}” nu are un \\label corespunzător",
+      "detail": "Această referință încrucișată trimite la o etichetă care nu este definită, așa că se va randa ca ?? în PDF. Verifică numele etichetei sau adaugă \\label-ul lipsă."
+    },
+    "refs-duplicate-label": {
+      "title": "Etichetă duplicată „{{label}}”",
+      "detail": "Aceeași etichetă este definită de mai multe ori, așa că referințele la ea sunt ambigue. Fă fiecare etichetă unică."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Imagine negăsită: {{file}}",
+      "detailImage": "Acest \\includegraphics trimite la un fișier care nu se află în proiect, așa că figura va lipsi. Verifică numele fișierului și calea.",
+      "titleInclude": "Fișier inclus negăsit: {{file}}",
+      "detailInclude": "Acest \\input sau \\include trimite la un fișier care nu se află în proiect. Verifică numele fișierului și calea."
+    },
+    "refs-bib-missing": {
+      "title": "Fișier de bibliografie negăsit: {{file}}",
+      "detail": "Acest \\bibliography sau \\addbibresource trimite la un fișier care nu se află în proiect, așa că fiecare citare se va randa ca [?]. Verifică numele fișierului sau importă o bibliotecă de referințe ca să îl creezi."
+    },
+    "refs-duplicate-bib": {
+      "title": "Intrări bibliografice duplicate: {{keys}}",
+      "detail": "Aceste intrări au același DOI, {{doi}}, deci sunt aceeași referință sub chei diferite. Păstreaz-o pe una și citeaz-o, altfel bibliografia o va lista de două ori."
+    },
+    "submission-path-case": {
+      "title": "Scrierea cu majuscule din numele fișierului nu corespunde: {{target}}",
+      "detailFigure": "Această figură se rezolvă doar pe un sistem de fișiere care nu ține cont de majuscule. Proiectul conține „{{match}}”, deci potrivește exact acea scriere înainte să trimiți către sisteme de compilare bazate pe Linux.",
+      "detailInclude": "Acest fișier inclus se rezolvă doar pe un sistem de fișiere care nu ține cont de majuscule. Proiectul conține „{{match}}”, deci potrivește exact acea scriere înainte să trimiți către sisteme de compilare bazate pe Linux."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Figură lipsă: {{target}}",
+      "titleInclude": "Fișier inclus lipsă: {{target}}",
+      "detail": "Niciun fișier din proiect nu rezolvă această referință din {{file}}. O compilare curată a materialului trimis va eșua, chiar dacă un cache local îi permite acum documentului să se compileze."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figură fără legendă",
+      "titleTable": "tabel fără legendă",
+      "detail": "Figurile și tabelele din lucrările publicate ar trebui să aibă o legendă numerotată și descriptivă, ca să poată fi referite și înțelese independent."
+    },
+    "submission-label-before-caption": {
+      "title": "Eticheta apare înaintea legendei",
+      "detail": "Pune eticheta după legendă. Altfel, LaTeX o poate lega de contorul anterior și produce numărul greșit de figură sau de tabel."
+    },
+    "privacy-sensitive-file": {
+      "title": "Fișier sensibil inclus: {{file}}",
+      "detail": "Elimină din proiect fișierele cu credențiale și cu chei private înainte să exporți, să sincronizezi sau să publici arhiva sursă."
+    },
+    "privacy-credential": {
+      "title": "Posibilă credențială în {{file}}",
+      "detail": "Proiectul conține text care arată ca un token API, ca o cheie de acces în cloud sau ca o cheie privată. Revocă credențialele expuse, apoi elimină-le din proiect și din istoricul lui Git."
+    },
+    "privacy-internal-comment": {
+      "title": "În {{file}} a rămas o notă internă",
+      "detail": "Comentariile din sursă nu se văd în PDF, dar pot fi publice într-o arhivă sursă de conferință, de revistă sau de preprint. Verifică-le și elimină notele editoriale private."
+    },
+    "privacy-draft-artifact": {
+      "title": "Marcajele de ciornă sunt încă active",
+      "detail": "Sursa activează afișarea de ciornă, TODO, urmărirea modificărilor, filigranul sau depanarea etichetelor. Dezactiveaz-o și inspectează vizual PDF-ul final înainte de trimitere."
+    },
+    "privacy-blind-author": {
+      "title": "Identitatea autorului a rămas în sursa pentru recenzia oarbă",
+      "detail": "Sursa conține un autor, o afiliere, un e-mail, o adresă sau mulțumiri neanonimizate. Înlocuiește conținutul care identifică autorii folosind modul de recenzie anonimă al locului de publicare."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Mulțumirile pot dezvălui autorii",
+      "detail": "Mulțumirile identifică adesea instituții, granturi, colaboratori sau infrastructuri. Elimină-le dintr-o lucrare trimisă la recenzie oarbă, dacă locul de publicare nu le permite explicit."
+    },
+    "privacy-pdf-author": {
+      "title": "Metadatele PDF identifică un autor",
+      "detail": "Câmpul Author din PDF este „{{author}}”. Golește metadatele despre autor înainte să încarci un PDF pentru recenzie oarbă."
+    },
+    "submission-nonportable-filename": {
+      "title": "Nume de fișier neportabil: {{file}}",
+      "detail": "Acest profil permite doar litere, cifre, liniuțe de subliniere, plus, minus, puncte, virgule, semne egal și separatori de directoare. Redenumește fișierul și actualizează-i referințele."
+    },
+    "submission-absolute-path": {
+      "title": "Cale specifică unui computer în {{file}}",
+      "detail": "Căile locale absolute nu există pe serverele de compilare ale editurilor. Mută dependența în proiect și referă-te la ea printr-o cale relativă."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} are nevoie de execuția unei comenzi externe",
+      "detail": "Multe sisteme de compilare ale editurilor și ale arhivelor dezactivează shell escape. Generează rezultatul dinainte sau confirmă că locul de publicare vizat acceptă acest pachet și această comandă."
+    },
+    "submission-generated-file": {
+      "title": "Fișier de compilare generat, inclus: {{file}}",
+      "detail": "Fișierele auxiliare generate încarcă inutil pachetele sursă și pot păstra o stare veche. Exclude-le, dacă locul de publicare ales nu cere explicit acel fișier."
+    },
+    "submission-document-class": {
+      "title": "Clasa de document {{profile}} nu este activă",
+      "detail": "Acest profil așteaptă {{expected}}, dar proiectul folosește {{actual}}. Pornește de la șablonul oficial actual al locului de publicare.",
+      "detailNoClass": "Acest profil așteaptă {{expected}}, dar nu s-a detectat nicio clasă de document. Pornește de la șablonul oficial actual al locului de publicare."
+    },
+    "submission-no-abstract": {
+      "title": "Nu s-a detectat niciun rezumat",
+      "detail": "Acest profil de publicare așteaptă un rezumat într-un mediu abstract standard. Adaugă-l sau confirmă că locul de publicare respectiv nu cere unul."
+    },
+    "submission-no-keywords": {
+      "title": "Nu s-au detectat cuvinte-cheie de publicare",
+      "detail": "Profilul {{profile}} așteaptă cuvinte-cheie scrise cu comanda sau cu mediul standard din șablonul lui."
+    },
+    "submission-figure-format": {
+      "title": "Format de figură neacceptat: {{file}}",
+      "detail": "{{profile}} acceptă fișiere de figură {{formats}} pentru fluxurile TeX pe care le sprijină. Convertește această figură înainte de încărcare."
+    },
+    "submission-placeholder": {
+      "title": "În manuscris au rămas marcaje de ciornă",
+      "detail": "Sursa conține TODO, TBD, FIXME, text de umplutură sau semne de întrebare. Verifică fiecare apariție înainte să produci varianta finală."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} este sub versiunea cerută",
+      "detail": "{{profile}} cere PDF {{minimum}} sau mai nou. Actualizează setările PDF ale compilatorului și generează din nou fișierul."
+    },
+    "submission-bookmarks": {
+      "title": "Semnele de carte din PDF nu sunt permise",
+      "detail": "{{profile}} respinge semnele de carte din PDF. Elimină cuprinsul documentului pentru acest profil de trimitere."
+    },
+    "submission-links": {
+      "title": "Legăturile din PDF nu sunt permise",
+      "detail": "{{profile}} respinge adnotările de legătură. Dezactivează hiperlegăturile generate pentru PDF-ul trimis."
+    },
+    "submission-attachments": {
+      "title": "PDF-ul conține fișiere atașate",
+      "detail": "{{profile}} respinge atașamentele și pachetele din PDF. Elimină toate fișierele înglobate înainte de trimitere."
+    },
+    "submission-security": {
+      "title": "Restricțiile de securitate ale PDF-ului sunt active",
+      "detail": "{{profile}} cere un PDF fără parolă și fără restricții de permisiuni."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} font nu este inclus în fișier",
+      "title_few": "{{count}} fonturi nu sunt incluse în fișier",
+      "title_other": "{{count}} de fonturi nu sunt incluse în fișier",
+      "detail": "{{profile}} cere ca fiecare font să fie inclus sau inclus parțial, ca textul și formulele să se randeze fiabil. Rezolvă {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Includerea unor fonturi nu a putut fi verificată",
+      "detail": "Preverificarea nu a putut dovedi starea includerii pentru {{fonts}}. Confirm-o cu instrumentul oficial de verificare PDF al locului de publicare."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Accesibilitate",
+    "both": "ATS și accesibilitate",
+    "refs": "Referințe",
+    "compile": "Compilare",
+    "submission": "Trimitere",
+    "privacy": "Confidențialitate"
+  },
+  "severity": {
+    "error": "Eroare",
+    "warning": "Avertisment",
+    "info": "Observație"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Compilare",
+    "a11y": "Acces",
+    "refs": "Referințe",
+    "submission": "Trimitere",
+    "privacy": "Confidențial"
+  },
+  "checks": {
+    "compile": {
+      "label": "Compilare și aspect",
+      "who": "Pentru orice document final",
+      "info": "Erori de compilare, referințe nerezolvate, glife lipsă și probleme de aspect al paginii.",
+      "detail": "Inspectează cel mai recent jurnal de compilare și PDF-ul, căutând compilări eșuate, referințe nerezolvate, glife lipsă, conținut prea plin sau tăiat, avertismente vechi de recompilare și dimensiuni de pagină amestecate."
+    },
+    "submission": {
+      "label": "Pregătire pentru trimitere",
+      "who": "Pentru conferințe, reviste, preprinturi și teze",
+      "info": "Reguli ale profilului de publicare și fișiere care nu ar trebui să ajungă în pachetul sursă.",
+      "detail": "Aplică un profil de publicare întregului proiect: clasa oficială de document, căi sursă portabile, formate de figuri, rezumat și cuvinte-cheie, restricții PDF, legende și un pachet sursă curat."
+    },
+    "ats": {
+      "label": "Pregătire pentru sistemele ATS",
+      "who": "Pentru CV-uri",
+      "info": "Datele de contact și secțiunile pe care le poate recupera un program care citește CV-uri.",
+      "detail": "Simulează ce extrage din PDF-ul tău un sistem de urmărire a candidaturilor (Workday, Taleo, Greenhouse) și semnalează aspectul și formatarea care îi încurcă rezultatul. Nu are relevanță pentru lucrările științifice."
+    },
+    "a11y": {
+      "label": "Accesibilitate",
+      "who": "Pentru documente PDF de cercetare, guvernamentale și publicate",
+      "info": "Etichetare, text alternativ, limba și titlul documentului, setările cititorului, structura, legăturile și ordinea de citire.",
+      "detail": "Verifică PDF-ul compilat față de partea verificabilă automat din PDF/UA-1 (ISO 14289-1) și față de tehnicile WCAG 2.2 pentru PDF: etichetare, text alternativ, limba și titlul documentului, setările cititorului, structura titlurilor și a tabelelor, descrierile legăturilor, ordinea de citire și textul selectabil. Verificările de sursă semnalează problemele probabile înainte să compilezi."
+    },
+    "refs": {
+      "label": "Referințe și resurse",
+      "who": "Pentru documente de cercetare și cu mai multe fișiere",
+      "info": "Citări stricate, etichete duplicate, intrări bibliografice incomplete și resurse lipsă.",
+      "detail": "Găsește citările și referințele încrucișate nedefinite, etichetele duplicate și figurile sau fișierele incluse care lipsesc, înainte să îți strice PDF-ul la trimitere."
+    },
+    "privacy": {
+      "label": "Confidențialitate și recenzie oarbă",
+      "who": "Înainte să distribui sursa sau să trimiți anonim",
+      "info": "Secrete, note de ciornă, fișiere sensibile și scurgeri de identitate în timpul recenziei oarbe.",
+      "detail": "Găsește credențiale, chei private, comentarii interne, marcaje de ciornă, fișiere sensibile din proiect, metadate despre autor și scurgeri de identitate în lucrările trimise la recenzie anonimă."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Publicare generală",
+      "description": "Sursă portabilă, rezultat curat, metadate complete și riscurile obișnuite la publicare."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Sursă portabilă, care poate fi recompilată pe sistemul de trimitere arXiv, sensibil la majuscule."
+    },
+    "ieee": {
+      "label": "Conferință sau revistă IEEE",
+      "description": "Sursă IEEEtran plus restricțiile PDF verificate pentru publicarea în IEEE Xplore."
+    },
+    "acm": {
+      "label": "Conferință sau revistă ACM",
+      "description": "Structura sursei ACM acmart și metadatele de cercetare pregătite pentru publicare."
+    },
+    "journal": {
+      "label": "Altă revistă",
+      "description": "Verificări de revistă neutre față de editură. Adaugă limitele exacte ale revistei înainte de trimitere."
+    },
+    "thesis": {
+      "label": "Teză sau disertație",
+      "description": "Verificări pentru structura documentelor lungi, navigare, referințe și sursă portabilă."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Experiență",
+      "education": "Educație",
+      "skills": "Competențe",
+      "projects": "Proiecte",
+      "summary": "Rezumat"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: s-au verificat {{passed}} din {{total}} reguli verificabile automat. Este o verificare parțială, nu o declarație de conformitate.",
+    "coverageWithBlindSpots": "PDF/UA-1: s-au verificat {{passed}} din {{total}} reguli verificabile automat. Oleafly citește {{covered}} dintre aceste reguli, iar {{unavailable}} dintre ele nu au putut fi verificate în acest fișier. Este o verificare parțială, nu o declarație de conformitate."
+  },
+  "taggingGate": {
+    "noSupport": "Clasa {{name}} nu poate produce rezultat etichetat, iar Proiectul LaTeX nici nu se așteaptă să poată.",
+    "noSupportWithNote": "Clasa {{name}} nu poate produce rezultat etichetat, iar Proiectul LaTeX nici nu se așteaptă să poată. {{note}}",
+    "currentlyIncompatible": "Clasa {{name}} nu este încă compatibilă cu etichetarea LaTeX, așa că pregătirea acestei surse nu ți-ar da un PDF accesibil.",
+    "currentlyIncompatibleWithNote": "Clasa {{name}} nu este încă compatibilă cu etichetarea LaTeX, așa că pregătirea acestei surse nu ți-ar da un PDF accesibil. {{note}}",
+    "partiallyCompatible": "Clasa {{name}} este doar parțial compatibilă cu etichetarea, așa că așteaptă-te la lipsuri în arborele de structură.",
+    "partiallyCompatibleWithNote": "Clasa {{name}} este doar parțial compatibilă cu etichetarea, așa că așteaptă-te la lipsuri în arborele de structură. {{note}}",
+    "unrecorded": "Proiectul LaTeX nu a înregistrat o stare a etichetării pentru clasa {{name}}, așa că rezultatul este nedovedit. Compilează și verifică rezultatul."
+  },
+  "prep": {
+    "metadataUpdated": "S-au adăugat cheile de etichetare necesare în \\DocumentMetadata.",
+    "metadataAdded": "S-a adăugat \\DocumentMetadata ca primă linie (obligatoriu, trebuie să preceadă \\documentclass).",
+    "headerRows": "S-a setat table/header-rows pe 1, ca primul rând al fiecărui tabel să fie etichetat drept celule de antet. Schimbă numărul dacă un tabel are un antet mai adânc.",
+    "unicodeMath": "S-a adăugat \\usepackage{unicode-math}, de care acest motor are nevoie pentru formule etichetate.",
+    "altPlaceholders_one": "S-au adăugat texte alternative de rezervă la {{count}} imagine. Înlocuiește textul TODO cu o descriere reală.",
+    "altPlaceholders_few": "S-au adăugat texte alternative de rezervă la {{count}} imagini. Înlocuiește textul TODO cu o descriere reală.",
+    "altPlaceholders_other": "S-au adăugat texte alternative de rezervă la {{count}} de imagini. Înlocuiește textul TODO cu o descriere reală.",
+    "titleRequired": "PDF/UA are nevoie de un titlu de document pe care cititorul să îl afișeze. Încarcă hyperref și setează \\hypersetup{pdftitle={Titlul tău}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Acest pachet nu este compatibil cu etichetarea: {{packages}}. Conținutul lui poate ajunge neetichetat în PDF. Înlocuiește-l unde poți.",
+    "incompatiblePackages_few": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF. Înlocuiește-le unde poți.",
+    "incompatiblePackages_other": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF. Înlocuiește-le unde poți.",
+    "cautionPackages": "Aceste pachete etichetează doar parțial sau nu au un verdict de etichetare înregistrat: {{packages}}. Compilează și verifică arborele de structură pentru lipsuri.",
+    "compileLua": "Compilează sursa pregătită cu LuaLaTeX din TeX Live 2025 sau mai nou, apoi verifică din nou rezultatul.",
+    "compileAny": "Compilează sursa pregătită cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 sau mai nou, apoi verifică din nou rezultatul. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Acest pachet nu este compatibil cu etichetarea: {{packages}}. Conținutul lui poate ajunge neetichetat în PDF.",
+    "incompatiblePackages_few": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF.",
+    "incompatiblePackages_other": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}}. Conținutul lor poate ajunge neetichetat în PDF.",
+    "incompatiblePackagesTruncated": "Aceste pachete nu sunt compatibile cu etichetarea: {{packages}} și încă {{more}}. Conținutul lor poate ajunge neetichetat în PDF.",
+    "partialPackages": "Aceste pachete etichetează doar parțial: {{packages}}.",
+    "partialPackagesTruncated": "Aceste pachete etichetează doar parțial: {{packages}} și încă {{more}}.",
+    "unknownPackages": "Pentru {{packages}} nu este înregistrat niciun verdict de etichetare.",
+    "unknownPackagesTruncated": "Pentru {{packages}} și încă {{more}} nu este înregistrat niciun verdict de etichetare.",
+    "cautionAdvice": "Compilează și verifică arborele de structură pentru lipsuri."
+  },
+  "panel": {
+    "title": "Preverificare",
+    "readerDisabled": "Compilează și rulează întâi o verificare a rezultatului",
+    "readerEnabled": "Deschide textul extras din PDF",
+    "readerButton": "Arată ce vede cititorul",
+    "aboutLabel": "Despre Preverificare",
+    "aboutTitle": "Ce verifică Preverificarea",
+    "aboutIntro": "Preverificarea citește sursa proiectului, jurnalul de compilare și PDF-ul curent. Activează doar verificările potrivite pentru acest document.",
+    "aboutFooter": "Rezultatele verificate provin din observații directe. Rezultatele consultative au nevoie în continuare de judecata ta. Un raport curat ajută la recenzie, dar nu certifică acceptarea sau accesibilitatea. Toate verificările rulează local.",
+    "enableCheck": "Activează {{check}}",
+    "runCheck": "Rulează {{check}}",
+    "rerunCheck": "Rulează din nou {{check}}",
+    "run": "Rulează",
+    "rerun": "Rulează din nou",
+    "collapse": "Restrânge",
+    "expand": "Extinde",
+    "publicationProfile": "Profil de publicare",
+    "anonymousReview": "Recenzie anonimă",
+    "anonymousReviewHint": "Inspectează și câmpurile de autor, mulțumirile și metadatele PDF.",
+    "anonymousReviewToggle": "Verifică identitatea pentru recenzia anonimă",
+    "engineUnsupported": "Verificările de sursă pentru {{engine}} nu sunt încă implementate. Această verificare folosește doar PDF-ul compilat și nu raportează lipsa suportului pentru sursă ca pe un eșec.",
+    "runToSeeResults": "Rulează această verificare ca să vezi rezultatele.",
+    "analyzing": "Se analizează…",
+    "runEnabled_one": "Rulează {{count}} verificare activată",
+    "runEnabled_few": "Rulează {{count}} verificări activate",
+    "runEnabled_other": "Rulează {{count}} de verificări activate",
+    "rerunEnabled_one": "Rulează din nou {{count}} verificare activată",
+    "rerunEnabled_few": "Rulează din nou {{count}} verificări activate",
+    "rerunEnabled_other": "Rulează din nou {{count}} de verificări activate",
+    "failed": "Preverificarea a eșuat: {{error}}",
+    "standardsCaveat": "Oleafly citește partea din PDF/UA și WCAG care poate fi verificată chiar în fișier. Nu poate spune dacă textul alternativ are sens, dacă ordinea de citire este logică sau dacă contrastul de culoare este suficient. Aceste lucruri le judecă un om. Pentru o declarație formală de conformitate, validează cu veraPDF sau PAC 2024.",
+    "pdfRequired": "Este nevoie de un PDF. Compilează proiectul și rulează din nou. Această verificare nu este încă evaluată.",
+    "compileFirst": "Compilează întâi proiectul. Preverificarea are nevoie de jurnalul de compilare sau de PDF-ul curent ca să evalueze calitatea compilării.",
+    "partialCoverage": "Verificările de sursă s-au încheiat. Compilează proiectul și rulează din nou ca să încheie verificările la nivel de PDF.",
+    "unsupportedCoverage": "Neevaluat. Verificările de sursă pentru acest motor nu sunt implementate.",
+    "groupSource": "Proiect și sursă",
+    "groupOutput": "Rezultat compilat",
+    "fixAll_one": "Repară {{count}} cu AI",
+    "fixAll_few": "Repară toate cele {{count}} cu AI",
+    "fixAll_other": "Repară toate cele {{count}} cu AI",
+    "noProblems": "Nu s-a găsit nicio problemă."
+  },
+  "finding": {
+    "review": "De verificat",
+    "manual": "Manual",
+    "page": "p.{{page}}",
+    "needsJudgment": "Are nevoie de judecata ta. Niciun instrument nu poate decide asta doar din fișier.",
+    "jumpToSource": "Sari la sursă",
+    "fixWithAi": "Repară cu AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} nu a fost evaluat",
+    "readiness": "Pregătire {{label}}: {{score}} din 100",
+    "notScored": "Nepunctat"
+  },
+  "reader": {
+    "title": "Ce vede cititorul",
+    "description": "Text extras din PDF-ul curent, în ordinea de citire. Este aproape de ce primește un cititor de ecran sau un program automat de analiză.",
+    "pagesNav": "Paginile PDF-ului",
+    "page": "Pagina {{page}}",
+    "empty": "goală",
+    "extractedFrom": "Text extras din pagina {{page}}",
+    "pageOf": "Pagina {{page}} din {{total}}",
+    "noText": "Pe această pagină nu s-a găsit text selectabil."
+  },
+  "atsCard": {
+    "title": "Ce a extras un program de analiză",
+    "notFound": "Negăsit",
+    "links_one": "{{count}} legătură",
+    "links_few": "{{count}} legături",
+    "links_other": "{{count}} de legături",
+    "detected": "{{section}}: detectată",
+    "requiredMissing": "{{section}}: secțiune obligatorie nedetectată",
+    "optionalMissing": "{{section}}: secțiune opțională nedetectată",
+    "detectedTitle": "Secțiunea {{section}} a fost detectată",
+    "requiredMissingTitle": "{{section}} este așteptată, dar nu a fost detectată",
+    "optionalMissingTitle": "{{section}} este opțională și nu a fost detectată",
+    "optionalSuffix": ", opțională"
+  },
+  "prepExport": {
+    "title": "Export accesibil",
+    "intro": "Pregătește acest document pentru un rezultat etichetat care țintește PDF/UA-2. Oleafly adaugă \\DocumentMetadata cu pdfstandard=ua-2 și tagging=on, plus configurația de text alternativ și de tabele pe care o poate completa. Compilează rezultatul cu pdfLaTeX sau LuaLaTeX din TeX Live 2025 ori mai nou, apoi verifică din nou. Formulele accesibile au nevoie de LuaLaTeX. Motorul inclus nu poate produce etichete.",
+    "activeFileFallback": "Oleafly nu a putut încărca documentul principal, așa că a verificat fișierul pe care îl editezi. Deschide documentul principal ca să vezi clasa și pachetele pe care le încarcă efectiv compilarea ta.",
+    "prepare": "Pregătește pentru export accesibil",
+    "unavailable": "Pregătirea este dezactivată pentru această clasă de document. Treci la o clasă pe care codul de etichetare o acceptă, apoi rulează verificarea din nou. Datele de compatibilitate provin de la Proiectul LaTeX, preluate la {{retrieved}}.",
+    "unavailableUndated": "Pregătirea este dezactivată pentru această clasă de document. Treci la o clasă pe care codul de etichetare o acceptă, apoi rulează verificarea din nou. Datele de compatibilitate provin de la Proiectul LaTeX.",
+    "applied": "Aplicat",
+    "apply": "Aplică în document",
+    "copied": "Copiat",
+    "copy": "Copiază sursa",
+    "compileTagged": "Compilează etichetat și verifică",
+    "compileTaggedWarning": "LuaLaTeX din sistem poate citi fișiere locale. Rulează-l doar pentru un proiect în care ai încredere.",
+    "noEngine": "Ca să produci PDF-ul etichetat în aplicație, activează un motor din Setări, Motor LaTeX. Sau compilează sursa pregătită cu propriul tău pdfLaTeX ori LuaLaTeX din TeX Live 2025 sau mai nou."
+  }
+}

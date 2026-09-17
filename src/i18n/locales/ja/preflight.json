@@ -1,0 +1,624 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "2 段組のレイアウト",
+      "detailTwoColumn": "履歴書の解析ツールは、2 段組を誤った順序で 1 列に並べ直すことがよくあります。ATS で解析される文書には 1 段組のレイアウトを使ってください。",
+      "titleMultiColumn": "多段組のレイアウト",
+      "detailMultiColumn": "履歴書の解析ツールは、段を誤った順序で 1 列に並べ直すことがよくあります。ATS 向けの文書には 1 段組を使ってください。"
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "2 段組の読み上げ順を確認してください",
+      "detailTwoColumn": "PDF のタグツリーが意図した順序を保っていれば、多段組の出版レイアウトでもアクセシブルにできます。見た目の段組だけを失敗とみなさず、コンパイルして実際の読み上げ順を確認してください。",
+      "titleMultiColumn": "多段組の読み上げ順を確認してください",
+      "detailMultiColumn": "段組そのものがアクセシブルでないわけではありませんが、タグと内容の順序が意味の通るものである必要があります。コンパイルして実際の読み上げ順を確認してください。"
+    },
+    "no-glyphtounicode": {
+      "title": "Unicode への抽出マップが宣言されていません",
+      "detailEngineNeedsMap": "XeTeX と、それを基にした同梱エンジンは、グリフから Unicode へのマップを自動生成しないため、抽出されたテキストが読めなくなることがあります。コンパイルしてリーダー表示を確認し、Unicode の対応が揃ったフォントを使ってください。",
+      "detailAutomatic": "pdfLaTeX と LuaLaTeX は LaTeX 2021-06-01 リリース以降このマップを自動生成するため、宣言は不要です。コンパイルして、抽出されるリーダーのテキストを確認してください。XeTeX では cmap を読み込むか、エンジンを切り替えてください。"
+    },
+    "icon-near-contact": {
+      "title": "連絡先の隣にアイコンがあります",
+      "detail": "フォントアイコン（\\faPhone や \\faEnvelope など）はグリフとして描画され、解析ツールには不明な文字として読まれ、スクリーンリーダーは読み上げられません。そのため隣の連絡先が失われることがあります。メールアドレスや電話番号は、選択できるプレーンテキストとしても書いてください。"
+    },
+    "layout-table": {
+      "titleTable": "表の内容が履歴書の項目として解析されない可能性があります",
+      "detailTable": "ATS のツールは表の内容を予測しにくい形で平坦化することがよくあります。履歴書のテキストを横に並べるために表を使うのは避けてください。実際の研究データの表はアクセシビリティで別に評価されます。",
+      "titleTikz": "TikZ の内容には意味を伝える代替が必要です",
+      "detailTikz": "TikZ は見た目を描きますが、その意味を通常のテキストとして示しません。出版用の出力にはアクセシブルな説明を付け、ATS 向けの履歴書の内容には使わないでください。"
+    },
+    "contact-in-header": {
+      "title": "連絡先がページヘッダーにあります",
+      "detail": "履歴書の解析ツールには、ページのヘッダーとフッターを読み飛ばすものがあります。抽出されたテキストに残るよう、メールアドレスと電話番号は本文に書いてください。"
+    },
+    "figure-alt": {
+      "title": "代替テキストのない画像",
+      "detail": "この画像には説明的な代替テキストがないため、スクリーンリーダーが内容を伝えられません。説明を追加してください。例: \\includegraphics[alt={著者の顔写真}]{...}。純粋に装飾的な画像は、代わりにアーティファクトとして指定してください。"
+    },
+    "link-text": {
+      "title": "内容がわからないリンクテキスト",
+      "detail": "「ここをクリック」のような文言や URL そのままでは、スクリーンリーダーの利用者にリンク先が伝わりません。「私のポートフォリオ」のように、リンク先がわかる文言を使ってください。"
+    },
+    "mathml-export-hint": {
+      "title": "数式のアクセシビリティを確認するため、MathML 付きの HTML を書き出してください",
+      "detail": "この文書には数式が含まれています。スクリーンリーダーは、数式が MathML であれば確実に読み上げられます。pandoc が --mathml で書き出す「HTML として書き出す」を使い、投稿前にスクリーンリーダーやアクセシビリティチェッカーでファイルを開いて確認してください。"
+    },
+    "no-lang": {
+      "title": "文書の言語が設定されていません",
+      "detail": "PDF に言語が設定されていないため、スクリーンリーダーが誤った読み上げ規則を使うことがあります。例えば \\usepackage[english]{babel} や hyperref の pdflang=en-US で設定してください。"
+    },
+    "no-title": {
+      "title": "PDF のタイトルがありません",
+      "detail": "PDF のメタデータにタイトルがありません。支援技術やブラウザは、文書を読み上げるときにこれを使います。hyperref で設定してください。例: \\hypersetup{pdftitle={Your Name, CV}}。"
+    },
+    "heading-skip": {
+      "title": "見出しのレベルが飛んでいます",
+      "detail": "この見出しは直前の見出しより 2 段階以上深くなっており、スクリーンリーダーや解析ツールが頼りにする文書のアウトラインが崩れます。レベルを飛ばさず、section、subsection、subsubsection のように進めてください。"
+    },
+    "nonstandard-headings": {
+      "title": "標準的でないセクション見出し:「{{heading}}」",
+      "detail": "解析ツールは Experience、Education、Skills のような標準的な見出しを認識してセクションを対応付けます。独創的な見出しでは、そのセクションが分類されないままになることがあります。一般的な見出しの利用を検討してください。"
+    },
+    "color-only": {
+      "title": "色だけが手がかりになっていないか確認してください",
+      "detail": "色の付いた内容が見つかりましたが、その意味を自動では判断できません。色で状態や分類を区別している場合は、テキスト、形、太さなど、ほかの知覚できる手がかりも添えてください。"
+    },
+    "reading-order-risk": {
+      "title": "読み上げ順が乱れる可能性のあるレイアウト",
+      "detail": "傍注や回り込みの図は本文の流れの外に置かれるため、解析ツールやスクリーンリーダーが順序どおりに読まないことがあります。コンパイル後、下のプレビューで読み上げ順を確認してください。"
+    },
+    "ua-standard-without-title": {
+      "title": "文書のタイトルなしで PDF/UA を宣言しています",
+      "detailBoth": "この文書は pdfstandard=ua を宣言していますが、pdftitle も pdfdisplaydoctitle=true も設定していません。PDF/UA は XMP メタデータのタイトルと、それを表示するビューアの設定を求めるため、満たしていない規格を名乗ることになります。hyperref を読み込み、\\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定してください。",
+      "detailTitle": "この文書は pdfstandard=ua を宣言していますが、pdftitle を設定していません。PDF/UA は XMP メタデータのタイトルと、それを表示するビューアの設定を求めるため、満たしていない規格を名乗ることになります。hyperref を読み込み、\\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定してください。",
+      "detailDisplay": "この文書は pdfstandard=ua を宣言していますが、pdfdisplaydoctitle=true を設定していません。PDF/UA は XMP メタデータのタイトルと、それを表示するビューアの設定を求めるため、満たしていない規格を名乗ることになります。hyperref を読み込み、\\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定してください。"
+    },
+    "ua-standard-on-tectonic": {
+      "title": "同梱のエンジンでは、宣言された PDF/UA の出力を作れません",
+      "detail": "この文書は pdfstandard=ua を宣言していますが、同梱のエンジンはタグツリーを書き出せないため、PDF は満たしていない PDF/UA を名乗ることになります。TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルするか、pdfstandard のキーを外してください。"
+    },
+    "table-header-rows": {
+      "title": "表の見出し行が見出しとして指定されていません",
+      "detail": "この表は 1 行目の下に罫線を引いており見出しのように読めますが、LaTeX は既定ですべてのセルをデータセルとしてタグ付けします。そのためスクリーンリーダーは値と列の対応をたどれません。見出し行を宣言してください。例: \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "pdf-reading-order": {
+      "title": "出力で段をまたいで読まれています",
+      "detail": "このページでは 2 つの段のテキストが同じ行に並んでいるため、解析ツールは横に読み進めて文字列が入り混じり、スクリーンリーダーも順序どおりに読み上げません。解析される必要のある内容には 1 段組のレイアウトを使ってください。下のリーダー表示も確認してください。"
+    },
+    "pdf-garbled": {
+      "title": "出力のテキストが文字化けまたは未対応です",
+      "detail": "抽出されたテキストに Unicode へ対応付けられなかった文字が含まれています。そのためコピーや解析ツールには文字化けとして見え、スクリーンリーダーも読めません。多くは、グリフから Unicode へのマップがないか、フォントがテキストとして埋め込まれていないことが原因です。"
+    },
+    "pdf-selectable": {
+      "title": "このページに選択できるテキストがありません",
+      "detail": "このページには抽出できるテキストがほとんど、またはまったくないため、解析ツールもスクリーンリーダーも何も読めません。画像として描画されているか、フォントがテキストとして埋め込まれていない可能性が高いです。内容が実際に選択できるテキストになっているか確認してください。"
+    },
+    "output-clipped-content": {
+      "title": "テキストがページの外にはみ出しています",
+      "detail": "選択できるテキストがこのページのメディアボックスの外にあり、印刷や出版社の処理で切れたり失われたりする可能性があります。幅の広い数式、表、URL、位置を指定した内容を確認してください。"
+    },
+    "output-small-text": {
+      "title": "非常に小さな文字が見つかりました",
+      "detail_other": "{{count}} 箇所のテキストがおよそ 7 pt を下回っています。小さな文字は印刷でも通常の表示倍率でも読みにくくなります。投稿先が許容しているか確認し、必要以上に小さいラベルや脚注は大きくしてください。"
+    },
+    "pdf-no-bookmarks": {
+      "title": "長い PDF にしおりがありません",
+      "detail": "長い文書では、キーボードや支援技術の利用者がすべてのページを順に読まなくてもセクションを移動できるよう、階層的なしおりを用意すべきです。これは PDF/UA の要件ではなく WCAG のベストプラクティスです。hyperref または bookmark を読み込むと出力されます。"
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF のメタデータを確認できませんでした",
+      "detail": "PDF のメタデータを読めなかったため、文書のタイトルや言語を検証できません。これは結果が不明ということであり、それらの項目がないという証拠ではありません。再コンパイルしてチェックをやり直してください。"
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF に言語とタイトルがありません",
+      "titleLang": "PDF に言語がありません",
+      "titleTitle": "PDF にタイトルがありません",
+      "detail": "支援技術やブラウザは、文書を正しく読み上げるために PDF のカタログの言語とタイトルを使います。hyperref で設定してください。例: \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}。"
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF のタグ付け状況を確認できませんでした",
+      "detail": "PDF の MarkInfo 辞書を読めませんでした。これは結果が不明ということで、どちらの証拠にもならないため、このチェックだけで出力をタグ付き・タグなしとは判断しません。"
+    },
+    "compile-failed": {
+      "title": "直近のコンパイルが失敗しました",
+      "detail": "投稿用の出力は、成功したビルドから作る必要があります。最初のコンパイラエラーを直し、もう一度コンパイルしてから、プリフライトを再実行してください。"
+    },
+    "compile-overfull-box": {
+      "title_other": "出力に {{count}} 行のはみ出しがあります",
+      "detail": "コンパイラが、テキストボックスから最大 {{width}} pt はみ出す内容を報告しています。これらの箇所で、テキスト、数式、表、リンクが切れていないか確認してください。"
+    },
+    "compile-missing-glyph": {
+      "title_other": "{{count}} 件のグリフが見つかりません",
+      "detail": "選択されたフォントでは、すべての文字を描画できません。欠けたグリフは、名前、数式、引用の記号も含め、PDF から黙って消えることがあります。"
+    },
+    "compile-unresolved-references": {
+      "title": "コンパイル結果に未解決の参照があります",
+      "detail": "コンパイル後も、少なくとも 1 つの引用または相互参照が未解決のままです。投稿する PDF に [?] や ?? が含まれる可能性があります。ログを確認し、必要な参考文献と LaTeX のパスを実行してください。"
+    },
+    "compile-rerun-required": {
+      "title": "もう一度コンパイルする必要があります",
+      "detail": "直近のログによると、ラベル、引用、目次が確定していません。書き出す前に、再コンパイルの警告が消えるまでコンパイルしてください。"
+    },
+    "compile-duplicate-destination": {
+      "title": "PDF の移動先が重複しています",
+      "detail": "2 つのアンカーが同じ移動先を共有しているため、リンクやしおりが誤った場所へ飛ぶことがあります。多くはラベルの重複やページ番号のリセットが原因です。"
+    },
+    "compile-mixed-page-sizes": {
+      "title": "1 つの PDF に複数のページサイズが混在しています",
+      "detail_other": "この PDF には {{count}} 種類のページサイズ（{{sizes}}）が含まれています。メディアボックスの混在は、誤って取り込まれたページや図を示していることが多く、出版社の製作チェックで弾かれることがあります。"
+    },
+    "output-tagpdf-warning": {
+      "title_other": "タグ付けで {{count}} 件の問題が報告されました",
+      "detail": "タグ付けのコードが、次の警告をログに書き出しました: {{warnings}} いずれも、構造ツリーが内容と一致していない箇所です。ソースを直してから、もう一度コンパイルしてください。"
+    },
+    "output-tagging-status": {
+      "title_other": "タグ付けの状況レポートで {{count}} 件が指摘されました",
+      "detail": "LaTeX がビルドの最後に、タグ付けの状況レポートを書き出しました。",
+      "partClass": "{{name}} クラスは {{status}} です。",
+      "partBlocking": "タグ付けに対応していません: {{files}}。",
+      "partUnproven": "判定の記録がありません: {{files}}。",
+      "partPartial": "一部しかタグ付けされません: {{files}}。",
+      "partAdvice": "タグ付けできないものは、セクション全体を構造ツリーから漏らすことがあります。置き換えられるものは置き換えてください。"
+    },
+    "pdf-structure-single-pass": {
+      "title": "タグツリーが 1 回目のコンパイルのように見えます",
+      "detail": "この PDF はタグ付きと示されていますが、構造ツリーにほとんど何も入っておらず、1 回のパスで作った状態と同じです。タグ付きの出力には 2 回のパスが必要です。もう一度コンパイルしてから確認し直してください。"
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "この PDF は PDF/UA-{{part}} を名乗っていますが、満たしていません",
+      "detail": "XMP メタデータは pdfuaid:part {{part}} を宣言していますが、ファイルの中身がそれを裏付けていません。",
+      "partNoXmpTitle": "XMP メタデータに文書のタイトルがありません。",
+      "partNoDisplayDocTitle": "DisplayDocTitle が true に設定されていません。",
+      "partNotTagged": "このファイルはタグ付けされていません。",
+      "partAdvice": "この宣言を信頼するものは、適合していないこの PDF を適合していると報告します。不足を埋めるか、宣言を外してください。hyperref を使う場合は \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定し、タグ付けを有効にしてコンパイルしてください。"
+    },
+    "pdf-xmp-title": {
+      "title": "タイトルが Info 辞書にしかありません",
+      "detail": "文書のタイトルは Info 辞書に設定されていますが、PDF/UA が参照する XMP メタデータの dc:title には入っていません。hyperref を pdftitle 付きで読み込むと、両方に書き込まれます。"
+    },
+    "pdf-display-doc-title": {
+      "title": "リーダーがタイトルではなくファイル名を表示します",
+      "detail": "ViewerPreferences に DisplayDocTitle が true として設定されていないため、PDF リーダーはウィンドウや支援技術にファイル名を伝えます。hyperref で設定してください。例: \\hypersetup{pdfdisplaydoctitle=true}。"
+    },
+    "pdf-suspects": {
+      "title": "この PDF は自らタグ付けが信頼できないと示しています",
+      "detail": "MarkInfo が Suspects を true にしており、これは作成側がタグツリーと見た目の内容が一致しない可能性があると述べているということです。最新のエンジンで再コンパイルし、ログのタグ付けの警告を確認してください。"
+    },
+    "pdf-link-alt": {
+      "title_other": "{{count}} 件のリンク注釈に説明がありません",
+      "detail": "Contents の項目がないリンク注釈は、スクリーンリーダーがページ内のリンクを一覧するときに読み上げる内容を持ちません。リンクのテキストで移動先を説明し、hyperref にそのテキストを注釈へ渡させてください。"
+    },
+    "pdf-untagged-content": {
+      "title": "テキストの {{percent}}% がタグツリーの外にあります",
+      "detail": "{{total}} 箇所のテキストのうち {{untagged}} 箇所がタグツリーのどこにも結び付いていないため、スクリーンリーダーはそれらを読み飛ばします。アーティファクトは数に含みません。実際の内容はタグ付けし、装飾的な内容はアーティファクトとして指定してください。例: \\includegraphics[artifact]{...}。"
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF の構造をすべては確認できませんでした",
+      "detail_other": "{{pages}} ページ目のアクセシビリティ構造ツリーを取り出せませんでした。構造を取得できなかったことを、この PDF がタグ付けされていない証拠とは扱いません。"
+    },
+    "pdf-untagged-output": {
+      "title": "この PDF はタグ付けされていません",
+      "detail": "コンパイルされた PDF に構造ツリーがないため、スクリーンリーダーは見出し、リスト、表、読み上げ順を得られず、PDF/UA-1 の 7.1 項も満たせません。タグ付きの出力には、TeX Live 2025 以降の pdfLaTeX か LuaLaTeX と \\DocumentMetadata{tagging=on} が必要です。同梱のエンジンはタグを作れません。それまでの間も、上のソースと出力のチェックは有効です。"
+    },
+    "pdf-structure-missing": {
+      "title": "タグ付き PDF に読み取れる構造ツリーがありません",
+      "detail": "この PDF は自らタグ付きと宣言していますが、たどれる文書構造が見つかりませんでした。スクリーンリーダーが見出し、リスト、表、読み上げ順を受け取れない可能性があります。タグ付けには 2 回のコンパイルが必要なので、最終判断の前にもう一度コンパイルして確認してください。"
+    },
+    "output-figure-alt": {
+      "title": "タグ付きの図に代替テキストがありません",
+      "detail": "この図はタグ付けされていますが代替テキストがないため、スクリーンリーダーが説明できません。ソースに説明を追加してください。例: \\includegraphics[alt={...}]{...}。装飾的な画像には代わりに [artifact] を指定してください。"
+    },
+    "output-formula-alt": {
+      "title": "数式に代替テキストがありません",
+      "detail": "PDF/UA-1 では Formula に Alt または ActualText が必要です。ソースで追加してください。例えば \\tagpdfsetup を使うか、数式に alt キーを指定します。PDF/UA-2 では、LuaLaTeX と \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}} でコンパイルして MathML を関連付けることもできます。"
+    },
+    "output-table-headers": {
+      "title": "タグ付きの表に見出しセルがありません",
+      "detail": "この表には見出し（TH）のセルがないため、スクリーンリーダーはデータと列や行の見出しを結び付けられません。見出し行を指定してください。例: \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "output-heading-skip": {
+      "title": "タグツリーで見出しのレベルが飛んでいます",
+      "detail": "タグ付けされた見出しが 2 段階以上飛んでいます（例えば H1 から H3 へ）。スクリーンリーダーがたどるアウトラインが崩れます。見出しのレベルを飛ばさないでください。"
+    },
+    "ats-no-name": {
+      "title": "解析ツールが氏名を特定できませんでした",
+      "detail": "抽出されたテキストから、人名らしきものが見つかりませんでした。氏名は文書の先頭付近に、ページヘッダー、画像、位置指定のテキストボックスの外で、プレーンテキストとして書いてください。"
+    },
+    "ats-no-email": {
+      "title": "解析ツールがメールアドレスを見つけられませんでした",
+      "detail": "抽出されたテキストにメールアドレスが見つかりませんでした。これは解析ツールが最も頼りにする項目です。アイコンの隣やヘッダーの中にある場合、選択できるテキストになっていない可能性があります。本文にプレーンテキストとして書いてください。"
+    },
+    "ats-no-phone": {
+      "title": "解析ツールが電話番号を見つけられませんでした",
+      "detail": "抽出されたテキストに電話番号が見つかりませんでした。アイコンの陰やヘッダーの中にある場合は、本文に選択できるプレーンテキストとして追加してください。"
+    },
+    "ats-no-experience": {
+      "title": "解析ツールが職務経歴のセクションを検出できませんでした",
+      "detail": "標準的な Experience の見出しが見つからなかったため、解析ツールが職歴をまとめられない可能性があります。Experience や Work Experience のような一般的な見出しを、実際に選択できるテキストとして使ってください。"
+    },
+    "ats-long-resume": {
+      "title_other": "履歴書が {{count}} ページあります",
+      "detail": "多くの採用の流れでは 1 ページから 2 ページを想定していますが、上級職、学術、公的機関の CV はもっと長くてもかまいません。この長さが職種と文書の種類に合っているか確認してください。"
+    },
+    "refs-incomplete-metadata": {
+      "title_other": "{{count}} 件の参考文献の項目でメタデータが不足しています",
+      "detail": "情報が欠けていると、出版社のスタイルで参照が壊れたりあいまいになったりします。{{examples}}。",
+      "detailTruncated": "情報が欠けていると、出版社のスタイルで参照が壊れたりあいまいになったりします。{{examples}}、…"
+    },
+    "refs-malformed-doi": {
+      "title_other": "{{count}} 件の DOI の値が不正に見えます",
+      "detail": "{{keys}} の DOI フィールドを確認してください。説明文ではなく、10.1000/example のような DOI の識別子だけを入れてください。"
+    },
+    "refs-duplicate-title": {
+      "title_other": "重複の可能性がある参考文献のグループが {{count}} 件あります",
+      "detail": "次のキーは、正規化したタイトルが同じです: {{groups}}。本当に重複しているものはまとめて、引用のスタイルとメタデータの一貫性を保ってください。"
+    },
+    "refs-uncited-entries": {
+      "title_other": "引用されていない参考文献の項目が {{count}} 件あります",
+      "detail": "使われていない項目は投稿のメタデータを煩雑にし、重複の管理も難しくします。{{keys}} を確認してください。",
+      "detailTruncated": "使われていない項目は投稿のメタデータを煩雑にし、重複の管理も難しくします。{{keys}}、… を確認してください。"
+    },
+    "refs-project-duplicate-label": {
+      "title_other": "{{count}} 件のラベルが複数のファイルで定義されています",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_other": "一度も参照されていない図、表、数式のラベルが {{count}} 件あります",
+      "detail": "番号付きの結果がそれぞれ本文で触れられているか確認してください: {{labels}}。",
+      "detailTruncated": "番号付きの結果がそれぞれ本文で触れられているか確認してください: {{labels}}、…"
+    },
+    "refs-undefined-cite": {
+      "title": "引用「{{key}}」はどの .bib にもありません",
+      "detail": "この引用キーは読み込まれた参考文献に見つからなかったため、PDF では [?] と表示されます。キーを確認するか、.bib に項目を追加してください（「引用を追加」で取得できます）。"
+    },
+    "refs-undefined-ref": {
+      "title": "「{{label}}」への参照に対応する \\label がありません",
+      "detail": "この相互参照は定義されていないラベルを指しているため、PDF では ?? と表示されます。ラベル名を確認するか、足りない \\label を追加してください。"
+    },
+    "refs-duplicate-label": {
+      "title": "ラベル「{{label}}」が重複しています",
+      "detail": "同じラベルが複数回定義されているため、そのラベルへの参照があいまいになります。ラベルはそれぞれ一意にしてください。"
+    },
+    "refs-missing-asset": {
+      "titleImage": "画像が見つかりません: {{file}}",
+      "detailImage": "この \\includegraphics はプロジェクトにないファイルを指しているため、図が欠けます。ファイル名とパスを確認してください。",
+      "titleInclude": "インクルードされたファイルが見つかりません: {{file}}",
+      "detailInclude": "この \\input または \\include はプロジェクトにないファイルを指しています。ファイル名とパスを確認してください。"
+    },
+    "refs-bib-missing": {
+      "title": "参考文献ファイルが見つかりません: {{file}}",
+      "detail": "この \\bibliography または \\addbibresource はプロジェクトにないファイルを指しているため、すべての引用が [?] と表示されます。ファイル名を確認するか、参考文献ライブラリを読み込んで作成してください。"
+    },
+    "refs-duplicate-bib": {
+      "title": "参考文献の項目が重複しています: {{keys}}",
+      "detail": "これらの項目は DOI {{doi}} を共有しているため、キーが違うだけの同じ文献です。1 つだけ残して引用しないと、参考文献に 2 回並びます。"
+    },
+    "submission-path-case": {
+      "title": "ファイル名の大文字と小文字が一致しません: {{target}}",
+      "detailFigure": "この図は、大文字と小文字を区別しないファイルシステムでしか解決できません。プロジェクトには「{{match}}」があるので、Linux ベースのビルドシステムに投稿する前に、大文字と小文字をそのとおりに合わせてください。",
+      "detailInclude": "このインクルードされたファイルは、大文字と小文字を区別しないファイルシステムでしか解決できません。プロジェクトには「{{match}}」があるので、Linux ベースのビルドシステムに投稿する前に、大文字と小文字をそのとおりに合わせてください。"
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "図が見つかりません: {{target}}",
+      "titleInclude": "インクルードされたファイルが見つかりません: {{target}}",
+      "detail": "{{file}} からのこの参照を解決できるプロジェクトファイルがありません。ローカルのキャッシュのおかげで今はコンパイルできても、まっさらな環境での投稿ビルドは失敗します。"
+    },
+    "submission-missing-caption": {
+      "titleFigure": "キャプションのない図",
+      "titleTable": "キャプションのない表",
+      "detail": "出版用の図と表には、単独でも参照でき内容がわかるよう、番号付きで説明的なキャプションを付けるべきです。"
+    },
+    "submission-label-before-caption": {
+      "title": "ラベルがキャプションより前にあります",
+      "detail": "ラベルはキャプションの後ろに置いてください。そうしないと LaTeX が前のカウンタに結び付け、誤った図表番号になることがあります。"
+    },
+    "privacy-sensitive-file": {
+      "title": "機微なファイルが含まれています: {{file}}",
+      "detail": "ソースのアーカイブを書き出す、同期する、公開する前に、資格情報や秘密鍵のファイルをプロジェクトから取り除いてください。"
+    },
+    "privacy-credential": {
+      "title": "{{file}} に資格情報らしきものがあります",
+      "detail": "このプロジェクトには、API トークン、クラウドのアクセスキー、秘密鍵のような形の文字列が含まれています。露出した資格情報は失効させ、プロジェクトと Git の履歴から取り除いてください。"
+    },
+    "privacy-internal-comment": {
+      "title": "{{file}} に内部向けのメモが残っています",
+      "detail": "ソースのコメントは PDF には出ませんが、国際会議、論文誌、プレプリントのソースアーカイブでは公開されることがあります。私的な編集メモを確認して削除してください。"
+    },
+    "privacy-draft-artifact": {
+      "title": "下書き用の記述が有効なままです",
+      "detail": "ソースで draft、TODO、変更履歴、透かし、ラベルのデバッグ表示が有効になっています。無効にしたうえで、投稿前に最終 PDF を目で確認してください。"
+    },
+    "privacy-blind-author": {
+      "title": "ブラインド査読用のソースに著者情報が残っています",
+      "detail": "ソースに匿名化されていない著者、所属、メールアドレス、住所、謝辞の項目があります。投稿先の匿名査読モードを使って、身元がわかる内容を置き換えてください。"
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "謝辞から著者が判明する可能性があります",
+      "detail": "謝辞には、機関、助成、共同研究者、施設の名前が入ることがよくあります。投稿先が明示的に認めていない限り、ブラインド査読の投稿からは削除してください。"
+    },
+    "privacy-pdf-author": {
+      "title": "PDF のメタデータに著者が入っています",
+      "detail": "PDF の Author フィールドは「{{author}}」です。ブラインド査読用の PDF をアップロードする前に、著者のメタデータを消してください。"
+    },
+    "submission-nonportable-filename": {
+      "title": "移植性のないファイル名です: {{file}}",
+      "detail": "このプロファイルでは、英数字、アンダースコア、プラス、マイナス、ピリオド、カンマ、等号、ディレクトリの区切り文字だけが使えます。ファイル名を変更し、参照も更新してください。"
+    },
+    "submission-absolute-path": {
+      "title": "{{file}} にこのマシン固有のパスがあります",
+      "detail": "ローカルの絶対パスは、出版社のビルドサーバーには存在しません。依存するファイルをプロジェクト内に移し、相対パスで参照してください。"
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} が外部コマンドの実行を必要としています",
+      "detail": "出版社やアーカイブのビルド環境では、shell escape を無効にしているものが多くあります。出力をあらかじめ生成しておくか、投稿先がこのパッケージとコマンドに対応しているか確認してください。"
+    },
+    "submission-generated-file": {
+      "title": "生成されたビルドファイルが含まれています: {{file}}",
+      "detail": "生成された補助ファイルはソースパッケージを煩雑にし、古い状態を残すことがあります。選択した投稿先が明示的に必要としない限り、除外してください。"
+    },
+    "submission-document-class": {
+      "title": "{{profile}} のドキュメントクラスが使われていません",
+      "detail": "このプロファイルは {{expected}} を想定していますが、プロジェクトは {{actual}} を使っています。投稿先の最新の公式テンプレートから始めてください。",
+      "detailNoClass": "このプロファイルは {{expected}} を想定していますが、ドキュメントクラスが検出できませんでした。投稿先の最新の公式テンプレートから始めてください。"
+    },
+    "submission-no-abstract": {
+      "title": "概要が検出されませんでした",
+      "detail": "この出版プロファイルは、標準的な abstract 環境での概要を想定しています。追加するか、その投稿先が必要としないことを確認してください。"
+    },
+    "submission-no-keywords": {
+      "title": "出版用のキーワードが検出されませんでした",
+      "detail": "{{profile}} のプロファイルは、標準のテンプレートのコマンドまたは環境によるキーワードを想定しています。"
+    },
+    "submission-figure-format": {
+      "title": "対応していない図の形式です: {{file}}",
+      "detail": "{{profile}} が対応する TeX のワークフローで受け付ける図のファイルは {{formats}} です。アップロード前にこの図を変換してください。"
+    },
+    "submission-placeholder": {
+      "title": "下書きの仮記述が原稿に残っています",
+      "detail": "ソースに TODO、TBD、FIXME、仮の文章、疑問符の目印が含まれています。最終版を作る前に、それぞれの箇所を確認してください。"
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} は必要なバージョンを下回っています",
+      "detail": "{{profile}} には PDF {{minimum}} 以降が必要です。コンパイラの PDF 設定を更新して、ファイルを作り直してください。"
+    },
+    "submission-bookmarks": {
+      "title": "PDF のしおりは許可されていません",
+      "detail": "{{profile}} は PDF のしおりを受け付けません。この投稿プロファイルでは文書のアウトラインを削除してください。"
+    },
+    "submission-links": {
+      "title": "PDF のリンクは許可されていません",
+      "detail": "{{profile}} はリンク注釈を受け付けません。投稿する PDF では、生成されるハイパーリンクを無効にしてください。"
+    },
+    "submission-attachments": {
+      "title": "PDF に添付ファイルが埋め込まれています",
+      "detail": "{{profile}} は PDF の添付ファイルやパッケージを受け付けません。投稿前に埋め込みファイルをすべて削除してください。"
+    },
+    "submission-security": {
+      "title": "PDF のセキュリティ制限が有効です",
+      "detail": "{{profile}} では、パスワードや権限の制限のない PDF が必要です。"
+    },
+    "submission-unembedded-font": {
+      "title_other": "{{count}} 件のフォントが埋め込まれていません",
+      "detail": "{{profile}} では、テキストと数式を確実に描画できるよう、すべてのフォントを埋め込むかサブセット化する必要があります。{{fonts}} を直してください。"
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "一部のフォントの埋め込みを確認できませんでした",
+      "detail": "{{fonts}} の埋め込み状況を確認できませんでした。投稿先の公式の PDF チェックツールで確認してください。"
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "アクセシビリティ",
+    "both": "ATS とアクセシビリティ",
+    "refs": "参考文献",
+    "compile": "コンパイル",
+    "submission": "投稿",
+    "privacy": "プライバシー"
+  },
+  "severity": {
+    "error": "エラー",
+    "warning": "警告",
+    "info": "参考"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "ビルド",
+    "a11y": "アクセス",
+    "refs": "文献",
+    "submission": "投稿",
+    "privacy": "プライバシー"
+  },
+  "checks": {
+    "compile": {
+      "label": "コンパイルとレイアウト",
+      "who": "すべての最終文書向け",
+      "info": "ビルドのエラー、未解決の参照、欠けたグリフ、ページレイアウトの問題。",
+      "detail": "直近のコンパイラログと PDF を調べ、失敗したビルド、未解決の参照、欠けたグリフ、はみ出しや切れた内容、古い再コンパイルの警告、ページサイズの混在を確認します。"
+    },
+    "submission": {
+      "label": "投稿の準備状況",
+      "who": "国際会議、論文誌、プレプリント、学位論文向け",
+      "info": "出版プロファイルの規則と、ソースパッケージに含めるべきでないファイル。",
+      "detail": "プロジェクト全体に出版プロファイルを適用します。公式のドキュメントクラス、移植できるソースのパス、図の形式、概要とキーワード、PDF の制限、キャプション、余計なものを含まないソースの梱包が対象です。"
+    },
+    "ats": {
+      "label": "ATS の準備状況",
+      "who": "履歴書と CV 向け",
+      "info": "履歴書の解析ツールが取り出せる連絡先とセクション。",
+      "detail": "採用管理システム（Workday、Taleo、Greenhouse）が PDF から何を抽出するかを再現し、それを乱すレイアウトや書式を指摘します。研究論文には関係ありません。"
+    },
+    "a11y": {
+      "label": "アクセシビリティ",
+      "who": "研究、行政、公開される PDF 向け",
+      "info": "タグ付け、代替テキスト、文書の言語とタイトル、ビューアの設定、構造、リンク、読み上げ順。",
+      "detail": "コンパイルされた PDF を、機械的に確認できる範囲の PDF/UA-1（ISO 14289-1）と WCAG 2.2 の PDF 技術と照らし合わせます。タグ付け、代替テキスト、文書の言語とタイトル、ビューアの設定、見出しと表の構造、リンクの説明、読み上げ順、選択できるテキストが対象です。ソースのチェックは、コンパイル前に問題になりそうな箇所を指摘します。"
+    },
+    "refs": {
+      "label": "参考文献とアセット",
+      "who": "研究文書と複数ファイルの文書向け",
+      "info": "壊れた引用、重複したラベル、情報の足りない参考文献の項目、見つからないアセット。",
+      "detail": "未定義の引用や相互参照、重複したラベル、見つからない図やインクルードファイルを、投稿時に PDF を壊す前に見つけます。"
+    },
+    "privacy": {
+      "label": "プライバシーとブラインド査読",
+      "who": "ソースを共有する前、匿名で投稿する前",
+      "info": "秘密情報、下書きのメモ、機微なファイル、ブラインド査読での身元の露出。",
+      "detail": "匿名査読の投稿に含まれる資格情報、秘密鍵、内部向けのコメント、下書きの記述、機微なプロジェクトファイル、著者のメタデータ、身元の露出を見つけます。"
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "一般的な出版",
+      "description": "移植できるソース、きれいな出力、そろったメタデータ、出版でよくある落とし穴。"
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "大文字と小文字を区別する arXiv の投稿システムで再ビルドできる、移植性のあるソース。"
+    },
+    "ieee": {
+      "label": "IEEE の国際会議・論文誌",
+      "description": "IEEEtran のソースと、IEEE Xplore への掲載で確認される PDF の制約。"
+    },
+    "acm": {
+      "label": "ACM の国際会議・論文誌",
+      "description": "ACM acmart のソース構成と、出版に必要な研究メタデータ。"
+    },
+    "journal": {
+      "label": "その他の論文誌",
+      "description": "出版社に依存しない論文誌向けのチェック。投稿前に、その論文誌の正確な制限を加えてください。"
+    },
+    "thesis": {
+      "label": "学位論文",
+      "description": "長い文書の構造、移動のしやすさ、参考文献、移植性のあるソースのチェック。"
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "職務経歴",
+      "education": "学歴",
+      "skills": "スキル",
+      "projects": "プロジェクト",
+      "summary": "サマリー"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: 機械的に確認できる {{total}} 件の規則のうち {{passed}} 件を確認しました。部分的なチェックであり、適合の証明ではありません。",
+    "coverageWithBlindSpots": "PDF/UA-1: 機械的に確認できる {{total}} 件の規則のうち {{passed}} 件を確認しました。Oleafly はそのうち {{covered}} 件を読み取り、うち {{unavailable}} 件はこのファイルでは確認できませんでした。部分的なチェックであり、適合の証明ではありません。"
+  },
+  "taggingGate": {
+    "noSupport": "{{name}} クラスはタグ付きの出力を作れず、LaTeX Project もそれを想定していません。",
+    "noSupportWithNote": "{{name}} クラスはタグ付きの出力を作れず、LaTeX Project もそれを想定していません。{{note}}",
+    "currentlyIncompatible": "{{name}} クラスはまだ LaTeX のタグ付けに対応していないため、このソースを準備してもアクセシブルな PDF にはなりません。",
+    "currentlyIncompatibleWithNote": "{{name}} クラスはまだ LaTeX のタグ付けに対応していないため、このソースを準備してもアクセシブルな PDF にはなりません。{{note}}",
+    "partiallyCompatible": "{{name}} クラスはタグ付けに一部しか対応していないため、構造ツリーに抜けが出ると考えてください。",
+    "partiallyCompatibleWithNote": "{{name}} クラスはタグ付けに一部しか対応していないため、構造ツリーに抜けが出ると考えてください。{{note}}",
+    "unrecorded": "LaTeX Project は {{name}} クラスのタグ付け状況を記録していないため、結果は未確認です。コンパイルして出力を確認してください。"
+  },
+  "prep": {
+    "metadataUpdated": "\\DocumentMetadata に、タグ付けに必要なキーを追加しました。",
+    "metadataAdded": "\\DocumentMetadata を先頭行に追加しました（必須で、\\documentclass より前に置く必要があります）。",
+    "headerRows": "各表の 1 行目が見出しセルとしてタグ付けされるよう、table/header-rows を 1 に設定しました。見出しの行数が違う表がある場合は、数値を変えてください。",
+    "unicodeMath": "このエンジンでタグ付き数式に必要な \\usepackage{unicode-math} を追加しました。",
+    "altPlaceholders_other": "{{count}} 件の画像に代替テキストの仮の記述を追加しました。TODO の文言を実際の説明に置き換えてください。",
+    "titleRequired": "PDF/UA には、リーダーが表示する文書のタイトルが必要です。hyperref を読み込み、\\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} を設定してください。",
+    "incompatiblePackages_other": "次のパッケージはタグ付けに対応していません: {{packages}}。これらからの内容はタグなしで PDF に入ることがあります。置き換えられるものは置き換えてください。",
+    "cautionPackages": "次のパッケージは一部しかタグ付けしないか、タグ付けの判定が記録されていません: {{packages}}。コンパイルして、構造ツリーに抜けがないか確認してください。",
+    "compileLua": "準備したソースを TeX Live 2025 以降の LuaLaTeX でコンパイルしてから、出力を確認し直してください。",
+    "compileAny": "準備したソースを TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルしてから、出力を確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。"
+  },
+  "gate": {
+    "incompatiblePackages_other": "次のパッケージはタグ付けに対応していません: {{packages}}。これらからの内容はタグなしで PDF に入ることがあります。",
+    "incompatiblePackagesTruncated": "次のパッケージはタグ付けに対応していません: {{packages}} ほか {{more}} 件。これらからの内容はタグなしで PDF に入ることがあります。",
+    "partialPackages": "次のパッケージは一部しかタグ付けしません: {{packages}}。",
+    "partialPackagesTruncated": "次のパッケージは一部しかタグ付けしません: {{packages}} ほか {{more}} 件。",
+    "unknownPackages": "{{packages}} にはタグ付けの判定が記録されていません。",
+    "unknownPackagesTruncated": "{{packages}} ほか {{more}} 件には、タグ付けの判定が記録されていません。",
+    "cautionAdvice": "コンパイルして、構造ツリーに抜けがないか確認してください。"
+  },
+  "panel": {
+    "title": "プリフライト",
+    "readerDisabled": "先にコンパイルして出力のチェックを実行してください",
+    "readerEnabled": "PDF から抽出したテキストを開きます",
+    "readerButton": "リーダーに見えているものを表示",
+    "aboutLabel": "プリフライトについて",
+    "aboutTitle": "プリフライトが確認すること",
+    "aboutIntro": "プリフライトは、プロジェクトのソース、コンパイラのログ、現在の PDF を読み取ります。この文書に合うチェックだけを有効にしてください。",
+    "aboutFooter": "「確認済み」の指摘は直接の観察に基づきます。「要判断」の指摘には、あなたの判断が必要です。指摘のないレポートは確認の助けになりますが、採択やアクセシビリティを保証するものではありません。すべてのチェックはローカルで実行されます。",
+    "enableCheck": "{{check}} を有効にする",
+    "runCheck": "{{check}} を実行",
+    "rerunCheck": "{{check}} を再実行",
+    "run": "実行",
+    "rerun": "再実行",
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "publicationProfile": "出版プロファイル",
+    "anonymousReview": "匿名査読",
+    "anonymousReviewHint": "著者の項目、謝辞、PDF のメタデータも確認します。",
+    "anonymousReviewToggle": "匿名査読での身元を確認する",
+    "engineUnsupported": "{{engine}} のソースチェックはまだ実装されていません。このチェックはコンパイル済みの PDF だけを使い、ソース対応がないことを失敗としては報告しません。",
+    "runToSeeResults": "このチェックを実行すると結果が表示されます。",
+    "analyzing": "解析中…",
+    "runEnabled_other": "有効な {{count}} 件のチェックを実行",
+    "rerunEnabled_other": "有効な {{count}} 件のチェックを再実行",
+    "failed": "プリフライトに失敗しました: {{error}}",
+    "standardsCaveat": "Oleafly は、PDF/UA と WCAG のうちファイル自体で確認できる部分を読み取ります。代替テキストが意味のあるものか、読み上げ順が筋の通ったものか、色のコントラストが十分かは判断できません。それらは人が判断する必要があります。正式な適合の証明には、veraPDF や PAC 2024 で検証してください。",
+    "pdfRequired": "PDF が必要です。プロジェクトをコンパイルしてから再実行してください。このチェックはまだ評価されていません。",
+    "compileFirst": "先にプロジェクトをコンパイルしてください。プリフライトがビルドの品質を評価するには、最新のコンパイラログまたは PDF が必要です。",
+    "partialCoverage": "ソースのチェックが完了しました。プロジェクトをコンパイルしてから再実行すると、PDF レベルのチェックも完了します。",
+    "unsupportedCoverage": "評価していません。このエンジンのソースチェックは実装されていません。",
+    "groupSource": "プロジェクトとソース",
+    "groupOutput": "コンパイル結果",
+    "fixAll_other": "{{count}} 件すべてを AI で修正",
+    "noProblems": "問題は見つかりませんでした。"
+  },
+  "finding": {
+    "review": "要確認",
+    "manual": "手動",
+    "page": "p.{{page}}",
+    "needsJudgment": "あなたの判断が必要です。ファイルだけからこれを判断できるツールはありません。",
+    "jumpToSource": "ソースへ移動",
+    "fixWithAi": "AI で修正"
+  },
+  "score": {
+    "notEvaluated": "{{label}} は評価していません",
+    "readiness": "{{label}} の準備状況は 100 点中 {{score}} 点",
+    "notScored": "採点なし"
+  },
+  "reader": {
+    "title": "リーダーに見えているもの",
+    "description": "現在の PDF から読み上げ順で抽出したテキストです。スクリーンリーダーや自動の解析ツールが受け取る内容にほぼ近いものです。",
+    "pagesNav": "PDF のページ",
+    "page": "{{page}} ページ目",
+    "empty": "空",
+    "extractedFrom": "{{page}} ページ目から抽出したテキスト",
+    "pageOf": "{{total}} ページ中 {{page}} ページ目",
+    "noText": "このページに選択できるテキストは見つかりませんでした。"
+  },
+  "atsCard": {
+    "title": "解析ツールが抽出した内容",
+    "notFound": "見つかりません",
+    "links_other": "{{count}} 件のリンク",
+    "detected": "{{section}}: 検出しました",
+    "requiredMissing": "{{section}}: 必要なセクションを検出できませんでした",
+    "optionalMissing": "{{section}}: 任意のセクションを検出できませんでした",
+    "detectedTitle": "{{section}} のセクションを検出しました",
+    "requiredMissingTitle": "{{section}} が想定されていますが、検出できませんでした",
+    "optionalMissingTitle": "{{section}} は任意で、検出されませんでした",
+    "optionalSuffix": "、任意"
+  },
+  "prepExport": {
+    "title": "アクセシブルな書き出し",
+    "intro": "この文書を、PDF/UA-2 を目指すタグ付きの出力向けに準備します。Oleafly は pdfstandard=ua-2 と tagging=on を指定した \\DocumentMetadata に加え、埋められる範囲の代替テキストと表の設定を追加します。結果を TeX Live 2025 以降の pdfLaTeX か LuaLaTeX でコンパイルしてから、確認し直してください。アクセシブルな数式には LuaLaTeX が必要です。同梱のエンジンはタグを作れません。",
+    "activeFileFallback": "Oleafly はメイン文書を読み込めなかったため、編集中のファイルを確認しました。実際のビルドで読み込まれるクラスとパッケージを見るには、メイン文書を開いてください。",
+    "prepare": "アクセシブルな書き出しの準備",
+    "unavailable": "このドキュメントクラスでは準備を利用できません。タグ付けのコードが対応しているクラスに変えてから、チェックをやり直してください。対応状況のデータは LaTeX Project によるもので、取得日は {{retrieved}} です。",
+    "unavailableUndated": "このドキュメントクラスでは準備を利用できません。タグ付けのコードが対応しているクラスに変えてから、チェックをやり直してください。対応状況のデータは LaTeX Project によるものです。",
+    "applied": "適用しました",
+    "apply": "文書に適用",
+    "copied": "コピーしました",
+    "copy": "ソースをコピー",
+    "compileTagged": "タグ付きでコンパイルして確認",
+    "compileTaggedWarning": "システムの LuaLaTeX はローカルのファイルを読めます。信頼できるプロジェクトでのみ実行してください。",
+    "noEngine": "アプリ内でタグ付き PDF を作るには、設定の「LaTeX エンジン」でエンジンを有効にしてください。または、準備したソースを、TeX Live 2025 以降の自分の pdfLaTeX か LuaLaTeX でコンパイルしてください。"
+  }
+}

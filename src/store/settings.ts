@@ -70,14 +70,14 @@ import { isLocalePreference, type LocalePreference } from "@oleafly/i18n-contrac
 import { i18n } from "@/i18n";
 import { changeLocalePreference } from "@/i18n/desktop";
 
-export type DictionaryLocale = "en_US" | "en_GB" | "en_AU" | "de_DE" | "fr_FR";
-export const DICTIONARY_LOCALES: { id: DictionaryLocale; name: string }[] = [
-  { id: "en_US", name: "English (US)" },
-  { id: "en_GB", name: "English (UK)" },
-  { id: "en_AU", name: "English (Australia)" },
-  { id: "de_DE", name: "Deutsch" },
-  { id: "fr_FR", name: "Français" },
-];
+export const DEFAULT_DICTIONARY_LOCALE = "en_US";
+const DICTIONARY_LOCALE_ID = /^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/u;
+export function readDictionaryLocale(raw: string): string {
+  const normalized = raw.trim().replace("-", "_");
+  return DICTIONARY_LOCALE_ID.test(normalized)
+    ? normalized
+    : DEFAULT_DICTIONARY_LOCALE;
+}
 export type EditorThemeId =
   | "system"
   | "linear"
@@ -553,6 +553,9 @@ function saveLs(k: string, v: string) {
     /* ignore */
   }
 }
+function saveFlagLs(k: string, v: boolean) {
+  saveLs(k, v ? "1" : "0");
+}
 function notifyProofreadingSettingsChanged(
   setting: string,
   settings: { spellcheck: boolean; harper: boolean },
@@ -721,9 +724,41 @@ export const GRAMMAR_DIALECTS: {
   { id: "indian", name: "English (India)" },
 ];
 
+export type EditorKeymapMode = "default" | "vim" | "emacs";
+
+export const EDITOR_KEYMAP_MODES: readonly EditorKeymapMode[] = [
+  "default",
+  "vim",
+  "emacs",
+];
+
+export type EditorLineHeight = "compact" | "normal" | "wide";
+
+export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeight, number>> = {
+  compact: 1.4,
+  normal: 1.7,
+  wide: 2,
+};
+
+export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
+  "compact",
+  "normal",
+  "wide",
+];
+
+export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
+
 interface SettingsState {
+  editorKeymap: EditorKeymapMode;
+  setEditorKeymap: (v: EditorKeymapMode) => void;
   vim: boolean;
   toggleVim: () => void;
+  editorTabSize: number;
+  setEditorTabSize: (v: number) => void;
+  editorLineWrap: boolean;
+  setEditorLineWrap: (v: boolean) => void;
+  editorLineHeight: EditorLineHeight;
+  setEditorLineHeight: (v: EditorLineHeight) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -743,6 +778,9 @@ interface SettingsState {
   /** Pin the enclosing sections and environments to the top while scrolling. */
   editorStickyScroll: boolean;
   setEditorStickyScroll: (v: boolean) => void;
+  /** Show the rendered result of the equation the cursor is in. */
+  editorMathPreview: boolean;
+  setEditorMathPreview: (v: boolean) => void;
   spellcheck: boolean;
   toggleSpellcheck: () => void;
   harper: boolean;
@@ -751,8 +789,8 @@ interface SettingsState {
   setGrammarDialect: (v: GrammarDialect) => void;
   uiLocalePreference: LocalePreference;
   setUiLocalePreference: (v: LocalePreference) => void;
-  dictionaryLocale: DictionaryLocale;
-  setDictionaryLocale: (v: DictionaryLocale) => void;
+  dictionaryLocale: string;
+  setDictionaryLocale: (v: string) => void;
   showRegionalism: boolean;
   setShowRegionalism: (v: boolean) => void;
   showWordChoice: boolean;
@@ -904,8 +942,38 @@ function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
   return raw === "latexmk" ? "latexmk" : "tectonic";
 }
 
+function readEditorKeymap(): EditorKeymapMode {
+  const stored = ls("oleafly.editor.keymap", "");
+  if (EDITOR_KEYMAP_MODES.includes(stored as EditorKeymapMode)) {
+    return stored as EditorKeymapMode;
+  }
+  if (ls("oleafly.vim", "0") === "1") {
+    saveLs("oleafly.editor.keymap", "vim");
+    return "vim";
+  }
+  return "default";
+}
+
+function readEditorTabSize(): number {
+  const stored = Number(ls("oleafly.editor.tabSize", ""));
+  return EDITOR_TAB_SIZES.includes(stored) ? stored : 4;
+}
+
+function readEditorLineHeight(): EditorLineHeight {
+  const stored = ls("oleafly.editor.lineHeight", "");
+  return EDITOR_LINE_HEIGHT_OPTIONS.includes(stored as EditorLineHeight)
+    ? (stored as EditorLineHeight)
+    : "normal";
+}
+
+const initialEditorKeymap = readEditorKeymap();
+
 const PREF_DEFAULTS = {
+  editorKeymap: "default" as EditorKeymapMode,
   vim: false,
+  editorTabSize: 4,
+  editorLineWrap: true,
+  editorLineHeight: "normal" as EditorLineHeight,
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
@@ -913,11 +981,12 @@ const PREF_DEFAULTS = {
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
+  editorMathPreview: true,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
   uiLocalePreference: "system" as LocalePreference,
-  dictionaryLocale: "en_US" as DictionaryLocale,
+  dictionaryLocale: DEFAULT_DICTIONARY_LOCALE,
   showRegionalism: true,
   showWordChoice: true,
   harperDisabledRules: [] as readonly string[],
@@ -960,12 +1029,30 @@ const PREF_DEFAULTS = {
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  vim: ls("oleafly.vim", "0") === "1",
-  toggleVim: () =>
-    set((s) => {
-      saveLs("oleafly.vim", s.vim ? "0" : "1");
-      return { vim: !s.vim };
-    }),
+  editorKeymap: initialEditorKeymap,
+  setEditorKeymap: (v) => {
+    saveLs("oleafly.editor.keymap", v);
+    saveLs("oleafly.vim", v === "vim" ? "1" : "0");
+    set({ editorKeymap: v, vim: v === "vim" });
+  },
+  vim: initialEditorKeymap === "vim",
+  toggleVim: () => get().setEditorKeymap(get().vim ? "default" : "vim"),
+  editorTabSize: readEditorTabSize(),
+  setEditorTabSize: (v) => {
+    const size = EDITOR_TAB_SIZES.includes(v) ? v : PREF_DEFAULTS.editorTabSize;
+    saveLs("oleafly.editor.tabSize", String(size));
+    set({ editorTabSize: size });
+  },
+  editorLineWrap: ls("oleafly.editor.lineWrap", "1") !== "0",
+  setEditorLineWrap: (v) => {
+    saveLs("oleafly.editor.lineWrap", v ? "1" : "0");
+    set({ editorLineWrap: v });
+  },
+  editorLineHeight: readEditorLineHeight(),
+  setEditorLineHeight: (v) => {
+    saveLs("oleafly.editor.lineHeight", v);
+    set({ editorLineHeight: v });
+  },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {
     saveLs("oleafly.editor.autocomplete", v ? "1" : "0");
@@ -1002,6 +1089,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.solidCursor", v ? "1" : "0");
     set({ editorNonBlinkingCursor: v });
   },
+  editorMathPreview: ls("oleafly.editor.mathPreview", "1") !== "0",
+  setEditorMathPreview: (v) => {
+    saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
+    set({ editorMathPreview: v });
+  },
   spellcheck: ls("oleafly.spellcheck", "1") !== "0",
   toggleSpellcheck: () => {
     const spellcheck = !get().spellcheck;
@@ -1033,12 +1125,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ uiLocalePreference: v });
     void changeLocalePreference(v);
   },
-  dictionaryLocale: (() => {
-    const raw = ls("oleafly.dictionary.locale", "en_US") as DictionaryLocale;
-    return DICTIONARY_LOCALES.some((locale) => locale.id === raw) ? raw : "en_US";
-  })(),
+  dictionaryLocale: readDictionaryLocale(
+    ls("oleafly.dictionary.locale", DEFAULT_DICTIONARY_LOCALE),
+  ),
   setDictionaryLocale: (v) => {
-    const locale = DICTIONARY_LOCALES.some((item) => item.id === v) ? v : "en_US";
+    const locale = readDictionaryLocale(v);
     saveLs("oleafly.dictionary.locale", locale);
     set({ dictionaryLocale: locale });
     notifyProofreadingSettingsChanged("dictionaryLocale", get());
@@ -1479,35 +1570,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     notifyProofreadingSettingsChanged("reset", get());
   },
   resetAppearancePreferences: () => {
-    saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
-    saveLs(
-      "oleafly.editor.autocomplete",
-      PREF_DEFAULTS.editorAutocomplete ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeBrackets",
-      PREF_DEFAULTS.editorAutoCloseBrackets ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeMath",
-      PREF_DEFAULTS.editorAutoCloseMath ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeEnvironments",
-      PREF_DEFAULTS.editorAutoCloseEnvironments ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.ghostCompletion",
-      PREF_DEFAULTS.editorGhostCompletion ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.solidCursor",
-      PREF_DEFAULTS.editorNonBlinkingCursor ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.stickyScroll",
-      PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
-    );
+    saveLs("oleafly.editor.keymap", PREF_DEFAULTS.editorKeymap);
+    saveFlagLs("oleafly.vim", PREF_DEFAULTS.vim);
+    saveLs("oleafly.editor.tabSize", String(PREF_DEFAULTS.editorTabSize));
+    saveFlagLs("oleafly.editor.lineWrap", PREF_DEFAULTS.editorLineWrap);
+    saveLs("oleafly.editor.lineHeight", PREF_DEFAULTS.editorLineHeight);
+    saveFlagLs("oleafly.editor.autocomplete", PREF_DEFAULTS.editorAutocomplete);
+    saveFlagLs("oleafly.editor.closeBrackets", PREF_DEFAULTS.editorAutoCloseBrackets);
+    saveFlagLs("oleafly.editor.closeMath", PREF_DEFAULTS.editorAutoCloseMath);
+    saveFlagLs("oleafly.editor.closeEnvironments", PREF_DEFAULTS.editorAutoCloseEnvironments);
+    saveFlagLs("oleafly.editor.ghostCompletion", PREF_DEFAULTS.editorGhostCompletion);
+    saveFlagLs("oleafly.editor.solidCursor", PREF_DEFAULTS.editorNonBlinkingCursor);
+    saveFlagLs("oleafly.editor.stickyScroll", PREF_DEFAULTS.editorStickyScroll);
+    saveFlagLs("oleafly.editor.mathPreview", PREF_DEFAULTS.editorMathPreview);
     saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
     saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
     saveLs(
@@ -1519,14 +1594,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       String(PREF_DEFAULTS.terminalFontWeightBold),
     );
     saveLs("oleafly.terminal.cursorStyle", PREF_DEFAULTS.terminalCursorStyle);
-    saveLs(
-      "oleafly.terminal.cursorBlink",
-      PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.terminal.startWithProject",
-      PREF_DEFAULTS.terminalStartWithProject ? "1" : "0",
-    );
+    saveFlagLs("oleafly.terminal.cursorBlink", PREF_DEFAULTS.terminalCursorBlink);
+    saveFlagLs("oleafly.terminal.startWithProject", PREF_DEFAULTS.terminalStartWithProject);
     saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
     saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
     saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
@@ -1538,24 +1607,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
     saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
     saveLs("oleafly.editorTheme", PREF_DEFAULTS.editorTheme);
-    saveLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode ? "1" : "0");
-    saveLs(
-      "oleafly.pdf.zoomShortcuts",
-      PREF_DEFAULTS.pdfZoomShortcuts ? "1" : "0",
-    );
+    saveFlagLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode);
+    saveFlagLs("oleafly.pdf.zoomShortcuts", PREF_DEFAULTS.pdfZoomShortcuts);
     saveLs(
       "oleafly.fileTree.hiddenPatterns",
       JSON.stringify(PREF_DEFAULTS.hiddenFilePatterns),
     );
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
-    saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
-    saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
+    saveFlagLs("oleafly.openInTree", PREF_DEFAULTS.openInTree);
+    saveFlagLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview);
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
     set({
+      editorKeymap: PREF_DEFAULTS.editorKeymap,
       vim: PREF_DEFAULTS.vim,
+      editorTabSize: PREF_DEFAULTS.editorTabSize,
+      editorLineWrap: PREF_DEFAULTS.editorLineWrap,
+      editorLineHeight: PREF_DEFAULTS.editorLineHeight,
       editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
       editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
       editorAutoCloseMath: PREF_DEFAULTS.editorAutoCloseMath,

@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Tietoja Oleaflystä",
+    "checkUpdates": "Etsi päivityksiä…",
+    "reloadViews": "Lataa näkymät uudelleen",
+    "restartApp": "Käynnistä sovellus uudelleen",
+    "quit": "Lopeta Oleafly",
+    "edit": "Muokkaa",
+    "undo": "Kumoa",
+    "redo": "Tee uudelleen",
+    "cut": "Leikkaa",
+    "copy": "Kopioi",
+    "paste": "Liitä",
+    "selectAll": "Valitse kaikki",
+    "view": "Näytä",
+    "toggleTerminal": "Näytä tai piilota pääte",
+    "toggleBrowser": "Näytä tai piilota selain"
+  },
+  "window": {
+    "browser": "Oleafly-selain",
+    "browserTitled": "{{title}} - Oleafly-selain"
+  },
+  "dialog": {
+    "cancel": "Peruuta",
+    "fullAccess": {
+      "title": "Otetaanko täysi käyttöoikeus käyttöön?",
+      "message": "Täydellä käyttöoikeudella avustaja voi ajaa shell-komentoja ja muokata tiedostoja pyytämättä lupaa joka kerta erikseen. Otetaanko täysi käyttöoikeus käyttöön?",
+      "confirm": "Ota täysi käyttöoikeus käyttöön"
+    },
+    "cookieImport": {
+      "title": "Vahvista cookieiden tuonti",
+      "messageHost": "Tuodaanko selaimen {{browser}} profiilista \"{{profile}}\" sivuston {{hostname}} cookiet Oleaflyn sisäiseen selaimeen? Tuodut cookiet voivat kirjata sinut sisään sivustoille.",
+      "messageAll": "Tuodaanko selaimen {{browser}} profiilista \"{{profile}}\" kaikki cookiet Oleaflyn sisäiseen selaimeen? Tuodut cookiet voivat kirjata sinut sisään sivustoille.",
+      "confirm": "Tuo cookiet"
+    },
+    "mcpApprove": {
+      "title": "Hyväksy MCP-työkalu",
+      "confirm": "Käytä työkalua"
+    },
+    "tableImport": {
+      "title": "Valitse tuotava taulukkolaskentatiedosto",
+      "filter": "Taulukkolaskentatiedostot"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Sovellusvalikko ei ole käytettävissä",
+    "viewMenuUnavailable": "Näytä-valikko ei ole käytettävissä",
+    "menuItemUnavailable": "Valikkokohde {{id}} ei ole käytettävissä",
+    "fullAccessDismissed": "Täyden käyttöoikeuden vahvistus ohitettiin.",
+    "fullAccessDeclined": "Täyttä käyttöoikeutta ei otettu käyttöön.",
+    "approvalDialogClosed": "Järjestelmän hyväksyntäikkuna sulkeutui odottamatta."
+  }
+}

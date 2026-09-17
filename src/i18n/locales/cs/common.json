@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Zrušit",
+    "close": "Zavřít",
+    "save": "Uložit",
+    "delete": "Smazat",
+    "remove": "Odebrat",
+    "rename": "Přejmenovat",
+    "open": "Otevřít",
+    "copy": "Kopírovat",
+    "copied": "Zkopírováno",
+    "retry": "Zkusit znovu",
+    "back": "Zpět",
+    "next": "Další",
+    "done": "Hotovo",
+    "edit": "Upravit",
+    "add": "Přidat",
+    "search": "Hledat",
+    "clear": "Vymazat",
+    "apply": "Použít",
+    "confirm": "Potvrdit",
+    "ok": "OK",
+    "yes": "Ano",
+    "no": "Ne",
+    "learnMore": "Zjistit více",
+    "showMore": "Zobrazit více",
+    "showLess": "Zobrazit méně"
+  },
+  "state": {
+    "loading": "Načítání…",
+    "saving": "Ukládání…",
+    "none": "Žádné",
+    "unknown": "Neznámé",
+    "enabled": "Povoleno",
+    "disabled": "Zakázáno",
+    "on": "Zapnuto",
+    "off": "Vypnuto",
+    "beta": "Beta",
+    "new": "Nové",
+    "default": "Výchozí"
+  },
+  "labels": {
+    "name": "Název",
+    "type": "Typ",
+    "size": "Velikost",
+    "date": "Datum",
+    "status": "Stav",
+    "description": "Popis",
+    "optional": "Volitelné",
+    "required": "Povinné"
+  }
+}

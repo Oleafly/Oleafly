@@ -285,6 +285,21 @@ export function insertEnvironment(name: string) {
   insertTemplate(template, cursor, cursor);
 }
 
+export function insertListEnvironment(name: string) {
+  const v = getEditorView();
+  if (!v) return;
+  const sel = v.state.selection.main;
+  const items = v.state
+    .sliceDoc(sel.from, sel.to)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const body = items.length > 0 ? items.map((item) => String.raw`  \item ${item}`).join("\n") : String.raw`  \item `;
+  const head = `\\begin{${name}}\n`;
+  const cursor = head.length + body.length;
+  insertTemplate(`${head}${body}\n\\end{${name}}\n`, cursor, cursor);
+}
+
 export function focusEditor() {
   getEditorView()?.focus();
 }

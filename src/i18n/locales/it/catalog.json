@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Vuoto",
+    "diagramsAndFigures": "Diagrammi e figure",
+    "cvsAndResumes": "CV e curriculum",
+    "journalsAndConferences": "Riviste e conferenze",
+    "bibliographies": "Bibliografie",
+    "assignments": "Compiti",
+    "thesesAndReports": "Tesi e relazioni",
+    "books": "Libri",
+    "presentations": "Presentazioni",
+    "posters": "Poster",
+    "newsletters": "Newsletter",
+    "calendars": "Calendari",
+    "letters": "Lettere",
+    "aiGenerated": "Generati con l'AI"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Curriculum",
+    "diagramsAndFigures": "Diagrammi",
+    "journalsAndConferences": "Riviste"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Un sans-serif umanista e caldo, usato da molti modelli moderni di curriculum e CV."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Un sans-serif pulito e neutro, che si legge bene sia a schermo sia in stampa."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Un serif di transizione raffinato, adatto a documenti accademici e aziendali."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Pacchetto scrittura accademica",
+      "description": "Proposte di ricerca e di finanziamento, rassegne della letteratura, lettere motivazionali, lettere di raccomandazione, white paper e tesi."
+    },
+    "beamer-themes": {
+      "label": "Raccolta di temi Beamer",
+      "description": "Presentazioni beamer Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla e Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Documenti aziendali",
+      "description": "Fatture, promemoria, verbali di riunione, business plan e relazioni, attestati e un depliant a tre ante."
+    },
+    "conference-preprints": {
+      "label": "Stili per preprint di conferenza",
+      "description": "Preprint in stile NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv e Interspeech."
+    },
+    "coursework": {
+      "label": "Pacchetto didattica",
+      "description": "Compiti, schede di esercizi, quiz, griglie di valutazione, appunti delle lezioni, programmi dei corsi, formulari di matematica, esami e relazioni in pseudocodice."
+    },
+    "creative-misc": {
+      "label": "Creativi e vari",
+      "description": "Ricettari, inviti, schede personaggio per giochi di ruolo, un calendario annuale, gallerie di tabelle e di TikZ e appunti sul campo."
+    },
+    "cv-collection": {
+      "label": "Raccolta di stili per CV e curriculum",
+      "description": "Curriculum in stile ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds e Jake's."
+    },
+    "reports-lab": {
+      "label": "Relazioni di laboratorio e tecniche",
+      "description": "Relazioni di laboratorio, relazioni scientifiche e tecniche, relazioni di progetto e di tirocinio e una relazione annuale."
+    },
+    "resume-plus": {
+      "label": "Espansione curriculum e CV",
+      "description": "Curriculum tecnico a due colonne, curriculum minimale, CV accademico esteso, lettera di presentazione e un CV in Typst."
+    },
+    "slides-posters": {
+      "label": "Slide e poster",
+      "description": "Presentazione beamer Metropolis, tikzposter verticale e orizzontale e un layout better-poster."
+    },
+    "venue-classes": {
+      "label": "Classi per riviste e conferenze",
+      "description": "Modelli di partenza REVTeX, ACS achemso, Elsevier, ACM sigconf e per riviste in Typst."
+    }
+  }
+}

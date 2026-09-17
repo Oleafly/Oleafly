@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  chooseAppSelectOption,
   createBlankProject,
   editorSource,
   openProject,
@@ -32,7 +33,7 @@ async function openPrefsProject(page: Page) {
   await waitLong(page, `!!document.querySelector('.cm-content')`, 30_000);
 }
 
-async function toggleSetting(page: Page, label: string, on: boolean) {
+async function openEditorAppearanceTab(page: Page) {
   await openSettings(page, "appearance");
   await page.press('[data-testid="appearance-tab-editor"]', "Enter");
   await waitLong(
@@ -40,6 +41,22 @@ async function toggleSetting(page: Page, label: string, on: boolean) {
     `document.querySelector('[data-testid="appearance-tab-editor"]')?.getAttribute("data-state") === "active"`,
     10_000,
   );
+}
+
+async function closeSettings(page: Page) {
+  // The backdrop shares the "Close settings" aria-label with the header
+  // button, so target the button by test id.
+  await page.click('[data-testid="settings-close"]');
+  await waitLong(
+    page,
+    `!document.querySelector('[data-testid="settings-section-appearance"]')`,
+    10_000,
+  );
+  await waitLong(page, `!!document.querySelector('.cm-content')`, 10_000);
+}
+
+async function toggleSetting(page: Page, label: string, on: boolean) {
+  await openEditorAppearanceTab(page);
   const selector = `[role="switch"][aria-label="${label}"]`;
   await waitLong(page, `!!document.querySelector('${selector}')`, 10_000);
   const already = await page.evaluate<boolean>(
@@ -53,15 +70,115 @@ async function toggleSetting(page: Page, label: string, on: boolean) {
       10_000,
     );
   }
-  // The backdrop shares the "Close settings" aria-label with the header
-  // button, so target the button by test id.
-  await page.click('[data-testid="settings-close"]');
-  await waitLong(
+  await closeSettings(page);
+}
+
+async function chooseEditorSetting(page: Page, testId: string, optionLabel: string) {
+  await openEditorAppearanceTab(page);
+  await chooseAppSelectOption(
     page,
-    `!document.querySelector('[data-testid="settings-section-appearance"]')`,
-    10_000,
+    `[data-testid="${testId}"]`,
+    { attribute: "data-label", value: optionLabel },
   );
-  await waitLong(page, `!!document.querySelector('.cm-content')`, 10_000);
+  await closeSettings(page);
+}
+
+async function pressInEditor(
+  page: Page,
+  key: string,
+  code: string,
+  keyCode: number,
+  mods: { alt?: boolean; ctrl?: boolean; mod?: boolean; shift?: boolean } = {},
+) {
+  await page.evaluate(
+    `(() => {
+      const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+      const target = document.querySelector('.cm-content');
+      const errors = [];
+      const original = console.error;
+      console.error = (...args) => {
+        errors.push(args.map((arg) => (arg instanceof Error ? arg.stack ?? arg.message : String(arg))).join(" "));
+        original.apply(console, args);
+      };
+      let handled = false;
+      try {
+        handled = !target.dispatchEvent(new KeyboardEvent('keydown', {
+          key: ${JSON.stringify(key)},
+          code: ${JSON.stringify(code)},
+          keyCode: ${keyCode},
+          which: ${keyCode},
+          altKey: ${!!mods.alt},
+          ctrlKey: ${!!mods.ctrl} || (${!!mods.mod} && !apple),
+          metaKey: ${!!mods.mod} && apple,
+          shiftKey: ${!!mods.shift},
+          bubbles: true,
+          cancelable: true,
+        }));
+      } finally {
+        console.error = original;
+      }
+      window.__e2eLastKey = { handled, errors };
+      return 1;
+    })()`,
+  );
+}
+
+async function selectInEditor(page: Page, from: number, to: number) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      view.dispatch({ selection: { anchor: ${from}, head: ${to} } });
+      view.focus();
+      return 1;
+    })`,
+  );
+}
+
+async function caretAt(page: Page, at: number) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      view.dispatch({ selection: { anchor: ${at} } });
+      view.focus();
+      return 1;
+    })`,
+  );
+}
+
+async function chooseLineHeight(page: Page, optionLabel: string): Promise<number> {
+  await chooseEditorSetting(page, "settings-editor-line-height-trigger", optionLabel);
+  await waitLong(page, `!!document.querySelector('.cm-line')`, 10_000);
+  return page.evaluate<number>(
+    `Number.parseFloat(
+      getComputedStyle(document.querySelector('.cm-line')).lineHeight,
+    )`,
+  );
+}
+
+interface SelectionSummary {
+  anchor: number;
+  head: number;
+  emacs: boolean;
+  editors: number;
+  handled: boolean | null;
+  errors: string[];
+}
+
+async function selectionSummary(page: Page): Promise<SelectionSummary> {
+  return page.evaluate<SelectionSummary>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const main = getEditorView().state.selection.main;
+      const last = window.__e2eLastKey ?? { handled: null, errors: [] };
+      return {
+        anchor: main.anchor,
+        head: main.head,
+        emacs: !!document.querySelector('.cm-scroller.cm-emacsMode'),
+        editors: document.querySelectorAll('.cm-content').length,
+        handled: last.handled,
+        errors: last.errors,
+      };
+    })`,
+  );
 }
 
 async function caretToEnd(page: Page) {
@@ -335,3 +452,235 @@ test("editor preferences persist across a reload", async ({ tauriPage }) => {
   await toggleSetting(tauriPage, "Auto-complete", true);
   await toggleSetting(tauriPage, "Non-blinking cursor", false);
 });
+
+test("the keybinding mode switches between Default, Emacs and Vim", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+
+  await chooseEditorSetting(tauriPage, "settings-editor-keymap-trigger", "Emacs");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('.cm-scroller.cm-emacsMode')`,
+    10_000,
+  );
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretAt(tauriPage, 8);
+  await pressInEditor(tauriPage, "b", "KeyB", 66, { alt: true });
+  await expect
+    .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
+    .toEqual({ anchor: 1, head: 1, emacs: true, editors: 1, handled: true, errors: [] });
+  await pressInEditor(tauriPage, "a", "KeyA", 65, { ctrl: true });
+  await expect
+    .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
+    .toEqual({ anchor: 0, head: 0, emacs: true, editors: 1, handled: true, errors: [] });
+
+  await chooseEditorSetting(tauriPage, "settings-editor-keymap-trigger", "Vim");
+  await waitLong(tauriPage, `!!document.querySelector('.cm-vim-panel')`, 10_000);
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document.querySelector('.cm-scroller.cm-emacsMode')`,
+    ),
+  ).toBe(false);
+
+  await chooseEditorSetting(tauriPage, "settings-editor-keymap-trigger", "Default");
+  await settle(tauriPage, 500);
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document.querySelector('.cm-vim-panel') || !!document.querySelector('.cm-scroller.cm-emacsMode')`,
+    ),
+  ).toBe(false);
+});
+
+test("tab size, line wrapping and line height follow their settings", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+
+  await chooseEditorSetting(tauriPage, "settings-editor-tab-size-trigger", "2");
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await tauriPage.press(".cm-content", "Tab");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("article}\n  ");
+  expect(
+    await tauriPage.evaluate<number>(
+      `import("/src/components/editor/cm/controller.ts").then(
+        ({ getEditorView }) => getEditorView().state.tabSize,
+      )`,
+    ),
+  ).toBe(2);
+
+  await toggleSetting(tauriPage, "Wrap long lines", false);
+  await expect
+    .poll(
+      async () =>
+        await tauriPage.evaluate<boolean>(
+          `!!document.querySelector('.cm-content.cm-lineWrapping')`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(false);
+
+  await toggleSetting(tauriPage, "Wrap long lines", true);
+  await expect
+    .poll(
+      async () =>
+        await tauriPage.evaluate<boolean>(
+          `!!document.querySelector('.cm-content.cm-lineWrapping')`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  const compact = await chooseLineHeight(tauriPage, "Compact");
+  const wide = await chooseLineHeight(tauriPage, "Wide");
+  expect(wide).toBeGreaterThan(compact);
+
+  await chooseEditorSetting(tauriPage, "settings-editor-line-height-trigger", "Normal");
+  await chooseEditorSetting(tauriPage, "settings-editor-tab-size-trigger", "4");
+});
+
+test("the default editor keys run their commands", async ({ tauriPage }) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+  await replaceEditorSource(tauriPage, "alpha beta\ngamma delta\n");
+
+  await selectInEditor(tauriPage, 0, 5);
+  await pressInEditor(tauriPage, "u", "KeyU", 85, { ctrl: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("ALPHA beta");
+
+  await caretAt(tauriPage, 0);
+  await pressInEditor(tauriPage, "D", "KeyD", 68, { mod: true, shift: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("ALPHA beta\nALPHA beta\n");
+
+  await pressInEditor(tauriPage, "d", "KeyD", 68, { mod: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toBe("ALPHA beta\ngamma delta\n");
+
+  await caretAt(tauriPage, 0);
+  await pressInEditor(tauriPage, "ArrowDown", "ArrowDown", 40, {
+    ctrl: true,
+    alt: true,
+  });
+  await expect
+    .poll(
+      async () =>
+        await tauriPage.evaluate<number>(
+          `import("/src/components/editor/cm/controller.ts").then(
+            ({ getEditorView }) => getEditorView().state.selection.ranges.length,
+          )`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(2);
+
+  await caretAt(tauriPage, 0);
+  await pressInEditor(tauriPage, "L", "KeyL", 76, { mod: true, shift: true });
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('.cm-dialog input[name="line"]')`,
+    10_000,
+  );
+  await tauriPage.press(".cm-content", "Escape");
+});
+
+test("Mod-slash comments the line instead of opening the shortcut reference", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretAt(tauriPage, 3);
+
+  await pressInEditor(tauriPage, "/", "Slash", 191, { mod: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("% \\documentclass{article}");
+  await settle(tauriPage, 1_000);
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document.querySelector('[aria-labelledby="hotkeys-title"]')`,
+    ),
+  ).toBe(false);
+
+  await pressInEditor(tauriPage, "/", "Slash", 191, { mod: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toBe("\\documentclass{article}\n");
+});
+
+test("remapping an editor key takes effect without a reload", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+
+  await openSettings(tauriPage, "shortcuts");
+  await tauriPage.press('[data-testid="shortcuts-tab-editor"]', "Enter");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="editor-key-row-deleteLine"]')`,
+    10_000,
+  );
+  await tauriPage.evaluate(
+    `(() => {
+      const row = document.querySelector('[data-testid="editor-key-row-deleteLine"]');
+      const trigger = [...row.querySelectorAll('button')].find(
+        (button) => (button.getAttribute('aria-label') ?? '').startsWith('Edit '),
+      );
+      trigger.click();
+      return 1;
+    })()`,
+  );
+  await tauriPage.evaluate(
+    `(() => {
+      const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+      const row = document.querySelector('[data-testid="editor-key-row-deleteLine"]');
+      const recording = [...row.querySelectorAll('button')].find(
+        (button) => (button.getAttribute('aria-label') ?? '').startsWith('Recording '),
+      );
+      recording.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'K',
+        code: 'KeyK',
+        keyCode: 75,
+        which: 75,
+        ctrlKey: !apple,
+        metaKey: apple,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      return 1;
+    })()`,
+  );
+  await waitLong(
+    tauriPage,
+    `JSON.parse(localStorage.getItem("oleafly.editorKeymap") ?? "{}").deleteLine === "Mod-Shift-k"`,
+    10_000,
+  );
+  await closeSettings(tauriPage);
+
+  await replaceEditorSource(tauriPage, "alpha\nbeta\n");
+  await caretAt(tauriPage, 0);
+  await pressInEditor(tauriPage, "K", "KeyK", 75, { mod: true, shift: true });
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toBe("beta\n");
+
+  await tauriPage.evaluate(
+    `import("/src/store/editor-keymap.ts").then((m) => {
+      m.useEditorKeymapStore.getState().resetAll();
+      return 1;
+    })`,
+  );
+});
+

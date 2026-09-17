@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Erste Schritte",
+    "overview": {
+      "title": "Start",
+      "content": "Hier beginnen Ihre Projekte und das Anlegen neuer Projekte."
+    },
+    "create": {
+      "title": "Ein echtes Projekt anlegen",
+      "content": "Wählen Sie Neues Projekt, um zu sehen, wie eine Arbeit beginnen kann."
+    },
+    "kind": {
+      "title": "Drei Wege zum Start",
+      "content": "Beginnen Sie ein Forschungsprojekt, bringen Sie ein vorhandenes Manuskript mit oder arbeiten Sie mit einer fertigen Vorlage."
+    },
+    "kindTemplate": {
+      "title": "Mit einer Vorlage arbeiten",
+      "content": "Wählen Sie Vorlage verwenden, um die Galerie zu öffnen. Die beiden anderen Startpunkte stehen jederzeit bereit."
+    },
+    "gallery": {
+      "title": "Ihren Startpunkt finden",
+      "content": "Stöbern Sie in Kategorien, suchen Sie nach Namen und grenzen Sie Vorlagen nach Compiler oder Offline-Verfügbarkeit ein."
+    },
+    "template": {
+      "title": "Eine Vorlage wählen",
+      "content": "Wählen Sie eine beliebige echte Vorlage, um fortzufahren. Ihre Dateien werden zu Ihrem neuen Projekt."
+    },
+    "name": {
+      "title": "Ihr Projekt benennen",
+      "content": "Geben Sie einen Projektnamen ein. Weiter wird verfügbar, sobald der Name nicht leer ist."
+    },
+    "color": {
+      "title": "Farbe des Deckblatts wählen",
+      "content": "Diese Farbe macht das Projekt auf der Startseite leicht auffindbar. Sie können die Vorgabe der Vorlage behalten."
+    },
+    "createProject": {
+      "title": "Ihr Projekt erstellen",
+      "content": "Klicken Sie auf „Projekt erstellen“, um ein Projekt mit der ausgewählten Vorlage anzulegen."
+    }
+  },
+  "workspace": {
+    "label": "Ihr Arbeitsbereich",
+    "toolbar": {
+      "title": "Projektleiste",
+      "content": "Projektaktionen und Steuerelemente zum Kompilieren liegen hier."
+    },
+    "sidebar": {
+      "title": "Navigation im Arbeitsbereich",
+      "content": "Wechseln Sie zwischen Dateien, Suche, Versionsverwaltung, Preflight, Referenzen und MCP-Aktivität."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Schreiben und navigieren Sie im Quelltext mit Vervollständigung, Diagnosen, Formatierung und Code-Intelligenz."
+    },
+    "wysiwygToggle": {
+      "title": "WYSIWYG-Modus ausprobieren",
+      "content": "Wechseln Sie zwischen rohem Quelltext und einer formatierten Ansicht Ihres Dokuments im Stil von Google Docs."
+    },
+    "compile": {
+      "title": "Kompilieren und neu kompilieren",
+      "content": "Bauen Sie hier das aktuelle Projekt. Die Tour kompiliert nie und ändert Ihren Quelltext nicht."
+    },
+    "logs": {
+      "title": "Bauprotokolle",
+      "content": "Öffnen Sie die Bauprotokolle, um Fehler zu prüfen, ohne Projektinhalte zu ändern. Der Status daneben zeigt die letzte Kompilierdauer."
+    },
+    "preview": {
+      "title": "PDF-Vorschau",
+      "content": "Das kompilierte Dokument bleibt in der geteilten Ansicht neben Ihrem Quelltext."
+    },
+    "zoom": {
+      "title": "Ihr vollständiges PDF-Werkzeug",
+      "content": "Öffnen Sie die Gliederung, suchen Sie Text, springen Sie zwischen Seiten, wählen Sie ein- oder zweiseitiges Layout, zoomen Sie oder passen Sie die Seite ein, kehren Sie die Farben um, nutzen Sie die barrierefreie Leseansicht, drehen Sie, laden Sie herunter, speichern Sie ins Projekt, gehen Sie in den Vollbildmodus oder öffnen Sie die Vorschau in einem eigenen Fenster."
+    },
+    "sourceNavigation": {
+      "title": "Vom PDF zum Quelltext",
+      "content": "Klicken Sie auf kompilierte PDF-Inhalte, um direkt zur passenden Stelle im Quelltext zu springen."
+    }
+  },
+  "research": {
+    "label": "Forschungsbereich",
+    "open": {
+      "title": "Forschungsbereich",
+      "content": "Öffnen Sie ihn, um Forschungsaufgaben an einen Agenten zu übergeben und Leseordner sowie Datensätze von anderswo einzubinden. Das ist neu und in der Beta, melden Sie deshalb bitte alles, was nicht funktioniert."
+    },
+    "tasks": {
+      "title": "Forschungsaufgaben einreihen",
+      "content": "Beschreiben Sie eine Arbeit und übergeben Sie sie an einen Agenten. Jede Aufgabe behält ihr eigenes Gespräch, ihre Ergebnisse und ihre Prüfnotizen."
+    },
+    "folders": {
+      "title": "Vorhandene Ordner einbinden",
+      "content": "Richten Sie den Arbeitsbereich auf Leseordner und Datensätze außerhalb des Projekts. Nichts wird kopiert oder verschoben."
+    }
+  },
+  "settings": {
+    "label": "Einstellungen",
+    "navigation": {
+      "title": "Einstellungen",
+      "content": "Wechseln Sie hier zwischen Einstellungen und Integrationen."
+    },
+    "general": {
+      "title": "Allgemeine Einstellungen",
+      "content": "Steuern Sie das Verhalten beim Bearbeiten, den Offline-Modus, Tastenkürzel und die Tourführungen."
+    },
+    "appearance": {
+      "title": "Darstellung",
+      "content": "Wählen Sie Design, Typografie, das voreingestellte Layout des Arbeitsbereichs und die Akzentfarbe."
+    },
+    "dictionary": {
+      "title": "Wörterbuch",
+      "content": "Prüfen Sie projektbezogene und globale Wörter, die Rechtschreib- und Grammatikprüfung überspringen."
+    },
+    "data": {
+      "title": "Datenspeicher",
+      "content": "Sehen Sie sich den lokalen Projektspeicher an und verwalten Sie die Anwendungsdaten."
+    },
+    "ai": {
+      "title": "KI-Assistent",
+      "content": "Richten Sie Anbieter, Modelle, Zugangsdaten und die MCP-Server ein, die der Assistent nutzen darf."
+    },
+    "compiler": {
+      "title": "Compiler",
+      "content": "Wählen und konfigurieren Sie die LaTeX-Engine, mit der Projekte gebaut werden."
+    },
+    "downloads": {
+      "title": "Downloads",
+      "content": "Verwalten Sie Pakete und Ressourcen für das Arbeiten ohne Internet."
+    },
+    "integrations": {
+      "title": "Integrationen",
+      "content": "Verbinden Sie GitHub, alphaXiv, Zotero, die Literatursuche und den lokalen MCP-Server von Oleafly."
+    },
+    "shortcuts": {
+      "title": "Tastenkürzel",
+      "content": "Prüfen, bearbeiten, belegen und setzen Sie die Tastenkürzel der Anwendung zurück."
+    },
+    "mcp": {
+      "title": "MCP des Assistenten",
+      "content": "Wählen Sie, welche MCP-Server der Assistent nutzen darf."
+    },
+    "help": {
+      "title": "Hilfe und Über",
+      "content": "Starten Sie die kontextbezogene Tour neu, öffnen Sie die Dokumentation, sehen Sie sich Tastenkürzel an oder melden Sie ein Problem."
+    }
+  },
+  "aiSettings": {
+    "label": "KI-Einstellungen",
+    "tabs": {
+      "title": "Einstellungen des KI-Assistenten",
+      "content": "Verwalten Sie hier Anbieter und Schlüssel, Anweisungen, Personas, wiederverwendbare Skills und MCP-Server."
+    },
+    "providers": {
+      "title": "Anbieter verbinden",
+      "content": "Fügen Sie einen Schlüssel ein, er wird vor dem Speichern beim Anbieter geprüft. Verbundene Anbieter zeigen ein grünes Abzeichen und klappen eine Modellliste auf, die Sie umschalten, erweitern oder zurücksetzen können. Schlüssel bleiben verschlüsselt auf diesem Computer."
+    },
+    "customProvider": {
+      "title": "Eigenen Endpunkt nutzen",
+      "content": "Jede OpenAI-kompatible Basis-URL funktioniert hier, auch lokale Server wie Ollama oder LM Studio."
+    },
+    "openInstructions": {
+      "title": "Anweisungen",
+      "content": "Klicken Sie auf den Reiter Anweisungen, um fortzufahren."
+    },
+    "defaultModel": {
+      "title": "Standardmodell",
+      "content": "Neue Chats starten mit diesem Modell. Pro Gespräch können Sie im Chatbereich weiterhin das Modell wechseln."
+    },
+    "instructions": {
+      "title": "Eigene Anweisungen",
+      "content": "Ihre dauerhaften Stilvorgaben, die jeder Anfrage des Assistenten beigelegt werden."
+    },
+    "openPersonas": {
+      "title": "Personas",
+      "content": "Klicken Sie auf den Reiter Personas, um fortzufahren."
+    },
+    "personas": {
+      "title": "Personas anlegen",
+      "content": "Benannte Anweisungssätze mit Farbe, umschaltbar über das Menü Persona im Chat. Probieren Sie eine Lektorin, einen Gutachter oder einen LaTeX-Puristen."
+    }
+  },
+  "ai": {
+    "label": "KI-Assistent",
+    "assistant": {
+      "title": "KI-Assistent",
+      "content": "Arbeiten Sie mit einem Assistenten, der Ihr Projekt kennt, ohne während dieser Tour etwas zu senden."
+    },
+    "runtime": {
+      "title": "Zwei Arten von Agent",
+      "content": "Der Oleafly-Agent läuft bei dem Modellanbieter, den Sie einrichten. Der CLI-Agent, noch in der Beta, steuert einen Coding-Agenten, der schon auf diesem Computer installiert ist."
+    },
+    "connectProvider": {
+      "title": "Einen Anbieter verbinden",
+      "content": "Wenn kein Anbieter eingerichtet ist, beginnen Sie hier. Die Tour fragt nie nach Zugangsdaten und ändert sie nicht."
+    },
+    "providerModel": {
+      "title": "Anbieter und Modell",
+      "content": "Wechseln Sie das Modell für dieses Gespräch. Änderungen gelten nur für diese Sitzung. Ihr Standardmodell legen Sie in den Einstellungen fest. Die Logos zeigen den Anbieter jedes Modells."
+    },
+    "prompts": {
+      "title": "Prompt-Kürzel",
+      "content": "Wählen Sie einen fertigen Prompt, um ihn in die Chateingabe zu setzen."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Wählen Sie, wie der Assistent arbeiten soll. Eine aktive Persona ersetzt Ihre Standardanweisungen, bis Sie sie abschalten."
+    },
+    "input": {
+      "title": "Chateingabe",
+      "content": "Beschreiben Sie, was Sie brauchen. Der Assistent kann den Projektkontext nutzen, diese Tour sendet aber nie eine Anfrage."
+    },
+    "attachments": {
+      "title": "Anhänge",
+      "content": "Hängen Sie Bilder, PDFs und Quelldateien an, wenn ein Gespräch zusätzlichen Kontext braucht."
+    },
+    "history": {
+      "title": "Gesprächsverlauf",
+      "content": "Öffnen Sie neuere Chats und den vollständigen Verlauf erneut, während jedes Gespräch mit seinem Projektstand verknüpft bleibt."
+    },
+    "usage": {
+      "title": "Nutzung",
+      "content": "Eingerichtete Gespräche zeigen hier Läufe, Token und geschätzte Kosten, sofern verfügbar."
+    },
+    "restore": {
+      "title": "Projektstand wiederherstellen",
+      "content": "Nach einer Bearbeitung durch die KI kann ein Checkpoint die Projektdateien wiederherstellen, ohne das Gespräch zu entfernen."
+    }
+  },
+  "diagram": {
+    "label": "Diagramm-Editor",
+    "composer": {
+      "title": "Diagramm-Editor",
+      "content": "Bauen Sie Diagramme visuell oder aus TikZ-Code. Die Tour verändert und speichert Ihre Arbeit nicht."
+    },
+    "import": {
+      "title": "Eine TikZ-Datei importieren",
+      "content": "Sie haben schon eine .tikz- oder .tex-Datei? Importieren Sie sie, um diese Startzeichnung zu ersetzen. Sie bleibt ein Entwurf, bis Sie sie speichern."
+    },
+    "modes": {
+      "title": "Zeichnen und Code",
+      "content": "Im Zeichenmodus arbeiten Sie direkt auf der Fläche. Der Codemodus zeigt den erzeugten TikZ-Code und wiederverwendbare Bausteine."
+    },
+    "palette": {
+      "title": "Formenpalette",
+      "content": "Wählen Sie eine Form und ziehen Sie sie mit gedrückter Maustaste auf der Fläche in Position und Größe."
+    },
+    "handles": {
+      "title": "Verbinden und Größe ändern",
+      "content": "Eine ausgewählte Form zeigt Griffe zum Verbinden und zum Ändern der Größe für genaue Struktur und Maße."
+    },
+    "inspector": {
+      "title": "Inspektor",
+      "content": "Wählen Sie eine Form oder Verbindung, um Stil, Text, Verlauf und Stapelreihenfolge anzupassen."
+    },
+    "preview": {
+      "title": "Kompilierte Vorschau",
+      "content": "Kompilieren öffnet neben dem Editor eine Vorschau mit Reglern für Skalierung und Hintergrund."
+    },
+    "compile": {
+      "title": "Kompilieren",
+      "content": "Kompilieren erzeugt eine eigenständige Vorschau, ohne das Diagramm in Ihr Dokument einzufügen."
+    },
+    "saveProject": {
+      "title": "Als Projekt speichern",
+      "content": "Speichern Sie ein fertiges Diagramm als wiederverwendbares Bildprojekt, das auf der Startseite erscheint."
+    },
+    "download": {
+      "title": "Herunterladen",
+      "content": "Laden Sie das kompilierte Diagramm als PNG-Datei herunter, ohne es als Projekt zu speichern."
+    }
+  }
+}

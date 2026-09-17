@@ -212,7 +212,7 @@ export function EquationPreviewPanel({
               onClick={() => onPreviewThemeChange("dark")}
               className={cn(
                 "size-5 rounded-full border bg-[#111111] transition-shadow",
-                previewTheme === "dark" && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                previewTheme === "dark" && "border-2 border-primary",
               )}
             />
             <button
@@ -221,7 +221,7 @@ export function EquationPreviewPanel({
               onClick={() => onPreviewThemeChange("light")}
               className={cn(
                 "size-5 rounded-full border bg-white transition-shadow",
-                previewTheme === "light" && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                previewTheme === "light" && "border-2 border-primary",
               )}
             />
           </div>

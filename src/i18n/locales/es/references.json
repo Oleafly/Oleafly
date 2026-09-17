@@ -1,0 +1,159 @@
+{
+  "citeOleafly": "Citar Oleafly en este artículo",
+  "empty": {
+    "citations": {
+      "detail": "Importa una biblioteca de referencias o añade una cita para empezar.",
+      "title": "Todavía no hay citas"
+    },
+    "symbols": {
+      "detail": "Los títulos, las etiquetas, los comandos y los entornos aparecen aquí a medida que escribes el proyecto.",
+      "title": "Todavía no hay símbolos"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtrar las citas",
+    "ariaLabelResults": "Filtrar los resultados",
+    "ariaLabelSymbols": "Filtrar los símbolos",
+    "clear": "Borrar el filtro",
+    "noCitation": "Ninguna cita coincide con “{{query}}”.",
+    "noResult": "Ningún resultado coincide con “{{query}}”.",
+    "noSymbol": "Ningún símbolo coincide con “{{query}}”.",
+    "placeholderCitations": "Filtrar por clave, título, autor…",
+    "placeholderResults": "Filtrar ubicaciones…",
+    "placeholderSymbols": "Filtrar etiquetas y comandos…"
+  },
+  "import": {
+    "added_one": "{{count}} referencia añadida a {{target}}.",
+    "added_many": "{{count}} referencias añadidas a {{target}}.",
+    "added_other": "{{count}} referencias añadidas a {{target}}.",
+    "addedWithDuplicates_one": "{{count}} referencia añadida a {{target}}, {{duplicates}} ya estaban.",
+    "addedWithDuplicates_many": "{{count}} referencias añadidas a {{target}}, {{duplicates}} ya estaban.",
+    "addedWithDuplicates_other": "{{count}} referencias añadidas a {{target}}, {{duplicates}} ya estaban.",
+    "allDuplicates_one": "Esa referencia ya está en {{target}}.",
+    "allDuplicates_many": "Esas {{count}} referencias ya están en {{target}}.",
+    "allDuplicates_other": "Esas {{count}} referencias ya están en {{target}}.",
+    "defaultTarget": "la bibliografía",
+    "description": "Añade a este proyecto referencias de un gestor de citas o de un archivo de bibliografía.",
+    "duplicateNote": "Se omiten las referencias con un DOI que ya existe en la bibliografía.",
+    "empty": "No se encontró ninguna referencia en ese archivo.",
+    "endnote": {
+      "button": "Elegir archivo XML, RIS o BibTeX",
+      "description": "Elige un archivo XML de EndNote, RIS o BibTeX. Oleafly añade las referencias a la bibliografía del proyecto.",
+      "title": "EndNote, RIS o BibTeX"
+    },
+    "failed": "No se pudieron importar esas referencias.",
+    "nothingNew": "No hay nada nuevo que añadir a {{target}}.",
+    "problems_one": "{{count}} problema durante la importación. {{details}}",
+    "problems_many": "{{count}} problemas durante la importación. {{details}}",
+    "problems_other": "{{count}} problemas durante la importación. {{details}}",
+    "readFailed": "No se pudo leer ese archivo.",
+    "title": "Importar biblioteca de referencias",
+    "unrecognized": "Tipo de archivo no reconocido: {{name}}",
+    "zotero": {
+      "button": "Elegir archivo RDF de Zotero",
+      "description": "En Zotero, elige Archivo → Exportar biblioteca → Zotero RDF. Después elige el archivo exportado.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Resultados parciales. Los archivos ilegibles o mal formados pueden omitir algunas apariciones.",
+    "stale": "Actualizando. Se ocultan las citas, los símbolos y los intervalos de la revisión anterior."
+  },
+  "panel": {
+    "ariaLabel": "Referencias (Shift-F12)",
+    "clearQuery": "Borrar la consulta de referencias",
+    "cleanLibrary": "Limpiar la biblioteca de referencias",
+    "importAriaLabel": "Importar referencias",
+    "issues_one": "{{count}} problema de referencia o de cita",
+    "issues_many": "{{count}} problemas de referencia o de cita",
+    "issues_other": "{{count}} problemas de referencia o de cita",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referencias",
+    "viewTabs": "Vista del panel de referencias"
+  },
+  "cleanLibrary": {
+    "title": "Limpiar la biblioteca de referencias",
+    "description": "Revisa las claves de cita y las entradas duplicadas antes de cambiar tus archivos.",
+    "library": "Biblioteca de referencias",
+    "entryCount_one": "{{count}} entrada",
+    "entryCount_many": "{{count}} entradas",
+    "entryCount_other": "{{count}} entradas",
+    "footer": "La vista previa guarda los archivos abiertos. Al aplicar se comprueba que sigan coincidiendo con la vista previa y se hace una copia de seguridad de los originales.",
+    "noBib": "Este proyecto no tiene ningún archivo .bib que limpiar.",
+    "entriesKept": "Se conservarán {{kept}} de {{total}} entradas.",
+    "changes": "Cambios y notas",
+    "noChanges": "No hay cambios de archivo que aplicar.",
+    "filesToUpdate": "Archivos que se actualizarán: {{files}}",
+    "none": "Ninguno",
+    "introSafeChanges": "Las claves de cita se normalizan. Los duplicados por DOI solo se eliminan cuando se pueden conservar todos sus datos.",
+    "introReview": "Los títulos parecidos y los metadatos contradictorios se quedan en la biblioteca para que los revises.",
+    "preview": "Vista previa",
+    "reviewTitle": "Revisa antes de aplicar",
+    "reviewBody": "Consulta la vista previa de los cambios para ver qué entradas y citas se van a actualizar.",
+    "statusAttention": "Necesita atención",
+    "statusWorking": "Trabajando…",
+    "statusPreviewReady": "Vista previa lista",
+    "statusReady": "Listo para la vista previa",
+    "refreshPreview": "Actualizar la vista previa",
+    "previewChanges": "Ver los cambios",
+    "apply": "Aplicar y reescribir las citas",
+    "truncated": "La vista previa muestra las primeras 500 líneas de cada versión.",
+    "actionRenamed": "{{old}} pasó a llamarse {{new}}",
+    "actionDuplicate": "{{removed}} se eliminó por ser un duplicado de {{kept}} (coincidencia por {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "No se pudieron volver a cargar los archivos limpios. Vuelve a abrir el proyecto antes de editar.",
+    "cleaned": "Biblioteca limpia. Se conservaron {{kept}} de {{total}} entradas.",
+    "cleanedWithBackup": "Biblioteca limpia. Se conservaron {{kept}} de {{total}} entradas. Los archivos originales están guardados en {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "El proyecto cambió después de esta consulta. Vuelve a ejecutar Buscar referencias para usar los intervalos actuales del código.",
+      "title": "Los resultados de referencias caducaron"
+    },
+    "noLocations": {
+      "detail": "El símbolo existe en esta revisión, pero no tiene definiciones ni apariciones que coincidan.",
+      "title": "No se encontró ninguna ubicación"
+    },
+    "none": {
+      "detail": "Coloca el cursor sobre una etiqueta, una cita, un comando o un entorno y pulsa Shift-F12.",
+      "title": "No hay ninguna consulta de referencias"
+    }
+  },
+  "tabs": {
+    "citations": "Citas",
+    "results": "Referencias",
+    "symbols": "Símbolos"
+  },
+  "trees": {
+    "citations": "Citas del proyecto",
+    "noCitations": "No se encontraron entradas de bibliografía ni usos de citas.",
+    "noSymbols": "No se encontraron símbolos definidos en el proyecto.",
+    "symbols": "Símbolos del proyecto"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "No se pudo analizar la última revisión del proyecto. Los archivos de código no se modificaron.",
+      "title": "Falló el análisis del proyecto"
+    },
+    "indexing": {
+      "detail": "Las referencias y las citas aparecerán cuando esté lista la revisión actual del proyecto.",
+      "title": "Indexando la inteligencia del proyecto"
+    },
+    "noProject": {
+      "detail": "Abre un proyecto de documento para inspeccionar citas, símbolos y referencias entre archivos.",
+      "title": "No hay ningún proyecto abierto"
+    },
+    "offline": {
+      "detail": "Ahora mismo no se pueden comprobar las referencias ni las citas en este espacio de trabajo.",
+      "title": "El servicio de análisis no está disponible"
+    },
+    "unsupported": {
+      "detail": "El proyecto activo no usa un motor de documentos compatible.",
+      "title": "La inteligencia del proyecto no está disponible"
+    },
+    "waiting": {
+      "detail": "La última revisión del proyecto todavía no se ha indexado.",
+      "title": "Esperando el análisis del proyecto"
+    }
+  }
+}

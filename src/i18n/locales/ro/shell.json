@@ -1,0 +1,935 @@
+{
+  "about": {
+    "close": "Închide fereastra Despre",
+    "closeBackdrop": "Închide Despre Oleafly",
+    "connect": "Ține legătura cu Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Pune întrebări și împărtășește idei",
+        "label": "Discuții"
+      },
+      "docs": {
+        "description": "Învață fiecare parte din Oleafly",
+        "label": "Documentație"
+      },
+      "issues": {
+        "description": "Raportează o eroare sau cere o funcționalitate",
+        "label": "Probleme"
+      },
+      "social": {
+        "description": "Urmărește lansările și dezvoltarea",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Dă o stea pe GitHub",
+    "tagline": "Spațiul de lucru open-source pentru toată lucrarea. Scrie, compilează, corectează, gestionează citările, verifică fișiere PDF, urmărește modificările în Git și lucrează cu modelele AI pe care le alegi.",
+    "version": "Versiunea {{version}}",
+    "viewSource": "Vezi sursa"
+  },
+  "addCitation": {
+    "added": "S-a adăugat {{cite}}",
+    "adding": "Se adaugă…",
+    "close": "Închide fereastra de citare",
+    "confirm": "Adaugă în .bib și citează",
+    "entry": "Intrare",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Titlu"
+    },
+    "hint": "Lipește un DOI, un identificator arXiv sau un URL ca să aduci direct intrarea ori scrie un titlu ca să cauți în Crossref. Încearcă una:",
+    "lookUp": "Caută",
+    "lookingUp": "Se caută „{{query}}”…",
+    "matches_one": "{{count}} potrivire din Crossref. Alege una:",
+    "matches_few": "{{count}} potriviri din Crossref. Alege una:",
+    "matches_other": "{{count}} de potriviri din Crossref. Alege una:",
+    "noResults": "Nu s-a găsit niciun rezultat. Verifică identificatorul sau încearcă alte cuvinte din titlu.",
+    "placeholder": "DOI, identificator arXiv, URL sau titlul unei lucrări…",
+    "privacyNote": "Se trimite doar identificatorul sau titlul, către doi.org, arXiv ori Crossref.",
+    "title": "Adaugă citare"
+  },
+  "backendProtocol": {
+    "mismatch": "Această fereastră și partea ei de fundal au fost construite pentru versiuni Oleafly diferite, așa că unele funcții s-ar putea să nu meargă. Reinstalarea aplicației rezolvă problema."
+  },
+  "branding": {
+    "assistantMascot": "Mascota asistentului AI Oleafly"
+  },
+  "browser": {
+    "address": "Caută sau introdu un URL",
+    "back": "Înapoi",
+    "closeTab": "Închide fila",
+    "copyUrl": "Copiază URL-ul",
+    "forward": "Înainte",
+    "moreOptions": "Mai multe opțiuni",
+    "newTab": "Filă nouă",
+    "openExternal": "Deschide în browserul tău",
+    "openTabs": "File deschise",
+    "reload": "Reîncarcă",
+    "setHomePage": "Setează ca pagină de start"
+  },
+  "citeOleafly": {
+    "description": "Nu s-a găsit niciun fișier de bibliografie în acest proiect, așa că nu s-a schimbat nimic. Copiază intrarea de mai jos în bibliografia ta sau găsește-o din nou mai târziu în Setări, Ajutor și Despre.",
+    "openHelp": "Deschide Ajutor și Despre",
+    "title": "Citează Oleafly în această lucrare"
+  },
+  "commandGroups": {
+    "commands": "Comenzi",
+    "compile": "Compilare",
+    "editor": "Editor",
+    "insert": "Inserare",
+    "project": "Proiect",
+    "settings": "Setări",
+    "tools": "Instrumente"
+  },
+  "commandPalette": {
+    "empty": "Nu s-a găsit niciun rezultat.",
+    "label": "Paleta de comenzi",
+    "placeholder": "Scrie o comandă sau caută…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / titlu",
+      "label": "Adaugă citare"
+    },
+    "appearance": {
+      "keywords": "temă aspect mod",
+      "useDark": "Folosește aspectul întunecat",
+      "useLight": "Folosește aspectul deschis",
+      "useSystem": "Folosește aspectul sistemului"
+    },
+    "autoCompile": {
+      "disable": "Dezactivează compilarea automată",
+      "enable": "Activează compilarea automată"
+    },
+    "bold": {
+      "label": "Aldin"
+    },
+    "checkpoints": {
+      "label": "Puncte de control"
+    },
+    "citeOleafly": {
+      "keywords": "citare bibtex bibliografie mulțumiri oleafly",
+      "label": "Citează Oleafly în această lucrare"
+    },
+    "clearCache": {
+      "keywords": "golește cache compilare curăță recompilează vechi resetează aux",
+      "label": "Golește cache-ul de compilare și recompilează"
+    },
+    "closeEnvironment": {
+      "keywords": "închide încheie mediu begin latex",
+      "label": "Închide mediul LaTeX"
+    },
+    "createProject": {
+      "keywords": "proiect nou creează șablon galerie",
+      "label": "Creează un proiect nou"
+    },
+    "diagramComposer": {
+      "keywords": "diagramă figură tikz compozitor desenare pânză",
+      "label": "Deschide Compozitorul de diagrame"
+    },
+    "documentCitationScan": {
+      "keywords": "citări literatură scanare document paragraf referințe găsește",
+      "label": "Găsește citări în document"
+    },
+    "equation": {
+      "label": "Ecuație"
+    },
+    "exportPdf": {
+      "label": "Exportă PDF…"
+    },
+    "figure": {
+      "label": "Figură"
+    },
+    "generateFigure": {
+      "keywords": "figură diagramă desen tikz grafic ilustrație",
+      "label": "Generează o figură cu AI"
+    },
+    "gitHistory": {
+      "label": "Istoric Git"
+    },
+    "italic": {
+      "label": "Cursiv"
+    },
+    "label": {
+      "label": "Etichetă"
+    },
+    "list": {
+      "label": "Listă cu buline"
+    },
+    "newProject": {
+      "label": "Proiect nou…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell consolă nou",
+      "label": "Terminal nou"
+    },
+    "offline": {
+      "offline": "Mod offline (--only-cached)",
+      "online": "Mod online (permite descărcarea pachetelor)"
+    },
+    "openTool": "Deschide {{name}}",
+    "recompile": {
+      "label": "Recompilează"
+    },
+    "section": {
+      "label": "Secțiune"
+    },
+    "settings": {
+      "keywords": "setări preferințe opțiuni",
+      "label": "Deschide setările"
+    },
+    "spellcheck": {
+      "disable": "Dezactivează verificarea ortografică",
+      "enable": "Activează verificarea ortografică"
+    },
+    "surroundEnvironment": {
+      "keywords": "încadrează înconjoară mediu begin end latex",
+      "label": "Încadrează într-un mediu"
+    },
+    "synctex": {
+      "label": "Mergi la PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Tabel"
+    },
+    "theme": {
+      "keywords": "temă întunecat deschis aspect mod",
+      "toDark": "Treci la tema întunecată",
+      "toLight": "Treci la tema deschisă"
+    },
+    "tools": {
+      "keywords": "instrumente latex pdf ecuație bibtex tabel laboratoare căutare termene galerie",
+      "label": "Deschide Instrumente Oleafly"
+    },
+    "vim": {
+      "disable": "Dezactivează modul Vim",
+      "enable": "Activează modul Vim"
+    },
+    "wordCount": {
+      "label": "Numărul de cuvinte"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "șterge linia elimină",
+        "duplicate": "duplică linia selecția copiază",
+        "lowercase": "litere mici majuscule text",
+        "titleCase": "inițiale majuscule text",
+        "uppercase": "litere mari majuscule text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Oprită",
+      "on": "Pornită",
+      "title": "Compilare automată"
+    },
+    "compile": "Compilează",
+    "compiler": {
+      "auto": "Automat <note>[TeX din sistem]</note>",
+      "help": "Tectonic este inclus și nu are nevoie de configurare. Celelalte variante rulează TeX-ul din sistem, care poate citi fișierele locale accesibile contului tău și ar trebui folosit doar cu proiecte în care ai încredere. Varianta automată alege compilatorul după sursă. pdfLaTeX se potrivește cu majoritatea șabloanelor de reviste. XeLaTeX și LuaLaTeX adaugă fonturile sistemului și Unicode.",
+      "lualatex": "LuaLaTeX <note>[TeX din sistem]</note>",
+      "pdflatex": "pdfLaTeX <note>[TeX din sistem]</note>",
+      "tectonic": "Tectonic <note>[inclus]</note>",
+      "title": "Compilator (acest proiect)",
+      "xelatex": "XeLaTeX <note>[TeX din sistem]</note>"
+    },
+    "errors": {
+      "continue": "Încearcă să compilezi în ciuda erorilor",
+      "stop": "Oprește la prima eroare",
+      "title": "Tratarea erorilor de compilare"
+    },
+    "fromScratch": "Recompilează de la zero",
+    "mode": {
+      "fast": "Rapid <note>[ciornă]</note>",
+      "normal": "Normal",
+      "title": "Mod de compilare"
+    },
+    "options": "Opțiuni de compilare",
+    "recompile": "Recompilează",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Oprește compilarea",
+    "syntax": {
+      "check": "Verifică sintaxa înainte de compilare",
+      "skip": "Nu verifica sintaxa",
+      "title": "Verificări de sintaxă"
+    },
+    "texRootBroken": "% !TEX root din {{file}} trimite la un fișier inexistent ({{target}})",
+    "texRootLabel": "rădăcină TEX",
+    "texRootName": "rădăcină: {{name}}",
+    "texRootOverride": "rădăcină: {{path}} (setată de % !TEX root din {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Alege o dată"
+  },
+  "devMenu": {
+    "inspect": "Inspectează",
+    "refreshApp": "Reîmprospătează aplicația"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Ascunde asistentul AI",
+      "show": "Arată asistentul AI"
+    },
+    "browser": {
+      "close": "Închide browserul ({{shortcut}})",
+      "open": "Deschide browserul ({{shortcut}})"
+    },
+    "settings": "Setări",
+    "sidebar": {
+      "hide": "Ascunde bara laterală ({{shortcut}})",
+      "show": "Arată bara laterală ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Ascunde terminalul ({{shortcut}})",
+      "show": "Arată terminalul ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Eșecul corespunde unei limitări cunoscute a motorului Tectonic inclus. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
+    "descriptionImportScan": "Scanarea de import a găsit funcții pe care motorul Tectonic inclus nu le orchestrează. Alege cum ar trebui să se compileze acest proiect. Alegerea se salvează în proiect, așa că și colaboratorii primesc aceeași configurație.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX prin latexmk"
+    },
+    "recommended": "Recomandat",
+    "shellEscape": {
+      "label": "Permite comenzi externe pe acest computer",
+      "needed": "Acest proiect folosește funcții care au nevoie de comenzi externe arbitrare. Ele rămân blocate până când le permiți.",
+      "warning": "Necesar pentru minted și pentru unele documente PythonTeX. LaTeX poate rula programe cu permisiunile tale de utilizator, așa că activează asta doar pentru un proiect în care ai încredere. Ajutoarele proprii ale TeX Live, precum conversia EPS, rulează și fără."
+    },
+    "shellEscapeAllowed": "Comenzile externe sunt permise pentru acest proiect, pe acest computer.",
+    "shellEscapeBlocked": "Comenzile externe arbitrare sunt blocate pentru acest proiect. Ajutoarele proprii ale TeX Live, precum conversia EPS, rulează în continuare.",
+    "shellEscapeFailed": "Accesul la comenzi externe nu a putut fi actualizat.",
+    "switchFailed": "Motorul de compilare nu a putut fi schimbat.",
+    "switched": "Acest proiect se compilează acum cu {{engine}}.",
+    "switchedAfterInstall": "TinyTeX a fost instalat. Acest proiect se compilează acum cu {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Deja selectat",
+      "found": "S-a găsit o distribuție TeX pe această mașină. TeX-ul din sistem poate citi fișierele locale accesibile contului tău, așa că folosește-l doar cu proiecte în care ai încredere. Comenzile externe arbitrare rămân blocate dacă nu le permiți mai jos. TeX Live rulează în continuare ajutoarele din lista lui proprie de permisiuni, precum conversia EPS.",
+      "missing": "Nu s-a găsit nicio distribuție TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) pe această mașină.",
+      "switchPdflatex": "Treci la pdfLaTeX și recompilează",
+      "title": "Folosește LaTeX-ul din sistemul meu (latexmk)",
+      "titlePdflatex": "Folosește pdfLaTeX din LaTeX-ul sistemului meu (latexmk)",
+      "use": "Folosește LaTeX-ul din sistem"
+    },
+    "tectonic": {
+      "description": "Fără configurare, funcționează offline. Potrivit pentru LaTeX simplu și pentru cele mai obișnuite pachete.",
+      "keep": "Rămâi la Tectonic",
+      "switchBack": "Revino la Tectonic",
+      "title": "Rămâi la Tectonic",
+      "withFailures_one": "Fără configurare, funcționează offline. {{features}} va continua probabil să eșueze.",
+      "withFailures_few": "Fără configurare, funcționează offline. {{features}} vor continua probabil să eșueze.",
+      "withFailures_other": "Fără configurare, funcționează offline. {{features}} vor continua probabil să eșueze."
+    },
+    "tinytex": {
+      "description": "Instalează o distribuție TeX Live compactă în folderul tău personal, fără drepturi de administrator. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot aduce mai târziu și alte pachete, până la circa 1 GB în total.",
+      "download": "Descarcă și folosește TinyTeX",
+      "resume": "Reia descărcarea ({{megabytes}} MB descărcați)",
+      "title": "Descarcă TinyTeX"
+    },
+    "titleCompileFailure": "Această compilare are nevoie de mai mult decât motorul inclus",
+    "titleImportScan": "Acest proiect are nevoie de mai mult decât motorul inclus"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Copiază diagnosticele",
+    "description": "Oleafly a întâmpinat o eroare neașteptată și nu a putut afișa acest ecran. Fișierele proiectului tău rămân pe disc. Detaliile de diagnostic sunt disponibile mai jos.",
+    "halted": "Oprit",
+    "logSaved": "Jurnal salvat în <path>{{path}}</path>",
+    "reload": "Reîncarcă Oleafly",
+    "report": "Raportează pe GitHub",
+    "runtimeError": "Eroare de execuție",
+    "specimen": {
+      "diagramLabel": "Diagramă decorativă cu un specimen",
+      "layer": "STRATUL {{current}}/{{total}}",
+      "specimen": "SPECIMEN:",
+      "transversePlane": "PLAN TRANSVERSAL",
+      "veinDensity": "DENSITATEA NERVURILOR:"
+    },
+    "specimenViewer": "Vizualizator de specimene",
+    "stackTrace": "Urma de execuție",
+    "surfaceCrashed": "{{surface}} s-a blocat.",
+    "surfaces": {
+      "aiAssistant": "Asistentul AI",
+      "assistantPanel": "Panoul asistentului",
+      "chat": "Conversația",
+      "diagramComposer": "Compozitorul de diagrame",
+      "editor": "Editorul",
+      "pdfPreview": "Previzualizarea PDF",
+      "researchAssistant": "Asistentul de cercetare",
+      "terminalDock": "Panoul de terminale"
+    },
+    "title": "A apărut o problemă"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "Acțiuni GitHub",
+    "connect": "Conectează GitHub…",
+    "connectedAs": "Conectat ca @{{login}}",
+    "copyRepositoryLink": "Copiază legătura către depozit",
+    "openInGithub": "Deschide în GitHub",
+    "pushHint": "Trimite pe GitHub ca să activezi aceste acțiuni",
+    "settings": "Setări GitHub",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Acasă",
+    "label": "Acasă",
+    "title": "Înapoi la bibliotecă",
+    "tooltip": "Revino la biblioteca de proiecte"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Golește jurnalul",
+    "clearLogAriaLabel": "Golește jurnalul MCP",
+    "live": "Activ",
+    "off": "Oprit",
+    "openSettings": "Deschide setările MCP",
+    "serverOff": "Serverul MCP este oprit.",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "Instrumente disponibile prin MCP",
+    "waiting": "Se așteaptă agenți externi…",
+    "waitingHint": "Instrumentele apelate prin MCP (Claude, Cursor, Grok, …) apar aici în timp real."
+  },
+  "omnibar": {
+    "bookmarked": "Cu semn de carte",
+    "createProject": "Creează un proiect nou",
+    "groups": {
+      "action": "Acțiune",
+      "documents": "Documente",
+      "references": "Referințe"
+    },
+    "label": "Căutare",
+    "noMatches": "Nu s-a găsit nicio potrivire.",
+    "openReferences": "Deschide referințele acestui proiect",
+    "placeholder": "Caută proiecte, documente sau scrie / pentru comenzi…",
+    "placeholderDocuments": "Caută în documente…",
+    "placeholderProjects": "Caută proiecte după nume, motor, tip, dată sau metadate…",
+    "referencesNeedProject": "Deschide întâi un proiect ca să îi răsfoiești referințele.",
+    "slash": {
+      "create": "deschide galeria de șabloane",
+      "docs": "caută în documente",
+      "projects": "caută în proiectele tale",
+      "refs": "deschide referințele acestui proiect",
+      "settings": "deschide setările",
+      "theme": "schimbă tema de culoare"
+    },
+    "tryCommand": "Încearcă o comandă",
+    "unknownCommand": "Comandă necunoscută. Scrie / ca să vezi comenzile disponibile."
+  },
+  "projectSearch": {
+    "hint": "Caută în fișierele acestui proiect.",
+    "noResults": "Niciun rezultat.",
+    "placeholder": "Caută în proiect…",
+    "title": "Căutare"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau ieși oricum și le pierzi.",
+      "descriptionRestart": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau repornește oricum și le pierzi.",
+      "quitAnyway": "Ieși oricum",
+      "restartAnyway": "Repornește oricum",
+      "stay": "Rămâi",
+      "title": "Unele fișiere nu au putut fi salvate"
+    },
+    "flushTimeout": "Salvarea nu s-a încheiat în 5 secunde.",
+    "installing": {
+      "description": "Se salvează fișierele și se instalează actualizarea. Oleafly va reporni când este gata.",
+      "title": "Se pregătește repornirea"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Explorator",
+    "mcp": "Activitate MCP",
+    "pendingBadge_one": "{{count}} în așteptare",
+    "pendingBadge_few": "{{count}} în așteptare",
+    "pendingBadge_other": "{{count}} în așteptare",
+    "preflight": "Preverificări",
+    "references": "Referințe și citări",
+    "research": "Spațiu de cercetare",
+    "search": "Caută în proiect",
+    "sourceControl": "Control al versiunilor",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Închide fereastra de redenumire",
+    "collision": "Există deja {{kind}} cu numele „{{name}}”.",
+    "commit": "Confirmă redenumirea",
+    "newName": "Nume nou",
+    "planFiles_one": "{{count}} fișier",
+    "planFiles_few": "{{count}} fișiere",
+    "planFiles_other": "{{count}} de fișiere",
+    "planSummary_one": "{{count}} modificare în $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_few": "{{count}} modificări în $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} de modificări în $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "o referință",
+      "bibentry": "o intrare bibliografică",
+      "cite": "o citare",
+      "environment": "un mediu",
+      "envuse": "o utilizare de mediu",
+      "file": "un fișier",
+      "glossary": "o intrare de glosar",
+      "glossaryuse": "o utilizare de glosar",
+      "inputedge": "o includere",
+      "label": "o etichetă",
+      "macro": "un macro",
+      "macrouse": "o utilizare de macro",
+      "ref": "o referință",
+      "section": "o secțiune",
+      "theorem": "o teoremă"
+    },
+    "title": "Redenumește <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Închide setările",
+    "data": {
+      "cloud": {
+        "comingSoon": "În curând",
+        "description": "Ține proiectele sincronizate pe toate dispozitivele tale, fără să configurezi un depozit Git la distanță. Fiecare transfer va fi criptat cap la cap, așa că munca ta rămâne privată pe drum. Folderele tale locale de proiect vor rămâne sursa de adevăr.",
+        "title": "Sincronizare în cloud"
+      },
+      "danger": {
+        "closeFailed": "Proiectul deschis nu a putut fi închis în siguranță.",
+        "confirmDeleteAllAction": "Șterge toate proiectele",
+        "confirmDeleteAllDescription": "Fiecare proiect curent va ajunge în Coșul de reciclare, împreună cu fișierele și cu istoricul lui Git. Poți restabili proiectele pe rând după aceea.",
+        "confirmDeleteAllTitle_one": "Ștergi {{count}} proiect, adică toate?",
+        "confirmDeleteAllTitle_few": "Ștergi toate cele {{count}} proiecte?",
+        "confirmDeleteAllTitle_other": "Ștergi toate cele {{count}} de proiecte?",
+        "deleteAll": "Șterge toate proiectele",
+        "deleteAllAction": "Șterge tot",
+        "deleteAllDescription": "Mută fiecare proiect în Coșul de reciclare. Nimic nu se șterge definitiv.",
+        "deleting": "Se șterge…",
+        "moveFailed": "Proiectele nu au putut fi mutate în Coșul de reciclare.",
+        "movePartial": "S-au mutat {{count}} proiecte, dar operațiunea nu a putut fi dusă la capăt.",
+        "movedCount_one": "{{count}} proiect a fost mutat în Coșul de reciclare.",
+        "movedCount_few": "{{count}} proiecte au fost mutate în Coșul de reciclare.",
+        "movedCount_other": "{{count}} de proiecte au fost mutate în Coșul de reciclare.",
+        "title": "Zonă periculoasă"
+      },
+      "githubHint": "Fă o copie de siguranță sau sincronizează un proiect între dispozitive: conectează GitHub, apoi folosește <push>Trimite</push> / <pull>Adu</pull> în Controlul versiunilor. <setup>Configurează GitHub →</setup>",
+      "localFirst": "Oleafly funcționează întâi local. Toate proiectele stau pe discul tău:",
+      "plainFolders": "Fiecare proiect este un folder obișnuit. Istoricul Git este opțional, iar nimic nu îți părăsește computerul dacă nu trimiți pe GitHub.",
+      "recycleBin": {
+        "clearAll": "Golește tot",
+        "clearFailed": "Coșul de reciclare nu a putut fi golit.",
+        "clearPartial": "S-au șters definitiv {{count}} proiecte, dar Coșul de reciclare nu a putut fi golit complet.",
+        "clearedCount_one": "{{count}} proiect a fost șters definitiv.",
+        "clearedCount_few": "{{count}} proiecte au fost șterse definitiv.",
+        "clearedCount_other": "{{count}} de proiecte au fost șterse definitiv.",
+        "clearing": "Se golește…",
+        "confirmClearAction": "Golește Coșul de reciclare",
+        "confirmClearDescription": "Aceasta șterge definitiv fiecare proiect aflat acum în Coșul de reciclare, împreună cu fișierele și cu istoricul lui Git. Acțiunea nu poate fi anulată.",
+        "confirmClearTitle_one": "Golești {{count}} proiect din Coșul de reciclare?",
+        "confirmClearTitle_few": "Golești {{count}} proiecte din Coșul de reciclare?",
+        "confirmClearTitle_other": "Golești {{count}} de proiecte din Coșul de reciclare?",
+        "confirmDeleteAction": "Șterge definitiv",
+        "confirmDeleteDescription": "Aceasta elimină din Coșul de reciclare proiectul, fișierele lui și istoricul lui Git. Acțiunea nu poate fi anulată.",
+        "confirmDeleteTitle": "Ștergi definitiv „{{name}}”?",
+        "deleteFailed": "„{{name}}” nu a putut fi șters definitiv.",
+        "deleteOne": "Șterge definitiv {{name}}",
+        "deleted": "„{{name}}” a fost șters definitiv.",
+        "deletedAt": "Șters la {{date}} · {{size}}",
+        "empty": "Coșul de reciclare este gol.",
+        "loading": "Se încarcă Coșul de reciclare…",
+        "restore": "Restabilește",
+        "restoreFailed": "„{{name}}” nu a putut fi restabilit.",
+        "restored": "„{{name}}” a fost restabilit.",
+        "size": "{{size}} · fără curățare automată",
+        "subtitle": "Proiectele șterse rămân aici până când le elimini",
+        "title": "Coșul de reciclare"
+      },
+      "reveal": "Arată folderul de proiecte în Finder",
+      "storage": {
+        "calculating": "Se calculează spațiul folosit…",
+        "desktopOnly": "Detaliile despre stocare sunt disponibile în aplicația desktop.",
+        "error": "Detaliile despre stocare nu au putut fi calculate.",
+        "refresh": "Reîmprospătează spațiul folosit",
+        "stats": {
+          "appData": "Datele aplicației",
+          "appDataDetail": "Resurse și setări",
+          "buildCache": "Cache de compilare",
+          "buildCacheDetail": "Rezultate generate",
+          "files": "Fișiere",
+          "folders_one": "{{count}} folder",
+          "folders_few": "{{count}} foldere",
+          "folders_other": "{{count}} de foldere",
+          "gitHistory": "Istoric Git",
+          "gitHistoryDetail": "Versiuni locale",
+          "images": "Imagini",
+          "pdfs": "Fișiere PDF",
+          "projectFiles": "Fișierele proiectelor",
+          "projectFilesDetail": "Surse și metadate",
+          "projects": "Proiecte"
+        },
+        "subtitle": "Proiecte, previzualizări, istoric și datele aplicației",
+        "title": "Spațiu folosit",
+        "total": "{{size}} în folderul de date Oleafly",
+        "unreadable_one": "{{count}} element inaccesibil a fost exclus.",
+        "unreadable_few": "{{count}} elemente inaccesibile au fost excluse.",
+        "unreadable_other": "{{count}} de elemente inaccesibile au fost excluse."
+      },
+      "tabs": {
+        "cloud": "Sincronizare în cloud",
+        "local": "Stocare locală"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
+        "label": "Instrumente LaTeX"
+      },
+      "visualEditor": {
+        "description": "Arată comutatorul Vizual/Cod în editorul de documente. Dezactivat implicit, așa că documentele se deschid doar în editorul de cod. Diagramele își păstrează întotdeauna propriul comutator de pânză.",
+        "label": "Editor vizual"
+      },
+      "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
+      "webBrowser": {
+        "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta; când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
+        "label": "Browser web"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Varianta de engleză pentru corectură",
+        "description": "Aplică ortografia, gramatica și convențiile regionale alese.",
+        "label": "Varianta de engleză"
+      },
+      "dictionary": {
+        "ariaLabel": "Dicționarul ortografic pentru corectură",
+        "description": "Pachetul Hunspell folosit de verificarea ortografică în modurile Sursă și Vizual. Limbile din afara celor cinci pachete incluse se descarcă la cerere.",
+        "label": "Dicționar ortografic",
+        "downloadFailed": "Dicționarul {{name}} nu a putut fi descărcat.",
+        "downloaded": "{{name}} este pregătit pentru verificarea ortografică.",
+        "downloading": "Se descarcă {{name}}",
+        "offlineRefused": "Modul offline este pornit. Oprește-l ca să descarci {{name}}."
+      },
+      "harper": {
+        "description": "Verifică gramatica și stilul englezesc în modurile Sursă și Vizual pentru LaTeX și Markdown, plus Sursă pentru Typst, cu corecturi dintr-un clic.",
+        "label": "Gramatică și stil (Harper)"
+      },
+      "offline": {
+        "description": "Compilează cu --only-cached și nu descărca niciodată pachete prin rețea.",
+        "label": "Mod offline"
+      },
+      "proofreadingNote": "Corectura rulează local, într-un proces de fundal. Harper urmează varianta de engleză aleasă; verificarea ortografică folosește întotdeauna exact pachetul Hunspell ales. Formulele, codul, comentariile, sintaxa citărilor, metadatele și adresele URL sunt excluse.",
+      "regionalism": {
+        "description": "Semnalează termenii care nu se potrivesc cu varianta de engleză aleasă. Dezactivează dacă folosești astfel de termeni ca nume de produs sau de cod.",
+        "label": "Sugestii pentru regionalisme"
+      },
+      "spellcheck": {
+        "description": "Subliniază cuvintele scrise greșit cu dicționarul Hunspell offline ales și oferă sugestii de înlocuire în modurile Sursă și Vizual.",
+        "label": "Verificare ortografică"
+      },
+      "wordChoice": {
+        "description": "Sugerează cuvinte alternative (de exemplu „too” față de „to”). Dezactivează ca să păstrezi doar ortografia și gramatica.",
+        "label": "Sugestii pentru alegerea cuvintelor"
+      }
+    },
+    "help": {
+      "community": "Comunitate",
+      "copyInfo": "Copiază informațiile",
+      "forksTitle": "Bifurcații pe GitHub",
+      "forks_one": "{{count}} bifurcație pe GitHub",
+      "forks_few": "{{count}} bifurcații pe GitHub",
+      "forks_other": "{{count}} de bifurcații pe GitHub",
+      "logoAlt": "Oleafly",
+      "project": "Proiect",
+      "resources": {
+        "documentation": "Documentație",
+        "learn": "Învață",
+        "license": "Licență",
+        "reportCrash": "Raportează o blocare (atașează jurnalele)",
+        "startTour": "Pornește turul",
+        "whatsNew": "Noutăți"
+      },
+      "resourcesTitle": "Resurse",
+      "starRepo": "Dă o stea și explorează pe GitHub",
+      "starsTitle": "Stele pe GitHub",
+      "stars_one": "{{count}} stea pe GitHub",
+      "stars_few": "{{count}} stele pe GitHub",
+      "stars_other": "{{count}} de stele pe GitHub",
+      "support": "Dacă Oleafly te ajută în munca ta, <star>dă-i o stea pe GitHub</star>. Clicul acela mic ajută mai mulți cercetători să îl găsească și sprijină dezvoltarea în continuare.",
+      "supportAriaLabel": "Sprijină Oleafly",
+      "tagline": "Scrie, compilează, corectează, gestionează citările, verifică fișiere PDF, urmărește modificările în Git și folosește modelele AI pe care le alegi. Totul într-un spațiu de lucru open-source.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "Asistentul AI",
+      "appearance": "Aspect",
+      "data": "Stocarea datelor",
+      "dictionary": "Dicționar",
+      "downloads": "Descărcări",
+      "engine": "Motoare",
+      "experimentation": "Experimente",
+      "general": "General",
+      "help": "Ajutor și Despre",
+      "integrations": "Integrări",
+      "shortcuts": "Scurtături de tastatură"
+    },
+    "sectionsNav": "Secțiunile setărilor",
+    "title": "Setări",
+    "tours": {
+      "confirmDescription": "Aceasta închide toate tururile rămase și dezactivează ghidurile din tur. Le poți activa din nou din setările Generale, ca să reiei de la capăt.",
+      "disableConfirm": "Dezactivează tururile",
+      "disableTitle": "Dezactivezi ghidurile din tur?",
+      "dismissAll": "Închide toate tururile",
+      "dismissAllConfirm": "Închide-le pe toate",
+      "dismissAllTitle": "Închizi toate tururile?",
+      "enable": "Activează ghidurile din tur",
+      "enableAll": "Activează toate ghidurile din tur",
+      "enableOne": "Activează turul {{name}}",
+      "progress": "Progresul tururilor",
+      "progressDetail": "{{completed}} finalizate și {{dismissed}} închise.",
+      "status": {
+        "completed": "Finalizat",
+        "dismissed": "Închis",
+        "pending": "În așteptare"
+      },
+      "summary": "{{completed}} finalizate · {{dismissed}} închise · {{total}} în total"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Abandonează îmbinarea",
+    "abortMergeDescription": "Rezolvările de conflicte făcute până acum se pierd, iar fișierele revin la cum erau înainte să înceapă îmbinarea.",
+    "abortMergeTitle": "Abandonezi această îmbinare?",
+    "aheadBehind": "{{ahead}} înainte · {{behind}} în urmă față de origin/{{branch}}",
+    "branch": "Ramuri",
+    "branchName": "Numele ramurii",
+    "changeRepo": "Schimbă depozitul",
+    "changes": "Modificări",
+    "checking": "Se verifică Controlul versiunilor…",
+    "clean": "Nicio modificare. Arborele de lucru este curat.",
+    "commit": "Comite",
+    "commitActions": "Mai multe acțiuni de comitere",
+    "commitAmend": "Modifică ultima comitere",
+    "amendedKeptMessage": "S-a modificat ultima comitere, păstrându-i mesajul.",
+    "commitAndPush": "Comite și trimite",
+    "commitAndSync": "Comite și sincronizează",
+    "commitDescription": "Descrierea comiterii",
+    "commitDescriptionPlaceholder": "Descriere (opțional)",
+    "commitTitle": "Titlul comiterii",
+    "committed": "Comis: „{{subject}}”",
+    "committedRemoteFailed": "Comis local, dar {{step}} a eșuat: {{reason}}",
+    "committedWithConflicts": "Comis local. Rezolvă conflictele aduse înainte să trimiți.",
+    "confirmDiscard": "Confirmă renunțarea",
+    "confirmDiscardTitle": "Renunță la toate modificările din acest fișier",
+    "continueMerge": "Încheie îmbinarea",
+    "copyCommitId": "Copiază ID-ul comiterii",
+    "create": "Creează",
+    "createBranch": "Creează o ramură…",
+    "credentialRemoved": "S-a eliminat credențiala salvată din acest depozit Git la distanță.",
+    "credentialWarning": "Versiuni mai vechi de Oleafly au salvat o credențială în acest depozit Git la distanță.",
+    "discard": "Renunță la modificări",
+    "discardFor": "Renunță la modificările din {{path}}",
+    "discardAll": "Renunță la toate modificările",
+    "discardChangesDescription": "Aceste modificări din arborele de lucru se vor pierde. Acțiunea nu poate fi anulată.",
+    "discardChangesTitle": "Renunți la modificările selectate?",
+    "discardTitle": "Renunță la modificări (revino la ultima versiune)",
+    "enterTitle": "Introdu un titlu de comitere",
+    "finishMergeToCommit": "Încheie îmbinarea înainte să comiți.",
+    "fetch": "Adu",
+    "graph": "Graf",
+    "commitCount_one": "{{count}} comitere",
+    "commitCount_few": "{{count}} comiteri",
+    "commitCount_other": "{{count}} de comiteri",
+    "initialize": "Inițializează depozitul",
+    "initialized": "Git a fost inițializat pe {{branch}}.",
+    "linkCopied": "Legătura GitHub a fost copiată",
+    "markResolved": "Marchează ca rezolvat",
+    "mergeNeedsAttention": "Rezolvă conflictele de îmbinare",
+    "moreActions": "Mai multe acțiuni de control al versiunilor",
+    "noHistory": "Încă nu există comiteri",
+    "noProject": "Deschide un proiect ca să folosești Controlul versiunilor.",
+    "noStagedChanges": "Nicio modificare pregătită",
+    "notInitialized": "Controlul versiunilor nu este inițializat",
+    "notInitializedHint": "Oleafly nu va comite automat într-un depozit Git.",
+    "nothingStaged": "Nu este nimic pregătit de comis.",
+    "openAllChanges": "Deschide toate modificările",
+    "openFile": "Deschide fișierul",
+    "openFileFor": "Deschide {{path}}",
+    "popStash": "Aplică ultima stivuire",
+    "publish": "Publică pe GitHub",
+    "published": "Publicat la {{url}}",
+    "pull": "Adu de la origin",
+    "pullShort": "Adu",
+    "push": "Comite și trimite către origin",
+    "pushShort": "Trimite",
+    "pushSkippedNoRemote": "⚠ Trimiterea a fost sărită - nu este setat niciun depozit origin mai jos.",
+    "pushSkippedNoToken": "⚠ Trimiterea a fost sărită - niciun token GitHub (Setări → GitHub).",
+    "refresh": "Reîmprospătează",
+    "remote": "Depozit la distanță",
+    "remoteHint": "Creează un depozit nou sau leagă unul existent ca depozit la distanță al acestui proiect, apoi trimite.",
+    "removeCredential": "Elimină credențiala salvată",
+    "restoreCommit": "Restabilește versiunea",
+    "restoreCommitDescription": "Aceasta înlocuiește fiecare fișier urmărit din proiect cu această versiune și elimină fișierele adăugate ulterior. Ramura ta rămâne pe comiterea ei curentă.",
+    "restoreCommitTitle": "Restabilești această versiune?",
+    "sectionActions": "Mai multe acțiuni pentru {{section}}",
+    "stage": "Pregătește",
+    "stageFor": "Pregătește {{path}}",
+    "stageAll": "Pregătește tot",
+    "stageFirst": "Pregătește întâi un fișier",
+    "stageToCommit": "Pregătește un fișier ca să poți comite.",
+    "staged": "Pregătite",
+    "stagedChanges": "Modificări pregătite",
+    "stagedChangeCount_one": "{{count}} modificare pregătită",
+    "stagedChangeCount_few": "{{count}} modificări pregătite",
+    "stagedChangeCount_other": "{{count}} de modificări pregătite",
+    "stash": "Stivuiește modificările",
+    "stashNeedsAttention": "Rezolvă conflictele de stivuire",
+    "sync": "Sincronizează",
+    "title": "Control al versiunilor",
+    "titleRequired": "Titlul comiterii este obligatoriu.",
+    "titleRequiredStatus": "Introdu un titlu de comitere înainte să comiți.",
+    "unlink": "Dezleagă",
+    "unlinked": "Dezlegat de GitHub.",
+    "unstage": "Scoate din pregătire",
+    "unstageFor": "Scoate {{path}} din pregătire",
+    "unstageAll": "Scoate tot din pregătire",
+    "workingChangeCount_one": "{{count}} modificare în lucru",
+    "workingChangeCount_few": "{{count}} modificări în lucru",
+    "workingChangeCount_other": "{{count}} de modificări în lucru",
+    "useCurrent": "Folosește varianta curentă",
+    "useIncoming": "Folosește varianta primită"
+  },
+  "splash": {
+    "initializing": "Se inițializează Oleafly",
+    "loadingCore": "Se încarcă nucleul Oleafly",
+    "loadingHarness": "Se încarcă structura Oleafly",
+    "loadingParsers": "Se încarcă analizatoarele Oleafly",
+    "starting": "Pornește Oleafly"
+  },
+  "theme": {
+    "dark": "Întunecată",
+    "light": "Deschisă",
+    "menuLabel": "Aspect: {{name}}",
+    "system": "Sistem",
+    "useDark": "Folosește tema întunecată",
+    "useLight": "Folosește tema deschisă",
+    "useSystem": "Folosește tema sistemului"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Ieși oricum",
+      "description": "{{phase}} chiar acum. Dacă ieși, instalarea se oprește temporar. Partea descărcată se păstrează și se reia data viitoare când deschizi Oleafly.",
+      "title": "TinyTeX încă se instalează"
+    },
+    "wait": {
+      "description": "{{phase}} Compilarea ta este la coadă și pornește automat de îndată ce motorul este pregătit.",
+      "title": "TinyTeX încă se descarcă"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Anulează (Esc)",
+    "closeForkDialog": "Închide fereastra de bifurcare",
+    "compileFigureFirst": "Compilează întâi figura",
+    "compilePdfFirst": "PDF-ul are nevoie întâi de o compilare",
+    "export": "Exportă",
+    "exportComplete": "Exportul {{format}} s-a încheiat",
+    "exportDocx": "Exportă ca Word (.docx)",
+    "exportEpub": "Exportă ca EPUB (.epub)",
+    "exportHtml": "Exportă ca HTML (.html)",
+    "exportMarkdown": "Exportă ca Markdown (.md)",
+    "exportPdf": "Exportă ca PDF",
+    "exportPdfVector": "Exportă ca PDF (imagine vectorială)",
+    "exportPngRaster": "Exportă ca PNG (imagine raster)",
+    "exportPagePng": "Exportă pagina ca PNG (imagine raster)",
+    "exportAs": "Exportă ca {{format}}",
+    "exportPptx": "Exportă ca PowerPoint (.pptx)",
+    "exportSourceZip": "Exportă sursa (.zip)",
+    "exportTxt": "Exportă ca text simplu (.txt)",
+    "exportZipFailed": "Arhiva zip a proiectului nu a putut fi exportată",
+    "exporting": "Se exportă .{{format}}…",
+    "fork": "Bifurcă",
+    "forkDescription": "Copiază <name>{{name}}</name> și istoricul lui Git într-un proiect nou. Punctele de control pornesc goale.",
+    "forkFailed": "Proiectul nu a putut fi bifurcat.",
+    "forkProject": "Bifurcă proiectul",
+    "layout": "Aranjare",
+    "layouts": {
+      "aiOnly": "Doar AI",
+      "editorAi": "Editor și AI",
+      "editorOnly": "Doar editorul",
+      "editorPreview": "Editor și previzualizare",
+      "editorPreviewAi": "Editor, previzualizare și AI",
+      "previewAi": "Previzualizare și AI",
+      "previewOnly": "Doar previzualizarea"
+    },
+    "newProjectName": "Numele proiectului nou",
+    "projectName": "Numele proiectului",
+    "projectRenamed": "Proiectul a fost redenumit",
+    "saveName": "Salvează (Enter)",
+    "saveNameAriaLabel": "Salvează numele",
+    "untitledProject": "proiect",
+    "versioning": "Versionare",
+    "viewFile": "Vezi fișierul",
+    "views": {
+      "editor": "Vizualizarea sursei",
+      "pdf": "Vizualizarea PDF",
+      "split": "Vizualizare împărțită"
+    }
+  },
+  "tour": {
+    "chooseColor": "Alege-ți culoarea distinctivă",
+    "diagramArrow": "Săgeată curbată care arată spre pânza de diagrame",
+    "pointer": "Indicatorul din tur",
+    "quitConfirm": "Ieși din tur",
+    "quitDescription": "Progresul tău nu se salvează. Poți reporni oricând orice tur din meniul Ajutor.",
+    "quitTitle": "Ieși din tur?",
+    "setMood": "Dă tonul",
+    "showMeAround": "Arată-mi împrejur",
+    "skip": "Sari peste",
+    "step": "Pasul {{step}}",
+    "stepOfTotal": "Pasul {{step}} din {{total}}",
+    "stepOfTour": "Pasul {{step}} · {{tour}}",
+    "useAccent": "Folosește culoarea de accent {{name}}",
+    "welcomeArrow": "Săgeată desenată de mână care arată spre paragraful de bun venit",
+    "welcomeBody": "Du o lucrare de la prima ciornă la PDF-ul final într-un singur spațiu de lucru open-source. Scrie, compilează, corectează, gestionează citările, construiește figuri, verifică fiecare modificare în Git și folosește modelele AI pe care le alegi. Proiectele tale rămân pe computerul tău.",
+    "welcomeTitle": "Bun venit în Oleafly"
+  },
+  "updateChecker": {
+    "available": "Actualizare disponibilă · v{{version}}",
+    "check": "Caută actualizări",
+    "checkAgain": "Caută din nou",
+    "checkFailed": "Nu s-au putut căuta actualizări.",
+    "checking": "Se verifică…",
+    "downloadFromGithub": "Descarcă de pe GitHub",
+    "downloading": "Se descarcă… {{percent}}%",
+    "installing": "Se instalează…",
+    "lastCheckFailed": "Ultima verificare automată a eșuat.",
+    "lastCheckFailedAt": "Ultima verificare automată a eșuat · {{when}}.",
+    "latest": "Ai cea mai recentă versiune",
+    "releaseNotes": "Note de lansare",
+    "restartNotice": "Oleafly va reporni ca să încheie.",
+    "tryAgain": "Încearcă din nou",
+    "unsupported": "Actualizările sunt gestionate de aplicația desktop.",
+    "updateNow": "Actualizează acum"
+  },
+  "updateWindow": {
+    "checking": "Se caută actualizări…",
+    "currentVersion": "Ai versiunea v{{version}}",
+    "error": "Actualizarea nu s-a putut încheia. Încearcă mai târziu.",
+    "later": "Mai târziu",
+    "looking": "Se caută cea mai recentă versiune…",
+    "packageInstall": "Instalat dintr-un pachet. Descarcă versiunea nouă ca să actualizezi.",
+    "ready": "O versiune nouă este gata de instalare.",
+    "upToDate": "Ești la zi",
+    "upToDateGeneric": "Folosești cea mai recentă versiune de Oleafly",
+    "upToDateHeadline": "Ești la zi!",
+    "upToDateVersion": "Oleafly v{{version}} este cea mai recentă versiune",
+    "viewRelease": "Vezi lansarea"
+  },
+  "windowControls": {
+    "group": "Comenzile ferestrei",
+    "maximize": "Maximizează",
+    "minimize": "Minimizează",
+    "restore": "Restabilește"
+  },
+  "windows": {
+    "preview": "Previzualizare: {{title}}",
+    "update": "Actualizare Oleafly"
+  }
+}

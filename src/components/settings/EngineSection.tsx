@@ -76,7 +76,7 @@ function MarkdownEngineTab() {
       <div
         className={cn(
           "rounded-lg border p-3",
-          pandoc === "ready" && "border-primary ring-1 ring-primary",
+          pandoc === "ready" && "border-primary",
         )}
         data-testid="markdown-engine-pandoc"
       >
@@ -102,7 +102,7 @@ function MarkdownEngineTab() {
           {pandoc === "installing" && t(($) => $.settings.engine.markdown.status.installing)}
         </p>
       </div>
-      <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
+      <div className="rounded-lg border border-primary p-3">
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
           <span className="text-sm">{t(($) => $.settings.engine.choices.tectonic.name)}</span>
@@ -186,7 +186,7 @@ export function EngineSection() {
               <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
             </Tooltip>
           </div>
-          <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
+          <div className="rounded-lg border border-primary p-3">
             <div className="flex items-center gap-2">
               <Cpu className="size-4 text-muted-foreground" />
               <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
@@ -227,7 +227,7 @@ export function EngineSection() {
               onClick={() => setDefaultLatexEngine(choiceId)}
               className={cn(
                 "rounded-lg border p-3 text-left transition-colors hover:bg-accent/50",
-                selected && "border-primary ring-1 ring-primary",
+                selected && "border-primary",
               )}
             >
               <div className="flex items-center gap-2">

@@ -1,0 +1,206 @@
+{
+  "files": {
+    "collapseAll": "Sbalit všechny složky",
+    "confirmDelete": "Smazat {{path}}? Tuto akci nelze vrátit zpět.",
+    "conflict": {
+      "cancelAriaLabel": "Zrušit přesun souboru",
+      "createBody": "<destination>{{destination}}</destination> už existuje. Zachovejte oba soubory pod názvem <suggestion>{{suggestion}}</suggestion>. Vytvoření nikdy nenahradí existující soubor.",
+      "dialogAriaLabel": "Konflikt při přesunu souboru",
+      "keepBoth": "Zachovat oba",
+      "renameBody": "<destination>{{destination}}</destination> už existuje. Zachovejte oba soubory pod názvem <suggestion>{{suggestion}}</suggestion>, nebo existující cíl nahraďte. Oleafly jej nenahradí, dokud nezvolíte Nahradit.",
+      "replace": "Nahradit",
+      "title": "Tento název se už používá",
+      "unchanged": "Původní i cílová cesta zůstaly beze změny."
+    },
+    "createFailed": "Nepodařilo se vytvořit „{{path}}“.",
+    "deleteFailed": "Nepodařilo se smazat „{{path}}“.",
+    "expandAll": "Rozbalit všechny složky",
+    "importAriaLabel": "Importovat do vybrané složky",
+    "importFiles": "Importovat soubory",
+    "importFolder": "Importovat složku",
+    "importTitle": "Importovat soubor nebo složku (do vybrané složky)",
+    "makeCopy": "Vytvořit kopii",
+    "moreActions": "Další akce pro {{name}}",
+    "moveFailed": "Nepodařilo se přesunout „{{path}}“. Původní cesta zůstala beze změny.",
+    "newEntry": {
+      "fileInFolder": "Název nového souboru ve složce {{folder}}",
+      "fileInRoot": "Název nového souboru v kořeni projektu",
+      "filePlaceholder": "Název nového souboru",
+      "folderInFolder": "Název nové složky ve složce {{folder}}",
+      "folderInRoot": "Název nové složky v kořeni projektu",
+      "folderPlaceholder": "Název nové složky"
+    },
+    "newFile": "Nový soubor",
+    "newFileAriaLabel": "Nový soubor ve vybrané složce",
+    "newFileTitle": "Nový soubor (ve vybrané složce)",
+    "newFolder": "Nová složka",
+    "newFolderAriaLabel": "Nová složka ve vybrané složce",
+    "newFolderTitle": "Nová složka (ve vybrané složce)",
+    "renameAriaLabel": "Přejmenovat soubor",
+    "renameFailed": "Nepodařilo se přejmenovat „{{path}}“. Původní cesta zůstala beze změny.",
+    "setMain": "Nastavit jako hlavní dokument",
+    "title": "Průzkumník",
+    "treeAriaLabel": "Strom souborů v průzkumníku"
+  },
+  "explorer": {
+    "resizeSections": "Změnit velikost sekcí {{first}} a {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "nejednoznačné",
+      "cycle": "cyklus",
+      "definitions_one": "{{count}} definice",
+      "definitions_few": "{{count}} definice",
+      "definitions_many": "{{count}} definice",
+      "definitions_other": "{{count}} definic",
+      "duplicate": "duplicita",
+      "external": "externí",
+      "folded": "sbaleno",
+      "incomplete": "neúplné",
+      "missing": "chybí"
+    },
+    "bibEntryIn": "Záznam typu {{type}} v souboru {{file}}",
+    "duplicateKey": "Duplicitní klíč.",
+    "duplicateKeyIn": "Duplicitní klíč {{key}} v souboru {{file}}",
+    "folded": {
+      "description": "Tato větev je sbalená, aby i velmi rozsáhlé grafy projektu zůstaly svižné.",
+      "label": "Pokračujte otevřením odkazovaného zdroje"
+    },
+    "fromFile": "{{kind}} ze souboru {{file}}",
+    "groups": {
+      "bibliography": "Bibliografie",
+      "bibtexEntries": "Záznamy BibTeX",
+      "commands": "Příkazy",
+      "definitions_one": "Definice",
+      "definitions_few": "Definice",
+      "definitions_many": "Definice",
+      "definitions_other": "Definice",
+      "dependencies": "Odkazy a závislosti",
+      "duplicateCitations": "Duplicitní klíče citací",
+      "environments": "Prostředí",
+      "labels": "Návěští a kotvy",
+      "occurrences": "Výskyty",
+      "sections": "Kapitoly",
+      "unlinked": "Nepropojené soubory",
+      "unresolvedCitations": "Nevyřešené citace",
+      "unresolvedDuplicate": "Nevyřešené a duplicitní"
+    },
+    "inFile": "{{kind}} v souboru {{file}}",
+    "incompleteEntry": "Neúplný záznam.",
+    "kinds": {
+      "anchor": "kotva",
+      "asset": "prostředek",
+      "bibentry": "záznam bibliografie",
+      "bibliography": "bibliografie",
+      "citation": "citace",
+      "environment": "prostředí",
+      "file": "soubor",
+      "glossary": "glosář",
+      "import": "import",
+      "include": "vložení",
+      "label": "návěští",
+      "link": "odkaz",
+      "macro": "makro",
+      "reference": "reference",
+      "section": "kapitola"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Osnova dokumentu",
+    "collapseHeading": "Sbalit {{title}}",
+    "collapseAll": "Sbalit všechny nadpisy",
+    "empty": "V tomto dokumentu nejsou žádné kapitoly ani vložené soubory.",
+    "emptyDetail": "Přidejte nadpis kapitoly a vznikne osnova, kterou lze procházet.",
+    "entryCount_one": "{{count}} položka osnovy",
+    "entryCount_few": "{{count}} položky osnovy",
+    "entryCount_many": "{{count}} položky osnovy",
+    "entryCount_other": "{{count}} položek osnovy",
+    "expandHeading": "Rozbalit {{title}}",
+    "expandAll": "Rozbalit všechny nadpisy",
+    "title": "Osnova"
+  },
+  "panelError": {
+    "message": "Rozvržení panelů narazilo na potíž. Soubory vašeho projektu jsou na disku v pořádku.",
+    "reload": "Znovu načíst Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Struktura dokumentu",
+    "collapseAll": "Sbalit všechny položky struktury",
+    "empty": "V mapě projektu nejsou žádné podporované soubory.",
+    "filterLabel": "Filtrovat strukturu projektu",
+    "filterPlaceholder": "Filtrovat mapu projektu…",
+    "expandAll": "Rozbalit všechny položky struktury",
+    "itemCount_one": "{{count}} položka struktury",
+    "itemCount_few": "{{count}} položky struktury",
+    "itemCount_many": "{{count}} položky struktury",
+    "itemCount_other": "{{count}} položek struktury",
+    "noMatch": "Dotazu „{{query}}“ neodpovídá žádná struktura.",
+    "notice": {
+      "partial": "Neúplná mapa. Nečitelné nebo poškozené soubory zůstávají viditelné, kde je to možné.",
+      "stale": "Probíhá aktualizace. Struktura z předchozí revize je skrytá, dokud nebudou připravené aktuální rozsahy ve zdroji."
+    },
+    "title": "Struktura",
+    "treeLabel": "Struktura projektu",
+    "unavailable": {
+      "failed": {
+        "detail": "Projekt se nepodařilo analyzovat. Vaše zdrojové soubory zůstaly beze změny.",
+        "title": "Strukturu se nepodařilo sestavit"
+      },
+      "mapping": {
+        "detail": "Oleafly indexuje nadpisy, propojené soubory, symboly a záznamy bibliografie.",
+        "title": "Mapuje se struktura projektu"
+      },
+      "noProject": {
+        "detail": "Otevřete projekt dokumentu a můžete procházet jeho místní i projektovou strukturu.",
+        "title": "Není otevřený žádný projekt"
+      },
+      "noSource": {
+        "detail": "Otevřete podporovaný zdrojový soubor nebo soubor bibliografie a uvidíte jeho strukturu.",
+        "title": "Žádný aktivní zdroj"
+      },
+      "offline": {
+        "detail": "Analýza projektu teď pro tento pracovní prostor není k dispozici.",
+        "title": "Služba struktury není k dispozici"
+      },
+      "unsupported": {
+        "detail": "Pro tento typ souboru není k dispozici poskytovatel struktury projektu.",
+        "title": "Struktura není k dispozici"
+      },
+      "waiting": {
+        "detail": "Nejnovější revize projektu zatím nebyla naindexována.",
+        "title": "Čeká se na strukturu projektu"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Načítá se asistent",
+    "editor": "Načítá se editor",
+    "preview": "Načítá se náhled",
+    "terminal": "Načítá se terminál"
+  },
+  "terminal": {
+    "closeCurrent": "Zavřít aktuální",
+    "closeLeft": "Zavřít vše nalevo",
+    "closeOthers": "Zavřít ostatní",
+    "closeRight": "Zavřít vše napravo",
+    "closeTab": "Zavřít {{title}}",
+    "color": "Barva",
+    "errors": {
+      "input": "Prostředí shell nepřijalo vstup",
+      "resize": "Velikost terminálu se nepodařilo změnit",
+      "start": "Prostředí shell se nepodařilo spustit"
+    },
+    "limitReached": "Zavřete některý terminál, abyste mohli otevřít další",
+    "newTerminal": "Nový terminál",
+    "settings": "Nastavení terminálu",
+    "starting": "Spouští se prostředí shell projektu…",
+    "tabs": "Terminály",
+    "titleInput": "Název terminálu"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Vymazat filtr",
+    "filterPlaceholder": "Filtrovat…",
+    "noProject": "Žádný projekt"
+  }
+}

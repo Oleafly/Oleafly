@@ -244,6 +244,11 @@ export interface CheckpointPolicy {
     mode: CheckpointCaptureMode;
     [futureField: string]: unknown;
 }
+export interface ProjectExportRecord {
+    date: number;
+    filename: string;
+    path: string;
+}
 export interface ProjectMeta {
     name: string;
     main_doc: string;
@@ -251,6 +256,11 @@ export interface ProjectMeta {
     color?: string;
     kind?: string;
     tex?: TexSpec | null;
+    tex_flavor?: TexFlavor | null;
+    dictionary_locale?: string | null;
+    exports?: ProjectExportRecord[];
+    hidden?: boolean;
+    forked_from?: string | null;
     allow_shell_escape: boolean;
     checkpoints: CheckpointPolicy;
 }
@@ -458,6 +468,27 @@ export interface AssetProgress {
     total: number;
     received: number;
     file_total: number | null;
+}
+export type DictionaryState =
+    | "bundled"
+    | "installed"
+    | "available"
+    | "downloading";
+export interface DictionaryLicense {
+    id: string;
+    url: string;
+}
+export interface DictionaryInfo {
+    id: string;
+    language: string;
+    region: string | null;
+    license: DictionaryLicense;
+    bytes: number;
+    state: DictionaryState;
+}
+export interface DictionaryBytes {
+    aff: Uint8Array;
+    dic: Uint8Array;
 }
 export interface PackInfo {
     id: string;
@@ -824,6 +855,14 @@ export interface BackendPort {
   installFontComponent: (id: string) => Promise<void>;
   removeFontComponent: (id: string) => Promise<void>;
   downloadAllFonts: () => Promise<void>;
+  listDictionaries: () => Promise<DictionaryInfo[]>;
+  installDictionary: (id: string) => Promise<void>;
+  removeDictionary: (id: string) => Promise<void>;
+  readDictionary: (id: string) => Promise<DictionaryBytes>;
+  setProjectDictionaryLocaleCmd: (
+    projectId: string,
+    locale: string | null,
+  ) => Promise<ProjectMeta>;
   templatePrerequisites: (templateId: string) => Promise<Prerequisite[]>;
   ensureTemplateAssets: (templateId: string) => Promise<void>;
   listTemplatePacks: () => Promise<PackInfo[]>;

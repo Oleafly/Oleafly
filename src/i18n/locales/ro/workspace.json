@@ -1,0 +1,202 @@
+{
+  "files": {
+    "collapseAll": "Restrânge toate folderele",
+    "confirmDelete": "Ștergi {{path}}? Această acțiune nu poate fi anulată.",
+    "conflict": {
+      "cancelAriaLabel": "Anulează mutarea fișierului",
+      "createBody": "<destination>{{destination}}</destination> există deja. Păstrează ambele fișiere folosind <suggestion>{{suggestion}}</suggestion>. Crearea nu înlocuiește niciodată un fișier existent.",
+      "dialogAriaLabel": "Conflict la mutarea fișierului",
+      "keepBoth": "Păstrează-le pe amândouă",
+      "renameBody": "<destination>{{destination}}</destination> există deja. Păstrează ambele fișiere folosind <suggestion>{{suggestion}}</suggestion> sau înlocuiește destinația existentă. Oleafly nu o înlocuiește decât dacă alegi Înlocuiește.",
+      "replace": "Înlocuiește",
+      "title": "Numele acesta este deja folosit",
+      "unchanged": "Calea originală și cea de destinație au rămas neschimbate."
+    },
+    "createFailed": "„{{path}}” nu a putut fi creat.",
+    "deleteFailed": "„{{path}}” nu a putut fi șters.",
+    "expandAll": "Extinde toate folderele",
+    "importAriaLabel": "Importă în folderul selectat",
+    "importFiles": "Importă fișiere",
+    "importFolder": "Importă folder",
+    "importTitle": "Importă un fișier sau un folder (în folderul selectat)",
+    "makeCopy": "Fă o copie",
+    "moreActions": "Mai multe acțiuni pentru {{name}}",
+    "moveFailed": "„{{path}}” nu a putut fi mutat. Calea originală a rămas neschimbată.",
+    "newEntry": {
+      "fileInFolder": "Numele fișierului nou din folderul {{folder}}",
+      "fileInRoot": "Numele fișierului nou din rădăcina proiectului",
+      "filePlaceholder": "Numele fișierului nou",
+      "folderInFolder": "Numele folderului nou din folderul {{folder}}",
+      "folderInRoot": "Numele folderului nou din rădăcina proiectului",
+      "folderPlaceholder": "Numele folderului nou"
+    },
+    "newFile": "Fișier nou",
+    "newFileAriaLabel": "Fișier nou în folderul selectat",
+    "newFileTitle": "Fișier nou (în folderul selectat)",
+    "newFolder": "Folder nou",
+    "newFolderAriaLabel": "Folder nou în folderul selectat",
+    "newFolderTitle": "Folder nou (în folderul selectat)",
+    "renameAriaLabel": "Redenumește fișierul",
+    "renameFailed": "„{{path}}” nu a putut fi redenumit. Calea originală a rămas neschimbată.",
+    "setMain": "Setează ca document principal",
+    "title": "Explorator",
+    "treeAriaLabel": "Arborele de fișiere din explorator"
+  },
+  "explorer": {
+    "resizeSections": "Redimensionează {{first}} și {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "ambiguu",
+      "cycle": "ciclu",
+      "definitions_one": "{{count}} definiție",
+      "definitions_few": "{{count}} definiții",
+      "definitions_other": "{{count}} de definiții",
+      "duplicate": "duplicat",
+      "external": "extern",
+      "folded": "pliat",
+      "incomplete": "incomplet",
+      "missing": "lipsă"
+    },
+    "bibEntryIn": "Intrare {{type}} în {{file}}",
+    "duplicateKey": "Cheie duplicată.",
+    "duplicateKeyIn": "Cheia {{key}} este duplicată în {{file}}",
+    "folded": {
+      "description": "Această ramură este pliată ca să păstreze reactivitatea grafurilor de proiect foarte mari.",
+      "label": "Deschide sursa asociată ca să continui"
+    },
+    "fromFile": "{{kind}} din {{file}}",
+    "groups": {
+      "bibliography": "Bibliografie",
+      "bibtexEntries": "Intrări BibTeX",
+      "commands": "Comenzi",
+      "definitions_one": "Definiție",
+      "definitions_few": "Definiții",
+      "definitions_other": "Definiții",
+      "dependencies": "Legături și dependențe",
+      "duplicateCitations": "Chei de citare duplicate",
+      "environments": "Medii",
+      "labels": "Etichete și ancore",
+      "occurrences": "Apariții",
+      "sections": "Secțiuni",
+      "unlinked": "Fișiere fără legături",
+      "unresolvedCitations": "Citări nerezolvate",
+      "unresolvedDuplicate": "Nerezolvate și duplicate"
+    },
+    "inFile": "{{kind}} în {{file}}",
+    "incompleteEntry": "Intrare incompletă.",
+    "kinds": {
+      "anchor": "ancoră",
+      "asset": "resursă",
+      "bibentry": "intrare bibliografică",
+      "bibliography": "bibliografie",
+      "citation": "citare",
+      "environment": "mediu",
+      "file": "fișier",
+      "glossary": "glosar",
+      "import": "import",
+      "include": "includere",
+      "label": "etichetă",
+      "link": "legătură",
+      "macro": "macro",
+      "reference": "referință",
+      "section": "secțiune"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Cuprinsul documentului",
+    "collapseHeading": "Restrânge {{title}}",
+    "collapseAll": "Restrânge toate titlurile",
+    "empty": "Documentul nu are secțiuni sau includeri.",
+    "emptyDetail": "Adaugă un titlu de secțiune ca să se formeze un cuprins prin care poți naviga.",
+    "entryCount_one": "{{count}} intrare în cuprins",
+    "entryCount_few": "{{count}} intrări în cuprins",
+    "entryCount_other": "{{count}} de intrări în cuprins",
+    "expandHeading": "Extinde {{title}}",
+    "expandAll": "Extinde toate titlurile",
+    "title": "Cuprins"
+  },
+  "panelError": {
+    "message": "Aranjarea panourilor s-a poticnit. Fișierele proiectului tău sunt în siguranță pe disc.",
+    "reload": "Reîncarcă Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Structura documentului",
+    "collapseAll": "Restrânge toate elementele de structură",
+    "empty": "Harta proiectului nu conține fișiere acceptate.",
+    "filterLabel": "Filtrează structura proiectului",
+    "filterPlaceholder": "Filtrează harta proiectului…",
+    "expandAll": "Extinde toate elementele de structură",
+    "itemCount_one": "{{count}} element de structură",
+    "itemCount_few": "{{count}} elemente de structură",
+    "itemCount_other": "{{count}} de elemente de structură",
+    "noMatch": "Nicio structură nu corespunde cu „{{query}}”.",
+    "notice": {
+      "partial": "Hartă parțială. Fișierele ilizibile sau greșit formate rămân vizibile acolo unde este posibil.",
+      "stale": "Se actualizează. Structura din revizia anterioară este ascunsă până când intervalele din sursa curentă sunt gata."
+    },
+    "title": "Structură",
+    "treeLabel": "Structura proiectului",
+    "unavailable": {
+      "failed": {
+        "detail": "Proiectul nu a putut fi analizat. Fișierele tale sursă nu au fost modificate.",
+        "title": "Structura nu a putut fi construită"
+      },
+      "mapping": {
+        "detail": "Oleafly indexează titlurile, fișierele legate, simbolurile și intrările bibliografice.",
+        "title": "Se cartografiază structura proiectului"
+      },
+      "noProject": {
+        "detail": "Deschide un proiect de document ca să îi explorezi structura locală și de proiect.",
+        "title": "Niciun proiect deschis"
+      },
+      "noSource": {
+        "detail": "Deschide un fișier sursă sau bibliografic acceptat ca să îi vezi structura.",
+        "title": "Nicio sursă activă"
+      },
+      "offline": {
+        "detail": "Analiza proiectului nu este disponibilă acum pentru acest spațiu de lucru.",
+        "title": "Serviciul de structură nu este disponibil"
+      },
+      "unsupported": {
+        "detail": "Acest tip de fișier nu are un furnizor de structură de proiect.",
+        "title": "Structura nu este disponibilă"
+      },
+      "waiting": {
+        "detail": "Cea mai recentă revizie a proiectului nu a fost încă indexată.",
+        "title": "Se așteaptă structura proiectului"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Se încarcă asistentul",
+    "editor": "Se încarcă editorul",
+    "preview": "Se încarcă previzualizarea",
+    "terminal": "Se încarcă terminalul"
+  },
+  "terminal": {
+    "closeCurrent": "Închide-l pe cel curent",
+    "closeLeft": "Închide-le pe toate din stânga",
+    "closeOthers": "Închide-le pe celelalte",
+    "closeRight": "Închide-le pe toate din dreapta",
+    "closeTab": "Închide {{title}}",
+    "color": "Culoare",
+    "errors": {
+      "input": "Terminalul nu a putut primi date de intrare de la shell",
+      "resize": "Terminalul nu a putut fi redimensionat",
+      "start": "Procesul shell nu a putut porni"
+    },
+    "limitReached": "Închide un terminal ca să poți deschide altul",
+    "newTerminal": "Terminal nou",
+    "settings": "Setările terminalului",
+    "starting": "Pornește shell-ul proiectului…",
+    "tabs": "Terminale",
+    "titleInput": "Titlul terminalului"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Golește filtrul",
+    "filterPlaceholder": "Filtrează…",
+    "noProject": "Niciun proiect"
+  }
+}

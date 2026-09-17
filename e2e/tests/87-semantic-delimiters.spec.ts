@@ -1,13 +1,17 @@
 import { test, expect } from "../fixtures";
 import {
+  acceptCompletion,
   compileAndWait,
+  completionLabels,
   createBlankProject,
   editorSource,
   expectCompiledPdfContains,
   openProject,
+  pressKey,
   replaceEditorSource,
   selectEditorText,
   typeAtCaret,
+  waitForCompletion,
   waitLong,
   type Page,
 } from "../helpers";
@@ -112,18 +116,6 @@ async function expectCaretAtEnd(page: Page) {
     .toBe((await editorSource(page)).length);
 }
 
-async function waitForCompletion(page: Page, timeoutMs = 20_000) {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const open = await page.evaluate<boolean>(
-      `!!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
-    );
-    if (open) return;
-    if (Date.now() > deadline) throw new Error("completion popup did not open");
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-}
-
 async function waitForIndexSettled(page: Page, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -141,14 +133,6 @@ async function waitForIndexSettled(page: Page, timeoutMs = 30_000) {
   }
 }
 
-async function pressKey(page: Page, init: Record<string, unknown>) {
-  await page.evaluate(
-    `(document.querySelector('.cm-content').dispatchEvent(
-      new KeyboardEvent('keydown', ${JSON.stringify({ bubbles: true, cancelable: true, ...init })})
-    ), 1)`,
-  );
-}
-
 async function retriggerCompletion(page: Page) {
   await waitForIndexSettled(page);
   await pressKey(page, { key: "Escape" });
@@ -163,62 +147,6 @@ async function retriggerCompletion(page: Page) {
     .toBe(true);
   await pressKey(page, { key: " ", ctrlKey: true });
   await waitForCompletion(page);
-}
-
-async function completionLabels(page: Page): Promise<string[]> {
-  return page.evaluate<string[]>(
-    `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')]
-      .map((li) => li.querySelector('.cm-completionLabel')?.textContent ?? '')`,
-  );
-}
-
-async function selectedLabel(page: Page): Promise<string> {
-  return page.evaluate<string>(
-    `document.querySelector('.cm-tooltip-autocomplete li[aria-selected="true"] .cm-completionLabel')?.textContent ?? ''`,
-  );
-}
-
-async function settledCompletionLabels(
-  page: Page,
-  label: string,
-  timeoutMs: number,
-): Promise<string[]> {
-  const deadline = Date.now() + timeoutMs;
-  let previous = "";
-  for (;;) {
-    const labels = await completionLabels(page);
-    const current = labels.join("\n");
-    if (labels.includes(label) && current === previous) return labels;
-    previous = current;
-    if (Date.now() > deadline) {
-      throw new Error(
-        `completion never settled on ${label}; it offered ${labels.slice(0, 16).join(", ")}`,
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-}
-
-async function acceptCompletion(page: Page, label: string, timeoutMs = 10_000) {
-  await waitForCompletion(page);
-  const labels = await settledCompletionLabels(page, label, timeoutMs);
-  for (let hop = 0; hop <= labels.length; hop += 1) {
-    const selected = await selectedLabel(page);
-    if (selected === label) break;
-    if (selected === "") throw new Error(`completion closed while walking to ${label}`);
-    if (hop === labels.length) {
-      throw new Error(
-        `completion never highlighted ${label}; it offered ${labels.join(", ")}`,
-      );
-    }
-    await page.press(".cm-content", "ArrowDown");
-  }
-  await page.press(".cm-content", "Enter");
-  await waitLong(
-    page,
-    `!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
-    10_000,
-  );
 }
 
 async function expectScopedList(page: Page, prefix: string) {

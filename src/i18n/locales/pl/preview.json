@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Dzienniki",
+    "showLogs": "Pokaż dzienniki kompilacji",
+    "showPdf": "Pokaż podgląd PDF",
+    "askAi": "Zapytaj AI",
+    "more": "Więcej opcji podglądu",
+    "duration": "{{seconds}} s",
+    "failed": "Niepowodzenie",
+    "compiledWithErrors": "Skompilowano z błędami",
+    "compiledWithWarnings": "Skompilowano z ostrzeżeniami",
+    "compiledSuccessfully": "Skompilowano pomyślnie"
+  },
+  "pageLayout": {
+    "group": "Układ strony",
+    "single": "Widok jednostronicowy",
+    "double": "Widok dwustronicowy"
+  },
+  "pages": {
+    "previous": "Poprzednia strona",
+    "next": "Następna strona",
+    "number": "Numer strony",
+    "ofTotal": "z {{total}}",
+    "pageOfTotal": "Strona {{page}} z {{total}}"
+  },
+  "zoom": {
+    "in": "Powiększ",
+    "out": "Pomniejsz",
+    "fitToWidth": "Dopasuj do szerokości",
+    "fitToHeight": "Dopasuj do wysokości",
+    "reset": "Przywróć 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "Powiększenie {{percent}} procent",
+    "menuLabel": "Powiększenie · {{percent}}%"
+  },
+  "outline": {
+    "open": "Konspekt dokumentu",
+    "panel": "Konspekt dokumentu PDF",
+    "title": "Konspekt dokumentu",
+    "close": "Zamknij konspekt dokumentu",
+    "loading": "Wczytywanie konspektu…",
+    "empty": "Ten plik PDF nie zawiera konspektu dokumentu.",
+    "externalLink": "Odsyłacz zewnętrzny",
+    "externalBadge": "Odsyłacz"
+  },
+  "search": {
+    "open": "Szukaj w PDF",
+    "panel": "Szukaj w tym PDF",
+    "placeholder": "Szukaj w dokumencie",
+    "input": "Szukaj tekstu w PDF",
+    "previous": "Poprzedni wynik wyszukiwania",
+    "next": "Następny wynik wyszukiwania",
+    "close": "Zamknij wyszukiwanie w PDF"
+  },
+  "viewer": {
+    "scrollArea": "Obszar ciągłego przewijania PDF",
+    "crashedTitle": "Podgląd PDF uległ awarii",
+    "crashedDetail": "Skompiluj ponownie bieżącą wersję albo spróbuj uruchomić przeglądarkę jeszcze raz.",
+    "retry": "Ponów wczytanie w przeglądarce",
+    "loadingLatest": "Wczytywanie najnowszego skompilowanego PDF…",
+    "retryingLoad": "Ponowna próba wczytania PDF…",
+    "retainedFailure": "{{detail}} Zamiast tego wyświetlany jest ostatni poprawnie wczytany PDF.",
+    "retainedFailureDetail": "Nie udało się wczytać bieżącego PDF",
+    "invalidTitle": "Nieprawidłowy PDF",
+    "emptyTitle": "Pusty PDF",
+    "unavailableTitle": "Przeglądarka PDF niedostępna",
+    "loadFailedTitle": "Wczytanie PDF nie powiodło się",
+    "loadFailedDetail": "Nie udało się wczytać pliku PDF."
+  },
+  "password": {
+    "title": "Wymagane hasło",
+    "label": "Hasło do PDF",
+    "placeholder": "Hasło do PDF",
+    "submit": "Odblokuj PDF"
+  },
+  "actions": {
+    "downloadImage": "Pobierz obraz",
+    "downloadPdf": "Pobierz PDF",
+    "downloadDisplayedPdf": "Pobierz wyświetlany PDF",
+    "downloadStalePdf": "Pobierz nieaktualny PDF",
+    "saveImage": "Zapisz obraz w projekcie",
+    "savePdf": "Zapisz PDF w projekcie",
+    "invert": "Odwróć kolory podglądu PDF",
+    "restoreColors": "Przywróć kolory",
+    "readerView": "Widok czytnika",
+    "exitReaderView": "Wyjdź z widoku czytnika",
+    "rotate": "Obróć zgodnie z ruchem wskazówek zegara",
+    "rotateTooltip": "Obróć PDF zgodnie z ruchem wskazówek zegara (90°). Obecnie {{degrees}}°",
+    "openWindow": "Otwórz podgląd w nowym oknie",
+    "hideToolbar": "Ukryj pasek narzędzi",
+    "showToolbar": "Pokaż pasek narzędzi",
+    "settings": "Ustawienia podglądu PDF",
+    "fullscreen": "Podgląd pełnoekranowy",
+    "exitFullscreen": "Wyjdź z pełnego ekranu",
+    "retryCompile": "Ponów kompilację"
+  },
+  "stale": {
+    "badge": "Nieaktualny",
+    "badgeLabel": "Nieaktualny podgląd. Skompiluj ponownie.",
+    "tooltip": "Podgląd jest nieaktualny wobec zmian w edytorze. {{explanation}} {{syncTex}} Kliknij, aby skompilować ponownie.",
+    "explanation": "Ten PDF nie odpowiada aktywnej wersji projektu.",
+    "revisionExplanation": "Wyświetlana jest wersja projektu {{displayed}}. Aktywny projekt to wersja {{active}}.",
+    "noIdentity": "Wyświetlany PDF nie ma zweryfikowanej tożsamości kompilacji dla aktywnej wersji.",
+    "syncTexAvailable": "SyncTeX korzysta przy edycjach z najbliższego niezmienionego wiersza.",
+    "syncTexUnavailable": "SyncTeX wymaga aktualnej kompilacji."
+  },
+  "save": {
+    "title": "Zapisz PDF w projekcie",
+    "imageTitle": "Zapisz obraz w projekcie",
+    "close": "Zamknij okno zapisu",
+    "staleDescription": "Zapisuje wyświetlany, nieaktualny PDF w drzewie projektu. Nie odpowiada on aktywnej wersji.",
+    "description": "Zapisuje wyświetlany PDF w drzewie projektu (z zatwierdzeniem przez Git).",
+    "nameLabel": "Nazwa zapisu w projekcie",
+    "namePlaceholder": "dokument.pdf",
+    "imageSaved": "Obraz zapisany w projekcie.",
+    "pdfSaved": "PDF zapisany w projekcie.",
+    "failed": "Nie udało się zapisać w projekcie."
+  },
+  "download": {
+    "pngFilter": "Obraz PNG",
+    "imageSaved": "Obraz zapisany · {{name}}",
+    "pdfSaved": "PDF zapisany · {{name}}",
+    "showInFolder": "Pokaż w folderze",
+    "folderUnavailable": "Plik został zapisany, ale Oleafly nie mógł otworzyć jego folderu (brak uprawnień). Sprawdź lokalizację wybraną w oknie zapisu.",
+    "imageFailed": "Nie udało się pobrać obrazu.",
+    "imageFailedDetail": "Nie udało się pobrać obrazu: {{detail}}",
+    "pdfFailed": "Nie udało się pobrać pliku PDF.",
+    "pdfFailedDetail": "Nie udało się pobrać pliku PDF: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "Kompilacja PDF jest obecnie niedostępna.",
+    "compileFailed": "Kompilacja nie powiodła się. Otwórz kartę Dzienniki, aby sprawdzić, co poszło nie tak."
+  },
+  "a11y": {
+    "stale": "Nieaktualny PDF. {{explanation}}",
+    "page": "Strona PDF {{page}} z {{total}}.",
+    "searchResult": "Wynik wyszukiwania {{current}} z {{total}}."
+  },
+  "startup": {
+    "headingReady": "Podgląd PDF gotowy",
+    "headingPreparing": "Przygotowywanie podglądu PDF",
+    "headingAttention": "Uruchamianie wymaga uwagi",
+    "progressLabel": "Uruchamianie dokumentu: ukończono lub pominięto {{completed}} z {{total}} etapów",
+    "doneCount": "gotowe {{completed}}/{{total}}",
+    "metaRunning": "w toku: {{stages}}",
+    "metaQueued": "w kolejce: {{stages}}",
+    "metaFailed": "nieudane: {{stages}}",
+    "compileNow": "Skompiluj teraz",
+    "noProject": "Brak aktywnego projektu",
+    "waitingForEngine": "Oczekiwanie na silnik dokumentów",
+    "orPress": "albo naciśnij <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "gotowe",
+      "running": "w toku",
+      "queued": "w kolejce",
+      "skipped": "pominięte",
+      "failed": "nieudane"
+    },
+    "language": {
+      "serviceLabel": "Usługa językowa",
+      "analysisLabel": "Analiza języka",
+      "openingFiles": "Otwieranie plików projektu",
+      "starting": "Uruchamianie usługi językowej",
+      "restarting": "Ponowne uruchamianie usługi językowej",
+      "installing": "Instalowanie usługi językowej",
+      "connected": "Uruchomiona i połączona",
+      "ready": "Gotowa",
+      "localOnly": "Niewymagana. Używana jest analiza lokalna.",
+      "notApplicable": "Nie dotyczy tego projektu",
+      "unavailable": "Niedostępna. Analiza lokalna pozostaje dostępna.",
+      "waitingToStart": "Oczekiwanie na uruchomienie",
+      "waitingForFiles": "Oczekiwanie na pliki projektu",
+      "syncing": "Synchronizowanie bieżących plików projektu",
+      "analyzing": "Analizowanie struktury projektu",
+      "analyzed": "Przeanalizowano bieżącą wersję projektu",
+      "partial": "Użyteczna analiza częściowa jest gotowa",
+      "needsAttention": "Analiza wymaga uwagi",
+      "notAvailable": "Niedostępna dla tego projektu",
+      "queued": "W kolejce dla bieżącej wersji",
+      "waitingForService": "Oczekiwanie na usługę językową"
+    },
+    "compile": {
+      "label": "Kompilowanie",
+      "saving": "Zapisywanie bieżących zmian",
+      "downloading": "Pobieranie wymaganych pakietów LaTeX",
+      "producing": "Tworzenie i weryfikowanie pliku PDF",
+      "unavailable": "Kompilator niedostępny",
+      "failed": "Kompilacja nie powiodła się. Otwórz Dzienniki, aby poznać szczegóły.",
+      "accepted": "Zweryfikowany wynik przyjęty",
+      "waiting": "Oczekiwanie na kompilację bieżącej wersji"
+    },
+    "render": {
+      "label": "Renderowanie PDF",
+      "preparing": "Przygotowywanie stron, tekstu i odsyłaczy",
+      "reading": "Odczyt PDF · {{percent}}%",
+      "passwordRequired": "Wymagane hasło",
+      "needsAttention": "Renderowanie PDF wymaga uwagi",
+      "ready": "Podgląd gotowy",
+      "waitingForRenderer": "Oczekiwanie na zweryfikowany mechanizm renderowania PDF",
+      "waitingForCompile": "Oczekiwanie na zweryfikowany wynik kompilacji"
+    }
+  },
+  "window": {
+    "fitWidth": "Dopasuj szerokość",
+    "fitHeight": "Dopasuj do wysokości",
+    "invert": "Odwróć kolory",
+    "invertLabel": "Odwróć kolory PDF",
+    "rotateLabel": "Obróć PDF zgodnie z ruchem wskazówek zegara",
+    "staleHeading": "Nieaktualny · podgląd niezgodny z bieżącą wersją",
+    "staleCompiling": "Trwa kompilacja nowszej wersji projektu. To ostatni zweryfikowany PDF dla wersji {{revision}}.",
+    "staleUnknownRevision": "nieznana",
+    "staleCompileFailed": "{{detail}} Ostatni zweryfikowany PDF pozostaje widoczny.",
+    "staleCompileFailedDetail": "Nowsza kompilacja nie dała użytecznego pliku PDF",
+    "staleIdentity": "Ten PDF nie odpowiada najnowszej przyjętej tożsamości kompilacji.",
+    "crashedDetail": "Spróbuj ponownie w tej przeglądarce albo skompiluj jeszcze raz w oknie głównym.",
+    "compilingTitle": "Kompilowanie PDF",
+    "compileFailedTitle": "Kompilacja nie powiodła się",
+    "compileUnavailableTitle": "Kompilacja niedostępna",
+    "artifactUnavailableTitle": "PDF niedostępny",
+    "noVerifiedTitle": "Brak zweryfikowanego PDF",
+    "compilingDetail": "Zweryfikowany PDF pojawi się po zakończeniu kompilacji.",
+    "noVerifiedDetail": "Skompiluj projekt w oknie głównym. To okno wyświetla tylko wyniki ze zweryfikowaną tożsamością kompilacji.",
+    "loadingTitle": "Wczytywanie PDF",
+    "loadingVerified": "Wczytywanie zweryfikowanego PDF…",
+    "restoringLast": "Przywracanie ostatniego poprawnie wczytanego PDF…",
+    "retryingLoad": "Ponowna próba wczytania PDF…",
+    "unlocking": "Odblokowywanie PDF…",
+    "rotating": "Obracanie PDF…",
+    "retainedFailureDetail": "Nie udało się wczytać najnowszego PDF",
+    "artifactFailure": "Nie udało się zweryfikować ani odczytać skompilowanego PDF. Ostatni poprawnie wczytany PDF zostaje zachowany, jeśli jest dostępny.",
+    "downloadStarted": "Rozpoczęto pobieranie PDF.",
+    "downloadSaved": "PDF zapisany pomyślnie.",
+    "downloadFailed": "Nie udało się zapisać wyświetlanego PDF."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Hasło do PDF nie zostało przyjęte.",
+      "passwordRequired": "Ten plik PDF jest chroniony hasłem.",
+      "invalid": "Wynik kompilacji nie jest prawidłowym plikiem PDF. Skompiluj ponownie albo sprawdź dziennik kompilacji.",
+      "unavailable": "Mechanizm renderowania PDF jest niedostępny w tym oknie. Spróbuj ponownie po przywróceniu okna lub ponownym uruchomieniu aplikacji.",
+      "generic": "Nie udało się wczytać pliku PDF. Skompiluj ponownie bieżącą wersję i spróbuj jeszcze raz.",
+      "empty": "Skompilowany plik PDF jest pusty.",
+      "firstPage": "Plik PDF otworzył się, ale nie udało się wyrenderować jego pierwszej strony."
+    },
+    "link": {
+      "blockedScheme": "Ten odsyłacz w PDF używa zablokowanego schematu URL."
+    },
+    "search": {
+      "failed": "Wyszukiwanie nie odczytało wszystkich stron. Spróbuj ponownie po przeładowaniu PDF."
+    },
+    "outline": {
+      "empty": "Ten plik PDF nie zawiera konspektu dokumentu.",
+      "failed": "Nie udało się wczytać konspektu PDF.",
+      "destinationUnavailable": "Ten cel konspektu jest niedostępny.",
+      "blockedScheme": "Ten odsyłacz używa zablokowanego schematu URL.",
+      "noDestination": "Ta pozycja konspektu nie ma celu.",
+      "untitled": "Sekcja bez tytułu"
+    },
+    "status": {
+      "loading": "Wczytywanie PDF…"
+    },
+    "a11y": {
+      "document": "Podgląd dokumentu PDF",
+      "page": "Strona PDF {{page}} z {{total}}",
+      "textLayer": "Zaznaczalny tekst strony PDF {{page}}"
+    },
+    "screenReader": {
+      "layer": "Widok czytnika ekranu, strona {{page}} z {{total}}",
+      "title": "Tryb czytnika ekranu",
+      "pageLabel": "Strona {{page}} z {{total}}",
+      "empty": "Na tej stronie nie znaleziono czytelnego tekstu."
+    }
+  }
+}

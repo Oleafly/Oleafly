@@ -1,0 +1,951 @@
+{
+  "about": {
+    "close": "Закрыть окно «О программе»",
+    "closeBackdrop": "Закрыть окно «Об Oleafly»",
+    "connect": "Связаться с Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Задавайте вопросы и делитесь идеями",
+        "label": "Обсуждения"
+      },
+      "docs": {
+        "description": "Изучите все возможности Oleafly",
+        "label": "Документация"
+      },
+      "issues": {
+        "description": "Сообщите об ошибке или предложите возможность",
+        "label": "Задачи"
+      },
+      "social": {
+        "description": "Следите за выпусками и разработкой",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Поставить звезду на GitHub",
+    "tagline": "Рабочая среда с открытым кодом для всей статьи. Пишите, компилируйте, вычитывайте, ведите цитаты, просматривайте PDF, отслеживайте изменения в Git и работайте с теми моделями ИИ, которые выберете сами.",
+    "version": "Версия {{version}}",
+    "viewSource": "Посмотреть исходный код"
+  },
+  "addCitation": {
+    "added": "Добавлено: {{cite}}",
+    "adding": "Добавляем…",
+    "close": "Закрыть окно цитаты",
+    "confirm": "Добавить в .bib и сослаться",
+    "entry": "Запись",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Заголовок"
+    },
+    "hint": "Вставьте DOI, идентификатор arXiv или URL, чтобы получить запись напрямую, либо введите заголовок для поиска в Crossref. Попробуйте один из вариантов:",
+    "lookUp": "Найти",
+    "lookingUp": "Ищем «{{query}}»…",
+    "matches_one": "{{count}} совпадение из Crossref. Выберите одно:",
+    "matches_few": "{{count}} совпадения из Crossref. Выберите одно:",
+    "matches_many": "{{count}} совпадений из Crossref. Выберите одно:",
+    "matches_other": "{{count}} совпадения из Crossref. Выберите одно:",
+    "noResults": "Ничего не найдено. Проверьте идентификатор или попробуйте другие слова из заголовка.",
+    "placeholder": "DOI, идентификатор arXiv, URL или заголовок статьи…",
+    "privacyNote": "Отправляется только идентификатор или заголовок, на doi.org, arXiv или Crossref.",
+    "title": "Добавить цитату"
+  },
+  "backendProtocol": {
+    "mismatch": "Это окно и его серверная часть собраны для разных версий Oleafly, поэтому часть возможностей может не работать. Переустановка приложения это исправит."
+  },
+  "branding": {
+    "assistantMascot": "Маскот ИИ-ассистента Oleafly"
+  },
+  "browser": {
+    "address": "Поиск или адрес URL",
+    "back": "Назад",
+    "closeTab": "Закрыть вкладку",
+    "copyUrl": "Копировать URL",
+    "forward": "Вперёд",
+    "moreOptions": "Другие параметры",
+    "newTab": "Новая вкладка",
+    "openExternal": "Открыть в вашем браузере",
+    "openTabs": "Открытые вкладки",
+    "reload": "Обновить",
+    "setHomePage": "Сделать домашней страницей"
+  },
+  "citeOleafly": {
+    "description": "В этом проекте не найден файл библиографии, поэтому ничего не изменилось. Скопируйте запись ниже в свою библиографию или найдите её позже в настройках, раздел «Справка и о программе».",
+    "openHelp": "Открыть «Справка и о программе»",
+    "title": "Сослаться на Oleafly в этой статье"
+  },
+  "commandGroups": {
+    "commands": "Команды",
+    "compile": "Компиляция",
+    "editor": "Редактор",
+    "insert": "Вставка",
+    "project": "Проект",
+    "settings": "Настройки",
+    "tools": "Инструменты"
+  },
+  "commandPalette": {
+    "empty": "Ничего не найдено.",
+    "label": "Палитра команд",
+    "placeholder": "Введите команду или запрос…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / заголовок",
+      "label": "Добавить цитату"
+    },
+    "appearance": {
+      "keywords": "тема оформление режим theme appearance mode",
+      "useDark": "Тёмное оформление",
+      "useLight": "Светлое оформление",
+      "useSystem": "Оформление как в системе"
+    },
+    "autoCompile": {
+      "disable": "Выключить автокомпиляцию",
+      "enable": "Включить автокомпиляцию"
+    },
+    "bold": {
+      "label": "Полужирный"
+    },
+    "checkpoints": {
+      "label": "Контрольные точки"
+    },
+    "citeOleafly": {
+      "keywords": "цитата библиография сослаться citation bibtex bibliography acknowledge oleafly",
+      "label": "Сослаться на Oleafly в этой статье"
+    },
+    "clearCache": {
+      "keywords": "очистить кэш сборки пересобрать сброс clear build cache clean rebuild stale reset aux",
+      "label": "Очистить кэш сборки и скомпилировать заново"
+    },
+    "closeEnvironment": {
+      "keywords": "закрыть окружение close end environment begin latex",
+      "label": "Закрыть окружение LaTeX"
+    },
+    "createProject": {
+      "keywords": "новый проект создать шаблон галерея new project create template gallery",
+      "label": "Создать новый проект"
+    },
+    "diagramComposer": {
+      "keywords": "диаграмма рисунок холст diagram figure tikz composer draw canvas",
+      "label": "Открыть конструктор диаграмм"
+    },
+    "documentCitationScan": {
+      "keywords": "цитаты литература абзац источники найти citations literature scan document paragraph references find",
+      "label": "Найти цитаты в документе"
+    },
+    "equation": {
+      "label": "Формула"
+    },
+    "exportPdf": {
+      "label": "Экспорт в PDF…"
+    },
+    "figure": {
+      "label": "Рисунок"
+    },
+    "generateFigure": {
+      "keywords": "рисунок диаграмма график иллюстрация figure diagram draw tikz plot chart illustration",
+      "label": "Создать рисунок с помощью ИИ"
+    },
+    "gitHistory": {
+      "label": "История Git"
+    },
+    "italic": {
+      "label": "Курсив"
+    },
+    "label": {
+      "label": "Метка"
+    },
+    "list": {
+      "label": "Маркированный список"
+    },
+    "newProject": {
+      "label": "Новый проект…"
+    },
+    "newTerminal": {
+      "keywords": "терминал консоль новый terminal shell console new",
+      "label": "Новый терминал"
+    },
+    "offline": {
+      "offline": "Офлайн-режим (--only-cached)",
+      "online": "Онлайн-режим (разрешить загрузку пакетов)"
+    },
+    "openTool": "Открыть {{name}}",
+    "recompile": {
+      "label": "Скомпилировать заново"
+    },
+    "section": {
+      "label": "Раздел"
+    },
+    "settings": {
+      "keywords": "настройки параметры settings preferences options",
+      "label": "Открыть настройки"
+    },
+    "spellcheck": {
+      "disable": "Выключить проверку орфографии",
+      "enable": "Включить проверку орфографии"
+    },
+    "surroundEnvironment": {
+      "keywords": "обернуть окружение начало конец surround wrap environment begin end latex",
+      "label": "Обернуть в окружение"
+    },
+    "synctex": {
+      "label": "Перейти к PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Таблица"
+    },
+    "theme": {
+      "keywords": "тема тёмная светлая оформление theme dark light appearance mode",
+      "toDark": "Переключиться на тёмную тему",
+      "toLight": "Переключиться на светлую тему"
+    },
+    "tools": {
+      "keywords": "инструменты формула таблица поиск дедлайны галерея tools latex pdf equation bibtex table lab search deadlines gallery",
+      "label": "Открыть инструменты Oleafly"
+    },
+    "vim": {
+      "disable": "Выключить режим Vim",
+      "enable": "Включить режим Vim"
+    },
+    "wordCount": {
+      "label": "Число слов"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "удалить строку delete line remove",
+        "duplicate": "продублировать строку выделение duplicate line selection copy",
+        "lowercase": "нижний регистр текст lowercase case text",
+        "titleCase": "каждое слово с прописной текст title case capitalize text",
+        "uppercase": "верхний регистр текст uppercase case text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Выключена",
+      "on": "Включена",
+      "title": "Автокомпиляция"
+    },
+    "compile": "Скомпилировать",
+    "compiler": {
+      "auto": "Автоматически <note>[системный TeX]</note>",
+      "help": "Tectonic встроен и не требует настройки. Остальные варианты запускают системный TeX, который может читать локальные файлы, доступные вашей учётной записи, поэтому используйте их только для проектов, которым доверяете. Автоматический выбор определяет компилятор по исходнику. pdfLaTeX подходит к большинству журнальных шаблонов. XeLaTeX и LuaLaTeX добавляют системные шрифты и Unicode.",
+      "lualatex": "LuaLaTeX <note>[системный TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[системный TeX]</note>",
+      "tectonic": "Tectonic <note>[встроенный]</note>",
+      "title": "Компилятор (этот проект)",
+      "xelatex": "XeLaTeX <note>[системный TeX]</note>"
+    },
+    "errors": {
+      "continue": "Пробовать компилировать несмотря на ошибки",
+      "stop": "Останавливаться на первой ошибке",
+      "title": "Обработка ошибок компиляции"
+    },
+    "fromScratch": "Скомпилировать с нуля",
+    "mode": {
+      "fast": "Быстрый <note>[черновик]</note>",
+      "normal": "Обычный",
+      "title": "Режим компиляции"
+    },
+    "options": "Параметры компиляции",
+    "recompile": "Скомпилировать заново",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Остановить компиляцию",
+    "syntax": {
+      "check": "Проверять синтаксис перед компиляцией",
+      "skip": "Не проверять синтаксис",
+      "title": "Проверки синтаксиса"
+    },
+    "texRootBroken": "% !TEX root в {{file}} указывает на отсутствующий файл ({{target}})",
+    "texRootLabel": "Корень TEX",
+    "texRootName": "корень: {{name}}",
+    "texRootOverride": "корень: {{path}} (задан через % !TEX root в {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Выберите дату"
+  },
+  "devMenu": {
+    "inspect": "Инспектировать",
+    "refreshApp": "Обновить приложение"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Скрыть ИИ-ассистента",
+      "show": "Показать ИИ-ассистента"
+    },
+    "browser": {
+      "close": "Закрыть браузер ({{shortcut}})",
+      "open": "Открыть браузер ({{shortcut}})"
+    },
+    "settings": "Настройки",
+    "sidebar": {
+      "hide": "Скрыть боковую панель ({{shortcut}})",
+      "show": "Показать боковую панель ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Скрыть терминал ({{shortcut}})",
+      "show": "Показать терминал ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Сбой совпадает с известным ограничением встроенного движка Tectonic. Выберите, как должен компилироваться этот проект. Выбор сохраняется в проекте, поэтому у соавторов будет та же настройка.",
+    "descriptionImportScan": "При проверке импорта найдены возможности, которыми встроенный движок Tectonic не управляет. Выберите, как должен компилироваться этот проект. Выбор сохраняется в проекте, поэтому у соавторов будет та же настройка.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX через latexmk"
+    },
+    "recommended": "Рекомендуется",
+    "shellEscape": {
+      "label": "Разрешить внешние команды на этом компьютере",
+      "needed": "Этот проект использует возможности, которым нужны произвольные внешние команды. Они останутся заблокированными, пока вы их не разрешите.",
+      "warning": "Требуется пакету minted и части документов PythonTeX. LaTeX может запускать программы с вашими правами, поэтому включайте это только для проекта, которому доверяете. Собственные помощники TeX Live, например преобразование EPS, работают и без этого."
+    },
+    "shellEscapeAllowed": "Внешние команды разрешены для этого проекта на этом компьютере.",
+    "shellEscapeBlocked": "Произвольные внешние команды для этого проекта заблокированы. Собственные помощники TeX Live, например преобразование EPS, по-прежнему работают.",
+    "shellEscapeFailed": "Не удалось изменить доступ к внешним командам.",
+    "switchFailed": "Не удалось сменить движок компиляции.",
+    "switched": "Теперь проект компилируется через {{engine}}.",
+    "switchedAfterInstall": "TinyTeX установлен. Теперь проект компилируется через {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Уже выбрано",
+      "found": "На этом компьютере найден дистрибутив TeX. Системный TeX может читать локальные файлы, доступные вашей учётной записи, поэтому используйте его только для проектов, которым доверяете. Произвольные внешние команды остаются заблокированными, пока вы не разрешите их ниже. TeX Live всё равно запускает помощников из собственного списка разрешённых, например преобразование EPS.",
+      "missing": "На этом компьютере не найден ни один дистрибутив TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
+      "switchPdflatex": "Перейти на pdfLaTeX и скомпилировать заново",
+      "title": "Использовать системный LaTeX (latexmk)",
+      "titlePdflatex": "Использовать pdfLaTeX из системного LaTeX (latexmk)",
+      "use": "Использовать системный LaTeX"
+    },
+    "tectonic": {
+      "description": "Без настройки, работает офлайн. Подходит для обычного LaTeX и большинства распространённых пакетов.",
+      "keep": "Оставить Tectonic",
+      "switchBack": "Вернуться к Tectonic",
+      "title": "Продолжить с Tectonic",
+      "withFailures_one": "Без настройки, работает офлайн. {{features}}, скорее всего, продолжит давать сбой.",
+      "withFailures_few": "Без настройки, работает офлайн. {{features}}, скорее всего, продолжат давать сбой.",
+      "withFailures_many": "Без настройки, работает офлайн. {{features}}, скорее всего, продолжат давать сбой.",
+      "withFailures_other": "Без настройки, работает офлайн. {{features}}, скорее всего, продолжат давать сбой."
+    },
+    "tinytex": {
+      "description": "Устанавливает компактный TeX Live в вашу домашнюю папку, права администратора не нужны. Основная загрузка занимает около 250 МБ. Журнальные шаблоны могут позже подтянуть больше пакетов, примерно до 1 ГБ в сумме.",
+      "download": "Скачать и использовать TinyTeX",
+      "resume": "Продолжить загрузку (готово {{megabytes}} МБ)",
+      "title": "Скачать TinyTeX"
+    },
+    "titleCompileFailure": "Этой компиляции нужно больше, чем даёт встроенный движок",
+    "titleImportScan": "Этому проекту нужно больше, чем даёт встроенный движок"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Копировать диагностику",
+    "description": "Oleafly столкнулся с неожиданной ошибкой и не смог отрисовать этот экран. Файлы вашего проекта остались на диске. Подробности диагностики доступны ниже.",
+    "halted": "Остановлено",
+    "logSaved": "Журнал сохранён в <path>{{path}}</path>",
+    "reload": "Перезагрузить Oleafly",
+    "report": "Сообщить на GitHub",
+    "runtimeError": "Ошибка выполнения",
+    "specimen": {
+      "diagramLabel": "Декоративная схема образца",
+      "layer": "СЛОЙ {{current}}/{{total}}",
+      "specimen": "ОБРАЗЕЦ:",
+      "transversePlane": "ПОПЕРЕЧНЫЙ СРЕЗ",
+      "veinDensity": "ПЛОТНОСТЬ ЖИЛОК:"
+    },
+    "specimenViewer": "Просмотр образца",
+    "stackTrace": "Трассировка стека",
+    "surfaceCrashed": "Аварийно завершилось: {{surface}}.",
+    "surfaces": {
+      "aiAssistant": "ИИ-ассистент",
+      "assistantPanel": "панель ассистента",
+      "chat": "чат",
+      "diagramComposer": "конструктор диаграмм",
+      "editor": "редактор",
+      "pdfPreview": "просмотр PDF",
+      "researchAssistant": "исследовательский ассистент",
+      "terminalDock": "панель терминала"
+    },
+    "title": "Что-то пошло не так"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "Действия GitHub",
+    "connect": "Подключить GitHub…",
+    "connectedAs": "Подключено как @{{login}}",
+    "copyRepositoryLink": "Копировать ссылку на репозиторий",
+    "openInGithub": "Открыть в GitHub",
+    "pushHint": "Отправьте проект на GitHub, чтобы это стало доступно",
+    "settings": "Настройки GitHub",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Главная",
+    "label": "Главная",
+    "title": "Назад к библиотеке",
+    "tooltip": "Вернуться к библиотеке проектов"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Очистить журнал",
+    "clearLogAriaLabel": "Очистить журнал MCP",
+    "live": "В эфире",
+    "off": "Выключен",
+    "openSettings": "Открыть настройки MCP",
+    "serverOff": "Сервер MCP выключен.",
+    "timeWithDuration": "{{time}} · {{ms}} мс",
+    "toolsTitle": "Инструменты, доступные по MCP",
+    "waiting": "Ждём внешних агентов…",
+    "waitingHint": "Инструменты, вызванные по MCP (Claude, Cursor, Grok и другие), появляются здесь в реальном времени."
+  },
+  "omnibar": {
+    "bookmarked": "С закладкой",
+    "createProject": "Создать новый проект",
+    "groups": {
+      "action": "Действие",
+      "documents": "Документы",
+      "references": "Источники"
+    },
+    "label": "Поиск",
+    "noMatches": "Совпадений не найдено.",
+    "openReferences": "Открыть источники этого проекта",
+    "placeholder": "Ищите проекты и документы или введите / для команд…",
+    "placeholderDocuments": "Поиск внутри документов…",
+    "placeholderProjects": "Поиск проектов по имени, движку, виду, дате или метаданным…",
+    "referencesNeedProject": "Сначала откройте проект, чтобы просмотреть его источники.",
+    "slash": {
+      "create": "открыть галерею шаблонов",
+      "docs": "искать внутри документов",
+      "projects": "искать по вашим проектам",
+      "refs": "открыть источники этого проекта",
+      "settings": "открыть настройки",
+      "theme": "сменить цветовую тему"
+    },
+    "tryCommand": "Попробуйте команду",
+    "unknownCommand": "Неизвестная команда. Введите /, чтобы увидеть доступные команды."
+  },
+  "projectSearch": {
+    "hint": "Поиск по файлам этого проекта.",
+    "noResults": "Результатов нет.",
+    "placeholder": "Найти в проекте…",
+    "title": "Поиск"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Ваши несохранённые изменения остаются открытыми. Останьтесь, чтобы решить проблему, или всё равно выйдите и потеряйте их.",
+      "descriptionRestart": "{{reason}} Ваши несохранённые изменения остаются открытыми. Останьтесь, чтобы решить проблему, или всё равно перезапустите приложение и потеряйте их.",
+      "quitAnyway": "Всё равно выйти",
+      "restartAnyway": "Всё равно перезапустить",
+      "stay": "Остаться",
+      "title": "Часть файлов не удалось сохранить"
+    },
+    "flushTimeout": "Сохранение не завершилось за 5 секунд.",
+    "installing": {
+      "description": "Сохраняем ваши файлы и устанавливаем обновление. Oleafly перезапустится, когда всё будет готово.",
+      "title": "Готовимся к перезапуску"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (бета)",
+    "files": "Проводник",
+    "mcp": "Активность MCP",
+    "pendingBadge_one": "{{count}} в ожидании",
+    "pendingBadge_few": "{{count}} в ожидании",
+    "pendingBadge_many": "{{count}} в ожидании",
+    "pendingBadge_other": "{{count}} в ожидании",
+    "preflight": "Предпроверка",
+    "references": "Источники и цитаты",
+    "research": "Исследовательская область",
+    "search": "Поиск по проекту",
+    "sourceControl": "Контроль версий",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Закрыть окно переименования",
+    "collision": "{{kind}} с именем «{{name}}» уже существует.",
+    "commit": "Выполнить переименование",
+    "newName": "Новое имя",
+    "planFiles_one": "{{count}} файл",
+    "planFiles_few": "{{count}} файла",
+    "planFiles_many": "{{count}} файлов",
+    "planFiles_other": "{{count}} файла",
+    "planSummary_one": "{{count}} правка в $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_few": "{{count}} правки в $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_many": "{{count}} правок в $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} правки в $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "перекрёстная ссылка",
+      "bibentry": "запись библиографии",
+      "cite": "цитата",
+      "environment": "окружение",
+      "envuse": "использование окружения",
+      "file": "файл",
+      "glossary": "запись глоссария",
+      "glossaryuse": "использование глоссария",
+      "inputedge": "включение",
+      "label": "метка",
+      "macro": "макрос",
+      "macrouse": "использование макроса",
+      "ref": "ссылка",
+      "section": "раздел",
+      "theorem": "теорема"
+    },
+    "title": "Переименовать <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Закрыть настройки",
+    "data": {
+      "cloud": {
+        "comingSoon": "Скоро",
+        "description": "Синхронизируйте проекты между устройствами, не настраивая удалённый Git. Каждая передача будет зашифрована сквозным шифрованием, поэтому ваша работа останется приватной в пути. Источником правды по-прежнему будут ваши локальные папки проектов.",
+        "title": "Облачная синхронизация"
+      },
+      "danger": {
+        "closeFailed": "Открытый проект не удалось закрыть безопасно.",
+        "confirmDeleteAllAction": "Удалить все проекты",
+        "confirmDeleteAllDescription": "Все текущие проекты переместятся в корзину вместе с файлами и историей Git. Потом их можно восстановить по одному.",
+        "confirmDeleteAllTitle_one": "Удалить все проекты, всего {{count}}?",
+        "confirmDeleteAllTitle_few": "Удалить все проекты, всего {{count}}?",
+        "confirmDeleteAllTitle_many": "Удалить все проекты, всего {{count}}?",
+        "confirmDeleteAllTitle_other": "Удалить все проекты, всего {{count}}?",
+        "deleteAll": "Удалить все проекты",
+        "deleteAllAction": "Удалить все",
+        "deleteAllDescription": "Перемещает все проекты в корзину. Ничего не удаляется безвозвратно.",
+        "deleting": "Удаляем…",
+        "moveFailed": "Не удалось переместить проекты в корзину.",
+        "movePartial": "Перемещено проектов: {{count}}, но операцию не удалось завершить.",
+        "movedCount_one": "{{count}} проект перемещён в корзину.",
+        "movedCount_few": "{{count}} проекта перемещено в корзину.",
+        "movedCount_many": "{{count}} проектов перемещено в корзину.",
+        "movedCount_other": "{{count}} проекта перемещено в корзину.",
+        "title": "Опасная зона"
+      },
+      "githubHint": "Резервная копия или синхронизация проекта между устройствами: подключите GitHub, затем используйте <push>Отправить</push> и <pull>Получить</pull> в контроле версий. <setup>Настроить GitHub →</setup>",
+      "localFirst": "Oleafly работает прежде всего локально. Все проекты хранятся на вашем диске:",
+      "plainFolders": "Каждый проект является обычной папкой. История Git необязательна, и ничто не покидает ваш компьютер, пока вы не отправите это на GitHub.",
+      "recycleBin": {
+        "clearAll": "Очистить всё",
+        "clearFailed": "Не удалось очистить корзину.",
+        "clearPartial": "Безвозвратно удалено проектов: {{count}}, но очистить всю корзину не удалось.",
+        "clearedCount_one": "Безвозвратно удалён {{count}} проект.",
+        "clearedCount_few": "Безвозвратно удалено {{count}} проекта.",
+        "clearedCount_many": "Безвозвратно удалено {{count}} проектов.",
+        "clearedCount_other": "Безвозвратно удалено {{count}} проекта.",
+        "clearing": "Очищаем…",
+        "confirmClearAction": "Очистить корзину",
+        "confirmClearDescription": "Это безвозвратно удалит все проекты, которые сейчас в корзине, вместе с их файлами и историей Git. Отменить это действие нельзя.",
+        "confirmClearTitle_one": "Удалить из корзины {{count}} проект?",
+        "confirmClearTitle_few": "Удалить из корзины {{count}} проекта?",
+        "confirmClearTitle_many": "Удалить из корзины {{count}} проектов?",
+        "confirmClearTitle_other": "Удалить из корзины {{count}} проекта?",
+        "confirmDeleteAction": "Удалить безвозвратно",
+        "confirmDeleteDescription": "Это уберёт проект, его файлы и историю Git из корзины. Отменить это действие нельзя.",
+        "confirmDeleteTitle": "Безвозвратно удалить «{{name}}»?",
+        "deleteFailed": "Не удалось безвозвратно удалить «{{name}}».",
+        "deleteOne": "Безвозвратно удалить {{name}}",
+        "deleted": "«{{name}}» удалён безвозвратно.",
+        "deletedAt": "Удалено {{date}} · {{size}}",
+        "empty": "Корзина пуста.",
+        "loading": "Загрузка корзины…",
+        "restore": "Восстановить",
+        "restoreFailed": "Не удалось восстановить «{{name}}».",
+        "restored": "«{{name}}» восстановлен.",
+        "size": "{{size}} · без автоматической очистки",
+        "subtitle": "Удалённые проекты остаются здесь, пока вы их не уберёте",
+        "title": "Корзина"
+      },
+      "reveal": "Показать папку проектов в Finder",
+      "storage": {
+        "calculating": "Считаем занятое место…",
+        "desktopOnly": "Сведения о хранилище доступны в настольном приложении.",
+        "error": "Сведения о хранилище не удалось вычислить.",
+        "refresh": "Обновить сведения о занятом месте",
+        "stats": {
+          "appData": "Данные приложения",
+          "appDataDetail": "Ресурсы и настройки",
+          "buildCache": "Кэш сборки",
+          "buildCacheDetail": "Порождённые файлы",
+          "files": "Файлы",
+          "folders_one": "{{count}} папка",
+          "folders_few": "{{count}} папки",
+          "folders_many": "{{count}} папок",
+          "folders_other": "{{count}} папки",
+          "gitHistory": "История Git",
+          "gitHistoryDetail": "Локальные версии",
+          "images": "Изображения",
+          "pdfs": "Файлы PDF",
+          "projectFiles": "Файлы проектов",
+          "projectFilesDetail": "Исходники и метаданные",
+          "projects": "Проекты"
+        },
+        "subtitle": "Проекты, просмотры, история и данные приложения",
+        "title": "Занятое место",
+        "total": "{{size}} в папке данных Oleafly",
+        "unreadable_one": "{{count}} недоступный элемент исключён.",
+        "unreadable_few": "{{count}} недоступных элемента исключено.",
+        "unreadable_many": "{{count}} недоступных элементов исключено.",
+        "unreadable_other": "{{count}} недоступного элемента исключено."
+      },
+      "tabs": {
+        "cloud": "Облачная синхронизация",
+        "local": "Локальное хранилище"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Показывать галерею инструментов Oleafly и отдельные инструменты (импорт PDF, формулы, таблицы, BibTeX, поиск лабораторий и литературы, дедлайны) вместе с их командами через косую черту. По умолчанию выключено, пока идёт бета.",
+        "label": "Инструменты LaTeX"
+      },
+      "visualEditor": {
+        "description": "Показывать переключатель «Визуально / Код» в редакторе документов. По умолчанию выключено, поэтому документы открываются только в редакторе кода. У диаграмм всегда остаётся свой переключатель холста.",
+        "label": "Визуальный редактор"
+      },
+      "warning": "Эти возможности экспериментальные и пока в стадии бета. Они ещё не полностью проверены и могут измениться, сломаться или исчезнуть в будущем выпуске. Включайте их, только если хотите попробовать работу в процессе.",
+      "webBrowser": {
+        "description": "Показывать встроенный веб-браузер (его кнопку на панели и сочетание клавиш) и позволять ИИ управлять им. По умолчанию выключено, пока идёт бета; когда выключено, кнопки браузера нет и у ИИ нет инструмента браузера.",
+        "label": "Веб-браузер"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Диалект английского для вычитки",
+        "description": "Применять выбранные правила орфографии, грамматики и региональные соглашения.",
+        "label": "Диалект английского"
+      },
+      "dictionary": {
+        "ariaLabel": "Словарь орфографии для вычитки",
+        "description": "Пакет Hunspell, который используют проверки орфографии в режимах исходника и визуальном. Языки сверх пяти встроенных пакетов скачиваются по запросу.",
+        "label": "Словарь орфографии",
+        "downloadFailed": "Словарь {{name}} не удалось скачать.",
+        "downloaded": "{{name}} готов к проверке орфографии.",
+        "downloading": "Скачиваем {{name}}",
+        "offlineRefused": "Включён офлайн-режим. Выключите его, чтобы скачать {{name}}."
+      },
+      "harper": {
+        "description": "Проверять английскую грамматику и стиль в LaTeX и Markdown, в режимах исходника и визуальном, а также в исходнике Typst, с исправлением в одно нажатие.",
+        "label": "Грамматика и стиль (Harper)"
+      },
+      "offline": {
+        "description": "Компилировать с ключом --only-cached и никогда не скачивать пакеты по сети.",
+        "label": "Офлайн-режим"
+      },
+      "proofreadingNote": "Вычитка выполняется локально в фоновом обработчике. Harper следует выбранному диалекту английского; орфография всегда использует именно выбранный пакет Hunspell. Формулы, код, комментарии, синтаксис цитат, метаданные и адреса URL исключаются.",
+      "regionalism": {
+        "description": "Отмечать слова, не соответствующие выбранному диалекту английского. Выключите, если используете такие слова как названия продуктов или кода.",
+        "label": "Подсказки по региональным вариантам"
+      },
+      "spellcheck": {
+        "description": "Подчёркивать слова с ошибками по выбранному офлайн-словарю Hunspell и предлагать замены в режимах исходника и визуальном.",
+        "label": "Проверка орфографии"
+      },
+      "wordChoice": {
+        "description": "Предлагать альтернативные слова (например, «too» вместо «to»). Выключите, чтобы остались только орфография и грамматика.",
+        "label": "Подсказки по выбору слов"
+      }
+    },
+    "help": {
+      "community": "Сообщество",
+      "copyInfo": "Копировать сведения",
+      "forksTitle": "Ответвления на GitHub",
+      "forks_one": "{{count}} ответвление на GitHub",
+      "forks_few": "{{count}} ответвления на GitHub",
+      "forks_many": "{{count}} ответвлений на GitHub",
+      "forks_other": "{{count}} ответвления на GitHub",
+      "logoAlt": "Oleafly",
+      "project": "Проект",
+      "resources": {
+        "documentation": "Документация",
+        "learn": "Обучение",
+        "license": "Лицензия",
+        "reportCrash": "Сообщить о сбое (с журналами)",
+        "startTour": "Начать тур",
+        "whatsNew": "Что нового"
+      },
+      "resourcesTitle": "Ресурсы",
+      "starRepo": "Поставьте звезду и изучайте на GitHub",
+      "starsTitle": "Звёзды на GitHub",
+      "stars_one": "{{count}} звезда на GitHub",
+      "stars_few": "{{count}} звезды на GitHub",
+      "stars_many": "{{count}} звёзд на GitHub",
+      "stars_other": "{{count}} звезды на GitHub",
+      "support": "Если Oleafly помогает вам в работе, пожалуйста, <star>поставьте проекту звезду на GitHub</star>. Одно небольшое нажатие помогает другим исследователям найти его и поддерживает дальнейшую разработку.",
+      "supportAriaLabel": "Поддержать Oleafly",
+      "tagline": "Пишите, компилируйте, вычитывайте, ведите цитаты, просматривайте PDF, отслеживайте изменения в Git и используйте те модели ИИ, которые выберете сами. Всё в одной рабочей среде с открытым кодом.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "ИИ-ассистент",
+      "appearance": "Внешний вид",
+      "data": "Хранение данных",
+      "dictionary": "Словарь",
+      "downloads": "Загрузки",
+      "engine": "Движки",
+      "experimentation": "Эксперименты",
+      "general": "Общие",
+      "help": "Справка и о программе",
+      "integrations": "Интеграции",
+      "shortcuts": "Сочетания клавиш"
+    },
+    "sectionsNav": "Разделы настроек",
+    "title": "Настройки",
+    "tours": {
+      "confirmDescription": "Это закроет все оставшиеся туры и выключит обучающие подсказки. Их можно снова включить в общих настройках и начать заново.",
+      "disableConfirm": "Выключить туры",
+      "disableTitle": "Выключить обучающие туры?",
+      "dismissAll": "Закрыть все туры",
+      "dismissAllConfirm": "Закрыть все",
+      "dismissAllTitle": "Закрыть все туры?",
+      "enable": "Включить обучающие туры",
+      "enableAll": "Включить все обучающие туры",
+      "enableOne": "Включить тур «{{name}}»",
+      "progress": "Прогресс туров",
+      "progressDetail": "Завершено: {{completed}}, закрыто: {{dismissed}}.",
+      "status": {
+        "completed": "Завершён",
+        "dismissed": "Закрыт",
+        "pending": "Не начат"
+      },
+      "summary": "завершено {{completed}} · закрыто {{dismissed}} · всего {{total}}"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Прервать слияние",
+    "abortMergeDescription": "Сделанные до сих пор разрешения конфликтов отменяются, и файлы возвращаются к тому виду, что был до начала слияния.",
+    "abortMergeTitle": "Прервать это слияние?",
+    "aheadBehind": "впереди {{ahead}} · позади {{behind}} относительно origin/{{branch}}",
+    "branch": "Ветки",
+    "branchName": "Имя ветки",
+    "changeRepo": "Сменить репозиторий",
+    "changes": "Изменения",
+    "checking": "Проверяем контроль версий…",
+    "clean": "Изменений нет. Рабочее дерево чистое.",
+    "commit": "Коммит",
+    "commitActions": "Другие действия с коммитом",
+    "commitAmend": "Дополнить последний коммит",
+    "amendedKeptMessage": "Последний коммит дополнен, сообщение сохранено.",
+    "commitAndPush": "Коммит и отправка",
+    "commitAndSync": "Коммит и синхронизация",
+    "commitDescription": "Описание коммита",
+    "commitDescriptionPlaceholder": "Описание (необязательно)",
+    "commitTitle": "Заголовок коммита",
+    "committed": "Зафиксировано: «{{subject}}»",
+    "committedRemoteFailed": "Зафиксировано локально, но шаг «{{step}}» не удался: {{reason}}",
+    "committedWithConflicts": "Зафиксировано локально. Разрешите полученные конфликты перед отправкой.",
+    "confirmDiscard": "Подтвердить отмену",
+    "confirmDiscardTitle": "Отменить все изменения в этом файле",
+    "continueMerge": "Завершить слияние",
+    "copyCommitId": "Копировать идентификатор коммита",
+    "create": "Создать",
+    "createBranch": "Создать ветку…",
+    "credentialRemoved": "Сохранённые учётные данные удалены из этого удалённого Git.",
+    "credentialWarning": "Старые версии Oleafly сохраняли учётные данные в этом удалённом Git.",
+    "discard": "Отменить изменения",
+    "discardFor": "Отменить изменения в {{path}}",
+    "discardAll": "Отменить все изменения",
+    "discardChangesDescription": "Эти изменения в рабочем дереве будут потеряны. Отменить это нельзя.",
+    "discardChangesTitle": "Отменить выбранные изменения?",
+    "discardTitle": "Отменить изменения (вернуть последнюю версию)",
+    "enterTitle": "Введите заголовок коммита",
+    "finishMergeToCommit": "Завершите слияние, прежде чем делать коммит.",
+    "fetch": "Извлечь",
+    "graph": "Граф",
+    "commitCount_one": "{{count}} коммит",
+    "commitCount_few": "{{count}} коммита",
+    "commitCount_many": "{{count}} коммитов",
+    "commitCount_other": "{{count}} коммита",
+    "initialize": "Создать репозиторий",
+    "initialized": "Git инициализирован на ветке {{branch}}.",
+    "linkCopied": "Ссылка GitHub скопирована",
+    "markResolved": "Отметить как разрешённый",
+    "mergeNeedsAttention": "Разрешите конфликты слияния",
+    "moreActions": "Другие действия контроля версий",
+    "noHistory": "Коммитов пока нет",
+    "noProject": "Откройте проект, чтобы пользоваться контролем версий.",
+    "noStagedChanges": "В индексе нет изменений",
+    "notInitialized": "Контроль версий не инициализирован",
+    "notInitializedHint": "Oleafly не станет делать коммиты в репозиторий Git автоматически.",
+    "nothingStaged": "В индексе нечего фиксировать.",
+    "openAllChanges": "Открыть все изменения",
+    "openFile": "Открыть файл",
+    "openFileFor": "Открыть {{path}}",
+    "popStash": "Применить последние отложенные изменения",
+    "publish": "Опубликовать на GitHub",
+    "published": "Опубликовано в {{url}}",
+    "pull": "Получить из origin",
+    "pullShort": "Получить",
+    "push": "Зафиксировать и отправить в origin",
+    "pushShort": "Отправить",
+    "pushSkippedNoRemote": "⚠ Отправка пропущена - ниже не задан удалённый origin.",
+    "pushSkippedNoToken": "⚠ Отправка пропущена - нет токена GitHub (настройки, раздел GitHub).",
+    "refresh": "Обновить",
+    "remote": "Удалённый репозиторий",
+    "remoteHint": "Создайте новый репозиторий или свяжите существующий как удалённый для этого проекта, затем отправьте изменения.",
+    "removeCredential": "Удалить сохранённые учётные данные",
+    "restoreCommit": "Восстановить версию",
+    "restoreCommitDescription": "Это заменит все отслеживаемые файлы проекта этой версией и уберёт файлы, добавленные позже. Ветка останется на текущем коммите.",
+    "restoreCommitTitle": "Восстановить эту версию?",
+    "sectionActions": "Другие действия для раздела «{{section}}»",
+    "stage": "В индекс",
+    "stageFor": "Добавить {{path}} в индекс",
+    "stageAll": "Всё в индекс",
+    "stageFirst": "Сначала добавьте файл в индекс",
+    "stageToCommit": "Добавьте файл в индекс, чтобы сделать коммит.",
+    "staged": "В индексе",
+    "stagedChanges": "Изменения в индексе",
+    "stagedChangeCount_one": "{{count}} изменение в индексе",
+    "stagedChangeCount_few": "{{count}} изменения в индексе",
+    "stagedChangeCount_many": "{{count}} изменений в индексе",
+    "stagedChangeCount_other": "{{count}} изменения в индексе",
+    "stash": "Отложить изменения",
+    "stashNeedsAttention": "Разрешите конфликты отложенных изменений",
+    "sync": "Синхронизировать",
+    "title": "Контроль версий",
+    "titleRequired": "Заголовок коммита обязателен.",
+    "titleRequiredStatus": "Введите заголовок коммита перед фиксацией.",
+    "unlink": "Отвязать",
+    "unlinked": "Отвязано от GitHub.",
+    "unstage": "Из индекса",
+    "unstageFor": "Убрать {{path}} из индекса",
+    "unstageAll": "Всё из индекса",
+    "workingChangeCount_one": "{{count}} изменение в работе",
+    "workingChangeCount_few": "{{count}} изменения в работе",
+    "workingChangeCount_many": "{{count}} изменений в работе",
+    "workingChangeCount_other": "{{count}} изменения в работе",
+    "useCurrent": "Взять текущую",
+    "useIncoming": "Взять входящую"
+  },
+  "splash": {
+    "initializing": "Инициализация Oleafly",
+    "loadingCore": "Загрузка ядра Oleafly",
+    "loadingHarness": "Загрузка оснастки Oleafly",
+    "loadingParsers": "Загрузка парсеров Oleafly",
+    "starting": "Запуск Oleafly"
+  },
+  "theme": {
+    "dark": "Тёмная",
+    "light": "Светлая",
+    "menuLabel": "Оформление: {{name}}",
+    "system": "Как в системе",
+    "useDark": "Тёмная тема",
+    "useLight": "Светлая тема",
+    "useSystem": "Тема как в системе"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Всё равно выйти",
+      "description": "{{phase}} прямо сейчас. Если вы выйдете, установка приостановится. Скачанная часть сохранится и продолжится при следующем запуске Oleafly.",
+      "title": "TinyTeX ещё устанавливается"
+    },
+    "wait": {
+      "description": "{{phase}} Ваша компиляция поставлена в очередь и начнётся автоматически, как только движок будет готов.",
+      "title": "TinyTeX ещё скачивается"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Отмена (Esc)",
+    "closeForkDialog": "Закрыть окно ответвления",
+    "compileFigureFirst": "Сначала скомпилируйте рисунок",
+    "compilePdfFirst": "Для PDF нужна компиляция",
+    "export": "Экспорт",
+    "exportComplete": "Экспорт в {{format}} завершён",
+    "exportDocx": "Экспорт в Word (.docx)",
+    "exportEpub": "Экспорт в EPUB (.epub)",
+    "exportHtml": "Экспорт в HTML (.html)",
+    "exportMarkdown": "Экспорт в Markdown (.md)",
+    "exportPdf": "Экспорт в PDF",
+    "exportPdfVector": "Экспорт в PDF (векторное изображение)",
+    "exportPngRaster": "Экспорт в PNG (растровое изображение)",
+    "exportPagePng": "Экспорт страницы в PNG (растровое изображение)",
+    "exportAs": "Экспорт в {{format}}",
+    "exportPptx": "Экспорт в PowerPoint (.pptx)",
+    "exportSourceZip": "Экспорт исходников (.zip)",
+    "exportTxt": "Экспорт в обычный текст (.txt)",
+    "exportZipFailed": "Не удалось экспортировать архив проекта",
+    "exporting": "Экспортируем .{{format}}…",
+    "fork": "Ответвить",
+    "forkDescription": "Копирует <name>{{name}}</name> и его историю Git в новый проект. Контрольные точки начинаются с нуля.",
+    "forkFailed": "Не удалось создать ответвление проекта.",
+    "forkProject": "Ответвление проекта",
+    "layout": "Раскладка",
+    "layouts": {
+      "aiOnly": "Только ИИ",
+      "editorAi": "Редактор и ИИ",
+      "editorOnly": "Только редактор",
+      "editorPreview": "Редактор и просмотр",
+      "editorPreviewAi": "Редактор, просмотр и ИИ",
+      "previewAi": "Просмотр и ИИ",
+      "previewOnly": "Только просмотр"
+    },
+    "newProjectName": "Имя нового проекта",
+    "projectName": "Имя проекта",
+    "projectRenamed": "Проект переименован",
+    "saveName": "Сохранить (Enter)",
+    "saveNameAriaLabel": "Сохранить имя",
+    "untitledProject": "проект",
+    "versioning": "Версии",
+    "viewFile": "Посмотреть файл",
+    "views": {
+      "editor": "Исходник",
+      "pdf": "Просмотр PDF",
+      "split": "Рядом"
+    }
+  },
+  "tour": {
+    "chooseColor": "Выберите свой фирменный цвет",
+    "diagramArrow": "Изогнутая стрелка, указывающая на холст диаграммы",
+    "pointer": "Указатель подсказки тура",
+    "quitConfirm": "Выйти из тура",
+    "quitDescription": "Ваш прогресс не сохраняется. Любой тур можно запустить заново из меню справки.",
+    "quitTitle": "Выйти из тура?",
+    "setMood": "Задайте настроение",
+    "showMeAround": "Покажите, что тут есть",
+    "skip": "Пропустить",
+    "step": "Шаг {{step}}",
+    "stepOfTotal": "Шаг {{step}} из {{total}}",
+    "stepOfTour": "Шаг {{step}} · {{tour}}",
+    "useAccent": "Использовать акцентный цвет «{{name}}»",
+    "welcomeArrow": "Нарисованная от руки стрелка, указывающая на приветственный абзац",
+    "welcomeBody": "Проведите статью от первого черновика до готового PDF в одной рабочей среде с открытым кодом. Пишите, компилируйте, вычитывайте, ведите цитаты, стройте рисунки, просматривайте каждое изменение в Git и используйте те модели ИИ, которые выберете сами. Ваши проекты остаются на вашем компьютере.",
+    "welcomeTitle": "Добро пожаловать в Oleafly"
+  },
+  "updateChecker": {
+    "available": "Доступно обновление · v{{version}}",
+    "check": "Проверить обновления",
+    "checkAgain": "Проверить снова",
+    "checkFailed": "Не удалось проверить обновления.",
+    "checking": "Проверяем…",
+    "downloadFromGithub": "Скачать с GitHub",
+    "downloading": "Скачиваем… {{percent}}%",
+    "installing": "Устанавливаем…",
+    "lastCheckFailed": "Последняя автоматическая проверка не удалась.",
+    "lastCheckFailedAt": "Последняя автоматическая проверка не удалась · {{when}}.",
+    "latest": "У вас последняя версия",
+    "releaseNotes": "Заметки о выпуске",
+    "restartNotice": "Для завершения Oleafly перезапустится.",
+    "tryAgain": "Попробовать снова",
+    "unsupported": "Обновлениями управляет настольное приложение.",
+    "updateNow": "Обновить сейчас"
+  },
+  "updateWindow": {
+    "checking": "Проверяем обновления…",
+    "currentVersion": "У вас версия v{{version}}",
+    "error": "Обновление не удалось завершить. Попробуйте позже.",
+    "later": "Позже",
+    "looking": "Ищем последнюю версию…",
+    "packageInstall": "Установлено из пакета. Скачайте новую версию, чтобы обновиться.",
+    "ready": "Новая версия готова к установке.",
+    "upToDate": "У вас всё актуально",
+    "upToDateGeneric": "У вас последняя версия Oleafly",
+    "upToDateHeadline": "У вас всё актуально!",
+    "upToDateVersion": "Oleafly v{{version}} является последней версией",
+    "viewRelease": "Посмотреть выпуск"
+  },
+  "windowControls": {
+    "group": "Управление окном",
+    "maximize": "Развернуть",
+    "minimize": "Свернуть",
+    "restore": "Восстановить"
+  },
+  "windows": {
+    "preview": "Просмотр: {{title}}",
+    "update": "Обновление Oleafly"
+  }
+}

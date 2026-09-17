@@ -96,6 +96,24 @@ describe("bibliography quality", () => {
     expect(out).toContainEqual(expect.objectContaining({ id: "refs-incomplete-metadata", severity: "warning" }));
   });
 
+  it("accepts an entry whose required fields use the biblatex spelling", () => {
+    const out = runRefsRules("", ctx({
+      bibEntries: [{
+        key: "paper",
+        type: "article",
+        fields: { author: "A", title: "A useful paper", journaltitle: "J", date: "2026-02-01" },
+      }],
+    }));
+    expect(out.some((finding) => finding.id === "refs-incomplete-metadata")).toBe(false);
+  });
+
+  it("still expects a title and a year on a free-form entry", () => {
+    const out = runRefsRules("", ctx({
+      bibEntries: [{ key: "note", type: "misc", fields: { author: "A" } }],
+    }));
+    expect(out.some((finding) => finding.id === "refs-incomplete-metadata")).toBe(true);
+  });
+
   it("detects malformed DOIs and title duplicates", () => {
     const out = runRefsRules("", ctx({
       bibEntries: [

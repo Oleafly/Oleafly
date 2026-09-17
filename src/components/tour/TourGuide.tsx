@@ -741,7 +741,7 @@ function Welcome({ onStart }: Readonly<{ onStart: () => void }>) {
                   onClick={() => setAccentColor(a.color)}
                   className={
                     active
-                      ? "flex size-8 items-center justify-center rounded-full border border-foreground ring-1 ring-foreground/20 transition-transform hover:scale-110"
+                      ? "flex size-8 items-center justify-center rounded-full border border-foreground transition-transform hover:scale-110"
                       : "flex size-8 items-center justify-center rounded-full border border-border transition-transform hover:scale-110"
                   }
                   style={{ backgroundColor: a.color }}

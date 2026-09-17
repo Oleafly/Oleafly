@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Editor } from "@tiptap/core";
+import { createWysiwygExtensions, serializeLatexBody } from "@oleafly/wysiwyg";
 
 const core = vi.hoisted(() => ({
   setEditorView: vi.fn(),
@@ -17,7 +19,10 @@ const core = vi.hoisted(() => ({
   focusEditor: vi.fn(),
   editorUndo: vi.fn(),
   editorRedo: vi.fn(),
+  editorVimUndo: vi.fn(),
+  editorVimRedo: vi.fn(),
   editorFind: vi.fn(),
+  waitForEditorDocument: vi.fn(),
 }));
 
 vi.mock("@oleafly/editor", () => core);
@@ -29,9 +34,12 @@ vi.mock("@/store/files", () => ({
 const bumpDocVersion = vi.fn();
 
 import {
+  setWysiwygDocumentContext,
   setWysiwygEditor,
+  setWysiwygInsertions,
   setWysiwygVisible,
 } from "@/components/editor/wysiwyg/controller";
+import { visualInsertions } from "@/components/editor/wysiwyg/insert";
 import {
   insertAtCursor,
   wrapSelectionOrPlaceholder,
@@ -41,21 +49,42 @@ import {
   editorRedo,
 } from "./controller";
 
-function fakeWysiwygEditor() {
-  const insertContent = vi.fn().mockReturnThis();
-  const focus = vi.fn().mockReturnThis();
-  const undo = vi.fn().mockReturnThis();
-  const redo = vi.fn().mockReturnThis();
-  const run = vi.fn();
-  const chain = vi.fn(() => ({ focus, insertContent, undo, redo, run }));
-  return { chain, focus, insertContent, undo, redo, run };
+let editors: Editor[] = [];
+
+function activateVisualEditor(content = "<p>Hello</p>"): Editor {
+  const element = document.createElement("div");
+  document.body.append(element);
+  const editor = new Editor({
+    element,
+    extensions: createWysiwygExtensions(),
+    content,
+    editorProps: { handleScrollToSelection: () => true },
+  });
+  editors.push(editor);
+  editor.commands.setTextSelection(6);
+  setWysiwygEditor(editor as never);
+  setWysiwygInsertions(visualInsertions);
+  setWysiwygVisible(true);
+  return editor;
+}
+
+function latexOf(editor: Editor): string {
+  return serializeLatexBody(editor.getJSON());
 }
 
 describe("cm/controller mode-aware routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setWysiwygEditor(null);
+    setWysiwygInsertions(null);
     setWysiwygVisible(false);
+    setWysiwygDocumentContext(null);
+  });
+
+  afterEach(() => {
+    for (const editor of editors) editor.destroy();
+    editors = [];
+    document.body.replaceChildren();
   });
 
   it("falls through to the CodeMirror core when wysiwyg is not active", () => {
@@ -72,61 +101,61 @@ describe("cm/controller mode-aware routing", () => {
     expect(core.insertEnvironment).toHaveBeenCalledWith("align");
   });
 
-  it("inserts a rawInline node into the wysiwyg editor instead of CodeMirror when active", () => {
-    const editor = fakeWysiwygEditor();
-    setWysiwygEditor(editor as never);
-    setWysiwygVisible(true);
-
+  it("keeps unknown macros as rawInline nodes with their exact source", () => {
+    const editor = activateVisualEditor();
     insertAtCursor("\\alpha");
+    expect(editor.getJSON().content?.[0].content?.[1]).toMatchObject({ type: "rawInline", attrs: { source: "\\alpha" } });
+    expect(latexOf(editor)).toBe("Hello\\alpha\n");
+    expect(core.insertAtCursor).not.toHaveBeenCalled();
+  });
 
-    expect(editor.chain).toHaveBeenCalled();
-    expect(editor.insertContent).toHaveBeenCalledWith({
-      type: "rawInline",
-      attrs: { source: "\\alpha" },
+  it("keeps unparseable multi-line source as rawBlock nodes", () => {
+    const editor = activateVisualEditor();
+    insertAtCursor("\\begin{figure}\n\\end{figure}\n");
+    expect(editor.getJSON().content?.[1]).toMatchObject({
+      type: "rawBlock",
+      attrs: { source: "\\begin{figure}\n\\end{figure}\n" },
     });
     expect(core.insertAtCursor).not.toHaveBeenCalled();
   });
 
-  it("inserts a rawBlock node for multi-line templates", () => {
-    const editor = fakeWysiwygEditor();
-    setWysiwygEditor(editor as never);
-    setWysiwygVisible(true);
-
-    insertTemplate("\\begin{figure}\n\\end{figure}\n", 0, 0);
-
-    expect(editor.insertContent).toHaveBeenCalledWith({
-      type: "rawBlock",
-      attrs: { source: "\\begin{figure}\n\\end{figure}\n" },
-    });
-    expect(core.insertTemplate).not.toHaveBeenCalled();
-  });
-
-  it("wraps the placeholder in a rawInline node for wrapSelectionOrPlaceholder", () => {
-    const editor = fakeWysiwygEditor();
-    setWysiwygEditor(editor as never);
-    setWysiwygVisible(true);
-
+  it("sends wrap, template and environment commands to the source document in both modes", () => {
+    activateVisualEditor();
     wrapSelectionOrPlaceholder("\\footnote{", "}", "note text");
-
-    expect(editor.insertContent).toHaveBeenCalledWith({
-      type: "rawInline",
-      attrs: { source: "\\footnote{note text}" },
-    });
-    expect(core.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
+    expect(core.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\footnote{", "}", "note text");
+    insertTemplate("$\\frac{a}{b}$", 0, 0);
+    expect(core.insertTemplate).toHaveBeenCalledWith("$\\frac{a}{b}$", 0, 0);
+    insertEnvironment("align");
+    expect(core.insertEnvironment).toHaveBeenCalledWith("align");
   });
 
-  it("inserts a full environment as a rawBlock node", () => {
-    const editor = fakeWysiwygEditor();
-    setWysiwygEditor(editor as never);
-    setWysiwygVisible(true);
-
-    insertEnvironment("align");
-
-    expect(editor.insertContent).toHaveBeenCalledWith({
-      type: "rawBlock",
-      attrs: { source: "\\begin{align}\n  \n\\end{align}\n" },
+  it("keeps citations raw and turns delimited snippets into math", () => {
+    const editor = activateVisualEditor();
+    insertAtCursor("\\cite{key}");
+    expect(editor.getJSON().content?.[0].content?.[1]).toEqual({
+      type: "rawInline",
+      attrs: { source: "\\cite{key}" },
     });
-    expect(core.insertEnvironment).not.toHaveBeenCalled();
+    insertAtCursor("$\\frac{numerator}{denominator}$");
+    expect(editor.getJSON().content?.[0].content?.[2]).toEqual({
+      type: "mathInline",
+      attrs: { source: "$\\frac{numerator}{denominator}$" },
+    });
+  });
+
+  it("parses figure and table source into native nodes", () => {
+    const editor = activateVisualEditor();
+    setWysiwygDocumentContext({ theoremEnvironments: ["observation"], booktabs: false });
+    insertAtCursor(
+      "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{image-filename}\n  \\caption{Caption text}\n  \\label{fig:label}\n\\end{figure}\n",
+    );
+    insertAtCursor("\n\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n     &   \\\\\n  \\end{tabular}\n\\end{table}\n");
+    const types = editor.getJSON().content?.map((node) => node.type);
+    expect(types).toContain("figure");
+    expect(types).toContain("tableFloat");
+    const latex = latexOf(editor);
+    expect(latex).toContain("\\includegraphics[width=0.8\\textwidth]{image-filename}");
+    expect(latex).toContain("\\begin{tabular}{ll}");
   });
 
   it("falls back to CodeMirror when wysiwyg is marked active but no editor is registered", () => {
@@ -146,20 +175,16 @@ describe("cm/controller mode-aware routing", () => {
   });
 
   it("routes undo and redo to the visible WYSIWYG history", () => {
-    const editor = fakeWysiwygEditor();
-    setWysiwygEditor(editor as never);
-    setWysiwygVisible(true);
+    const editor = activateVisualEditor();
+    insertAtCursor("\\alpha");
+    expect(latexOf(editor)).toBe("Hello\\alpha\n");
 
     editorUndo();
-    expect(editor.focus).toHaveBeenCalled();
-    expect(editor.undo).toHaveBeenCalledOnce();
-    expect(editor.run).toHaveBeenCalledOnce();
+    expect(latexOf(editor)).toBe("Hello\n");
     expect(core.editorUndo).not.toHaveBeenCalled();
-    expect(bumpDocVersion).not.toHaveBeenCalled();
 
     editorRedo();
-    expect(editor.redo).toHaveBeenCalledOnce();
-    expect(editor.run).toHaveBeenCalledTimes(2);
+    expect(latexOf(editor)).toBe("Hello\\alpha\n");
     expect(core.editorRedo).not.toHaveBeenCalled();
     expect(bumpDocVersion).not.toHaveBeenCalled();
   });

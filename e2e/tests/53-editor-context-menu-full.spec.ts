@@ -143,7 +143,6 @@ test("LaTeX context menu activates every formatting and insertion action", async
     ["Italic", String.raw`\textit{text}`],
     ["Underline", String.raw`\underline{text}`],
     ["Inline code", String.raw`\texttt{text}`],
-    ["Figure", String.raw`\begin{figure}`],
     ["Table", String.raw`\begin{table}`],
     ["Align", String.raw`\begin{align}`],
     ["Equation", String.raw`\begin{equation}`],
@@ -156,6 +155,11 @@ test("LaTeX context menu activates every formatting and insertion action", async
   for (const [action, expected] of directActions) {
     await expectContextInsertion(tauriPage, action, expected);
   }
+
+  await resetLatexCursor(tauriPage);
+  await clickContextAction(tauriPage, "Figure");
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
+  expect(await editorSource(tauriPage)).toContain(String.raw`\begin{figure}`);
 
   const headingActions = [
     ["Part", "part"],

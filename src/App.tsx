@@ -57,7 +57,7 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { useSettingsStore } from "@/store/settings";
+import { EDITOR_LINE_HEIGHTS, useSettingsStore } from "@/store/settings";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -250,6 +250,7 @@ function AppContent() {
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
+  const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
@@ -438,7 +439,12 @@ function AppContent() {
     else root.style.removeProperty("font-family");
     if (editorFontFamily) root.style.setProperty("--cm-font-family", editorFontFamily);
     else root.style.removeProperty("--cm-font-family");
-  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily]);
+    root.style.setProperty(
+      "--cm-line-height",
+      String(EDITOR_LINE_HEIGHTS[editorLineHeight] ?? EDITOR_LINE_HEIGHTS.normal),
+    );
+    getEditorView()?.requestMeasure();
+  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, editorLineHeight]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -544,6 +550,7 @@ function AppContent() {
         e.preventDefault();
         void forwardFromCursor();
       } else if (matchesShortcut(e, bindings.shortcutReference)) {
+        if (e.defaultPrevented) return;
         e.preventDefault();
         useSettingsStore.getState().setHotkeysOpen(true);
       }

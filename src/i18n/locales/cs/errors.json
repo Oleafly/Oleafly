@@ -1,0 +1,31 @@
+{
+  "unknown": "Něco se pokazilo. Podrobnosti najdete v protokolu aplikace.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Název projektu nesmí být prázdný.",
+    "name_conflict": "Projekt s názvem {{name}} už existuje.",
+    "folder_unavailable": "Nepodařilo se vyhradit novou složku projektu."
+  },
+  "settings": {
+    "locale_unsupported": "Jazyk {{locale}} není k dispozici."
+  },
+  "literature": {
+    "query_empty": "Vyhledávací dotaz nesmí být prázdný.",
+    "query_too_long": "Vyhledávací dotaz je příliš dlouhý (maximálně {{max}} znaků).",
+    "unknown_source": "Neznámý zdroj literatury."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX nemá binární soubor {{name}} kompatibilní s tímto systémem.",
+    "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami."
+  },
+  "github": {
+    "sign_in_expired": "Přihlašovací kód vypršel. Zkuste to znovu.",
+    "sign_in_cancelled": "Autorizace na GitHubu byla zrušena.",
+    "sign_in_failed": "Přihlášení na GitHub se nezdařilo.",
+    "repositories_unavailable": "Repozitáře se nepodařilo načíst.",
+    "create_repo_failed": "Repozitář se nepodařilo vytvořit ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Úplný přístup nebyl povolen."
+  }
+}

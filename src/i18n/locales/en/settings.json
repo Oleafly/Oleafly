@@ -600,9 +600,35 @@
         "description": "Set source syntax colors separately from the app theme.",
         "label": "Editor theme"
       },
-      "vim": {
-        "description": "Use Vim keybindings in the source editor.",
-        "label": "Vim mode"
+      "keymap": {
+        "description": "Choose the keybinding set the source editor uses.",
+        "label": "Keybindings",
+        "options": {
+          "default": "Default",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Set the vertical spacing between source lines.",
+        "label": "Line height",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normal",
+          "wide": "Wide"
+        }
+      },
+      "lineWrap": {
+        "description": "Wrap long lines instead of scrolling sideways.",
+        "label": "Wrap long lines"
+      },
+      "tabSize": {
+        "description": "Spaces inserted per indentation level, and the width a tab renders at.",
+        "label": "Tab size"
+      },
+      "mathPreview": {
+        "description": "Show the rendered equation above the one the cursor is in.",
+        "label": "Math preview"
       }
     },
     "files": {
@@ -821,12 +847,19 @@
     },
     "tabs": {
       "fonts": "Fonts",
-      "templates": "Templates"
+      "templates": "Templates",
+      "dictionaries": "Dictionaries"
     },
     "templates": {
       "empty": "No downloadable template packs.",
       "heading": "Templates",
       "tooltip": "Extra template packs are downloaded on demand so Oleafly stays small. Download a pack here to use its templates offline, or remove them later to free space."
+    },
+    "dictionaries": {
+      "empty": "No extra languages are downloaded yet.",
+      "heading": "Spelling dictionaries",
+      "note": "Pick a language in the General section to download it. The five included packs are always available and are not listed here.",
+      "tooltip": "Five language packs are included with Oleafly. Any other language is downloaded on demand when you pick it as your spelling dictionary, and is kept here so it works offline afterwards. Removing one frees the space and falls back to the app setting."
     }
   },
   "engine": {
@@ -1413,6 +1446,26 @@
     },
     "tabs": {
       "application": "Application"
+    },
+    "editorKeys": {
+      "clearHint": "Press Backspace to leave this action unbound.",
+      "heading": "Editor keys",
+      "intro": "These keys work inside the source editor. Vim and Emacs modes keep their own bindings.",
+      "labels": {
+        "addCursorAbove": "Add cursor above",
+        "addCursorBelow": "Add cursor below",
+        "deleteLine": "Delete line",
+        "duplicate": "Duplicate selection or line",
+        "gotoLine": "Go to line",
+        "indentLess": "Outdent",
+        "indentMore": "Indent",
+        "lowercase": "Lowercase",
+        "selectNextOccurrence": "Select next occurrence",
+        "titleCase": "Title case",
+        "toggleComment": "Toggle comment",
+        "uppercase": "Uppercase"
+      },
+      "unbound": "Not set"
     }
   }
 }

@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Laufzeit des Assistenten",
+    "builtIn": "Oleafly Agent",
+    "cli": "CLI-Agent"
+  },
+  "shell": {
+    "float": "Assistent lösen",
+    "floatAriaLabel": "Assistent über der App schweben lassen",
+    "overlayTitle": "KI-Assistent",
+    "dockAriaLabel": "Chat wieder an die Seitenleiste andocken",
+    "floatingNotice": "Der Assistent schwebt über der App.",
+    "dockBack": "Wieder andocken",
+    "loadingAgents": "Agenten werden geladen…",
+    "openProjectForCli": "Öffnen Sie ein Projekt, um mit einem CLI-Agenten zu arbeiten."
+  },
+  "minimap": {
+    "ariaLabel": "Gesprächsbeiträge",
+    "jumpTo": "Springen zu: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Um Freigabe bitten",
+        "description": "Vor Dateiänderungen, Internetzugriff und Befehlen nachfragen."
+      },
+      "approveForMe": {
+        "label": "Für mich freigeben",
+        "description": "Nur vor Aktionen nachfragen, die als riskant gelten."
+      },
+      "fullAccess": {
+        "label": "Vollzugriff",
+        "description": "Werkzeugaktionen ohne Nachfrage ausführen."
+      },
+      "custom": {
+        "label": "Eigene Regeln (approvals.toml)",
+        "description": "Die Regeln aus approvals.toml verwenden. Bearbeiten Sie sie unter Einstellungen, KI-Assistent."
+      }
+    },
+    "selectorAriaLabel": "Freigabemodus. {{mode}}",
+    "editProjectRules": "Projektregeln bearbeiten",
+    "confirm": {
+      "command": "Befehl bestätigen",
+      "externalTool": "Aktion eines externen Werkzeugs bestätigen",
+      "internet": "Internetzugriff bestätigen",
+      "edit": "Änderung der KI bestätigen"
+    },
+    "headline": {
+      "command": "Der Assistent möchte diesen Befehl ausführen",
+      "externalTool": "Der Assistent möchte ein externes Werkzeug nutzen",
+      "internet": "Der Assistent möchte auf das Internet zugreifen",
+      "edit": "Der Assistent möchte Ihre Dateien ändern"
+    },
+    "mcpNote": "Damit gehen die Argumente unten an den eingerichteten MCP-Server.",
+    "line": "Zeile {{line}}",
+    "sessionAutoApprove": "Die automatische Freigabe für diese Sitzung ist für Schreibvorgänge aktiv (Löschungen brauchen weiterhin einen Klick).",
+    "commandLabel": "Befehl",
+    "workingDirectory": "Arbeitsverzeichnis",
+    "mcpServer": "MCP-Server",
+    "toolLabel": "Werkzeug",
+    "arguments": "Argumente",
+    "figureAlt": "Vorschau der Abbildung",
+    "firstChange": "erste Änderung · Z{{line}}",
+    "reject": "Ablehnen",
+    "alwaysInProject": "Immer in diesem Projekt",
+    "alwaysInProjectAriaLabel": "In diesem Projekt immer erlauben",
+    "alwaysAllow": "Immer erlauben",
+    "approve": "Freigeben",
+    "external": {
+      "title": "Anfrage eines externen Agenten (MCP)",
+      "moreWaiting_one": "{{count}} weitere wartet",
+      "moreWaiting_other": "{{count}} weitere warten"
+    }
+  },
+  "attachments": {
+    "remove": "{{name}} entfernen"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "SCHRITT {{current}}/{{total}}",
+      "review": "PRÜFUNG"
+    },
+    "plan": {
+      "detailsAriaLabel": "Details zum Plan",
+      "headingPlan": "Plan",
+      "headingChanges": "Änderungen",
+      "approve": "Plan freigeben",
+      "revise": "Überarbeiten",
+      "statusAwaiting": "Wartet auf Freigabe",
+      "statusApproved": "Freigegeben"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "erledigt",
+        "inProgress": "in Arbeit",
+        "pending": "offen",
+        "cancelled": "abgebrochen"
+      }
+    },
+    "fileChanges": {
+      "changed": "Geändert",
+      "committed": "Eingecheckt als {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} erledigt",
+      "filesChanged_one": "{{count}} Datei geändert",
+      "filesChanged_other": "{{count}} Dateien geändert"
+    },
+    "copyMessage": "Nachricht kopieren",
+    "exploration": {
+      "explored": "Erkundet",
+      "exploredItems": "{{items}} erkundet",
+      "files_one": "eine Datei",
+      "files_other": "{{count}} Dateien",
+      "searches_one": "eine Suche",
+      "searches_other": "{{count}} Suchen",
+      "lists_one": "eine Auflistung",
+      "lists_other": "{{count}} Auflistungen"
+    },
+    "reasoning": {
+      "thinking": "Denkt nach…",
+      "thoughtFor": "{{seconds}} s nachgedacht",
+      "label": "Gedankengang"
+    },
+    "subagent": {
+      "finished": "Fertig",
+      "failed": "Fehlgeschlagen",
+      "stopped": "Gestoppt",
+      "usingTool": "Nutzt {{tool}}",
+      "working": "Arbeitet daran",
+      "errorBody": "Der Agent konnte diese Aufgabe nicht abschließen.",
+      "stoppedBody": "Die Aufgabe wurde vor einer Antwort gestoppt.",
+      "openTask": "Aufgabe öffnen"
+    },
+    "workedSteps": {
+      "duration": "{{seconds}} s gearbeitet",
+      "steps_one": "{{count}} Schritt durchlaufen",
+      "steps_other": "{{count}} Schritte durchlaufen"
+    },
+    "steered": "Eingelenkt",
+    "toolOutputError": "Fehler: {{message}}",
+    "errorHints": {
+      "invalidKey": "Ihr API-Schlüssel wirkt ungültig oder abgelaufen. Aktualisieren Sie ihn unter Einstellungen → KI-Assistent oder wechseln Sie den Anbieter {{where}}.",
+      "outOfCredits": "Ihr KI-Anbieter hat kein Guthaben oder Kontingent mehr. Laden Sie das Konto auf oder wechseln Sie zu einem anderen Anbieter (oder zum lokalen Ollama) {{where}}.",
+      "overloaded": "Die Server des Anbieters sind gerade überlastet (es wurde bereits erneut versucht). Warten Sie eine Minute und versuchen Sie es noch einmal oder wechseln Sie zu einem verwandten Modell {{where}}.",
+      "rateLimited": "Der Anbieter begrenzt die Anfragerate. Warten Sie einen Moment und versuchen Sie es erneut oder wechseln Sie den Anbieter {{where}}.",
+      "retiredModel": "Der Anbieter hat dieses Modell eingestellt oder eingeschränkt. Wählen Sie ein neueres Modell {{where}} (unter Einstellungen → KI-Assistent steht, was Ihr Schlüssel nutzen darf).",
+      "unreachable": "Der KI-Anbieter war nicht erreichbar. Prüfen Sie Ihre Verbindung, und falls Sie Ollama nutzen, ob es läuft (Einstellungen → KI-Assistent → Nach Ollama suchen).",
+      "where": {
+        "inSettings": "unter Einstellungen, KI-Assistent",
+        "modelMenu": "im Modellmenü oben"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Kontext hinzufügen",
+    "mentionMenuAgentsAndFiles": "Agenten und Projektdateien",
+    "mentionMenuFiles": "Projektdateien",
+    "mentionHeadingAgents": "An einen Agenten übertragen",
+    "mentionHeadingFiles": "Projektdateien",
+    "slashMenuAriaLabel": "Schrägstrich-Befehle",
+    "placeholderEngineUnavailable": "Dokument-Engine nicht verfügbar. Bearbeiten mit KI deaktiviert",
+    "placeholderDefault": "Bitten Sie die KI um Hilfe bei Ihrem Dokument…",
+    "planRevisionPlaceholder": "Beschreiben Sie, was am Plan zu ändern ist",
+    "prompts": "Prompts",
+    "promptShortcutsAriaLabel": "Prompt-Kürzel",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} ist aktiv und ersetzt Ihre Standardanweisungen.",
+    "personaChoose": "Persona wählen",
+    "personaActiveAriaLabel": "Persona. {{name}} ist aktiv und ersetzt die Standardanweisungen.",
+    "personaCreate": "Persona in den Einstellungen anlegen",
+    "personaNone": "Keine",
+    "planModeOn": "Planmodus an",
+    "planModeOff": "Planmodus aus",
+    "planModeAriaLabel": "Planmodus",
+    "plan": "Plan",
+    "planModeInfo": "Über den Planmodus",
+    "planModeHint": "Planmodus: Der Assistent schlägt einen Plan vor, bevor er etwas ändert. Schalten Sie Plan aus, um dem Assistenten direkten Zugriff auf alle Werkzeuge zu geben.",
+    "stop": "Stoppen",
+    "stopTitle": "Erzeugen stoppen",
+    "send": "Senden",
+    "checkAgain": "Erneut prüfen"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Skills"
+    },
+    "archive": {
+      "label": "Archivieren",
+      "description": "Diesen Chat archivieren"
+    },
+    "forkChat": {
+      "label": "Chat forken",
+      "description": "Aus diesem Gespräch einen neuen Chat erstellen"
+    },
+    "goal": {
+      "label": "Ziel",
+      "description": "Festlegen, worauf der Assistent dauerhaft hinarbeiten soll"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Verbundene MCP-Server und ihren Status ansehen"
+    },
+    "model": {
+      "label": "Modell",
+      "description": "Das Modell für diesen Chat wählen"
+    },
+    "planMode": {
+      "enableLabel": "Planmodus einschalten",
+      "disableLabel": "Planmodus ausschalten",
+      "description": "Strukturiertes Planen ein- oder ausschalten"
+    },
+    "recordSkill": {
+      "label": "Skill aufzeichnen",
+      "description": "Das Vorgehen dieses Chats als bearbeitbaren Entwurf sichern"
+    },
+    "files": {
+      "label": "Dateien",
+      "description": "Ihrer nächsten Nachricht Dateien anhängen"
+    },
+    "browser": {
+      "label": "Browser anhängen",
+      "description": "Den Browser neben Ihrem Dokument öffnen"
+    }
+  },
+  "models": {
+    "ariaLabel": "KI-Modell",
+    "placeholder": "Modell wählen",
+    "triggerTooltip": "{{model}}. Anbieter oder Modell wechseln",
+    "searchLabel": "Modelle suchen",
+    "searchPlaceholder": "Modelle suchen…",
+    "emptyTitle": "Keine Modelle gefunden",
+    "emptyHint": "Versuchen Sie eine andere Suche.",
+    "trust": {
+      "verified": "Geprüft",
+      "untested": "Ungetestet",
+      "blocked": "Blockiert"
+    },
+    "trustTitle": {
+      "verified": "Oleafly hat den Assistenten auf diesem Modell laufen lassen",
+      "untested": "Mit dem Assistenten noch nicht erprobt. Beim ersten Einsatz wird geprüft",
+      "blocked": "Der Assistent kann auf diesem Modell nicht laufen"
+    },
+    "chatOnlyHint": "Nur Chat, dieses Modell kann keine Werkzeuge nutzen",
+    "checkingHint": "Dieses Modell wird geprüft",
+    "blockedWithReason": "Dieses Modell ist für den Assistenten blockiert: {{reason}}",
+    "blocked": "Dieses Modell ist für den Assistenten blockiert.",
+    "probeFailedWithDetail": "Dieses Modell konnte nicht geprüft werden. {{detail}}",
+    "probeFailed": "Dieses Modell konnte nicht geprüft werden."
+  },
+  "history": {
+    "title": "Chatverlauf",
+    "closeBackdrop": "Chatverlauf schließen",
+    "searchLabel": "Chats durchsuchen",
+    "searchPlaceholder": "Titel und Nachrichten durchsuchen",
+    "emptyProject": "Für dieses Projekt sind noch keine Chats gespeichert.",
+    "emptySearch": "Keine Chats passen zu dieser Suche.",
+    "untitled": "Neuer Chat",
+    "staleTitle": "Dieser Chat begann mit einer älteren Fassung des Projekts",
+    "staleBadge": "ältere Fassung",
+    "messages_one": "{{count}} Nachr.",
+    "messages_other": "{{count}} Nachr.",
+    "tokens": "~{{amount}} Tok.",
+    "deleteAriaLabel": "{{title}} löschen",
+    "deleteFallbackTitle": "Chat",
+    "deleteTitle": "Chat löschen",
+    "relative": {
+      "justNow": "gerade eben",
+      "minutes": "vor {{count}} Min.",
+      "hours": "vor {{count}} Std.",
+      "days": "vor {{count}} T."
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Nie",
+      "everyTime": "Jedes Mal, im Chat",
+      "askModeOnly": "Nur im Modus Um Freigabe bitten",
+      "unlessAllowed": "Ja, außer wenn für das Projekt erlaubt"
+    },
+    "catalog": {
+      "readFile": "Liest eine Projektdatei, bei langen Dateien abschnittsweise.",
+      "writeFile": "Schreibt eine ganze Datei und ersetzt, was darin stand.",
+      "replaceInFile": "Findet eine genaue Stelle in einer Datei und ersetzt sie.",
+      "createFile": "Legt eine neue Datei oder einen neuen Ordner im Projekt an.",
+      "renameFile": "Benennt eine Datei oder einen Ordner um oder verschiebt sie.",
+      "deleteFile": "Löscht eine Datei oder einen Ordner.",
+      "listFiles": "Listet jede Datei und jeden Ordner im Projekt auf.",
+      "searchProject": "Durchsucht den Text des Projekts und liefert Treffer mit Datei und Zeile.",
+      "projectMap": "Liest die Gliederung des Dokuments: Abschnitte, Labels, Zitierschlüssel, Makros, Einbindungen und alles Ungelöste.",
+      "showLocation": "Öffnet eine Datei an einer Zeile im Editor und bewegt die PDF-Vorschau an diese Stelle.",
+      "compile": "Kompiliert das Projekt mit seiner Engine und meldet Fehler.",
+      "getLog": "Liest das letzte Kompilierprotokoll.",
+      "getPdfText": "Liest den Text des kompilierten PDF Seite für Seite.",
+      "verifyPdfPages": "Stellt kompilierte Seiten als Bilder dar, damit ein Bildmodell das Layout prüfen kann.",
+      "setMainDoc": "Ändert, aus welcher Datei das Projekt kompiliert wird.",
+      "literatureSearch": "Durchsucht OpenAlex nach Aufsätzen per Stichwort, ohne Schlüssel.",
+      "verifyCitation": "Macht aus einer DOI oder einem Titel geprüftes BibTeX über doi.org oder Crossref.",
+      "projectLibrarySearch": "Durchsucht Text und Notizen des Projekts per Stichwort.",
+      "alphaxivSearch": "Durchsucht arXiv-Aufsätze über alphaXiv.",
+      "alphaxivPaperContent": "Holt den Volltext eines arXiv-Aufsatzes über alphaXiv.",
+      "previewFigure": "Kompiliert eine TikZ- oder PGFPlots-Abbildung für sich und zeigt das Ergebnis im Chat.",
+      "insertFigure": "Fügt die fertige Abbildung mit Bildunterschrift und Label an der Cursorstelle ein und sichert ein PNG unter figures/.",
+      "loadImage": "Sieht sich ein Bild an, das bereits im Projekt liegt.",
+      "updateTodos": "Schreibt oder aktualisiert den Schritt-für-Schritt-Plan im Chat.",
+      "getTodos": "Liest den aktuellen Plan.",
+      "rememberNote": "Speichert eine Projektnotiz, die spätere Chats sehen.",
+      "forgetNote": "Entfernt eine gespeicherte Projektnotiz.",
+      "listNotes": "Listet die gespeicherten Projektnotizen auf.",
+      "loadSkill": "Lädt die vollständige Anleitung eines Skills, bevor er befolgt wird.",
+      "readSkillFile": "Liest eine Referenzdatei oder ein Skript, das zu einem Skill gehört.",
+      "spawnAgent": "Startet einen Hilfsagenten mit eigener Aufgabe und eigenen Werkzeugen.",
+      "sendMessage": "Sendet eine Nachricht an einen laufenden Hilfsagenten.",
+      "followupTask": "Gibt einem Hilfsagenten nach Abschluss eine weitere Aufgabe.",
+      "waitAgent": "Wartet, bis ein Hilfsagent fertig ist, und liest sein Ergebnis.",
+      "interruptAgent": "Stoppt, woran ein Hilfsagent gerade arbeitet.",
+      "listAgents": "Listet die Hilfsagenten und ihren Zustand auf.",
+      "closeAgent": "Schließt einen Hilfsagenten.",
+      "runCommand": "Führt einen shell-Befehl im Projektordner aus, mit einem Limit von zwei Minuten.",
+      "computerUse": "Öffnet eine Webseite im Browserfenster des Assistenten.",
+      "toggleTheme": "Wechselt zwischen hellem und dunklem Modus."
+    },
+    "disableAll": "Alle deaktivieren",
+    "emptyContext": "In diesem Zusammenhang sind keine Werkzeuge verfügbar.",
+    "enableAll": "Alle aktivieren",
+    "enableTool": "{{name}} aktivieren",
+    "enabledCount": "{{enabled}} von {{total}} aktiv",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agenten",
+      "buildAndPdf": "Bauen und PDF",
+      "figures": "Abbildungen",
+      "files": "Dateien",
+      "planAndMemory": "Plan und Gedächtnis",
+      "research": "Recherche",
+      "skills": "Skills",
+      "system": "System"
+    },
+    "managerAriaLabel": "Werkzeuge des Agenten verwalten",
+    "managerHeading": "Werkzeuge",
+    "managerTooltip": "Werkzeuge",
+    "noDescription": "Keine Beschreibung vorhanden.",
+    "notes": {
+      "latexOnly": "Nur für LaTeX-Projekte",
+      "pdfCaptureSetting": "Braucht die Einstellung zum Erfassen von PDF-Seiten",
+      "alphaxivKey": "Braucht einen alphaXiv-Schlüssel unter Integrationen",
+      "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen",
+      "browserSetting": "Braucht die Einstellung für den Webbrowser"
+    },
+    "sourceGroups": {
+      "figure": "Abbildung",
+      "mcp": "MCP",
+      "project": "Projektwerkzeuge",
+      "skills": "Skills"
+    },
+    "table": {
+      "tool": "Werkzeug",
+      "whatItDoes": "Was es tut",
+      "asksFirst": "Fragt vorher"
+    }
+  },
+  "toolCard": {
+    "approved": "Freigegeben",
+    "rejected": "Abgelehnt",
+    "binaryPreview": "Diese verknüpfte Datei ist binär und lässt sich hier nicht anzeigen.",
+    "previewTruncated": "Die Vorschau endet bei 256 KiB.",
+    "previewFailed": "Diese verknüpfte Quelle ließ sich nicht anzeigen.",
+    "showAll": "Alle {{characters}} Zeichen anzeigen",
+    "loadingSource": "Quelle wird geladen",
+    "inspectSource": "Quelle ansehen",
+    "openFile": "Datei öffnen",
+    "openSource": "Quelle öffnen",
+    "openSourceTitled": "Quelle öffnen: {{title}}",
+    "openTask": "Aufgabe öffnen",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Vorschau der gerenderten Abbildung",
+    "toolImageAlt": "Bild aus dem Werkzeug",
+    "showFigure": "Die gerenderte Abbildung zeigen",
+    "showTikz": "Den TikZ-Quelltext zeigen",
+    "figureTab": "Abbildung",
+    "tikzTab": "TikZ",
+    "saving": "Wird gespeichert",
+    "saveToProject": "Im Projekt speichern",
+    "copyCode": "Code kopieren",
+    "saved": "{{path}} gespeichert",
+    "saveNeedsProject": "Öffnen Sie ein Projekt, um diese Abbildung zu speichern.",
+    "saveFailed": "Die Abbildung konnte nicht gespeichert werden."
+  },
+  "transcript": {
+    "dialogTitle": "Protokoll der übertragenen Aufgabe",
+    "dialogDescription": "Alles, was der beauftragte Agent bei dieser Aufgabe gelesen, ausgeführt und geantwortet hat.",
+    "loading": "Protokoll wird geladen",
+    "failed": "Das Protokoll konnte nicht geladen werden.",
+    "empty": "Diese Aufgabe hat kein Protokoll aufgezeichnet."
+  },
+  "subagents": {
+    "working": "Unteragenten arbeiten",
+    "count": "Unteragenten ({{count}})",
+    "stopAll": "Alle stoppen",
+    "stopFailed": "Die Unteragenten konnten nicht gestoppt werden.",
+    "updates": "{{count}} Aktualisierungen",
+    "openTask": "Aufgabe öffnen",
+    "awaitingPermission": "Ein beauftragter Agent wartet auf eine Freigabe.",
+    "taskFailed": "Eine übertragene Aufgabe ist fehlgeschlagen. Öffnen Sie sie, um den Fehler zu lesen.",
+    "transcriptTruncated": "Dieses Protokoll ist länger als der hier gezeigte Ausschnitt.",
+    "noTranscriptYet": "Diese Aufgabe hat noch keine Protokollaktivität gemeldet.",
+    "noSessionInfo": "Diese Aufgabe hat zu wenig Sitzungsdaten aufgezeichnet, um ihr Protokoll zu öffnen.",
+    "loadingTranscript": "Protokoll wird geladen…",
+    "transcriptFailed": "Das Protokoll konnte nicht geladen werden.",
+    "stillWorking": "Dieser Unteragent arbeitet noch. Sein vollständiges Protokoll öffnet sich, wenn er fertig ist.",
+    "noFinalAnswer": "Dieser Agent hat keine abschließende Antwort aufgezeichnet.",
+    "latest": "Zuletzt: {{text}}",
+    "workingDetail": "arbeitet",
+    "status": {
+      "active": "arbeitet",
+      "awaiting": "braucht Freigabe",
+      "updated": "aktualisiert",
+      "interrupted": "gestoppt",
+      "completed": "fertig",
+      "failed": "fehlgeschlagen"
+    }
+  },
+  "acp": {
+    "newConversation": "Neues Gespräch",
+    "savedConversations": "Gespeicherte Gespräche",
+    "untitledConversation": "Gespräch ohne Titel",
+    "agentSetup": "Einrichtung des Agenten",
+    "usageReport": "Nutzungsbericht",
+    "permission": {
+      "ariaLabel": "Freigabe für den Agenten",
+      "namedHeadline": "{{agent}} braucht eine Freigabe",
+      "headline": "Der Agent braucht eine Freigabe",
+      "expired": "Diese Anfrage ist abgelaufen. Bitten Sie den Agenten, es erneut zu versuchen.",
+      "dismiss": "Schließen"
+    },
+    "readiness": {
+      "managedBridge": "Bridge {{version}} von Oleafly installiert.",
+      "bridgeOnPath": "Bridge im PATH gefunden.",
+      "bridgeMissingWithCli": "{{cli}} unter {{path}} gefunden. Installieren Sie die ACP-Bridge {{version}}, um zu verbinden.",
+      "bridgeMissing": "Installieren Sie die ACP-Bridge {{version}}, um diesen Agenten zu verbinden.",
+      "cliMissing": "{{cli}} liegt nicht in Ihrem PATH. Installieren Sie es und führen Sie dann {{command}} aus.",
+      "cliNotFound": "Das Kommandozeilenwerkzeug dieses Agenten wurde nicht gefunden.",
+      "unavailable": "Dieser Agent kann auf diesem Computer nicht laufen."
+    },
+    "bridgeSource": {
+      "notInstalled": "Nicht installiert",
+      "managed": "Von Oleafly verwaltet",
+      "onPath": "Im PATH"
+    },
+    "installing": "Wird installiert",
+    "installBridge": "Bridge installieren",
+    "assistantAriaLabel": "Assistent des CLI-Agenten",
+    "loadEarlier": "Frühere Aktivität laden",
+    "starting": "{{agent}} wird gestartet",
+    "startingFallback": "der Agent",
+    "startingHint": "Das Kommandozeilenwerkzeug des Agenten startet. Beim ersten Mal dauert das ein paar Sekunden.",
+    "readySubtitle": "{{agent}} ist in diesem Projekt bereit",
+    "projectSubtitle": "Arbeitet an „{{project}}“",
+    "signInFallback": "Melden Sie sich über die CLI dieses Agenten an und verbinden Sie erneut.",
+    "reconnectAfterSignIn": "Nach der Anmeldung erneut verbinden",
+    "reconnect": "Erneut mit dem Gespräch verbinden",
+    "resumeTask": "Öffnen Sie die Forschungsaufgabe, um hier weiterzuarbeiten.",
+    "delegatedConversation": "Dieses Gespräch gehört zum Lauf eines beauftragten Agenten.",
+    "noResume": "Dieser Agent kann gespeicherte Gespräche nicht fortsetzen. Beginnen Sie ein neues Gespräch, wenn Sie so weit sind.",
+    "imageTooLarge": "Wählen Sie ein Bild kleiner als 480 KiB. Sie können bis zu vier Bilder anhängen.",
+    "imageReadFailed": "Das Bild konnte nicht gelesen werden.",
+    "removeImage": "{{name}} entfernen",
+    "composerAriaLabel": "Nachricht an den CLI-Agenten",
+    "composerPlaceholderReady": "Bitten Sie den Agenten, an diesem Projekt zu arbeiten",
+    "composerPlaceholderIdle": "Starten Sie ein Gespräch oder verbinden Sie erneut, um eine Nachricht zu senden",
+    "attachImage": "Bild anhängen",
+    "startConversation": "Ein Gespräch mit {{agent}} beginnen",
+    "startConversationFallback": "einem Agenten",
+    "agentModel": "Modell des Agenten",
+    "modelManaged": "Modell wird vom Agenten verwaltet",
+    "stop": "Stoppen",
+    "stopTitle": "Den Agenten stoppen",
+    "send": "Senden",
+    "connecting": "Verbindet",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "verbindet",
+      "authRequired": "anmeldung nötig",
+      "ready": "bereit",
+      "running": "läuft",
+      "cancelling": "wird gestoppt",
+      "cancelled": "gestoppt",
+      "disconnected": "getrennt",
+      "failed": "fehlgeschlagen"
+    },
+    "roster": {
+      "bridgeMissing": "Bridge unter Einrichtung des Agenten installieren",
+      "cliMissing": "CLI auf diesem Computer nicht gefunden",
+      "unavailable": "auf diesem Computer nicht verfügbar",
+      "comingSoon": "in Kürze"
+    },
+    "messageTooLarge": "Diese Nachricht ist mit ihren Bildern zu groß. Kürzen Sie die Nachricht oder entfernen Sie ein Bild.",
+    "terminalCommand": "Der Agent führt einen Befehl im Terminal aus.",
+    "agentToolFallback": "Werkzeug des Agenten",
+    "agentReported": "Der Agent meldet: {{detail}}",
+    "imageAttachmentName": "Bild {{index}}",
+    "agentImage": "[Der Agent hat ein Bild zurückgegeben.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI-Agent",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "nicht installiert",
+    "cliDetail": "CLI-Agent · nutzt sein eigenes Konto",
+    "builtInDetail": "{{provider}} · Oleafly Agent"
+  },
+  "home": {
+    "heading": "Was möchten Sie heute tun?",
+    "headingAccent": "heute tun?",
+    "skillCategories": "Skill-Kategorien",
+    "skillLockedTitle": "{{name}} ist für dieses Projekt abgeschaltet",
+    "recentChats": "Neueste Chats",
+    "recentStaleTitle": "Mit einer älteren Fassung des Projekts begonnen",
+    "recentUntitled": "Neuer Chat",
+    "recentStaleBadge": "Ältere Fassung",
+    "recentMessages_one": "{{count}} Nachr.",
+    "recentMessages_other": "{{count}} Nachr.",
+    "showAllHistory": "Gesamten Verlauf anzeigen ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Dieses Ergebnis enthält keinen Verweis auf die Quelle.",
+    "sourceOpenFailed": "Die Quelle konnte nicht geöffnet werden.",
+    "noProjectPath": "Dieses Ergebnis enthält keinen Pfad zu einer Projektdatei.",
+    "resultOpenFailed": "Die Ergebnisdatei konnte nicht geöffnet werden."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Schreiben & bearbeiten",
+      "citationsAndLiterature": "Zitationen & Literatur",
+      "review": "Begutachtung",
+      "figuresAndTables": "Abbildungen & Tabellen"
+    },
+    "improveWriting": {
+      "label": "Text verbessern",
+      "description": "Klarheit, Ton und Fluss verfeinern"
+    },
+    "fixGrammar": {
+      "label": "Grammatik korrigieren",
+      "description": "Grammatik und Zeichensetzung berichtigen"
+    },
+    "fixLatexErrors": {
+      "label": "LaTeX-Fehler beheben",
+      "description": "Defekten Code und Kompilierfehler reparieren"
+    },
+    "writeEquation": {
+      "label": "Formel schreiben",
+      "description": "Aus natürlicher Sprache LaTeX-Formeln machen"
+    },
+    "draftSection": {
+      "label": "Abschnitt entwerfen",
+      "description": "Einen neuen Abschnitt in Ihrem Stil schreiben"
+    },
+    "paraphrase": {
+      "label": "Umformulieren",
+      "description": "Anders formulieren, Sinn erhalten"
+    },
+    "shorten": {
+      "label": "Kürzen",
+      "description": "Den Text knapper machen"
+    },
+    "expand": {
+      "label": "Ausbauen",
+      "description": "Mit Einzelheiten ausführen"
+    },
+    "journalFormat": {
+      "label": "Zeitschriftenformat",
+      "description": "Für eine Zielveranstaltung neu formatieren"
+    },
+    "writeAbstract": {
+      "label": "Zusammenfassung schreiben",
+      "description": "Aus dem Aufsatz eine Zusammenfassung entwerfen"
+    },
+    "generateTitle": {
+      "label": "Titel erzeugen",
+      "description": "Überzeugende Titel für den Aufsatz"
+    },
+    "keywords": {
+      "label": "Schlagwörter",
+      "description": "Suchbare Schlagwörter herausziehen"
+    },
+    "continueWriting": {
+      "label": "Weiterschreiben",
+      "description": "Dort ansetzen, wo Sie aufgehört haben"
+    },
+    "citationSearch": {
+      "label": "Zitationssuche",
+      "description": "alphaXiv und OpenAlex nach Aufsätzen durchsuchen"
+    },
+    "literatureReview": {
+      "label": "Literaturübersicht",
+      "description": "Verwandte Arbeiten mit echten Quellen sichten"
+    },
+    "citeClaim": {
+      "label": "Diese Aussage belegen",
+      "description": "Eine geprüfte Literaturangabe finden und einfügen"
+    },
+    "myLibrary": {
+      "label": "Meine Bibliothek",
+      "description": "Ihre importierten Literaturangaben durchsuchen"
+    },
+    "labSearch": {
+      "label": "Laborsuche",
+      "description": "Forschungsgruppen und Einrichtungen finden"
+    },
+    "friendlyReview": {
+      "label": "Wohlwollende Begutachtung",
+      "description": "Aufbauendes Feedback im Stil einer Mentorin"
+    },
+    "fireReview": {
+      "label": "Harte Begutachtung",
+      "description": "Strenger Belastungstest von Behauptungen und Methoden wie von Gutachter 2"
+    },
+    "academicPresentation": {
+      "label": "Wissenschaftlicher Vortrag",
+      "description": "Ein Beamer-Foliensatz aus Ihrem Aufsatz"
+    },
+    "academicPoster": {
+      "label": "Wissenschaftliches Poster",
+      "description": "Ein Konferenzposter aus Ihrem Aufsatz"
+    },
+    "generateTable": {
+      "label": "Tabelle erzeugen",
+      "description": "Eine LaTeX-Tabelle im Chat entwerfen"
+    },
+    "tikzFigure": {
+      "label": "TikZ-Abbildung",
+      "description": "TikZ-Code im Chat entwerfen"
+    }
+  },
+  "turn": {
+    "thinking": "Denkt nach…",
+    "continuing": "Macht weiter…",
+    "reasoning": "Schlussfolgert…",
+    "runningTool": "{{name}} läuft…",
+    "processingResult": "Ergebnis wird verarbeitet…",
+    "summarizing": "Früheres Gespräch wird zusammengefasst…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Die Sitzung des Agenten konnte nicht geöffnet werden.",
+    "approvalModeSaveFailed": "Der Freigabemodus konnte nicht gespeichert werden.",
+    "skillDraftSaved": "Skill-Entwurf gespeichert. Prüfen Sie ihn, bevor Sie ihn aktivieren.",
+    "skillDraftFailed": "Der Skill-Entwurf konnte nicht gespeichert werden. {{error}}",
+    "chatArchived": "Chat archiviert.",
+    "chatArchiveFailed": "Dieser Chat konnte nicht archiviert werden.",
+    "chatForked": "Chat geforkt.",
+    "chatForkFailed": "Dieser Chat konnte nicht geforkt werden.",
+    "engineNotLoaded": "Die Angaben zur Dokument-Engine sind nicht geladen. Das Bearbeiten mit KI ist zur Sicherheit deaktiviert.",
+    "skillsLoadFailed": "Die aktivierten Skills konnten nicht geladen werden. Versuchen Sie es erneut.",
+    "approvalModeLoadFailed": "Der Freigabemodus konnte nicht geladen werden.",
+    "approvalRulesLoadFailed": "Die Freigaberegeln des Projekts konnten nicht geladen werden.",
+    "restored": "Projektdateien wiederhergestellt. Das Gespräch blieb erhalten.",
+    "restoreFailed": "Wiederherstellen nicht möglich: {{error}}",
+    "steerFailed": "Der laufende Beitrag konnte nicht gelenkt werden.",
+    "approvalRuleSaveFailed": "Die Freigaberegel des Projekts konnte nicht gespeichert werden.",
+    "attachmentTooLarge": "{{name}} ist zu groß (höchstens 10 MB).",
+    "attachmentReadFailed": "{{name}} konnte nicht gelesen werden.",
+    "tooManyTools": "{{enabled}} Werkzeuge sind aktiv, ein Lauf unterstützt aber höchstens {{max}}. Deaktivieren Sie mindestens {{excess}} unter Werkzeuge und versuchen Sie es erneut."
+  },
+  "header": {
+    "mcpTooltip": "MCP-Server des Assistenten einrichten",
+    "mcpAriaLabel": "MCP-Einstellungen des Assistenten",
+    "settings": "Einstellungen des Assistenten",
+    "usageAriaLabel": "KI-Nutzung ansehen",
+    "usageReport": "Nutzungsbericht",
+    "newChat": "Neuer Chat",
+    "chatHistory": "Chatverlauf",
+    "staleChatHint": "Dieser Chat begann mit einer älteren Fassung des Projekts. Die Dateiinhalte können von dem abweichen, was die KI gesehen hat."
+  },
+  "usage": {
+    "lastRun": "Letzter Lauf",
+    "steps": "Schritte",
+    "input": "Eingabe",
+    "output": "Ausgabe",
+    "thisChat": "Dieser Chat",
+    "runs": "Läufe",
+    "tokens": "Token",
+    "cacheNote": "Nutzung des Zwischenspeichers und Kostenschätzungen stehen im Nutzungsbericht.",
+    "summaryRunWithTokens_one": "Letzter Lauf: {{count}} Schritt, {{tokens}} gemeldete Token",
+    "summaryRunWithTokens_other": "Letzter Lauf: {{count}} Schritte, {{tokens}} gemeldete Token",
+    "summaryRunNoTokens_one": "Letzter Lauf: {{count}} Schritt, Token-Summe nicht verfügbar",
+    "summaryRunNoTokens_other": "Letzter Lauf: {{count}} Schritte, Token-Summe nicht verfügbar",
+    "summaryChat": "Dieser Chat: {{steps}} Schritte, {{tokens}} Token",
+    "summaryFallback": "KI-Nutzung"
+  },
+  "provider": {
+    "connectTitle": "Verbinden Sie einen KI-Anbieter, um fortzufahren",
+    "connectBody": "Nutzen Sie Ihren eigenen API-Schlüssel (OpenAI, Anthropic, Groq und weitere) oder lassen Sie ein Modell lokal mit Ollama laufen. Der Assistent kann Dateien lesen und ändern, Ihr Projekt kompilieren und das PDF prüfen.",
+    "connectButton": "Einen Anbieter verbinden",
+    "runLocal": "Ein lokales Modell mit Ollama betreiben",
+    "quotaWarning": "Der Speicher für den Chatverlauf ist voll. Ältere Chats wurden entfernt und neue Nachrichten werden womöglich nicht gesichert. Löschen Sie alte Chats aus dem Verlauf, um Platz zu schaffen."
+  },
+  "conversation": {
+    "renderFailed": "Dieses Gespräch ließ sich nicht darstellen. Beginnen Sie einen neuen Chat oder öffnen Sie es aus dem Verlauf erneut.",
+    "checkpointRestored": "Projekt auf diesen Checkpoint zurückgesetzt",
+    "restoring": "Wird wiederhergestellt…",
+    "restoreCheckpoint": "Code auf den Stand vor dieser Antwort zurücksetzen",
+    "restoreConfirm": "Projektdateien auf den Stand vor dieser Antwort zurücksetzen? Damit verfallen auch Codeänderungen aus späteren KI-Antworten. Das Gespräch bleibt erhalten.",
+    "noResponse": "Auf diese Nachricht kam keine Antwort. Der Datenstrom wurde unterbrochen. Senden Sie sie erneut oder beginnen Sie einen neuen Chat.",
+    "scrollToBottom": "Nach unten scrollen",
+    "projectSubtitle": "Arbeitet an „{{project}}“",
+    "noOutput": "Das Modell hat keine Ausgabe geliefert. Prüfen Sie Einstellungen → KI-Assistent."
+  },
+  "followUps": {
+    "steered": "In den laufenden Beitrag eingelenkt: {{summary}}",
+    "sending": "Als nächster Beitrag gesendet: {{summary}}",
+    "waiting": "Wartet auf einen sicheren Punkt im Lauf: {{summary}}",
+    "queued": "Für den nächsten Beitrag eingereiht: {{summary}}",
+    "steerNow": "Jetzt einlenken",
+    "startingRun": "Der Lauf startet",
+    "discard": "Eingereihte Nachricht verwerfen"
+  },
+  "goal": {
+    "editAriaLabel": "Ziel bearbeiten: {{goal}}",
+    "clear": "Ziel löschen",
+    "formAriaLabel": "Dauerhaftes Ziel festlegen",
+    "label": "Ziel",
+    "placeholder": "Worauf soll der Assistent dauerhaft hinarbeiten?",
+    "save": "Ziel speichern"
+  },
+  "suggestions": {
+    "literatureSweep": "Die Literatur für dieses Projekt sichten",
+    "relatedWork": "Den Abschnitt zu verwandten Arbeiten entwerfen",
+    "verifyClaims": "Jede Aussage gegen ihre Quelle prüfen",
+    "reviewManuscript": "Es wie ein Gutachter begutachten",
+    "latexBuild": "Fehler im Quelltext meines Dokuments beheben",
+    "preSubmission": "Es für die Einreichung fertig machen",
+    "slides": "Aus diesem Aufsatz einen Vortrag machen",
+    "recompile": "Neu kompilieren und auf Fehler prüfen"
+  }
+}

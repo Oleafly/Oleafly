@@ -6,9 +6,75 @@
     "subsection": "Subsection",
     "subsubsection": "Subsubsection",
     "paragraph": "Paragraph",
+    "subparagraph": "Subparagraph",
     "title": "Title",
     "minor": "Minor heading",
     "paragraphHeading": "Paragraph heading"
+  },
+  "figureDialog": {
+    "title": "Insert figure",
+    "description": "Choose an image from the project or import one, then set its width, caption and label.",
+    "projectImages": "Project images",
+    "noProjectImages": "This project has no images yet. Import one from disk to get started.",
+    "importFromDisk": "Import from disk…",
+    "importing": "Importing…",
+    "imageFilter": "Images",
+    "importFailed": "The image could not be imported.",
+    "thumbnailAlt": "Preview of {{path}}",
+    "noPreview": "No preview",
+    "width": "Width",
+    "widthQuarter": "Quarter width",
+    "widthHalf": "Half width",
+    "widthThreeQuarters": "Three-quarter width",
+    "widthFull": "Full width",
+    "widthCustom": "Custom",
+    "customWidthLabel": "Custom width",
+    "customWidthPlaceholder": "6cm or 0.6\\linewidth",
+    "captionToggle": "Add a caption",
+    "captionLabel": "Caption",
+    "captionPlaceholder": "Describe the figure",
+    "labelToggle": "Add a label",
+    "labelLabel": "Label",
+    "labelPlaceholder": "fig:name",
+    "insertPlaceholder": "Insert placeholder",
+    "cancel": "Cancel",
+    "insert": "Insert figure",
+    "selectImage": "Select an image to insert it.",
+    "editTitle": "Edit image",
+    "editDescription": "Swap the image or change its width. The caption and label stay as they are.",
+    "save": "Save image"
+  },
+  "tableToolbar": {
+    "label": "Table tools",
+    "insertRowAbove": "Insert row above",
+    "insertRowBelow": "Insert row below",
+    "insertColumnLeft": "Insert column left",
+    "insertColumnRight": "Insert column right",
+    "deleteRow": "Delete row",
+    "deleteColumn": "Delete column",
+    "deleteTable": "Delete table",
+    "alignLeft": "Align column left",
+    "alignCenter": "Align column center",
+    "alignRight": "Align column right",
+    "mergeCells": "Merge cells",
+    "splitCell": "Split cell",
+    "headerRow": "Header row",
+    "borders": "Borders",
+    "bordersNone": "No borders",
+    "bordersHorizontal": "Horizontal rules",
+    "bordersAll": "All borders",
+    "bordersBooktabs": "Booktabs rules",
+    "captionPosition": "Caption",
+    "captionNone": "No caption",
+    "captionAbove": "Caption above",
+    "captionBelow": "Caption below",
+    "tableLabel": "Label",
+    "labelPlaceholder": "tab:name"
+  },
+  "paste": {
+    "imageSaved": "Image saved to {{path}}",
+    "imageFailed": "The pasted image could not be saved to the project.",
+    "noProject": "Open a project before pasting images."
   },
   "toolbar": {
     "selectCitationFirst": "Select a citation or reference in Visual mode first.",
@@ -134,7 +200,11 @@
     "issues": "Issues",
     "spelling": "Spelling",
     "grammarAndStyle": "Grammar & style",
-    "findingsTruncated": "The findings list is truncated; the count above is complete."
+    "findingsTruncated": "The findings list is truncated; the count above is complete.",
+    "spellLanguage": "Spell-check language",
+    "spellLanguageAppSetting": "Use the app setting",
+    "spellLanguageAriaLabel": "Spell-check language for this project",
+    "spellLanguageHint": "Applies to this project only. Download more languages in Settings."
   },
   "table": {
     "trigger": "Insert table",
@@ -555,7 +625,14 @@
       "unsafeOutput": "A safe preview could not be produced.",
       "unsupported": "This expression is incomplete or unsupported.",
       "missingClosing": "Missing closing {{delimiter}}.",
-      "notRendered": "This expression could not be rendered."
+      "notRendered": "This expression could not be rendered.",
+      "preview": {
+        "moreOptions": "More options",
+        "hide": "Hide",
+        "hideDescription": "Hides the preview until you leave this equation.",
+        "disable": "Disable",
+        "disableDescription": "Turns the equation preview off. Turn it back on in Settings."
+      }
     },
     "latex": {
       "command": {
@@ -629,7 +706,8 @@
         "itemize": "bulleted list",
         "enumerate": "numbered list",
         "equation": "display math",
-        "align": "aligned math"
+        "align": "aligned math",
+        "bibliographystyle": "bibliography style"
       },
       "packageCommand": {
         "dfrac": "display fraction",
@@ -728,6 +806,13 @@
         "triggerToken": "xparse argument type t requires a trigger token",
         "delimiterTokens": "xparse argument type {{type}} requires two delimiter tokens",
         "unknownType": "Unknown xparse argument type “{{type}}”"
+      },
+      "bibliographyStyle": {
+        "bibtex": "BibTeX style",
+        "journal": "journal style",
+        "natbib": "natbib style",
+        "project": "style file in this project",
+        "revtex": "REVTeX style"
       }
     },
     "wysiwyg": {
@@ -761,7 +846,173 @@
         "editTitle": "Edit exact source",
         "editLabel": "Edit exact raw inline source",
         "inputLabel": "Exact raw inline source"
+      },
+      "math": {
+        "inlineLabel": "Inline math",
+        "displayLabel": "Display math",
+        "inputLabel": "Math source",
+        "previewLabel": "Math preview",
+        "renderFailed": "This expression could not be rendered."
+      },
+      "footnote": {
+        "label": "Footnote",
+        "marker": "†",
+        "inputLabel": "Footnote text"
+      },
+      "theorem": {
+        "titleLabel": "Theorem title",
+        "titlePlaceholder": "Title",
+        "editTitle": "Edit title",
+        "name": {
+          "theorem": "Theorem",
+          "lemma": "Lemma",
+          "corollary": "Corollary",
+          "proposition": "Proposition",
+          "definition": "Definition",
+          "remark": "Remark",
+          "example": "Example",
+          "proof": "Proof",
+          "conjecture": "Conjecture",
+          "claim": "Claim",
+          "axiom": "Axiom",
+          "notation": "Notation"
+        }
+      },
+      "figure": {
+        "imageUnavailable": "Image not found",
+        "imageLoading": "Loading image…",
+        "imageAlt": "Figure image {{path}}",
+        "width": "Width",
+        "widthNatural": "Natural size",
+        "widthQuarter": "Quarter width",
+        "widthHalf": "Half width",
+        "widthThreeQuarters": "Three-quarter width",
+        "widthFull": "Full width",
+        "widthCustom": "Custom ({{width}})",
+        "labelField": "Label",
+        "labelPlaceholder": "fig:name",
+        "addCaption": "Add caption",
+        "captionPlaceholder": "Caption"
+      },
+      "table": {
+        "labelField": "Label",
+        "labelPlaceholder": "tab:name",
+        "addCaption": "Add caption",
+        "captionPlaceholder": "Caption"
+      }
+    },
+    "bibtex": {
+      "completion": {
+        "directive": "BibTeX directive",
+        "entryType": "BibTeX entry",
+        "optionalField": "optional field",
+        "requiredField": "required field"
+      },
+      "lint": {
+        "fieldRepeated": "Field \"{{name}}\" is repeated in bibliography entry \"{{key}}\".",
+        "invalidYear": "Year \"{{year}}\" is not a four-digit BibTeX year.",
+        "missingRequiredField": "{{entry}} is missing required field {{fields}}.",
+        "source": "BibTeX",
+        "unknownEntryType": "Unknown bibliography entry type @{{type}}."
+      }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Loading image",
+        "loadFailed": "This image could not be loaded.",
+        "edit": "Edit figure"
+      },
+      "preamble": {
+        "show": "Show document preamble",
+        "hide": "Hide document preamble"
+      },
+      "endOfDocument": "End of document",
+      "abstract": "Abstract",
+      "keywordsLabel": "Keywords",
+      "theorem": {
+        "theorem": "Theorem",
+        "lemma": "Lemma",
+        "corollary": "Corollary",
+        "proof": "Proof"
+      },
+      "footnote": "Footnote",
+      "endnote": "Endnote",
+      "citation": "Citation",
+      "reference": "Reference",
+      "label": "Label",
+      "includedFile": "Included file",
+      "table": {
+        "captionPlacement": "Caption",
+        "captionAbove": "Caption above",
+        "captionBelow": "Caption below",
+        "noCaption": "No caption",
+        "captionNeedsTable": "A caption needs a table environment around the tabular.",
+        "borders": "Borders",
+        "noBorders": "No borders",
+        "allBorders": "All borders",
+        "booktabs": "Booktabs rules",
+        "customBorders": "Custom borders",
+        "alignment": "Alignment",
+        "alignLeft": "Align left",
+        "alignCenter": "Align centre",
+        "alignRight": "Align right",
+        "alignJustify": "Justify",
+        "selectColumnToAlign": "Select a column to change its alignment.",
+        "columnWidth": "Column width",
+        "selectColumnForWidth": "Select a column to change its width.",
+        "fitToContent": "Fit to content",
+        "fixedWidth": "Fixed width",
+        "setColumnWidth": "Set column width",
+        "widthValue": "Width",
+        "widthUnit": "Unit",
+        "widthPercentHelp": "A percentage of the text width.",
+        "widthCustom": "Custom",
+        "widthCustomHelp": "Any LaTeX length, such as 4cm or 0.4\\linewidth.",
+        "widthNeedsArray": "Fixed widths need the array package in the preamble.",
+        "columnWidthIndicator": "Column width",
+        "mergeCells": "Merge cells",
+        "unmergeCells": "Split cells",
+        "selectCellsToMerge": "Select the cells to merge.",
+        "deleteRowOrColumn": "Delete",
+        "selectRowOrColumnToDelete": "Select a row or a column to delete.",
+        "insert": "Insert",
+        "insertRowsAbove": "Insert row above",
+        "insertRowsBelow": "Insert row below",
+        "insertColumnsLeft": "Insert column left",
+        "insertColumnsRight": "Insert column right",
+        "removeTable": "Remove table",
+        "help": "Help",
+        "helpTitle": "Editing tables",
+        "helpIntro": "The table is your LaTeX source. Every edit here rewrites the tabular in the file.",
+        "helpSupportedTitle": "What the grid handles",
+        "helpSupportedColumns": "Column alignment and fixed widths through the column specification.",
+        "helpSupportedRules": "Horizontal and vertical rules, including booktabs.",
+        "helpSupportedMerged": "Merged cells written as \\multicolumn.",
+        "helpSupportedCaption": "The caption and label of the surrounding table environment.",
+        "helpUnsupported": "Anything the grid cannot represent stays as source, and the table is shown read-only instead.",
+        "helpShortcutsTitle": "Keyboard",
+        "shortcutMove": "Arrow keys move between cells.",
+        "shortcutExtend": "Shift with an arrow key extends the selection.",
+        "shortcutNext": "Tab moves to the next cell, Shift+Tab to the previous one.",
+        "shortcutEdit": "Enter starts editing the selected cell.",
+        "shortcutCancel": "Escape stops editing and keeps the cell selected.",
+        "shortcutClear": "Backspace or Delete empties the selected cells.",
+        "shortcutUndo": "Undo and redo work as they do in the rest of the editor.",
+        "ok": "Done",
+        "cancel": "Cancel",
+        "close": "Close",
+        "selectRow": "Select row",
+        "selectColumn": "Select column",
+        "cellInput": "Cell",
+        "errorTitle": "This table could not be rendered",
+        "errorBody": "The tabular uses something the grid cannot show yet. Edit it as source instead.",
+        "viewSource": "Edit as source"
       }
     }
+  },
+  "breadcrumbs": {
+    "label": "Document location",
+    "goTo": "Go to {{title}}",
+    "untitled": "Untitled"
   }
 }

@@ -1,0 +1,624 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "2단 배치",
+      "detailTwoColumn": "이력서 파서는 흔히 2단 내용을 잘못된 순서로 한 줄씩 펼칩니다. ATS가 읽어야 하는 문서는 1단 배치를 쓰세요.",
+      "titleMultiColumn": "다단 배치",
+      "detailMultiColumn": "이력서 파서는 흔히 여러 단을 잘못된 순서로 펼칩니다. ATS를 거치는 문서에는 1단을 쓰세요."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "2단 읽기 순서를 확인하세요",
+      "detailTwoColumn": "PDF 태그 트리가 의도한 순서를 유지하면 다단 출판 배치도 접근성을 갖출 수 있습니다. 눈에 보이는 단만 보고 실패로 단정하지 말고, 컴파일해서 실제 읽기 순서를 확인하세요.",
+      "titleMultiColumn": "다단 읽기 순서를 확인하세요",
+      "detailMultiColumn": "여러 단이 자동으로 접근성을 해치지는 않지만, 태그와 내용 순서가 의미를 유지해야 합니다. 컴파일해서 실제 읽기 순서를 살펴보세요."
+    },
+    "no-glyphtounicode": {
+      "title": "유니코드 추출 맵이 선언되지 않았습니다",
+      "detailEngineNeedsMap": "XeTeX와 이를 기반으로 하는 내장 엔진은 글리프-유니코드 맵을 자동으로 만들지 않아, 추출한 텍스트가 읽을 수 없게 나올 수 있습니다. 컴파일한 뒤 읽기 보기를 확인하고, 유니코드 매핑이 완전한 글꼴을 쓰세요.",
+      "detailAutomatic": "pdfLaTeX와 LuaLaTeX는 LaTeX 2021-06-01 릴리스부터 이 맵을 자동으로 만들므로 따로 선언할 필요가 없습니다. 컴파일해서 추출된 읽기 텍스트를 확인하세요. XeTeX에서는 cmap을 불러오거나 엔진을 바꾸세요."
+    },
+    "icon-near-contact": {
+      "title": "연락처 옆의 아이콘",
+      "detail": "글꼴 아이콘(\\faPhone이나 \\faEnvelope 등)은 파서가 알 수 없는 문자로 읽고 화면 낭독기가 이름을 붙일 수 없는 글리프로 렌더링되므로, 옆에 있는 연락처가 사라질 수 있습니다. 이메일이나 전화번호를 선택 가능한 일반 텍스트로도 넣으세요."
+    },
+    "layout-table": {
+      "titleTable": "표 안의 내용이 이력서 항목으로 해석되지 않을 수 있습니다",
+      "detailTable": "ATS 도구는 표 내용을 예측하기 어려운 방식으로 펼치는 경우가 많습니다. 이력서 텍스트를 나란히 배치하려고 표를 쓰지 마세요. 실제 연구 데이터 표는 접근성 항목에서 따로 평가합니다.",
+      "titleTikz": "TikZ 내용에는 의미를 담은 대안이 필요합니다",
+      "detailTikz": "TikZ는 의미를 일반 텍스트로 드러내지 않은 채 시각적 내용을 그립니다. 출판용 출력에는 접근 가능한 설명을 넣고, ATS를 거치는 이력서 내용에는 쓰지 마세요."
+    },
+    "contact-in-header": {
+      "title": "페이지 머리말에 있는 연락처",
+      "detail": "일부 이력서 파서는 페이지 머리말과 꼬리말을 빼고 읽습니다. 추출된 텍스트에 남도록 이메일과 전화번호를 본문에 넣으세요."
+    },
+    "figure-alt": {
+      "title": "대체 텍스트가 없는 이미지",
+      "detail": "이 이미지에는 설명이 담긴 대체 텍스트가 없어 화면 낭독기가 내용을 전달할 수 없습니다. 예를 들어 \\includegraphics[alt={A headshot of the author}]{...}처럼 설명을 넣으세요. 순전히 장식용 이미지는 아티팩트로 표시하세요."
+    },
+    "link-text": {
+      "title": "내용을 알 수 없는 링크 텍스트",
+      "detail": "'여기를 클릭' 같은 링크 텍스트나 URL 그대로는 화면 낭독기 사용자에게 목적지에 대해 아무것도 알려 주지 못합니다. '내 포트폴리오'처럼 대상을 알 수 있는 텍스트를 쓰세요."
+    },
+    "mathml-export-hint": {
+      "title": "수식 접근성을 확인하려면 MathML이 포함된 HTML 사본을 내보내세요",
+      "detail": "문서에 수식이 있습니다. 화면 낭독기는 수식이 MathML일 때 안정적으로 읽습니다. pandoc이 --mathml로 작성하는 HTML로 내보내기를 쓴 다음, 제출 전에 화면 낭독기나 접근성 검사 도구로 파일을 여세요."
+    },
+    "no-lang": {
+      "title": "문서 언어가 설정되지 않았습니다",
+      "detail": "PDF에 언어가 없어 화면 낭독기가 잘못된 발음 규칙으로 읽을 수 있습니다. 예를 들어 \\usepackage[english]{babel}이나 hyperref의 pdflang=en-US로 지정하세요."
+    },
+    "no-title": {
+      "title": "PDF 제목이 없습니다",
+      "detail": "PDF 메타데이터에 제목이 없습니다. 보조 기술과 브라우저는 이 제목으로 문서를 안내합니다. 예를 들어 hyperref로 \\hypersetup{pdftitle={Your Name, CV}}처럼 지정하세요."
+    },
+    "heading-skip": {
+      "title": "제목 단계를 건너뛰었습니다",
+      "detail": "이 제목은 앞 제목보다 두 단계 이상 깊어져, 화면 낭독기와 파서가 의지하는 문서 개요가 깨집니다. 절, 하위 절, 하위 하위 절처럼 단계를 건너뛰지 마세요."
+    },
+    "nonstandard-headings": {
+      "title": "표준이 아닌 절 제목: \"{{heading}}\"",
+      "detail": "파서는 Experience, Education, Skills 같은 표준 제목을 알아보고 절을 분류합니다. 창의적인 제목을 쓰면 해당 절이 분류되지 않을 수 있습니다. 관례적인 제목을 고려하세요."
+    },
+    "color-only": {
+      "title": "색만으로 구분하고 있지 않은지 확인하세요",
+      "detail": "프리플라이트가 색이 있는 내용을 찾았지만 그 의미를 자동으로 판단할 수 없습니다. 색으로 상태나 분류를 구분한다면 텍스트, 모양, 굵기 등 다른 인지 가능한 단서를 함께 쓰세요."
+    },
+    "reading-order-risk": {
+      "title": "읽기 순서를 흐트러뜨릴 수 있는 배치",
+      "detail": "여백 메모와 글이 둘러싼 그림은 본문 흐름 밖에 놓이므로 파서와 화면 낭독기가 순서를 뒤바꿔 읽을 수 있습니다. 컴파일한 뒤 아래 미리보기에서 읽기 순서를 확인하세요."
+    },
+    "ua-standard-without-title": {
+      "title": "문서 제목 없이 PDF/UA를 선언했습니다",
+      "detailBoth": "이 문서는 pdfstandard=ua를 선언했지만 pdftitle도 pdfdisplaydoctitle=true도 설정하지 않았습니다. PDF/UA는 XMP 메타데이터의 제목과 그것을 표시하는 뷰어 설정을 요구하므로, 이대로면 지키지 못하는 표준을 주장하게 됩니다. hyperref를 불러온 뒤 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하세요.",
+      "detailTitle": "이 문서는 pdfstandard=ua를 선언했지만 pdftitle을 설정하지 않았습니다. PDF/UA는 XMP 메타데이터의 제목과 그것을 표시하는 뷰어 설정을 요구하므로, 이대로면 지키지 못하는 표준을 주장하게 됩니다. hyperref를 불러온 뒤 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하세요.",
+      "detailDisplay": "이 문서는 pdfstandard=ua를 선언했지만 pdfdisplaydoctitle=true를 설정하지 않았습니다. PDF/UA는 XMP 메타데이터의 제목과 그것을 표시하는 뷰어 설정을 요구하므로, 이대로면 지키지 못하는 표준을 주장하게 됩니다. hyperref를 불러온 뒤 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하세요."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "내장 엔진은 선언된 PDF/UA 출력을 만들 수 없습니다",
+      "detail": "이 문서는 pdfstandard=ua를 선언했지만 내장 엔진은 태그 트리를 쓸 수 없어, PDF가 지키지 못하는 PDF/UA 주장을 담게 됩니다. TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일하거나 pdfstandard 키를 빼세요."
+    },
+    "table-header-rows": {
+      "title": "표의 머리글 행이 머리글로 표시되어 있지 않습니다",
+      "detail": "이 표는 첫 행 아래에 괘선을 그어 머리글처럼 읽히지만, LaTeX는 기본적으로 모든 칸을 데이터 칸으로 태그합니다. 그러면 화면 낭독기가 값과 해당 열을 연결하지 못합니다. 예를 들어 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}처럼 머리글 행을 선언하세요."
+    },
+    "pdf-reading-order": {
+      "title": "출력에서 두 단이 가로로 이어져 읽힙니다",
+      "detail": "이 페이지에서는 두 단의 텍스트가 같은 줄에 놓여, 파서가 가로로 이어 읽어 내용이 뒤섞이고 화면 낭독기도 순서를 뒤바꿔 읽습니다. 파서가 읽어야 하는 내용에는 1단 배치를 쓰세요. 아래 읽기 보기를 확인하세요."
+    },
+    "pdf-garbled": {
+      "title": "출력에 깨졌거나 매핑되지 않은 텍스트가 있습니다",
+      "detail": "추출한 텍스트에 유니코드로 매핑되지 않은 문자가 있어, 복사해 붙여 넣거나 파서가 읽을 때 글자가 깨지고 화면 낭독기도 읽지 못합니다. 보통 글리프-유니코드 맵이 없거나 글꼴이 텍스트로 포함되지 않았다는 뜻입니다."
+    },
+    "pdf-selectable": {
+      "title": "선택 가능한 텍스트가 없는 페이지",
+      "detail": "이 페이지에는 추출할 수 있는 텍스트가 거의 없어 파서와 화면 낭독기가 아무것도 읽지 못합니다. 이미지로 렌더링되었거나 글꼴이 텍스트로 포함되지 않았을 가능성이 큽니다. 내용이 실제로 선택 가능한 텍스트인지 확인하세요."
+    },
+    "output-clipped-content": {
+      "title": "텍스트가 페이지 밖으로 나갑니다",
+      "detail": "선택 가능한 텍스트가 이 페이지의 미디어 박스를 벗어나 인쇄나 출판사 처리 과정에서 잘리거나 빠질 수 있습니다. 폭이 넓은 수식, 표, URL, 위치를 지정한 내용을 살펴보세요."
+    },
+    "output-small-text": {
+      "title": "아주 작은 텍스트가 있습니다",
+      "detail_other": "텍스트 {{count}}곳이 약 7 pt보다 작습니다. 작은 글씨는 인쇄물과 기본 확대 비율에서 읽기 어렵습니다. 발표처가 이를 허용하는지 확인하고, 꼭 작을 필요가 없는 레이블이나 각주는 키우세요."
+    },
+    "pdf-no-bookmarks": {
+      "title": "긴 PDF에 북마크가 없습니다",
+      "detail": "긴 문서에는 계층적 북마크 개요를 담아 키보드와 보조 기술 사용자가 모든 쪽을 차례로 읽지 않고도 절 사이를 오갈 수 있게 해야 합니다. 이는 PDF/UA 요구 사항이라기보다 WCAG 모범 사례입니다. hyperref나 bookmark를 불러와 북마크를 만드세요."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF 메타데이터를 살펴보지 못했습니다",
+      "detail": "프리플라이트가 PDF 메타데이터를 읽지 못해 문서 제목이나 언어를 확인할 수 없습니다. 이는 알 수 없는 결과이지, 해당 항목이 없다는 증거가 아닙니다. 다시 컴파일한 뒤 검사를 다시 실행하세요."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF에 언어와 제목이 없습니다",
+      "titleLang": "PDF에 언어가 없습니다",
+      "titleTitle": "PDF에 제목이 없습니다",
+      "detail": "보조 기술과 브라우저는 PDF 카탈로그의 언어와 제목으로 문서를 올바르게 안내합니다. 예를 들어 hyperref로 \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}처럼 지정하세요."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF 태그 상태를 살펴보지 못했습니다",
+      "detail": "프리플라이트가 PDF의 MarkInfo 사전을 읽지 못했습니다. 이는 어느 쪽 증거도 아닌 알 수 없는 결과이므로, 이 검사만으로 출력이 태그되었는지 여부를 판단하지 않습니다."
+    },
+    "compile-failed": {
+      "title": "최근 컴파일이 실패했습니다",
+      "detail": "제출용 출력물은 성공한 빌드에서 나와야 합니다. 첫 번째 컴파일러 오류를 고치고 다시 컴파일한 뒤 프리플라이트를 다시 실행하세요."
+    },
+    "compile-overfull-box": {
+      "title_other": "출력에 넘친 줄이 {{count}}개 있습니다",
+      "detail": "컴파일러가 텍스트 상자를 최대 {{width}} pt까지 벗어난 내용을 보고했습니다. 해당 위치에서 텍스트, 수식, 표, 링크가 잘리지 않았는지 살펴보세요."
+    },
+    "compile-missing-glyph": {
+      "title_other": "빠진 글리프 {{count}}개",
+      "detail": "선택한 글꼴이 모든 문자를 렌더링하지 못합니다. 빠진 글리프는 이름, 수식, 인용의 기호를 포함해 PDF에서 소리 없이 사라질 수 있습니다."
+    },
+    "compile-unresolved-references": {
+      "title": "컴파일된 출력에 확인되지 않은 참조가 있습니다",
+      "detail": "컴파일 후에도 인용이나 상호 참조가 하나 이상 확인되지 않았습니다. 제출한 PDF에 [?]나 ??가 들어갈 수 있습니다. 로그를 확인하고 필요한 참고문헌 처리와 LaTeX 컴파일을 실행하세요."
+    },
+    "compile-rerun-required": {
+      "title": "컴파일을 한 번 더 해야 합니다",
+      "detail": "최근 로그에 레이블, 인용 또는 목차가 아직 확정되지 않았다고 나옵니다. 내보내기 전에 재실행 경고가 사라질 때까지 다시 컴파일하세요."
+    },
+    "compile-duplicate-destination": {
+      "title": "PDF 대상이 중복됩니다",
+      "detail": "앵커 두 개가 같은 대상을 공유해 링크나 북마크가 엉뚱한 곳으로 이동할 수 있습니다. 보통 레이블 중복이나 쪽 번호 초기화에서 생깁니다."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "한 PDF에 여러 쪽 크기가 섞여 있습니다",
+      "detail_other": "PDF에 쪽 크기가 {{count}}가지 있습니다({{sizes}}). 미디어 박스가 섞여 있으면 페이지나 그림을 잘못 포함한 경우가 많고 출판사 제작 검사에서 걸릴 수 있습니다."
+    },
+    "output-tagpdf-warning": {
+      "title_other": "태그 처리에서 문제 {{count}}건이 보고되었습니다",
+      "detail": "태그 코드가 다음 경고를 로그에 남겼습니다: {{warnings}} 각 경고는 구조 트리가 내용과 맞지 않는 지점입니다. 소스에서 고치고 다시 컴파일하세요."
+    },
+    "output-tagging-status": {
+      "title_other": "태그 상태 보고서가 항목 {{count}}건을 표시했습니다",
+      "detail": "LaTeX가 빌드 끝에 자체 태그 상태 보고서를 남겼습니다.",
+      "partClass": "{{name}} 클래스는 {{status}} 상태입니다.",
+      "partBlocking": "태그 처리와 호환되지 않음: {{files}}.",
+      "partUnproven": "기록된 판정 없음: {{files}}.",
+      "partPartial": "일부만 태그됨: {{files}}.",
+      "partAdvice": "태그할 수 없는 요소는 절 전체를 구조 트리에서 빠뜨릴 수 있으니, 바꿀 수 있는 것은 바꾸세요."
+    },
+    "pdf-structure-single-pass": {
+      "title": "태그 트리가 첫 번째 컴파일 결과처럼 보입니다",
+      "detail": "PDF가 태그된 것으로 표시되어 있지만 구조 트리에 내용이 거의 없는데, 이는 한 번만 컴파일했을 때 나오는 모습입니다. 태그된 출력에는 두 번의 컴파일이 필요합니다. 다시 컴파일한 뒤 재확인하세요."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "이 PDF는 PDF/UA-{{part}}를 주장하지만 요건을 충족하지 않습니다",
+      "detail": "XMP 메타데이터가 pdfuaid:part {{part}}를 선언했지만 파일이 이를 뒷받침하지 못합니다.",
+      "partNoXmpTitle": "XMP 메타데이터에 문서 제목이 없습니다.",
+      "partNoDisplayDocTitle": "DisplayDocTitle이 true로 설정되어 있지 않습니다.",
+      "partNotTagged": "파일에 태그가 없습니다.",
+      "partAdvice": "이 주장을 신뢰하는 도구는 이 PDF를 적합한 것으로 보고하게 되니, 부족한 부분을 채우거나 주장을 빼세요. hyperref에서 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하고 태그 처리를 켠 채 컴파일하세요."
+    },
+    "pdf-xmp-title": {
+      "title": "제목이 Info 사전에만 있습니다",
+      "detail": "문서 제목이 Info 사전에는 설정되었지만 PDF/UA가 찾는 XMP 메타데이터의 dc:title에는 없습니다. hyperref를 pdftitle과 함께 불러오면 두 곳 모두에 기록됩니다."
+    },
+    "pdf-display-doc-title": {
+      "title": "뷰어가 제목 대신 파일 이름을 보여 줍니다",
+      "detail": "ViewerPreferences에 DisplayDocTitle이 true로 설정되어 있지 않아, PDF 뷰어가 창과 보조 기술에 파일 이름을 알립니다. 예를 들어 hyperref로 \\hypersetup{pdfdisplaydoctitle=true}처럼 설정하세요."
+    },
+    "pdf-suspects": {
+      "title": "PDF가 자체 태그 처리를 신뢰할 수 없다고 표시했습니다",
+      "detail": "MarkInfo가 Suspects를 true로 설정했는데, 이는 생성 도구가 태그 트리와 보이는 내용이 맞지 않을 수 있다고 알리는 것입니다. 최신 엔진으로 다시 컴파일하고 로그의 태그 경고를 확인하세요."
+    },
+    "pdf-link-alt": {
+      "title_other": "링크 주석 {{count}}개에 설명이 없습니다",
+      "detail": "Contents 항목이 없는 링크 주석은 화면 낭독기가 페이지의 링크 목록을 읽을 때 알릴 내용이 없습니다. 링크 텍스트에 목적지를 설명하고, hyperref가 그 텍스트를 주석으로 옮기도록 하세요."
+    },
+    "pdf-untagged-content": {
+      "title": "텍스트의 {{percent}}%가 태그 트리 밖에 있습니다",
+      "detail": "전체 텍스트 {{total}}곳 중 {{untagged}}곳이 태그 트리의 어떤 요소와도 연결되어 있지 않아 화면 낭독기가 건너뜁니다. 아티팩트는 집계에서 제외합니다. 실제 내용은 태그해야 하고, 장식용 내용은 예를 들어 \\includegraphics[artifact]{...}처럼 아티팩트로 표시해야 합니다."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF 구조를 전부 살펴보지 못했습니다",
+      "detail_other": "{{pages}}쪽의 접근성 구조 트리를 추출하지 못했습니다. 프리플라이트는 구조를 확인할 수 없다는 사실을 PDF에 태그가 없다는 증거로 삼지 않습니다."
+    },
+    "pdf-untagged-output": {
+      "title": "이 PDF에는 태그가 없습니다",
+      "detail": "컴파일된 PDF에 구조 트리가 없어 화면 낭독기가 제목, 목록, 표, 읽기 순서를 얻지 못하며 PDF/UA-1의 7.1절을 충족할 수 없습니다. 태그된 출력에는 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX와 \\DocumentMetadata{tagging=on}이 필요합니다. 내장 엔진은 태그를 만들지 못합니다. 그동안에도 위의 소스 및 출력 검사는 그대로 적용됩니다."
+    },
+    "pdf-structure-missing": {
+      "title": "태그된 PDF에 읽을 수 있는 구조 트리가 없습니다",
+      "detail": "PDF는 스스로 태그되었다고 선언했지만, 프리플라이트가 이동할 수 있는 문서 구조를 찾지 못했습니다. 화면 낭독기가 제목, 목록, 표, 읽기 순서를 받지 못할 수 있습니다. 태그 처리에는 컴파일이 두 번 필요하니, 최종 결론을 내리기 전에 다시 컴파일하고 재확인하세요."
+    },
+    "output-figure-alt": {
+      "title": "태그된 그림에 대체 텍스트가 없습니다",
+      "detail": "이 그림은 태그되었지만 대체 텍스트가 없어 화면 낭독기가 설명할 수 없습니다. 예를 들어 \\includegraphics[alt={...}]{...}처럼 소스에 설명을 넣으세요. 장식용 이미지는 대신 [artifact]로 표시하세요."
+    },
+    "output-formula-alt": {
+      "title": "수식에 텍스트 대안이 없습니다",
+      "detail": "PDF/UA-1에서는 Formula에 Alt 또는 ActualText가 필요합니다. 예를 들어 \\tagpdfsetup이나 수식의 alt 키로 소스에 추가하세요. PDF/UA-2에서는 LuaLaTeX와 \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}로 컴파일해 MathML을 연결할 수도 있습니다."
+    },
+    "output-table-headers": {
+      "title": "태그된 표에 머리글 칸이 없습니다",
+      "detail": "이 표에는 머리글(TH) 칸이 없어 화면 낭독기가 데이터와 열이나 행의 머리글을 연결하지 못합니다. 예를 들어 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}처럼 머리글 행을 표시하세요."
+    },
+    "output-heading-skip": {
+      "title": "태그 트리에서 제목 단계를 건너뛰었습니다",
+      "detail": "태그된 제목이 두 단계 이상 건너뜁니다(예: H1에서 바로 H3). 그러면 화면 낭독기가 따라가는 개요가 깨집니다. 제목 단계를 건너뛰지 마세요."
+    },
+    "ats-no-name": {
+      "title": "파서가 이름을 찾지 못했습니다",
+      "detail": "추출한 텍스트에서 사람 이름으로 보이는 내용을 찾지 못했습니다. 이름은 문서 앞부분에 일반 텍스트로, 페이지 머리말과 그래픽과 위치 지정 텍스트 상자 밖에 두세요."
+    },
+    "ats-no-email": {
+      "title": "파서가 이메일을 찾지 못했습니다",
+      "detail": "추출한 텍스트에서 이메일 주소를 찾지 못했습니다. 파서가 가장 많이 의지하는 항목입니다. 이메일이 아이콘 옆이나 머리말 안에 있으면 선택 가능한 텍스트가 아닐 수 있습니다. 본문에 일반 텍스트로 넣으세요."
+    },
+    "ats-no-phone": {
+      "title": "파서가 전화번호를 찾지 못했습니다",
+      "detail": "추출한 텍스트에서 전화번호를 찾지 못했습니다. 있는데도 아이콘 뒤나 머리말에 숨어 있다면 본문에 선택 가능한 일반 텍스트로 추가하세요."
+    },
+    "ats-no-experience": {
+      "title": "파서가 경력 절을 찾지 못했습니다",
+      "detail": "표준 Experience 제목을 찾지 못해 파서가 경력을 업무 이력으로 묶지 못할 수 있습니다. Experience나 Work Experience 같은 관례적인 제목을 실제 선택 가능한 텍스트로 쓰세요."
+    },
+    "ats-long-resume": {
+      "title_other": "이력서가 {{count}}쪽입니다",
+      "detail": "많은 채용 절차가 한두 쪽을 기대하지만, 고위직이나 학계, 공공 부문 CV는 더 길 수 있습니다. 이 분량이 해당 직무와 문서 유형에 맞는지 확인하세요."
+    },
+    "refs-incomplete-metadata": {
+      "title_other": "참고문헌 항목 {{count}}건의 메타데이터가 불완전합니다",
+      "detail": "정보가 불완전한 항목은 출판사 스타일에서 깨지거나 모호한 참고문헌을 만들 수 있습니다. {{examples}}.",
+      "detailTruncated": "정보가 불완전한 항목은 출판사 스타일에서 깨지거나 모호한 참고문헌을 만들 수 있습니다. {{examples}}, …"
+    },
+    "refs-malformed-doi": {
+      "title_other": "DOI 값 {{count}}건의 형식이 잘못된 것 같습니다",
+      "detail": "{{keys}}의 DOI 필드를 확인하세요. 설명 문구 대신 10.1000/example 같은 DOI 식별자만 저장하세요."
+    },
+    "refs-duplicate-title": {
+      "title_other": "중복 가능성이 있는 참고문헌 묶음 {{count}}개",
+      "detail": "다음 키들은 정규화한 제목이 같습니다: {{groups}}. 인용 스타일과 메타데이터가 일관되도록 실제 중복은 하나로 합치세요."
+    },
+    "refs-uncited-entries": {
+      "title_other": "인용되지 않은 참고문헌 항목 {{count}}건",
+      "detail": "쓰이지 않는 항목은 제출 메타데이터를 어지럽히고 중복 관리를 어렵게 합니다. {{keys}}을(를) 확인하세요.",
+      "detailTruncated": "쓰이지 않는 항목은 제출 메타데이터를 어지럽히고 중복 관리를 어렵게 합니다. {{keys}} 등을 확인하세요."
+    },
+    "refs-project-duplicate-label": {
+      "title_other": "레이블 {{count}}개가 여러 파일에 정의되어 있습니다",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_other": "그림, 표 또는 수식 레이블 {{count}}개가 한 번도 참조되지 않았습니다",
+      "detail": "번호가 매겨진 결과가 본문에서 모두 언급되는지 확인하세요: {{labels}}.",
+      "detailTruncated": "번호가 매겨진 결과가 본문에서 모두 언급되는지 확인하세요: {{labels}} 등."
+    },
+    "refs-undefined-cite": {
+      "title": "인용 \"{{key}}\"이(가) 어떤 .bib에도 없습니다",
+      "detail": "이 인용 키를 불러온 참고문헌에서 찾지 못해 PDF에 [?]로 표시됩니다. 키를 확인하거나 .bib에 항목을 추가하세요(인용 추가 기능으로 가져올 수 있습니다)."
+    },
+    "refs-undefined-ref": {
+      "title": "\"{{label}}\" 참조에 대응하는 \\label이 없습니다",
+      "detail": "이 상호 참조가 정의되지 않은 레이블을 가리켜 PDF에 ??로 표시됩니다. 레이블 이름을 확인하거나 빠진 \\label을 추가하세요."
+    },
+    "refs-duplicate-label": {
+      "title": "중복된 레이블 \"{{label}}\"",
+      "detail": "같은 레이블이 두 번 이상 정의되어 그 레이블을 향한 참조가 모호해집니다. 레이블은 각각 고유해야 합니다."
+    },
+    "refs-missing-asset": {
+      "titleImage": "이미지를 찾을 수 없음: {{file}}",
+      "detailImage": "이 \\includegraphics가 프로젝트에 없는 파일을 가리켜 그림이 빠지게 됩니다. 파일 이름과 경로를 확인하세요.",
+      "titleInclude": "포함한 파일을 찾을 수 없음: {{file}}",
+      "detailInclude": "이 \\input 또는 \\include가 프로젝트에 없는 파일을 가리킵니다. 파일 이름과 경로를 확인하세요."
+    },
+    "refs-bib-missing": {
+      "title": "참고문헌 파일을 찾을 수 없음: {{file}}",
+      "detail": "이 \\bibliography 또는 \\addbibresource가 프로젝트에 없는 파일을 가리켜 모든 인용이 [?]로 표시됩니다. 파일 이름을 확인하거나 참고문헌 라이브러리를 가져와 파일을 만드세요."
+    },
+    "refs-duplicate-bib": {
+      "title": "중복된 참고문헌 항목: {{keys}}",
+      "detail": "이 항목들은 DOI {{doi}}을(를) 공유하므로 키만 다른 같은 참고문헌입니다. 하나만 남겨 인용하지 않으면 참고문헌 목록에 두 번 나옵니다."
+    },
+    "submission-path-case": {
+      "title": "파일 이름의 대소문자가 맞지 않음: {{target}}",
+      "detailFigure": "이 그림은 대소문자를 구분하지 않는 파일 시스템에서만 찾아집니다. 프로젝트에는 \"{{match}}\"이(가) 있으니, Linux 기반 빌드 시스템에 제출하기 전에 대소문자를 정확히 맞추세요.",
+      "detailInclude": "포함한 이 파일은 대소문자를 구분하지 않는 파일 시스템에서만 찾아집니다. 프로젝트에는 \"{{match}}\"이(가) 있으니, Linux 기반 빌드 시스템에 제출하기 전에 대소문자를 정확히 맞추세요."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "빠진 그림: {{target}}",
+      "titleInclude": "빠진 포함 파일: {{target}}",
+      "detail": "{{file}}에서 이 참조를 찾을 수 있는 프로젝트 파일이 없습니다. 지금은 로컬 캐시 덕분에 컴파일되더라도 깨끗한 제출용 빌드에서는 실패합니다."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "캡션이 없는 그림",
+      "titleTable": "캡션이 없는 표",
+      "detail": "출판용 그림과 표에는 번호가 붙고 내용을 설명하는 캡션이 있어야 참조하고 따로 떼어 이해할 수 있습니다."
+    },
+    "submission-label-before-caption": {
+      "title": "레이블이 캡션보다 앞에 있습니다",
+      "detail": "레이블은 캡션 뒤에 두세요. 그렇지 않으면 LaTeX가 이전 카운터에 묶어 잘못된 그림이나 표 번호를 만들 수 있습니다."
+    },
+    "privacy-sensitive-file": {
+      "title": "민감한 파일이 포함됨: {{file}}",
+      "detail": "소스 압축 파일을 내보내거나 동기화하거나 공개하기 전에 자격 증명과 개인 키 파일을 프로젝트에서 제거하세요."
+    },
+    "privacy-credential": {
+      "title": "{{file}}에 자격 증명이 있을 수 있습니다",
+      "detail": "프로젝트에 API 토큰, 클라우드 액세스 키 또는 개인 키 형태의 텍스트가 있습니다. 노출된 자격 증명을 폐기한 다음 프로젝트와 Git 이력에서 제거하세요."
+    },
+    "privacy-internal-comment": {
+      "title": "{{file}}에 내부 메모가 남아 있습니다",
+      "detail": "소스 주석은 PDF에 보이지 않지만 학회, 저널, 프리프린트의 소스 압축 파일에서는 공개될 수 있습니다. 비공개 편집 메모를 검토하고 제거하세요."
+    },
+    "privacy-draft-artifact": {
+      "title": "초안 마크업이 아직 켜져 있습니다",
+      "detail": "소스에서 draft, TODO, 변경 추적, 워터마크 또는 레이블 디버깅 출력을 켜 두었습니다. 이를 끄고 제출 전에 최종 PDF를 눈으로 확인하세요."
+    },
+    "privacy-blind-author": {
+      "title": "블라인드 심사 소스에 저자 신원이 남아 있습니다",
+      "detail": "소스에 익명 처리되지 않은 저자, 소속, 이메일, 주소 또는 감사의 글 필드가 있습니다. 발표처의 익명 심사 모드를 써서 신원이 드러나는 내용을 바꾸세요."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "감사의 글에서 저자가 드러날 수 있습니다",
+      "detail": "감사의 글에는 기관, 연구비, 공동 연구자, 시설이 드러나는 경우가 많습니다. 발표처가 명시적으로 허용하지 않는다면 블라인드 심사 제출본에서는 빼세요."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF 메타데이터에 저자가 드러납니다",
+      "detail": "PDF의 Author 필드가 \"{{author}}\"입니다. 블라인드 심사용 PDF를 올리기 전에 저자 메타데이터를 지우세요."
+    },
+    "submission-nonportable-filename": {
+      "title": "이식성이 없는 파일 이름: {{file}}",
+      "detail": "이 프로필은 영문자, 숫자, 밑줄, 더하기, 빼기, 마침표, 쉼표, 등호, 디렉터리 구분자만 허용합니다. 파일 이름을 바꾸고 참조도 함께 수정하세요."
+    },
+    "submission-absolute-path": {
+      "title": "{{file}}에 이 컴퓨터에만 있는 경로가 있습니다",
+      "detail": "절대 로컬 경로는 출판사 빌드 서버에 존재하지 않습니다. 의존 파일을 프로젝트 안으로 옮기고 상대 경로로 참조하세요."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}}에 외부 명령 실행이 필요합니다",
+      "detail": "출판사와 아카이브 빌더는 shell escape를 끄는 경우가 많습니다. 결과물을 미리 만들어 두거나, 대상 발표처가 이 패키지와 명령을 지원하는지 확인하세요."
+    },
+    "submission-generated-file": {
+      "title": "생성된 빌드 파일이 포함됨: {{file}}",
+      "detail": "생성된 보조 파일은 소스 패키지를 어지럽히고 오래된 상태를 남길 수 있습니다. 선택한 발표처가 그 파일을 명시적으로 요구하지 않는 한 제외하세요."
+    },
+    "submission-document-class": {
+      "title": "{{profile}} 문서 클래스가 쓰이지 않았습니다",
+      "detail": "이 프로필은 {{expected}}을(를) 기대하지만 프로젝트는 {{actual}}을(를) 씁니다. 발표처의 최신 공식 템플릿에서 시작하세요.",
+      "detailNoClass": "이 프로필은 {{expected}}을(를) 기대하지만 문서 클래스를 찾지 못했습니다. 발표처의 최신 공식 템플릿에서 시작하세요."
+    },
+    "submission-no-abstract": {
+      "title": "초록을 찾지 못했습니다",
+      "detail": "이 출판 프로필은 표준 abstract 환경에 초록이 있기를 기대합니다. 초록을 추가하거나 해당 발표처가 요구하지 않는지 확인하세요."
+    },
+    "submission-no-keywords": {
+      "title": "출판용 키워드를 찾지 못했습니다",
+      "detail": "{{profile}} 프로필은 표준 템플릿 명령이나 환경으로 작성한 키워드를 기대합니다."
+    },
+    "submission-figure-format": {
+      "title": "지원되지 않는 그림 형식: {{file}}",
+      "detail": "{{profile}}은(는) 지원하는 TeX 작업 흐름에서 {{formats}} 그림 파일을 받습니다. 업로드하기 전에 이 그림을 변환하세요."
+    },
+    "submission-placeholder": {
+      "title": "원고에 초안 자리 표시자가 남아 있습니다",
+      "detail": "소스에 TODO, TBD, FIXME, 임시 문구 또는 물음표 표시가 있습니다. 최종 제출본을 만들기 전에 각 위치를 확인하세요."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}}은(는) 요구 버전보다 낮습니다",
+      "detail": "{{profile}}은(는) PDF {{minimum}} 이상을 요구합니다. 컴파일러의 PDF 설정을 바꾸고 파일을 다시 만드세요."
+    },
+    "submission-bookmarks": {
+      "title": "PDF 북마크는 허용되지 않습니다",
+      "detail": "{{profile}}은(는) PDF 북마크를 받지 않습니다. 이 제출 프로필에서는 문서 개요를 빼세요."
+    },
+    "submission-links": {
+      "title": "PDF 링크는 허용되지 않습니다",
+      "detail": "{{profile}}은(는) 링크 주석을 받지 않습니다. 제출용 PDF에서는 생성되는 하이퍼링크를 끄세요."
+    },
+    "submission-attachments": {
+      "title": "PDF에 첨부 파일이 들어 있습니다",
+      "detail": "{{profile}}은(는) PDF 첨부 파일과 패키지를 받지 않습니다. 제출 전에 포함된 파일을 모두 제거하세요."
+    },
+    "submission-security": {
+      "title": "PDF 보안 제한이 켜져 있습니다",
+      "detail": "{{profile}}은(는) 암호나 권한 제한이 없는 PDF를 요구합니다."
+    },
+    "submission-unembedded-font": {
+      "title_other": "글꼴 {{count}}개가 포함되어 있지 않습니다",
+      "detail": "{{profile}}은(는) 텍스트와 수식이 안정적으로 렌더링되도록 모든 글꼴을 포함하거나 서브셋으로 넣기를 요구합니다. {{fonts}}을(를) 고치세요."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "일부 글꼴 포함 여부를 확인하지 못했습니다",
+      "detail": "프리플라이트가 {{fonts}}의 포함 상태를 확인하지 못했습니다. 발표처의 공식 PDF 검사 도구로 확인하세요."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "접근성",
+    "both": "ATS + 접근성",
+    "refs": "참조",
+    "compile": "컴파일",
+    "submission": "제출",
+    "privacy": "개인정보"
+  },
+  "severity": {
+    "error": "오류",
+    "warning": "경고",
+    "info": "참고"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "빌드",
+    "a11y": "접근성",
+    "refs": "참조",
+    "submission": "제출",
+    "privacy": "개인정보"
+  },
+  "checks": {
+    "compile": {
+      "label": "컴파일 및 배치",
+      "who": "모든 최종 문서에",
+      "info": "빌드 오류, 확인되지 않은 참조, 빠진 글리프, 쪽 배치 문제입니다.",
+      "detail": "최근 컴파일러 로그와 PDF에서 실패한 빌드, 확인되지 않은 참조, 빠진 글리프, 넘치거나 잘린 내용, 남아 있는 재실행 경고, 섞인 쪽 크기를 살펴봅니다."
+    },
+    "submission": {
+      "label": "제출 준비 상태",
+      "who": "학회, 저널, 프리프린트, 학위논문에",
+      "info": "출판 프로필 규칙과 소스 패키지에 들어가면 안 되는 파일입니다.",
+      "detail": "프로젝트 전체에 출판 프로필을 적용합니다. 공식 문서 클래스, 이식 가능한 소스 경로, 그림 형식, 초록과 키워드, PDF 제한, 캡션, 깔끔한 소스 패키징을 확인합니다."
+    },
+    "ats": {
+      "label": "ATS 준비 상태",
+      "who": "이력서와 CV에",
+      "info": "이력서 파서가 복원할 수 있는 연락처와 절입니다.",
+      "detail": "지원자 추적 시스템(Workday, Taleo, Greenhouse)이 PDF에서 무엇을 추출하는지 흉내 내고, 그 결과를 뒤섞는 배치와 서식을 표시합니다. 연구 논문에는 해당하지 않습니다."
+    },
+    "a11y": {
+      "label": "접근성",
+      "who": "연구, 공공, 출판 PDF에",
+      "info": "태그 처리, 대체 텍스트, 문서 언어와 제목, 뷰어 설정, 구조, 링크, 읽기 순서입니다.",
+      "detail": "컴파일된 PDF를 PDF/UA-1(ISO 14289-1)에서 기계적으로 검사 가능한 부분과 WCAG 2.2 PDF 기법에 비추어 확인합니다. 태그 처리, 대체 텍스트, 문서 언어와 제목, 뷰어 설정, 제목과 표 구조, 링크 설명, 읽기 순서, 선택 가능한 텍스트를 봅니다. 소스 검사는 컴파일 전에 문제가 될 만한 부분을 미리 표시합니다."
+    },
+    "refs": {
+      "label": "참조 및 에셋",
+      "who": "연구 문서와 여러 파일로 된 문서에",
+      "info": "깨진 인용, 중복 레이블, 불완전한 참고문헌 항목, 빠진 에셋입니다.",
+      "detail": "정의되지 않은 인용과 상호 참조, 중복 레이블, 빠진 그림이나 포함 파일을 제출 단계에서 PDF가 깨지기 전에 찾아냅니다."
+    },
+    "privacy": {
+      "label": "개인정보 및 블라인드 심사",
+      "who": "소스를 공유하거나 익명으로 제출하기 전에",
+      "info": "비밀 정보, 초안 메모, 민감한 파일, 블라인드 심사 중 신원 노출입니다.",
+      "detail": "자격 증명, 개인 키, 내부 주석, 초안 마크업, 민감한 프로젝트 파일, 저자 메타데이터와 익명 심사 제출본의 신원 노출을 찾아냅니다."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "일반 출판",
+      "description": "이식 가능한 소스, 깔끔한 출력, 완전한 메타데이터, 흔한 출판 위험을 확인합니다."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "대소문자를 구분하는 arXiv 제출 시스템에서 다시 빌드할 수 있는 이식 가능한 소스입니다."
+    },
+    "ieee": {
+      "label": "IEEE 학회 / 저널",
+      "description": "IEEEtran 소스와 IEEE Xplore 출판을 위해 확인하는 PDF 제약입니다."
+    },
+    "acm": {
+      "label": "ACM 학회 / 저널",
+      "description": "ACM acmart 소스 구조와 출판에 필요한 연구 메타데이터입니다."
+    },
+    "journal": {
+      "label": "기타 저널",
+      "description": "출판사에 얽매이지 않는 저널 검사입니다. 제출 전에 해당 저널의 정확한 제한을 추가하세요."
+    },
+    "thesis": {
+      "label": "학위논문",
+      "description": "긴 문서의 구조, 이동, 참고문헌, 이식 가능한 소스를 확인합니다."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "경력",
+      "education": "학력",
+      "skills": "역량",
+      "projects": "프로젝트",
+      "summary": "요약"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: 기계적으로 검사 가능한 규칙 {{total}}개 중 {{passed}}개를 확인했습니다. 일부 항목 검사이며 적합성 선언이 아닙니다.",
+    "coverageWithBlindSpots": "PDF/UA-1: 기계적으로 검사 가능한 규칙 {{total}}개 중 {{passed}}개를 확인했습니다. Oleafly는 그중 {{covered}}개를 읽으며, 이 파일에서는 {{unavailable}}개를 확인할 수 없었습니다. 일부 항목 검사이며 적합성 선언이 아닙니다."
+  },
+  "taggingGate": {
+    "noSupport": "{{name}} 클래스는 태그된 출력을 만들 수 없으며, LaTeX 프로젝트도 그럴 것으로 보지 않습니다.",
+    "noSupportWithNote": "{{name}} 클래스는 태그된 출력을 만들 수 없으며, LaTeX 프로젝트도 그럴 것으로 보지 않습니다. {{note}}",
+    "currentlyIncompatible": "{{name}} 클래스는 아직 LaTeX 태그 처리와 호환되지 않아, 이 소스를 준비해도 접근 가능한 PDF를 얻지 못합니다.",
+    "currentlyIncompatibleWithNote": "{{name}} 클래스는 아직 LaTeX 태그 처리와 호환되지 않아, 이 소스를 준비해도 접근 가능한 PDF를 얻지 못합니다. {{note}}",
+    "partiallyCompatible": "{{name}} 클래스는 태그 처리와 일부만 호환되므로 구조 트리에 빈 곳이 생길 수 있습니다.",
+    "partiallyCompatibleWithNote": "{{name}} 클래스는 태그 처리와 일부만 호환되므로 구조 트리에 빈 곳이 생길 수 있습니다. {{note}}",
+    "unrecorded": "LaTeX 프로젝트가 {{name}} 클래스의 태그 처리 상태를 기록하지 않아 결과를 확인할 수 없습니다. 컴파일해서 출력을 확인하세요."
+  },
+  "prep": {
+    "metadataUpdated": "\\DocumentMetadata에 태그 처리에 필요한 키를 추가했습니다.",
+    "metadataAdded": "\\DocumentMetadata를 첫 줄로 추가했습니다(필수이며 \\documentclass보다 앞에 와야 합니다).",
+    "headerRows": "각 표의 첫 행이 머리글 칸으로 태그되도록 table/header-rows를 1로 설정했습니다. 머리글 깊이가 다른 표가 있으면 숫자를 바꾸세요.",
+    "unicodeMath": "이 엔진이 태그된 수식에 필요로 하는 \\usepackage{unicode-math}를 추가했습니다.",
+    "altPlaceholders_other": "이미지 {{count}}개에 대체 텍스트 자리 표시자를 넣었습니다. TODO 문구를 실제 설명으로 바꾸세요.",
+    "titleRequired": "PDF/UA에는 뷰어가 표시하는 문서 제목이 필요합니다. hyperref를 불러온 뒤 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}를 설정하세요.",
+    "incompatiblePackages_other": "다음 패키지는 태그 처리와 호환되지 않습니다: {{packages}}. 이 패키지의 내용은 태그 없이 PDF에 들어갈 수 있습니다. 가능한 것은 바꾸세요.",
+    "cautionPackages": "다음 패키지는 일부만 태그하거나 기록된 태그 판정이 없습니다: {{packages}}. 컴파일해서 구조 트리에 빠진 곳이 없는지 확인하세요.",
+    "compileLua": "준비된 소스를 TeX Live 2025 이상의 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요.",
+    "compileAny": "준비된 소스를 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 출력을 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다."
+  },
+  "gate": {
+    "incompatiblePackages_other": "다음 패키지는 태그 처리와 호환되지 않습니다: {{packages}}. 이 패키지의 내용은 태그 없이 PDF에 들어갈 수 있습니다.",
+    "incompatiblePackagesTruncated": "다음 패키지는 태그 처리와 호환되지 않습니다: {{packages}} 외 {{more}}개. 이 패키지의 내용은 태그 없이 PDF에 들어갈 수 있습니다.",
+    "partialPackages": "다음 패키지는 일부만 태그합니다: {{packages}}.",
+    "partialPackagesTruncated": "다음 패키지는 일부만 태그합니다: {{packages}} 외 {{more}}개.",
+    "unknownPackages": "{{packages}}에 대해 기록된 태그 판정이 없습니다.",
+    "unknownPackagesTruncated": "{{packages}} 외 {{more}}개에 대해 기록된 태그 판정이 없습니다.",
+    "cautionAdvice": "컴파일해서 구조 트리에 빠진 곳이 없는지 확인하세요."
+  },
+  "panel": {
+    "title": "프리플라이트",
+    "readerDisabled": "먼저 컴파일하고 출력 검사를 실행하세요",
+    "readerEnabled": "PDF에서 추출한 텍스트를 엽니다",
+    "readerButton": "독자가 보는 내용 보기",
+    "aboutLabel": "프리플라이트 안내",
+    "aboutTitle": "프리플라이트가 검사하는 항목",
+    "aboutIntro": "프리플라이트는 프로젝트 소스, 컴파일러 로그, 현재 PDF를 읽습니다. 이 문서에 맞는 검사만 켜세요.",
+    "aboutFooter": "확인된 결과는 직접 관찰한 내용입니다. 참고 결과는 여전히 사람의 판단이 필요합니다. 결과가 깨끗하면 심사에 도움이 되지만, 승인이나 접근성을 보장하지는 않습니다. 모든 검사는 이 컴퓨터에서 실행됩니다.",
+    "enableCheck": "{{check}} 켜기",
+    "runCheck": "{{check}} 실행",
+    "rerunCheck": "{{check}} 다시 실행",
+    "run": "실행",
+    "rerun": "다시 실행",
+    "collapse": "접기",
+    "expand": "펼치기",
+    "publicationProfile": "출판 프로필",
+    "anonymousReview": "익명 심사",
+    "anonymousReviewHint": "저자 필드, 감사의 글, PDF 메타데이터도 함께 살펴봅니다.",
+    "anonymousReviewToggle": "익명 심사 신원 확인",
+    "engineUnsupported": "{{engine}} 소스 검사는 아직 구현되지 않았습니다. 이 검사는 컴파일된 PDF만 사용하며, 소스 지원이 없다는 점을 실패로 보고하지 않습니다.",
+    "runToSeeResults": "결과를 보려면 이 검사를 실행하세요.",
+    "analyzing": "분석하는 중…",
+    "runEnabled_other": "켜 놓은 검사 {{count}}개 실행",
+    "rerunEnabled_other": "켜 놓은 검사 {{count}}개 다시 실행",
+    "failed": "프리플라이트에 실패했습니다: {{error}}",
+    "standardsCaveat": "Oleafly는 PDF/UA와 WCAG 중 파일 자체에서 확인할 수 있는 부분만 읽습니다. 대체 텍스트가 의미 있는지, 읽기 순서가 말이 되는지, 색 대비가 충분한지는 판단할 수 없습니다. 그런 항목은 사람이 판단해야 합니다. 공식 적합성 선언이 필요하면 veraPDF나 PAC 2024로 검증하세요.",
+    "pdfRequired": "PDF가 필요합니다. 프로젝트를 컴파일하고 다시 실행하세요. 이 검사는 아직 평가되지 않았습니다.",
+    "compileFirst": "먼저 프로젝트를 컴파일하세요. 프리플라이트는 빌드 품질을 평가하려면 현재 컴파일러 로그나 PDF가 필요합니다.",
+    "partialCoverage": "소스 검사를 마쳤습니다. PDF 단계 검사를 끝내려면 프로젝트를 컴파일하고 다시 실행하세요.",
+    "unsupportedCoverage": "평가하지 않았습니다. 이 엔진의 소스 검사는 구현되지 않았습니다.",
+    "groupSource": "프로젝트 및 소스",
+    "groupOutput": "컴파일된 출력",
+    "fixAll_other": "AI로 {{count}}건 모두 고치기",
+    "noProblems": "문제를 찾지 못했습니다."
+  },
+  "finding": {
+    "review": "검토",
+    "manual": "수동",
+    "page": "{{page}}쪽",
+    "needsJudgment": "사람의 판단이 필요합니다. 파일만으로는 어떤 도구도 결정할 수 없습니다.",
+    "jumpToSource": "소스로 이동",
+    "fixWithAi": "AI로 수정"
+  },
+  "score": {
+    "notEvaluated": "{{label}} 평가 안 됨",
+    "readiness": "{{label}} 준비도 100점 만점에 {{score}}점",
+    "notScored": "점수 없음"
+  },
+  "reader": {
+    "title": "독자가 보는 내용",
+    "description": "현재 PDF에서 읽기 순서대로 추출한 텍스트입니다. 화면 낭독기나 자동 파서가 받는 내용에 가깝습니다.",
+    "pagesNav": "PDF 쪽",
+    "page": "{{page}}쪽",
+    "empty": "비어 있음",
+    "extractedFrom": "{{page}}쪽에서 추출한 텍스트",
+    "pageOf": "{{total}}쪽 중 {{page}}쪽",
+    "noText": "이 페이지에서 선택 가능한 텍스트를 찾지 못했습니다."
+  },
+  "atsCard": {
+    "title": "파서가 추출한 내용",
+    "notFound": "찾지 못함",
+    "links_other": "링크 {{count}}개",
+    "detected": "{{section}}: 찾음",
+    "requiredMissing": "{{section}}: 필수 절을 찾지 못함",
+    "optionalMissing": "{{section}}: 선택 절을 찾지 못함",
+    "detectedTitle": "{{section}} 절을 찾았습니다",
+    "requiredMissingTitle": "{{section}}이(가) 있어야 하는데 찾지 못했습니다",
+    "optionalMissingTitle": "{{section}}은(는) 선택 사항이며 찾지 못했습니다",
+    "optionalSuffix": ", 선택 사항"
+  },
+  "prepExport": {
+    "title": "접근 가능한 내보내기",
+    "intro": "PDF/UA-2를 목표로 하는 태그된 출력을 만들도록 이 문서를 준비합니다. Oleafly가 pdfstandard=ua-2와 tagging=on이 담긴 \\DocumentMetadata를 넣고, 채울 수 있는 대체 텍스트와 표 설정을 함께 추가합니다. 결과물은 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 컴파일한 뒤 다시 확인하세요. 접근 가능한 수식에는 LuaLaTeX가 필요합니다. 내장 엔진은 태그를 만들지 못합니다.",
+    "activeFileFallback": "Oleafly가 주 문서를 불러오지 못해 지금 편집 중인 파일을 검사했습니다. 빌드가 실제로 불러오는 클래스와 패키지를 보려면 주 문서를 여세요.",
+    "prepare": "접근 가능한 내보내기 준비",
+    "unavailable": "이 문서 클래스에서는 준비 기능을 쓸 수 없습니다. 태그 코드가 지원하는 클래스로 바꾼 뒤 검사를 다시 실행하세요. 호환성 데이터는 LaTeX 프로젝트에서 {{retrieved}}에 가져왔습니다.",
+    "unavailableUndated": "이 문서 클래스에서는 준비 기능을 쓸 수 없습니다. 태그 코드가 지원하는 클래스로 바꾼 뒤 검사를 다시 실행하세요. 호환성 데이터는 LaTeX 프로젝트에서 가져왔습니다.",
+    "applied": "적용됨",
+    "apply": "문서에 적용",
+    "copied": "복사됨",
+    "copy": "소스 복사",
+    "compileTagged": "태그를 켜고 컴파일해 확인",
+    "compileTaggedWarning": "시스템 LuaLaTeX는 로컬 파일을 읽을 수 있습니다. 신뢰하는 프로젝트에서만 실행하세요.",
+    "noEngine": "앱에서 태그된 PDF를 만들려면 설정의 LaTeX 엔진에서 엔진을 켜세요. 아니면 준비된 소스를 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 직접 컴파일하세요."
+  }
+}

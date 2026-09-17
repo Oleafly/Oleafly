@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Tom",
+    "diagramsAndFigures": "Diagram och figurer",
+    "cvsAndResumes": "CV och meritförteckningar",
+    "journalsAndConferences": "Tidskrifter och konferenser",
+    "bibliographies": "Bibliografier",
+    "assignments": "Inlämningsuppgifter",
+    "thesesAndReports": "Avhandlingar och rapporter",
+    "books": "Böcker",
+    "presentations": "Presentationer",
+    "posters": "Posters",
+    "newsletters": "Nyhetsbrev",
+    "calendars": "Kalendrar",
+    "letters": "Brev",
+    "aiGenerated": "AI-genererat"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "CV",
+    "diagramsAndFigures": "Diagram",
+    "journalsAndConferences": "Tidskrifter"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Ett varmt humanistiskt sans-serif-typsnitt som används i många moderna CV-mallar."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Ett rent och neutralt sans-serif-typsnitt som läses bra både på skärm och i tryck."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Ett förfinat transitionellt serif-typsnitt som passar akademiska och formella dokument."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Paket för akademiskt skrivande",
+      "description": "Forsknings- och anslagsansökningar, litteraturöversikter, avsiktsförklaringar, rekommendationsbrev, white papers och avhandlingar."
+    },
+    "beamer-themes": {
+      "label": "Samling med Beamer-teman",
+      "description": "Beamer-presentationer med Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla och Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Affärsdokument",
+      "description": "Fakturor, PM, mötesprotokoll, affärsplaner och rapporter, diplom och en trefaldad broschyr."
+    },
+    "conference-preprints": {
+      "label": "Stilar för konferenspreprints",
+      "description": "Preprints i stil med NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv och Interspeech."
+    },
+    "coursework": {
+      "label": "Kurspaket",
+      "description": "Hemuppgifter, arbetsblad, quiz, bedömningsmatriser, föreläsningsanteckningar, kursplaner, formelsamlingar i matematik, tentamina och beskrivningar med pseudokod."
+    },
+    "creative-misc": {
+      "label": "Kreativt och blandat",
+      "description": "Receptböcker, inbjudningar, rollformulär för rollspel, en årskalender, tabell- och TikZ-gallerier samt fältanteckningar."
+    },
+    "cv-collection": {
+      "label": "Samling med CV-stilar",
+      "description": "CV i stil med ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds och Jake's."
+    },
+    "reports-lab": {
+      "label": "Labbrapporter och tekniska rapporter",
+      "description": "Labbrapporter, vetenskapliga och tekniska rapporter, projekt- och praktikrapporter samt en årsredovisning."
+    },
+    "resume-plus": {
+      "label": "Fler CV-mallar",
+      "description": "Tvåspaltigt tekniskt CV, minimalistiskt CV, långt akademiskt CV, personligt brev och ett CV i Typst."
+    },
+    "slides-posters": {
+      "label": "Presentationsbilder och posters",
+      "description": "Metropolis-presentation i Beamer, tikzposter i stående och liggande format samt en layout av typen better-poster."
+    },
+    "venue-classes": {
+      "label": "Klasser för tidskrifter och konferenser",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf och startmallar för tidskrifter i Typst."
+    }
+  }
+}

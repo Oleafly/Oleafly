@@ -9,6 +9,7 @@ import {
   type Completion,
   type CompletionResult,
 } from "@codemirror/autocomplete";
+import { forceLinting, forEachDiagnostic } from "@codemirror/lint";
 import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
@@ -483,5 +484,48 @@ describe("project LaTeX completion revisions and argument parity", () => {
     expect(view.state.doc.toString()).toBe("\\needletarget{}");
     await Promise.resolve();
     view.destroy();
+  });
+});
+
+describe("project diagnostics in a BibTeX buffer", () => {
+  async function bibDiagnosticMessages(source: string): Promise<string[]> {
+    installProject({ "main.tex": "\\bibliography{refs}", "refs.bib": source });
+    useFilesStore.setState({ activePath: "refs.bib" });
+    setEditorDocumentPath("refs.bib");
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: source,
+        extensions: [projectIntelligenceExtensions()],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    const messages: string[] = [];
+    await vi.waitFor(() => {
+      messages.length = 0;
+      forEachDiagnostic(view.state, (found) => {
+        messages.push(found.message);
+      });
+      expect(messages.length).toBeGreaterThan(0);
+    });
+    view.destroy();
+    return messages;
+  }
+
+  it("leaves required-field findings to the BibTeX linter", async () => {
+    const value = snapshot({ "refs.bib": "@article{a, title={T}}" });
+    expect(
+      value.diagnostics.some(
+        (found) => found.code === "bibtex-validation",
+      ),
+    ).toBe(true);
+
+    const messages = await bibDiagnosticMessages(
+      "@article{a, title={T}}\n@misc{a, title={U}}",
+    );
+    expect(messages.some((text) => text.includes("required field"))).toBe(
+      false,
+    );
+    expect(messages.some((text) => text.includes("Citation key"))).toBe(true);
   });
 });

@@ -87,7 +87,7 @@ function checkChinese(issues: CatalogIssue[], locale: string, namespace: string,
   if (HALF_WIDTH_NEXT_TO_CJK.test(value)) {
     pushIssue(issues, "error", locale, namespace, key, "half-width punctuation between Chinese characters");
   }
-  if (CORNER_BRACKETS.test(value)) {
+  if (locale === "zh-Hans" && CORNER_BRACKETS.test(value)) {
     pushIssue(issues, "error", locale, namespace, key, "corner brackets are Traditional Chinese convention, use “”");
   }
   if (FULL_WIDTH_PUNCTUATION.test(value) && SPACE_NEXT_TO_FULL_WIDTH.test(value)) {
@@ -145,8 +145,36 @@ export function validateCatalog(
     if (chinese) checkChinese(issues, locale, namespace, key, value);
   }
 
+  const bases = pluralBases(source);
   for (const key of target.keys()) {
-    if (!source.has(key)) pushIssue(issues, "error", locale, namespace, key, "key is not in the source catalog");
+    if (source.has(key) || isLocalePluralForm(key, bases, categories)) continue;
+    pushIssue(issues, "error", locale, namespace, key, "key is not in the source catalog");
+  }
+  for (const base of bases) {
+    for (const category of categories) {
+      const key = `${base}_${category}`;
+      if (!target.has(key)) pushIssue(issues, "error", locale, namespace, key, `plural category "${category}" is missing for ${locale}`);
+    }
   }
   return issues;
+}
+
+export function pluralBase(key: string): string | null {
+  const suffix = pluralSuffix(key);
+  return suffix ? key.slice(0, -(suffix.length + 1)) : null;
+}
+
+function pluralBases(source: FlatCatalog): Set<string> {
+  const bases = new Set<string>();
+  for (const key of source.keys()) {
+    const base = pluralBase(key);
+    if (base) bases.add(base);
+  }
+  return bases;
+}
+
+function isLocalePluralForm(key: string, bases: Set<string>, categories: string[]): boolean {
+  const suffix = pluralSuffix(key);
+  const base = pluralBase(key);
+  return suffix !== null && base !== null && bases.has(base) && categories.includes(suffix);
 }

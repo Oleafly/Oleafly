@@ -96,7 +96,10 @@ describe("Appearance settings tabs", () => {
       dockPlacement: "left",
       bgPattern: "dots",
       accentColor: ACCENTS[0].color,
-      vim: false,
+      editorKeymap: "default",
+      editorLineWrap: false,
+      editorTabSize: 4,
+      editorLineHeight: "normal",
       editorAutocomplete: false,
       editorAutoCloseBrackets: false,
       editorGhostCompletion: false,
@@ -222,7 +225,7 @@ describe("Appearance settings tabs", () => {
 
     await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
     for (const label of [
-      appearance.editor.vim.label,
+      appearance.editor.lineWrap.label,
       appearance.editor.autocomplete.label,
       appearance.editor.autoCloseBrackets.label,
       appearance.editor.ghostCompletion.label,
@@ -232,13 +235,41 @@ describe("Appearance settings tabs", () => {
       await user.click(screen.getByRole("switch", { name: label }));
     }
     expect(useSettingsStore.getState()).toMatchObject({
-      vim: true,
+      editorLineWrap: true,
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
       editorGhostCompletion: true,
       editorNonBlinkingCursor: true,
       editorStickyScroll: true,
     });
+  });
+
+  it("switches the keybinding mode, tab size, and line height from the editor tab", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+
+    await user.click(screen.getByTestId("settings-editor-keymap-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.keymap.options.emacs }),
+    );
+    expect(useSettingsStore.getState()).toMatchObject({ editorKeymap: "emacs", vim: false });
+
+    await user.click(screen.getByTestId("settings-editor-keymap-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.keymap.options.vim }),
+    );
+    expect(useSettingsStore.getState()).toMatchObject({ editorKeymap: "vim", vim: true });
+
+    await user.click(screen.getByTestId("settings-editor-tab-size-trigger"));
+    await user.click(await screen.findByRole("option", { name: "2" }));
+    expect(useSettingsStore.getState().editorTabSize).toBe(2);
+
+    await user.click(screen.getByTestId("settings-editor-line-height-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.lineHeight.options.wide }),
+    );
+    expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
   });
 
   it("offers system, light, and dark appearance with the active choice pressed", () => {

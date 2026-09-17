@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCALES = ["en", "zh-Hans"] as const;
+export const SUPPORTED_LOCALES = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type LocalePreference = "system" | SupportedLocale;
 export const DEFAULT_LOCALE: SupportedLocale = "en";
@@ -11,10 +11,33 @@ export interface LocaleInfo {
 export const LOCALE_INFO: Record<SupportedLocale, LocaleInfo> = {
   en: { nativeName: "English", dir: "ltr" },
   "zh-Hans": { nativeName: "简体中文", dir: "ltr" },
+  "zh-Hant": { nativeName: "繁體中文", dir: "ltr" },
+  de: { nativeName: "Deutsch", dir: "ltr" },
+  fr: { nativeName: "Français", dir: "ltr" },
+  es: { nativeName: "Español", dir: "ltr" },
+  it: { nativeName: "Italiano", dir: "ltr" },
+  nl: { nativeName: "Nederlands", dir: "ltr" },
+  "pt-BR": { nativeName: "Português (Brasil)", dir: "ltr" },
+  pl: { nativeName: "Polski", dir: "ltr" },
+  ru: { nativeName: "Русский", dir: "ltr" },
+  uk: { nativeName: "Українська", dir: "ltr" },
+  tr: { nativeName: "Türkçe", dir: "ltr" },
+  cs: { nativeName: "Čeština", dir: "ltr" },
+  da: { nativeName: "Dansk", dir: "ltr" },
+  sv: { nativeName: "Svenska", dir: "ltr" },
+  nb: { nativeName: "Norsk bokmål", dir: "ltr" },
+  fi: { nativeName: "Suomi", dir: "ltr" },
+  ro: { nativeName: "Română", dir: "ltr" },
+  ja: { nativeName: "日本語", dir: "ltr" },
+  ko: { nativeName: "한국어", dir: "ltr" },
 };
 
 const FALLBACKS: Record<string, readonly SupportedLocale[]> = {
   "zh-Hant": ["zh-Hans"],
+  pt: ["pt-BR"],
+  "pt-PT": ["pt-BR"],
+  no: ["nb"],
+  nn: ["nb"],
 };
 
 const TRADITIONAL_MARKERS = new Set(["hant", "tw", "hk", "mo"]);

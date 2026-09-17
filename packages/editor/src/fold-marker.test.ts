@@ -5,7 +5,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
-import { editorTheme } from "./theme";
+import { EDITOR_LINE_HEIGHT_CSS, editorTheme } from "./theme";
 
 let mounted: EditorView | null = null;
 
@@ -57,7 +57,7 @@ describe("gutter width, from the cascade rather than layout", () => {
   it("uses the roomier document line height", () => {
     const view = mountGutters("one\ntwo\nthree");
 
-    expect(styleOf(view, ".cm-scroller").lineHeight).toBe("1.7");
+    expect(styleOf(view, ".cm-scroller").lineHeight).toBe(EDITOR_LINE_HEIGHT_CSS);
   });
 
   it("sizes the fold column to the marker with no padding around it", () => {

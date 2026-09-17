@@ -1,0 +1,729 @@
+{
+  "runtime": {
+    "ariaLabel": "アシスタントのランタイム",
+    "builtIn": "Oleafly エージェント",
+    "cli": "CLI エージェント"
+  },
+  "shell": {
+    "float": "アシスタントを浮かせる",
+    "floatAriaLabel": "アシスタントをアプリの上に浮かせる",
+    "overlayTitle": "AI アシスタント",
+    "dockAriaLabel": "チャットをサイドバーに戻す",
+    "floatingNotice": "アシスタントがアプリの上に浮いています。",
+    "dockBack": "元の位置に戻す",
+    "loadingAgents": "エージェントを読み込み中…",
+    "openProjectForCli": "CLI エージェントを使うには、プロジェクトを開いてください。"
+  },
+  "minimap": {
+    "ariaLabel": "会話のやり取り",
+    "jumpTo": "移動: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "承認を求める",
+        "description": "ファイルの編集、インターネットへのアクセス、コマンドの実行の前に確認します。"
+      },
+      "approveForMe": {
+        "label": "自動で承認する",
+        "description": "危険と判断された操作のときだけ確認します。"
+      },
+      "fullAccess": {
+        "label": "フルアクセス",
+        "description": "確認なしでツールの操作を実行します。"
+      },
+      "custom": {
+        "label": "カスタム（approvals.toml）",
+        "description": "approvals.toml のルールを使います。ルールは設定の「AI アシスタント」で編集できます。"
+      }
+    },
+    "selectorAriaLabel": "承認モード。{{mode}}",
+    "editProjectRules": "プロジェクトのルールを編集",
+    "confirm": {
+      "command": "コマンドを確認",
+      "externalTool": "外部ツールの操作を確認",
+      "internet": "インターネットへのアクセスを確認",
+      "edit": "AI の編集を確認"
+    },
+    "headline": {
+      "command": "アシスタントがこのコマンドを実行しようとしています",
+      "externalTool": "アシスタントが外部ツールを使おうとしています",
+      "internet": "アシスタントがインターネットにアクセスしようとしています",
+      "edit": "アシスタントがファイルを変更しようとしています"
+    },
+    "mcpNote": "以下の引数が、設定済みの MCP サーバーに送信されます。",
+    "line": "{{line}} 行目",
+    "sessionAutoApprove": "このセッションでは書き込みの自動承認が有効です（削除は毎回クリックが必要です）。",
+    "commandLabel": "コマンド",
+    "workingDirectory": "作業ディレクトリ",
+    "mcpServer": "MCP サーバー",
+    "toolLabel": "ツール",
+    "arguments": "引数",
+    "figureAlt": "図のプレビュー",
+    "firstChange": "最初の変更 · L{{line}}",
+    "reject": "拒否",
+    "alwaysInProject": "このプロジェクトでは常に許可",
+    "alwaysInProjectAriaLabel": "このプロジェクトでは常に許可する",
+    "alwaysAllow": "常に許可",
+    "approve": "承認",
+    "external": {
+      "title": "外部エージェントからの要求（MCP）",
+      "moreWaiting_other": "ほかに {{count}} 件が待機中"
+    }
+  },
+  "attachments": {
+    "remove": "{{name}} を削除"
+  },
+  "chat": {
+    "pill": {
+      "plan": "プラン",
+      "step": "ステップ {{current}}/{{total}}",
+      "review": "レビュー"
+    },
+    "plan": {
+      "detailsAriaLabel": "プランの詳細",
+      "headingPlan": "プラン",
+      "headingChanges": "変更",
+      "approve": "プランを承認",
+      "revise": "修正を依頼",
+      "statusAwaiting": "承認待ち",
+      "statusApproved": "承認済み"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "完了",
+        "inProgress": "進行中",
+        "pending": "未着手",
+        "cancelled": "中止"
+      }
+    },
+    "fileChanges": {
+      "changed": "変更されたファイル",
+      "committed": "{{commit}} としてコミット"
+    },
+    "runSummary": {
+      "plan": "プラン",
+      "stepsDone": "{{total}} 件中 {{done}} 件完了",
+      "filesChanged_other": "{{count}} 件のファイルを変更"
+    },
+    "copyMessage": "メッセージをコピー",
+    "exploration": {
+      "explored": "調べました",
+      "exploredItems": "{{items}}を調べました",
+      "files_other": "{{count}} 件のファイル",
+      "searches_other": "{{count}} 件の検索",
+      "lists_other": "{{count}} 件の一覧"
+    },
+    "reasoning": {
+      "thinking": "考えています…",
+      "thoughtFor": "{{seconds}} 秒考えました",
+      "label": "推論"
+    },
+    "subagent": {
+      "finished": "完了",
+      "failed": "失敗",
+      "stopped": "停止",
+      "usingTool": "{{tool}} を使用中",
+      "working": "作業中",
+      "errorBody": "エージェントはこのタスクを完了できませんでした。",
+      "stoppedBody": "回答する前にタスクが停止されました。",
+      "openTask": "タスクを開く"
+    },
+    "workedSteps": {
+      "duration": "{{seconds}} 秒作業しました",
+      "steps_other": "{{count}} ステップを進めました"
+    },
+    "steered": "途中で指示",
+    "toolOutputError": "エラー: {{message}}",
+    "errorHints": {
+      "invalidKey": "API キーが無効か、期限切れのようです。設定 → AI アシスタントで更新するか、{{where}}プロバイダを切り替えてください。",
+      "outOfCredits": "AI プロバイダのクレジットまたは利用枠が尽きています。アカウントに補充するか、{{where}}別のプロバイダ（またはローカルの Ollama）に切り替えてください。",
+      "overloaded": "プロバイダのサーバーが現在混み合っています（すでに再試行済みです）。少し待ってからもう一度試すか、{{where}}同系列のモデルに切り替えてください。",
+      "rateLimited": "プロバイダがリクエストを制限しています。少し待ってから再試行するか、{{where}}プロバイダを切り替えてください。",
+      "retiredModel": "プロバイダがこのモデルを廃止または制限しました。{{where}}新しいモデルを選んでください（設定 → AI アシスタントに、キーで使えるモデルが一覧表示されます）。",
+      "unreachable": "AI プロバイダに接続できませんでした。接続を確認してください。Ollama を使っている場合は、起動しているか確認してください（設定 → AI アシスタント → Ollama を確認）。",
+      "where": {
+        "inSettings": "設定の「AI アシスタント」で",
+        "modelMenu": "上のモデルメニューから"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "コンテキストを追加",
+    "mentionMenuAgentsAndFiles": "エージェントとプロジェクトのファイル",
+    "mentionMenuFiles": "プロジェクトのファイル",
+    "mentionHeadingAgents": "エージェントに任せる",
+    "mentionHeadingFiles": "プロジェクトのファイル",
+    "slashMenuAriaLabel": "スラッシュコマンド",
+    "placeholderEngineUnavailable": "ドキュメントエンジンを利用できません。AI による編集は無効です",
+    "placeholderDefault": "文書について AI に相談する…",
+    "planRevisionPlaceholder": "プランのどこを変えるか書いてください",
+    "prompts": "プロンプト",
+    "promptShortcutsAriaLabel": "プロンプトのショートカット",
+    "persona": "ペルソナ",
+    "personaActiveTooltip": "{{name}} が有効で、既定の指示の代わりに使われています。",
+    "personaChoose": "ペルソナを選ぶ",
+    "personaActiveAriaLabel": "ペルソナ。{{name}} が有効で、既定の指示の代わりに使われています。",
+    "personaCreate": "設定でペルソナを作成",
+    "personaNone": "なし",
+    "planModeOn": "プランモード オン",
+    "planModeOff": "プランモード オフ",
+    "planModeAriaLabel": "プランモード",
+    "plan": "プラン",
+    "planModeInfo": "プランモードについて",
+    "planModeHint": "プランモードでは、アシスタントは編集する前にプランを提案します。プランをオフにすると、アシスタントはすべてのツールを直接使えるようになります。",
+    "stop": "停止",
+    "stopTitle": "生成を停止",
+    "send": "送信",
+    "checkAgain": "もう一度確認"
+  },
+  "commands": {
+    "groups": {
+      "skills": "スキル"
+    },
+    "archive": {
+      "label": "アーカイブ",
+      "description": "このチャットをアーカイブします"
+    },
+    "forkChat": {
+      "label": "チャットをフォーク",
+      "description": "この会話から新しいチャットを作ります"
+    },
+    "goal": {
+      "label": "ゴール",
+      "description": "アシスタントが目指し続ける目標を設定します"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "接続中の MCP サーバーとその状態を表示します"
+    },
+    "model": {
+      "label": "モデル",
+      "description": "このチャットで使うモデルを選びます"
+    },
+    "planMode": {
+      "enableLabel": "プランモードを有効にする",
+      "disableLabel": "プランモードを無効にする",
+      "description": "段階的な計画の作成をオンまたはオフにします"
+    },
+    "recordSkill": {
+      "label": "スキルを記録",
+      "description": "このチャットの進め方を編集できる下書きとして保存します"
+    },
+    "files": {
+      "label": "ファイル",
+      "description": "次のメッセージにファイルを添付します"
+    },
+    "browser": {
+      "label": "ブラウザを表示",
+      "description": "文書の隣にブラウザを開きます"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI モデル",
+    "placeholder": "モデルを選択",
+    "triggerTooltip": "{{model}}。プロバイダまたはモデルを切り替えます",
+    "searchLabel": "モデルを検索",
+    "searchPlaceholder": "モデルを検索…",
+    "emptyTitle": "モデルが見つかりません",
+    "emptyHint": "別のキーワードで検索してください。",
+    "trust": {
+      "verified": "検証済み",
+      "untested": "未検証",
+      "blocked": "利用不可"
+    },
+    "trustTitle": {
+      "verified": "Oleafly がこのモデルでアシスタントを動かして確認しています",
+      "untested": "まだアシスタントで試していません。初回利用時に確認されます",
+      "blocked": "このモデルではアシスタントを動かせません"
+    },
+    "chatOnlyHint": "チャットのみ。このモデルはツールを使えません",
+    "checkingHint": "このモデルを確認しています",
+    "blockedWithReason": "このモデルはアシスタントでは利用できません: {{reason}}",
+    "blocked": "このモデルはアシスタントでは利用できません。",
+    "probeFailedWithDetail": "このモデルを確認できませんでした。{{detail}}",
+    "probeFailed": "このモデルを確認できませんでした。"
+  },
+  "history": {
+    "title": "チャット履歴",
+    "closeBackdrop": "チャット履歴を閉じる",
+    "searchLabel": "チャットを検索",
+    "searchPlaceholder": "タイトルとメッセージを検索",
+    "emptyProject": "このプロジェクトに保存されたチャットはまだありません。",
+    "emptySearch": "その検索に一致するチャットはありません。",
+    "untitled": "新しいチャット",
+    "staleTitle": "このチャットは、プロジェクトの以前のバージョンから始まっています",
+    "staleBadge": "以前のバージョン",
+    "messages_other": "{{count}} 件",
+    "tokens": "約 {{amount}} トークン",
+    "deleteAriaLabel": "{{title}} を削除",
+    "deleteFallbackTitle": "チャット",
+    "deleteTitle": "チャットを削除",
+    "relative": {
+      "justNow": "たった今",
+      "minutes": "{{count}} 分前",
+      "hours": "{{count}} 時間前",
+      "days": "{{count}} 日前"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "しない",
+      "everyTime": "毎回チャットで確認",
+      "askModeOnly": "「承認を求める」モードのときだけ",
+      "unlessAllowed": "する（プロジェクトで許可した場合を除く）"
+    },
+    "catalog": {
+      "readFile": "プロジェクトのファイルを読みます。長いファイルは一部ずつ読みます。",
+      "writeFile": "ファイル全体を書き込み、元の内容を置き換えます。",
+      "replaceInFile": "ファイル内の一致する箇所を見つけて置き換えます。",
+      "createFile": "プロジェクトに新しいファイルまたはフォルダを作ります。",
+      "renameFile": "ファイルまたはフォルダの名前を変えるか移動します。",
+      "deleteFile": "ファイルまたはフォルダを削除します。",
+      "listFiles": "プロジェクト内のすべてのファイルとフォルダを一覧表示します。",
+      "searchProject": "プロジェクトの本文を検索し、ファイルと行の一致箇所を返します。",
+      "projectMap": "文書のアウトラインを読みます。セクション、ラベル、引用キー、マクロ、読み込み、未解決の項目が対象です。",
+      "showLocation": "ファイルの指定行をエディタで開き、PDF プレビューをその位置に合わせます。",
+      "compile": "プロジェクトをそのエンジンでコンパイルし、エラーを報告します。",
+      "getLog": "直近のコンパイルログを読みます。",
+      "getPdfText": "コンパイルされた PDF のテキストをページごとに読みます。",
+      "verifyPdfPages": "コンパイルされたページを画像として描画し、画像認識モデルがレイアウトを確認できるようにします。",
+      "setMainDoc": "プロジェクトのコンパイル元となるファイルを変更します。",
+      "literatureSearch": "OpenAlex をキーワードで検索して論文を探します。キーは不要です。",
+      "verifyCitation": "DOI やタイトルから、doi.org または Crossref を通して検証済みの BibTeX を取得します。",
+      "projectLibrarySearch": "プロジェクト自身の本文とメモをキーワードで検索します。",
+      "alphaxivSearch": "alphaXiv を通して arXiv の論文を検索します。",
+      "alphaxivPaperContent": "alphaXiv を通して arXiv 論文の全文を取得します。",
+      "previewFigure": "TikZ や PGFPlots の図を単独でコンパイルし、結果をチャットに表示します。",
+      "insertFigure": "仕上がった図をキャプションとラベル付きでカーソル位置に挿入し、PNG を figures/ 以下に保存します。",
+      "loadImage": "すでにプロジェクトにある画像を見ます。",
+      "updateTodos": "チャットに表示される手順のプランを書くか更新します。",
+      "getTodos": "現在のプランを読みます。",
+      "rememberNote": "あとのチャットからも見えるプロジェクトのメモを保存します。",
+      "forgetNote": "保存したプロジェクトのメモを削除します。",
+      "listNotes": "保存したプロジェクトのメモを一覧表示します。",
+      "loadSkill": "スキルに従う前に、その完全な指示を読み込みます。",
+      "readSkillFile": "スキルに同梱された参照ファイルやスクリプトを読みます。",
+      "spawnAgent": "独自のタスクとツールを持つ補助エージェントを起動します。",
+      "sendMessage": "動作中の補助エージェントにメッセージを送ります。",
+      "followupTask": "補助エージェントが終わったあとに、別のタスクを与えます。",
+      "waitAgent": "補助エージェントの終了を待ち、その結果を読みます。",
+      "interruptAgent": "補助エージェントの作業を中断します。",
+      "listAgents": "補助エージェントとその状態を一覧表示します。",
+      "closeAgent": "補助エージェントを終了します。",
+      "runCommand": "プロジェクトフォルダで shell コマンドを実行します。制限時間は 2 分です。",
+      "computerUse": "アシスタントのブラウザウィンドウでウェブページを開きます。",
+      "toggleTheme": "ライトモードとダークモードを切り替えます。"
+    },
+    "disableAll": "すべて無効にする",
+    "emptyContext": "この場面で使えるツールはありません。",
+    "enableAll": "すべて有効にする",
+    "enableTool": "{{name}} を有効にする",
+    "enabledCount": "{{total}} 件中 {{enabled}} 件が有効",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "エージェント",
+      "buildAndPdf": "ビルドと PDF",
+      "figures": "図",
+      "files": "ファイル",
+      "planAndMemory": "プランとメモ",
+      "research": "調査",
+      "skills": "スキル",
+      "system": "システム"
+    },
+    "managerAriaLabel": "エージェントのツールを管理",
+    "managerHeading": "ツール",
+    "managerTooltip": "ツール",
+    "noDescription": "説明はありません。",
+    "notes": {
+      "latexOnly": "LaTeX プロジェクトのみ",
+      "pdfCaptureSetting": "PDF のページ取り込み設定が必要",
+      "alphaxivKey": "連携で alphaXiv のキーが必要",
+      "chatApproval": "チャットで 1 コマンドずつ承認",
+      "browserSetting": "ウェブブラウザの設定が必要"
+    },
+    "sourceGroups": {
+      "figure": "図",
+      "mcp": "MCP",
+      "project": "プロジェクトのツール",
+      "skills": "スキル"
+    },
+    "table": {
+      "tool": "ツール",
+      "whatItDoes": "できること",
+      "asksFirst": "事前の確認"
+    }
+  },
+  "toolCard": {
+    "approved": "承認済み",
+    "rejected": "拒否済み",
+    "binaryPreview": "このリンク先はバイナリファイルのため、ここではプレビューできません。",
+    "previewTruncated": "プレビューは 256 KiB で打ち切りました。",
+    "previewFailed": "このリンク先のソースはプレビューできませんでした。",
+    "showAll": "{{characters}} 文字すべてを表示",
+    "loadingSource": "ソースを読み込み中",
+    "inspectSource": "ソースを確認",
+    "openFile": "ファイルを開く",
+    "openSource": "出典を開く",
+    "openSourceTitled": "出典を開く: {{title}}",
+    "openTask": "タスクを開く",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "描画された図のプレビュー",
+    "toolImageAlt": "ツールからの画像",
+    "showFigure": "描画された図を表示",
+    "showTikz": "TikZ のソースを表示",
+    "figureTab": "図",
+    "tikzTab": "TikZ",
+    "saving": "保存中",
+    "saveToProject": "プロジェクトに保存",
+    "copyCode": "コードをコピー",
+    "saved": "{{path}} に保存しました",
+    "saveNeedsProject": "この図を保存するには、プロジェクトを開いてください。",
+    "saveFailed": "図を保存できませんでした。"
+  },
+  "transcript": {
+    "dialogTitle": "委任したタスクの記録",
+    "dialogDescription": "委任されたエージェントがこのタスクで読んだこと、実行したこと、答えたことのすべてです。",
+    "loading": "記録を読み込み中",
+    "failed": "記録を読み込めませんでした。",
+    "empty": "このタスクは記録を残していません。"
+  },
+  "subagents": {
+    "working": "サブエージェントが作業中",
+    "count": "サブエージェント（{{count}}）",
+    "stopAll": "すべて停止",
+    "stopFailed": "サブエージェントを停止できませんでした。",
+    "updates": "{{count}} 件の更新",
+    "openTask": "タスクを開く",
+    "awaitingPermission": "委任したエージェントが許可を待っています。",
+    "taskFailed": "委任したタスクが失敗しました。開いてエラーを確認してください。",
+    "transcriptTruncated": "この記録は、ここに表示されている部分より長く続きます。",
+    "noTranscriptYet": "このタスクはまだ記録を報告していません。",
+    "noSessionInfo": "このタスクには、記録を開くのに十分なセッション情報が残っていません。",
+    "loadingTranscript": "記録を読み込み中…",
+    "transcriptFailed": "記録を読み込めませんでした。",
+    "stillWorking": "このサブエージェントはまだ作業中です。完了すると記録全体を開けます。",
+    "noFinalAnswer": "このエージェントは最終的な回答を記録しませんでした。",
+    "latest": "最新: {{text}}",
+    "workingDetail": "作業中",
+    "status": {
+      "active": "作業中",
+      "awaiting": "許可待ち",
+      "updated": "更新あり",
+      "interrupted": "停止",
+      "completed": "完了",
+      "failed": "失敗"
+    }
+  },
+  "acp": {
+    "newConversation": "新しい会話",
+    "savedConversations": "保存された会話",
+    "untitledConversation": "無題の会話",
+    "agentSetup": "エージェントのセットアップ",
+    "usageReport": "使用状況レポート",
+    "permission": {
+      "ariaLabel": "エージェントの許可",
+      "namedHeadline": "{{agent}} が許可を求めています",
+      "headline": "エージェントが許可を求めています",
+      "expired": "この要求は期限切れです。エージェントにもう一度試すよう伝えてください。",
+      "dismiss": "閉じる"
+    },
+    "readiness": {
+      "managedBridge": "Oleafly がブリッジ {{version}} をインストールしました。",
+      "bridgeOnPath": "PATH 上にブリッジが見つかりました。",
+      "bridgeMissingWithCli": "{{cli}} が {{path}} に見つかりました。接続するには ACP ブリッジ {{version}} をインストールしてください。",
+      "bridgeMissing": "このエージェントに接続するには、ACP ブリッジ {{version}} をインストールしてください。",
+      "cliMissing": "{{cli}} が PATH にありません。インストールしてから {{command}} を実行してください。",
+      "cliNotFound": "このエージェントのコマンドラインツールが見つかりませんでした。",
+      "unavailable": "このエージェントはこのコンピュータでは動かせません。"
+    },
+    "bridgeSource": {
+      "notInstalled": "未インストール",
+      "managed": "Oleafly が管理",
+      "onPath": "PATH 上"
+    },
+    "installing": "インストール中",
+    "installBridge": "ブリッジをインストール",
+    "assistantAriaLabel": "CLI エージェントのアシスタント",
+    "loadEarlier": "以前のやり取りを読み込む",
+    "starting": "{{agent}} を起動中",
+    "startingFallback": "エージェント",
+    "startingHint": "エージェントのコマンドラインツールを起動しています。初回は数秒かかります。",
+    "readySubtitle": "{{agent}} はこのプロジェクトで使えます",
+    "projectSubtitle": "「{{project}}」で作業中",
+    "signInFallback": "このエージェントの CLI でサインインしてから、接続し直してください。",
+    "reconnectAfterSignIn": "サインイン後に再接続",
+    "reconnect": "会話に再接続",
+    "resumeTask": "この作業を再開するには、調査タスクを開いてください。",
+    "delegatedConversation": "この会話は、委任されたエージェントの実行に属しています。",
+    "noResume": "このエージェントは保存された会話を再開できません。準備ができたら新しい会話を始めてください。",
+    "imageTooLarge": "480 KiB 未満の画像を選んでください。画像は 4 枚まで添付できます。",
+    "imageReadFailed": "画像を読み取れませんでした。",
+    "removeImage": "{{name}} を削除",
+    "composerAriaLabel": "CLI エージェントへのメッセージ",
+    "composerPlaceholderReady": "このプロジェクトの作業をエージェントに依頼する",
+    "composerPlaceholderIdle": "メッセージを送るには、会話を始めるか再接続してください",
+    "attachImage": "画像を添付",
+    "startConversation": "{{agent}} との会話を始める",
+    "startConversationFallback": "エージェント",
+    "agentModel": "エージェントのモデル",
+    "modelManaged": "モデルはエージェントが管理します",
+    "stop": "停止",
+    "stopTitle": "エージェントを停止",
+    "send": "送信",
+    "connecting": "接続中",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "接続中",
+      "authRequired": "認証が必要",
+      "ready": "待機中",
+      "running": "実行中",
+      "cancelling": "停止中",
+      "cancelled": "停止済み",
+      "disconnected": "切断",
+      "failed": "失敗"
+    },
+    "roster": {
+      "bridgeMissing": "「エージェントのセットアップ」でブリッジをインストールしてください",
+      "cliMissing": "このコンピュータに CLI が見つかりません",
+      "unavailable": "このコンピュータでは利用できません",
+      "comingSoon": "近日対応"
+    },
+    "messageTooLarge": "このメッセージと画像は大きすぎます。メッセージを短くするか、画像を減らしてください。",
+    "terminalCommand": "エージェントがターミナルのコマンドを実行しています。",
+    "agentToolFallback": "エージェントのツール",
+    "agentReported": "エージェントの報告: {{detail}}",
+    "imageAttachmentName": "画像 {{index}}",
+    "agentImage": "[エージェントが画像を返しました。]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI エージェント",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "未インストール",
+    "cliDetail": "CLI エージェント · 独自のアカウントを使います",
+    "builtInDetail": "{{provider}} · Oleafly エージェント"
+  },
+  "home": {
+    "heading": "今日は何をしましょうか？",
+    "headingAccent": "何をしましょうか？",
+    "skillCategories": "スキルのカテゴリ",
+    "skillLockedTitle": "{{name}} はこのプロジェクトでは無効です",
+    "recentChats": "最近のチャット",
+    "recentStaleTitle": "プロジェクトの以前のバージョンから始まっています",
+    "recentUntitled": "新しいチャット",
+    "recentStaleBadge": "以前のバージョン",
+    "recentMessages_other": "{{count}} 件",
+    "showAllHistory": "すべての履歴を表示（{{count}}）"
+  },
+  "research": {
+    "noSourceLink": "この結果には出典のリンクが含まれていません。",
+    "sourceOpenFailed": "出典を開けませんでした。",
+    "noProjectPath": "この結果にはプロジェクトのファイルパスが含まれていません。",
+    "resultOpenFailed": "結果のファイルを開けませんでした。"
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "執筆と編集",
+      "citationsAndLiterature": "引用と文献",
+      "review": "レビュー",
+      "figuresAndTables": "図と表"
+    },
+    "improveWriting": {
+      "label": "文章を改善",
+      "description": "わかりやすさ、調子、流れを整えます"
+    },
+    "fixGrammar": {
+      "label": "文法を直す",
+      "description": "文法と句読点を修正します"
+    },
+    "fixLatexErrors": {
+      "label": "LaTeX のエラーを直す",
+      "description": "壊れたコードとコンパイルエラーを修復します"
+    },
+    "writeEquation": {
+      "label": "数式を書く",
+      "description": "自然言語から LaTeX の数式へ"
+    },
+    "draftSection": {
+      "label": "セクションを下書き",
+      "description": "あなたの文体で新しいセクションを書きます"
+    },
+    "paraphrase": {
+      "label": "言い換える",
+      "description": "意味を保ったまま表現を変えます"
+    },
+    "shorten": {
+      "label": "短くする",
+      "description": "文章をより簡潔にします"
+    },
+    "expand": {
+      "label": "詳しくする",
+      "description": "内容を詳しく書き足します"
+    },
+    "journalFormat": {
+      "label": "論文誌の書式",
+      "description": "投稿先の書式に合わせて整えます"
+    },
+    "writeAbstract": {
+      "label": "概要を書く",
+      "description": "論文から概要を下書きします"
+    },
+    "generateTitle": {
+      "label": "タイトルを生成",
+      "description": "目を引く論文タイトルを提案します"
+    },
+    "keywords": {
+      "label": "キーワード",
+      "description": "検索に使えるキーワードを抽出します"
+    },
+    "continueWriting": {
+      "label": "続きを書く",
+      "description": "書きかけの続きから進めます"
+    },
+    "citationSearch": {
+      "label": "引用を検索",
+      "description": "alphaXiv と OpenAlex で論文を探します"
+    },
+    "literatureReview": {
+      "label": "文献レビュー",
+      "description": "実在の資料をもとに関連研究をまとめます"
+    },
+    "citeClaim": {
+      "label": "この主張に出典を付ける",
+      "description": "検証済みの参考文献を見つけて追加します"
+    },
+    "myLibrary": {
+      "label": "マイライブラリ",
+      "description": "読み込んだ自分の参考文献を検索します"
+    },
+    "labSearch": {
+      "label": "研究室を検索",
+      "description": "研究室や研究機関を探します"
+    },
+    "friendlyReview": {
+      "label": "やさしいレビュー",
+      "description": "指導者のような建設的な意見をこの論文にもらいます"
+    },
+    "fireReview": {
+      "label": "厳しいレビュー",
+      "description": "Reviewer #2 のように主張と手法を厳しく検証します"
+    },
+    "academicPresentation": {
+      "label": "学会発表",
+      "description": "論文から Beamer のスライドを作ります"
+    },
+    "academicPoster": {
+      "label": "学会ポスター",
+      "description": "論文から学会ポスターを作ります"
+    },
+    "generateTable": {
+      "label": "表を生成",
+      "description": "チャットで LaTeX の表を下書きします"
+    },
+    "tikzFigure": {
+      "label": "TikZ の図",
+      "description": "チャットで TikZ のコードを下書きします"
+    }
+  },
+  "turn": {
+    "thinking": "考えています…",
+    "continuing": "続けています…",
+    "reasoning": "推論しています…",
+    "runningTool": "{{name}} を実行中…",
+    "processingResult": "結果を処理しています…",
+    "summarizing": "これまでの会話を要約しています…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "エージェントのセッションを開けませんでした。",
+    "approvalModeSaveFailed": "承認モードを保存できませんでした。",
+    "skillDraftSaved": "スキルの下書きを保存しました。有効にする前に内容を確認してください。",
+    "skillDraftFailed": "スキルの下書きを保存できませんでした。{{error}}",
+    "chatArchived": "チャットをアーカイブしました。",
+    "chatArchiveFailed": "このチャットをアーカイブできませんでした。",
+    "chatForked": "チャットをフォークしました。",
+    "chatForkFailed": "このチャットをフォークできませんでした。",
+    "engineNotLoaded": "ドキュメントエンジンの情報が読み込まれていません。安全のため、AI による編集を無効にしています。",
+    "skillsLoadFailed": "有効なスキルを読み込めませんでした。もう一度お試しください。",
+    "approvalModeLoadFailed": "承認モードを読み込めませんでした。",
+    "approvalRulesLoadFailed": "プロジェクトの承認ルールを読み込めませんでした。",
+    "restored": "プロジェクトのファイルを復元しました。会話はそのまま残っています。",
+    "restoreFailed": "復元できませんでした: {{error}}",
+    "steerFailed": "実行中のやり取りに指示を差し込めませんでした。",
+    "approvalRuleSaveFailed": "プロジェクトの承認ルールを保存できませんでした。",
+    "attachmentTooLarge": "{{name}} は大きすぎます（最大 10 MB）。",
+    "attachmentReadFailed": "{{name}} を読み取れませんでした。",
+    "tooManyTools": "{{enabled}} 件のツールが有効ですが、1 回の実行で使えるのは {{max}} 件までです。「ツール」で少なくとも {{excess}} 件を無効にしてからもう一度お試しください。"
+  },
+  "header": {
+    "mcpTooltip": "アシスタントの MCP サーバーを設定",
+    "mcpAriaLabel": "アシスタントの MCP 設定",
+    "settings": "アシスタントの設定",
+    "usageAriaLabel": "AI の使用状況を表示",
+    "usageReport": "使用状況レポート",
+    "newChat": "新しいチャット",
+    "chatHistory": "チャット履歴",
+    "staleChatHint": "このチャットは、プロジェクトの以前のバージョンから始まっています。ファイルの内容が、AI が見たものと異なる場合があります。"
+  },
+  "usage": {
+    "lastRun": "直近の実行",
+    "steps": "ステップ",
+    "input": "入力",
+    "output": "出力",
+    "thisChat": "このチャット",
+    "runs": "実行回数",
+    "tokens": "トークン",
+    "cacheNote": "キャッシュの利用状況と費用の見積もりは、使用状況レポートにあります。",
+    "summaryRunWithTokens_other": "直近の実行: {{count}} ステップ、報告されたトークン {{tokens}}",
+    "summaryRunNoTokens_other": "直近の実行: {{count}} ステップ、トークンの合計は不明",
+    "summaryChat": "このチャット: {{steps}} ステップ、{{tokens}} トークン",
+    "summaryFallback": "AI の使用状況"
+  },
+  "provider": {
+    "connectTitle": "続けるには AI プロバイダに接続してください",
+    "connectBody": "自分の API キー（OpenAI、Anthropic、Groq など）を使うか、Ollama でモデルをローカルに動かせます。アシスタントはファイルの読み書き、プロジェクトのコンパイル、PDF の確認ができます。",
+    "connectButton": "プロバイダに接続",
+    "runLocal": "Ollama でローカルのモデルを動かす",
+    "quotaWarning": "チャット履歴の保存領域がいっぱいです。古いチャットは削除され、新しいメッセージが保存されない場合があります。履歴から古いチャットを削除して空きを作ってください。"
+  },
+  "conversation": {
+    "renderFailed": "この会話を表示できませんでした。新しいチャットを始めるか、履歴から開き直してください。",
+    "checkpointRestored": "プロジェクトをこのチェックポイントに戻しました",
+    "restoring": "復元しています…",
+    "restoreCheckpoint": "この応答より前の状態にコードを戻す",
+    "restoreConfirm": "プロジェクトのファイルを、この応答より前の状態に戻しますか？これ以降の AI の応答による変更も取り消されます。会話はそのまま残ります。",
+    "noResponse": "このメッセージへの応答が届きませんでした。通信が中断されています。もう一度送るか、新しいチャットを始めてください。",
+    "scrollToBottom": "いちばん下へ",
+    "projectSubtitle": "「{{project}}」で作業中",
+    "noOutput": "モデルから出力が返りませんでした。設定 → AI アシスタントを確認してください。"
+  },
+  "followUps": {
+    "steered": "実行中のやり取りに差し込みました: {{summary}}",
+    "sending": "次のやり取りとして送信しました: {{summary}}",
+    "waiting": "実行の安全な区切りを待っています: {{summary}}",
+    "queued": "次のやり取り用に予約しました: {{summary}}",
+    "steerNow": "今すぐ差し込む",
+    "startingRun": "実行を開始しています",
+    "discard": "予約したメッセージを取り消す"
+  },
+  "goal": {
+    "editAriaLabel": "ゴールを編集: {{goal}}",
+    "clear": "ゴールを消去",
+    "formAriaLabel": "継続するゴールを設定",
+    "label": "ゴール",
+    "placeholder": "アシスタントに目指し続けてほしいことは何ですか？",
+    "save": "ゴールを保存"
+  },
+  "suggestions": {
+    "literatureSweep": "このプロジェクトの文献を一通り調べる",
+    "relatedWork": "関連研究のセクションを下書きする",
+    "verifyClaims": "すべての主張を出典と照合する",
+    "reviewManuscript": "査読者のように読んでもらう",
+    "latexBuild": "文書のソースのエラーを直す",
+    "preSubmission": "投稿の準備を整える",
+    "slides": "この論文を発表用にまとめる",
+    "recompile": "再コンパイルしてエラーを確認する"
+  }
+}

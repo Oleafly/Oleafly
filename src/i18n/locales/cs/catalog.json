@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Prázdný dokument",
+    "diagramsAndFigures": "Diagramy a obrázky",
+    "cvsAndResumes": "Životopisy",
+    "journalsAndConferences": "Časopisy a konference",
+    "bibliographies": "Bibliografie",
+    "assignments": "Zadání a úkoly",
+    "thesesAndReports": "Kvalifikační práce a zprávy",
+    "books": "Knihy",
+    "presentations": "Prezentace",
+    "posters": "Plakáty",
+    "newsletters": "Zpravodaje",
+    "calendars": "Kalendáře",
+    "letters": "Dopisy",
+    "aiGenerated": "Vytvořeno pomocí AI"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Životopis",
+    "diagramsAndFigures": "Diagramy",
+    "journalsAndConferences": "Časopisy"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Vřelé humanistické bezpatkové písmo, které používá řada moderních šablon životopisů."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Čisté neutrální bezpatkové písmo, které se dobře čte na obrazovce i v tisku."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Vytříbené přechodové patkové písmo, dobrá volba pro akademické a manažerské dokumenty."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Balíček akademického psaní",
+      "description": "Výzkumné a grantové návrhy, literární přehledy, motivační dopisy, doporučující dopisy, odborné studie a kvalifikační práce."
+    },
+    "beamer-themes": {
+      "label": "Kolekce motivů Beamer",
+      "description": "Prezentace v beameru ve stylech Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla a Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Firemní dokumenty",
+      "description": "Faktury, memoranda, zápisy z jednání, podnikatelské plány a zprávy, certifikáty a trojdílná brožura."
+    },
+    "conference-preprints": {
+      "label": "Styly konferenčních preprintů",
+      "description": "Preprinty ve stylech NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv a Interspeech."
+    },
+    "coursework": {
+      "label": "Balíček studijních materiálů",
+      "description": "Domácí úkoly, pracovní listy, testy, hodnoticí tabulky, poznámky z přednášek, sylaby, matematické přehledy, zkoušky a zápisy pseudokódu."
+    },
+    "creative-misc": {
+      "label": "Kreativní a ostatní",
+      "description": "Kuchařky, pozvánky, karty postav pro RPG, roční kalendář, galerie tabulek a TikZ a terénní poznámky."
+    },
+    "cv-collection": {
+      "label": "Kolekce stylů životopisů",
+      "description": "Životopisy ve stylech ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds a Jake's."
+    },
+    "reports-lab": {
+      "label": "Laboratorní a technické zprávy",
+      "description": "Laboratorní protokoly, vědecké a technické zprávy, projektové a stážové zprávy a výroční zpráva."
+    },
+    "resume-plus": {
+      "label": "Rozšíření životopisů",
+      "description": "Dvousloupcový technický životopis, minimalistický životopis, obsáhlý akademický životopis, průvodní dopis a životopis v Typstu."
+    },
+    "slides-posters": {
+      "label": "Prezentace a plakáty",
+      "description": "Prezentace beamer Metropolis, tikzposter na výšku i na šířku a rozvržení better-poster."
+    },
+    "venue-classes": {
+      "label": "Třídy pro časopisy a konference",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf a začátečnické šablony časopisů v Typstu."
+    }
+  }
+}

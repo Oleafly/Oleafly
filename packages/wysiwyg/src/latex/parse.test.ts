@@ -108,10 +108,10 @@ describe("parseLatexBody", () => {
   });
 
   it("falls back to a rawBlock for unrecognized environments", () => {
-    const doc = parseLatexBody("\\begin{tabular}{cc}\na & b\n\\end{tabular}\n");
+    const doc = parseLatexBody("\\begin{minipage}{\\textwidth}\na & b\n\\end{minipage}\n");
     const rawBlock = doc.content?.find((n) => n.type === "rawBlock");
     expect(rawBlock).toBeDefined();
-    expect(rawBlock?.attrs?.source).toContain("\\begin{tabular}");
-    expect(rawBlock?.attrs?.source).toContain("\\end{tabular}");
+    expect(rawBlock?.attrs?.source).toContain("\\begin{minipage}");
+    expect(rawBlock?.attrs?.source).toContain("\\end{minipage}");
   });
 });

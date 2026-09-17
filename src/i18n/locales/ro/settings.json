@@ -1,0 +1,1487 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Executabil",
+      "bridgeSourceLabel": "Sursă",
+      "bridgeTitle": "Punte ACP",
+      "bridgeUnresolved": "Încă nu s-a găsit niciun executabil de punte.",
+      "checkAgain": "Verifică din nou",
+      "checkFailedTitle": "Agenții instalați nu au putut fi verificați",
+      "checkInstalled": "Verifică agenții instalați",
+      "checkingAction": "Se verifică",
+      "checkingDescription": "Poate dura un moment, cât timp Oleafly verifică instrumentele de linie de comandă de pe acest computer.",
+      "checkingInstalled": "Se verifică agenții instalați",
+      "checkingTitle": "Se caută agenți din linia de comandă",
+      "cliNotOnPath": "{{command}} nu a fost găsit în PATH.",
+      "cliPathLabel": "Detectat la",
+      "cliTitle": "Instrument de linie de comandă",
+      "copySignInCommand": "Copiază comanda de autentificare",
+      "emptyDescription": "Instalează un agent de linie de comandă acceptat, apoi verifică din nou.",
+      "emptyTitle": "Nu s-a găsit niciun agent de linie de comandă",
+      "custom": {
+        "description": "Lipește o definiție de agent ca să înregistrezi un agent pe care Oleafly nu îl include.",
+        "hint": "Lipește o definiție de agent cu un pachet npm sau uv fixat pe versiune, un binar verificat ori un executabil instalat. Nu pune parole și chei API în acest JSON.",
+        "label": "Înregistrează un agent personalizat",
+        "submit": "Înregistrează definiția",
+        "title": "Adaugă un agent personalizat",
+        "useExample": "Folosește exemplul"
+      },
+      "install": {
+        "confirm": "Instalează",
+        "description": "Oleafly descarcă acest pachet fixat pe versiune în propriul lui folder de agenți. Agentul rulează apoi cu contul tău din linia de comandă atunci când începi o conversație.",
+        "installing": "Se instalează",
+        "location": "Folderul de agenți Oleafly, {{id}}/{{version}}",
+        "locationLabel": "Se instalează în",
+        "packageLabel": "Pachet",
+        "title": "Instalează puntea {{name}} {{version}}"
+      },
+      "installBridge": "Instalează puntea",
+      "installBridgeNextStep": "Instalează puntea ACP, apoi autentifică-te din instrumentul de linie de comandă.",
+      "intro": "Conectează un agent local prin ACP. Fiecare agent își gestionează propriile modele, instrumente și autentificare, iar setările furnizorilor API rămân separate. Folosește contul oficial din linia de comandă pentru autentificare: Oleafly nu importă tokenuri de cont și nu estimează cotele de abonament.",
+      "nextStepTitle": "Pasul următor",
+      "notReported": "Neraportat",
+      "notice": {
+        "installed": "{{name}} este instalat. Autentifică-te din linia lui de comandă înainte să începi o conversație.",
+        "registered": "{{name}} este înregistrat. Înregistrarea nu îl instalează și nu îl pornește.",
+        "removed": "Definiția agentului a fost eliminată. Fișierele instalate și conversațiile salvate rămân disponibile.",
+        "terminalOpen": "Terminalul proiectului este deschis. Rulează comanda de autentificare afișată pentru agentul tău, apoi reconectează conversația."
+      },
+      "openSignInTerminal": "Deschide terminalul de autentificare",
+      "openTerminal": "Deschide terminalul",
+      "platformLabel": "Platformă",
+      "refreshingStatus": "Se reîmprospătează starea agenților. Lista curentă rămâne pe loc.",
+      "registry": {
+        "description": "Caută în registrul ACP agenți publicați de alte echipe.",
+        "hideDistribution": "Ascunde distribuția",
+        "register": "Înregistrează agentul",
+        "registered": "Înregistrat",
+        "reviewHint": "Intrările din registru descriu programe așa cum le prezintă editorii lor. Verifică distribuția înainte să o înregistrezi sau să o instalezi.",
+        "search": "Caută",
+        "searchLabel": "Găsește un agent ACP",
+        "searchPlaceholder": "Caută în registrul ACP",
+        "searching": "Se caută",
+        "showDistribution": "Arată distribuția",
+        "title": "Găsește mai mulți agenți"
+      },
+      "sectionLabel": "Agenți ACP",
+      "signInCommandLabel": "Comandă de autentificare",
+      "versionLabel": "Versiune",
+      "updateBridge": "Actualizează puntea"
+    },
+    "approvals": {
+      "file": {
+        "description": "Modul de aprobare Personalizat citește acest fișier. Se află la ~/.oleafly/approvals.toml și se aplică fiecărui proiect de pe acest dispozitiv.",
+        "discard": "Renunță la modificări",
+        "emptyFile": "Deocamdată fișierul este gol.",
+        "help": {
+          "comments": "Comentariile care încep cu # se păstrează când salvezi de aici, dar o alegere „Întotdeauna în acest proiect” de pe un card de aprobare rescrie fișierul fără ele.",
+          "modes": "Primul tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stabilește modul de aprobare pentru fiecare proiect: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> sau <custom>\"custom\"</custom>. Un proiect care nu apare în listă folosește Aprobă în locul meu.",
+          "openProject": "Proiectul deschis, {{name}}, are identificatorul <projectId>{{id}}</projectId>.",
+          "projectIds": "Identificatorii proiectelor sunt numele folderelor din ~/.oleafly/projects.",
+          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod; regulile de permitere au efect în modul Personalizat, iar pentru run_command sar peste confirmare și în celelalte moduri.",
+          "toolNames": "Nume de instrumente pe care le poți folosi: <names>{{names}}</names> și orice instrument MCP, după numele lui complet din lista Instrumente."
+        },
+        "helpToggle": "Cum funcționează fișierul",
+        "insertExample": "Inserează un exemplu",
+        "reload": "Reîncarcă",
+        "saved": "Salvat. Regulile se aplică de la următorul apel de instrument.",
+        "saving": "Se salvează",
+        "title": "Fișierul cu reguli de aprobare"
+      },
+      "project": {
+        "allowed": "Întotdeauna permis",
+        "denied": "Întotdeauna refuzat",
+        "description": "Reguli salvate pentru {{name}}. Se aplică atunci când modul de aprobare este Personalizat. Elimină o regulă ca să folosești politica standard de risc pentru acel instrument.",
+        "empty": "Încă nu există reguli salvate. Folosește „Întotdeauna în acest proiect” pe o cerere de aprobare ca să adaugi una.",
+        "removeRule": "Elimină regula pentru {{tool}}",
+        "thisProject": "acest proiect",
+        "title": "Aprobări pentru instrumente"
+      }
+    },
+    "budget": {
+      "clear": "Șterge bugetul",
+      "inputLabel": "Buget AI în dolari americani",
+      "inputPlaceholder": "Fără buget",
+      "limit": "Rulările se opresc când bugetul este atins.",
+      "spent": "Cheltuială estimată până acum: {{amount}}. Rulările se opresc când bugetul este atins.",
+      "save": "Salvează bugetul",
+      "title": "Buget AI"
+    },
+    "customProvider": {
+      "addDescription": "Conectează orice punct de acces compatibil cu OpenAI, după URL-ul lui de bază.",
+      "addTitle": "Adaugă un furnizor personalizat",
+      "baseUrlLabel": "URL de bază",
+      "baseUrlNote": "Cheia ta API salvată va fi trimisă către această adresă nouă.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Schimbă numele sau URL-ul de bază.",
+      "editTitle": "Editează furnizorul personalizat",
+      "errors": {
+        "addFailed": "Furnizorul acela nu a putut fi adăugat.",
+        "baseUrlHost": "URL-ului îi lipsește gazda.",
+        "baseUrlInvalid": "Introdu un URL complet, de exemplu https://api.example.com/v1 sau http://localhost:1234/v1.",
+        "baseUrlProtocol": "Folosește https:// sau http:// pentru un server local.",
+        "baseUrlRequired": "URL-ul de bază este obligatoriu.",
+        "idFormat": "Folosește doar litere mici, cifre și cratime, de exemplu acme.",
+        "idRequired": "Identificatorul este obligatoriu.",
+        "nameRequired": "Numele este obligatoriu.",
+        "saveFailed": "Furnizorul acela nu a putut fi salvat."
+      },
+      "idLabel": "Identificator",
+      "idPlaceholder": "acme",
+      "keyLabel": "Cheie API (opțional)",
+      "keyLabelKeepSaved": "Cheie API (lasă gol ca să păstrezi cheia salvată)",
+      "keyPlaceholder": "Lasă gol dacă nu este necesară",
+      "keyPlaceholderStored": "Cheia salvată rămâne dacă nu introduci alta",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Adaugă furnizorul"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Capabilitățile agentului",
+      "customDescription": "Se adaugă la fiecare cerere AI, ca stil și preferințe personale. Asistentul le urmează peste comportamentul lui implicit. Ele nu îi pot schimba instrumentele sau regulile de siguranță.",
+      "customPlaceholder": "de exemplu: Scrie întotdeauna în engleză britanică. Păstrează explicațiile scurte. Preferă pachetul enumitem pentru liste.",
+      "customTitle": "Instrucțiuni personalizate",
+      "defaultModelDescription": "Se folosește ori de câte ori începi o conversație nouă. Poți schimba modelul pentru o anumită conversație din panoul de discuție.",
+      "defaultModelTitle": "Modelul implicit pentru conversații",
+      "pdfCaptureDescription": "Îi permite agentului să transforme paginile compilate în imagini (verify_pdf_pages) pentru verificări vizuale ale aspectului. Dezactivează dacă preferi să nu trimiți imagini de pagină furnizorului tău.",
+      "pdfCaptureLabel": "Permite capturarea paginilor PDF pentru AI",
+      "save": "Salvează instrucțiunile",
+      "saved": "Salvat",
+      "toolsHint": "Cere-i lucruri precum „repară erorile LaTeX”, „adaugă o secțiune Publicații” sau „recompilează și verifică PDF-ul”.",
+      "toolsTitle": "Asistentul acceptă momentan aceste instrumente"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Modelul acela este deja în listă.",
+        "empty": "Introdu un identificator de model.",
+        "spaces": "Identificatorii de model nu pot conține spații."
+      },
+      "addPlaceholder": "Adaugă un identificator de model",
+      "changeSummary": "{{added}} adăugate, {{removed}} eliminate",
+      "custom": "Personalizat",
+      "deleteAriaLabel": "Șterge modelul {{model}}",
+      "deleteDialog": {
+        "description": "Elimini „{{model}}” din lista de modele a acestui furnizor? Modelele incluse pot reveni prin Restabilește valorile implicite. Modelele personalizate pot fi adăugate din nou după identificator.",
+        "title": "Șterge modelul"
+      },
+      "deleteTooltip": "Șterge modelul",
+      "empty": "Încă nu există modele. Adaugă unul mai jos.",
+      "invalidKey": "Cheie API nevalidă.",
+      "metadata": {
+        "refreshFailed": "Datele despre modele nu au putut fi reîmprospătate.",
+        "unknownDate": "dată necunoscută",
+        "updated": "Datele despre modele au fost actualizate la {{date}}",
+        "updatedBundled": "Datele despre modele au fost actualizate la {{date}}, incluse în aplicație",
+        "updatedFromCache": "Datele despre modele au fost actualizate la {{date}}, din ultima descărcare"
+      },
+      "noChanges": "Nicio modificare",
+      "refresh": "Reîmprospătează",
+      "restore": "Restabilește valorile implicite",
+      "restoreTooltip": "Adaugă la loc modelele incluse ale acestui furnizor",
+      "title": "Modele",
+      "unreachable": "Furnizorul nu a putut fi contactat.",
+      "unreadableList": "Furnizorul a returnat modele pe care Oleafly nu le-a putut citi.",
+      "updated": "Actualizat la {{time}}"
+    },
+    "personas": {
+      "addStarter": "Adaugă personajul",
+      "addStarterFailed": "{{name}} nu a putut fi adăugat. {{error}}",
+      "addStarterNamed": "Adaugă personajul {{name}}",
+      "colors": {
+        "forest": "Pădure",
+        "grape": "Strugure",
+        "ocean": "Ocean",
+        "slate": "Ardezie",
+        "sunset": "Apus"
+      },
+      "create": "Creează un personaj",
+      "delete": "Șterge personajul",
+      "deleteDescription": "Ștergi „{{name}}”? Promptul lui se elimină definitiv, iar orice conversație care îl folosește revine la instrucțiunile tale implicite.",
+      "deleteNamed": "Șterge personajul {{name}}",
+      "description": "Instrucțiuni refolosibile despre felul în care ar trebui să lucreze asistentul. Alege unul în conversație, pentru o anumită sarcină. Cât este selectat, îți înlocuiește instrucțiunile implicite.",
+      "edit": "Editează personajul",
+      "editNamed": "Editează personajul {{name}}",
+      "empty": "Încă nu ai adăugat niciun personaj.",
+      "form": {
+        "color": "Culoare",
+        "create": "Creează",
+        "createTitle": "Creează un personaj",
+        "description": "Stabilește instrucțiuni refolosibile despre felul în care ar trebui să lucreze asistentul.",
+        "editTitle": "Editează personajul",
+        "instructions": "Instrucțiuni",
+        "instructionsPlaceholder": "Verifică-mi textul din punctul de vedere al clarității și enumeră mai întâi problemele cele mai importante.",
+        "namePlaceholder": "Redactor concis",
+        "required": "Numele și promptul sunt obligatorii.",
+        "saveFailed": "Personajul acela nu a putut fi salvat."
+      },
+      "starters": {
+        "criticalReviewer": "Găsește slăbiciuni în argumente, metode, dovezi și prezentare.",
+        "documentEditor": "Repară textul, structura, citările și codul LaTeX prin modificări punctuale și sigure.",
+        "figure": "Generează figuri și diagrame de calitate editorială, în LaTeX TikZ sau PGFPlots.",
+        "researchWriter": "Redactează și structurează text științific fără să inventeze dovezi sau citări."
+      },
+      "suggestedDescription": "Începe cu unul dintre acestea, apoi modifică-i instrucțiunile ca să ți se potrivească.",
+      "suggestedTitle": "Personaje sugerate",
+      "title": "Personaje"
+    },
+    "providers": {
+      "addCustom": "Adaugă un furnizor personalizat",
+      "badge": {
+        "connected": "Conectat",
+        "notRunning": "Nu rulează",
+        "running": "Rulează"
+      },
+      "blurbs": {
+        "anthropic": "Modele Claude, bune la cod și la scriere.",
+        "custom": "Furnizor personalizat.",
+        "deepseek": "Modele DeepSeek V4.",
+        "google": "Modele Gemini de la Google AI Studio.",
+        "groq": "Inferență foarte rapidă pe modele deschise.",
+        "mistral": "Modele Mistral și Codestral.",
+        "ollama": "Rulează modele pe computerul tău. Nu are nevoie de cheie: instalează Ollama și descarcă un model.",
+        "openai": "Modele GPT. Alegerea implicită.",
+        "openrouter": "O singură cheie, acces la modele de la multe laboratoare.",
+        "perplexity": "Modele Sonar, cu ancorare în web în timp real.",
+        "xai": "Modele Grok de la xAI.",
+        "zai": "Modele GLM printr-un abonament Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Șterge cheia {{provider}}",
+      "deleteKeyTooltip": "Șterge cheia",
+      "docs": "Documentație",
+      "editAriaLabel": "Editează {{provider}}",
+      "editTooltip": "Editează numele sau punctul de acces",
+      "getKey": "Obține o cheie",
+      "intro": "Conectează mai jos furnizorii pe care îi folosești. Cheile se păstrează doar local. Salvarea uneia o setează ca implicită. Poți trece de la un furnizor și de la un model la altul din meniul derulant al panoului de discuție.",
+      "keyPlaceholder": "Lipește aici cheia ta API",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Activ",
+        "changeHost": "Schimbă gazda (avansat)",
+        "check": "Caută Ollama",
+        "checking": "Se verifică…",
+        "disconnect": "Deconectează",
+        "hideHost": "Ascunde gazda",
+        "installedHint": "Ollama este instalat aici. Pornirea lui durează puțin.",
+        "modelPlaceholder": "Alege un model de folosit",
+        "noModels": "Ollama rulează, dar nu are niciun model instalat. Rulează <pull>ollama pull llama3.2</pull>, apoi verifică din nou.",
+        "noneResponding": "Niciun Ollama nu răspunde la <host>{{host}}</host>.",
+        "notChecked": "Încă neverificat",
+        "notDetected": "Nedetectat",
+        "recheck": "Verifică din nou",
+        "runningModels_one": "Rulează · {{count}} model",
+        "runningModels_few": "Rulează · {{count}} modele",
+        "runningModels_other": "Rulează · {{count}} de modele",
+        "setupSteps": "1. Instalează de la <download>ollama.com <icon></icon></download> · 2. Pornește automat (sau rulează <serve>ollama serve</serve>) · 3. Descarcă un model, de exemplu <pull>ollama pull llama3.2</pull> · 4. Verifică din nou.",
+        "start": "Pornește Ollama"
+      },
+      "removeAriaLabel": "Elimină {{provider}}",
+      "removeDialog": {
+        "description": "Elimini „{{provider}}”? Cheia lui salvată și lista lui de modele se șterg odată cu el.",
+        "title": "Elimină furnizorul personalizat"
+      },
+      "removeTooltip": "Elimină furnizorul personalizat",
+      "replaceKey": "Înlocuiește cheia",
+      "status": {
+        "error": "Eroare: {{message}}",
+        "errorFallback": "Cheia nu a putut fi validată.",
+        "valid": "Cheia este validă. Modelele sunt pregătite mai jos.",
+        "validating": "Se verifică cheia..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Se încarcă agenții…",
+      "errors": {
+        "invalidKey": "Cheie API nevalidă.",
+        "keyNotKept": "URL-ul de bază a fost salvat, dar cheia nu. Introdu cheia din nou.",
+        "providerGone": "Furnizorul acela nu mai există.",
+        "providerIdInUse": "Identificatorul acela de furnizor este deja folosit."
+      },
+      "messages": {
+        "keyRemoved": "Cheia {{provider}} a fost eliminată.",
+        "keyRemovedAccessDisabled": "Cheia {{provider}} a fost eliminată. Accesul AI este dezactivat.",
+        "keySavedAddModels": "Cheia {{provider}} a fost salvată. Adaugă manual modele mai jos.",
+        "keySavedCheckedOnUse": "Cheia {{provider}} a fost salvată. Se verifică la prima folosire.",
+        "ollamaConnected": "Ollama conectat · {{model}}",
+        "preferencesReset": "Preferințele Asistentului AI au revenit la valorile implicite.",
+        "providerAdded": "{{provider}} a fost adăugat.",
+        "providerConnected": "{{provider}} este conectat.",
+        "providerUpdated": "{{provider}} a fost actualizat.",
+        "providerUpdatedWithoutModels": "{{provider}} a fost actualizat. Lista lui de modele nu a putut fi reîmprospătată."
+      },
+      "reset": {
+        "confirmWithProject": "Readu preferințele Asistentului AI la valorile implicite, inclusiv disponibilitatea modelelor, abilitățile activate și bugetul acestui proiect. Furnizorul și modelul active, cheile furnizorilor, personajele, regulile de aprobare, istoricul de utilizare și serverele MCP rămân neschimbate.",
+        "confirmWithoutProject": "Readu preferințele Asistentului AI la valorile implicite, inclusiv disponibilitatea modelelor și abilitățile activate. Furnizorul și modelul active, cheile furnizorilor, personajele, regulile de aprobare, istoricul de utilizare și serverele MCP rămân neschimbate.",
+        "sectionName": "Asistentul AI"
+      },
+      "tabs": {
+        "agents": "Agenți din linia de comandă",
+        "instructions": "Instrucțiuni",
+        "mcp": "MCP",
+        "personas": "Personaje",
+        "providers": "Furnizori și chei",
+        "skills": "Abilități"
+      }
+    },
+    "skills": {
+      "addFolder": "Adaugă un folder",
+      "addFolderDialogTitle": "Adaugă un folder de abilități",
+      "catalog": {
+        "description": "Abilități suplimentare pentru domenii de cercetare specifice. Instalează una ca să o adaugi în lista de mai sus.",
+        "empty": "Catalogul nu are abilități suplimentare de instalat.",
+        "install": "Instalează",
+        "loading": "Se încarcă catalogul...",
+        "messages": {
+          "installed": "{{name}} a fost instalată.",
+          "removed": "{{name}} a fost eliminată."
+        },
+        "progress": {
+          "downloading": "Se descarcă...",
+          "downloadingPercent": "Se descarcă {{percent}}%",
+          "extracting": "Se despachetează...",
+          "extractingPercent": "Se despachetează {{percent}}%",
+          "failed": "Instalarea a eșuat.",
+          "finishing": "Se încheie instalarea..."
+        },
+        "refresh": "Reîmprospătează",
+        "source": {
+          "bundled": "Catalog inclus",
+          "bundledOffline": "Catalog inclus, rețeaua nu a putut fi contactată",
+          "cached": "Catalog din cache de la cdn.oleafly.com, adus ultima dată la {{when}}",
+          "cachedOffline": "Catalog din cache de la cdn.oleafly.com, adus ultima dată la {{when}}, rețeaua nu a putut fi contactată",
+          "cachedUnknown": "Catalog din cache de la cdn.oleafly.com, adus ultima dată la o oră necunoscută",
+          "cachedUnknownOffline": "Catalog din cache de la cdn.oleafly.com, adus ultima dată la o oră necunoscută, rețeaua nu a putut fi contactată",
+          "remote": "Catalog de la cdn.oleafly.com, adus la {{when}}",
+          "remoteUnknown": "Catalog de la cdn.oleafly.com, adus la o oră necunoscută"
+        },
+        "title": "Raftul pe domenii",
+        "uninstall": "Dezinstalează",
+        "update": "Actualizează"
+      },
+      "createSkill": "Creează o abilitate",
+      "description": "Asistentul încarcă instrucțiunile complete ale unei abilități doar când decide că are nevoie de ea sau imediat, dacă scrii /identificator-abilitate în conversație. O abilitate pe care o activezi aici este activă în orice proiect, până când un proiect o suprascrie.",
+      "editAria": "Editează {{name}}",
+      "editor": {
+        "createDescription": "Creează o ciornă SKILL.md în folderul tău de abilități Oleafly.",
+        "createTitle": "Creează o abilitate",
+        "descriptionPlaceholder": "Verifică dacă fiecare afirmație are sprijin.",
+        "editDescription": "Ajustează metadatele și instrucțiunile păstrate în SKILL.md.",
+        "editTitle": "Editează abilitatea",
+        "instructions": "Instrucțiuni",
+        "instructionsHint": "Lasă gol ca să se creeze un schelet minimal de instrucțiuni.",
+        "instructionsPlaceholder": "Enumeră când se folosește această abilitate și pașii pe care ar trebui să îi urmeze asistentul.",
+        "namePlaceholder": "Verificator de afirmații",
+        "requiredAll": "Numele, descrierea și instrucțiunile sunt obligatorii.",
+        "requiredBasics": "Numele și descrierea sunt obligatorii.",
+        "submitCreate": "Creează"
+      },
+      "empty": "Nu s-a găsit nicio abilitate. Adaugă un folder sau creează una.",
+      "enableAria": "Activează {{name}}",
+      "fileCount_one": "{{count}} fișier",
+      "fileCount_few": "{{count}} fișiere",
+      "fileCount_other": "{{count}} de fișiere",
+      "groups": {
+        "shelf": "Raftul pe domenii",
+        "user": "Abilitățile tale"
+      },
+      "inheritsDevice": "Moștenește setarea dispozitivului",
+      "invalidBadge": "Nevalidă",
+      "loadFailed": "Abilitățile nu au putut fi încărcate. {{message}}",
+      "loading": "Se încarcă abilitățile...",
+      "messages": {
+        "added": "{{name}} a fost adăugată.",
+        "created": "{{name}} a fost creată.",
+        "editorClosed": "Editorul de abilități nu mai este deschis.",
+        "removed": "{{name}} a fost eliminată.",
+        "saved": "{{name}} a fost salvată.",
+        "updated": "{{name}} a fost actualizată."
+      },
+      "missingDescription": "Această abilitate are nevoie de o descriere.",
+      "offForProject": "Dezactivată pentru acest proiect",
+      "onForProject": "Activată pentru acest proiect",
+      "phases": {
+        "authoring": "Redactare",
+        "communication": "Comunicare",
+        "figures": "Figuri",
+        "research": "Cercetare",
+        "review": "Recenzie",
+        "submission": "Trimitere",
+        "tooling": "Instrumente"
+      },
+      "removeAria": "Elimină {{name}}",
+      "removeDialog": {
+        "description": "Elimini „{{name}}” și folderul ei din Oleafly? Această acțiune nu poate fi anulată.",
+        "title": "Elimină abilitatea"
+      },
+      "share": {
+        "description": "Leagă-ți abilitățile în folderele pe care ceilalți agenți de programare de pe acest computer le citesc deja, ca să scrii o abilitate o singură dată și să o poată folosi orice agent.",
+        "emptyBody": "Nu s-a găsit niciun alt folder de agent pe acest computer.",
+        "status": {
+          "linked": "{{linked}} din {{total}} legate",
+          "undetected": "Negăsit pe acest dispozitiv",
+          "unsupported": "Neacceptat pe acest sistem"
+        },
+        "summary": {
+          "checking": "Se verifică folderele agenților",
+          "linked_one": "{{linked}} din {{count}} agent este legat",
+          "linked_few": "{{linked}} din {{count}} agenți sunt legați",
+          "linked_other": "{{linked}} din {{count}} de agenți sunt legați",
+          "none": "Nu s-a găsit niciun alt folder de agent"
+        },
+        "title": "Împarte abilitățile cu ceilalți agenți de pe acest computer"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Adăugată",
+        "bundled": "Inclusă",
+        "catalog": "Instalată"
+      },
+      "tier": {
+        "credits": "De la {{credits}}",
+        "native": "Flux de lucru Oleafly",
+        "shelf": "Abilitate din raftul pe domenii",
+        "shelfWithLicense": "Raftul pe domenii, {{license}}",
+        "user": "Abilitatea ta",
+        "vendored": "Abilitate preluată"
+      },
+      "title": "Abilități",
+      "updateAction": "Actualizează",
+      "updateDialog": {
+        "description": "Înlocuiești „{{name}}” cu cea mai recentă versiune inclusă? Modificările locale asupra fișierelor ei se vor pierde.",
+        "title": "Actualizează abilitatea"
+      },
+      "useDeviceSetting": "Folosește setarea dispozitivului",
+      "useDeviceSettingAria": "Folosește setarea dispozitivului pentru {{name}}",
+      "useInProject": "Folosește în acest proiect",
+      "useInProjectAria": "Folosește {{name}} în acest proiect",
+      "validateAria": "Validează {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Se folosește pentru butoane, selecții și cursorul din editor.",
+        "label": "Culoare de accent",
+        "swatchAriaLabel": "Accent {{name}}"
+      },
+      "bgPattern": {
+        "description": "Alege modelul din spatele raftului de proiecte.",
+        "dots": "Puncte",
+        "grid": "Grilă",
+        "label": "Model de fundal"
+      },
+      "dock": {
+        "bottom": "Jos",
+        "description": "Alege unde stă bara de pe ecranul principal.",
+        "label": "Poziția barei",
+        "left": "Stânga",
+        "right": "Dreapta"
+      },
+      "font": {
+        "description": "Folosește fontul de rezervă al sistemului atunci când un font nu este instalat.",
+        "label": "Fontul aplicației"
+      },
+      "fontSize": {
+        "description": "Scalează textul din meniuri, panouri și butoane.",
+        "label": "Dimensiunea fontului aplicației"
+      },
+      "theme": {
+        "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
+        "label": "Aspect"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Pagina de start a browserului",
+        "description": "Alege pagina care se deschide odată cu browserul.",
+        "label": "Pagină de start"
+      },
+      "searchEngine": {
+        "description": "Alege motorul de căutare folosit pentru căutările de text.",
+        "label": "Motor de căutare implicit"
+      }
+    },
+    "customTheme": {
+      "cleared": "Personalizarea temei a fost ștearsă.",
+      "customCss": {
+        "description": "Declarațiile opționale se aplică doar în interiorul aplicației. Regulile, importurile și adresele URL sunt blocate.",
+        "label": "Declarații CSS limitate la aplicație"
+      },
+      "darkRestored": "Elementele temei întunecate au fost restabilite.",
+      "description": "Schimbă elementele de culoare ale aplicației pentru fiecare mod. Modificările se salvează local și au efect imediat.",
+      "exportTheme": "Exportă tema",
+      "fileTooLarge": "Fișierul temei depășește 128 KiB.",
+      "importFileAriaLabel": "Importă un fișier de temă",
+      "importTheme": "Importă o temă",
+      "imported": "Tema a fost importată și aplicată.",
+      "importedSkippedMore_one": "Tema a fost importată și aplicată. S-a sărit peste {{count}} element pe care Oleafly nu îl folosește: {{tokens}} și altele.",
+      "importedSkippedMore_few": "Tema a fost importată și aplicată. S-a sărit peste {{count}} elemente pe care Oleafly nu le folosește: {{tokens}} și altele.",
+      "importedSkippedMore_other": "Tema a fost importată și aplicată. S-a sărit peste {{count}} de elemente pe care Oleafly nu le folosește: {{tokens}} și altele.",
+      "importedSkipped_one": "Tema a fost importată și aplicată. S-a sărit peste {{count}} element pe care Oleafly nu îl folosește: {{tokens}}.",
+      "importedSkipped_few": "Tema a fost importată și aplicată. S-a sărit peste {{count}} elemente pe care Oleafly nu le folosește: {{tokens}}.",
+      "importedSkipped_other": "Tema a fost importată și aplicată. S-a sărit peste {{count}} de elemente pe care Oleafly nu le folosește: {{tokens}}.",
+      "lightRestored": "Elementele temei deschise au fost restabilite.",
+      "modeDark": "Mod întunecat",
+      "modeFieldsetAriaLabel": "Modul de temă de editat",
+      "modeLight": "Mod deschis",
+      "pickColorDark": "Alege culoarea {{token}} pentru modul întunecat",
+      "pickColorLight": "Alege culoarea {{token}} pentru modul deschis",
+      "radius": {
+        "description": "Folosește o valoare precum 8px, 0.5rem sau 1em. Lasă gol pentru valoarea implicită.",
+        "label": "Raza colțurilor"
+      },
+      "resetAll": "Resetează tot",
+      "resetMode": "Resetează acest mod",
+      "title": "Personalizarea temei",
+      "tokenInputDark": "Elementul {{token}} pentru modul întunecat",
+      "tokenInputLight": "Elementul {{token}} pentru modul deschis",
+      "tokens": {
+        "accent": "Accent",
+        "accentForeground": "Text pe accent",
+        "background": "Fundal",
+        "border": "Contur",
+        "card": "Panou",
+        "cardForeground": "Text pe panou",
+        "destructive": "Pericol",
+        "destructiveForeground": "Text pe pericol",
+        "foreground": "Text",
+        "input": "Conturul câmpurilor",
+        "muted": "Estompat",
+        "mutedForeground": "Text estompat",
+        "popover": "Fereastră flotantă",
+        "popoverForeground": "Text pe fereastra flotantă",
+        "primary": "Principal",
+        "primaryForeground": "Text pe principal",
+        "ring": "Inel de focalizare",
+        "secondary": "Secundar",
+        "secondaryForeground": "Text pe secundar",
+        "sidebar": "Bară laterală",
+        "sidebarAccent": "Accentul barei laterale",
+        "sidebarAccentForeground": "Text pe accentul barei laterale",
+        "sidebarBorder": "Conturul barei laterale",
+        "sidebarForeground": "Text în bara laterală"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Inserează automat parantezele de închidere.",
+        "label": "Închidere automată a parantezelor"
+      },
+      "autoCloseEnvironments": {
+        "description": "Inserează \\end când apeși Enter după \\begin.",
+        "label": "Închidere automată a mediilor"
+      },
+      "autoCloseMath": {
+        "description": "Împerechează $, \\( și \\[ pe măsură ce scrii.",
+        "label": "Închidere automată a formulelor"
+      },
+      "autocomplete": {
+        "description": "Arată completările de cod pe măsură ce scrii. Ctrl+Space le deschide oricum, chiar dacă este dezactivată.",
+        "label": "Completare automată"
+      },
+      "font": {
+        "description": "Alege fontul monospațiat folosit pentru fișierele sursă.",
+        "label": "Fontul editorului"
+      },
+      "fontSize": {
+        "description": "Stabilește dimensiunea textului din editorul de sursă.",
+        "label": "Dimensiunea fontului din editor"
+      },
+      "ghostCompletion": {
+        "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
+        "label": "Sugestie în text"
+      },
+      "nonBlinkingCursor": {
+        "description": "Păstrează cursorul din editor continuu.",
+        "label": "Cursor care nu clipește"
+      },
+      "stickyScroll": {
+        "description": "Păstrează în partea de sus secțiunile și mediile LaTeX curente în timp ce derulezi.",
+        "label": "Derulare cu antet fix"
+      },
+      "theme": {
+        "description": "Stabilește culorile de sintaxă separat de tema aplicației.",
+        "label": "Tema editorului"
+      },
+      "keymap": {
+        "description": "Alege setul de scurtături folosit de editorul de sursă.",
+        "label": "Scurtături",
+        "options": {
+          "default": "Implicit",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Stabilește spațierea verticală dintre liniile de sursă.",
+        "label": "Înălțimea liniei",
+        "options": {
+          "compact": "Compactă",
+          "normal": "Normală",
+          "wide": "Largă"
+        }
+      },
+      "lineWrap": {
+        "description": "Rupe liniile lungi în loc să derulezi lateral.",
+        "label": "Rupe liniile lungi"
+      },
+      "tabSize": {
+        "description": "Spațiile inserate pentru fiecare nivel de indentare și lățimea cu care se afișează un tab.",
+        "label": "Dimensiunea tabului"
+      },
+      "mathPreview": {
+        "description": "Arată formula randată deasupra celei în care se află cursorul.",
+        "label": "Previzualizarea formulelor"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Adaugă un tipar de fișiere ascunse",
+        "description": "Alege ce fișiere și foldere generate rămân în afara arborelui de proiect.",
+        "inputAriaLabel": "Numele sau tiparul fișierului de ascuns",
+        "placeholder": "Adaugă un nume de fișier sau un tipar",
+        "removeAriaLabel": "Elimină {{pattern}} din fișierele ascunse",
+        "title": "Ascunde fișiere din arborele de fișiere"
+      },
+      "homeView": {
+        "description": "Alege cum sunt aranjate proiectele în bibliotecă.",
+        "grid": "Grilă",
+        "label": "Vizualizarea implicită de pe ecranul principal",
+        "list": "Listă"
+      },
+      "openIn": {
+        "description": "Alege aranjarea folosită la deschiderea unui proiect.",
+        "label": "Deschide proiectele în"
+      },
+      "showTree": {
+        "description": "Deschide arborele de fișiere sursă ori de câte ori intri într-un proiect.",
+        "label": "Arată arborele de fișiere la deschidere"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",
+        "label": "Mod întunecat pentru PDF"
+      },
+      "hoverPreview": {
+        "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",
+        "label": "Previzualizează PDF-ul la trecerea cu mouse-ul"
+      },
+      "zoomShortcuts": {
+        "description": "Folosește Cmd/Ctrl cu +, - și 0 ca să mărești PDF-ul, nu fereastra aplicației.",
+        "label": "Scurtături de mărire pentru PDF"
+      }
+    },
+    "sectionName": "Aspect",
+    "tabs": {
+      "app": "Aplicație",
+      "browser": "Browser",
+      "editor": "Editor",
+      "files": "Proiect",
+      "pdf": "Previzualizare PDF",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Tema de culoare a terminalului",
+        "description": "Alege paleta de culori ANSI a terminalului.",
+        "label": "Temă de culoare",
+        "optionDark": "{{name}} · întunecată",
+        "optionLight": "{{name}} · deschisă"
+      },
+      "colors": {
+        "background": "Fundal",
+        "backgroundAriaLabel": "Culoarea de fundal a terminalului",
+        "cursor": "Cursor",
+        "cursorAriaLabel": "Culoarea cursorului din terminal",
+        "description": "Ajustează culorile de bază păstrând paleta ANSI aleasă.",
+        "followingAppTheme": "Urmează tema aplicației: paletă întunecată în modul întunecat, paletă deschisă în modul deschis. Alege mai sus o paletă anume ca să le poți personaliza.",
+        "foreground": "Text",
+        "foregroundAriaLabel": "Culoarea textului din terminal",
+        "label": "Culorile terminalului"
+      },
+      "cursorBlink": {
+        "description": "Fă cursorul din terminal să clipească.",
+        "label": "Cursor care clipește"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Stilul cursorului din terminal",
+        "bar": "Bară",
+        "block": "Bloc",
+        "description": "Alege forma cursorului din terminal.",
+        "label": "Stilul cursorului",
+        "underline": "Linie dedesubt"
+      },
+      "font": {
+        "ariaLabel": "Familia de fonturi a terminalului",
+        "description": "Alege fontul monospațiat folosit de terminal.",
+        "label": "Fontul terminalului"
+      },
+      "fontSize": {
+        "description": "Stabilește dimensiunea textului din terminal.",
+        "label": "Dimensiunea fontului din terminal"
+      },
+      "fontWeight": {
+        "description": "Stabilește grosimea textului obișnuit din terminal.",
+        "label": "Grosimea fontului obișnuit"
+      },
+      "fontWeightBold": {
+        "description": "Stabilește grosimea textului aldin din terminal.",
+        "label": "Grosimea fontului aldin"
+      },
+      "startWithProject": {
+        "description": "Pornește shell-ul la deschiderea unui proiect, nu prima dată când arăți terminalul.",
+        "label": "Pornește shell-ul odată cu proiectul"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly îl salvează în fundal și numai dacă sursa s-a schimbat.",
+      "label": "Salvează un punct de control după fiecare compilare reușită"
+    },
+    "config": {
+      "loadFailed": "Setările punctelor de control nu au putut fi încărcate.",
+      "saveFailed": "Setările punctelor de control nu au putut fi salvate."
+    },
+    "description": "Un punct de control înregistrează fișierele sursă folosite de o compilare reușită.",
+    "notifyOnFailure": {
+      "description": "Oleafly îți spune când un punct de control nu poate fi salvat, inclusiv la probleme de stocare sau la fișiere pe care nu le-a putut captura.",
+      "label": "Arată o notificare când un punct de control nu poate fi salvat"
+    },
+    "title": "Puncte de control"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Elimină cheia API",
+      "removeEmail": "Elimină adresa de e-mail",
+      "removeKey": "Elimină cheia",
+      "saveApiKey": "Salvează cheia API",
+      "saveEmail": "Salvează adresa de e-mail",
+      "saveKey": "Salvează cheia"
+    },
+    "connected": "Conectat",
+    "description": "Gestionează credențialele folosite de sursele de căutare științifică.",
+    "keyFree": {
+      "description": "Aceste surse sunt disponibile fără cheie API.",
+      "title": "Surse fără credențiale"
+    },
+    "openAlex": {
+      "docsLink": "Limitele de acces OpenAlex",
+      "emailLabel": "Adresa de contact OpenAlex",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Adresa de contact OpenAlex nu a putut fi eliminată.",
+      "emailRemoved": "Adresa de contact OpenAlex a fost eliminată",
+      "emailSaveFailed": "Adresa de contact OpenAlex nu a putut fi salvată.",
+      "emailSaved": "Adresa de contact OpenAlex a fost salvată",
+      "hint": "O cheie API este recomandată. OpenAlex cere chei pentru acces obișnuit, iar căutările fără cheie împart o cotă zilnică mică. O adresă de contact activează și accesul preferențial. Amândouă rămân pe acest dispozitiv.",
+      "keyLabel": "Cheie API OpenAlex",
+      "keyRemoveFailed": "Cheia API OpenAlex nu a putut fi eliminată.",
+      "keyRemoved": "Cheia API OpenAlex a fost eliminată",
+      "keySaveFailed": "Cheia API OpenAlex nu a putut fi salvată.",
+      "keySaved": "Cheia API OpenAlex a fost salvată"
+    },
+    "semanticScholar": {
+      "docsLink": "Informații despre API-ul Semantic Scholar",
+      "hint": "O cheie API este opțională. Căutările anonime folosesc limitele publice ale Semantic Scholar.",
+      "keyLabel": "Cheie API Semantic Scholar",
+      "keyRemoveFailed": "Cheia API Semantic Scholar nu a putut fi eliminată.",
+      "keyRemoved": "Cheia API Semantic Scholar a fost eliminată",
+      "keySaveFailed": "Cheia API Semantic Scholar nu a putut fi salvată.",
+      "keySaved": "Cheia API Semantic Scholar a fost salvată"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Opțional. Activează sursa Google Scholar din Căutarea de citări, prin Serper. Fără o cheie, acea sursă este sărită atunci când o selectezi.",
+      "keyLabel": "Cheie API Serper",
+      "keyRemoveFailed": "Cheia API Serper nu a putut fi eliminată.",
+      "keyRemoved": "Cheia API Serper a fost eliminată",
+      "keySaveFailed": "Cheia API Serper nu a putut fi salvată.",
+      "keySaved": "Cheia API Serper a fost salvată"
+    },
+    "title": "Căutare de citări"
+  },
+  "cite": {
+    "apa": "Aceeași referință în stil APA se află în spatele opțiunii Cite this repository de pe GitHub",
+    "copyBibtex": "Copiază BibTeX",
+    "description": "Oleafly este gratuit și open source și rămâne așa atât timp cât lumea știe că există. Dacă ți-a ajutat o lucrare, o singură intrare în bibliografia ta îi spune următorului cercetător de unde vine instrumentul. Copiaz-o, lipește-o în fișierul tău .bib și citează cheia <citeKey>oleafly</citeKey>.",
+    "title": "Citează Oleafly în lucrarea ta"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Toate sunt descărcate",
+      "download": "Descarcă",
+      "downloadAll": "Descarcă tot"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Ștergi „{{name}}” din biblioteca ta? Proiectele deja create din el își păstrează propria copie și nu sunt afectate.",
+      "deleteTitle": "Șterge șablonul generat cu AI",
+      "deleted": "„{{name}}” a fost șters din biblioteca ta",
+      "empty": "Încă nu ai șabloane generate cu AI. Creează unul din galeria de șabloane.",
+      "fallbackDescription": "Șablon generat cu AI",
+      "toggle": "Gestionează șabloanele generate cu AI"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Un font sans-serif umanist și cald, folosit de multe șabloane moderne de CV.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Un sans-serif curat și neutru, care se citește bine pe ecran și pe hârtie.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Un serif de tranziție rafinat, potrivit pentru documente academice și executive.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Nu există fonturi de descărcat.",
+      "engineNote": "Motorul LuaLaTeX (pentru fișiere PDF etichetate și accesibile) se gestionează în secțiunea Motor LaTeX.",
+      "heading": "Fonturi",
+      "tooltip": "Unele șabloane folosesc fonturi open-source de calitate. Ca Oleafly să rămână mic, acele fonturi se descarcă la cerere: când creezi un astfel de șablon, fonturile sunt aduse și copiate în proiect, ca el să rămână de sine stătător și să se compileze offline. Le poți descărca și dinainte de aici sau le poți elimina ca să eliberezi spațiu."
+    },
+    "packProgress": "{{index}} din {{total}}",
+    "progress": "{{label}} ({{index}} din {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Fonturi",
+      "templates": "Șabloane",
+      "dictionaries": "Dicționare"
+    },
+    "templates": {
+      "empty": "Nu există pachete de șabloane de descărcat.",
+      "heading": "Șabloane",
+      "tooltip": "Pachetele suplimentare de șabloane se descarcă la cerere, ca Oleafly să rămână mic. Descarcă un pachet de aici ca să îi folosești șabloanele offline sau elimină-le mai târziu ca să eliberezi spațiu."
+    },
+    "dictionaries": {
+      "empty": "Încă nu este descărcată nicio limbă suplimentară.",
+      "heading": "Dicționare ortografice",
+      "note": "Alege o limbă în secțiunea General ca să o descarci. Cele cinci pachete incluse sunt mereu disponibile și nu apar aici.",
+      "tooltip": "Cinci pachete de limbă vin cu Oleafly. Orice altă limbă se descarcă la cerere, când o alegi ca dicționar ortografic, și se păstrează aici ca să funcționeze offline după aceea. Eliminarea uneia eliberează spațiul și revine la setarea aplicației."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Doar pentru proiecte în care ai încredere. Rulează o distribuție TeX locală, care poate citi fișierele accesibile contului tău. Acceptă seturi complete de pachete și fluxuri cu mai multe treceri. Execuția comenzilor din sistem rămâne o permisiune separată, per proiect.",
+        "name": "latexmk (TeX din sistem)"
+      },
+      "tectonic": {
+        "detail": "Vine cu Oleafly. Rapid, offline, fără configurare. Acoperă LaTeX simplu și cele mai obișnuite pachete.",
+        "name": "Tectonic (inclus)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Motorul de compilare implicit",
+      "tooltip": "Se aplică proiectelor noi. Fiecare proiect își fixează propriul motor în project.json, așa că cine deschide același proiect îl compilează la fel, indiferent de această setare."
+    },
+    "distributions": {
+      "empty": "Nu s-a detectat nicio distribuție TeX pe această mașină.",
+      "heading": "Gestionează distribuțiile TeX",
+      "rowTooltip": "Inclusă cu {{tools}}. Oleafly își rulează instrumentele TeX din {{binDir}}.",
+      "rowTooltipNoTools": "În această instalare nu s-a găsit niciun latexmk sau tlmgr. Oleafly își rulează instrumentele TeX din {{binDir}}.",
+      "tooltip": "Tot ce poate folosi motorul latexmk pe această mașină. TinyTeX se instalează în folderul tău personal, fără drepturi de administrator. Instalările de sistem (MacTeX, TeX Live, MiKTeX) sunt detectate automat."
+    },
+    "latexmkMissing": "nu s-a găsit latexmk",
+    "markdown": {
+      "downloading": "Se descarcă…",
+      "heading": "Compilator Markdown",
+      "install": "Instalează pandoc",
+      "repair": "Repară Pandoc",
+      "note": "Alegerea altui motor PDF pentru Markdown sau a unui pandoc din sistem în locul celui gestionat nu este încă disponibilă.",
+      "status": {
+        "checking": "Se caută pandoc…",
+        "installing": "Se aduce o versiune fixată de pandoc. Prima dată durează un moment.",
+        "missing": "Nu a fost găsit pe acest Mac. Oleafly descarcă un pandoc compatibil (2.19 sau mai nou) în propriul lui folder; nimic altceva din sistemul tău nu se schimbă.",
+        "ready": "Detectat. Proiectele Markdown se convertesc în LaTeX cu pandoc, apoi se compilează cu Tectonic-ul inclus."
+      },
+      "tectonicDetail": "Tehnoredactează codul LaTeX produs de pandoc. Vine cu Oleafly; nu ai nimic de configurat.",
+      "tooltip": "Proiectele Markdown sunt convertite cu pandoc (Pandoc Markdown: tabele, note de subsol, citări, formule) în LaTeX, apoi tehnoredactate în PDF de Tectonic-ul inclus. Pandoc se descarcă la cerere, prima dată când este nevoie de el."
+    },
+    "packages": {
+      "ariaLabel": "Pachete LaTeX",
+      "badge": {
+        "breaks": "strică etichetarea",
+        "caution": "etichetare: atenție"
+      },
+      "emptySearch": "Nu s-a găsit niciun pachet. Încearcă alt nume sau alt cuvânt-cheie.",
+      "emptySuggested": "Niciun pachet sugerat nu corespunde. Caută în TeX Live ca să verifici tot catalogul.",
+      "error": {
+        "install": "{{name}} nu a putut fi instalat.",
+        "read": "Pachetele instalate nu au putut fi citite.",
+        "remove": "{{name}} nu a putut fi eliminat.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Găsește pachete LaTeX",
+      "filterPlaceholder": "Filtrează pachetele…",
+      "heading": "Pachete",
+      "includedIn": "Inclus în {{package}}. Eliminarea lui elimină și celelalte fișiere din acel pachet.",
+      "intro": {
+        "available": "Aceste pachete sunt pentru proiectele care folosesc latexmk (TeX din sistem). Tectonic își folosește propriul set de pachete.",
+        "unavailable": "Gestionarea pachetelor are nevoie de TeX Live sau TinyTeX. Pentru MiKTeX, folosește MiKTeX Console."
+      },
+      "refreshInstalled": "Reîmprospătează pachetele instalate",
+      "resultsCapped": "{{total}} de rezultate TeX Live. Folosește o căutare mai precisă ca să restrângi lista.",
+      "results_one": "{{count}} rezultat TeX Live.",
+      "results_few": "{{count}} rezultate TeX Live.",
+      "results_other": "{{count}} de rezultate TeX Live.",
+      "search": "Caută în TeX Live",
+      "searching": "Se caută…",
+      "suggested": "Pachete sugerate. Caută în TeX Live pentru mai multe.",
+      "tree": {
+        "both": "în ambii arbori",
+        "system": "în arborele de sistem",
+        "user": "în arborele tău personal"
+      }
+    },
+    "sectionName": "Motoare",
+    "tagging": {
+      "heading": "Export etichetat și accesibil",
+      "hint": {
+        "none": "Instalează TinyTeX din „Gestionează distribuțiile TeX” de mai sus ca să activezi exportul etichetat.",
+        "system": "Detectat în sistemul tău. Nu ai nimic de instalat.",
+        "tinytex": "Oferit de TinyTeX (gestionat mai sus)."
+      },
+      "status": {
+        "none": "Niciun motor de etichetare instalat",
+        "system": "Se folosește un LuaLaTeX / TeX Live din sistem",
+        "tinytex": "TinyTeX este instalat"
+      },
+      "tooltip": "Motorul implicit (Tectonic) este rapid și funcționează offline, dar nu poate produce fișiere PDF etichetate, conforme Section 508 / PDF-UA. Pentru asta este nevoie de LuaLaTeX din sistem, care poate citi fișierele locale accesibile contului tău și ar trebui folosit doar cu proiecte în care ai încredere. Oleafly poate folosi o distribuție existentă sau TinyTeX-ul gestionat de el."
+    },
+    "tinytex": {
+      "detail": "O distribuție TeX Live compactă în folderul tău personal. Descărcarea de bază este de circa 250 MB. Șabloanele de reviste pot adăuga pachete mai târziu, până la circa 1 GB în total. Instalarea din timp face LaTeX-ul din sistem disponibil atunci când îl alegi explicit.",
+      "download": "Descarcă TinyTeX (~250 MB)",
+      "resume": "Reia descărcarea ({{size}} MB descărcați)"
+    },
+    "typst": {
+      "detail": "Vine cu Oleafly. Rapid, offline, fără configurare. Compilează documente Typst în PDF.",
+      "heading": "Compilator Typst",
+      "name": "Typst (inclus)",
+      "note": "Proiectele Typst folosesc întotdeauna compilatorul inclus. Alegerea unei versiuni de compilator sau a unui Typst din sistem nu este încă disponibilă.",
+      "tooltip": "Typst vine în interiorul Oleafly, așa că nu ai nimic de instalat sau de configurat. Fiecare proiect Typst se compilează cu compilatorul inclus."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Conectat",
+      "disconnect": "Deconectează",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Conectează",
+      "toggle": "Avansat: folosește un token personal de acces",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Proiectele noi și cele deschise primesc un depozit Git, ca panoul Git să poată urmări modificările. Oleafly nu comite niciodată din proprie inițiativă.",
+      "label": "Inițializează Git pentru fiecare proiect"
+    },
+    "config": {
+      "loadFailed": "Setările Git nu au putut fi încărcate.",
+      "saveFailed": "Setările Git nu au putut fi salvate."
+    },
+    "connect": "Conectează GitHub",
+    "description": "Fă copii de siguranță ale proiectelor, sincronizează-le între dispozitive și trimite sau adu din panoul Git.",
+    "device": {
+      "openGithub": "Deschide GitHub",
+      "opened": "Am deschis <verificationLink>{{url}}</verificationLink> în browserul tău. Lipește codul acolo ca să autorizezi Oleafly.",
+      "timedOut": "Autentificarea GitHub a expirat. Încearcă din nou.",
+      "title": "Introdu acest cod pe GitHub",
+      "waiting": "Se așteaptă autorizarea…"
+    },
+    "hint": {
+      "oauth": "Te autentifică printr-un cod de unică folosință, în browser.",
+      "token": "Autentificarea OAuth nu este încă pregătită în această versiune, așa că lipește un token."
+    },
+    "notice": {
+      "connected": "Conectat ca @{{login}}",
+      "disconnected": "Deconectat."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Conectează",
+      "disconnect": "Deconectează"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>alphaxiv.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink>, generează o cheie (începe cu <keyPrefix>axv1_</keyPrefix>) și lipește-o mai jos.",
+      "apiKeyLabel": "Cheie API alphaXiv",
+      "description": "Instrumente de căutare în literatură și de analiză a lucrărilor, pentru asistent."
+    },
+    "cookies": {
+      "action": "Importă cookie-uri",
+      "confirmAllDomains": "Ești pe cale să imporți cookie-uri din profilul {{profile}} al {{browser}}, pentru toate domeniile. Cookie-urile importate se păstrează în browserul integrat și se trimit doar către site-urile lor. Oleafly îți va cere încă o confirmare, într-o fereastră nativă, înainte să citească profilul.",
+      "confirmDomain": "Ești pe cale să imporți cookie-uri din profilul {{profile}} al {{browser}}, pentru {{domain}}. Cookie-urile importate se păstrează în browserul integrat și se trimit doar către site-urile lor. Oleafly îți va cere încă o confirmare, într-o fereastră nativă, înainte să citească profilul.",
+      "confirmTitle": "Confirmă importul de cookie-uri",
+      "description": "Folosește în browserul integrat Oleafly o autentificare pe care o ai deja în alt browser.",
+      "detecting": "Se caută profilurile de browser instalate...",
+      "dialogDescription": "Alege un singur profil de browser instalat. Oleafly îl citește doar după ce verifici și confirmi importul. Cookie-urile Chromium se deblochează local, prin macOS Keychain. Oleafly nu trimite valorile cookie-urilor către niciun serviciu Oleafly.",
+      "dialogTitle": "Importă cookie-uri din browser",
+      "empty": "Nu s-a găsit niciun profil de browser acceptat.",
+      "errors": {
+        "chooseProfile": "Alege un profil de browser disponibil.",
+        "hostname": "Introdu un nume de gazdă, de exemplu example.com."
+      },
+      "hostnameHint": "Introdu numele de gazdă al unui site ca să imporți doar cookie-urile pe care le poate folosi acel site. Lasă gol ca să imporți fiecare cookie eligibil din acest profil.",
+      "hostnameLabel": "Gazdă țintă (opțional)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "S-a importat {{count}} cookie din {{browser}} pentru {{domain}}.",
+      "importedDomain_few": "S-au importat {{count}} cookie-uri din {{browser}} pentru {{domain}}.",
+      "importedDomain_other": "S-au importat {{count}} de cookie-uri din {{browser}} pentru {{domain}}.",
+      "importedProfileDomain_one": "S-a importat {{count}} cookie din {{browser}}, {{profile}} pentru {{domain}}.",
+      "importedProfileDomain_few": "S-au importat {{count}} cookie-uri din {{browser}}, {{profile}} pentru {{domain}}.",
+      "importedProfileDomain_other": "S-au importat {{count}} de cookie-uri din {{browser}}, {{profile}} pentru {{domain}}.",
+      "importedProfile_one": "S-a importat {{count}} cookie din {{browser}}, {{profile}}.",
+      "importedProfile_few": "S-au importat {{count}} cookie-uri din {{browser}}, {{profile}}.",
+      "importedProfile_other": "S-au importat {{count}} de cookie-uri din {{browser}}, {{profile}}.",
+      "imported_one": "S-a importat {{count}} cookie din {{browser}}.",
+      "imported_few": "S-au importat {{count}} cookie-uri din {{browser}}.",
+      "imported_other": "S-au importat {{count}} de cookie-uri din {{browser}}.",
+      "importing": "Se importă cookie-urile...",
+      "profileGroupLabel": "Profiluri de browser",
+      "profileLegend": "Profil de browser",
+      "review": "Verifică importul",
+      "status": {
+        "available": "Disponibil",
+        "comingSoon": "În curând",
+        "noCookieStore": "Fără depozit de cookie-uri",
+        "notInstalled": "Neinstalat"
+      },
+      "title": "Importă cookie-uri",
+      "tryAgain": "Încearcă din nou"
+    },
+    "zotero": {
+      "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
+      "apiKeyLabel": "Cheie API Zotero",
+      "description": "Importă citări și referințe din biblioteca ta Zotero.",
+      "userIdLabel": "Identificator de utilizator Zotero",
+      "userIdPlaceholder": "Identificator de utilizator"
+    }
+  },
+  "language": {
+    "ariaLabel": "Limba interfeței",
+    "description": "Alege limba interfeței. Varianta implicită a sistemului urmează sistemul tău de operare.",
+    "label": "Limbă",
+    "note": "Schimbarea limbii interfeței nu schimbă limba documentului și nici setările de corectură.",
+    "system": "Implicit de la sistem"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Importă {{name}} din {{source}}",
+      "description": "Alege servere dintre instrumentele instalate pe acest computer.",
+      "detecting": "Se caută servere MCP...",
+      "duplicateOverwritten": "Există deja. Va fi suprascris.",
+      "duplicateSkipped": "Există deja. Va fi sărit.",
+      "duplicates": {
+        "legend": "Când numele coincid",
+        "overwrite": {
+          "description": "Înlocuiește-l cu serverul selectat.",
+          "label": "Suprascrie-l pe cel existent"
+        },
+        "skip": {
+          "description": "Păstrează serverul deja salvat în Oleafly.",
+          "label": "Sari peste cel existent"
+        }
+      },
+      "emptyState": "Nu s-a găsit nicio configurație de server MCP.",
+      "importing": "Se importă...",
+      "keys": {
+        "environment": "Mediu: {{names}}",
+        "headers": "Anteturi: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Importă selecția",
+      "summary": {
+        "commandFallback": "Comandă locală",
+        "remote": "Server la distanță: {{origin}}.",
+        "remoteUnknown": "Server la distanță.",
+        "stdio_one": "Comandă locală: {{command}}. {{count}} argument.",
+        "stdio_few": "Comandă locală: {{command}}. {{count}} argumente.",
+        "stdio_other": "Comandă locală: {{command}}. {{count}} de argumente."
+      },
+      "title": "Importă servere MCP"
+    },
+    "registry": {
+      "argumentsLine": "Argumente: {{args}}",
+      "description": "Caută metadate publice despre servere. Aici nu se instalează și nu se pornește nimic. Verifică comanda sau URL-ul înainte să îl adaugi.",
+      "emptyQuery": "Introdu un nume de server ca să cauți în registrul MCP oficial.",
+      "environmentLine": "Mediu: {{names}}",
+      "loadMore": "Încarcă mai multe",
+      "noResults": "Nu s-a returnat nicio intrare din registru care să corespundă.",
+      "review": "Verifică înainte să adaugi",
+      "searchLabel": "Caută în registrul MCP oficial",
+      "searchPlaceholder": "Caută nume de servere",
+      "title": "Registrul MCP oficial",
+      "unsupportedEntry": "Această intrare nu indică un pachet sau un transport la distanță pe care Oleafly să îl poată verifica.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Conectează-ți aplicațiile"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor și alți clienți MCP pot citi, modifica și compila proiectul deschis, cu aprobarea ta pentru fiecare schimbare.",
+      "enable": {
+        "ariaLabel": "Activează serverul MCP",
+        "description": "Ascultă doar pe acest computer, cât timp Oleafly este deschis.",
+        "label": "Activează serverul MCP"
+      },
+      "footer": "Serverul ascultă doar pe acest computer (127.0.0.1) și cere tokenul de mai sus. Sub primele două politici, ștergerea fișierelor cere întotdeauna confirmarea ta în Oleafly. claude.ai din browser nu poate ajunge la un server local. Folosește în schimb Claude Desktop.",
+      "policy": {
+        "ask": {
+          "description": "Scrierile, redenumirile și ștergerile arată în Oleafly un card de aprobare cu o comparație, înainte să se aplice ceva.",
+          "label": "Confirmă fiecare schimbare"
+        },
+        "autoWrites": {
+          "description": "Scrierile și redenumirile se aplică imediat. Ștergerile arată în continuare un card de aprobare.",
+          "label": "Aprobă automat modificările, confirmă ștergerile"
+        },
+        "legend": "Politică de aprobare",
+        "trust": {
+          "description": "Modificările de fișiere nu cer confirmare. Comenzile shell și controlul computerului cer întotdeauna aprobare. Clientul tău MCP rămâne o barieră suplimentară.",
+          "label": "Am încredere în această conexiune"
+        }
+      },
+      "port": {
+        "ariaLabel": "Portul selectat automat pentru serverul MCP",
+        "label": "Port",
+        "restartAriaLabel": "Repornește serverul MCP și alege un port disponibil",
+        "restartTooltip": "Repornește serverul MCP. Oleafly refolosește acest port dacă este liber sau alege alt port liber."
+      },
+      "readOnly": {
+        "ariaLabel": "Mod fără scriere",
+        "description": "Aplicațiile externe pot citi și compila, dar nu pot modifica niciodată fișiere.",
+        "label": "Doar citire"
+      },
+      "status": {
+        "restartedAt": "Repornit la {{url}}",
+        "runningAt": "Rulează la {{url}}"
+      },
+      "title": "Serverul MCP Oleafly",
+      "token": {
+        "copyUrl": "Copiază URL-ul",
+        "enableToView": "Activează serverul ca să vezi tokenul.",
+        "help": "Arată sau copiază tokenul de acces, copiază URL-ul serverului sau generează un token nou pentru clienții MCP conectați.",
+        "hide": "Ascunde",
+        "label": "Token de acces",
+        "regenerate": "Generează din nou",
+        "regenerateWarning": "Clienții existenți vor avea nevoie de tokenul nou.",
+        "reveal": "Arată"
+      }
+    },
+    "servers": {
+      "addServer": "Adaugă un server",
+      "browseRegistry": "Răsfoiește registrul",
+      "card": {
+        "editLabel": "Editează {{name}}",
+        "enableLabel": "Activează {{name}}",
+        "noTools": "Niciun instrument raportat.",
+        "removeLabel": "Elimină {{name}}",
+        "toolCount_one": "{{count}} instrument",
+        "toolCount_few": "{{count}} instrumente",
+        "toolCount_other": "{{count}} de instrumente",
+        "toolsLabel": "Instrumente de la {{name}}",
+        "validate": "Validează",
+        "validateLabel": "Validează {{name}}"
+      },
+      "description": "Conectează Asistentul AI la comenzi locale sau la puncte de acces MCP la distanță. Oleafly verifică fiecare server activat când se deschide această pagină, în fiecare minut și la cerere. Arată și instrumentele oferite de fiecare server.",
+      "editor": {
+        "addAndValidate": "Adaugă și validează",
+        "argsHint": "Introdu câte un argument pe linie.",
+        "argsLabel": "Argumente",
+        "commandLabel": "Comandă",
+        "description": "Serverele activate sunt verificate înainte ca setările lor să fie salvate.",
+        "formView": "Formular",
+        "jsonHint": "Lipește un singur server, sub numele lui, sau un bloc încadrat în mcpServers.",
+        "jsonLabel": "Configurație completă",
+        "jsonView": "JSON",
+        "nameLabel": "Numele serverului",
+        "pairs": {
+          "addHeader": "Adaugă un antet",
+          "addVariable": "Adaugă o variabilă",
+          "environmentKeyLabel": "Cheia {{index}} din mediu",
+          "environmentTitle": "Variabile de mediu",
+          "environmentValueLabel": "Valoarea {{index}} din mediu",
+          "headerKeyLabel": "Cheia antetului {{index}}",
+          "headerValueLabel": "Valoarea antetului {{index}}",
+          "headersTitle": "Anteturi de cerere",
+          "removeHeaderLabel": "Elimină antetul {{index}}",
+          "removeVariableLabel": "Elimină variabila {{index}}",
+          "storedValuePlaceholder": "Valoare salvată",
+          "valuePlaceholder": "Valoare"
+        },
+        "saveAndValidate": "Salvează și validează",
+        "saveChanges": "Salvează modificările",
+        "titleAdd": "Adaugă un server MCP",
+        "titleEdit": "Editează serverul MCP",
+        "transportLegend": "Transport",
+        "transportRemote": "URL la distanță",
+        "transportStdio": "Comandă locală",
+        "urlLabel": "URL la distanță",
+        "viewSwitchLabel": "Editor de configurație"
+      },
+      "empty": {
+        "description": "Adaugă un server ca să îi dai asistentului instrumente noi sau importă-le pe cele pe care le folosești deja în alt editor.",
+        "title": "Niciun server adăugat"
+      },
+      "hideRegistry": "Ascunde registrul",
+      "importButton": "Importă din alte instrumente",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "S-au importat {{imported}}, s-au sărit {{skipped}}, au eșuat {{failed}}.",
+      "live": {
+        "checking": "Se verifică {{name}}.",
+        "connected_one": "{{name}} este conectat. {{count}} instrument disponibil.",
+        "connected_few": "{{name}} este conectat. {{count}} instrumente disponibile.",
+        "connected_other": "{{name}} este conectat. {{count}} de instrumente disponibile.",
+        "disabled": "{{name}} este dezactivat.",
+        "disabledLastCheckFailed": "{{name}} este dezactivat. Ultima verificare a eșuat.",
+        "disabledLastCheckFound_one": "{{name}} este dezactivat. Ultima verificare a găsit {{count}} instrument.",
+        "disabledLastCheckFound_few": "{{name}} este dezactivat. Ultima verificare a găsit {{count}} instrumente.",
+        "disabledLastCheckFound_other": "{{name}} este dezactivat. Ultima verificare a găsit {{count}} de instrumente.",
+        "failed": "Validarea {{name}} a eșuat."
+      },
+      "loading": "Se încarcă serverele...",
+      "remove": {
+        "confirm": "Elimină serverul",
+        "description": "Aceasta elimină {{name}} din Oleafly. Îl poți adăuga din nou mai târziu.",
+        "descriptionFallback": "Aceasta elimină serverul din Oleafly. Îl poți adăuga din nou mai târziu.",
+        "title": "Elimini serverul?"
+      },
+      "status": {
+        "checking": "Se verifică...",
+        "connected": "Conectat",
+        "disabled": "Dezactivat",
+        "error": "Eroare"
+      },
+      "title": "Serverele MCP ale asistentului"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Adaugă un cuvânt ignorat peste tot",
+      "placeholder": "Adaugă un cuvânt sau un termen",
+      "projectAriaLabel": "Adaugă un cuvânt ignorat în {{project}}",
+      "submitAriaLabel": "Adaugă cuvântul ignorat"
+    },
+    "clear": {
+      "confirm": "Șterge cuvintele",
+      "descriptionFallback": "Aceasta elimină toți termenii din acest dicționar. Ei vor fi verificați din nou imediat.",
+      "descriptionGlobal": "Aceasta elimină toți termenii din dicționarul global. Ei vor fi verificați din nou imediat.",
+      "descriptionProject": "Aceasta elimină toți termenii din {{project}}. Ei vor fi verificați din nou imediat.",
+      "descriptionSuppressed": "Aceasta elimină toți termenii din rezultatele ignorate în {{project}}. Ei vor fi verificați din nou imediat.",
+      "suppressedConfirm": "Arată-le din nou",
+      "suppressedTitle": "Arăți din nou rezultatele ignorate?",
+      "title": "Ștergi cuvintele ignorate?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} ignorate, din {{limit}} câte poate reține proiectul",
+      "hidden_one": "{{count}} rezultat gramatical este ascuns în acest proiect fiindcă ai ales Ignoră în acest proiect. Dacă le arăți din nou, ele redevin subliniate.",
+      "hidden_few": "{{count}} rezultate gramaticale sunt ascunse în acest proiect fiindcă ai ales Ignoră în acest proiect. Dacă le arăți din nou, ele redevin subliniate.",
+      "hidden_other": "{{count}} de rezultate gramaticale sunt ascunse în acest proiect fiindcă ai ales Ignoră în acest proiect. Dacă le arăți din nou, ele redevin subliniate.",
+      "none": "Nu este nimic ignorat. Când alegi Ignoră în acest proiect pentru un rezultat gramatical, el apare aici.",
+      "showAgain": "Arată-le din nou",
+      "title": "Rezultate ignorate",
+      "titleInProject": "Rezultate ignorate în {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Cuvintele pe care le adaugi aici sunt sărite de corector în toate proiectele.",
+      "scope": "Se aplică fiecărui proiect"
+    },
+    "intro": "Adaugă cuvinte în dicționarul tău personal de verificare ortografică. Aceste cuvinte se păstrează în setările locale și sunt ignorate în toate proiectele. Potrivirea se face normalizat Unicode și fără să țină cont de majuscule.",
+    "profileRules": {
+      "description": "Dezactivate implicit, fiindcă încurcă la lucrările științifice. Activează-le pe cele pe care le vrei.",
+      "example": "Exemplu: {{example}}",
+      "help": "Harper este reglat pentru conversații și e-mailuri. Aceste reguli fie impun un stil pe care lucrările nu îl urmează, precum scrierea în litere a lui kB și min, fie se împiedică de marcajele care țin locul codului LaTeX, așa că Oleafly le ține dezactivate. Fiecare arată ce ar semnala. Activeaz-o dacă vrei acele rezultate.",
+      "reasons": {
+        "AvoidContractions": "Îți cere să scrii pe larg fiecare formă contrasă.",
+        "CompoundNouns": "Unește un substantiv compus care a fost scris în două cuvinte.",
+        "Dashes": "Înlocuiește un -- sau --- scris de mână cu caracterul de linie potrivit.",
+        "DiscourseMarkers": "Semnalează o propoziție care începe cu un marcator precum however și nu are virgulă după el.",
+        "EllipsisLength": "Corectează punctele de suspensie care nu sunt trei.",
+        "ExpandAlgorithm": "Vrea ca algo să fie scris pe larg.",
+        "ExpandArgument": "Vrea ca arg să fie scris pe larg.",
+        "ExpandCoordinate": "Vrea ca coord să fie scris pe larg.",
+        "ExpandMemoryShorthands": "Vrea ca KB și MB să fie scrise pe larg.",
+        "ExpandParameter": "Vrea ca param să fie scris pe larg.",
+        "ExpandStandardInputAndOutput": "Vrea ca stdin și stdout să fie scrise pe larg.",
+        "ExpandTimeShorthands": "Vrea ca min și sec să fie scrise pe larg.",
+        "ExplainLikeImFive": "Desface o abreviere în cuvintele ei complete.",
+        "FillerWords": "Semnalează cuvintele pe care le consideră umplutură.",
+        "Hedging": "Semnalează formulările prudente, precum I would argue that și to a certain degree.",
+        "LongSentences": "Semnalează orice propoziție care trece de limita ei de lungime.",
+        "MergeWords": "Unește un cuvânt pe care un spațiu rătăcit l-a rupt în două, precum to gether.",
+        "MoreAdjective": "Preferă forma comparativă în locul lui more plus un adjectiv.",
+        "NoFrenchSpaces": "Elimină spațiul dinaintea semnelor de punctuație, folosit în tipografia franceză.",
+        "NoOxfordComma": "Elimină virgula dinaintea ultimului element dintr-o enumerare.",
+        "NumericRangeEnDash": "Vrea o linie en dash între capetele unui interval numeric.",
+        "OxfordComma": "Cere virgula dinaintea ultimului element dintr-o enumerare.",
+        "SentenceCapitalization": "Scrie cu majusculă primul cuvânt al unei propoziții, inclusiv al uneia care începe după un marcaj mascat.",
+        "Spaces": "Comasează spațiile repetate, pe care masca de text le lasă oriunde a fost ascuns cod.",
+        "SplitWords": "Desparte un cuvânt care ar trebui să fie două, precum alot.",
+        "TransposedSpace": "Mută un spațiu aflat de partea greșită a semnului de punctuație, lucru produs adesea de mascare."
+      },
+      "title": "Regulile pe care profilul academic le ține dezactivate",
+      "toggleAriaLabel": "Activează {{rule}}"
+    },
+    "projects": {
+      "empty": "Deschide un proiect ca să adaugi termeni specifici lui.",
+      "emptyDescription": "Cuvintele adăugate pentru acest proiect sunt sărite de corector doar aici.",
+      "terms_one": "{{used}} / {{limit}} termen",
+      "terms_few": "{{used}} / {{limit}} termeni",
+      "terms_other": "{{used}} / {{limit}} de termeni"
+    },
+    "reset": {
+      "confirmationDescription": "Aceasta elimină definitiv fiecare cuvânt ignorat, global și pe proiect, și reactivează fiecare regulă gramaticală pe care ai dezactivat-o. Profilul academic își păstrează propriile reguli dezactivate. Corectura va semnala din nou acele cuvinte.",
+      "sectionName": "Dicționar"
+    },
+    "search": {
+      "ariaLabel": "Caută printre cuvintele ignorate",
+      "placeholder": "Caută în dicționar"
+    },
+    "tabs": {
+      "global": "Global",
+      "projects": "Proiecte"
+    },
+    "turnedOff": {
+      "description": "Reguli pe care le-ai dezactivat și rezultate pe care le-ai ignorat în acest proiect.",
+      "help": "Treci cu mouse-ul peste un cuvânt sau o propoziție subliniată în editor și un card mic arată ce a găsit Harper, cu acțiuni prin care îl poți corecta sau ignora. Regulile dezactivate din acel card și rezultatele ignorate în acest proiect apar aici, ca să poți readuce oricare dintre ele.",
+      "listAriaLabel": "Reguli gramaticale dezactivate",
+      "none": "Nu ai dezactivat nicio regulă.",
+      "restoreAriaLabel": "Reactivează regula {{rule}}",
+      "restoreTitle": "Reactivează regula „{{rule}}”",
+      "title": "Reguli gramaticale și rezultate ignorate"
+    },
+    "words": {
+      "emptyCompact": "Încă nu este nimic ignorat.",
+      "emptyTitle": "Încă nu este nimic ignorat",
+      "listAriaLabel": "Cuvinte ignorate",
+      "noMatches": "Niciun cuvânt ignorat nu corespunde acestei căutări.",
+      "removeAriaLabel": "Nu mai ignora {{word}}",
+      "removeTitle": "Nu mai ignora „{{word}}”"
+    }
+  },
+  "reset": {
+    "button": "Resetează la valorile implicite",
+    "confirmDescription": "Readu preferințele din {{sectionName}} la valorile implicite. Celelalte setări rămân neschimbate.",
+    "confirmTitle": "Resetezi setările din {{sectionName}}?",
+    "description": "Readu preferințele din {{sectionName}} la valorile implicite.",
+    "label": "Resetează setările"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Caută și rulează comenzi Oleafly.",
+        "label": "Paleta de comenzi"
+      },
+      "forwardSync": {
+        "description": "Sari de la cursorul din editor la PDF-ul compilat.",
+        "label": "Mergi la PDF"
+      },
+      "recompile": {
+        "description": "Compilează proiectul curent și îi arată PDF-ul.",
+        "label": "Recompilează"
+      },
+      "searchDocuments": {
+        "description": "Caută în proiecte și documente.",
+        "label": "Caută în toate documentele"
+      },
+      "shortcutReference": {
+        "description": "Deschide lista de scurtături a proiectului.",
+        "label": "Lista de scurtături"
+      },
+      "toggleBrowser": {
+        "description": "Arată sau ascunde browserul proiectului.",
+        "label": "Arată sau ascunde browserul"
+      },
+      "toggleSidebar": {
+        "description": "Arată sau ascunde bara laterală a proiectului.",
+        "label": "Arată sau ascunde bara laterală"
+      },
+      "toggleTerminal": {
+        "description": "Arată sau ascunde terminalul proiectului.",
+        "label": "Arată sau ascunde terminalul"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Editează {{action}}, acum {{shortcut}}",
+      "heading": "Scurtături ale aplicației",
+      "prompt": "Apasă noua combinație de taste",
+      "recordAriaLabel": "Se înregistrează {{action}}. Apasă o scurtătură.",
+      "recording": "Se înregistrează",
+      "resetAriaLabel": "Resetează {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Cere-i AI-ului să modifice selecția",
+        "bold": "Aldin",
+        "findAndReplace": "Caută și înlocuiește",
+        "findReferences": "Găsește referințele",
+        "goToDefinition": "Mergi la definiție",
+        "goToDefinitionWithPointer": "Mergi la definiție cu mouse-ul",
+        "indentOrAcceptAutocomplete": "Indentează sau acceptă completarea automată",
+        "italic": "Cursiv",
+        "jumpToSourceFromPdf": "Sari la sursă din PDF",
+        "redo": "Refă",
+        "renameSymbol": "Redenumește simbolul în tot proiectul",
+        "slashCommandMenu": "Meniu de inserare cu bară oblică",
+        "triggerAutocomplete": "Pornește completarea automată",
+        "undo": "Anulează"
+      },
+      "managed": "Gestionate de editor"
+    },
+    "categories": {
+      "codeIntelligence": "Inteligență de cod",
+      "editor": "Editor",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Este deja atribuită acțiunii {{action}}.",
+      "reserved": "{{shortcut}} este rezervată de sistemul de operare."
+    },
+    "intro": "Personalizează scurtăturile aplicației și consultă combinațiile de taste proprii editorului.",
+    "reserved": {
+      "closeWindow": "Închide fereastra",
+      "copy": "Copiază",
+      "cut": "Decupează",
+      "paste": "Lipește",
+      "quit": "Ieși",
+      "save": "Salvează",
+      "selectAll": "Selectează tot",
+      "systemSearch": "Căutarea din sistem",
+      "windowSwitching": "Schimbarea ferestrei"
+    },
+    "reset": {
+      "sectionName": "Scurtături de tastatură"
+    },
+    "tabs": {
+      "application": "Aplicație"
+    },
+    "editorKeys": {
+      "clearHint": "Apasă Backspace ca să lași această acțiune fără scurtătură.",
+      "heading": "Tastele editorului",
+      "intro": "Aceste taste funcționează în editorul de sursă. Modurile Vim și Emacs își păstrează propriile scurtături.",
+      "labels": {
+        "addCursorAbove": "Adaugă un cursor deasupra",
+        "addCursorBelow": "Adaugă un cursor dedesubt",
+        "deleteLine": "Șterge linia",
+        "duplicate": "Duplică selecția sau linia",
+        "gotoLine": "Mergi la linia",
+        "indentLess": "Redu indentarea",
+        "indentMore": "Mărește indentarea",
+        "lowercase": "Litere mici",
+        "selectNextOccurrence": "Selectează apariția următoare",
+        "titleCase": "Inițiale majuscule",
+        "toggleComment": "Comentează sau decomentează",
+        "uppercase": "Litere mari"
+      },
+      "unbound": "Nesetată"
+    }
+  }
+}

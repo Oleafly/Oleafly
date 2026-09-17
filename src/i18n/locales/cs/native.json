@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "O aplikaci Oleafly",
+    "checkUpdates": "Zkontrolovat aktualizace…",
+    "reloadViews": "Znovu načíst zobrazení",
+    "restartApp": "Restartovat aplikaci",
+    "quit": "Ukončit Oleafly",
+    "edit": "Upravit",
+    "undo": "Zpět",
+    "redo": "Znovu",
+    "cut": "Vyjmout",
+    "copy": "Kopírovat",
+    "paste": "Vložit",
+    "selectAll": "Vybrat vše",
+    "view": "Zobrazit",
+    "toggleTerminal": "Přepnout terminál",
+    "toggleBrowser": "Přepnout prohlížeč"
+  },
+  "window": {
+    "browser": "Prohlížeč Oleafly",
+    "browserTitled": "{{title}} - Prohlížeč Oleafly"
+  },
+  "dialog": {
+    "cancel": "Zrušit",
+    "fullAccess": {
+      "title": "Povolit úplný přístup?",
+      "message": "Úplný přístup dovolí asistentovi spouštět příkazy shell a upravovat soubory, aniž by pokaždé žádal o schválení. Povolit úplný přístup?",
+      "confirm": "Povolit úplný přístup"
+    },
+    "cookieImport": {
+      "title": "Potvrdit import cookies",
+      "messageHost": "Importovat cookies pro {{hostname}} z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",
+      "messageAll": "Importovat všechny cookies z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",
+      "confirm": "Importovat cookies"
+    },
+    "mcpApprove": {
+      "title": "Schválit nástroj MCP",
+      "confirm": "Použít nástroj"
+    },
+    "tableImport": {
+      "title": "Vyberte tabulku k importu",
+      "filter": "Tabulkové soubory"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Nabídka aplikace není k dispozici",
+    "viewMenuUnavailable": "Nabídka Zobrazit není k dispozici",
+    "menuItemUnavailable": "Položka nabídky {{id}} není k dispozici",
+    "fullAccessDismissed": "Potvrzení úplného přístupu bylo zavřeno.",
+    "fullAccessDeclined": "Úplný přístup nebyl povolen.",
+    "approvalDialogClosed": "Nativní dialog schválení se neočekávaně zavřel."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Anulează",
+    "close": "Închide",
+    "save": "Salvează",
+    "delete": "Șterge",
+    "remove": "Elimină",
+    "rename": "Redenumește",
+    "open": "Deschide",
+    "copy": "Copiază",
+    "copied": "Copiat",
+    "retry": "Reîncearcă",
+    "back": "Înapoi",
+    "next": "Înainte",
+    "done": "Gata",
+    "edit": "Editează",
+    "add": "Adaugă",
+    "search": "Caută",
+    "clear": "Golește",
+    "apply": "Aplică",
+    "confirm": "Confirmă",
+    "ok": "OK",
+    "yes": "Da",
+    "no": "Nu",
+    "learnMore": "Află mai multe",
+    "showMore": "Arată mai mult",
+    "showLess": "Arată mai puțin"
+  },
+  "state": {
+    "loading": "Se încarcă…",
+    "saving": "Se salvează…",
+    "none": "Niciunul",
+    "unknown": "Necunoscut",
+    "enabled": "Activat",
+    "disabled": "Dezactivat",
+    "on": "Pornit",
+    "off": "Oprit",
+    "beta": "Beta",
+    "new": "Nou",
+    "default": "Implicit"
+  },
+  "labels": {
+    "name": "Nume",
+    "type": "Tip",
+    "size": "Dimensiune",
+    "date": "Dată",
+    "status": "Stare",
+    "description": "Descriere",
+    "optional": "Opțional",
+    "required": "Obligatoriu"
+  }
+}

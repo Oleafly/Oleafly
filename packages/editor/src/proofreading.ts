@@ -121,8 +121,17 @@ export interface ProofreadingError {
   };
 }
 
+export interface ProofreadingDictionaryDelivery {
+  protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
+  type: "dictionary";
+  locale: string;
+  aff: Uint8Array;
+  dic: Uint8Array;
+}
+
 export type ProofreadingWorkerRequest =
   | ProofreadingRequest
+  | ProofreadingDictionaryDelivery
   | {
       protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
       type: "dispose";
@@ -226,7 +235,7 @@ export function isProofreadingWorkerResponse(
       (typeof message !== "string" || message.length > 2_048)) ||
     (activeDictionaryLocale !== undefined &&
       (typeof activeDictionaryLocale !== "string" ||
-        !/^[A-Za-z]{2,3}_[A-Za-z]{2,4}$/u.test(activeDictionaryLocale))) ||
+        !/^[A-Za-z]{2,3}(?:_[A-Za-z]{2,4})?$/u.test(activeDictionaryLocale))) ||
     (truncated !== undefined && typeof truncated !== "boolean")
   ) {
     return false;

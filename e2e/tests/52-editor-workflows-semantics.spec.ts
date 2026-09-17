@@ -9,10 +9,11 @@ import {
   createBlankProject,
   editorSource,
   insertSymbol,
-  type Page,
   readProjectText,
   replaceEditorLiteral,
   replaceEditorSource,
+  selectEditorText,
+  type Page,
   writeProjectBinary,
 } from "../helpers";
 import type {
@@ -238,47 +239,55 @@ async function chooseList(
 }
 
 async function selectWysiwygText(page: TauriPage, text: string) {
-  const selected = await page.evaluate<boolean>(
-    `import("/src/components/editor/wysiwyg/controller.ts").then(({ getWysiwygEditor }) => {
-      const editor = getWysiwygEditor();
-      if (!editor) return false;
-      let range = null;
-      editor.state.doc.descendants((node, position) => {
-        if (range || !node.isText || !node.text) return;
-        const offset = node.text.indexOf(${JSON.stringify(text)});
-        if (offset >= 0) {
-          range = {
-            from: position + offset,
-            to: position + offset + ${JSON.stringify(text)}.length,
-          };
-        }
-      });
-      if (!range) return false;
-      editor.chain().focus().setTextSelection(range).run();
-      return true;
-    })`,
-  );
-  if (!selected) throw new Error(`WYSIWYG text not found: ${text}`);
+  await selectEditorText(page, text);
 }
 
 async function collapseWysiwygSelectionToEnd(page: TauriPage) {
   const collapsed = await page.evaluate<boolean>(
-    `import("/src/components/editor/wysiwyg/controller.ts").then(({ getWysiwygEditor }) => {
-      const editor = getWysiwygEditor();
-      if (!editor) return false;
-      editor.chain().focus().setTextSelection(editor.state.selection.to).run();
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      view.dispatch({ selection: { anchor: view.state.selection.main.to } });
+      view.focus();
       return true;
     })`,
   );
-  if (!collapsed) throw new Error("WYSIWYG editor is unavailable");
+  if (!collapsed) throw new Error("visual editor is unavailable");
+}
+
+async function expectVisualMode(page: TauriPage) {
+  await expect(page.locator(".cm-content .ofl-visual-end-document")).toBeVisible({ timeout: 10_000 });
+}
+
+async function pressEditorChord(page: TauriPage, key: string, code: string, keyCode: number, shift = false) {
+  await page.evaluate(
+    `(() => {
+      const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+      const target = document.querySelector(".cm-content");
+      if (!target) throw new Error("editor content is unavailable");
+      target.dispatchEvent(new KeyboardEvent("keydown", {
+        key: ${JSON.stringify(key)},
+        code: ${JSON.stringify(code)},
+        keyCode: ${keyCode},
+        which: ${keyCode},
+        ctrlKey: !apple,
+        metaKey: apple,
+        shiftKey: ${shift},
+        bubbles: true,
+        cancelable: true,
+      }));
+      return 1;
+    })()`,
+  );
 }
 
 async function waitForSource(
   page: TauriPage,
   predicate: (source: string) => boolean,
   description: string,
+  timeoutMs = 10_000,
 ) {
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + timeoutMs;
   let source = "";
   do {
     source = await editorSource(page);
@@ -578,7 +587,7 @@ WYSKEYBOARDSEMANTIC
 `,
   );
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 10_000 });
+  await expectVisualMode(tauriPage);
 
   await selectWysiwygText(tauriPage, "WYSKEYBOARDSEMANTIC");
   await collapseWysiwygSelectionToEnd(tauriPage);
@@ -603,7 +612,7 @@ WYSKEYBOARDSEMANTIC
     // Let the WYSIWYG view finish re-syncing from the shared text before
     // undoing: an undo dispatched mid-resync can miss the insertion event.
     await tauriPage.waitForFunction(
-      `!!document.querySelector(".ProseMirror")`,
+      `!!document.querySelector(".cm-content .ofl-visual-end-document")`,
       10_000,
     );
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -637,7 +646,7 @@ WYSKEYBOARDSEMANTIC
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
   await selectWysiwygText(tauriPage, "WYSKEYBOARDSEMANTIC");
   await clickToolbarControl(tauriPage, '[aria-label^="Bold ("]', "Bold");
-  await tauriPage.press(".ProseMirror", "Control+z");
+  await pressEditorChord(tauriPage, "z", "KeyZ", 90);
   await tauriPage.click('[aria-label="Switch to source view"]');
   await waitForSource(
     tauriPage,
@@ -646,7 +655,7 @@ WYSKEYBOARDSEMANTIC
   );
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await tauriPage.press(".ProseMirror", "Control+Shift+z");
+  await pressEditorChord(tauriPage, "Z", "KeyZ", 90, true);
   await tauriPage.click('[aria-label="Switch to source view"]');
   await waitForSource(
     tauriPage,
@@ -691,7 +700,7 @@ WYSQUOTE
 `,
   );
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 10_000 });
+  await expectVisualMode(tauriPage);
 
   await selectWysiwygText(tauriPage, "WYSBOLD");
   await clickToolbarControl(tauriPage, '[aria-label^="Bold ("]', "Bold");
@@ -796,6 +805,12 @@ test("every raw-backed WYSIWYG formatting branch serializes and compiles after p
 \begin{document}
 \label{label}
 WYSRAWANCHOR
+
+WYSPARTANCHOR
+
+WYSCHAPTERANCHOR
+
+WYSPARAGRAPHANCHOR
 \bibliographystyle{plain}
 \bibliography{references}
 \end{document}
@@ -803,7 +818,7 @@ WYSRAWANCHOR
   );
   await writeProjectBinary(tauriPage, "visual.png", RED_PNG);
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 10_000 });
+  await expectVisualMode(tauriPage);
 
   const atAnchor = async () => {
     await selectWysiwygText(tauriPage, "WYSRAWANCHOR");
@@ -813,7 +828,7 @@ WYSRAWANCHOR
     await atAnchor();
     await clickToolbarControl(tauriPage, selector, menuLabel);
   };
-  const rawHeading = async (label: "Part" | "Chapter" | "Paragraph") => {
+  const rawHeading = async (label: "Part" | "Chapter" | "Paragraph", anchor: string) => {
     // The toolbar menu sometimes does not open on the first click in a
     // headless webview. The tell is `portals=[]` in the failure: no popper
     // wrapper in the DOM at all, rather than an open one missing the item, so
@@ -823,7 +838,7 @@ WYSRAWANCHOR
     let lastError: unknown;
     for (let attempt = 0; attempt < 4; attempt++) {
       await tauriPage.press("body", "Escape").catch(() => {});
-      await atAnchor();
+      await selectWysiwygText(tauriPage, anchor);
       await clickToolbarControl(
         tauriPage,
         '[aria-label="Heading level"]',
@@ -872,19 +887,12 @@ WYSRAWANCHOR
         .then(() => true)
         .catch(() => false);
       if (!clicked) continue;
-      const inserted = await tauriPage
-        .waitForFunction(
-          `Promise.all([
-            import("/src/components/editor/wysiwyg/controller.ts"),
-            import("/packages/wysiwyg/src/latex/serialize.ts"),
-          ]).then(([{ getWysiwygEditor }, { serializeLatexBody }]) => {
-            const editor = getWysiwygEditor();
-            return editor
-              ? serializeLatexBody(editor.getJSON()).includes("\\\\begin{table}")
-              : false;
-          })`,
-          2_000,
-        )
+      const inserted = await waitForSource(
+        tauriPage,
+        (source) => source.includes("\\begin{table}"),
+        "table picker did not insert a table",
+        2_000,
+      )
         .then(() => true)
         .catch(() => false);
       if (inserted) return;
@@ -896,9 +904,9 @@ WYSRAWANCHOR
 
   // Insert in reverse structural order because every deterministic caret is
   // immediately after the same anchor.
-  await rawHeading("Paragraph");
-  await rawHeading("Chapter");
-  await rawHeading("Part");
+  await rawHeading("Paragraph", "WYSPARAGRAPHANCHOR");
+  await rawHeading("Chapter", "WYSCHAPTERANCHOR");
+  await rawHeading("Part", "WYSPARTANCHOR");
   await rawAction('[aria-label="Underline"]', "Underline");
   await rawAction('[aria-label="Insert link"]', "Insert link");
   await rawAction(
@@ -961,6 +969,7 @@ WYSRAWANCHOR
   expect(citation.key).toBeTruthy();
 
   await rawAction('[aria-label="Insert figure"]', "Insert figure");
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
 
   await insertRawTable();
 
@@ -987,7 +996,7 @@ WYSRAWANCHOR
   await waitForSource(
     tauriPage,
     (source) =>
-      source.includes("\\part{Part Title}") &&
+      source.includes("\\part{WYSPARTANCHOR}") &&
       source.includes("\\begin{table}") &&
       source.includes("\\frac{numerator}{denominator}") &&
       source.includes(`\\cite{${citation.key}}`) &&
@@ -1047,9 +1056,9 @@ WYSRAWANCHOR
     "VISUALCITATIONSEMANTIC",
   );
   for (const expected of [
-    "\\part{Part Title}",
-    "\\chapter{Chapter Title}",
-    "\\paragraph{Paragraph Title}",
+    "\\part{WYSPARTANCHOR}",
+    "\\chapter{WYSCHAPTERANCHOR}",
+    "\\paragraph{WYSPARAGRAPHANCHOR}",
     "\\ref{label}",
     "\\begin{figure}",
     "\\begin{table}",
@@ -1063,9 +1072,9 @@ WYSRAWANCHOR
   const probe = await compileAndProbe(tauriPage);
   const compactText = probe.text.replace(/\s+/g, "");
   for (const token of [
-    "Part Title",
-    "Chapter Title",
-    "Paragraph Title",
+    "WYSPARTANCHOR",
+    "WYSCHAPTERANCHOR",
+    "WYSPARAGRAPHANCHOR",
     "VISUALUNDERLINE",
     "VISUALLINK",
     "VISUALFOOTNOTE",

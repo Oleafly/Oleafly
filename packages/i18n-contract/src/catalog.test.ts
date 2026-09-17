@@ -91,6 +91,44 @@ describe("validateCatalog", () => {
     );
   });
 
+  it("requires every plural category the target locale has, even ones English lacks", () => {
+    const complete = flat({
+      save: "Enregistrer",
+      deleted: "{{name}} supprimé",
+      files_one: "{{count}} fichier",
+      files_many: "{{count}} fichiers",
+      files_other: "{{count}} fichiers",
+      link: "Ouvrir le <docsLink>guide</docsLink>",
+    });
+    expect(validateCatalog("common", "fr", source, complete, {})).toEqual([]);
+
+    const partial = flat({
+      save: "Enregistrer",
+      deleted: "{{name}} supprimé",
+      files_one: "{{count}} fichier",
+      files_other: "{{count}} fichiers",
+      link: "Ouvrir le <docsLink>guide</docsLink>",
+    });
+    expect(validateCatalog("common", "fr", source, partial, {}).map((i) => `${i.key}: ${i.message}`)).toEqual([
+      'files_many: plural category "many" is missing for fr',
+    ]);
+  });
+
+  it("still rejects a plural form the locale does not have and a base the source lacks", () => {
+    const target = flat({
+      save: "保存",
+      deleted: "已删除 {{name}}",
+      files_other: "{{count}} 个文件",
+      files_many: "{{count}} 个文件",
+      folders_other: "{{count}} 个文件夹",
+      link: "打开<docsLink>指南</docsLink>",
+    });
+    expect(validateCatalog("common", "zh-Hans", source, target, {}).map((i) => i.key)).toEqual([
+      "files_many",
+      "folders_other",
+    ]);
+  });
+
   it("keeps do-not-translate terms verbatim", () => {
     const src = flat({ tip: "Compile with LaTeX" });
     const target = flat({ tip: "使用乳胶编译" });

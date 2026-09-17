@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Jurnale",
+    "showLogs": "Arată jurnalele de compilare",
+    "showPdf": "Arată previzualizarea PDF",
+    "askAi": "Întreabă AI",
+    "more": "Mai multe comenzi de previzualizare",
+    "duration": "{{seconds}}s",
+    "failed": "Eșuat",
+    "compiledWithErrors": "Compilat cu erori",
+    "compiledWithWarnings": "Compilat cu avertismente",
+    "compiledSuccessfully": "Compilat cu succes"
+  },
+  "pageLayout": {
+    "group": "Aspectul paginii",
+    "single": "Vizualizare pe o pagină",
+    "double": "Vizualizare pe două pagini"
+  },
+  "pages": {
+    "previous": "Pagina anterioară",
+    "next": "Pagina următoare",
+    "number": "Numărul paginii",
+    "ofTotal": "din {{total}}",
+    "pageOfTotal": "Pagina {{page}} din {{total}}"
+  },
+  "zoom": {
+    "in": "Mărește",
+    "out": "Micșorează",
+    "fitToWidth": "Potrivește pe lățime",
+    "fitToHeight": "Potrivește pe înălțime",
+    "reset": "Revino la 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "Mărire {{percent}} la sută",
+    "menuLabel": "Mărire · {{percent}}%"
+  },
+  "outline": {
+    "open": "Cuprinsul documentului",
+    "panel": "Cuprinsul documentului PDF",
+    "title": "Cuprinsul documentului",
+    "close": "Închide cuprinsul documentului",
+    "loading": "Se încarcă cuprinsul…",
+    "empty": "Acest PDF nu conține un cuprins.",
+    "externalLink": "Legătură externă",
+    "externalBadge": "Legătură"
+  },
+  "search": {
+    "open": "Caută în PDF",
+    "panel": "Caută în acest PDF",
+    "placeholder": "Caută în document",
+    "input": "Caută text în PDF",
+    "previous": "Rezultatul anterior",
+    "next": "Rezultatul următor",
+    "close": "Închide căutarea în PDF"
+  },
+  "viewer": {
+    "scrollArea": "Zona de derulare continuă a PDF-ului",
+    "crashedTitle": "Previzualizarea PDF s-a blocat",
+    "crashedDetail": "Recompilează revizia curentă sau reîncearcă vizualizatorul.",
+    "retry": "Reîncearcă vizualizatorul",
+    "loadingLatest": "Se încarcă cel mai recent PDF compilat…",
+    "retryingLoad": "Se reîncearcă încărcarea PDF-ului…",
+    "retainedFailure": "{{detail}} Se afișează în schimb ultimul PDF încărcat cu succes.",
+    "retainedFailureDetail": "PDF-ul curent nu a putut fi încărcat",
+    "invalidTitle": "PDF nevalid",
+    "emptyTitle": "PDF gol",
+    "unavailableTitle": "Vizualizatorul PDF nu este disponibil",
+    "loadFailedTitle": "Încărcarea PDF-ului a eșuat",
+    "loadFailedDetail": "PDF-ul nu a putut fi încărcat."
+  },
+  "password": {
+    "title": "Este necesară o parolă",
+    "label": "Parola PDF-ului",
+    "placeholder": "Parola PDF-ului",
+    "submit": "Deblochează PDF-ul"
+  },
+  "actions": {
+    "downloadImage": "Descarcă imaginea",
+    "downloadPdf": "Descarcă PDF-ul",
+    "downloadDisplayedPdf": "Descarcă PDF-ul afișat",
+    "downloadStalePdf": "Descarcă PDF-ul învechit, care nu este cel curent",
+    "saveImage": "Salvează imaginea în proiect",
+    "savePdf": "Salvează PDF-ul în proiect",
+    "invert": "Inversează culorile previzualizării PDF",
+    "restoreColors": "Restabilește culorile",
+    "readerView": "Vizualizare de lectură",
+    "exitReaderView": "Ieși din vizualizarea de lectură",
+    "rotate": "Rotește în sensul acelor de ceasornic",
+    "rotateTooltip": "Rotește PDF-ul în sensul acelor de ceasornic (90°). Acum este la {{degrees}}°",
+    "openWindow": "Deschide previzualizarea într-o fereastră nouă",
+    "hideToolbar": "Ascunde bara de instrumente",
+    "showToolbar": "Arată bara de instrumente",
+    "settings": "Setările previzualizării PDF",
+    "fullscreen": "Previzualizare pe ecran complet",
+    "exitFullscreen": "Ieși din ecranul complet",
+    "retryCompile": "Reîncearcă compilarea"
+  },
+  "stale": {
+    "badge": "Învechit",
+    "badgeLabel": "Previzualizare învechită, care nu este cea curentă. Recompilează.",
+    "tooltip": "Previzualizarea este învechită față de modificările din editor. {{explanation}} {{syncTex}} Apasă pentru a recompila.",
+    "explanation": "Acest PDF nu reprezintă revizia activă a proiectului.",
+    "revisionExplanation": "Se afișează revizia {{displayed}} a proiectului. Proiectul activ este la revizia {{active}}.",
+    "noIdentity": "PDF-ul afișat nu are o identitate de compilare verificată pentru revizia activă.",
+    "syncTexAvailable": "SyncTeX folosește cea mai apropiată linie nemodificată pentru editări.",
+    "syncTexUnavailable": "SyncTeX are nevoie de o compilare curentă."
+  },
+  "save": {
+    "title": "Salvează PDF-ul în proiect",
+    "imageTitle": "Salvează imaginea în proiect",
+    "close": "Închide fereastra de salvare",
+    "staleDescription": "Salvează în arborele proiectului PDF-ul învechit afișat. El nu reprezintă revizia activă.",
+    "description": "Salvează în arborele proiectului PDF-ul afișat (comis prin Git).",
+    "nameLabel": "Numele sub care se salvează în proiect",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "Imaginea a fost salvată în proiect.",
+    "pdfSaved": "PDF-ul a fost salvat în proiect.",
+    "failed": "Nu s-a putut salva în proiect."
+  },
+  "download": {
+    "pngFilter": "Imagine PNG",
+    "imageSaved": "Imagine salvată · {{name}}",
+    "pdfSaved": "PDF salvat · {{name}}",
+    "showInFolder": "Arată în folder",
+    "folderUnavailable": "Fișierul a fost salvat, dar Oleafly nu a putut deschide folderul lui (permisiune refuzată). Verifică locul pe care l-ai ales în fereastra de salvare.",
+    "imageFailed": "Imaginea nu a putut fi descărcată.",
+    "imageFailedDetail": "Imaginea nu a putut fi descărcată: {{detail}}",
+    "pdfFailed": "PDF-ul nu a putut fi descărcat.",
+    "pdfFailedDetail": "PDF-ul nu a putut fi descărcat: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "Compilarea PDF nu este disponibilă acum.",
+    "compileFailed": "Compilarea a eșuat. Deschide fila Jurnale ca să vezi ce nu a mers."
+  },
+  "a11y": {
+    "stale": "PDF învechit, care nu este cel curent. {{explanation}}",
+    "page": "Pagina {{page}} din {{total}} a PDF-ului.",
+    "searchResult": "Rezultatul {{current}} din {{total}}."
+  },
+  "startup": {
+    "headingReady": "Previzualizarea PDF este gata",
+    "headingPreparing": "Se pregătește previzualizarea PDF",
+    "headingAttention": "Pornirea necesită atenție",
+    "progressLabel": "Pornirea documentului: {{completed}} din {{total}} etape finalizate sau sărite",
+    "doneCount": "{{completed}}/{{total}} gata",
+    "metaRunning": "{{stages}} în curs",
+    "metaQueued": "{{stages}} la coadă",
+    "metaFailed": "{{stages}} eșuate",
+    "compileNow": "Compilează acum",
+    "noProject": "Niciun proiect activ",
+    "waitingForEngine": "Se așteaptă motorul de documente",
+    "orPress": "sau apasă <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "gata",
+      "running": "în curs",
+      "queued": "la coadă",
+      "skipped": "sărit",
+      "failed": "eșuat"
+    },
+    "language": {
+      "serviceLabel": "Serviciul de limbaj",
+      "analysisLabel": "Analiza de limbaj",
+      "openingFiles": "Se deschid fișierele proiectului",
+      "starting": "Pornește serviciul de limbaj",
+      "restarting": "Repornește serviciul de limbaj",
+      "installing": "Se instalează serviciul de limbaj",
+      "connected": "Pornit și conectat",
+      "ready": "Pregătit",
+      "localOnly": "Nu este necesar. Se folosește analiza locală.",
+      "notApplicable": "Nu se aplică acestui proiect",
+      "unavailable": "Indisponibil. Analiza locală rămâne disponibilă.",
+      "waitingToStart": "Se așteaptă pornirea",
+      "waitingForFiles": "Se așteaptă fișierele proiectului",
+      "syncing": "Se sincronizează fișierele curente ale proiectului",
+      "analyzing": "Se analizează structura proiectului",
+      "analyzed": "Revizia curentă a proiectului a fost analizată",
+      "partial": "O analiză parțială utilizabilă este gata",
+      "needsAttention": "Analiza necesită atenție",
+      "notAvailable": "Nu este disponibil pentru acest proiect",
+      "queued": "La coadă pentru revizia curentă",
+      "waitingForService": "Se așteaptă serviciul de limbaj"
+    },
+    "compile": {
+      "label": "Se compilează",
+      "saving": "Se salvează modificările curente",
+      "downloading": "Se descarcă pachetele LaTeX necesare",
+      "producing": "Se produce și se verifică rezultatul PDF",
+      "unavailable": "Compilatorul nu este disponibil",
+      "failed": "Compilarea a eșuat. Deschide Jurnale pentru detalii.",
+      "accepted": "Rezultat verificat și acceptat",
+      "waiting": "Se așteaptă compilarea reviziei curente"
+    },
+    "render": {
+      "label": "Se randează PDF-ul",
+      "preparing": "Se pregătesc paginile, textul și legăturile",
+      "reading": "Se citește PDF-ul · {{percent}}%",
+      "passwordRequired": "Este necesară o parolă",
+      "needsAttention": "Randarea PDF-ului necesită atenție",
+      "ready": "Previzualizarea este gata",
+      "waitingForRenderer": "Se așteaptă randatorul PDF verificat",
+      "waitingForCompile": "Se așteaptă un rezultat de compilare verificat"
+    }
+  },
+  "window": {
+    "fitWidth": "Potrivește pe lățime",
+    "fitHeight": "Potrivește pe înălțime",
+    "invert": "Inversează culorile",
+    "invertLabel": "Inversează culorile PDF-ului",
+    "rotateLabel": "Rotește PDF-ul în sensul acelor de ceasornic",
+    "staleHeading": "Învechit · previzualizare care nu este cea curentă",
+    "staleCompiling": "Se compilează o revizie mai nouă a proiectului. Acesta este ultimul PDF verificat pentru revizia {{revision}}.",
+    "staleUnknownRevision": "necunoscută",
+    "staleCompileFailed": "{{detail}} Ultimul PDF verificat rămâne vizibil.",
+    "staleCompileFailedDetail": "Compilarea mai nouă nu a produs un PDF utilizabil",
+    "staleIdentity": "Acest PDF nu reprezintă cea mai recentă identitate de compilare acceptată.",
+    "crashedDetail": "Reîncearcă acest vizualizator sau compilează din nou în fereastra principală.",
+    "compilingTitle": "Se compilează PDF-ul",
+    "compileFailedTitle": "Compilarea a eșuat",
+    "compileUnavailableTitle": "Compilarea nu este disponibilă",
+    "artifactUnavailableTitle": "PDF-ul nu este disponibil",
+    "noVerifiedTitle": "Niciun PDF verificat",
+    "compilingDetail": "PDF-ul verificat va apărea când se încheie compilarea.",
+    "noVerifiedDetail": "Compilează proiectul în fereastra principală. Fereastra aceasta afișează doar rezultate cu identitate de compilare verificată.",
+    "loadingTitle": "Se încarcă PDF-ul",
+    "loadingVerified": "Se încarcă PDF-ul verificat…",
+    "restoringLast": "Se restabilește ultimul PDF încărcat cu succes…",
+    "retryingLoad": "Se reîncearcă încărcarea PDF-ului…",
+    "unlocking": "Se deblochează PDF-ul…",
+    "rotating": "Se rotește PDF-ul…",
+    "retainedFailureDetail": "Cel mai recent PDF nu a putut fi încărcat",
+    "artifactFailure": "PDF-ul compilat nu a putut fi verificat sau citit. Ultimul PDF încărcat cu succes este păstrat atunci când există.",
+    "downloadStarted": "Descărcarea PDF-ului a început.",
+    "downloadSaved": "PDF-ul a fost salvat cu succes.",
+    "downloadFailed": "PDF-ul afișat nu a putut fi salvat."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Parola PDF-ului nu a fost acceptată.",
+      "passwordRequired": "Acest PDF este protejat cu parolă.",
+      "invalid": "Rezultatul compilării nu este un PDF valid. Recompilează sau inspectează jurnalul de compilare.",
+      "unavailable": "Randatorul PDF nu este disponibil în această fereastră. Reîncearcă după ce restabilești fereastra sau repornești aplicația.",
+      "generic": "PDF-ul nu a putut fi încărcat. Recompilează revizia curentă și încearcă din nou.",
+      "empty": "PDF-ul compilat este gol.",
+      "firstPage": "PDF-ul s-a deschis, dar prima lui pagină nu a putut fi randată."
+    },
+    "link": {
+      "blockedScheme": "Această legătură din PDF folosește o schemă de URL blocată."
+    },
+    "search": {
+      "failed": "Căutarea nu a putut citi toate paginile. Reîncearcă după ce reîncarci PDF-ul."
+    },
+    "outline": {
+      "empty": "Acest PDF nu conține un cuprins.",
+      "failed": "Cuprinsul PDF-ului nu a putut fi încărcat.",
+      "destinationUnavailable": "Destinația aceea din cuprins nu este disponibilă.",
+      "blockedScheme": "Această legătură folosește o schemă de URL blocată.",
+      "noDestination": "Acest element din cuprins nu are destinație.",
+      "untitled": "Secțiune fără titlu"
+    },
+    "status": {
+      "loading": "Se încarcă PDF-ul…"
+    },
+    "a11y": {
+      "document": "Previzualizarea documentului PDF",
+      "page": "Pagina {{page}} din {{total}} a PDF-ului",
+      "textLayer": "Text selectabil pentru pagina {{page}} a PDF-ului"
+    },
+    "screenReader": {
+      "layer": "Vizualizare pentru cititor de ecran, pagina {{page}} din {{total}}",
+      "title": "Mod pentru cititor de ecran",
+      "pageLabel": "Pagina {{page}} din {{total}}",
+      "empty": "Pe această pagină nu s-a găsit text lizibil."
+    }
+  }
+}

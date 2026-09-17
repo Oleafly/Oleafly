@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Användningsrapport",
+    "description": "Registrerad tokenaktivitet per projekt, agent, leverantör, modell och session.",
+    "from": "Från",
+    "through": "Till och med",
+    "quickRangesLegend": "Snabbval",
+    "utcNote": "Datum och timmar anges i UTC.",
+    "apply": "Tillämpa",
+    "refresh": "Uppdatera",
+    "refreshLabel": "Uppdatera användningsrapporten",
+    "loading": "Läser in användning…",
+    "loadFailed": "Användningsrapporten kunde inte läsas in.",
+    "loadFailedHint": "Försök igen om en stund.",
+    "tryAgain": "Försök igen",
+    "emptyTitle": "Ingen användning registrerades för de här filtren.",
+    "emptyDescription": "Ändra datumintervallet eller ta bort ett filter."
+  },
+  "quickRanges": {
+    "days7": "7 d",
+    "days30": "30 d",
+    "days90": "90 d",
+    "month": "Denna månad"
+  },
+  "filters": {
+    "project": "Projekt",
+    "projectAll": "Alla projekt",
+    "agent": "Agent",
+    "agentAll": "Alla agenter",
+    "provider": "Leverantör",
+    "providerAll": "Alla leverantörer",
+    "model": "Modell",
+    "modelAll": "Alla modeller",
+    "session": "Session",
+    "sessionAll": "Alla sessioner"
+  },
+  "report": {
+    "range": "{{start}} till {{end}} (UTC)",
+    "costDisclaimer": "Kostnadsuppskattningarna bygger på sparade prisuppgifter, inte på din faktura eller din kvot hos leverantören.",
+    "exportCsv": "Exportera CSV",
+    "exportSaved": "Sparade {{path}}",
+    "exportFailed": "Användningsrapporten kunde inte sparas.",
+    "inputTokens": "Indatatokens",
+    "inputIncludesCache": "Inklusive cachad indata",
+    "outputTokens": "Utdatatokens",
+    "outputIncludesReasoning": "Inklusive resonemangstokens",
+    "cacheReads": "Cacheläsningar",
+    "costEstimate": "Uppskattad kostnad",
+    "allRecordsPriced": "Alla poster prissatta",
+    "sessions": "Sessioner",
+    "dailyTokens": "Tokens per dag",
+    "activityByHour": "Aktivitet per timme",
+    "projects": "Projekt",
+    "agents": "Agenter",
+    "providers": "Leverantörer",
+    "models": "Modeller"
+  },
+  "counts": {
+    "records_one": "{{total}} post",
+    "records_other": "{{total}} poster",
+    "sessions_one": "{{total}} session",
+    "sessions_other": "{{total}} sessioner",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokens",
+    "inputUnknown_one": "{{total}} post utan antal indatatokens",
+    "inputUnknown_other": "{{total}} poster utan antal indatatokens",
+    "outputUnknown_one": "{{total}} post utan antal utdatatokens",
+    "outputUnknown_other": "{{total}} poster utan antal utdatatokens",
+    "cacheUnknown_one": "{{total}} post utan jämförbara cachedata",
+    "cacheUnknown_other": "{{total}} poster utan jämförbara cachedata",
+    "unpriced_one": "{{total}} post utan pris",
+    "unpriced_other": "{{total}} poster utan pris",
+    "partlyUnpriced_one": "{{unpriced}} av {{total}} post utan pris",
+    "partlyUnpriced_other": "{{unpriced}} av {{total}} poster utan pris",
+    "onPlan_one": "{{total}} post via abonnemang eller lokalt",
+    "onPlan_other": "{{total}} poster via abonnemang eller lokalt",
+    "childRuns_one": "{{total}} underkörning",
+    "childRuns_other": "{{total}} underkörningar",
+    "usageRecords_one": "{{total}} användningspost",
+    "usageRecords_other": "{{total}} användningsposter",
+    "excludedChildRecords_one": "{{total}} underordnad post är redan medräknad i en överordnad summa och räknas därför inte två gånger.",
+    "excludedChildRecords_other": "{{total}} underordnade poster är redan medräknade i en överordnad summa och räknas därför inte två gånger.",
+    "unmeasured_one": "{{total}} post utan uppmätta tokenantal.",
+    "unmeasured_other": "{{total}} poster utan uppmätta tokenantal."
+  },
+  "cache": {
+    "rate": "{{percent}} % av jämförbar indata",
+    "rateWithUnknown": "{{percent}} % av jämförbar indata, {{unknown}} inte jämförbar"
+  },
+  "cost": {
+    "local": "Lokalt",
+    "plan": "Abonnemang",
+    "notBilledPerToken": "Debiteras inte per token",
+    "noEstimate": "Ingen uppskattning",
+    "noSavedPrice": "Inget sparat pris för de här posterna",
+    "priceSource": "Priskälla: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Trend för in- och utdatatokens per dag",
+    "chartTitle": "Tokenanvändning per dag",
+    "empty": "Ingen daglig aktivitet.",
+    "tokensUnavailable": "Tokenantal saknas",
+    "inOut": "{{input}} in, {{output}} ut",
+    "incompleteDays": "Dagar med ofullständiga tokenantal utelämnas ur linjen.",
+    "day": "Dag",
+    "inputTokens": "Indatatokens",
+    "outputTokens": "Utdatatokens"
+  },
+  "heatmap": {
+    "label": "Tokenaktivitet per veckodag och timme i UTC",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Ingen registrerad aktivitet",
+    "tokenUnavailable": "Tokenantal saknas",
+    "hoursInUtc": "Timmar i UTC",
+    "less": "Mindre",
+    "more": "Mer",
+    "weekdays": {
+      "sun": "sön",
+      "mon": "mån",
+      "tue": "tis",
+      "wed": "ons",
+      "thu": "tors",
+      "fri": "fre",
+      "sat": "lör"
+    }
+  },
+  "breakdown": {
+    "empty": "Ingen registrerad användning.",
+    "name": "Namn",
+    "tokens": "Tokens",
+    "cost": "Kostnad",
+    "sessions": "Sessioner"
+  },
+  "sessions": {
+    "title": "Sessioner",
+    "subtitle": "Chattar, uppgifter, körningar av underagenter och hjälpanrop, senaste först.",
+    "emptyTitle": "Inga sessioner matchar de här filtren",
+    "emptyDescription": "Ändra datumintervallet eller ta bort ett filter.",
+    "session": "Session",
+    "project": "Projekt",
+    "agent": "Agent",
+    "model": "Modell",
+    "lastActivity": "Senaste aktivitet (UTC)",
+    "input": "In",
+    "output": "Ut",
+    "cost": "Kostnad",
+    "billing": "Debitering",
+    "status": "Status",
+    "rowsPerPage": "Rader per sida",
+    "page": "Sida {{page}} av {{pageCount}}",
+    "previous": "Föregående",
+    "next": "Nästa"
+  },
+  "labels": {
+    "unknown": "Okänd",
+    "mixed": "Blandat",
+    "generalProject": "Allmänt",
+    "runtimeBuiltIn": "Oleafly-assistenten",
+    "runtimeHelper": "Hjälpanrop",
+    "runtimeAcp": "CLI-agenter"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Abonnemang",
+    "local": "Lokalt",
+    "unknown": "Okänd",
+    "mixed": "Blandat"
+  },
+  "scope": {
+    "child": "Underagent",
+    "task": "Uppgift",
+    "helper": "Hjälpanrop"
+  },
+  "status": {
+    "in_progress": "Pågår",
+    "completed": "Slutförd",
+    "failed": "Misslyckades",
+    "cancelled": "Avbruten",
+    "interrupted": "Stoppad"
+  },
+  "measurement": {
+    "provider_reported": "Räknad av leverantören",
+    "runtime_reported": "Räknad av agenten",
+    "estimated": "Uppskattad lokalt",
+    "unavailable": "Inte uppmätt",
+    "mixed_or_unavailable": "Delvis uppmätt"
+  }
+}

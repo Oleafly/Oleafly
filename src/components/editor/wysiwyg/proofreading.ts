@@ -33,6 +33,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { proofreadingPresentationDiagnostics, storePresentationDiagnostics } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
+import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { isWysiwygActive } from "./controller";
 
 export interface VisualProofreadingIssue
@@ -715,6 +716,7 @@ export const VisualProofreading = Extension.create({
                 preferences: {
                   showRegionalism: settings.showRegionalism,
                   showWordChoice: settings.showWordChoice,
+                  dictionaryLocale: currentDictionaryLocale(),
                 },
               })
                 .then((result) => {

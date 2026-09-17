@@ -21,15 +21,17 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { renderMathExpression } from "@oleafly/editor/math-render";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
 import {
-  WYSIWYG_EXTENSIONS,
+  createWysiwygExtensions,
   parseLatexBody,
   serializeLatexBody,
   splitLatexDocument,
   joinLatexDocument,
   parseMarkdownBody,
   serializeMarkdownBody,
+  theoremEnvironmentsFromPreamble,
   type LatexDocumentSplit,
 } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
@@ -41,11 +43,15 @@ import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import {
   getWysiwygProjectSessionGeneration,
+  setWysiwygDocumentContext,
   setWysiwygEditor,
   setWysiwygFlushController,
+  setWysiwygInsertions,
   setWysiwygProjectNavigation,
   setWysiwygVisible,
+  type WysiwygDocumentContext,
 } from "./controller";
+import { visualInsertions } from "./insert";
 import {
   findVisualReferences,
   goToVisualDefinition,
@@ -53,10 +59,8 @@ import {
   VisualProjectIntelligence,
 } from "./project-intelligence";
 import { useIndexStore } from "@/store/project-index";
-import {
-  refreshVisualMathPreview,
-  VisualMathPreview,
-} from "./math-preview";
+import { resolveVisualAssetUrl } from "./asset-url";
+import { createVisualPasteHandlers } from "./paste";
 import {
   applyVisualProofreadingSuggestion,
   ignoreVisualProofreadingIssue,
@@ -77,6 +81,19 @@ function isMarkdownPath(path: string): boolean {
 
 const FLUSH_DEBOUNCE_MS = 300;
 const EXTERNAL_DOCUMENT_SYNC = "oleaflyExternalDocumentSync";
+const BOOKTABS_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{[^}]*\bbooktabs\b[^}]*\}/u;
+const PACKAGE_EXTENSIONS = createWysiwygExtensions({
+  renderMath: renderMathExpression,
+  resolveAssetUrl: resolveVisualAssetUrl,
+});
+const PASTE_HANDLERS = createVisualPasteHandlers();
+
+export function documentContextForPreamble(preamble: string): WysiwygDocumentContext {
+  return {
+    theoremEnvironments: theoremEnvironmentsFromPreamble(preamble),
+    booktabs: BOOKTABS_PACKAGE.test(preamble),
+  };
+}
 const ExternalMutationGate = Extension.create({
   name: "externalMutationGate",
   addProseMirrorPlugins() {
@@ -558,9 +575,8 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   }, []);
   const editor = useEditor({
     extensions: [
-      ...WYSIWYG_EXTENSIONS,
+      ...PACKAGE_EXTENSIONS,
       ExternalMutationGate,
-      VisualMathPreview,
       VisualProjectIntelligence,
       VisualProofreading,
     ],
@@ -569,6 +585,8 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     editorProps: {
       handleScrollToSelection:
         scrollVisualSelectionLocally,
+      handlePaste: PASTE_HANDLERS.handlePaste,
+      handleDrop: PASTE_HANDLERS.handleDrop,
       handleKeyDown: (_view, event) => {
         if (!(event.metaKey || event.ctrlKey)) return false;
         const key = event.key.toLowerCase();
@@ -628,6 +646,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
 
   useEffect(() => {
     setWysiwygEditor(editor ?? null);
+    setWysiwygInsertions(editor ? visualInsertions : null);
     const unregisterMutationOwner = editor ? registerEditorMutationOwner({
       projectId: () => projectIdRef.current,
       setLocked: (locked) => editor.setEditable(!locked, false),
@@ -657,6 +676,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       unregisterMutationOwner?.();
       setWysiwygProjectNavigation(null);
       setWysiwygFlushController(null);
+      setWysiwygInsertions(null);
       setWysiwygEditor(null);
     };
   }, [editor, flush]);
@@ -710,11 +730,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     projectDictionary,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: path and visibility intentionally retrigger the imperative viewport/revision refresh.
-  useEffect(() => {
-    if (editor) refreshVisualMathPreview(editor);
-  }, [editor, activePath, wysiwyg]);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: the analysis-state object/path deliberately retrigger the imperative ProseMirror decoration refresh; their current composite value is held in a ref.
   useEffect(() => {
     if (editor) {
@@ -754,6 +769,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       preambleRef.current = "";
       setPreamble("");
       setHasDocumentEnv(false);
+      setWysiwygDocumentContext(null);
       replaceContentAndResetHistory(editor, doc);
     } else {
       const split = splitLatexDocument(raw);
@@ -762,12 +778,15 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       setPreamble(split.preamble);
       setHasDocumentEnv(split.hasDocumentEnv);
       frontmatterRef.current = "";
+      const context = documentContextForPreamble(split.preamble);
+      setWysiwygDocumentContext(context);
       replaceContentAndResetHistory(
         editor,
         parseLatexBody(split.body, {
           preservedInlineRanges: scanMathExpressions(split.body, {
             format: "latex",
           }).map(({ from, to }) => ({ from, to })),
+          theoremEnvironments: context.theoremEnvironments,
         }),
       );
     }
@@ -808,6 +827,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     if (isEditorMutationLocked(projectIdRef.current)) return;
     setPreamble(value);
     preambleRef.current = value;
+    setWysiwygDocumentContext(documentContextForPreamble(value));
     visualDirtyRef.current = true;
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(() => {

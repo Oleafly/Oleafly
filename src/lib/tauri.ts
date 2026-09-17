@@ -54,6 +54,8 @@ import type {
   ComponentInfo,
   CopyFileResult,
   CreateFileResult,
+  DictionaryBytes,
+  DictionaryInfo,
   DocumentEngineDescriptor,
   DocumentStatsRequest,
   DocumentStatsResult,
@@ -525,6 +527,12 @@ export const setProjectEngineCmd = (
   flavor: TexFlavor | null = null,
 ) => invoke<ProjectMeta>("set_project_engine", { projectId, engine, flavor });
 
+export const setProjectDictionaryLocaleCmd = (
+  projectId: string,
+  locale: string | null,
+) =>
+  invoke<ProjectMeta>("set_project_dictionary_locale", { projectId, locale });
+
 export const setProjectShellEscapeCmd = (
   projectId: string,
   allowShellEscape: boolean,
@@ -636,6 +644,33 @@ export const removeFontComponent = (id: string) =>
   invoke<void>("remove_font_component", { id });
 
 export const downloadAllFonts = () => invoke<void>("download_all_fonts");
+
+export const listDictionaries = () =>
+  invoke<DictionaryInfo[]>("list_dictionaries");
+
+export const installDictionary = (id: string) =>
+  invoke<void>("install_dictionary", { id });
+
+export const removeDictionary = (id: string) =>
+  invoke<void>("remove_dictionary", { id });
+
+export async function readDictionary(id: string): Promise<DictionaryBytes> {
+  const payload = await invoke<ArrayBuffer>("read_dictionary", { id });
+  const bytes = new Uint8Array(payload);
+  if (bytes.byteLength <= 8) {
+    throw new Error("The spelling dictionary payload is incomplete.");
+  }
+  const affLength = Number(
+    new DataView(bytes.buffer, bytes.byteOffset, 8).getBigUint64(0, true),
+  );
+  if (affLength <= 0 || affLength >= bytes.byteLength - 8) {
+    throw new Error("The spelling dictionary payload is incomplete.");
+  }
+  return {
+    aff: bytes.slice(8, 8 + affLength),
+    dic: bytes.slice(8 + affLength),
+  };
+}
 
 export const templatePrerequisites = (templateId: string) =>
   invoke<Prerequisite[]>("template_prerequisites", { templateId });

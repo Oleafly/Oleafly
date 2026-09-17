@@ -32,18 +32,12 @@ import {
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
-import {
-  findWysiwygReferences,
-  goToWysiwygDefinition,
-  isWysiwygActive,
-} from "./wysiwyg/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
-import { i18n } from "@/i18n";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -66,7 +60,6 @@ import {
 import { SymbolPicker } from "@/components/editor/SymbolPicker";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
 import { ProjectCitationPicker } from "@/components/editor/ProjectCitationPicker";
-import { toast } from "@/lib/toast";
 import {
   DIVIDER_WIDTH,
   DROPDOWN_TRIGGER_WIDTH,
@@ -78,17 +71,7 @@ import {
 
 function withProjectSymbol(
   sourceAction: (view: import("@codemirror/view").EditorView) => void,
-  visualAction?: () => boolean,
 ) {
-  if (isWysiwygActive()) {
-    if (visualAction?.()) return;
-    toast.info(
-      visualAction
-        ? i18n.t(($) => $.editor.toolbar.selectCitationFirst)
-        : i18n.t(($) => $.editor.toolbar.renameSourceOnly),
-    );
-    return;
-  }
   const v = getEditorView();
   if (v) sourceAction(v);
 }
@@ -310,19 +293,11 @@ function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
       <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
         {t(($) => $.editor.toolbar.code)}
       </div>
-      <PopoverItem
-        onClick={() =>
-          withProjectSymbol(goToDefinition, goToWysiwygDefinition)
-        }
-      >
+      <PopoverItem onClick={() => withProjectSymbol(goToDefinition)}>
         <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
         <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F12")}</span>
       </PopoverItem>
-      <PopoverItem
-        onClick={() =>
-          withProjectSymbol(findReferences, findWysiwygReferences)
-        }
-      >
+      <PopoverItem onClick={() => withProjectSymbol(findReferences)}>
         <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
         <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("⇧F12")}</span>
       </PopoverItem>
@@ -464,18 +439,16 @@ export function EditorToolbar({
         render: () => <SymbolPicker />,
         renderMenu: () => <SymbolPicker key="symbols" menuRow />,
       },
-    );
-    if (!wysiwyg) {
-      list.push({
+      {
         id: "code-intel",
         width: DROPDOWN_TRIGGER_WIDTH,
         render: () => <CodeIntelDropdown variant="bar" />,
         renderMenu: () => <CodeIntelDropdown key="code-intel" variant="menu" />,
-      });
-    }
+      },
+    );
 
     return list;
-  }, [t, visionReady, wysiwyg]);
+  }, [t, visionReady]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -549,13 +522,11 @@ export function EditorToolbar({
             <Quote className="size-4" />
           </IconBtn>
         )}
-        <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
-        {!wysiwyg && (
-          <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
-            <Search className="size-4" />
-          </IconBtn>
-        )}
-        {!wysiwyg && syncTexSupported && (
+        <ProjectInfoButton surface="source" />
+        <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
+          <Search className="size-4" />
+        </IconBtn>
+        {syncTexSupported && (
           <>
             <Divider />
             <IconBtn onClick={goToSyncTex} title={t(($) => $.editor.toolbar.goToPdf)}>

@@ -1,4 +1,9 @@
 import {
+  BIBTEX_DIRECTIVES,
+  bibtexEntryType,
+  missingBibtexRequiredFields,
+} from "@oleafly/latex";
+import {
   lineStarts,
   location,
   rangeFromOffsets,
@@ -18,38 +23,7 @@ import type {
   ProjectUse,
 } from "./types";
 
-const DIRECTIVE_TYPES = new Set(["comment", "preamble", "string"]);
-const BIBTEX_REQUIRED_FIELDS: Readonly<
-  Record<string, readonly (readonly string[])[]>
-> = {
-  article: [["author"], ["title"], ["journal"], ["year"]],
-  book: [["author", "editor"], ["title"], ["publisher"], ["year"]],
-  booklet: [["title"]],
-  conference: [["author"], ["title"], ["booktitle"], ["year"]],
-  inbook: [
-    ["author", "editor"],
-    ["title"],
-    ["chapter", "pages"],
-    ["publisher"],
-    ["year"],
-  ],
-  incollection: [
-    ["author"],
-    ["title"],
-    ["booktitle"],
-    ["publisher"],
-    ["year"],
-  ],
-  inproceedings: [["author"], ["title"], ["booktitle"], ["year"]],
-  manual: [["title"]],
-  mastersthesis: [["author"], ["title"], ["school"], ["year"]],
-  misc: [],
-  online: [["title"], ["url", "doi"]],
-  phdthesis: [["author"], ["title"], ["school"], ["year"]],
-  proceedings: [["title"], ["year"]],
-  techreport: [["author"], ["title"], ["institution"], ["year"]],
-  unpublished: [["author"], ["title"], ["note"]],
-};
+const DIRECTIVE_TYPES = new Set<string>(BIBTEX_DIRECTIVES);
 
 function skipWhitespaceAndCommas(
   source: string,
@@ -443,8 +417,7 @@ function checkRequiredFields(
   entry: BibliographyEntryDetail,
   spec: EntrySpec,
 ): void {
-  const required = BIBTEX_REQUIRED_FIELDS[spec.type];
-  if (!required) {
+  if (!bibtexEntryType(spec.type)) {
     validationFinding(
       scan,
       entry.typeRange,
@@ -455,8 +428,7 @@ function checkRequiredFields(
     return;
   }
   const present = new Set(spec.fields.map((field) => field.name));
-  for (const alternatives of required) {
-    if (alternatives.some((name) => present.has(name))) continue;
+  for (const alternatives of missingBibtexRequiredFields(spec.type, present)) {
     validationFinding(
       scan,
       entry.keyRange,

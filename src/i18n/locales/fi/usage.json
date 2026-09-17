@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Käyttöraportti",
+    "description": "Kirjattu token-käyttö projektin, agentin, palvelun, mallin ja istunnon mukaan.",
+    "from": "Alkaen",
+    "through": "Päättyen",
+    "quickRangesLegend": "Pikavälit",
+    "utcNote": "Päivämäärät ja kellonajat ovat UTC-aikaa.",
+    "apply": "Käytä",
+    "refresh": "Päivitä",
+    "refreshLabel": "Päivitä käyttöraportti",
+    "loading": "Ladataan käyttötietoja…",
+    "loadFailed": "Käyttöraporttia ei voitu ladata.",
+    "loadFailedHint": "Yritä hetken kuluttua uudelleen.",
+    "tryAgain": "Yritä uudelleen",
+    "emptyTitle": "Näillä suodattimilla ei kirjattu käyttöä.",
+    "emptyDescription": "Muuta aikaväliä tai poista jokin suodatin."
+  },
+  "quickRanges": {
+    "days7": "7 pv",
+    "days30": "30 pv",
+    "days90": "90 pv",
+    "month": "Tämä kuukausi"
+  },
+  "filters": {
+    "project": "Projekti",
+    "projectAll": "Kaikki projektit",
+    "agent": "Agentti",
+    "agentAll": "Kaikki agentit",
+    "provider": "Palvelu",
+    "providerAll": "Kaikki palvelut",
+    "model": "Malli",
+    "modelAll": "Kaikki mallit",
+    "session": "Istunto",
+    "sessionAll": "Kaikki istunnot"
+  },
+  "report": {
+    "range": "{{start}} - {{end}} (UTC)",
+    "costDisclaimer": "Kustannusarviot perustuvat tallennettuihin hintatietoihin, eivät palvelun laskuun tai tilauksen kiintiöön.",
+    "exportCsv": "Vie CSV",
+    "exportSaved": "Tallennettu kohteeseen {{path}}",
+    "exportFailed": "Käyttöraporttia ei voitu tallentaa.",
+    "inputTokens": "Syötetokenit",
+    "inputIncludesCache": "Sisältää välimuistista luetun syötteen",
+    "outputTokens": "Tulostetokenit",
+    "outputIncludesReasoning": "Sisältää päättelytokenit",
+    "cacheReads": "Välimuistiluvut",
+    "costEstimate": "Kustannusarvio",
+    "allRecordsPriced": "Kaikille tietueille on hinta",
+    "sessions": "Istunnot",
+    "dailyTokens": "Tokenit päivittäin",
+    "activityByHour": "Käyttö tunneittain",
+    "projects": "Projektit",
+    "agents": "Agentit",
+    "providers": "Palvelut",
+    "models": "Mallit"
+  },
+  "counts": {
+    "records_one": "{{total}} tietue",
+    "records_other": "{{total}} tietuetta",
+    "sessions_one": "{{total}} istunto",
+    "sessions_other": "{{total}} istuntoa",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokenia",
+    "inputUnknown_one": "{{total}} tietue ilman syötteen määrää",
+    "inputUnknown_other": "{{total}} tietuetta ilman syötteen määrää",
+    "outputUnknown_one": "{{total}} tietue ilman tulosteen määrää",
+    "outputUnknown_other": "{{total}} tietuetta ilman tulosteen määrää",
+    "cacheUnknown_one": "{{total}} tietue ilman vertailukelpoista välimuistitietoa",
+    "cacheUnknown_other": "{{total}} tietuetta ilman vertailukelpoista välimuistitietoa",
+    "unpriced_one": "{{total}} tietue ilman hintaa",
+    "unpriced_other": "{{total}} tietuetta ilman hintaa",
+    "partlyUnpriced_one": "{{unpriced}}/{{total}} tietueesta ilman hintaa",
+    "partlyUnpriced_other": "{{unpriced}}/{{total}} tietueesta ilman hintaa",
+    "onPlan_one": "{{total}} tietue tilauksessa tai paikallisesti",
+    "onPlan_other": "{{total}} tietuetta tilauksessa tai paikallisesti",
+    "childRuns_one": "{{total}} aliajo",
+    "childRuns_other": "{{total}} aliajoa",
+    "usageRecords_one": "{{total}} käyttötietue",
+    "usageRecords_other": "{{total}} käyttötietuetta",
+    "excludedChildRecords_one": "{{total}} alitietue sisältyy jo yläsummaan, joten sitä ei lasketa kahdesti.",
+    "excludedChildRecords_other": "{{total}} alitietuetta sisältyy jo yläsummaan, joten niitä ei lasketa kahdesti.",
+    "unmeasured_one": "{{total}} tietue ilman mitattuja token-määriä.",
+    "unmeasured_other": "{{total}} tietuetta ilman mitattuja token-määriä."
+  },
+  "cache": {
+    "rate": "{{percent}} % vertailukelpoisesta syötteestä",
+    "rateWithUnknown": "{{percent}} % vertailukelpoisesta syötteestä, {{unknown}} ei vertailukelpoinen"
+  },
+  "cost": {
+    "local": "Paikallinen",
+    "plan": "Tilaus",
+    "notBilledPerToken": "Ei laskuteta tokenien mukaan",
+    "noEstimate": "Ei arviota",
+    "noSavedPrice": "Näille tietueille ei ole tallennettua hintaa",
+    "priceSource": "Hintatietojen lähde: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Syöte- ja tulostetokenien päivittäinen kehitys",
+    "chartTitle": "Tokenien käyttö päivittäin",
+    "empty": "Ei päivittäistä käyttöä.",
+    "tokensUnavailable": "Token-määrät eivät ole saatavilla",
+    "inOut": "{{input}} sisään, {{output}} ulos",
+    "incompleteDays": "Päivät, joiden token-määrät ovat puutteellisia, jätetään viivasta pois.",
+    "day": "Päivä",
+    "inputTokens": "Syötetokenit",
+    "outputTokens": "Tulostetokenit"
+  },
+  "heatmap": {
+    "label": "Token-käyttö UTC-viikonpäivän ja -tunnin mukaan",
+    "cell": "{{weekday}} klo {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Ei kirjattua käyttöä",
+    "tokenUnavailable": "Token-määrä ei ole saatavilla",
+    "hoursInUtc": "Tunnit UTC-aikaa",
+    "less": "Vähemmän",
+    "more": "Enemmän",
+    "weekdays": {
+      "sun": "su",
+      "mon": "ma",
+      "tue": "ti",
+      "wed": "ke",
+      "thu": "to",
+      "fri": "pe",
+      "sat": "la"
+    }
+  },
+  "breakdown": {
+    "empty": "Ei kirjattua käyttöä.",
+    "name": "Nimi",
+    "tokens": "Tokenit",
+    "cost": "Kustannus",
+    "sessions": "Istunnot"
+  },
+  "sessions": {
+    "title": "Istunnot",
+    "subtitle": "Keskustelut, tehtävät, aliagenttien ajot ja apukutsut, uusimmat ensin.",
+    "emptyTitle": "Mikään istunto ei vastaa näitä suodattimia",
+    "emptyDescription": "Muuta aikaväliä tai poista jokin suodatin.",
+    "session": "Istunto",
+    "project": "Projekti",
+    "agent": "Agentti",
+    "model": "Malli",
+    "lastActivity": "Viimeisin tapahtuma (UTC)",
+    "input": "Syöte",
+    "output": "Tuloste",
+    "cost": "Kustannus",
+    "billing": "Laskutus",
+    "status": "Tila",
+    "rowsPerPage": "Rivejä sivulla",
+    "page": "Sivu {{page}}/{{pageCount}}",
+    "previous": "Edellinen",
+    "next": "Seuraava"
+  },
+  "labels": {
+    "unknown": "Tuntematon",
+    "mixed": "Sekalainen",
+    "generalProject": "Yleinen",
+    "runtimeBuiltIn": "Oleafly-avustaja",
+    "runtimeHelper": "Apukutsut",
+    "runtimeAcp": "Komentoriviagentit"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Tilaus",
+    "local": "Paikallinen",
+    "unknown": "Tuntematon",
+    "mixed": "Sekalainen"
+  },
+  "scope": {
+    "child": "Aliagentti",
+    "task": "Tehtävä",
+    "helper": "Apukutsu"
+  },
+  "status": {
+    "in_progress": "Käynnissä",
+    "completed": "Valmis",
+    "failed": "Epäonnistui",
+    "cancelled": "Peruutettu",
+    "interrupted": "Keskeytetty"
+  },
+  "measurement": {
+    "provider_reported": "Palvelun laskema",
+    "runtime_reported": "Agentin laskema",
+    "estimated": "Arvioitu paikallisesti",
+    "unavailable": "Ei mitattu",
+    "mixed_or_unavailable": "Osittain mitattu"
+  }
+}

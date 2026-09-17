@@ -1,12 +1,15 @@
-import { insertEnvironment, insertTemplate, wrapSelectionOrPlaceholder } from "@/components/editor/cm/controller";
+import {
+  insertEnvironment,
+  insertListEnvironment,
+  insertTemplate,
+  wrapSelectionOrPlaceholder,
+} from "@/components/editor/cm/controller";
 import { i18n } from "@/i18n";
-import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import { latexGraphicsPath } from "@/components/editor/figure-import";
+import { useFigureDialogStore } from "@/store/figure-dialog";
+import { useFilesStore } from "@/store/files";
 
-const NATIVE_HEADING_LEVEL: Record<string, 1 | 2 | 3> = {
-  section: 1,
-  subsection: 2,
-  subsubsection: 3,
-};
+const PLACEHOLDER_FIGURE_FILE = "image-filename";
 
 export interface HeadingLevel {
   label: () => string;
@@ -41,51 +44,29 @@ export const HEADING_LEVELS: HeadingLevel[] = [
     placeholder: "Paragraph Title",
     className: "text-xs font-medium",
   },
+  {
+    label: () => i18n.t(($) => $.editor.headings.subparagraph),
+    hLabel: "H7",
+    cmd: "subparagraph",
+    placeholder: "Subparagraph Title",
+    className: "text-xs font-medium",
+  },
 ];
 
 export function insertHeading(level: HeadingLevel) {
-  const nativeLevel = NATIVE_HEADING_LEVEL[level.cmd];
-  if (nativeLevel && isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleHeading({ level: nativeLevel }).run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(`\\${level.cmd}{`, "}\n", level.placeholder);
 }
 
 export function insertBold() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBold().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\textbf{`, "}", "text");
 }
 export function insertItalic() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleItalic().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\textit{`, "}", "text");
 }
 export function insertUnderline() {
   wrapSelectionOrPlaceholder(String.raw`\underline{`, "}", "text");
 }
 export function insertCode() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleCode().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\texttt{`, "}", "text");
 }
 export function insertFootnote() {
@@ -110,11 +91,58 @@ export function insertFraction() {
   insertTemplate(template, start, start + "numerator".length);
 }
 
+export interface FigureSnippetOptions {
+  path: string;
+  width?: string | null;
+  caption?: string | null;
+  label?: string | null;
+  placement?: string;
+}
+
+export interface FigureSnippet {
+  template: string;
+  selStart: number;
+  selEnd: number;
+}
+
+export function figureSnippet(options: FigureSnippetOptions): FigureSnippet {
+  const width = options.width ? `[width=${options.width}]` : "";
+  const lines = [
+    String.raw`\begin{figure}[${options.placement ?? "htbp"}]`,
+    String.raw`  \centering`,
+    String.raw`  \includegraphics${width}{${options.path}}`,
+  ];
+  if (typeof options.caption === "string") lines.push(String.raw`  \caption{${options.caption}}`);
+  if (options.label) lines.push(String.raw`  \label{${options.label}}`);
+  lines.push(String.raw`\end{figure}`, "");
+  const template = lines.join("\n");
+  const captionIndex = template.indexOf(String.raw`\caption{`);
+  if (captionIndex < 0) return { template, selStart: template.length, selEnd: template.length };
+  const selStart = captionIndex + String.raw`\caption{`.length;
+  return { template, selStart, selEnd: selStart + (options.caption ?? "").length };
+}
+
+export function insertFigurePlaceholder() {
+  const template = `\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{${PLACEHOLDER_FIGURE_FILE}}\n  \\caption{Caption text}\n  \\label{fig:label}\n\\end{figure}\n`;
+  const start = template.indexOf(PLACEHOLDER_FIGURE_FILE);
+  insertTemplate(template, start, start + PLACEHOLDER_FIGURE_FILE.length);
+}
+
 export function insertFigure() {
-  const filename = "image-filename";
-  const template = `\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{${filename}}\n  \\caption{Caption text}\n  \\label{fig:label}\n\\end{figure}\n`;
-  const start = template.indexOf(filename);
-  insertTemplate(template, start, start + filename.length);
+  useFigureDialogStore.getState().setOpen(true);
+}
+
+export interface FigureInsertOptions {
+  path: string;
+  width: string | null;
+  caption: string | null;
+  label: string | null;
+}
+
+export function insertFigureFromDialog(options: FigureInsertOptions) {
+  const path = latexGraphicsPath(options.path, useFilesStore.getState().mainDoc);
+  const snippet = figureSnippet({ path, width: options.width, caption: options.caption, label: options.label });
+  insertTemplate(snippet.template, snippet.selStart, snippet.selEnd);
 }
 
 export function insertAlign() {
@@ -124,38 +152,13 @@ export function insertEquation() {
   insertEnvironment("equation");
 }
 export function insertBlockquote() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBlockquote().run();
-      return;
-    }
-  }
   insertEnvironment("quote");
 }
-function insertFirstItem(template: string): void {
-  const cursor = template.indexOf(String.raw`\item `) + String.raw`\item `.length;
-  insertTemplate(template, cursor, cursor);
-}
 export function insertItemize() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBulletList().run();
-      return;
-    }
-  }
-  insertFirstItem("\\begin{itemize}\n  \\item \n\\end{itemize}\n");
+  insertListEnvironment("itemize");
 }
 export function insertEnumerate() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleOrderedList().run();
-      return;
-    }
-  }
-  insertFirstItem("\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
+  insertListEnvironment("enumerate");
 }
 
 export function insertTable(rows: number, cols: number) {
