@@ -68,6 +68,7 @@ describe("mark decorations", () => {
 
   it("marks theorem bodies with the theorem style and table lines as a panel", () => {
     const editor = mount(doc, doc.length);
+    editor.dispatch({ effects: EditorView.scrollIntoView(positionOf(doc, "A small table"), { y: "center" }) });
     const theoremLines = editor.contentDOM.querySelectorAll(".cm-line.ofl-visual-environment-theorem-plain");
     expect(theoremLines.length).toBe(1);
     expect(theoremLines[0].textContent?.trim()).toBe("Every widget renders in place.");
