@@ -4,21 +4,17 @@
     "closeBackdrop": "Закрыть окно «Об Oleafly»",
     "connect": "Связаться с Oleafly",
     "links": {
-      "discussions": {
-        "description": "Задавайте вопросы и делитесь идеями",
-        "label": "Обсуждения"
+      "discord": {
+        "description": "Задавайте вопросы, сообщайте об ошибках и делитесь идеями",
+        "label": "Discord"
       },
       "docs": {
         "description": "Изучите все возможности Oleafly",
         "label": "Документация"
       },
-      "issues": {
-        "description": "Сообщите об ошибке или предложите возможность",
-        "label": "Задачи"
-      },
       "social": {
         "description": "Следите за выпусками и разработкой",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Поставить звезду на GitHub",
@@ -218,6 +214,11 @@
         "uppercase": "верхний регистр текст uppercase case text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} в сети",
+    "discordOnlineAria": "Сейчас в сети на Discord: {{online}}",
+    "joinDiscord": "Мы в Discord"
   },
   "compile": {
     "autoCompile": {

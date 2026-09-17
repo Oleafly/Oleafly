@@ -4,21 +4,17 @@
     "closeBackdrop": "关闭“关于 Oleafly”",
     "connect": "联系 Oleafly",
     "links": {
-      "discussions": {
-        "description": "提问并分享想法。",
-        "label": "讨论区"
+      "discord": {
+        "description": "提问、报告问题并分享想法。",
+        "label": "Discord"
       },
       "docs": {
         "description": "了解 Oleafly 的方方面面。",
         "label": "文档"
       },
-      "issues": {
-        "description": "报告问题或提出功能建议。",
-        "label": "问题反馈"
-      },
       "social": {
         "description": "关注版本发布与开发动态。",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "在 GitHub 上加星",
@@ -215,6 +211,11 @@
         "uppercase": "大写 大小写 文本"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} 人在线",
+    "discordOnlineAria": "Discord 上有 {{online}} 人在线",
+    "joinDiscord": "加入 Discord"
   },
   "compile": {
     "autoCompile": {

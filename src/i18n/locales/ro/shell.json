@@ -4,21 +4,17 @@
     "closeBackdrop": "Închide Despre Oleafly",
     "connect": "Ține legătura cu Oleafly",
     "links": {
-      "discussions": {
-        "description": "Pune întrebări și împărtășește idei",
-        "label": "Discuții"
+      "discord": {
+        "description": "Pune întrebări, raportează erori și împărtășește idei",
+        "label": "Discord"
       },
       "docs": {
         "description": "Învață fiecare parte din Oleafly",
         "label": "Documentație"
       },
-      "issues": {
-        "description": "Raportează o eroare sau cere o funcționalitate",
-        "label": "Probleme"
-      },
       "social": {
         "description": "Urmărește lansările și dezvoltarea",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Dă o stea pe GitHub",
@@ -217,6 +213,11 @@
         "uppercase": "litere mari majuscule text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} online",
+    "discordOnlineAria": "Online acum pe Discord: {{online}}",
+    "joinDiscord": "Intră pe Discord"
   },
   "compile": {
     "autoCompile": {

@@ -4,21 +4,17 @@
     "closeBackdrop": "Zavřít O aplikaci Oleafly",
     "connect": "Spojte se s Oleafly",
     "links": {
-      "discussions": {
-        "description": "Ptejte se a sdílejte nápady",
-        "label": "Diskuze"
+      "discord": {
+        "description": "Ptejte se, hlaste chyby a sdílejte nápady",
+        "label": "Discord"
       },
       "docs": {
         "description": "Poznejte Oleafly do posledního detailu",
         "label": "Dokumentace"
       },
-      "issues": {
-        "description": "Nahlaste chybu nebo požádejte o funkci",
-        "label": "Hlášení"
-      },
       "social": {
         "description": "Sledujte vydání a vývoj",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Dát hvězdu na GitHubu",
@@ -218,6 +214,11 @@
         "uppercase": "velká písmena velikost text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} online",
+    "discordOnlineAria": "Právě online na Discordu: {{online}}",
+    "joinDiscord": "Přidat se na Discord"
   },
   "compile": {
     "autoCompile": {

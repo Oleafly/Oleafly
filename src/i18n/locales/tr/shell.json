@@ -4,21 +4,17 @@
     "closeBackdrop": "Oleafly Hakkında penceresini kapat",
     "connect": "Oleafly ile bağlantıda kalın",
     "links": {
-      "discussions": {
-        "description": "Soru sorun ve fikirlerinizi paylaşın",
-        "label": "Tartışmalar"
+      "discord": {
+        "description": "Soru sorun, hata bildirin ve fikirlerinizi paylaşın",
+        "label": "Discord"
       },
       "docs": {
         "description": "Oleafly'nin her parçasını öğrenin",
         "label": "Belgeler"
       },
-      "issues": {
-        "description": "Bir hata bildirin veya özellik isteyin",
-        "label": "Sorunlar"
-      },
       "social": {
         "description": "Sürümleri ve geliştirmeyi takip edin",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "GitHub'da yıldız verin",
@@ -216,6 +212,11 @@
         "uppercase": "büyük harf metin uppercase case text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} çevrimiçi",
+    "discordOnlineAria": "Discord'da {{online}} üye çevrimiçi",
+    "joinDiscord": "Discord'a katılın"
   },
   "compile": {
     "autoCompile": {

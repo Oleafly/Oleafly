@@ -26,6 +26,7 @@ mod checkpoints;
 mod chunked;
 mod citation;
 mod commands;
+mod community;
 mod compile_fingerprint;
 mod config;
 mod connectors;
@@ -482,6 +483,7 @@ pub fn run() {
             github::gh_create_repo,
             github::gh_public_repo_stats,
             github::gh_import_repo,
+            community::discord_community_stats,
             ollama::ollama_list_models,
             ollama::ollama_installed,
             ollama::ollama_start,

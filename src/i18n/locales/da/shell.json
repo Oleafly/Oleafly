@@ -4,21 +4,17 @@
     "closeBackdrop": "Luk Om Oleafly",
     "connect": "Kom i kontakt med Oleafly",
     "links": {
-      "discussions": {
-        "description": "Stil spørgsmål, og del idéer",
-        "label": "Diskussioner"
+      "discord": {
+        "description": "Stil spørgsmål, meld fejl, og del idéer",
+        "label": "Discord"
       },
       "docs": {
         "description": "Lær alle dele af Oleafly at kende",
         "label": "Dokumentation"
       },
-      "issues": {
-        "description": "Meld en fejl, eller foreslå en funktion",
-        "label": "Issues"
-      },
       "social": {
         "description": "Følg udgivelser og udvikling",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Giv en stjerne på GitHub",
@@ -216,6 +212,11 @@
         "uppercase": "store bogstaver tekst uppercase case text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} online",
+    "discordOnlineAria": "{{online}} medlemmer online på Discord",
+    "joinDiscord": "Kom med på Discord"
   },
   "compile": {
     "autoCompile": {

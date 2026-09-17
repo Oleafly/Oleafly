@@ -4,21 +4,17 @@
     "closeBackdrop": "Oleafly についてを閉じる",
     "connect": "Oleafly とつながる",
     "links": {
-      "discussions": {
-        "description": "質問したり、アイデアを共有したりできます",
-        "label": "ディスカッション"
+      "discord": {
+        "description": "質問、不具合の報告、アイデアの共有はこちらへ",
+        "label": "Discord"
       },
       "docs": {
         "description": "Oleafly のすべてを学べます",
         "label": "ドキュメント"
       },
-      "issues": {
-        "description": "不具合の報告や機能の要望を送れます",
-        "label": "Issue"
-      },
       "social": {
         "description": "リリースと開発の様子をフォローできます",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "GitHub でスターを付ける",
@@ -215,6 +211,11 @@
         "uppercase": "大文字 大文字小文字 テキスト"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} 人がオンライン",
+    "discordOnlineAria": "Discord で {{online}} 人がオンライン",
+    "joinDiscord": "Discord に参加"
   },
   "compile": {
     "autoCompile": {

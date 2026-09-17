@@ -694,6 +694,9 @@ export interface GitHubRepoStats {
     stars: number;
     forks: number;
 }
+export interface DiscordCommunityStats {
+    online: number;
+}
 export interface AheadBehind {
     ahead: number;
     behind: number;
@@ -974,6 +977,7 @@ export interface BackendPort {
   ghListRepos: () => Promise<GitHubRepo[]>;
   ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
+  discordCommunityStats: () => Promise<DiscordCommunityStats>;
   gitSetRemote: (projectId: string, url: string) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;

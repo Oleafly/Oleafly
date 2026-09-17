@@ -132,8 +132,8 @@ test("history command reveals Source Control Graph while Versioning stays checkp
 test("Help and About is available from Settings", async ({ tauriPage }) => {
   await openSettings(tauriPage, "help");
   await expect(tauriPage.getByTestId("about-oleafly-section")).toBeVisible();
-  await expect(tauriPage.getByText("Discussions", { exact: true })).toBeVisible();
-  await expect(tauriPage.getByText("Issues", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Discord", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Follow releases and development")).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 });
 

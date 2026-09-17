@@ -4,21 +4,17 @@
     "closeBackdrop": "Sulje Tietoja Oleaflystä",
     "connect": "Pidä yhteyttä Oleaflyyn",
     "links": {
-      "discussions": {
-        "description": "Kysy ja jaa ideoita",
-        "label": "Keskustelut"
+      "discord": {
+        "description": "Kysy, ilmoita vioista ja jaa ideoita",
+        "label": "Discord"
       },
       "docs": {
         "description": "Opi Oleaflyn kaikki osat",
         "label": "Dokumentaatio"
       },
-      "issues": {
-        "description": "Ilmoita viasta tai ehdota ominaisuutta",
-        "label": "Ongelmat"
-      },
       "social": {
         "description": "Seuraa julkaisuja ja kehitystä",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Tähditä GitHubissa",
@@ -216,6 +212,11 @@
         "uppercase": "isot kirjaimet kirjainkoko teksti uppercase case text"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} paikalla",
+    "discordOnlineAria": "Discordissa paikalla nyt: {{online}}",
+    "joinDiscord": "Liity Discordiin"
   },
   "compile": {
     "autoCompile": {

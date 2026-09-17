@@ -4,21 +4,17 @@
     "closeBackdrop": "Fermer À propos d'Oleafly",
     "connect": "Rester en contact avec Oleafly",
     "links": {
-      "discussions": {
-        "description": "Posez des questions et partagez vos idées",
-        "label": "Discussions"
+      "discord": {
+        "description": "Posez vos questions, signalez des bogues et partagez vos idées",
+        "label": "Discord"
       },
       "docs": {
         "description": "Découvrez toutes les facettes d'Oleafly",
         "label": "Documentation"
       },
-      "issues": {
-        "description": "Signalez un bogue ou demandez une fonctionnalité",
-        "label": "Tickets"
-      },
       "social": {
         "description": "Suivez les versions et le développement",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Mettre une étoile sur GitHub",
@@ -217,6 +213,11 @@
         "uppercase": "majuscules casse texte"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} en ligne",
+    "discordOnlineAria": "{{online}} membres en ligne sur Discord",
+    "joinDiscord": "Rejoindre Discord"
   },
   "compile": {
     "autoCompile": {

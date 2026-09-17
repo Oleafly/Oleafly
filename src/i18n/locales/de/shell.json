@@ -4,21 +4,17 @@
     "closeBackdrop": "Über Oleafly schließen",
     "connect": "Mit Oleafly in Kontakt bleiben",
     "links": {
-      "discussions": {
-        "description": "Fragen stellen und Ideen teilen",
-        "label": "Diskussionen"
+      "discord": {
+        "description": "Fragen stellen, Fehler melden und Ideen teilen",
+        "label": "Discord"
       },
       "docs": {
         "description": "Jeden Teil von Oleafly kennenlernen",
         "label": "Dokumentation"
       },
-      "issues": {
-        "description": "Einen Fehler melden oder eine Funktion vorschlagen",
-        "label": "Issues"
-      },
       "social": {
         "description": "Veröffentlichungen und Entwicklung verfolgen",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Auf GitHub mit Stern markieren",
@@ -216,6 +212,11 @@
         "uppercase": "Großbuchstaben Schreibweise Text uppercase case"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} online",
+    "discordOnlineAria": "{{online}} Mitglieder auf Discord online",
+    "joinDiscord": "Discord beitreten"
   },
   "compile": {
     "autoCompile": {

@@ -3,11 +3,15 @@ import { Trans, useTranslation } from "react-i18next";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import {
-  AtSign,
+  DiscordBrandIcon,
+  DiscordJoinButton,
+  DiscordOnlineCount,
+  XBrandIcon,
+} from "@/components/community/DiscordJoin";
+import {
   Blocks,
   BookMarked,
   BookOpen,
-  Bug,
   Check,
   ChevronRight,
   Cloud,
@@ -25,7 +29,6 @@ import {
   HardDriveDownload,
   Keyboard,
   LifeBuoy,
-  MessageCircle,
   Palette,
   RotateCcw,
   RefreshCw,
@@ -78,6 +81,7 @@ import {
   type RecycledProjectInfo,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
 import { i18n } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime, formatNumber } from "@/lib/intl";
@@ -1204,6 +1208,9 @@ export function SettingsModal() {
             ))}
             </div>
           </div>
+          <div className="mt-2 shrink-0 border-t pt-3">
+            <DiscordJoinButton />
+          </div>
         </nav>
 
         <div
@@ -1302,8 +1309,6 @@ const REPO_URL = "https://github.com/Oleafly/Oleafly";
 // const AUTHOR_URL = "https://prajwal.me";
 const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
-const ISSUES_URL = `${REPO_URL}/issues`;
-const DISCUSSIONS_URL = `${REPO_URL}/discussions`;
 const X_URL = "https://x.com/OleaflyHQ";
 const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
@@ -1330,6 +1335,7 @@ function HelpSection() {
     };
   }, []);
   const ext = (url: string) => () => void openExternal(url);
+  const discordOnline = useDiscordOnlineCount();
 
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
   const projectId = useFilesStore((s) => s.projectId);
@@ -1402,22 +1408,15 @@ function HelpSection() {
 
   const community = [
     {
-      id: "discussions",
-      icon: MessageCircle,
-      label: t(($) => $.shell.about.links.discussions.label),
-      description: t(($) => $.shell.about.links.discussions.description),
-      onClick: ext(DISCUSSIONS_URL),
-    },
-    {
-      id: "issues",
-      icon: Bug,
-      label: t(($) => $.shell.about.links.issues.label),
-      description: t(($) => $.shell.about.links.issues.description),
-      onClick: ext(ISSUES_URL),
+      id: "discord",
+      icon: DiscordBrandIcon,
+      label: t(($) => $.shell.about.links.discord.label),
+      description: t(($) => $.shell.about.links.discord.description),
+      onClick: ext(DISCORD_URL),
     },
     {
       id: "social",
-      icon: AtSign,
+      icon: XBrandIcon,
       label: t(($) => $.shell.about.links.social.label),
       description: t(($) => $.shell.about.links.social.description),
       onClick: ext(X_URL),
@@ -1497,6 +1496,35 @@ function HelpSection() {
         </div>
       </div>
 
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.shell.settings.help.community)}
+        </p>
+        {community.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={item.onClick}
+            className="group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left hover:bg-accent"
+          >
+            <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">{item.label}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {item.description}
+              </span>
+            </span>
+            {item.id === "discord" && (
+              <DiscordOnlineCount
+                online={discordOnline}
+                className="shrink-0 text-[11px] text-muted-foreground"
+              />
+            )}
+            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+
       <CiteOleaflyCard version={version} />
 
       {/* Author row removed for now; will re-add later.
@@ -1552,29 +1580,6 @@ function HelpSection() {
           )}
           <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t(($) => $.shell.settings.help.community)}
-        </p>
-        {community.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={item.onClick}
-            className="group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left hover:bg-accent"
-          >
-            <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm">{item.label}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
-                {item.description}
-              </span>
-            </span>
-            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        ))}
       </div>
 
       <div className="space-y-1">

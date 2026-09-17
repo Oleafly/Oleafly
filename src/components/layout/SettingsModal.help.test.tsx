@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DISCORD_URL, resetDiscordCommunityStatsCache } from "@/lib/community";
 import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   appVersion: vi.fn(),
   libraryRoot: vi.fn(),
   githubGetPublicRepoStats: vi.fn(),
+  discordCommunityStats: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
@@ -17,6 +19,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   appVersion: mocks.appVersion,
   libraryRoot: mocks.libraryRoot,
+  discordCommunityStats: mocks.discordCommunityStats,
 }));
 vi.mock("@/components/layout/UpdateChecker", () => ({
   UpdateChecker: () => null,
@@ -42,6 +45,8 @@ describe("Settings Help & About support callout", () => {
     mocks.appVersion.mockResolvedValue("0.3.6");
     mocks.libraryRoot.mockResolvedValue("");
     mocks.githubGetPublicRepoStats.mockResolvedValue({ stars: 128, forks: 14 });
+    mocks.discordCommunityStats.mockResolvedValue({ online: 9 });
+    resetDiscordCommunityStatsCache();
     useSettingsStore.setState({
       settingsOpen: true,
       settingsInitialSection: "help",
@@ -77,9 +82,16 @@ describe("Settings Help & About support callout", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    expect(screen.getByRole("button", { name: /Discussions/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Issues/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /@OleaflyHQ/ })).toBeInTheDocument();
+    // Community is Discord and X only: every conversation is pointed at one place.
+    expect(screen.getByRole("button", { name: /^Discord/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Discussions/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Issues/ })).toBeNull();
+    expect(screen.queryByText("@OleaflyHQ")).toBeNull();
+    const communityHeading = screen.getByText("Community");
+    expect(
+      communityHeading.compareDocumentPosition(screen.getByTestId("cite-oleafly-card")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "star the project on GitHub" }));
 
@@ -87,12 +99,31 @@ describe("Settings Help & About support callout", () => {
       expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Discussions/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Follow releases and development/ }));
     await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalledWith(
-        "https://github.com/Oleafly/Oleafly/discussions",
-      );
+      expect(mocks.open).toHaveBeenCalledWith("https://x.com/OleaflyHQ");
     });
+  });
+
+  it("offers the Discord community from the navigation footer and the community list", async () => {
+    render(<SettingsModal />);
+
+    const footerButton = await screen.findByTestId("settings-join-discord");
+    const navigation = screen.getByRole("navigation", { name: "Settings sections" });
+    expect(navigation).toContainElement(footerButton);
+    // Pinned under the scrolling list, so it stays visible however long the list grows.
+    expect(screen.getByTestId("settings-section-scroll")).not.toContainElement(footerButton);
+    expect(footerButton).toHaveTextContent(/^Join our Discord$/);
+
+    const communityRow = screen.getByRole("button", { name: /Ask questions, report bugs, and share ideas/ });
+    expect(await within(communityRow).findByText("9 online")).toBeInTheDocument();
+    expect(mocks.discordCommunityStats).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(communityRow);
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(DISCORD_URL));
+    mocks.open.mockClear();
+    fireEvent.click(footerButton);
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(DISCORD_URL));
   });
 
   it("keeps the settings section list scrollable at larger app font sizes", () => {

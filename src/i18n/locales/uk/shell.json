@@ -4,21 +4,17 @@
     "closeBackdrop": "Закрити «Про Oleafly»",
     "connect": "Зв’язок з Oleafly",
     "links": {
-      "discussions": {
-        "description": "Ставте запитання і діліться ідеями",
-        "label": "Обговорення"
+      "discord": {
+        "description": "Ставте запитання, повідомляйте про помилки і діліться ідеями",
+        "label": "Discord"
       },
       "docs": {
         "description": "Дізнайтеся про кожну частину Oleafly",
         "label": "Документація"
       },
-      "issues": {
-        "description": "Повідомте про помилку або запропонуйте функцію",
-        "label": "Запити"
-      },
       "social": {
         "description": "Стежте за випусками і розробкою",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Поставити зірку на GitHub",
@@ -218,6 +214,11 @@
         "uppercase": "великі літери регістр текст"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} у мережі",
+    "discordOnlineAria": "Зараз у мережі на Discord: {{online}}",
+    "joinDiscord": "Ми в Discord"
   },
   "compile": {
     "autoCompile": {

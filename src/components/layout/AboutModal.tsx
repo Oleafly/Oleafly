@@ -1,47 +1,30 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AtSign,
-  BookOpen,
-  Bug,
-  ExternalLink,
-  Github,
-  MessageCircle,
-  Star,
-  X,
-} from "lucide-react";
+import { BookOpen, ExternalLink, Github, Star, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import {
+  DiscordBrandIcon,
+  DiscordOnlineCount,
+  XBrandIcon,
+} from "@/components/community/DiscordJoin";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { appVersion } from "@/lib/tauri";
+import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { i18n } from "@/i18n";
 
 const REPO = "https://github.com/Oleafly/Oleafly";
-const DISCUSSIONS = `${REPO}/discussions`;
-const ISSUES = `${REPO}/issues`;
 const DOCS = "https://oleafly.com/docs/";
 const X_URL = "https://x.com/OleaflyHQ";
 
 const COMMUNITY_LINKS = [
   {
-    label: () => i18n.t(($) => $.shell.about.links.discussions.label),
-    description: () => i18n.t(($) => $.shell.about.links.discussions.description),
-    url: DISCUSSIONS,
-    icon: MessageCircle,
-  },
-  {
-    label: () => i18n.t(($) => $.shell.about.links.issues.label),
-    description: () => i18n.t(($) => $.shell.about.links.issues.description),
-    url: ISSUES,
-    icon: Bug,
-  },
-  {
     label: () => i18n.t(($) => $.shell.about.links.social.label),
     description: () => i18n.t(($) => $.shell.about.links.social.description),
     url: X_URL,
-    icon: AtSign,
+    icon: XBrandIcon,
   },
   {
     label: () => i18n.t(($) => $.shell.about.links.docs.label),
@@ -50,6 +33,31 @@ const COMMUNITY_LINKS = [
     icon: BookOpen,
   },
 ] as const;
+
+function DiscordLink({ onOpen }: Readonly<{ onOpen: () => void }>) {
+  const { t } = useTranslation(["shell"]);
+  const online = useDiscordOnlineCount();
+  return (
+    <button
+      type="button"
+      data-testid="about-join-discord"
+      onClick={onOpen}
+      className="group flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-accent sm:col-span-2"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background/50 text-muted-foreground group-hover:text-foreground">
+        <DiscordBrandIcon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{t(($) => $.shell.about.links.discord.label)}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">
+          {t(($) => $.shell.about.links.discord.description)}
+        </span>
+      </span>
+      <DiscordOnlineCount online={online} className="shrink-0 text-[11px] text-muted-foreground" />
+      <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+    </button>
+  );
+}
 
 export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
   const { t } = useTranslation(["shell"]);
@@ -127,6 +135,7 @@ export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; 
             {t(($) => $.shell.about.connect)}
           </p>
           <div className="grid gap-1 sm:grid-cols-2">
+            <DiscordLink onOpen={ext(DISCORD_URL)} />
             {COMMUNITY_LINKS.map(({ label, description, url, icon: Icon }) => (
               <button
                 key={url}

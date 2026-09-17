@@ -4,21 +4,17 @@
     "closeBackdrop": "Oleafly 정보 닫기",
     "connect": "Oleafly와 함께하기",
     "links": {
-      "discussions": {
-        "description": "질문하고 아이디어를 나누세요",
-        "label": "토론"
+      "discord": {
+        "description": "질문하고, 버그를 신고하고, 아이디어를 나누세요",
+        "label": "Discord"
       },
       "docs": {
         "description": "Oleafly의 모든 기능을 알아보세요",
         "label": "문서"
       },
-      "issues": {
-        "description": "버그를 신고하거나 기능을 제안하세요",
-        "label": "이슈"
-      },
       "social": {
         "description": "릴리스와 개발 소식을 받아 보세요",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "GitHub에서 스타 주기",
@@ -215,6 +211,11 @@
         "uppercase": "대문자 대소문자 텍스트"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}}명 접속 중",
+    "discordOnlineAria": "Discord에 {{online}}명 접속 중",
+    "joinDiscord": "Discord 참여하기"
   },
   "compile": {
     "autoCompile": {

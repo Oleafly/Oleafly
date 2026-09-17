@@ -56,6 +56,7 @@ import type {
   CreateFileResult,
   DictionaryBytes,
   DictionaryInfo,
+  DiscordCommunityStats,
   DocumentEngineDescriptor,
   DocumentStatsRequest,
   DocumentStatsResult,
@@ -1138,6 +1139,8 @@ export const ghCreateRepo = (name: string, isPrivate: boolean) =>
   invoke<GitHubRepo>("gh_create_repo", { name, private: isPrivate });
 export const ghPublicRepoStats = (fullName: string) =>
   invoke<GitHubRepoStats>("gh_public_repo_stats", { fullName });
+export const discordCommunityStats = () =>
+  invoke<DiscordCommunityStats>("discord_community_stats");
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
 

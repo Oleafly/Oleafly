@@ -92,9 +92,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Japanese, Korean and Traditional Chinese. Pick one under Settings > General,
   or leave the setting on the system language. Plural forms follow each
   language's own rules, and the installer speaks the same languages.
+- Join our Discord at the bottom of the Settings sidebar, and a Discord row in
+  Help & About and the About window that shows how many community members are
+  online. The count is fetched only while those two views are open, and never
+  in offline mode.
 
 ### Changed
 
+- Community in Help & About is now Discord and X, and it sits above the
+  citation card. Questions, bug reports and ideas go to Discord, so the GitHub
+  Discussions and Issues rows are gone. Report a crash still opens a GitHub
+  issue prefilled with the recent log.
 - Vim mode now takes priority over regular editor shortcuts, shows whether the
   editor is in Normal or Insert mode, keeps Tab available for moving focus in
   Normal mode, and supports `:w` for saving.

@@ -4,21 +4,17 @@
     "closeBackdrop": "Over Oleafly sluiten",
     "connect": "Blijf in contact met Oleafly",
     "links": {
-      "discussions": {
-        "description": "Stel vragen en deel ideeën",
-        "label": "Discussions"
+      "discord": {
+        "description": "Stel vragen, meld bugs en deel ideeën",
+        "label": "Discord"
       },
       "docs": {
         "description": "Leer elk onderdeel van Oleafly kennen",
         "label": "Documentatie"
       },
-      "issues": {
-        "description": "Meld een bug of vraag een functie aan",
-        "label": "Issues"
-      },
       "social": {
         "description": "Volg releases en ontwikkeling",
-        "label": "@OleaflyHQ"
+        "label": "Oleafly"
       }
     },
     "star": "Geef een ster op GitHub",
@@ -216,6 +212,11 @@
         "uppercase": "hoofdletters hoofdlettergebruik tekst"
       }
     }
+  },
+  "community": {
+    "discordOnline": "{{online}} online",
+    "discordOnlineAria": "{{online}} leden online op Discord",
+    "joinDiscord": "Doe mee op Discord"
   },
   "compile": {
     "autoCompile": {
