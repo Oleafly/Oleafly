@@ -336,17 +336,18 @@
   width: 100%;
   margin: 0.75em 0;
   overflow: hidden;
+  font-size: 0.9em;
 }
 .wysiwyg-content .ProseMirror th,
 .wysiwyg-content .ProseMirror td {
   position: relative;
-  min-width: 3em;
-  border: 1px solid var(--border);
-  padding: 0.35em 0.6em;
+  min-width: 2rem;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0.25rem 0.6rem;
   vertical-align: top;
 }
 .wysiwyg-content .ProseMirror th {
-  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
   font-weight: 600;
   text-align: left;
 }
@@ -1938,21 +1939,6 @@ body[data-tour-active] [data-tour-hide] {
 }
 .wysiwyg-content .ProseMirror [data-caption-position="above"] .table-float-content {
   flex-direction: column-reverse;
-}
-.wysiwyg-content .ProseMirror table {
-  border-collapse: collapse;
-  font-size: 0.9em;
-}
-.wysiwyg-content .ProseMirror td,
-.wysiwyg-content .ProseMirror th {
-  min-width: 2rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  padding: 0.25rem 0.6rem;
-  vertical-align: top;
-}
-.wysiwyg-content .ProseMirror th {
-  background: color-mix(in srgb, var(--muted) 50%, transparent);
-  font-weight: 600;
 }
 .wysiwyg-content .ProseMirror tr[data-border-top] > td,
 .wysiwyg-content .ProseMirror tr[data-border-top] > th {

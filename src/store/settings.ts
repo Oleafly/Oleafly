@@ -70,10 +70,9 @@ import { isLocalePreference, type LocalePreference } from "@oleafly/i18n-contrac
 import { i18n } from "@/i18n";
 import { changeLocalePreference } from "@/i18n/desktop";
 
-export type DictionaryLocale = string;
 export const DEFAULT_DICTIONARY_LOCALE = "en_US";
 const DICTIONARY_LOCALE_ID = /^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/u;
-export function readDictionaryLocale(raw: string): DictionaryLocale {
+export function readDictionaryLocale(raw: string): string {
   const normalized = raw.trim().replace("-", "_");
   return DICTIONARY_LOCALE_ID.test(normalized)
     ? normalized
@@ -784,8 +783,8 @@ interface SettingsState {
   setGrammarDialect: (v: GrammarDialect) => void;
   uiLocalePreference: LocalePreference;
   setUiLocalePreference: (v: LocalePreference) => void;
-  dictionaryLocale: DictionaryLocale;
-  setDictionaryLocale: (v: DictionaryLocale) => void;
+  dictionaryLocale: string;
+  setDictionaryLocale: (v: string) => void;
   showRegionalism: boolean;
   setShowRegionalism: (v: boolean) => void;
   showWordChoice: boolean;
@@ -980,7 +979,7 @@ const PREF_DEFAULTS = {
   harper: true,
   grammarDialect: "american" as GrammarDialect,
   uiLocalePreference: "system" as LocalePreference,
-  dictionaryLocale: DEFAULT_DICTIONARY_LOCALE as DictionaryLocale,
+  dictionaryLocale: DEFAULT_DICTIONARY_LOCALE,
   showRegionalism: true,
   showWordChoice: true,
   harperDisabledRules: [] as readonly string[],

@@ -18,12 +18,12 @@ export function graphicsOptions(width: unknown, options: unknown): string {
 export function figureToLatex(node: JSONContent): string {
   const attrs = node.attrs ?? {};
   const command = attrs.graphicsCommand === "includesvg" ? "includesvg" : "includegraphics";
-  const lines = [`\\begin{figure}${optionalArgument(attrs.placement)}`];
-  if (attrs.centering === true) lines.push(`${FIGURE_INDENT}\\centering`);
+  const lines = [String.raw`\begin{figure}${optionalArgument(attrs.placement)}`];
+  if (attrs.centering === true) lines.push(String.raw`${FIGURE_INDENT}\centering`);
   lines.push(`${FIGURE_INDENT}\\${command}${graphicsOptions(attrs.width, attrs.options)}{${String(attrs.path ?? "")}}`);
   const caption = node.content?.find((child) => child.type === "figureCaption");
-  if (caption) lines.push(`${FIGURE_INDENT}\\caption{${inlineToLatex(caption.content)}}`);
-  if (typeof attrs.label === "string" && attrs.label !== "") lines.push(`${FIGURE_INDENT}\\label{${attrs.label}}`);
-  lines.push("\\end{figure}");
+  if (caption) lines.push(String.raw`${FIGURE_INDENT}\caption{${inlineToLatex(caption.content)}}`);
+  if (typeof attrs.label === "string" && attrs.label !== "") lines.push(String.raw`${FIGURE_INDENT}\label{${attrs.label}}`);
+  lines.push(String.raw`\end{figure}`);
   return lines.join("\n");
 }

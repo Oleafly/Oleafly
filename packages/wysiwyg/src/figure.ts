@@ -53,7 +53,7 @@ export function createFigure(options: CreateFigureOptions): JSONContent {
 
 export function figureWidthPercent(width: string | null): string | null {
   if (width === null) return null;
-  const match = /^([0-9]+(?:\.[0-9]+)?|\.[0-9]+)?\\(?:linewidth|textwidth|columnwidth)$/u.exec(width.trim());
+  const match = /^(\d+(?:\.\d+)?|\.\d+)?\\(?:linewidth|textwidth|columnwidth)$/u.exec(width.trim());
   if (!match) return null;
   const fraction = match[1] === undefined ? 1 : Number(match[1]);
   return `${Math.min(100, Math.max(0, fraction * 100))}%`;
@@ -93,8 +93,7 @@ function widthSelect(): HTMLSelectElement {
   return select;
 }
 
-function syncWidthSelect(select: HTMLSelectElement, width: string | null): void {
-  const value = width ?? "";
+function syncWidthSelect(select: HTMLSelectElement, value: string): void {
   const custom = select.querySelector<HTMLOptionElement>(`option[value="${CUSTOM_WIDTH}"]`);
   const isPreset = FIGURE_WIDTH_PRESETS.some((preset) => preset.value === value);
   if (isPreset) {
@@ -190,7 +189,7 @@ function figureNodeView(options: FigureOptions): NodeViewRenderer {
       dom.dataset.path = path;
       image.alt = wysiwygMessage("figure.imageAlt", { path });
       image.style.width = figureWidthPercent(widthValue) ?? "";
-      syncWidthSelect(width, widthValue);
+      syncWidthSelect(width, widthValue ?? "");
       if (document.activeElement !== label) {
         label.value = typeof currentNode.attrs.label === "string" ? currentNode.attrs.label : "";
       }

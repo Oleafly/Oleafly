@@ -148,12 +148,12 @@ export interface FigureSnippet {
 export function figureSnippet(options: FigureSnippetOptions): FigureSnippet {
   const width = options.width ? `[width=${options.width}]` : "";
   const lines = [
-    `\\begin{figure}[${options.placement ?? "htbp"}]`,
+    String.raw`\begin{figure}[${options.placement ?? "htbp"}]`,
     String.raw`  \centering`,
-    `  \\includegraphics${width}{${options.path}}`,
+    String.raw`  \includegraphics${width}{${options.path}}`,
   ];
-  if (typeof options.caption === "string") lines.push(`  \\caption{${options.caption}}`);
-  if (options.label) lines.push(`  \\label{${options.label}}`);
+  if (typeof options.caption === "string") lines.push(String.raw`  \caption{${options.caption}}`);
+  if (options.label) lines.push(String.raw`  \label{${options.label}}`);
   lines.push(String.raw`\end{figure}`, "");
   const template = lines.join("\n");
   const captionIndex = template.indexOf(String.raw`\caption{`);

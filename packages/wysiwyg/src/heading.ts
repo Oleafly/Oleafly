@@ -10,17 +10,17 @@ export const LatexHeadingAttributes = Extension.create({
         attributes: {
           command: {
             default: null,
-            parseHTML: (element) => element.getAttribute("data-command"),
+            parseHTML: (element) => element.dataset.command ?? null,
             renderHTML: (attributes) => ({ "data-command": attributes.command ?? null }),
           },
           starred: {
             default: false,
-            parseHTML: (element) => element.getAttribute("data-starred") === "true",
+            parseHTML: (element) => element.dataset.starred === "true",
             renderHTML: (attributes) => ({ "data-starred": attributes.starred ? "true" : null }),
           },
           shortTitle: {
             default: null,
-            parseHTML: (element) => element.getAttribute("data-short-title"),
+            parseHTML: (element) => element.dataset.shortTitle ?? null,
             renderHTML: (attributes) => ({ "data-short-title": attributes.shortTitle ?? null }),
           },
         },

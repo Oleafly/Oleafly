@@ -36,7 +36,7 @@ interface FloatState {
 
 function parseCellDraft(cell: string): CellDraft | null {
   if (!/^\\multicolumn(?![A-Za-z])/u.test(cell)) return { colspan: 1, columnSpec: null, content: cell };
-  const scanned = scanMacroArguments(cell, "\\multicolumn".length);
+  const scanned = scanMacroArguments(cell, String.raw`\multicolumn`.length);
   const mandatory = scanned.args.filter((arg) => arg.kind === "mandatory");
   if (scanned.args.length !== 3 || mandatory.length !== 3 || scanned.end < cell.length) return null;
   const colspan = Number(mandatory[0].value.trim());
@@ -161,7 +161,7 @@ function applyFloatStatements(state: FloatState, source: string, position: "abov
   if (!statements) return false;
   return statements.every((statement) => {
     const handler = Object.hasOwn(FLOAT_HANDLERS, statement.name) ? FLOAT_HANDLERS[statement.name] : null;
-    return handler !== null && handler(state, statement, position);
+    return handler?.(state, statement, position) ?? false;
   });
 }
 

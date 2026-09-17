@@ -7,7 +7,7 @@ function colorAttribute(dataName: string, property: "color" | "background-color"
       default: "",
       parseHTML: (element: HTMLElement) => element.getAttribute(dataName) ?? "",
       renderHTML: (attributes: Record<string, unknown>) => {
-        const spec = String(attributes.color ?? "");
+        const spec = typeof attributes.color === "string" ? attributes.color : "";
         const css = latexColorToCss(spec);
         return { [dataName]: spec, style: css ? `${property}: ${css}` : null };
       },

@@ -1,9 +1,8 @@
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
-import type { Editor } from "@tiptap/core";
 import {
   createFigure,
   createTableFloat,

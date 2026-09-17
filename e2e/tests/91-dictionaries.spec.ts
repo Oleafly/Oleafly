@@ -178,8 +178,8 @@ test("a project keeps its own spell-check language while the app setting stays E
 
 test("downloading a language in Settings makes it spell check immediately", async ({
   tauriPage,
-}) => {
-  test.skip(
+}, testInfo) => {
+  testInfo.skip(
     process.env.E2E_SKIP_NETWORK === "1",
     "dictionary downloads need network access",
   );

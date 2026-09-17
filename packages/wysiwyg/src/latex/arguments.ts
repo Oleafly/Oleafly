@@ -92,7 +92,7 @@ export function splitEnvironmentSource(source: string): EnvironmentParts | null 
   const begin = /^\\begin\{([^{}]+)\}/u.exec(source);
   if (!begin) return null;
   const name = begin[1];
-  const endMarker = `\\end{${name}}`;
+  const endMarker = String.raw`\end{${name}}`;
   if (!source.endsWith(endMarker)) return null;
   const contentEnd = source.length - endMarker.length;
   let bodyStart = begin[0].length;
@@ -110,20 +110,22 @@ export function splitEnvironmentSource(source: string): EnvironmentParts | null 
 
 export function stripLatexComments(source: string): string {
   let out = "";
-  for (let cursor = 0; cursor < source.length; cursor++) {
+  let cursor = 0;
+  while (cursor < source.length) {
     const character = source[cursor];
     if (character === "\\") {
       out += character + (source[cursor + 1] ?? "");
-      cursor++;
+      cursor += 2;
       continue;
     }
     if (character === "%") {
       const lineEnd = source.indexOf("\n", cursor);
       if (lineEnd === -1) break;
-      cursor = lineEnd - 1;
+      cursor = lineEnd;
       continue;
     }
     out += character;
+    cursor += 1;
   }
   return out;
 }
@@ -160,8 +162,8 @@ export function findEnvironment(
   source: string,
   name: string,
 ): { start: number; end: number; inner: string } | null {
-  const begin = `\\begin{${name}}`;
-  const end = `\\end{${name}}`;
+  const begin = String.raw`\begin{${name}}`;
+  const end = String.raw`\end{${name}}`;
   const start = source.indexOf(begin);
   if (start === -1) return null;
   let depth = 0;

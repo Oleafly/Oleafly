@@ -52,7 +52,7 @@ export function tableFloatContext(state: EditorState): TableFloatContext | null 
     const node = $from.node(depth);
     if (node.type.name !== WYSIWYG_NODE_NAMES.tableFloat) continue;
     const table = node.firstChild;
-    if (!table || table.type.name !== WYSIWYG_NODE_NAMES.table) return null;
+    if (table?.type.name !== WYSIWYG_NODE_NAMES.table) return null;
     const floatPos = $from.before(depth);
     return { floatPos, float: node, tablePos: floatPos + 1, table };
   }
@@ -257,18 +257,20 @@ export function currentCaptionPlacement(float: ProseMirrorNode): CaptionPlacemen
   return float.attrs.captionPosition === "above" ? "above" : "below";
 }
 
-function removeCaption(editor: Editor, context: TableFloatContext): boolean {
+function removeCaption(editor: Editor, context: TableFloatContext): void {
   const caption = captionChild(context.float);
-  if (!caption) return true;
+  if (!caption) return;
   const pos = context.floatPos + 1 + caption.offset;
   editor.view.dispatch(editor.state.tr.delete(pos, pos + caption.node.nodeSize));
-  return true;
 }
 
 export function setCaptionPlacement(editor: Editor, placement: CaptionPlacement): boolean {
   const context = tableFloatContext(editor.state);
   if (!context) return false;
-  if (placement === "none") return removeCaption(editor, context);
+  if (placement === "none") {
+    removeCaption(editor, context);
+    return true;
+  }
   const tr = editor.state.tr.setNodeMarkup(context.floatPos, undefined, {
     ...context.float.attrs,
     captionPosition: placement,

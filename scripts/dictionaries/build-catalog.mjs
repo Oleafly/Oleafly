@@ -168,30 +168,40 @@ export function sortPacks(packs) {
   );
 }
 
+function fileProblems(pack, file) {
+  const problems = [];
+  if (!/^[0-9a-f]{64}$/u.test(file.sha256)) {
+    problems.push(`${pack.id} has no usable checksum for ${file.name}`);
+  }
+  if (!Number.isInteger(file.bytes) || file.bytes <= 0) {
+    problems.push(`${pack.id} has no usable size for ${file.name}`);
+  }
+  if (!file.url.startsWith("https://")) {
+    problems.push(`${pack.id} has a non-HTTPS address`);
+  }
+  return problems;
+}
+
+function packProblems(pack) {
+  const problems = [];
+  if (!/^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/u.test(pack.id)) {
+    problems.push(`unusable id ${pack.id}`);
+  }
+  if (pack.files.length !== PACK_FILES.length) {
+    problems.push(`${pack.id} does not carry both files`);
+  }
+  for (const file of pack.files) problems.push(...fileProblems(pack, file));
+  if (!pack.license.id) problems.push(`${pack.id} has no license identifier`);
+  return problems;
+}
+
 export function validateCatalog(packs) {
   const problems = [];
   const seen = new Set();
   for (const pack of packs) {
     if (seen.has(pack.id)) problems.push(`duplicate id ${pack.id}`);
     seen.add(pack.id);
-    if (!/^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/u.test(pack.id)) {
-      problems.push(`unusable id ${pack.id}`);
-    }
-    if (pack.files.length !== PACK_FILES.length) {
-      problems.push(`${pack.id} does not carry both files`);
-    }
-    for (const file of pack.files) {
-      if (!/^[0-9a-f]{64}$/u.test(file.sha256)) {
-        problems.push(`${pack.id} has no usable checksum for ${file.name}`);
-      }
-      if (!Number.isInteger(file.bytes) || file.bytes <= 0) {
-        problems.push(`${pack.id} has no usable size for ${file.name}`);
-      }
-      if (!file.url.startsWith("https://")) {
-        problems.push(`${pack.id} has a non-HTTPS address`);
-      }
-    }
-    if (!pack.license.id) problems.push(`${pack.id} has no license identifier`);
+    problems.push(...packProblems(pack));
   }
   for (const id of BUNDLED_LOCALE_IDS) {
     if (!seen.has(id)) problems.push(`bundled locale ${id} is missing`);
@@ -282,7 +292,7 @@ async function main() {
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, `${JSON.stringify(packs, null, 2)}\n`, "utf8");
   process.stdout.write(`wrote ${packs.length} dictionary packs to ${out}\n`);
-  for (const note of skipped.sort()) {
+  for (const note of skipped.toSorted((a, b) => a.localeCompare(b))) {
     process.stdout.write(`skipped ${note}\n`);
   }
 }

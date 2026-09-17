@@ -26,7 +26,7 @@ export function splitGraphicsOptions(optional: string | null): { width: string |
   for (const entry of optional === null ? [] : splitTopLevel(optional, ",")) {
     const trimmed = entry.trim();
     if (trimmed === "") continue;
-    const match = /^width\s*=\s*(.*)$/su.exec(trimmed);
+    const match = /^width\s*=(.*)$/su.exec(trimmed);
     if (match && width === null) width = match[1].trim();
     else rest.push(trimmed);
   }
@@ -71,14 +71,14 @@ function figureState(statements: LatexStatement[]): FigureState | null {
   const state: FigureState = { graphics: null, centering: false, caption: null, label: null };
   for (const statement of statements) {
     const handler = Object.hasOwn(FIGURE_HANDLERS, statement.name) ? FIGURE_HANDLERS[statement.name] : null;
-    if (!handler || !handler(state, statement)) return null;
+    if (!handler?.(state, statement)) return null;
   }
   return state.graphics ? state : null;
 }
 
 export function parseFigureEnvironment(source: string, context: ParseContext): JSONContent | null {
   const parts = splitEnvironmentSource(source);
-  if (!parts || parts.name !== "figure") return null;
+  if (parts?.name !== "figure") return null;
   const statements = scanStatements(parts.body);
   const state = statements ? figureState(statements) : null;
   if (!state?.graphics) return null;

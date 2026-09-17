@@ -42,11 +42,11 @@ export function looksLikeLatex(text: string): boolean {
 
 export function classifyPaste(data: PasteData): PasteIntent {
   const files = importableImageFiles(data.files);
-  const types = Array.from(data.types);
-  const hasPlain = types.includes("text/plain");
+  const types = new Set(data.types);
+  const hasPlain = types.has("text/plain");
   if (files.length > 0 && !hasPlain) return { kind: "files", files };
   const plain = hasPlain ? data.getData("text/plain") : "";
-  const html = types.includes("text/html") ? data.getData("text/html") : "";
+  const html = types.has("text/html") ? data.getData("text/html") : "";
   if (html !== "") {
     const latex = htmlToLatex(html, { hasFiles: files.length > 0 });
     if (latex !== null && latex.trim() !== plain.trim()) return { kind: "latex", latex };

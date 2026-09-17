@@ -49,7 +49,7 @@ function delimitedParts(source: string, open: string, close: string, display: bo
 function environmentParts(source: string): MathSourceParts | null {
   const match = /^\\begin\{([a-z]+\*?)\}/u.exec(source);
   if (!match || !DISPLAY_ENVIRONMENT_SET.has(match[1])) return null;
-  const close = `\\end{${match[1]}}`;
+  const close = String.raw`\end{${match[1]}}`;
   if (!source.endsWith(close)) return null;
   return {
     open: match[0],

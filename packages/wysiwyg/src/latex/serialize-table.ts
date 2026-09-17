@@ -94,13 +94,15 @@ export function tabularLines(table: JSONContent, columns: TableColumn[], blockTo
   const width = grid.length ? Math.max(1, ...grid.map((row) => row.length)) : columns.length;
   const fitted = fitColumns(columns, width);
   const rows = (table.content ?? []).filter((row) => row.type === "tableRow");
-  const lines = [`\\begin{tabular}{${columnsToTableSpec(fitted)}}`];
+  const lines = [String.raw`\begin{tabular}{${columnsToTableSpec(fitted)}}`];
   for (const [index, row] of rows.entries()) {
-    lines.push(...ruleLines(row.attrs?.borderTop).map((rule) => `${INDENT}${rule}`));
-    lines.push(`${INDENT}${rowCells(grid[index] ?? [], fitted, blockToLatex)} \\\\`);
-    lines.push(...ruleLines(row.attrs?.borderBottom).map((rule) => `${INDENT}${rule}`));
+    lines.push(
+      ...ruleLines(row.attrs?.borderTop).map((rule) => `${INDENT}${rule}`),
+      String.raw`${INDENT}${rowCells(grid[index] ?? [], fitted, blockToLatex)} \\`,
+      ...ruleLines(row.attrs?.borderBottom).map((rule) => `${INDENT}${rule}`),
+    );
   }
-  lines.push("\\end{tabular}");
+  lines.push(String.raw`\end{tabular}`);
   return lines;
 }
 
@@ -114,14 +116,14 @@ export function tableFloatToLatex(node: JSONContent, blockToLatex: BlockSerializ
   const caption = node.content?.find((child) => child.type === "tableCaption");
   const tabular = tabularLines(table, normalizeTableColumns(attrs.columns), blockToLatex);
   if (attrs.floating === false && !caption && !attrs.label) return tabular.join("\n");
-  const captionLine = caption ? `${INDENT}\\caption{${inlineToLatex(caption.content)}}` : null;
+  const captionLine = caption ? String.raw`${INDENT}\caption{${inlineToLatex(caption.content)}}` : null;
   const placement = typeof attrs.placement === "string" && attrs.placement !== "" ? `[${attrs.placement}]` : "";
-  const lines = [`\\begin{table}${placement}`];
-  if (attrs.centering === true) lines.push(`${INDENT}\\centering`);
+  const lines = [String.raw`\begin{table}${placement}`];
+  if (attrs.centering === true) lines.push(String.raw`${INDENT}\centering`);
   if (captionLine && attrs.captionPosition === "above") lines.push(captionLine);
   lines.push(...tabular.map((line) => `${INDENT}${line}`));
   if (captionLine && attrs.captionPosition !== "above") lines.push(captionLine);
-  if (typeof attrs.label === "string" && attrs.label !== "") lines.push(`${INDENT}\\label{${attrs.label}}`);
-  lines.push("\\end{table}");
+  if (typeof attrs.label === "string" && attrs.label !== "") lines.push(String.raw`${INDENT}\label{${attrs.label}}`);
+  lines.push(String.raw`\end{table}`);
   return lines.join("\n");
 }

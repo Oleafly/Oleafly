@@ -26,12 +26,12 @@ export const Theorem = Node.create({
     return {
       environment: {
         default: "theorem",
-        parseHTML: (element) => element.getAttribute("data-environment") ?? "theorem",
+        parseHTML: (element) => element.dataset.environment ?? "theorem",
         renderHTML: (attributes) => ({ "data-environment": attributes.environment }),
       },
       title: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-title"),
+        parseHTML: (element) => element.dataset.title ?? null,
         renderHTML: (attributes) => ({ "data-title": attributes.title ?? null }),
       },
     };

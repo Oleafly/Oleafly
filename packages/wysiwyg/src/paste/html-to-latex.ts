@@ -17,8 +17,8 @@ interface GridCell {
   colOffset: number;
 }
 
-const PARAGRAPH_BREAK = String.fromCharCode(0);
-const NO_BREAK_SPACE = String.fromCharCode(160);
+const PARAGRAPH_BREAK = "\0";
+const NO_BREAK_SPACE = "\u00A0";
 const INDENT = "    ";
 const SECTIONING = ["section", "subsection", "subsubsection", "paragraph", "subparagraph"];
 const VERB_DELIMITERS = ["|", "!", "+", "=", "#", "@"];
@@ -143,7 +143,7 @@ function inlineCode(element: Element): string {
   if (/[\r\n]/u.test(text)) return String.raw`\texttt{${escapeLatexText(normalizeSpace(text))}}`;
   const delimiter = VERB_DELIMITERS.find((candidate) => !text.includes(candidate));
   return delimiter
-    ? `\\verb${delimiter}${text}${delimiter}`
+    ? String.raw`\verb${delimiter}${text}${delimiter}`
     : String.raw`\texttt{${escapeLatexText(text)}}`;
 }
 
@@ -188,8 +188,8 @@ function wrapFlags(core: string, flags: InlineFlags): string {
 function wrapInline(element: Element, tag: string, inner: string): string {
   const core = inner.trim();
   if (core === "") return inner;
-  const leading = /^\s*/u.exec(inner)?.[0] ?? "";
-  const trailing = /\s*$/u.exec(inner)?.[0] ?? "";
+  const leading = inner.slice(0, inner.length - inner.trimStart().length);
+  const trailing = inner.slice(inner.trimEnd().length);
   let wrapped = wrapFlags(core, inlineFlags(element, tag));
   const href = tag === "a" ? element.getAttribute("href") : null;
   if (href) wrapped = String.raw`\href{${escapeUrl(href)}}{${wrapped}}`;
@@ -255,7 +255,7 @@ function renderPre(element: Element, context: Context): string[] {
   const family = styleProperty(element, "font-family");
   const monospace = family === null || /mono|courier|consolas|menlo|monaco|code/u.test(family);
   if (!monospace && !element.querySelector("code")) return renderBlocks(element, context);
-  const text = (element.textContent ?? "").replace(/^\n/u, "").replace(/\s+$/u, "");
+  const text = (element.textContent ?? "").replace(/^\n/u, "").trimEnd();
   return [`\\begin{verbatim}\n${text}\n\\end{verbatim}`];
 }
 
@@ -274,7 +274,8 @@ function renderListItem(item: Element, context: Context, depth: number): string[
     }
   }
   const text = renderNodes(lead, context).join(" ");
-  return [`${INDENT.repeat(depth)}\\item${text ? ` ${text}` : ""}`, ...nested];
+  const suffix = text ? ` ${text}` : "";
+  return [String.raw`${INDENT.repeat(depth)}\item${suffix}`, ...nested];
 }
 
 function renderList(list: Element, context: Context, depth: number): string {
@@ -286,13 +287,13 @@ function renderList(list: Element, context: Context, depth: number): string {
   }
   const environment = tagOf(list) === "ol" ? "enumerate" : "itemize";
   const indent = INDENT.repeat(depth);
-  const lines = [`${indent}\\begin{${environment}}`];
+  const lines = [String.raw`${indent}\begin{${environment}}`];
   for (const child of Array.from(list.children)) {
     const tag = tagOf(child);
     if (tag === "li") lines.push(...renderListItem(child, context, depth + 1));
     else if (tag === "ul" || tag === "ol") lines.push(renderList(child, context, depth + 1));
   }
-  lines.push(`${indent}\\end{${environment}}`);
+  lines.push(String.raw`${indent}\end{${environment}}`);
   return lines.join("\n");
 }
 
@@ -377,7 +378,7 @@ function columnAlignments(grid: GridCell[][], width: number): ("l" | "c" | "r")[
   return Array.from({ length: width }, (_column, index) => {
     const origin = grid
       .map((row) => row[index])
-      .find((cell) => cell && cell.rowOffset === 0 && cell.colOffset === 0);
+      .find((cell) => cell?.rowOffset === 0 && cell.colOffset === 0);
     return origin ? cellAlignment(origin.element) : "l";
   });
 }
@@ -398,8 +399,7 @@ function verticalBars(grid: GridCell[][], width: number, all: boolean): boolean[
 function rowHasBorder(row: GridCell[], side: "top" | "bottom"): boolean {
   const origins = row.filter(
     (cell) =>
-      cell &&
-      cell.colOffset === 0 &&
+      cell?.colOffset === 0 &&
       (side === "top" ? cell.rowOffset === 0 : cell.rowOffset === cell.rowspan - 1),
   );
   return origins.length > 0 && origins.every((cell) => borderVisible(cell.element, side));
@@ -454,17 +454,18 @@ function tabularLines(table: Element): string[] {
   const all = border !== null && border !== "" && border !== "0";
   const bars = verticalBars(grid, width, all);
   const aligns = columnAlignments(grid, width);
-  const spec = `${aligns.map((align, index) => `${bars[index] ? "|" : ""}${align}`).join("")}${bars[width] ? "|" : ""}`;
-  const lines = [`\\begin{tabular}{${spec}}`];
+  const columns = aligns.map((align, index) => `${bars[index] ? "|" : ""}${align}`).join("");
+  const spec = `${columns}${bars[width] ? "|" : ""}`;
+  const lines = [String.raw`\begin{tabular}{${spec}}`];
   grid.forEach((row, index) => {
     const above =
       all || rowHasBorder(row, "top") || (index > 0 && rowHasBorder(grid[index - 1], "bottom"));
-    if (above) lines.push(`${INDENT}\\hline`);
+    if (above) lines.push(String.raw`${INDENT}\hline`);
     lines.push(`${INDENT}${renderRow(row, width, bars)}`);
   });
   const last = grid.at(-1);
-  if (last && (all || rowHasBorder(last, "bottom"))) lines.push(`${INDENT}\\hline`);
-  lines.push("\\end{tabular}");
+  if (last && (all || rowHasBorder(last, "bottom"))) lines.push(String.raw`${INDENT}\hline`);
+  lines.push(String.raw`\end{tabular}`);
   return lines;
 }
 
@@ -474,11 +475,11 @@ function renderTable(table: Element, context: Context): string {
   if (!caption || context.inTable) return tabular.join("\n");
   const captionText = normalizeSpace(renderChildrenInline(caption, { inTable: true }));
   return [
-    "\\begin{table}[htbp]",
-    `${INDENT}\\centering`,
-    `${INDENT}\\caption{${captionText}}`,
+    String.raw`\begin{table}[htbp]`,
+    String.raw`${INDENT}\centering`,
+    String.raw`${INDENT}\caption{${captionText}}`,
     ...tabular.map((line) => `${INDENT}${line}`),
-    "\\end{table}",
+    String.raw`\end{table}`,
   ].join("\n");
 }
 

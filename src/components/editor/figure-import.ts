@@ -48,13 +48,21 @@ export function timestampedImageName(now: Date, extension: string): string {
   return `pasted-image-${date}-${time}.${extension}`;
 }
 
+function trimEdges(value: string, edge: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && edge.includes(value[start])) start += 1;
+  while (end > start && edge.includes(value[end - 1])) end -= 1;
+  return value.slice(start, end);
+}
+
 function sanitizedBaseName(name: string): string {
-  return name
+  const collapsed = name
     .replace(/^.*[/\\]/u, "")
     .replace(/[^A-Za-z0-9._-]+/gu, "-")
     .replace(/-{2,}/gu, "-")
-    .replace(/-+(?=\.)/gu, "")
-    .replace(/^[-.]+|[-.]+$/gu, "");
+    .replace(/-(?=\.)/gu, "");
+  return trimEdges(collapsed, "-.");
 }
 
 export function preferredImageName(file: File, now: Date): string {
@@ -90,12 +98,14 @@ export function latexGraphicsPath(projectPath: string, mainDoc: string): string 
 }
 
 export function suggestedFigureLabel(path: string): string {
-  const stem = path
-    .replace(/^.*\//u, "")
-    .replace(/\.[A-Za-z0-9]+$/u, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gu, "-")
-    .replace(/^-+|-+$/gu, "");
+  const stem = trimEdges(
+    path
+      .replace(/^.*\//u, "")
+      .replace(/\.[A-Za-z0-9]+$/u, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gu, "-"),
+    "-",
+  );
   return `fig:${stem === "" ? "figure" : stem}`;
 }
 

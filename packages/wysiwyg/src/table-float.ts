@@ -17,6 +17,11 @@ export interface CreateTableFloatOptions {
   header?: boolean;
 }
 
+function topRule(index: number, header: boolean): "toprule" | "midrule" | null {
+  if (index === 0) return "toprule";
+  return index === 1 && header ? "midrule" : null;
+}
+
 export function createTableFloat(
   rows: number,
   cols: number,
@@ -28,7 +33,7 @@ export function createTableFloat(
   const rowNodes = Array.from({ length: rowCount }, (_row, index) => ({
     type: "tableRow",
     attrs: {
-      borderTop: index === 0 ? "toprule" : index === 1 && header ? "midrule" : null,
+      borderTop: topRule(index, header),
       borderBottom: index === rowCount - 1 ? "bottomrule" : null,
     },
     content: Array.from({ length: colCount }, () => ({
@@ -204,7 +209,7 @@ export const TableFloat = Node.create({
       floating: booleanAttribute("floating", true),
       columns: {
         default: [] as TableColumn[],
-        parseHTML: (element: HTMLElement) => tableSpecToColumns(element.getAttribute("data-columns") ?? "") ?? [],
+        parseHTML: (element: HTMLElement) => tableSpecToColumns(element.dataset.columns ?? "") ?? [],
         renderHTML: (attributes: Record<string, unknown>) => ({
           "data-columns": columnsToTableSpec(normalizeTableColumns(attributes.columns)),
         }),
