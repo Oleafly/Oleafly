@@ -421,4 +421,25 @@ export const visualTheme: Extension = EditorView.theme({
     borderRadius: "2px",
     padding: "0 0.15em",
   },
+  ".ofl-visual-environment-center.ofl-visual-environment-line": {
+    textAlign: "center",
+  },
+  ".ofl-visual-environment-flushright.ofl-visual-environment-line": {
+    textAlign: "right",
+  },
+  ".ofl-visual-rule": {
+    display: "inline-block",
+    borderTop: "1px solid currentColor",
+    verticalAlign: "middle",
+  },
+  ".ofl-visual-bibitem": {
+    paddingRight: "0.5em",
+  },
+  ".ofl-visual-author-name": {
+    fontWeight: 550,
+  },
+  ".ofl-visual-author-affiliation": {
+    fontSize: "0.9em",
+    opacity: 0.85,
+  },
 });

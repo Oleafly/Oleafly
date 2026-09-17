@@ -192,6 +192,8 @@ export interface TextSpan {
 
 export type ListEnvironmentName = "itemize" | "enumerate" | "description";
 
+export const ALIGNMENT_ENVIRONMENTS: ReadonlySet<string> = new Set(["center", "flushleft", "flushright"]);
+
 const LIST_ENVIRONMENT_NAMES: ReadonlySet<string> = new Set(["itemize", "enumerate", "description"]);
 
 export function isListEnvironmentName(name: string): name is ListEnvironmentName {

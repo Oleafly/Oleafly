@@ -336,7 +336,6 @@ function applyPreviewResult(
     host.hidden = false;
     container.classList.remove("is-error");
     container.removeAttribute("aria-label");
-    // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized KaTeX is the only accepted producer.
     container.innerHTML = result.html;
     return;
   }

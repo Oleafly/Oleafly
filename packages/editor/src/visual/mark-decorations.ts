@@ -3,6 +3,7 @@ import type { EditorState, Range } from "@codemirror/state";
 import { Decoration, type DecorationSet, type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
 import {
+  ALIGNMENT_ENVIRONMENTS,
   centeringCommandWithin,
   colorCommandSpan,
   commandName,
@@ -95,6 +96,9 @@ function environmentMarks(
       "ofl-visual-environment-quote-block",
       "ofl-visual-environment-line",
     ]);
+  }
+  if (ALIGNMENT_ENVIRONMENTS.has(name)) {
+    return lineClasses(state, node, [`ofl-visual-environment-${name}`, "ofl-visual-environment-line"]);
   }
   const theorem = theorems.get(name);
   if (!theorem || !CLASS_SAFE.test(theorem.style)) return [];

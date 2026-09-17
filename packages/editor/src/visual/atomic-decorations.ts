@@ -3,6 +3,7 @@ import { type EditorState, type Extension, type Range, StateField } from "@codem
 import { Decoration, type DecorationSet, EditorView, type WidgetType } from "@codemirror/view";
 import type { SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
 import {
+  ALIGNMENT_ENVIRONMENTS,
   centeringCommandWithin,
   commandName,
   environmentArguments,
@@ -50,6 +51,8 @@ import { ItemWidget } from "./widgets/item";
 import { LatexLogoWidget } from "./widgets/latex-logo";
 import { MakeTitleWidget } from "./widgets/maketitle";
 import { MathWidget } from "./widgets/math";
+import { BibItemWidget } from "./widgets/bibitem";
+import { ruleWidgetFor } from "./widgets/rule";
 import { type Preamble, PreambleWidget } from "./widgets/preamble";
 import { createSpaceWidget } from "./widgets/space";
 import { TexLogoWidget } from "./widgets/tex-logo";
@@ -87,10 +90,22 @@ const PANEL_ENVIRONMENTS = new Set([
 
 const TITLE_BLOCK_COMMANDS = new Set(["Title", "Author", "Date", "Affil", "Affiliation"]);
 const IGNORED_BEFORE_MAKETITLE = new Set(["NewLine", "Whitespace", "BlankLine", "Comment"]);
+const SILENT_COMMANDS: ReadonlySet<string> = new Set(
+  [
+    "vspace", "hspace", "noindent", "indent", "par", "selectfont", "newpage", "clearpage", "cleardoublepage",
+    "pagebreak", "nopagebreak", "linenumbers", "nolinenumbers", "smallskip", "medskip", "bigskip", "newblock",
+    "centering", "raggedright", "raggedleft", "fontsize", "bfseries", "itshape", "mdseries", "upshape", "scshape",
+    "slshape", "rmfamily", "sffamily", "ttfamily", "normalfont", "normalsize", "small", "footnotesize", "scriptsize",
+    "tiny", "large", "Large", "LARGE", "huge", "Huge", "hfill", "vfill", "sloppy", "frenchspacing", "onecolumn",
+    "twocolumn", "thispagestyle", "pagestyle", "markboth", "markright", "IEEEpeerreviewmaketitle",
+    "IEEEoverridecommandlockouts", "IEEEpubidadjcol", "IEEEpubid",
+  ].map((name) => `\\${name}`),
+);
+const RULE_COMMANDS: ReadonlySet<string> = new Set(["\\rule", "\\hrule", "\\hrulefill"]);
 const BLANK = /^\s*$/u;
 
 interface ListFrame {
-  environment: ListEnvironmentName;
+  environment: ListEnvironmentName | "thebibliography";
   ordinal: number;
 }
 
@@ -291,6 +306,10 @@ class AtomicDecorationBuilder {
       this.hidePanelEdges(node, name);
       return undefined;
     }
+    if (name && (ALIGNMENT_ENVIRONMENTS.has(name) || name === "thebibliography")) {
+      this.hideEnvironmentEdges(node);
+      return undefined;
+    }
     if (node.type.is("ListEnvironment")) {
       this.hideListEdges(node);
       return undefined;
@@ -322,20 +341,24 @@ class AtomicDecorationBuilder {
     if (from <= to) this.push(replaceBlock({ from, to }));
   }
 
-  private hideListEdges(node: SyntaxNodeRef): void {
+  private hideEnvironmentEdges(node: SyntaxNodeRef): void {
     const edges = this.environmentEdges(node);
     if (!edges) return;
     const { selection, doc } = this.state;
     if (selectionIntersects(selection, edges.beginRange) || selectionIntersects(selection, edges.endRange)) return;
-    if (listItemsOf(node.node).length === 0) return;
     if (lineHoldsOnlyNode(doc.lineAt(edges.begin.from), edges.begin)) this.push(replaceBlock(edges.beginRange));
     if (lineHoldsOnlyNode(doc.lineAt(edges.end.from), edges.end)) this.push(replaceBlock(edges.endRange));
+  }
+
+  private hideListEdges(node: SyntaxNodeRef): void {
+    if (listItemsOf(node.node).length === 0) return;
+    this.hideEnvironmentEdges(node);
   }
 
   private enterBegin(node: SyntaxNodeRef): undefined {
     const name = unstarredEnvironmentName(node.node, this.state);
     if (!name) return undefined;
-    if (isListEnvironmentName(name)) {
+    if (isListEnvironmentName(name) || name === "thebibliography") {
       this.lists.push({ environment: name, ordinal: 0 });
       return undefined;
     }
@@ -381,7 +404,7 @@ class AtomicDecorationBuilder {
   private enterEnd(node: SyntaxNodeRef): undefined {
     const name = unstarredEnvironmentName(node.node, this.state);
     if (!name) return undefined;
-    if (isListEnvironmentName(name)) {
+    if (isListEnvironmentName(name) || name === "thebibliography") {
       if (this.currentList?.environment === name) this.lists.pop();
       return undefined;
     }
@@ -435,7 +458,7 @@ class AtomicDecorationBuilder {
 
   private enterItem(node: SyntaxNodeRef): boolean | undefined {
     const list = this.currentList;
-    if (!list) return undefined;
+    if (!list || list.environment === "thebibliography") return undefined;
     list.ordinal += 1;
     const { doc } = this.state;
     const line = doc.lineAt(node.from);
@@ -461,9 +484,40 @@ class AtomicDecorationBuilder {
     return undefined;
   }
 
+  private enterBibItem(node: SyntaxNodeRef): boolean | undefined {
+    const list = this.currentList;
+    if (list?.environment !== "thebibliography") return undefined;
+    list.ordinal += 1;
+    if (!this.shouldDecorate(node)) return undefined;
+    const optional = node.node.getChild("OptionalArgument");
+    const label = optional ? nodeText(this.state, optional).replace(/^\[|\]$/gu, "") : String(list.ordinal);
+    const { doc } = this.state;
+    const line = doc.lineAt(node.from);
+    const from = BLANK.test(doc.sliceString(line.from, node.from)) ? line.from : node.from;
+    this.push(replaceInline(from, node.to, new BibItemWidget(label)));
+    return false;
+  }
+
+  private silentRangeEnd(node: SyntaxNodeRef): number {
+    const after = this.state.doc.sliceString(node.to, node.to + 64);
+    const star = /^\*(?:\{[^{}\n]*\})?/u.exec(after);
+    return star ? node.to + star[0].length : node.to;
+  }
+
   private enterUnknownCommand(node: SyntaxNodeRef): boolean | undefined {
     const name = commandName(this.state, node.node);
-    if (!name || !this.shouldDecorate(node)) return undefined;
+    if (!name) return undefined;
+    if (name === "\\bibitem") return this.enterBibItem(node);
+    if (!this.shouldDecorate(node)) return undefined;
+    if (SILENT_COMMANDS.has(name)) {
+      this.push(replaceInline(node.from, this.silentRangeEnd(node), new BraceWidget()));
+      return false;
+    }
+    if (RULE_COMMANDS.has(name)) {
+      const args = node.node.getChildren("TextArgument").map((argument) => nodeText(this.state, argument));
+      this.push(replaceInline(node.from, node.to, ruleWidgetFor(name, args)));
+      return false;
+    }
     if (name === "\\keywords") {
       const argument = node.node.getChild("TextArgument");
       this.push(

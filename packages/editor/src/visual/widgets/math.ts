@@ -6,6 +6,12 @@ const ENVIRONMENT_SOURCE = /^\\begin\{([^{}]+)\}([\s\S]*)\\end\{\1\}$/u;
 const NEEDS_ALIGNMENT = /(?:^|[^\\])(?:&|\\\\)/u;
 const NUMBERED_ENVIRONMENTS = new Set(["equation", "align", "gather", "alignat", "flalign", "multline", "eqnarray"]);
 
+const LABELS = /\\label\{[^{}]*\}/gu;
+
+function withoutLabels(source: string): string {
+  return source.replace(LABELS, "");
+}
+
 function unnumbered(source: string): string {
   const environment = ENVIRONMENT_SOURCE.exec(source);
   if (!environment || !NUMBERED_ENVIRONMENTS.has(environment[1])) return source;
@@ -13,9 +19,10 @@ function unnumbered(source: string): string {
 }
 
 export function renderVisualMath(source: string, display: boolean): MathRenderResult {
-  const direct = renderMathExpression(unnumbered(source), display);
+  const cleaned = withoutLabels(source);
+  const direct = renderMathExpression(unnumbered(cleaned), display);
   if (direct.status === "ready") return direct;
-  const environment = ENVIRONMENT_SOURCE.exec(source);
+  const environment = ENVIRONMENT_SOURCE.exec(cleaned);
   const body = environment?.[2].trim();
   if (!body) return direct;
   const wrapped = NEEDS_ALIGNMENT.test(body) ? `\\begin{aligned}${body}\\end{aligned}` : body;

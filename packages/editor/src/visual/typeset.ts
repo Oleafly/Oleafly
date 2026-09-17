@@ -25,6 +25,11 @@ const FORMATTING_MARKUP: Record<string, Markup> = {
 
 const NAMED_MARKUP: Record<string, Markup> = {
   "\\and": { tag: "span", className: "ofl-visual-command-and" },
+  "\\And": { tag: "span", className: "ofl-visual-command-and" },
+  "\\AND": { tag: "span", className: "ofl-visual-command-and" },
+  "\\IEEEauthorblockN": { tag: "div", className: "ofl-visual-author-name" },
+  "\\IEEEauthorblockA": { tag: "div", className: "ofl-visual-author-affiliation" },
+  "\\IEEEauthorrefmark": { tag: "sup" },
 };
 
 const IGNORED_COMMANDS = new Set(["\\corref", "\\fnref", "\\thanks", "\\footnote"]);
