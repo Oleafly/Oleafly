@@ -1,4 +1,9 @@
-import { insertEnvironment, insertTemplate, wrapSelectionOrPlaceholder } from "@/components/editor/cm/controller";
+import {
+  insertEnvironment,
+  insertListEnvironment,
+  insertTemplate,
+  wrapSelectionOrPlaceholder,
+} from "@/components/editor/cm/controller";
 import { i18n } from "@/i18n";
 import { latexGraphicsPath } from "@/components/editor/figure-import";
 import { useFigureDialogStore } from "@/store/figure-dialog";
@@ -149,15 +154,11 @@ export function insertEquation() {
 export function insertBlockquote() {
   insertEnvironment("quote");
 }
-function insertFirstItem(template: string): void {
-  const cursor = template.indexOf(String.raw`\item `) + String.raw`\item `.length;
-  insertTemplate(template, cursor, cursor);
-}
 export function insertItemize() {
-  insertFirstItem("\\begin{itemize}\n  \\item \n\\end{itemize}\n");
+  insertListEnvironment("itemize");
 }
 export function insertEnumerate() {
-  insertFirstItem("\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
+  insertListEnvironment("enumerate");
 }
 
 export function insertTable(rows: number, cols: number) {

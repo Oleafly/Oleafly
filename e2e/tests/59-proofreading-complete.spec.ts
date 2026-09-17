@@ -856,9 +856,10 @@ The the Qwertzuiopz.
     await expect(tauriPage.getByText("Visual proof")).toBeVisible({
       timeout: 20_000,
     });
+    const surface = entry.format === "latex" ? "source" : "visual";
     const snapshot = await waitForProofreading(
       tauriPage,
-      "visual",
+      surface,
       (state) =>
         state.phase === "ready" &&
         providers(state).has("harper") &&
@@ -866,9 +867,11 @@ The the Qwertzuiopz.
         hasDiagnostic(state, "hunspell", "Qwertzuiopz"),
       `${entry.format} Visual proofreading did not finish`,
     );
-    expect(snapshot.identity?.surface).toBe("visual");
+    expect(snapshot.identity?.surface).toBe(surface);
     await expect(
-      tauriPage.locator('[data-proofreading-issue]'),
+      tauriPage.locator(
+        entry.format === "latex" ? ".cm-content .cm-lintRange" : "[data-proofreading-issue]",
+      ).first(),
     ).toBeVisible({ timeout: 20_000 });
     await expectDesktopShellAnchored(tauriPage);
     await tauriPage.click('[aria-label="Switch to source view"]');

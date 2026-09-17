@@ -13,10 +13,10 @@ import {
   theoremDeclaration,
   unstarredEnvironmentName,
 } from "./latex-tree";
-import { LIST_DOCUMENT, positionOf, SAMPLE_DOCUMENT } from "./visual/test-document";
+import { LIST_DOCUMENT, parsedState, positionOf, SAMPLE_DOCUMENT } from "./visual/test-document";
 
 function createState(doc: string): EditorState {
-  const state = EditorState.create({ doc, extensions: [latexTreeSupport()] });
+  const state = parsedState(EditorState.create({ doc, extensions: [latexTreeSupport()] }));
   expect(syntaxTree(state).length).toBe(doc.length);
   return state;
 }

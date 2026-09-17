@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { visualMode } from "./index";
-import { positionOf, SAMPLE_DOCUMENT } from "./test-document";
+import { parsedView, positionOf, SAMPLE_DOCUMENT } from "./test-document";
 
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
@@ -29,7 +29,7 @@ function mount(doc: string, cursor: number): EditorView {
     }),
     parent,
   });
-  return view;
+  return parsedView(view);
 }
 
 afterEach(() => {

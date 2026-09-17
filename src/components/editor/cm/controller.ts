@@ -3,6 +3,7 @@ import {
   wrapSelectionOrPlaceholder as coreWrapSelectionOrPlaceholder,
   insertTemplate as coreInsertTemplate,
   insertEnvironment as coreInsertEnvironment,
+  insertListEnvironment as coreInsertListEnvironment,
   editorUndo as coreEditorUndo,
   editorRedo as coreEditorRedo,
   editorVimUndo as coreEditorVimUndo,
@@ -56,6 +57,10 @@ export function insertTemplate(template: string, selStart: number, selEnd: numbe
 
 export function insertEnvironment(name: string) {
   coreInsertEnvironment(name);
+}
+
+export function insertListEnvironment(name: string) {
+  coreInsertListEnvironment(name);
 }
 
 export function editorUndo() {

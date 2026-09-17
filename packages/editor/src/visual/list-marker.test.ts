@@ -2,13 +2,15 @@ import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { listItemMarker } from "./list-marker";
-import { LIST_DOCUMENT, positionOf } from "./test-document";
+import { LIST_DOCUMENT, parsedState, positionOf } from "./test-document";
 import { selectDecoratedArgument } from "./select-argument";
 import { visualAtomicField } from "./atomic-decorations";
 import { pointerSelectionTracking } from "./selection";
 
 describe("listItemMarker", () => {
-  const state = EditorState.create({ doc: LIST_DOCUMENT, extensions: [latexTreeSupport(), listItemMarker] });
+  const state = parsedState(
+    EditorState.create({ doc: LIST_DOCUMENT, extensions: [latexTreeSupport(), listItemMarker] }),
+  );
   const itemStart = positionOf(LIST_DOCUMENT, "\\item First");
 
   it("moves a pointer selection in front of an item marker to after it", () => {
@@ -32,11 +34,13 @@ describe("listItemMarker", () => {
 
 describe("selectDecoratedArgument", () => {
   const doc = "\\begin{document}\nSome \\textbf{bold words} here.\n\\end{document}\n";
-  const state = EditorState.create({
-    doc,
-    selection: { anchor: doc.length },
-    extensions: [latexTreeSupport(), pointerSelectionTracking, visualAtomicField, selectDecoratedArgument(visualAtomicField)],
-  });
+  const state = parsedState(
+    EditorState.create({
+      doc,
+      selection: { anchor: doc.length },
+      extensions: [latexTreeSupport(), pointerSelectionTracking, visualAtomicField, selectDecoratedArgument(visualAtomicField)],
+    }),
+  );
   const command = positionOf(doc, "\\textbf{");
 
   it("places a pointer click at the start of a hidden command inside the braces", () => {

@@ -10,15 +10,18 @@ import { typesetNodeInto } from "./typeset";
 import { BibItemWidget } from "./widgets/bibitem";
 import { BraceWidget } from "./widgets/brace";
 import { RuleWidget } from "./widgets/rule";
+import { parsedState } from "./test-document";
 
 const ports = { resolveImage: async () => null };
 
 function createState(doc: string, cursor = 0): EditorState {
-  const state = EditorState.create({
-    doc,
-    selection: { anchor: cursor },
-    extensions: [latexTreeSupport(), visualMode(ports)],
-  });
+  const state = parsedState(
+    EditorState.create({
+      doc,
+      selection: { anchor: cursor },
+      extensions: [latexTreeSupport(), visualMode(ports)],
+    }),
+  );
   expect(syntaxTree(state).length).toBe(doc.length);
   return state;
 }

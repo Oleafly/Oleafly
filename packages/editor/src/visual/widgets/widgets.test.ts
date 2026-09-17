@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
 import { afterEach, describe, expect, it } from "vitest";
 import { ancestorAt, latexTreeSupport } from "../../latex-tree";
-import { positionOf, TITLE_DOCUMENT } from "../test-document";
+import { parsedView, positionOf, TITLE_DOCUMENT } from "../test-document";
 import { typesetNodeInto } from "../typeset";
 import { characterSubstitution } from "./character";
 import { EndDocumentWidget } from "./end-document";
@@ -32,7 +32,7 @@ function mount(doc: string): EditorView {
     state: EditorState.create({ doc, selection: { anchor: doc.length }, extensions: [latexTreeSupport()] }),
     parent,
   });
-  return view;
+  return parsedView(view);
 }
 
 function argumentOf(state: EditorState, pos: number, type: string): SyntaxNode {

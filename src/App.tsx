@@ -551,9 +551,6 @@ function AppContent() {
         void forwardFromCursor();
       } else if (matchesShortcut(e, bindings.shortcutReference)) {
         if (e.defaultPrevented) return;
-        const target = e.target as HTMLElement | null;
-        const active = document.activeElement as HTMLElement | null;
-        if (target?.closest?.(".cm-editor") || active?.closest?.(".cm-editor")) return;
         e.preventDefault();
         useSettingsStore.getState().setHotkeysOpen(true);
       }

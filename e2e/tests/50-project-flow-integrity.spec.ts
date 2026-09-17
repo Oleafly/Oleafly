@@ -144,7 +144,7 @@ test("reopening a project in persisted Visual mode keeps the workspace chrome an
   await createBlankProject(tauriPage, projectName);
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+  await expect(tauriPage.locator(".cm-content .ofl-visual-end-document")).toBeVisible({
     timeout: 20_000,
   });
 
@@ -154,7 +154,7 @@ test("reopening a project in persisted Visual mode keeps the workspace chrome an
   });
   await openProject(tauriPage, projectName);
 
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+  await expect(tauriPage.locator(".cm-content .ofl-visual-end-document")).toBeVisible({
     timeout: 20_000,
   });
   await expect(
@@ -198,7 +198,7 @@ test("a persisted Visual document paints source on its first forced-source mount
   await createProjectFromTemplate(tauriPage, "resume", projectName);
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.locator(".cm-editor.ofl-visual-parsed")).toBeVisible({ timeout: 20_000 });
   await tauriPage.click('[aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 20_000 });
 
@@ -260,6 +260,7 @@ test("toolbar edits flush on immediate close, survive reopen, and compile", asyn
   await expect(tauriPage.locator(".cm-content")).toContainText("\\href{url}{link text}");
 
   await clickToolbarControl(tauriPage, '[aria-label="Insert figure"]', "Insert figure");
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("image-filename");
   await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(

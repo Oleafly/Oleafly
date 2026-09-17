@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const controller = vi.hoisted(() => ({
   insertEnvironment: vi.fn(),
+  insertListEnvironment: vi.fn(),
   insertTemplate: vi.fn(),
   wrapSelectionOrPlaceholder: vi.fn(),
 }));
@@ -90,15 +91,9 @@ describe("latex-commands", () => {
     expect(controller.insertEnvironment).toHaveBeenLastCalledWith("quote");
 
     insertItemize();
-    let [template, start, end] = controller.insertTemplate.mock.lastCall as [string, number, number];
-    expect(template).toContain("\\begin{itemize}");
-    expect(template.slice(0, start)).toMatch(/\\item $/u);
-    expect(end).toBe(start);
-
+    expect(controller.insertListEnvironment).toHaveBeenLastCalledWith("itemize");
     insertEnumerate();
-    [template, start, end] = controller.insertTemplate.mock.lastCall as [string, number, number];
-    expect(template).toContain("\\begin{enumerate}");
-    expect(template.slice(0, start)).toMatch(/\\item $/u);
+    expect(controller.insertListEnvironment).toHaveBeenLastCalledWith("enumerate");
   });
 
   it("opens the figure dialog from the toolbar command and keeps the placeholder snippet", () => {

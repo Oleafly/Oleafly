@@ -151,23 +151,8 @@ IMAGEANCHOR
     "\\begin{equation}\\mathrm{VISUALVISIONSEMANTIC}=x+1\\end{equation}",
   );
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 10_000 });
-  const visualCaret = await tauriPage.evaluate<boolean>(
-    `import("/src/components/editor/wysiwyg/controller.ts").then(({ getWysiwygEditor }) => {
-      const editor = getWysiwygEditor();
-      if (!editor) return false;
-      let position = null;
-      editor.state.doc.descendants((node, offset) => {
-        if (position !== null || !node.isText || !node.text) return;
-        const index = node.text.indexOf("IMAGEANCHOR");
-        if (index >= 0) position = offset + index + "IMAGEANCHOR".length;
-      });
-      if (position === null) return false;
-      editor.chain().focus().setTextSelection(position).run();
-      return true;
-    })`,
-  );
-  expect(visualCaret).toBe(true);
+  await expect(tauriPage.locator(".cm-content .ofl-visual-end-document")).toBeVisible({ timeout: 10_000 });
+  await setEditorCaretAfter(tauriPage, "IMAGEANCHOR");
   await tauriPage.evaluate(
     `(() => {
       const input = document.querySelector('[data-testid="image-to-latex-input"]');

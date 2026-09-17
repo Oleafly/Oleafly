@@ -77,6 +77,20 @@ async function refreshTree(page: Page) {
   );
 }
 
+async function pressElement(page: Page, selector: string) {
+  await page.evaluate(
+    `(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      if (!(element instanceof HTMLElement)) throw new Error("element is unavailable: " + ${JSON.stringify(selector)});
+      const options = { bubbles: true, cancelable: true, button: 0, detail: 1 };
+      element.dispatchEvent(new MouseEvent("mousedown", options));
+      element.dispatchEvent(new MouseEvent("mouseup", options));
+      element.dispatchEvent(new MouseEvent("click", options));
+      return 1;
+    })()`,
+  );
+}
+
 async function lineTextAt(page: Page, needle: string): Promise<string> {
   return page.evaluate<string>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
@@ -133,8 +147,8 @@ Claim body.
     timeout: 20_000,
   });
   await expect(content.locator(".ofl-visual-footnote").first()).toBeVisible();
-  await expect(content.locator(".ofl-visual-begin-theorem").first()).toContainText("Theorem");
-  await expect(content.locator(".ofl-visual-theorem-title").first()).toHaveText("(Main)");
+  await expect(content.locator(".ofl-visual-begin-theorem").first()).toContainText("Theorem (Main)");
+  await expect(content.locator(".ofl-visual-theorem-title").first()).toHaveText("Main");
   await expect(content.locator(".ofl-visual-textcolor").first()).toHaveText("alert");
   await expect(content.locator(".ofl-visual-end-document")).toBeVisible();
 
@@ -165,7 +179,7 @@ Body text.
   await setEditorCaretAfter(tauriPage, "Widgets");
   await expect
     .poll(() => lineTextAt(tauriPage, "\\section{Widgets}"), { timeout: 10_000 })
-    .toContain("\\section{");
+    .toBe("{Widgets}");
 
   await replaceEditorLiteral(tauriPage, "Widgets", "Rendering");
   await expect
@@ -187,11 +201,11 @@ test("the preamble and the end of the document collapse into their own bars", as
   const preamble = tauriPage.locator(".cm-content .ofl-visual-preamble-widget");
   await expect(preamble).toBeVisible();
   await expect(preamble).toContainText("Show document preamble");
-  await preamble.click();
+  await pressElement(tauriPage, ".cm-content .ofl-visual-preamble-widget");
   await expect(preamble).toContainText("Hide document preamble");
   await expect(tauriPage.locator(".cm-content .ofl-visual-preamble-expanded")).toBeVisible();
 
-  await preamble.click();
+  await pressElement(tauriPage, ".cm-content .ofl-visual-preamble-widget");
   await expect(preamble).toContainText("Show document preamble");
 
   const end = tauriPage.locator(".cm-content .ofl-visual-end-document");
@@ -218,14 +232,28 @@ test("a tabular renders as a grid whose toolbar edits the source", async ({ taur
   );
   await openVisual(tauriPage);
 
-  const table = tauriPage.locator('.cm-content [class*="ofl-visual-table"] table').first();
-  await expect(table).toBeVisible({ timeout: 20_000 });
-  await expect(table.locator("td, th").first()).toContainText("a");
+  const cell = ".cm-content .ofl-visual-table-grid .ofl-visual-table-cell-text";
+  await expect
+    .poll(
+      () => tauriPage.evaluate<string>(`document.querySelector(${JSON.stringify(cell)})?.textContent ?? ""`),
+      { timeout: 20_000 },
+    )
+    .toBe("a");
 
-  await table.locator("td, th").first().click();
-  const toolbar = tauriPage.locator('.ofl-visual-table-toolbar');
-  await expect(toolbar).toBeVisible({ timeout: 10_000 });
-  await toolbar.locator('[aria-label="Insert row below"]').click();
+  await pressElement(tauriPage, cell);
+  await expect(tauriPage.locator(".ofl-visual-table-toolbar")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.click('.ofl-visual-table-toolbar [aria-label="Insert"]');
+  await tauriPage.waitForFunction(
+    `(() => {
+      const item = Array.from(document.querySelectorAll('.ofl-visual-table-menu [role="menuitem"]')).find(
+        (candidate) => (candidate.getAttribute("aria-label") ?? candidate.textContent ?? "").trim() === "Insert row below",
+      );
+      if (!(item instanceof HTMLElement)) return false;
+      item.click();
+      return true;
+    })()`,
+    10_000,
+  );
   await expect
     .poll(() => editorSource(tauriPage), { timeout: 10_000 })
     .toMatch(/(\\\\[\s\S]*){3}/u);
@@ -257,7 +285,16 @@ test("a project image renders in place and the edit button reopens the figure di
   await expect(image).toBeVisible({ timeout: 20_000 });
   await expect.poll(() => image.getAttribute("src")).toMatch(/^data:image\/png/u);
 
-  await tauriPage.click(".cm-content .ofl-visual-graphics-edit");
+  await tauriPage.evaluate(
+    `(() => {
+      const host = document.querySelector(".cm-content .ofl-visual-graphics");
+      host?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
+      const button = document.querySelector(".cm-content .ofl-visual-graphics-edit");
+      if (!(button instanceof HTMLElement)) throw new Error("graphics edit button is unavailable");
+      button.click();
+      return 1;
+    })()`,
+  );
   await expect(tauriPage.locator('[data-testid="figure-dialog"]')).toBeVisible({ timeout: 10_000 });
   await tauriPage.click('[data-testid="figure-dialog-width-full"]');
   await tauriPage.click('[data-testid="figure-dialog-insert"]');

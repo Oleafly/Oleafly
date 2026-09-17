@@ -1,3 +1,7 @@
+import { ensureSyntaxTree, forceParsing } from "@codemirror/language";
+import type { EditorState } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
+
 export const SAMPLE_DOCUMENT = String.raw`\documentclass{report}
 \usepackage{amsmath,amsthm,xcolor,graphicx,booktabs}
 \newtheorem{lemma}{Lemma}
@@ -58,4 +62,22 @@ export function positionOf(doc: string, needle: string, occurrence = 0): number 
     if (index === -1) throw new Error(`"${needle}" not found`);
   }
   return index;
+}
+
+export function parsedState(state: EditorState): EditorState {
+  ensureSyntaxTree(state, state.doc.length, 5_000);
+  return state.update({}).state;
+}
+
+export function parsedView(view: EditorView): EditorView {
+  forceParsing(view, view.state.doc.length, 5_000);
+  return view;
+}
+
+export async function untilParsed(view: EditorView, timeout = 5_000): Promise<void> {
+  const deadline = Date.now() + timeout;
+  while (!view.dom.classList.contains("ofl-visual-parsed")) {
+    if (Date.now() > deadline) throw new Error("the visual mode did not finish parsing in time");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 }

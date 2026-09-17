@@ -11,6 +11,7 @@ import {
   editorVimRedo,
   editorVimUndo,
   gotoLine,
+  insertListEnvironment,
   insertTemplate,
   revealEditorRange,
   setEditorView,
@@ -23,6 +24,35 @@ afterEach(() => {
   view?.destroy();
   view = null;
   document.body.replaceChildren();
+});
+
+describe("editor controller lists", () => {
+  function mount(doc: string, from: number, to: number): EditorView {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc, selection: { anchor: from, head: to }, extensions: [history()] }),
+    });
+    setEditorView(view);
+    return view;
+  }
+
+  it("turns each selected line into an item and leaves the caret after the last one", () => {
+    const editor = mount("intro\nfirst\n\nsecond\noutro", 6, 19);
+    insertListEnvironment("itemize");
+    expect(editor.state.doc.toString()).toBe(
+      "intro\n\\begin{itemize}\n  \\item first\n  \\item second\n\\end{itemize}\n\noutro",
+    );
+    expect(editor.state.doc.sliceString(0, editor.state.selection.main.head)).toMatch(/\\item second$/u);
+  });
+
+  it("inserts an empty item with the caret ready for typing when nothing is selected", () => {
+    const editor = mount("intro\n", 6, 6);
+    insertListEnvironment("enumerate");
+    expect(editor.state.doc.toString()).toBe("intro\n\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
+    expect(editor.state.doc.sliceString(0, editor.state.selection.main.head)).toMatch(/\\item $/u);
+  });
 });
 
 describe("editor controller history", () => {

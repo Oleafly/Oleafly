@@ -542,7 +542,7 @@ describe("project dock layout", () => {
     expect(browserWindowMocks.toggleBrowser).toHaveBeenCalled();
   });
 
-  it("opens the shortcut reference from outside the editor and leaves it to the editor inside", async () => {
+  it("opens the shortcut reference unless the editor consumed the chord", async () => {
     const { act } = await import("react");
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
@@ -562,17 +562,28 @@ describe("project dock layout", () => {
     content.tabIndex = 0;
     editor.append(content);
     document.body.append(editor);
+    const consume = (event: KeyboardEvent) => event.preventDefault();
+    content.addEventListener("keydown", consume);
 
     await act(async () => {
       content.dispatchEvent(
-        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true }),
+        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true, cancelable: true }),
       );
     });
     expect(useSettingsStore.getState().hotkeysOpen).toBe(false);
 
+    content.removeEventListener("keydown", consume);
+    await act(async () => {
+      content.dispatchEvent(
+        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true, cancelable: true }),
+      );
+    });
+    expect(useSettingsStore.getState().hotkeysOpen).toBe(true);
+    useSettingsStore.setState({ hotkeysOpen: false });
+
     await act(async () => {
       window.dispatchEvent(
-        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true }),
+        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true, cancelable: true }),
       );
     });
     expect(useSettingsStore.getState().hotkeysOpen).toBe(true);

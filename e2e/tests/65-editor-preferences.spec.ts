@@ -143,11 +143,17 @@ async function chooseLineHeight(page: Page, optionLabel: string): Promise<number
   );
 }
 
-async function selectionHead(page: Page): Promise<number> {
-  return page.evaluate<number>(
-    `import("/src/components/editor/cm/controller.ts").then(
-      ({ getEditorView }) => getEditorView().state.selection.main.head,
-    )`,
+async function selectionSummary(page: Page): Promise<{ anchor: number; head: number; emacs: boolean; editors: number }> {
+  return page.evaluate<{ anchor: number; head: number; emacs: boolean; editors: number }>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const main = getEditorView().state.selection.main;
+      return {
+        anchor: main.anchor,
+        head: main.head,
+        emacs: !!document.querySelector('.cm-scroller.cm-emacsMode'),
+        editors: document.querySelectorAll('.cm-content').length,
+      };
+    })`,
   );
 }
 
@@ -437,10 +443,14 @@ test("the keybinding mode switches between Default, Emacs and Vim", async ({
   );
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
   await caretAt(tauriPage, 8);
+  await pressInEditor(tauriPage, "b", "KeyB", 66, { alt: true });
+  await expect
+    .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
+    .toEqual({ anchor: 1, head: 1, emacs: true, editors: 1 });
   await pressInEditor(tauriPage, "a", "KeyA", 65, { ctrl: true });
   await expect
-    .poll(async () => await selectionHead(tauriPage), { timeout: 10_000 })
-    .toBe(0);
+    .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
+    .toEqual({ anchor: 0, head: 0, emacs: true, editors: 1 });
 
   await chooseEditorSetting(tauriPage, "settings-editor-keymap-trigger", "Vim");
   await waitLong(tauriPage, `!!document.querySelector('.cm-vim-panel')`, 10_000);

@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { insertListItemOrLeaveHeading } from "./keymap";
-import { LIST_DOCUMENT, positionOf } from "./test-document";
+import { LIST_DOCUMENT, parsedView, positionOf } from "./test-document";
 
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
@@ -24,7 +24,7 @@ function mount(doc: string, cursor: number): EditorView {
     state: EditorState.create({ doc, selection: { anchor: cursor }, extensions: [latexTreeSupport()] }),
     parent,
   });
-  return view;
+  return parsedView(view);
 }
 
 afterEach(() => {

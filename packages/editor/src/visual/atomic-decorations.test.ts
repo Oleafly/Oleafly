@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { latexTreeSupport } from "../latex-tree";
 import { visualAtomicField } from "./atomic-decorations";
 import { visualMode } from "./index";
-import { positionOf, SAMPLE_DOCUMENT, TITLE_DOCUMENT } from "./test-document";
+import { parsedState, positionOf, SAMPLE_DOCUMENT, TITLE_DOCUMENT } from "./test-document";
 import { BeginTheoremWidget } from "./widgets/begin-theorem";
 import { BraceWidget } from "./widgets/brace";
 import { EndWidget } from "./widgets/end";
@@ -27,11 +27,13 @@ interface Found<T> {
 const ports = { resolveImage: async () => null };
 
 function createState(doc: string, cursor?: number, readOnly = false): EditorState {
-  const state = EditorState.create({
-    doc,
-    selection: cursor === undefined ? undefined : { anchor: cursor },
-    extensions: [latexTreeSupport(), visualMode(ports), EditorState.readOnly.of(readOnly)],
-  });
+  const state = parsedState(
+    EditorState.create({
+      doc,
+      selection: cursor === undefined ? undefined : { anchor: cursor },
+      extensions: [latexTreeSupport(), visualMode(ports), EditorState.readOnly.of(readOnly)],
+    }),
+  );
   expect(syntaxTree(state).length).toBe(doc.length);
   return state;
 }
