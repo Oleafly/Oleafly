@@ -1,4 +1,24 @@
 import type { Editor } from "@tiptap/react";
+import type { EditorView } from "@tiptap/pm/view";
+
+export interface VisualFigureOptions {
+  path: string;
+  width: string | null;
+  placement?: string | null;
+  centering: boolean;
+  caption: string | null;
+  label: string | null;
+}
+
+export interface WysiwygInsertions {
+  insertLatex(view: EditorView, source: string, block: boolean, theoremEnvironments: readonly string[]): void;
+  insertFigure(view: EditorView, options: VisualFigureOptions): boolean;
+  insertTable(view: EditorView, rows: number, cols: number, preset: "booktabs" | "horizontal"): boolean;
+  currentHeadingCommand(editor: Editor): string | null;
+  setHeading(editor: Editor, command: string): boolean;
+}
+
+let insertions: WysiwygInsertions | null = null;
 
 let editor: Editor | null = null;
 let visible = false;
@@ -14,12 +34,39 @@ let projectNavigation: {
 let projectIntelligenceCurrent = false;
 const projectIntelligenceListeners = new Set<() => void>();
 
+export interface WysiwygDocumentContext {
+  theoremEnvironments: readonly string[];
+  booktabs: boolean;
+}
+
+const EMPTY_DOCUMENT_CONTEXT: WysiwygDocumentContext = {
+  theoremEnvironments: [],
+  booktabs: false,
+};
+let documentContext: WysiwygDocumentContext = EMPTY_DOCUMENT_CONTEXT;
+
 export function setWysiwygEditor(e: Editor | null) {
   editor = e;
 }
 
+export function setWysiwygDocumentContext(context: WysiwygDocumentContext | null) {
+  documentContext = context ?? EMPTY_DOCUMENT_CONTEXT;
+}
+
+export function getWysiwygDocumentContext(): WysiwygDocumentContext {
+  return documentContext;
+}
+
 export function getWysiwygEditor(): Editor | null {
   return editor;
+}
+
+export function setWysiwygInsertions(value: WysiwygInsertions | null) {
+  insertions = value;
+}
+
+export function getWysiwygInsertions(): WysiwygInsertions | null {
+  return insertions;
 }
 
 export function setWysiwygVisible(v: boolean) {

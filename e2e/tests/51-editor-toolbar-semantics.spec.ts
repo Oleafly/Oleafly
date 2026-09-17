@@ -534,6 +534,7 @@ TABLEANCHOR
     '[aria-label="Insert figure"]',
     "Insert figure",
   );
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
   await replaceEditorSelection(tauriPage, "semantic.png");
   await replaceEditorLiteral(
     tauriPage,

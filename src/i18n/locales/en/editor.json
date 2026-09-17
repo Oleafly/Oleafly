@@ -6,9 +6,72 @@
     "subsection": "Subsection",
     "subsubsection": "Subsubsection",
     "paragraph": "Paragraph",
+    "subparagraph": "Subparagraph",
     "title": "Title",
     "minor": "Minor heading",
     "paragraphHeading": "Paragraph heading"
+  },
+  "figureDialog": {
+    "title": "Insert figure",
+    "description": "Choose an image from the project or import one, then set its width, caption and label.",
+    "projectImages": "Project images",
+    "noProjectImages": "This project has no images yet. Import one from disk to get started.",
+    "importFromDisk": "Import from disk…",
+    "importing": "Importing…",
+    "imageFilter": "Images",
+    "importFailed": "The image could not be imported.",
+    "thumbnailAlt": "Preview of {{path}}",
+    "noPreview": "No preview",
+    "width": "Width",
+    "widthQuarter": "Quarter width",
+    "widthHalf": "Half width",
+    "widthThreeQuarters": "Three-quarter width",
+    "widthFull": "Full width",
+    "widthCustom": "Custom",
+    "customWidthLabel": "Custom width",
+    "customWidthPlaceholder": "6cm or 0.6\\linewidth",
+    "captionToggle": "Add a caption",
+    "captionLabel": "Caption",
+    "captionPlaceholder": "Describe the figure",
+    "labelToggle": "Add a label",
+    "labelLabel": "Label",
+    "labelPlaceholder": "fig:name",
+    "insertPlaceholder": "Insert placeholder",
+    "cancel": "Cancel",
+    "insert": "Insert figure",
+    "selectImage": "Select an image to insert it."
+  },
+  "tableToolbar": {
+    "label": "Table tools",
+    "insertRowAbove": "Insert row above",
+    "insertRowBelow": "Insert row below",
+    "insertColumnLeft": "Insert column left",
+    "insertColumnRight": "Insert column right",
+    "deleteRow": "Delete row",
+    "deleteColumn": "Delete column",
+    "deleteTable": "Delete table",
+    "alignLeft": "Align column left",
+    "alignCenter": "Align column center",
+    "alignRight": "Align column right",
+    "mergeCells": "Merge cells",
+    "splitCell": "Split cell",
+    "headerRow": "Header row",
+    "borders": "Borders",
+    "bordersNone": "No borders",
+    "bordersHorizontal": "Horizontal rules",
+    "bordersAll": "All borders",
+    "bordersBooktabs": "Booktabs rules",
+    "captionPosition": "Caption",
+    "captionNone": "No caption",
+    "captionAbove": "Caption above",
+    "captionBelow": "Caption below",
+    "tableLabel": "Label",
+    "labelPlaceholder": "tab:name"
+  },
+  "paste": {
+    "imageSaved": "Image saved to {{path}}",
+    "imageFailed": "The pasted image could not be saved to the project.",
+    "noProject": "Open a project before pasting images."
   },
   "toolbar": {
     "selectCitationFirst": "Select a citation or reference in Visual mode first.",
@@ -134,7 +197,11 @@
     "issues": "Issues",
     "spelling": "Spelling",
     "grammarAndStyle": "Grammar & style",
-    "findingsTruncated": "The findings list is truncated; the count above is complete."
+    "findingsTruncated": "The findings list is truncated; the count above is complete.",
+    "spellLanguage": "Spell-check language",
+    "spellLanguageAppSetting": "Use the app setting",
+    "spellLanguageAriaLabel": "Spell-check language for this project",
+    "spellLanguageHint": "Applies to this project only. Download more languages in Settings."
   },
   "table": {
     "trigger": "Insert table",
@@ -629,7 +696,8 @@
         "itemize": "bulleted list",
         "enumerate": "numbered list",
         "equation": "display math",
-        "align": "aligned math"
+        "align": "aligned math",
+        "bibliographystyle": "bibliography style"
       },
       "packageCommand": {
         "dfrac": "display fraction",
@@ -728,6 +796,13 @@
         "triggerToken": "xparse argument type t requires a trigger token",
         "delimiterTokens": "xparse argument type {{type}} requires two delimiter tokens",
         "unknownType": "Unknown xparse argument type “{{type}}”"
+      },
+      "bibliographyStyle": {
+        "bibtex": "BibTeX style",
+        "journal": "journal style",
+        "natbib": "natbib style",
+        "project": "style file in this project",
+        "revtex": "REVTeX style"
       }
     },
     "wysiwyg": {
@@ -761,6 +836,74 @@
         "editTitle": "Edit exact source",
         "editLabel": "Edit exact raw inline source",
         "inputLabel": "Exact raw inline source"
+      },
+      "math": {
+        "inlineLabel": "Inline math",
+        "displayLabel": "Display math",
+        "inputLabel": "Math source",
+        "previewLabel": "Math preview",
+        "renderFailed": "This expression could not be rendered."
+      },
+      "footnote": {
+        "label": "Footnote",
+        "marker": "†",
+        "inputLabel": "Footnote text"
+      },
+      "theorem": {
+        "titleLabel": "Theorem title",
+        "titlePlaceholder": "Title",
+        "editTitle": "Edit title",
+        "name": {
+          "theorem": "Theorem",
+          "lemma": "Lemma",
+          "corollary": "Corollary",
+          "proposition": "Proposition",
+          "definition": "Definition",
+          "remark": "Remark",
+          "example": "Example",
+          "proof": "Proof",
+          "conjecture": "Conjecture",
+          "claim": "Claim",
+          "axiom": "Axiom",
+          "notation": "Notation"
+        }
+      },
+      "figure": {
+        "imageUnavailable": "Image not found",
+        "imageLoading": "Loading image…",
+        "imageAlt": "Figure image {{path}}",
+        "width": "Width",
+        "widthNatural": "Natural size",
+        "widthQuarter": "Quarter width",
+        "widthHalf": "Half width",
+        "widthThreeQuarters": "Three-quarter width",
+        "widthFull": "Full width",
+        "widthCustom": "Custom ({{width}})",
+        "labelField": "Label",
+        "labelPlaceholder": "fig:name",
+        "addCaption": "Add caption",
+        "captionPlaceholder": "Caption"
+      },
+      "table": {
+        "labelField": "Label",
+        "labelPlaceholder": "tab:name",
+        "addCaption": "Add caption",
+        "captionPlaceholder": "Caption"
+      }
+    },
+    "bibtex": {
+      "completion": {
+        "directive": "BibTeX directive",
+        "entryType": "BibTeX entry",
+        "optionalField": "optional field",
+        "requiredField": "required field"
+      },
+      "lint": {
+        "fieldRepeated": "Field \"{{name}}\" is repeated in bibliography entry \"{{key}}\".",
+        "invalidYear": "Year \"{{year}}\" is not a four-digit BibTeX year.",
+        "missingRequiredField": "{{entry}} is missing required field {{fields}}.",
+        "source": "BibTeX",
+        "unknownEntryType": "Unknown bibliography entry type @{{type}}."
       }
     }
   }

@@ -6,9 +6,72 @@
     "subsection": "小节",
     "subsubsection": "子小节",
     "paragraph": "段落",
+    "subparagraph": "子段落",
     "title": "标题",
     "minor": "小标题",
     "paragraphHeading": "段落标题"
+  },
+  "figureDialog": {
+    "title": "插入图片",
+    "description": "从项目中选择图片或导入图片，然后设置宽度、图注和标签。",
+    "projectImages": "项目图片",
+    "noProjectImages": "项目中还没有图片。请先从磁盘导入一张。",
+    "importFromDisk": "从磁盘导入…",
+    "importing": "正在导入…",
+    "imageFilter": "图片",
+    "importFailed": "无法导入该图片。",
+    "thumbnailAlt": "{{path}} 的预览",
+    "noPreview": "无预览",
+    "width": "宽度",
+    "widthQuarter": "四分之一宽",
+    "widthHalf": "二分之一宽",
+    "widthThreeQuarters": "四分之三宽",
+    "widthFull": "全宽",
+    "widthCustom": "自定义",
+    "customWidthLabel": "自定义宽度",
+    "customWidthPlaceholder": "6cm 或 0.6\\linewidth",
+    "captionToggle": "添加图注",
+    "captionLabel": "图注",
+    "captionPlaceholder": "描述这张图片",
+    "labelToggle": "添加标签",
+    "labelLabel": "标签",
+    "labelPlaceholder": "fig:name",
+    "insertPlaceholder": "插入占位符",
+    "cancel": "取消",
+    "insert": "插入图片",
+    "selectImage": "请选择要插入的图片。"
+  },
+  "tableToolbar": {
+    "label": "表格工具",
+    "insertRowAbove": "在上方插入行",
+    "insertRowBelow": "在下方插入行",
+    "insertColumnLeft": "在左侧插入列",
+    "insertColumnRight": "在右侧插入列",
+    "deleteRow": "删除行",
+    "deleteColumn": "删除列",
+    "deleteTable": "删除表格",
+    "alignLeft": "列左对齐",
+    "alignCenter": "列居中对齐",
+    "alignRight": "列右对齐",
+    "mergeCells": "合并单元格",
+    "splitCell": "拆分单元格",
+    "headerRow": "表头行",
+    "borders": "边框",
+    "bordersNone": "无边框",
+    "bordersHorizontal": "横线",
+    "bordersAll": "全部边框",
+    "bordersBooktabs": "booktabs 横线",
+    "captionPosition": "表注",
+    "captionNone": "无表注",
+    "captionAbove": "表注在上",
+    "captionBelow": "表注在下",
+    "tableLabel": "标签",
+    "labelPlaceholder": "tab:name"
+  },
+  "paste": {
+    "imageSaved": "图片已保存到 {{path}}",
+    "imageFailed": "无法将粘贴的图片保存到项目中。",
+    "noProject": "请先打开项目，再粘贴图片。"
   },
   "toolbar": {
     "selectCitationFirst": "请先在可视化模式下选择引用或参考文献。",
@@ -132,7 +195,11 @@
     "issues": "问题",
     "spelling": "拼写",
     "grammarAndStyle": "语法与风格",
-    "findingsTruncated": "问题列表已截断；上方的计数是完整的。"
+    "findingsTruncated": "问题列表已截断；上方的计数是完整的。",
+    "spellLanguage": "拼写检查语言",
+    "spellLanguageAppSetting": "使用应用设置",
+    "spellLanguageAriaLabel": "本项目的拼写检查语言",
+    "spellLanguageHint": "仅对本项目生效。可在设置中下载更多语言。"
   },
   "table": {
     "trigger": "插入表格",
@@ -622,7 +689,8 @@
         "itemize": "无序列表",
         "enumerate": "有序列表",
         "equation": "行间公式",
-        "align": "对齐公式"
+        "align": "对齐公式",
+        "bibliographystyle": "参考文献样式"
       },
       "packageCommand": {
         "dfrac": "显示分式",
@@ -719,6 +787,13 @@
         "triggerToken": "xparse 参数类型 t 需要一个触发记号。",
         "delimiterTokens": "xparse 参数类型 {{type}} 需要两个定界记号。",
         "unknownType": "未知的 xparse 参数类型“{{type}}”。"
+      },
+      "bibliographyStyle": {
+        "bibtex": "BibTeX 样式",
+        "journal": "期刊样式",
+        "natbib": "natbib 样式",
+        "project": "本项目中的样式文件",
+        "revtex": "REVTeX 样式"
       }
     },
     "wysiwyg": {
@@ -752,6 +827,74 @@
         "editTitle": "编辑原始源码",
         "editLabel": "编辑精确的原始行内源码",
         "inputLabel": "精确的原始行内源码"
+      },
+      "math": {
+        "inlineLabel": "行内公式",
+        "displayLabel": "行间公式",
+        "inputLabel": "公式源码",
+        "previewLabel": "公式预览",
+        "renderFailed": "无法渲染此表达式。"
+      },
+      "footnote": {
+        "label": "脚注",
+        "marker": "†",
+        "inputLabel": "脚注内容"
+      },
+      "theorem": {
+        "titleLabel": "定理标题",
+        "titlePlaceholder": "标题",
+        "editTitle": "编辑标题",
+        "name": {
+          "theorem": "定理",
+          "lemma": "引理",
+          "corollary": "推论",
+          "proposition": "命题",
+          "definition": "定义",
+          "remark": "注",
+          "example": "例",
+          "proof": "证明",
+          "conjecture": "猜想",
+          "claim": "断言",
+          "axiom": "公理",
+          "notation": "记号"
+        }
+      },
+      "figure": {
+        "imageUnavailable": "未找到图片",
+        "imageLoading": "正在加载图片…",
+        "imageAlt": "图片 {{path}}",
+        "width": "宽度",
+        "widthNatural": "原始尺寸",
+        "widthQuarter": "四分之一宽",
+        "widthHalf": "二分之一宽",
+        "widthThreeQuarters": "四分之三宽",
+        "widthFull": "全宽",
+        "widthCustom": "自定义（{{width}}）",
+        "labelField": "标签",
+        "labelPlaceholder": "fig:name",
+        "addCaption": "添加图注",
+        "captionPlaceholder": "图注"
+      },
+      "table": {
+        "labelField": "标签",
+        "labelPlaceholder": "tab:name",
+        "addCaption": "添加表注",
+        "captionPlaceholder": "表注"
+      }
+    },
+    "bibtex": {
+      "completion": {
+        "directive": "BibTeX 指令",
+        "entryType": "BibTeX 条目",
+        "optionalField": "可选字段",
+        "requiredField": "必填字段"
+      },
+      "lint": {
+        "fieldRepeated": "参考文献条目“{{key}}”中的字段“{{name}}”重复。",
+        "invalidYear": "年份“{{year}}”不是四位数字的 BibTeX 年份。",
+        "missingRequiredField": "{{entry}} 缺少必填字段 {{fields}}。",
+        "source": "BibTeX",
+        "unknownEntryType": "未知的参考文献条目类型 @{{type}}。"
       }
     }
   }

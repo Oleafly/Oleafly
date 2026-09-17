@@ -9,6 +9,7 @@ import { IndexKeeper } from "@/components/editor/IndexKeeper";
 import { RenameDialog } from "@/components/layout/RenameDialog";
 import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
 import { TableImportDialog } from "@/components/editor/TableImportDialog";
+import { FigureDialog } from "@/components/editor/FigureDialog";
 import { UpdateWindow } from "@/components/layout/UpdateWindow";
 import { PreviewWindow } from "@/components/preview/PreviewWindow";
 import { BrowserChrome } from "@/components/browser/BrowserChrome";
@@ -135,6 +136,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <RenameDialog />
       <AddCitationDialog />
       <TableImportDialog />
+      <FigureDialog />
       {ReactQueryDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

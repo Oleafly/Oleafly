@@ -21,6 +21,7 @@ import { setWysiwygTranslator, type WysiwygTranslator } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
+import { imagePasteExtension } from "./cm/image-paste";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
@@ -36,6 +37,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
+import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
 import { installAuxNumbers } from "@/lib/aux-numbers";
@@ -46,6 +48,7 @@ import {
   getRetainedProofreadingResult,
   proofreadDocument,
 } from "@/lib/proofreading/client";
+import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 import { notifyError } from "@/lib/toast";
 
@@ -58,7 +61,7 @@ function sourceProofreadingContextKey(
     settings.spellcheck,
     settings.harper,
     settings.grammarDialect,
-    settings.dictionaryLocale,
+    currentDictionaryLocale(),
     settings.showRegionalism,
     settings.showWordChoice,
     [...settings.harperDisabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
@@ -128,7 +131,10 @@ setSpellHost({
       text: input.text,
       format: input.format,
       mode: input.mode,
-      preferences: input.preferences,
+      preferences: {
+        ...input.preferences,
+        dictionaryLocale: currentDictionaryLocale(),
+      },
       ignoredWords,
     });
   },
@@ -206,10 +212,12 @@ const HOST: EditorHost = {
     projectId: () => useFilesStore.getState().projectId,
   }),
   useSettings: () => ({
-    vim: useSettingsStore((s) => s.vim),
+    keymap: useSettingsStore((s) => s.editorKeymap),
     spellcheck: useSettingsStore((s) => s.spellcheck),
     harper: useSettingsStore((s) => s.harper),
     editorTheme: useSettingsStore((s) => s.editorTheme),
+    tabSize: useSettingsStore((s) => s.editorTabSize),
+    lineWrap: useSettingsStore((s) => s.editorLineWrap),
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
     autoCloseMath: useSettingsStore((s) => s.editorAutoCloseMath),
@@ -217,6 +225,7 @@ const HOST: EditorHost = {
     ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
     stickyScroll: useSettingsStore((s) => s.editorStickyScroll),
   }),
+  useEditorKeymap: () => useEditorKeymapStore((s) => s.keys),
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),
     useSettingsStore((s) => s.showWordChoice),
@@ -229,6 +238,7 @@ const HOST: EditorHost = {
 const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
   createCompileErrorLinter(),
+  imagePasteExtension(),
 ];
 
 const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [

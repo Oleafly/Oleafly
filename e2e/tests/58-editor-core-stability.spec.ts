@@ -1283,7 +1283,9 @@ The integrated preview renders a second page.
   await expect(tauriPage.getByText("Core section", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(tauriPage.locator(".wysiwyg-math-preview .katex").first()).toBeVisible({
+  await expect(
+    tauriPage.locator('[data-type="math-inline"] .math-rendered .katex').first(),
+  ).toBeVisible({
     timeout: 20_000,
   });
   await tauriPage.click('[aria-label="Switch to source view"]');

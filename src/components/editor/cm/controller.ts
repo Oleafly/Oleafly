@@ -8,7 +8,12 @@ import {
   editorVimUndo as coreEditorVimUndo,
   editorVimRedo as coreEditorVimRedo,
 } from "@oleafly/editor";
-import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import {
+  getWysiwygDocumentContext,
+  getWysiwygEditor,
+  getWysiwygInsertions,
+  isWysiwygActive,
+} from "@/components/editor/wysiwyg/controller";
 
 export {
   setEditorView,
@@ -26,13 +31,17 @@ export {
 
 function insertRawIntoWysiwyg(source: string, block: boolean): boolean {
   const editor = getWysiwygEditor();
-  if (!editor) return false;
-  editor
-    .chain()
-    .focus()
-    .insertContent({ type: block ? "rawBlock" : "rawInline", attrs: { source } })
-    .run();
+  const insertions = getWysiwygInsertions();
+  if (!editor || !insertions) return false;
+  insertions.insertLatex(editor.view, source, block, getWysiwygDocumentContext().theoremEnvironments);
   return true;
+}
+
+function wysiwygSelectedText(): string {
+  const editor = getWysiwygEditor();
+  if (!editor) return "";
+  const { from, to } = editor.state.selection;
+  return from === to ? "" : editor.state.doc.textBetween(from, to, " ");
 }
 
 export function insertAtCursor(text: string) {
@@ -45,7 +54,11 @@ export function insertText(text: string) {
 }
 
 export function wrapSelectionOrPlaceholder(before: string, after: string, placeholder: string) {
-  if (isWysiwygActive() && insertRawIntoWysiwyg(`${before}${placeholder}${after}`, false)) return;
+  if (isWysiwygActive()) {
+    const selected = wysiwygSelectedText();
+    const content = selected.trim() === "" ? placeholder : selected;
+    if (insertRawIntoWysiwyg(`${before}${content}${after}`, false)) return;
+  }
   coreWrapSelectionOrPlaceholder(before, after, placeholder);
 }
 

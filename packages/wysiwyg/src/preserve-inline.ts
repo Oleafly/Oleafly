@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import { splitMathSource } from "./math/source";
 
 export interface PreservedInlineRange {
   from: number;
@@ -59,6 +60,13 @@ export function protectInlineSources(
   return { protectedContent, tokenPrefix, sources };
 }
 
+export function preservedInlineNode(source: string): JSONContent {
+  return {
+    type: splitMathSource(source) ? "mathInline" : "rawInline",
+    attrs: { source },
+  };
+}
+
 function expandTextNode(
   child: JSONContent,
   token: RegExp,
@@ -70,17 +78,13 @@ function expandTextNode(
   let matched = false;
   for (const match of text.matchAll(token)) {
     if (match.index === undefined) continue;
-    const sourceIndex = Number(match[1]);
-    const preserved = sources[sourceIndex];
+    const preserved = sources[Number(match[1])];
     if (preserved === undefined) continue;
     matched = true;
     if (match.index > cursor) {
       parts.push({ ...child, text: text.slice(cursor, match.index) });
     }
-    parts.push({
-      type: "rawInline",
-      attrs: { source: preserved },
-    });
+    parts.push(preservedInlineNode(preserved));
     cursor = match.index + match[0].length;
   }
   if (!matched) return [child];
@@ -88,38 +92,41 @@ function expandTextNode(
   return parts;
 }
 
+function restoreAttributes(
+  attrs: Record<string, unknown>,
+  token: RegExp,
+  sources: readonly string[],
+): Record<string, unknown> {
+  const restored: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(attrs)) {
+    restored[name] =
+      typeof value === "string"
+        ? value.replace(token, (match: string, index: string) => sources[Number(index)] ?? match)
+        : value;
+  }
+  return restored;
+}
+
+function restoreNode(
+  node: JSONContent,
+  token: RegExp,
+  sources: readonly string[],
+): JSONContent {
+  const base = node.attrs ? { ...node, attrs: restoreAttributes(node.attrs, token, sources) } : node;
+  if (node.type === "text" || !node.content) return base;
+  const content = node.content.flatMap((child) =>
+    child.type === "text" && child.text
+      ? expandTextNode(child, token, sources)
+      : [restoreNode(child, token, sources)],
+  );
+  return { ...base, content };
+}
+
 export function restoreInlineSources(
   node: JSONContent,
   tokenPrefix: string,
   sources: readonly string[],
 ): JSONContent {
-  if (
-    (node.type === "rawInline" || node.type === "rawBlock") &&
-    typeof node.attrs?.source === "string"
-  ) {
-    const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
-    return {
-      ...node,
-      attrs: {
-        ...node.attrs,
-        source: node.attrs.source.replace(token, (_match: string, index: string) => {
-          const preserved = sources[Number(index)];
-          return preserved ?? _match;
-        }),
-      },
-    };
-  }
-  if (node.type === "text" && node.text) return node;
-  if (!node.content) return node;
-
   const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
-  const content: JSONContent[] = [];
-  for (const child of node.content) {
-    if (child.type !== "text" || !child.text) {
-      content.push(restoreInlineSources(child, tokenPrefix, sources));
-      continue;
-    }
-    content.push(...expandTextNode(child, token, sources));
-  }
-  return { ...node, content };
+  return restoreNode(node, token, sources);
 }

@@ -2,11 +2,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
-import { WysiwygEditor } from "./WysiwygEditor";
+import { documentContextForPreamble, WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import {
   flushWysiwygPendingEdits,
+  getWysiwygDocumentContext,
   invalidateWysiwygProjectSession,
 } from "./controller";
 
@@ -403,4 +404,144 @@ it("blocks visual commands while leased and flushes edits made before acquisitio
     mounted.unmount();
     useFilesStore.setState({ projectId: null });
   }
+});
+
+describe("WysiwygEditor native nodes", () => {
+  beforeEach(() => {
+    lastEditor = null;
+    useFilesStore.setState({ projectId: null });
+  });
+
+  it("derives theorem environments and booktabs from the preamble", () => {
+    expect(
+      documentContextForPreamble(
+        "\\usepackage[T1]{fontenc}\n\\usepackage{booktabs,graphicx}\n\\newtheorem{claim}{Claim}\n",
+      ),
+    ).toEqual({ theoremEnvironments: ["claim"], booktabs: true });
+    expect(documentContextForPreamble("\\usepackage{amsmath}\n")).toEqual({
+      theoremEnvironments: [],
+      booktabs: false,
+    });
+  });
+
+  it("renders math through KaTeX and theorem environments declared in the preamble", () => {
+    setFiles(
+      {
+        "main.tex": {
+          content:
+            "\\documentclass{article}\n\\newtheorem{observation}{Observation}\n\\begin{document}\nInline $a^2$ here.\n\n\\begin{observation}[Main]\nBody.\n\\end{observation}\n\\end{document}\n",
+          dirty: false,
+        },
+      },
+      "main.tex",
+    );
+    const { container } = render(<WysiwygEditor wysiwyg={true} />);
+    expect(container.querySelector('[data-type="math-inline"] .math-rendered .katex')).not.toBeNull();
+    const theorem = container.querySelector('[data-type="theorem"][data-environment="observation"]');
+    expect(theorem).not.toBeNull();
+    expect(theorem?.querySelector(".theorem-name")?.textContent).toBe("Observation");
+    expect(theorem?.querySelector(".theorem-title")?.textContent).toBe("(Main)");
+    expect(getWysiwygDocumentContext()).toEqual({ theoremEnvironments: ["observation"], booktabs: false });
+  });
+
+  it("pastes HTML as native nodes and flushes the LaTeX to the store", () => {
+    vi.useFakeTimers();
+    try {
+      setFiles({ "main.tex": { content: LATEX_A, dirty: false } }, "main.tex");
+      render(<WysiwygEditor wysiwyg={true} />);
+      const editor = requireEditor();
+      act(() => {
+        editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      });
+      const event = new Event("paste", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "clipboardData", {
+        value: {
+          types: ["text/plain", "text/html"],
+          getData: (type: string) => (type === "text/html" ? "<p><b>Pasted</b> words</p>" : "Pasted words"),
+          files: [],
+        },
+      });
+      act(() => {
+        editor.view.dom.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(useFilesStore.getState().files["main.tex"].content).toContain("\\textbf{Pasted} words");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the size-picker caption through toolbar edits and flushes it to the store", async () => {
+    setFiles(
+      {
+        "main.tex": {
+          content: "\\documentclass{article}\n\\usepackage{booktabs}\n\\begin{document}\nBody.\n\\end{document}\n",
+          dirty: false,
+        },
+      },
+      "main.tex",
+    );
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    const { insertTable } = await import("@/components/editor/latex-commands");
+    const { applyBorderPreset, insertColumn, insertRow } = await import("./table-commands");
+    act(() => {
+      editor.commands.setTextSelection(6);
+      insertTable(2, 2);
+    });
+    const caption = () => document.querySelector('[data-type="table-caption"]');
+    expect(caption()).not.toBeNull();
+    let header: number | null = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (header === null && node.type.name === "tableHeader") header = pos;
+      return header === null;
+    });
+    act(() => {
+      editor.commands.setTextSelection((header ?? 0) + 2);
+      expect(insertRow(editor, "below")).toBe(true);
+      editor.commands.setTextSelection((header ?? 0) + 2);
+      expect(insertColumn(editor, "right")).toBe(true);
+      editor.commands.setTextSelection((header ?? 0) + 2);
+      expect(applyBorderPreset(editor, "booktabs")).toBe(true);
+      flushWysiwygPendingEdits();
+    });
+    expect(caption()).not.toBeNull();
+    expect(useFilesStore.getState().files["main.tex"]?.content).toContain("\\caption{}");
+    expect(useFilesStore.getState().files["main.tex"]?.content).toContain("\\toprule");
+  });
+
+  it("shows the table toolbar only while the selection is inside a table", () => {
+    setFiles(
+      {
+        "main.tex": {
+          content:
+            "\\documentclass{article}\n\\begin{document}\nIntro\n\n\\begin{table}[h]\n\\centering\n\\begin{tabular}{ll}\na & b \\\\\n\\end{tabular}\n\\end{table}\n\\end{document}\n",
+          dirty: false,
+        },
+      },
+      "main.tex",
+    );
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    act(() => {
+      editor.commands.setTextSelection(1);
+    });
+    expect(screen.queryByTestId("wysiwyg-table-toolbar")).not.toBeInTheDocument();
+    let cell: number | null = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (cell === null && node.type.name === "tableCell") cell = pos;
+      return cell === null;
+    });
+    act(() => {
+      editor.commands.setTextSelection((cell ?? 0) + 2);
+    });
+    expect(screen.getByTestId("wysiwyg-table-toolbar")).toBeInTheDocument();
+    act(() => {
+      editor.commands.setTextSelection(1);
+    });
+    expect(screen.queryByTestId("wysiwyg-table-toolbar")).not.toBeInTheDocument();
+  });
 });

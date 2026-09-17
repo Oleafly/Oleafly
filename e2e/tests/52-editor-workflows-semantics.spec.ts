@@ -796,6 +796,12 @@ test("every raw-backed WYSIWYG formatting branch serializes and compiles after p
 \begin{document}
 \label{label}
 WYSRAWANCHOR
+
+WYSPARTANCHOR
+
+WYSCHAPTERANCHOR
+
+WYSPARAGRAPHANCHOR
 \bibliographystyle{plain}
 \bibliography{references}
 \end{document}
@@ -813,7 +819,7 @@ WYSRAWANCHOR
     await atAnchor();
     await clickToolbarControl(tauriPage, selector, menuLabel);
   };
-  const rawHeading = async (label: "Part" | "Chapter" | "Paragraph") => {
+  const rawHeading = async (label: "Part" | "Chapter" | "Paragraph", anchor: string) => {
     // The toolbar menu sometimes does not open on the first click in a
     // headless webview. The tell is `portals=[]` in the failure: no popper
     // wrapper in the DOM at all, rather than an open one missing the item, so
@@ -823,7 +829,7 @@ WYSRAWANCHOR
     let lastError: unknown;
     for (let attempt = 0; attempt < 4; attempt++) {
       await tauriPage.press("body", "Escape").catch(() => {});
-      await atAnchor();
+      await selectWysiwygText(tauriPage, anchor);
       await clickToolbarControl(
         tauriPage,
         '[aria-label="Heading level"]',
@@ -896,9 +902,9 @@ WYSRAWANCHOR
 
   // Insert in reverse structural order because every deterministic caret is
   // immediately after the same anchor.
-  await rawHeading("Paragraph");
-  await rawHeading("Chapter");
-  await rawHeading("Part");
+  await rawHeading("Paragraph", "WYSPARAGRAPHANCHOR");
+  await rawHeading("Chapter", "WYSCHAPTERANCHOR");
+  await rawHeading("Part", "WYSPARTANCHOR");
   await rawAction('[aria-label="Underline"]', "Underline");
   await rawAction('[aria-label="Insert link"]', "Insert link");
   await rawAction(
@@ -961,6 +967,7 @@ WYSRAWANCHOR
   expect(citation.key).toBeTruthy();
 
   await rawAction('[aria-label="Insert figure"]', "Insert figure");
+  await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
 
   await insertRawTable();
 
@@ -987,7 +994,7 @@ WYSRAWANCHOR
   await waitForSource(
     tauriPage,
     (source) =>
-      source.includes("\\part{Part Title}") &&
+      source.includes("\\part{WYSPARTANCHOR}") &&
       source.includes("\\begin{table}") &&
       source.includes("\\frac{numerator}{denominator}") &&
       source.includes(`\\cite{${citation.key}}`) &&
@@ -1038,7 +1045,7 @@ WYSRAWANCHOR
   );
   await replaceEditorLiteral(
     tauriPage,
-    String.raw`\frac{numerator}{denominator}`,
+    String.raw`$\frac{numerator}{denominator}$`,
     String.raw`$\frac{\mathrm{VISUALNUMERATOR}}{\mathrm{VISUALDENOMINATOR}}$`,
   );
 
@@ -1047,9 +1054,9 @@ WYSRAWANCHOR
     "VISUALCITATIONSEMANTIC",
   );
   for (const expected of [
-    "\\part{Part Title}",
-    "\\chapter{Chapter Title}",
-    "\\paragraph{Paragraph Title}",
+    "\\part{WYSPARTANCHOR}",
+    "\\chapter{WYSCHAPTERANCHOR}",
+    "\\paragraph{WYSPARAGRAPHANCHOR}",
     "\\ref{label}",
     "\\begin{figure}",
     "\\begin{table}",
@@ -1063,9 +1070,9 @@ WYSRAWANCHOR
   const probe = await compileAndProbe(tauriPage);
   const compactText = probe.text.replace(/\s+/g, "");
   for (const token of [
-    "Part Title",
-    "Chapter Title",
-    "Paragraph Title",
+    "WYSPARTANCHOR",
+    "WYSCHAPTERANCHOR",
+    "WYSPARAGRAPHANCHOR",
     "VISUALUNDERLINE",
     "VISUALLINK",
     "VISUALFOOTNOTE",
