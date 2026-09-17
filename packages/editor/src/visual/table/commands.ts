@@ -21,6 +21,12 @@ export interface TableEdit {
 export type CaptionPlacement = "above" | "below" | "none";
 
 const ROW_END = "\\\\";
+const HLINE = String.raw`\hline`;
+const TOPRULE = String.raw`\toprule`;
+const MIDRULE = String.raw`\midrule`;
+const BOTTOMRULE = String.raw`\bottomrule`;
+const DEFAULT_CAPTION = String.raw`\caption{Caption}`;
+const DEFAULT_LABEL = String.raw`\label{tab:my_table}`;
 
 function cellRange(cell: CellData): TextRange {
   return cell.multiColumn ? { from: cell.multiColumn.from, to: cell.multiColumn.to } : { from: cell.from, to: cell.to };
@@ -28,7 +34,7 @@ function cellRange(cell: CellData): TextRange {
 
 function lastCellEnd(parsed: ParsedTable, row: number): number {
   const cells = parsed.model.rows[row].cells;
-  return cellRange(cells[cells.length - 1]).to;
+  return cellRange(cells.at(-1)!).to;
 }
 
 function firstCellStart(parsed: ParsedTable, row: number): number {
@@ -37,7 +43,7 @@ function firstCellStart(parsed: ParsedTable, row: number): number {
 
 function cellsStart(parsed: ParsedTable, row: number): number {
   const rules = parsed.rows[row].rulesAbove;
-  return rules.length > 0 ? rules[rules.length - 1].to : parsed.rows[row].range.from;
+  return rules.at(-1)?.to ?? parsed.rows[row].range.from;
 }
 
 function indentationBefore(state: EditorState, pos: number): string | null {
@@ -122,23 +128,24 @@ function readSpec(state: EditorState, range: TextRange): ColumnSpec[] {
   return parseColumnSpec(state.sliceDoc(range.from, range.to));
 }
 
-export function borderPresetEdit(state: EditorState, parsed: ParsedTable, preset: BorderPreset): TableEdit {
-  const changes: ChangeSpec[] = [];
-  const columns = readSpec(state, parsed.spec);
-  columns.forEach((column, index) => {
-    column.borderLeft = preset === "all" ? 1 : 0;
-    column.borderRight = preset === "all" && index === columns.length - 1 ? 1 : 0;
-  });
-  specChange(state, parsed.spec, columns, changes);
+function ruleAboveFor(preset: BorderPreset, row: number): string | null {
+  if (preset === "all") return HLINE;
+  if (preset !== "booktabs") return null;
+  if (row === 0) return TOPRULE;
+  return row === 1 ? MIDRULE : null;
+}
 
-  for (let row = 0; row < parsed.rows.length; row++) {
-    let text: string | null = null;
-    if (preset === "all") text = "\\hline";
-    else if (preset === "booktabs") text = row === 0 ? "\\toprule" : row === 1 ? "\\midrule" : null;
-    setRulesAbove(state, parsed, row, text, changes);
-  }
-  setRulesBelow(state, parsed, preset === "all" ? "\\hline" : preset === "booktabs" ? "\\bottomrule" : null, changes);
+function ruleBelowFor(preset: BorderPreset): string | null {
+  if (preset === "all") return HLINE;
+  return preset === "booktabs" ? BOTTOMRULE : null;
+}
 
+function mergedBorderChanges(
+  state: EditorState,
+  parsed: ParsedTable,
+  preset: BorderPreset,
+  changes: ChangeSpec[],
+): void {
   for (const row of parsed.model.rows) {
     for (const cell of row.cells) {
       if (!cell.multiColumn) continue;
@@ -150,6 +157,22 @@ export function borderPresetEdit(state: EditorState, parsed: ParsedTable, preset
       specChange(state, cell.multiColumn.spec, merged, changes);
     }
   }
+}
+
+export function borderPresetEdit(state: EditorState, parsed: ParsedTable, preset: BorderPreset): TableEdit {
+  const changes: ChangeSpec[] = [];
+  const columns = readSpec(state, parsed.spec);
+  columns.forEach((column, index) => {
+    column.borderLeft = preset === "all" ? 1 : 0;
+    column.borderRight = preset === "all" && index === columns.length - 1 ? 1 : 0;
+  });
+  specChange(state, parsed.spec, columns, changes);
+
+  for (let row = 0; row < parsed.rows.length; row++) {
+    setRulesAbove(state, parsed, row, ruleAboveFor(preset, row), changes);
+  }
+  setRulesBelow(state, parsed, ruleBelowFor(preset), changes);
+  mergedBorderChanges(state, parsed, preset, changes);
   return { changes, selection: null };
 }
 
@@ -234,6 +257,23 @@ function emptyRowText(columnCount: number): string {
   return `${"& ".repeat(Math.max(0, columnCount - 1))}${ROW_END}`;
 }
 
+function appendedRowsText(
+  base: string,
+  indent: string,
+  preset: BorderPreset | null,
+  hasSeparator: boolean,
+  count: number,
+): string {
+  let text = hasSeparator ? "" : ` ${ROW_END}`;
+  if (preset === "all") text += ` ${HLINE}`;
+  for (let index = 0; index < count; index++) {
+    text += `\n${indent}${base}`;
+    if (preset === "all" && index < count - 1) text += ` ${HLINE}`;
+  }
+  if (!hasSeparator && preset === "all") text += ` ${HLINE}`;
+  return text;
+}
+
 export function insertRowsEdit(
   state: EditorState,
   parsed: ParsedTable,
@@ -250,7 +290,7 @@ export function insertRowsEdit(
   if (where === "above") {
     const at = firstCellStart(parsed, minRow);
     const indent = indentationBefore(state, at);
-    const rowText = preset === "all" ? `${base} \\hline` : base;
+    const rowText = preset === "all" ? `${base} ${HLINE}` : base;
     if (indent !== null && hasLineBreakBetween(state, parsed.rows[minRow].range.from, at)) {
       changes.push({ from: at - indent.length, insert: `${indent}${rowText}\n`.repeat(count) });
     } else {
@@ -264,14 +304,7 @@ export function insertRowsEdit(
   const hasSeparator = maxRow < parsed.rowSeparators.length;
   const at = hasSeparator ? parsed.rowSeparators[maxRow].to : lastCellEnd(parsed, maxRow);
   const indent = indentationBefore(state, firstCellStart(parsed, maxRow)) ?? "";
-  let text = hasSeparator ? "" : ` ${ROW_END}`;
-  if (preset === "all") text += " \\hline";
-  for (let index = 0; index < count; index++) {
-    text += `\n${indent}${base}`;
-    if (preset === "all" && index < count - 1) text += " \\hline";
-  }
-  if (!hasSeparator && preset === "all") text += " \\hline";
-  changes.push({ from: at, insert: text });
+  changes.push({ from: at, insert: appendedRowsText(base, indent, preset, hasSeparator, count) });
   return {
     changes,
     selection: new CellSelection({ row: maxRow + 1, column: 0 }, { row: maxRow + count, column: columnCount - 1 }),
@@ -326,24 +359,24 @@ function emptyTableEdit(state: EditorState, parsed: ParsedTable): TableEdit {
   return { changes, selection: CellSelection.cell(0, 0) };
 }
 
-export function deleteSelectionEdit(state: EditorState, parsed: ParsedTable, selection: CellSelection): TableEdit | null {
+function deleteRowsEdit(parsed: ParsedTable, selection: CellSelection): TableEdit {
   const { model } = parsed;
-  if (selection.coversTable(model)) return emptyTableEdit(state, parsed);
-  const { minRow, maxRow, minColumn, maxColumn } = selection.bounds;
+  const { minRow, maxRow, minColumn } = selection.bounds;
   const lastRow = model.rowCount - 1;
-  if (selection.anyRowSelected(model)) {
-    const from = maxRow < lastRow ? cellsStart(parsed, minRow) : parsed.rows[minRow].range.from;
-    let to: number;
-    if (maxRow < lastRow) to = cellsStart(parsed, maxRow + 1);
-    else if (parsed.rowSeparators.length === parsed.rows.length) to = parsed.rowSeparators[maxRow].to;
-    else to = lastCellEnd(parsed, maxRow);
-    const remaining = model.rowCount - selection.height();
-    return {
-      changes: [{ from, to, insert: "" }],
-      selection: CellSelection.cell(Math.min(minRow, remaining - 1), minColumn),
-    };
-  }
-  if (!selection.anyColumnSelected(model) || !selection.eq(selection.expand(model))) return null;
+  const from = maxRow < lastRow ? cellsStart(parsed, minRow) : parsed.rows[minRow].range.from;
+  let to: number;
+  if (maxRow < lastRow) to = cellsStart(parsed, maxRow + 1);
+  else if (parsed.rowSeparators.length === parsed.rows.length) to = parsed.rowSeparators[maxRow].to;
+  else to = lastCellEnd(parsed, maxRow);
+  const remaining = model.rowCount - selection.height();
+  return {
+    changes: [{ from, to, insert: "" }],
+    selection: CellSelection.cell(Math.min(minRow, remaining - 1), minColumn),
+  };
+}
+
+function deleteColumnChanges(parsed: ParsedTable, minColumn: number, maxColumn: number): ChangeSpec[] | null {
+  const { model } = parsed;
   const changes: ChangeSpec[] = [];
   const fromStart = minColumn === 0;
   for (let row = 0; row < model.rowCount; row++) {
@@ -352,18 +385,24 @@ export function deleteSelectionEdit(state: EditorState, parsed: ParsedTable, sel
       const cell = model.rows[row].cells[index];
       const range = cellRange(cell);
       const separators = parsed.cellSeparators[row];
-      if (fromStart) {
-        const separator = separators[index];
-        if (!separator) return null;
-        changes.push({ from: range.from, to: separator.to, insert: "" });
-      } else {
-        const separator = separators[index - 1];
-        if (!separator) return null;
-        changes.push({ from: separator.from, to: range.to, insert: "" });
-      }
+      const separator = fromStart ? separators[index] : separators[index - 1];
+      if (!separator) return null;
+      if (fromStart) changes.push({ from: range.from, to: separator.to, insert: "" });
+      else changes.push({ from: separator.from, to: range.to, insert: "" });
       column += cellSpan(cell);
     }
   }
+  return changes;
+}
+
+export function deleteSelectionEdit(state: EditorState, parsed: ParsedTable, selection: CellSelection): TableEdit | null {
+  const { model } = parsed;
+  if (selection.coversTable(model)) return emptyTableEdit(state, parsed);
+  const { minRow, minColumn, maxColumn } = selection.bounds;
+  if (selection.anyRowSelected(model)) return deleteRowsEdit(parsed, selection);
+  if (!selection.anyColumnSelected(model) || !selection.eq(selection.expand(model))) return null;
+  const changes = deleteColumnChanges(parsed, minColumn, maxColumn);
+  if (!changes) return null;
   const columns = readSpec(state, parsed.spec);
   const preset = model.borderPreset();
   const remaining = columns.filter((_, index) => !selection.isColumnSelected(model, index));
@@ -390,7 +429,7 @@ export function mergeCellsEdit(parsed: ParsedTable, selection: CellSelection): T
   const from = cellRange(model.cellAt(minRow, minColumn)).from;
   const to = cellRange(model.cellAt(minRow, maxColumn)).to;
   const span = maxColumn - minColumn + 1;
-  const insert = `\\multicolumn{${span}}{${border}c${border}}{${parts.join(" ")}}`;
+  const insert = String.raw`\multicolumn{${span}}{${border}c${border}}{${parts.join(" ")}}`;
   return {
     changes: [{ from, to, insert }],
     selection: new CellSelection({ row: minRow, column: minColumn }, { row: minRow, column: maxColumn }),
@@ -421,6 +460,48 @@ export function captionPlacementOf(parsed: ParsedTable, environment: TableEnviro
   return environment.caption.from < parsed.tabular.from ? "above" : "below";
 }
 
+function removeCaptionEdit(
+  state: EditorState,
+  environment: TableEnvironmentInfo,
+  labelInsideCaption: boolean,
+): TableEdit | null {
+  const { caption, label } = environment;
+  const changes: ChangeSpec[] = [];
+  if (caption) changes.push({ ...lineAwareDeletion(state, caption), insert: "" });
+  if (label && !labelInsideCaption) changes.push({ ...lineAwareDeletion(state, label), insert: "" });
+  return changes.length > 0 ? { changes, selection: null } : null;
+}
+
+function captionLines(state: EditorState, environment: TableEnvironmentInfo, labelInsideCaption: boolean): string[] {
+  const { caption, label } = environment;
+  const captionText = caption ? state.sliceDoc(caption.from, caption.to) : DEFAULT_CAPTION;
+  let labelText: string | null = null;
+  if (!labelInsideCaption) {
+    if (label) labelText = state.sliceDoc(label.from, label.to);
+    else if (!caption) labelText = DEFAULT_LABEL;
+  }
+  return labelText ? [captionText, labelText] : [captionText];
+}
+
+function captionAboveChange(state: EditorState, parsed: ParsedTable, lines: readonly string[]): ChangeSpec {
+  const anchor = parsed.tabular.from;
+  const indent = indentationBefore(state, anchor);
+  if (indent !== null) {
+    return { from: anchor - indent.length, insert: lines.map((line) => `${indent}${line}\n`).join("") };
+  }
+  return { from: anchor, insert: `${lines.join("\n")}\n` };
+}
+
+function captionBelowChange(state: EditorState, parsed: ParsedTable, lines: readonly string[]): ChangeSpec {
+  const anchor = parsed.tabular.to;
+  const line = state.doc.lineAt(anchor);
+  const indent = /^[ \t]*/u.exec(line.text)?.[0] ?? "";
+  if (state.sliceDoc(anchor, line.to).trim() === "") {
+    return { from: line.to, insert: lines.map((text) => `\n${indent}${text}`).join("") };
+  }
+  return { from: anchor, insert: `\n${lines.join("\n")}\n` };
+}
+
 export function captionEdit(
   state: EditorState,
   parsed: ParsedTable,
@@ -428,43 +509,18 @@ export function captionEdit(
   placement: CaptionPlacement,
 ): TableEdit | null {
   if (!environment) return null;
-  const changes: ChangeSpec[] = [];
   const { caption, label } = environment;
   const labelInsideCaption = Boolean(caption && label && rangeContains(caption, label));
-  if (placement === "none") {
-    if (caption) changes.push({ ...lineAwareDeletion(state, caption), insert: "" });
-    if (label && !labelInsideCaption) changes.push({ ...lineAwareDeletion(state, label), insert: "" });
-    return changes.length > 0 ? { changes, selection: null } : null;
-  }
+  if (placement === "none") return removeCaptionEdit(state, environment, labelInsideCaption);
   if (captionPlacementOf(parsed, environment) === placement) return null;
 
-  const captionText = caption ? state.sliceDoc(caption.from, caption.to) : "\\caption{Caption}";
-  let labelText: string | null = null;
-  if (!labelInsideCaption) {
-    labelText = label ? state.sliceDoc(label.from, label.to) : caption ? null : "\\label{tab:my_table}";
-  }
+  const lines = captionLines(state, environment, labelInsideCaption);
+  const changes: ChangeSpec[] = [];
   if (caption) changes.push({ ...lineAwareDeletion(state, caption), insert: "" });
   if (label && !labelInsideCaption) changes.push({ ...lineAwareDeletion(state, label), insert: "" });
-
-  const lines = labelText ? [captionText, labelText] : [captionText];
-  if (placement === "above") {
-    const anchor = parsed.tabular.from;
-    const indent = indentationBefore(state, anchor);
-    if (indent !== null) {
-      changes.push({ from: anchor - indent.length, insert: lines.map((line) => `${indent}${line}\n`).join("") });
-    } else {
-      changes.push({ from: anchor, insert: `${lines.join("\n")}\n` });
-    }
-  } else {
-    const anchor = parsed.tabular.to;
-    const line = state.doc.lineAt(anchor);
-    const indent = /^[ \t]*/u.exec(line.text)?.[0] ?? "";
-    if (state.sliceDoc(anchor, line.to).trim() === "") {
-      changes.push({ from: line.to, insert: lines.map((text) => `\n${indent}${text}`).join("") });
-    } else {
-      changes.push({ from: anchor, insert: `\n${lines.join("\n")}\n` });
-    }
-  }
+  const insertion =
+    placement === "above" ? captionAboveChange(state, parsed, lines) : captionBelowChange(state, parsed, lines);
+  changes.push(insertion);
   return { changes, selection: null };
 }
 
@@ -493,7 +549,7 @@ export function clearCellsEdit(parsed: ParsedTable, selection: CellSelection): T
 
 export function sanitizeCellInput(text: string): string {
   return text
-    .replace(/(^|[^\\])&/gu, "$1\\&")
-    .replace(/(^|[^\\])%/gu, "$1\\%")
+    .replace(/(^|[^\\])&/gu, String.raw`$1\&`)
+    .replace(/(^|[^\\])%/gu, String.raw`$1\%`)
     .replaceAll("\\\\", "");
 }

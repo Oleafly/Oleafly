@@ -31,9 +31,9 @@ const ALIGNMENT_LETTERS: Record<string, ColumnAlignment> = {
 
 const PARAGRAPH_LETTERS = new Set(["p", "m", "b"]);
 
-const ABSOLUTE_WIDTH = /^\s*(\d*\.?\d+)\s*(cm|mm|in|pt)\s*$/u;
+const ABSOLUTE_WIDTH = /^\s*(\d+(?:\.\d+)?|\.\d+)\s*(cm|mm|in|pt)\s*$/u;
 
-const RELATIVE_WIDTH = /^\s*(\d*\.?\d+)\s*\\(linewidth|textwidth|columnwidth)\s*$/u;
+const RELATIVE_WIDTH = /^\s*(\d+(?:\.\d+)?|\.\d+)\s*\\(linewidth|textwidth|columnwidth)\s*$/u;
 
 const PREFIX_ALIGNMENT = /\\(raggedright|raggedleft|centering)\b/u;
 
@@ -88,67 +88,97 @@ function emptyColumn(): ColumnSpec {
   };
 }
 
+interface SpecReader {
+  columns: ColumnSpec[];
+  pending: ColumnSpec;
+  hasAlignment: boolean;
+}
+
+function commitColumn(reader: SpecReader): void {
+  if (!reader.hasAlignment) return;
+  reader.columns.push(reader.pending);
+  reader.pending = emptyColumn();
+  reader.hasAlignment = false;
+}
+
+function startsColumn(char: string): boolean {
+  return char in ALIGNMENT_LETTERS || PARAGRAPH_LETTERS.has(char) || char === "X" || char === ">";
+}
+
+function readBorder(reader: SpecReader): void {
+  if (reader.hasAlignment) reader.pending.borderRight++;
+  else reader.pending.borderLeft++;
+}
+
+function readAlignmentLetter(reader: SpecReader, char: string): void {
+  reader.pending.alignment = ALIGNMENT_LETTERS[char];
+  reader.pending.content = char;
+  reader.hasAlignment = true;
+}
+
+function readParagraphColumn(reader: SpecReader, spec: string, index: number): number {
+  const close = readBraced(spec, index + 1);
+  const argument = spec.slice(index + 2, close);
+  reader.pending.paragraph = true;
+  reader.pending.alignment = alignmentFromPrefix(reader.pending.prefix) ?? "paragraph";
+  reader.pending.content = spec.slice(index, close + 1);
+  reader.pending.width = parseColumnWidth(argument);
+  reader.hasAlignment = true;
+  return close;
+}
+
+function readStretchColumn(reader: SpecReader): void {
+  reader.pending.paragraph = true;
+  reader.pending.alignment = alignmentFromPrefix(reader.pending.prefix) ?? "paragraph";
+  reader.pending.content = "X";
+  reader.hasAlignment = true;
+}
+
+function readSpacing(reader: SpecReader, spec: string, index: number): number {
+  const close = readBraced(spec, index + 1);
+  const argument = spec.slice(index, close + 1);
+  if (reader.hasAlignment) reader.pending.spacingRight += argument;
+  else reader.pending.spacingLeft += argument;
+  return close;
+}
+
+function readPrefix(reader: SpecReader, spec: string, index: number): number {
+  const close = readBraced(spec, index + 1);
+  reader.pending.prefix = spec.slice(index, close + 1);
+  return close;
+}
+
+function readSpecifier(reader: SpecReader, spec: string, index: number): number {
+  const char = spec.charAt(index);
+  if (char === "|") readBorder(reader);
+  else if (char in ALIGNMENT_LETTERS) readAlignmentLetter(reader, char);
+  else if (PARAGRAPH_LETTERS.has(char)) return readParagraphColumn(reader, spec, index);
+  else if (char === "X") readStretchColumn(reader);
+  else if (char === "@" || char === "!") return readSpacing(reader, spec, index);
+  else if (char === ">") return readPrefix(reader, spec, index);
+  else if (!/\s/u.test(char)) throw new ColumnSpecError(`Unsupported column specifier "${char}"`);
+  return index;
+}
+
+function closeTrailingSpec(reader: SpecReader): void {
+  if (reader.pending.prefix) throw new ColumnSpecError("A column prefix must be followed by a column");
+  if (reader.pending.borderLeft <= 0 && !reader.pending.spacingLeft) return;
+  const last = reader.columns.at(-1);
+  if (!last) throw new ColumnSpecError("The column specification declares no columns");
+  last.borderRight += reader.pending.borderLeft;
+  last.spacingRight += reader.pending.spacingLeft;
+}
+
 export function parseColumnSpec(spec: string): ColumnSpec[] {
-  const columns: ColumnSpec[] = [];
-  let pending = emptyColumn();
-  let hasAlignment = false;
-
-  const commit = () => {
-    if (!hasAlignment) return;
-    columns.push(pending);
-    pending = emptyColumn();
-    hasAlignment = false;
-  };
-
-  for (let index = 0; index < spec.length; index++) {
-    const char = spec.charAt(index);
-    if (char in ALIGNMENT_LETTERS || PARAGRAPH_LETTERS.has(char) || char === "X" || char === ">") {
-      commit();
-    }
-    if (char === "|") {
-      if (hasAlignment) pending.borderRight++;
-      else pending.borderLeft++;
-    } else if (char in ALIGNMENT_LETTERS) {
-      pending.alignment = ALIGNMENT_LETTERS[char];
-      pending.content = char;
-      hasAlignment = true;
-    } else if (PARAGRAPH_LETTERS.has(char)) {
-      const close = readBraced(spec, index + 1);
-      const argument = spec.slice(index + 2, close);
-      pending.paragraph = true;
-      pending.alignment = alignmentFromPrefix(pending.prefix) ?? "paragraph";
-      pending.content = spec.slice(index, close + 1);
-      pending.width = parseColumnWidth(argument);
-      hasAlignment = true;
-      index = close;
-    } else if (char === "X") {
-      pending.paragraph = true;
-      pending.alignment = alignmentFromPrefix(pending.prefix) ?? "paragraph";
-      pending.content = "X";
-      hasAlignment = true;
-    } else if (char === "@" || char === "!") {
-      const close = readBraced(spec, index + 1);
-      const argument = spec.slice(index, close + 1);
-      if (hasAlignment) pending.spacingRight += argument;
-      else pending.spacingLeft += argument;
-      index = close;
-    } else if (char === ">") {
-      const close = readBraced(spec, index + 1);
-      pending.prefix = spec.slice(index, close + 1);
-      index = close;
-    } else if (!/\s/u.test(char)) {
-      throw new ColumnSpecError(`Unsupported column specifier "${char}"`);
-    }
+  const reader: SpecReader = { columns: [], pending: emptyColumn(), hasAlignment: false };
+  let index = 0;
+  while (index < spec.length) {
+    if (startsColumn(spec.charAt(index))) commitColumn(reader);
+    index = readSpecifier(reader, spec, index) + 1;
   }
-  commit();
-  if (pending.prefix) throw new ColumnSpecError("A column prefix must be followed by a column");
-  if (pending.borderLeft > 0 || pending.spacingLeft) {
-    const last = columns[columns.length - 1];
-    if (!last) throw new ColumnSpecError("The column specification declares no columns");
-    last.borderRight += pending.borderLeft;
-    last.spacingRight += pending.spacingLeft;
-  }
-  return columns;
+  commitColumn(reader);
+  closeTrailingSpec(reader);
+  return reader.columns;
 }
 
 export function serializeColumnSpec(columns: readonly ColumnSpec[]): string {
@@ -165,9 +195,9 @@ export function plainColumn(alignment: Exclude<ColumnAlignment, "paragraph">): C
 }
 
 export function paragraphPrefix(alignment: ColumnAlignment): string {
-  if (alignment === "left") return ">{\\raggedright\\arraybackslash}";
-  if (alignment === "right") return ">{\\raggedleft\\arraybackslash}";
-  if (alignment === "center") return ">{\\centering\\arraybackslash}";
+  if (alignment === "left") return String.raw`>{\raggedright\arraybackslash}`;
+  if (alignment === "right") return String.raw`>{\raggedleft\arraybackslash}`;
+  if (alignment === "center") return String.raw`>{\centering\arraybackslash}`;
   return "";
 }
 

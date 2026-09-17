@@ -439,13 +439,13 @@ export function EditorToolbar({
         render: () => <SymbolPicker />,
         renderMenu: () => <SymbolPicker key="symbols" menuRow />,
       },
+      {
+        id: "code-intel",
+        width: DROPDOWN_TRIGGER_WIDTH,
+        render: () => <CodeIntelDropdown variant="bar" />,
+        renderMenu: () => <CodeIntelDropdown key="code-intel" variant="menu" />,
+      },
     );
-    list.push({
-      id: "code-intel",
-      width: DROPDOWN_TRIGGER_WIDTH,
-      render: () => <CodeIntelDropdown variant="bar" />,
-      renderMenu: () => <CodeIntelDropdown key="code-intel" variant="menu" />,
-    });
 
     return list;
   }, [t, visionReady]);

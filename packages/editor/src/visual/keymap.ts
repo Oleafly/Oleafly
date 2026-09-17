@@ -13,7 +13,7 @@ const EMPTY_ITEM = /^\\item(\[\])?$/u;
 
 function listItemText(state: EditorState, pos: number): string {
   const indent = indentString(state, new IndentContext(state).lineIndent(pos));
-  return `${indent}\\item `;
+  return String.raw`${indent}\item `;
 }
 
 function whitespaceAfter(state: EditorState, pos: number): number {
@@ -46,7 +46,7 @@ function continueList(state: EditorState, range: SelectionRange, list: SyntaxNod
   let insert = `\n${listItemText(state, from)}`;
   let pos: number;
   if (listEnvironmentName(state, list) === "description") {
-    insert = insert.replace(/\\item $/u, "\\item[] ");
+    insert = insert.replace(/\\item $/u, String.raw`\item[] `);
     pos = from + insert.length - 2;
   } else {
     pos = from + insert.length + whitespaceAfter(state, from);

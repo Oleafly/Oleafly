@@ -7,7 +7,7 @@ import {
   type StateField,
 } from "@codemirror/state";
 import type { DecorationSet } from "@codemirror/view";
-import type { Tree } from "@lezer/common";
+import type { SyntaxNode, Tree } from "@lezer/common";
 import { ancestorOfType, descendantsOfType } from "../latex-tree";
 import { selectionAtMouseDown, selectionIntersects } from "./selection";
 
@@ -23,6 +23,26 @@ function coveredByAtom(set: DecorationSet, pos: number): boolean {
   return covered;
 }
 
+function forwardArgumentSelection(
+  range: SelectionRange,
+  command: SyntaxNode,
+  inner: SyntaxNode,
+): SelectionRange | null {
+  if (range.anchor !== inner.from + 1 && range.anchor !== command.from) return null;
+  if (range.empty) return EditorSelection.cursor(inner.from + 1);
+  return Math.abs(range.head - inner.to) < 2 ? EditorSelection.range(inner.from + 1, inner.to - 1) : null;
+}
+
+function backwardArgumentSelection(
+  range: SelectionRange,
+  command: SyntaxNode,
+  inner: SyntaxNode,
+): SelectionRange | null {
+  if (range.anchor !== inner.to - 1 && range.anchor !== command.to) return null;
+  if (range.empty) return EditorSelection.cursor(inner.to - 1);
+  return Math.abs(range.head - command.from) < 2 ? EditorSelection.range(inner.to - 1, inner.from + 1) : null;
+}
+
 function argumentSelection(
   tree: Tree,
   range: SelectionRange,
@@ -35,14 +55,8 @@ function argumentSelection(
   if (pressed && selectionIntersects(pressed, command)) return null;
   const [inner] = descendantsOfType(command, "$TextArgument");
   if (!inner) return null;
-  if (side === 1) {
-    if (range.anchor !== inner.from + 1 && range.anchor !== command.from) return null;
-    if (range.empty) return EditorSelection.cursor(inner.from + 1);
-    return Math.abs(range.head - inner.to) < 2 ? EditorSelection.range(inner.from + 1, inner.to - 1) : null;
-  }
-  if (range.anchor !== inner.to - 1 && range.anchor !== command.to) return null;
-  if (range.empty) return EditorSelection.cursor(inner.to - 1);
-  return Math.abs(range.head - command.from) < 2 ? EditorSelection.range(inner.to - 1, inner.from + 1) : null;
+  if (side === 1) return forwardArgumentSelection(range, command, inner);
+  return backwardArgumentSelection(range, command, inner);
 }
 
 export function selectDecoratedArgument(field: StateField<{ decorations: DecorationSet }>): Extension {

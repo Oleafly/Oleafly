@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatColumnWidth, parseColumnSpec, serializeColumnSpec, widthArgument } from "./column-spec";
+import {
+  formatColumnWidth,
+  parseColumnSpec,
+  parseColumnWidth,
+  serializeColumnSpec,
+  widthArgument,
+} from "./column-spec";
 
 describe("column specification parsing", () => {
   it("reads alignments and vertical borders", () => {
@@ -46,6 +52,17 @@ describe("column specification parsing", () => {
   it("round-trips through the serializer", () => {
     const spec = "|>{\\raggedleft\\arraybackslash}p{2cm}|c@{}|r||";
     expect(serializeColumnSpec(parseColumnSpec(spec))).toBe(spec);
+  });
+
+  it("reads widths written without a leading digit", () => {
+    expect(parseColumnWidth(" .5cm ")).toEqual({ kind: "absolute", value: 0.5, unit: "cm" });
+    expect(parseColumnWidth(".25\\textwidth")).toEqual({
+      kind: "relative",
+      fraction: 0.25,
+      command: "textwidth",
+    });
+    expect(parseColumnWidth("2.")).toEqual({ kind: "custom", raw: "2." });
+    expect(parseColumnWidth("1.2.3cm")).toEqual({ kind: "custom", raw: "1.2.3cm" });
   });
 
   it("rejects specifiers the grid cannot represent", () => {

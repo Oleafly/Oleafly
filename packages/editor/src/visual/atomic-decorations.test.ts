@@ -34,7 +34,7 @@ function createState(doc: string, cursor?: number, readOnly = false): EditorStat
       extensions: [latexTreeSupport(), visualMode(ports), EditorState.readOnly.of(readOnly)],
     }),
   );
-  expect(syntaxTree(state).length).toBe(doc.length);
+  expect(syntaxTree(state)).toHaveLength(doc.length);
   return state;
 }
 

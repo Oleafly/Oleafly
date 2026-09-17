@@ -70,7 +70,7 @@ describe("mark decorations", () => {
     const editor = mount(doc, doc.length);
     editor.dispatch({ effects: EditorView.scrollIntoView(positionOf(doc, "A small table"), { y: "center" }) });
     const theoremLines = editor.contentDOM.querySelectorAll(".cm-line.ofl-visual-environment-theorem-plain");
-    expect(theoremLines.length).toBe(1);
+    expect(theoremLines).toHaveLength(1);
     expect(theoremLines[0].textContent?.trim()).toBe("Every widget renders in place.");
     expect(editor.contentDOM.querySelector(".ofl-visual-begin-theorem")?.textContent).toBe("Lemma (Small)");
     expect(editor.contentDOM.querySelector(".ofl-visual-end")).not.toBeNull();
@@ -86,7 +86,7 @@ describe("mark decorations", () => {
     expect(editor.contentDOM.querySelector(".ofl-visual-chip-cite")?.textContent).toBe("knuth");
     expect(editor.contentDOM.querySelector(".ofl-visual-chip-ref")?.textContent).toBe("sec:a");
     expect(editor.contentDOM.querySelector(".ofl-visual-chip-label")?.textContent).toBe("sec:a");
-    expect(editor.contentDOM.querySelectorAll(".ofl-visual-icon-brace svg").length).toBe(3);
+    expect(editor.contentDOM.querySelectorAll(".ofl-visual-icon-brace svg")).toHaveLength(3);
   });
 
   it("marks text formatting commands", () => {

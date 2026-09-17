@@ -1,7 +1,7 @@
 import { InlineWidget } from "./base";
 
 const FULL_WIDTH = /\\(?:textwidth|linewidth|columnwidth|hsize)\b/u;
-const LENGTH = /^\s*(-?\d*\.?\d+)\s*(pt|cm|mm|in|em|ex|px)\s*$/u;
+const LENGTH = /^\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*(pt|cm|mm|in|em|ex|px)\s*$/u;
 
 function cssLength(argument: string | undefined, fallback: string): string {
   if (!argument) return fallback;
@@ -42,6 +42,6 @@ export class RuleWidget extends InlineWidget {
 
 export function ruleWidgetFor(command: string, args: readonly string[]): RuleWidget {
   const stripped = args.map((argument) => argument.replace(/^\{|\}$/gu, ""));
-  if (command === "\\rule") return new RuleWidget(cssLength(stripped[0], "2em"), cssLength(stripped[1], "1px"));
+  if (command === String.raw`\rule`) return new RuleWidget(cssLength(stripped[0], "2em"), cssLength(stripped[1], "1px"));
   return new RuleWidget("100%", "0.4pt");
 }

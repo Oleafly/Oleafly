@@ -22,7 +22,7 @@ function createState(doc: string, cursor = 0): EditorState {
       extensions: [latexTreeSupport(), visualMode(ports)],
     }),
   );
-  expect(syntaxTree(state).length).toBe(doc.length);
+  expect(syntaxTree(state)).toHaveLength(doc.length);
   return state;
 }
 
@@ -73,6 +73,18 @@ describe("template constructs", () => {
     expect(rules.map((rule) => [rule.width, rule.height])).toEqual([
       ["100%", "4pt"],
       ["100%", "0.4pt"],
+    ]);
+  });
+
+  it("reads rule lengths written without a leading digit or with a sign", () => {
+    const doc = BODY("\\rule{.5cm}{1.5pt}\nText\\rule{-2em}{3mm}");
+    const state = createState(doc, doc.indexOf("Text"));
+    const rules = decorations(state)
+      .map((entry) => entry.spec.widget)
+      .filter((widget): widget is RuleWidget => widget instanceof RuleWidget);
+    expect(rules.map((rule) => [rule.width, rule.height])).toEqual([
+      [".5cm", "1.5pt"],
+      ["-2em", "3mm"],
     ]);
   });
 

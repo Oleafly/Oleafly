@@ -25,7 +25,7 @@ export function renderVisualMath(source: string, display: boolean): MathRenderRe
   const environment = ENVIRONMENT_SOURCE.exec(cleaned);
   const body = environment?.[2].trim();
   if (!body) return direct;
-  const wrapped = NEEDS_ALIGNMENT.test(body) ? `\\begin{aligned}${body}\\end{aligned}` : body;
+  const wrapped = NEEDS_ALIGNMENT.test(body) ? String.raw`\begin{aligned}${body}\end{aligned}` : body;
   const fallback = renderMathExpression(wrapped, display);
   return fallback.status === "ready" ? fallback : direct;
 }

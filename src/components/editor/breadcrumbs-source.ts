@@ -96,8 +96,10 @@ export function ancestorsAtLine(
   const stack: SectionCrumb[] = [];
   for (const heading of headings) {
     if (heading.line > cursorLine) break;
-    while (stack.length > 0 && stack[stack.length - 1].level >= heading.level) {
+    let top = stack.at(-1);
+    while (top && top.level >= heading.level) {
       stack.pop();
+      top = stack.at(-1);
     }
     stack.push(heading);
   }

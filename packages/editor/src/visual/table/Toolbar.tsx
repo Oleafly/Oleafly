@@ -136,17 +136,10 @@ export const Toolbar: FC = () => {
       <div className="ofl-visual-table-group">
         <ToolbarMenu
           id="alignment"
-          trigger={({ open, toggle }) => (
-            <ToolbarButton
-              label={editorMessage("visual.table.alignment")}
-              icon={<AlignmentIcon />}
-              caret
-              expanded={open}
-              disabled={!columnSelected && !merged}
-              disabledLabel={editorMessage("visual.table.selectColumnToAlign")}
-              onClick={toggle}
-            />
-          )}
+          label={editorMessage("visual.table.alignment")}
+          icon={<AlignmentIcon />}
+          disabled={!columnSelected && !merged}
+          disabledLabel={editorMessage("visual.table.selectColumnToAlign")}
         >
           <MenuItem
             label={editorMessage("visual.table.alignLeft")}
@@ -177,17 +170,10 @@ export const Toolbar: FC = () => {
         </ToolbarMenu>
         <ToolbarMenu
           id="width"
-          trigger={({ open, toggle }) => (
-            <ToolbarButton
-              label={editorMessage("visual.table.columnWidth")}
-              icon={paragraphOnly ? <WrapIcon /> : <WidthIcon />}
-              caret
-              expanded={open}
-              disabled={!anyColumn}
-              disabledLabel={editorMessage("visual.table.selectColumnForWidth")}
-              onClick={toggle}
-            />
-          )}
+          label={editorMessage("visual.table.columnWidth")}
+          icon={paragraphOnly ? <WrapIcon /> : <WidthIcon />}
+          disabled={!anyColumn}
+          disabledLabel={editorMessage("visual.table.selectColumnForWidth")}
         >
           <MenuItem
             label={editorMessage("visual.table.fitToContent")}
@@ -226,18 +212,7 @@ export const Toolbar: FC = () => {
           disabledLabel={editorMessage("visual.table.selectRowOrColumnToDelete")}
           onClick={() => applyEdit(deleteSelectionEdit(state, parsed, selection))}
         />
-        <ToolbarMenu
-          id="insert"
-          trigger={({ open, toggle }) => (
-            <ToolbarButton
-              label={editorMessage("visual.table.insert")}
-              icon={<PlusIcon />}
-              caret
-              expanded={open}
-              onClick={toggle}
-            />
-          )}
-        >
+        <ToolbarMenu id="insert" label={editorMessage("visual.table.insert")} icon={<PlusIcon />}>
           <MenuItem
             label={editorMessage("visual.table.insertColumnsLeft", { count: columnsToInsert })}
             onSelect={() => applyEdit(insertColumnsEdit(state, parsed, selection, "left"))}

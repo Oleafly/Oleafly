@@ -2,7 +2,7 @@ import { getEditorView, replaceRange } from "@/components/editor/cm/controller";
 import { useFigureDialogStore, type FigureEditTarget } from "@/store/figure-dialog";
 
 const INCLUDE_GRAPHICS =
-  /\\includegraphics\s*(?:\[(?<options>[^\]]*)\])?\s*\{(?<path>[^}]*)\}/u;
+  /\\includegraphics\s*(?:\[(?<options>[^\]]*)\]\s*)?\{(?<path>[^}]*)\}/u;
 const WIDTH_OPTION = /(?:^|,)\s*width\s*=\s*(?<width>[^,]+)/u;
 
 export interface IncludeGraphics {

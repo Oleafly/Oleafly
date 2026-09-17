@@ -1,4 +1,4 @@
-import { type FC, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type FC, type FormEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { type AbsoluteWidthUnit, type ColumnWidth, trimNumber } from "./column-spec";
 import { columnWidthEdit } from "./commands";
@@ -14,7 +14,7 @@ const DialogFrame: FC<{ title: string; onClose: () => void; children: ReactNode 
   const container = useMemo(() => {
     const element = document.createElement("div");
     element.className = view.themeClasses;
-    element.setAttribute("data-ofl-visual-table-dialog", "");
+    element.dataset.oflVisualTableDialog = "";
     return element;
   }, [view]);
 
@@ -36,14 +36,15 @@ const DialogFrame: FC<{ title: string; onClose: () => void; children: ReactNode 
   return createPortal(
     <div
       className="ofl-visual-table-backdrop"
+      role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="ofl-visual-table-dialog" role="dialog" aria-modal="true" aria-label={title}>
+      <dialog className="ofl-visual-table-dialog" open aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
         {children}
-      </div>
+      </dialog>
     </div>,
     container,
   );
@@ -85,14 +86,25 @@ function initialWidth(width: ColumnWidth | undefined): { unit: WidthUnit; value:
   return { unit: "custom", value: width.raw };
 }
 
+function widthHint(unit: WidthUnit): string | null {
+  if (unit === "%") return editorMessage("visual.table.widthPercentHelp");
+  if (unit === "custom") return editorMessage("visual.table.widthCustomHelp");
+  return null;
+}
+
 const WidthDialog: FC<{ onClose: () => void }> = ({ onClose }) => {
   const { view, parsed } = useTableHost();
   const { selection } = useTableSelection();
   const applyEdit = useApplyEdit();
-  const column = selection && selection.width() === 1 ? parsed.model.columns[selection.anchor.column] : null;
+  const column = selection?.width() === 1 ? parsed.model.columns[selection.anchor.column] : null;
   const initial = initialWidth(column?.width);
   const [unit, setUnit] = useState<WidthUnit>(initial.unit);
   const [value, setValue] = useState(initial.value);
+  const valueRef = useRef<HTMLInputElement | null>(null);
+
+  useLayoutEffect(() => {
+    valueRef.current?.focus();
+  }, []);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -122,12 +134,12 @@ const WidthDialog: FC<{ onClose: () => void }> = ({ onClose }) => {
           <label className="ofl-visual-table-field">
             <span className="ofl-visual-table-field-label">{editorMessage("visual.table.widthValue")}</span>
             <input
+              ref={valueRef}
               className="ofl-visual-table-input"
               type={unit === "custom" ? "text" : "number"}
               min={unit === "custom" ? undefined : 0}
               step="any"
               required
-              autoFocus
               value={value}
               onChange={(event) => setValue(event.currentTarget.value)}
             />
@@ -147,15 +159,9 @@ const WidthDialog: FC<{ onClose: () => void }> = ({ onClose }) => {
             </select>
           </label>
         </div>
+        <p className="ofl-visual-table-hint">{widthHint(unit)}</p>
         <p className="ofl-visual-table-hint">
-          {unit === "%"
-            ? editorMessage("visual.table.widthPercentHelp")
-            : unit === "custom"
-              ? editorMessage("visual.table.widthCustomHelp")
-              : null}
-        </p>
-        <p className="ofl-visual-table-hint">
-          {editorMessage("visual.table.widthNeedsArray")} <code>{"\\usepackage{array}"}</code>
+          {editorMessage("visual.table.widthNeedsArray")} <code>{String.raw`\usepackage{array}`}</code>
         </p>
         <div className="ofl-visual-table-dialog-actions">
           <button type="button" className="ofl-visual-table-dialog-button" onClick={onClose}>

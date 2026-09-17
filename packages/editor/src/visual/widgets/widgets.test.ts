@@ -142,7 +142,7 @@ describe("typesetting", () => {
     expect(element.innerHTML).toBe("A <b>bold</b> title");
     const author = argumentOf(state, positionOf(TITLE_DOCUMENT, "Ann"), "Author");
     const authors = typesetNodeInto(author, document.createElement("div"), state);
-    expect(authors.querySelectorAll(".ofl-visual-command-and").length).toBe(1);
+    expect(authors.querySelectorAll(".ofl-visual-command-and")).toHaveLength(1);
     expect(authors.textContent).toBe("Ann Bob");
   });
 

@@ -3,7 +3,7 @@ import { type FC, type KeyboardEvent, type MouseEvent, useCallback, useEffect, u
 import { Cell } from "./Cell";
 import { formatColumnWidth } from "./column-spec";
 import { clearCellsEdit, insertRowsEdit } from "./commands";
-import { useApplyEdit, useTableEditing, useTableHost, useTableSelection, useTableUi } from "./contexts";
+import { type EditingCell, useApplyEdit, useTableEditing, useTableHost, useTableSelection, useTableUi } from "./contexts";
 import { editorMessage } from "../../messages";
 import { type RowData, cellSpan } from "./model";
 import { CellSelection } from "./table-selection";
@@ -14,6 +14,12 @@ const CHAR_PADDING = 3;
 
 function isMac(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/u.test(navigator.platform);
+}
+
+function editingChars(editing: EditingCell | null, row: number, column: number, span: number): number {
+  if (editing?.row !== row) return 0;
+  if (editing.column < column || editing.column >= column + span) return 0;
+  return Math.min(editing.content.length + CHAR_PADDING, MIN_EDITING_CHARS);
 }
 
 const RowHandle: FC<{ rowIndex: number }> = ({ rowIndex }) => {
@@ -99,10 +105,10 @@ export const Grid: FC = () => {
       let column = 0;
       for (const cell of model.rows[row].cells) {
         const span = cellSpan(cell);
-        let length = cell.content.trim().length + CHAR_PADDING;
-        if (editing && editing.row === row && editing.column >= column && editing.column < column + span) {
-          length = Math.max(length, Math.min(editing.content.length + CHAR_PADDING, MIN_EDITING_CHARS));
-        }
+        const length = Math.max(
+          cell.content.trim().length + CHAR_PADDING,
+          editingChars(editing, row, column, span),
+        );
         for (let offset = 0; offset < span; offset++) {
           chars[column + offset] = Math.max(chars[column + offset], length / span);
         }
@@ -133,31 +139,26 @@ export const Grid: FC = () => {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (view.state.readOnly) return;
-      const command = isMac() ? event.metaKey : event.ctrlKey;
       const key = event.key;
-      if (key === "Enter" && !event.shiftKey) {
+      const stop = () => {
         event.preventDefault();
         event.stopPropagation();
+      };
+      const editSelected = () => {
         if (!selection) return;
         if (editing) commitEditing();
         else startEditing(selection.head.row, selection.head.column);
         select(CellSelection.cell(selection.head.row, selection.head.column).expand(model));
-        return;
-      }
-      if (key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
+      };
+      const leaveGrid = () => {
         if (editing) {
           cancelEditing();
-        } else {
-          select(null);
-          view.focus();
+          return;
         }
-        return;
-      }
-      if (key === "Tab") {
-        event.preventDefault();
-        event.stopPropagation();
+        select(null);
+        view.focus();
+      };
+      const moveToSibling = () => {
         if (!selection) {
           select(CellSelection.cell(0, 0).expand(model));
           return;
@@ -165,60 +166,70 @@ export const Grid: FC = () => {
         if (editing) commitEditing();
         if (event.shiftKey) select(selection.previous(model));
         else moveNext();
+      };
+      const clearSelected = () => {
+        if (!selection) return;
+        stop();
+        applyEdit(clearCellsEdit(parsed, selection));
+      };
+      const arrowTarget = (): CellSelection | null => {
+        if (!selection) return null;
+        if (key === "ArrowLeft") return event.shiftKey ? selection.extendLeft(model) : selection.moveLeft(model);
+        if (key === "ArrowRight") return event.shiftKey ? selection.extendRight(model) : selection.moveRight(model);
+        if (key === "ArrowUp") return event.shiftKey ? selection.extendUp(model) : selection.moveUp(model);
+        if (key === "ArrowDown") return event.shiftKey ? selection.extendDown(model) : selection.moveDown(model);
+        return null;
+      };
+      const runCommandKey = () => {
+        const lower = key.toLowerCase();
+        if (lower === "z" || lower === "y") {
+          stop();
+          if (lower === "y" || event.shiftKey) redo(view);
+          else undo(view);
+          return;
+        }
+        if (lower !== "a") return;
+        stop();
+        select(new CellSelection({ row: 0, column: 0 }, { row: model.rowCount - 1, column: model.columnCount - 1 }));
+      };
+      const typeIntoCell = () => {
+        if (!selection) return;
+        stop();
+        startEditing(selection.head.row, selection.head.column, key);
+        select(CellSelection.cell(selection.head.row, selection.head.column).expand(model));
+      };
+
+      if (key === "Enter" && !event.shiftKey) {
+        stop();
+        editSelected();
+        return;
+      }
+      if (key === "Escape") {
+        stop();
+        leaveGrid();
+        return;
+      }
+      if (key === "Tab") {
+        stop();
+        moveToSibling();
         return;
       }
       if (editing) return;
       if (key === "Delete" || key === "Backspace") {
-        if (!selection) return;
-        event.preventDefault();
-        event.stopPropagation();
-        applyEdit(clearCellsEdit(parsed, selection));
+        clearSelected();
         return;
       }
-      const arrows: Record<string, [() => CellSelection, () => CellSelection]> = selection
-        ? {
-            ArrowLeft: [() => selection.moveLeft(model), () => selection.extendLeft(model)],
-            ArrowRight: [() => selection.moveRight(model), () => selection.extendRight(model)],
-            ArrowUp: [() => selection.moveUp(model), () => selection.extendUp(model)],
-            ArrowDown: [() => selection.moveDown(model), () => selection.extendDown(model)],
-          }
-        : {};
       if (key.startsWith("Arrow")) {
-        event.preventDefault();
-        event.stopPropagation();
-        const handlers = arrows[key];
-        if (!handlers) {
-          select(CellSelection.cell(0, 0).expand(model));
-          return;
-        }
-        select(event.shiftKey ? handlers[1]() : handlers[0]());
+        stop();
+        select(arrowTarget() ?? CellSelection.cell(0, 0).expand(model));
         return;
       }
-      if (command && key.toLowerCase() === "z") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.shiftKey) redo(view);
-        else undo(view);
+      const command = isMac() ? event.metaKey : event.ctrlKey;
+      if (command) {
+        runCommandKey();
         return;
       }
-      if (command && key.toLowerCase() === "y") {
-        event.preventDefault();
-        event.stopPropagation();
-        redo(view);
-        return;
-      }
-      if (command && key.toLowerCase() === "a") {
-        event.preventDefault();
-        event.stopPropagation();
-        select(new CellSelection({ row: 0, column: 0 }, { row: model.rowCount - 1, column: model.columnCount - 1 }));
-        return;
-      }
-      if (key.length === 1 && !command && !event.altKey && selection) {
-        event.preventDefault();
-        event.stopPropagation();
-        startEditing(selection.head.row, selection.head.column, key);
-        select(CellSelection.cell(selection.head.row, selection.head.column).expand(model));
-      }
+      if (key.length === 1 && !event.altKey) typeIntoCell();
     },
     [view, selection, editing, commitEditing, startEditing, cancelEditing, select, model, moveNext, applyEdit, parsed],
   );
@@ -228,6 +239,7 @@ export const Grid: FC = () => {
   return (
     <table
       className="ofl-visual-table-grid"
+      role="grid"
       ref={tableRef}
       tabIndex={-1}
       onKeyDown={onKeyDown}

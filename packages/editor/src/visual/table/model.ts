@@ -48,6 +48,16 @@ export interface TableEnvironmentInfo {
 
 export type BorderPreset = "none" | "all" | "booktabs";
 
+const HLINE = String.raw`\hline`;
+
+function mergedBordersMatch(cell: CellData, bordered: boolean): boolean {
+  const spec = cell.multiColumn?.columns[0];
+  if (!spec) return false;
+  const left = spec.borderLeft > 0;
+  const right = spec.borderRight > 0;
+  return bordered ? left && right : !left && !right;
+}
+
 export function cellSpan(cell: CellData): number {
   return cell.multiColumn?.span ?? 1;
 }
@@ -121,11 +131,11 @@ export class TableModel {
   }
 
   borderPreset(): BorderPreset | null {
-    if (this.rows.length === 0 || this.columns.length === 0) return null;
+    const last = this.rows.at(-1);
+    if (!last || this.columns.length === 0) return null;
     if (this.isBooktabs()) return "booktabs";
-    const last = this.rows[this.rows.length - 1];
     const rowsAll =
-      this.rows.every((row) => row.rulesAbove.join() === "\\hline") && last.rulesBelow.join() === "\\hline";
+      this.rows.every((row) => row.rulesAbove.join() === HLINE) && last.rulesBelow.join() === HLINE;
     const rowsNone = this.rows.every((row) => row.rulesAbove.length === 0) && last.rulesBelow.length === 0;
     if (rowsAll && this.everyColumnEdgeBordered() && this.multiColumnsMatch(true)) return "all";
     if (rowsNone && !this.hasVerticalBorders() && this.multiColumnsMatch(false)) return "none";
@@ -133,17 +143,19 @@ export class TableModel {
   }
 
   private isBooktabs(): boolean {
-    const last = this.rows[this.rows.length - 1];
-    const top = this.rows[0].rulesAbove.join() === "\\toprule";
-    const mid = this.rows.length < 2 || this.rows[1].rulesAbove.join() === "\\midrule";
-    const bottom = last.rulesBelow.join() === "\\bottomrule";
+    const last = this.rows.at(-1);
+    if (!last) return false;
+    const top = this.rows[0].rulesAbove.join() === String.raw`\toprule`;
+    const mid = this.rows.length < 2 || this.rows[1].rulesAbove.join() === String.raw`\midrule`;
+    const bottom = last.rulesBelow.join() === String.raw`\bottomrule`;
     const others = this.rows.slice(2).some((row) => row.rulesAbove.length > 0);
     return top && mid && bottom && !others && !this.hasVerticalBorders() && this.multiColumnsMatch(false);
   }
 
   private everyColumnEdgeBordered(): boolean {
     const columns = this.columns;
-    if (columns[0].borderLeft === 0 || columns[columns.length - 1].borderRight === 0) return false;
+    const last = columns.at(-1);
+    if (!last || columns[0].borderLeft === 0 || last.borderRight === 0) return false;
     for (let index = 0; index < columns.length - 1; index++) {
       if (columns[index].borderRight === 0 && columns[index + 1].borderLeft === 0) return false;
     }
@@ -153,12 +165,8 @@ export class TableModel {
   private multiColumnsMatch(bordered: boolean): boolean {
     for (const row of this.rows) {
       for (const cell of row.cells) {
-        const spec = cell.multiColumn?.columns[0];
         if (!cell.multiColumn) continue;
-        if (!spec) return false;
-        const left = spec.borderLeft > 0;
-        const right = spec.borderRight > 0;
-        if (bordered ? !(left && right) : left || right) return false;
+        if (!mergedBordersMatch(cell, bordered)) return false;
       }
     }
     return true;

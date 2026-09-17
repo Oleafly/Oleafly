@@ -45,6 +45,17 @@ describe("parseIncludeGraphics", () => {
     ).toEqual({ path: "b", width: "3cm" });
   });
 
+  it("allows spaces around the option group", () => {
+    expect(parseIncludeGraphics(String.raw`\includegraphics [width=1cm] {a.png}`)).toEqual({
+      path: "a.png",
+      width: "1cm",
+    });
+    expect(parseIncludeGraphics(String.raw`\includegraphics   {b.png}`)).toEqual({
+      path: "b.png",
+      width: null,
+    });
+  });
+
   it("returns nothing when the range holds no image", () => {
     expect(parseIncludeGraphics(String.raw`\caption{Plot}`)).toBeNull();
     expect(parseIncludeGraphics("")).toBeNull();

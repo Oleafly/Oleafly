@@ -218,6 +218,55 @@ export function Editor() {
     return () => setWysiwygVisibilityController(null);
   }, [setWysiwyg]);
 
+  const renderTextArea = () => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {managedFile ? (
+        <output
+          data-testid="managed-file-notice"
+          className="border-b px-4 py-2 text-sm text-muted-foreground"
+        >
+          {t(($) => $.editor.shell.managedFileReadOnly, { file: activePath })}
+        </output>
+      ) : null}
+      {showBreadcrumbs ? <Breadcrumbs visual={wysiwyg} /> : null}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+      {isMarkdownFile ? (
+        <div
+          aria-hidden={!markdownVisual}
+          inert={!markdownVisual ? true : undefined}
+          className={cn(
+            "absolute inset-0",
+            !markdownVisual && "invisible pointer-events-none select-none",
+          )}
+        >
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+              </div>
+            }
+          >
+            <WysiwygEditor wysiwyg={markdownVisual} />
+          </Suspense>
+        </div>
+      ) : null}
+      <div
+        aria-hidden={markdownVisual}
+        inert={markdownVisual ? true : undefined}
+        className={cn(
+          "absolute inset-0",
+          markdownVisual && "invisible pointer-events-none select-none",
+        )}
+      >
+        <EditorContextMenu>
+          <CodeMirrorEditor active={!markdownVisual} />
+        </EditorContextMenu>
+        <SelectionActionMenu />
+      </div>
+      </div>
+    </div>
+  );
+
   const renderFileArea = () => {
     if (isDiagramMainFile && wysiwyg && projectId && activePath) {
       return (
@@ -280,54 +329,7 @@ export function Editor() {
         </div>
       );
     }
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        {managedFile ? (
-          <output
-            data-testid="managed-file-notice"
-            className="border-b px-4 py-2 text-sm text-muted-foreground"
-          >
-            {t(($) => $.editor.shell.managedFileReadOnly, { file: activePath })}
-          </output>
-        ) : null}
-        {showBreadcrumbs ? <Breadcrumbs visual={wysiwyg} /> : null}
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-        {isMarkdownFile ? (
-          <div
-            aria-hidden={!markdownVisual}
-            inert={!markdownVisual ? true : undefined}
-            className={cn(
-              "absolute inset-0",
-              !markdownVisual && "invisible pointer-events-none select-none",
-            )}
-          >
-            <Suspense
-              fallback={
-                <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-                </div>
-              }
-            >
-              <WysiwygEditor wysiwyg={markdownVisual} />
-            </Suspense>
-          </div>
-        ) : null}
-        <div
-          aria-hidden={markdownVisual}
-          inert={markdownVisual ? true : undefined}
-          className={cn(
-            "absolute inset-0",
-            markdownVisual && "invisible pointer-events-none select-none",
-          )}
-        >
-          <EditorContextMenu>
-            <CodeMirrorEditor active={!markdownVisual} />
-          </EditorContextMenu>
-          <SelectionActionMenu />
-        </div>
-        </div>
-      </div>
-    );
+    return renderTextArea();
   };
 
   const renderBody = () => {

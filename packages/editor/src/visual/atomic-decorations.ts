@@ -101,7 +101,7 @@ const SILENT_COMMANDS: ReadonlySet<string> = new Set(
     "IEEEoverridecommandlockouts", "IEEEpubidadjcol", "IEEEpubid",
   ].map((name) => `\\${name}`),
 );
-const RULE_COMMANDS: ReadonlySet<string> = new Set(["\\rule", "\\hrule", "\\hrulefill"]);
+const RULE_COMMANDS: ReadonlySet<string> = new Set([String.raw`\rule`, String.raw`\hrule`, String.raw`\hrulefill`]);
 const BLANK = /^\s*$/u;
 
 interface ListFrame {
@@ -124,6 +124,13 @@ interface BraceOptions {
 }
 
 type NodeHandler = (node: SyntaxNodeRef) => boolean | undefined;
+
+function stopping(run: (node: SyntaxNodeRef) => void): NodeHandler {
+  return (node) => {
+    run(node);
+    return false;
+  };
+}
 
 function defaultTheorems(): Map<string, TheoremInfo> {
   return new Map([
@@ -158,6 +165,12 @@ function argumentBraces(
   ];
 }
 
+function logoWidgetFor(name: string): WidgetType | null {
+  if (name === String.raw`\LaTeX`) return new LatexLogoWidget();
+  if (name === String.raw`\TeX`) return new TexLogoWidget();
+  return null;
+}
+
 function maketitleOpensDocument(maketitle: SyntaxNode): boolean {
   const command = maketitle.parent?.parent ?? null;
   const environment = command?.parent?.parent?.parent ?? null;
@@ -183,17 +196,17 @@ class AtomicDecorationBuilder {
   constructor(private readonly state: EditorState) {
     this.ports = state.facet(visualPortsFacet);
     this.handlers = new Map<string, NodeHandler>([
-      ["VerbCommand", (node) => this.enterVerb(node)],
-      ["Cite", (node) => this.enterCite(node)],
+      ["VerbCommand", stopping((node) => this.enterVerb(node))],
+      ["Cite", stopping((node) => this.enterCite(node))],
       ["Ref", (node) => this.enterRef(node)],
-      ["Label", (node) => this.enterLabel(node)],
-      ["Include", (node) => this.enterFileLink(node, "IncludeArgument")],
-      ["Input", (node) => this.enterFileLink(node, "InputArgument")],
+      ["Label", stopping((node) => this.enterLabel(node))],
+      ["Include", stopping((node) => this.enterFileLink(node, "IncludeArgument"))],
+      ["Input", stopping((node) => this.enterFileLink(node, "InputArgument"))],
       ["HrefCommand", (node) => this.enterHref(node)],
       ["UrlCommand", (node) => this.enterUrl(node)],
       ["Tilde", (node) => this.enterTilde(node)],
       ["LineBreak", (node) => this.enterLineBreak(node)],
-      ["Caption", (node) => this.enterCaption(node)],
+      ["Caption", (node) => this.enterOtherFormatting(node)],
       ["IncludeGraphics", (node) => this.enterGraphics(node)],
       ["IncludeSvg", (node) => this.enterGraphics(node)],
       ["Maketitle", (node) => this.enterMaketitle(node)],
@@ -217,7 +230,7 @@ class AtomicDecorationBuilder {
   }
 
   private get currentList(): ListFrame | undefined {
-    return this.lists[this.lists.length - 1];
+    return this.lists.at(-1);
   }
 
   private enter(node: SyntaxNodeRef): boolean | undefined {
@@ -228,7 +241,10 @@ class AtomicDecorationBuilder {
     if (type.is("BeginEnv")) return this.enterBegin(node);
     if (type.is("EndEnv")) return this.enterEnd(node);
     if (type.is("SectioningCommand")) return this.enterSectioning(node);
-    if (type.is("Math")) return this.enterMath(node);
+    if (type.is("Math")) {
+      this.enterMath(node);
+      return false;
+    }
     if (type.is("Item")) return this.enterItem(node);
     if (type.is("UnknownCommand")) return this.enterUnknownCommand(node);
     if (type.is("$ToggleTextFormattingCommand")) return this.enterToggleFormatting(node);
@@ -438,15 +454,15 @@ class AtomicDecorationBuilder {
     return undefined;
   }
 
-  private enterMath(node: SyntaxNodeRef): false {
+  private enterMath(node: SyntaxNodeRef): void {
     const container = mathContainerOf(node.node);
-    if (!container) return false;
+    if (!container) return;
     const visible = container.type.is("$Environment")
       ? this.shouldDecorateLines(container)
       : this.shouldDecorate(container);
-    if (!visible) return false;
+    if (!visible) return;
     const math = mathSourceOf(this.state, node, container);
-    if (!math) return false;
+    if (!math) return;
     const range = math.display ? this.blockRange(container) : container;
     this.push(
       Decoration.replace({ widget: new MathWidget(math.source, math.display), block: math.display }).range(
@@ -454,7 +470,6 @@ class AtomicDecorationBuilder {
         range.to,
       ),
     );
-    return false;
   }
 
   private enterItem(node: SyntaxNodeRef): boolean | undefined {
@@ -515,7 +530,7 @@ class AtomicDecorationBuilder {
   private enterUnknownCommand(node: SyntaxNodeRef): boolean | undefined {
     const name = commandName(this.state, node.node);
     if (!name) return undefined;
-    if (name === "\\bibitem") return this.enterBibItem(node);
+    if (name === String.raw`\bibitem`) return this.enterBibItem(node);
     if (!this.shouldDecorate(node)) return undefined;
     if (SILENT_COMMANDS.has(name)) {
       this.push(replaceInline(node.from, this.silentRangeEnd(node), new BraceWidget()));
@@ -526,19 +541,14 @@ class AtomicDecorationBuilder {
       this.push(replaceInline(node.from, node.to, ruleWidgetFor(name, args)));
       return false;
     }
-    if (name === "\\keywords") {
+    if (name === String.raw`\keywords`) {
       const argument = node.node.getChild("TextArgument");
       this.push(
         ...argumentBraces(new BraceWidget(editorMessage("visual.keywordsLabel")), argument, { start: node.from }),
       );
       return false;
     }
-    const widget =
-      name === "\\LaTeX"
-        ? new LatexLogoWidget()
-        : name === "\\TeX"
-          ? new TexLogoWidget()
-          : (createCharacterWidget(name) ?? createSpaceWidget(name));
+    const widget = logoWidgetFor(name) ?? createCharacterWidget(name) ?? createSpaceWidget(name);
     if (!widget) return undefined;
     this.push(replaceInline(node.from, node.to, widget));
     return false;
@@ -564,21 +574,19 @@ class AtomicDecorationBuilder {
     return undefined;
   }
 
-  private enterVerb(node: SyntaxNodeRef): false {
-    if (!this.shouldDecorate(node)) return false;
+  private enterVerb(node: SyntaxNodeRef): void {
+    if (!this.shouldDecorate(node)) return;
     const content = node.node.getChild("VerbContent");
     if (content && content.to - content.from > 2) {
       this.push(replaceInline(node.from, content.from + 1), replaceInline(node.to - 1, node.to));
     }
-    return false;
   }
 
-  private enterCite(node: SyntaxNodeRef): false {
-    if (!this.shouldDecorate(node)) return false;
+  private enterCite(node: SyntaxNodeRef): void {
+    if (!this.shouldDecorate(node)) return;
     const argument = node.node.getChild("BibKeyArgument")?.getChild("ShortTextArgument");
     const icon = new IconBraceWidget("book", "", editorMessage("visual.citation"));
     this.push(...argumentBraces(icon, argument, { start: node.from }));
-    return false;
   }
 
   private enterRef(node: SyntaxNodeRef): false {
@@ -595,12 +603,11 @@ class AtomicDecorationBuilder {
     return false;
   }
 
-  private enterLabel(node: SyntaxNodeRef): false {
-    if (!this.shouldDecorate(node)) return false;
+  private enterLabel(node: SyntaxNodeRef): void {
+    if (!this.shouldDecorate(node)) return;
     const argument = node.node.getChild("LabelArgument")?.getChild("ShortTextArgument");
     const icon = new IconBraceWidget("tag", "", editorMessage("visual.label"));
     this.push(...argumentBraces(icon, argument, { start: node.from }));
-    return false;
   }
 
   private literalBraces(
@@ -618,11 +625,10 @@ class AtomicDecorationBuilder {
     );
   }
 
-  private enterFileLink(node: SyntaxNodeRef, argumentType: string): false {
-    if (!this.shouldDecorate(node)) return false;
+  private enterFileLink(node: SyntaxNodeRef, argumentType: string): void {
+    if (!this.shouldDecorate(node)) return;
     const argument = node.node.getChild(argumentType)?.getChild("FilePathArgument");
     this.literalBraces(node, argument, new IconBraceWidget("link", "", editorMessage("visual.includedFile")), new BraceWidget());
-    return false;
   }
 
   private enterHref(node: SyntaxNodeRef): undefined {
@@ -659,12 +665,6 @@ class AtomicDecorationBuilder {
       this.push(replaceInline(node.from, node.to, new IndicatorWidget("↩")));
     }
     return false;
-  }
-
-  private enterCaption(node: SyntaxNodeRef): undefined {
-    if (!this.shouldDecorate(node)) return undefined;
-    this.push(...argumentBraces(new BraceWidget(), node.node.getChild("TextArgument"), { start: node.from }));
-    return undefined;
   }
 
   private enterGraphics(node: SyntaxNodeRef): boolean | undefined {

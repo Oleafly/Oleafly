@@ -32,7 +32,7 @@ const NAMED_MARKUP: Record<string, Markup> = {
   "\\IEEEauthorrefmark": { tag: "sup" },
 };
 
-const IGNORED_COMMANDS = new Set(["\\corref", "\\fnref", "\\thanks", "\\footnote"]);
+const IGNORED_COMMANDS = new Set([String.raw`\corref`, String.raw`\fnref`, String.raw`\thanks`, String.raw`\footnote`]);
 
 function unknownCommandName(node: SyntaxNode, state: EditorState): string | null {
   return node.type.is("UnknownCommand") ? commandName(state, node) : null;
@@ -56,7 +56,7 @@ function sameNode(ref: SyntaxNodeRef, node: SyntaxNode): boolean {
 export function typesetNodeInto(node: SyntaxNode, element: HTMLElement, state: EditorState): HTMLElement {
   const root = node.getChild("LongArg") ?? node;
   const stack: HTMLElement[] = [element];
-  const top = () => stack[stack.length - 1];
+  const top = (): HTMLElement => stack.at(-1) ?? element;
   let from = root.from;
 
   const flushTo = (pos: number) => {
@@ -86,6 +86,37 @@ export function typesetNodeInto(node: SyntaxNode, element: HTMLElement, state: E
     from = child.to;
   };
 
+  const replaceNamedCommand = (name: string, child: SyntaxNode): boolean => {
+    if (IGNORED_COMMANDS.has(name)) {
+      from = child.to;
+      return true;
+    }
+    const symbol = characterSubstitution(name);
+    if (symbol !== undefined) {
+      replaceWith(child, document.createTextNode(symbol));
+      return true;
+    }
+    const width = spaceWidthFor(name);
+    if (width === undefined) return false;
+    const space = document.createElement("span");
+    space.className = "ofl-visual-space";
+    space.style.width = width;
+    replaceWith(child, space);
+    return true;
+  };
+
+  const replaceMath = (child: SyntaxNode): boolean => {
+    const math = child.getChild("Math") ?? child.getChild("InlineMath")?.getChild("Math");
+    const container = math ? mathContainerOf(math) : null;
+    const source = math && container ? mathSourceOf(state, math, container) : null;
+    if (!source) return false;
+    const holder = document.createElement("span");
+    holder.className = "ofl-visual-math ofl-visual-math-inline";
+    paintMath(holder, source.source, source.display);
+    replaceWith(child, holder);
+    return true;
+  };
+
   root.cursor().iterate(
     (ref) => {
       if (sameNode(ref, root)) return undefined;
@@ -98,41 +129,12 @@ export function typesetNodeInto(node: SyntaxNode, element: HTMLElement, state: E
         return undefined;
       }
       const name = unknownCommandName(child, state);
-      if (name) {
-        if (IGNORED_COMMANDS.has(name)) {
-          from = child.to;
-          return false;
-        }
-        const symbol = characterSubstitution(name);
-        if (symbol !== undefined) {
-          replaceWith(child, document.createTextNode(symbol));
-          return false;
-        }
-        const width = spaceWidthFor(name);
-        if (width !== undefined) {
-          const space = document.createElement("span");
-          space.className = "ofl-visual-space";
-          space.style.width = width;
-          replaceWith(child, space);
-          return false;
-        }
-      }
+      if (name && replaceNamedCommand(name, child)) return false;
       if (ref.type.is("LineBreak")) {
         replaceWith(child, document.createElement("br"));
         return false;
       }
-      if (ref.type.is("$MathContainer")) {
-        const math = child.getChild("Math") ?? child.getChild("InlineMath")?.getChild("Math");
-        const container = math ? mathContainerOf(math) : null;
-        const source = math && container ? mathSourceOf(state, math, container) : null;
-        if (source) {
-          const holder = document.createElement("span");
-          holder.className = "ofl-visual-math ofl-visual-math-inline";
-          paintMath(holder, source.source, source.display);
-          replaceWith(child, holder);
-          return false;
-        }
-      }
+      if (ref.type.is("$MathContainer") && replaceMath(child)) return false;
       return undefined;
     },
     (ref) => {

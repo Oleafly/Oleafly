@@ -553,6 +553,9 @@ function saveLs(k: string, v: string) {
     /* ignore */
   }
 }
+function saveFlagLs(k: string, v: boolean) {
+  saveLs(k, v ? "1" : "0");
+}
 function notifyProofreadingSettingsChanged(
   setting: string,
   settings: { spellcheck: boolean; harper: boolean },
@@ -1568,42 +1571,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   resetAppearancePreferences: () => {
     saveLs("oleafly.editor.keymap", PREF_DEFAULTS.editorKeymap);
-    saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
+    saveFlagLs("oleafly.vim", PREF_DEFAULTS.vim);
     saveLs("oleafly.editor.tabSize", String(PREF_DEFAULTS.editorTabSize));
-    saveLs("oleafly.editor.lineWrap", PREF_DEFAULTS.editorLineWrap ? "1" : "0");
+    saveFlagLs("oleafly.editor.lineWrap", PREF_DEFAULTS.editorLineWrap);
     saveLs("oleafly.editor.lineHeight", PREF_DEFAULTS.editorLineHeight);
-    saveLs(
-      "oleafly.editor.autocomplete",
-      PREF_DEFAULTS.editorAutocomplete ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeBrackets",
-      PREF_DEFAULTS.editorAutoCloseBrackets ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeMath",
-      PREF_DEFAULTS.editorAutoCloseMath ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.closeEnvironments",
-      PREF_DEFAULTS.editorAutoCloseEnvironments ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.ghostCompletion",
-      PREF_DEFAULTS.editorGhostCompletion ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.solidCursor",
-      PREF_DEFAULTS.editorNonBlinkingCursor ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.stickyScroll",
-      PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.editor.mathPreview",
-      PREF_DEFAULTS.editorMathPreview ? "1" : "0",
-    );
+    saveFlagLs("oleafly.editor.autocomplete", PREF_DEFAULTS.editorAutocomplete);
+    saveFlagLs("oleafly.editor.closeBrackets", PREF_DEFAULTS.editorAutoCloseBrackets);
+    saveFlagLs("oleafly.editor.closeMath", PREF_DEFAULTS.editorAutoCloseMath);
+    saveFlagLs("oleafly.editor.closeEnvironments", PREF_DEFAULTS.editorAutoCloseEnvironments);
+    saveFlagLs("oleafly.editor.ghostCompletion", PREF_DEFAULTS.editorGhostCompletion);
+    saveFlagLs("oleafly.editor.solidCursor", PREF_DEFAULTS.editorNonBlinkingCursor);
+    saveFlagLs("oleafly.editor.stickyScroll", PREF_DEFAULTS.editorStickyScroll);
+    saveFlagLs("oleafly.editor.mathPreview", PREF_DEFAULTS.editorMathPreview);
     saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
     saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
     saveLs(
@@ -1615,14 +1594,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       String(PREF_DEFAULTS.terminalFontWeightBold),
     );
     saveLs("oleafly.terminal.cursorStyle", PREF_DEFAULTS.terminalCursorStyle);
-    saveLs(
-      "oleafly.terminal.cursorBlink",
-      PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.terminal.startWithProject",
-      PREF_DEFAULTS.terminalStartWithProject ? "1" : "0",
-    );
+    saveFlagLs("oleafly.terminal.cursorBlink", PREF_DEFAULTS.terminalCursorBlink);
+    saveFlagLs("oleafly.terminal.startWithProject", PREF_DEFAULTS.terminalStartWithProject);
     saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
     saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
     saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
@@ -1634,18 +1607,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
     saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
     saveLs("oleafly.editorTheme", PREF_DEFAULTS.editorTheme);
-    saveLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode ? "1" : "0");
-    saveLs(
-      "oleafly.pdf.zoomShortcuts",
-      PREF_DEFAULTS.pdfZoomShortcuts ? "1" : "0",
-    );
+    saveFlagLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode);
+    saveFlagLs("oleafly.pdf.zoomShortcuts", PREF_DEFAULTS.pdfZoomShortcuts);
     saveLs(
       "oleafly.fileTree.hiddenPatterns",
       JSON.stringify(PREF_DEFAULTS.hiddenFilePatterns),
     );
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
-    saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
-    saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
+    saveFlagLs("oleafly.openInTree", PREF_DEFAULTS.openInTree);
+    saveFlagLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview);
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);

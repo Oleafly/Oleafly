@@ -14,7 +14,7 @@ export class TableParseError extends Error {}
 
 const SKIPPED_NODES = new Set(["NewLine", "Whitespace", "Comment", "BlankLine"]);
 
-const UNSUPPORTED_COMMANDS = new Set(["\\cline", "\\cmidrule", "\\multirow"]);
+const UNSUPPORTED_COMMANDS = new Set([String.raw`\cline`, String.raw`\cmidrule`, String.raw`\multirow`]);
 
 interface RuleInfo extends TextRange {
   text: string;
@@ -93,57 +93,86 @@ function readMultiColumn(cell: CellData, command: SyntaxNode, multi: SyntaxNode,
   cell.to = content.to;
 }
 
+function appendSkipped(cell: CellData, child: SyntaxNode, state: EditorState): void {
+  if (cell.multiColumn) return;
+  if (cell.content.trim() === "") {
+    cell.from = child.to;
+    cell.to = child.to;
+    return;
+  }
+  cell.content += state.sliceDoc(child.from, child.to);
+  cell.to = child.to;
+}
+
+function appendRule(
+  row: WorkingRow,
+  cell: CellData,
+  child: SyntaxNode,
+  rule: SyntaxNode,
+  state: EditorState,
+): void {
+  if (cell.content.trim() !== "" || row.cells.length > 1 || cell.multiColumn) {
+    throw new TableParseError("A horizontal rule must start a row");
+  }
+  cell.from = child.to;
+  cell.to = child.to;
+  row.rules.push({ from: child.from, to: child.to, text: state.sliceDoc(rule.from, rule.to).trim() });
+}
+
+function appendContent(cell: CellData, child: SyntaxNode, state: EditorState): void {
+  const unsupported = unsupportedCommandOf(child, state);
+  if (unsupported) throw new TableParseError(`Unsupported command ${unsupported}`);
+  if (isNestedTable(child)) throw new TableParseError("Nested tables are not supported");
+  if (cell.multiColumn) throw new TableParseError("Content after a multicolumn cell");
+  cell.content += state.sliceDoc(child.from, child.to);
+  cell.to = child.to;
+}
+
+function readBodyChild(row: WorkingRow, cell: CellData, child: SyntaxNode, state: EditorState): void {
+  const multi = multiColumnOf(child);
+  if (multi) {
+    readMultiColumn(cell, child, multi, state);
+    return;
+  }
+  if (SKIPPED_NODES.has(child.name)) {
+    appendSkipped(cell, child, state);
+    return;
+  }
+  const rule = ruleOf(child);
+  if (rule) {
+    appendRule(row, cell, child, rule, state);
+    return;
+  }
+  appendContent(cell, child, state);
+}
+
 function parseBody(body: SyntaxNode, state: EditorState): WorkingBody {
-  const rows: WorkingRow[] = [newRow(body.from)];
   const rowSeparators: TextRange[] = [];
+  let row = newRow(body.from);
+  let cell = row.cells[0];
+  const rows: WorkingRow[] = [row];
 
   for (let child = body.firstChild; child; child = child.nextSibling) {
-    const row = rows[rows.length - 1];
-    const cell = row.cells[row.cells.length - 1];
     if (isLineBreak(child)) {
       trimCellEnd(cell);
       row.range.to = child.to;
       rowSeparators.push({ from: child.from, to: child.to });
-      rows.push(newRow(child.to));
+      row = newRow(child.to);
+      cell = row.cells[0];
+      rows.push(row);
       continue;
     }
-    const multi = multiColumnOf(child);
-    const rule = ruleOf(child);
     if (child.type.is("Ampersand")) {
       trimCellEnd(cell);
       row.separators.push({ from: child.from, to: child.to });
-      row.cells.push({ content: "", from: child.to, to: child.to });
-    } else if (multi) {
-      readMultiColumn(cell, child, multi, state);
-    } else if (SKIPPED_NODES.has(child.name)) {
-      if (!cell.multiColumn) {
-        if (cell.content.trim() === "") {
-          cell.from = child.to;
-          cell.to = child.to;
-        } else {
-          cell.content += state.sliceDoc(child.from, child.to);
-          cell.to = child.to;
-        }
-      }
-    } else if (rule) {
-      if (cell.content.trim() !== "" || row.cells.length > 1 || cell.multiColumn) {
-        throw new TableParseError("A horizontal rule must start a row");
-      }
-      cell.from = child.to;
-      cell.to = child.to;
-      row.rules.push({ from: child.from, to: child.to, text: state.sliceDoc(rule.from, rule.to).trim() });
+      cell = { content: "", from: child.to, to: child.to };
+      row.cells.push(cell);
     } else {
-      const unsupported = unsupportedCommandOf(child, state);
-      if (unsupported) throw new TableParseError(`Unsupported command ${unsupported}`);
-      if (isNestedTable(child)) throw new TableParseError("Nested tables are not supported");
-      if (cell.multiColumn) throw new TableParseError("Content after a multicolumn cell");
-      cell.content += state.sliceDoc(child.from, child.to);
-      cell.to = child.to;
+      readBodyChild(row, cell, child, state);
     }
     row.range.to = child.to;
   }
-  const lastRow = rows[rows.length - 1];
-  trimCellEnd(lastRow.cells[lastRow.cells.length - 1]);
+  trimCellEnd(cell);
   return { rows, rowSeparators };
 }
 
@@ -165,13 +194,14 @@ export function parseTabular(node: SyntaxNode, state: EditorState): ParsedTable 
   if (!body) throw new TableParseError("Missing table body");
 
   const { rows: working, rowSeparators } = parseBody(body, state);
-  const trailing = working[working.length - 1];
+  const trailing = working.at(-1);
   let rulesBelow: RuleInfo[] = [];
-  if (working.length > 1 && trailing.cells.length === 1 && trailing.cells[0].content.trim() === "") {
+  if (working.length > 1 && trailing && trailing.cells.length === 1 && trailing.cells[0].content.trim() === "") {
     working.pop();
     rulesBelow = trailing.rules;
-    const previous = working[working.length - 1];
-    if (rulesBelow.length > 0) previous.range.to = rulesBelow[rulesBelow.length - 1].to;
+    const previous = working.at(-1);
+    const lastRule = rulesBelow.at(-1);
+    if (previous && lastRule) previous.range.to = lastRule.to;
   }
 
   const lastIndex = working.length - 1;

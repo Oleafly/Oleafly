@@ -17,7 +17,7 @@ import { LIST_DOCUMENT, parsedState, positionOf, SAMPLE_DOCUMENT } from "./visua
 
 function createState(doc: string): EditorState {
   const state = parsedState(EditorState.create({ doc, extensions: [latexTreeSupport()] }));
-  expect(syntaxTree(state).length).toBe(doc.length);
+  expect(syntaxTree(state)).toHaveLength(doc.length);
   return state;
 }
 

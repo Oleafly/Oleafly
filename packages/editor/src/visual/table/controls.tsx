@@ -33,11 +33,55 @@ export const ToolbarButton: FC<{
   </button>
 );
 
+const MenuTrigger: FC<{
+  open: boolean;
+  toggle: () => void;
+  label: string;
+  icon?: ReactNode;
+  value?: string;
+  disabled?: boolean;
+  disabledLabel?: string;
+}> = ({ open, toggle, label, icon, value, disabled, disabledLabel }) => {
+  if (value === undefined) {
+    return (
+      <ToolbarButton
+        label={label}
+        icon={icon}
+        caret
+        expanded={open}
+        disabled={disabled}
+        disabledLabel={disabledLabel}
+        onClick={toggle}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="ofl-visual-table-select"
+      title={disabled && disabledLabel ? disabledLabel : label}
+      aria-label={label}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      disabled={disabled}
+      onMouseDown={keepFocus}
+      onClick={toggle}
+    >
+      <span>{value}</span>
+      <ChevronDownIcon />
+    </button>
+  );
+};
+
 export const ToolbarMenu: FC<{
   id: string;
-  trigger: (state: { open: boolean; toggle: () => void }) => ReactNode;
+  label: string;
+  icon?: ReactNode;
+  value?: string;
+  disabled?: boolean;
+  disabledLabel?: string;
   children: ReactNode;
-}> = ({ id, trigger, children }) => {
+}> = ({ id, label, icon, value, disabled, disabledLabel, children }) => {
   const { openMenu, setOpenMenu } = useTableUi();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const open = openMenu === id;
@@ -60,7 +104,15 @@ export const ToolbarMenu: FC<{
 
   return (
     <div className="ofl-visual-table-menu-host" ref={hostRef}>
-      {trigger({ open, toggle: () => setOpenMenu(open ? null : id) })}
+      <MenuTrigger
+        open={open}
+        toggle={() => setOpenMenu(open ? null : id)}
+        label={label}
+        icon={icon}
+        value={value}
+        disabled={disabled}
+        disabledLabel={disabledLabel}
+      />
       {open ? (
         <div className="ofl-visual-table-menu" role="menu">
           {children}
@@ -78,25 +130,7 @@ export const ToolbarSelect: FC<{
   disabledLabel?: string;
   children: ReactNode;
 }> = ({ id, value, label, disabled, disabledLabel, children }) => (
-  <ToolbarMenu
-    id={id}
-    trigger={({ open, toggle }) => (
-      <button
-        type="button"
-        className="ofl-visual-table-select"
-        title={disabled && disabledLabel ? disabledLabel : label}
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        disabled={disabled}
-        onMouseDown={keepFocus}
-        onClick={toggle}
-      >
-        <span>{value}</span>
-        <ChevronDownIcon />
-      </button>
-    )}
-  >
+  <ToolbarMenu id={id} value={value} label={label} disabled={disabled} disabledLabel={disabledLabel}>
     {children}
   </ToolbarMenu>
 );
@@ -129,4 +163,4 @@ export const MenuItem: FC<{
   );
 };
 
-export const MenuSeparator: FC = () => <div className="ofl-visual-table-menu-separator" role="separator" />;
+export const MenuSeparator: FC = () => <hr className="ofl-visual-table-menu-separator" />;

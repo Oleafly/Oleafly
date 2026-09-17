@@ -55,7 +55,7 @@ export const mathPreviewFormat = Facet.define<MathSourceFormat, MathSourceFormat
 });
 
 export const mathPreviewEnabled = Facet.define<boolean, boolean>({
-  combine: (values) => values.length === 0 || values.every(Boolean),
+  combine: (values) => values.every(Boolean),
 });
 
 export const setMathPreviewEnabled = StateEffect.define<boolean>();
@@ -95,7 +95,7 @@ function environmentMathAt(
     match = ENVIRONMENT_PATTERN.exec(text)
   ) {
     if (!MATH_ENVIRONMENTS.has(match[1])) continue;
-    const closing = `\\end{${match[1]}}`;
+    const closing = String.raw`\end{${match[1]}}`;
     const end = text.indexOf(closing, match.index + match[0].length);
     if (end < 0) continue;
     const from = match.index + offset;

@@ -108,11 +108,15 @@ export class CellSelection {
   }
 
   expand(model: TableModel): CellSelection {
-    let current: CellSelection = this;
+    return CellSelection.grown(this, model);
+  }
+
+  private static grown(start: CellSelection, model: TableModel): CellSelection {
+    let current = start;
     for (let guard = 0; guard < model.columnCount + 1; guard++) {
-      const grown = current.expandOnce(model);
-      if (grown.eq(current)) return current;
-      current = grown;
+      const next = current.expandOnce(model);
+      if (next.eq(current)) return current;
+      current = next;
     }
     return current;
   }

@@ -53,7 +53,8 @@ export function applied(state: EditorState, edit: TableEdit | null): string {
 }
 
 export function tabularSource(doc: string): string {
-  const start = doc.indexOf("\\begin{tabular}");
-  const end = doc.indexOf("\\end{tabular}");
-  return doc.slice(start, end + "\\end{tabular}".length);
+  const start = doc.indexOf(String.raw`\begin{tabular}`);
+  const closing = String.raw`\end{tabular}`;
+  const end = doc.indexOf(closing);
+  return doc.slice(start, end + closing.length);
 }

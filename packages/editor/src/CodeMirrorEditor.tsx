@@ -207,17 +207,14 @@ function loadVisualModule(): Promise<VisualModule> {
   return visualModuleLoading;
 }
 
-function languageExtensionFor(path: string | null, visualRendered: boolean): Extension {
+function languageExtensionFor(path: string | null, visual: VisualModule | null): Extension {
   if (!path) return [];
-  if (visualRendered && visualModule) return visualModule.latexTreeSupport();
+  if (visual) return visual.latexTreeSupport();
   return languageForPath(path) ?? [];
 }
 
-function visualExtensionFor(
-  visualRendered: boolean,
-  ports: VisualPorts | undefined,
-): Extension {
-  return visualRendered && ports && visualModule ? visualModule.visualMode(ports) : [];
+function visualExtensionFor(visual: VisualModule | null, ports: VisualPorts | undefined): Extension {
+  return visual && ports ? visual.visualMode(ports) : [];
 }
 
 interface VisualCompartments {
@@ -236,8 +233,8 @@ function applyVisualCompartments(
 ): void {
   view.dispatch({
     effects: [
-      compartments.language.reconfigure(languageExtensionFor(path, rendered)),
-      compartments.visual.reconfigure(visualExtensionFor(rendered, ports)),
+      compartments.language.reconfigure(languageExtensionFor(path, rendered ? visualModule : null)),
+      compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports)),
       compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
     ],
   });
@@ -587,8 +584,8 @@ export function CodeMirrorEditor({
         highlightSelectionMatches(),
         ...diagnosticPresentationExtensions(),
         lineWrapCompartment.of(lineWrapExtensionFor(lineWrap, initialVisual)),
-        langCompartment.of(languageExtensionFor(initialPath, initialVisual)),
-        visualCompartment.of(visualExtensionFor(initialVisual, host.visualPorts)),
+        langCompartment.of(languageExtensionFor(initialPath, initialVisual ? visualModule : null)),
+        visualCompartment.of(visualExtensionFor(initialVisual ? visualModule : null, host.visualPorts)),
         editorTheme(),
         historyCompartment.of(history()),
         vscodeSearch(host.t),
@@ -756,10 +753,10 @@ export function CodeMirrorEditor({
       extraGhostCompletionSourcesForPath?.(activePath) ?? [];
     const effects = [
       langCompartmentRef.current!.reconfigure(
-        languageExtensionFor(activePath, visualRendered),
+        languageExtensionFor(activePath, visualRendered ? visualModule : null),
       ),
       visualCompartmentRef.current!.reconfigure(
-        visualExtensionFor(visualRendered, host.visualPorts),
+        visualExtensionFor(visualRendered ? visualModule : null, host.visualPorts),
       ),
       lineWrapCompartmentRef.current!.reconfigure(
         lineWrapExtensionFor(lineWrap, visualRendered),

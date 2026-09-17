@@ -295,6 +295,7 @@ export const tableTheme = EditorView.theme({
     flex: "1 1 auto",
   },
   ".ofl-visual-table-menu-separator": {
+    border: "0",
     height: "1px",
     margin: "4px 2px",
     backgroundColor: "var(--border)",
@@ -314,6 +315,9 @@ export const tableTheme = EditorView.theme({
     backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
   ".ofl-visual-table-dialog": {
+    position: "static",
+    margin: "0",
+    height: "auto",
     width: "min(440px, 92vw)",
     maxHeight: "85vh",
     overflow: "auto",
