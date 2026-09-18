@@ -186,10 +186,10 @@ jobs:
             build-essential \
             curl wget file
 
+      # The version comes from rust-toolchain.toml, the same file the pre-commit
+      # hook resolves through rustup, so this job and a local commit lint alike.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+        uses: ./.github/actions/rust-toolchain
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -316,9 +316,7 @@ jobs:
           node-version: 22
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
-        with:
-          toolchain: stable
+        uses: ./.github/actions/rust-toolchain
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -459,7 +457,7 @@ jobs:
           key: ${{ steps.e2e-app-key.outputs.key }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/rust-toolchain
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -609,7 +607,7 @@ jobs:
 
       - name: Install Rust toolchain
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/rust-toolchain
 
       - name: Cache Rust build
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -1103,7 +1101,7 @@ jobs:
 
       - name: Install Rust toolchain
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/rust-toolchain
 
       - name: Cache Rust build
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'

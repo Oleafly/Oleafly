@@ -99,9 +99,31 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Not the local ./.github/actions/rust-toolchain: a manual run can check
+      # out a tag from before the pin existed, where neither that action nor
+      # rust-toolchain.toml is in the tree. Those tags were built with the
+      # stable of their day, so they fall back to stable.
+      - name: Resolve the Rust toolchain for this ref
+        id: rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          channel="stable"
+          if [ -f rust-toolchain.toml ]; then
+            channel="$(awk -F'"' '/^[ \t]*channel[ \t]*=/ { print $2; exit }' rust-toolchain.toml)"
+            if [[ ! "$channel" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error file=rust-toolchain.toml::expected channel = \"<major>.<minor>.<patch>\", found '${channel}'"
+              cat rust-toolchain.toml
+              exit 1
+            fi
+          fi
+          echo "Building with Rust ${channel}"
+          echo "channel=${channel}" >> "$GITHUB_OUTPUT"
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
         with:
+          toolchain: ${{ steps.rust.outputs.channel }}
           targets: ${{ matrix.rust_target }}
 
       - name: Cache Rust build

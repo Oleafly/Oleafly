@@ -1,0 +1,57 @@
+name: Install the pinned Rust toolchain
+description: >
+  Installs the Rust version pinned in rust-toolchain.toml, so CI lints, tests
+  and builds with the same compiler as the local pre-commit hook. Needs the
+  repository checked out first.
+
+inputs:
+  targets:
+    description: Comma-separated extra targets to install for the pinned toolchain.
+    required: false
+    default: ""
+
+outputs:
+  channel:
+    description: The pinned version that was installed, for example 1.98.1.
+    value: ${{ steps.pin.outputs.channel }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read the pinned Rust version
+      id: pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        # awk stops at the first match on its own, so there is no pipeline for
+        # pipefail to trip over.
+        channel="$(awk -F'"' '/^[ \t]*channel[ \t]*=/ { print $2; exit }' rust-toolchain.toml)"
+        if [[ ! "$channel" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error file=rust-toolchain.toml::expected channel = \"<major>.<minor>.<patch>\", found '${channel}'"
+          cat rust-toolchain.toml
+          exit 1
+        fi
+        echo "channel=${channel}" >> "$GITHUB_OUTPUT"
+
+    - name: Install Rust ${{ steps.pin.outputs.channel }}
+      uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+      with:
+        toolchain: ${{ steps.pin.outputs.channel }}
+        targets: ${{ inputs.targets }}
+        # Listed in rust-toolchain.toml too. An explicit install ignores that
+        # list, so name them here or a later `cargo clippy` downloads mid-job.
+        components: rustfmt, clippy
+
+    - name: Check that plain cargo resolves to the pin
+      shell: bash
+      env:
+        EXPECTED: ${{ steps.pin.outputs.channel }}
+      run: |
+        set -euo pipefail
+        rustup show active-toolchain || true
+        active="$(rustc --version | awk '{ print $2 }')"
+        if [ "$active" != "$EXPECTED" ]; then
+          echo "::error::plain rustc is ${active}, but rust-toolchain.toml pins ${EXPECTED}. Is RUSTUP_TOOLCHAIN or a directory override set?"
+          exit 1
+        fi
+        cargo --version

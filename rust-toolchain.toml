@@ -1,0 +1,13 @@
+# The one Rust version this repository lints, tests and builds with: the
+# pre-commit hook, every CI job, the e2e builds and the release workflow.
+# rustup reads this file for any plain `cargo` call inside the repo, and
+# .github/actions/rust-toolchain installs the same version on the runners.
+#
+# Bumping it is an ordinary change: edit the channel, run the three cargo
+# gates, and fix what the newer clippy finds in the same pull request.
+# docs/development.md has the steps. The 1.77 MSRV is a separate promise and
+# is still checked with an explicit `cargo +1.77.0`.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
