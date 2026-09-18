@@ -589,7 +589,7 @@ Se você usa o Oleafly, uma [estrela no GitHub](https://github.com/Oleafly/Oleaf
   author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
   title   = {Oleafly: a local-first desktop workspace for research writing},
   year    = {2026},
-  version = {0.4.1},
+  version = {0.4.2},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

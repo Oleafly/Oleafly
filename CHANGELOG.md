@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-09-17
+
 ### Added
 
 - Source Control brings everyday Git work into one panel: staged and unstaged
@@ -2128,7 +2130,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...v0.4.0
 [0.3.13]: https://github.com/Oleafly/Oleafly/compare/v0.3.12...v0.3.13
