@@ -3,13 +3,14 @@ import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updat
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { logError } from "@/lib/log";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useUpdatesStore } from "@/store/updates";
 
 const UPDATE_WINDOW_LABEL = "update";
 
-// Talks to the GitHub Releases `latest.json` (configured in tauri.conf.json),
-// verifies the download's minisign signature against the embedded public
-// key, installs, and restarts.
+// Talks to the update feed configured in tauri.conf.json (updates.oleafly.com,
+// with GitHub Releases as the fallback endpoint), verifies the download's
+// minisign signature against the embedded public key, installs, and restarts.
 //
 // The prompt is fully in-app: the startup check records its result in the
 // updates store (for the About indicator) and, when an update exists, opens
@@ -116,7 +117,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
 }
 
 export function checkForUpdatesOnStartup(): void {
-  if (import.meta.env.DEV || import.meta.env.VITE_E2E_HOOKS === "1") return;
+  if (E2E_HOOKS) return;
   void (async () => {
     const update = await runUpdateCheck();
     if (update) await openUpdateWindow();
