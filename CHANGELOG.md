@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Source Control brings everyday Git work into one panel: staged and unstaged
   files, file and bulk actions, commit title and description fields, amend,
-  push and sync choices, branch and remote actions, a commit graph, and merge
+  push and sync choices, stash and apply, branch and remote actions, a commit
+  graph that can restore the project files to any earlier version, and merge
   conflict resolution. Saved checkpoints remain in Versioning.
 - Explorer stacks the file tree, Outline, and Structure into collapsible,
   vertically resizable sections. Each tree can expand or collapse in one
@@ -114,8 +115,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   citation fallback dialog is also wider, so BibTeX is easier to read.
 - The spelling dictionary list groups languages by name and shows which are
   ready and which still need a download.
+- The tour picker lists Getting started and Your workspace only. The Research
+  workspace, Settings, AI Assistant and Diagram Composer tours are switched
+  off for now.
+- Focus rings and outlines are gone from every control in the app. Focus and
+  selection show as a background tint or a border colour instead.
 
 ### Fixed
+
+- Files Oleafly manages are read-only in the editor: `project.json` at the
+  project root and anything under `.git` or `.oleafly`. A notice above the
+  text says why. Editing `project.json` used to leave a file that could not be
+  saved, so going Home or opening another project stopped at "one or more
+  files could not be saved" with no file named and no way past it. When a save
+  still fails on the way out, the dialog now names each file with the reason,
+  brings the first one to the front, and offers Stay or Discard changes and
+  leave. The quit dialog lists the same files.
 
 - Picking a brace delimiter from autocomplete wrote invalid LaTeX. `\left\{`
   came out as `\left{`, and the backslash went missing from every `\bigl\{`
