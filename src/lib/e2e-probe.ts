@@ -20,6 +20,12 @@ import {
 import { diagnosticCardSource } from "@oleafly/editor/diagnostic-card";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
+export async function resizeCurrentWindow(width: number, height: number): Promise<void> {
+  if (!E2E_HOOKS) return;
+  const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().setSize(new LogicalSize(width, height));
+}
+
 export interface E2ePdfTextItem {
   str: string;
   x: number;

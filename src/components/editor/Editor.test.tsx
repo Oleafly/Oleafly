@@ -38,9 +38,15 @@ vi.mock("./CodeMirrorEditor", () => ({
 vi.mock("./diff/DiffView", () => ({ DiffView: () => <div data-testid="diff-view" /> }));
 vi.mock("./SelectionActionMenu", () => ({ SelectionActionMenu: () => null }));
 vi.mock("./ProofreadingNotifications", () => ({ ProofreadingNotifications: () => null }));
-vi.mock("./EditorToolbar", () => ({ EditorToolbar: () => <div data-testid="latex-toolbar" /> }));
+vi.mock("./EditorToolbar", () => ({
+  EditorToolbar: ({ wysiwyg, onToggleWysiwyg }: { wysiwyg: boolean; onToggleWysiwyg: () => void }) => (
+    <button type="button" data-testid="latex-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
+  ),
+}));
 vi.mock("./MarkdownToolbar", () => ({
-  MarkdownToolbar: () => <div data-testid="markdown-toolbar" />,
+  MarkdownToolbar: ({ wysiwyg, onToggleWysiwyg }: { wysiwyg: boolean; onToggleWysiwyg: () => void }) => (
+    <button type="button" data-testid="markdown-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
+  ),
 }));
 vi.mock("./TypstToolbar", () => ({ TypstToolbar: () => <div data-testid="typst-toolbar" /> }));
 vi.mock("./EditorContextMenu", () => ({
@@ -87,8 +93,10 @@ function openFile(path: string, extra: Record<string, unknown> = {}) {
 describe("Editor shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    useVisualModeStore.setState({ projectId: null, enabled: false });
     useDiffStore.setState({ diffs: [], activeKey: null });
-    useSettingsStore.setState({ visualEditor: false, settingsOpen: false });
+    useSettingsStore.setState({ settingsOpen: false });
     useFilesStore.setState({
       projectId: "project",
       projectKind: "",
@@ -239,7 +247,6 @@ describe("Editor shell", () => {
 
   it("renders LaTeX Visual mode inside the source editor without the rich-text surface", () => {
     setWysiwygMode("project", true);
-    useSettingsStore.setState({ visualEditor: true });
     openFile("main.tex");
     render(<Editor />);
 
@@ -249,8 +256,35 @@ describe("Editor shell", () => {
     setWysiwygMode("project", false);
   });
 
+  it.each([
+    ["LaTeX", "main.tex", "document", "latex", ["tex"], "latex-toolbar"],
+    ["LaTeX image", "main.tex", "image", "latex", ["tex"], "latex-toolbar"],
+    ["diagram", "main.tex", "diagram", "latex", ["tex"], "latex-toolbar"],
+    ["Markdown", "main.md", "document", "markdown", ["md"], "markdown-toolbar"],
+    ["Markdown in LaTeX", "README.md", "document", "latex", ["tex"], "markdown-toolbar"],
+    ["Markdown in Typst", "README.md", "document", "typst", ["typ"], "markdown-toolbar"],
+  ] as const)("keeps the saved Visual choice for %s even when the old experiment was disabled", async (
+    _name, path, projectKind, profile, extensions, toolbarId,
+  ) => {
+    localStorage.setItem("oleafly.visualEditor", "0");
+    setWysiwygMode("project", true);
+    openFile(path, { projectKind, mainDoc: path, engine: engineWithProfile(profile, [...extensions]) });
+    const view = render(<Editor />);
+
+    expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "true");
+    if (path.endsWith(".md")) expect(await screen.findByTestId("wysiwyg")).toBeVisible();
+
+    fireEvent.click(screen.getByTestId(toolbarId));
+    expect(getWysiwygMode("project")).toBe(false);
+    view.unmount();
+    render(<Editor />);
+    expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByTestId(toolbarId));
+    expect(getWysiwygMode("project")).toBe(true);
+  });
+
   it("keeps the Markdown visual surface mounted next to the source surface", async () => {
-    useSettingsStore.setState({ visualEditor: true });
     openFile("notes.md");
     render(<Editor />);
 
@@ -273,7 +307,6 @@ describe("Editor shell", () => {
 
   it("returns to the source surface when navigation reveals it", async () => {
     setWysiwygMode("project", true);
-    useSettingsStore.setState({ visualEditor: true });
     openFile("main.tex");
     const { revealSourceEditor } = await import("./wysiwyg/controller");
     render(<Editor />);

@@ -4,6 +4,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOUR_STORAGE_KEY, useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
+import { getWysiwygMode } from "@/lib/wysiwyg-mode";
+import { useVisualModeStore } from "@/store/visual-mode";
 
 const mocks = vi.hoisted(() => ({
   libraryRoot: vi.fn(),
@@ -47,7 +49,6 @@ function restoreTestDefaults() {
   settings.setOffline(false);
   settings.setAccentColor("#2563eb");
   settings.setEditorTheme("system");
-  settings.setVisualEditor(false);
   settings.setLatexTools(false);
   settings.setDefaultLatexEngine("tectonic");
   settings.setSettingsOpen(true);
@@ -59,6 +60,7 @@ describe("Settings section resets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    useVisualModeStore.getState().loadProject(null);
     mocks.libraryRoot.mockResolvedValue("");
     restoreTestDefaults();
   });
@@ -75,7 +77,7 @@ describe("Settings section resets", () => {
 
     settings.setAccentColor("#db2777");
     settings.setEditorTheme("dracula");
-    settings.setVisualEditor(true);
+    settings.setLatexTools(true);
     settings.setDefaultLatexEngine("latexmk");
 
     useTourStore.getState().complete("home");
@@ -118,7 +120,7 @@ describe("Settings section resets", () => {
       offline: false,
       accentColor: "#db2777",
       editorTheme: "dracula",
-      visualEditor: true,
+      latexTools: true,
       defaultLatexEngine: "latexmk",
     });
     expect(localStorage.getItem("oleafly.spellcheck")).toBe("1");
@@ -129,7 +131,7 @@ describe("Settings section resets", () => {
     expect(localStorage.getItem("oleafly.harper.wordchoice")).toBe("1");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
-    expect(localStorage.getItem("oleafly.visualEditor")).toBe("1");
+    expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
     expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("latexmk");
     expect(useTourStore.getState().enabled).toBe(tourEnabled);
     expect(useTourStore.getState().tours).toEqual(tourProgress);
@@ -144,8 +146,9 @@ describe("Settings section resets", () => {
 
   it("resets only Experimentation preferences after confirmation", async () => {
     const settings = useSettingsStore.getState();
-    settings.setVisualEditor(true);
     settings.setLatexTools(true);
+    useVisualModeStore.getState().loadProject("visual-project");
+    useVisualModeStore.getState().setEnabled(true);
 
     settings.setGrammarDialect("british");
     settings.setAccentColor("#db2777");
@@ -155,6 +158,7 @@ describe("Settings section resets", () => {
 
     render(<SettingsModal />);
     await screen.findByRole("heading", { name: "Experimentation" });
+    expect(screen.queryByRole("switch", { name: "Visual editor" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
 
@@ -165,7 +169,6 @@ describe("Settings section resets", () => {
       "Restore Experimentation preferences to their defaults.",
     );
     expect(useSettingsStore.getState()).toMatchObject({
-      visualEditor: true,
       latexTools: true,
     });
 
@@ -174,15 +177,15 @@ describe("Settings section resets", () => {
     );
 
     expect(useSettingsStore.getState()).toMatchObject({
-      visualEditor: false,
       latexTools: false,
       grammarDialect: "british",
       accentColor: "#db2777",
       editorTheme: "dracula",
       defaultLatexEngine: "latexmk",
     });
-    expect(localStorage.getItem("oleafly.visualEditor")).toBe("0");
     expect(localStorage.getItem("oleafly.latexTools")).toBe("0");
+    expect(useVisualModeStore.getState().enabled).toBe(true);
+    expect(getWysiwygMode("visual-project")).toBe(true);
     expect(localStorage.getItem("oleafly.harper.dialect")).toBe("british");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");

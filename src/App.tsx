@@ -1,3 +1,6 @@
+import { startPreviewWorkspaceBridge } from "@/lib/preview-workspace";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { restoreWorkspaceLayout, workspacePanelId } from "@/lib/workspace-layout";
 import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import {
@@ -244,7 +247,9 @@ function AppContent() {
   const analysisIdentity = useProjectAnalysisStore(
     (state) => state.snapshot.identity,
   );
-  const viewMode = useSettingsStore((s) => s.viewMode);
+  const selectedViewMode = useSettingsStore((s) => s.viewMode);
+  const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
+  const viewMode = detached ? "editor" : selectedViewMode;
   const showTree = useSettingsStore((s) => s.showTree);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
@@ -256,7 +261,6 @@ function AppContent() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
-  const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
@@ -265,8 +269,8 @@ function AppContent() {
   const terminalPanelRef = useRef<ImperativePanelHandle>(null);
 
   useLayoutEffect(() => {
-    if (projectId) closeDocks();
-  }, [projectId, closeDocks]);
+    if (projectId) return restoreWorkspaceLayout(projectId);
+  }, [projectId]);
 
   useLayoutEffect(() => {
     if (!projectId) return;
@@ -346,7 +350,9 @@ function AppContent() {
       // The pane had not been measured when the sidebar mounted, so it opened
       // on the flat percentage fallback rather than SIDEBAR_DEFAULT_PX. Apply
       // the intended width now that the real width is known.
-      panel.resize(sidebarDefaultSize);
+      if (!localStorage.getItem(`react-resizable-panels:${workspacePanelId(projectId ?? "", "horizontal")}`)) {
+        panel.resize(sidebarDefaultSize);
+      }
       return;
     }
     const pixels = (panel.getSize() / 100) * previousWidth;
@@ -360,23 +366,8 @@ function AppContent() {
     showTree,
     sidebarMinSize,
     sidebarDefaultSize,
+    projectId,
   ]);
-
-  // A pane-layout change (the assistant appearing, or the view mode switching)
-  // makes react-resizable-panels renormalize the group, which shrinks the file
-  // tree well below its intended width because the other panes' default sizes
-  // sum past 100. Re-assert the tree's width once the new layout has settled.
-  // Window resizes are handled above and are deliberately not a dependency here,
-  // so a width the user dragged is left alone until the layout itself changes.
-  const sidebarDefaultSizeRef = useRef(sidebarDefaultSize);
-  sidebarDefaultSizeRef.current = sidebarDefaultSize;
-  useLayoutEffect(() => {
-    if (!projectId || !showTree) return;
-    const raf = window.requestAnimationFrame(() => {
-      sidebarPanelRef.current?.resize(sidebarDefaultSizeRef.current);
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [projectId, showTree, assistantOpen, viewMode, workspaceHidden]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -489,15 +480,17 @@ function AppContent() {
     usePreflightStore.getState().reset();
     if (projectId) {
       s.setRailTab("files");
-      // The default layout drives only the editor/preview/AI panes; the file
-      // tree is independent and is honored ONLY here, on project open, from the
-      // "show file tree on open" setting. Switching layouts later never touches
-      // it. Set it directly so open is deterministic.
-      s.setLayoutPreset(s.defaultView);
-      s.setShowTree(s.openInTree);
-      void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
   }, [projectId]);
+
+  useEffect(() => {
+    void import("@/lib/preview-window").then((m) => m.restorePreviewWindow(projectId, useFilesStore.getState().projectName ?? ""));
+  }, [projectId]);
+
+  useEffect(() => {
+    const cleanup = startPreviewWorkspaceBridge();
+    return () => { void cleanup.then((off) => off()); };
+  }, []);
 
   // Detached AI chat / preview windows can mutate disk; reload open buffers
   // and the compiled PDF when they report changes.
@@ -870,7 +863,7 @@ function AppContent() {
               </div>
             }
           >
-            <PanelGroup direction="vertical" className="min-h-0 min-w-0 flex-1">
+            <PanelGroup key={projectId} autoSaveId={workspacePanelId(projectId, "vertical")} direction="vertical" className="min-h-0 min-w-0 flex-1">
               <Panel
                 id="content-band"
                 order={1}
@@ -878,7 +871,7 @@ function AppContent() {
                 minSize={25}
                 className="min-h-0 min-w-0"
               >
-                <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                <PanelGroup autoSaveId={workspacePanelId(projectId, "horizontal")} direction="horizontal" className="h-full min-h-0 min-w-0">
               {showTree && (
                 <Fragment key="sidebar">
                   <Panel
@@ -904,7 +897,7 @@ function AppContent() {
                   defaultSize={showTree ? 85 : 100}
                   className="min-h-0 min-w-0"
                 >
-                  <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                  <PanelGroup autoSaveId={workspacePanelId(projectId, "document")} direction="horizontal" className="h-full min-h-0 min-w-0">
                         {viewMode !== "pdf" && (
                           <Panel
                             ref={editorPanelRef}

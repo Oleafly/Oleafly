@@ -584,10 +584,6 @@
         "description": "Mostra la galleria Oleafly Tools e i singoli strumenti (importazione PDF, equazioni, tabelle, BibTeX, ricerca di laboratori e letteratura, scadenze) più i relativi comandi slash. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Strumenti LaTeX"
       },
-      "visualEditor": {
-        "description": "Mostra l'interruttore Visuale/Codice nell'editor del documento. Disattivato per impostazione predefinita, quindi i documenti si aprono solo nell'editor di codice. I diagrammi mantengono sempre il proprio interruttore dell'area di disegno.",
-        "label": "Editor visuale"
-      },
       "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso.",
       "webBrowser": {
         "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta; quando è disattivato non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
@@ -871,7 +867,8 @@
       "editor": "Vista sorgente",
       "pdf": "Vista PDF",
       "split": "Vista divisa"
-    }
+    },
+    "moreActions": "Altre azioni"
   },
   "tour": {
     "chooseColor": "Scegli il tuo colore distintivo",

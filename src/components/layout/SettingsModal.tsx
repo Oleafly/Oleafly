@@ -241,8 +241,6 @@ export function SettingsModal() {
   const setShowWordChoice = useSettingsStore((s) => s.setShowWordChoice);
   const offline = useSettingsStore((s) => s.offline);
   const setOffline = useSettingsStore((s) => s.setOffline);
-  const visualEditor = useSettingsStore((s) => s.visualEditor);
-  const setVisualEditor = useSettingsStore((s) => s.setVisualEditor);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
@@ -638,12 +636,6 @@ export function SettingsModal() {
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
           <span>{t(($) => $.shell.settings.experimentation.warning)}</span>
         </div>
-        <SettingsToggleRow
-          label={t(($) => $.shell.settings.experimentation.visualEditor.label)}
-          description={t(($) => $.shell.settings.experimentation.visualEditor.description)}
-          checked={visualEditor}
-          onChange={setVisualEditor}
-        />
         <SettingsToggleRow
           label={t(($) => $.shell.settings.experimentation.latexTools.label)}
           description={t(($) => $.shell.settings.experimentation.latexTools.description)}

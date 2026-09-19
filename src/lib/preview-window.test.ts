@@ -45,7 +45,7 @@ describe("openPreviewWindow", () => {
   });
 
   it("retargets and focuses an open window rather than making a second one", async () => {
-    getByLabel.mockResolvedValue({ setFocus });
+    getByLabel.mockResolvedValue({ setFocus, once });
     await openPreviewWindow("p2", "Paper");
     expect(emit).toHaveBeenCalledWith("preview:project", { projectId: "p2" });
     expect(setFocus).toHaveBeenCalledTimes(1);
@@ -78,7 +78,7 @@ describe("openPreviewWindow", () => {
   it("reports a window that fails to open instead of failing silently", async () => {
     getByLabel.mockResolvedValue(null);
     await openPreviewWindow("p5", "Paper");
-    const [event, handler] = once.mock.calls[0] as unknown as [
+    const [event, handler] = once.mock.calls.find(([name]) => name === "tauri://error") as unknown as [
       string,
       (e: { payload: unknown }) => void,
     ];

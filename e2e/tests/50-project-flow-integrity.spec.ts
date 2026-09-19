@@ -190,7 +190,7 @@ test("reopening a project in persisted Visual mode keeps the workspace chrome an
   await expectDesktopShellAnchored(tauriPage);
 });
 
-test("a persisted Visual document paints source on its first forced-source mount", async ({
+test("a document paints source on reopen after switching back from Visual", async ({
   tauriPage,
 }) => {
   test.setTimeout(240_000);
@@ -199,48 +199,33 @@ test("a persisted Visual document paints source on its first forced-source mount
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
   await expect(tauriPage.locator(".cm-editor.ofl-visual-parsed")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Switch to source view"]');
   await tauriPage.click('[aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 20_000 });
 
-  try {
-    // Reproduce the v0.3.1 migration path: the project remembers Visual mode,
-    // while the experiment is now disabled and Source must mount active on
-    // its very first frame.
-    await tauriPage.evaluate(
-      `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
-        useSettingsStore.getState().setVisualEditor(false)
-      )`,
-    );
-    await openProject(tauriPage, projectName);
-    await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await openProject(tauriPage, projectName);
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-    let paint = await editorPaintProbe(tauriPage);
-    try {
-      await expect
-        .poll(async () => {
-          paint = await editorPaintProbe(tauriPage);
-          return editorPaintIsReady(paint);
-        }, { timeout: 20_000 })
-        .toBe(true);
-    } catch (error) {
-      throw new Error(
-        `editor paint invariants did not settle: ${JSON.stringify(paint)}`,
-        { cause: error },
-      );
-    }
-    expect(paint.sourceLength).toBeGreaterThan(100);
-    expect(paint.visibleNonblankLines).toBeGreaterThan(0);
-    expect(paint.unobscuredTextSamples).toBeGreaterThan(0);
-    expect(paint.foldMarkerCount).toBeGreaterThan(0);
-    expect(paint.largestFoldMarkerWidth).toBeLessThanOrEqual(16);
-    expect(paint.largestFoldMarkerHeight).toBeLessThanOrEqual(16);
-  } finally {
-    await tauriPage.evaluate(
-      `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
-        useSettingsStore.getState().setVisualEditor(true)
-      )`,
+  let paint = await editorPaintProbe(tauriPage);
+  try {
+    await expect
+      .poll(async () => {
+        paint = await editorPaintProbe(tauriPage);
+        return editorPaintIsReady(paint);
+      }, { timeout: 20_000 })
+      .toBe(true);
+  } catch (error) {
+    throw new Error(
+      `editor paint invariants did not settle: ${JSON.stringify(paint)}`,
+      { cause: error },
     );
   }
+  expect(paint.sourceLength).toBeGreaterThan(100);
+  expect(paint.visibleNonblankLines).toBeGreaterThan(0);
+  expect(paint.unobscuredTextSamples).toBeGreaterThan(0);
+  expect(paint.foldMarkerCount).toBeGreaterThan(0);
+  expect(paint.largestFoldMarkerWidth).toBeLessThanOrEqual(16);
+  expect(paint.largestFoldMarkerHeight).toBeLessThanOrEqual(16);
 });
 
 test("toolbar edits flush on immediate close, survive reopen, and compile", async ({

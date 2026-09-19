@@ -33,11 +33,11 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
   await expect(zoom).toHaveText(`${fitted}%`);
 
   const scroll = page.getByTestId("detached-preview-scroll");
-  await page.getByLabel("Invert PDF colors").click();
-  await expect(page.getByLabel("Invert PDF colors")).toHaveAttribute("aria-pressed", "true");
+  await page.getByLabel("Invert PDF preview colors").click();
+  await expect(page.getByLabel("Invert PDF preview colors")).toHaveAttribute("aria-pressed", "true");
   await expect(scroll).toHaveCSS("filter", "invert(1) hue-rotate(180deg)");
-  await page.getByLabel("Invert PDF colors").click();
-  await expect(page.getByLabel("Invert PDF colors")).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel("Invert PDF preview colors").click();
+  await expect(page.getByLabel("Invert PDF preview colors")).toHaveAttribute("aria-pressed", "false");
   await expect(scroll).toHaveCSS("filter", "none");
 });
 
@@ -51,7 +51,7 @@ test("detached preview two-page layout, previous/input/next, and invalid bounds 
   // Change layout first so navigation proves it reads the live spread mode
   // instead of a stale click-handler closure.
   await page.getByLabel("Two-page view").click();
-  await expect(page.getByLabel("Two-page view")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Two-page view")).toHaveAttribute("aria-checked", "true");
   await page.getByLabel("Next page").click();
   await expect(input).toHaveValue("3");
   await expect(page.getByLabel("Next page")).toBeDisabled();
@@ -72,7 +72,7 @@ test("detached preview two-page layout, previous/input/next, and invalid bounds 
     "double",
   );
   await page.getByLabel("Single page view").click();
-  await expect(page.getByLabel("Single page view")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Single page view")).toHaveAttribute("aria-checked", "true");
   await expect(page.getByTestId("detached-preview-window")).toHaveAttribute(
     "data-preview-layout",
     "single",
@@ -115,13 +115,13 @@ test("paging scrolls the preview pane, not the page around it", async ({ page })
 
   const scroller = page.getByTestId("detached-preview-scroll");
   const paneTop = async () => scroller.evaluate((el) => el.scrollTop);
-  expect(await paneTop()).toBe(0);
+  const initialTop = await paneTop();
 
   await page.getByLabel("Next page").click();
   await expect(page.getByLabel("Page number")).toHaveValue("2");
 
   // The pane moved to the next page...
-  await expect.poll(paneTop).toBeGreaterThan(0);
+  await expect.poll(paneTop).toBeGreaterThan(initialTop);
   // ...and `scrollIntoView` did not drag every scrollable ancestor with it.
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });

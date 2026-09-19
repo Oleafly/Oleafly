@@ -573,10 +573,6 @@
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"
       },
-      "visualEditor": {
-        "description": "Toon de schakelaar Visueel/Code in de documenteditor. Staat standaard uit, dus documenten openen alleen in de code-editor. Diagrammen houden altijd hun eigen canvasschakelaar.",
-        "label": "Visuele editor"
-      },
       "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen.",
       "webBrowser": {
         "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
@@ -855,7 +851,8 @@
       "editor": "Broncodeweergave",
       "pdf": "PDF-weergave",
       "split": "Gesplitste weergave"
-    }
+    },
+    "moreActions": "Meer acties"
   },
   "tour": {
     "chooseColor": "Kies je eigen kleur",

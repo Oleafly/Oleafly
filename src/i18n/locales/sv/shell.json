@@ -573,10 +573,6 @@
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
       },
-      "visualEditor": {
-        "description": "Visa växlingen mellan Visuellt och Kod i dokumentredigeraren. Av som standard, så dokument öppnas bara i kodredigeraren. Diagram har alltid kvar sin egen växling till arbetsytan.",
-        "label": "Visuell redigerare"
-      },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
@@ -855,7 +851,8 @@
       "editor": "Källkodsvy",
       "pdf": "PDF-vy",
       "split": "Delad vy"
-    }
+    },
+    "moreActions": "Fler åtgärder"
   },
   "tour": {
     "chooseColor": "Välj din signaturfärg",

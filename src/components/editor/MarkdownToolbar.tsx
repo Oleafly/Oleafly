@@ -238,12 +238,10 @@ function MarkdownListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>
 export function MarkdownToolbar({
   wysiwyg,
   onToggleWysiwyg,
-  showVisualToggle = true,
   showProjectInfo = true,
 }: Readonly<{
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
-  showVisualToggle?: boolean;
   /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
   showProjectInfo?: boolean;
 }>) {
@@ -418,16 +416,12 @@ export function MarkdownToolbar({
 
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
-      {showVisualToggle && (
-        <>
-          <WysiwygModeSwitch
-            wysiwyg={wysiwyg}
-            onToggle={onToggleWysiwyg}
-            data-tour="wysiwyg-toggle"
-          />
-          <Divider />
-        </>
-      )}
+      <WysiwygModeSwitch
+        wysiwyg={wysiwyg}
+        onToggle={onToggleWysiwyg}
+        data-tour="wysiwyg-toggle"
+      />
+      <Divider />
 
       <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />

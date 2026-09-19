@@ -1,5 +1,8 @@
+import { SavePreviewDialog } from "./SavePreviewDialog";
+import { CompileLogControls } from "./CompileLogControls";
+import { PdfToolbarControls } from "./PdfToolbarControls";
+import { usePdfPosition } from "@/lib/use-pdf-position";
 import {
-  Fragment,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -12,58 +15,25 @@ import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   AlertTriangle,
-  Accessibility,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  Columns2,
-  Contrast,
-  Download,
   FileText,
-  ListTree,
   Loader2,
-  MoreHorizontal,
   LockKeyhole,
-  Maximize,
   Minus,
-  Minimize,
-  PanelTopClose,
   PanelTopOpen,
   Play,
-  RectangleVertical,
-  RotateCw,
-  Save,
-  ScrollText,
   Search,
   TableOfContents,
   Sparkles,
-  Settings2,
   SquareArrowOutUpRight,
   X,
   XCircle,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   PdfViewer,
   type PdfLoadState,
@@ -117,37 +87,11 @@ import { i18n } from "@/i18n";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, shortcut } from "@/lib/utils";
 import {
-  DIVIDER_WIDTH,
-  ICON_BUTTON_WIDTH,
-  fitCount,
-  useAvailableWidth,
-  type ToolbarControl,
-} from "@/components/ui/toolbar-overflow";
-import {
   attachPreviewZoom,
   MAX_PREVIEW_SCALE,
   MIN_PREVIEW_SCALE,
   sessionZoomByProject,
 } from "./preview-zoom";
-
-const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4];
-
-const PAGE_LAYOUTS: readonly {
-  value: PdfLayout;
-  label: () => string;
-  icon: typeof RectangleVertical;
-}[] = [
-  {
-    value: "single",
-    label: () => i18n.t(($) => $.preview.pageLayout.single),
-    icon: RectangleVertical,
-  },
-  {
-    value: "double",
-    label: () => i18n.t(($) => $.preview.pageLayout.double),
-    icon: Columns2,
-  },
-];
 
 interface PreviewDocument {
   bytes: Uint8Array;
@@ -745,7 +689,6 @@ export function PreviewPane() {
   );
   const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [scale, setScale] = useState(1.0);
-  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
   const activeTourId = useTourStore((state) => state.activeTourId);
   const tourTabRef = useRef<"pdf" | "logs" | null>(null);
@@ -795,14 +738,13 @@ export function PreviewPane() {
   const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PdfViewerHandle>(null);
+  const pdfPosition = usePdfPosition(projectId, pdfRef);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(scale);
   const lastReadyDocumentRef = useRef<PreviewDocument | null>(null);
   const rejectedDocumentIdentitiesRef = useRef(new Set<string>());
   const closeSave = () => setSaveOpen(false);
-  const { dialogRef: saveDialogRef, onBackdropMouseDown: onSaveBackdropMouseDown } =
-    useModalAccessibility<HTMLDivElement>(saveOpen, closeSave);
   scaleRef.current = scale;
 
   useEffect(() => {
@@ -1225,6 +1167,7 @@ export function PreviewPane() {
   const handlePdfLoadState = (next: PdfLoadState) => {
     const current = viewerDocument;
     if (!current || next.documentIdentity !== current.identity) return;
+    pdfPosition.onLoad(next);
     setPdfLoadState(next);
     // Anything that settles the load also settles a rotation: a failed rotate
     // must not leave the button spinning forever.
@@ -1293,33 +1236,7 @@ export function PreviewPane() {
     }
   }, [activeTourId, tab]);
 
-  const compiling = status === "compiling";
-  const derivePreviewSeverity = () => {
-    const hasError =
-      status === "error" ||
-      status === "unavailable" ||
-      errors.some((error) => error.kind === "error");
-    const hasWarning = !hasError && errors.some((e) => e.kind === "warning");
-    const nonErrorSeverity: "warning" | "ok" = hasWarning ? "warning" : "ok";
-    const severity: "error" | "warning" | "ok" = hasError ? "error" : nonErrorSeverity;
-    return { hasError, severity };
-  };
-  const { hasError, severity } = derivePreviewSeverity();
-  const severityToneClass = () => {
-    if (severity === "error") return "text-red-500";
-    if (severity === "warning") return "text-amber-500";
-    return "text-emerald-500";
-  };
-  const severityTitle = (): string => {
-    if (severity === "error") return t(($) => $.preview.toolbar.compiledWithErrors);
-    if (severity === "warning") return t(($) => $.preview.toolbar.compiledWithWarnings);
-    return t(($) => $.preview.toolbar.compiledSuccessfully);
-  };
-  const renderSeverityIcon = () => {
-    if (severity === "error") return <XCircle className="size-3.5" />;
-    if (severity === "warning") return <AlertTriangle className="size-3.5" />;
-    return <CheckCircle2 className="size-3.5" />;
-  };
+  const hasError = status === "error" || status === "unavailable" || errors.some((error) => error.kind === "error");
   const pageAnnouncement = (): string =>
     numPages > 0 ? t(($) => $.preview.a11y.page, { page, total: numPages }) : "";
   const pdfLoadFailureTitle = (): string => {
@@ -1343,548 +1260,6 @@ export function PreviewPane() {
     return t(($) => $.preview.actions.downloadPdf);
   };
 
-  const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
-    useAvailableWidth();
-  // The preview toolbar carries more controls than a narrow split pane can
-  // show. Declaring them as a measured list lets the ones that do not fit move
-  // into a "more" menu instead of wrapping the bar onto a second line.
-  const iconControl = (
-    id: string,
-    Icon: typeof ZoomIn,
-    label: string,
-    onClick: () => void,
-    options: {
-      disabled?: boolean;
-      active?: boolean;
-      tooltip?: string;
-      // Swaps the icon for a spinner in place. Work a single control owns
-      // belongs on that control, not behind a pane-sized overlay.
-      busy?: boolean;
-    } = {},
-  ): ToolbarControl => ({
-    id,
-    width: ICON_BUTTON_WIDTH,
-    render: () => (
-      <Tooltip label={options.tooltip ?? label}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("size-7", options.active && "bg-accent text-foreground")}
-          disabled={options.disabled || options.busy}
-          onClick={onClick}
-          aria-label={label}
-          {...(options.busy ? { "aria-busy": true } : {})}
-          {...(options.active === undefined ? {} : { "aria-pressed": options.active })}
-        >
-          {options.busy ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Icon className="size-3.5" />
-          )}
-        </Button>
-      </Tooltip>
-    ),
-    renderMenu: () => (
-      <DropdownMenuItem
-        key={id}
-        aria-label={label}
-        disabled={options.disabled}
-        onSelect={onClick}
-      >
-        <Icon className="size-4" />
-        {label}
-      </DropdownMenuItem>
-    ),
-  });
-
-  const pdfDivider = (id: string): ToolbarControl => ({
-    id,
-    width: DIVIDER_WIDTH,
-    render: () => <div className="mx-1 h-4 w-px shrink-0 bg-border" />,
-    renderMenu: () => <DropdownMenuSeparator key={id} />,
-  });
-
-  const zoomOut = () =>
-    userZoom(() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2)));
-  const zoomIn = () =>
-    userZoom(() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2)));
-  // Rendered by the zoom trigger and, when the bar collapses, by the overflow menu.
-  const zoomMenuItems = () => (
-    <>
-      <DropdownMenuGroup>
-        <DropdownMenuItem disabled={scale >= MAX_PREVIEW_SCALE} onSelect={zoomIn}>
-          {t(($) => $.preview.zoom.in)}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={scale <= MIN_PREVIEW_SCALE} onSelect={zoomOut}>
-          {t(($) => $.preview.zoom.out)}
-        </DropdownMenuItem>
-      </DropdownMenuGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuGroup>
-        <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("width"))}>
-          {t(($) => $.preview.zoom.fitToWidth)}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("height"))}>
-          {t(($) => $.preview.zoom.fitToHeight)}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => userZoom(() => setScale(1))}>
-          {t(($) => $.preview.zoom.reset)}
-        </DropdownMenuItem>
-      </DropdownMenuGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuGroup>
-        {ZOOM_PRESETS.map((preset) => (
-          <DropdownMenuItem
-            key={preset}
-            onSelect={() => userZoom(() => setClampedScale(preset))}
-          >
-            {t(($) => $.preview.zoom.percent, { percent: Math.round(preset * 100) })}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuGroup>
-    </>
-  );
-
-  // Grouped so the bar reads in a fixed order and the dividers fall out of
-  // which groups actually have controls, rather than being placed by hand.
-  const buildPreviewToolbarGroups = () => {
-    const layoutGroup: ToolbarControl[] = [];
-    const pageGroup: ToolbarControl[] = [];
-    const viewGroup: ToolbarControl[] = [];
-    const zoomGroup: ToolbarControl[] = [];
-    const inkGroup: ToolbarControl[] = [];
-    const fileGroup: ToolbarControl[] = [];
-    const windowGroup: ToolbarControl[] = [];
-    if (numPages > 0 && !isImage) {
-      // A one-page document has nothing to lay out: hide the toggles entirely.
-      if (numPages > 1) {
-        layoutGroup.push(
-          {
-            id: "layout",
-            // Two segments inside one padded track.
-            width: 62,
-            // One page layout is in effect at a time, so the two options are a
-            // radio group rather than two independently pressed buttons.
-            render: () => (
-              <div
-                role="radiogroup"
-                aria-label={t(($) => $.preview.pageLayout.group)}
-                className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/70 p-0.5"
-              >
-                {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
-                  <Tooltip key={value} label={label()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      role="radio"
-                      className={cn(
-                        "size-6 rounded-[4px]",
-                        layout === value &&
-                          "bg-background text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.08)]",
-                      )}
-                      onClick={() => setLayout(value)}
-                      aria-label={label()}
-                      aria-checked={layout === value}
-                    >
-                      <Icon className="size-3.5" />
-                    </Button>
-                  </Tooltip>
-                ))}
-              </div>
-            ),
-            renderMenu: () => (
-              <DropdownMenuSub key="layout">
-                <DropdownMenuSubTrigger>
-                  <RectangleVertical className="size-4" />
-                  {t(($) => $.preview.pageLayout.group)}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="min-w-44">
-                    <DropdownMenuRadioGroup
-                      value={layout}
-                      onValueChange={(value) =>
-                        setLayout(value === "double" ? "double" : "single")
-                      }
-                    >
-                      {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
-                        <DropdownMenuRadioItem key={value} value={value}>
-                          <Icon className="size-4" />
-                          {label()}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-            ),
-          },
-        );
-      }
-      pageGroup.push(
-        {
-          id: "page-nav",
-          // Two buttons plus the page field and its "of N" label. Estimates are
-          // rounded up: overshooting collapses one control early, undershooting
-          // clips the bar.
-          width: 140,
-          render: () => (
-            <>
-              <Tooltip label={t(($) => $.preview.pages.previous)}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  disabled={page <= 1}
-                  onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
-                  aria-label={t(($) => $.preview.pages.previous)}
-                >
-                  <ChevronUp className="size-3.5" />
-                </Button>
-              </Tooltip>
-              <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                <Input
-                  value={pageInput}
-                  onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      jumpToPage();
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onBlur={jumpToPage}
-                  onFocus={(e) => e.target.select()}
-                  aria-label={t(($) => $.preview.pages.number)}
-                  className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground outline-none focus:border-primary"
-                />
-                <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
-              </div>
-              <Tooltip label={t(($) => $.preview.pages.next)}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  disabled={page >= numPages}
-                  onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
-                  aria-label={t(($) => $.preview.pages.next)}
-                >
-                  <ChevronDown className="size-3.5" />
-                </Button>
-              </Tooltip>
-            </>
-          ),
-          // The page field cannot live in a menu row, so the collapsed form keeps
-          // the navigation and reports where the reader currently is.
-          renderMenu: () => (
-            <DropdownMenuSub key="page-nav">
-              <DropdownMenuSubTrigger>
-                <FileText className="size-4" />
-                {t(($) => $.preview.pages.pageOfTotal, {
-                  page,
-                  total: numPages,
-                })}
-              </DropdownMenuSubTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent className="min-w-44">
-                  <DropdownMenuItem
-                    disabled={page <= 1}
-                    onSelect={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
-                  >
-                    <ChevronUp className="size-4" />
-                    {t(($) => $.preview.pages.previous)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={page >= numPages}
-                    onSelect={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
-                  >
-                    <ChevronDown className="size-4" />
-                    {t(($) => $.preview.pages.next)}
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          ),
-        },
-      );
-    }
-    if (displayedBytes && !isImage) {
-      viewGroup.push(
-        iconControl(
-          "outline",
-          ListTree,
-          t(($) => $.preview.outline.open),
-          () => setOutlineOpen((open) => !open),
-          { active: outlineOpen },
-        ),
-        iconControl("search", Search, t(($) => $.preview.search.open), () => {
-          setSearchOpen((open) => {
-            const next = !open;
-            if (next) {
-              requestAnimationFrame(() =>
-                searchInputRef.current?.focus({ preventScroll: true }),
-              );
-            } else {
-              setSearchInput("");
-            }
-            return next;
-          });
-        }, { active: searchOpen }),
-      );
-    }
-    zoomGroup.push({
-      id: "zoom",
-      // Zoom out, the percentage trigger, and zoom in.
-      width: 128,
-      render: () => (
-        <>
-          <Tooltip label={t(($) => $.preview.zoom.out)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={scale <= MIN_PREVIEW_SCALE}
-              onClick={zoomOut}
-              aria-label={t(($) => $.preview.zoom.out)}
-            >
-              <ZoomOut className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <DropdownMenu open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
-                aria-label={t(($) => $.preview.zoom.percentLabel, {
-                  percent: Math.round(scale * 100),
-                })}
-                disabled={!displayedBytes}
-              >
-                {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
-                <ChevronDown data-icon="inline-end" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="min-w-40">
-              {zoomMenuItems()}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip label={t(($) => $.preview.zoom.in)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={scale >= MAX_PREVIEW_SCALE}
-              onClick={zoomIn}
-              aria-label={t(($) => $.preview.zoom.in)}
-            >
-              <ZoomIn className="size-3.5" />
-            </Button>
-          </Tooltip>
-        </>
-      ),
-      renderMenu: () => (
-        <DropdownMenuSub key="zoom">
-          <DropdownMenuSubTrigger>
-            <ZoomIn className="size-4" />
-            {t(($) => $.preview.zoom.menuLabel, {
-              percent: Math.round(scale * 100),
-            })}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent className="min-w-40">
-              {zoomMenuItems()}
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
-      ),
-    });
-    fileGroup.push(
-      {
-        id: "download",
-        width: ICON_BUTTON_WIDTH,
-        render: () => (
-          <Tooltip
-            label={
-              isImage
-                ? t(($) => $.preview.actions.downloadImage)
-                : t(($) => $.preview.actions.downloadDisplayedPdf)
-            }
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={!displayedBytes || exporting}
-              onClick={() => void exportDisplayedPreview()}
-              aria-label={downloadActionLabel()}
-            >
-              {exporting ? (
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-              ) : (
-                <Download className="size-3.5" />
-              )}
-            </Button>
-          </Tooltip>
-        ),
-        renderMenu: () => (
-          <DropdownMenuItem
-            key="download"
-            disabled={!displayedBytes || exporting}
-            onSelect={() => void exportDisplayedPreview()}
-          >
-            <Download className="size-4" />
-            {isImage
-              ? t(($) => $.preview.actions.downloadImage)
-              : t(($) => $.preview.actions.downloadPdf)}
-          </DropdownMenuItem>
-        ),
-      },
-      iconControl(
-        "save",
-        Save,
-        isImage
-          ? t(($) => $.preview.actions.saveImage)
-          : t(($) => $.preview.actions.savePdf),
-        () => {
-          if (isImage) {
-            const base =
-              trimEdgeCharacter(
-                (projectName || "figure").replace(/[^\w.-]+/g, "-"),
-                "-",
-              ) || "figure";
-            setSaveName(`${base}.png`);
-          } else {
-            setSaveName(`${mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document"}.pdf`);
-          }
-          setSaveOpen(true);
-        },
-        { disabled: !displayedBytes },
-      ),
-    );
-    inkGroup.push(
-      iconControl(
-        "invert",
-        Contrast,
-        t(($) => $.preview.actions.invert),
-        () => setInverted(!inverted),
-        {
-          disabled: !displayedBytes,
-          active: inverted,
-          tooltip: inverted
-            ? t(($) => $.preview.actions.restoreColors)
-            : t(($) => $.preview.actions.invert),
-        },
-      ),
-      iconControl(
-        "screen-reader",
-        Accessibility,
-        t(($) => $.preview.actions.readerView),
-        () => setScreenReaderMode(!screenReaderMode),
-        {
-          disabled: !displayedBytes || isImage,
-          active: screenReaderMode,
-          tooltip: screenReaderMode
-            ? t(($) => $.preview.actions.exitReaderView)
-            : t(($) => $.preview.actions.readerView),
-        },
-      ),
-    );
-    if (!isImage) {
-      inkGroup.push(
-        iconControl(
-          "rotate",
-          RotateCw,
-          t(($) => $.preview.actions.rotate),
-          () => {
-            setRotationPending(true);
-            setRotation((current) => ((current + 90) % 360) as PdfRotation);
-          },
-          {
-            disabled: !displayedBytes,
-            busy: rotationPending,
-            tooltip: t(($) => $.preview.actions.rotateTooltip, {
-              degrees: rotation,
-            }),
-          },
-        ),
-      );
-    }
-    const pushPreviewWindowControls = () => {
-      if (!isFs) {
-        windowGroup.push(
-          iconControl(
-            "open-window",
-            SquareArrowOutUpRight,
-            t(($) => $.preview.actions.openWindow),
-            () => {
-              if (!projectId) return;
-              openPreviewWindow(
-                projectId,
-                projectName,
-                previewWindowState(
-                  status,
-                  lastAttemptIdentity,
-                  compileCheckpoint,
-                  compileFailureReason,
-                ),
-              );
-            },
-            { disabled: !projectId || !displayedBytes },
-          ),
-        );
-      } else {
-        windowGroup.push(
-          iconControl(
-            "hide-toolbar",
-            PanelTopClose,
-            t(($) => $.preview.actions.hideToolbar),
-            () =>
-              setFsToolbarHidden(true),
-          ),
-        );
-      }
-      windowGroup.push(
-        iconControl(
-          "pdf-settings",
-          Settings2,
-          t(($) => $.preview.actions.settings),
-          () => useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
-        ),
-      );
-    };
-    pushPreviewWindowControls();
-    viewGroup.push(
-      iconControl(
-        "fullscreen",
-        isFs ? Minimize : Maximize,
-        isFs
-          ? t(($) => $.preview.actions.exitFullscreen)
-          : t(($) => $.preview.actions.fullscreen),
-        toggleFullscreen,
-        { disabled: !displayedBytes },
-      ),
-    );
-    return { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup };
-  };
-  const { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup } = buildPreviewToolbarGroups();
-
-  const pdfControls: ToolbarControl[] = [
-    viewGroup,
-    zoomGroup,
-    pageGroup,
-    layoutGroup,
-    inkGroup,
-    fileGroup,
-    windowGroup,
-  ]
-    .filter((group) => group.length > 0)
-    .flatMap((group, index) =>
-      index === 0 ? group : [pdfDivider(`divider-${index}`), ...group],
-    );
-
-  const pdfVisibleCount = fitCount(pdfControls, pdfToolbarWidth);
-  const pdfVisibleControls = pdfControls.slice(0, pdfVisibleCount);
-  const pdfOverflowControls = pdfControls.slice(pdfVisibleCount);
-
   const renderPreviewToolbar = () => (
     <div
       className={cn(
@@ -1893,60 +1268,8 @@ export function PreviewPane() {
       )}
     >
       {viewMode === "pdf" && <SidebarCollapseToggle />}
-      <div
-        data-tour="project-compile-logs"
-        className="flex items-center gap-1"
-      >
-        <button
-          type="button"
-          onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
-          aria-label={
-            tab === "logs"
-              ? t(($) => $.preview.toolbar.showPdf)
-              : t(($) => $.preview.toolbar.showLogs)
-          }
-          aria-pressed={tab === "logs"}
-          className={cn(
-            "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
-            tab === "logs"
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <ScrollText className="size-3.5" />
-          {t(($) => $.preview.toolbar.logs)}
-          {errors.length > 0 && (
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-[10px] font-semibold text-white",
-                severity === "error" ? "bg-red-500" : "bg-amber-500"
-              )}
-            >
-              {errors.length}
-            </span>
-          )}
-        </button>
-
-        {!compiling && status !== "idle" && (
-          <span
-            className={cn(
-              "flex items-center gap-1 text-[10px] font-medium tabular-nums",
-              severityToneClass()
-            )}
-            title={severityTitle()}
-            data-testid="compile-status"
-            data-severity={severity}
-          >
-            {renderSeverityIcon()}
-            {severity === "error" || compileTimeMs == null
-              ? t(($) => $.preview.toolbar.failed)
-              : t(($) => $.preview.toolbar.duration, {
-                  seconds: (compileTimeMs / 1000).toFixed(1),
-                })}
-          </span>
-        )}
-
-      </div>
+      <CompileLogControls active={tab === "logs"} onToggle={() => setTab(tab === "logs" ? "pdf" : "logs")}
+        status={status} errors={errors} compileTimeMs={compileTimeMs} />
 
       {tab === "logs" && hasError && (
         <div className="ml-auto flex items-center">
@@ -1958,90 +1281,36 @@ export function PreviewPane() {
       )}
 
       {tab === "pdf" && (
-        <div
-          data-tour="project-preview-zoom"
-          ref={pdfToolbarRef}
-          className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden"
-        >
-          {pdfVisibleControls.map((control) => (
-            <Fragment key={control.id}>{control.render()}</Fragment>
-          ))}
-          {pdfOverflowControls.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  aria-label={t(($) => $.preview.toolbar.more)}
-                >
-                  <MoreHorizontal className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-48">
-                {pdfOverflowControls.map((control) => control.renderMenu())}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        <PdfToolbarControls
+          isImage={isImage} hasDocument={!!displayedBytes} numPages={numPages}
+          page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
+          pdfRef={pdfRef} layout={layout} setLayout={setLayout}
+          outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
+          searchOpen={searchOpen} setSearchOpen={setSearchOpen}
+          searchInputRef={searchInputRef} setSearchInput={setSearchInput}
+          scale={scale} setScale={setScale} setClampedScale={setClampedScale}
+          userZoom={userZoom} fitPreview={fitPreview} exporting={exporting}
+          exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
+          onSave={() => {
+            const base = isImage
+              ? trimEdgeCharacter((projectName || "figure").replace(/[^\w.-]+/g, "-"), "-") || "figure"
+              : mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
+            setSaveName(`${base}.${isImage ? "png" : "pdf"}`);
+            setSaveOpen(true);
+          }}
+          inverted={inverted} setInverted={setInverted}
+          screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
+          rotation={rotation} rotationPending={rotationPending}
+          onRotate={() => { setRotationPending(true); setRotation((value) => ((value + 90) % 360) as PdfRotation); }}
+          isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
+          onWindow={() => {
+            if (projectId) openPreviewWindow(projectId, projectName,
+              previewWindowState(status, lastAttemptIdentity, compileCheckpoint, compileFailureReason));
+          }}
+          onSettings={() => useSettingsStore.getState().openSettingsAt("appearance", "pdf")}
+        />
       )}
     </div>
-  );
-
-  const renderSavePdfDialog = () => (
-    saveOpen && (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-        <button type="button" aria-label={t(($) => $.preview.save.close)} className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
-        <div
-          ref={saveDialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="save-preview-title"
-          tabIndex={-1}
-          className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 id="save-preview-title" className="text-sm font-semibold">
-              {isImage
-                ? t(($) => $.preview.save.imageTitle)
-                : t(($) => $.preview.save.title)}
-            </h2>
-            <button
-              type="button"
-              onClick={closeSave}
-              aria-label={t(($) => $.preview.save.close)}
-              className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-          <p className="mb-3 text-xs text-muted-foreground">
-            {pdfIsStale
-              ? t(($) => $.preview.save.staleDescription)
-              : t(($) => $.preview.save.description)}
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              data-modal-initial-focus
-              aria-label={t(($) => $.preview.save.nameLabel)}
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !saving) submitSavePdf(); }}
-              placeholder={t(($) => $.preview.save.namePlaceholder)}
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
-            />
-            <Button
-              onClick={() => void submitSavePdf()}
-              disabled={saving || !displayedBytes}
-            >
-              {saving
-                ? t(($) => $.common.state.saving)
-                : t(($) => $.common.actions.save)}
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
   );
 
   const renderOutlinePanel = () => (
@@ -2197,6 +1466,7 @@ export function PreviewPane() {
               : undefined
           }
           onPageChange={(current, total) => {
+              pdfPosition.onPage(current);
             setPage(current);
             setNumPages(total);
             usePdfViewStore.getState().setPage(current);
@@ -2439,7 +1709,8 @@ export function PreviewPane() {
         </div>
       </div>
 
-      {renderSavePdfDialog()}
+      <SavePreviewDialog saveOpen={saveOpen} closeSave={closeSave} isImage={isImage} pdfIsStale={pdfIsStale}
+        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!displayedBytes} submitSavePdf={submitSavePdf} />
     </div>
   );
 }

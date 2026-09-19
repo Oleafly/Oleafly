@@ -54,8 +54,7 @@ const limits = {
   // parser chunk (workers cannot share main-thread chunks; the AST glossary
   // pass needs the parser inside the worker).
   // +10 KB headroom for the Windows window-controls feature.
-  // +10 KB headroom for the Experimentation settings (Visual editor / LaTeX
-  // tools gating) and the omnibar command wiring.
+  // +10 KB headroom for the Experimentation settings and omnibar commands.
   // +50 KB for document-citation (paragraph scan, debate ranker, Review
   // panel, Google Scholar parser): combined graph measures 9.25 MB.
   // +40 KB for the Overleaf import and latexmk engine surfaces (engine

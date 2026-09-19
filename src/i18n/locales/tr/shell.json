@@ -573,10 +573,6 @@
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
       },
-      "visualEditor": {
-        "description": "Belge düzenleyicide Görsel/Kod geçişini gösterir. Varsayılan olarak kapalıdır, bu yüzden belgeler yalnızca kod düzenleyicide açılır. Diyagramlar her zaman kendi tuval geçişini korur.",
-        "label": "Görsel düzenleyici"
-      },
       "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır; değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
       "webBrowser": {
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır; kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
@@ -855,7 +851,8 @@
       "editor": "Kaynak Görünümü",
       "pdf": "PDF Görünümü",
       "split": "Bölünmüş Görünüm"
-    }
+    },
+    "moreActions": "Diğer işlemler"
   },
   "tour": {
     "chooseColor": "İmza renginizi seçin",

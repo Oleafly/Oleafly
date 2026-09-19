@@ -275,18 +275,17 @@ describe("MarkdownToolbar", () => {
     expect(commands.insertMarkdownLink).toHaveBeenCalledWith("https://oleafly.com/docs");
   });
 
-  it("hides the mode switch and the project statistics when asked", () => {
+  it("keeps the mode switch when project statistics are hidden", () => {
     widenToolbar(2000);
     render(
       <MarkdownToolbar
         wysiwyg={false}
         onToggleWysiwyg={vi.fn()}
-        showVisualToggle={false}
         showProjectInfo={false}
       />,
     );
 
-    expect(screen.queryByLabelText(toolbar.switchToSource)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(toolbar.switchToSource)).toBeInTheDocument();
     expect(screen.queryByLabelText(en.projectInfo.trigger)).not.toBeInTheDocument();
   });
 

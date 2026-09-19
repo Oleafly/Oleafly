@@ -1,3 +1,5 @@
+vi.mock("@/lib/preview-workspace", () => ({ startPreviewWorkspaceBridge: vi.fn(async () => () => {}) }));
+vi.mock("@/lib/preview-window", () => ({ restorePreviewWindow: vi.fn(async () => {}) }));
 import { JSDOM } from "jsdom";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -334,6 +336,7 @@ describe("project dock layout", () => {
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     panelHandleMocks.resize.mockClear();
     panelHandleMocks.callbacks.clear();
+    localStorage.clear();
     appState.home.page = "library";
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({

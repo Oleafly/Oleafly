@@ -313,11 +313,9 @@ function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
 export function EditorToolbar({
   wysiwyg,
   onToggleWysiwyg,
-  showVisualToggle = true,
 }: Readonly<{
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
-  showVisualToggle?: boolean;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [visionReady, setVisionReady] = useState(false);
@@ -457,21 +455,17 @@ export function EditorToolbar({
 
   return (
     <div data-testid="editor-toolbar" className="flex h-9 items-center gap-0.5 border-b px-2">
-      {showVisualToggle && (
-        <>
-          <WysiwygModeSwitch
-            wysiwyg={wysiwyg}
-            onToggle={onToggleWysiwyg}
-            secondLabel={
-              projectKind === "diagram"
-                ? t(($) => $.editor.toolbar.canvas)
-                : t(($) => $.editor.toolbar.visual)
-            }
-            data-tour="wysiwyg-toggle"
-          />
-          <Divider />
-        </>
-      )}
+      <WysiwygModeSwitch
+        wysiwyg={wysiwyg}
+        onToggle={onToggleWysiwyg}
+        secondLabel={
+          projectKind === "diagram"
+            ? t(($) => $.editor.toolbar.canvas)
+            : t(($) => $.editor.toolbar.visual)
+        }
+        data-tour="wysiwyg-toggle"
+      />
+      <Divider />
 
       <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />

@@ -573,10 +573,6 @@
         "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "LaTeX-værktøjer"
       },
-      "visualEditor": {
-        "description": "Vis knappen Visuel/Kode i dokumenteditoren. Slået fra som udgangspunkt, så dokumenter kun åbner i kodeeditoren. Diagrammer beholder altid deres egen knap til lærredet.",
-        "label": "Visuel editor"
-      },
       "warning": "Disse funktioner er eksperimentelle og stadig i beta. De er ikke testet færdigt og kan ændre sig, gå i stykker eller forsvinde i en fremtidig udgivelse. Slå dem kun til, hvis du vil prøve noget, der er under udvikling.",
       "webBrowser": {
         "description": "Vis den indbyggede webbrowser (dens knap i dokken og dens genvej), og lad AI styre den via computerbrug. Slået fra som udgangspunkt, mens det stadig er i beta. Når det er slået fra, er der ingen browserknap, og AI har intet browserværktøj.",
@@ -855,7 +851,8 @@
       "editor": "Kildevisning",
       "pdf": "PDF-visning",
       "split": "Delt visning"
-    }
+    },
+    "moreActions": "Flere handlinger"
   },
   "tour": {
     "chooseColor": "Vælg din signaturfarve",

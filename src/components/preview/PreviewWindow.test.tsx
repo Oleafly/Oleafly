@@ -26,6 +26,11 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
+vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useAvailableWidth: () => ({ containerRef: () => {}, availableWidth: Number.POSITIVE_INFINITY }),
+}));
+
 vi.mock("@/components/pdf/PdfViewer", async () => {
   const React = await import("react");
   return {

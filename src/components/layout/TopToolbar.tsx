@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { reattachPreviewWindow } from "@/lib/preview-window";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   BookOpen,
@@ -27,6 +29,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -174,8 +180,7 @@ function activeLayoutPreset(
   return null;
 }
 
-// Groups the right-side toolbar into: Recompile | Export | Fork + Versioning |
-// Layout + workspace controls.
+// Separate the compile/export actions from workspace controls.
 function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
@@ -238,6 +243,7 @@ export function TopToolbar() {
   const { t } = useTranslation(["common", "shell"]);
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
+  const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
   const projects = useFilesStore((s) => s.projects);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const currentProject = projects.find((p) => p.id === projectId);
@@ -258,6 +264,50 @@ export function TopToolbar() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const fullscreen = useFullscreen();
+
+  const toolbarRef = useRef<HTMLElement>(null);
+  const leadingRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const viewsRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const expandedRef = useRef<HTMLDivElement>(null);
+  const compactRef = useRef<HTMLDivElement>(null);
+  const [toolbarLayout, setToolbarLayout] = useState({ compact: true, centered: false });
+
+  useLayoutEffect(() => {
+    if (!projectId) return;
+    const header = toolbarRef.current;
+    const leading = leadingRef.current;
+    const title = titleRef.current;
+    const views = viewsRef.current;
+    const actions = actionsRef.current;
+    const expanded = expandedRef.current;
+    const compact = compactRef.current;
+    if (!header || !leading || !title || !views || !actions || !expanded || !compact) return;
+    const measure = () => {
+      const headerBox = header.getBoundingClientRect();
+      const viewWidth = views.getBoundingClientRect().width;
+      const expandedWidth = expanded.getBoundingClientRect().width;
+      const compactWidth = compact.getBoundingClientRect().width;
+      // Keep both action groups measurable so font, locale, and feature changes
+      // can restore the full toolbar without a fixed window-width breakpoint.
+      const currentWidth = toolbarLayout.compact ? compactWidth : expandedWidth;
+      const commonWidth = actions.getBoundingClientRect().width - currentWidth;
+      const gap = Number.parseFloat(getComputedStyle(header).columnGap) || 0;
+      const titleSpace = 4 * Number.parseFloat(getComputedStyle(header).fontSize);
+      const leftWidth = title.getBoundingClientRect().left - headerBox.left + titleSpace;
+      const fits = (rightWidth: number) =>
+        2 * Math.max(leftWidth, rightWidth) + viewWidth + 2 * gap <= headerBox.width;
+      const nextCompact = !fits(commonWidth + expandedWidth);
+      const centered = fits(commonWidth + (nextCompact ? compactWidth : expandedWidth));
+      setToolbarLayout((current) => current.compact === nextCompact && current.centered === centered
+        ? current : { compact: nextCompact, centered });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const element of [header, leading, views, actions, expanded, compact]) observer.observe(element);
+    return () => observer.disconnect();
+  }, [toolbarLayout.compact, projectId]);
 
   const [forkOpen, setForkOpen] = useState(false);
   const [forkName, setForkName] = useState("");
@@ -357,21 +407,27 @@ export function TopToolbar() {
   return (
     <>
     <header
+      ref={toolbarRef}
+      data-toolbar-layout={toolbarLayout.compact ? "compact" : "expanded"}
       data-tauri-drag-region
       data-tour="project-toolbar"
       {...(E2E_HOOKS
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(
-        "relative z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background",
-        isMac && "pr-3",
-        isMac && !fullscreen && "pl-[78px]",
-        isMac && fullscreen && "pl-2"
+        "relative z-20 h-12 shrink-0 items-center gap-2 border-b bg-background",
+        toolbarLayout.centered ? "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "flex"
       )}
     >
+      <div ref={leadingRef} data-tauri-drag-region className={cn(
+        "flex min-w-0 flex-1 items-center gap-2",
+        isMac && !fullscreen && "pl-[78px]",
+        isMac && fullscreen && "pl-2",
+      )}>
       <HomeBrandButton className="shrink-0" onClick={() => void closeProject()} />
       <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
       <div
+        ref={titleRef}
         data-tauri-drag-region
         className="flex min-w-0 flex-1 items-center overflow-hidden"
       >
@@ -437,21 +493,22 @@ export function TopToolbar() {
             </button>
           </Tooltip>
         )}
-        {projectId && (
-          <div className="ml-2 shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
-            <div className="pointer-events-auto">
-              <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
-            </div>
-          </div>
-        )}
       </div>
+      </div>
+      {projectId && <div ref={viewsRef} data-testid="toolbar-views" className="shrink-0">
+        <ViewModeSwitch viewMode={viewMode} setViewMode={(mode) => {
+          if (detached && (mode === "pdf" || mode === "split")) void reattachPreviewWindow();
+          setViewMode(mode);
+        }} />
+      </div>}
 
       <div
         data-tauri-drag-region
-        className="ml-auto flex min-w-0 items-center justify-end gap-1.5 overflow-x-clip"
+        ref={actionsRef}
+        className={cn("ml-auto flex w-max shrink-0 items-center justify-self-end justify-end gap-1", isMac && "pr-3")}
       >
 
-        <CompileControls />
+        {!detached && <CompileControls />}
 
         {engineError && (
           <span
@@ -556,51 +613,63 @@ export function TopToolbar() {
 
         <Divider />
 
-        <Tooltip label={t(($) => $.shell.toolbar.forkProject)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            disabled={!projectId}
-            onClick={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}
-          >
-            <GitFork className="size-4" />
-          </Button>
-        </Tooltip>
-
-        <ProjectHistoryActions />
-
-        <Divider />
-
-        <DropdownMenu>
-          <Tooltip label={t(($) => $.shell.toolbar.layout)}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                aria-label={t(($) => $.shell.toolbar.layout)}
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
+        {workspaceHidden && <SidebarCollapseToggle />}
+        <div ref={expandedRef} aria-hidden={toolbarLayout.compact || undefined} inert={toolbarLayout.compact}
+          className={cn("flex w-max shrink-0 items-center gap-1.5", toolbarLayout.compact && "pointer-events-none invisible absolute left-0 top-0")}>
+          <Tooltip label={t(($) => $.shell.toolbar.forkProject)}>
+            <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.forkProject)}
+              className="text-muted-foreground hover:text-foreground" disabled={!projectId}
+              onClick={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}>
+              <GitFork className="size-4" />
+            </Button>
           </Tooltip>
-          <DropdownMenuContent align="end" className="w-56">
+          <ProjectHistoryActions />
+          <Divider />
+          <DropdownMenu key={toolbarLayout.compact ? "layout-hidden" : "layout-visible"}>
+            <Tooltip label={t(($) => $.shell.toolbar.layout)}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.layout)}
+                  className="text-muted-foreground hover:text-foreground"><LayoutGrid className="size-4" /></Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-56">
+              {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
+                <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
+                  <Icon className="size-4 text-muted-foreground" />
+                  <span className="flex-1">{label}</span>
+                  {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
+                    <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Divider />
+          <WorkspaceDockControls key={toolbarLayout.compact ? "dock-hidden" : "dock-visible"} compact={false} inactive={toolbarLayout.compact} />
+        </div>
+        <div ref={compactRef} aria-hidden={!toolbarLayout.compact || undefined} inert={!toolbarLayout.compact}
+          className={cn("flex w-max shrink-0 items-center", !toolbarLayout.compact && "pointer-events-none invisible absolute left-0 top-0")}>
+        <WorkspaceDockControls key={toolbarLayout.compact ? "visible" : "hidden"} inactive={!toolbarLayout.compact} onFork={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}>
+          <DropdownMenuItem onSelect={() => useSettingsStore.getState().openVersioning()}>
+            <History className="size-4" />{t(($) => $.shell.toolbar.versioning)}
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger><LayoutGrid className="mr-2 size-4" />{t(($) => $.shell.toolbar.layout)}</DropdownMenuSubTrigger>
+            <DropdownMenuPortal><DropdownMenuSubContent>
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
               const active = activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset;
               return (
-                <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
+                <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />
                   <span className="flex-1">{label}</span>
                   {active && <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
               );
             })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Divider />
-        {workspaceHidden && <SidebarCollapseToggle />}
-        <WorkspaceDockControls />
+            </DropdownMenuSubContent></DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+        </WorkspaceDockControls>
+        </div>
         <WindowControls />
       </div>
     </header>

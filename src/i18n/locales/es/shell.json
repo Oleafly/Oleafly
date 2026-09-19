@@ -584,10 +584,6 @@
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"
       },
-      "visualEditor": {
-        "description": "Muestra el conmutador Visual/Código en el editor de documentos. Desactivado por omisión, así que los documentos se abren solo en el editor de código. Los diagramas conservan siempre su propio conmutador de lienzo.",
-        "label": "Editor visual"
-      },
       "warning": "Estas funciones son experimentales y siguen en beta. Todavía no están probadas del todo y pueden cambiar, romperse o desaparecer en una versión futura. Actívalas solo si quieres probar trabajo en curso.",
       "webBrowser": {
         "description": "Muestra el navegador web integrado (su botón del panel y su atajo) y deja que la IA lo maneje con uso del ordenador. Desactivado por omisión mientras siga en beta; cuando está desactivado no hay botón de navegador y la IA no tiene herramienta de navegador.",
@@ -871,7 +867,8 @@
       "editor": "Vista de código",
       "pdf": "Vista del PDF",
       "split": "Vista dividida"
-    }
+    },
+    "moreActions": "Más acciones"
   },
   "tour": {
     "chooseColor": "Elige tu color distintivo",
