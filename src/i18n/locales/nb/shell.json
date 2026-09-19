@@ -573,10 +573,6 @@
         "description": "Vis galleriet Oleafly Tools og de enkelte verktøyene (PDF-import, ligninger, tabeller, BibTeX, søk etter forskningsgrupper og litteratur, frister) med skråstrekkommandoene sine. Av som standard mens det fortsatt er i beta.",
         "label": "LaTeX-verktøy"
       },
-      "visualEditor": {
-        "description": "Vis bryteren mellom Visuell og Kode i dokumenteditoren. Av som standard, så dokumenter åpnes bare i kodeeditoren. Diagrammer beholder alltid sin egen lerretsbryter.",
-        "label": "Visuell editor"
-      },
       "warning": "Disse funksjonene er eksperimentelle og fortsatt i beta. De er ikke ferdig testet og kan endre seg, slutte å virke eller bli fjernet i en senere utgave. Slå dem på bare hvis du vil prøve arbeid som pågår.",
       "webBrowser": {
         "description": "Vis nettleseren i appen (bryteren i panelet og hurtigtasten), og la AI-en styre den med datamaskinbruk. Av som standard mens det fortsatt er i beta. Når den er av, finnes det ingen nettleserknapp, og AI-en har ikke noe nettleserverktøy.",
@@ -855,7 +851,8 @@
       "editor": "Kildevisning",
       "pdf": "PDF-visning",
       "split": "Delt visning"
-    }
+    },
+    "moreActions": "Flere handlinger"
   },
   "tour": {
     "chooseColor": "Velg fargen som er din",

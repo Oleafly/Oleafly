@@ -595,10 +595,6 @@
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"
       },
-      "visualEditor": {
-        "description": "Zobrazí přepínač Vizuální/Kód v editoru dokumentu. Ve výchozím stavu vypnuto, takže se dokumenty otevírají jen v editoru kódu. Diagramy si vždy ponechají vlastní přepínač plátna.",
-        "label": "Vizuální editor"
-      },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
       "webBrowser": {
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi; když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
@@ -887,7 +883,8 @@
       "editor": "Zobrazení zdroje",
       "pdf": "Zobrazení PDF",
       "split": "Rozdělené zobrazení"
-    }
+    },
+    "moreActions": "Další akce"
   },
   "tour": {
     "chooseColor": "Vyberte svou charakteristickou barvu",

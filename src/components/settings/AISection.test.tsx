@@ -349,7 +349,7 @@ describe("AISection", () => {
 
   it("resets only AI Assistant preferences after confirmation", async () => {
     const user = userEvent.setup();
-    useSettingsStore.getState().setVisualEditor(true);
+    useSettingsStore.getState().setLatexTools(true);
     useFilesStore.setState({ projectId: "project-ai-reset" });
     skillsFixture = [
       {
@@ -497,7 +497,7 @@ describe("AISection", () => {
         ],
       });
     });
-    expect(useSettingsStore.getState().visualEditor).toBe(true);
+    expect(useSettingsStore.getState().latexTools).toBe(true);
     expect(mockInvoke).toHaveBeenCalledWith("skills_set_enabled", {
       id: "claim-checker",
       enabled: false,

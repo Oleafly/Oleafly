@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type HTMLAttributes, type ReactNode } from "react";
-import { PanelRightOpen } from "lucide-react";
+import { PanelRightOpen, PanelRightClose } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
@@ -36,6 +36,8 @@ export function AssistantShellHeader({
   leading?: ReactNode;
   actions?: ReactNode;
 }>) {
+  const { t } = useTranslation(["shell"]);
+  const assistantOpen = useSettingsStore((state) => state.assistantOpen);
   return (
     <div
       className={cn("flex h-9 shrink-0 items-center gap-1.5 border-b px-2", className)}
@@ -43,7 +45,16 @@ export function AssistantShellHeader({
     >
       {leading}
       {children}
-      <div className="ml-auto flex shrink-0 items-center gap-0.5">{actions}</div>
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        {actions}
+        {assistantOpen && <Tooltip label={t(($) => $.shell.dock.assistant.hide)}>
+          <button type="button" data-testid="assistant-hide" aria-label={t(($) => $.shell.dock.assistant.hide)}
+            onClick={() => useSettingsStore.getState().setAssistantOpen(false)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+            <PanelRightClose className="size-3.5" />
+          </button>
+        </Tooltip>}
+      </div>
     </div>
   );
 }

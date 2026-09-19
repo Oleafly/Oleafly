@@ -584,10 +584,6 @@
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
       },
-      "visualEditor": {
-        "description": "Afficher le sélecteur Visuel/Code dans l'éditeur de documents. Désactivé par défaut, les documents s'ouvrent donc uniquement dans l'éditeur de code. Les diagrammes gardent toujours leur propre sélecteur de canevas.",
-        "label": "Éditeur visuel"
-      },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
       "webBrowser": {
         "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta ; une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
@@ -871,7 +867,8 @@
       "editor": "Vue source",
       "pdf": "Vue PDF",
       "split": "Vue partagée"
-    }
+    },
+    "moreActions": "Autres actions"
   },
   "tour": {
     "chooseColor": "Choisissez votre couleur signature",

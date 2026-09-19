@@ -301,7 +301,7 @@ describe("Appearance settings tabs", () => {
     const user = userEvent.setup();
     const settings = useSettingsStore.getState();
     settings.setDockPlacement("right");
-    settings.setVisualEditor(true);
+    settings.setLatexTools(true);
     themeMocks.preference = "light";
 
     render(<AppearanceSection />);
@@ -319,10 +319,10 @@ describe("Appearance settings tabs", () => {
 
     expect(useSettingsStore.getState()).toMatchObject({
       dockPlacement: "left",
-      visualEditor: true,
+      latexTools: true,
     });
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("left");
-    expect(localStorage.getItem("oleafly.visualEditor")).toBe("1");
+    expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
     expect(themeMocks.setPreference).toHaveBeenCalledWith("system");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });

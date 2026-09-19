@@ -23,7 +23,7 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
-import { useVisualModeStore, visualModeAvailable } from "@/store/visual-mode";
+import { useVisualModeStore } from "@/store/visual-mode";
 import { setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 const WysiwygEditor = lazy(() =>
@@ -181,8 +181,6 @@ export function Editor() {
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
-  const visualEditor = useSettingsStore((s) => s.visualEditor);
-  const visualEnabled = visualModeAvailable(visualEditor, projectKind);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const isDiagramMainFile = projectKind === "diagram" && activePath === mainDoc;
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -199,7 +197,7 @@ export function Editor() {
   const showTypstToolbar =
     engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
-  const wysiwygState = useVisualModeStore((s) => s.enabled);
+  const wysiwyg = useVisualModeStore((s) => s.enabled);
   const loadVisualMode = useVisualModeStore((s) => s.loadProject);
   useEffect(() => {
     loadVisualMode(projectId);
@@ -207,8 +205,7 @@ export function Editor() {
   const setWysiwyg = useCallback((next: boolean) => {
     useVisualModeStore.getState().setEnabled(next);
   }, []);
-  const toggleWysiwyg = () => setWysiwyg(!wysiwygState);
-  const wysiwyg = visualEnabled && wysiwygState;
+  const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
   const markdownVisual = wysiwyg && isMarkdownFile;
   const showBreadcrumbs =
     !isDiagramMainFile && /\.(?:tex|latex|ltx)$/iu.test(activePath ?? "");
@@ -359,7 +356,7 @@ export function Editor() {
       <>
         {showLatexToolbar && (
           <div className="shrink-0">
-            <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
+            <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
           </div>
         )}
         {showMarkdownToolbar && (
@@ -367,7 +364,6 @@ export function Editor() {
             <MarkdownToolbar
               wysiwyg={wysiwyg}
               onToggleWysiwyg={toggleWysiwyg}
-              showVisualToggle={visualEnabled}
               showProjectInfo={markdownIsEngineSource}
             />
           </div>

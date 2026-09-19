@@ -182,7 +182,9 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         app.add_capability(
             tauri::ipc::CapabilityBuilder::new("e2e-playwright")
                 .window("main")
-                .permission("playwright:default"),
+                .window("preview")
+                .permission("playwright:default")
+                .permission("core:window:allow-set-size"),
         )?;
         // CI-parity window sizing: CI runner displays are smaller than
         // developer monitors, which pushes toolbar controls into the

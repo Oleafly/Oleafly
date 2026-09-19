@@ -281,14 +281,13 @@ function createNativeTest(dismissTours: boolean) {
       }
       await ensureNativePageReady(page);
       if (firstPage && !productionE2e) {
-        // Enable the experimental Visual editor and LaTeX tools (default off)
+        // Enable the experimental LaTeX tools and browser (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
         const locale = localeForSpec(testInfo.file);
         await page.evaluate(`(function(){
           localStorage.removeItem("oleafly.shortcuts");
           localStorage.setItem("oleafly.locale", "${locale}");
-          localStorage.setItem("oleafly.visualEditor", "1");
           localStorage.setItem("oleafly.latexTools", "1");
           localStorage.setItem("oleafly.webBrowser", "1");
           localStorage.setItem("oleafly.openInTree", "0");

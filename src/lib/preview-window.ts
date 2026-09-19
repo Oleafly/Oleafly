@@ -1,3 +1,6 @@
+import { availableMonitors } from "@tauri-apps/api/window";
+import { usePreviewDetachedStore, setPreviewDetached, wantsDetachedPreview } from "@/store/preview-detached";
+import { readPreviewGeometry } from "@/lib/preview-geometry";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { i18n } from "@/i18n";
 import { isTauri } from "@tauri-apps/api/core";
@@ -11,6 +14,47 @@ import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import { logError } from "@/lib/log";
 
 const PREVIEW_WINDOW_LABEL = "preview";
+let trackedPreview: WebviewWindow | null = null;
+let trackedProject: string | null = null;
+let projectGeneration = 0;
+
+function trackPreview(preview: WebviewWindow, projectId: string, created: boolean) {
+  trackedPreview = preview;
+  trackedProject = projectId;
+  const markOpen = () => {
+    if (trackedPreview === preview) setPreviewDetached(projectId, true);
+  };
+  if (created) markOpen();
+  else void preview.once("tauri://created", markOpen);
+  void preview.once("tauri://destroyed", () => {
+    if (trackedPreview !== preview) return;
+    trackedPreview = null;
+    trackedProject = null;
+    setPreviewDetached(projectId, false);
+  });
+}
+
+// A project switch closes the old preview without discarding its saved layout.
+export async function restorePreviewWindow(projectId: string | null, title: string): Promise<void> {
+  if (!isTauri()) return;
+  const generation = ++projectGeneration;
+  if (projectId !== null && trackedProject === projectId) return;
+  const existing = await WebviewWindow.getByLabel(PREVIEW_WINDOW_LABEL);
+  if (generation !== projectGeneration) return;
+  if (projectId !== null && trackedProject === projectId) return;
+  trackedPreview = null;
+  trackedProject = null;
+  usePreviewDetachedStore.setState({ projectId: null });
+  if (existing) await existing.destroy();
+  if (generation === projectGeneration && projectId && wantsDetachedPreview(projectId)) {
+    await openPreviewWindow(projectId, title);
+  }
+}
+
+export async function reattachPreviewWindow(): Promise<void> {
+  const preview = await WebviewWindow.getByLabel(PREVIEW_WINDOW_LABEL);
+  if (preview) await preview.close();
+}
 
 export type PreviewCompileStatus =
   | "not_run"
@@ -129,13 +173,16 @@ export async function openPreviewWindow(
   initialState?: PreviewWindowStateInput,
 ): Promise<void> {
   if (!isTauri()) return;
+  const generation = projectGeneration;
   const stampedState = initialState
     ? stampProjectStateRevision(initialState)
     : undefined;
   const existing = await WebviewWindow.getByLabel(PREVIEW_WINDOW_LABEL);
+  if (generation !== projectGeneration) return;
   if (existing) {
     await emit("preview:project", { projectId });
     if (stampedState) await emit("preview:refresh", stampedState);
+    if (trackedProject !== projectId) trackPreview(existing, projectId, true);
     await existing.setFocus();
     return;
   }
@@ -146,15 +193,27 @@ export async function openPreviewWindow(
   if (stampedState) {
     query.set("state", JSON.stringify(stampedState));
   }
+  const geometry = readPreviewGeometry(projectId);
+  // Restore only positions that still intersect a connected monitor.
+  const monitors = geometry ? await availableMonitors().catch(() => []) : [];
+  if (generation !== projectGeneration) return;
+  const onScreen = geometry && monitors.some((monitor) => {
+    const x = monitor.position.x / monitor.scaleFactor;
+    const y = monitor.position.y / monitor.scaleFactor;
+    return geometry.x + geometry.width > x + 80 && geometry.x < x + monitor.size.width / monitor.scaleFactor - 80 &&
+      geometry.y >= y && geometry.y < y + monitor.size.height / monitor.scaleFactor - 80;
+  });
   const preview = new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?${query.toString()}`,
     title: i18n.t(($) => $.shell.windows.preview, { title: title || "Oleafly" }),
-    width: 720,
-    height: 960,
+    width: geometry?.width ?? 720,
+    height: geometry?.height ?? 960,
+    ...(onScreen && geometry ? { x: geometry.x, y: geometry.y } : {}),
     resizable: true,
-    center: true,
+    center: !onScreen,
     focus: true,
   });
+  trackPreview(preview, projectId, false);
   void preview.once("tauri://error", (event) => {
     void logError("preview-window", event.payload);
   });

@@ -44,7 +44,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { useCompileStore } from "@/store/compile";
-import { useVisualModeStore, visualModeAvailable } from "@/store/visual-mode";
+import { useVisualModeStore } from "@/store/visual-mode";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
 import { installAuxNumbers } from "@/lib/aux-numbers";
 import { installLatexCorpus } from "@/lib/latex-corpus";
@@ -249,12 +249,7 @@ const HOST: EditorHost = {
   }),
   setMathPreview: (enabled) => useSettingsStore.getState().setEditorMathPreview(enabled),
   useEditorKeymap: () => useEditorKeymapStore((s) => s.keys),
-  useVisualMode: () => {
-    const enabled = useVisualModeStore((s) => s.enabled);
-    const setting = useSettingsStore((s) => s.visualEditor);
-    const projectKind = useFilesStore((s) => s.projectKind);
-    return enabled && visualModeAvailable(setting, projectKind);
-  },
+  useVisualMode: () => useVisualModeStore((s) => s.enabled),
   visualPorts: VISUAL_PORTS,
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),

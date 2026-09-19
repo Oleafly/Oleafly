@@ -584,10 +584,6 @@
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"
       },
-      "visualEditor": {
-        "description": "Mostra o alternador Visual/Código no editor de documentos. Desligado por padrão, então os documentos abrem só no editor de código. Os diagramas mantêm sempre o alternador de tela próprio.",
-        "label": "Editor visual"
-      },
       "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
       "webBrowser": {
         "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta; quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
@@ -871,7 +867,8 @@
       "editor": "Visão de código",
       "pdf": "Visão do PDF",
       "split": "Visão dividida"
-    }
+    },
+    "moreActions": "Mais ações"
   },
   "tour": {
     "chooseColor": "Escolha a sua cor",

@@ -19,10 +19,3 @@ export const useVisualModeStore = create<VisualModeState>((set, get) => ({
     set({ enabled });
   },
 }));
-
-export function visualModeAvailable(
-  visualEditorSetting: boolean,
-  projectKind: string,
-): boolean {
-  return projectKind === "diagram" || visualEditorSetting;
-}
