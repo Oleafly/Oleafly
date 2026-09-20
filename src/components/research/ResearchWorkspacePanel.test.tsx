@@ -140,6 +140,8 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(native.invoke.mock.calls.map(([command]) => command)).toEqual(["get_config"]);
   });
 
+  // This complete dialog flow types both fields and rerenders per keystroke;
+  // shared Windows CI runners need more than the default five seconds.
   it("uses configured models and installed CLI capabilities to create the task the user drafted", async () => {
     const config = providerConfig();
     native.invoke.mockImplementation(async (command, args) => {
@@ -177,7 +179,7 @@ describe("ResearchWorkspacePanel integration", () => {
     fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: enCommon.actions.close }));
     expect(within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel })).getByText("Check the cohort evidence")).toBeInTheDocument();
     expect(native.invoke).not.toHaveBeenCalledWith("research_task_start", expect.anything());
-  });
+  }, 15_000);
 
   it("shows a provider-settings failure while keeping an installed task-capable CLI available", async () => {
     native.invoke.mockImplementation(async (command) => {

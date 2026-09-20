@@ -11,6 +11,7 @@ import { scriptValue } from "../script-value";
 import {
   compileAndProbe,
   createBlankProject,
+  evaluateLong,
   readProjectText,
   setNextSavePath,
   waitLong,
@@ -404,26 +405,43 @@ test.describe("pdf fixtures", () => {
   });
 });
 
+test("long renderer operations survive the bridge deadline and retain failures", async ({ tauriPage }) => {
+  test.setTimeout(60_000);
+  await expect(evaluateLong(tauriPage,
+    `new Promise(resolve => setTimeout(() => resolve({ bibtex: "delayed result" }), 35_000))`,
+    45_000,
+  )).resolves.toEqual({ bibtex: "delayed result" });
+  await expect(evaluateLong(tauriPage, `Promise.reject(new Error("lookup failed"))`, 5_000))
+    .rejects.toThrow("lookup failed");
+  await expect(evaluateLong(tauriPage, `new Promise(() => {})`, 100))
+    .rejects.toThrow("waitLong timeout");
+  expect(await tauriPage.evaluate(`Object.keys(window).filter(key => key.startsWith("__oleaflyE2eEval_"))`))
+    .toEqual([]);
+});
+
 test.describe("live identifier lookups (G7)", () => {
   test.skip(skipNetwork, "network lookups skipped (E2E_SKIP_NETWORK=1)");
 
   test("doi, isbn, and pmid resolve to real bibtex", async ({ tauriPage }) => {
     test.setTimeout(120_000);
-    const doi = await tauriPage.evaluate(
-      `import("/src/features/citation.ts").then((m) => m.resolveCitation("10.1093/comjnl/27.2.97"))`,
+    const lookup = (identifier: string) => evaluateLong<{ bibtex?: string; error?: string }>(
+      tauriPage,
+      `import("/src/features/citation.ts").then((m) => m.resolveCitation(${scriptValue(identifier)}))`,
+      // ISBN can try three OpenLibrary endpoints, each with a 15s deadline.
+      60_000,
     );
+    const doi = await lookup("10.1093/comjnl/27.2.97");
+    expect(doi.error).toBeUndefined();
     expect(doi.bibtex ?? "").toMatch(/@article\{/);
     expect(doi.bibtex ?? "").toContain("Literate Programming");
 
-    const isbn = await tauriPage.evaluate(
-      `import("/src/features/citation.ts").then((m) => m.resolveCitation("978-0-262-03561-3"))`,
-    );
+    const isbn = await lookup("978-0-262-03561-3");
+    expect(isbn.error).toBeUndefined();
     expect(isbn.bibtex ?? "").toMatch(/@book\{/);
     expect(isbn.bibtex ?? "").toContain("Deep Learning");
 
-    const pmid = await tauriPage.evaluate(
-      `import("/src/features/citation.ts").then((m) => m.resolveCitation("32172672"))`,
-    );
+    const pmid = await lookup("32172672");
+    expect(pmid.error).toBeUndefined();
     expect(pmid.bibtex ?? "").toMatch(/@article\{/);
     expect(pmid.bibtex ?? "").toContain("pmid = {32172672}");
   });
