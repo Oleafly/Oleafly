@@ -115,7 +115,7 @@ export const Cell: FC<{
       onDoubleClick={onDoubleClick}
     >
       {isEditing && editing ? (
-        <CellInput value={editing.content} onInput={updateContent} onBlur={commitEditing} />
+        <CellInput value={editing.content} onInput={updateContent} onBlur={() => commitEditing()} />
       ) : (
         <div className="ofl-visual-table-cell-text">{cell.content.trim()}</div>
       )}

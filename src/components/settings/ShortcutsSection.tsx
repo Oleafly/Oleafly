@@ -197,8 +197,8 @@ function EditorKeyRows() {
     }
     const next = editorKeyFromEvent(event.nativeEvent);
     const asBinding = bindingFromEvent(event.nativeEvent);
-    if (!next || !asBinding) return;
-    const reserved = reservedShortcutAction(asBinding);
+    if (!next) return;
+    const reserved = asBinding ? reservedShortcutAction(asBinding) : null;
     if (reserved) {
       setError(
         t(($) => $.settings.shortcuts.error.reserved, {

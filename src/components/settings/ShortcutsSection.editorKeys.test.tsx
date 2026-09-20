@@ -56,6 +56,27 @@ describe("ShortcutsSection editor keys", () => {
     ).toBe("Mod-Shift-k");
   });
 
+  it.each([
+    { key: "F8" },
+    { key: "F8", altKey: true },
+  ])("records a function key without Ctrl or Meta: %j", async (event) => {
+    render(<ShortcutsSection />);
+    await openEditorTab();
+    fireEvent.keyDown(startCapture("titleCase"), event);
+    expect(useEditorKeymapStore.getState().keys.titleCase).toBe(event.altKey ? "Alt-F8" : "F8");
+  });
+
+  it("rejects a Windows Ctrl chord already stored with the Ctrl prefix", async () => {
+    Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true });
+    render(<ShortcutsSection />);
+    await openEditorTab();
+    fireEvent.keyDown(startCapture("titleCase"), { key: "u", ctrlKey: true });
+    expect(useEditorKeymapStore.getState().keys.titleCase).toBe("");
+    expect(rowFor("titleCase")).toHaveTextContent(
+      enSettings.shortcuts.error.conflict.replace("{{action}}", labels.uppercase),
+    );
+  });
+
   it("refuses a chord already taken by an application shortcut", async () => {
     render(<ShortcutsSection />);
     await openEditorTab();

@@ -152,6 +152,7 @@ function ProjectSpellLanguage() {
           projectId,
           value === APP_SETTING ? null : value,
         );
+        if (useFilesStore.getState().projectId !== projectId) return;
         useFilesStore.setState({
           projectDictionaryLocale: meta.dictionary_locale ?? null,
         });

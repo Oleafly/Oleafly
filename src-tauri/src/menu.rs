@@ -3,7 +3,9 @@
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-use crate::i18n::{t, t_with};
+use crate::i18n::t;
+#[cfg(not(target_os = "windows"))]
+use crate::i18n::t_with;
 
 pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let about = MenuItemBuilder::with_id("about", t("menu.about")).build(handle)?;

@@ -187,7 +187,7 @@ describe("CheckpointsPanel timeline", () => {
     expect(within(entries[0]).getByText("4 files")).toBeInTheDocument();
     expect(within(entries[0]).getByText("4 KB")).toBeInTheDocument();
     expect(
-      within(entries[0]).getByText(new Date(checkpoints[0].completed_at_unix_ms).toLocaleString()),
+      within(entries[0]).getByText(new Date(checkpoints[0].completed_at_unix_ms).toLocaleString("en")),
     ).toBeInTheDocument();
     expect(within(entries[1]).getByText(/Typst · paper\.typ/)).toBeInTheDocument();
 

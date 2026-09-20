@@ -226,10 +226,12 @@ pub async fn tlmgr_install_missing(
 #[cfg(test)]
 mod tests {
     use super::{
-        cross_release_error, install_missing_at, literal_pattern, package_command_error,
-        parse_search_result, resolve_providers, search_packages, validate_files,
-        within_flow_budget, SearchResult, TexUtilityOutput, TLMGR_FLOW_BUDGET,
+        cross_release_error, literal_pattern, package_command_error, parse_search_result,
+        resolve_providers, search_packages, validate_files, SearchResult, TexUtilityOutput,
     };
+    #[cfg(unix)]
+    use super::{install_missing_at, within_flow_budget, TLMGR_FLOW_BUDGET};
+    #[cfg(unix)]
     use crate::latex_engine::flow_budget_message;
 
     fn results(files: serde_json::Value) -> SearchResult {

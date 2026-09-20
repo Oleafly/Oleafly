@@ -73,12 +73,18 @@ export function resolveVisualAsset(path: string): Promise<ResolvedVisualAsset | 
   const cached = cache.entries.get(key);
   if (cached) return cached;
   const known = new Set(state.tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
-  const candidate = candidateAssetPaths(path, state).find((option) => known.has(option)) ?? null;
-  const resolved = candidate
-    ? loadAssetThumbnail(projectId, candidate).then((url) =>
-        url === null ? null : { url, path: candidate },
-      )
-    : Promise.resolve(null);
+  const folded = new Set([...known].map((entry) => entry.toLowerCase()));
+  const resolved = (async () => {
+    for (const candidate of candidateAssetPaths(path, state)) {
+      if (!known.has(candidate) && !folded.has(candidate.toLowerCase())) continue;
+      // Read the requested spelling, not a lowercased tree entry. The actual
+      // filesystem decides whether it is an alias (including Windows folders
+      // configured to be case-sensitive).
+      const url = await loadAssetThumbnail(projectId, candidate);
+      if (url !== null) return { url, path: candidate };
+    }
+    return null;
+  })();
   cache.entries.set(key, resolved);
   return resolved;
 }

@@ -101,7 +101,16 @@ export function normalizeEditorKey(value: string): string {
 
 export function sameEditorKey(left: string, right: string): boolean {
   if (!left || !right) return false;
-  return normalizeEditorKey(left) === normalizeEditorKey(right);
+  const effectiveKey = (value: string): string | null => {
+    const parsed = parseEditorKey(normalizeEditorKey(value));
+    if (!parsed) return null;
+    const modifiers = new Set<string>(parsed.modifiers.map((modifier) =>
+      modifier === "Mod" ? (isApple() ? "Cmd" : "Ctrl") : modifier,
+    ));
+    return [...MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier)), parsed.key].join("-");
+  };
+  const normalized = effectiveKey(left);
+  return normalized !== null && normalized === effectiveKey(right);
 }
 
 const APPLE_PLATFORM = /Mac|iPhone|iPad/;

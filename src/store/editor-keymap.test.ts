@@ -66,7 +66,10 @@ describe("normalizeEditorKey", () => {
 
   it("treats differently spelled equivalents as the same key", () => {
     expect(sameEditorKey("Mod-Shift-d", "Shift-Mod-D")).toBe(true);
+    expect(sameEditorKey("Mod-d", "Ctrl-d")).toBe(true);
+    setPlatform("MacIntel");
     expect(sameEditorKey("Mod-d", "Ctrl-d")).toBe(false);
+    expect(sameEditorKey("Mod-d", "Cmd-d")).toBe(true);
     expect(sameEditorKey("", "Mod-d")).toBe(false);
   });
 });

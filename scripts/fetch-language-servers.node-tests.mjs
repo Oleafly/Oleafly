@@ -51,6 +51,19 @@ const EXPECTED_DOWNLOAD_HOSTS = [
   "objects.githubusercontent.com",
 ];
 const SHA256_RE = /^[a-f0-9]{64}$/;
+const DIRECTORY_LINK_TYPE = process.platform === "win32" ? "junction" : "dir";
+
+async function createOutsideLink(root, link) {
+  const directory = join(root, "outside-directory");
+  const outside = join(directory, "keep.txt");
+  await mkdir(directory);
+  await writeFile(outside, "outside-content");
+  // Junctions exercise Windows reparse-point rejection without requiring the
+  // symlink privilege. Unix continues to exercise a link to a regular file.
+  await symlink(process.platform === "win32" ? directory : outside, link,
+    process.platform === "win32" ? "junction" : "file");
+  return outside;
+}
 
 function workflowJobBlocks(rawSource) {
   // Git hands Windows checkouts CRLF, and every marker below is written in
@@ -492,16 +505,14 @@ test("extractor rejects traversal, links, duplicates, and checksum mismatches", 
   );
 });
 
-test("secure output rejects linked ancestors and linked destination files", async (t) => {
+test("secure output rejects linked ancestors and linked destinations", async (t) => {
   const root = await temporaryDirectory(t);
   const realCache = join(root, "real-cache");
   const linkedCache = join(root, "linked-cache");
   const output = join(root, "output");
-  const outside = join(root, "outside");
   await mkdir(realCache);
   await mkdir(output);
-  await writeFile(outside, "outside-content");
-  await symlink(realCache, linkedCache, "dir");
+  await symlink(realCache, linkedCache, DIRECTORY_LINK_TYPE);
 
   await assert.rejects(
     atomicWrite(join(linkedCache, "archives", "server.bin"), Buffer.from("server"), 0o600),
@@ -509,7 +520,7 @@ test("secure output rejects linked ancestors and linked destination files", asyn
   );
 
   const linkedOutput = join(output, "server");
-  await symlink(outside, linkedOutput, "file");
+  const outside = await createOutsideLink(root, linkedOutput);
   await assert.rejects(
     atomicWrite(linkedOutput, Buffer.from("replacement"), 0o700),
     /symbolic-link file|realpath changed/,
@@ -519,10 +530,8 @@ test("secure output rejects linked ancestors and linked destination files", asyn
 
 test("exclusive temporary descriptors reject a pre-existing link", async (t) => {
   const root = await temporaryDirectory(t);
-  const outside = join(root, "outside");
   const temporary = join(root, ".server.tmp");
-  await writeFile(outside, "outside-content");
-  await symlink(outside, temporary, "file");
+  const outside = await createOutsideLink(root, temporary);
 
   await assert.rejects(
     async () => {
@@ -607,7 +616,7 @@ test("directory snapshots detect an ancestor swap before rename", async (t) => {
   const snapshot = await captureDirectorySnapshot(output);
 
   await rename(output, movedOutput);
-  await symlink(movedOutput, output, "dir");
+  await symlink(movedOutput, output, DIRECTORY_LINK_TYPE);
   await assert.rejects(
     assertDirectorySnapshot(snapshot),
     /linked directory ancestor|directory changed/,
@@ -628,7 +637,7 @@ test("atomic write rechecks directory identity around the final rename", async (
       {
         async afterTemporarySync() {
           await rename(output, movedOutput);
-          await symlink(movedOutput, output, "dir");
+          await symlink(movedOutput, output, DIRECTORY_LINK_TYPE);
         },
       },
     ),
@@ -642,7 +651,7 @@ test("CLI rejects a symlinked archive-cache ancestor without network access", as
   const linkedCache = join(root, "linked-cache");
   const appData = join(root, "app-data");
   await mkdir(realCache);
-  await symlink(realCache, linkedCache, "dir");
+  await symlink(realCache, linkedCache, DIRECTORY_LINK_TYPE);
 
   const result = spawnSync(
     process.execPath,

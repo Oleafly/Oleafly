@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { flattenCatalog, type FlatCatalog } from "../../../packages/i18n-contract/src/catalog.ts";
 
-export const ROOT = new URL("../../../", import.meta.url).pathname;
+export const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 export const LOCALES_DIR = join(ROOT, "src/i18n/locales");
 export const CONTEXT_DIR = join(ROOT, "src/i18n/context");
 export const GLOSSARY_PATH = join(ROOT, "src/i18n/glossary.json");

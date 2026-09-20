@@ -15,7 +15,11 @@ describe("Harper span offsets", () => {
     await linter.setDialect(Dialect.American);
     await linter.clearWords();
     await linter.importWords(["Dummy"]);
-  });
+    // Harper builds lazy dictionary/rule state on its first lint. Keep that
+    // cold WASM startup in setup rather than the first offset assertion.
+    const warmup = await linter.lint("A short sentence.", { language: "plaintext" });
+    for (const lint of warmup) lint.free();
+  }, 30_000);
 
   afterAll(async () => {
     await linter.dispose();

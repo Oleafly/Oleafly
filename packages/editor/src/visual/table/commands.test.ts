@@ -256,4 +256,12 @@ describe("cell content", () => {
     expect(sanitizeCellInput("a & b % c \\\\ d")).toBe("a \\& b \\% c  d");
     expect(sanitizeCellInput("already \\& fine")).toBe("already \\& fine");
   });
+
+  it("keeps line breaks inside nested command arguments", () => {
+    const content = String.raw`\shortstack{{one}\\[2pt]two\\three}`;
+    expect(sanitizeCellInput(content)).toBe(content);
+    expect(sanitizeCellInput(String.raw`\{one\\two\}`)).toBe(String.raw`\{onetwo\}`);
+    expect(sanitizeCellInput(String.raw`\shortstack{\{one\}\\two}\\`))
+      .toBe(String.raw`\shortstack{\{one\}\\two}`);
+  });
 });
