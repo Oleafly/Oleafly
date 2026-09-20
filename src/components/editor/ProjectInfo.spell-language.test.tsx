@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
@@ -170,5 +170,23 @@ describe("per-project spell-check language", () => {
         name: enEditor.projectInfo.spellLanguageAriaLabel,
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("ignores a dictionary response after switching projects", async () => {
+    let finish!: (value: { dictionary_locale: string }) => void;
+    mocks.setProjectDictionaryLocaleCmd.mockImplementation(
+      () => new Promise((resolve) => { finish = resolve; }),
+    );
+    const user = userEvent.setup();
+    const view = render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    await user.click(await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    }));
+    await user.click(await screen.findByRole("option", { name: "French (France)" }));
+    await waitFor(() => expect(mocks.setProjectDictionaryLocaleCmd).toHaveBeenCalledWith("guide", "fr_FR"));
+    act(() => useFilesStore.setState({ projectId: "second-project", projectDictionaryLocale: "en_US" }));
+    view.unmount();
+    await act(async () => finish({ dictionary_locale: "fr_FR" }));
+    expect(useFilesStore.getState().projectDictionaryLocale).toBe("en_US");
   });
 });

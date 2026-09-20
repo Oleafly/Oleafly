@@ -1992,7 +1992,18 @@ fn stash_pop_at(root: &PathBuf) -> Result<(GitMutationOutcome, bool), String> {
             true,
         ));
     }
-    Err(out_to_string(&out))
+    // Git can apply tracked changes before failing to restore an untracked
+    // file. Return the failure with project state so editors reload before
+    // they unlock, rather than saving their old buffers over the applied work.
+    Ok((
+        GitMutationOutcome {
+            message: out_to_string(&out),
+            outcome: "failed".into(),
+            conflicts,
+            changed: true,
+        },
+        true,
+    ))
 }
 
 async fn run_git_worktree_operation<R: tauri::Runtime>(
@@ -3795,6 +3806,70 @@ mod tests {
             std::fs::read_to_string(root.join("notes.tex")).unwrap(),
             "draft\n"
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn partial_stash_failure_returns_changed_project_state() {
+        use tauri::Manager as _;
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("partial-stash");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "partial-stash-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "original manuscript\n");
+        crate::project::write_meta(
+            project_id,
+            &crate::project::ProjectMeta {
+                name: "Stash project".into(),
+                main_doc: "main.tex".into(),
+                engine: "tectonic".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        super::git_initialize(project_id.into()).await.unwrap();
+        stage(&project, "main.tex").unwrap();
+        commit_index(&project, "Initial manuscript").unwrap();
+        write(&project, "main.tex", "stashed manuscript\n");
+        write(&project, "new.tex", "stashed untracked file\n");
+        stash_push_at(&project).unwrap();
+        write(&project, "new.tex", "new local file\n");
+
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let before = crate::project::project_mutation_generation(project_id.into()).unwrap();
+        let result = super::run_git_worktree_operation(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.into(),
+            Some(before),
+            "git-stash-pop",
+            super::stash_pop_at,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.outcome, "failed");
+        assert!(!result.message.is_empty());
+        assert!(result.conflicts.is_empty());
+        assert!(result.project_state.files_changed);
+        assert!(result.project_state.mutation_generation.unwrap() > before);
+        assert_eq!(
+            std::fs::read_to_string(project.join("main.tex")).unwrap(),
+            "stashed manuscript\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(project.join("new.tex")).unwrap(),
+            "new local file\n"
+        );
+        assert!(run_git(&project, &["rev-parse", "--verify", "refs/stash"])
+            .unwrap()
+            .status
+            .success());
     }
 
     fn merge_conflict_repo() -> PathBuf {

@@ -129,12 +129,14 @@ export const Grid: FC = () => {
     if (!selection) return;
     const next = selection.next(model);
     if (next) {
+      if (editing) commitEditing();
       select(next);
       return;
     }
     const edit = insertRowsEdit(view.state, parsed, CellSelection.row(model, model.rowCount - 1), "below", 1);
-    applyEdit({ changes: edit.changes, selection: CellSelection.cell(model.rowCount, 0) });
-  }, [selection, model, select, view, parsed, applyEdit]);
+    const apply = editing ? commitEditing : applyEdit;
+    apply({ changes: edit.changes, selection: CellSelection.cell(model.rowCount, 0) });
+  }, [selection, model, select, view, parsed, applyEdit, editing, commitEditing]);
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -163,9 +165,10 @@ export const Grid: FC = () => {
           select(CellSelection.cell(0, 0).expand(model));
           return;
         }
-        if (editing) commitEditing();
-        if (event.shiftKey) select(selection.previous(model));
-        else moveNext();
+        if (event.shiftKey) {
+          if (editing) commitEditing();
+          select(selection.previous(model));
+        } else moveNext();
       };
       const clearSelected = () => {
         if (!selection) return;

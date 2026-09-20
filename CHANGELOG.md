@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Visual table edits preserve cell text when Tab adds a row and keep line breaks inside LaTeX command arguments.
+- Applying a stash reloads changed files even if Git cannot restore an untracked file. The error remains visible.
+- A delayed spelling-language response no longer changes the language of another project opened while the request was pending.
+
 ## [0.4.2] - 2026-09-17
 
 ### Added

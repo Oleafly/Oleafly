@@ -43,7 +43,7 @@ interface EditingState {
   editing: EditingCell | null;
   startEditing: (row: number, column: number, initial?: string) => void;
   updateContent: (content: string) => void;
-  commitEditing: () => void;
+  commitEditing: (nextEdit?: TableEdit) => void;
   cancelEditing: () => void;
 }
 
@@ -118,17 +118,24 @@ export const TableProviders: FC<{ host: TableHost; children: ReactNode }> = ({ h
   const editingRef = useRef<EditingCell | null>(null);
   editingRef.current = editing;
 
-  const flushEditing = useCallback(() => {
+  const flushEditing = useCallback((nextEdit?: TableEdit) => {
     const current = editingRef.current;
+    const changes = [];
     if (current?.dirty && current.row < model.rowCount) {
       const content = sanitizeCellInput(current.content);
-      runEdit(host, writeCellEdit(host.parsed, current.row, current.column, content), setSelection);
+      changes.push(...writeCellEdit(host.parsed, current.row, current.column, content).changes);
     }
     editingRef.current = null;
+    // Both edits use the same parsed document positions. Dispatch them together
+    // so changing the cell's length cannot move a following row insertion.
+    runEdit(host, {
+      changes: [...changes, ...(nextEdit?.changes ?? [])],
+      selection: nextEdit?.selection ?? null,
+    }, setSelection);
   }, [host, model, setSelection]);
 
-  const commitEditing = useCallback(() => {
-    flushEditing();
+  const commitEditing = useCallback((nextEdit?: TableEdit) => {
+    flushEditing(nextEdit);
     setEditing(null);
   }, [flushEditing]);
 

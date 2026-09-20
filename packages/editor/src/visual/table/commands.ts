@@ -550,8 +550,23 @@ export function clearCellsEdit(parsed: ParsedTable, selection: CellSelection): T
 }
 
 export function sanitizeCellInput(text: string): string {
-  return text
+  const escaped = text
     .replace(/(^|[^\\])&/gu, String.raw`$1\&`)
-    .replace(/(^|[^\\])%/gu, String.raw`$1\%`)
-    .replaceAll("\\\\", "");
+    .replace(/(^|[^\\])%/gu, String.raw`$1\%`);
+  let depth = 0;
+  let result = "";
+  for (let index = 0; index < escaped.length; index++) {
+    const character = escaped[index];
+    if (character === "\\" && index + 1 < escaped.length) {
+      const next = escaped[++index];
+      // A row break inside a group belongs to the cell's LaTeX command,
+      // such as shortstack, rather than to the surrounding table.
+      if (next !== "\\" || depth > 0) result += character + next;
+      continue;
+    }
+    if (character === "{") depth++;
+    else if (character === "}") depth = Math.max(0, depth - 1);
+    result += character;
+  }
+  return result;
 }
