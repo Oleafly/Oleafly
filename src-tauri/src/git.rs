@@ -3831,6 +3831,7 @@ mod tests {
         )
         .unwrap();
         super::git_initialize(project_id.into()).await.unwrap();
+        ok_or_err(run_git(&project, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
         stage(&project, "main.tex").unwrap();
         commit_index(&project, "Initial manuscript").unwrap();
         write(&project, "main.tex", "stashed manuscript\n");
