@@ -4,7 +4,7 @@ test("chat math keeps KaTeX fonts and vertical layout in the browser", async ({ 
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto("http://localhost:1420/e2e/markdown-rendering-harness.html");
+  await page.goto(`${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/markdown-rendering-harness.html`);
   await expect(page.locator("body")).toHaveAttribute("data-fixture-state", "mounted");
   await expect(page.locator(".katex-display")).toHaveCount(4);
 

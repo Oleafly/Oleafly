@@ -25,7 +25,7 @@ async function dragAcrossProductionPdf(page: Page) {
     }),
   );
   await page.goto(
-    "http://localhost:1420/e2e/pdf-viewer-selection-harness.html",
+    `${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/pdf-viewer-selection-harness.html`,
   );
   await expect(page.locator("body")).toHaveAttribute(
     "data-fixture-state",
@@ -214,7 +214,7 @@ for (const [name, browserType] of crossBrowserTargets) {
 test("low-level selection sentinel fixture remains bounded in Chromium", async ({
   page,
 }) => {
-  await page.goto("http://localhost:1420/e2e/pdf-selection-harness.html");
+  await page.goto(`${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/pdf-selection-harness.html`);
   const first = await page.locator('[data-token="first"]').boundingBox();
   const last = await page.locator('[data-token="last"]').boundingBox();
   expect(first).not.toBeNull();

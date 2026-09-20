@@ -110,6 +110,28 @@ describe("createTabularDecoration", () => {
 });
 
 describe("table widget", () => {
+  it.each([
+    { key: "Enter", keyCode: 13, isComposing: true },
+    { key: "Enter", keyCode: 229, isComposing: false },
+    { key: "Escape", keyCode: 27, isComposing: true },
+    { key: "Tab", keyCode: 9, isComposing: true },
+  ])("leaves composing input to the IME: %j", async (event) => {
+    const editor = await mount();
+    const table = grid(editor);
+    fireEvent.mouseDown(table.querySelectorAll(".ofl-visual-table-cell")[0], { button: 0 });
+    fireEvent.keyDown(table, { key: "Enter" });
+    const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input")!;
+    fireEvent.compositionStart(input);
+    fireEvent.input(input, { target: { value: "にほん" }, isComposing: true });
+    fireEvent.keyDown(input, event);
+    expect(editor.dom.querySelector(".ofl-visual-table-cell-input")).toBe(input);
+    expect(editor.state.doc.toString()).toBe(DOC);
+    fireEvent.input(input, { target: { value: "日本" } });
+    fireEvent.compositionEnd(input);
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(editor.state.doc.toString()).toBe(DOC.replace("A & B", "日本 & B"));
+  });
+
   it("renders the grid with handles and cell text", async () => {
     const editor = await mount();
     const table = grid(editor);

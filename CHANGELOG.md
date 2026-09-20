@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Visual table edits preserve cell text when Tab adds a row and keep line breaks inside LaTeX command arguments.
 - Applying a stash reloads changed files even if Git cannot restore an untracked file. The error remains visible.
 - A delayed spelling-language response no longer changes the language of another project opened while the request was pending.
+- Visual table cells keep Japanese and Chinese IME composition active until the text is confirmed.
+- Editor shortcut recording detects equivalent Ctrl bindings on Windows and accepts function keys without Ctrl or Meta.
+- Figure previews resolve differently capitalized paths when the project filesystem supports them.
+- Windows translation checks and frontend tests handle drive-letter paths, checkout line endings, and system locale differences. Frontend CI now runs on Windows as well as Linux.
+- Native Windows tests avoid duplicate application manifests and cover every Cargo target. Windows Clippy checks now run in CI.
 
 ## [0.4.2] - 2026-09-17
 

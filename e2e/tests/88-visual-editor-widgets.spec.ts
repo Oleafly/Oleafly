@@ -303,6 +303,22 @@ test("a project image renders in place and the edit button reopens the figure di
     .toContain("\\includegraphics[width=\\linewidth]{plot.png}");
 });
 
+test("Windows resolves image references with different filename casing", async ({ tauriPage }) => {
+  test.skip(process.platform !== "win32", "Requires a case-insensitive Windows filesystem");
+  await freshDocument(
+    tauriPage,
+    "figure-case",
+    String.raw`\includegraphics[width=0.5\linewidth]{plot.png}`,
+  );
+  await writeProjectBinary(tauriPage, "Plot.PNG", FIXTURE_PNG);
+  await refreshTree(tauriPage);
+  await openVisual(tauriPage);
+
+  const image = tauriPage.locator(".cm-content .ofl-visual-graphics-image").first();
+  await expect(image).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => image.getAttribute("src")).toMatch(/^data:image\/png/u);
+});
+
 test("toolbar insertions write LaTeX into the document in visual mode", async ({ tauriPage }) => {
   await freshDocument(tauriPage, "insert", "Body text.\n");
   await openVisual(tauriPage);

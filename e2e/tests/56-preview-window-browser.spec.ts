@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 async function openHarness(page: import("@playwright/test").Page, pages: 1 | 2 | 3) {
   await page.goto(
-    `http://localhost:1420/e2e/preview-window-harness.html?pages=${pages}`,
+    `${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/preview-window-harness.html?pages=${pages}`,
   );
   await expect(page.locator("body")).toHaveAttribute("data-fixture-state", "mounted");
   await expect(page.getByTestId("pdf-renderer")).toHaveAttribute(

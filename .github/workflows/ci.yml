@@ -162,6 +162,36 @@ jobs:
       - name: Test book-scale editor performance
         run: pnpm test:editor:performance
 
+  frontend-windows:
+    name: Frontend (Windows)
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Check generated translation types
+        run: pnpm i18n:types:check
+      - name: Validate translations
+        run: pnpm i18n:validate
+      - name: Test dictionary catalogs and Windows download confinement
+        run: node --test scripts/dictionaries/build-catalog.node-tests.mjs scripts/fetch-language-servers.node-tests.mjs scripts/hunspell.node-tests.mjs
+      - name: Typecheck and build
+        run: pnpm build
+      - name: Check performance budgets
+        run: pnpm check:performance
+      - name: Test
+        run: pnpm test
+      - name: Test editor performance
+        run: pnpm test:editor:performance
+
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
@@ -304,9 +334,9 @@ jobs:
         run: cargo +1.77.0 check -p oleafly-core -p oleafly-cli --all-targets
 
   rust-windows:
-    name: Rust tests (Windows Job Objects)
+    name: Rust checks (Windows)
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
 
@@ -337,10 +367,10 @@ jobs:
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --lib
+        run: cargo test --workspace --all-targets
 
-      - name: Run the oleaflyc command tests
-        run: cargo test -p oleafly-cli --test cli
+      - name: Lint all native Windows targets
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772

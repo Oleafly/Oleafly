@@ -2281,8 +2281,13 @@ mod tests {
 
     #[test]
     fn a_failed_transfer_reports_where_it_stopped_not_every_percentage() {
+        #[cfg(unix)]
+        use std::os::unix::process::ExitStatusExt;
+        #[cfg(windows)]
+        use std::os::windows::process::ExitStatusExt;
+
         let out = std::process::Output {
-            status: std::process::Command::new("false").status().unwrap(),
+            status: std::process::ExitStatus::from_raw(1),
             stdout: Vec::new(),
             stderr: b"Writing objects:  10% (1/10)\rWriting objects:  90% (9/10)\r\n\
                       error: failed to push some refs\r\n"

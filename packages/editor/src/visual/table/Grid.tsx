@@ -140,7 +140,7 @@ export const Grid: FC = () => {
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (view.state.readOnly) return;
+      if (view.state.readOnly || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
       const key = event.key;
       const stop = () => {
         event.preventDefault();

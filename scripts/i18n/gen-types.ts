@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("../../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../../", import.meta.url));
 const englishDir = join(root, "src/i18n/locales/en");
 const outputPath = join(root, "src/i18n/resources-types.d.ts");
 
@@ -28,7 +29,7 @@ const content = lines.join("\n");
 if (process.argv.includes("--check")) {
   let existing = "";
   try {
-    existing = readFileSync(outputPath, "utf8");
+    existing = readFileSync(outputPath, "utf8").replaceAll("\r\n", "\n");
   } catch {
     existing = "";
   }

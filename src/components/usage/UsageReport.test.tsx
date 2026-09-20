@@ -191,10 +191,10 @@ describe("UsageReport", () => {
     expect(screen.getByText("Sessions", { selector: "dt" }).parentElement).toHaveTextContent(
       "0 child runs, 1 usage record",
     );
-    const start = new Date(Date.UTC(2026, 7, 1)).toLocaleDateString(undefined, {
+    const start = new Date(Date.UTC(2026, 7, 1)).toLocaleDateString("en", {
       timeZone: "UTC", month: "short", day: "numeric",
     });
-    const end = new Date(Date.UTC(2026, 7, 31)).toLocaleDateString(undefined, {
+    const end = new Date(Date.UTC(2026, 7, 31)).toLocaleDateString("en", {
       timeZone: "UTC", month: "short", day: "numeric", year: "numeric",
     });
     expect(screen.getByText(`${start} to ${end} (UTC)`)).toBeVisible();
@@ -210,7 +210,7 @@ describe("UsageReport", () => {
     expect(rows[14]).toHaveTextContent("2026-08-15");
     expect(rows[14]).toHaveTextContent("0");
     for (const day of [8, 29]) {
-      const label = new Date(Date.UTC(2026, 7, day)).toLocaleDateString(undefined, {
+      const label = new Date(Date.UTC(2026, 7, day)).toLocaleDateString("en", {
         timeZone: "UTC", month: "short", day: "numeric",
       });
       expect(within(trend).getByText(label)).toBeInTheDocument();
