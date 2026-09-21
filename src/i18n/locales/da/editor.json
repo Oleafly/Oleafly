@@ -136,7 +136,10 @@
     "imageFile": "Billedfil",
     "apply": "Anvend",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Opdel",
+    "both": "Begge",
+    "stacked": "Stablet"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger fra dokumentmotoren er ikke tilgængelige",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Filen indeholder kode, som Tegn ikke kan bevare. Lærredet er en delvis, skrivebeskyttet forhåndsvisning. Brug Kode for at redigere den oprindelige fil."
   },
   "preview": {
-    "loading": "Indlæser PDF-fremviseren…"
+    "loading": "Indlæser PDF-fremviseren…",
+    "markdown": "Markdown-forhåndsvisning"
   },
   "log": {
     "locationFileLine": "{{file}} · linje {{line}}",

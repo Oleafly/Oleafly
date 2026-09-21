@@ -136,7 +136,10 @@
     "imageFile": "影像檔案",
     "apply": "套用",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "分割",
+    "both": "兩者",
+    "stacked": "上下"
   },
   "contextMenu": {
     "engineUnavailable": "文件引擎操作無法使用",
@@ -278,7 +281,8 @@
     "readOnlyNotice": "這個檔案包含繪圖模式無法保留的原始碼。畫布只是部分的唯讀預覽。請使用程式碼模式編輯原始檔案。"
   },
   "preview": {
-    "loading": "載入 PDF 檢視器中…"
+    "loading": "載入 PDF 檢視器中…",
+    "markdown": "Markdown 預覽"
   },
   "log": {
     "locationFileLine": "{{file}} · 第 {{line}} 行",

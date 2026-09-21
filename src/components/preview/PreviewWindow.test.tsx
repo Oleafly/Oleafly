@@ -3,11 +3,18 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  native: false,
   readCompiledPdf: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   gotoPage: vi.fn(),
   getFitScale: vi.fn(() => 1),
 }));
+
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
+vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({
+  title: async () => "Preview: Paper", setTitle: vi.fn(async () => {}),
+}) }));
+vi.mock("@/lib/preview-geometry", () => ({ usePreviewGeometry: vi.fn(), readPreviewGeometry: () => null }));
 
 vi.mock("@/lib/tauri", () => ({
   readCompiledPdf: mocks.readCompiledPdf,
@@ -15,6 +22,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
+  emitTo: vi.fn(async () => {}),
   listen: vi.fn(async (
     name: string,
     listener: (event: { payload?: unknown }) => void,
@@ -76,6 +84,8 @@ import {
 } from "@/lib/preview-window";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { PreviewWindow } from "./PreviewWindow";
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 
 /**
  * The detached window only displays output whose compile identity it can
@@ -147,6 +157,7 @@ function buffer(value: number): ArrayBuffer {
 }
 
 beforeEach(() => {
+  mocks.native = false;
   window.history.replaceState({}, "", "/?view=preview&project=alpha");
   mocks.readCompiledPdf.mockReset();
   mocks.listeners.clear();
@@ -155,6 +166,24 @@ beforeEach(() => {
 });
 
 describe("detached preview request identity", () => {
+  it("loads a restored PDF from the ready snapshot without a live compile event", async () => {
+    mocks.native = true;
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    render(<PreviewWindow />);
+    const snapshot: PreviewWorkspaceSnapshot = {
+      projectId: "alpha", engine: LATEX_ENGINE, engineLoaded: true, mainDoc: "main.tex",
+      status: "success", log: "Saved compile output", errors: [], diagnostics: null, compileTimeMs: 120,
+      compileRevision: 1, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+      previewState: successState("beta", 1, 1),
+    };
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: snapshot }));
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: { ...snapshot, previewState: successState("alpha", 1, 1) } }));
+    await screen.findByTestId("detached-pdf-bytes");
+    expect(mocks.readCompiledPdf).toHaveBeenCalledWith("alpha");
+    expect(screen.getByTestId("detached-pdf-bytes")).toHaveTextContent("1");
+  });
+
   it("requires checkpoints to match the advertised request identity", () => {
     const accepted = successState("alpha", 1, 10, 10);
     expect(isPreviewWindowState(accepted)).toBe(true);

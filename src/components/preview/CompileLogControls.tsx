@@ -37,7 +37,7 @@ export function CompileLogControls({ active, onToggle, status, errors, compileTi
   return (
       <div
         data-tour="project-compile-logs"
-        className="flex items-center gap-1"
+        className="flex shrink-0 items-center gap-1 whitespace-nowrap"
       >
         <button
           type="button"

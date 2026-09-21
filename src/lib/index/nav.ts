@@ -81,8 +81,6 @@ function notifyAnalysisUnavailable(): void {
       projectIntelligenceFailureText(state) ??
         i18n.t(($) => $.core.navigation.analysisUnavailable),
     );
-  } else {
-    toast.info(i18n.t(($) => $.core.navigation.analysisUpdating));
   }
 }
 

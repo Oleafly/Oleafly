@@ -136,7 +136,10 @@
     "imageFile": "Archivo de imagen",
     "apply": "Aplicar",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Dividir",
+    "both": "Ambos",
+    "stacked": "Apilado"
   },
   "contextMenu": {
     "engineUnavailable": "Acciones del motor de documentos no disponibles",
@@ -284,7 +287,8 @@
     "readOnlyNotice": "Este archivo contiene código que el modo Dibujar no puede conservar. El lienzo es una vista previa parcial de solo lectura. Usa Código para editar el archivo original."
   },
   "preview": {
-    "loading": "Cargando el visor de PDF…"
+    "loading": "Cargando el visor de PDF…",
+    "markdown": "Vista previa de Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · línea {{line}}",

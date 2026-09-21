@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { applyThemeCustomization } from "@/lib/theme-customization";
+import { applyThemeCustomization, themeTokenOverride, THEME_CUSTOMIZATION_STORAGE_KEY } from "@/lib/theme-customization";
 
 export type Theme = "light" | "dark";
 export type ThemePreference = "system" | "light" | "dark";
@@ -23,6 +23,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "oleafly.theme";
+const ACCENT_STORAGE_KEY = "oleafly.accent";
 const LIGHT_SCHEME_QUERY = "(prefers-color-scheme: light)";
 
 export const TOGGLE_THEME_EVENT = "oleafly:toggle-theme";
@@ -71,12 +72,22 @@ export function subscribeTheme(listener: ThemeListener): () => void {
   };
 }
 
+export function applyAccentColor(theme: Theme, accentColor = window.localStorage.getItem(ACCENT_STORAGE_KEY)): void {
+  if (themeTokenOverride(theme, "primary")) return;
+  const root = document.documentElement;
+  root.style.setProperty("--primary", accentColor || "#2563eb");
+  if (!themeTokenOverride(theme, "primary-foreground")) {
+    root.style.setProperty("--primary-foreground", "#ffffff");
+  }
+}
+
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   root.classList.remove("light", "dark");
   root.classList.add(theme);
   root.style.colorScheme = theme;
   applyThemeCustomization(theme);
+  applyAccentColor(theme);
   const changed = appliedTheme !== theme;
   appliedTheme = theme;
   if (!changed) return;
@@ -128,11 +139,20 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
       const detail = event instanceof CustomEvent ? event.detail : undefined;
       if (isThemePreference(detail)) setPreference(detail);
     };
+    const onStorage = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key === STORAGE_KEY || event.key === null) setPreference(getStoredPreference());
+      if (event.key === ACCENT_STORAGE_KEY || event.key === THEME_CUSTOMIZATION_STORAGE_KEY || event.key === null) {
+        applyTheme(resolveTheme(getStoredPreference()));
+      }
+    };
     window.addEventListener(TOGGLE_THEME_EVENT, onToggle);
     window.addEventListener(SET_THEME_PREFERENCE_EVENT, onSet);
+    window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener(TOGGLE_THEME_EVENT, onToggle);
       window.removeEventListener(SET_THEME_PREFERENCE_EVENT, onSet);
+      window.removeEventListener("storage", onStorage);
     };
   }, [toggleTheme]);
 

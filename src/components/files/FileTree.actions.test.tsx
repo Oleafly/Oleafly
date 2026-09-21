@@ -86,7 +86,7 @@ describe("FileTree toolbar", () => {
 
     const toggle = screen.getByRole("button", { name: files.title });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(toggle.querySelector("svg.lucide-folder-tree")).toBeInTheDocument();
+    expect(toggle.querySelector("svg.lucide-folder-closed")).toBeInTheDocument();
     expect(screen.queryByRole("tree", { name: files.treeAriaLabel })).not.toBeInTheDocument();
 
     fireEvent.click(toggle);
@@ -109,9 +109,9 @@ describe("FileTree toolbar", () => {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     expect(screen.getByTestId("source-tree-actions")).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
-      "group-focus-within/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
+      "group-focus-within/section:flex",
     );
     expect(screen.getByTestId("source-tree-actions").parentElement).toHaveClass(
       "pr-2",
@@ -135,8 +135,8 @@ describe("FileTree toolbar", () => {
     const bulkToggle = screen.getByRole("button", { name: files.expandAll });
     expect(bulkToggle).toBeDisabled();
     expect(bulkToggle.parentElement).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
     );
   });
 

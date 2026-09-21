@@ -9,6 +9,16 @@ beforeEach(() => {
 });
 
 describe("project workspace preferences", () => {
+  it("closes the terminal on project open, including layouts saved by older versions", () => {
+    localStorage.setItem("oleafly.workspace.first", JSON.stringify({ version: 1, terminalOpen: true, assistantOpen: true }));
+    useSettingsStore.setState({ terminalOpen: true });
+    const off = restoreWorkspaceLayout("first");
+    expect(useSettingsStore.getState()).toMatchObject({ terminalOpen: false, assistantOpen: true });
+    useSettingsStore.setState({ terminalOpen: true, viewMode: "split" });
+    expect(readWorkspaceLayout("first")).not.toHaveProperty("terminalOpen");
+    off();
+  });
+
   it("opens new projects in Source with the file tree and no optional panels", () => {
     const off = restoreWorkspaceLayout("new");
     expect(useSettingsStore.getState()).toMatchObject({ viewMode: "editor", showTree: true, assistantOpen: false, terminalOpen: false });

@@ -23,6 +23,8 @@ import {
   Rows3,
   Search,
   SearchCode,
+  SeparatorHorizontal,
+  SeparatorVertical,
   Sigma,
   Tag,
   Type,
@@ -30,6 +32,8 @@ import {
   Undo2,
 } from "lucide-react";
 import { Popover, PopoverItem } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
@@ -112,18 +116,31 @@ export function IconBtn({
   );
 }
 
+export type EditorMode = "code" | "visual" | "both";
+
 export function WysiwygModeSwitch({
   wysiwyg,
   onToggle,
   secondLabel,
+  mode = wysiwyg ? "visual" : "code",
+  splitLayout = "split",
+  onModeChange,
   "data-tour": dataTour,
 }: Readonly<{
   wysiwyg: boolean;
   onToggle: () => void;
   secondLabel?: string;
+  mode?: EditorMode;
+  splitLayout?: MarkdownSplitLayout;
+  onModeChange?: (mode: EditorMode, layout?: MarkdownSplitLayout) => void;
   "data-tour"?: string;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const selectMode = (next: EditorMode) => {
+    if (next === mode) return;
+    if (onModeChange) onModeChange(next);
+    else onToggle();
+  };
   return (
     <div
       data-tour={dataTour}
@@ -131,28 +148,53 @@ export function WysiwygModeSwitch({
     >
       <button
         type="button"
-        onClick={() => wysiwyg && onToggle()}
+        onClick={() => selectMode("code")}
         aria-label={t(($) => $.editor.toolbar.switchToSource)}
-        aria-pressed={!wysiwyg}
+        aria-pressed={mode === "code"}
         className={cn(
           "rounded-full px-2.5 py-1 transition-colors",
-          !wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          mode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
         {t(($) => $.editor.toolbar.code)}
       </button>
       <button
         type="button"
-        onClick={() => !wysiwyg && onToggle()}
+        onClick={() => selectMode("visual")}
         aria-label={t(($) => $.editor.toolbar.switchToVisual)}
-        aria-pressed={wysiwyg}
+        aria-pressed={mode === "visual"}
         className={cn(
           "rounded-full px-2.5 py-1 transition-colors",
-          wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          mode === "visual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
         {secondLabel ?? t(($) => $.editor.toolbar.visual)}
       </button>
+      {onModeChange && <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-pressed={mode === "both"}
+            className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
+              mode === "both" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            {t(($) => $.editor.toolbar.both)}
+            <ChevronDown aria-hidden className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuRadioGroup value={mode === "both" ? splitLayout : ""}>
+            <DropdownMenuRadioItem value="stacked" className="gap-2" onSelect={() => onModeChange("both", "stacked")}>
+              <SeparatorHorizontal aria-hidden className="size-4" />
+              {t(($) => $.editor.toolbar.stacked)}
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="split" className="gap-2" onSelect={() => onModeChange("both", "split")}>
+              <SeparatorVertical aria-hidden className="size-4" />
+              {t(($) => $.editor.toolbar.split)}
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>}
     </div>
   );
 }

@@ -499,8 +499,6 @@ function runVisualTokenActivation(
         projectIntelligenceFailureText(state) ??
           i18n.t(($) => $.intelligence.references.unavailable),
       );
-    } else {
-      toast.info(i18n.t(($) => $.intelligence.references.updating));
     }
     return;
   }
@@ -571,14 +569,10 @@ function activateVisualToken(
 }
 
 function visualAnalysisIsCurrent(view: EditorView): boolean {
-  if (
+  return (
     !visualProjectIntelligenceKey.getState(view.state)?.dirty &&
-    currentProjectIntelligence()
-  ) {
-    return true;
-  }
-  toast.info(i18n.t(($) => $.intelligence.references.updating));
-  return false;
+    currentProjectIntelligence() !== null
+  );
 }
 
 function publishVisualCurrent(view: EditorView) {

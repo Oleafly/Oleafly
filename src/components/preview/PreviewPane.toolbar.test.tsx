@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
@@ -73,12 +73,13 @@ vi.mock("@/features/ask-ai-compile-errors", () => ({
   askAiAboutCompileErrors: vi.fn(),
 }));
 const openPreviewWindow = vi.hoisted(() => vi.fn());
+const toolbarMeasurement = vi.hoisted(() => ({ width: Number.POSITIVE_INFINITY }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow }));
 vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useAvailableWidth: () => ({
     containerRef: () => {},
-    availableWidth: Number.POSITIVE_INFINITY,
+    availableWidth: toolbarMeasurement.width,
   }),
 }));
 
@@ -140,6 +141,7 @@ async function renderWithPdf() {
 }
 
 beforeEach(() => {
+  toolbarMeasurement.width = Number.POSITIVE_INFINITY;
   viewerStub.loadStatus = "ready";
   viewerStub.outlineItems = [];
   viewerStub.pages = 3;
@@ -151,7 +153,27 @@ beforeEach(() => {
   usePdfViewStore.setState({ page: 1 });
 });
 
+afterEach(() => {
+  document.documentElement.style.removeProperty("font-size");
+});
+
 describe("PreviewPane toolbar", () => {
+  it("moves controls into the menu when larger text makes them too wide", async () => {
+    toolbarMeasurement.width = 130;
+    openProject();
+    const view = render(<PreviewPane />);
+    await screen.findByTestId("mock-pdf-viewer");
+    expect(await screen.findByRole("button", { name: enPreview.actions.fullscreen })).toBeVisible();
+
+    document.documentElement.style.fontSize = "22px";
+    view.rerender(<PreviewPane />);
+    expect(screen.queryByRole("button", { name: enPreview.actions.fullscreen })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enPreview.search.open })).toBeVisible();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: enPreview.toolbar.more }));
+    expect(await screen.findByRole("menuitem", { name: enPreview.actions.fullscreen })).toBeVisible();
+  });
+
   it("lays out every control with a resolved label", async () => {
     await renderWithPdf();
     for (const label of [

@@ -9,6 +9,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useReferencesStore } from "@/store/references";
 import { Outline } from "./Outline";
 import { ReferencesPanel } from "./ReferencesPanel";
+import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 
 vi.mock("@/lib/project-intelligence/navigation", () => ({
   navigateToProjectRange: vi.fn(),
@@ -59,7 +60,7 @@ afterEach(() => {
 });
 
 describe("navigation panels reject stale source ranges", () => {
-  it("shows pending state instead of stale structure, citations, or actions", () => {
+  it("retains Structure during a refresh without allowing stale navigation", () => {
     const snapshot = staleSnapshot();
     useFilesStore.setState({
       projectId: "project",
@@ -86,10 +87,11 @@ describe("navigation panels reject stale source ranges", () => {
     });
 
     const outline = render(<Outline />);
-    expect(
-      screen.getByText("Mapping project structure"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("STALE STRUCTURE")).toBeNull();
+    expect(screen.queryByText("Mapping project structure")).toBeNull();
+    expect(screen.getByText("STALE STRUCTURE")).toBeInTheDocument();
+    vi.mocked(navigateToProjectRange).mockClear();
+    fireEvent.click(screen.getByText("STALE STRUCTURE"));
+    expect(navigateToProjectRange).not.toHaveBeenCalled();
     outline.unmount();
 
     render(<ReferencesPanel />);

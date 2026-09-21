@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { FileText, Loader2, Settings2, X } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -24,11 +25,13 @@ import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { useVisualModeStore } from "@/store/visual-mode";
-import { setWysiwygVisibilityController } from "./wysiwyg/controller";
+import { getMarkdownSplitSize, setMarkdownSplitSize } from "@/lib/wysiwyg-mode";
+import { flushWysiwygPendingEdits, setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
+const MarkdownPreview = lazy(() => import("./MarkdownPreview").then((module) => ({ default: module.MarkdownPreview })));
 
 function basename(p: string) {
   return p.slice(p.lastIndexOf("/") + 1);
@@ -198,6 +201,8 @@ export function Editor() {
     engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
   const wysiwyg = useVisualModeStore((s) => s.enabled);
+  const markdownSplitEnabled = useVisualModeStore((s) => s.markdownSplit);
+  const markdownSplitLayout = useVisualModeStore((s) => s.markdownSplitLayout);
   const loadVisualMode = useVisualModeStore((s) => s.loadProject);
   useEffect(() => {
     loadVisualMode(projectId);
@@ -206,7 +211,14 @@ export function Editor() {
     useVisualModeStore.getState().setEnabled(next);
   }, []);
   const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
-  const markdownVisual = wysiwyg && isMarkdownFile;
+  const markdownSplit = isMarkdownFile && markdownSplitEnabled;
+  const stackMarkdownSplit = markdownSplitLayout === "stacked";
+  const markdownSourceSize = getMarkdownSplitSize(projectId);
+  const saveMarkdownSplitSize = useCallback((sizes: number[]) => {
+    if (projectId && sizes.length === 2) setMarkdownSplitSize(projectId, sizes[0]);
+  }, [projectId]);
+  const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
+  const markdownMode = markdownSplit ? "both" : markdownVisual ? "visual" : "code";
   const showBreadcrumbs =
     !isDiagramMainFile && /\.(?:tex|latex|ltx)$/iu.test(activePath ?? "");
 
@@ -255,10 +267,27 @@ export function Editor() {
           markdownVisual && "invisible pointer-events-none select-none",
         )}
       >
-        <EditorContextMenu>
-          <CodeMirrorEditor active={!markdownVisual} />
-        </EditorContextMenu>
-        <SelectionActionMenu />
+        <PanelGroup direction={stackMarkdownSplit ? "vertical" : "horizontal"} onLayout={saveMarkdownSplitSize}>
+          <Panel id="markdown-source" order={1} defaultSize={markdownSourceSize} minSize={20}>
+            <EditorContextMenu>
+              <CodeMirrorEditor active={!markdownVisual} />
+            </EditorContextMenu>
+            <SelectionActionMenu />
+          </Panel>
+          {markdownSplit && <>
+            <PanelResizeHandle
+              data-testid="markdown-split-resize"
+              aria-label={`${t(($) => $.editor.toolbar.code)} / ${t(($) => $.editor.preview.markdown)}`}
+              className={cn("shrink-0 bg-border/60 transition-colors hover:bg-primary/30 focus-visible:bg-primary/30",
+                stackMarkdownSplit ? "h-1" : "w-1")}
+            />
+            <Panel id="markdown-preview" order={2} defaultSize={100 - markdownSourceSize} minSize={20}>
+              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>}>
+                <MarkdownPreview key={`${projectId}:${activePath}`} />
+              </Suspense>
+            </Panel>
+          </>}
+        </PanelGroup>
       </div>
       </div>
     </div>
@@ -362,8 +391,17 @@ export function Editor() {
         {showMarkdownToolbar && (
           <div className="shrink-0">
             <MarkdownToolbar
-              wysiwyg={wysiwyg}
+              wysiwyg={isMarkdownFile ? markdownVisual : wysiwyg}
               onToggleWysiwyg={toggleWysiwyg}
+              mode={isMarkdownFile ? markdownMode : undefined}
+              splitLayout={markdownSplitLayout}
+              onModeChange={isMarkdownFile ? (mode, layout) => {
+                if (markdownVisual) flushWysiwygPendingEdits();
+                const visualMode = useVisualModeStore.getState();
+                if (layout) visualMode.setMarkdownSplitLayout(layout);
+                visualMode.setMarkdownSplit(mode === "both");
+                if (mode !== "both") setWysiwyg(mode === "visual");
+              } : undefined}
               showProjectInfo={markdownIsEngineSource}
             />
           </div>

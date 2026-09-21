@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Children, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Globe,
-  MoreHorizontal,
+  SlidersHorizontal,
   GitFork,
   PanelLeft,
   PanelLeftClose,
@@ -21,6 +21,8 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
+import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup,
   DropdownMenuRadioItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -37,7 +39,7 @@ const ctrlBtn = (active: boolean) =>
 
 const dockBtn = (active: boolean) =>
   cn(
-    "text-muted-foreground hover:text-foreground",
+    "size-7 text-muted-foreground hover:text-foreground",
     active && "bg-primary/10 text-foreground hover:bg-primary/10",
   );
 
@@ -151,7 +153,16 @@ export function SidebarCollapseToggle() {
   );
 }
 
-export function WorkspaceDockControls({ onFork, children, compact = true, inactive = false }: Readonly<{ onFork?: () => void; children?: ReactNode; compact?: boolean; inactive?: boolean }>) {
+export function WorkspaceDockControls({ onFork, layoutControl, children, overflow = TOOLBAR_OVERFLOW.fork }: Readonly<{
+  onFork?: () => void;
+  layoutControl?: ReactNode;
+  children?: ReactNode;
+  overflow?: number;
+}>) {
+  const hideBrowser = overflow >= TOOLBAR_OVERFLOW.browser;
+  const hideTheme = overflow >= TOOLBAR_OVERFLOW.theme;
+  const hideSettings = overflow >= TOOLBAR_OVERFLOW.settings;
+  const hideFork = overflow >= TOOLBAR_OVERFLOW.fork;
   const { preference, setPreference } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const pointerToggled = useRef(false);
@@ -176,14 +187,18 @@ export function WorkspaceDockControls({ onFork, children, compact = true, inacti
     ? t(($) => $.shell.dock.assistant.hide)
     : t(($) => $.shell.dock.assistant.show);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Resizing changes which actions this menu owns.
+  useEffect(() => setMenuOpen(false), [overflow]);
+
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div className="contents">
+      <ToolbarAction name="terminal">
       <Tooltip label={terminalLabel} side="bottom">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          data-testid={inactive ? undefined : "rail-terminal-toggle"}
+          data-testid="rail-terminal-toggle"
           aria-label={terminalLabel}
           aria-pressed={terminalOpen}
           onClick={() => setTerminalOpen(!terminalOpen)}
@@ -192,26 +207,22 @@ export function WorkspaceDockControls({ onFork, children, compact = true, inacti
           <SquareTerminal className="size-4" aria-hidden />
         </Button>
       </Tooltip>
-      {!compact && <>
-        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-        {webBrowser && <>
-          <Tooltip label={browserLabel} side="bottom">
-            <Button type="button" variant="ghost" size="icon"
-              data-testid={inactive ? undefined : "rail-browser-toggle"}
-              aria-label={browserLabel} aria-pressed={browserOpen}
-              onClick={() => toggleBrowser()} className={dockBtn(browserOpen)}>
-              <Globe className="size-4" aria-hidden />
-            </Button>
-          </Tooltip>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-        </>}
-      </>}
+      </ToolbarAction>
+      {layoutControl}
+      {webBrowser && <ToolbarAction name="browser" order={TOOLBAR_OVERFLOW.browser} hidden={hideBrowser}>
+        <Tooltip label={browserLabel} side="bottom">
+          <Button type="button" variant="ghost" size="icon" className={dockBtn(browserOpen)}
+            aria-label={browserLabel} aria-pressed={browserOpen} data-testid={hideBrowser ? undefined : "rail-browser-toggle"}
+            onClick={() => toggleBrowser()}><Globe className="size-4" aria-hidden /></Button>
+        </Tooltip>
+      </ToolbarAction>}
+      <ToolbarAction name="assistant">
       <Tooltip label={assistantLabel} side="bottom">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          data-testid={inactive ? undefined : "rail-assistant-toggle"}
+          data-testid="rail-assistant-toggle"
           aria-label={assistantLabel}
           aria-pressed={assistantOpen}
           onClick={() => setAssistantOpen(!assistantOpen)}
@@ -220,57 +231,56 @@ export function WorkspaceDockControls({ onFork, children, compact = true, inacti
           <Sparkles className="size-4" aria-hidden />
         </Button>
       </Tooltip>
-      {!compact && <>
-        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-        <ThemeMenu triggerClassName={dockBtn(false)} />
+      </ToolbarAction>
+      <ToolbarAction name="theme" order={TOOLBAR_OVERFLOW.theme} hidden={hideTheme}>
+        <ThemeMenu key={hideTheme ? "hidden" : "visible"} triggerClassName={dockBtn(false)} />
+      </ToolbarAction>
+      <ToolbarAction name="settings" order={TOOLBAR_OVERFLOW.settings} hidden={hideSettings}>
         <Tooltip label={t(($) => $.shell.dock.settings)} side="bottom">
-          <Button type="button" variant="ghost" size="icon"
-            data-testid={inactive ? undefined : "open-settings"}
-            aria-label={t(($) => $.shell.dock.settings)}
-            onClick={() => setSettingsOpen(true)} className={dockBtn(false)}>
-            <SettingsIcon className="size-4" />
-          </Button>
+          <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
+            data-testid={hideSettings ? undefined : "open-settings"} aria-label={t(($) => $.shell.dock.settings)}
+            onClick={() => setSettingsOpen(true)}><SettingsIcon className="size-4" /></Button>
         </Tooltip>
-      </>}
-      {compact && <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      </ToolbarAction>
+      <ToolbarAction name="menu" hidden={overflow === 0}>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.moreActions)} data-testid={inactive ? undefined : "workspace-menu"}
+          <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.moreActions)} data-testid="workspace-menu" className={dockBtn(false)}
             onPointerDown={() => { pointerToggled.current = true; }}
             onClick={() => {
               if (pointerToggled.current) { pointerToggled.current = false; return; }
               setMenuOpen((open) => !open);
             }}>
-            <MoreHorizontal className="size-4" />
+            <SlidersHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {children}
-          <DropdownMenuSub>
+          {Children.toArray(children).length > 0 && <DropdownMenuSeparator />}
+          {onFork && hideFork && <DropdownMenuItem onSelect={onFork}>
+            <GitFork className="size-4" />{t(($) => $.shell.toolbar.forkProject)}
+          </DropdownMenuItem>}
+          {webBrowser && hideBrowser && <DropdownMenuItem data-testid="rail-browser-toggle" onSelect={() => toggleBrowser()}>
+            <Globe className="size-4" />{browserLabel}
+          </DropdownMenuItem>}
+          {hideTheme && <DropdownMenuSub>
             <DropdownMenuSubTrigger>{themeMenuLabel(preference)}</DropdownMenuSubTrigger>
             <DropdownMenuPortal><DropdownMenuSubContent>
               <DropdownMenuRadioGroup value={preference} onValueChange={(value) => setPreference(value as ThemePreference)}>
                 {THEME_PREFERENCES.map((value) => (
-                  <DropdownMenuRadioItem key={value} value={value} onClick={() => setPreference(value)} data-testid={`theme-option-${value}`}>
+                  <DropdownMenuRadioItem key={value} value={value} data-testid={`theme-option-${value}`}>
                     {themePreferenceLabel(value)}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent></DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuItem data-testid="open-settings" onSelect={() => setSettingsOpen(true)}>
+          </DropdownMenuSub>}
+          {hideSettings && <DropdownMenuItem data-testid="open-settings" onSelect={() => setSettingsOpen(true)}>
             <SettingsIcon className="size-4" />{t(($) => $.shell.dock.settings)}
-          </DropdownMenuItem>
-          {onFork && <DropdownMenuItem onSelect={onFork}>
-            <GitFork className="size-4" />{t(($) => $.shell.toolbar.forkProject)}
           </DropdownMenuItem>}
-          {webBrowser && <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="rail-browser-toggle" onSelect={() => toggleBrowser()}>
-              <Globe className="size-4" />{browserLabel}
-            </DropdownMenuItem>
-          </>}
         </DropdownMenuContent>
-      </DropdownMenu>}
+      </DropdownMenu>
+      </ToolbarAction>
     </div>
   );
 }

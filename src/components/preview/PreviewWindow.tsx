@@ -344,18 +344,6 @@ export function PreviewWindow({
   const [rotationPending, setRotationPending] = useState(false);
   const command = (request: PreviewWorkspaceCommand) => sendPreviewCommand(projectId, request);
   usePreviewGeometry(projectId, !disableNativeBridge && isTauri());
-  useEffect(() => {
-    if (disableNativeBridge || !isTauri() || !projectId) return;
-    setWorkspace(null);
-    let disposed = false;
-    const off = listen<PreviewWorkspaceSnapshot>("preview:workspace", ({ payload }) => {
-      if (!disposed && payload?.projectId === projectId && typeof payload.log === "string" && typeof payload.status === "string" && Array.isArray(payload.errors) && payload.engine) setWorkspace(payload);
-    });
-    void off.then(() => {
-      if (!disposed) void emitTo("main", "preview:command", { projectId, action: "ready" });
-    });
-    return () => { disposed = true; void off.then((unlisten) => unlisten()); };
-  }, [projectId, disableNativeBridge]);
   const [compileState, setCompileState] =
     useState<PreviewWindowState | null>(initialContext.state);
   const [previewDocument, setPreviewDocument] =
@@ -546,6 +534,23 @@ export function PreviewWindow({
     },
     [retargetProject],
   );
+
+  useEffect(() => {
+    if (disableNativeBridge || !isTauri() || !projectId) return;
+    setWorkspace(null);
+    let disposed = false;
+    const off = listen<PreviewWorkspaceSnapshot>("preview:workspace", ({ payload }) => {
+      if (!disposed && payload?.projectId === projectId && typeof payload.log === "string" && typeof payload.status === "string" && Array.isArray(payload.errors) && payload.engine) {
+        setWorkspace(payload);
+        // Reopening can miss a compile event while the new webview loads.
+        if (payload.previewState?.identity?.projectId === projectId) acceptCompileState(payload.previewState);
+      }
+    });
+    void off.then(() => {
+      if (!disposed) void emitTo("main", "preview:command", { projectId, action: "ready" });
+    });
+    return () => { disposed = true; void off.then((unlisten) => unlisten()); };
+  }, [projectId, disableNativeBridge, acceptCompileState]);
 
   useEffect(() => {
     if (disableNativeBridge) return;

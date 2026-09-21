@@ -169,6 +169,7 @@ vi.mock("@/lib/theme", () => ({
   ThemeProvider: ({ children }: { children?: unknown }) => children,
   useAppTheme: () => "dark",
   currentTheme: () => "dark",
+  applyAccentColor: vi.fn(),
   subscribeTheme: () => () => {},
 }));
 vi.mock("@/components/ErrorBoundary", () => ({

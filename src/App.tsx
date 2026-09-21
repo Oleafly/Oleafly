@@ -22,8 +22,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
-import { ThemeProvider, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
-import { themeTokenOverride } from "@/lib/theme-customization";
+import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
@@ -438,14 +437,7 @@ function AppContent() {
   }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, editorLineHeight]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const apply = (theme: Theme) => {
-      if (themeTokenOverride(theme, "primary")) return;
-      root.style.setProperty("--primary", accentColor || "#2563eb");
-      if (!themeTokenOverride(theme, "primary-foreground")) {
-        root.style.setProperty("--primary-foreground", "#ffffff");
-      }
-    };
+    const apply = (theme: Theme) => applyAccentColor(theme, accentColor);
     apply(currentTheme());
     return subscribeTheme(apply);
   }, [accentColor]);

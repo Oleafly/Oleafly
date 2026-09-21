@@ -16,6 +16,7 @@ import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { i18n } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { ThemeProvider } from "@/lib/theme";
+import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { registerRailTabs } from "@/contributions/tabs";
 
 registerRailTabs();
@@ -110,15 +111,16 @@ describe("WorkspaceControls", () => {
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
-  it("keeps the original direct controls in the expanded toolbar", () => {
+  it("keeps terminal and AI visible at maximum overflow", () => {
     useSettingsStore.setState({ settingsOpen: false });
-    render(<ThemeProvider><WorkspaceDockControls compact={false} /></ThemeProvider>);
-    expect(screen.queryByTestId("workspace-menu")).not.toBeInTheDocument();
-    expect(screen.getByTestId("theme-menu")).toBeVisible();
-    fireEvent.click(screen.getByTestId("rail-browser-toggle"));
-    expect(toggleBrowser).toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("open-settings"));
-    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+    render(<ThemeProvider><WorkspaceDockControls overflow={TOOLBAR_OVERFLOW.export} /></ThemeProvider>);
+    expect(screen.getByTestId("rail-assistant-toggle")).toBeVisible();
+    expect(screen.getByRole("button", { name: /Show terminal/ })).toBeVisible();
+    expect(screen.getByTestId("rail-terminal-toggle").closest("[inert]")).toBeNull();
+    fireEvent.click(screen.getByTestId("rail-terminal-toggle"));
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    openThemeMenu(screen.getByTestId("workspace-menu"));
+    expect(screen.queryByRole("menuitem", { name: /terminal/ })).not.toBeInTheDocument();
   });
 
   it("opens More actions from a click without pointer events", () => {
@@ -126,6 +128,26 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByTestId("workspace-menu"));
     expect(screen.getByTestId("workspace-menu")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByTestId("open-settings")).toBeVisible();
+  });
+
+  it("moves browser, theme, and settings between direct controls and the overflow menu", () => {
+    useSettingsStore.setState({ settingsOpen: false });
+    const { rerender } = render(<ThemeProvider><WorkspaceDockControls overflow={0} /></ThemeProvider>);
+    expect(screen.getByRole("button", { name: enShell.dock.settings })).toBeVisible();
+    expect(screen.queryByRole("button", { name: enShell.toolbar.moreActions })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("rail-browser-toggle"));
+    expect(toggleBrowser).toHaveBeenCalled();
+    openThemeMenu(screen.getByRole("button", { name: "Appearance: System" }));
+    fireEvent.click(screen.getByTestId("theme-option-dark"));
+    expect(localStorage.getItem("oleafly.theme")).toBe("dark");
+
+    rerender(<ThemeProvider><WorkspaceDockControls overflow={TOOLBAR_OVERFLOW.layout} /></ThemeProvider>);
+    expect(screen.queryByRole("button", { name: enShell.dock.settings })).not.toBeInTheDocument();
+    openThemeMenu(screen.getByTestId("workspace-menu"));
+    expect(screen.getByRole("menuitem", { name: /Open browser/ })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Appearance: Dark" })).toBeVisible();
+    fireEvent.click(screen.getByRole("menuitem", { name: enShell.dock.settings }));
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
   it("changes and retains the theme through the grouped menu", async () => {

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createCompileSuccessCheckpoint, type CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 
 const mocks = vi.hoisted(() => ({
+  detachedProject: "current" as string | null,
+  checkpoint: null as CompileSuccessCheckpoint | null,
+  detachedChanged: (() => {}) as () => void,
+  unsubscribeDetached: vi.fn(),
   handlers: new Map<string, (event: { payload: unknown }) => void>(),
   emitTo: vi.fn(async () => {}),
   recompile: vi.fn(async () => {}),
@@ -20,9 +25,10 @@ vi.mock("@/store/files", () => ({ useFilesStore: {
   getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, refreshTree: mocks.refreshTree }),
   subscribe: () => mocks.unsubscribeFiles,
 } }));
-vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: "current" }) } }));
+vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: mocks.detachedProject }), subscribe: (listener: () => void) => { mocks.detachedChanged = listener; return mocks.unsubscribeDetached; } } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: {
   getState: () => ({ recompile: mocks.recompile, stopCompile: mocks.stopCompile, status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
+    lastAttemptIdentity: null, lastCompileCheckpoint: mocks.checkpoint, failureReason: null,
     autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
     setAutoCompile: mocks.setAutoCompile, setCompileMode: mocks.setCompileMode,
     setCheckSyntaxBeforeCompile: mocks.setCheckSyntaxBeforeCompile, setStopOnFirstError: mocks.setStopOnFirstError }),
@@ -30,7 +36,7 @@ vi.mock("@/store/compile", () => ({ useCompileStore: {
 } }));
 import { startPreviewWorkspaceBridge } from "./preview-workspace";
 
-beforeEach(() => { vi.clearAllMocks(); mocks.handlers.clear(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {}; });
 
 describe("detached compile commands", () => {
   it("uses the main compile action and ignores commands for a previous project", async () => {
@@ -58,6 +64,47 @@ describe("detached compile commands", () => {
     });
     cleanup();
   });
+  it("publishes controls if the preview asks before the window-created event", async () => {
+    vi.useFakeTimers();
+    mocks.detachedProject = null;
+    const cleanup = await startPreviewWorkspaceBridge();
+    try {
+      mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+      expect(mocks.emitTo).not.toHaveBeenCalled();
+      mocks.detachedProject = "current";
+      mocks.detachedChanged();
+      await vi.runAllTimersAsync();
+      expect(mocks.emitTo).toHaveBeenCalledWith("preview", "preview:workspace", expect.objectContaining({ engineLoaded: true, log: "Build output" }));
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
+
+  it("replays a completed PDF when a restored window missed the compile event", async () => {
+    const checkpoint = createCompileSuccessCheckpoint({
+      projectId: "current", mainDocument: "main.tex", projectRevision: 3, requestGeneration: 4,
+      outputKind: "standard", producerId: "main", outputRevision: 7, outputId: "pdf-v1:test", previousCompletedAt: null,
+    });
+    mocks.checkpoint = checkpoint;
+    const cleanup = await startPreviewWorkspaceBridge();
+    try {
+      mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+      expect(mocks.emitTo).toHaveBeenCalledWith("preview", "preview:workspace", expect.objectContaining({
+        previewState: {
+          projectStateRevision: 0, status: "success", checkpoint,
+          identity: { projectId: "current", mainDocument: "main.tex", projectRevision: 3, requestGeneration: 4 },
+        },
+      }));
+      mocks.checkpoint = { ...checkpoint, projectId: "old" };
+      mocks.emitTo.mockClear();
+      mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+      expect(mocks.emitTo).toHaveBeenCalledWith("preview", "preview:workspace", expect.objectContaining({ previewState: undefined }));
+    } finally {
+      cleanup();
+    }
+  });
+
   it("routes compile options to the main window and rejects invalid values", async () => {
     const cleanup = await startPreviewWorkspaceBridge();
     const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });

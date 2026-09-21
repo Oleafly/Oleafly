@@ -6,6 +6,9 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError } from "@/lib/toast";
 import type { TexFlavor } from "@/lib/tauri";
+import { previewWindowState } from "@/lib/preview-state";
+import { currentProjectStateRevision } from "@/lib/project-state-revision";
+import type { PreviewWindowState } from "@/lib/preview-window";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
 export interface PreviewWorkspaceSnapshot extends
@@ -14,6 +17,7 @@ export interface PreviewWorkspaceSnapshot extends
   Pick<FileState, "engine" | "engineLoaded" | "mainDoc"> {
   projectId: string;
   compileRevision: number;
+  previewState?: PreviewWindowState;
 }
 
 export type PreviewWorkspaceCommand =
@@ -36,12 +40,15 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     const projectId = files.projectId;
     if (!projectId || usePreviewDetachedStore.getState().projectId !== projectId) return;
     const compile = useCompileStore.getState();
+    const previewState = previewWindowState(compile.status, compile.lastAttemptIdentity, compile.lastCompileCheckpoint, compile.failureReason);
     void emitTo("preview", "preview:workspace", {
       projectId, engine: files.engine, engineLoaded: files.engineLoaded, mainDoc: files.mainDoc,
       status: compile.status, log: compile.log, errors: compile.errors, diagnostics: compile.diagnostics,
       compileTimeMs: compile.compileTimeMs, compileRevision: compile.lastCompileCheckpoint?.outputRevision ?? 0,
       autoCompile: compile.autoCompile, compileMode: compile.compileMode,
       checkSyntaxBeforeCompile: compile.checkSyntaxBeforeCompile, stopOnFirstError: compile.stopOnFirstError,
+      previewState: previewState?.identity.projectId === projectId
+        ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
   };
   const offRequest = await listen<PreviewWorkspaceCommand & { projectId?: string }>("preview:command", ({ payload }) => {
@@ -106,8 +113,10 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     timer = setTimeout(() => { timer = undefined; publish(); }, 100);
   };
   const offCompile = useCompileStore.subscribe(schedule);
+  // A fast preview can request its snapshot before the window-created event.
+  const offDetached = usePreviewDetachedStore.subscribe(schedule);
   const offFiles = useFilesStore.subscribe((next, previous) => {
     if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc) schedule();
   });
-  return () => { offRequest(); offCompile(); offFiles(); clearTimeout(timer); };
+  return () => { offRequest(); offCompile(); offDetached(); offFiles(); clearTimeout(timer); };
 }

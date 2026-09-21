@@ -26,9 +26,10 @@ describe("SidebarSection", () => {
     expect(section).toHaveClass("group/section");
     expect(section.firstElementChild).not.toHaveClass("group/section");
     expect(actions).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
-      "group-focus-within/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
+      "group-focus-within/section:flex",
+      "has-[[data-state=open]]:flex",
     );
     expect(screen.getByRole("button", { name: ACTION_LABEL })).toBeInTheDocument();
   });

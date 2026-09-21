@@ -71,7 +71,7 @@ export function SidebarSection({
           aria-expanded={open}
           aria-controls={contentId}
           onClick={() => onOpenChange(!open)}
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+          className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75"
         >
           {open ? (
             <ChevronDown aria-hidden className="size-3 shrink-0" />
@@ -93,7 +93,7 @@ export function SidebarSection({
         {actions ? (
           <div
             data-testid={`${id}-actions`}
-            className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/section:opacity-100 group-focus-within/section:opacity-100"
+            className="hidden shrink-0 items-center gap-0.5 text-muted-foreground group-hover/section:flex group-focus-within/section:flex has-[[data-state=open]]:flex"
           >
             {actions}
           </div>
@@ -105,7 +105,7 @@ export function SidebarSection({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 text-muted-foreground opacity-0 transition-opacity group-hover/section:opacity-100 group-focus-within/section:opacity-100 focus-visible:opacity-100"
+                className="hidden size-6 text-muted-foreground group-hover/section:inline-flex group-focus-within/section:inline-flex data-[state=open]:inline-flex"
                 aria-label={menuLabel ?? title}
               >
                 <MoreHorizontal className="size-3.5" />

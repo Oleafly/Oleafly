@@ -213,9 +213,9 @@ describe("SourceControl", () => {
     ).toBeInTheDocument();
     const stageAll = within(changes).getByRole("button", { name: "Stage all" });
     expect(within(changes).getByTestId("source-control-changes-actions")).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
-      "group-focus-within/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
+      "group-focus-within/section:flex",
     );
     expect(
       within(changes).queryByRole("button", {
@@ -372,8 +372,8 @@ describe("SourceControl", () => {
       openAll.parentElement?.parentElement,
     );
     expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
     );
     const changes = screen.getByTestId("source-control-changes");
     expect(
@@ -405,8 +405,8 @@ describe("SourceControl", () => {
       "text-center",
     );
     expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
-      "opacity-0",
-      "group-hover/section:opacity-100",
+      "hidden",
+      "group-hover/section:flex",
     );
     const graph = screen.getByTestId("source-control-graph");
     expect(within(graph).getByText("No commits yet")).toHaveClass("leading-4");

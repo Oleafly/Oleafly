@@ -599,7 +599,8 @@ export function PdfToolbarControls({
       index === 0 ? group : [pdfDivider(`divider-${index}`), ...group],
     );
 
-  const pdfVisibleCount = fitCount(pdfControls, pdfToolbarWidth);
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const pdfVisibleCount = fitCount(pdfControls, pdfToolbarWidth * 16 / rem);
   const pdfVisibleControls = pdfControls.slice(0, pdfVisibleCount);
   const pdfOverflowControls = pdfControls.slice(pdfVisibleCount);
 
@@ -607,7 +608,7 @@ export function PdfToolbarControls({
         <div
           data-tour="project-preview-zoom"
           ref={pdfToolbarRef}
-          className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden"
+          className="ml-auto flex min-w-7 flex-1 items-center justify-end gap-0.5 overflow-hidden"
         >
           {pdfVisibleControls.map((control) => (
             <Fragment key={control.id}>{control.render()}</Fragment>

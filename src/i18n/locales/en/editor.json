@@ -136,7 +136,10 @@
     "imageFile": "Image file",
     "apply": "Apply",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Split",
+    "both": "Both",
+    "stacked": "Stacked"
   },
   "contextMenu": {
     "engineUnavailable": "Document engine actions unavailable",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "This file contains source that Draw cannot preserve. The canvas is a partial, read-only preview. Use Code to edit the original file."
   },
   "preview": {
-    "loading": "Loading PDF viewer…"
+    "loading": "Loading PDF viewer…",
+    "markdown": "Markdown preview"
   },
   "log": {
     "locationFileLine": "{{file}} · line {{line}}",

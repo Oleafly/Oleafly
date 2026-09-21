@@ -136,7 +136,10 @@
     "imageFile": "Plik obrazu",
     "apply": "Zastosuj",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/wykres.png"
+    "imagePlaceholder": "figures/wykres.png",
+    "split": "Podziel",
+    "both": "Oba",
+    "stacked": "Jeden nad drugim"
   },
   "contextMenu": {
     "engineUnavailable": "Działania silnika dokumentów niedostępne",
@@ -287,7 +290,8 @@
     "readOnlyNotice": "Ten plik zawiera kod źródłowy, którego tryb rysowania nie potrafi zachować. Obszar roboczy jest częściowym podglądem tylko do odczytu. Użyj trybu Kod, aby edytować oryginalny plik."
   },
   "preview": {
-    "loading": "Wczytywanie przeglądarki PDF…"
+    "loading": "Wczytywanie przeglądarki PDF…",
+    "markdown": "Podgląd Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · wiersz {{line}}",

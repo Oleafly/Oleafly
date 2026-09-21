@@ -1,7 +1,7 @@
 import { useSettingsStore, layoutPresetViewMode, layoutPresetWantsAi, layoutPresetHidesWorkspace, type ViewMode } from "@/store/settings";
 
 type WorkspaceLayout = Pick<ReturnType<typeof useSettingsStore.getState>,
-  "viewMode" | "showTree" | "assistantOpen" | "workspaceHidden" | "terminalOpen">;
+  "viewMode" | "showTree" | "assistantOpen" | "workspaceHidden">;
 
 const modes: readonly ViewMode[] = ["editor", "split", "pdf"];
 const key = (projectId: string) => `oleafly.workspace.${projectId}`;
@@ -12,7 +12,7 @@ export function readWorkspaceLayout(projectId: string): Partial<WorkspaceLayout>
     if (!value || typeof value !== "object" || value.version !== 1) return {};
     const layout: Partial<WorkspaceLayout> = {};
     if (modes.includes(value.viewMode)) layout.viewMode = value.viewMode;
-    for (const field of ["showTree", "assistantOpen", "workspaceHidden", "terminalOpen"] as const) {
+    for (const field of ["showTree", "assistantOpen", "workspaceHidden"] as const) {
       if (typeof value[field] === "boolean") layout[field] = value[field];
     }
     if (layout.workspaceHidden && !layout.assistantOpen) layout.workspaceHidden = false;
@@ -23,8 +23,8 @@ export function readWorkspaceLayout(projectId: string): Partial<WorkspaceLayout>
 }
 
 function selectedLayout(state: ReturnType<typeof useSettingsStore.getState>): WorkspaceLayout {
-  const { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen } = state;
-  return { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen };
+  const { viewMode, showTree, assistantOpen, workspaceHidden } = state;
+  return { viewMode, showTree, assistantOpen, workspaceHidden };
 }
 
 /** Apply defaults only on a project's first visit. Subscribe after restoration. */

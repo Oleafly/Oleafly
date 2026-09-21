@@ -22,6 +22,7 @@ import {
   Redo2,
 } from "lucide-react";
 import { Popover, PopoverItem } from "@/components/ui/popover";
+import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 // The chrome is shared with the LaTeX toolbar so both bars measure, overflow,
 // and sit in the editor frame identically.
 import {
@@ -29,6 +30,7 @@ import {
   IconBtn,
   MenuRow,
   WysiwygModeSwitch,
+  type EditorMode,
   btnControl,
   dividerControl,
 } from "@/components/editor/EditorToolbar";
@@ -61,7 +63,7 @@ import {
   insertMarkdownTaskList,
   insertMarkdownUnderline,
 } from "@/components/editor/markdown-commands";
-import { shortcut } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 
 function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -238,10 +240,16 @@ function MarkdownListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>
 export function MarkdownToolbar({
   wysiwyg,
   onToggleWysiwyg,
+  mode,
+  splitLayout,
+  onModeChange,
   showProjectInfo = true,
 }: Readonly<{
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
+  mode?: EditorMode;
+  splitLayout?: MarkdownSplitLayout;
+  onModeChange?: (mode: EditorMode, layout?: MarkdownSplitLayout) => void;
   /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
   showProjectInfo?: boolean;
 }>) {
@@ -410,54 +418,59 @@ export function MarkdownToolbar({
   }, [t, wysiwyg]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
-  const visibleCount = fitCount(controls, availableWidth);
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const visibleCount = fitCount(controls, availableWidth * 16 / rem);
   const visibleControls = controls.slice(0, visibleCount);
   const overflowControls = controls.slice(visibleCount);
 
   return (
-    <div className="flex h-9 items-center gap-0.5 border-b px-2">
+    <div className="flex min-h-9 flex-wrap items-center gap-x-0.5 gap-y-1 overflow-x-auto border-b px-2">
       <WysiwygModeSwitch
         wysiwyg={wysiwyg}
         onToggle={onToggleWysiwyg}
+        mode={mode}
+        splitLayout={splitLayout}
+        onModeChange={onModeChange}
         data-tour="wysiwyg-toggle"
       />
-      <Divider />
+      <div className={cn("flex flex-1 items-center gap-0.5", showProjectInfo ? "min-w-44" : "min-w-36")}>
+        <Divider />
+        <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
+          <Undo2 className="size-4" />
+        </IconBtn>
+        <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
+          <Redo2 className="size-4" />
+        </IconBtn>
 
-      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
-        <Undo2 className="size-4" />
-      </IconBtn>
-      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
-        <Redo2 className="size-4" />
-      </IconBtn>
+        <Divider />
 
-      <Divider />
+        <div
+          ref={containerRef}
+          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
+        >
+          {visibleControls.map((control) => (
+            <Fragment key={control.id}>{control.render()}</Fragment>
+          ))}
+          {overflowControls.length > 0 && (
+            <Popover
+              ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
+              closeOnClick={false}
+              className="max-h-96 w-56 overflow-y-auto p-1"
+              trigger={<MoreHorizontal className="size-4" />}
+            >
+              {overflowControls.map((control) => control.renderMenu())}
+            </Popover>
+          )}
+        </div>
 
-      <div
-        ref={containerRef}
-        className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
-      >
-        {visibleControls.map((control) => (
-          <Fragment key={control.id}>{control.render()}</Fragment>
-        ))}
-        {overflowControls.length > 0 && (
-          <Popover
-            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
-            closeOnClick={false}
-            className="max-h-96 w-56 overflow-y-auto p-1"
-            trigger={<MoreHorizontal className="size-4" />}
-          >
-            {overflowControls.map((control) => control.renderMenu())}
-          </Popover>
-        )}
-      </div>
-
-      <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        {showProjectInfo && <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />}
-        {!wysiwyg && (
-          <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
-            <Search className="size-4" />
-          </IconBtn>
-        )}
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {showProjectInfo && <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />}
+          {!wysiwyg && (
+            <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
+              <Search className="size-4" />
+            </IconBtn>
+          )}
+        </div>
       </div>
     </div>
   );

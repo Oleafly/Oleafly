@@ -136,7 +136,10 @@
     "imageFile": "Bildefil",
     "apply": "Bruk",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Delt",
+    "both": "Begge",
+    "stacked": "Stablet"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger for dokumentmotoren er utilgjengelige",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Denne filen inneholder kildekode som Tegn ikke kan ta vare på. Lerretet er en delvis, skrivebeskyttet forhåndsvisning. Bruk Kode for å redigere originalfilen."
   },
   "preview": {
-    "loading": "Laster PDF-viseren…"
+    "loading": "Laster PDF-viseren…",
+    "markdown": "Markdown-forhåndsvisning"
   },
   "log": {
     "locationFileLine": "{{file}} · linje {{line}}",

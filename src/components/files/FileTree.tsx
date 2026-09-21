@@ -17,7 +17,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  FolderTree,
+  FolderClosed,
   Import,
   MoreHorizontal,
   Pencil,
@@ -720,7 +720,7 @@ export function FileTree({
       <SidebarSection
         id="source-tree"
         title={t(($) => $.workspace.files.title)}
-        icon={<FolderTree aria-hidden className="size-3.5" />}
+        icon={<FolderClosed aria-hidden className="size-3.5 shrink-0" />}
         open={!collapsed}
         onOpenChange={(open) => {
           const next = !open;

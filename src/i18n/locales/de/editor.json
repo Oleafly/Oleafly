@@ -136,7 +136,10 @@
     "imageFile": "Bilddatei",
     "apply": "Übernehmen",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Geteilt",
+    "both": "Beides",
+    "stacked": "Übereinander"
   },
   "contextMenu": {
     "engineUnavailable": "Aktionen der Dokument-Engine nicht verfügbar",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Diese Datei enthält Quelltext, den Zeichnen nicht erhalten kann. Die Zeichenfläche zeigt eine unvollständige Vorschau ohne Bearbeitung. Nutzen Sie Code, um die Originaldatei zu bearbeiten."
   },
   "preview": {
-    "loading": "PDF-Betrachter wird geladen…"
+    "loading": "PDF-Betrachter wird geladen…",
+    "markdown": "Markdown-Vorschau"
   },
   "log": {
     "locationFileLine": "{{file}} · Zeile {{line}}",

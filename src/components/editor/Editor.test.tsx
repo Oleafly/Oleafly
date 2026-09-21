@@ -13,6 +13,7 @@ import { useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { setWysiwygFlushController } from "./wysiwyg/controller";
 
 const tauri = vi.hoisted(() => ({
   readFileBase64: vi.fn(async () => "AAA="),
@@ -44,10 +45,18 @@ vi.mock("./EditorToolbar", () => ({
   ),
 }));
 vi.mock("./MarkdownToolbar", () => ({
-  MarkdownToolbar: ({ wysiwyg, onToggleWysiwyg }: { wysiwyg: boolean; onToggleWysiwyg: () => void }) => (
+  MarkdownToolbar: ({ wysiwyg, onToggleWysiwyg, onModeChange }: {
+    wysiwyg: boolean; onToggleWysiwyg: () => void;
+    onModeChange?: (mode: "code" | "visual" | "both", layout?: "stacked" | "split") => void;
+  }) => (<>
     <button type="button" data-testid="markdown-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
-  ),
+    {onModeChange && <>
+      <button type="button" onClick={() => onModeChange("both", "split")}>{en.toolbar.split}</button>
+      <button type="button" onClick={() => onModeChange("both", "stacked")}>{en.toolbar.stacked}</button>
+    </>}
+  </>),
 }));
+vi.mock("./MarkdownPreview", () => ({ MarkdownPreview: () => <div data-testid="markdown-preview" /> }));
 vi.mock("./TypstToolbar", () => ({ TypstToolbar: () => <div data-testid="typst-toolbar" /> }));
 vi.mock("./EditorContextMenu", () => ({
   EditorContextMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -94,7 +103,7 @@ describe("Editor shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    useVisualModeStore.setState({ projectId: null, enabled: false });
+    useVisualModeStore.setState({ projectId: null, enabled: false, markdownSplit: false, markdownSplitLayout: "split" });
     useDiffStore.setState({ diffs: [], activeKey: null });
     useSettingsStore.setState({ settingsOpen: false });
     useFilesStore.setState({
@@ -291,6 +300,41 @@ describe("Editor shell", () => {
     expect(await screen.findByTestId("wysiwyg")).toBeInTheDocument();
     expect(screen.getByTestId("codemirror")).toBeInTheDocument();
     expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
+  });
+
+  it("arranges Markdown both ways, flushes Visual edits, and restores the choice after reopening", async () => {
+    setWysiwygMode("project", true);
+    openFile("notes.md");
+    const view = render(<Editor />);
+    const flush = vi.fn();
+    setWysiwygFlushController(flush);
+    const source = screen.getByTestId("codemirror");
+
+    fireEvent.click(screen.getByRole("button", { name: "Split" }));
+
+    expect(flush).toHaveBeenCalledOnce();
+    setWysiwygFlushController(null);
+    expect(await screen.findByTestId("markdown-preview")).toBeVisible();
+    expect(screen.getByTestId("codemirror")).toBe(source);
+    expect(source).toBeVisible();
+    expect(getWysiwygMode("project")).toBe(true);
+    const group = source.closest("[data-panel-group-direction]");
+    expect(group).toHaveAttribute("data-panel-group-direction", "horizontal");
+    fireEvent.click(screen.getByRole("button", { name: "Stacked" }));
+    expect(source.closest("[data-panel-group-direction]")).toBe(group);
+    expect(group).toHaveAttribute("data-panel-group-direction", "vertical");
+
+    for (const path of ["main.tex", "main.typ", "notes.txt"]) {
+      act(() => openFile(path));
+      expect(screen.queryByRole("button", { name: "Split" })).not.toBeInTheDocument();
+      expect(screen.queryByTestId("markdown-preview")).not.toBeInTheDocument();
+    }
+    view.unmount();
+    openFile("notes.markdown");
+    render(<Editor />);
+    expect(await screen.findByTestId("markdown-preview")).toBeVisible();
+    expect(screen.getByTestId("codemirror")).toBeVisible();
+    expect(screen.getByTestId("codemirror").closest("[data-panel-group-direction]")).toHaveAttribute("data-panel-group-direction", "vertical");
   });
 
   it("locks the surface while an external mutation holds the lease", () => {

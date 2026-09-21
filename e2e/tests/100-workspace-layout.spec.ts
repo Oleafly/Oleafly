@@ -25,18 +25,19 @@ test("workspace controls fit at the minimum window width with larger interface t
 test("wide toolbars restore direct actions and center the view group after resizing", async ({ tauriPage: page }) => {
   await reloadNativePage(page);
   await createBlankProject(page, "Responsive toolbar with a long project name");
-  for (const [width, fontSize, layout] of [
-    [1440, 16, "expanded"],
-    [900, 16, "compact"],
-    [1440, 22, "compact"],
-    [1440, 16, "expanded"],
+  for (const [width, fontSize, zoom] of [
+    [1440, 16, 1],
+    [900, 16, 1],
+    [900, 22, 2],
+    [1440, 22, 1],
+    [1440, 16, 1],
   ] as const) {
     await page.evaluate(`Promise.all([import("/src/lib/e2e-probe.ts"), import("/src/store/settings.ts")]).then(async ([w, s]) => {
       s.useSettingsStore.getState().setAppFontSize(${fontSize});
       s.useSettingsStore.getState().setWebBrowser(true);
+      document.documentElement.style.zoom = '${zoom}';
       await w.resizeCurrentWindow(${width}, 800);
     })`);
-    await expect.poll(async () => page.evaluate(`document.querySelector('[data-tour="project-toolbar"]')?.dataset.toolbarLayout`)).toBe(layout);
     await expect.poll(async () => page.evaluate(`(() => {
       const buttons = [...document.querySelectorAll('[data-tour="project-toolbar"] button')].filter(el => !el.closest('[inert]'));
       return buttons.filter(el => {
@@ -46,19 +47,17 @@ test("wide toolbars restore direct actions and center the view group after resiz
         return r.left < 0 || r.right > innerWidth || !el.contains(hit);
       }).map(el => el.getAttribute('aria-label') || el.textContent);
     })()`)).toEqual([]);
-    if (layout === "expanded") {
-      await expect(page.locator('button[aria-label="Fork project"]')).toBeVisible();
+    await expect(page.locator('[data-testid="rail-terminal-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-testid="rail-assistant-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-toolbar-item="menu"]:not([inert]) button, [data-toolbar-item="settings"]:not([inert]) button')).toBeVisible();
+    await expect.poll(async () => page.evaluate(`(() => {
+      const r = document.querySelector('[data-testid="toolbar-views"]').getBoundingClientRect();
+      return Math.abs((r.left + r.right) / 2 - innerWidth / 2);
+    })()`)).toBeLessThan(1);
+    await expect.poll(async () => page.evaluate(`document.querySelectorAll('[data-testid="toolbar-views"] button').length`)).toBe(3);
+    if (width === 1440 && fontSize === 16) {
       await expect(page.locator('button[aria-label="Versioning"]')).toBeVisible();
-      await expect(page.locator('button[aria-label="Layout"]')).toBeVisible();
-      await expect.poll(async () => page.evaluate(`document.querySelectorAll('[data-tour="project-toolbar"] button[aria-label="Layout"]').length`)).toBe(1);
-      await expect(page.locator('[data-testid="open-settings"]')).toBeVisible();
-      await expect.poll(async () => page.evaluate(`(() => {
-        const r = document.querySelector('[data-testid="toolbar-views"]').getBoundingClientRect();
-        return Math.abs((r.left + r.right) / 2 - innerWidth / 2);
-      })()`)).toBeLessThan(1);
-      await expect.poll(async () => page.evaluate(`document.querySelectorAll('[data-testid="toolbar-views"] button').length`)).toBe(3);
-    } else {
-      await expect(page.locator('[data-testid="workspace-menu"]')).toBeVisible();
+      await expect(page.locator('button[aria-label="Export"]')).toBeVisible();
     }
   }
   await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
@@ -79,19 +78,25 @@ test("reopening a project restores its workspace choices", async ({ tauriPage: p
   })`)).toEqual({viewMode:"editor",showTree:false,assistantOpen:true});
 });
 
-test("detached preview owns compile and logs and returns them when closed", async ({ tauriPage: page }) => {
+test("detached preview shares compilation and keeps logs in its window", async ({ tauriPage: page }) => {
   const { setEditorContent } = await import("../helpers");
   await createBlankProject(page, "Detached layout");
   await expect.poll(async () => page.evaluate(`import("/src/store/compile.ts").then(m=>m.useCompileStore.getState().status)`), { timeout: 30_000 }).toBe('success');
-  const compileStyle = await page.evaluate(`['compile-button', 'compile-options-button'].map(id => document.querySelector('[data-testid="'+id+'"]').className)`);
+  const compileStyle = await page.evaluate(`['compile-button', 'compile-options-button'].map(id => {
+    const button = document.querySelector('[data-testid="'+id+'"]');
+    return { className: button.className, color: getComputedStyle(button).backgroundColor };
+  })`);
   await page.evaluate(`Promise.all([import("/src/lib/preview-window.ts"),import("/src/store/files.ts"),import("/src/store/compile.ts")]).then(([p,f,c])=>{
     const files=f.useFilesStore.getState(), compile=c.useCompileStore.getState();
     return p.openPreviewWindow(files.projectId, files.projectName, {identity:compile.lastAttemptIdentity,status:'success',checkpoint:compile.lastCompileCheckpoint});
   })`);
   const preview = await page.waitForWindow(window => window.label === 'preview', { timeout: 20_000 });
-  await expect.poll(async () => page.evaluate(`!!document.querySelector('[data-testid="compile-button"]')`)).toBe(false);
+  await expect(page.locator('[data-testid="compile-button"]')).toBeVisible();
   await expect.poll(async () => preview.evaluate(`document.querySelector('[data-testid="compile-button"]')?.disabled`), { timeout: 20_000 }).toBe(false);
-  await expect.poll(async () => preview.evaluate(`['compile-button', 'compile-options-button'].map(id => document.querySelector('[data-testid="'+id+'"]').className)`)).toEqual(compileStyle);
+  await expect.poll(async () => preview.evaluate(`['compile-button', 'compile-options-button'].map(id => {
+    const button = document.querySelector('[data-testid="'+id+'"]');
+    return { className: button.className, color: getComputedStyle(button).backgroundColor };
+  })`)).toEqual(compileStyle);
   await preview.evaluate(`(() => {
     const trigger = document.querySelector('[data-testid="compile-options-button"]');
     trigger.focus();
@@ -144,6 +149,10 @@ test("sidebar width and document split survive a new session", async ({ tauriPag
 
 test("grouped layouts open the assistant and its sidebar button hides it", async ({ tauriPage: page }) => {
   await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
+  await page.evaluate(`import("/src/store/settings.ts").then(s => {
+    s.useSettingsStore.getState().setAppFontSize(22);
+    document.documentElement.style.zoom = '1';
+  })`);
   await createBlankProject(page, 'Grouped actions');
   await page.click('[data-testid="workspace-menu"]');
   await page.getByText('Layout', { exact: true }).click();

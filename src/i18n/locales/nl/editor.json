@@ -136,7 +136,10 @@
     "imageFile": "Afbeeldingsbestand",
     "apply": "Toepassen",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Splitsen",
+    "both": "Beide",
+    "stacked": "Gestapeld"
   },
   "contextMenu": {
     "engineUnavailable": "Acties van de document-engine niet beschikbaar",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Dit bestand bevat broncode die Tekenen niet kan behouden. Het canvas is een gedeeltelijk voorbeeld dat alleen-lezen is. Gebruik Code om het originele bestand te bewerken."
   },
   "preview": {
-    "loading": "PDF-viewer laden…"
+    "loading": "PDF-viewer laden…",
+    "markdown": "Markdown-voorbeeld"
   },
   "log": {
     "locationFileLine": "{{file}} · regel {{line}}",

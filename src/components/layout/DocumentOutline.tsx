@@ -322,9 +322,11 @@ export function DocumentOutline({
       }
     >
         {items.length === 0 ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto [scrollbar-width:thin]">
             <PanelState
               state="empty"
+              icon={<List aria-hidden className="size-4" />}
+              className="my-auto shrink-0"
               title={t(($) => $.workspace.outline.empty)}
               detail={t(($) => $.workspace.outline.emptyDetail)}
             />
