@@ -105,11 +105,13 @@ Every window, the detached preview included, uses this one store. None of
 them sets its own data directory, so they all share the app's default web
 context.
 
-On macOS, `scripts/e2e.sh` refuses to run a packaged binary whose bundle
-identifier is not the e2e one, because that build would write into the
-installed app's storage. Rebuild it with the overlay, or set
-`OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1` to run it anyway (an artifact from a CI
-run before this change, for example).
+On macOS, `scripts/e2e.sh` refuses to run a packaged binary that is not
+bundled as `com.oleafly.app.e2e`, because its web storage would not be
+isolated: a build with the production identifier writes into the installed
+app's store, and a binary outside an app bundle writes into the `oleafly`
+store that dev sessions use. Rebuild it as an app bundle with the overlay, or
+set `OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1` to run it anyway (an artifact from a
+CI run before this change, for example).
 
 Dev-mode runs on macOS are the exception. A `pnpm tauri dev` binary has no
 bundle identifier, so WebKit files its storage under the process name,

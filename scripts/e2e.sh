@@ -100,8 +100,8 @@ bundle_identifier_of() {
 if [[ -n "$APP_BINARY" && "$(uname -s)" == "Darwin" && "${OLEAFLY_E2E_ALLOW_SHARED_STORAGE:-}" != "1" ]]; then
   APP_IDENTIFIER="$(bundle_identifier_of "$APP_BINARY")"
   if [[ "$APP_IDENTIFIER" != "$E2E_IDENTIFIER" ]]; then
-    echo "e2e: $APP_BINARY is bundled as '${APP_IDENTIFIER:-unknown}', not $E2E_IDENTIFIER, so it would share web storage with the installed app." >&2
-    echo "e2e: rebuild it with --config src-tauri/tauri.e2e.conf.json, or set OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1 to run it anyway." >&2
+    echo "e2e: $APP_BINARY is not bundled as $E2E_IDENTIFIER (found '${APP_IDENTIFIER:-no bundle identifier}'), so its web storage would not be isolated." >&2
+    echo "e2e: build it as an app bundle with --config src-tauri/tauri.e2e.conf.json, or set OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1 to run it anyway." >&2
     release_e2e_lock
     exit 2
   fi
