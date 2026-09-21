@@ -477,7 +477,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-macos-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-macos-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -561,7 +561,7 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         env:
           VITE_E2E_HOOKS: "1"
-        run: pnpm tauri build --debug --features e2e-testing --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: pnpm tauri build --debug --features e2e-testing --bundles app --config src-tauri/tauri.e2e.conf.json
 
       - name: Pack the app bundle
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -613,7 +613,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-linux-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-linux-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -708,7 +708,7 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         env:
           VITE_E2E_HOOKS: "1"
-        run: pnpm tauri build --debug --features e2e-testing --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: pnpm tauri build --debug --features e2e-testing --bundles deb --config src-tauri/tauri.e2e.conf.json
 
       # The shards install this blind, so record the layout here where the log
       # is cheap to read. If a future Tauri release moves the binary or the
@@ -1120,7 +1120,7 @@ jobs:
       - name: Compute the packaged app cache key
         id: e2e-app-key
         shell: bash
-        run: echo "key=e2e-app-windows-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-windows-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -1208,7 +1208,7 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         env:
           VITE_E2E_HOOKS: "1"
-        run: pnpm tauri build --debug --features e2e-testing --no-bundle
+        run: pnpm tauri build --debug --features e2e-testing --no-bundle --config src-tauri/tauri.e2e.conf.json
 
       # Pack everything the debug build placed beside the executable: the app,
       # the sidecar executables, any DLLs, and the resources directory. Cargo's
