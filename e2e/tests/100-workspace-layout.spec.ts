@@ -1,5 +1,6 @@
 import { test, expect, reloadNativePage } from "../fixtures";
 import { createBlankProject, waitLong } from "../helpers";
+import { scriptValue } from "../script-value";
 
 async function toolbarGeometry(page: Parameters<typeof createBlankProject>[0]) {
   return page.evaluate<{ blocked: unknown[]; centerOffset: number }>(`(() => {
@@ -86,7 +87,7 @@ test("reopening a project restores its workspace choices", async ({ tauriPage: p
   await page.evaluate(`import("/src/store/files.ts").then(({useFilesStore})=>useFilesStore.getState().closeProject())`);
   await waitLong(page, `!!document.querySelector('[data-testid="library"]')`, 15_000);
   await reloadNativePage(page);
-  await page.evaluate(`import("/src/store/files.ts").then(({useFilesStore})=>useFilesStore.getState().openProject(${JSON.stringify(projectId)}))`);
+  await page.evaluate(`import("/src/store/files.ts").then(({useFilesStore})=>useFilesStore.getState().openProject(${scriptValue(projectId)}))`);
   await expect.poll(async () => page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>{
     const {viewMode,showTree,assistantOpen}=useSettingsStore.getState();return {viewMode,showTree,assistantOpen};
   })`)).toEqual({viewMode:"editor",showTree:false,assistantOpen:true});
@@ -132,7 +133,7 @@ test("detached preview shares compilation and keeps logs in its window", async (
   await waitLong(page, `!!document.querySelector('[data-testid="library"]')`, 15_000);
   await expect.poll(async () => (await page.listWindows()).some(w => w.label === 'preview')).toBe(false);
   await reloadNativePage(page);
-  await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${JSON.stringify(projectId)}))`);
+  await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${scriptValue(projectId)}))`);
   const restoredPreview = await page.waitForWindow(w => w.label === 'preview', { timeout: 20_000 });
   await expect.poll(async () => restoredPreview.evaluate(`({ width: innerWidth, height: innerHeight })`)).toEqual(geometry);
   await expect.poll(async () => restoredPreview.evaluate(`!!document.querySelector('[data-testid="preview-reattach"]')`)).toBe(true);
@@ -161,7 +162,7 @@ test("sidebar width and document split survive a new session", async ({ tauriPag
   await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().closeProject())`);
   await waitLong(page, `!!document.querySelector('[data-testid="library"]')`, 15_000);
   await reloadNativePage(page);
-  await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${JSON.stringify(projectId)}))`);
+  await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${scriptValue(projectId)}))`);
   await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>Number(document.querySelector('[data-panel-id="'+id+'"]')?.getAttribute('data-panel-size') ?? -1))`)).toEqual(sizes);
 });
 
