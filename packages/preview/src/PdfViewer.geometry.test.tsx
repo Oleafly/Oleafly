@@ -763,6 +763,76 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     });
   });
 
+  it("keeps rendered pages stretched until the zoom settles, even when the pane scrolls", async () => {
+    const data = new Uint8Array([1]);
+    const view = render(
+      <PdfViewer data={data} scale={1} expectText={false} />,
+    );
+    const renderer = view.getByTestId("pdf-renderer");
+    await waitFor(() => expect(renderer.dataset.pdfState).toBe("ready"));
+    act(() => triggerIntersection([1, 2], true));
+    const first = view.container.querySelector<HTMLElement>("[data-page='1']")!;
+    const second = view.container.querySelector<HTMLElement>("[data-page='2']")!;
+    await waitFor(() => {
+      expect(first.dataset.pdfRasterScale).toBe("1");
+      expect(second.dataset.pdfRasterScale).toBe("1");
+    });
+
+    const settle: Array<() => void> = [];
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const timers = vi.spyOn(window, "setTimeout").mockImplementation(((
+      handler: TimerHandler,
+      delay?: number,
+      ...args: unknown[]
+    ) => {
+      if (delay === 120 && typeof handler === "function") {
+        settle.push(handler as () => void);
+        return 0;
+      }
+      return nativeSetTimeout(handler, delay, ...args);
+    }) as typeof window.setTimeout);
+    try {
+      const rendersBeforeZoom = harness.renderCalls.length;
+      view.rerender(<PdfViewer data={data} scale={2} expectText={false} />);
+      await waitFor(() =>
+        expect(second).toHaveStyle({ width: "1800px", height: "1260px" }),
+      );
+      expect(settle).toHaveLength(1);
+
+      const scrollParent = renderer.parentElement as HTMLElement;
+      act(() => scrollParent.dispatchEvent(new Event("scroll")));
+      await act(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => nativeSetTimeout(resolve, 10)),
+          ),
+      );
+      act(() => triggerIntersection([1, 2], true));
+      await act(() => new Promise<void>((resolve) => nativeSetTimeout(resolve, 10)));
+
+      expect(harness.renderCalls.slice(rendersBeforeZoom)).toEqual([]);
+      expect(first.dataset.pdfRasterScale).toBe("1");
+      expect(second.dataset.pdfRasterScale).toBe("1");
+
+      act(() => settle[0]());
+      await waitFor(() => {
+        expect(first.dataset.pdfRasterScale).toBe("2");
+        expect(second.dataset.pdfRasterScale).toBe("2");
+      });
+      expect(
+        harness.renderCalls
+          .slice(rendersBeforeZoom)
+          .map((call) => [call.pageNumber, call.scale])
+          .sort(),
+      ).toEqual([
+        [1, 2],
+        [2, 2],
+      ]);
+    } finally {
+      timers.mockRestore();
+    }
+  });
+
   it("destroys annotation and page resources on eviction and unmount", async () => {
     const view = render(
       <PdfViewer data={new Uint8Array([1])} scale={1} expectText={false} />,
