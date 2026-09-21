@@ -72,6 +72,17 @@ async function ask(page: Page, text: string) {
   await page.press(TA, "Enter");
 }
 
+async function limitTools(page: Page, readFile = false) {
+  await page.click('[aria-label="Manage agent tools"]');
+  // Skill tools load asynchronously. Wait before disabling the catalog,
+  // or tools arriving after the click remain enabled.
+  await waitLong(page, `!!document.querySelector('[aria-label="Enable load_skill"]')`, 20_000);
+  await page.getByText("Disable all", { exact: true }).click();
+  await waitLong(page, `!document.querySelector('[data-testid="ai-tool-manager"] [role="switch"][aria-checked="true"]')`, 10_000);
+  if (readFile) await page.click('[aria-label="Enable read_file"]');
+  await page.click('[aria-label="Manage agent tools"]');
+}
+
 async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
   await waitLong(page, `!!document.querySelector('[aria-label="Stop"]')`, 30_000);
   await waitLong(page, `!document.querySelector('[aria-label="Stop"]')`, timeoutMs);
@@ -105,10 +116,13 @@ test.describe("local Ollama", () => {
     await connectOllama(tauriPage);
     await openChat(tauriPage);
 
-    await ask(tauriPage, "Reply with exactly this token and nothing else: OLLAMALOCAL5");
+    // Keep the streaming check independent of a small model choosing a tool
+    // instead of answering. The separate tool test exercises real file access.
+    await limitTools(tauriPage);
+    await ask(tauriPage, "Reply with exactly this word and nothing else: pineapple");
     await waitLong(
       tauriPage,
-      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("OLLAMALOCAL5") && !document.querySelector('[aria-label="Stop"]')`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("pineapple") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
   });
@@ -119,6 +133,7 @@ test.describe("local Ollama", () => {
     await connectOllama(tauriPage);
     await openChat(tauriPage);
 
+    await limitTools(tauriPage);
     await ask(tauriPage, "Say OK.");
     await waitForRun(tauriPage);
 
@@ -138,10 +153,7 @@ test.describe("local Ollama", () => {
 
     // Small local models can choose a command instead and wait for command
     // approval. Exercise the actual user tool picker to isolate file reading.
-    await tauriPage.click('[aria-label="Manage agent tools"]');
-    await tauriPage.getByText("Disable all", { exact: true }).click();
-    await tauriPage.click('[aria-label="Enable read_file"]');
-    await tauriPage.click('[aria-label="Manage agent tools"]');
+    await limitTools(tauriPage, true);
     await ask(tauriPage, "Use the read_file tool to read main.tex. Then say DONE.");
     await waitForRun(tauriPage);
     await expectCompletedReadFile(tauriPage);

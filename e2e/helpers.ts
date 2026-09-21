@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect } from "./fixtures";
 import type { LocatorLike } from "@srsholmes/tauri-playwright";
 import type { E2ePdfProbe } from "../src/lib/e2e-probe";
@@ -1024,6 +1025,29 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
     if (ok) return;
     if (Date.now() > deadline) throw new Error(`waitLong timeout: ${expression}`);
     await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+// A single evaluate() also has the bridge's 30-second cap. Start long-running
+// work without awaiting it in that request, then poll its settled result.
+export async function evaluateLong<T>(page: Page, expression: string, timeoutMs: number): Promise<T> {
+  const slot = JSON.stringify(`__oleaflyE2eEval_${randomUUID()}`);
+  try {
+    await page.evaluate(`(() => {
+      const state = { done: false };
+      window[${slot}] = state;
+      Promise.resolve().then(() => (${expression})).then(
+        value => Object.assign(state, { done: true, ok: true, value }),
+        error => Object.assign(state, { done: true, ok: false, error: String(error) }),
+      );
+      return true;
+    })()`);
+    await waitLong(page, `window[${slot}]?.done`, timeoutMs);
+    const result = await page.evaluate<{ ok: boolean; value: T; error?: string }>(`window[${slot}]`);
+    if (!result.ok) throw new Error(result.error ?? "Renderer evaluation failed");
+    return result.value;
+  } finally {
+    await page.evaluate(`delete window[${slot}]`);
   }
 }
 

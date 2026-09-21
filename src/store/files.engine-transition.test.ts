@@ -1697,6 +1697,38 @@ describe("external project mutation lease", () => {
     mocks.writeFileContent.mockResolvedValue(undefined);
   });
 
+  it("reloads a partially applied stash before unlocking the editor", async () => {
+    seedProjectMetadata();
+    useFilesStore.setState({
+      files: { "main.tex": { content: "Original", dirty: false } },
+      activePath: "main.tex",
+      openTabs: ["main.tex"],
+    });
+    const reconcile = vi.fn(() => {
+      expect(isEditorMutationLocked("project")).toBe(true);
+      expect(useFilesStore.getState().files["main.tex"].content).toBe("Stashed work");
+    });
+    const unregister = registerEditorMutationOwner({ projectId: () => "project", reconcile });
+    try {
+      const result = await useFilesStore.getState().runExternalProjectMutation("project", async () => {
+        mocks.readFileContent.mockResolvedValue("Stashed work");
+        return {
+          outcome: "failed",
+          message: "could not restore untracked files from stash",
+          projectState: { ...await mocks.gitRestore(), reason: "git-stash-pop" },
+        };
+      });
+      expect(result.outcome).toBe("failed");
+      expect(reconcile).toHaveBeenCalledOnce();
+      expect(isEditorMutationLocked("project")).toBe(false);
+      useFilesStore.getState().setContent("main.tex", "Stashed work plus next edit");
+      await useFilesStore.getState().saveFile("main.tex");
+      expect(mocks.writeFileContent).toHaveBeenLastCalledWith("project", "main.tex", "Stashed work plus next edit", 1);
+    } finally {
+      unregister();
+    }
+  });
+
   it("times out preparation without allowing its late completion to apply", async () => {
     seedProjectMetadata();
     useFilesStore.setState({ files: {} });

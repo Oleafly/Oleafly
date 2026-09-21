@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { syntaxTree } from "@codemirror/language";
+import { history, undo } from "@codemirror/commands";
 import { EditorState, type Range, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import { fireEvent } from "@testing-library/react";
@@ -48,6 +49,12 @@ let view: EditorView | null = null;
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  if (!globalThis.Range.prototype.getClientRects) {
+    Object.defineProperty(globalThis.Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [],
+    });
+  }
 });
 
 afterEach(async () => {
@@ -60,7 +67,7 @@ afterEach(async () => {
 async function mount(doc = DOC): Promise<EditorView> {
   const editor = await act(async () => {
     return new EditorView({
-      state: EditorState.create({ doc, extensions: [latexLanguage, tableField, tableTheme] }),
+      state: EditorState.create({ doc, extensions: [latexLanguage, tableField, tableTheme, history()] }),
       parent: document.body,
     });
   });
@@ -103,6 +110,28 @@ describe("createTabularDecoration", () => {
 });
 
 describe("table widget", () => {
+  it.each([
+    { key: "Enter", keyCode: 13, isComposing: true },
+    { key: "Enter", keyCode: 229, isComposing: false },
+    { key: "Escape", keyCode: 27, isComposing: true },
+    { key: "Tab", keyCode: 9, isComposing: true },
+  ])("leaves composing input to the IME: %j", async (event) => {
+    const editor = await mount();
+    const table = grid(editor);
+    fireEvent.mouseDown(table.querySelectorAll(".ofl-visual-table-cell")[0], { button: 0 });
+    fireEvent.keyDown(table, { key: "Enter" });
+    const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input")!;
+    fireEvent.compositionStart(input);
+    fireEvent.input(input, { target: { value: "にほん" }, isComposing: true });
+    fireEvent.keyDown(input, event);
+    expect(editor.dom.querySelector(".ofl-visual-table-cell-input")).toBe(input);
+    expect(editor.state.doc.toString()).toBe(DOC);
+    fireEvent.input(input, { target: { value: "日本" } });
+    fireEvent.compositionEnd(input);
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(editor.state.doc.toString()).toBe(DOC.replace("A & B", "日本 & B"));
+  });
+
   it("renders the grid with handles and cell text", async () => {
     const editor = await mount();
     const table = grid(editor);
@@ -157,6 +186,51 @@ describe("table widget", () => {
     expect(grid(editor).querySelectorAll(".ofl-visual-table-cell")[6].classList.contains("ofl-visual-table-cell-selected")).toBe(
       true,
     );
+  });
+
+  it.each(["long new content", "", String.raw`\shortstack{one\\two}`])(
+    "preserves an edited last cell when Tab adds a row: %s",
+    async (content) => {
+      const editor = await mount();
+      const table = grid(editor);
+      fireEvent.mouseDown(table.querySelectorAll(".ofl-visual-table-cell")[5], { button: 0 });
+      fireEvent.keyDown(table, { key: "Enter" });
+      const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input")!;
+      fireEvent.input(input, { target: { value: content } });
+      fireEvent.keyDown(input, { key: "Tab" });
+      expect(editor.state.doc.toString()).toBe(DOC.replace("1 & 2 & 3", `1 & 2 & ${content}`).replace(
+        "\\end{tabular}", "& & \\\\\n\\end{tabular}",
+      ));
+      expect(grid(editor).querySelectorAll(".ofl-visual-table-cell")).toHaveLength(9);
+      expect(grid(editor).querySelectorAll(".ofl-visual-table-cell")[6]).toHaveClass("ofl-visual-table-cell-selected");
+      await act(async () => { expect(undo(editor)).toBe(true); });
+      expect(editor.state.doc.toString()).toBe(DOC);
+    },
+  );
+
+  it("preserves nested LaTeX line breaks when committing a cell", async () => {
+    const content = String.raw`\shortstack{one\\two}`;
+    const doc = DOC.replace("A & B & C", `A & ${content} & C`);
+    const editor = await mount(doc);
+    const table = grid(editor);
+    fireEvent.mouseDown(table.querySelectorAll(".ofl-visual-table-cell")[1], { button: 0 });
+    fireEvent.keyDown(table, { key: "Enter" });
+    const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input")!;
+    fireEvent.input(input, { target: { value: `${content}!` } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(editor.state.doc.toString()).toBe(doc.replace(content, `${content}!`));
+  });
+
+  it("appends a row after an edited cell without a trailing row separator", async () => {
+    const doc = DOC.replace("1 & 2 & 3 \\\\", "1 & 2 & 3");
+    const editor = await mount(doc);
+    const table = grid(editor);
+    fireEvent.mouseDown(table.querySelectorAll(".ofl-visual-table-cell")[5], { button: 0 });
+    fireEvent.keyDown(table, { key: "Enter" });
+    const input = editor.dom.querySelector<HTMLTextAreaElement>(".ofl-visual-table-cell-input")!;
+    fireEvent.input(input, { target: { value: "last cell" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(editor.state.doc.toString()).toBe(doc.replace("1 & 2 & 3", "1 & 2 & last cell \\\\\n& & \\\\"));
   });
 
   it("applies toolbar commands to the source", async () => {

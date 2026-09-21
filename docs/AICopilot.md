@@ -22,6 +22,27 @@ it is not a second document model.
 </div>
 <p align="center"><em>Choose a working role when the task calls for a different kind of help.</em></p>
 
+## Local Ollama context
+
+Oleafly connects through Ollama's OpenAI-compatible API. The model needs room
+for the project instructions, enabled tools, conversation, and reply. A 4,096
+token context can truncate even a short request with the agent tools enabled,
+making a successful response appear unrelated to the question.
+
+Start with a 16,384-token context for the agent tools. In Windows PowerShell,
+quit an existing Ollama server before starting a test server with:
+
+```powershell
+$env:OLLAMA_CONTEXT_LENGTH = "16384"
+ollama serve
+```
+
+Set this on the **Ollama server process**, not the Oleafly process. Longer
+conversations and larger projects need more context, which uses more memory.
+The OpenAI-compatible API cannot set the model's context size per request;
+see Ollama's [context configuration](https://docs.ollama.com/context-length)
+and [model-specific context settings](https://docs.ollama.com/api/openai-compatibility#setting-the-context-size).
+
 ## Change and approval model
 
 - File-changing actions produce a visible diff before application.

@@ -964,6 +964,21 @@ describe("SourceControl", () => {
     expect(mocks.gitStashPush).toHaveBeenCalledWith("project-1", 1);
   });
 
+  it("reports a partial stash failure while reconciling its changed files", async () => {
+    const user = userEvent.setup();
+    mocks.gitStashPop.mockResolvedValue({
+      message: "could not restore untracked files from stash",
+      outcome: "failed",
+      conflicts: [],
+      projectState,
+    });
+    render(<SourceControl />);
+    await user.click(await screen.findByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Apply latest stash" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not restore untracked files from stash");
+    await expect(fileState.runExternalProjectMutation.mock.results[0].value).resolves.toMatchObject({ projectState });
+  });
+
   it("opens Graph when another surface requests it", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);

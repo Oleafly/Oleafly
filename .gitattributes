@@ -15,5 +15,5 @@
 # Parsed with "\n"-based markers by scripts/fetch-language-servers.node-tests.mjs.
 .github/workflows/*.yml text eol=lf
 
-# Vitest's module runner must parse the imported script's shebang with LF.
+# Vitest's module runner cannot load a CRLF hashbang in this imported script.
 scripts/update-tagging-status.mjs text eol=lf

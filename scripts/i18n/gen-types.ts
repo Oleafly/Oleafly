@@ -29,7 +29,7 @@ const content = lines.join("\n");
 if (process.argv.includes("--check")) {
   let existing = "";
   try {
-    existing = readFileSync(outputPath, "utf8").replace(/\r\n/g, "\n");
+    existing = readFileSync(outputPath, "utf8").replaceAll("\r\n", "\n");
   } catch {
     existing = "";
   }

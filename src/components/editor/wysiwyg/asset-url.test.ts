@@ -58,6 +58,30 @@ describe("candidateAssetPaths", () => {
 });
 
 describe("resolveVisualAssetUrl", () => {
+  it("lets the filesystem resolve case aliases using the requested spelling", async () => {
+    setProject("p1", "main.tex", [{ path: "figures/Plot.PNG", is_dir: false }]);
+    await expect(resolveVisualAssetUrl("figures/plot.png")).resolves.toBe("data:figures/plot.png");
+    expect(mocks.loadAssetThumbnail).toHaveBeenCalledWith("p1", "figures/plot.png");
+  });
+
+  it("does not substitute a different file on a case-sensitive filesystem", async () => {
+    setProject("p1", "main.tex", [{ path: "figures/Plot.PNG", is_dir: false }]);
+    mocks.loadAssetThumbnail.mockImplementation(async (_project: string, path: string) =>
+      path === "figures/Plot.PNG" ? "data:exact" : null,
+    );
+    await expect(resolveVisualAssetUrl("figures/plot.png")).resolves.toBeNull();
+    await expect(resolveVisualAssetUrl("figures/Plot.PNG")).resolves.toBe("data:exact");
+  });
+
+  it("keeps distinctly cased exact files separate", async () => {
+    setProject("p1", "main.tex", [
+      { path: "figures/Plot.PNG", is_dir: false },
+      { path: "figures/plot.png", is_dir: false },
+    ]);
+    await expect(resolveVisualAssetUrl("figures/plot.png")).resolves.toBe("data:figures/plot.png");
+    await expect(resolveVisualAssetUrl("figures/Plot.PNG")).resolves.toBe("data:figures/Plot.PNG");
+  });
+
   it("resolves extension-less paths against the tree and caches the result", async () => {
     await expect(resolveVisualAssetUrl("figures/plot")).resolves.toBe("data:figures/plot.png");
     await expect(resolveVisualAssetUrl("figures/plot")).resolves.toBe("data:figures/plot.png");

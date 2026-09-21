@@ -457,13 +457,14 @@ export function SourceControl() {
       return;
     }
     if (typeof result !== "object" || result === null) return;
-    const { message, conflicts } = result as {
+    const { message, conflicts, outcome } = result as {
       message?: unknown;
       conflicts?: unknown;
+      outcome?: unknown;
     };
     if (typeof message !== "string" || !message) return;
     setNotice({
-      ok: !(Array.isArray(conflicts) && conflicts.length > 0),
+      ok: outcome !== "failed" && !(Array.isArray(conflicts) && conflicts.length > 0),
       text: message,
     });
   };
