@@ -41,11 +41,14 @@ async function compileClean(
   page: import("../helpers").Page,
   severities: readonly string[] = ["ok"],
 ) {
+  // Project creation starts an automatic compile. The disabled button ignores
+  // synthetic clicks until it finishes, leaving the PDF pane hidden.
+  await expect(page.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 150_000 });
   await page.click('[data-testid="compile-button"]');
   await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
   await page.waitForFunction(
     `${JSON.stringify(severities)}.includes(document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'))`,
-    10_000,
+    150_000,
   );
 }
 
