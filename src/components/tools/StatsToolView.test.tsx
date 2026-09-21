@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useHomeViewStore } from "@/store/home-view";
 
@@ -85,9 +85,10 @@ describe("StatsToolView", () => {
     fireEvent.change(screen.getByLabelText("Statistic"), { target: { value: "not a number" } });
     fireEvent.click(screen.getByTestId("stats-p-run"));
 
-    await vi.waitFor(() => expect(mocks.notifyError).toHaveBeenCalledWith("p-value", expect.any(Error)));
-    expect(screen.getByTestId("stats-p-result")).toHaveTextContent("Couldn't calculate this result");
+    await waitFor(() => expect(screen.getByTestId("stats-p-result")).toHaveTextContent("Couldn't calculate this result"));
     expect(screen.getByTestId("stats-p-result")).toHaveTextContent("the test statistic must be a number");
+    expect(mocks.notifyError).toHaveBeenCalledWith("p-value", expect.any(Error));
+    expect(screen.getByTestId("stats-p-run")).toBeEnabled();
   });
 
   it("labels the Wilson interval half-width without relabeling it as a symmetric error", async () => {

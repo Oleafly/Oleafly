@@ -1320,7 +1320,7 @@ describe("MessageItem footer", () => {
       const copyButton = getByRole("button", { name: "Copy message" });
       const footer = time?.parentElement;
 
-      expect(time).toHaveTextContent(new Date(createdAt).toLocaleTimeString([], {
+      expect(time).toHaveTextContent(new Date(createdAt).toLocaleTimeString("en", {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,

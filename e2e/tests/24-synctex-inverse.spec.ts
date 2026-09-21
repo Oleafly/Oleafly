@@ -342,6 +342,9 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   } else {
     await createBlankProject(page, "E2E Doc");
   }
+  // Reopened projects retain the last layout, including editor-only views
+  // selected by earlier specs. These interactions need both source and PDF.
+  await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
 }
 
 async function waitForCurrentProjectAnalysis(

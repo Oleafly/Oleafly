@@ -186,7 +186,8 @@ test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 10_000 });
 });
 
-test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
+test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage }) => {
+  const run = Date.now().toString(36);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
@@ -200,7 +201,8 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
-  await openProject(tauriPage, "E2E Doc");
+  // Reopened projects restore their saved layout instead of these defaults.
+  await createBlankProject(tauriPage, `E2E Sidebar Hidden ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label^="Show sidebar"]')`,
@@ -219,7 +221,7 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, `E2E Sidebar Visible ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label^="Hide sidebar"]')`,

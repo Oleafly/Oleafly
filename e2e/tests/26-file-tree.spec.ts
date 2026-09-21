@@ -64,6 +64,7 @@ async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
   );
   if (!exists) {
     await page.click('[data-path="main.tex"]');
+    await page.focus('[aria-controls="source-tree-content"]');
     await page.click(
       mode === "file"
         ? '[title="New file (in the selected folder)"]'
@@ -111,6 +112,7 @@ test("create a scratch file in the tree", async ({ tauriPage }) => {
 
   // Menu operations run in their own tests (fresh pages): right after a
   // create, the tree refresh churn reliably swallows Radix menu-item selection.
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "scratch.tex");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
@@ -250,6 +252,7 @@ test("dragging into a folder uses the same collision-safe Keep both flow", async
   await typeInEditorAtStart(tauriPage, `% moving-${run}\n`);
   await createRootEntry(tauriPage, folder, "dir");
   await tauriPage.click(`[data-path=${JSON.stringify(folder)}]`);
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', name);
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
@@ -291,6 +294,7 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   // Creating the same name again must surface the structured conflict
   // dialog rather than silently failing (the old behavior) or replacing.
   await tauriPage.click('[data-path="main.tex"]');
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', taken);
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
@@ -307,6 +311,7 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
 
   // Keep both creates the suggested sibling and opens it.
   await tauriPage.click('[data-path="main.tex"]');
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', taken);
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

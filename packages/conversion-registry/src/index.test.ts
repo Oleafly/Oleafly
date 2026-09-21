@@ -118,7 +118,7 @@ describe("docs/conversion-matrix.md stays generated", () => {
   it("matches the committed file", () => {
     const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
     const committed = readFileSync(resolve(repoRoot, "docs/conversion-matrix.md"), "utf8");
-    expect(committed).toBe(generateMatrixMarkdown());
+    expect(committed.replaceAll("\r\n", "\n")).toBe(generateMatrixMarkdown());
   });
 });
 

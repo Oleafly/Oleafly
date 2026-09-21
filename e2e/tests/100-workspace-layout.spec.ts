@@ -1,6 +1,42 @@
 import { test, expect, reloadNativePage } from "../fixtures";
 import { createBlankProject, waitLong } from "../helpers";
 
+async function toolbarGeometry(page: Parameters<typeof createBlankProject>[0]) {
+  return page.evaluate<{ blocked: unknown[]; centerOffset: number }>(`(() => {
+    // Older system WebKit versions omit CSS zoom from client rectangles
+    // (https://bugs.webkit.org/show_bug.cgi?id=300474). Calibrate coordinates
+    // against a fixed CSS box before comparing them with viewport hit tests.
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:100px;top:100px;width:100px;height:100px;visibility:hidden;pointer-events:none';
+    document.body.append(probe);
+    const reference = probe.getBoundingClientRect();
+    const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    probe.remove();
+    const rect = element => {
+      const r = element.getBoundingClientRect();
+      const left = r.left * 100 * zoom / reference.left;
+      const top = r.top * 100 * zoom / reference.top;
+      const width = r.width * 100 * zoom / reference.width;
+      const height = r.height * 100 * zoom / reference.height;
+      return { left, top, width, height, right: left + width };
+    };
+    const buttons = [...document.querySelectorAll('[data-tour="project-toolbar"] button')]
+      .filter(el => !el.closest('[inert]'));
+    const blocked = buttons.flatMap(el => {
+      const r = rect(el);
+      if (!r.width || !r.height) return [];
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      // innerWidth rounds fractional native DPI-scaled viewport dimensions.
+      // A compile in progress deliberately disables its button's pointer events.
+      if (r.left >= -1 && r.right <= innerWidth + 1 && (el.disabled || el.contains(hit))) return [];
+      return [{ action: el.getAttribute('aria-label') || el.textContent, rect: r,
+        hit: hit?.outerHTML.slice(0, 300), viewport: [innerWidth, innerHeight], zoom }];
+    });
+    const views = rect(document.querySelector('[data-testid="toolbar-views"]'));
+    return { blocked, centerOffset: Math.abs((views.left + views.right) / 2 - innerWidth / 2) };
+  })()`);
+}
+
 test("workspace controls fit at the minimum window width with larger interface text", async ({ tauriPage: page }) => {
   await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await createBlankProject(page, "Layout geometry");
@@ -8,18 +44,7 @@ test("workspace controls fit at the minimum window width with larger interface t
     useSettingsStore.getState().setAppFontSize(22);
     useSettingsStore.getState().setWebBrowser(true);
   })`);
-  await expect.poll(async () => page.evaluate(`(() => {
-    const toolbar = document.querySelector('[data-tour="project-toolbar"]');
-    const buttons = [...toolbar.querySelectorAll('button')].filter(el => {
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0 && !el.closest('[inert]');
-    });
-    return buttons.filter(el => {
-      const r = el.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return r.left < 0 || r.right > innerWidth || !el.contains(hit);
-    }).map(el => el.getAttribute('aria-label') || el.textContent || 'unlabelled action');
-  })()`)).toEqual([]);
+  await expect.poll(async () => (await toolbarGeometry(page)).blocked).toEqual([]);
 });
 
 test("wide toolbars restore direct actions and center the view group after resizing", async ({ tauriPage: page }) => {
@@ -38,22 +63,11 @@ test("wide toolbars restore direct actions and center the view group after resiz
       document.documentElement.style.zoom = '${zoom}';
       await w.resizeCurrentWindow(${width}, 800);
     })`);
-    await expect.poll(async () => page.evaluate(`(() => {
-      const buttons = [...document.querySelectorAll('[data-tour="project-toolbar"] button')].filter(el => !el.closest('[inert]'));
-      return buttons.filter(el => {
-        const r = el.getBoundingClientRect();
-        if (!r.width || !r.height) return false;
-        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        return r.left < 0 || r.right > innerWidth || !el.contains(hit);
-      }).map(el => el.getAttribute('aria-label') || el.textContent);
-    })()`)).toEqual([]);
+    await expect.poll(async () => (await toolbarGeometry(page)).blocked).toEqual([]);
     await expect(page.locator('[data-testid="rail-terminal-toggle"]')).toBeVisible();
     await expect(page.locator('[data-testid="rail-assistant-toggle"]')).toBeVisible();
     await expect(page.locator('[data-toolbar-item="menu"]:not([inert]) button, [data-toolbar-item="settings"]:not([inert]) button')).toBeVisible();
-    await expect.poll(async () => page.evaluate(`(() => {
-      const r = document.querySelector('[data-testid="toolbar-views"]').getBoundingClientRect();
-      return Math.abs((r.left + r.right) / 2 - innerWidth / 2);
-    })()`)).toBeLessThan(1);
+    await expect.poll(async () => (await toolbarGeometry(page)).centerOffset).toBeLessThan(1);
     await expect.poll(async () => page.evaluate(`document.querySelectorAll('[data-testid="toolbar-views"] button').length`)).toBe(3);
     if (width === 1440 && fontSize === 16) {
       await expect(page.locator('button[aria-label="Versioning"]')).toBeVisible();
@@ -121,8 +135,11 @@ test("detached preview shares compilation and keeps logs in its window", async (
   const restoredPreview = await page.waitForWindow(w => w.label === 'preview', { timeout: 20_000 });
   await expect.poll(async () => restoredPreview.evaluate(`({ width: innerWidth, height: innerHeight })`)).toEqual(geometry);
   await expect.poll(async () => restoredPreview.evaluate(`!!document.querySelector('[data-testid="preview-reattach"]')`)).toBe(true);
-  await restoredPreview.click('[data-testid="preview-reattach"]');
-  await expect.poll(async () => page.evaluate(`!!document.querySelector('[data-testid="compile-button"]')`), { timeout: 15_000 }).toBe(true);
+  // Reattaching destroys this webview. Acknowledge the bridge command before
+  // clicking, then observe the result from the surviving main window.
+  await restoredPreview.evaluate(`setTimeout(() => document.querySelector('[data-testid="preview-reattach"]').click(), 0)`);
+  await expect.poll(async () => (await page.listWindows()).some(w => w.label === 'preview')).toBe(false);
+  await expect.poll(async () => page.evaluate(`!!document.querySelector('.pdf-canvas')`), { timeout: 15_000 }).toBe(true);
 });
 
 
@@ -176,11 +193,22 @@ test("the shared detached PDF controls save a copy into the current project", as
   if (await preview.evaluate(`!!document.querySelector(${JSON.stringify(saveButton)})`)) {
     await preview.click(saveButton);
   } else {
-    await preview.click('button[aria-label="More preview controls"]');
-    await preview.getByText("Save PDF to project", { exact: true }).click();
+    await preview.evaluate(`(() => {
+      const trigger = document.querySelector('button[aria-label="More preview controls"]');
+      trigger.focus();
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    })()`);
+    await preview.waitForFunction(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')]
+        .find(el => el.textContent.trim() === 'Save PDF to project');
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`, 15_000);
   }
   await preview.fill('input[aria-label="Project save name"]', 'detached-copy.pdf');
   await preview.getByText("Save", { exact: true }).click();
   await expect.poll(async () => page.evaluate(`import("/src/store/files.ts").then(m => JSON.stringify(m.useFilesStore.getState().tree).includes('detached-copy.pdf'))`), { timeout: 15_000 }).toBe(true);
-  await preview.click('[data-testid="preview-reattach"]');
+  await preview.evaluate(`setTimeout(() => document.querySelector('[data-testid="preview-reattach"]').click(), 0)`);
+  await expect.poll(async () => (await page.listWindows()).some(w => w.label === 'preview')).toBe(false);
 });
