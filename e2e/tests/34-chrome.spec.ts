@@ -1,17 +1,27 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, waitLong } from "../helpers";
 
-test("the rail theme menu sets the real theme", async ({ tauriPage }) => {
+test("the workspace appearance menu sets the real theme", async ({ tauriPage }) => {
+  await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   const isDark = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
   const menu = tauriPage.locator('[data-testid="theme-menu"]');
   const choose = async (value: "system" | "light" | "dark") => {
-    await tauriPage.click('[data-testid="theme-menu"]');
+    if (await menu.isVisible()) {
+      await tauriPage.click('[data-testid="theme-menu"]');
+    } else {
+      await tauriPage.click('[data-testid="workspace-menu"]');
+      const label = await tauriPage.evaluate<string>(
+        `document.querySelector('[data-testid="theme-menu"]').getAttribute('aria-label')`,
+      );
+      await tauriPage.getByText(label, { exact: true }).click();
+    }
     const item = `[data-testid="theme-option-${value}"]`;
     await expect(tauriPage.locator(item)).toBeVisible();
     await tauriPage.click(item);
+    await expect(tauriPage.locator(item)).not.toBeVisible();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
   };
   const before = await isDark();

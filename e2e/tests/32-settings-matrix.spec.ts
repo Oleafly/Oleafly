@@ -13,9 +13,7 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  const row = page.locator(`[data-testid="settings-row-${rowId}"]`) as unknown as Parameters<
-    typeof expect
-  >[0];
+  const row = page.locator(`[data-testid="settings-row-${rowId}"]`);
   await expect(row).toBeVisible({ timeout: 10_000 });
   await page.click(`[data-testid="settings-row-${rowId}"] [role="combobox"]`);
   const optionSelector = `[role="option"][data-label=${JSON.stringify(optionText)}]`;

@@ -1,10 +1,10 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
-import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
   expectDesktopShellAnchored,
   openProject,
+  type Page,
 } from "../helpers";
 
 interface GeometryFixture {
@@ -47,7 +47,7 @@ function expectCssSubpixel(
   ).toBeLessThanOrEqual(0.125);
 }
 
-async function openVisibleMenu(page: TauriPage, triggerSelector: string): Promise<void> {
+async function openVisibleMenu(page: Page, triggerSelector: string): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const marked = await page.evaluate<boolean>(
       `(() => {
@@ -77,11 +77,11 @@ async function openVisibleMenu(page: TauriPage, triggerSelector: string): Promis
       // the visible trigger and retry only while no menu is actually visible.
     }
   }
-  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(page.locator('[role="menu"]')).toBeVisible();
 }
 
 async function pressVisibleMenuItem(
-  page: TauriPage,
+  page: Page,
   label: string,
   key: "Enter" | "ArrowRight",
 ): Promise<void> {
@@ -131,6 +131,26 @@ async function pressVisibleMenuItem(
   );
 }
 
+async function openZoomMenu(page: Page): Promise<void> {
+  const inlineTrigger = '[aria-haspopup="menu"][aria-label^="Zoom "]';
+  if (await page.locator(inlineTrigger).isVisible()) {
+    await openVisibleMenu(page, inlineTrigger);
+  } else {
+    await openVisibleMenu(page, '[aria-label="More preview controls"]');
+    const label = await page.evaluate<string>(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find(candidate =>
+        candidate.getClientRects().length > 0 && candidate.textContent?.trim().startsWith('Zoom · ')
+      );
+      return item?.textContent?.trim() ?? '';
+    })()`);
+    expect(label).toMatch(/^Zoom · \d+%$/);
+    await pressVisibleMenuItem(page, label, "ArrowRight");
+  }
+  await page.waitForFunction(`Array.from(document.querySelectorAll('[role="menuitem"]')).some(
+    item => item.getClientRects().length > 0 && item.textContent?.trim() === '100%'
+  )`, 5_000);
+}
+
 async function expectedTextGeometry(
   bytes: Uint8Array,
   pageNumber: number,
@@ -154,7 +174,12 @@ async function expectedTextGeometry(
         throw new Error(`Text item not found for ${marker}`);
       }
       const transform = Util.transform(viewport.transform, item.transform);
-      const { pageWidth, pageHeight, pageX, pageY } = viewport.rawDims;
+      const { pageWidth, pageHeight, pageX, pageY } = viewport.rawDims as {
+        pageWidth: number;
+        pageHeight: number;
+        pageX: number;
+        pageY: number;
+      };
       const rawTransform = Util.transform(
         [1, 0, 0, -1, -pageX, pageY + pageHeight],
         item.transform,
@@ -463,7 +488,11 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   tauriPage,
 }) => {
   test.setTimeout(180_000);
+  // Exercise the narrow preview with its file tree open, including the zoom
+  // and page controls moving into overflow as they do on Windows CI.
+  await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await openOrCreateE2eDoc(tauriPage);
+  await tauriPage.evaluate(`import("/src/store/settings.ts").then(s => s.useSettingsStore.getState().setShowTree(true))`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   // Let the open-project compile settle before installing synthetic preview
   // bytes; otherwise its late result can legitimately replace this fixture.
@@ -530,8 +559,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     );
   }
 
-  const zoomTriggerSelector = '[aria-haspopup="menu"][aria-label^="Zoom "]';
-  await openVisibleMenu(tauriPage, zoomTriggerSelector);
+  await openZoomMenu(tauriPage);
   await pressVisibleMenuItem(tauriPage, "100%", "Enter");
   await tauriPage.waitForFunction(
     `getComputedStyle(document.body).pointerEvents !== "none"`,
@@ -540,9 +568,8 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   try {
     await tauriPage.waitForFunction(
       `(() => {
-        const trigger = document.querySelector('[aria-label="Zoom 100 percent"]');
         const page = document.querySelector('[data-page="1"]');
-        if (!(page instanceof HTMLElement) || !trigger) return false;
+        if (!(page instanceof HTMLElement)) return false;
         const scaleFactor = Number(page.style.getPropertyValue('--scale-factor'));
         return Math.abs(scaleFactor - 1) <= Number.EPSILON
           && Math.abs(page.getBoundingClientRect().width - 612) <= 0.05;
@@ -797,7 +824,20 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     expect(hit).toContain(marker);
   }
 
-  await openVisibleMenu(tauriPage, zoomTriggerSelector);
+  // The rotated marker can scroll a narrow pane horizontally beyond page 1,
+  // allowing virtualization to release it. Bring both pages back into the
+  // render window before comparing their transient zoom geometry together.
+  await tauriPage.evaluate(`(() => {
+    const first = document.querySelector('[data-page="1"]');
+    const scroller = document.querySelector('[data-testid="pdf-renderer"]')?.parentElement;
+    scroller.scrollTo({ left: 0, top: first.offsetTop + first.offsetHeight, behavior: 'instant' });
+  })()`);
+  await tauriPage.waitForFunction(`
+    document.querySelector('[data-page="1"] .textLayer')?.textContent?.includes('GEOMETRY PAGE ONE') &&
+    document.querySelector('[data-page="2"] .textLayer')?.textContent?.includes('ROTATED USER UNIT PAGE')
+  `, 15_000);
+
+  await openZoomMenu(tauriPage);
   const transient = await tauriPage.evaluate<PageGeometry[]>(`(async () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
       (candidate) => candidate.textContent?.trim() === '200%'

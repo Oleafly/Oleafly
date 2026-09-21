@@ -20,6 +20,17 @@ export interface Page {
   ): LocatorLike & { click(): Promise<void> };
 }
 
+export async function clickCompile(page: Page, timeout = 120_000) {
+  // Auto-compile can disable the button between a separate enabled assertion
+  // and the native bridge's click. Check and click in the same browser task.
+  await page.waitForFunction(`(() => {
+    const button = document.querySelector('[data-testid="compile-button"]');
+    if (!(button instanceof HTMLButtonElement) || button.disabled || !button.getClientRects().length) return false;
+    button.click();
+    return true;
+  })()`, timeout);
+}
+
 /**
  * The desktop shell must always remain attached to the native viewport.
  * Editors and previews own their scroll positions; the browser document does

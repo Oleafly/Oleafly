@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { createProjectFromTemplate } from "../helpers";
+import { clickCompile, createProjectFromTemplate } from "../helpers";
 
 // Templates differ in class, packages, and layout, so this is the suite's
 // regression net for "we changed something and a template broke".
@@ -41,10 +41,7 @@ async function compileClean(
   page: import("../helpers").Page,
   severities: readonly string[] = ["ok"],
 ) {
-  // Project creation starts an automatic compile. The disabled button ignores
-  // synthetic clicks until it finishes, leaving the PDF pane hidden.
-  await expect(page.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 150_000 });
-  await page.click('[data-testid="compile-button"]');
+  await clickCompile(page, 150_000);
   await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
   await page.waitForFunction(
     `${JSON.stringify(severities)}.includes(document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'))`,
