@@ -7,18 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Visual table edits preserve cell text when Tab adds a row and keep line breaks inside LaTeX command arguments.
-- Applying a stash reloads changed files even if Git cannot restore an untracked file. The error remains visible.
-- A delayed spelling-language response no longer changes the language of another project opened while the request was pending.
-- Visual table cells keep Japanese and Chinese IME composition active until the text is confirmed.
-- Editor shortcut recording detects equivalent Ctrl bindings on Windows and accepts function keys without Ctrl or Meta.
-- Figure previews resolve differently capitalized paths when the project filesystem supports them.
-- Windows translation checks and frontend tests handle drive-letter paths, checkout line endings, and system locale differences. Frontend CI now runs on Windows as well as Linux.
-- Native Windows tests avoid duplicate application manifests and cover every Cargo target. Windows Clippy checks now run in CI.
-
-## [0.4.2] - 2026-09-17
+## [0.4.2] - 2026-09-20
 
 ### Added
 
@@ -110,6 +99,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Help & About and the About window that shows how many community members are
   online. The count is fetched only while those two views are open, and never
   in offline mode.
+- Markdown files have a Both view beside Code and Visual. Stacked puts the
+  preview below the source, Split puts it alongside, and each project
+  remembers the arrangement and where the divider sits.
+- Projects reopen the way you left them: the view, sidebar and split sizes,
+  whether the assistant is open, the detached preview's size and position, and
+  your place in the PDF.
 
 ### Changed
 
@@ -133,6 +128,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   off for now.
 - Focus rings and outlines are gone from every control in the app. Focus and
   selection show as a background tint or a border colour instead.
+- The visual editors for LaTeX and Markdown are no longer an experiment, and
+  their switch in Settings is gone. New projects still open in Source, and a
+  project you left in Visual stays there.
+- The toolbar keeps Source, Split and PDF centered, clear of the macOS window
+  buttons and the Windows caption buttons, and shortens the project name
+  before it runs into them. As the window narrows, actions move into a More
+  actions menu one at a time, while Terminal and the assistant stay put.
+- The detached preview window has its own Recompile button, compiles your
+  unsaved edits, and keeps the logs and PDF controls until you close or dock
+  it.
+- Switching projects closes the terminal.
+- Explorer, Outline and Structure take less room and flicker less. Hidden
+  actions no longer reserve space in the section headers, the empty Outline
+  message stays inside its pane, and Structure keeps showing the current tree
+  while it refreshes in the background, with no loading message or
+  notifications.
 
 ### Fixed
 
@@ -155,6 +166,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ctrl-/ in the source editor used to toggle the comment and open the
   shortcut reference at once. It now only toggles the comment; anywhere else
   it still opens the reference.
+- The toolbar no longer overlaps itself in small windows or with larger
+  interface text, and preview controls that move into the menu no longer cover
+  the Logs button. A detached preview keeps its controls while it starts up.
+- Zooming a scrolled PDF no longer re-renders every page on each step. Pages
+  stretch while the zoom changes and sharpen once it settles, so a pinch stays
+  smooth.
+- Visual table edits preserve cell text when Tab adds a row and keep line
+  breaks inside LaTeX command arguments.
+- Applying a stash reloads changed files even if Git cannot restore an
+  untracked file. The error remains visible.
+- A delayed spelling-language response no longer changes the language of
+  another project opened while the request was pending.
+- Visual table cells keep Japanese and Chinese IME composition active until
+  the text is confirmed.
+- Editor shortcut recording detects equivalent Ctrl bindings on Windows and
+  accepts function keys without Ctrl or Meta.
+- Figure previews resolve differently capitalized paths when the project
+  filesystem supports them.
 
 ## [0.4.1] - 2026-09-12
 
