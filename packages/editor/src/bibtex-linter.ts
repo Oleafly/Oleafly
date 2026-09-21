@@ -4,7 +4,7 @@ import {
   isBibtexDirective,
   missingBibtexRequiredFields,
 } from "@oleafly/latex";
-import { novalidateDirective } from "./latex-linter";
+import { novalidateDirective } from "./latex-novalidate";
 import { editorMessage, type EditorMessageKey } from "./messages";
 
 interface BibtexRange {

@@ -3,6 +3,10 @@ import {
   latexBalancedGroupEnd,
   latexInlineVerbatimSpan,
 } from "./latex-lexical";
+import {
+  novalidateDirectiveAt,
+  skipNovalidateRegion,
+} from "./latex-novalidate";
 import { validateXparseArgumentSpecification } from "./latex-xparse";
 import { editorMessage, type EditorMessageKey } from "./messages";
 
@@ -524,51 +528,16 @@ interface LatexLintScan {
   disabled: boolean;
 }
 
-export type NovalidateDirective = "file" | "begin" | "end" | null;
-
-const NOVALIDATE_LINE =
-  /^[ \t]*%+[ \t]*(?:(begin|end)[ \t]+)?novalidate[ \t]*\r?$/u;
-
-export function novalidateDirective(line: string): NovalidateDirective {
-  const match = NOVALIDATE_LINE.exec(line);
-  if (!match) return null;
-  return (match[1] as "begin" | "end" | undefined) ?? "file";
-}
-
-function skipNovalidateRegion(text: string, from: number): number {
-  let lineStart = text[from] === "\n" ? from + 1 : from;
-  while (lineStart < text.length) {
-    const lineEnd = text.indexOf("\n", lineStart);
-    const stop = lineEnd < 0 ? text.length : lineEnd;
-    if (novalidateDirective(text.slice(lineStart, stop)) === "end") {
-      return lineEnd < 0 ? text.length : lineEnd + 1;
-    }
-    if (lineEnd < 0) return text.length;
-    lineStart = lineEnd + 1;
-  }
-  return text.length;
-}
-
-function commentOwnsLine(text: string, cursor: number): boolean {
-  let index = cursor - 1;
-  while (index >= 0 && (text[index] === " " || text[index] === "\t")) {
-    index -= 1;
-  }
-  return index < 0 || text[index] === "\n";
-}
-
 function commentStep(scan: LatexLintScan, cursor: number): number | null {
   const text = scan.text;
   const lineEnd = text.indexOf("\n", cursor + 1);
   const stop = lineEnd < 0 ? text.length : lineEnd;
-  if (commentOwnsLine(text, cursor)) {
-    const directive = novalidateDirective(text.slice(cursor, stop));
-    if (directive === "file") {
-      scan.disabled = true;
-      return null;
-    }
-    if (directive === "begin") return skipNovalidateRegion(text, stop);
+  const directive = novalidateDirectiveAt(text, cursor, stop);
+  if (directive === "file") {
+    scan.disabled = true;
+    return null;
   }
+  if (directive === "begin") return skipNovalidateRegion(text, stop);
   return lineEnd < 0 ? text.length : lineEnd + 1;
 }
 

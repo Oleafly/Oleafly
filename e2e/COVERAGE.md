@@ -54,7 +54,7 @@ operator-list names. A source assertion alone is never labeled Render.
 | BibTeX entry editing | `@art` in a `.bib` file offers the entry types; accepting `@article` writes the skeleton with a line per required field and the caret in the key | 89 |
 | BibTeX entry checks | an entry missing `year` marks its key and the message names the field; `%%novalidate` at the top clears it | 89 |
 | Bibliography style completion | `\bibliographystyle{pla` offers `plain` and `plainnat`, and accepting writes `plain` | 89 |
-| Syntax check escape hatch | an unclosed `\begin{itemize}` is marked, `%novalidate` clears the whole file, and a `%begin novalidate` region hides only its own errors | 89 |
+| Syntax check escape hatch | an unclosed `\begin{itemize}` is marked, `%novalidate` clears the whole file, and a `%begin novalidate` region hides only its own errors; both assertions wait for the project index to catch up with the editor text, so the project-intelligence findings are checked too | 89 |
 | Editor keybinding modes | Default/Vim/Emacs select; Emacs adds its scroller class and `Ctrl-A` moves to line start; Vim shows its status line; Default shows neither | 65 |
 | Editor layout preferences | tab size 2 indents two spaces and reports `state.tabSize`; wrap off drops the wrapping class and back on restores it; compact versus wide changes the computed `.cm-line` height | 65 |
 | Editor command keys | `Ctrl-U` uppercases a selection, `Mod-Shift-D` duplicates a line, `Mod-D` deletes one, `Ctrl-Alt-Down` adds a cursor, `Mod-Shift-L` opens the go-to-line dialog | 65 |

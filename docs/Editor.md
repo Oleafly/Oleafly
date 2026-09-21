@@ -84,9 +84,10 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   the text between them is not read at all, so an environment that generated
   code opens in there is never reported as unclosed. A `.bib` file uses two
   percent signs for the same three markers. The marker has to be the whole
-  comment, so `% novalidate later, not yet` stays an ordinary comment.
-  Compile errors, spelling, grammar and project diagnostics carry on as
-  before.
+  comment, so `% novalidate later, not yet` stays an ordinary comment. The
+  project index reads the same markers, so the LaTeX syntax findings it
+  contributes go quiet along with the editor's. Compile errors, spelling,
+  grammar and the reference and citation checks carry on as before.
 - Rich hovers: references whose label sits in a math environment render the
   equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
   display their number and page from the last successful compile. Label
