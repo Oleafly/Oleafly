@@ -547,11 +547,11 @@ export async function finishProjectCreation(page: Page) {
           && rect.width > 0
           && rect.height > 0;
       };
-      // A diagram project opens on its canvas, not on a text editor. Both are
-      // content surfaces inside the editor shell; the shell itself mounts
-      // before either of them, so it is not the readiness signal.
+      // A project can open in source, diagram, or preview-only mode. Wait for
+      // its content surface; the workspace shell mounts before the content.
       const editor = document.querySelector('[data-tour="project-editor"] .cm-content')
-        ?? document.querySelector('[data-tour="project-editor"] .react-flow');
+        ?? document.querySelector('[data-tour="project-editor"] .react-flow')
+        ?? document.querySelector('.pdf-canvas');
       const dialog = document.querySelector('[data-testid="template-gallery"]');
       const create = document.querySelector('[data-testid="create-project"]');
       const notice = Array.from(document.querySelectorAll('[role="alert"]'))

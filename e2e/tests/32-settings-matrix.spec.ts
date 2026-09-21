@@ -157,7 +157,8 @@ test("every accent color repaints the primary color", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
+test("open-projects-in controls new project landing layouts", async ({ tauriPage }) => {
+  const run = Date.now().toString(36);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
@@ -166,24 +167,26 @@ test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
     await pickOption(tauriPage, "Open projects in", label);
     await tauriPage.click('[aria-label="Close settings"]');
   };
-  const reopen = async () => {
+  const createNextProject = async (name: string) => {
     await tauriPage.click('[title="Back to library"]');
     await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
-    await openProject(tauriPage, "E2E Doc");
+    await createBlankProject(tauriPage, `E2E Default ${name} ${run}`);
   };
 
   await setDefaultView("Preview Only");
-  await reopen();
+  await createNextProject("Preview");
   await tauriPage.waitForFunction(`!document.querySelector('.cm-content')`, 10_000);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 
   await setDefaultView("Editor Only");
-  await reopen();
+  await createNextProject("Editor");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 10_000 });
   await tauriPage.waitForFunction(`!document.querySelector('.pdf-canvas')`, 10_000);
 
   await setDefaultView("Editor + Preview");
-  await reopen();
+  await createNextProject("Split");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
 });
 
 test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage }) => {

@@ -25,6 +25,8 @@ describe("Harper span offsets", () => {
     await linter.dispose();
   });
 
+  // This exercises real WASM spell checking, including suggestions for an
+  // unknown word. Give it the same bounded budget as cold linter setup.
   it("reports UTF-16 code units, so an emoji does not shift a span", async () => {
     const text =
       "Progress 🙂🚀 shows the the pair and a Qwertzuiopz word.";
@@ -39,7 +41,7 @@ describe("Harper span offsets", () => {
     });
     expect(spans).toContain("the the");
     expect(spans).toContain("Qwertzuiopz");
-  });
+  }, 30_000);
 
   it("lands a LaTeX finding on the document text after an emoji", async () => {
     const source = String.raw`\section{Progress 🙂}
