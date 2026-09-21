@@ -498,7 +498,7 @@ test("fullscreen controls hide, restore, and exit the preview toolbar", async ({
   await expect(tauriPage.locator('[aria-label="Fullscreen preview"]')).toBeVisible();
 });
 
-test("open-in-window control creates the detached preview window", async ({
+test("open-in-window control creates the detached preview window and reattaches it", async ({
   tauriPage,
 }) => {
   await activatePreviewControl(tauriPage, "Open preview in a new window");
@@ -506,4 +506,22 @@ test("open-in-window control creates the detached preview window", async ({
     timeout: 20_000,
   });
   expect(preview.targetWindow).toBe("preview");
+
+  await expect
+    .poll(async () => preview.evaluate(`!!document.querySelector('[data-testid="preview-reattach"]')`))
+    .toBe(true);
+  await preview.evaluate(
+    `setTimeout(() => document.querySelector('[data-testid="preview-reattach"]').click(), 0)`,
+  );
+  await expect
+    .poll(async () => (await tauriPage.listWindows()).some((window) => window.label === "preview"))
+    .toBe(false);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 15_000 });
+  expect(
+    await tauriPage.evaluate<string | null>(
+      `import("/src/store/files.ts").then(({ useFilesStore }) =>
+        localStorage.getItem("oleafly.preview.detached." + useFilesStore.getState().projectId)
+      )`,
+    ),
+  ).toBe("false");
 });
