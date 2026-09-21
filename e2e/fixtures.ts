@@ -43,7 +43,8 @@ for (const p of envCandidates) {
 // plugin's socket bridge: real webview, real Rust backend, real Tectonic
 // compiles. Start the app first:
 //
-//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing \
+//     --config src-tauri/tauri.e2e.conf.json
 let nativePageOpened = false;
 const productionE2e = process.env.OLEAFLY_E2E_PRODUCTION === "1";
 

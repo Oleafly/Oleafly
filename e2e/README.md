@@ -13,8 +13,9 @@ same buttons gets a PDF with zero errors.
   granted only in e2e builds (see `lib.rs`).
 - `@srsholmes/tauri-playwright` (npm) gives Playwright's test API
   (`test`, `expect`, locators, auto-waiting) over that bridge.
-- `OLEAFLY_DATA_DIR` points the app at a throwaway directory, so runs are
-  hermetic and never touch `~/.oleafly`.
+- `OLEAFLY_DATA_DIR` points the app at a throwaway directory, so runs never
+  touch `~/.oleafly`. The webview keeps its storage somewhere else, covered in
+  [Isolated web storage](#isolated-web-storage).
 
 ## Running
 
@@ -59,7 +60,8 @@ Or manually, keeping the app open between runs while writing tests:
 
 ```bash
 # Terminal 1
-OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing \
+  --config src-tauri/tauri.e2e.conf.json
 # Terminal 2
 pnpm test:e2e
 ```
@@ -67,6 +69,53 @@ pnpm test:e2e
 The suite is sequential (one worker, one app instance) and assumes a fresh
 data dir: specs build on each other (02 creates the project that 03-06 use).
 Rerunning against an already-used app instance is not supported — relaunch.
+
+## Isolated web storage
+
+The webview keeps its own state (localStorage, IndexedDB, cookies, caches)
+outside `OLEAFLY_DATA_DIR`, in a location picked from the app's identifier. E2E
+builds therefore get their own identifier, `com.oleafly.app.e2e`, from
+`src-tauri/tauri.e2e.conf.json`. Without it, an e2e build shares the
+`com.oleafly.app` store with the installed app: the boot seed rewrites your
+real settings (tours, font size, locale), and keys left behind by one run show
+up in the next.
+
+Build e2e apps with the overlay:
+
+```bash
+VITE_E2E_HOOKS=1 pnpm tauri build --debug --features e2e-testing --bundles app \
+  --config src-tauri/tauri.e2e.conf.json
+OLEAFLY_E2E_APP_BINARY="$PWD/src-tauri/target/debug/bundle/macos/Oleafly.app/Contents/MacOS/oleafly" \
+  ./scripts/e2e.sh
+```
+
+`scripts/e2e.sh` and `scripts/e2e.ps1` pass the same overlay to
+`pnpm tauri dev`. Each run starts by deleting the e2e identifier's storage, so
+a local run begins as empty as a CI runner. Storage still survives the app
+restarts inside one run, just as it does inside a CI shard. In
+`scripts/e2e.sh`, setting `OLEAFLY_E2E_REUSE_DATA_DIR` skips the reset.
+
+| Platform | Reset at the start of each run |
+| --- | --- |
+| macOS | `~/Library/WebKit/com.oleafly.app.e2e`, plus the identifier's folders under `Caches`, `HTTPStorages`, `Application Support`, `Saved Application State` and `Logs` |
+| Linux | `com.oleafly.app.e2e` under `$XDG_DATA_HOME`, `$XDG_CACHE_HOME` and `$XDG_CONFIG_HOME` |
+| Windows | `%LOCALAPPDATA%\com.oleafly.app.e2e` (WebView2's `EBWebView`) and `%APPDATA%\com.oleafly.app.e2e` |
+
+Every window, the detached preview included, uses this one store. None of
+them sets its own data directory, so they all share the app's default web
+context.
+
+On macOS, `scripts/e2e.sh` refuses to run a packaged binary whose bundle
+identifier is not the e2e one, because that build would write into the
+installed app's storage. Rebuild it with the overlay, or set
+`OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1` to run it anyway (an artifact from a CI
+run before this change, for example).
+
+Dev-mode runs on macOS are the exception. A `pnpm tauri dev` binary has no
+bundle identifier, so WebKit files its storage under the process name,
+`~/Library/WebKit/oleafly`, which is also where your own `pnpm tauri dev`
+sessions keep theirs. The runner leaves that folder alone. Use a packaged
+build when a run must not see state from your dev sessions.
 
 ## Writing tests
 

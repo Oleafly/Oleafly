@@ -105,7 +105,7 @@ assets instead of the Vite development server:
 
 ```powershell
 $env:VITE_E2E_HOOKS = "1"
-pnpm tauri build --debug --features e2e-testing --no-bundle
+pnpm tauri build --debug --features e2e-testing --no-bundle --config src-tauri/tauri.e2e.conf.json
 Remove-Item Env:VITE_E2E_HOOKS
 $env:OLEAFLY_E2E_APP_BINARY = (Resolve-Path src-tauri/target/debug/oleafly.exe).Path
 powershell -File scripts/e2e.ps1

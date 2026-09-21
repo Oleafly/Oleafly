@@ -72,7 +72,8 @@ SOCK_ID=""
 CLEANED=0
 
 # A packaged custom-protocol smoke can point this runner at a binary built
-# with `tauri build --features e2e-testing`. Default runs remain Vite-backed.
+# with `tauri build --features e2e-testing --config src-tauri/tauri.e2e.conf.json`.
+# Default runs remain Vite-backed.
 if [[ -n "$APP_BINARY" ]] && [[ ! -x "$APP_BINARY" ]]; then
   echo "e2e: OLEAFLY_E2E_APP_BINARY is not executable: $APP_BINARY" >&2
   exit 2
@@ -80,6 +81,64 @@ fi
 if [[ -n "$APP_BINARY" ]]; then
   export OLEAFLY_E2E_PRODUCTION="${OLEAFLY_E2E_PRODUCTION:-1}"
 fi
+
+E2E_IDENTIFIER="$(node -p 'require("./src-tauri/tauri.e2e.conf.json").identifier')"
+PRODUCTION_IDENTIFIER="$(node -p 'require("./src-tauri/tauri.conf.json").identifier')"
+if [[ -z "$E2E_IDENTIFIER" || "$E2E_IDENTIFIER" == "$PRODUCTION_IDENTIFIER" ]]; then
+  echo "e2e: src-tauri/tauri.e2e.conf.json must give e2e builds an identifier other than $PRODUCTION_IDENTIFIER" >&2
+  release_e2e_lock
+  exit 2
+fi
+
+bundle_identifier_of() {
+  local plist
+  plist="$(dirname "$1")/../Info.plist"
+  [[ -f "$plist" ]] || return 0
+  /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist" 2>/dev/null || true
+}
+
+if [[ -n "$APP_BINARY" && "$(uname -s)" == "Darwin" && "${OLEAFLY_E2E_ALLOW_SHARED_STORAGE:-}" != "1" ]]; then
+  APP_IDENTIFIER="$(bundle_identifier_of "$APP_BINARY")"
+  if [[ "$APP_IDENTIFIER" != "$E2E_IDENTIFIER" ]]; then
+    echo "e2e: $APP_BINARY is bundled as '${APP_IDENTIFIER:-unknown}', not $E2E_IDENTIFIER, so it would share web storage with the installed app." >&2
+    echo "e2e: rebuild it with --config src-tauri/tauri.e2e.conf.json, or set OLEAFLY_E2E_ALLOW_SHARED_STORAGE=1 to run it anyway." >&2
+    release_e2e_lock
+    exit 2
+  fi
+fi
+
+e2e_web_storage_dirs() {
+  local id="$1"
+  case "$(uname -s)" in
+    Darwin)
+      printf '%s\n' \
+        "$HOME/Library/WebKit/$id" \
+        "$HOME/Library/Caches/$id" \
+        "$HOME/Library/HTTPStorages/$id" \
+        "$HOME/Library/HTTPStorages/$id.binarycookies" \
+        "$HOME/Library/Application Support/$id" \
+        "$HOME/Library/Saved Application State/$id.savedState" \
+        "$HOME/Library/Logs/$id"
+      ;;
+    Linux)
+      printf '%s\n' \
+        "${XDG_DATA_HOME:-$HOME/.local/share}/$id" \
+        "${XDG_CACHE_HOME:-$HOME/.cache}/$id" \
+        "${XDG_CONFIG_HOME:-$HOME/.config}/$id"
+      ;;
+    *) ;;
+  esac
+}
+
+reset_e2e_web_storage() {
+  [[ -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]] || return 0
+  local dir
+  while IFS= read -r dir; do
+    [[ -e "$dir" ]] || continue
+    rm -rf "$dir"
+    echo "e2e: reset $dir"
+  done < <(e2e_web_storage_dirs "$E2E_IDENTIFIER")
+}
 
 terminate_app_group() {
   local leader="$1"
@@ -124,6 +183,7 @@ bash scripts/ensure-e2e-sidecars.sh
 
 DATA_DIR="${OLEAFLY_E2E_REUSE_DATA_DIR:-$(mktemp -d /tmp/oleafly-e2e.XXXXXX)}"
 LOG="$(mktemp /tmp/oleafly-e2e-log.XXXXXX)"
+reset_e2e_web_storage
 # Export so Playwright specs can read discovery files (e.g. mcp.json) written
 # into the same throwaway data dir the app uses.
 export OLEAFLY_DATA_DIR="$DATA_DIR"
@@ -308,7 +368,7 @@ start_app() {
       OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
       "$APP_BINARY" >>"$LOG" 2>&1 &
   else
-    OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
+    OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json >>"$LOG" 2>&1 &
   fi
   APP_PID=$!
   echo "e2e: waiting for the bridge socket (first build can take minutes)..."

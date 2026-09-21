@@ -18,7 +18,8 @@ try {
 
 // The app must already be running with the e2e bridge compiled in:
 //
-//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing \
+//     --config src-tauri/tauri.e2e.conf.json
 //   pnpm test:e2e
 export default defineConfig({
   testDir: "./tests",

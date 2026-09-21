@@ -1,0 +1,6 @@
+{
+  "identifier": "com.oleafly.app.e2e",
+  "bundle": {
+    "createUpdaterArtifacts": false
+  }
+}

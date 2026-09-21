@@ -9,7 +9,15 @@ Set-Location (Join-Path $PSScriptRoot "..")
 if (-not $env:OLEAFLY_E2E_DISABLE_HMR) { $env:OLEAFLY_E2E_DISABLE_HMR = "1" }
 
 # Match the Unix runner: exercise bundled assets with a prebuilt e2e binary.
-# Build with VITE_E2E_HOOKS=1 and `tauri build --debug --features e2e-testing --no-bundle`.
+# Build with VITE_E2E_HOOKS=1 and
+# `tauri build --debug --features e2e-testing --no-bundle --config src-tauri/tauri.e2e.conf.json`.
+$e2eIdentifier = [string](& node -p "require('./src-tauri/tauri.e2e.conf.json').identifier")
+$productionIdentifier = [string](& node -p "require('./src-tauri/tauri.conf.json').identifier")
+if ($LASTEXITCODE -ne 0 -or -not $e2eIdentifier.Trim() -or $e2eIdentifier.Trim() -eq $productionIdentifier.Trim()) {
+  throw "e2e: src-tauri/tauri.e2e.conf.json must give e2e builds an identifier other than $productionIdentifier"
+}
+$e2eIdentifier = $e2eIdentifier.Trim()
+
 $appBinary = $env:OLEAFLY_E2E_APP_BINARY
 if ($appBinary) {
   if (-not (Test-Path -LiteralPath $appBinary -PathType Leaf)) {
@@ -144,6 +152,20 @@ fs.writeFileSync(target, JSON.stringify(config, null, 2));
   }
 }
 
+function Reset-E2eWebStorage {
+  foreach ($root in @($env:LOCALAPPDATA, $env:APPDATA)) {
+    if (-not $root) { continue }
+    $path = Join-Path $root $script:e2eIdentifier
+    if (-not (Test-Path -LiteralPath $path)) { continue }
+    Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $path) {
+      Write-Host "e2e: could not fully reset $path; a WebView2 process may still be using it"
+    } else {
+      Write-Host "e2e: reset $path"
+    }
+  }
+}
+
 function Start-App([string]$label) {
   Stop-App
   Set-CheckpointsForSpec
@@ -176,7 +198,7 @@ function Start-App([string]$label) {
       -PassThru -WindowStyle Hidden
   } else {
     $script:app = Start-Process -FilePath "cmd.exe" `
-      -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$($script:log)`" 2>&1" `
+      -ArgumentList "/c", "pnpm tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json > `"$($script:log)`" 2>&1" `
       -PassThru -WindowStyle Hidden
   }
 
@@ -274,6 +296,7 @@ try {
   }
 
   & (Join-Path $PSScriptRoot "ensure-e2e-sidecars.ps1")
+  Reset-E2eWebStorage
   New-Item -ItemType Directory -Path $dataDir | Out-Null
   Write-Host "e2e: shared data dir $dataDir"
 
