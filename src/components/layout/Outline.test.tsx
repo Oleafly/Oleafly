@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -338,12 +338,45 @@ describe("Outline with a snapshot", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(copy.notice.partial);
   });
 
-  it("notes a stale map", () => {
+  it("keeps a stale map visible without a refresh notice", () => {
     const data = snapshot();
     openProject();
     setState({ status: "success", identity: data.identity, data, stale: true });
     render(<Outline />);
-    expect(screen.getByText(copy.notice.stale)).toBeInTheDocument();
+    expect(screen.getByText("Introduction")).toBeInTheDocument();
+    expect(screen.queryByText(copy.notice.stale)).not.toBeInTheDocument();
+    expect(document.querySelector("svg.lucide-info")).toBeNull();
+  });
+
+  it("keeps the tree mounted during a refresh and replaces its rows silently", () => {
+    const previous = withSnapshot();
+    render(<Outline />);
+    const tree = screen.getByRole("tree");
+    act(() => setState({ status: "running", identity: { ...previous.identity, projectRevision: 2 }, data: previous, stale: true }));
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(screen.getByText("Introduction")).toBeInTheDocument();
+    expect(screen.queryByText(copy.unavailable.mapping.title)).not.toBeInTheDocument();
+
+    const next = snapshot("project", 2);
+    const refreshed = { ...next, outlines: { ...next.outlines,
+      "main.tex": next.outlines["main.tex"].map((node) => node.title === "Introduction"
+        ? { ...node, title: "Updated introduction" } : node),
+    } };
+    act(() => setState({ status: "success", identity: refreshed.identity, data: refreshed, stale: false }));
+    expect(screen.getByRole("tree")).toBe(tree);
+    expect(screen.getByText("Updated introduction")).toBeInTheDocument();
+    expect(screen.queryByText("Introduction")).not.toBeInTheDocument();
+  });
+
+  it("does not retain a tree from a different project", () => {
+    const previous = withSnapshot();
+    render(<Outline />);
+    act(() => {
+      openProject("next-project");
+      setState({ status: "running", identity: { ...previous.identity, projectId: "next-project" }, data: previous, stale: true });
+    });
+    expect(screen.queryByText("Introduction")).not.toBeInTheDocument();
+    expect(screen.getByText(copy.unavailable.mapping.title)).toBeInTheDocument();
   });
 
   it("starts collapsed when the layout asks for it", () => {

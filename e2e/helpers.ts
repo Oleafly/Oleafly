@@ -20,6 +20,17 @@ export interface Page {
   ): LocatorLike & { click(): Promise<void> };
 }
 
+export async function clickCompile(page: Page, timeout = 120_000) {
+  // Auto-compile can disable the button between a separate enabled assertion
+  // and the native bridge's click. Check and click in the same browser task.
+  await page.waitForFunction(`(() => {
+    const button = document.querySelector('[data-testid="compile-button"]');
+    if (!(button instanceof HTMLButtonElement) || button.disabled || !button.getClientRects().length) return false;
+    button.click();
+    return true;
+  })()`, timeout);
+}
+
 /**
  * The desktop shell must always remain attached to the native viewport.
  * Editors and previews own their scroll positions; the browser document does
@@ -547,11 +558,11 @@ export async function finishProjectCreation(page: Page) {
           && rect.width > 0
           && rect.height > 0;
       };
-      // A diagram project opens on its canvas, not on a text editor. Both are
-      // content surfaces inside the editor shell; the shell itself mounts
-      // before either of them, so it is not the readiness signal.
+      // A project can open in source, diagram, or preview-only mode. Wait for
+      // its content surface; the workspace shell mounts before the content.
       const editor = document.querySelector('[data-tour="project-editor"] .cm-content')
-        ?? document.querySelector('[data-tour="project-editor"] .react-flow');
+        ?? document.querySelector('[data-tour="project-editor"] .react-flow')
+        ?? document.querySelector('.pdf-canvas');
       const dialog = document.querySelector('[data-testid="template-gallery"]');
       const create = document.querySelector('[data-testid="create-project"]');
       const notice = Array.from(document.querySelectorAll('[role="alert"]'))
@@ -1139,8 +1150,8 @@ export async function expandProviderCard(page: Page) {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
   const providers = page.locator('[data-testid="ai-settings-tab-providers"]');
   await expect(providers).toBeVisible({ timeout: 15_000 });
-  await providers.focus();
-  await providers.press("Enter");
+  await page.focus('[data-testid="ai-settings-tab-providers"]');
+  await page.press('[data-testid="ai-settings-tab-providers"]', "Enter");
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('button[aria-expanded]')).some(
       button => (button.textContent || '').includes(${JSON.stringify(provider)}))`,
@@ -1249,6 +1260,22 @@ export async function ensureAiConnected(page: Page) {
 
 const SETTINGS_BUTTON = '[data-testid="open-settings"]';
 
+async function clickWorkspaceAction(page: Page, selector: string) {
+  // Window chrome and zoom can move an action into the workspace menu.
+  // Probe and click together so a resize cannot replace the target in between.
+  await page.waitForFunction(`(() => {
+    const visible = element => element instanceof HTMLElement &&
+      element.getBoundingClientRect().width > 0 &&
+      element.getBoundingClientRect().height > 0 &&
+      getComputedStyle(element).visibility !== "hidden";
+    const action = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find(visible);
+    if (action) { action.click(); return true; }
+    const menu = document.querySelector('[data-testid="workspace-menu"]');
+    if (visible(menu) && menu.getAttribute("aria-expanded") !== "true") menu.click();
+    return false;
+  })()`, 15_000);
+}
+
 export async function openSettings(page: Page, section?: string) {
   // The settings modal is lazy-loaded. Wait for its always-present appearance
   // nav via the locator-assertion path (tauriExpect), NOT waitForFunction: the
@@ -1259,14 +1286,14 @@ export async function openSettings(page: Page, section?: string) {
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
   ) as unknown as LocatorLike;
-  await page.click(SETTINGS_BUTTON);
+  await clickWorkspaceAction(page, SETTINGS_BUTTON);
   const mounted = await expect(appearance)
     .toBeVisible({ timeout: 8_000 })
     .then(() => true)
     .catch(() => false);
   if (!mounted) {
     await page.press("body", "Escape").catch(() => {});
-    await page.click(SETTINGS_BUTTON).catch(() => {});
+    await clickWorkspaceAction(page, SETTINGS_BUTTON);
     await expect(appearance).toBeVisible({ timeout: 8_000 });
   }
   if (section) {
@@ -1306,7 +1333,7 @@ export async function openSettings(page: Page, section?: string) {
       if (state === "active") return;
       if (state === "closed") {
         // The modal lost its nav (or never fully opened); reopen and retry.
-        await page.click('[aria-label="Settings"]').catch(() => {});
+        await clickWorkspaceAction(page, SETTINGS_BUTTON);
         await expect(appearance).toBeVisible({ timeout: 8_000 });
       }
       if (Date.now() > deadline) {

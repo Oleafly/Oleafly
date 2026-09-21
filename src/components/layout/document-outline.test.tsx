@@ -367,9 +367,11 @@ describe("DocumentOutline", () => {
       screen.getByText("Add a section heading to build a navigable outline."),
     ).toBeInTheDocument();
     expect(screen.getByRole("status").parentElement).toHaveClass(
-      "items-center",
-      "justify-center",
+      "flex-col",
+      "overflow-auto",
     );
+    expect(screen.getByRole("status")).toHaveClass("my-auto", "shrink-0");
+    expect(screen.getByRole("status").querySelector("svg.lucide-list")).toBeInTheDocument();
   });
 
   it("reopens when the active empty document gains its first heading", async () => {

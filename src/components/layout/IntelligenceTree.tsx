@@ -313,7 +313,7 @@ function TreeRowMarker({
         event.stopPropagation();
         onToggle(row.node.id, row.expanded);
       }}
-      className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-sidebar-accent-foreground/10"
+      className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground"
     >
       <ChevronRight
         aria-hidden
@@ -836,11 +836,15 @@ export function PanelState({
   title,
   detail,
   action,
+  icon,
+  className,
 }: Readonly<{
   state: "pending" | "partial" | "error" | "unsupported" | "empty";
   title: string;
   detail: string;
   action?: ReactNode;
+  icon?: ReactNode;
+  className?: string;
 }>) {
   const isPending = state === "pending";
   const stateIconFor = () => {
@@ -855,7 +859,7 @@ export function PanelState({
     <div
       role={state === "error" ? "alert" : "status"}
       aria-live={isPending ? "polite" : undefined}
-      className="flex min-h-36 flex-col items-center justify-center px-6 py-8 text-center"
+      className={cn("flex min-h-36 flex-col items-center justify-center px-6 py-8 text-center", className)}
     >
       <span
         className={cn(
@@ -866,7 +870,7 @@ export function PanelState({
           isPending && "animate-pulse motion-reduce:animate-none",
         )}
       >
-        <StateIcon aria-hidden className="size-4" />
+        {icon ?? <StateIcon aria-hidden className="size-4" />}
       </span>
       <p className="text-xs font-medium text-sidebar-foreground">{title}</p>
       <p className="mt-1 max-w-60 text-[11px] leading-relaxed text-muted-foreground">

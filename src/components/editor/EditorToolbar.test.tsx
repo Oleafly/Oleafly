@@ -58,6 +58,7 @@ describe("EditorToolbar wysiwyg toggle", () => {
     expect(screen.getByLabelText("Switch to source view")).toHaveTextContent("Code");
     const visualBtn = screen.getByLabelText("Switch to WYSIWYG view");
     expect(visualBtn).toHaveTextContent("Visual");
+    expect(screen.queryByRole("button", { name: "Split" })).not.toBeInTheDocument();
     fireEvent.click(visualBtn);
     expect(onToggleWysiwyg).toHaveBeenCalledTimes(1);
   });

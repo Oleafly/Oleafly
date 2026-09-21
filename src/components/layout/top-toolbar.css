@@ -1,0 +1,41 @@
+[data-tour="project-toolbar"] {
+  --toolbar-action-gap: 0.25rem;
+  --toolbar-compile-gap: 0.25rem;
+}
+
+[data-tour="project-toolbar"][data-toolbar-spacing="roomy"] {
+  --toolbar-action-gap: 0.5rem;
+  --toolbar-compile-gap: 0.5rem;
+}
+
+[data-tour="project-toolbar"] [data-toolbar-part="actions"] {
+  gap: var(--toolbar-action-gap);
+}
+
+[data-tour="project-toolbar"] [data-toolbar-icon] button {
+  width: 1.75rem;
+}
+
+[data-tour="project-toolbar"] [data-toolbar-item="compile"] {
+  margin-inline-end: var(--toolbar-compile-gap);
+}
+
+[data-toolbar-spacing="roomy"] [data-toolbar-item]:not([inert]) {
+  position: relative;
+}
+
+[data-toolbar-spacing="roomy"] [data-toolbar-item]:not([inert], [data-toolbar-item="menu"], [data-toolbar-item="settings"])::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--toolbar-action-gap) / -2);
+  top: 50%;
+  width: 1px;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  background: var(--border);
+  pointer-events: none;
+}
+
+[data-tour="project-toolbar"][data-toolbar-spacing="roomy"] [data-toolbar-item="compile"]::after {
+  right: calc(var(--toolbar-action-gap) / -2 - var(--toolbar-compile-gap));
+}

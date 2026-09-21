@@ -101,6 +101,8 @@ async function createEntry(
     if (parent) {
       await openRowAction(page, parent, mode === "file" ? "New file" : "New folder");
     } else {
+      // Source actions are revealed by hover or keyboard focus on the section.
+      await page.focus('[aria-controls="source-tree-content"]');
       await page.click(
         mode === "file"
           ? '[title="New file (in the selected folder)"]'
@@ -429,6 +431,7 @@ test("real import actions copy exact files and recursive folders into exact dest
   await openRailTab(tauriPage, "Explorer");
 
   await setNextImportPaths(tauriPage, [rootTextPath]);
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.focus('[title="Import a file or folder (into the selected folder)"]');
   await tauriPage.press(
     '[title="Import a file or folder (into the selected folder)"]',

@@ -136,7 +136,10 @@
     "imageFile": "이미지 파일",
     "apply": "적용",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "분할",
+    "both": "둘 다",
+    "stacked": "위아래"
   },
   "contextMenu": {
     "engineUnavailable": "문서 엔진 작업을 사용할 수 없음",
@@ -278,7 +281,8 @@
     "readOnlyNotice": "이 파일에는 그리기 모드가 보존할 수 없는 소스가 있습니다. 캔버스는 일부만 보여 주는 읽기 전용 미리보기입니다. 원본 파일을 편집하려면 코드 모드를 쓰세요."
   },
   "preview": {
-    "loading": "PDF 뷰어를 불러오는 중…"
+    "loading": "PDF 뷰어를 불러오는 중…",
+    "markdown": "Markdown 미리보기"
   },
   "log": {
     "locationFileLine": "{{file}} · {{line}}번째 줄",

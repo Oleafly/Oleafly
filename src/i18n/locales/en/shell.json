@@ -573,10 +573,6 @@
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"
       },
-      "visualEditor": {
-        "description": "Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle.",
-        "label": "Visual editor"
-      },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
       "webBrowser": {
         "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool.",
@@ -855,7 +851,8 @@
       "editor": "Source View",
       "pdf": "PDF View",
       "split": "Split View"
-    }
+    },
+    "moreActions": "More actions"
   },
   "tour": {
     "chooseColor": "Choose your signature color",

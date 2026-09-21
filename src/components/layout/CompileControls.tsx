@@ -25,6 +25,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
@@ -99,8 +100,9 @@ function TexRootIndicator() {
  * The menu owns the settings that change how the next compile runs, so it lives
  * with the button that starts one rather than in the settings dialog.
  */
-export function CompileControls() {
-  const { t } = useTranslation(["shell"]);
+export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: boolean }> = {}) {
+  const projectId = useFilesStore((s) => s.projectId);
+  const detached = usePreviewDetachedStore((s) => projectId !== null && s.projectId === projectId);
   const engine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const setEngine = useFilesStore((s) => s.setEngine);
@@ -124,6 +126,46 @@ export function CompileControls() {
   const compileRevision = useCompileStore(
     (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
   );
+  return <>
+    <TexRootIndicator />
+    <CompileControlsView
+      iconOnly={iconOnly}
+      engine={engine}
+      engineLoaded={engineLoaded}
+      setEngine={setEngine}
+      stopCompile={stopCompile}
+      autoCompile={autoCompile}
+      setAutoCompile={setAutoCompile}
+      compileMode={compileMode}
+      setCompileMode={setCompileMode}
+      checkSyntaxBeforeCompile={checkSyntaxBeforeCompile}
+      setCheckSyntaxBeforeCompile={setCheckSyntaxBeforeCompile}
+      stopOnFirstError={stopOnFirstError}
+      setStopOnFirstError={setStopOnFirstError}
+      status={status}
+      compileRevision={compileRevision}
+      recompile={(options) => {
+        if (viewMode === "editor" && !detached) setViewMode("split");
+        return recompile(options);
+      }}
+    />
+  </>;
+}
+
+type FileState = ReturnType<typeof useFilesStore.getState>;
+type CompileState = ReturnType<typeof useCompileStore.getState>;
+export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded" | "setEngine"> &
+  Pick<CompileState, "status" | "autoCompile" | "setAutoCompile" | "compileMode" | "setCompileMode" |
+    "checkSyntaxBeforeCompile" | "setCheckSyntaxBeforeCompile" | "stopOnFirstError" | "setStopOnFirstError" | "stopCompile"> & {
+      compileRevision: number;
+      iconOnly?: boolean;
+      recompile: (options?: { fromScratch?: boolean }) => unknown;
+    };
+
+export function CompileControlsView({
+  engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false
+}: Readonly<CompileControlsViewProps>) {
+  const { t } = useTranslation(["shell"]);
   const compiling = status === "compiling";
   const hasCompileResult = status === "success" || status === "error";
   const compileLabel = hasCompileResult
@@ -136,8 +178,6 @@ export function CompileControls() {
   };
 
   return (
-  <>
-  <TexRootIndicator />
   <ButtonGroup data-tour="project-compile" className="shrink-0">
     <Tooltip
       label={t(($) => $.shell.compile.runTooltip, {
@@ -166,14 +206,13 @@ export function CompileControls() {
         disabled={compiling || !engineLoaded}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
-          // If the PDF pane is hidden (editor-only), reveal it so the result shows.
-          if (viewMode === "editor") setViewMode("split");
           void recompile();
         }}
         aria-label={compileLabel}
       >
         {renderCompileIcon()}
-        <span className="text-xs font-medium">{compileLabel}</span>
+        <span data-toolbar-part="compile-label" aria-hidden={iconOnly || undefined}
+          className={cn("whitespace-nowrap text-xs font-medium", iconOnly && "invisible absolute")}>{compileLabel}</span>
       </Button>
     </Tooltip>
     <DropdownMenu>
@@ -351,7 +390,6 @@ export function CompileControls() {
         <DropdownMenuItem
           disabled={compiling || !engineLoaded}
           onSelect={() => {
-            if (viewMode === "editor") setViewMode("split");
             void recompile({ fromScratch: true });
           }}
         >
@@ -360,6 +398,5 @@ export function CompileControls() {
       </DropdownMenuContent>
     </DropdownMenu>
   </ButtonGroup>
-  </>
   );
 }

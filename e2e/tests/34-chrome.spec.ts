@@ -1,17 +1,27 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, waitLong } from "../helpers";
 
-test("the rail theme menu sets the real theme", async ({ tauriPage }) => {
+test("the workspace appearance menu sets the real theme", async ({ tauriPage }) => {
+  await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   const isDark = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
   const menu = tauriPage.locator('[data-testid="theme-menu"]');
   const choose = async (value: "system" | "light" | "dark") => {
-    await tauriPage.click('[data-testid="theme-menu"]');
+    if (await menu.isVisible()) {
+      await tauriPage.click('[data-testid="theme-menu"]');
+    } else {
+      await tauriPage.click('[data-testid="workspace-menu"]');
+      const label = await tauriPage.evaluate<string>(
+        `document.querySelector('[data-testid="theme-menu"]').getAttribute('aria-label')`,
+      );
+      await tauriPage.getByText(label, { exact: true }).click();
+    }
     const item = `[data-testid="theme-option-${value}"]`;
     await expect(tauriPage.locator(item)).toBeVisible();
     await tauriPage.click(item);
+    await expect(tauriPage.locator(item)).not.toBeVisible();
     await expect(menu).toHaveAttribute("aria-expanded", "false");
   };
   const before = await isDark();
@@ -214,13 +224,13 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
         .toBe(1);
       const showsCollapse = (await collapseAll.count()) === 1;
       const bulkToggle = showsCollapse ? collapseAll : expandAll;
-      const bulkOpacity = () =>
+      const bulkDisplay = () =>
         tauriPage.evaluate<string>(`(() => {
           const actions = document.querySelector(${JSON.stringify(
             `[data-testid="${id}-actions"]`,
           )});
           if (!actions) throw new Error("Explorer section actions are missing");
-          return getComputedStyle(actions).opacity;
+          return getComputedStyle(actions).display;
         })()`);
       const sectionClasses = (await section.getAttribute("class")) ?? "";
       const actionClasses =
@@ -229,9 +239,9 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       expect(sectionClasses.split(/\s+/)).toContain("group/section");
       expect(actionClasses.split(/\s+/)).toEqual(
         expect.arrayContaining([
-          "opacity-0",
-          "group-hover/section:opacity-100",
-          "group-focus-within/section:opacity-100",
+          "hidden",
+          "group-hover/section:flex",
+          "group-focus-within/section:flex",
         ]),
       );
       await expect(
@@ -244,9 +254,9 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       // the browser's CSS :hover state. The class contract above covers hover;
       // exercise the equivalent focus-within reveal with a real DOM focus.
       await tauriPage.locator(".cm-content").focus();
-      await expect.poll(bulkOpacity).toBe("0");
+      await expect.poll(bulkDisplay).toBe("none");
       await sectionToggle(id).focus();
-      await expect.poll(bulkOpacity).toBe("1");
+      await expect.poll(bulkDisplay).toBe("flex");
     }
     await setSectionOpen("project-structure", false);
     await waitForStructureCollapsedAtBottom();
@@ -469,6 +479,7 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
     `document.body.innerText.includes('tabtest.tex')`,
   );
   if (!exists) {
+    await tauriPage.focus('[aria-controls="source-tree-content"]');
     await tauriPage.click('[title="New file (in the selected folder)"]');
     await tauriPage.fill('input[placeholder="New file name"]', "tabtest.tex");
     await tauriPage.press('input[placeholder="New file name"]', "Enter");

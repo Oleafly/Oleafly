@@ -136,7 +136,10 @@
     "imageFile": "画像ファイル",
     "apply": "適用",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "分割",
+    "both": "両方",
+    "stacked": "上下に配置"
   },
   "contextMenu": {
     "engineUnavailable": "ドキュメントエンジンの操作を利用できません",
@@ -278,7 +281,8 @@
     "readOnlyNotice": "このファイルには、描画モードでは保持できないソースが含まれています。キャンバスは部分的な読み取り専用プレビューです。元のファイルを編集するにはコード表示を使ってください。"
   },
   "preview": {
-    "loading": "PDF ビューアを読み込み中…"
+    "loading": "PDF ビューアを読み込み中…",
+    "markdown": "Markdownプレビュー"
   },
   "log": {
     "locationFileLine": "{{file}} · {{line}} 行目",

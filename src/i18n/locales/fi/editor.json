@@ -136,7 +136,10 @@
     "imageFile": "Kuvatiedosto",
     "apply": "Käytä",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Jaettu",
+    "both": "Molemmat",
+    "stacked": "Päällekkäin"
   },
   "contextMenu": {
     "engineUnavailable": "Dokumenttimoottorin toiminnot eivät ole käytettävissä",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Tässä tiedostossa on lähdekoodia, jota piirtotila ei osaa säilyttää. Piirtoalusta on osittainen, vain luettava esikatselu. Muokkaa alkuperäistä tiedostoa Koodi-tilassa."
   },
   "preview": {
-    "loading": "Ladataan PDF-katselinta…"
+    "loading": "Ladataan PDF-katselinta…",
+    "markdown": "Markdown-esikatselu"
   },
   "log": {
     "locationFileLine": "{{file}} · rivi {{line}}",

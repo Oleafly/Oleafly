@@ -136,7 +136,10 @@
     "imageFile": "Файл зображення",
     "apply": "Застосувати",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Розділити",
+    "both": "Обидва",
+    "stacked": "Один над одним"
   },
   "contextMenu": {
     "engineUnavailable": "Дії рушія документа недоступні",
@@ -287,7 +290,8 @@
     "readOnlyNotice": "Цей файл містить код, який режим малювання не може зберегти. Полотно це частковий перегляд лише для читання. Щоб редагувати оригінал, перейдіть у режим коду."
   },
   "preview": {
-    "loading": "Завантаження переглядача PDF…"
+    "loading": "Завантаження переглядача PDF…",
+    "markdown": "Попередній перегляд Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · рядок {{line}}",

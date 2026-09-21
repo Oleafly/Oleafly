@@ -158,7 +158,6 @@ function Start-App([string]$label) {
     $seed = @{
       "oleafly.locale" = $script:uiLocale
       "oleafly.shortcuts" = $null
-      "oleafly.visualEditor" = "1"
       "oleafly.latexTools" = "1"
       "oleafly.webBrowser" = "1"
       "oleafly.openInTree" = "0"

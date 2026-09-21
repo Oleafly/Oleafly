@@ -22,6 +22,9 @@ async function expectPdfCanvas(tauriPage: Parameters<typeof openProject>[0], tim
 
 test("create a project from the Blank template", async ({ tauriPage }) => {
   await createBlankProject(tauriPage, "E2E Doc");
+  // This project seeds the other desktop specs, which inspect both source and
+  // rendered output. Persist that baseline now that layouts belong to projects.
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.getByTestId("error-boundary")).not.toBeVisible();
 });
 

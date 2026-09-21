@@ -13,6 +13,7 @@ import { useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { setWysiwygFlushController } from "./wysiwyg/controller";
 
 const tauri = vi.hoisted(() => ({
   readFileBase64: vi.fn(async () => "AAA="),
@@ -38,10 +39,24 @@ vi.mock("./CodeMirrorEditor", () => ({
 vi.mock("./diff/DiffView", () => ({ DiffView: () => <div data-testid="diff-view" /> }));
 vi.mock("./SelectionActionMenu", () => ({ SelectionActionMenu: () => null }));
 vi.mock("./ProofreadingNotifications", () => ({ ProofreadingNotifications: () => null }));
-vi.mock("./EditorToolbar", () => ({ EditorToolbar: () => <div data-testid="latex-toolbar" /> }));
-vi.mock("./MarkdownToolbar", () => ({
-  MarkdownToolbar: () => <div data-testid="markdown-toolbar" />,
+vi.mock("./EditorToolbar", () => ({
+  EditorToolbar: ({ wysiwyg, onToggleWysiwyg }: { wysiwyg: boolean; onToggleWysiwyg: () => void }) => (
+    <button type="button" data-testid="latex-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
+  ),
 }));
+vi.mock("./MarkdownToolbar", () => ({
+  MarkdownToolbar: ({ wysiwyg, onToggleWysiwyg, onModeChange }: {
+    wysiwyg: boolean; onToggleWysiwyg: () => void;
+    onModeChange?: (mode: "code" | "visual" | "both", layout?: "stacked" | "split") => void;
+  }) => (<>
+    <button type="button" data-testid="markdown-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
+    {onModeChange && <>
+      <button type="button" onClick={() => onModeChange("both", "split")}>{en.toolbar.split}</button>
+      <button type="button" onClick={() => onModeChange("both", "stacked")}>{en.toolbar.stacked}</button>
+    </>}
+  </>),
+}));
+vi.mock("./MarkdownPreview", () => ({ MarkdownPreview: () => <div data-testid="markdown-preview" /> }));
 vi.mock("./TypstToolbar", () => ({ TypstToolbar: () => <div data-testid="typst-toolbar" /> }));
 vi.mock("./EditorContextMenu", () => ({
   EditorContextMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -87,8 +102,10 @@ function openFile(path: string, extra: Record<string, unknown> = {}) {
 describe("Editor shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    useVisualModeStore.setState({ projectId: null, enabled: false, markdownSplit: false, markdownSplitLayout: "split" });
     useDiffStore.setState({ diffs: [], activeKey: null });
-    useSettingsStore.setState({ visualEditor: false, settingsOpen: false });
+    useSettingsStore.setState({ settingsOpen: false });
     useFilesStore.setState({
       projectId: "project",
       projectKind: "",
@@ -239,7 +256,6 @@ describe("Editor shell", () => {
 
   it("renders LaTeX Visual mode inside the source editor without the rich-text surface", () => {
     setWysiwygMode("project", true);
-    useSettingsStore.setState({ visualEditor: true });
     openFile("main.tex");
     render(<Editor />);
 
@@ -249,14 +265,76 @@ describe("Editor shell", () => {
     setWysiwygMode("project", false);
   });
 
+  it.each([
+    ["LaTeX", "main.tex", "document", "latex", ["tex"], "latex-toolbar"],
+    ["LaTeX image", "main.tex", "image", "latex", ["tex"], "latex-toolbar"],
+    ["diagram", "main.tex", "diagram", "latex", ["tex"], "latex-toolbar"],
+    ["Markdown", "main.md", "document", "markdown", ["md"], "markdown-toolbar"],
+    ["Markdown in LaTeX", "README.md", "document", "latex", ["tex"], "markdown-toolbar"],
+    ["Markdown in Typst", "README.md", "document", "typst", ["typ"], "markdown-toolbar"],
+  ] as const)("keeps the saved Visual choice for %s even when the old experiment was disabled", async (
+    _name, path, projectKind, profile, extensions, toolbarId,
+  ) => {
+    localStorage.setItem("oleafly.visualEditor", "0");
+    setWysiwygMode("project", true);
+    openFile(path, { projectKind, mainDoc: path, engine: engineWithProfile(profile, [...extensions]) });
+    const view = render(<Editor />);
+
+    expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "true");
+    if (path.endsWith(".md")) expect(await screen.findByTestId("wysiwyg")).toBeVisible();
+
+    fireEvent.click(screen.getByTestId(toolbarId));
+    expect(getWysiwygMode("project")).toBe(false);
+    view.unmount();
+    render(<Editor />);
+    expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByTestId(toolbarId));
+    expect(getWysiwygMode("project")).toBe(true);
+  });
+
   it("keeps the Markdown visual surface mounted next to the source surface", async () => {
-    useSettingsStore.setState({ visualEditor: true });
     openFile("notes.md");
     render(<Editor />);
 
     expect(await screen.findByTestId("wysiwyg")).toBeInTheDocument();
     expect(screen.getByTestId("codemirror")).toBeInTheDocument();
     expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
+  });
+
+  it("arranges Markdown both ways, flushes Visual edits, and restores the choice after reopening", async () => {
+    setWysiwygMode("project", true);
+    openFile("notes.md");
+    const view = render(<Editor />);
+    const flush = vi.fn();
+    setWysiwygFlushController(flush);
+    const source = screen.getByTestId("codemirror");
+
+    fireEvent.click(screen.getByRole("button", { name: "Split" }));
+
+    expect(flush).toHaveBeenCalledOnce();
+    setWysiwygFlushController(null);
+    expect(await screen.findByTestId("markdown-preview")).toBeVisible();
+    expect(screen.getByTestId("codemirror")).toBe(source);
+    expect(source).toBeVisible();
+    expect(getWysiwygMode("project")).toBe(true);
+    const group = source.closest("[data-panel-group-direction]");
+    expect(group).toHaveAttribute("data-panel-group-direction", "horizontal");
+    fireEvent.click(screen.getByRole("button", { name: "Stacked" }));
+    expect(source.closest("[data-panel-group-direction]")).toBe(group);
+    expect(group).toHaveAttribute("data-panel-group-direction", "vertical");
+
+    for (const path of ["main.tex", "main.typ", "notes.txt"]) {
+      act(() => openFile(path));
+      expect(screen.queryByRole("button", { name: "Split" })).not.toBeInTheDocument();
+      expect(screen.queryByTestId("markdown-preview")).not.toBeInTheDocument();
+    }
+    view.unmount();
+    openFile("notes.markdown");
+    render(<Editor />);
+    expect(await screen.findByTestId("markdown-preview")).toBeVisible();
+    expect(screen.getByTestId("codemirror")).toBeVisible();
+    expect(screen.getByTestId("codemirror").closest("[data-panel-group-direction]")).toHaveAttribute("data-panel-group-direction", "vertical");
   });
 
   it("locks the surface while an external mutation holds the lease", () => {
@@ -273,7 +351,6 @@ describe("Editor shell", () => {
 
   it("returns to the source surface when navigation reveals it", async () => {
     setWysiwygMode("project", true);
-    useSettingsStore.setState({ visualEditor: true });
     openFile("main.tex");
     const { revealSourceEditor } = await import("./wysiwyg/controller");
     render(<Editor />);

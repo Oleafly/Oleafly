@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { shortcut } from "@/lib/utils";
@@ -275,18 +276,17 @@ describe("MarkdownToolbar", () => {
     expect(commands.insertMarkdownLink).toHaveBeenCalledWith("https://oleafly.com/docs");
   });
 
-  it("hides the mode switch and the project statistics when asked", () => {
+  it("keeps the mode switch when project statistics are hidden", () => {
     widenToolbar(2000);
     render(
       <MarkdownToolbar
         wysiwyg={false}
         onToggleWysiwyg={vi.fn()}
-        showVisualToggle={false}
         showProjectInfo={false}
       />,
     );
 
-    expect(screen.queryByLabelText(toolbar.switchToSource)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(toolbar.switchToSource)).toBeInTheDocument();
     expect(screen.queryByLabelText(en.projectInfo.trigger)).not.toBeInTheDocument();
   });
 
@@ -298,5 +298,42 @@ describe("MarkdownToolbar", () => {
     fireEvent.click(screen.getByLabelText(toolbar.switchToVisual));
 
     expect(onToggleWysiwyg).toHaveBeenCalledOnce();
+  });
+
+  it("opens Both without changing modes and applies the selected arrangement", async () => {
+    const user = userEvent.setup();
+    widenToolbar(2000);
+    const onModeChange = vi.fn();
+    const onToggleWysiwyg = vi.fn();
+    render(<MarkdownToolbar wysiwyg={false} onToggleWysiwyg={onToggleWysiwyg}
+      mode="both" splitLayout="split" onModeChange={onModeChange} />);
+
+    const both = screen.getByRole("button", { name: toolbar.both });
+    expect(both).toHaveAttribute("aria-pressed", "true");
+    await user.click(both);
+    expect(onModeChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("menuitemradio", { name: toolbar.split })).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByRole("menuitemradio", { name: toolbar.stacked }));
+    expect(onModeChange).toHaveBeenLastCalledWith("both", "stacked");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    await user.click(both);
+    await user.click(screen.getByRole("menuitemradio", { name: toolbar.split }));
+    expect(onModeChange).toHaveBeenLastCalledWith("both", "split");
+    fireEvent.click(screen.getByLabelText(toolbar.switchToSource));
+    expect(onModeChange).toHaveBeenLastCalledWith("code");
+    fireEvent.click(screen.getByLabelText(toolbar.switchToVisual));
+    expect(onModeChange).toHaveBeenLastCalledWith("visual");
+    expect(onToggleWysiwyg).not.toHaveBeenCalled();
+  });
+
+  it("keeps Code selected when the Both menu is dismissed", async () => {
+    const user = userEvent.setup();
+    const onModeChange = vi.fn();
+    render(<MarkdownToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()}
+      mode="code" onModeChange={onModeChange} />);
+    await user.click(screen.getByRole("button", { name: toolbar.both }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByLabelText(toolbar.switchToSource)).toHaveAttribute("aria-pressed", "true");
+    expect(onModeChange).not.toHaveBeenCalled();
   });
 });

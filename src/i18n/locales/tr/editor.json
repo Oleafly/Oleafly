@@ -136,7 +136,10 @@
     "imageFile": "Görsel dosyası",
     "apply": "Uygula",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/grafik.png"
+    "imagePlaceholder": "figures/grafik.png",
+    "split": "Böl",
+    "both": "İkisi de",
+    "stacked": "Üst üste"
   },
   "contextMenu": {
     "engineUnavailable": "Belge motoru eylemleri kullanılamıyor",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Bu dosya, Çiz kipinin koruyamayacağı kaynak içeriyor. Tuval kısmi ve salt okunur bir önizlemedir. Özgün dosyayı düzenlemek için Kod kipini kullanın."
   },
   "preview": {
-    "loading": "PDF görüntüleyici yükleniyor…"
+    "loading": "PDF görüntüleyici yükleniyor…",
+    "markdown": "Markdown önizlemesi"
   },
   "log": {
     "locationFileLine": "{{file}} · satır {{line}}",

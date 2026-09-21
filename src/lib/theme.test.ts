@@ -14,6 +14,7 @@ import {
   ThemeProvider,
   useTheme,
 } from "./theme";
+import { emptyThemeCustomization, writeThemeCustomization } from "./theme-customization";
 
 type MediaListener = (event: { matches: boolean }) => void;
 
@@ -91,6 +92,24 @@ describe("theme resolution", () => {
 });
 
 describe("theme store", () => {
+  it("applies the saved accent even without the main app", () => {
+    localStorage.setItem("oleafly.accent", "#0b8842");
+    applyTheme("light");
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#0b8842");
+    expect(document.documentElement.style.getPropertyValue("--primary-foreground")).toBe("#ffffff");
+  });
+
+  it("keeps custom primary colors and restores the accent when leaving that theme", () => {
+    localStorage.setItem("oleafly.accent", "#0b8842");
+    writeThemeCustomization({ ...emptyThemeCustomization(), dark: { primary: "#abcdef", "primary-foreground": "#123456" } });
+    applyTheme("dark");
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#abcdef");
+    expect(document.documentElement.style.getPropertyValue("--primary-foreground")).toBe("#123456");
+    applyTheme("light");
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#0b8842");
+    expect(document.documentElement.style.getPropertyValue("--primary-foreground")).toBe("#ffffff");
+  });
+
   it("applies the root class and color scheme without touching storage", () => {
     applyTheme("light");
     expect(document.documentElement.classList.contains("light")).toBe(true);
@@ -125,6 +144,22 @@ describe("theme store", () => {
 });
 
 describe("ThemeProvider", () => {
+  it("follows accent changes from another window and falls back when the accent is cleared", () => {
+    stubMatchMedia(true);
+    renderTheme();
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#2563eb");
+    act(() => {
+      localStorage.setItem("oleafly.accent", "#7c3aed");
+      window.dispatchEvent(new StorageEvent("storage", { key: "oleafly.accent", storageArea: localStorage }));
+    });
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#7c3aed");
+    act(() => {
+      localStorage.removeItem("oleafly.accent");
+      window.dispatchEvent(new StorageEvent("storage", { key: "oleafly.accent", storageArea: localStorage }));
+    });
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#2563eb");
+  });
+
   it("resolves the system preference from the operating system and follows it live", () => {
     const media = stubMatchMedia(false);
     const resolved = vi.fn();

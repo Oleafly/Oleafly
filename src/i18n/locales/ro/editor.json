@@ -136,7 +136,10 @@
     "imageFile": "Fișier imagine",
     "apply": "Aplică",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figuri/grafic.png"
+    "imagePlaceholder": "figuri/grafic.png",
+    "split": "Împărțit",
+    "both": "Ambele",
+    "stacked": "Suprapuse"
   },
   "contextMenu": {
     "engineUnavailable": "Acțiunile motorului de documente nu sunt disponibile",
@@ -284,7 +287,8 @@
     "readOnlyNotice": "Acest fișier conține cod sursă pe care modul Desenare nu îl poate păstra. Pânza este o previzualizare parțială, needitabilă. Folosește Cod ca să modifici fișierul original."
   },
   "preview": {
-    "loading": "Se încarcă vizualizatorul PDF…"
+    "loading": "Se încarcă vizualizatorul PDF…",
+    "markdown": "Previzualizare Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · linia {{line}}",

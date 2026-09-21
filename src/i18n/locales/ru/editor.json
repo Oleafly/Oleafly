@@ -136,7 +136,10 @@
     "imageFile": "Файл изображения",
     "apply": "Применить",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Разделить",
+    "both": "Оба",
+    "stacked": "Друг под другом"
   },
   "contextMenu": {
     "engineUnavailable": "Действия движка документа недоступны",
@@ -287,7 +290,8 @@
     "readOnlyNotice": "В этом файле есть исходник, который режим рисования не может сохранить. Холст показывает частичный просмотр только для чтения. Используйте режим кода, чтобы править исходный файл."
   },
   "preview": {
-    "loading": "Загрузка просмотрщика PDF…"
+    "loading": "Загрузка просмотрщика PDF…",
+    "markdown": "Предпросмотр Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · строка {{line}}",

@@ -1,6 +1,9 @@
+import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { reattachPreviewWindow } from "@/lib/preview-window";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
+  AlertTriangle,
   BookOpen,
   Check,
   Columns2,
@@ -27,6 +30,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -39,6 +46,8 @@ import {
 } from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
+import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import "./top-toolbar.css";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
@@ -53,6 +62,7 @@ import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
+import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 
@@ -174,12 +184,6 @@ function activeLayoutPreset(
   return null;
 }
 
-// Groups the right-side toolbar into: Recompile | Export | Fork + Versioning |
-// Layout + workspace controls.
-function Divider() {
-  return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
-}
-
 export function ProjectHistoryActions() {
   const { t } = useTranslation(["shell"]);
   const openVersioning = useSettingsStore((state) => state.openVersioning);
@@ -190,7 +194,7 @@ export function ProjectHistoryActions() {
         variant="ghost"
         size="icon"
         aria-label={t(($) => $.shell.toolbar.versioning)}
-        className="text-muted-foreground hover:text-foreground"
+        className="size-7 text-muted-foreground hover:text-foreground"
         onClick={() => openVersioning()}
       >
         <History className="size-4" />
@@ -238,6 +242,7 @@ export function TopToolbar() {
   const { t } = useTranslation(["common", "shell"]);
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
+  const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
   const projects = useFilesStore((s) => s.projects);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const currentProject = projects.find((p) => p.id === projectId);
@@ -258,6 +263,13 @@ export function TopToolbar() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const fullscreen = useFullscreen();
+
+  const toolbarRef = useRef<HTMLElement>(null);
+  const toolbarLayout = useToolbarLayout(toolbarRef);
+  const hideFork = toolbarLayout.overflow >= TOOLBAR_OVERFLOW.fork;
+  const hideLayout = toolbarLayout.overflow >= TOOLBAR_OVERFLOW.layout;
+  const hideHistory = toolbarLayout.overflow >= TOOLBAR_OVERFLOW.history;
+  const hideExport = toolbarLayout.overflow >= TOOLBAR_OVERFLOW.export;
 
   const [forkOpen, setForkOpen] = useState(false);
   const [forkName, setForkName] = useState("");
@@ -301,15 +313,15 @@ export function TopToolbar() {
   const [exportKind, setExportKind] = useState<"presentation" | "book" | "doc">("doc");
 
   // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
+  const prepareExportMenu = () => {
+    const f = useFilesStore.getState();
+    // A root directive can redirect export to another document.
+    const src = f.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
+    setExportKind(classifyDoc(src));
+  };
   const setExportMenuOpen = (open: boolean) => {
     if (open && exporting) return;
-    if (open) {
-      const f = useFilesStore.getState();
-      // Classify the document that would actually be exported, which a
-      // `% !TEX root` comment in the active file may redirect.
-      const src = f.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
-      setExportKind(classifyDoc(src));
-    }
+    if (open) prepareExportMenu();
     setDlOpen(open);
   };
   const exportBusyRef = useRef(false);
@@ -354,29 +366,143 @@ export function TopToolbar() {
     }
   };
 
+  useEffect(() => { if (hideExport) setDlOpen(false); }, [hideExport]);
+
+  const layoutMenuItems = LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
+    <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
+      <Icon className="size-4 text-muted-foreground" />
+      <span className="flex-1">{label}</span>
+      {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
+        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+    </DropdownMenuItem>
+  ));
+
+  const layoutControl = (
+    <ToolbarAction name="layout" order={TOOLBAR_OVERFLOW.layout} hidden={hideLayout}>
+      <DropdownMenu key={hideLayout ? "overflow" : "direct"}>
+        <Tooltip label={t(($) => $.shell.toolbar.layout)}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.layout)}
+              className="size-7 text-muted-foreground hover:text-foreground"><LayoutGrid className="size-4" /></Button>
+          </DropdownMenuTrigger>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="w-56">{layoutMenuItems}</DropdownMenuContent>
+      </DropdownMenu>
+    </ToolbarAction>
+  );
+
+  const showForkDialog = () => {
+    setForkName(`${projectName || "project"} (copy)`);
+    setForkOpen(true);
+  };
+
+  const exportMenuItems = <>
+    <DropdownMenuItem onSelect={() => void doDownloadZip()}>
+      <FileArchive className="size-4 text-muted-foreground" />
+      {t(($) => $.shell.toolbar.exportSourceZip)}
+    </DropdownMenuItem>
+    {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
+      <FileText className="size-4 text-muted-foreground" />
+      {isSingleFigureProject
+        ? t(($) => $.shell.toolbar.exportPdfVector)
+        : t(($) => $.shell.toolbar.exportPdf)}
+    </DropdownMenuItem>}
+    {isSingleFigureProject && (
+      <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
+        <ImagePlay className="size-4 text-muted-foreground" />
+        {t(($) => $.shell.toolbar.exportPngRaster)}
+      </DropdownMenuItem>
+    )}
+    {!isSingleFigureProject && engine.capabilities.produces_pdf && (
+      <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
+        <ImagePlay className="size-4 text-muted-foreground" />
+        {t(($) => $.shell.toolbar.exportPagePng)}
+      </DropdownMenuItem>
+    )}
+    {!pdfBytes && (
+      <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+        {isSingleFigureProject
+          ? t(($) => $.shell.toolbar.compileFigureFirst)
+          : t(($) => $.shell.toolbar.compilePdfFirst)}
+      </p>
+    )}
+    {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
+      <>
+        <DropdownMenuSeparator />
+        {exportRoutesFor(engine.id, engine.capabilities.conversion_exports)
+          .filter((route) => route.target !== "pdf")
+          .map((route) => (
+            <DropdownMenuItem
+              key={route.id}
+              data-testid={`export-route-${route.id}`}
+              onSelect={() => void doExportFormat(formatForTarget(route.target))}
+            >
+              <FileType className="size-4 text-muted-foreground" />
+              {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
+            </DropdownMenuItem>
+          ))}
+        {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
+          <FileType className="size-4 text-muted-foreground" />
+          {t(($) => $.shell.toolbar.exportTxt)}
+        </DropdownMenuItem>}
+      </>
+    )}
+    {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
+          <Presentation className="size-4 text-muted-foreground" />
+          {t(($) => $.shell.toolbar.exportPptx)}
+        </DropdownMenuItem>
+      </>
+    )}
+    {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void doExportFormat("epub")}>
+          <BookOpen className="size-4 text-muted-foreground" />
+          {t(($) => $.shell.toolbar.exportEpub)}
+        </DropdownMenuItem>
+      </>
+    )}
+    {exporting && (
+      <p className="px-2 py-1 text-[10px] text-muted-foreground">
+        {t(($) => $.shell.toolbar.exporting, { format: exporting })}
+      </p>
+    )}
+  </>;
+
   return (
     <>
     <header
+      ref={toolbarRef}
+      data-toolbar-layout={toolbarLayout.overflow ? "compact" : "expanded"}
+      data-toolbar-stacked={toolbarLayout.stacked || undefined}
+      data-toolbar-spacing={toolbarLayout.roomy ? "roomy" : "compact"}
       data-tauri-drag-region
       data-tour="project-toolbar"
       {...(E2E_HOOKS
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(
-        "relative z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background",
-        isMac && "pr-3",
-        isMac && !fullscreen && "pl-[78px]",
-        isMac && fullscreen && "pl-2"
+        "relative z-20 grid min-h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 border-b bg-background",
+        toolbarLayout.stacked && "pb-1"
       )}
     >
-      <HomeBrandButton className="shrink-0" onClick={() => void closeProject()} />
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+      <div data-toolbar-part="leading" data-tauri-drag-region className={cn(
+        "col-start-1 row-start-1 flex min-h-12 min-w-0 items-center gap-2",
+        isMac && !fullscreen && "pl-[78px]",
+        isMac && fullscreen && "pl-2",
+      )}>
+      <HomeBrandButton compact={toolbarLayout.compactBrand} className="shrink-0" onClick={() => void closeProject()} />
+      <ChevronRight data-toolbar-part="breadcrumb" aria-hidden
+        className={cn("size-4 shrink-0 text-muted-foreground/50", toolbarLayout.compactBrand && "invisible absolute")} />
       <div
         data-tauri-drag-region
         className="flex min-w-0 flex-1 items-center overflow-hidden"
       >
         {editingTitle ? (
-          <span ref={titleEditRef} className="flex min-w-0 items-center gap-1">
+          <span ref={titleEditRef} className="flex min-w-0 flex-1 items-center gap-1">
             <Input
               ref={titleInputRef}
               aria-label={t(($) => $.shell.toolbar.projectName)}
@@ -391,7 +517,7 @@ export function TopToolbar() {
                   setEditingTitle(false);
                 }
               }}
-              className="h-6 w-[280px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+              className="h-6 min-w-0 flex-1 rounded border bg-muted px-1.5 text-sm focus:border-primary"
             />
             <Tooltip label={t(($) => $.shell.toolbar.saveName)}>
               <button
@@ -418,190 +544,95 @@ export function TopToolbar() {
           <Tooltip
             label={projectName || t(($) => $.shell.toolbar.untitledProject)}
             side="bottom"
-            className="min-w-0"
+            className="min-w-0 max-w-full"
           >
             <button
                 data-testid="project-title"
               type="button"
               onClick={startEditTitle}
-              className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              className={cn("flex max-w-full min-w-0 items-center gap-1.5 rounded py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground", !toolbarLayout.compactBrand && "px-1")}
             >
               <span
                 aria-hidden="true"
-                className="size-2 shrink-0 rounded-full"
+                className={cn("size-2 shrink-0 rounded-full", toolbarLayout.compactBrand && "hidden")}
                 style={{ backgroundColor: coverColor }}
               />
-              <span className="min-w-0 max-w-[calc(50vw-260px)] truncate">
+              <span className="min-w-0 truncate">
                 {projectName || t(($) => $.shell.toolbar.untitledProject)}
               </span>
             </button>
           </Tooltip>
         )}
-        {projectId && (
-          <div className="ml-2 shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
-            <div className="pointer-events-auto">
-              <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
-            </div>
-          </div>
-        )}
       </div>
+      <span data-toolbar-part="title-minimum" aria-hidden className="pointer-events-none invisible absolute w-[10ch] text-sm" />
+      </div>
+      {projectId && <div data-toolbar-part="views" data-testid="toolbar-views" className="col-start-2 row-start-1 shrink-0">
+        <ViewModeSwitch viewMode={viewMode} setViewMode={(mode) => {
+          if (detached && (mode === "pdf" || mode === "split")) void reattachPreviewWindow();
+          setViewMode(mode);
+        }} />
+      </div>}
 
-      <div
-        data-tauri-drag-region
-        className="ml-auto flex min-w-0 items-center justify-end gap-1.5 overflow-x-clip"
-      >
-
-        <CompileControls />
-
-        {engineError && (
-          <span
-            className="max-w-48 truncate text-xs text-destructive"
-            title={engineErrorMessage(engineError)}
-          >
-            {engineErrorMessage(engineError)}
+      <div data-toolbar-part="trailing" data-tauri-drag-region
+        className={cn(toolbarLayout.stacked ? "contents" : "col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-1", isMac && "pr-3")}>
+      <div data-toolbar-part="actions" data-tauri-drag-region
+        className={cn("flex w-max shrink-0 items-center gap-1", toolbarLayout.stacked && "col-span-3 row-start-2 justify-self-end px-2")}>
+        <div data-toolbar-item="compile" className="flex w-max shrink-0 items-center gap-1">
+          <CompileControls iconOnly={toolbarLayout.iconOnly} />
+        </div>
+        {engineError && <Tooltip label={engineErrorMessage(engineError)}>
+          <span data-toolbar-item="engine-error" className="flex size-7 shrink-0 items-center justify-center text-destructive">
+            <AlertTriangle className="size-4" /><span className="sr-only">{engineErrorMessage(engineError)}</span>
           </span>
-        )}
-
-        <Divider />
-
+        </Tooltip>}
+        <ToolbarAction name="export" order={TOOLBAR_OVERFLOW.export} hidden={hideExport}>
         <DropdownMenu open={dlOpen} onOpenChange={setExportMenuOpen}>
           <Tooltip label={t(($) => $.shell.toolbar.export)}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground"
                 aria-label={t(($) => $.shell.toolbar.export)}
               >
                 <Download className="size-4" />
               </Button>
             </DropdownMenuTrigger>
           </Tooltip>
-          <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuItem onSelect={() => void doDownloadZip()}>
-                  <FileArchive className="size-4 text-muted-foreground" />
-                  {t(($) => $.shell.toolbar.exportSourceZip)}
-                </DropdownMenuItem>
-                {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
-                  <FileText className="size-4 text-muted-foreground" />
-                  {isSingleFigureProject
-                    ? t(($) => $.shell.toolbar.exportPdfVector)
-                    : t(($) => $.shell.toolbar.exportPdf)}
-                </DropdownMenuItem>}
-                {isSingleFigureProject && (
-                  <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-                    <ImagePlay className="size-4 text-muted-foreground" />
-                    {t(($) => $.shell.toolbar.exportPngRaster)}
-                  </DropdownMenuItem>
-                )}
-                {!isSingleFigureProject && engine.capabilities.produces_pdf && (
-                  <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-                    <ImagePlay className="size-4 text-muted-foreground" />
-                    {t(($) => $.shell.toolbar.exportPagePng)}
-                  </DropdownMenuItem>
-                )}
-                {!pdfBytes && (
-                  <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-                    {isSingleFigureProject
-                      ? t(($) => $.shell.toolbar.compileFigureFirst)
-                      : t(($) => $.shell.toolbar.compilePdfFirst)}
-                  </p>
-                )}
-                {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {exportRoutesFor(engine.id, engine.capabilities.conversion_exports)
-                      .filter((route) => route.target !== "pdf")
-                      .map((route) => (
-                        <DropdownMenuItem
-                          key={route.id}
-                          data-testid={`export-route-${route.id}`}
-                          onSelect={() => void doExportFormat(formatForTarget(route.target))}
-                        >
-                          <FileType className="size-4 text-muted-foreground" />
-                          {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
-                        </DropdownMenuItem>
-                      ))}
-                    {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportTxt)}
-                    </DropdownMenuItem>}
-                  </>
-                )}
-                {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
-                      <Presentation className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportPptx)}
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => void doExportFormat("epub")}>
-                      <BookOpen className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportEpub)}
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {exporting && (
-                  <p className="px-2 py-1 text-[10px] text-muted-foreground">
-                    {t(($) => $.shell.toolbar.exporting, { format: exporting })}
-                  </p>
-                )}
+          <DropdownMenuContent align="end" className="w-60">{exportMenuItems}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Divider />
-
-        <Tooltip label={t(($) => $.shell.toolbar.forkProject)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            disabled={!projectId}
-            onClick={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}
-          >
-            <GitFork className="size-4" />
-          </Button>
-        </Tooltip>
-
-        <ProjectHistoryActions />
-
-        <Divider />
-
-        <DropdownMenu>
-          <Tooltip label={t(($) => $.shell.toolbar.layout)}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                aria-label={t(($) => $.shell.toolbar.layout)}
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
+        </ToolbarAction>
+        <ToolbarAction name="fork" order={TOOLBAR_OVERFLOW.fork} hidden={hideFork}>
+          <Tooltip label={t(($) => $.shell.toolbar.forkProject)}>
+            <Button variant="ghost" size="icon" aria-label={t(($) => $.shell.toolbar.forkProject)}
+              className="size-7 text-muted-foreground hover:text-foreground" onClick={showForkDialog} disabled={!projectId}>
+              <GitFork className="size-4" />
+            </Button>
           </Tooltip>
-          <DropdownMenuContent align="end" className="w-56">
-            {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset;
-              return (
-                <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
-                  <Icon className="size-4 text-muted-foreground" />
-                  <span className="flex-1">{label}</span>
-                  {active && <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Divider />
-        {workspaceHidden && <SidebarCollapseToggle />}
-        <WorkspaceDockControls />
+        </ToolbarAction>
+        <ToolbarAction name="history" order={TOOLBAR_OVERFLOW.history} hidden={hideHistory}>
+          <ProjectHistoryActions />
+        </ToolbarAction>
+        {workspaceHidden && <ToolbarAction name="sidebar"><SidebarCollapseToggle /></ToolbarAction>}
+        <WorkspaceDockControls overflow={toolbarLayout.overflow} onFork={showForkDialog} layoutControl={layoutControl}>
+          {hideExport && <DropdownMenuSub onOpenChange={(open) => { if (open) prepareExportMenu(); }}>
+            <DropdownMenuSubTrigger><Download className="mr-2 size-4" />{t(($) => $.shell.toolbar.export)}</DropdownMenuSubTrigger>
+            <DropdownMenuPortal><DropdownMenuSubContent className="w-60">{exportMenuItems}</DropdownMenuSubContent></DropdownMenuPortal>
+          </DropdownMenuSub>}
+          {hideHistory && <DropdownMenuItem onSelect={() => useSettingsStore.getState().openVersioning()}>
+            <History className="size-4" />{t(($) => $.shell.toolbar.versioning)}
+          </DropdownMenuItem>}
+          {hideLayout && <DropdownMenuSub>
+            <DropdownMenuSubTrigger><LayoutGrid className="mr-2 size-4" />{t(($) => $.shell.toolbar.layout)}</DropdownMenuSubTrigger>
+            <DropdownMenuPortal><DropdownMenuSubContent className="w-56">{layoutMenuItems}</DropdownMenuSubContent></DropdownMenuPortal>
+          </DropdownMenuSub>}
+        </WorkspaceDockControls>
+      </div>
+      <div data-toolbar-part="captions" className={cn("shrink-0 empty:hidden", toolbarLayout.stacked && "col-start-3 row-start-1 justify-self-end")}>
         <WindowControls />
+      </div>
       </div>
     </header>
 

@@ -136,7 +136,10 @@
     "imageFile": "File immagine",
     "apply": "Applica",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "Dividi",
+    "both": "Entrambi",
+    "stacked": "Impilato"
   },
   "contextMenu": {
     "engineUnavailable": "Azioni del motore del documento non disponibili",
@@ -284,7 +287,8 @@
     "readOnlyNotice": "Questo file contiene sorgente che la modalità Disegna non sa conservare. L'area di disegno è un'anteprima parziale in sola lettura. Usa Codice per modificare il file originale."
   },
   "preview": {
-    "loading": "Caricamento del visualizzatore PDF…"
+    "loading": "Caricamento del visualizzatore PDF…",
+    "markdown": "Anteprima Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · riga {{line}}",

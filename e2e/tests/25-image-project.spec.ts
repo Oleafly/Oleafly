@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { createProjectFromTemplate } from "../helpers";
+import { clickCompile, createProjectFromTemplate } from "../helpers";
 
 test("image project: tailored UI and a real figure compile", async ({ tauriPage }) => {
   await createProjectFromTemplate(tauriPage, "diagram", "E2E Image");
@@ -10,9 +10,15 @@ test("image project: tailored UI and a real figure compile", async ({ tauriPage 
   ).toBeHidden();
   await expect(tauriPage.locator('[aria-label="Insert diagram"]')).toBeHidden();
 
-  await tauriPage.click('[data-testid="compile-button"]');
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 
-  await expect(tauriPage.locator('[aria-label="Save image to project"]')).toBeVisible();
+  const save = tauriPage.locator('[aria-label="Save image to project"]');
+  if (!(await save.isVisible())) {
+    await tauriPage.focus('[aria-label="More preview controls"]');
+    await tauriPage.press('[aria-label="More preview controls"]', "Enter");
+  }
+  await expect(save).toBeVisible();
 });

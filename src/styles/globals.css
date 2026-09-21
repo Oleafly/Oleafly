@@ -53,7 +53,7 @@
   --cm-operator: #0550ae;
 
   /* Selection for the default ("system") editor theme, where --cm-selection is
-   * unset. --primary is the user's accent (App.tsx sets it), so this has to
+   * unset. --primary is the user's accent (theme.tsx sets it), so this has to
    * hold for any hue: mix the accent into the surface rather than washing it
    * over the surface with alpha, which desaturates toward grey on a near-black
    * editor.

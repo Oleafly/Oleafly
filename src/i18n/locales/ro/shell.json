@@ -584,10 +584,6 @@
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
       },
-      "visualEditor": {
-        "description": "Arată comutatorul Vizual/Cod în editorul de documente. Dezactivat implicit, așa că documentele se deschid doar în editorul de cod. Diagramele își păstrează întotdeauna propriul comutator de pânză.",
-        "label": "Editor vizual"
-      },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
       "webBrowser": {
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta; când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
@@ -871,7 +867,8 @@
       "editor": "Vizualizarea sursei",
       "pdf": "Vizualizarea PDF",
       "split": "Vizualizare împărțită"
-    }
+    },
+    "moreActions": "Mai multe acțiuni"
   },
   "tour": {
     "chooseColor": "Alege-ți culoarea distinctivă",

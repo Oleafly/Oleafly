@@ -972,6 +972,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
   // re-renders at full resolution once the scale settles, so pinch stays smooth.
   const rasterTimerRef = useRef<number | null>(null);
+  const zoomSettlingRef = useRef(false);
   const placeholderResizeFrameRef = useRef<number | null>(null);
   const textContentRef = useRef<Map<number, PageTextContent>>(new Map());
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -1611,6 +1612,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       }
     }
     for (const pageNumber of desired) {
+      if (zoomSettlingRef.current && renderedRef.current.has(pageNumber)) continue;
       void renderPage(pageNumber, scaleRef.current);
     }
   }, [renderPage, unrenderPage]);
@@ -2560,6 +2562,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     const doc = docRef.current;
     if (!doc) return;
     scaleRef.current = scale;
+    zoomSettlingRef.current = true;
 
     // Instant + bounded: only the capped set of live rasterizations needs exact
     // pdf.js rounding and bitmap stretching in the gesture frame.
@@ -2631,6 +2634,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     // scale (none of which needs to run on every event of a pinch).
     if (rasterTimerRef.current) window.clearTimeout(rasterTimerRef.current);
     rasterTimerRef.current = window.setTimeout(() => {
+      zoomSettlingRef.current = false;
       const target = scaleRef.current;
       for (const p of renderedRef.current.keys()) {
         if (!visibleRef.current.has(p)) unrenderPage(p);

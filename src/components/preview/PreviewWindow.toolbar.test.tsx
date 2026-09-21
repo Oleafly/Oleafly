@@ -25,6 +25,11 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async () => () => {}),
 }));
 
+vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useAvailableWidth: () => ({ containerRef: () => {}, availableWidth: Number.POSITIVE_INFINITY }),
+}));
+
 vi.mock("@/components/pdf/PdfViewer", async () => {
   const react = await import("react");
   interface StubProps {
@@ -109,10 +114,10 @@ describe("detached preview toolbar", () => {
       enPreview.pages.number,
       enPreview.zoom.in,
       enPreview.zoom.out,
-      enPreview.window.rotateLabel,
-      enPreview.window.invertLabel,
+      enPreview.actions.rotate,
+      enPreview.actions.invert,
       enPreview.actions.readerView,
-      enPreview.actions.downloadDisplayedPdf,
+      enPreview.actions.downloadPdf,
       enPreview.viewer.scrollArea,
     ]) {
       expect(screen.getByLabelText(label), label).toBeInTheDocument();
@@ -132,16 +137,16 @@ describe("detached preview toolbar", () => {
     );
     await user.click(screen.getByLabelText(enPreview.zoom.out));
     await waitFor(() => expect(mocks.lastProps?.scale as number).toBe(initial));
-    await user.click(screen.getByLabelText(enPreview.window.rotateLabel));
+    await user.click(screen.getByLabelText(enPreview.actions.rotate));
     await waitFor(() => expect(mocks.lastProps?.rotation).toBe(90));
   });
 
   it("presses the invert and reader toggles", async () => {
     await renderHarness();
     const user = userEvent.setup();
-    await user.click(screen.getByLabelText(enPreview.window.invertLabel));
+    await user.click(screen.getByLabelText(enPreview.actions.invert));
     await waitFor(() =>
-      expect(screen.getByLabelText(enPreview.window.invertLabel)).toHaveAttribute(
+      expect(screen.getByLabelText(enPreview.actions.invert)).toHaveAttribute(
         "aria-pressed",
         "true",
       ),
@@ -172,14 +177,14 @@ describe("detached preview toolbar", () => {
     expect(screen.getByLabelText(enPreview.outline.panel)).toBeInTheDocument();
     expect(screen.getByText(enPreview.outline.externalBadge)).toBeInTheDocument();
     expect(screen.getByLabelText(enPreview.outline.open)).toHaveAttribute(
-      "aria-expanded",
+      "aria-pressed",
       "true",
     );
     await user.click(screen.getByRole("button", { name: /Ablation/ }));
     expect(mocks.activateOutlineItem).toHaveBeenCalledWith("child");
     await waitFor(() =>
       expect(screen.getByLabelText(enPreview.outline.open)).toHaveAttribute(
-        "aria-expanded",
+        "aria-pressed",
         "false",
       ),
     );

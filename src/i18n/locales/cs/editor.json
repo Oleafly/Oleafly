@@ -136,7 +136,10 @@
     "imageFile": "Soubor obrázku",
     "apply": "Použít",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "obrazky/graf.png"
+    "imagePlaceholder": "obrazky/graf.png",
+    "split": "Rozdělit",
+    "both": "Obojí",
+    "stacked": "Nad sebou"
   },
   "contextMenu": {
     "engineUnavailable": "Akce dokumentového enginu nejsou k dispozici",
@@ -287,7 +290,8 @@
     "readOnlyNotice": "Tento soubor obsahuje zdroj, který kreslení nedokáže zachovat. Plátno je částečný náhled jen ke čtení. Původní soubor upravte v režimu kódu."
   },
   "preview": {
-    "loading": "Načítá se prohlížeč PDF…"
+    "loading": "Načítá se prohlížeč PDF…",
+    "markdown": "Náhled Markdownu"
   },
   "log": {
     "locationFileLine": "{{file}} · řádek {{line}}",

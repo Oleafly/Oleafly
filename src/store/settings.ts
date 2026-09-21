@@ -489,7 +489,7 @@ const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
 
 function readDefaultView(raw: string): LayoutPreset {
   if ((LAYOUT_PRESETS as string[]).includes(raw)) return raw as LayoutPreset;
-  return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-preview";
+  return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-only";
 }
 function readEditorTheme(raw: string): EditorThemeId {
   return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
@@ -915,8 +915,6 @@ interface SettingsState {
   setBgPattern: (v: BackgroundPattern) => void;
   homeProjectLayout: HomeProjectLayout;
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
-  visualEditor: boolean;
-  setVisualEditor: (v: boolean) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
   // Experimental in-app web browser (the browser dock, its toggle, the
@@ -1000,7 +998,7 @@ const PREF_DEFAULTS = {
   pdfDarkMode: false,
   pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
-  defaultView: "editor-preview" as LayoutPreset,
+  defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
   hoverPreview: true,
   terminalOpen: false,
@@ -1022,7 +1020,6 @@ const PREF_DEFAULTS = {
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
   homeProjectLayout: "grid" as HomeProjectLayout,
-  visualEditor: false,
   latexTools: false,
   webBrowser: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -1215,7 +1212,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
-  viewMode: "split",
+  viewMode: "editor",
   // Choosing an explicit editor/split/pdf view always reveals the workspace.
   setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
   revealEditor: () => {
@@ -1226,7 +1223,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
   workspaceHidden: false,
-  defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),
+  defaultView: readDefaultView(ls("oleafly.defaultView", "editor-only")),
   setDefaultView: (v) => {
     saveLs("oleafly.defaultView", v);
     set({ defaultView: v });
@@ -1473,11 +1470,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.library.projectLayout", v);
     set({ homeProjectLayout: v });
   },
-  visualEditor: ls("oleafly.visualEditor", "0") === "1",
-  setVisualEditor: (v) => {
-    saveLs("oleafly.visualEditor", v ? "1" : "0");
-    set({ visualEditor: v });
-  },
   latexTools: ls("oleafly.latexTools", "0") === "1",
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
@@ -1664,11 +1656,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     });
   },
   resetExperimentationPreferences: () => {
-    saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
     saveLs("oleafly.webBrowser", PREF_DEFAULTS.webBrowser ? "1" : "0");
     set({
-      visualEditor: PREF_DEFAULTS.visualEditor,
       latexTools: PREF_DEFAULTS.latexTools,
       webBrowser: PREF_DEFAULTS.webBrowser,
       browserOpen: false,

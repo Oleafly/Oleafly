@@ -12,6 +12,7 @@ test("preflight categories render and a single check runs independently", async 
   tauriPage,
 }) => {
   await openProject(tauriPage, "E2E Doc");
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   // Preflight's PDF checks need a compiled PDF.

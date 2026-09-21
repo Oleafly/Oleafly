@@ -1,6 +1,6 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
-import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
+import { openVisibleMenu, pressVisibleMenuItem, openZoomMenu } from "../preview-menu";
 import {
   createBlankProject,
   expectDesktopShellAnchored,
@@ -47,89 +47,6 @@ function expectCssSubpixel(
   ).toBeLessThanOrEqual(0.125);
 }
 
-async function openVisibleMenu(page: TauriPage, triggerSelector: string): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const marked = await page.evaluate<boolean>(
-      `(() => {
-        document.querySelectorAll('[data-e2e-menu-trigger]').forEach(
-          candidate => candidate.removeAttribute('data-e2e-menu-trigger')
-        );
-        const trigger = Array.from(document.querySelectorAll(${JSON.stringify(triggerSelector)}))
-          .find(candidate => candidate.getClientRects().length > 0);
-        if (!(trigger instanceof HTMLElement)) return false;
-        trigger.setAttribute('data-e2e-menu-trigger', 'true');
-        return true;
-      })()`,
-    );
-    expect(marked).toBe(true);
-    await page.focus('[data-e2e-menu-trigger="true"]');
-    await page.press('[data-e2e-menu-trigger="true"]', "ArrowDown");
-    try {
-      await page.waitForFunction(
-        `Array.from(document.querySelectorAll('[role="menu"]')).some(
-          candidate => candidate.getClientRects().length > 0
-        )`,
-        2_000,
-      );
-      return;
-    } catch {
-      // Native bridge key delivery can race a toolbar re-render. Re-resolve
-      // the visible trigger and retry only while no menu is actually visible.
-    }
-  }
-  await expect(page.getByRole("menu")).toBeVisible();
-}
-
-async function pressVisibleMenuItem(
-  page: TauriPage,
-  label: string,
-  key: "Enter" | "ArrowRight",
-): Promise<void> {
-  const focused = await page.evaluate<boolean>(
-    `(() => {
-      document.querySelectorAll('[data-e2e-menu-item]').forEach(
-        candidate => candidate.removeAttribute('data-e2e-menu-item')
-      );
-      const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(candidate => {
-        return candidate.textContent?.trim() === ${JSON.stringify(label)} &&
-          candidate.getClientRects().length > 0;
-      });
-      if (!(item instanceof HTMLElement)) return false;
-      item.setAttribute('data-e2e-menu-item', 'true');
-      item.focus();
-      return document.activeElement === item;
-    })()`,
-  );
-  expect(focused).toBe(true);
-  if (key === "ArrowRight") {
-    await page.press('[data-e2e-menu-item="true"]', key);
-    return;
-  }
-  await page.evaluate(
-    `(() => {
-      const item = document.querySelector('[data-e2e-menu-item="true"]');
-      if (!(item instanceof HTMLElement)) return false;
-      const init = {
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-        button: 0,
-        buttons: 1,
-        pointerId: 1,
-        pointerType: "mouse",
-        isPrimary: true,
-      };
-      item.dispatchEvent(new PointerEvent("pointerdown", init));
-      item.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0 }));
-      item.click();
-      return true;
-    })()`,
-  );
-  await page.waitForFunction(
-    `!document.querySelector('[role="menu"][data-state="open"]')`,
-    5_000,
-  );
-}
 
 async function expectedTextGeometry(
   bytes: Uint8Array,
@@ -154,7 +71,12 @@ async function expectedTextGeometry(
         throw new Error(`Text item not found for ${marker}`);
       }
       const transform = Util.transform(viewport.transform, item.transform);
-      const { pageWidth, pageHeight, pageX, pageY } = viewport.rawDims;
+      const { pageWidth, pageHeight, pageX, pageY } = viewport.rawDims as {
+        pageWidth: number;
+        pageHeight: number;
+        pageX: number;
+        pageY: number;
+      };
       const rawTransform = Util.transform(
         [1, 0, 0, -1, -pageX, pageY + pageHeight],
         item.transform,
@@ -342,6 +264,9 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   } else {
     await createBlankProject(page, "E2E Doc");
   }
+  // Reopened projects retain the last layout, including editor-only views
+  // selected by earlier specs. These interactions need both source and PDF.
+  await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
 }
 
 async function waitForCurrentProjectAnalysis(
@@ -460,7 +385,11 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   tauriPage,
 }) => {
   test.setTimeout(180_000);
+  // Exercise the narrow preview with its file tree open, including the zoom
+  // and page controls moving into overflow as they do on Windows CI.
+  await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await openOrCreateE2eDoc(tauriPage);
+  await tauriPage.evaluate(`import("/src/store/settings.ts").then(s => s.useSettingsStore.getState().setShowTree(true))`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   // Let the open-project compile settle before installing synthetic preview
   // bytes; otherwise its late result can legitimately replace this fixture.
@@ -527,8 +456,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     );
   }
 
-  const zoomTriggerSelector = '[aria-haspopup="menu"][aria-label^="Zoom "]';
-  await openVisibleMenu(tauriPage, zoomTriggerSelector);
+  await openZoomMenu(tauriPage);
   await pressVisibleMenuItem(tauriPage, "100%", "Enter");
   await tauriPage.waitForFunction(
     `getComputedStyle(document.body).pointerEvents !== "none"`,
@@ -537,9 +465,8 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   try {
     await tauriPage.waitForFunction(
       `(() => {
-        const trigger = document.querySelector('[aria-label="Zoom 100 percent"]');
         const page = document.querySelector('[data-page="1"]');
-        if (!(page instanceof HTMLElement) || !trigger) return false;
+        if (!(page instanceof HTMLElement)) return false;
         const scaleFactor = Number(page.style.getPropertyValue('--scale-factor'));
         return Math.abs(scaleFactor - 1) <= Number.EPSILON
           && Math.abs(page.getBoundingClientRect().width - 612) <= 0.05;
@@ -794,7 +721,20 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     expect(hit).toContain(marker);
   }
 
-  await openVisibleMenu(tauriPage, zoomTriggerSelector);
+  // The rotated marker can scroll a narrow pane horizontally beyond page 1,
+  // allowing virtualization to release it. Bring both pages back into the
+  // render window before comparing their transient zoom geometry together.
+  await tauriPage.evaluate(`(() => {
+    const first = document.querySelector('[data-page="1"]');
+    const scroller = document.querySelector('[data-testid="pdf-renderer"]')?.parentElement;
+    scroller.scrollTo({ left: 0, top: first.offsetTop + first.offsetHeight, behavior: 'instant' });
+  })()`);
+  await tauriPage.waitForFunction(`
+    document.querySelector('[data-page="1"] .textLayer')?.textContent?.includes('GEOMETRY PAGE ONE') &&
+    document.querySelector('[data-page="2"] .textLayer')?.textContent?.includes('ROTATED USER UNIT PAGE')
+  `, 15_000);
+
+  await openZoomMenu(tauriPage);
   const transient = await tauriPage.evaluate<PageGeometry[]>(`(async () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
       (candidate) => candidate.textContent?.trim() === '200%'

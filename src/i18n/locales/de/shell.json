@@ -573,10 +573,6 @@
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"
       },
-      "visualEditor": {
-        "description": "Zeigt den Umschalter Visuell/Code im Dokumenteditor. Standardmäßig aus, Dokumente öffnen also nur im Codeeditor. Diagramme behalten immer ihren eigenen Umschalter für die Zeichenfläche.",
-        "label": "Visueller Editor"
-      },
       "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten.",
       "webBrowser": {
         "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es noch Beta ist; ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
@@ -855,7 +851,8 @@
       "editor": "Quelltextansicht",
       "pdf": "PDF-Ansicht",
       "split": "Geteilte Ansicht"
-    }
+    },
+    "moreActions": "Weitere Aktionen"
   },
   "tour": {
     "chooseColor": "Wählen Sie Ihre Signaturfarbe",

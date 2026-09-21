@@ -3,6 +3,7 @@ import {
   typeInEditorAfter,
   setEditorContent,
   createBlankProject,
+  clickCompile,
   expectCompiledPdfContains,
   expectCompiledPdfAbsent,
   expectCompiledPdfEmpty,
@@ -18,8 +19,7 @@ test("typed text appears in the compiled PDF", async ({ tauriPage }) => {
   await createBlankProject(tauriPage, `Typed RT ${Date.now().toString(36)}`);
   await typeInEditorAfter(tauriPage, "here.", " E2EMARKER");
   await expect(tauriPage.locator(".cm-content")).toContainText("E2EMARKER");
-  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 120_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });
@@ -32,8 +32,7 @@ test("reverting an edit removes the text from the recompiled PDF", async ({ taur
 
   await typeInEditorAfter(tauriPage, "here.", " E2EREVERTMARK");
   await expect(tauriPage.locator(".cm-content")).toContainText("E2EREVERTMARK");
-  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 120_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });
@@ -41,8 +40,7 @@ test("reverting an edit removes the text from the recompiled PDF", async ({ taur
 
   await setEditorContent(tauriPage, ORIGINAL_BLANK);
   await expect(tauriPage.locator(".cm-content")).not.toContainText("E2EREVERTMARK");
-  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 120_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });
@@ -58,8 +56,7 @@ test("replacing the whole document recompiles to the new content", async ({ taur
   await setEditorContent(tauriPage, fresh);
   await expect(tauriPage.locator(".cm-content")).toContainText("FULLREPLACEMARK");
   await expect(tauriPage.locator(".cm-content")).not.toContainText("Introduction");
-  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 120_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });
@@ -75,8 +72,7 @@ test("an empty-body document compiles to a blank page", async ({ tauriPage }) =>
     "\\documentclass{article}\n\\pagestyle{empty}\n\\begin{document}\n\\null\n\\end{document}\n";
   await setEditorContent(tauriPage, blank);
   await expect(tauriPage.locator(".cm-content")).not.toContainText("Introduction");
-  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 120_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });

@@ -136,7 +136,10 @@
     "imageFile": "Fichier image",
     "apply": "Appliquer",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/graphique.png"
+    "imagePlaceholder": "figures/graphique.png",
+    "split": "Fractionner",
+    "both": "Les deux",
+    "stacked": "Empilé"
   },
   "contextMenu": {
     "engineUnavailable": "Actions du moteur de document indisponibles",
@@ -284,7 +287,8 @@
     "readOnlyNotice": "Ce fichier contient du source que le mode Dessin ne peut pas préserver. Le canevas est un aperçu partiel en lecture seule. Utilisez le mode Code pour modifier le fichier d'origine."
   },
   "preview": {
-    "loading": "Chargement de la visionneuse PDF…"
+    "loading": "Chargement de la visionneuse PDF…",
+    "markdown": "Aperçu Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · ligne {{line}}",

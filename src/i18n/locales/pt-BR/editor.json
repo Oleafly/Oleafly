@@ -136,7 +136,10 @@
     "imageFile": "Arquivo de imagem",
     "apply": "Aplicar",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figuras/grafico.png"
+    "imagePlaceholder": "figuras/grafico.png",
+    "split": "Dividir",
+    "both": "Ambos",
+    "stacked": "Empilhado"
   },
   "contextMenu": {
     "engineUnavailable": "Ações do motor de documento indisponíveis",
@@ -284,7 +287,8 @@
     "readOnlyNotice": "Este arquivo contém código que o modo Desenhar não consegue preservar. A tela é uma prévia parcial, somente leitura. Use o modo Código para editar o arquivo original."
   },
   "preview": {
-    "loading": "Carregando o visualizador de PDF…"
+    "loading": "Carregando o visualizador de PDF…",
+    "markdown": "Prévia de Markdown"
   },
   "log": {
     "locationFileLine": "{{file}} · linha {{line}}",

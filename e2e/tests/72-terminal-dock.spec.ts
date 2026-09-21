@@ -95,7 +95,7 @@ async function triggerDockShortcut(
   }
 }
 
-test("project docks start closed and their toggles live in the top toolbar", async ({
+test("project docks start closed and their toggles are accessible from the top toolbar", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveCount(0);
@@ -106,7 +106,6 @@ test("project docks start closed and their toggles live in the top toolbar", asy
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
   await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toBeVisible();
-  await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
 
   await openRailTab(tauriPage, "Source Control");
   await expect(
@@ -114,9 +113,19 @@ test("project docks start closed and their toggles live in the top toolbar", asy
   ).toBeVisible();
 
   const terminalLabel = await tauriPage.getAttribute(TERMINAL_TOGGLE, "aria-label");
-  const browserLabel = await tauriPage.getAttribute(BROWSER_TOGGLE, "aria-label");
+  // Narrow windows move the browser action into the toolbar's overflow menu.
+  const directBrowser = await tauriPage.evaluate<boolean>(
+    `!!document.querySelector(${JSON.stringify(BROWSER_TOGGLE)})?.getBoundingClientRect().width`,
+  );
+  if (!directBrowser) await tauriPage.click('[data-testid="workspace-menu"]');
+  await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
+  const browserLabel = await tauriPage.evaluate<string>(`(() => {
+    const action = document.querySelector(${JSON.stringify(BROWSER_TOGGLE)});
+    return action.getAttribute('aria-label') || action.textContent.trim();
+  })()`);
   expect(terminalLabel).toMatch(/^Show terminal \(Ctrl(?:\+)?`\)$/u);
   expect(browserLabel).toMatch(/^Open browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
+  if (!directBrowser) await tauriPage.press('body', 'Escape');
 });
 
 test("the real terminal opens, echoes, and exits cleanly", async ({

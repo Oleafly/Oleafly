@@ -595,10 +595,6 @@
         "description": "Pokazuje galerię Narzędzi Oleafly i poszczególne narzędzia (import PDF, wzory, tabele, BibTeX, wyszukiwanie zespołów i literatury, terminy) wraz z ich poleceniami z ukośnikiem. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Narzędzia LaTeX"
       },
-      "visualEditor": {
-        "description": "Pokazuje przełącznik Wizualny/Kod w edytorze dokumentu. Domyślnie wyłączone, więc dokumenty otwierają się tylko w edytorze kodu. Diagramy zawsze zachowują własny przełącznik rysowania.",
-        "label": "Edytor wizualny"
-      },
       "warning": "Te funkcje są eksperymentalne i wciąż w wersji beta. Nie są jeszcze w pełni przetestowane i mogą się zmienić, przestać działać albo zniknąć w przyszłym wydaniu. Włącz je tylko wtedy, gdy chcesz wypróbować pracę w toku.",
       "webBrowser": {
         "description": "Pokazuje wbudowaną przeglądarkę internetową (jej przycisk w doku i skrót) oraz pozwala AI sterować nią przez obsługę komputera. Domyślnie wyłączone, bo funkcja jest w wersji beta; po wyłączeniu nie ma przycisku przeglądarki, a AI nie ma narzędzia przeglądarki.",
@@ -887,7 +883,8 @@
       "editor": "Widok źródła",
       "pdf": "Widok PDF",
       "split": "Widok dzielony"
-    }
+    },
+    "moreActions": "Więcej działań"
   },
   "tour": {
     "chooseColor": "Wybierz swój charakterystyczny kolor",

@@ -136,7 +136,10 @@
     "imageFile": "图片文件",
     "apply": "应用",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figures/plot.png"
+    "imagePlaceholder": "figures/plot.png",
+    "split": "分屏",
+    "both": "两者",
+    "stacked": "上下"
   },
   "contextMenu": {
     "engineUnavailable": "文档引擎操作不可用。",
@@ -278,7 +281,8 @@
     "readOnlyNotice": "此文件包含 Draw 视图无法保留的源码，画布只是部分只读预览。请使用 Code 视图编辑原始文件。"
   },
   "preview": {
-    "loading": "正在加载 PDF 查看器…"
+    "loading": "正在加载 PDF 查看器…",
+    "markdown": "Markdown 预览"
   },
   "log": {
     "locationFileLine": "{{file}} · 第 {{line}} 行",

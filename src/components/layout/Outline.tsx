@@ -120,9 +120,6 @@ function StructureUnavailable({
 
 function useStatusNotice(state: ProjectIntelligenceState): string | null {
   const { t } = useTranslation(["workspace"]);
-  if (state.stale) {
-    return t(($) => $.workspace.structure.notice.stale);
-  }
   if (state.status === "partial" || state.data?.status === "partial") {
     return t(($) => $.workspace.structure.notice.partial);
   }
@@ -168,17 +165,26 @@ export function Outline({
     setTreeExpansionState("none");
   }, [projectId]);
 
-  const snapshot = acceptedProjectSnapshot(
+  const currentSnapshot = acceptedProjectSnapshot(
     intelligenceState,
     projectId,
   );
+  const refreshing = intelligenceState.status === "running" ||
+    intelligenceState.status === "not_run" || (intelligenceState.stale &&
+    (intelligenceState.status === "success" || intelligenceState.status === "partial"));
+  const retainedSnapshot = refreshing && projectId &&
+    intelligenceState.identity?.projectId === projectId &&
+    intelligenceState.data?.identity.projectId === projectId
+      ? intelligenceState.data : null;
+  const snapshot = currentSnapshot ?? retainedSnapshot;
 
   const nodes = useMemo(
     () => (snapshot ? buildProjectStructureNodes(snapshot) : []),
     [snapshot],
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
-  const notice = useStatusNotice(intelligenceState);
+  const statusNotice = useStatusNotice(intelligenceState);
+  const notice = currentSnapshot ? statusNotice : null;
   const modelKey = snapshot?.identity.projectId;
   const expansionCommandKey = snapshot
     ? [
@@ -199,12 +205,18 @@ export function Outline({
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
+    // Retained rows stay visible, but their old source offsets cannot navigate.
+    const latest = acceptedProjectSnapshot(
+      useIndexStore.getState().intelligenceState,
+      useFilesStore.getState().projectId,
+    );
+    if (!latest || latest !== snapshot) return;
     void navigateToProjectRange({
       path: node.target.path,
       range: { from: node.target.from, to: node.target.to },
       source: "outline",
     });
-  }, []);
+  }, [snapshot]);
 
   return (
     <SidebarSection
@@ -278,7 +290,7 @@ export function Outline({
       {notice ? <output className="sr-only">{notice}</output> : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
-            {snapshot ? (
+            {currentSnapshot || nodeCount > 0 ? (
               <IntelligenceTree
                 label={t(($) => $.workspace.structure.treeLabel)}
                 nodes={nodes}

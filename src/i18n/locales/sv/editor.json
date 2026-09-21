@@ -136,7 +136,10 @@
     "imageFile": "Bildfil",
     "apply": "Tillämpa",
     "linkPlaceholder": "https://",
-    "imagePlaceholder": "figurer/diagram.png"
+    "imagePlaceholder": "figurer/diagram.png",
+    "split": "Delad",
+    "both": "Båda",
+    "stacked": "Staplade"
   },
   "contextMenu": {
     "engineUnavailable": "Åtgärder för dokumentmotorn är inte tillgängliga",
@@ -281,7 +284,8 @@
     "readOnlyNotice": "Den här filen innehåller källkod som ritläget inte kan bevara. Arbetsytan är en ofullständig, skrivskyddad förhandsvisning. Använd Kod för att redigera originalfilen."
   },
   "preview": {
-    "loading": "Läser in PDF-visaren…"
+    "loading": "Läser in PDF-visaren…",
+    "markdown": "Markdown-förhandsvisning"
   },
   "log": {
     "locationFileLine": "{{file}} · rad {{line}}",

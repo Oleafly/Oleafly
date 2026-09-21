@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
-import { useCompileStore } from "@/store/compile";
+import { useCompileStore, type CompileState } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import type { CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
@@ -126,8 +126,11 @@ function extractErrorExcerpt(log: string, message: string): string {
   return excerpt.join("\n").trimEnd();
 }
 
+const LogNavigation = createContext(openFileAndGotoLine);
+
 function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const openLocation = useContext(LogNavigation);
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
@@ -201,7 +204,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             <button
               type="button"
               aria-label={t(($) => $.editor.log.goToLocation)}
-              onClick={() => void openFileAndGotoLine(err.file, err.line as number)}
+              onClick={() => void openLocation(err.file, err.line as number)}
               className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {t(($) => $.editor.log.open)}
@@ -229,6 +232,7 @@ const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
 };
 
 function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
+  const openLocation = useContext(LogNavigation);
   const { t } = useTranslation(["common", "editor"]);
   const hasLocation = d.file != null && d.line != null;
   let location = "";
@@ -253,7 +257,7 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
             <Tooltip label={t(($) => $.editor.log.goToLocation)} side="top">
               <button
                 type="button"
-                onClick={() => void openFileAndGotoLine(d.file, d.line as number)}
+                onClick={() => void openLocation(d.file, d.line as number)}
                 className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {location}
@@ -356,13 +360,19 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
 
 const NO_DIAGNOSTICS: readonly LogDiagnostic[] = [];
 
-export function LogPane() {
+export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Readonly<{
+  snapshot?: Pick<CompileState, "log" | "errors" | "status" | "diagnostics"> & { mainDoc: string };
+  onOpenLocation?: typeof openFileAndGotoLine;
+}> = {}) {
   const { t } = useTranslation(["common", "editor"]);
-  const log = useCompileStore((s) => s.log);
-  const errors = useCompileStore((s) => s.errors);
-  const status = useCompileStore((s) => s.status);
-  const diagnostics = useCompileStore((s) => s.diagnostics);
-  const mainDoc = useFilesStore((s) => s.mainDoc);
+  const storedLog = useCompileStore((s) => s.log);
+  const storedErrors = useCompileStore((s) => s.errors);
+  const storedStatus = useCompileStore((s) => s.status);
+  const storedDiagnostics = useCompileStore((s) => s.diagnostics);
+  const storedMainDoc = useFilesStore((s) => s.mainDoc);
+  const { log, errors, status, diagnostics, mainDoc } = snapshot ?? {
+    log: storedLog, errors: storedErrors, status: storedStatus, diagnostics: storedDiagnostics, mainDoc: storedMainDoc,
+  };
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const followTailRef = useRef(true);
   const tailFrameRef = useRef<number | null>(null);
@@ -444,6 +454,7 @@ export function LogPane() {
   };
 
   return (
+    <LogNavigation value={onOpenLocation}>
     <div className="relative flex h-full min-h-0 flex-col bg-sidebar">
       <div
         ref={scrollBoxRef}
@@ -497,5 +508,6 @@ export function LogPane() {
         </div>
       )}
     </div>
+    </LogNavigation>
   );
 }

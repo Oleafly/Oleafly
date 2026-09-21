@@ -60,11 +60,11 @@ describe("TopToolbar on Windows", () => {
     expect(strip.parentElement?.nextElementSibling).toBeNull();
   });
 
-  it("clips the action cluster rather than letting it push the caption buttons off screen", () => {
+  it("keeps the action cluster visible at its natural width", () => {
     renderToolbar();
     const cluster = screen.getByLabelText(enShell.windowControls.group).parentElement;
-    expect(cluster?.className).toContain("min-w-0");
-    expect(cluster?.className).toContain("overflow-x-clip");
+    expect(cluster?.className).toContain("shrink-0");
+    expect(cluster?.className).not.toContain("overflow-x-clip");
     expect(cluster?.className).not.toContain("overflow-hidden");
   });
 
@@ -72,7 +72,7 @@ describe("TopToolbar on Windows", () => {
     const toolbar = renderToolbar();
     const titleArea = screen.getByTestId("project-title").parentElement
       ?.parentElement;
-    expect(titleArea?.parentElement).toBe(toolbar);
+    expect(titleArea?.parentElement?.parentElement).toBe(toolbar);
     expect(titleArea?.className).toContain("flex-1");
     expect(titleArea?.className).toContain("min-w-0");
     expect(titleArea?.className).toContain("overflow-hidden");
@@ -81,17 +81,17 @@ describe("TopToolbar on Windows", () => {
   it("holds the brand, the separator and the view switch at their own width", () => {
     const toolbar = renderToolbar();
     const chevron = toolbar.querySelector("svg.lucide-chevron-right");
-    expect(chevron?.parentElement).toBe(toolbar);
+    expect(chevron?.parentElement?.parentElement).toBe(toolbar);
     expect(chevron?.getAttribute("class")).toContain("shrink-0");
 
     const brand = screen.getByLabelText(enShell.home.ariaLabel).parentElement;
-    expect(brand?.parentElement).toBe(toolbar);
+    expect(brand?.parentElement?.parentElement).toBe(toolbar);
     expect(brand?.className).toContain("shrink-0");
 
     const viewSwitch = screen.getByLabelText(enShell.toolbar.views.split).closest("div.shrink-0");
     const titleSlot = screen.getByTestId("project-title").parentElement?.parentElement;
-    expect(viewSwitch?.parentElement).toBe(titleSlot);
-    expect(titleSlot?.parentElement).toBe(toolbar);
+    expect(viewSwitch?.parentElement).toBe(toolbar);
+    expect(titleSlot?.parentElement?.parentElement).toBe(toolbar);
   });
 
   it("holds the dock controls at their own width", () => {

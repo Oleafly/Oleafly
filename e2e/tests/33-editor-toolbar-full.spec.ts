@@ -335,6 +335,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
   );
   await expect(tauriPage.locator(".cm-content")).toContainText("name");
 
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "notes.txt");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
@@ -351,6 +352,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
 test("font files open a binary notice instead of a broken editor", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
   await openRailTab(tauriPage, "Explorer");
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "sample.ttf");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

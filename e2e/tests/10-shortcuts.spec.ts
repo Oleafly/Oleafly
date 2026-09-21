@@ -7,6 +7,7 @@ test("Cmd+Enter compiles and Cmd+Shift+J forward-SyncTeX highlights the PDF", as
   tauriPage,
 }) => {
   await openProject(tauriPage, "E2E Doc");
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,

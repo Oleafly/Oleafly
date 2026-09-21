@@ -14,8 +14,11 @@ describe("packaged evaluated imports", () => {
       "74-conversion-matrix.spec.ts",
       "75-conversion-matrix-ui.spec.ts",
       "86-ad-hoc-converters.spec.ts",
+      "100-workspace-layout.spec.ts",
     ]) {
       const source = readFileSync(resolve("e2e/tests", name), "utf8");
+      expect(source).not.toMatch(/import\(\s*'\/(?:src|packages)\//g);
+      expect(source).not.toContain("/node_modules/.vite/");
       for (const match of source.matchAll(/import\(\s*"(\/(?:src|packages)\/[^"\n]+)"/g)) {
         expect(registered.has(match[1]), `${name}: ${match[1]}`).toBe(true);
       }

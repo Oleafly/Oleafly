@@ -50,6 +50,7 @@ import { TopToolbar } from "./TopToolbar";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { ThemeProvider } from "@/lib/theme";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -66,10 +67,7 @@ function renderToolbar() {
 }
 
 function forkButton(): HTMLElement {
-  const icon = document.querySelector("svg.lucide-git-fork");
-  const button = icon?.closest("button");
-  if (!button) throw new Error("fork button not rendered");
-  return button;
+  return screen.getByRole("menuitem", { name: toolbar.forkProject });
 }
 
 const renameProject = vi.fn(async () => {});
@@ -85,6 +83,7 @@ beforeEach(() => {
   renameProject.mockClear();
   refreshProjects.mockClear();
   openProject.mockClear();
+  usePreviewDetachedStore.setState({ projectId: null });
   useFilesStore.setState({
     projectId: "p1",
     projectName: "Retrieval study",
@@ -170,6 +169,13 @@ describe("TopToolbar title", () => {
 });
 
 describe("TopToolbar view and layout", () => {
+  it("keeps compile and its options visible while the preview is detached", () => {
+    usePreviewDetachedStore.setState({ projectId: "p1" });
+    renderToolbar();
+    expect(screen.getByTestId("compile-button")).toBeVisible();
+    expect(screen.getByTestId("compile-options-button")).toBeVisible();
+  });
+
   it("switches the view mode", async () => {
     renderToolbar();
     const user = userEvent.setup();
@@ -182,14 +188,15 @@ describe("TopToolbar view and layout", () => {
   it("lists every layout preset and applies the one chosen", async () => {
     renderToolbar();
     const user = userEvent.setup();
-    await user.click(screen.getByLabelText(toolbar.layout));
-    const menu = await screen.findByRole("menu");
+    await user.click(screen.getByRole("button", { name: toolbar.layout }));
+    const menu = (await screen.findAllByRole("menu")).at(-1);
+    if (!menu) throw new Error("layout submenu did not open");
     for (const label of Object.values(toolbar.layouts)) {
       expect(menu).toHaveTextContent(label);
     }
-    await user.click(
-      screen.getByRole("menuitem", { name: new RegExp(toolbar.layouts.aiOnly) }),
-    );
+    const item = screen.getByRole("menuitem", { name: toolbar.layouts.aiOnly });
+    item.focus();
+    await user.keyboard("{Enter}");
     await waitFor(() =>
       expect(useSettingsStore.getState().assistantOpen).toBe(true),
     );
@@ -325,6 +332,7 @@ describe("TopToolbar fork dialog", () => {
   it("forks the project under a new name", async () => {
     renderToolbar();
     const user = userEvent.setup();
+    await user.click(screen.getByTestId("workspace-menu"));
     await user.click(forkButton());
     const field = await screen.findByPlaceholderText(toolbar.newProjectName);
     expect(field).toHaveValue("Retrieval study (copy)");
@@ -341,6 +349,7 @@ describe("TopToolbar fork dialog", () => {
     mocks.duplicateProject.mockRejectedValueOnce(new Error("no space"));
     renderToolbar();
     const user = userEvent.setup();
+    await user.click(screen.getByTestId("workspace-menu"));
     await user.click(forkButton());
     await user.click(await screen.findByRole("button", { name: toolbar.fork }));
     await waitFor(() =>
@@ -355,6 +364,7 @@ describe("TopToolbar fork dialog", () => {
   it("closes the fork dialog from the backdrop", async () => {
     renderToolbar();
     const user = userEvent.setup();
+    await user.click(screen.getByTestId("workspace-menu"));
     await user.click(forkButton());
     await user.click(await screen.findByLabelText(toolbar.closeForkDialog));
     await waitFor(() =>

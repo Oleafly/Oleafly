@@ -6,6 +6,7 @@ test("create a new file, edit it, and switch between files", async ({ tauriPage 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await openRailTab(tauriPage, "Explorer");
+  await tauriPage.focus('[aria-controls="source-tree-content"]');
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "notes.tex");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

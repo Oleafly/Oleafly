@@ -1,3 +1,14 @@
+import { PdfToolbarControls } from "./PdfToolbarControls";
+import { CompileLogControls } from "./CompileLogControls";
+import { SavePreviewDialog } from "./SavePreviewDialog";
+import { CompileControlsView } from "@/components/layout/CompileControls";
+import { LogPane } from "@/components/editor/LogPane";
+import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import { notifyError, toast } from "@/lib/toast";
+import { usePdfPosition } from "@/lib/use-pdf-position";
+import { usePreviewGeometry } from "@/lib/preview-geometry";
+import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import {
   useCallback,
   useDeferredValue,
@@ -6,27 +17,18 @@ import {
   useState,
 } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  Accessibility,
-  ChevronDown,
+  PanelTopOpen,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  Columns2,
-  Contrast,
-  Download,
   FileText,
-  ListTree,
   Loader2,
   LockKeyhole,
-  Minus,
-  Plus,
-  RectangleVertical,
-  RotateCw,
   Search,
   TableOfContents,
   X,
@@ -58,6 +60,7 @@ import {
 } from "@/lib/preview-window";
 import {
   readCompiledPdf,
+  saveFileBase64,
   uint8ToBase64,
   writeBytesFile,
 } from "@/lib/tauri";
@@ -320,7 +323,7 @@ export function PreviewWindow({
   harnessBytes,
   disableNativeBridge = false,
 }: Readonly<PreviewWindowProps> = {}) {
-  const { t } = useTranslation(["common", "preview"]);
+  const { t } = useTranslation(["common", "preview", "shell", "ai"]);
   const [initialContext] = useState(readInitialPreviewContext);
   const harnessDocument = harnessBytes
     ? {
@@ -330,6 +333,17 @@ export function PreviewWindow({
       }
     : null;
   const [projectId, setProjectId] = useState(initialContext.projectId);
+  const [workspaceSnapshot, setWorkspace] = useState<PreviewWorkspaceSnapshot | null>(null);
+  const workspace = workspaceSnapshot?.projectId === projectId ? workspaceSnapshot : null;
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [isFs, setIsFs] = useState(false);
+  const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
+  const [rotationPending, setRotationPending] = useState(false);
+  const command = (request: PreviewWorkspaceCommand) => sendPreviewCommand(projectId, request);
+  usePreviewGeometry(projectId, !disableNativeBridge && isTauri());
   const [compileState, setCompileState] =
     useState<PreviewWindowState | null>(initialContext.state);
   const [previewDocument, setPreviewDocument] =
@@ -379,8 +393,37 @@ export function PreviewWindow({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PdfViewerHandle>(null);
+  const pdfPosition = usePdfPosition(projectId, pdfRef);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onChange = () => {
+      const fullscreen = document.fullscreenElement === rootRef.current;
+      setIsFs(fullscreen);
+      if (!fullscreen) setFsToolbarHidden(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void rootRef.current?.requestFullscreen?.().catch(() => {});
+  };
+  const submitSavePdf = async () => {
+    if (!projectId || !previewDocument || saving) return;
+    setSaving(true);
+    try {
+      const name = `${(saveName.trim() || "document").replace(/\.pdf$/i, "")}.pdf`;
+      await saveFileBase64(projectId, name, uint8ToBase64(previewDocument.bytes));
+      await command({ action: "refresh-files" });
+      setSaveOpen(false);
+      toast.success(t(($) => $.preview.save.pdfSaved));
+    } catch (error) {
+      notifyError("save to project", error, t(($) => $.preview.save.failed));
+    } finally {
+      setSaving(false);
+    }
+  };
   const projectIdRef = useRef(projectId);
   const compileStateRef = useRef(compileState);
   const previewDocumentRef = useRef(previewDocument);
@@ -433,6 +476,9 @@ export function PreviewWindow({
     if (projectIdRef.current !== normalized) {
       projectIdRef.current = normalized;
       setProjectId(normalized);
+      setLogsOpen(false);
+      setSaveOpen(false);
+      setRotationPending(false);
       previewDocumentRef.current = null;
       lastReadyDocumentRef.current = null;
       setPreviewDocument(null);
@@ -488,6 +534,23 @@ export function PreviewWindow({
     },
     [retargetProject],
   );
+
+  useEffect(() => {
+    if (disableNativeBridge || !isTauri() || !projectId) return;
+    setWorkspace(null);
+    let disposed = false;
+    const off = listen<PreviewWorkspaceSnapshot>("preview:workspace", ({ payload }) => {
+      if (!disposed && payload?.projectId === projectId && typeof payload.log === "string" && typeof payload.status === "string" && Array.isArray(payload.errors) && payload.engine) {
+        setWorkspace(payload);
+        // Reopening can miss a compile event while the new webview loads.
+        if (payload.previewState?.identity?.projectId === projectId) acceptCompileState(payload.previewState);
+      }
+    });
+    void off.then(() => {
+      if (!disposed) void emitTo("main", "preview:command", { projectId, action: "ready" });
+    });
+    return () => { disposed = true; void off.then((unlisten) => unlisten()); };
+  }, [projectId, disableNativeBridge, acceptCompileState]);
 
   useEffect(() => {
     if (disableNativeBridge) return;
@@ -801,7 +864,9 @@ export function PreviewWindow({
   const handlePdfLoadState = (next: PdfLoadState) => {
     const current = previewDocumentRef.current;
     if (!current || current.identity !== next.documentIdentity) return;
+    pdfPosition.onLoad(next);
     setPdfLoadState(next);
+    if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
       lastReadyDocumentRef.current = current;
       setRetainedLoadFailure(null);
@@ -961,11 +1026,7 @@ export function PreviewWindow({
 
   const rotateClockwise = () => {
     if (!previewDocument) return;
-    setPdfLoadState({
-      status: "loading",
-      documentIdentity: previewDocument.identity,
-      message: t(($) => $.preview.window.rotating),
-    });
+    setRotationPending(true);
     setRotation(
       (current) => ((current + 90) % 360) as PdfRotation,
     );
@@ -1012,6 +1073,7 @@ export function PreviewWindow({
             onSearchStateChange={setSearchState}
             onOutlineStateChange={setOutlineState}
             onPageChange={(current, total) => {
+              pdfPosition.onPage(current);
               setPage(current);
               setNumPages(total);
             }}
@@ -1134,137 +1196,6 @@ export function PreviewWindow({
       )
   );
 
-  const renderPreviewToolbarRight = () => (
-    <div className="ml-auto flex items-center gap-1">
-      <Button
-        variant={fitMode === "width" ? "secondary" : "ghost"}
-        size="xs"
-        disabled={!previewDocument}
-        onClick={() => fitPreview("width")}
-        aria-pressed={fitMode === "width"}
-      >
-        {t(($) => $.preview.window.fitWidth)}
-      </Button>
-      <Button
-        variant={fitMode === "height" ? "secondary" : "ghost"}
-        size="xs"
-        disabled={!previewDocument}
-        onClick={() => fitPreview("height")}
-        aria-pressed={fitMode === "height"}
-      >
-        {t(($) => $.preview.window.fitHeight)}
-      </Button>
-      <Tooltip label={t(($) => $.preview.zoom.out)}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={scale <= MIN_PREVIEW_SCALE}
-          onClick={() =>
-            userZoom(() =>
-              setScale((current) =>
-                Math.max(MIN_PREVIEW_SCALE, current - 0.2),
-              ),
-            )
-          }
-          aria-label={t(($) => $.preview.zoom.out)}
-        >
-          <Minus className="size-3.5" />
-        </Button>
-      </Tooltip>
-      <span
-        data-testid="detached-preview-zoom"
-        className="w-10 text-center text-xs tabular-nums text-muted-foreground"
-      >
-        {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
-      </span>
-      <Tooltip label={t(($) => $.preview.zoom.in)}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={scale >= MAX_PREVIEW_SCALE}
-          onClick={() =>
-            userZoom(() =>
-              setScale((current) =>
-                Math.min(MAX_PREVIEW_SCALE, current + 0.2),
-              ),
-            )
-          }
-          aria-label={t(($) => $.preview.zoom.in)}
-        >
-          <Plus className="size-3.5" />
-        </Button>
-      </Tooltip>
-      <Tooltip label={t(($) => $.preview.actions.rotate)}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={!previewDocument}
-          onClick={rotateClockwise}
-          aria-label={t(($) => $.preview.window.rotateLabel)}
-        >
-          <RotateCw className="size-3.5" />
-        </Button>
-      </Tooltip>
-      <Tooltip
-        label={
-          inverted
-            ? t(($) => $.preview.actions.restoreColors)
-            : t(($) => $.preview.window.invert)
-        }
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("size-7", inverted && "bg-accent")}
-          disabled={!previewDocument}
-          onClick={() => setInverted(!inverted)}
-          aria-label={t(($) => $.preview.window.invertLabel)}
-          aria-pressed={inverted}
-        >
-          <Contrast className="size-3.5" />
-        </Button>
-      </Tooltip>
-      <Tooltip
-        label={
-          screenReaderMode
-            ? t(($) => $.preview.actions.exitReaderView)
-            : t(($) => $.preview.actions.readerView)
-        }
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("size-7", screenReaderMode && "bg-accent")}
-          disabled={!previewDocument}
-          onClick={() => setScreenReaderMode(!screenReaderMode)}
-          aria-label={t(($) => $.preview.actions.readerView)}
-          aria-pressed={screenReaderMode}
-        >
-          <Accessibility className="size-3.5" />
-        </Button>
-      </Tooltip>
-      <Tooltip label={t(($) => $.preview.actions.downloadDisplayedPdf)}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={!previewDocument || exporting}
-          onClick={() => void downloadDisplayedPdf()}
-          aria-label={t(($) => $.preview.actions.downloadDisplayedPdf)}
-        >
-          {exporting ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Download className="size-3.5" />
-          )}
-        </Button>
-      </Tooltip>
-    </div>
-  );
-
   const renderPreviewSearchBar = () => (
     searchOpen && previewDocument && (
       <search
@@ -1349,143 +1280,68 @@ export function PreviewWindow({
       data-preview-page={page}
       className="flex h-screen flex-col bg-background text-foreground"
     >
-      <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0">
-        <Tooltip label={t(($) => $.preview.outline.open)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("size-7", outlineOpen && "bg-accent")}
-            disabled={!previewDocument}
-            onClick={() => setOutlineOpen((open) => !open)}
-            aria-label={t(($) => $.preview.outline.open)}
-            aria-expanded={outlineOpen}
-            aria-controls="detached-pdf-outline"
-          >
-            <ListTree className="size-3.5" />
-          </Button>
-        </Tooltip>
-        <Tooltip label={t(($) => $.preview.search.open)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("size-7", searchOpen && "bg-accent")}
-            disabled={!previewDocument}
-            onClick={() => {
-              setSearchOpen(true);
-              requestAnimationFrame(() =>
-                searchInputRef.current?.focus({
-                  preventScroll: true,
-                }),
-              );
-            }}
-            aria-label={t(($) => $.preview.search.open)}
-            aria-expanded={searchOpen}
-            aria-controls="detached-pdf-search"
-          >
-            <Search className="size-3.5" />
-          </Button>
-        </Tooltip>
-
-        {numPages > 0 && (
-          <>
-            <div className="mx-1 h-4 w-px bg-border" />
-            {/* A one-page document has nothing to lay out: hide the toggles entirely. */}
-            {numPages > 1 && (
-              <>
-                <Tooltip label={t(($) => $.preview.pageLayout.single)}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "size-7",
-                      layout === "single" && "bg-accent text-foreground",
-                    )}
-                    onClick={() => setLayout("single")}
-                    aria-label={t(($) => $.preview.pageLayout.single)}
-                    aria-pressed={layout === "single"}
-                  >
-                    <RectangleVertical className="size-3.5" />
-                  </Button>
-                </Tooltip>
-                <Tooltip label={t(($) => $.preview.pageLayout.double)}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "size-7",
-                      layout === "double" && "bg-accent text-foreground",
-                    )}
-                    onClick={() => setLayout("double")}
-                    aria-label={t(($) => $.preview.pageLayout.double)}
-                    aria-pressed={layout === "double"}
-                  >
-                    <Columns2 className="size-3.5" />
-                  </Button>
-                </Tooltip>
-              </>
-            )}
-            <Tooltip label={t(($) => $.preview.pages.previous)}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                disabled={page <= 1}
-                onClick={() =>
-                  pdfRef.current?.gotoPage(
-                    page - (layout === "double" ? 2 : 1),
-                  )
-                }
-                aria-label={t(($) => $.preview.pages.previous)}
-              >
-                <ChevronUp className="size-3.5" />
-              </Button>
-            </Tooltip>
-            <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-              <Input
-                value={pageInput}
-                onChange={(event) =>
-                  setPageInput(
-                    event.target.value.replace(/\D/gu, ""),
-                  )
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    jumpToPage();
-                    event.currentTarget.blur();
-                  }
-                }}
-                onBlur={jumpToPage}
-                onFocus={(event) => event.target.select()}
-                aria-label={t(($) => $.preview.pages.number)}
-                className="h-7 w-10 px-1 text-center"
-              />
-              <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
-            </div>
-            <Tooltip label={t(($) => $.preview.pages.next)}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                disabled={page >= numPages}
-                onClick={() =>
-                  pdfRef.current?.gotoPage(
-                    page + (layout === "double" ? 2 : 1),
-                  )
-                }
-                aria-label={t(($) => $.preview.pages.next)}
-              >
-                <ChevronDown className="size-3.5" />
-              </Button>
-            </Tooltip>
-          </>
-        )}
-
-        {renderPreviewToolbarRight()}
+      {isFs && fsToolbarHidden && <Tooltip label={t(($) => $.preview.actions.showToolbar)}>
+        <button type="button" onClick={() => setFsToolbarHidden(false)}
+          aria-label={t(($) => $.preview.actions.showToolbar)}
+          className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white">
+          <PanelTopOpen className="size-4" />
+        </button>
+      </Tooltip>}
+      {!disableNativeBridge && <div className={cn("flex min-h-12 shrink-0 items-center gap-2 border-b px-2 py-1", isFs && fsToolbarHidden && "hidden")}>
+        <CompileControlsView
+          engine={workspace?.engine ?? LATEX_ENGINE} engineLoaded={workspace?.engineLoaded ?? false}
+          setEngine={(engine, flavor) => command({ action: "engine", engine, flavor })}
+          status={workspace?.status ?? "idle"} compileRevision={workspace?.compileRevision ?? 0}
+          recompile={(options) => command({ action: "compile", fromScratch: options?.fromScratch })}
+          stopCompile={() => command({ action: "stop" })}
+          autoCompile={workspace?.autoCompile ?? false}
+          setAutoCompile={(value) => { void command({ action: "auto-compile", value }); }}
+          compileMode={workspace?.compileMode ?? "normal"}
+          setCompileMode={(value) => { void command({ action: "compile-mode", value }); }}
+          checkSyntaxBeforeCompile={workspace?.checkSyntaxBeforeCompile ?? true}
+          setCheckSyntaxBeforeCompile={(value) => { void command({ action: "syntax-check", value }); }}
+          stopOnFirstError={workspace?.stopOnFirstError ?? false}
+          setStopOnFirstError={(value) => { void command({ action: "stop-on-error", value }); }}
+        />
+        <Button size="sm" variant="ghost" className="ml-auto" data-testid="preview-reattach"
+          onClick={() => void getCurrentWindow().close()}>{t(($) => $.ai.shell.dockBack)}</Button>
+      </div>}
+      <div className={cn("flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0", isFs && fsToolbarHidden && "hidden")}>
+        {!disableNativeBridge && <CompileLogControls active={logsOpen} onToggle={() => setLogsOpen(!logsOpen)}
+          status={workspace?.status ?? "idle"} errors={workspace?.errors ?? []} compileTimeMs={workspace?.compileTimeMs ?? null} />}
+        {logsOpen && workspace?.errors.some((error) => error.kind === "error") &&
+          <div className="ml-auto flex items-center">
+            <Button variant="ghostPrimary" size="xs" onClick={() => void command({ action: "ask-ai" })}>
+              <Sparkles data-icon="inline-start" />{t(($) => $.preview.toolbar.askAi)}
+            </Button>
+          </div>}
+        {!logsOpen && <PdfToolbarControls
+          isImage={false} hasDocument={!!previewDocument} numPages={numPages}
+          page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
+          pdfRef={pdfRef} layout={layout} setLayout={setLayout}
+          outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
+          searchOpen={searchOpen} setSearchOpen={setSearchOpen} searchInputRef={searchInputRef} setSearchInput={setSearchInput}
+          scale={scale} setScale={setScale} setClampedScale={setClampedScale} userZoom={userZoom} fitPreview={fitPreview}
+          exporting={exporting} exportDisplayedPreview={downloadDisplayedPdf}
+          downloadActionLabel={() => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
+          onSave={() => {
+            setSaveName(`${(workspace?.mainDoc || compileState?.identity.mainDocument || "document").replace(/\.(?:tex|typ|md|markdown)$/i, "")}.pdf`);
+            setSaveOpen(true);
+          }}
+          inverted={inverted} setInverted={setInverted} screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
+          rotation={rotation} rotationPending={rotationPending} onRotate={rotateClockwise}
+          isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
+          detached onWindow={() => void getCurrentWindow().close()}
+          onSettings={() => void command({ action: "pdf-settings" })}
+        />}
       </div>
+      {logsOpen && workspace && <div className="min-h-0 flex-1" data-testid="detached-compile-log">
+        <LogPane snapshot={workspace} onOpenLocation={(file, line) => command({ action: "source-location", file, line })} />
+      </div>}
 
       {renderStaleNotice()}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-sidebar">
+      <div className={cn("relative min-h-0 flex-1 overflow-hidden bg-sidebar", logsOpen && "hidden")}>
         {/* Kept mounted while a document is loaded so closing animates too. */}
         {previewDocument && (
           <aside
@@ -1549,6 +1405,8 @@ export function PreviewWindow({
         {renderViewerOverlay()}
       </div>
 
+      <SavePreviewDialog saveOpen={saveOpen} closeSave={() => setSaveOpen(false)} pdfIsStale={displayedIsStale}
+        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!previewDocument} submitSavePdf={submitSavePdf} />
       <div className="sr-only" aria-live="polite">
         {exportMessage}
       </div>
