@@ -163,6 +163,9 @@ async function steerSnapshot(page: Page): Promise<string> {
       }
       return JSON.stringify({
         stop: !!document.querySelector('[aria-label="Stop"]'),
+        notice: text(document.querySelector('[data-testid="ai-model-notice"]')),
+        composer: document.querySelector('textarea[placeholder*="Ask AI"]')?.value ?? null,
+        dialogs: [...document.querySelectorAll('[role="dialog"]')].map(text),
         chips,
         toasts,
         messages,
@@ -189,11 +192,20 @@ async function waitForSteeredLabel(page: Page, timeoutMs: number) {
 }
 
 async function waitForReply(page: Page, marker: string, timeoutMs = 60_000) {
-  await waitLong(
-    page,
-    `document.body.innerText.includes(${JSON.stringify(marker)}) && !document.querySelector('[aria-label="Stop"]')`,
-    timeoutMs,
-  );
+  try {
+    await waitLong(
+      page,
+      `document.body.innerText.includes(${JSON.stringify(marker)}) && !document.querySelector('[aria-label="Stop"]')`,
+      timeoutMs,
+    );
+  } catch (error) {
+    const markerInTextContent = await page.evaluate<boolean>(
+      `document.body.textContent.includes(${JSON.stringify(marker)})`,
+    );
+    throw new Error(
+      `${String(error)}; markerInTextContent=${markerInTextContent}; requests=${server.requestCount()}; ${await steerSnapshot(page)}`,
+    );
+  }
 }
 
 async function expandFinishedSteps(page: Page) {
