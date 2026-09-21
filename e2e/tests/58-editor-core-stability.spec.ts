@@ -19,6 +19,7 @@ interface EditorGeometry {
   readonly visibleLineCount: number;
   readonly numberedGutterCount: number;
   readonly maxLineNumberDelta: number;
+  readonly gutterOffsets: string;
   readonly hiddenGutterSpacers: number;
   readonly baseLineHeight: number;
   readonly maxLineHeight: number;
@@ -169,6 +170,7 @@ async function editorGeometry(
             // in, it reports the top row's scroll offset as gutter drift.
             element.style.visibility !== "hidden",
         );
+        const mismatches = [];
         const deltas = gutters.flatMap((gutter) => {
           const lineNumber = Number(gutter.textContent?.trim());
           if (
@@ -188,12 +190,27 @@ async function editorGeometry(
               : domPosition.node.parentElement;
           const line = element?.closest?.(".cm-line");
           if (!line) return [];
-          return [
-            Math.abs(
-              gutter.getBoundingClientRect().top -
-                line.getBoundingClientRect().top,
-            ),
-          ];
+          const lineRect = line.getBoundingClientRect();
+          const gutterRect = gutter.getBoundingClientRect();
+          // CodeMirror buffers rows beyond the viewport whose gutter heights
+          // may still be estimates. Compare every row visible in either column,
+          // so genuine drift cannot hide a visible line or its line number.
+          const onScreen = (rect) => rect.bottom >= viewport.top && rect.top <= viewport.bottom;
+          if (!onScreen(lineRect) && !onScreen(gutterRect)) return [];
+          const delta = Math.abs(gutterRect.top - lineRect.top);
+          if (delta > 1.5) mismatches.push({
+            lineNumber,
+            mappedLineNumber: view.state.doc.lineAt(view.posAtDOM(line)).number,
+            delta,
+            lineTop: lineRect.top,
+            gutterTop: gutterRect.top,
+            viewportTop: viewport.top,
+            viewportBottom: viewport.bottom,
+            lineHeight: lineRect.height,
+            gutterHeight: gutterRect.height,
+            text: line.textContent?.slice(0, 100),
+          });
+          return [delta];
         });
         // Derive the base visual row from the editor's own measured metric.
         // Using the shortest visible line aliases to two (or more) rows when
@@ -226,8 +243,9 @@ async function editorGeometry(
           currentLine: getCurrentLine() ?? 0,
           viewportHeight: viewport.height,
           visibleLineCount: lines.length,
-          numberedGutterCount: gutters.length,
+          numberedGutterCount: deltas.length,
           maxLineNumberDelta: Math.max(0, ...deltas),
+          gutterOffsets: JSON.stringify(mismatches.slice(0, 8)),
           // Expected to be exactly 1: CodeMirror's width-reserving spacer. If
           // this ever reads 0 the filter has stopped matching it and the probe
           // is measuring a phantom row again.
@@ -293,7 +311,7 @@ async function expectStableGeometry(
   // machines; if CodeMirror ever stops emitting it, fail here with a clear
   // reason rather than silently drifting back to measuring nothing.
   expect(geometry.hiddenGutterSpacers).toBe(1);
-  expect(geometry.maxLineNumberDelta).toBeLessThanOrEqual(1.5);
+  expect(geometry.maxLineNumberDelta, geometry.gutterOffsets).toBeLessThanOrEqual(1.5);
   expect(geometry.baseLineHeight).toBeGreaterThan(10);
   // Split view intentionally wraps realistic prose. Wrapped rows must remain
   // stable multiples of the editor's own base row; the historical regression
@@ -422,6 +440,7 @@ async function runAuthoringChaos(
         const pause = (ms) =>
           new Promise((resolve) => setTimeout(resolve, ms));
         const gutterDelta = () => {
+          const viewport = view.scrollDOM.getBoundingClientRect();
           const gutters = Array.from(
             view.dom.querySelectorAll(
               ".cm-lineNumbers .cm-gutterElement",
@@ -453,6 +472,8 @@ async function runAuthoringChaos(
             if (!line) return [];
             const gutterRect = gutter.getBoundingClientRect();
             const lineRect = line.getBoundingClientRect();
+            const onScreen = (rect) => rect.bottom >= viewport.top && rect.top <= viewport.bottom;
+            if (!onScreen(lineRect) && !onScreen(gutterRect)) return [];
             return [
               {
                 lineNumber,
@@ -507,7 +528,7 @@ async function runAuthoringChaos(
             }
           }
           return {
-            gutterCount: gutters.length,
+            gutterCount: deltas.length,
             maxDelta: worst,
             worstLineNumber,
             worstDetail,
@@ -732,6 +753,9 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   tauriPage,
 }) => {
   test.setTimeout(600_000);
+  // Exercise wrapped prose at the minimum supported width, independently of
+  // window geometry left behind by earlier specs.
+  await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   const fixture = buildLargeLatexBookProject();
   await createBlankProject(
     tauriPage,
@@ -1087,7 +1111,8 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     )`,
   );
   await tauriPage.click('[data-testid="compile-button"]');
-  for (const line of [4_700, 420, 3_480]) {
+  // Visit the formerly buffered rows too: they must align once scrolled into view.
+  for (const line of [4_700, 420, 432, 3_480]) {
     await expectStableGeometry(tauriPage, line);
   }
   await waitLong(

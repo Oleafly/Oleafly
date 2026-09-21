@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import type { TauriPage } from "@srsholmes/tauri-playwright";
+import { openZoomMenu, pressVisibleMenuItem } from "../preview-menu";
 import {
   compileAndProbe,
   createBlankProject,
@@ -183,70 +184,56 @@ test.beforeEach(async ({ tauriPage }) => {
   await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 60_000 });
 });
 
+function zoomPercent(page: Parameters<typeof openZoomMenu>[0]) {
+  return page.evaluate<number>(
+    `Math.round(Number(document.querySelector('[data-page="1"]')?.style.getPropertyValue('--scale-factor')) * 100)`,
+  );
+}
+
+async function chooseZoom(page: Parameters<typeof openZoomMenu>[0], label: string) {
+  await openZoomMenu(page);
+  await pressVisibleMenuItem(page, label, "Enter");
+}
+
 test("zoom controls change the zoom level", async ({ tauriPage }) => {
-  const zoom = () =>
-    tauriPage.evaluate<string>(
-      `(document.body.innerText.match(/(\\d+)%/) || ["", "?"])[1]`,
-    );
-  // The preview auto-fits to page height once, deferred a requestAnimationFrame
-  // after the PDF becomes visible. Reading `before` immediately can race that
-  // and capture the pre-auto-fit value, making the later zoom-out assertion
-  // compare against a level the app never actually returns to. Poll until two
-  // consecutive reads agree before treating it as the stable baseline.
-  let before = await zoom();
-  let stableReads = 0;
-  for (let i = 0; i < 40 && stableReads < 5; i++) {
-    await new Promise((r) => setTimeout(r, 100));
-    const reread = await zoom();
-    if (reread === before) {
-      stableReads++;
-    } else {
-      before = reread;
-      stableReads = 0;
-    }
-  }
-  await tauriPage.click('[aria-label="Zoom in"]');
-  const after = await zoom();
-  expect(Number(after)).toBeGreaterThan(Number(before));
-  await tauriPage.click('[aria-label="Zoom out"]');
-  expect(await zoom()).toBe(before);
+  const zoom = () => zoomPercent(tauriPage);
+  // Select a scale explicitly so the initial automatic fit cannot change the
+  // baseline between the two button clicks.
+  await chooseZoom(tauriPage, "100%");
+  await expect.poll(zoom).toBe(100);
+  const activate = async (label: "Zoom in" | "Zoom out") => {
+    const inline = tauriPage.locator(`[aria-label="${label}"]`);
+    if (await inline.isVisible()) await inline.click();
+    else await chooseZoom(tauriPage, label);
+  };
+  await activate("Zoom in");
+  await expect.poll(zoom).toBe(120);
+  await activate("Zoom out");
+  await expect.poll(zoom).toBe(100);
 });
 
 test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }) => {
-  const trigger = tauriPage.locator('[aria-haspopup="menu"][aria-label^="Zoom "]');
-  const openMenu = async () => {
-    await trigger.focus();
-    await trigger.press("Enter");
-    await expect(tauriPage.getByRole("menu")).toBeVisible();
-  };
+  const zoom = () => zoomPercent(tauriPage);
 
   for (const preset of ["25%", "50%", "75%", "100%", "150%", "200%", "400%"]) {
-    await openMenu();
-    await tauriPage.getByRole("menu").getByText(preset, { exact: true }).click();
-    await expect(trigger).toHaveText(
-      new RegExp(`${preset.slice(0, -1)}\\s*%`),
-    );
+    await chooseZoom(tauriPage, preset);
+    await expect.poll(zoom).toBe(Number(preset.slice(0, -1)));
   }
-  await expect(tauriPage.locator('button[aria-label="Zoom in"]')).toBeDisabled();
+  await openZoomMenu(tauriPage);
+  await expect(tauriPage.getByText("Zoom in", { exact: true })).toHaveAttribute("aria-disabled", "true");
+  await pressVisibleMenuItem(tauriPage, "100%", "Enter");
+  await chooseZoom(tauriPage, "Zoom in");
+  await expect.poll(zoom).toBe(120);
+  await chooseZoom(tauriPage, "Zoom out");
+  await expect.poll(zoom).toBe(100);
 
-  await openMenu();
-  await tauriPage.getByRole("menu").getByText("100%", { exact: true }).click();
-  await openMenu();
-  await tauriPage.getByRole("menu").getByText("Zoom in", { exact: true }).click();
-  await expect(trigger).toHaveText(/120\s*%/);
-  await openMenu();
-  await tauriPage.getByRole("menu").getByText("Zoom out", { exact: true }).click();
-  await expect(trigger).toHaveText(/100\s*%/);
-
-  await openMenu();
-  await tauriPage.getByRole("menu").getByText("Fit to width", { exact: true }).click();
-  const widthScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
+  await chooseZoom(tauriPage, "Fit to width");
+  const widthScale = await zoom();
   expect(widthScale).toBeGreaterThanOrEqual(25);
   expect(widthScale).toBeLessThan(400);
 
-  await openMenu();
-  await tauriPage.getByRole("menu").getByText("Fit to height", { exact: true }).click();
-  const heightScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
+  await chooseZoom(tauriPage, "Fit to height");
+  const heightScale = await zoom();
   expect(heightScale).toBeGreaterThanOrEqual(25);
   expect(heightScale).toBeLessThan(400);
 });
@@ -400,6 +387,7 @@ test("save image writes a real nonblank PNG at the requested relative path", asy
     "diagram",
     `E2E preview image ${Date.now().toString(36)}`,
   );
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
     "data-severity",
     "ok",

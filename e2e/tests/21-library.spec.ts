@@ -1,6 +1,6 @@
 import { test, expect } from "../fixtures";
 import type { TauriPage } from "@srsholmes/tauri-playwright";
-import { createBlankProject, openProject, openSettings } from "../helpers";
+import { clickCompile, createBlankProject, openProject, openSettings } from "../helpers";
 
 async function ensureLibraryFixture(tauriPage: TauriPage) {
   await expect(
@@ -26,8 +26,9 @@ test.beforeEach(async ({ tauriPage }) => {
 
 async function compileForLibraryPreview(tauriPage: TauriPage) {
   await openProject(tauriPage, "E2E Doc");
+  await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await clickCompile(tauriPage);
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
   await tauriPage.click('[title="Back to library"]');

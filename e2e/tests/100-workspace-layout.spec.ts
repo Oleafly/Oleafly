@@ -95,6 +95,7 @@ test("reopening a project restores its workspace choices", async ({ tauriPage: p
 test("detached preview shares compilation and keeps logs in its window", async ({ tauriPage: page }) => {
   const { setEditorContent } = await import("../helpers");
   await createBlankProject(page, "Detached layout");
+  await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect.poll(async () => page.evaluate(`import("/src/store/compile.ts").then(m=>m.useCompileStore.getState().status)`), { timeout: 30_000 }).toBe('success');
   const compileStyle = await page.evaluate(`['compile-button', 'compile-options-button'].map(id => {
     const button = document.querySelector('[data-testid="'+id+'"]');
@@ -182,6 +183,7 @@ test("grouped layouts open the assistant and its sidebar button hides it", async
 
 test("the shared detached PDF controls save a copy into the current project", async ({ tauriPage: page }) => {
   await createBlankProject(page, "Detached save controls");
+  await page.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect.poll(async () => page.evaluate(`import("/src/store/compile.ts").then(m => m.useCompileStore.getState().status)`), { timeout: 30_000 }).toBe("success");
   await page.evaluate(`Promise.all([import("/src/lib/preview-window.ts"), import("/src/store/files.ts"), import("/src/store/compile.ts")]).then(([p, f, c]) => {
     const files = f.useFilesStore.getState(), compile = c.useCompileStore.getState();

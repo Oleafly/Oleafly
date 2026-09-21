@@ -131,11 +131,13 @@ export async function reloadNativePage(page: TauriPage) {
             : `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
         );
       }
-    } catch {}
+    } catch (error) {
+      lastState = String(error);
+    }
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   throw new Error(
-    `main window did not finish reloading within 60 seconds (last state: ${lastState})`,
+    `main window did not finish reloading within 150 seconds (last state: ${lastState})`,
   );
 }
 
