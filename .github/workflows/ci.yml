@@ -1020,7 +1020,6 @@ jobs:
         env:
           WEBKIT_DISABLE_COMPOSITING_MODE: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
-          NO_AT_BRIDGE: "1"
           E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
         run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/8 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
