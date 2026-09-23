@@ -52,12 +52,15 @@ export async function installUpdate(
         downloaded += event.data.chunkLength;
         if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
         break;
-      case "Finished":
-        onProgress?.(100);
-        break;
     }
   };
-  const rid = await invoke<number>("download_update", { rid: update.rid, onEvent: channel });
+  let rid: number;
+  try {
+    rid = await invoke<number>("download_update", { rid: update.rid, onEvent: channel });
+  } finally {
+    channel.onmessage = () => {};
+  }
+  onProgress?.(100);
   await invoke("install_update", { rid });
 }
 

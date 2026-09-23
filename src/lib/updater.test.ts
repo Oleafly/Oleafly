@@ -127,6 +127,77 @@ describe("installUpdate", () => {
   });
 });
 
+type FakeChannel = { onmessage: (event: unknown) => void };
+
+describe("download events that land after the command result", () => {
+  const update = { rid: 5 } as Update;
+  const started = { event: "Started", data: { contentLength: 100 } };
+  const progress = (chunkLength: number) => ({ event: "Progress", data: { chunkLength } });
+
+  it("fills the bar from the result and ignores progress that lands after it", async () => {
+    const percents: number[] = [];
+    const atInstall: number[] = [];
+    const captured: { channel?: FakeChannel } = {};
+    invoke.mockImplementation(async (command: string, options: { onEvent: FakeChannel }) => {
+      if (command === "download_update") {
+        captured.channel = options.onEvent;
+        captured.channel.onmessage(started);
+        captured.channel.onmessage(progress(40));
+        return 8;
+      }
+      atInstall.push(...percents);
+      captured.channel?.onmessage(progress(30));
+      captured.channel?.onmessage(progress(30));
+      captured.channel?.onmessage({ event: "Finished" });
+    });
+
+    await installUpdate(update, (percent) => percents.push(percent));
+
+    expect(atInstall).toEqual([0, 40, 100]);
+    expect(percents).toEqual([0, 40, 100]);
+  });
+
+  it("keeps a failed install from being overwritten by download events that land after it", async () => {
+    const percents: number[] = [];
+    const captured: { channel?: FakeChannel } = {};
+    invoke.mockImplementation(async (command: string, options: { onEvent: FakeChannel }) => {
+      if (command === "download_update") {
+        captured.channel = options.onEvent;
+        captured.channel.onmessage(started);
+        return 8;
+      }
+      throw new Error("Wait for the TeX installation to finish before updating Oleafly.");
+    });
+
+    await expect(installUpdate(update, (percent) => percents.push(percent))).rejects.toThrow(
+      "TeX installation",
+    );
+    const reported = [...percents];
+    captured.channel?.onmessage(progress(100));
+    captured.channel?.onmessage({ event: "Finished" });
+
+    expect(percents).toEqual(reported);
+  });
+
+  it("stops reporting progress once the download itself fails", async () => {
+    const percents: number[] = [];
+    const captured: { channel?: FakeChannel } = {};
+    invoke.mockImplementation(async (_command: string, options: { onEvent: FakeChannel }) => {
+      captured.channel = options.onEvent;
+      captured.channel.onmessage(started);
+      throw new Error("connection reset");
+    });
+
+    await expect(installUpdate(update, (percent) => percents.push(percent))).rejects.toThrow(
+      "connection reset",
+    );
+    captured.channel?.onmessage(progress(50));
+
+    expect(percents).toEqual([0]);
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("concurrent checks", () => {
   it("shares the actual result with every caller", async () => {
     let finish!: (update: Update) => void;
