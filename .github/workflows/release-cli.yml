@@ -1,17 +1,5 @@
 name: Release CLI
 
-#
-#     git tag cli-v0.1.0 && git push origin cli-v0.1.0
-#
-# or run manually from the Actions tab against any ref.
-#
-# The CLI has its own tag namespace (`cli-v*`) and its own version line. The
-# desktop owns `v*.*.*` and the two products have no reason to move together.
-#
-# This workflow always stops at a DRAFT release. Nothing here publishes to a
-# package registry: crates.io, Homebrew and Scoop are deliberately absent until
-# there is a stable local build and the package name is settled. Publishing a
-# crates.io name cannot be undone, so it does not belong behind a tag push.
 on:
   push:
     tags:
@@ -27,14 +15,7 @@ permissions:
   contents: read
 
 env:
-  # What cargo produces. The desktop package still owns the name `oleafly`
-  # inside this workspace - two packages cannot both build a binary by that
-  # name - so the build artifact keeps the old one until the desktop rename
-  # lands. See the naming record.
   CARGO_BIN: oleaflyc
-  # What people install and type. The build name is an internal detail of the
-  # workspace and nobody outside it should ever see it: the shipped file, the
-  # archive, the completions, and the manual page all use this.
   SHIP_NAME: oleafly
 
 jobs:
@@ -61,9 +42,6 @@ jobs:
           - name: Linux (ARM64, gnu)
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-          # musl builds are static: they run on Alpine, in scratch containers,
-          # and on distributions whose glibc is older than the build machine's.
-          # That is what "supports Linux" means in practice for a CI tool.
           - name: Linux (x86_64, musl)
             os: ubuntu-22.04
             target: x86_64-unknown-linux-musl
@@ -89,24 +67,17 @@ jobs:
           workspaces: . -> src-tauri/target
           key: cli-${{ matrix.target }}
 
-      # The CLI has no C dependencies, so musl needs only the linker.
       - name: Install the musl toolchain
         if: endsWith(matrix.target, '-musl')
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-tools
 
-      # --locked: Cargo.lock is tracked, so a release must build exactly the
-      # dependency set that was reviewed, and fail loudly if the lock is stale
-      # rather than quietly resolving something newer.
       - name: Build
         env:
           TARGET: ${{ matrix.target }}
         run: cargo build --release --locked -p oleafly-cli --target "$TARGET"
 
-      # Generated from the parser, so they cannot drift from the flags. Built
-      # on the host for the host: cross-compiled targets cannot be executed
-      # here, so these come from a native build of the same source.
       - name: Generate completions and the manual page
         shell: bash
         run: |
@@ -118,9 +89,6 @@ jobs:
               > "dist/completions/$SHIP_NAME.$shell"
           done
 
-      # macOS binaries downloaded from the internet are quarantined until they
-      # are signed and notarized. Skips cleanly when the secrets are absent so
-      # a fork still produces working (unsigned) artifacts.
       - name: Sign and notarize (macOS)
         if: startsWith(matrix.os, 'macos-')
         shell: bash
@@ -155,12 +123,9 @@ jobs:
             --sign "$APPLE_SIGNING_IDENTITY" "$binary"
           codesign --verify --strict --verbose=2 "$binary"
           if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
-            # notarytool takes an archive, not a bare Mach-O.
             ditto -c -k --keepParent "$binary" "$RUNNER_TEMP/notarize.zip"
             xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --wait \
               --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID"
-            # A bare binary cannot be stapled; Gatekeeper checks it online.
-            # Notarizing still clears the quarantine prompt on first run.
           else
             echo "::warning::Notarization credentials absent; binary is signed but not notarized"
           fi
@@ -187,10 +152,6 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
-          # A manual dispatch against a branch has no version in its ref, and
-          # naming an archive "oleaflyc-main-..." helps nobody. Fall back to a
-          # commit-stamped dry-run version so those artifacts are obviously not
-          # releases.
           case "$REF" in
             cli-v*) version="${REF#cli-v}" ;;
             *) version="0.0.0-dev.$(git rev-parse --short HEAD)" ;;
@@ -199,8 +160,6 @@ jobs:
           staging="dist/$stem"
           mkdir -p "$staging"
           source="src-tauri/target/$TARGET/release/$CARGO_BIN"
-          # Ship it under the name people type, not the name cargo happened
-          # to build it as.
           if [ -f "$source.exe" ]; then
             cp "$source.exe" "$staging/$SHIP_NAME.exe"
           else
@@ -209,9 +168,6 @@ jobs:
           cp LICENSE README.md "$staging/"
           cp -r dist/completions dist/man "$staging/"
           if [ "$RUNNER_OS" = "Windows" ]; then
-            # Archive the directory, not a quoted glob: the shell will not
-            # expand "./dir/*" inside quotes, and mirroring the tar branch
-            # keeps both archives the same shape.
             (cd dist && 7z a -tzip "$stem.zip" "$stem" >/dev/null)
             echo "ARCHIVE=dist/$stem.zip" >> "$GITHUB_ENV"
           else
@@ -246,8 +202,6 @@ jobs:
           path: archives
           merge-multiple: true
 
-      # One checksum file across every target, so a user can verify a download
-      # without trusting the page they got the link from.
       - name: Checksum
         shell: bash
         run: |
