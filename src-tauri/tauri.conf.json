@@ -36,6 +36,9 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
+    "publisher": "Oleafly",
+    "homepage": "https://oleafly.com",
+    "copyright": "Copyright © 2026 Prajwal Murthy and contributors",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -71,6 +74,8 @@
     },
     "windows": {
       "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
         "languages": ["English", "SimpChinese", "TradChinese", "German", "French", "Spanish", "Italian", "Dutch", "PortugueseBR", "Polish", "Russian", "Ukrainian", "Turkish", "Czech", "Danish", "Swedish", "Norwegian", "Finnish", "Romanian", "Japanese", "Korean"],
         "displayLanguageSelector": true
       }
