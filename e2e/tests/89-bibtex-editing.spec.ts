@@ -133,6 +133,42 @@ async function latexLintMessages(page: Page): Promise<string[]> {
   );
 }
 
+async function analyzedSyntaxSpans(page: Page): Promise<string[] | null> {
+  return page.evaluate<string[] | null>(
+    `Promise.all([
+      import("/src/lib/project-intelligence/current.ts"),
+      import("/src/components/editor/cm/controller.ts"),
+    ]).then(([current, cm]) => {
+      const text = cm.getEditorView().state.doc.toString();
+      const analysis = current.currentSourceProjectIntelligence(text);
+      if (!analysis) return null;
+      return analysis.snapshot.diagnostics
+        .filter(
+          (found) =>
+            found.location.file === analysis.path &&
+            found.code === "malformed-source",
+        )
+        .map((found) =>
+          text.slice(found.location.range.from, found.location.range.to),
+        );
+    })`,
+  );
+}
+
+async function projectSyntaxSpans(page: Page): Promise<string[]> {
+  let spans: string[] | null = null;
+  await expect
+    .poll(
+      async () => {
+        spans = await analyzedSyntaxSpans(page);
+        return spans !== null;
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(true);
+  return spans ?? [];
+}
+
 async function expectLintMark(page: Page, needle: string) {
   await expect
     .poll(
@@ -233,6 +269,7 @@ test("a LaTeX syntax error is marked and %novalidate clears it", async ({
   expect(messages.some((text) => text.includes("itemize"))).toBe(true);
 
   await replaceEditorSource(tauriPage, `%novalidate\n${broken}`);
+  expect(await projectSyntaxSpans(tauriPage)).toEqual([]);
   await expectNoLintMark(tauriPage, "\\begin{itemize}");
   expect(await latexLintMessages(tauriPage)).toEqual([]);
 });
@@ -258,6 +295,9 @@ test("a novalidate region hides only the errors inside it", async ({
   );
 
   await expectLintMark(tauriPage, "\\begin{enumerate}");
+  const spans = await projectSyntaxSpans(tauriPage);
+  expect(spans).toContain("\\begin{enumerate}");
+  expect(spans).not.toContain("\\begin{itemize}");
   await expectNoLintMark(tauriPage, "\\begin{itemize}");
   const messages = await latexLintMessages(tauriPage);
   expect(messages.some((text) => text.includes("enumerate"))).toBe(true);
