@@ -31,4 +31,5 @@ export type AgentEvent =
   | { kind: "compacted"; droppedMessages: number; reason: string }
   | { kind: "steered"; text: string }
   | { kind: "done"; stopReason: string | null }
-  | { kind: "error"; message: string; retryable: boolean };
+  | { kind: "error"; message: string; retryable: boolean }
+  | { kind: "runEnd" };

@@ -143,6 +143,7 @@ function harness(
     if (command !== "agent_run") return;
     const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
     for (const event of events) channel.onmessage?.(event);
+    channel.onmessage?.({ kind: "runEnd" });
     await new Promise((resolve) => setTimeout(resolve, 0));
     return { text: "", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null };
   });
@@ -398,6 +399,7 @@ describe("harness", () => {
       }
       const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
       channel.onmessage?.({ kind: "toolRequest", id: "c1", name: "verify", arguments: "{}" });
+      channel.onmessage?.({ kind: "runEnd" });
       await new Promise((resolve) => setTimeout(resolve, 0));
       return { text: "", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null };
     });
@@ -622,6 +624,7 @@ describe("run scoping pass-through", () => {
       expect(args.clientTurnId).toBe("client-9");
       const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
       channel.onmessage?.({ kind: "textDelta", text: "hi" });
+      channel.onmessage?.({ kind: "runEnd" });
       await new Promise((resolve) => setTimeout(resolve, 0));
       return { text: "", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null };
     });

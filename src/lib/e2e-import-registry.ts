@@ -35,6 +35,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/lib/research-tasks.ts": () => import("@/lib/research-tasks"),
   "/src/lib/tauri.ts": () => import("@/lib/tauri"),
   "/src/lib/wordcount.ts": () => import("@/lib/wordcount"),
+  "/src/store/chats.ts": () => import("@/store/chats"),
   "/src/store/citation.ts": () => import("@/store/citation"),
   "/src/store/compile.ts": () => import("@/store/compile"),
   "/src/store/editor-keymap.ts": () => import("@/store/editor-keymap"),

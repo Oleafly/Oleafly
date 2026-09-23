@@ -648,6 +648,7 @@ pub async fn agent_stream(
         } else {
             "failed"
         });
+        let _ = on_event.send(AgentEvent::RunEnd);
         result.map(|_| ()).map_err(tagged)
     })
     .await
@@ -863,6 +864,7 @@ pub async fn agent_run(
                 let _ = persist.await;
             }
         }
+        let _ = on_event.send(AgentEvent::RunEnd);
         outcome.map_err(tagged)
     })
     .await

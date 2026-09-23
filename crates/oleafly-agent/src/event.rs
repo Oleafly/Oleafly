@@ -82,6 +82,7 @@ pub enum AgentEvent {
         message: String,
         retryable: bool,
     },
+    RunEnd,
 }
 
 #[cfg(test)]

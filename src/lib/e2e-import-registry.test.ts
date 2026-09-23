@@ -13,6 +13,7 @@ describe("packaged evaluated imports", () => {
       "07-settings.spec.ts",
       "74-conversion-matrix.spec.ts",
       "75-conversion-matrix-ui.spec.ts",
+      "75-skills.spec.ts",
       "86-ad-hoc-converters.spec.ts",
       "100-workspace-layout.spec.ts",
     ]) {

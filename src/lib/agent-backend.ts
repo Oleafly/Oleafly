@@ -59,10 +59,46 @@ interface InvokeRunOptions {
   signal?: AbortSignal;
   failure?: () => Error | null;
   onRequestId?: (id: string) => void;
+  drained?: Promise<void>;
+}
+
+export const CHANNEL_DRAIN_GRACE_MS = 10_000;
+
+function channelDrain(): { drained: Promise<void>; settle: () => void } {
+  let settle: () => void = () => {};
+  const drained = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  return { drained, settle };
+}
+
+function drainedWithinGrace(
+  command: string,
+  drained: Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const finish = (settle: () => void) => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      settle();
+    };
+    const onAbort = () => finish(() => reject(abortError()));
+    const timer = setTimeout(() => {
+      finish(() => {
+        console.warn(
+          `${command}: the result arrived but the event channel did not close within ${CHANNEL_DRAIN_GRACE_MS}ms, so trailing events may be missing`,
+        );
+        resolve();
+      });
+    }, CHANNEL_DRAIN_GRACE_MS);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    void drained.then(() => finish(resolve));
+  });
 }
 
 async function invokeRun<T>(command: string, options: InvokeRunOptions): Promise<T> {
-  const { args, signal, failure, onRequestId } = options;
+  const { args, signal, failure, onRequestId, drained } = options;
   const requestId = nextRequestId();
   onRequestId?.(requestId);
   if (signal?.aborted) throw abortError();
@@ -75,6 +111,7 @@ async function invokeRun<T>(command: string, options: InvokeRunOptions): Promise
   try {
     const result = await withAbort<T>(invoke<T>(command, { requestId, ...args }), signal);
     if (signal?.aborted) throw abortError();
+    if (drained) await drainedWithinGrace(command, drained, signal);
     const pending = failure?.();
     if (pending) throw pending;
     return result;
@@ -148,8 +185,13 @@ export async function streamViaBackend(
   providerOverride?: ProviderOverride,
 ): Promise<void> {
   const channel = new Channel<AgentEvent>();
+  const drain = channelDrain();
   let failure: AgentStreamError | null = null;
   channel.onmessage = (event) => {
+    if (event.kind === "runEnd") {
+      drain.settle();
+      return;
+    }
     if (signal?.aborted) return;
     if (event.kind === "error") {
       failure = new AgentStreamError(event.message, event.retryable);
@@ -163,6 +205,7 @@ export async function streamViaBackend(
       args: { request, providerOverride: providerOverride ?? null, onEvent: channel },
       signal,
       failure: () => failure,
+      drained: drain.drained,
     });
   } finally {
     channel.onmessage = () => {};
@@ -214,8 +257,13 @@ export async function runViaBackend(
   },
 ): Promise<AgentRunOutcome> {
   const channel = new Channel<AgentEvent>();
+  const drain = channelDrain();
   let replyTo = "";
   channel.onmessage = (event) => {
+    if (event.kind === "runEnd") {
+      drain.settle();
+      return;
+    }
     if (signal?.aborted) return;
     if (event.kind === "toolRequest") {
       const call: AgentToolRequest = {
@@ -258,6 +306,7 @@ export async function runViaBackend(
         replyTo = id;
         run?.onRequestId?.(id);
       },
+      drained: drain.drained,
     });
   } finally {
     channel.onmessage = () => {};
