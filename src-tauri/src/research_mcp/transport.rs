@@ -202,11 +202,11 @@ pub(super) fn valid_message(message: &Value) -> bool {
         && message["method"]
             .as_str()
             .is_some_and(|method| !method.is_empty() && method.len() <= 128)
-        && message.get("id").map_or(true, |id| {
+        && message.get("id").is_none_or(|id| {
             id.is_null()
                 || id.is_i64()
                 || id.is_u64()
                 || id.as_str().is_some_and(|id| id.len() <= 256)
         })
-        && message.get("params").map_or(true, Value::is_object)
+        && message.get("params").is_none_or(Value::is_object)
 }

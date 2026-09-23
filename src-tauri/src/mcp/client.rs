@@ -1025,7 +1025,7 @@ fn build_agent_tool_catalog(
             .filter(|tool| {
                 matcher
                     .as_ref()
-                    .map_or(true, |matcher| !matcher.is_match(&tool.name))
+                    .is_none_or(|matcher| !matcher.is_match(&tool.name))
             })
             .map(|tool| McpAgentTool {
                 name: agent_tool_name(&server.name, &tool.name),

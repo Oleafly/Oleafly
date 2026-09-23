@@ -110,9 +110,9 @@ impl FileScope {
     }
 
     fn can_read(&self, path: &Path) -> bool {
-        self.allowed.as_ref().map_or(true, |paths| {
-            paths.iter().any(|allowed| path.starts_with(allowed))
-        })
+        self.allowed
+            .as_ref()
+            .is_none_or(|paths| paths.iter().any(|allowed| path.starts_with(allowed)))
     }
 
     fn can_traverse(&self, path: &Path) -> bool {

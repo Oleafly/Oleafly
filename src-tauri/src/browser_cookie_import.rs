@@ -7,7 +7,7 @@ use std::{
 };
 
 use aes::Aes128;
-use cbc::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+use cbc::cipher::{block_padding::Pkcs7, BlockModeDecrypt, KeyIvInit};
 use ring::{digest, pbkdf2};
 use rusqlite::{named_params, Connection, ErrorCode, OpenFlags, TransactionBehavior};
 use serde::{Deserialize, Serialize};
@@ -807,7 +807,7 @@ fn decrypt_chromium_cookie_with_key(
         // spaces; decrypting cookies Chromium wrote requires matching it.
         let decryptor = cbc::Decryptor::<Aes128>::new(key.into(), (&[b' '; 16]).into()); // NOSONAR
         let plaintext = decryptor
-            .decrypt_padded_mut::<Pkcs7>(&mut buffer)
+            .decrypt_padded::<Pkcs7>(&mut buffer)
             .map_err(|_| CookieImportError::DecryptionFailed { browser })?;
         let value = if database_version >= 24 {
             if plaintext.len() < 32 {
@@ -1492,7 +1492,9 @@ mod tests {
     fn decode_hex(value: &str) -> Vec<u8> {
         value
             .as_bytes()
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| {
                 let text = std::str::from_utf8(pair).expect("hex pair");
                 u8::from_str_radix(text, 16).expect("hex byte")

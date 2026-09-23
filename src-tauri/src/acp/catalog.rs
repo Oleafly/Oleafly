@@ -290,8 +290,8 @@ fn exact_npm_version(value: &str) -> bool {
     };
     release.split('.').count() == 3
         && release.split('.').all(numeric)
-        && pre.map_or(true, |part| identifiers(part, true))
-        && build.map_or(true, |part| identifiers(part, false))
+        && pre.is_none_or(|part| identifiers(part, true))
+        && build.is_none_or(|part| identifiers(part, false))
 }
 
 fn exact_python_version(value: &str) -> bool {
@@ -792,7 +792,7 @@ fn existing_npm_launch(definition: &AgentDefinition, args: &[String]) -> Option<
         if manifest_path
             .metadata()
             .ok()
-            .map_or(true, |meta| meta.len() > 512 * 1024)
+            .is_none_or(|meta| meta.len() > 512 * 1024)
         {
             continue;
         }
@@ -1671,7 +1671,7 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
         if binary
             .sha256
             .as_ref()
-            .map_or(true, |expected| !expected.eq_ignore_ascii_case(&digest))
+            .is_none_or(|expected| !expected.eq_ignore_ascii_case(&digest))
         {
             return Err("The binary checksum does not match. The download was discarded.".into());
         }

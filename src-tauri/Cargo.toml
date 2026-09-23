@@ -5,7 +5,7 @@ description = "Oleafly - the intelligent research workspace, free, local-first, 
 authors = ["Prajwal Murthy and contributors"]
 license = "AGPL-3.0-or-later"
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.89"
 
 [lib]
 name = "oleafly_lib"
@@ -40,7 +40,7 @@ toml = "0.8"
 rusqlite = { version = "0.32", features = ["bundled"] }
 portable-pty = "0.9"
 base64 = "0.23"
-window-vibrancy = "0.6"
+window-vibrancy = "0.8"
 cap-fs-ext = "=4.0.3"
 cap-std = "=4.0.3"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
@@ -59,8 +59,8 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 rand = "0.8"
 ring = "0.17"
 argon2 = "0.5"
-aes = { version = "0.8", features = ["zeroize"] }
-cbc = { version = "0.1", features = ["zeroize"] }
+aes = { version = "0.9", features = ["zeroize"] }
+cbc = { version = "0.2", features = ["zeroize"] }
 zeroize = "=1.9.0"
 libc = "0.2"
 serde_yaml = "0.9"

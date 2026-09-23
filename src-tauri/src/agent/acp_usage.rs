@@ -116,7 +116,7 @@ fn consume(
     if state
         .turn
         .as_ref()
-        .map_or(true, |turn| &turn.turn_id != turn_id)
+        .is_none_or(|turn| &turn.turn_id != turn_id)
     {
         state.turn = Some(TurnUsage::new(event, turn_id.clone()));
     }

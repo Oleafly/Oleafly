@@ -5,7 +5,7 @@ description = "Shared project, path, and build preparation for Oleafly"
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.87"
 
 [dependencies]
 fs4 = "1.1"

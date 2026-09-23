@@ -181,9 +181,9 @@ impl AcpRuntime {
 
     fn owner_is_current(&self, owner: Option<&str>, generation: Option<u64>) -> bool {
         self.startup.lock().is_ok_and(|state| !state.stopping)
-            && owner.zip(generation).map_or(true, |(owner, generation)| {
-                self.owner_generation(owner) == generation
-            })
+            && owner
+                .zip(generation)
+                .is_none_or(|(owner, generation)| self.owner_generation(owner) == generation)
     }
 
     pub fn stop_all_now(&self) {
@@ -302,7 +302,7 @@ impl AcpRuntime {
         let mut cache = self.registry.lock().await;
         if cache
             .as_ref()
-            .map_or(true, |(time, _)| now_ms().saturating_sub(*time) > 300_000)
+            .is_none_or(|(time, _)| now_ms().saturating_sub(*time) > 300_000)
         {
             *cache = Some((now_ms(), catalog::registry_search("").await?));
         }

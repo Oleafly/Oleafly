@@ -5,12 +5,12 @@ description = "Content-addressed compile checkpoints for Oleafly projects"
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.87"
 
 [dependencies]
 oleafly-core = { path = "../oleafly-core" }
-blake3 = "=1.5.5"
-fastcdc = "3"
+blake3 = "1.8"
+fastcdc = "5"
 fs4 = "1.1"
 libc = "0.2"
 rand = "0.8"

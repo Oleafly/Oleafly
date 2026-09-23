@@ -1139,9 +1139,9 @@ impl Store {
             let mut source_reader = BufReader::new(source_handle.as_file_mut());
             for chunk in StreamCDC::new(
                 &mut source_reader,
-                MIN_CHUNK_SIZE,
-                AVG_CHUNK_SIZE,
-                MAX_CHUNK_SIZE,
+                MIN_CHUNK_SIZE as usize,
+                AVG_CHUNK_SIZE as usize,
+                MAX_CHUNK_SIZE as usize,
             ) {
                 let chunk = chunk.map_err(io::Error::from)?;
                 ensure_publication_active(gate)?;
@@ -4783,6 +4783,42 @@ mod tests {
         drop(connection);
         write_legacy_format_marker(store.root());
         legacy_root
+    }
+
+    #[test]
+    fn content_defined_chunk_boundaries_match_the_published_store_format() {
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut data = Vec::with_capacity(12 * 1024 * 1024);
+        while data.len() < 12 * 1024 * 1024 {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            data.extend_from_slice(&state.to_le_bytes());
+        }
+        let cuts: Vec<(u64, usize)> = StreamCDC::new(
+            &data[..],
+            MIN_CHUNK_SIZE as usize,
+            AVG_CHUNK_SIZE as usize,
+            MAX_CHUNK_SIZE as usize,
+        )
+        .map(|chunk| chunk.unwrap())
+        .map(|chunk| (chunk.offset, chunk.length))
+        .collect();
+        assert_eq!(
+            cuts,
+            [
+                (0, 532_150),
+                (532_150, 2_088_921),
+                (2_621_071, 1_361_465),
+                (3_982_536, 604_807),
+                (4_587_343, 1_071_987),
+                (5_659_330, 2_119_792),
+                (7_779_122, 1_188_501),
+                (8_967_623, 1_871_958),
+                (10_839_581, 1_205_351),
+                (12_044_932, 537_980),
+            ]
+        );
     }
 
     #[test]

@@ -522,7 +522,7 @@ async fn resolve_catalog(refresh: bool) -> SkillsCatalog {
     let dir = cache_dir();
     let (cached, stamp) = dir.as_deref().map(read_cache).unwrap_or((None, None));
     let now = now_ms();
-    let stale = stamp.map_or(true, |at| now.saturating_sub(at) >= REFRESH_INTERVAL_MS);
+    let stale = stamp.is_none_or(|at| now.saturating_sub(at) >= REFRESH_INTERVAL_MS);
     let mut error = None;
     let mut fetched = None;
     let mut fetched_at = stamp;
