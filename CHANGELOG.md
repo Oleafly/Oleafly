@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Windows installer carries the Oleafly icon. The downloaded
+  `-setup.exe` used to show the generic installer icon in Explorer, in the
+  browser download list and on the permission prompt, because the icon for
+  the installer is configured separately from the one for the app itself and
+  had never been set. The installed app and the `.msi` were always correct.
+  The installer's file details now also name the publisher, the copyright and
+  the Oleafly website, and those show up in Add or remove programs.
+
 ## [0.4.2] - 2026-09-20
 
 ### Added
