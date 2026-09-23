@@ -20,7 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
