@@ -211,7 +211,7 @@ test.describe("import routes (pandoc plan table)", () => {
   });
 
   test("docx to LaTeX, Markdown, and Typst projects (OMML math survives)", async ({ tauriPage }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(300_000);
     await importFile(tauriPage, fixture("docx-omml.docx"));
     let state = await projectState(tauriPage);
     expect(state.main).toBe("main.tex");
@@ -219,6 +219,14 @@ test.describe("import routes (pandoc plan table)", () => {
     expect(source).toContain("mc^{2}");
     expect(source).toContain("\\footnote{");
     expect(state.paths.some((p) => p.startsWith("assets/"))).toBe(true);
+    const probe = await compileAndProbe(tauriPage);
+    expect(probe.text).toContain("OMML conversion fixture");
+    expect(probe.text).toContain("An embedded image.");
+    expect(
+      probe.pages.some((page) =>
+        Object.keys(page.operatorCounts).some((name) => name.toLowerCase().includes("paintimage")),
+      ),
+    ).toBe(true);
 
     await goHome(tauriPage);
     await importFile(tauriPage, fixture("docx-omml.docx"), "markdown");
