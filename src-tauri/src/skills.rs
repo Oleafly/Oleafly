@@ -2009,7 +2009,7 @@ fn app_pack_root(app: &tauri::AppHandle) -> Option<PathBuf> {
     crate::skills_pack::pack_root(app)
 }
 
-async fn off_ui_thread<T, F>(label: &'static str, work: F) -> Result<T, String>
+pub(crate) async fn off_ui_thread<T, F>(label: &'static str, work: F) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce() -> Result<T, String> + Send + 'static,
