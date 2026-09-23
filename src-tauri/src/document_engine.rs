@@ -2827,8 +2827,7 @@ fn parse_typst_short_diagnostics(log: &str) -> Vec<CompileError> {
         let column = fields.next().and_then(|value| value.parse::<u32>().ok());
         let line_number = fields.next().and_then(|value| value.parse::<u32>().ok());
         let file = fields.next().map(str::to_owned);
-        if column.is_none() || line_number.is_none() || file.as_deref().map_or(true, str::is_empty)
-        {
+        if column.is_none() || line_number.is_none() || file.as_deref().is_none_or(str::is_empty) {
             continue;
         }
         diagnostics.push(CompileError {

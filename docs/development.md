@@ -153,8 +153,8 @@ To move to a newer Rust:
 3. Fix what the newer clippy reports in the same pull request, so the bump
    lands green.
 
-The 1.77 minimum for `oleafly-core` and `oleaflyc` is a separate promise. CI
-checks it with an explicit `cargo +1.77.0`, which takes priority over the pin.
+The 1.87 minimum for `oleafly-core` and `oleaflyc` is a separate promise. CI
+checks it with an explicit `cargo +1.87.0`, which takes priority over the pin.
 
 For user-facing changes, also run the end-to-end suite (real app and real
 compiles, see [e2e/README.md](../e2e/README.md)):

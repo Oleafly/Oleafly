@@ -334,10 +334,10 @@ jobs:
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
-          toolchain: 1.77.0
+          toolchain: 1.87.0
 
-      - name: Check core and CLI against the Rust 1.77 MSRV
-        run: cargo +1.77.0 check -p oleafly-core -p oleafly-cli --all-targets
+      - name: Check core and CLI against the Rust 1.87 MSRV
+        run: cargo +1.87.0 check -p oleafly-core -p oleafly-cli --all-targets
 
   rust-windows:
     name: Rust checks (Windows)
@@ -381,10 +381,10 @@ jobs:
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
-          toolchain: 1.77.0
+          toolchain: 1.87.0
 
-      - name: Test history on Rust 1.77
-        run: cargo +1.77.0 test -p oleafly-history --all-targets
+      - name: Test history on Rust 1.87
+        run: cargo +1.87.0 test -p oleafly-history --all-targets
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for the Rust workspace.

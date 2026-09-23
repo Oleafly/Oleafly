@@ -431,7 +431,7 @@ fn git_log_at(root: &PathBuf) -> Result<Vec<GitCommit>, String> {
     }
     let fields: Vec<&[u8]> = out.stdout.split(|byte| *byte == 0).collect();
     let mut commits = Vec::new();
-    for record in fields.chunks_exact(7).take(GRAPH_COMMIT_LIMIT) {
+    for record in fields.as_chunks::<7>().0.iter().take(GRAPH_COMMIT_LIMIT) {
         let text = |field: &[u8]| String::from_utf8_lossy(field).to_string();
         commits.push(GitCommit {
             oid: text(record[0]),

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "LLM provider clients and agent orchestration for Oleafly"
 license = "AGPL-3.0-or-later"
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.87"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
