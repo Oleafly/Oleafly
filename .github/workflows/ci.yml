@@ -302,7 +302,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: cargo-llvm-cov@0.8.7
 
@@ -406,9 +406,10 @@ jobs:
     name: SonarQube Cloud
     needs: [frontend, rust]
     if: >-
-      github.event_name == 'push' ||
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name == 'push' ||
       (github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository)
+      github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     permissions:

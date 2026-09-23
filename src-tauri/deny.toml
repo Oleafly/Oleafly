@@ -10,18 +10,6 @@ yanked = "warn"
 # Everything ignored below is transitively pinned by Tauri itself and has no
 # upstream fix we can adopt; Dependabot resurfaces them when Tauri moves.
 ignore = [
-  # gtk-rs GTK3 bindings are unmaintained; Tauri's Linux backend still
-  # requires GTK3 until its GTK4/wry migration lands.
-  "RUSTSEC-2024-0411",
-  "RUSTSEC-2024-0412",
-  "RUSTSEC-2024-0413",
-  "RUSTSEC-2024-0414",
-  "RUSTSEC-2024-0415",
-  "RUSTSEC-2024-0416",
-  "RUSTSEC-2024-0417",
-  "RUSTSEC-2024-0418",
-  "RUSTSEC-2024-0419",
-  "RUSTSEC-2024-0420",
   # proc-macro-error unmaintained (via gtk3 macro stack).
   "RUSTSEC-2024-0370",
   # paste unmaintained; a build-time proc-macro required by biblatex and by
