@@ -62,6 +62,9 @@
     "reload": "Lataa uudelleen",
     "setHomePage": "Aseta aloitussivuksi"
   },
+  "changelog": {
+    "installed": "Käytössä on tämä versio"
+  },
   "citeOleafly": {
     "description": "Tästä projektista ei löytynyt lähdeluettelotiedostoa, joten mitään ei muutettu. Kopioi alla oleva viite lähdeluetteloosi tai etsi se myöhemmin kohdasta Asetukset, Ohje ja tietoja.",
     "openHelp": "Avaa Ohje ja tietoja",
@@ -891,13 +894,16 @@
     "updateNow": "Päivitä nyt"
   },
   "updateWindow": {
+    "available": "Päivitys saatavilla",
     "checking": "Etsitään päivityksiä…",
     "currentVersion": "Käytössä on v{{version}}",
     "error": "Päivitystä ei voitu viedä loppuun. Yritä myöhemmin uudelleen.",
+    "historyFailed": "Aiempia julkaisutietoja ei voitu ladata.",
     "later": "Myöhemmin",
     "looking": "Etsitään uusinta versiota…",
     "packageInstall": "Asennettu paketista. Päivitä lataamalla uusi versio.",
     "ready": "Uusi versio on valmiina asennettavaksi.",
+    "released": "Julkaistu {{when}}",
     "upToDate": "Kaikki on ajan tasalla",
     "upToDateGeneric": "Käytössä on Oleaflyn uusin versio",
     "upToDateHeadline": "Kaikki on ajan tasalla!",

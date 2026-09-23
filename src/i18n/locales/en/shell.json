@@ -62,6 +62,9 @@
     "reload": "Reload",
     "setHomePage": "Set as home page"
   },
+  "changelog": {
+    "installed": "You're on this version"
+  },
   "citeOleafly": {
     "description": "No bibliography file was found in this project, so nothing was changed. Copy the entry below into your bibliography, or find it again later under Settings, Help & About.",
     "openHelp": "Open Help & About",
@@ -891,13 +894,16 @@
     "updateNow": "Update now"
   },
   "updateWindow": {
+    "available": "Update available",
     "checking": "Checking for updates…",
     "currentVersion": "You're on v{{version}}",
     "error": "The update could not finish. Please try again later.",
+    "historyFailed": "Couldn't load earlier release notes.",
     "later": "Later",
     "looking": "Looking for the latest version…",
     "packageInstall": "Installed from a package. Download the new version to update.",
     "ready": "A new version is ready to install.",
+    "released": "Released {{when}}",
     "upToDate": "You're up to date",
     "upToDateGeneric": "You're running the latest version of Oleafly",
     "upToDateHeadline": "You're up to date!",

@@ -62,6 +62,9 @@
     "reload": "Genindlæs",
     "setHomePage": "Vælg som startside"
   },
+  "changelog": {
+    "installed": "Du har denne version"
+  },
   "citeOleafly": {
     "description": "Der blev ikke fundet nogen litteraturfil i dette projekt, så intet blev ændret. Kopier posten nedenfor ind i din litteraturliste, eller find den igen senere under Indstillinger, Hjælp og Om.",
     "openHelp": "Åbn Hjælp og Om",
@@ -891,13 +894,16 @@
     "updateNow": "Opdater nu"
   },
   "updateWindow": {
+    "available": "Opdatering klar",
     "checking": "Søger efter opdateringer…",
     "currentVersion": "Du har v{{version}}",
     "error": "Opdateringen kunne ikke gøres færdig. Prøv igen senere.",
+    "historyFailed": "Tidligere udgivelsesnoter kunne ikke indlæses.",
     "later": "Senere",
     "looking": "Leder efter den nyeste version…",
     "packageInstall": "Installeret fra en pakke. Download den nye version for at opdatere.",
     "ready": "En ny version er klar til at blive installeret.",
+    "released": "Udgivet {{when}}",
     "upToDate": "Du er opdateret",
     "upToDateGeneric": "Du kører den nyeste version af Oleafly",
     "upToDateHeadline": "Du er helt opdateret!",

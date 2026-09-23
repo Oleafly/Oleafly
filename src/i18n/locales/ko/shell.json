@@ -61,6 +61,9 @@
     "reload": "새로 고침",
     "setHomePage": "홈 페이지로 지정"
   },
+  "changelog": {
+    "installed": "현재 쓰고 있는 버전입니다"
+  },
   "citeOleafly": {
     "description": "이 프로젝트에서 참고문헌 파일을 찾지 못해 아무것도 바꾸지 않았습니다. 아래 항목을 참고문헌에 복사하거나, 나중에 설정의 도움말 및 정보에서 다시 찾으세요.",
     "openHelp": "도움말 및 정보 열기",
@@ -875,13 +878,16 @@
     "updateNow": "지금 업데이트"
   },
   "updateWindow": {
+    "available": "업데이트 있음",
     "checking": "업데이트를 확인하는 중…",
     "currentVersion": "현재 v{{version}}을(를) 쓰고 있습니다",
     "error": "업데이트를 마치지 못했습니다. 나중에 다시 시도하세요.",
+    "historyFailed": "이전 릴리스 노트를 불러오지 못했습니다.",
     "later": "나중에",
     "looking": "최신 버전을 찾는 중…",
     "packageInstall": "패키지로 설치했습니다. 업데이트하려면 새 버전을 내려받으세요.",
     "ready": "설치할 새 버전이 준비되었습니다.",
+    "released": "{{when}} 출시",
     "upToDate": "최신 상태입니다",
     "upToDateGeneric": "Oleafly 최신 버전을 쓰고 있습니다",
     "upToDateHeadline": "최신 상태입니다!",

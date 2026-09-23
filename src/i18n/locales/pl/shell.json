@@ -64,6 +64,9 @@
     "reload": "Przeładuj",
     "setHomePage": "Ustaw jako stronę główną"
   },
+  "changelog": {
+    "installed": "Masz tę wersję"
+  },
   "citeOleafly": {
     "description": "W tym projekcie nie znaleziono pliku bibliografii, więc nic nie zostało zmienione. Skopiuj poniższą pozycję do swojej bibliografii albo znajdź ją później w Ustawieniach, w sekcji Pomoc i informacje.",
     "openHelp": "Otwórz Pomoc i informacje",
@@ -923,13 +926,16 @@
     "updateNow": "Zaktualizuj teraz"
   },
   "updateWindow": {
+    "available": "Dostępna aktualizacja",
     "checking": "Sprawdzanie aktualizacji…",
     "currentVersion": "Masz wersję v{{version}}",
     "error": "Nie udało się dokończyć aktualizacji. Spróbuj ponownie później.",
+    "historyFailed": "Nie udało się wczytać informacji o wcześniejszych wydaniach.",
     "later": "Później",
     "looking": "Szukanie najnowszej wersji…",
     "packageInstall": "Zainstalowano z pakietu. Pobierz nową wersję, aby zaktualizować.",
     "ready": "Nowa wersja jest gotowa do instalacji.",
+    "released": "Wydano {{when}}",
     "upToDate": "Wszystko aktualne",
     "upToDateGeneric": "Używasz najnowszej wersji Oleafly",
     "upToDateHeadline": "Wszystko aktualne!",

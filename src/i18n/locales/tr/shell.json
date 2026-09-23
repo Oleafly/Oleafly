@@ -62,6 +62,9 @@
     "reload": "Yeniden yükle",
     "setHomePage": "Ana sayfa olarak ayarla"
   },
+  "changelog": {
+    "installed": "Bu sürümü kullanıyorsunuz"
+  },
   "citeOleafly": {
     "description": "Bu projede kaynakça dosyası bulunamadı, bu yüzden hiçbir şey değişmedi. Aşağıdaki kaydı kaynakçanıza kopyalayın veya daha sonra Ayarlar'daki Yardım ve hakkında bölümünden yeniden bulun.",
     "openHelp": "Yardım ve hakkında bölümünü aç",
@@ -891,13 +894,16 @@
     "updateNow": "Şimdi güncelle"
   },
   "updateWindow": {
+    "available": "Güncelleme var",
     "checking": "Güncellemeler denetleniyor…",
     "currentVersion": "s{{version}} sürümünü kullanıyorsunuz",
     "error": "Güncelleme tamamlanamadı. Lütfen daha sonra yeniden deneyin.",
+    "historyFailed": "Önceki sürüm notları yüklenemedi.",
     "later": "Daha sonra",
     "looking": "En son sürüm aranıyor…",
     "packageInstall": "Bir paketten kuruldu. Güncellemek için yeni sürümü indirin.",
     "ready": "Kurulmaya hazır yeni bir sürüm var.",
+    "released": "{{when}} yayımlandı",
     "upToDate": "Güncelsiniz",
     "upToDateGeneric": "Oleafly'nin en son sürümünü kullanıyorsunuz",
     "upToDateHeadline": "Güncelsiniz!",

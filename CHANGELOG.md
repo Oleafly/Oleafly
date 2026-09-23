@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The update window shows what changed in every version since the one you
+  have, newest first, and loads older releases as you scroll. It says when
+  each release came out, such as yesterday or 3 weeks ago, and hovering the
+  date shows the exact time. Links in the notes open in your browser, and code
+  snippets have a copy button.
+- Help & About > What's new opens the full changelog inside Oleafly. It marks
+  the version you are on and says whether you are up to date.
+
+### Changed
+
+- The update window follows your accent colour and theme, drops the
+  separate hero banner, and keeps everything on one scrolling page. If an
+  update fails, Try again retries it from the window.
+
 ### Fixed
 
 - The Windows installer carries the Oleafly icon. The downloaded

@@ -58,6 +58,7 @@ mod project_sources;
 mod protocol;
 mod quit_gate;
 mod rag;
+mod release_notes;
 mod research_lifecycle;
 mod research_mcp;
 mod research_tasks;
@@ -486,6 +487,7 @@ pub fn run() {
             github::gh_public_repo_stats,
             github::gh_import_repo,
             community::discord_community_stats,
+            release_notes::release_notes_page,
             ollama::ollama_list_models,
             ollama::ollama_installed,
             ollama::ollama_start,

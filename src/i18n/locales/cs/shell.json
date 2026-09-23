@@ -64,6 +64,9 @@
     "reload": "Znovu načíst",
     "setHomePage": "Nastavit jako domovskou stránku"
   },
+  "changelog": {
+    "installed": "Máte tuto verzi"
+  },
   "citeOleafly": {
     "description": "V tomto projektu nebyl nalezen soubor bibliografie, takže se nic nezměnilo. Zkopírujte si záznam níže do své bibliografie, nebo jej později najdete v Nastavení, Nápověda a informace.",
     "openHelp": "Otevřít Nápovědu a informace",
@@ -923,13 +926,16 @@
     "updateNow": "Aktualizovat teď"
   },
   "updateWindow": {
+    "available": "Dostupná aktualizace",
     "checking": "Kontrolují se aktualizace…",
     "currentVersion": "Máte verzi v{{version}}",
     "error": "Aktualizaci se nepodařilo dokončit. Zkuste to prosím později.",
+    "historyFailed": "Starší poznámky k vydání se nepodařilo načíst.",
     "later": "Později",
     "looking": "Hledá se nejnovější verze…",
     "packageInstall": "Nainstalováno z balíčku. Aktualizujte stažením nové verze.",
     "ready": "Nová verze je připravená k instalaci.",
+    "released": "Vydáno {{when}}",
     "upToDate": "Máte aktuální verzi",
     "upToDateGeneric": "Používáte nejnovější verzi Oleafly",
     "upToDateHeadline": "Máte vše aktuální!",

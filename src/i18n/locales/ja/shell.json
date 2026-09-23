@@ -61,6 +61,9 @@
     "reload": "再読み込み",
     "setHomePage": "ホームページに設定"
   },
+  "changelog": {
+    "installed": "現在お使いのバージョンです"
+  },
   "citeOleafly": {
     "description": "このプロジェクトに参考文献ファイルが見つからなかったため、何も変更していません。下の項目を参考文献ファイルにコピーしてください。あとから設定の「ヘルプと情報」でも見つけられます。",
     "openHelp": "ヘルプと情報を開く",
@@ -875,13 +878,16 @@
     "updateNow": "今すぐ更新"
   },
   "updateWindow": {
+    "available": "アップデートがあります",
     "checking": "アップデートを確認中…",
     "currentVersion": "現在のバージョンは v{{version}} です",
     "error": "アップデートを完了できませんでした。しばらくしてからもう一度お試しください。",
+    "historyFailed": "以前のリリースノートを読み込めませんでした。",
     "later": "あとで",
     "looking": "最新のバージョンを探しています…",
     "packageInstall": "パッケージからインストールされています。更新するには新しいバージョンをダウンロードしてください。",
     "ready": "新しいバージョンをインストールできます。",
+    "released": "{{when}}にリリース",
     "upToDate": "最新の状態です",
     "upToDateGeneric": "最新バージョンの Oleafly を使っています",
     "upToDateHeadline": "最新の状態です",

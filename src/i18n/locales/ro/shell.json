@@ -63,6 +63,9 @@
     "reload": "Reîncarcă",
     "setHomePage": "Setează ca pagină de start"
   },
+  "changelog": {
+    "installed": "Ai această versiune"
+  },
   "citeOleafly": {
     "description": "Nu s-a găsit niciun fișier de bibliografie în acest proiect, așa că nu s-a schimbat nimic. Copiază intrarea de mai jos în bibliografia ta sau găsește-o din nou mai târziu în Setări, Ajutor și Despre.",
     "openHelp": "Deschide Ajutor și Despre",
@@ -907,13 +910,16 @@
     "updateNow": "Actualizează acum"
   },
   "updateWindow": {
+    "available": "Actualizare disponibilă",
     "checking": "Se caută actualizări…",
     "currentVersion": "Ai versiunea v{{version}}",
     "error": "Actualizarea nu s-a putut încheia. Încearcă mai târziu.",
+    "historyFailed": "Nu s-au putut încărca notele de lansare anterioare.",
     "later": "Mai târziu",
     "looking": "Se caută cea mai recentă versiune…",
     "packageInstall": "Instalat dintr-un pachet. Descarcă versiunea nouă ca să actualizezi.",
     "ready": "O versiune nouă este gata de instalare.",
+    "released": "Lansată {{when}}",
     "upToDate": "Ești la zi",
     "upToDateGeneric": "Folosești cea mai recentă versiune de Oleafly",
     "upToDateHeadline": "Ești la zi!",

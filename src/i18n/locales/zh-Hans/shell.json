@@ -61,6 +61,9 @@
     "reload": "重新加载",
     "setHomePage": "设为主页"
   },
+  "changelog": {
+    "installed": "当前使用的版本"
+  },
   "citeOleafly": {
     "description": "未在此项目中找到参考文献文件，因此未做任何更改。请将下方条目复制到你的参考文献中，或稍后在设置的“帮助与关于”中再次查找。",
     "openHelp": "打开“帮助与关于”",
@@ -875,13 +878,16 @@
     "updateNow": "立即更新"
   },
   "updateWindow": {
+    "available": "有可用更新",
     "checking": "正在检查更新…",
     "currentVersion": "当前版本：v{{version}}",
     "error": "更新未能完成，请稍后重试。",
+    "historyFailed": "无法加载更早版本的更新日志。",
     "later": "稍后",
     "looking": "正在查找最新版本…",
     "packageInstall": "当前通过安装包安装，请下载新版本以完成更新。",
     "ready": "新版本已准备就绪，可以安装。",
+    "released": "{{when}}发布",
     "upToDate": "你已是最新版本。",
     "upToDateGeneric": "你正在使用最新版本的 Oleafly。",
     "upToDateHeadline": "已是最新版本！",

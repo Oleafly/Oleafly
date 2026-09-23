@@ -62,6 +62,9 @@
     "reload": "Opnieuw laden",
     "setHomePage": "Instellen als startpagina"
   },
+  "changelog": {
+    "installed": "Je hebt deze versie"
+  },
   "citeOleafly": {
     "description": "Er is geen bibliografiebestand in dit project gevonden, dus er is niets gewijzigd. Kopieer het item hieronder naar je bibliografie, of vind het later terug bij Instellingen, Help en Over.",
     "openHelp": "Help en Over openen",
@@ -891,13 +894,16 @@
     "updateNow": "Nu bijwerken"
   },
   "updateWindow": {
+    "available": "Update beschikbaar",
     "checking": "Controleren op updates…",
     "currentVersion": "Je hebt v{{version}}",
     "error": "De update kon niet worden voltooid. Probeer het later opnieuw.",
+    "historyFailed": "Kon eerdere releaseopmerkingen niet laden.",
     "later": "Later",
     "looking": "Zoeken naar de nieuwste versie…",
     "packageInstall": "Geïnstalleerd vanuit een pakket. Download de nieuwe versie om bij te werken.",
     "ready": "Er staat een nieuwe versie klaar om te installeren.",
+    "released": "Uitgebracht {{when}}",
     "upToDate": "Je bent up-to-date",
     "upToDateGeneric": "Je gebruikt de nieuwste versie van Oleafly",
     "upToDateHeadline": "Je bent helemaal bij!",

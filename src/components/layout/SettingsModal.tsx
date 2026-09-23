@@ -49,6 +49,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
+import { ChangelogDialog } from "@/components/layout/ChangelogDialog";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
@@ -1302,13 +1303,13 @@ const REPO_URL = "https://github.com/Oleafly/Oleafly";
 const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
-const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
 function HelpSection() {
   const { t } = useTranslation(["common", "shell"]);
   const [version, setVersion] = useState("");
   const [copied, setCopied] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
     appVersion().then(setVersion).catch(() => setVersion(""));
@@ -1387,8 +1388,8 @@ function HelpSection() {
     {
       icon: ScrollText,
       label: t(($) => $.shell.settings.help.resources.whatsNew),
-      onClick: ext(CHANGELOG_URL),
-      external: true,
+      onClick: () => setChangelogOpen(true),
+      external: false,
     },
     {
       icon: Scale,
@@ -1475,6 +1476,15 @@ function HelpSection() {
         />
         <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
           <UpdateChecker />
+          <button
+            type="button"
+            data-testid="about-whats-new"
+            onClick={() => setChangelogOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ScrollText className="size-3.5" />
+            {t(($) => $.shell.settings.help.resources.whatsNew)}
+          </button>
           <button
             type="button"
             onClick={copyDiagnostics}
@@ -1595,6 +1605,7 @@ function HelpSection() {
           </button>
         ))}
       </div>
+      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>
   );
 }
