@@ -393,7 +393,9 @@ export async function waitForCompileIdle(
   const deadline = Date.now() + timeoutMs;
   let quietSince = 0;
   for (;;) {
-    await expect(compileButton).toBeEnabled({ timeout: 60_000 });
+    await expect(compileButton).toBeEnabled({
+      timeout: Math.max(1_000, deadline - Date.now()),
+    });
     const state = await compileSnapshot(page);
     if (state.disabled || state.status === "compiling") {
       quietSince = 0;
