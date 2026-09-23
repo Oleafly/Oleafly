@@ -32,14 +32,17 @@ impl OutputBounds {
             total,
         }
     }
+
+    #[cfg(test)]
+    pub fn total_for_test(&self) -> Duration {
+        self.total
+    }
 }
 
 /// Synchronous callers must run on blocking workers. A single shared reactor
 /// drains both pipes without creating reader threads for every Git refresh.
-pub fn output_contained(command: Command) -> io::Result<Output> {
-    output_contained_with_timeout(command, Duration::from_secs(120))
-}
-
+/// Every caller states its own bound: there is no default deadline, because
+/// what counts as too long depends entirely on the work.
 pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io::Result<Output> {
     output_contained_with_bounds(command, OutputBounds::total(timeout))
 }
@@ -66,6 +69,11 @@ pub fn output_contained_with_bounds(command: Command, bounds: OutputBounds) -> i
         .map_err(|_| io::Error::other("process output worker stopped"))?
 }
 
+pub(crate) const TRUNCATION_MARKER: &[u8] = b"\n... output truncated";
+
+/// Collect one pipe, keeping the first `limit` bytes. Reading continues past
+/// the cap and discards the rest, because a command blocked writing into a full
+/// pipe never exits and its status is what the caller actually needs.
 async fn read_output(
     mut pipe: impl AsyncRead + Unpin,
     limit: usize,
@@ -73,6 +81,7 @@ async fn read_output(
     activity: &AtomicU64,
 ) -> io::Result<Vec<u8>> {
     let mut output = Vec::new();
+    let mut truncated = false;
     let mut bytes = [0; 8192];
     loop {
         let count = pipe.read(&mut bytes).await?;
@@ -80,14 +89,19 @@ async fn read_output(
         // still counts as making progress.
         activity.store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
         if count == 0 {
+            if truncated {
+                output.extend_from_slice(TRUNCATION_MARKER);
+            }
             return Ok(output);
         }
-        if output.len().saturating_add(count) > limit {
-            return Err(io::Error::other(format!(
-                "command output exceeded the {limit}-byte limit"
-            )));
+        let room = limit.saturating_sub(output.len());
+        if room == 0 {
+            truncated = true;
+            continue;
         }
-        output.extend_from_slice(&bytes[..count]);
+        let kept = room.min(count);
+        truncated |= kept < count;
+        output.extend_from_slice(&bytes[..kept]);
     }
 }
 
@@ -207,9 +221,10 @@ mod tests {
 
     #[test]
     fn captures_both_pipes_and_exit_status() {
-        let output = output_contained(node(
-            "process.stdout.write('out');process.stderr.write('err');process.exitCode=7",
-        ))
+        let output = output_contained_with_timeout(
+            node("process.stdout.write('out');process.stderr.write('err');process.exitCode=7"),
+            Duration::from_secs(30),
+        )
         .unwrap();
         assert_eq!(output.stdout, b"out");
         assert_eq!(output.stderr, b"err");
@@ -270,14 +285,41 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn excessive_output_fails_instead_of_silently_truncating() {
-        let error = collect_output(
-            node("process.stdout.write('x'.repeat(16384));setInterval(()=>{},1000)"),
+    async fn excessive_output_is_capped_without_losing_the_exit_status() {
+        let output = collect_output(
+            node(
+                "process.stdout.write('x'.repeat(16384));\
+                 process.stderr.write('why it failed');process.exit(3)",
+            ),
             OutputBounds::total(Duration::from_secs(5)),
             1024,
         )
         .await
-        .unwrap_err();
-        assert!(error.to_string().contains("output exceeded"));
+        .unwrap();
+        // The command succeeded at running. Reporting only "output exceeded"
+        // would hide both the exit code and the short pipe that explains it.
+        assert_eq!(output.status.code(), Some(3));
+        assert_eq!(output.stderr, b"why it failed");
+        assert_eq!(output.stdout.len(), 1024 + TRUNCATION_MARKER.len());
+        assert!(output.stdout.starts_with(b"xxxx"));
+        assert!(output.stdout.ends_with(TRUNCATION_MARKER));
+    }
+
+    #[tokio::test]
+    async fn a_command_that_outruns_the_cap_still_exits_on_its_own() {
+        // Four megabytes past a 1 KiB cap, far beyond the pipe buffer. Stopping
+        // the reads at the cap would block the child mid-write, so it would
+        // never reach its own exit and the deadline would decide the outcome.
+        let start = Instant::now();
+        let output = collect_output(
+            node("process.stdout.write('x'.repeat(4000000), () => process.exit(0))"),
+            OutputBounds::total(Duration::from_secs(30)),
+            1024,
+        )
+        .await
+        .unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout.len(), 1024 + TRUNCATION_MARKER.len());
+        assert!(start.elapsed() < Duration::from_secs(20));
     }
 }

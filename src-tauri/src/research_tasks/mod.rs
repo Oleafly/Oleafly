@@ -795,13 +795,17 @@ pub async fn research_task_start(
     task_id: String,
 ) -> Result<ResearchTask, String> {
     state.attach_app(app);
-    let store = state.store()?;
-    let current = store.require(&task_id)?;
-    state.runtime_for(&current.runtime_id, &current.agent_id)?;
-    let requested = store.request_start(&task_id)?;
-    state.emit_task(&requested);
+    let requested_id = task_id.clone();
+    blocking_task_command(&state, move |state| {
+        let store = state.store()?;
+        let current = store.require(&requested_id)?;
+        state.runtime_for(&current.runtime_id, &current.agent_id)?;
+        state.emit_task(&store.request_start(&requested_id)?);
+        Ok(())
+    })
+    .await?;
     state.launch_ready().await?;
-    store.require(&task_id)
+    blocking_task_command(&state, move |state| state.store()?.require(&task_id)).await
 }
 
 #[tauri::command]
@@ -815,14 +819,18 @@ pub async fn research_task_cancel(
 }
 
 async fn cancel_task(state: &ResearchTaskState, task_id: String) -> Result<ResearchTask, String> {
-    let store = state.store()?;
-    let current = store.require(&task_id)?;
-    let mut active = if current.status == ResearchTaskStatus::Running {
-        lock(&state.inner.active).get(&task_id).cloned()
-    } else {
-        None
-    };
-    let cancellation = store.request_cancel(&task_id)?;
+    let requested_id = task_id.clone();
+    let (cancellation, mut active) = blocking_task_command(state, move |state| {
+        let store = state.store()?;
+        let current = store.require(&requested_id)?;
+        let active = if current.status == ResearchTaskStatus::Running {
+            lock(&state.inner.active).get(&requested_id).cloned()
+        } else {
+            None
+        };
+        Ok((store.request_cancel(&requested_id)?, active))
+    })
+    .await?;
     if cancellation.status == ResearchTaskStatus::Cancelled {
         state.emit_task(&cancellation);
         state.launch_ready().await?;
@@ -849,14 +857,19 @@ async fn cancel_task(state: &ResearchTaskState, task_id: String) -> Result<Resea
     };
     active.wait_until_settled().await;
     runtime_cancel?;
-    if !store.finalize_cancel(&task_id, active.execution_generation)? {
-        return Err("The task changed before cancellation finished.".into());
-    }
-    state.finish_active(&task_id, active.execution_generation);
-    let cancelled = store.require(&task_id)?;
-    state.emit_task(&cancelled);
+    let generation = active.execution_generation;
+    let settle_id = task_id.clone();
+    blocking_task_command(state, move |state| {
+        if !state.store()?.finalize_cancel(&settle_id, generation)? {
+            return Err("The task changed before cancellation finished.".into());
+        }
+        state.finish_active(&settle_id, generation);
+        state.emit_task(&state.store()?.require(&settle_id)?);
+        Ok(())
+    })
+    .await?;
     state.launch_ready().await?;
-    store.require(&task_id)
+    blocking_task_command(state, move |state| state.store()?.require(&task_id)).await
 }
 
 #[tauri::command]
@@ -923,17 +936,23 @@ pub async fn research_task_apply(
     request: TaskApplyRequest,
 ) -> Result<TaskApplyResult, String> {
     state.attach_app(app.clone());
+    let admitted = request.clone();
+    let task = blocking_task_command(&state, move |state| {
+        let store = state.store()?;
+        let task = store.require(&admitted.task_id)?;
+        if task.status != ResearchTaskStatus::AwaitingReview {
+            return Err("This task is not waiting for review.".into());
+        }
+        store.begin_apply(
+            &task.id,
+            task.execution_generation,
+            admitted.expected_project_generation,
+            &admitted.selected_paths,
+        )?;
+        Ok(task)
+    })
+    .await?;
     let store = state.store()?;
-    let task = store.require(&request.task_id)?;
-    if task.status != ResearchTaskStatus::AwaitingReview {
-        return Err("This task is not waiting for review.".into());
-    }
-    store.begin_apply(
-        &task.id,
-        task.execution_generation,
-        request.expected_project_generation,
-        &request.selected_paths,
-    )?;
     let apply_store = store.clone();
     let apply_task = task.clone();
     let selected_paths = request.selected_paths.clone();
@@ -947,27 +966,36 @@ pub async fn research_task_apply(
         },
     )
     .await;
-    let mutation = match mutation {
-        Ok(mutation) => mutation,
-        Err(error) => {
-            if !apply::has_recovery_journal(&store, &task)? {
-                store.clear_apply(&task.id, Some(&error))?;
-            }
-            return Err(error);
-        }
+    let failed = match &mutation {
+        Err(error) => Some(error.clone()),
+        Ok(mutation) => mutation.value.as_ref().err().cloned(),
     };
-    if let Err(error) = mutation.value {
-        if !apply::has_recovery_journal(&store, &task)? {
-            store.clear_apply(&task.id, Some(&error))?;
-        }
+    if let Some(error) = failed {
+        let failed_task = task.clone();
+        let reported = error.clone();
+        blocking_task_command(&state, move |state| {
+            let store = state.store()?;
+            if !apply::has_recovery_journal(&store, &failed_task)? {
+                store.clear_apply(&failed_task.id, Some(&reported))?;
+            }
+            Ok(())
+        })
+        .await?;
         return Err(error);
     }
+    let mutation = mutation?;
     let review = TaskReviewResult {
         selected_paths: request.selected_paths,
         applied_at: now_ms(),
         project_mutation_generation: mutation.generation,
     };
-    let task = store.complete_apply(&task.id, &review)?;
+    let completed_id = task.id.clone();
+    let task = blocking_task_command(&state, move |state| {
+        let task = state.store()?.complete_apply(&completed_id, &review)?;
+        state.emit_task(&task);
+        Ok(task)
+    })
+    .await?;
     let project_state = crate::project::publish_project_state_changed(
         &app,
         &app_state,
@@ -977,7 +1005,6 @@ pub async fn research_task_apply(
         true,
         Some(mutation.generation),
     )?;
-    state.emit_task(&task);
     state.launch_ready().await?;
     Ok(TaskApplyResult {
         task,
@@ -990,19 +1017,19 @@ pub async fn research_task_delete(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
 ) -> Result<(), String> {
-    let store = state.store()?;
-    let task = store.require(&task_id)?;
-    if task.status == ResearchTaskStatus::Running {
-        return Err("Stop this task before deleting it.".into());
-    }
-    store.delete(&task_id)?;
-    let workspace_root = isolation::task_workspace_root(store.root(), &task_id);
-    let project_root = crate::paths::project_dir(&task.project_id).ok();
-    tauri::async_runtime::spawn_blocking(move || {
+    blocking_task_command(&state, move |state| {
+        let store = state.store()?;
+        let task = store.require(&task_id)?;
+        if task.status == ResearchTaskStatus::Running {
+            return Err("Stop this task before deleting it.".into());
+        }
+        store.delete(&task_id)?;
+        let workspace_root = isolation::task_workspace_root(store.root(), &task_id);
+        let project_root = crate::paths::project_dir(&task.project_id).ok();
         isolation::purge_task_workspaces(project_root.as_deref(), &workspace_root);
+        Ok(())
     })
     .await
-    .map_err(|error| format!("The task workspace cleanup stopped: {error}"))
 }
 
 #[tauri::command]
@@ -1010,8 +1037,12 @@ pub async fn research_task_accept_result(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
 ) -> Result<ResearchTask, String> {
-    let task = state.store()?.complete_without_apply(&task_id)?;
-    state.emit_task(&task);
+    let task = blocking_task_command(&state, move |state| {
+        let task = state.store()?.complete_without_apply(&task_id)?;
+        state.emit_task(&task);
+        Ok(task)
+    })
+    .await?;
     state.launch_ready().await?;
     Ok(task)
 }

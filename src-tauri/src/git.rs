@@ -4,7 +4,7 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
-use crate::proc::{output_contained, NoConsole, OutputBounds};
+use crate::proc::{NoConsole, OutputBounds};
 
 /// A transfer over someone's own uplink can legitimately take many minutes, so
 /// judge it by silence rather than by elapsed time: a push that is slow but
@@ -17,6 +17,49 @@ const REMOTE_TOTAL: std::time::Duration = std::time::Duration::from_secs(60 * 60
 
 fn remote_bounds() -> OutputBounds {
     OutputBounds::stalled_after(REMOTE_IDLE, REMOTE_TOTAL)
+}
+
+/// Local commands report nothing while they work, so silence cannot tell a slow
+/// one from a wedged one and only the deadline separates them. Most finish in
+/// milliseconds. The ones that walk the whole working tree do not: staging a
+/// large project while a virus scanner opens every file is slow but healthy, so
+/// give that group room rather than failing an ordinary commit.
+const LOCAL_DEADLINE: std::time::Duration = std::time::Duration::from_secs(120);
+const WORKTREE_SCALE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(600);
+
+fn git_subcommand<'a>(args: &[&'a str]) -> Option<&'a str> {
+    let mut args = args.iter().copied();
+    while let Some(arg) = args.next() {
+        match arg {
+            "-c" | "-C" => {
+                args.next();
+            }
+            _ if arg.starts_with('-') => {}
+            _ => return Some(arg),
+        }
+    }
+    None
+}
+
+fn walks_the_working_tree(args: &[&str]) -> bool {
+    match git_subcommand(args) {
+        Some(
+            "add" | "checkout" | "clean" | "commit" | "gc" | "merge" | "read-tree" | "reset"
+            | "restore" | "rm" | "stash" | "status" | "switch",
+        ) => true,
+        Some("diff") => !args
+            .iter()
+            .any(|arg| matches!(*arg, "--cached" | "--staged" | "--no-index")),
+        _ => false,
+    }
+}
+
+fn local_bounds(args: &[&str]) -> OutputBounds {
+    OutputBounds::total(if walks_the_working_tree(args) {
+        WORKTREE_SCALE_DEADLINE
+    } else {
+        LOCAL_DEADLINE
+    })
 }
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
@@ -48,7 +91,7 @@ fn run_configured_git(
     optional_locks: bool,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
-    run_configured_git_bounded(root, args, optional_locks, None, configure)
+    run_configured_git_bounded(root, args, optional_locks, local_bounds(args), configure)
 }
 
 const GIT_IDENTITY_ENV: [&str; 6] = [
@@ -64,7 +107,7 @@ fn run_configured_git_bounded(
     root: &PathBuf,
     args: &[&str],
     optional_locks: bool,
-    bounds: Option<OutputBounds>,
+    bounds: OutputBounds,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
@@ -89,17 +132,14 @@ fn run_configured_git_bounded(
         command.env_remove(variable);
     }
     configure(&mut command);
-    match bounds {
-        Some(bounds) => crate::proc::output_contained_with_bounds(command, bounds),
-        None => output_contained(command),
-    }
-    .map_err(|e| format!("failed to run git: {e}"))
+    crate::proc::output_contained_with_bounds(command, bounds)
+        .map_err(|e| format!("failed to run git: {e}"))
 }
 
 /// Reach a remote without a token: public clones and pulls still transfer over
 /// the same uplink, so they get the same silence-based bound.
 fn run_git_remote(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    run_configured_git_bounded(root, args, true, Some(remote_bounds()), |_| {})
+    run_configured_git_bounded(root, args, true, remote_bounds(), |_| {})
 }
 
 pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
@@ -2264,8 +2304,8 @@ mod tests {
     use super::{
         attach_imported_repository_history_at, clean_remote_credentials, commit_index,
         conflicts_at, current_branch, discard_paths_at, ensure_repository, ensure_repository_with,
-        git_log_at, initialize_repo, is_allowed_remote_url, merge_in_progress, ok_or_err,
-        out_to_string, parse_status_porcelain, parse_status_porcelain_bytes,
+        git_log_at, initialize_repo, is_allowed_remote_url, local_bounds, merge_in_progress,
+        ok_or_err, out_to_string, parse_status_porcelain, parse_status_porcelain_bytes,
         remote_credentials_need_cleanup, resolve_conflict_side, restore_worktree,
         run_configured_git, run_git, run_git_read_only, sanitize_url, show, stage, stage_all,
         stage_paths, stash_pop_at, stash_push_at, unmerged_index_stages, unstage, unstage_all,
@@ -2297,6 +2337,42 @@ mod tests {
             out_to_string(&out),
             "Writing objects:  90% (9/10)\nerror: failed to push some refs"
         );
+    }
+
+    #[test]
+    fn only_tree_walking_subcommands_get_the_longer_local_deadline() {
+        let long = super::WORKTREE_SCALE_DEADLINE;
+        let short = super::LOCAL_DEADLINE;
+        assert!(long > short);
+        for args in [
+            vec!["add", "-A"],
+            vec!["commit", "-m", "message"],
+            vec!["status", "--porcelain"],
+            vec!["checkout", "--", "main.tex"],
+            vec!["restore", "--staged", "main.tex"],
+            vec!["switch", "--quiet", "--", "draft"],
+            vec!["read-tree", "--reset", "-u", "HEAD"],
+            vec!["rm", "-r", "--cached", "-q", "--ignore-unmatch", "--", "."],
+            vec!["diff"],
+            vec!["--literal-pathspecs", "add", "--", "main.tex"],
+            vec!["-c", "core.editor=true", "merge", "--continue"],
+            vec!["-C", "project", "status", "--porcelain"],
+        ] {
+            assert_eq!(local_bounds(&args).total_for_test(), long, "{args:?}");
+        }
+        for args in [
+            vec!["log", "-1"],
+            vec!["diff", "--cached"],
+            vec!["--literal-pathspecs", "diff", "--cached", "--", "main.tex"],
+            vec!["diff", "--no-index", "--", "/dev/null", "main.tex"],
+            vec!["show", "HEAD:main.tex"],
+            vec!["rev-parse", "HEAD"],
+            vec!["remote", "get-url", "origin"],
+            vec!["ls-files", "--cached"],
+            vec!["-c", "core.quotepath=false", "log", "-1"],
+        ] {
+            assert_eq!(local_bounds(&args).total_for_test(), short, "{args:?}");
+        }
     }
 
     /// Create a throwaway git repo in a temp dir with a fixed identity.
