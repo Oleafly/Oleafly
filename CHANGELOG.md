@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and committing a large project now get ten minutes before Oleafly gives up
   on them, up from two, because antivirus software that scans every file can
   make them slow without anything being wrong.
+- A biblatex bibliography no longer makes the first compile wait for Biber
+  to unpack itself again. Biber expands to about 250 MB the first time it
+  runs, which takes 10 to 20 seconds, and it used to do that in the system
+  temp folder, so it started over whenever that folder was cleaned, which on
+  Linux usually means every restart. It now unpacks once into Oleafly's data
+  folder and reuses it.
 - Update checks and downloads use the proxy set in Windows or macOS settings,
   so updates work on networks that require one. If the Windows installer
   cannot be started, the update window now shows the error. Before, Oleafly

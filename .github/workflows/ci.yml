@@ -1275,6 +1275,29 @@ jobs:
         shell: bash
         run: bash scripts/ci/unpack-windows-e2e-app.sh oleafly-e2e-windows.tar.gz e2e-app
 
+      - name: Time Biber's first and second run
+        if: matrix.shard == 1
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          biber="$(find e2e-app -maxdepth 1 -iname 'tectonic-biber*.exe' 2>/dev/null | head -n 1 || true)"
+          if [ -z "$biber" ]; then
+            echo "no tectonic-biber in the app build"
+            ls e2e-app || true
+            exit 0
+          fi
+          scratch="$RUNNER_TEMP/biber-unpack-probe"
+          rm -rf "$scratch"
+          mkdir -p "$scratch"
+          for run in first second; do
+            start="$(date +%s%N)"
+            PAR_GLOBAL_TMPDIR="$scratch" "$biber" --version || echo "biber exited with $?"
+            end="$(date +%s%N)"
+            echo "biber $run run: $(( (end - start) / 1000000 )) ms"
+          done
+          echo "unpacked: $(du -sh "$scratch" 2>/dev/null | cut -f1 || true) in $(find "$scratch" -type f 2>/dev/null | wc -l || true) files"
+
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows
         uses: actions/cache@v6

@@ -14,6 +14,18 @@ pub fn find_tectonic_biber() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
+pub const UNPACK_ENV: &str = "PAR_GLOBAL_TMPDIR";
+
+pub fn unpack_root(data_root: &Path) -> PathBuf {
+    data_root.join("assets").join("biber")
+}
+
+pub fn prepare_unpack_root(data_root: &Path) -> Option<PathBuf> {
+    let dir = unpack_root(data_root);
+    std::fs::create_dir_all(&dir).ok()?;
+    dir.is_dir().then_some(dir)
+}
+
 /// Directories that should precede PATH when spawning Tectonic so it can find
 /// `tectonic-biber` and common system TeX helpers.
 pub fn compile_path_dirs() -> Vec<PathBuf> {
@@ -282,6 +294,35 @@ fn push_unique(dirs: &mut Vec<PathBuf>, dir: PathBuf) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn biber_unpacks_under_the_data_root_assets() {
+        let root = Path::new("data-root");
+        assert_eq!(
+            unpack_root(root),
+            Path::new("data-root").join("assets").join("biber")
+        );
+    }
+
+    #[test]
+    fn preparing_the_unpack_root_creates_it_once_and_reuses_it() {
+        let root = scratch_dir("unpack-root");
+        let first = prepare_unpack_root(&root).expect("created");
+        assert!(first.is_dir());
+        std::fs::write(first.join("kept"), b"x").unwrap();
+        let second = prepare_unpack_root(&root).expect("reused");
+        assert_eq!(first, second);
+        assert!(second.join("kept").is_file());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn an_unusable_unpack_root_is_skipped_so_biber_keeps_its_default() {
+        let root = scratch_dir("unpack-blocked");
+        std::fs::write(root.join("assets"), b"not a directory").unwrap();
+        assert!(prepare_unpack_root(&root).is_none());
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     fn scratch_dir(label: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(

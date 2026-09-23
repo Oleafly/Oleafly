@@ -2486,6 +2486,12 @@ async fn run_supervised_process_with_environment(
         )
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p");
+    if let Some(dir) = crate::paths::oleafly_root()
+        .ok()
+        .and_then(|root| crate::biber_toolchain::prepare_unpack_root(&root))
+    {
+        command.env(crate::biber_toolchain::UNPACK_ENV, dir);
+    }
     for (name, value) in &environment.variables {
         command.env(name, value);
     }
@@ -3359,6 +3365,50 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
         assert!(!marker.exists(), "the inherited-pipe descendant survived");
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn supervised_children_unpack_biber_under_the_data_root() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        #[cfg(unix)]
+        let (program, args) = (
+            Path::new("sh"),
+            vec![
+                "-c".to_string(),
+                "printf %s \"$PAR_GLOBAL_TMPDIR\"".to_string(),
+            ],
+        );
+        #[cfg(windows)]
+        let (program, args) = (
+            Path::new("powershell.exe"),
+            vec![
+                "-NoProfile".to_string(),
+                "-Command".to_string(),
+                "[Console]::Out.Write($env:PAR_GLOBAL_TMPDIR)".to_string(),
+            ],
+        );
+        let outcome = run_supervised_process(
+            program,
+            &args,
+            data.path(),
+            None,
+            std::time::Duration::from_secs(30),
+            None,
+        )
+        .await;
+        match previous {
+            Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+        let (log, code) = outcome.unwrap();
+        let expected = crate::biber_toolchain::unpack_root(data.path());
+        assert_eq!(code, Some(0), "{log}");
+        assert_eq!(log.trim(), expected.display().to_string());
+        assert!(expected.is_dir());
     }
 
     #[cfg(windows)]
