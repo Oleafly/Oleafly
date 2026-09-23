@@ -41,8 +41,6 @@ impl OutputBounds {
 
 /// Synchronous callers must run on blocking workers. A single shared reactor
 /// drains both pipes without creating reader threads for every Git refresh.
-/// Every caller states its own bound: there is no default deadline, because
-/// what counts as too long depends entirely on the work.
 pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io::Result<Output> {
     output_contained_with_bounds(command, OutputBounds::total(timeout))
 }
@@ -71,9 +69,6 @@ pub fn output_contained_with_bounds(command: Command, bounds: OutputBounds) -> i
 
 pub(crate) const TRUNCATION_MARKER: &[u8] = b"\n... output truncated";
 
-/// Collect one pipe, keeping the first `limit` bytes. Reading continues past
-/// the cap and discards the rest, because a command blocked writing into a full
-/// pipe never exits and its status is what the caller actually needs.
 async fn read_output(
     mut pipe: impl AsyncRead + Unpin,
     limit: usize,
@@ -296,8 +291,6 @@ mod tests {
         )
         .await
         .unwrap();
-        // The command succeeded at running. Reporting only "output exceeded"
-        // would hide both the exit code and the short pipe that explains it.
         assert_eq!(output.status.code(), Some(3));
         assert_eq!(output.stderr, b"why it failed");
         assert_eq!(output.stdout.len(), 1024 + TRUNCATION_MARKER.len());
@@ -307,9 +300,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_command_that_outruns_the_cap_still_exits_on_its_own() {
-        // Four megabytes past a 1 KiB cap, far beyond the pipe buffer. Stopping
-        // the reads at the cap would block the child mid-write, so it would
-        // never reach its own exit and the deadline would decide the outcome.
         let start = Instant::now();
         let output = collect_output(
             node("process.stdout.write('x'.repeat(4000000), () => process.exit(0))"),

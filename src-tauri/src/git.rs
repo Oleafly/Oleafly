@@ -19,11 +19,6 @@ fn remote_bounds() -> OutputBounds {
     OutputBounds::stalled_after(REMOTE_IDLE, REMOTE_TOTAL)
 }
 
-/// Local commands report nothing while they work, so silence cannot tell a slow
-/// one from a wedged one and only the deadline separates them. Most finish in
-/// milliseconds. The ones that walk the whole working tree do not: staging a
-/// large project while a virus scanner opens every file is slow but healthy, so
-/// give that group room rather than failing an ordinary commit.
 const LOCAL_DEADLINE: std::time::Duration = std::time::Duration::from_secs(120);
 const WORKTREE_SCALE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(600);
 

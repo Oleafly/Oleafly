@@ -539,7 +539,7 @@ fn open_terminal_with_ticket(
         }
         registry.insert(ticket.owner, session)
     };
-    println!(
+    eprintln!(
         "term: session {id} opened pty={:.1}ms spawn={:.1}ms contain={:.1}ms",
         pty_ready.as_secs_f64() * 1000.0,
         (spawned - pty_ready).as_secs_f64() * 1000.0,
@@ -614,7 +614,7 @@ fn spawn_exit_poller(
         if !exited {
             continue;
         }
-        println!("term: session {poll_id} shell exited");
+        eprintln!("term: session {poll_id} shell exited");
         if let Some(session) = take_session(&poll_id) {
             stop_session(session);
         }
@@ -671,7 +671,7 @@ fn spawn_output_reader(
     std::thread::spawn(move || {
         let (mut channel_open, pending) =
             stream_terminal_output(&session_id, reader.as_mut(), &channel);
-        println!("term: session {session_id} reader eof (channel_open={channel_open})");
+        eprintln!("term: session {session_id} reader eof (channel_open={channel_open})");
         if channel_open && !pending.is_empty() {
             let data = String::from_utf8_lossy(&pending).to_string();
             channel_open = channel.send(TerminalEvent::Output { data }).is_ok();
@@ -681,7 +681,7 @@ fn spawn_output_reader(
         }
         if channel_open {
             let delivered = channel.send(TerminalEvent::Exit).is_ok();
-            println!("term: session {session_id} exit event delivered={delivered}");
+            eprintln!("term: session {session_id} exit event delivered={delivered}");
         }
     });
 }
