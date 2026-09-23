@@ -79,9 +79,14 @@ describe("Phase 3 project intelligence acceptance", () => {
     // that allocation is not what is being measured.
     const measure = (count: number) => {
       const source = malformed(count);
-      const started = performance.now();
-      const tokens = latexCommandKeyTokens(source);
-      return { duration: performance.now() - started, tokens };
+      let duration = Number.POSITIVE_INFINITY;
+      let tokens = latexCommandKeyTokens(source);
+      for (let sample = 0; sample < 5; sample += 1) {
+        const started = performance.now();
+        tokens = latexCommandKeyTokens(source);
+        duration = Math.min(duration, performance.now() - started);
+      }
+      return { duration, tokens };
     };
     const oneThousand = measure(1_000);
     const fourThousand = measure(4_000);
