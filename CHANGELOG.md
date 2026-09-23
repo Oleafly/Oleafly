@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had never been set. The installed app and the `.msi` were always correct.
   The installer's file details now also name the publisher, the copyright and
   the Oleafly website, and those show up in Add or remove programs.
+- `%novalidate` now quiets the project diagnostics as well as the LaTeX
+  checks. In 0.4.2 an environment opened inside a `%begin novalidate`
+  region, or anywhere in a file marked `%novalidate`, was still reported as
+  unclosed a moment after the editor had accepted it.
+- The end of an assistant reply no longer goes missing. The last few words
+  could reach the chat after the app had already marked the turn finished,
+  which left a turn that said it had worked through its steps and showed no
+  answer.
+- Opening Settings > Skills no longer freezes the app for a few seconds on
+  Windows. Working out which of your agents can share your skills ran on the
+  thread that draws the window.
+- Git commands that print a great deal, such as a diff of a large tracked
+  file, keep the first 64 MiB of output instead of failing outright. Staging
+  and committing a large project now get ten minutes before Oleafly gives up
+  on them, up from two, because antivirus software that scans every file can
+  make them slow without anything being wrong.
+- Update checks and downloads use the proxy set in Windows or macOS settings,
+  so updates work on networks that require one. If the Windows installer
+  cannot be started, the update window now shows the error. Before, Oleafly
+  restarted as if it had updated and came back on the old version.
 
 ## [0.4.2] - 2026-09-20
 
