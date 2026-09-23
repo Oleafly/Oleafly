@@ -33,6 +33,8 @@
     "skills:test": "node --test scripts/skills/frontmatter.test.mjs scripts/skills/timestamps.test.mjs scripts/skills/build-pack.test.mjs",
     "sync:model-metadata": "node scripts/sync-model-metadata.mjs",
     "sync:model-metadata:test": "node --test scripts/sync-model-metadata.test.mjs",
+    "tauri-versions:check": "node scripts/check-tauri-versions.mjs",
+    "tauri-versions:test": "node --test scripts/check-tauri-versions.node-tests.mjs",
     "preview": "vite preview",
     "tauri": "node scripts/tauri-sandbox.mjs",
     "lint": "biome lint src",

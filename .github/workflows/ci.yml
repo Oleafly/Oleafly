@@ -105,6 +105,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check Tauri npm packages match their crates
+        run: pnpm tauri-versions:check
+
       # `pnpm audit` exits 1 both when it finds an advisory and when it cannot
       # reach registry.npmjs.org, so a registry outage used to read as a
       # vulnerability and fail every branch. Real findings still fail the job.
@@ -125,6 +128,9 @@ jobs:
 
       - name: Validate language-server manifest and fetch confinement
         run: pnpm language-servers:test
+
+      - name: Test the Tauri version check
+        run: pnpm tauri-versions:test
 
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
@@ -181,8 +187,8 @@ jobs:
         run: pnpm i18n:types:check
       - name: Validate translations
         run: pnpm i18n:validate
-      - name: Test dictionary catalogs and Windows download confinement
-        run: node --test scripts/dictionaries/build-catalog.node-tests.mjs scripts/fetch-language-servers.node-tests.mjs scripts/hunspell.node-tests.mjs
+      - name: Test dictionary catalogs, Windows download confinement and the Tauri version check
+        run: node --test scripts/dictionaries/build-catalog.node-tests.mjs scripts/fetch-language-servers.node-tests.mjs scripts/hunspell.node-tests.mjs scripts/check-tauri-versions.node-tests.mjs
       - name: Typecheck and build
         run: pnpm build
       - name: Check performance budgets
