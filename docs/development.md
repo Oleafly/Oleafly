@@ -8,7 +8,7 @@ What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) proj
 oleafly-desktop/
 ├── crates/
 │   ├── oleafly-core/       shared Rust project, path, and build-directory policy
-│   ├── oleafly-cli/        oleaflyc commands and native compiler adapter
+│   ├── oleafly-cli/        oleafly commands and native compiler adapter
 │   └── oleafly-agent/      provider-neutral agent runtime
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
@@ -81,7 +81,10 @@ pnpm build              # typecheck + build the frontend (tsc -b && vite build)
 pnpm tauri build        # produce a distributable bundle
 ```
 
-The command-line adapter is source-only for now. Run it from the workspace:
+The command-line adapter is source-only for now. Run it from the workspace.
+Cargo builds it as `oleaflyc`, because the desktop package already owns the
+name `oleafly` in this workspace. Help, completions, the manual and release
+archives all call it `oleafly`:
 
 ```bash
 cargo run -p oleafly-cli --bin oleaflyc -- --help
@@ -90,13 +93,27 @@ cargo run -p oleafly-cli --bin oleaflyc -- build
 cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 ```
 
-`oleaflyc` works on the current directory unless you pass `-C <path>`. It also
+`oleafly` works on the current directory unless you pass `-C <path>`. It also
 has `watch`, `clean`, and `doctor`. Output is human-readable by default.
 `--json` switches to structured output, and watch mode prints newline-delimited
 JSON events. Build and watch kill a compiler after 300 seconds unless you pass
 `--timeout <seconds>`. The CLI never turns on TeX shell escape. Only the
 desktop can, and only through its device-local trust prompt for the system TeX
 engine.
+
+The CLI does not bundle compilers. `doctor` lists the ones the project's
+engine needs, and when one is missing it prints an install command for the
+current platform. If you add an engine tool, give it a hint in
+`install_hint` next to the others. A test fails when a tool has none.
+
+`completions <shell>` prints a shell completion script and `man` prints a
+roff manual page. Both are generated from the clap parser, so new flags show
+up in them without anyone editing them by hand. Packagers can take them
+straight from the built binary.
+
+The interface is not stable before 1.0.0. Any release may add, rename or
+remove JSON fields and change exit codes. `--help` says this too, since the
+people who depend on the output are usually scripting against it.
 
 ### Checks before opening a PR
 
@@ -150,7 +167,7 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
 
 1. The frontend loads the backend `project_engine` descriptor and its capability flags, then calls `compileProject(projectId, mainDoc, offline)` through Tauri IPC.
 2. `oleafly-core` validates the workspace, resolves the source inside the project root, and prepares the isolated build directory.
-3. The desktop adapter dispatches through `DocumentEngine`. UI code must not infer engine behavior from a filename. The `oleaflyc` adapter invokes its native compiler runner through the same shared workspace policy.
+3. The desktop adapter dispatches through `DocumentEngine`. UI code must not infer engine behavior from a filename. The `oleafly` adapter invokes its native compiler runner through the same shared workspace policy.
 4. The desktop LaTeX adapter writes `_oleafly_entry.tex` and invokes Tectonic with `--synctex --keep-logs --print` and, when requested, `--only-cached`. The CLI invokes the selected source directly and normalizes its PDF output to `_oleafly_entry.pdf`.
 5. Typst invokes the pinned Typst CLI directly against the selected `.typ` main document with short diagnostics and an explicit PDF output path.
 6. Markdown invokes Pandoc directly against `.md`/`.markdown`, with an explicit

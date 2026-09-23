@@ -31,11 +31,19 @@ const EXIT_BUILD: u8 = 5;
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(300);
 const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 
+const UNSTABLE_NOTICE: &str = "\
+This is a 0.x release and nothing about its interface is stable yet. JSON
+fields may be added, renamed, or removed and exit codes may change in any
+release before 1.0.0. Pin an exact version if you script against it.";
+
 #[derive(Debug, Parser)]
 #[command(
-    name = "oleaflyc",
+    name = "oleafly",
+    bin_name = "oleafly",
     version,
-    about = "Build and manage Oleafly projects"
+    about = "Build and manage Oleafly projects",
+    after_help = UNSTABLE_NOTICE,
+    after_long_help = UNSTABLE_NOTICE
 )]
 pub struct Cli {
     #[arg(
@@ -70,6 +78,13 @@ pub enum Command {
         #[command(subcommand)]
         command: ProjectCommand,
     },
+    #[command(about = "Print a shell completion script")]
+    Completions {
+        #[arg(value_enum, help = "Shell to generate a completion script for")]
+        shell: clap_complete::Shell,
+    },
+    #[command(about = "Print the manual page in roff format")]
+    Man,
 }
 
 #[derive(Debug, Args)]
@@ -214,6 +229,8 @@ pub async fn run(cli: Cli) -> u8 {
         Command::Project {
             command: ProjectCommand::Info,
         } => run_project_info(&cli.project, reporter),
+        Command::Completions { shell } => run_completions(shell),
+        Command::Man => run_man(),
     };
     match result {
         Ok(code) => code,
@@ -232,7 +249,22 @@ fn command_name(command: &Command) -> &'static str {
         Command::Clean => "clean",
         Command::Doctor => "doctor",
         Command::Project { .. } => "project info",
+        Command::Completions { .. } => "completions",
+        Command::Man => "man",
     }
+}
+
+fn run_completions(shell: clap_complete::Shell) -> Result<u8, Error> {
+    let mut command = <Cli as clap::CommandFactory>::command();
+    let name = command.get_name().to_string();
+    clap_complete::generate(shell, &mut command, name, &mut std::io::stdout());
+    Ok(EXIT_SUCCESS)
+}
+
+fn run_man() -> Result<u8, Error> {
+    let command = <Cli as clap::CommandFactory>::command();
+    clap_mangen::Man::new(command).render(&mut std::io::stdout())?;
+    Ok(EXIT_SUCCESS)
 }
 
 fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8, Error> {
@@ -308,6 +340,47 @@ fn run_clean(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     Ok(EXIT_SUCCESS)
 }
 
+fn install_hint(tool: &str) -> Option<String> {
+    let (macos, linux, windows, home) = match tool {
+        "tectonic" => (
+            Some("brew install tectonic"),
+            Some("cargo install tectonic"),
+            None,
+            "https://tectonic-typesetting.github.io/en-US/install.html",
+        ),
+        "typst" => (
+            Some("brew install typst"),
+            Some("cargo install typst-cli"),
+            None,
+            "https://github.com/typst/typst/releases",
+        ),
+        "pandoc" => (
+            Some("brew install pandoc"),
+            Some("sudo apt install pandoc"),
+            None,
+            "https://pandoc.org/installing.html",
+        ),
+        "latexmk" => (
+            Some("brew install texlive"),
+            Some("sudo apt install latexmk"),
+            None,
+            "https://www.tug.org/texlive/acquire.html",
+        ),
+        _ => return None,
+    };
+    let command = if cfg!(target_os = "macos") {
+        macos
+    } else if cfg!(target_os = "windows") {
+        windows
+    } else {
+        linux
+    };
+    Some(match command {
+        Some(command) => format!("Install it with `{command}`, or see {home}"),
+        None => format!("See {home}"),
+    })
+}
+
 fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     let workspace = Workspace::open(path)?;
     let tools = BuildTools::discover(workspace.root());
@@ -337,7 +410,10 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
             (None, None) => DoctorCheck {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Fail,
-                message: format!("{name} was not found"),
+                message: match install_hint(name) {
+                    Some(hint) => format!("{name} was not found. {hint}"),
+                    None => format!("{name} was not found"),
+                },
             },
         });
     }
@@ -703,6 +779,18 @@ mod tests {
         let json = json_output_error(serde_error);
         assert_eq!(json.kind(), ErrorKind::Io);
         assert!(json.message().contains("failed to serialize output"));
+    }
+
+    #[test]
+    fn every_engine_tool_has_an_install_hint() {
+        for tool in ["tectonic", "latexmk", "typst", "pandoc"] {
+            let hint = install_hint(tool).unwrap_or_else(|| panic!("no install hint for {tool}"));
+            assert!(
+                hint.contains("https://"),
+                "the {tool} hint must name a source: {hint}"
+            );
+        }
+        assert!(install_hint("not-a-compiler").is_none());
     }
 
     #[test]
