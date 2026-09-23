@@ -14,7 +14,7 @@ async function completionEntries(
   page: Page,
 ): Promise<{ label: string; detail: string }[]> {
   return await page.evaluate<{ label: string; detail: string }[]>(
-    `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')].map((li) => ({
+    `[...document.querySelectorAll('.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[role="option"]')].map((li) => ({
       label: li.querySelector('.cm-completionLabel')?.textContent ?? '',
       detail: li.querySelector('.cm-completionDetail')?.textContent ?? '',
     }))`,
@@ -25,7 +25,7 @@ async function waitForCompletion(page: Page, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const open = await page.evaluate<boolean>(
-      `!!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+      `!!document.querySelector('.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[role="option"]')`,
     );
     if (open) return;
     if (Date.now() > deadline) {

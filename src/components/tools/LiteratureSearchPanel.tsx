@@ -1,4 +1,5 @@
 import {
+  memo,
   useEffect,
   useMemo,
   useState,
@@ -597,7 +598,7 @@ function SavedLibrary({
   );
 }
 
-function PublicationYearSelect({
+const PublicationYearSelect = memo(function PublicationYearSelect({
   id,
   value,
   onValueChange,
@@ -638,7 +639,7 @@ function PublicationYearSelect({
       </SelectContent>
     </Select>
   );
-}
+});
 
 export function LiteratureSearchPanel() {
   const { t } = useTranslation(["common", "researchTools"]);

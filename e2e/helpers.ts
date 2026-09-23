@@ -1979,11 +1979,14 @@ export async function pressKey(page: Page, init: Record<string, unknown>) {
   );
 }
 
+const ENABLED_COMPLETION_OPTION =
+  '.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[role="option"]';
+
 export async function waitForCompletion(page: Page, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const open = await page.evaluate<boolean>(
-      `!!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+      `!!document.querySelector(${scriptValue(ENABLED_COMPLETION_OPTION)})`,
     );
     if (open) return;
     if (Date.now() > deadline) throw new Error("completion popup did not open");
@@ -1993,7 +1996,7 @@ export async function waitForCompletion(page: Page, timeoutMs = 20_000) {
 
 export async function completionLabels(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
-    `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')]
+    `[...document.querySelectorAll(${scriptValue(ENABLED_COMPLETION_OPTION)})]
       .map((li) => li.querySelector('.cm-completionLabel')?.textContent ?? '')`,
   );
 }

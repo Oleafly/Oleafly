@@ -35,6 +35,18 @@ vi.mock("@/lib/literature-search", async () => {
   };
 });
 
+vi.mock("@/lib/publication-year", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/publication-year")>(
+      "@/lib/publication-year",
+    );
+  return {
+    ...actual,
+    publicationYearOptions: (currentYear?: number) =>
+      actual.publicationYearOptions(currentYear).slice(0, 3),
+  };
+});
+
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { LiteratureSearchPanel } from "@/components/tools/LiteratureSearchPanel";
 import { LiteratureSearchToolView } from "@/components/tools/LiteratureSearchToolView";
