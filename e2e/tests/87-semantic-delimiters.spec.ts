@@ -153,10 +153,12 @@ async function expectScopedList(page: Page, prefix: string) {
   await waitForCompletion(page);
   await expect
     .poll(
-      async () =>
-        (await completionLabels(page)).every((label) =>
-          label.startsWith(prefix),
-        ),
+      async () => {
+        const labels = await completionLabels(page);
+        return (
+          labels.length > 0 && labels.every((label) => label.startsWith(prefix))
+        );
+      },
       { timeout: 10_000 },
     )
     .toBe(true);
@@ -332,7 +334,9 @@ test("Enter on a dropdown entry inserts both halves of a named delimiter", async
   await seed(tauriPage);
   await typeAtCaret(tauriPage, "\\left\\lan");
   await waitForCompletion(tauriPage);
-  expect(await completionLabels(tauriPage)).toContain("\\left\\langle");
+  await expect
+    .poll(async () => await completionLabels(tauriPage), { timeout: 10_000 })
+    .toContain("\\left\\langle");
   await acceptCompletion(tauriPage, "\\left\\langle");
   await expectTail(tauriPage, "\\left\\langle\\right\\rangle");
   expect(await editorSource(tauriPage)).not.toContain("\\left\\left");

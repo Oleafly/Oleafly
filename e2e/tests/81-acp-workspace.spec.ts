@@ -7,6 +7,7 @@ import type { AcpDefinition, AcpEventPage, AcpSession, AcpSnapshot } from "../..
 import type { UsageReport } from "../../src/lib/usage-report";
 import { test, expect, reloadNativePage } from "../fixtures";
 import { createBlankProject, fillTextarea, openProject, openRailTab, type Page } from "../helpers";
+import { scriptValue } from "../script-value";
 
 const assistantSelector = 'section[aria-label="CLI agent assistant"]';
 const composerSelector = 'textarea[aria-label="Message CLI agent"]';
@@ -21,39 +22,39 @@ type AgentFixture = {
 };
 
 function acpCall(method: string, ...args: unknown[]) {
-  return `import("/src/lib/acp.ts").then((acp) => acp[${JSON.stringify(method)}](${args.map((arg) => JSON.stringify(arg)).join(",")}))`;
+  return `import("/src/lib/acp.ts").then((acp) => acp[${scriptValue(method)}](${args.map((arg) => scriptValue(arg)).join(",")}))`;
 }
 
 async function openAppOverlay(page: Page, testId: string, label: string) {
   const trigger = `[data-testid=${JSON.stringify(testId)}]`;
   try {
     await page.waitForFunction(`(() => {
-      const control = document.querySelector(${JSON.stringify(trigger)});
+      const control = document.querySelector(${scriptValue(trigger)});
       return !!control && !control.disabled;
     })()`, 20_000);
   } catch (error) {
     const diagnostic = await page.evaluate(`(() => {
-      const control = document.querySelector(${JSON.stringify(trigger)});
+      const control = document.querySelector(${scriptValue(trigger)});
       return { present: !!control, disabled: control?.disabled ?? null, shown: control?.textContent ?? null };
     })()`).catch((failure: unknown) => ({ unavailable: String(failure) }));
     console.error("ACP picker timeout", JSON.stringify({ testId, label, diagnostic }));
     throw error;
   }
   await page.evaluate(`(() => {
-    const control = document.querySelector(${JSON.stringify(trigger)});
+    const control = document.querySelector(${scriptValue(trigger)});
     control.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }));
     return true;
   })()`);
 }
 
 async function pickOverlayEntry(page: Page, role: string, container: string, label: string) {
-  const match = `[...document.querySelectorAll('[role="${role}"]')].find((entry) => (entry.textContent ?? "").trim().startsWith(${JSON.stringify(label)}))`;
+  const match = `[...document.querySelectorAll(${scriptValue(`[role="${role}"]`)})].find((entry) => (entry.textContent ?? "").trim().startsWith(${scriptValue(label)}))`;
   try {
     await page.waitForFunction(`!!(${match})`, 20_000);
   } catch (error) {
     const diagnostic = await page.evaluate(`(() => {
-      const entries = [...document.querySelectorAll('[role="${role}"]')].map((entry) => (entry.textContent ?? "").trim().slice(0, 120));
-      const containers = [...document.querySelectorAll('[role="${container}"]')].length;
+      const entries = [...document.querySelectorAll(${scriptValue(`[role="${role}"]`)})].map((entry) => (entry.textContent ?? "").trim().slice(0, 120));
+      const containers = [...document.querySelectorAll(${scriptValue(`[role="${container}"]`)})].length;
       const triggers = [...document.querySelectorAll('[data-testid$="-picker"]')].map((entry) => ({
         id: entry.getAttribute("data-testid"), state: entry.getAttribute("data-state"), expanded: entry.getAttribute("aria-expanded"), disabled: entry.disabled ?? null,
       }));
@@ -66,7 +67,7 @@ async function pickOverlayEntry(page: Page, role: string, container: string, lab
     (${match}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
     return true;
   })()`);
-  await page.waitForFunction(`!document.querySelector('[role="${container}"]')`, 20_000);
+  await page.waitForFunction(`!document.querySelector(${scriptValue(`[role="${container}"]`)})`, 20_000);
 }
 
 async function selectAppOption(page: Page, testId: string, label: string) {
@@ -77,9 +78,9 @@ async function selectAppOption(page: Page, testId: string, label: string) {
 async function selectAppMenuItemByValue(page: Page, testId: string, value: string) {
   await openAppOverlay(page, testId, value);
   const selector = `[role="menuitem"][data-value=${JSON.stringify(value)}]`;
-  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(selector)})`, 20_000);
+  await page.waitForFunction(`!!document.querySelector(${scriptValue(selector)})`, 20_000);
   await page.evaluate(`(() => {
-    document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    document.querySelector(${scriptValue(selector)}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
     return true;
   })()`);
   await page.waitForFunction(`!document.querySelector('[role="menu"]')`, 20_000);
@@ -88,7 +89,7 @@ async function selectAppMenuItemByValue(page: Page, testId: string, value: strin
 async function clickHeaderAction(page: Page, label: string) {
   const selector = `button[aria-label=${JSON.stringify(label)}]`;
   await page.waitForFunction(`(() => {
-    const control = document.querySelector(${JSON.stringify(selector)});
+    const control = document.querySelector(${scriptValue(selector)});
     return !!control && !control.disabled;
   })()`, 20_000);
   await page.click(selector);
@@ -159,10 +160,10 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     const assistant = page.locator(assistantSelector);
     await page.evaluate(acpCall("acpRegister", JSON.stringify(definition)));
     const rosterButton = `[data-testid="agent-picker-${fixture.agentId}"]`;
-    await page.waitForFunction(`!!document.querySelector('${rosterButton}')`, 15_000);
+    await page.waitForFunction(`!!document.querySelector(${scriptValue(rosterButton)})`, 15_000);
     await page.click(rosterButton);
     await page.waitForFunction(
-      `document.querySelector('${rosterButton}')?.getAttribute('aria-pressed') === 'true'`,
+      `document.querySelector(${scriptValue(rosterButton)})?.getAttribute('aria-pressed') === 'true'`,
       10_000,
     );
     await clickHeaderAction(page, "New conversation");
@@ -172,11 +173,11 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     try {
       if (fixture.projectId) {
         await page.evaluate(`import("/src/lib/acp.ts").then(async (acp) => {
-          const sessions = await acp.acpSessions(${JSON.stringify(fixture.projectId)});
-          for (const session of sessions.filter((value) => value.agentId === ${JSON.stringify(fixture.agentId)})) {
-            await acp.acpDisconnect(${JSON.stringify(fixture.projectId)}, session.id).catch(() => {});
+          const sessions = await acp.acpSessions(${scriptValue(fixture.projectId)});
+          for (const session of sessions.filter((value) => value.agentId === ${scriptValue(fixture.agentId)})) {
+            await acp.acpDisconnect(${scriptValue(fixture.projectId)}, session.id).catch(() => {});
           }
-          await acp.acpRemoveAgent(${JSON.stringify(fixture.agentId)});
+          await acp.acpRemoveAgent(${scriptValue(fixture.agentId)});
           return true;
         })`);
       }
@@ -216,7 +217,7 @@ async function usageReport(page: Page, fixture: AgentFixture, sessionId: string,
     page: 0,
     pageSize: 25,
   };
-  const query = `window.__TAURI_INTERNALS__.invoke("usage_report_query", { filter: ${JSON.stringify(filter)} })`;
+  const query = `window.__TAURI_INTERNALS__.invoke("usage_report_query", { filter: ${scriptValue(filter)} })`;
   await page.waitForFunction(`${query}.then((report) => report.totals.recordCount === ${count} && report.sessions.items.every((session) => session.status !== "in_progress"))`, 30_000);
   return page.evaluate<UsageReport>(query);
 }
@@ -245,7 +246,7 @@ test("a custom ACP agent signs in, selects its model, and resolves a native perm
     await expect(permission).toHaveCount(0);
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
     await tauriPage.evaluate(`(() => {
-      const groups = document.querySelectorAll('${assistantSelector} [data-testid="worked-steps-toggle"][aria-expanded="false"]');
+      const groups = document.querySelectorAll(${scriptValue(`${assistantSelector} [data-testid="worked-steps-toggle"][aria-expanded="false"]`)});
       groups.forEach((button) => button.click());
       return groups.length;
     })()`);

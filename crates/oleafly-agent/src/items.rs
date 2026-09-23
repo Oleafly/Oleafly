@@ -607,7 +607,7 @@ impl TurnRecorder {
                 self.push(ThreadItem::Steered, true);
                 self.push(ThreadItem::UserMessage { text: text.clone() }, true);
             }
-            AgentEvent::StepStart { .. } => {}
+            AgentEvent::StepStart { .. } | AgentEvent::RunEnd => {}
         }
     }
 

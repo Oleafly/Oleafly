@@ -2,7 +2,10 @@ import { parseFile } from "@/lib/index/parse-file";
 import type { Sym } from "@/lib/index/types";
 import {
   latexBalancedGroupEnd,
+  latexIgnoredRanges,
   maskLatexIgnoredRegions,
+  maskNovalidateRegions,
+  scanLatexNovalidate,
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
 import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
@@ -2948,7 +2951,8 @@ function analyzeLatexBody(
   diagnostics: ProjectDiagnostic[],
 ): { partial: boolean; packageRefs: PackageReference[] } {
   const { engine, file, source, starts, definitions, uses, edges } = context;
-  const masked = maskLatexIgnoredRegions(source);
+  const ignored = latexIgnoredRanges(source);
+  const masked = maskLatexIgnoredRegions(source, ignored);
   latexAdditionalSyntax(
     file,
     source,
@@ -2967,17 +2971,20 @@ function analyzeLatexBody(
   );
   const ast = astAugmentLatexFile(file, source, starts);
   if (ast) definitions.push(...ast.definitions);
+  const novalidate = scanLatexNovalidate(source, ignored);
+  if (novalidate.fileDisabled) return { partial: false, packageRefs };
+  const checked = maskNovalidateRegions(masked, novalidate.regions);
   const delimiterPartial = addDelimiterDiagnostics(
     file,
     source,
-    masked,
+    checked,
     starts,
     engine,
     diagnostics,
   );
   const environmentPartial = latexEnvironmentDiagnostics(
     file,
-    masked,
+    checked,
     starts,
     diagnostics,
   );

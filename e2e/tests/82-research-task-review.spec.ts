@@ -4,6 +4,7 @@ import type { ResearchTask, TaskFilePreview } from "../../src/lib/research-tasks
 import { test, expect } from "../fixtures";
 import { chooseAppSelectOption, clickTabByText, createBlankProject, editorSource, fillTextarea, openRailTab, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
+import { scriptValue } from "../script-value";
 
 const detailSelector = 'article[aria-labelledby="research-task-detail-title"]';
 
@@ -25,7 +26,7 @@ test.beforeEach(async ({ tauriPage }) => {
 async function createProject(page: Page, run: string) {
   await createBlankProject(page, `Task review ${run}`);
   const connected = await page.evaluate<boolean>(
-    `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
+    `window.__aiConnect?.("ollama", ${scriptValue(server.url)}, "llama3.2") ?? false`,
   );
   expect(connected).toBe(true);
   const projectId = await page.evaluate<string>(
@@ -39,14 +40,14 @@ async function createProject(page: Page, run: string) {
 
 function readMain(page: Page, projectId: string) {
   return page.evaluate<string>(
-    `import("/src/lib/tauri.ts").then(({ readFileContent }) => readFileContent(${JSON.stringify(projectId)}, "main.tex"))`,
+    `import("/src/lib/tauri.ts").then(({ readFileContent }) => readFileContent(${scriptValue(projectId)}, "main.tex"))`,
   );
 }
 
 async function nativeTask(page: Page, projectId: string, title: string) {
   const task = await page.evaluate<ResearchTask | null>(
     `import("/src/lib/research-tasks.ts").then(async ({ listResearchTasks }) =>
-      (await listResearchTasks(${JSON.stringify(projectId)})).find((task) => task.title === ${JSON.stringify(title)}) ?? null)`,
+      (await listResearchTasks(${scriptValue(projectId)})).find((task) => task.title === ${scriptValue(title)}) ?? null)`,
   );
   if (!task) throw new Error(`The native task ${title} was not found`);
   return task;
@@ -54,7 +55,7 @@ async function nativeTask(page: Page, projectId: string, title: string) {
 
 function previewMain(page: Page, taskId: string) {
   return page.evaluate<TaskFilePreview>(
-    `import("/src/lib/research-tasks.ts").then(({ previewResearchTaskFile }) => previewResearchTaskFile(${JSON.stringify(taskId)}, "main.tex"))`,
+    `import("/src/lib/research-tasks.ts").then(({ previewResearchTaskFile }) => previewResearchTaskFile(${scriptValue(taskId)}, "main.tex"))`,
   );
 }
 
@@ -87,7 +88,7 @@ async function reportCreationState(page: Page, projectId: string) {
             const state = useResearchTasksStore.getState();
             return { projectId: state.projectId, selectedTaskId: state.selectedTaskId, action: state.action, error: state.error?.slice(0, 500), tasks: state.tasks.slice(0, 8).map(summary) };
           }).catch(() => ({ unavailable: true })),
-          import("/src/lib/research-tasks.ts").then(({ listResearchTasks }) => listResearchTasks(${JSON.stringify(projectId)})).then((tasks) => tasks.slice(0, 8).map(summary)).catch(() => ({ unavailable: true })),
+          import("/src/lib/research-tasks.ts").then(({ listResearchTasks }) => listResearchTasks(${scriptValue(projectId)})).then((tasks) => tasks.slice(0, 8).map(summary)).catch(() => ({ unavailable: true })),
         ]).then(([store, native]) => ({ ui, store, native })),
         new Promise((resolve) => setTimeout(() => resolve({ ui, timedOut: true }), 2000)),
       ]);
@@ -168,7 +169,7 @@ test("a native task edits its isolated manuscript and applies only after preview
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
   expect(await readMain(tauriPage, projectId)).toBe(proposed);
   await tauriPage.waitForFunction(
-    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${JSON.stringify(editorText(proposed))})`,
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${scriptValue(editorText(proposed))})`,
     20_000,
   );
   const applied = await nativeTask(tauriPage, projectId, task.title);
@@ -201,27 +202,27 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
     import("/src/store/files.ts"),
     import("/src/lib/tauri.ts"),
   ]).then(async ([controller, files, tauri]) => {
-    const disk = await tauri.readFileContent(${JSON.stringify(projectId)}, "main.tex");
+    const disk = await tauri.readFileContent(${scriptValue(projectId)}, "main.tex");
     const view = controller.getEditorView();
     const state = files.useFilesStore.getState();
-    if (!view || state.projectId !== ${JSON.stringify(projectId)} || state.activePath !== "main.tex") throw new Error("The manuscript editor is not active");
-    const apply = [...document.querySelectorAll('${detailSelector} button')].find((button) => button.textContent.trim() === "Apply 1 selected");
+    if (!view || state.projectId !== ${scriptValue(projectId)} || state.activePath !== "main.tex") throw new Error("The manuscript editor is not active");
+    const apply = [...document.querySelectorAll(${scriptValue(`${detailSelector} button`)})].find((button) => button.textContent.trim() === "Apply 1 selected");
     if (!apply || apply.disabled) throw new Error("The reviewed task is not ready to apply");
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(manual)} } });
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${scriptValue(manual)} } });
     const pending = files.useFilesStore.getState().files["main.tex"];
     const observed = { disk, dirty: pending.dirty, buffer: pending.content, editor: view.state.doc.toString() };
-    if (!observed.dirty || observed.buffer !== ${JSON.stringify(manual)}) {
+    if (!observed.dirty || observed.buffer !== ${scriptValue(manual)}) {
       const describe = (text) => ({ length: text.length, crlf: text.split("\\r\\n").length - 1, cr: text.split("\\r").length - 1, lf: text.split("\\n").length - 1 });
       const normalize = (text) => text.replace(/\\r\\n?/g, "\\n");
       const mutationLocked = await Promise.race([
-        import("/src/lib/editor-mutation-lease.ts").then(({ isEditorMutationLocked }) => isEditorMutationLocked(${JSON.stringify(projectId)})).catch(() => null),
+        import("/src/lib/editor-mutation-lease.ts").then(({ isEditorMutationLocked }) => isEditorMutationLocked(${scriptValue(projectId)})).catch(() => null),
         new Promise((resolve) => setTimeout(() => resolve(null), 500)),
       ]);
       const diagnostics = {
         dirty: observed.dirty, disk: describe(disk), buffer: describe(observed.buffer),
-        editor: describe(observed.editor), expected: describe(${JSON.stringify(manual)}),
-        normalizedBufferMatches: normalize(observed.buffer) === ${JSON.stringify(manual)},
-        editorMatchesExpected: observed.editor === ${JSON.stringify(manual)},
+        editor: describe(observed.editor), expected: describe(${scriptValue(manual)}),
+        normalizedBufferMatches: normalize(observed.buffer) === ${scriptValue(manual)},
+        editorMatchesExpected: observed.editor === ${scriptValue(manual)},
         editorMatchesBuffer: observed.editor === observed.buffer,
         mutationLocked, editorReadOnly: view.state.readOnly, contentEditable: view.contentDOM.isContentEditable,
       };

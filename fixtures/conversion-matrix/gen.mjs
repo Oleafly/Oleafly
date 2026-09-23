@@ -14,7 +14,10 @@ const out = (name) => join(here, name);
 
 // 240x120 grayscale decay-curve PNG, generated once and embedded.
 const DECAY_PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAPAAAABACAYAAAAbFePTAAAATklEQVR42u3QMQ0AMAgEQXCf7f8XARF5L2C1LFu2bNmypa3fZcuWLVu2bGWRbNmypa1dm7Zt29q1Zdu2bWvXlm3btnZt2bZt6wKeDQDkX1u6a9puAAAAAElFTkSuQmCC";
+  "iVBORw0KGgoAAAANSUhEUgAAAPAAAAB4CAAAAADp3SD7AAAB2ElEQVR42u3c25KCMBCE4X7/l85eu7ULk2Qmme6WGwWs4v8A8YCIYTYAMAMPPzDMwMMPDDPw8APDDDz8wDADO4nxcWMEhhl4+IFhBh5+YJiBXcT4864JGGbg4QeGGdhCjIcxBzDMwAZivIzrg2EGlhcjMEUdDDOwuBjBadpgmIGlxZiYqgyGGVhY/B9MVozpGbJgmIFVxQ8qTTEW52mCYQaWFD+TBMUvIj3xG0hOjO0HyIFhBlYTBzRa4ghGShyyKIljFCFxUKIjjkJkxGGHijjOEBFPKDTEMwgJ8ZRBQTxHEBBPCvjFswB68XQ/+xXWC/Xc4pV4avFSO7N4LZ1YvFjOe+ha7mYVr2eTijeqOXfrrWZG8V4yoXizmG+33u5lE+/nkm3kjFgqcUor00ZOKuUhp3WyiPMySTZyZiQFOTeRgJwd2J6cn9ecXBHXmlyT1phcFdaWXJeFnubSpo7k4qJ+5PKebnv2iZhW5kMlfcznMpqYjzZ0MJ8OuG6+sHRcRV9a8j3zxVV9B335CXVe3eCV4iy6y9uBY+pO73Nxgt3w81stu+tXMWXs3l+qAulwjjNCiXCu8/fANp32B3VYxEtct/FrkAe/+D9Xgss/w6PggE9C/4LFhx/KHbRWV1R2EgAAAABJRU5ErkJggg==";
+
+const SOURCE_DATE = new Date("2026-09-12T02:52:25Z");
+const ZIP_MTIME = new Date(2026, 8, 11, 19, 52, 24);
 
 function makeLatexZip() {
   const entries = {
@@ -22,7 +25,7 @@ function makeLatexZip() {
     "sections/method.tex": strToU8(readFileSync(out("latex-paper/sections/method.tex"))),
     "refs.bib": strToU8(readFileSync(out("latex-paper/refs.bib"))),
   };
-  writeFileSync(out("latex-paper.zip"), zipSync(entries));
+  writeFileSync(out("latex-paper.zip"), zipSync(entries, { mtime: ZIP_MTIME }));
 }
 
 function makeXlsx() {
@@ -84,9 +87,16 @@ Ours & 0.94 \\\\
   );
   execFileSync("pandoc", [join(tmp, "omml.tex"), "-o", out("docx-omml.docx")], {
     cwd: tmp,
+    env: { ...process.env, SOURCE_DATE_EPOCH: String(SOURCE_DATE.getTime() / 1000) },
     stdio: "inherit",
   });
   rmSync(tmp, { recursive: true, force: true });
+}
+
+async function savePdf(pdf, name) {
+  pdf.setCreationDate(SOURCE_DATE);
+  pdf.setModificationDate(SOURCE_DATE);
+  writeFileSync(out(name), await pdf.save());
 }
 
 async function makePdfs() {
@@ -100,7 +110,7 @@ async function makePdfs() {
   page.drawText("epsilon(t) <= C exp(-lambda t) holds for every iterate t.", { x: 72, y: 660, size: 11, font });
   page.drawText("2. Results", { x: 72, y: 620, size: 14, font: bold });
   page.drawText("Table 1 summarizes accuracy across the five seeds we report.", { x: 72, y: 596, size: 11, font });
-  writeFileSync(out("text-layer.pdf"), await text.save());
+  await savePdf(text, "text-layer.pdf");
 
   const imageOnly = await PDFDocument.create();
   const scan = imageOnly.addPage([612, 792]);
@@ -109,7 +119,7 @@ async function makePdfs() {
   scan.drawRectangle({ x: 90, y: 540, width: 340, height: 12, color: rgb(0.2, 0.2, 0.2) });
   scan.drawRectangle({ x: 90, y: 570, width: 400, height: 12, color: rgb(0.15, 0.15, 0.15) });
   scan.drawRectangle({ x: 120, y: 120, width: 360, height: 240, color: rgb(0.85, 0.85, 0.85) });
-  writeFileSync(out("image-only.pdf"), await imageOnly.save());
+  await savePdf(imageOnly, "image-only.pdf");
 }
 
 writeFileSync(out("decay.png"), Buffer.from(DECAY_PNG_B64, "base64"));

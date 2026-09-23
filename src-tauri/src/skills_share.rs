@@ -386,36 +386,42 @@ pub(crate) fn resync_now() {
 }
 
 #[tauri::command]
-pub fn skills_share_targets() -> Result<Vec<ShareTarget>, String> {
-    let (home, skills) = resolved_roots()?;
-    let records = crate::skills::list_with(
-        &crate::paths::oleafly_root()?,
-        crate::skills_pack::cached_pack_root().as_deref(),
-        None,
-    )?;
-    let ids = shareable_ids(&records);
-    let mut targets = targets_in(&home, &skills, &ids, share_enabled());
-    apply_remembered_supported(&mut targets);
-    Ok(targets)
+pub async fn skills_share_targets() -> Result<Vec<ShareTarget>, String> {
+    crate::skills::off_ui_thread("list the skill sharing targets", || {
+        let (home, skills) = resolved_roots()?;
+        let records = crate::skills::list_with(
+            &crate::paths::oleafly_root()?,
+            crate::skills_pack::cached_pack_root().as_deref(),
+            None,
+        )?;
+        let ids = shareable_ids(&records);
+        let mut targets = targets_in(&home, &skills, &ids, share_enabled());
+        apply_remembered_supported(&mut targets);
+        Ok(targets)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_share_sync(enabled: bool) -> Result<Vec<ShareTarget>, String> {
-    crate::config::update_config(|config| {
-        config.skills_share_with_agents = enabled;
-        Ok(())
-    })?;
-    let (home, skills) = resolved_roots()?;
-    let records = crate::skills::list_with(
-        &crate::paths::oleafly_root()?,
-        crate::skills_pack::cached_pack_root().as_deref(),
-        None,
-    )?;
-    let ids = shareable_ids(&records);
-    let targets = sync_in(&home, &skills, &ids, enabled);
-    remember(&ids);
-    remember_supported(&targets);
-    Ok(targets)
+pub async fn skills_share_sync(enabled: bool) -> Result<Vec<ShareTarget>, String> {
+    crate::skills::off_ui_thread("share the skills", move || {
+        crate::config::update_config(|config| {
+            config.skills_share_with_agents = enabled;
+            Ok(())
+        })?;
+        let (home, skills) = resolved_roots()?;
+        let records = crate::skills::list_with(
+            &crate::paths::oleafly_root()?,
+            crate::skills_pack::cached_pack_root().as_deref(),
+            None,
+        )?;
+        let ids = shareable_ids(&records);
+        let targets = sync_in(&home, &skills, &ids, enabled);
+        remember(&ids);
+        remember_supported(&targets);
+        Ok(targets)
+    })
+    .await
 }
 
 #[cfg(test)]

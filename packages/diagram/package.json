@@ -19,6 +19,6 @@
     "clsx": "*",
     "lucide-react": "*",
     "react": "*",
-    "tailwind-merge": "*"
+    "tailwind-merge": "^3.7.0"
   }
 }

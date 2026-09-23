@@ -12,11 +12,13 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Ch
 
 import {
   AgentStreamError,
+  CHANNEL_DRAIN_GRACE_MS,
   agentSteer,
   agentThreadArchive,
   agentThreadFork,
   completeText,
   completeViaBackend,
+  runViaBackend,
   streamText,
   streamViaBackend,
   type AgentEvent,
@@ -172,6 +174,7 @@ function playStream(events: AgentEvent[], hold = false) {
     if (command !== "agent_stream") return Promise.resolve();
     const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
     for (const event of events) channel.onmessage?.(event);
+    channel.onmessage?.({ kind: "runEnd" });
     return hold ? new Promise(() => {}) : Promise.resolve();
   });
 }
@@ -266,5 +269,130 @@ describe("streaming", () => {
     captured.channel?.onmessage?.({ kind: "textDelta", text: "late" });
 
     expect(seen).toEqual([]);
+  });
+});
+
+type FakeChannel = { onmessage: ((event: AgentEvent) => void) | null };
+
+function resultBeforeEvents(command: string, result: unknown) {
+  const captured: { channel?: FakeChannel } = {};
+  mocks.invoke.mockImplementation((invoked: string, args: Record<string, unknown>) => {
+    if (invoked !== command) return Promise.resolve();
+    captured.channel = args.onEvent as FakeChannel;
+    return Promise.resolve(result);
+  });
+  return captured;
+}
+
+const settledResult = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const runOutcome = {
+  text: "SKILLLOADED75",
+  usage: { input: 3, output: 4 },
+  steps: 2,
+  stopped_at_cap: false,
+  error: null,
+};
+
+const noTools = { onToolRequest: async () => ({ output: "" }) };
+
+describe("events that land after the command result", () => {
+  it("keeps a text delta that arrives after agent_stream resolved", async () => {
+    const captured = resultBeforeEvents("agent_stream", undefined);
+    const pending = streamText({ user: "hi" });
+    await settledResult();
+
+    captured.channel?.onmessage?.({ kind: "textDelta", text: "late" });
+    captured.channel?.onmessage?.({ kind: "runEnd" });
+
+    expect(await pending).toBe("late");
+  });
+
+  it("holds the run outcome until the channel closes and still delivers the tail", async () => {
+    const captured = resultBeforeEvents("agent_run", runOutcome);
+    const seen: AgentEvent[] = [];
+    let settled = false;
+    const pending = runViaBackend(
+      { messages: [] },
+      { onEvent: (event) => seen.push(event), ...noTools },
+    ).then((outcome) => {
+      settled = true;
+      return outcome;
+    });
+    await settledResult();
+    expect(settled).toBe(false);
+
+    captured.channel?.onmessage?.({ kind: "stepStart", step: 1 });
+    captured.channel?.onmessage?.({ kind: "textDelta", text: "SKILLLOADED75" });
+    await settledResult();
+    expect(settled).toBe(false);
+
+    captured.channel?.onmessage?.({ kind: "runEnd" });
+    expect(await pending).toEqual(runOutcome);
+    expect(seen).toEqual([
+      { kind: "stepStart", step: 1 },
+      { kind: "textDelta", text: "SKILLLOADED75" },
+    ]);
+  });
+
+  it("does not forward the channel close marker to the consumer", async () => {
+    playStream([{ kind: "textDelta", text: "a" }]);
+    const seen: AgentEvent[] = [];
+    await streamViaBackend({ messages: [] }, (event) => seen.push(event));
+    expect(seen).toEqual([{ kind: "textDelta", text: "a" }]);
+  });
+
+  it("reports an error event that lands after the result", async () => {
+    const captured = resultBeforeEvents("agent_stream", undefined);
+    const pending = streamViaBackend({ messages: [] }, () => {});
+    await settledResult();
+
+    captured.channel?.onmessage?.({ kind: "error", message: "late failure", retryable: false });
+    captured.channel?.onmessage?.({ kind: "runEnd" });
+
+    await expect(pending).rejects.toBeInstanceOf(AgentStreamError);
+  });
+
+  it("lets an abort end the wait for the channel", async () => {
+    const controller = new AbortController();
+    resultBeforeEvents("agent_run", runOutcome);
+    const pending = runViaBackend(
+      { messages: [] },
+      { onEvent: () => {}, ...noTools },
+      controller.signal,
+    );
+    await settledResult();
+
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
+  });
+
+  it("gives up waiting after the grace period and says so", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const captured = resultBeforeEvents("agent_run", runOutcome);
+      let settled = false;
+      const pending = runViaBackend({ messages: [] }, { onEvent: () => {}, ...noTools }).then(
+        (outcome) => {
+          settled = true;
+          return outcome;
+        },
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(captured.channel).toBeDefined();
+      await vi.advanceTimersByTimeAsync(CHANNEL_DRAIN_GRACE_MS - 1);
+      expect(settled).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(await pending).toEqual(runOutcome);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("agent_run"));
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

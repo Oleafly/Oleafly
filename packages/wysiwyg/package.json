@@ -20,6 +20,6 @@
     "tiptap-markdown": "*"
   },
   "devDependencies": {
-    "vitest": "*"
+    "vitest": "^4.1.11"
   }
 }

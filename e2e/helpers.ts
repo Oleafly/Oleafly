@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "./fixtures";
+import { scriptValue } from "./script-value";
 import type { LocatorLike } from "@srsholmes/tauri-playwright";
 import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 
@@ -103,7 +104,7 @@ export function caretLineIncludes(needle: string): string {
     if (!view) return false;
     return view.state.doc
       .lineAt(view.state.selection.main.head)
-      .text.includes(${JSON.stringify(needle)});
+      .text.includes(${scriptValue(needle)});
   })`;
 }
 
@@ -119,7 +120,7 @@ export async function pressGlobal(
     `(() => {
       const apple = /Mac|iPhone|iPad/.test(navigator.platform);
       window.dispatchEvent(new KeyboardEvent('keydown', {
-        key: ${JSON.stringify(key)},
+        key: ${scriptValue(key)},
         altKey: ${!!mods.alt},
         ctrlKey: ${!!mods.ctrl} || (${!!mods.meta} && !apple),
         metaKey: ${!!mods.meta} && apple,
@@ -167,7 +168,7 @@ export async function chooseProjectKind(
   kind: "research" | "import" | "template",
 ) {
   const card = `[data-testid="project-kind-${kind}"]`;
-  await page.waitForFunction(`!!document.querySelector('${card}')`, SHELL_READY_TIMEOUT_MS);
+  await page.waitForFunction(`!!document.querySelector(${scriptValue(card)})`, SHELL_READY_TIMEOUT_MS);
   await page.click(card);
 }
 
@@ -190,13 +191,13 @@ export async function typeInEditorAfter(
       let anchor = -1;
       let cursor = 0;
       for (let index = 0; index < ${occurrence}; index++) {
-        anchor = source.indexOf(${JSON.stringify(anchorText)}, cursor);
+        anchor = source.indexOf(${scriptValue(anchorText)}, cursor);
         if (anchor < 0) return false;
-        cursor = anchor + ${JSON.stringify(anchorText)}.length;
+        cursor = anchor + ${scriptValue(anchorText)}.length;
       }
       view.dispatch({
-        changes: { from: cursor, insert: ${JSON.stringify(text)} },
-        selection: { anchor: cursor + ${JSON.stringify(text)}.length },
+        changes: { from: cursor, insert: ${scriptValue(text)} },
+        selection: { anchor: cursor + ${scriptValue(text)}.length },
         scrollIntoView: true,
         userEvent: "input.type",
       });
@@ -392,7 +393,9 @@ export async function waitForCompileIdle(
   const deadline = Date.now() + timeoutMs;
   let quietSince = 0;
   for (;;) {
-    await expect(compileButton).toBeEnabled({ timeout: 60_000 });
+    await expect(compileButton).toBeEnabled({
+      timeout: Math.max(1_000, deadline - Date.now()),
+    });
     const state = await compileSnapshot(page);
     if (state.disabled || state.status === "compiling") {
       quietSince = 0;
@@ -489,7 +492,7 @@ export async function compileAndWait(
 export async function expectCompiledPdfContains(page: Page, text: string, timeoutMs = 90_000) {
   await pollCompiledPdf(
     page,
-    `t.includes(${JSON.stringify(text)})`,
+    `t.includes(${scriptValue(text)})`,
     timeoutMs,
     `compiled PDF never contained: ${text}`,
   );
@@ -498,7 +501,7 @@ export async function expectCompiledPdfContains(page: Page, text: string, timeou
 export async function expectCompiledPdfAbsent(page: Page, text: string, timeoutMs = 90_000) {
   await pollCompiledPdf(
     page,
-    `!t.includes(${JSON.stringify(text)})`,
+    `!t.includes(${scriptValue(text)})`,
     timeoutMs,
     `compiled PDF still contains: ${text}`,
   );
@@ -608,7 +611,7 @@ export async function setEditorContent(page: Page, text: string) {
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-      return document.execCommand('insertText', false, ${JSON.stringify(text)});
+      return document.execCommand('insertText', false, ${scriptValue(text)});
     })()`,
   );
   if (!ok) throw new Error("setEditorContent: could not replace editor content");
@@ -629,8 +632,8 @@ export async function replaceEditorSource(page: Page, text: string): Promise<voi
       if (!view) return false;
       view.focus();
       view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(text)} },
-        selection: { anchor: ${JSON.stringify(text)}.length },
+        changes: { from: 0, to: view.state.doc.length, insert: ${scriptValue(text)} },
+        selection: { anchor: ${scriptValue(text)}.length },
         userEvent: "input.e2e-fixture",
       });
       return true;
@@ -652,11 +655,11 @@ export async function selectEditorText(
       let from = -1;
       let cursor = 0;
       for (let index = 0; index < ${occurrence}; index++) {
-        from = source.indexOf(${JSON.stringify(text)}, cursor);
+        from = source.indexOf(${scriptValue(text)}, cursor);
         if (from < 0) return false;
-        cursor = from + ${JSON.stringify(text)}.length;
+        cursor = from + ${scriptValue(text)}.length;
       }
-      view.dispatch({ selection: { anchor: from, head: from + ${JSON.stringify(text)}.length } });
+      view.dispatch({ selection: { anchor: from, head: from + ${scriptValue(text)}.length } });
       view.focus();
       return true;
     })`,
@@ -694,8 +697,8 @@ export async function replaceEditorSelection(page: Page, text: string): Promise<
       if (!view) return false;
       const selection = view.state.selection.main;
       view.dispatch({
-        changes: { from: selection.from, to: selection.to, insert: ${JSON.stringify(text)} },
-        selection: { anchor: selection.from + ${JSON.stringify(text)}.length },
+        changes: { from: selection.from, to: selection.to, insert: ${scriptValue(text)} },
+        selection: { anchor: selection.from + ${scriptValue(text)}.length },
         userEvent: "input",
       });
       view.focus();
@@ -725,7 +728,7 @@ export async function writeProjectBinary(
       const projectId =
         document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
       if (!projectId) return false;
-      await writeProjectBytes(projectId, ${JSON.stringify(path)}, ${JSON.stringify(base64)});
+      await writeProjectBytes(projectId, ${scriptValue(path)}, ${scriptValue(base64)});
       return true;
     })`,
   );
@@ -738,7 +741,7 @@ export async function readProjectText(page: Page, path: string): Promise<string>
       const projectId =
         document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
       if (!projectId) throw new Error("no active project");
-      return readFileContent(projectId, ${JSON.stringify(path)});
+      return readFileContent(projectId, ${scriptValue(path)});
     })`,
   );
 }
@@ -758,8 +761,8 @@ export async function writeProjectText(
       if (!projectId) return false;
       await tauri.writeFileContent(
         projectId,
-        ${JSON.stringify(path)},
-        ${JSON.stringify(content)},
+        ${scriptValue(path)},
+        ${scriptValue(content)},
       );
       await files.useFilesStore.getState().refreshTree();
       return true;
@@ -774,7 +777,7 @@ export async function readProjectBase64(page: Page, path: string): Promise<strin
       const projectId =
         document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
       if (!projectId) throw new Error("no active project");
-      const result = await readProjectBytes(projectId, ${JSON.stringify(path)});
+      const result = await readProjectBytes(projectId, ${scriptValue(path)});
       const bytes = new Uint8Array(result);
       let binary = "";
       const chunk = 0x8000;
@@ -824,7 +827,7 @@ export async function setNextImportPaths(
   const available = await page.evaluate<boolean>(
     `(() => {
       if (typeof window.__e2eSetNextImportPaths !== "function") return false;
-      window.__e2eSetNextImportPaths(${JSON.stringify(paths)});
+      window.__e2eSetNextImportPaths(${scriptValue(paths)});
       return true;
     })()`,
   );
@@ -838,7 +841,7 @@ export async function setNextSavePath(
   const available = await page.evaluate<boolean>(
     `(() => {
       if (typeof window.__e2eSetNextSavePath !== "function") return false;
-      window.__e2eSetNextSavePath(${JSON.stringify(path)});
+      window.__e2eSetNextSavePath(${scriptValue(path)});
       return true;
     })()`,
   );
@@ -869,7 +872,7 @@ export async function openAssistant(page: Page) {
 // pane. Selecting a view no longer collapses the sidebar.
 export async function openRailTab(page: Page, ariaLabel: string) {
   if (ariaLabel === "Research Assistant") return openAssistant(page);
-  const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
+  const sel = scriptValue(`[aria-label=${JSON.stringify(ariaLabel)}]`);
   const activeExpr = `(() => {
     const b = document.querySelector(${sel});
     return !!b && b.getAttribute('aria-current') === 'page';
@@ -977,10 +980,10 @@ export async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 
         import("/src/components/editor/cm/controller.ts"),
       ]).then(([files, cm]) => {
         const state = files.useFilesStore.getState();
-        if (state.activePath !== ${JSON.stringify(path)}) return false;
+        if (state.activePath !== ${scriptValue(path)}) return false;
         const view = cm.getEditorView();
         if (!view) return false;
-        return view.state.doc.toString() === (state.files[${JSON.stringify(path)}]?.content ?? "");
+        return view.state.doc.toString() === (state.files[${scriptValue(path)}]?.content ?? "");
       })`,
     );
     if (ready) return;
@@ -996,7 +999,7 @@ export async function typeAtCaret(page: Page, text: string) {
         const content = document.querySelector('.cm-content');
         if (!content) return false;
         content.focus();
-        return document.execCommand('insertText', false, ${JSON.stringify(character)});
+        return document.execCommand('insertText', false, ${scriptValue(character)});
       })()`,
     );
     if (!ok) throw new Error(`typeAtCaret: editor rejected ${character}`);
@@ -1010,8 +1013,8 @@ export async function typeInEditorAtStart(page: Page, text: string) {
       if (!view) return false;
       view.focus();
       view.dispatch({
-        changes: { from: 0, insert: ${JSON.stringify(text)} },
-        selection: { anchor: ${JSON.stringify(text)}.length },
+        changes: { from: 0, insert: ${scriptValue(text)} },
+        selection: { anchor: ${scriptValue(text)}.length },
       });
       return true;
     })`,
@@ -1042,7 +1045,7 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
 // A single evaluate() also has the bridge's 30-second cap. Start long-running
 // work without awaiting it in that request, then poll its settled result.
 export async function evaluateLong<T>(page: Page, expression: string, timeoutMs: number): Promise<T> {
-  const slot = JSON.stringify(`__oleaflyE2eEval_${randomUUID()}`);
+  const slot = scriptValue(`__oleaflyE2eEval_${randomUUID()}`);
   try {
     await page.evaluate(`(() => {
       const state = { done: false };
@@ -1075,7 +1078,7 @@ export async function waitEditorContains(page: Page, needle: string, timeoutMs: 
     );
     await new Promise((r) => setTimeout(r, 500));
     const ok = await page.evaluate<boolean>(
-      `(window.__docText ?? "").includes(${JSON.stringify(needle)})`,
+      `(window.__docText ?? "").includes(${scriptValue(needle)})`,
     );
     if (ok) return;
     if (Date.now() > deadline) {
@@ -1108,10 +1111,10 @@ export async function newChat(page: Page) {
 export async function fillTextarea(page: Page, selector: string, text: string) {
   await page.evaluate(
     `(() => {
-      const t = document.querySelector(${JSON.stringify(selector)});
-      if (!t) throw new Error('fillTextarea: not found: ' + ${JSON.stringify(selector)});
+      const t = document.querySelector(${scriptValue(selector)});
+      if (!t) throw new Error('fillTextarea: not found: ' + ${scriptValue(selector)});
       const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      set.call(t, ${JSON.stringify(text)});
+      set.call(t, ${scriptValue(text)});
       t.dispatchEvent(new Event('input', { bubbles: true }));
       return 1;
     })()`,
@@ -1154,7 +1157,7 @@ export async function expandProviderCard(page: Page) {
   await page.press('[data-testid="ai-settings-tab-providers"]', "Enter");
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('button[aria-expanded]')).some(
-      button => (button.textContent || '').includes(${JSON.stringify(provider)}))`,
+      button => (button.textContent || '').includes(${scriptValue(provider)}))`,
     15_000,
   );
   await page.evaluate(
@@ -1162,8 +1165,8 @@ export async function expandProviderCard(page: Page) {
       const modal = document.querySelector('[aria-label="Close settings"]')?.closest('.fixed');
       if (!modal) throw new Error('settings modal not open');
       const header = Array.from(modal.querySelectorAll('button[aria-expanded]'))
-        .find(b => (b.textContent || '').includes(${JSON.stringify(provider)}));
-      if (!header) throw new Error('provider card not found: ' + ${JSON.stringify(provider)});
+        .find(b => (b.textContent || '').includes(${scriptValue(provider)}));
+      if (!header) throw new Error('provider card not found: ' + ${scriptValue(provider)});
       if (header.getAttribute('aria-expanded') !== 'true') header.click();
       return 1;
     })()`,
@@ -1176,7 +1179,7 @@ export function inProviderCard(snippet: string): string {
     const modal = document.querySelector('[aria-label="Close settings"]')?.closest('.fixed');
     if (!modal) throw new Error('settings modal not open');
     const header = Array.from(modal.querySelectorAll('button[aria-expanded]'))
-      .find(b => (b.textContent || '').includes(${JSON.stringify(provider)}));
+      .find(b => (b.textContent || '').includes(${scriptValue(provider)}));
     const card = header?.closest('.rounded-lg');
     if (!card) throw new Error('provider card not found');
     ${snippet}
@@ -1209,7 +1212,7 @@ export async function ensureAiConnected(page: Page) {
       const input = card.querySelector('input[type="password"]');
       if (!input) throw new Error('no key input in the provider card');
       const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      set.call(input, ${JSON.stringify(token)});
+      set.call(input, ${scriptValue(token)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
       return 1;
     `),
@@ -1247,7 +1250,7 @@ export async function ensureAiConnected(page: Page) {
     await page.evaluate(`(async () => {
       const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
       const config = await getConfig();
-      await setConfig({ ...config, ai_model: ${JSON.stringify(model)} });
+      await setConfig({ ...config, ai_model: ${scriptValue(model)} });
       window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
     })()`);
   }
@@ -1268,7 +1271,7 @@ async function clickWorkspaceAction(page: Page, selector: string) {
       element.getBoundingClientRect().width > 0 &&
       element.getBoundingClientRect().height > 0 &&
       getComputedStyle(element).visibility !== "hidden";
-    const action = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find(visible);
+    const action = Array.from(document.querySelectorAll(${scriptValue(selector)})).find(visible);
     if (action) { action.click(); return true; }
     const menu = document.querySelector('[data-testid="workspace-menu"]');
     if (visible(menu) && menu.getAttribute("aria-expanded") !== "true") menu.click();
@@ -1304,13 +1307,13 @@ export async function openSettings(page: Page, section?: string) {
     // driving it through evaluate with our own short retry loop — and
     // reopening the modal if the whole nav vanished — is both faster and more
     // robust than waiting on one click.
-    const activeExpr = `document.querySelector(${JSON.stringify(sel)})?.getAttribute("aria-current") === "page"`;
+    const activeExpr = `document.querySelector(${scriptValue(sel)})?.getAttribute("aria-current") === "page"`;
     const deadline = Date.now() + 15_000;
     for (let attempt = 0; ; attempt++) {
       const state = await page.evaluate<string>(
         `(() => {
           if (${activeExpr}) return "active";
-          const button = document.querySelector(${JSON.stringify(sel)});
+          const button = document.querySelector(${scriptValue(sel)});
           if (button instanceof HTMLElement) {
             button.click();
             return "clicked";
@@ -1408,10 +1411,10 @@ export async function fillCommandPalette(
         };
         const update = () => {
           window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
-            detail: ${JSON.stringify(text)},
+            detail: ${scriptValue(text)},
           }));
           nextFrame(() => {
-            if (input.value === ${JSON.stringify(text)}) {
+            if (input.value === ${scriptValue(text)}) {
               nextFrame(() => resolve(true));
               return;
             }
@@ -1441,7 +1444,7 @@ export async function fillCommandPalette(
  * item still exercises the command's real onSelect path.
  */
 export async function chooseCommandPaletteItem(page: Page, label: string): Promise<void> {
-  const serializedLabel = JSON.stringify(label);
+  const serializedLabel = scriptValue(label);
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('[cmdk-item]')).some(
       (item) => item.textContent.trim() === ${serializedLabel}
@@ -1480,7 +1483,7 @@ export async function caretIn(
       const view = getEditorView();
       if (!view) return false;
       const source = view.state.doc.toString();
-      const anchor = ${JSON.stringify(anchorText)};
+      const anchor = ${scriptValue(anchorText)};
       let from = -1;
       let cursor = 0;
       for (let index = 0; index < ${occurrence}; index += 1) {
@@ -1488,7 +1491,7 @@ export async function caretIn(
         if (from < 0) return false;
         cursor = from + anchor.length;
       }
-      const position = ${JSON.stringify(where)} === "end"
+      const position = ${scriptValue(where)} === "end"
         ? from + anchor.length
         : from;
       view.dispatch({
@@ -1555,11 +1558,11 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
         const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
         let node;
         while ((node = walker.nextNode())) {
-          const i = node.textContent.indexOf(${JSON.stringify(word)});
+          const i = node.textContent.indexOf(${scriptValue(word)});
           if (i >= 0) {
             const range = document.createRange();
             range.setStart(node, i);
-            range.setEnd(node, i + ${JSON.stringify(word)}.length);
+            range.setEnd(node, i + ${scriptValue(word)}.length);
             range.startContainer.parentElement?.scrollIntoView({ block: 'center' });
             const rects = range.getClientRects();
             const a = rects[0], b = rects[rects.length - 1];
@@ -1585,7 +1588,7 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
     }
     try {
       await page.waitForFunction(
-        `window.getSelection().toString() === ${JSON.stringify(word)}`,
+        `window.getSelection().toString() === ${scriptValue(word)}`,
         1_500,
       );
       return;
@@ -1607,7 +1610,7 @@ export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: stri
   // clickToolbarControl in helpers.ts fixed).
   const directClicked = await page.evaluate<boolean>(
     `(() => {
-      const element = document.querySelector(${JSON.stringify(directSelector)});
+      const element = document.querySelector(${scriptValue(directSelector)});
       if (!element) return false;
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
@@ -1632,7 +1635,7 @@ export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: stri
 
   const moreSelector = 'button[aria-label="More formatting options"]';
   const moreExpanded = await page.evaluate<boolean>(
-    `document.querySelector(${JSON.stringify(moreSelector)})?.getAttribute("aria-expanded") === "true"`,
+    `document.querySelector(${scriptValue(moreSelector)})?.getAttribute("aria-expanded") === "true"`,
   );
   if (!moreExpanded) {
     await page.click(moreSelector, { timeout: 3_000 });
@@ -1645,7 +1648,7 @@ export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: stri
     const menuClicked = await page.evaluate<boolean>(
       `(() => {
         const elements = Array.from(
-          document.querySelectorAll(${JSON.stringify(menuSelector)})
+          document.querySelectorAll(${scriptValue(menuSelector)})
         );
         if (elements.length !== 1) return false;
         const element = elements[0];
@@ -1694,7 +1697,7 @@ export async function insertSymbol(page: Page, category: string, name: string) {
           const category = Array.from(portal.querySelectorAll('button')).find(
             (candidate) =>
               (candidate.querySelector('span')?.textContent ?? candidate.textContent ?? '')
-                .trim() === ${JSON.stringify(category)}
+                .trim() === ${scriptValue(category)}
           );
           if (!(category instanceof HTMLElement)) return false;
           category.click();
@@ -1710,7 +1713,7 @@ export async function insertSymbol(page: Page, category: string, name: string) {
           `(() => {
             const portal = ${openSymbolPortalExpression};
             if (!portal) return false;
-            const button = portal.querySelector('button[aria-label^=${JSON.stringify(`Insert ${name} (`)}]');
+            const button = portal.querySelector(${scriptValue(`button[aria-label^=${JSON.stringify(`Insert ${name} (`)}]`)});
             if (!(button instanceof HTMLElement)) return false;
             button.click();
             return true;
@@ -1765,7 +1768,7 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
   // popover is closed - never inferred from whether the target row is visible
   // (which is false during the popover's entrance frame too).
   const attemptExpression = `(() => {
-    const element = document.querySelector(${JSON.stringify(barSelector)});
+    const element = document.querySelector(${scriptValue(barSelector)});
     if (element instanceof HTMLElement) {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
@@ -1788,7 +1791,7 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
     const button = Array.from(
       document.querySelectorAll('[data-radix-popper-content-wrapper] button')
     ).find((candidate) => {
-      if (candidate.textContent?.trim() !== ${JSON.stringify(menuText)}) return false;
+      if (candidate.textContent?.trim() !== ${scriptValue(menuText)}) return false;
       const style = getComputedStyle(candidate);
       const rect = candidate.getBoundingClientRect();
       return style.display !== 'none'
@@ -1829,9 +1832,9 @@ export async function chooseAppSelectOption(
   option: { attribute: string; value: string },
   timeoutMs = 20_000,
 ) {
-  const triggerJs = JSON.stringify(trigger);
+  const triggerJs = scriptValue(trigger);
   const optionSelector = `[role="option"][${option.attribute}=${JSON.stringify(option.value)}]`;
-  const optionJs = JSON.stringify(optionSelector);
+  const optionJs = scriptValue(optionSelector);
   await page.waitForFunction(
     `(() => {
       const control = document.querySelector(${triggerJs});
@@ -1887,7 +1890,7 @@ export async function chooseAppSelectOption(
 }
 
 export async function clickTabByText(page: Page, scope: string, name: string, timeoutMs = 20_000) {
-  const match = `[...document.querySelectorAll(${JSON.stringify(`${scope} [role="tab"]`)})].find((tab) => (tab.textContent ?? "").trim() === ${JSON.stringify(name)})`;
+  const match = `[...document.querySelectorAll(${scriptValue(`${scope} [role="tab"]`)})].find((tab) => (tab.textContent ?? "").trim() === ${scriptValue(name)})`;
   await page.waitForFunction(`!!(${match})`, timeoutMs);
   await page.evaluate(`(() => {
     const tab = ${match};
@@ -1973,16 +1976,19 @@ export async function expectCompletedReadFile(page: Page) {
 export async function pressKey(page: Page, init: Record<string, unknown>) {
   await page.evaluate(
     `(document.querySelector('.cm-content').dispatchEvent(
-      new KeyboardEvent('keydown', ${JSON.stringify({ bubbles: true, cancelable: true, ...init })})
+      new KeyboardEvent('keydown', ${scriptValue({ bubbles: true, cancelable: true, ...init })})
     ), 1)`,
   );
 }
+
+const ENABLED_COMPLETION_OPTION =
+  '.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[role="option"]';
 
 export async function waitForCompletion(page: Page, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const open = await page.evaluate<boolean>(
-      `!!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+      `!!document.querySelector(${scriptValue(ENABLED_COMPLETION_OPTION)})`,
     );
     if (open) return;
     if (Date.now() > deadline) throw new Error("completion popup did not open");
@@ -1992,7 +1998,7 @@ export async function waitForCompletion(page: Page, timeoutMs = 20_000) {
 
 export async function completionLabels(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
-    `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')]
+    `[...document.querySelectorAll(${scriptValue(ENABLED_COMPLETION_OPTION)})]
       .map((li) => li.querySelector('.cm-completionLabel')?.textContent ?? '')`,
   );
 }

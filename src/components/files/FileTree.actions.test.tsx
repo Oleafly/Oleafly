@@ -27,6 +27,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { FileTree } from "./FileTree";
@@ -872,7 +873,15 @@ describe("FileTree row actions", () => {
     );
   }
 
-  it("renames a file from its row menu", async () => {
+  it("renames the main document from its row menu", async () => {
+    backend({
+      list_files: [
+        { path: "paper.tex", is_dir: false },
+        { path: "chapters", is_dir: true },
+        { path: "chapters/intro.tex", is_dir: false },
+      ],
+    });
+    useCompileStore.setState({ status: "success", log: "Output written on main.pdf" });
     render(<FileTree />);
 
     openRowMenu("main.tex");
@@ -882,14 +891,13 @@ describe("FileTree row actions", () => {
     fireEvent.change(input, { target: { value: "paper.tex" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    await waitFor(() =>
-      expect(
-        mocks.invoke.mock.calls.some(
-          ([command, args]) =>
-            command === "rename_file" && (args as { to: string }).to === "paper.tex",
-        ),
-      ).toBe(true),
+    expect(await screen.findByText("paper.tex")).toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "rename_file",
+      expect.objectContaining({ from: "main.tex", to: "paper.tex" }),
     );
+    expect(useFilesStore.getState()).toMatchObject({ mainDoc: "paper.tex", engineLoaded: true });
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", log: "" });
   });
 
   it("names the file that could not be renamed", async () => {

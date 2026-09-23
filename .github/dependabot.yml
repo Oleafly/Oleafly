@@ -14,12 +14,18 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      npm-tauri:
+        patterns: ["@tauri-apps/*"]
+        update-types: ["minor", "patch"]
       # Only minor+patch are grouped into one safe-to-merge PR. Major bumps
       # (breaking: zod 3->4, typescript 5->7, vite 6->8, etc.) come as separate
       # PRs so they are reviewed and migrated deliberately, never auto-bundled.
       npm-all:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: cargo
@@ -30,6 +36,10 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      cargo-tauri:
+        patterns: ["tauri", "tauri-*"]
+        exclude-patterns: ["tauri-plugin-playwright"]
+        update-types: ["minor", "patch"]
       # Same policy as npm: group only minor+patch; majors (e.g. rand 0.8->0.9
       # removed rand::rngs::OsRng, zip 2->4) get their own reviewable PRs.
       cargo-all:
@@ -38,7 +48,9 @@ updates:
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
       day: monday
