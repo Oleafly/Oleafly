@@ -6,8 +6,37 @@ const MAX_RASTER_PIXELS = 4096 * 4096;
 const LINE_HEIGHT_EM = 1.1;
 const WRAP_SLACK = 0.5;
 const BLOCK_ELEMENTS = new Set(["div", "p", "li", "ul", "ol", "tr", "table", "h1", "h2", "h3", "h4", "h5", "h6"]);
-const INLINE_TAG =
-  /^<(\/?)(a|abbr|b|big|cite|code|del|dfn|em|font|i|img|ins|kbd|mark|q|s|samp|small|span|strike|strong|sub|sup|tt|u|var)(?:\s[^<>]*)?>$/i;
+const INLINE_TAGS = new Set([
+  "a",
+  "abbr",
+  "b",
+  "big",
+  "cite",
+  "code",
+  "del",
+  "dfn",
+  "em",
+  "font",
+  "i",
+  "img",
+  "ins",
+  "kbd",
+  "mark",
+  "q",
+  "s",
+  "samp",
+  "small",
+  "span",
+  "strike",
+  "strong",
+  "sub",
+  "sup",
+  "tt",
+  "u",
+  "var",
+]);
+const TAG = /^<(\/?)([a-z]+)(?:\s[^<>]*)?>$/i;
+const EM_OFFSET = /^(-?(?:\d+(?:\.\d+)?|\.\d+))em$/;
 const ENTITY = /&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]*);/i;
 const LOOSE_AMPERSAND = /&(?!#\d+;|#x[\da-f]+;|[a-z][a-z\d]*;)/gi;
 const SOURCE_GAP = String.raw`((?:\s|\*|_|<br\s*/?>|\\n)*)`;
@@ -96,39 +125,44 @@ function sameStyle(a: RunStyle, b: RunStyle): boolean {
 function normalizedLine(line: Line): Line {
   const runs: Run[] = [];
   for (const run of line) {
-    const previous = runs[runs.length - 1];
+    const previous = runs.at(-1);
     let text = run.text.replace(/[ \t\n\r\f]+/g, " ");
     if (!previous || previous.text.endsWith(" ")) text = text.replace(/^ /, "");
     if (!text) continue;
     if (previous && sameStyle(previous.style, run.style)) previous.text += text;
     else runs.push({ text, style: run.style });
   }
-  while (runs.length > 0) {
-    const last = runs[runs.length - 1];
+  let last = runs.at(-1);
+  while (last) {
     last.text = last.text.replace(/ $/, "");
     if (last.text) break;
     runs.pop();
+    last = runs.at(-1);
   }
   return runs;
 }
 
 function htmlLines(root: Node): Line[] {
-  const lines: Line[] = [[]];
-  const hasText = () => lines[lines.length - 1].some((run) => /[^ \t\n\r\f]/.test(run.text));
+  let line: Line = [];
+  const lines: Line[] = [line];
+  const newLine = () => {
+    line = [];
+    lines.push(line);
+  };
   const breakLine = () => {
-    if (hasText()) lines.push([]);
+    if (line.some((run) => /[^ \t\n\r\f]/.test(run.text))) newLine();
   };
   const visit = (current: Node, style: RunStyle) => {
     for (const child of Array.from(current.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
-        lines[lines.length - 1].push({ text: child.textContent ?? "", style });
+        line.push({ text: child.textContent ?? "", style });
         continue;
       }
       if (child.nodeType !== Node.ELEMENT_NODE) continue;
       const element = child as Element;
       const name = element.localName.toLowerCase();
       if (name === "br") {
-        lines.push([]);
+        newLine();
         continue;
       }
       if (name === "style" || name === "script") continue;
@@ -163,8 +197,9 @@ function runTspan(owner: Document, run: Run, plain: PlainStyle): Element {
 }
 
 function inlineTag(content: string): { closing: boolean; name: string } | null {
-  const match = INLINE_TAG.exec(content);
-  return match ? { closing: match[1] === "/", name: match[2].toLowerCase() } : null;
+  const match = TAG.exec(content);
+  const name = match?.[2].toLowerCase();
+  return match && name && INLINE_TAGS.has(name) ? { closing: match[1] === "/", name } : null;
 }
 
 function escapeRegExp(text: string): string {
@@ -208,7 +243,7 @@ function guessedGaps(words: Word[]): boolean[] {
 }
 
 function escapedWord(word: Word): string {
-  const text = word.content.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(LOOSE_AMPERSAND, "&amp;");
+  const text = word.content.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replace(LOOSE_AMPERSAND, "&amp;");
   const italic = word.fontStyle === "italic" ? `<i>${text}</i>` : text;
   return word.weight === "bold" ? `<b>${italic}</b>` : italic;
 }
@@ -237,7 +272,7 @@ function splitsToken(head: string, tail: string): boolean {
 function joinWrappedFragments(words: Word[]): Word[] {
   const joined: Word[] = [];
   for (const word of words) {
-    const previous = joined[joined.length - 1];
+    const previous = joined.at(-1);
     if (previous && previous.line !== word.line && splitsToken(previous.content, word.content)) {
       joined[joined.length - 1] = { ...previous, content: previous.content + word.content };
     } else {
@@ -268,7 +303,7 @@ function plainStyle(words: Word[], outers: Element[]): PlainStyle {
 }
 
 function shiftLine(outer: Element, offset: number) {
-  const match = /^(-?\d*\.?\d+)em$/.exec(outer.getAttribute("y") ?? "");
+  const match = EM_OFFSET.exec(outer.getAttribute("y") ?? "");
   if (match && offset) outer.setAttribute("y", `${rounded(Number(match[1]) + offset)}em`);
 }
 
@@ -306,8 +341,9 @@ function recenter(text: SVGGraphicsElement, before: DOMRect) {
   const after = text.getBBox();
   const dx = rounded(before.x + before.width / 2 - (after.x + after.width / 2));
   if (Math.abs(dx) < 0.01) return;
+  const shift = `translate(${dx}, 0)`;
   const transform = text.getAttribute("transform");
-  text.setAttribute("transform", `translate(${dx}, 0)${transform ? ` ${transform}` : ""}`);
+  text.setAttribute("transform", transform ? `${shift} ${transform}` : shift);
 }
 
 function rewriteFormattedLabels(svg: Element, source: string, measurable: boolean) {
