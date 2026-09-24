@@ -1,3 +1,4 @@
+import "./polyfills";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type {

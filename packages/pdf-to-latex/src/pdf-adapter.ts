@@ -1,3 +1,4 @@
+import "@oleafly/preview/polyfills";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import { bitmapToPngDataUrl, rawToRgba, rgbaToPngDataUrl } from "./figure-decode";

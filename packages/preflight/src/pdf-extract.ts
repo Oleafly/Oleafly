@@ -1,3 +1,4 @@
+import "@oleafly/preview/polyfills";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import { reconstructPdfPageText } from "./pdf-text";
@@ -439,16 +440,21 @@ async function readMetadataFacts(doc: PdfDocument): Promise<MetadataFacts> {
   return facts;
 }
 
+function markInfoFlag(markInfo: unknown, key: "Marked" | "Suspects"): boolean {
+  if (markInfo instanceof Map) return markInfo.get(key) === true;
+  return recordOf(markInfo)?.[key] === true;
+}
+
 async function readMarkInfoFacts(doc: PdfDocument): Promise<{
   markedFlag: boolean | null;
   suspects: boolean | null;
   status: PdfExtractionStatus["markInfo"];
 }> {
   try {
-    const markInfo = await doc.getMarkInfo();
+    const markInfo: unknown = await doc.getMarkInfo();
     return {
-      markedFlag: markInfo?.Marked === true,
-      suspects: markInfo ? markInfo.Suspects === true : null,
+      markedFlag: markInfoFlag(markInfo, "Marked"),
+      suspects: markInfo ? markInfoFlag(markInfo, "Suspects") : null,
       status: "ok",
     };
   } catch {

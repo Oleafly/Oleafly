@@ -47,7 +47,7 @@ let revision = 100_000;
 beforeAll(async () => {
   const options = { url: "https://oleafly.test", pretendToBeVisual: true };
   const dom = new JSDOM("<!doctype html><html><body></body></html>", options);
-  for (const name of ["window", "document", "navigator", "HTMLElement", "Element", "Node", "Event", "CustomEvent", "MutationObserver", "DOMRect"] as const) {
+  for (const name of ["window", "Window", "document", "navigator", "HTMLElement", "Element", "Node", "Event", "CustomEvent", "MutationObserver", "DOMRect"] as const) {
     vi.stubGlobal(name, name === "window" ? dom.window : dom.window[name]);
   }
   vi.stubGlobal("getComputedStyle", dom.window.getComputedStyle.bind(dom.window));
