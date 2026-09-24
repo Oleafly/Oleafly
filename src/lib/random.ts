@@ -1,6 +1,8 @@
-export const MAX_UINT32 = 2 ** 32 - 1;
+const EXPONENT_OF_ONE = 1023n << 52n;
 
 export function randomFraction(): number {
-  const [value] = crypto.getRandomValues(new Uint32Array(1));
-  return value / MAX_UINT32;
+  const [bits] = crypto.getRandomValues(new BigUint64Array(1));
+  const view = new DataView(new ArrayBuffer(8));
+  view.setBigUint64(0, (bits >> 12n) | EXPONENT_OF_ONE);
+  return view.getFloat64(0) - 1;
 }
