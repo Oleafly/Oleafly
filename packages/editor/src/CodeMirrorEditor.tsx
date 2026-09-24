@@ -48,7 +48,7 @@ import {
 import { languageForPath } from "./languages";
 import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
-import { setEditorDocumentPath, setEditorView } from "./controller";
+import { centerWithinEditor, setEditorDocumentPath, setEditorView } from "./controller";
 import {
   cancelSourceProofreading,
   clearEditorProofreadingDiagnostics,
@@ -558,6 +558,7 @@ export function CodeMirrorEditor({
       extensions: [
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
+        centerWithinEditor,
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         foldGutter({ markerDOM: foldMarkerDOM }),

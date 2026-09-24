@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Going to a line in a long document, from the outline, a search result,
+  a compile error or the PDF, now puts that line in the middle of the
+  editor. It used to land up to a few rows off, and in a long book the line
+  numbers next to it could end up shifted from their lines.
 - The Mermaid to LaTeX converter now produces an image for every diagram
   it cannot turn into TikZ. Class, state, ER, requirement, mindmap, kanban,
   block and journey diagrams, and flowcharts with subgraphs, used to fail
