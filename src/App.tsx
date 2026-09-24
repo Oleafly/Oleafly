@@ -82,6 +82,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import {
   PANEL_STYLE,
+  afterPanelLayout,
   collapsePanel,
   expandPanel,
   hasStoredPanelLayout,
@@ -92,6 +93,7 @@ import {
   usePersistentPanelLayout,
   useSeparatorHitArea,
   useSeparatorKeyboard,
+  useSteadyPanelWidth,
   type PanelLimits,
 } from "@/lib/panel-layout";
 import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
@@ -323,14 +325,14 @@ function AppContent() {
 
   useLayoutEffect(() => {
     if (!projectId) return;
-    const panel = terminalPanelRef.current;
-    if (!panel) return;
     const groupId = workspacePanelId(projectId, "vertical");
-    if (terminalOpen) {
-      expandPanel(groupId, "terminal", panel, 30);
-    } else {
-      collapsePanel(groupId, "terminal", panel);
-    }
+    return afterPanelLayout(
+      () => terminalPanelRef.current,
+      (panel) => {
+        if (terminalOpen) expandPanel(groupId, "terminal", panel, 30);
+        else collapsePanel(groupId, "terminal", panel);
+      },
+    );
   }, [terminalOpen, projectId]);
 
   // The browser opens as its own window, so computer use just needs a CUA
@@ -415,38 +417,15 @@ function AppContent() {
     }
   }, [projectId]);
 
-  // Panels are sized in percentages, so a window resize would scale the sidebar
-  // with it and leave it far from the width it was opened at. Hold its pixel
-  // width steady and let the editor and preview absorb the change instead.
-  const lastPanelGroupWidthRef = useRef(0);
-  useEffect(() => {
-    const previousWidth = lastPanelGroupWidthRef.current;
-    lastPanelGroupWidthRef.current = panelGroupWidth;
-    if (!showTree || panelGroupWidth <= 0) return;
-    const panel = sidebarPanelRef.current;
-    if (!panel) return;
-    if (previousWidth <= 0) {
-      // The pane had not been measured when the sidebar mounted, so it opened
-      // on the flat percentage fallback rather than SIDEBAR_DEFAULT_PX. Apply
-      // the intended width now that the real width is known.
-      if (!hasStoredHorizontalLayout) {
-        panel.resize(percent(sidebarDefaultSize));
-      }
-      return;
-    }
-    const pixels = (panel.getSize().asPercentage / 100) * previousWidth;
-    const next = Math.min(
-      65,
-      Math.max(sidebarMinSize, (pixels / panelGroupWidth) * 100),
-    );
-    panel.resize(percent(next));
-  }, [
-    panelGroupWidth,
-    showTree,
-    sidebarMinSize,
-    sidebarDefaultSize,
-    hasStoredHorizontalLayout,
-  ]);
+  useSteadyPanelWidth({
+    panelRef: sidebarPanelRef,
+    active: showTree,
+    groupWidth: panelGroupWidth,
+    minSize: sidebarMinSize,
+    maxSize: 65,
+    defaultSize: sidebarDefaultSize,
+    applyDefault: !hasStoredHorizontalLayout,
+  });
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {

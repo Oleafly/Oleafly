@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { useMemo, useRef, useState } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   Group,
@@ -11,6 +11,7 @@ import {
   type PanelImperativeHandle,
 } from "react-resizable-panels";
 import {
+  afterPanelLayout,
   collapsePanel,
   expandPanel,
   hasStoredPanelLayout,
@@ -25,6 +26,7 @@ import {
   useDismissiblePanelLayout,
   usePersistentPanelLayout,
   useSeparatorKeyboard,
+  useSteadyPanelWidth,
   type PanelLimits,
 } from "./panel-layout";
 
@@ -711,5 +713,96 @@ describe("dismissible assistant panel", () => {
     await settle(() => workspace.setAssistantOpen(false));
     await settle(() => workspace.setAssistantOpen(true));
     expect(workspaceSizes()).toEqual([20, 42, 38]);
+  });
+});
+
+const SHOW_LABEL = "show";
+const NARROW_LABEL = "narrow";
+
+describe("panels that mount after their group", () => {
+  function LateSidebar({ onSize }: Readonly<{ onSize: (size: number) => void }>) {
+    const [shown, setShown] = useState(false);
+    const panelRef = useRef<PanelImperativeHandle>(null);
+    useEffect(() => {
+      if (!shown) return;
+      return afterPanelLayout(
+        () => panelRef.current,
+        (_panel, size) => onSize(size),
+      );
+    }, [shown, onSize]);
+    return (
+      <>
+        <button type="button" onClick={() => setShown(true)}>
+          {SHOW_LABEL}
+        </button>
+        <Group orientation="horizontal" id="late">
+          {shown && <Panel id="sidebar" panelRef={panelRef} defaultSize="20%" minSize="5%" />}
+          {shown && <Separator />}
+          <Panel id="main" minSize="10%" />
+        </Group>
+      </>
+    );
+  }
+
+  it("waits for the group to lay out a panel that mounted in the same commit", async () => {
+    const sizes: number[] = [];
+    render(<LateSidebar onSize={(size) => sizes.push(size)} />);
+    act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
+    await waitFor(() => expect(sizes).toHaveLength(1));
+    expect(sizes[0]).toBeCloseTo(20, 1);
+  });
+
+  function SteadySidebar({ panelRef }: Readonly<{ panelRef: React.RefObject<PanelImperativeHandle | null> }>) {
+    const [shown, setShown] = useState(false);
+    const [width, setWidth] = useState(1000);
+    useSteadyPanelWidth({
+      panelRef,
+      active: shown,
+      groupWidth: width,
+      minSize: 5,
+      maxSize: 65,
+      defaultSize: 20,
+      applyDefault: false,
+    });
+    return (
+      <>
+        <button type="button" onClick={() => setShown(true)}>
+          {SHOW_LABEL}
+        </button>
+        <button type="button" onClick={() => setWidth(500)}>
+          {NARROW_LABEL}
+        </button>
+        <Group orientation="horizontal" id="steady">
+          {shown && <Panel id="sidebar" panelRef={panelRef} defaultSize="20%" minSize="5%" />}
+          {shown && <Separator />}
+          <Panel id="main" minSize="10%" />
+        </Group>
+      </>
+    );
+  }
+
+  it("keeps a sidebar shown after the width is known at its pixel width", async () => {
+    const panelRef = { current: null as PanelImperativeHandle | null };
+    render(<SteadySidebar panelRef={panelRef} />);
+    act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
+    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(20, 1));
+    act(() => screen.getByRole("button", { name: NARROW_LABEL }).click());
+    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(40, 1));
+  });
+
+  it("gives up after its attempts and cancels a pending retry on cleanup", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const run = vi.fn();
+    const stop = afterPanelLayout(() => null, run, 3);
+    for (let index = 0; index < frames.length; index++) frames[index](0);
+    expect(frames).toHaveLength(3);
+    expect(run).not.toHaveBeenCalled();
+    stop();
+    expect(cancel).toHaveBeenCalledWith(3);
   });
 });

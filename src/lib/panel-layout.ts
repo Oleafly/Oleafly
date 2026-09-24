@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   type CSSProperties,
@@ -238,6 +239,71 @@ export function expandPanel(
   if (!panel?.isCollapsed()) return;
   const previous = readExpandSizes(groupId)[panelId];
   panel.resize(percent(previous !== undefined && previous >= minSize ? previous : minSize));
+}
+
+export function panelPercent(panel: PanelImperativeHandle): number | null {
+  try {
+    return panel.getSize().asPercentage;
+  } catch {
+    return null;
+  }
+}
+
+export function afterPanelLayout(
+  getPanel: () => PanelImperativeHandle | null,
+  run: (panel: PanelImperativeHandle, size: number) => void,
+  attempts = 20,
+): () => void {
+  let frame = 0;
+  const attempt = (remaining: number) => {
+    const panel = getPanel();
+    const size = panel ? panelPercent(panel) : null;
+    if (panel && size !== null) {
+      run(panel, size);
+      return;
+    }
+    if (remaining > 0) frame = window.requestAnimationFrame(() => attempt(remaining - 1));
+  };
+  attempt(attempts);
+  return () => {
+    if (frame) window.cancelAnimationFrame(frame);
+  };
+}
+
+export function useSteadyPanelWidth({
+  panelRef,
+  active,
+  groupWidth,
+  minSize,
+  maxSize,
+  defaultSize,
+  applyDefault,
+}: Readonly<{
+  panelRef: RefObject<PanelImperativeHandle | null>;
+  active: boolean;
+  groupWidth: number;
+  minSize: number;
+  maxSize: number;
+  defaultSize: number;
+  applyDefault: boolean;
+}>): void {
+  const lastWidthRef = useRef(0);
+  useEffect(() => {
+    const previousWidth = lastWidthRef.current;
+    lastWidthRef.current = groupWidth;
+    if (!active || groupWidth <= 0) return;
+    return afterPanelLayout(
+      () => panelRef.current,
+      (panel, size) => {
+        if (previousWidth <= 0) {
+          if (applyDefault) panel.resize(percent(defaultSize));
+          return;
+        }
+        const pixels = (size / 100) * previousWidth;
+        panel.resize(percent(Math.min(maxSize, Math.max(minSize, (pixels / groupWidth) * 100))));
+      },
+    );
+  }, [active, groupWidth, minSize, maxSize, defaultSize, applyDefault, panelRef]);
 }
 
 export type CollapseWatch = Readonly<{
