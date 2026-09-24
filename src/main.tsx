@@ -10,8 +10,6 @@ import { RenameDialog } from "@/components/layout/RenameDialog";
 import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
 import { TableImportDialog } from "@/components/editor/TableImportDialog";
 import { FigureDialog } from "@/components/editor/FigureDialog";
-import { PreviewWindow } from "@/components/preview/PreviewWindow";
-import { BrowserChrome } from "@/components/browser/BrowserChrome";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
@@ -95,6 +93,12 @@ const queryClient = appQueryClient();
 const UpdateWindow = lazy(() =>
   import("@/components/layout/UpdateWindow").then((module) => ({ default: module.UpdateWindow })),
 );
+const PreviewWindow = lazy(() =>
+  import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
+);
+const BrowserChrome = lazy(() =>
+  import("@/components/browser/BrowserChrome").then((module) => ({ default: module.BrowserChrome })),
+);
 
 // Dev builds only; the conditional import keeps devtools out of the bundle.
 const ReactQueryDevtools = import.meta.env.DEV
@@ -119,7 +123,9 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <PreviewWindow />
+          <Suspense fallback={null}>
+            <PreviewWindow />
+          </Suspense>
           <Toaster />
         </ThemeProvider>
       </QueryClientProvider>
@@ -128,7 +134,9 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "browser") {
     return (
       <ThemeProvider>
-        <BrowserChrome />
+        <Suspense fallback={null}>
+          <BrowserChrome />
+        </Suspense>
       </ThemeProvider>
     );
   }
