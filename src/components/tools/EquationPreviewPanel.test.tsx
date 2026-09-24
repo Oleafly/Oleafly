@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 const toastSuccess = vi.fn();
+const logError = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/log", () => ({ logError }));
 
 vi.mock("@/lib/toast", () => ({
   toast: {
@@ -17,6 +20,8 @@ vi.mock("@/lib/toast", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import {
+  COPIED_FEEDBACK_MS,
+  COPY_FAILED_FEEDBACK_MS,
   EQUATION_EXAMPLES,
   EquationPreviewPanel,
   renderEquation,
@@ -155,15 +160,59 @@ describe("EquationPreviewPanel", () => {
     );
   });
 
-  it("copies the wrapped source from the preview card", () => {
+  it("confirms a copy on the preview card button, which stays visible in fullscreen", async () => {
+    writeText.mockResolvedValue(undefined);
     renderPanel({ display: false, input: "x^2" });
     fireEvent.click(
       screen.getByRole("button", { name: enCommon.actions.copy }),
     );
     expect(writeText).toHaveBeenCalledWith("$x^2$");
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.equation.copiedSource,
+    expect(
+      await screen.findByRole("button", { name: enCommon.actions.copied }),
+    ).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does not claim a copy that the clipboard rejected", async () => {
+    const denied = new Error("Document is not focused.");
+    writeText.mockRejectedValue(denied);
+    renderPanel({ display: false, input: "x^2" });
+    fireEvent.click(
+      screen.getByRole("button", { name: enCommon.actions.copy }),
     );
+    expect(
+      await screen.findByRole("button", { name: enResearchTools.equation.copyLatexFailed }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enCommon.actions.copied })).not.toBeInTheDocument();
+    expect(logError).toHaveBeenCalledWith("equation copy latex from preview", denied);
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("returns the copy button to its label after the feedback period", async () => {
+    vi.useFakeTimers();
+    writeText.mockResolvedValue(undefined);
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.copy }));
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: enCommon.actions.copied })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(COPIED_FEEDBACK_MS));
+    expect(screen.getByRole("button", { name: enCommon.actions.copy })).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("keeps a copy failure visible longer than a success", async () => {
+    vi.useFakeTimers();
+    writeText.mockRejectedValue(new Error("denied"));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.copy }));
+    await act(async () => {});
+    act(() => vi.advanceTimersByTime(COPIED_FEEDBACK_MS));
+    expect(
+      screen.getByRole("button", { name: enResearchTools.equation.copyLatexFailed }),
+    ).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(COPY_FAILED_FEEDBACK_MS - COPIED_FEEDBACK_MS));
+    expect(screen.getByRole("button", { name: enCommon.actions.copy })).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("switches the preview backdrop", () => {

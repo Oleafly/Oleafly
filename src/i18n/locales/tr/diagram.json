@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} içe aktarıldı (yalnızca kod, çizilemez).",
       "importFailed": "Bu dosya içe aktarılamadı: {{detail}}",
       "noAiFix": "Yapay zeka bir düzeltme döndürmedi.",
-      "aiFixApplied": "Yapay zeka düzeltmesi uygulandı. Yeniden derleniyor…",
       "fixFailed": "Düzeltme başarısız oldu: {{detail}}",
       "notDrawable": "Bu kodda çizilebilecek bir şey yok. Koda dokunulmadı."
     },

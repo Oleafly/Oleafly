@@ -527,7 +527,6 @@
     "showAllHistory": "Show all history ({{count}})"
   },
   "research": {
-    "noSourceLink": "This result does not include a source link.",
     "sourceOpenFailed": "The source could not be opened.",
     "noProjectPath": "This result does not contain a project file path.",
     "resultOpenFailed": "The result file could not be opened."
@@ -645,7 +644,6 @@
     "summarizing": "Summarizing earlier conversation…"
   },
   "toasts": {
-    "sessionOpenFailed": "The agent session could not be opened.",
     "approvalModeSaveFailed": "Could not save the approval mode.",
     "skillDraftSaved": "Draft skill saved. Review it before enabling.",
     "skillDraftFailed": "Could not save the skill draft. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Could not archive this chat.",
     "chatForked": "Chat forked.",
     "chatForkFailed": "Could not fork this chat.",
-    "engineNotLoaded": "Document engine details are not loaded. AI editing is disabled for safety.",
     "skillsLoadFailed": "Could not load enabled skills. Try again.",
     "approvalModeLoadFailed": "Could not load the approval mode.",
     "approvalRulesLoadFailed": "Could not load the project approval rules.",
-    "restored": "Restored project files. The conversation was kept.",
     "restoreFailed": "Could not restore: {{error}}",
     "steerFailed": "The running turn could not be steered.",
     "approvalRuleSaveFailed": "Could not save the project approval rule.",

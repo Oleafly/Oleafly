@@ -527,7 +527,6 @@
     "showAllHistory": "Visa hela historiken ({{count}})"
   },
   "research": {
-    "noSourceLink": "Det här resultatet innehåller ingen länk till källan.",
     "sourceOpenFailed": "Källan kunde inte öppnas.",
     "noProjectPath": "Det här resultatet innehåller ingen sökväg till en projektfil.",
     "resultOpenFailed": "Resultatfilen kunde inte öppnas."
@@ -645,7 +644,6 @@
     "summarizing": "Sammanfattar tidigare konversation…"
   },
   "toasts": {
-    "sessionOpenFailed": "Agentsessionen kunde inte öppnas.",
     "approvalModeSaveFailed": "Det gick inte att spara godkännandeläget.",
     "skillDraftSaved": "Utkastet till färdighet är sparat. Granska det innan du aktiverar det.",
     "skillDraftFailed": "Det gick inte att spara utkastet till färdighet. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Det gick inte att arkivera den här chatten.",
     "chatForked": "Chatten är förgrenad.",
     "chatForkFailed": "Det gick inte att förgrena den här chatten.",
-    "engineNotLoaded": "Uppgifterna om dokumentmotorn är inte inlästa. AI-redigering är avstängd av säkerhetsskäl.",
     "skillsLoadFailed": "Det gick inte att läsa in aktiverade färdigheter. Försök igen.",
     "approvalModeLoadFailed": "Det gick inte att läsa in godkännandeläget.",
     "approvalRulesLoadFailed": "Det gick inte att läsa in projektets godkännanderegler.",
-    "restored": "Projektfilerna är återställda. Konversationen behölls.",
     "restoreFailed": "Det gick inte att återställa: {{error}}",
     "steerFailed": "Den pågående turen kunde inte styras.",
     "approvalRuleSaveFailed": "Det gick inte att spara projektets godkännanderegel.",

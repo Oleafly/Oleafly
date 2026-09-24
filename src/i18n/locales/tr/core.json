@@ -54,18 +54,10 @@
     "present": "{{path}} zaten Oleafly kaydını içeriyor. {{markup}} ile atıf verin.",
     "undo": "Geri al"
   },
-  "compatibility": {
-    "biblatexBiber": "Bu proje kaynakça için biblatex/Biber kullanıyor.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} daha)",
-    "chooseEngine": "Motor seç…",
-    "importNotes_one": "{{count}} içe aktarma notu: {{title}}",
-    "importNotes_other": "{{count}} içe aktarma notu: {{title}} (+{{more}} daha)"
-  },
   "compile": {
-    "engineNotLoaded": "Belge motoru yüklenene kadar derleme devre dışı.",
     "noOfflineMode": "{{engine}} çevrimdışı derleyici kipi sunmuyor. Normal biçimde derleniyor.",
-    "retry": "Yeniden derle"
+    "retry": "Yeniden derle",
+    "bundleFetchFailed": "Oleafly, bu belgenin ihtiyaç duyduğu TeX paketlerini indiremedi. Bağlantınızı denetleyip yeniden derleyin."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Araştırma derlemini doldur"
       }
     },
-    "closeProjectFailed": "Açık proje güvenli biçimde kapatılamadı.",
     "confirm": {
       "clearProjects": {
         "action": "Projeleri temizle",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "PDF kaydedilemedi: {{detail}}",
     "pngFailed": "PNG kaydedilemedi",
     "pngFailedDetail": "PNG kaydedilemedi: {{detail}}",
-    "revealFailed": "Dosya kaydedildi, ancak Oleafly klasörünü açamadı (izin verilmedi). Kaydetme penceresinde seçtiğiniz konuma bakın.",
+    "revealFailed": "Dosya kaydedildi, ancak klasörü açılamadı.",
     "saved": "{{kind}} kaydedildi · {{fileName}}",
     "showInFolder": "Klasörde göster"
   },
   "externalChange": {
-    "deletionRestored": "Dışarıdan yapılan bir silme, kaydedilmemiş düzenlemelerle çakıştı. Yerel düzenlemeleriniz geri yüklendi.",
-    "localEditKept": "Kaydedilmemiş değişiklikleriniz varken \"{{path}}\" dosyasına dışarıdan bir düzenleme geldi. Yerel düzenlemeniz korundu.",
-    "persistExternalFailed": "\"{{path}}\" dosyasına gelen son dış güncelleme kalıcı hale getirilemedi.",
-    "preserveLocalFailed": "\"{{path}}\" dosyasındaki yerel güncellemeniz korunamadı.",
-    "reloadFailed": "Proje ayarları güncellendi, ancak değişen bazı dosyalar yeniden yüklenemedi.",
-    "restoreLocalFailed": "\"{{path}}\" dosyasındaki kaydedilmemiş güncellemeniz geri yüklenemedi."
+    "reloadFailed": "Proje ayarları güncellendi, ancak değişen bazı dosyalar yeniden yüklenemedi."
   },
   "fonts": {
     "systemDefault": "Sistem varsayılanı",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Görselden LaTeX'e dönüştürme başarısız oldu: {{detail}}",
-    "inserted": "Görselden LaTeX eklendi",
     "transcribing": "Görsel metne dökülüyor…"
   },
   "import": {
-    "arxivImported": "arXiv kaynağı içe aktarıldı. Sonucu görmek için projeyi derleyin.",
     "chooseOfferedProjectType": "Bu dosya için sunulan proje türlerinden birini seçin.",
     "invalidArxivId": "Bir arXiv makale bağlantısı ya da 2301.01234 gibi bir kimlik yapıştırın.",
     "supportedDocumentTypes": "Desteklenen belge türlerinden birini seçin.",
-    "conversionNotice": "İçeriğinizi LaTeX'e dönüştürdük. Özellikle tablolar, şekiller ve atıflar için biçimlendirmeyi düzenlemeniz gerekebilir.",
+    "conversionNotice": "{{format}} biçimine dönüştürüldü. Tablolar, şekiller ve atıflar için biçimlendirme düzeltmeleri gerekebilir.",
     "figureSaved": "{{name}} kaydedildi",
-    "pdfProjectCreated": "PDF'ten proje oluşturuldu. Yeniden oluşturulan içeriğe güvenmeden önce gözden geçirin.",
-    "pickPdfOrDocx": "Bir .pdf veya .docx dosyası seçin",
+    "pickPdfOrDocx": "Bir .pdf veya .docx dosyası seçin.",
     "texSaved": ".tex kaydedildi",
     "unsupportedFile": "Bir .zip, .docx, .md veya .markdown dosyası seçin.",
     "zipSaveFailed": "ZIP arşivi kaydedilemedi.",
@@ -318,7 +301,8 @@
     "installing_one": "{{name}} kuruluyor. Bittiğinde derleme yeniden başlar.",
     "installing_other": "{{count}} paket kuruluyor. Bittiklerinde derleme yeniden başlar.",
     "summary_one": "Derleme \"{{name}}\" dosyasını bulamadı. TeX Live içinde onu sağlayan paketi arayın.",
-    "summary_other": "Derleme {{names}} dosyalarını bulamadı. TeX Live içinde paketlerini arayın."
+    "summary_other": "Derleme {{names}} dosyalarını bulamadı. TeX Live içinde paketlerini arayın.",
+    "userTree": "Sistem TeX ağacı salt okunur olduğundan paketler {{path}} konumundaki kişisel ağacınıza kuruldu."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "\"{{name}}\" olarak yeniden adlandırıldı ($t(core:navigation.files, {\"count\": {{files}} }) içinde $t(core:navigation.edits, {\"count\": {{edits}} }))"
   },
   "pandoc": {
-    "downloadFailed": "pandoc indirilemedi. Elle kurup yeniden deneyin",
+    "downloadFailed": "pandoc indirilemedi. Elle kurup yeniden deneyin.",
     "downloadingPercent": "pandoc indiriliyor… %{{progress}}",
     "downloadingSize": "pandoc indiriliyor… {{megabytes}} MB",
-    "installGuide": "Kurulum kılavuzu",
-    "installed": "pandoc kuruldu"
+    "installGuide": "Kurulum kılavuzu"
   },
   "project": {
     "copyFailed": "\"{{path}}\" kopyalanamadı.",
     "dateUnavailable": "Kullanılamıyor",
     "importFailed": "İçe aktarılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
-    "imported": "Proje içe aktarıldı.",
     "openFailed": "Proje açılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
-    "restoringUnsavedFiles": "Bir proje güncellemesi, kaydedilmemiş düzenlemeleri olan dosyaları kaldırdı. Oleafly düzenlemelerinizi korudu ve bu dosyaları geri yüklüyor.",
     "saveBlockedClose": "Bir veya daha fazla dosya kaydedilemediği için proje açık kaldı.",
     "saveBlockedDiscard": "Değişiklikleri at ve çık",
     "saveBlockedMany": "{{count}} dosya kaydedilemedi: {{files}}. İlki, kaydedilmemiş değişiklikleriyle düzenleyicide açık ({{reason}}). Sorunu çözmek için kalın ya da bu dosyalardaki kaydedilmemiş değişiklikleri atıp çıkın.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "{{count}} gün önce güncellendi",
     "updatedOn": "{{date}} tarihinde güncellendi",
     "updatedToday": "Bugün güncellendi",
-    "updatedYesterday": "Dün güncellendi"
+    "updatedYesterday": "Dün güncellendi",
+    "autosaveFailed": "Değişiklikleriniz kaydedilemedi. Hâlâ düzenleyicide duruyorlar."
   },
   "projectDiagnostics": {
     "analysisFailed": "Çözümleme başarısız oldu: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Bu proje {{pinned}} ile sabitlendi. Etkin {{local}} dağıtımında paketlerinin {{count}} tanesi eksik, bu yüzden o dağıtım yeniden kullanılana kadar derlemeler başarısız olabilir.",
-    "distributionSkew": "Bu proje {{pinned}} ile sabitlendi ve bu makine {{local}} ile derliyor. Çıktı biraz farklı olabilir.",
-    "installPinned_one": "Kur",
-    "installPinned_other": "{{count}} tanesinin tümünü kur",
-    "installingPinned_one": "{{count}} sabitlenmiş paket kuruluyor…",
-    "installingPinned_other": "{{count}} sabitlenmiş paket kuruluyor…",
-    "pinnedPackagesFailed": "Bazı sabitlenmiş paketler kurulamadı. Ayarlar → LaTeX Motoru bölümüne bakın.",
-    "pinnedPackagesInstalled": "Sabitlenmiş LaTeX paketleri kuruldu.",
-    "pinnedPackagesMissing_one": "Bu proje burada kurulu olmayan {{count}} LaTeX paketini sabitliyor.",
-    "pinnedPackagesMissing_other": "Bu proje burada kurulu olmayan {{count}} LaTeX paketini sabitliyor."
+    "distributionGap": "Bu proje {{pinned}} ile sabitlendi. Etkin {{local}} dağıtımında paketlerinin {{count}} tanesi eksik, bu yüzden o dağıtım yeniden kullanılana kadar derlemeler başarısız olabilir."
   },
   "theme": {
     "cssForbiddenSyntax": "Özel CSS; at kuralları, URL'ler veya seçiciler kullanamaz.",
@@ -539,8 +512,8 @@
       "installing": "Kuruluyor…",
       "unpacking": "Arşiv açılıyor…"
     },
-    "removeFailed": "TinyTeX kaldırılamadı",
-    "removed": "TinyTeX kaldırıldı"
+    "removeFailed": "TinyTeX kaldırılamadı.",
+    "removed": "TinyTeX kaldırıldı."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Kaydetme sırasında proje değişti. Lütfen güncellemeyi yeniden deneyin."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Bir kontrol noktası kaydedilemedi. Disk dolu ya da kontrol noktası klasörüne yazılamıyor. Yer açın veya klasör izinlerini denetleyin, ardından yeniden derleyin.",
+    "incompleteCapture": "Bazı proje dosyaları okunamadığı için son kontrol noktaları kaydedilemedi. Dosyaların izinlerini denetleyin, ardından yeniden derleyin."
   }
 }

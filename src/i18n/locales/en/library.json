@@ -349,8 +349,6 @@
     "unsave": "Unsave",
     "save": "Save template",
     "use": "Use this template",
-    "savedToast": "Saved \"{{name}}\" to your library",
-    "removedToast": "Removed \"{{name}}\" from your library",
     "saveFailed": "Couldn't save the template.",
     "removeFailed": "Couldn't remove the template."
   },

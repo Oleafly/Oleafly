@@ -301,8 +301,6 @@
       "needed": "Dette prosjektet bruker funksjoner som trenger vilkårlige eksterne kommandoer. De er blokkert til du tillater dem.",
       "warning": "Kreves av minted og enkelte PythonTeX-dokumenter. LaTeX kan kjøre programmer med dine rettigheter, så slå dette på bare for et prosjekt du stoler på. TeX Lives egne hjelpeprogrammer, som EPS-konvertering, kjører uten dette."
     },
-    "shellEscapeAllowed": "Eksterne kommandoer er tillatt for dette prosjektet på denne maskinen.",
-    "shellEscapeBlocked": "Vilkårlige eksterne kommandoer er blokkert for dette prosjektet. TeX Lives egne hjelpeprogrammer, som EPS-konvertering, kjører fortsatt.",
     "shellEscapeFailed": "Kunne ikke oppdatere tilgangen til eksterne kommandoer.",
     "switchFailed": "Kunne ikke bytte kompileringsmotor.",
     "switched": "Dette prosjektet kompileres nå med {{engine}}.",
@@ -493,7 +491,6 @@
         "title": "Skysynkronisering"
       },
       "danger": {
-        "closeFailed": "Det åpne prosjektet kunne ikke lukkes trygt.",
         "confirmDeleteAllAction": "Slett alle prosjekter",
         "confirmDeleteAllDescription": "Alle prosjektene dine flyttes til papirkurven, med filer og Git-historikk. Du kan gjenopprette prosjekter enkeltvis etterpå.",
         "confirmDeleteAllTitle_one": "Slette alle {{count}} prosjekt?",
@@ -503,7 +500,8 @@
         "deleteAllDescription": "Flytter alle prosjekter til papirkurven. Ingenting slettes for godt.",
         "deleting": "Sletter…",
         "moveFailed": "Kunne ikke flytte prosjektene til papirkurven.",
-        "movePartial": "Flyttet {{count}} prosjekter, men kunne ikke fullføre operasjonen.",
+        "movePartial_one": "Flyttet {{count}} prosjekt til papirkurven. Resten ble ikke flyttet.",
+        "movePartial_other": "Flyttet {{count}} prosjekter til papirkurven. Resten ble ikke flyttet.",
         "movedCount_one": "Flyttet {{count}} prosjekt til papirkurven.",
         "movedCount_other": "Flyttet {{count}} prosjekter til papirkurven.",
         "title": "Faresone"
@@ -514,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Tøm alt",
         "clearFailed": "Kunne ikke tømme papirkurven.",
-        "clearPartial": "Slettet {{count}} prosjekter for godt, men kunne ikke tømme hele papirkurven.",
+        "clearPartial_one": "Slettet {{count}} prosjekt for godt. Resten ligger fortsatt i papirkurven.",
+        "clearPartial_other": "Slettet {{count}} prosjekter for godt. Resten ligger fortsatt i papirkurven.",
         "clearedCount_one": "Slettet {{count}} prosjekt for godt.",
         "clearedCount_other": "Slettet {{count}} prosjekter for godt.",
         "clearing": "Tømmer…",
@@ -844,7 +843,6 @@
     },
     "newProjectName": "Navn på nytt prosjekt",
     "projectName": "Prosjektnavn",
-    "projectRenamed": "Prosjektet har fått nytt navn",
     "saveName": "Lagre (Enter)",
     "saveNameAriaLabel": "Lagre navnet",
     "untitledProject": "prosjekt",
@@ -855,7 +853,8 @@
       "pdf": "PDF-visning",
       "split": "Delt visning"
     },
-    "moreActions": "Flere handlinger"
+    "moreActions": "Flere handlinger",
+    "renameFailed": "Kunne ikke gi prosjektet nytt navn."
   },
   "tour": {
     "chooseColor": "Velg fargen som er din",

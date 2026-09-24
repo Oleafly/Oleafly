@@ -827,7 +827,8 @@
       "deleted": "„{{name}}“ bylo smazáno z vaší knihovny",
       "empty": "Zatím žádné šablony vytvořené pomocí AI. Vytvořte jednu v galerii šablon.",
       "fallbackDescription": "Šablona vytvořená pomocí AI",
-      "toggle": "Spravovat šablony vytvořené pomocí AI"
+      "toggle": "Spravovat šablony vytvořené pomocí AI",
+      "deleteFailed": "„{{name}}“ se nepodařilo smazat."
     },
     "fontPacks": {
       "lato": {
@@ -870,6 +871,14 @@
       "heading": "Slovníky pravopisu",
       "note": "Jazyk vyberte v sekci Obecné a stáhne se. Pět dodávaných balíčků je vždy k dispozici a tady se neuvádí.",
       "tooltip": "S Oleafly se dodává pět jazykových balíčků. Jakýkoli jiný jazyk se stáhne na vyžádání, když si jej zvolíte jako slovník pravopisu, a zůstane tu uložený, aby pak fungoval i offline. Odebráním se uvolní místo a vrátí se nastavení aplikace."
+    },
+    "errors": {
+      "fontDownloadFailed": "Písmo se nepodařilo stáhnout.",
+      "fontsDownloadFailed": "Písma se nepodařilo stáhnout.",
+      "fontRemoveFailed": "Písmo se nepodařilo odebrat.",
+      "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
+      "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
+      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat."
     }
   },
   "engine": {

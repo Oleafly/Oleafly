@@ -1,12 +1,10 @@
 import type { EditorView } from "@tiptap/pm/view";
 import { WYSIWYG_NODE_NAMES } from "@oleafly/wysiwyg";
-import { i18n } from "@/i18n";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import {
   importableImageFiles,
-  importImageFile,
+  importImageFiles,
   PASTED_FIGURE_WIDTH,
   suggestedFigureLabel,
 } from "@/components/editor/figure-import";
@@ -40,9 +38,7 @@ function mutationLocked(): boolean {
 
 async function importFigures(view: EditorView, files: File[], at: number | null): Promise<void> {
   let position = at;
-  for (const file of files) {
-    const imported = await importImageFile(file);
-    if (!imported) continue;
+  await importImageFiles(files, (imported) => {
     insertVisualFigure(
       view,
       {
@@ -55,8 +51,7 @@ async function importFigures(view: EditorView, files: File[], at: number | null)
       position,
     );
     position = positionAfterEnclosing(view.state, WYSIWYG_NODE_NAMES.figure);
-    toast.success(i18n.t(($) => $.editor.paste.imageSaved, { path: imported.path }));
-  }
+  });
 }
 
 export function createVisualPasteHandlers(): VisualPasteHandlers {

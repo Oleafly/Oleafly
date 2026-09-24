@@ -92,7 +92,10 @@
     "settings": "Einstellungen der PDF-Vorschau",
     "fullscreen": "Vorschau im Vollbild",
     "exitFullscreen": "Vollbild verlassen",
-    "retryCompile": "Erneut kompilieren"
+    "retryCompile": "Erneut kompilieren",
+    "chooseEngine": "Engine wählen…",
+    "installPackages_one": "{{name}} finden und installieren",
+    "installPackages_other": "{{count}} Dateien finden und installieren"
   },
   "stale": {
     "badge": "Veraltet",
@@ -121,7 +124,7 @@
     "imageSaved": "Bild gespeichert · {{name}}",
     "pdfSaved": "PDF gespeichert · {{name}}",
     "showInFolder": "Im Ordner anzeigen",
-    "folderUnavailable": "Die Datei wurde gespeichert, Oleafly konnte ihren Ordner aber nicht öffnen (keine Berechtigung). Prüfen Sie den Ort, den Sie im Speicherdialog gewählt haben.",
+    "folderUnavailable": "Der Ordner konnte nicht geöffnet werden.",
     "imageFailed": "Das Bild konnte nicht heruntergeladen werden.",
     "imageFailedDetail": "Das Bild konnte nicht heruntergeladen werden: {{detail}}",
     "pdfFailed": "Das PDF konnte nicht heruntergeladen werden.",

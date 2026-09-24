@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLab 설치 메타데이터가 올바르지 않습니다",
     "setUp": "설치",
-    "retry": "다시 시도",
-    "startFailed": "프로젝트 언어 서비스를 시작하지 못했습니다.",
-    "setupDetailsUnavailable": "언어 서비스 설치 정보를 사용할 수 없음",
     "setupRequired": "언어 서비스 설치 필요",
     "installTitle": "{{name}} {{version}}을(를) 설치할까요?",
     "licenseAndSource": "라이선스 및 소스",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "프로젝트 참조 분석을 사용할 수 없습니다.",
-    "updating": "프로젝트 참조를 업데이트하는 중입니다.",
     "noDefinition": "“{{name}}”의 정의를 찾지 못했습니다.",
     "definitionsFor": "{{name}}의 정의",
     "multipleDefinitions": "“{{name}}”에 정의가 {{count}}개 있습니다. 참고문헌 패널을 열어 확인하세요.",

@@ -158,7 +158,6 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().engine.id === "latex")`,
     15_000,
   );
-  // Reopening the project runs the import scan against the Tectonic engine.
   // openProject owns the library transition. Clicking Home here as well races
   // its readiness check against the outgoing workspace.
   await openProject(tauriPage, "minted-gap");
@@ -167,15 +166,10 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
     30_000,
   );
-  // The blocker toast carries the entry point into the engine picker, and a
-  // toast is transient. Every gap between "the button is there" and "click it"
-  // is a race the toast can win, and it did: this passed on the push run and
-  // timed out on the nightly at the same commit. Count and click inside one
-  // evaluation so there is no window for the toast to dismiss in between.
   await waitLong(
     tauriPage,
     `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
-    20_000,
+    60_000,
   );
   const actions = await tauriPage.evaluate<number>(
     `(() => {

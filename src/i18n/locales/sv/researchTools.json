@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly kunde inte kopiera den konverterade källan.",
     "saveFailed": "Oleafly kunde inte spara den konverterade filen.",
     "resultName": "Resultat från {{title}}",
-    "projectCreated": "Projektet är skapat från konverteringen.",
     "projectFailed": "Oleafly kunde inte skapa projektet.",
     "cancel": "Avbryt",
     "convert": "Konvertera",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX-bibliografi",
-    "savedBibliography": "Sparade references.bib",
+    "savedBibliography": "Sparade {{name}}",
     "saveFailed": "Oleafly kunde inte spara den här bibliografin.",
-    "copied": "Kopierade {{label}}",
     "copyFailed": "Oleafly kunde inte kopiera {{label}}.",
     "fieldJournal": "Tidskrift",
     "fieldConference": "Konferens eller konferenspublikation",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "Ladda ner SVG",
     "copyMathml": "Kopiera MathML för Word",
     "copyKatexHtml": "Kopiera KaTeX-HTML",
-    "copiedSource": "Kopierade LaTeX-källan",
     "copiedMathml": "Kopierade MathML (klistras in i Word)",
     "copiedKatexHtml": "Kopierade KaTeX-HTML (kräver KaTeX-stilmallen)",
     "exportImageFailed": "Det gick inte att exportera det här utdraget som bild",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} citeringar",
     "unknownAuthors": "Okända författare",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citeringen sparad",
-    "toastUpdated": "Den sparade citeringen uppdaterad",
-    "toastCopied": "BibTeX kopierad",
     "toastCopyFailed": "Det gick inte att kopiera BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Artificiell intelligens",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Lägg till i .bib",
     "addToBibTooltip": "Lägg till i projektets bibliografi och infoga \\cite",
-    "openProjectTooltip": "Öppna ett projekt för att lägga till i en bibliografifil",
     "citeAdded": "Lade till {{citation}}",
     "addFailed": "Det gick inte att lägga till citeringen.",
-    "toastSaved": "Citeringen sparad",
-    "toastUpdated": "Den sparade citeringen uppdaterad",
-    "toastCopied": "BibTeX kopierad",
     "toastCopyFailed": "Det gick inte att kopiera BibTeX."
   }
 }

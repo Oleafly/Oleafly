@@ -92,7 +92,9 @@
     "settings": "PDF 預覽設定",
     "fullscreen": "全螢幕預覽",
     "exitFullscreen": "結束全螢幕",
-    "retryCompile": "重試編譯"
+    "retryCompile": "重試編譯",
+    "chooseEngine": "選擇引擎…",
+    "installPackages_other": "尋找並安裝 {{count}} 個檔案"
   },
   "stale": {
     "badge": "已過期",
@@ -121,7 +123,7 @@
     "imageSaved": "圖片已儲存 · {{name}}",
     "pdfSaved": "PDF 已儲存 · {{name}}",
     "showInFolder": "在資料夾中顯示",
-    "folderUnavailable": "檔案已儲存，但 Oleafly 無法開啟它所在的資料夾（權限遭拒）。請確認你在儲存對話框中選擇的位置。",
+    "folderUnavailable": "無法開啟資料夾。",
     "imageFailed": "無法下載圖片。",
     "imageFailedDetail": "無法下載圖片：{{detail}}",
     "pdfFailed": "無法下載 PDF。",

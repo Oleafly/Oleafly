@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addCitations: vi.fn(),
-  notifyError: vi.fn(),
+  logError: vi.fn(),
   parseCitationFile: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -17,15 +17,21 @@ vi.mock("@/features/citation", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  notifyError: mocks.notifyError,
   toast: {
     error: mocks.toastError,
     success: mocks.toastSuccess,
   },
 }));
 
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+
 import enReferences from "@/i18n/locales/en/references.json" with { type: "json" };
 import { ImportReferenceLibraryDialog } from "./ImportReferenceLibraryDialog";
+
+async function expectInlineError(message: string) {
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message));
+  expect(mocks.toastError).not.toHaveBeenCalled();
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -173,11 +179,9 @@ describe("ImportReferenceLibraryDialog", () => {
 
     await chooseZoteroFile();
 
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "2 problems during import. Could not write references.bib. The project changed.",
-      );
-    });
+    await expectInlineError(
+      "2 problems during import. Could not write references.bib. The project changed.",
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
@@ -227,10 +231,8 @@ describe("ImportReferenceLibraryDialog", () => {
     mocks.parseCitationFile.mockReturnValue(null);
     render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
     await chooseEndnoteFile("notes.docx");
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        enReferences.import.unrecognized.replace("{{name}}", "notes.docx"),
-      ),
+    await expectInlineError(
+      enReferences.import.unrecognized.replace("{{name}}", "notes.docx"),
     );
     expect(mocks.addCitations).not.toHaveBeenCalled();
   });
@@ -239,9 +241,7 @@ describe("ImportReferenceLibraryDialog", () => {
     mocks.parseCitationFile.mockReturnValue([]);
     render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
     await chooseEndnoteFile();
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(enReferences.import.empty),
-    );
+    await expectInlineError(enReferences.import.empty);
   });
 
   it("reports a single problem on its own", async () => {
@@ -253,10 +253,8 @@ describe("ImportReferenceLibraryDialog", () => {
     });
     render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
     await chooseZoteroFile();
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Could not write references.bib.",
-      ),
+    await expectInlineError(
+      "Could not write references.bib.",
     );
   });
 
@@ -269,9 +267,7 @@ describe("ImportReferenceLibraryDialog", () => {
     });
     render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
     await chooseZoteroFile();
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(enReferences.import.failed),
-    );
+    await expectInlineError(enReferences.import.failed);
   });
 
   it("names the default bibliography when the backend reports none", async () => {
@@ -301,13 +297,51 @@ describe("ImportReferenceLibraryDialog", () => {
       text: vi.fn().mockRejectedValue(new Error("unreadable")),
     } as unknown as File;
     fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
-    await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith(
-        "import references",
-        expect.anything(),
-        enReferences.import.readFailed,
-      ),
+    await expectInlineError(enReferences.import.readFailed);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "import references",
+      expect.any(Error),
     );
+    expect(mocks.addCitations).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed import step as an import failure, not a read failure", async () => {
+    const onOpenChange = vi.fn();
+    mocks.addCitations.mockRejectedValue(new Error("main.typ is read-only"));
+    render(<ImportReferenceLibraryDialog open onOpenChange={onOpenChange} />);
+    await chooseZoteroFile();
+    await expectInlineError(enReferences.import.failed);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "import references",
+      expect.any(Error),
+    );
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("clears the previous error when the reader tries another file", async () => {
+    mocks.parseCitationFile.mockReturnValueOnce([]);
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseEndnoteFile();
+    await expectInlineError(enReferences.import.empty);
+    await chooseZoteroFile();
+    await waitFor(() =>
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument(),
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "1 reference added to references.bib.",
+    );
+  });
+
+  it("forgets the error once the dialog closes", async () => {
+    mocks.parseCitationFile.mockReturnValueOnce([]);
+    const { rerender } = render(
+      <ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />,
+    );
+    await chooseEndnoteFile();
+    await expectInlineError(enReferences.import.empty);
+    rerender(<ImportReferenceLibraryDialog open={false} onOpenChange={vi.fn()} />);
+    rerender(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("ignores a change event that carries no file", () => {

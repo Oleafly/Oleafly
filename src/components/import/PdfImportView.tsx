@@ -37,7 +37,7 @@ import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
 import { cn, isMac } from "@/lib/utils";
 import { formatNumber } from "@/lib/intl";
 import { pdfPageToPng } from "@/lib/pdf-image";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
@@ -52,6 +52,19 @@ const HANDLES = [
   { id: "math", icon: Radical },
   { id: "figures", icon: ImageIcon },
 ] as const;
+
+async function copyConvertedSource(tex: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(tex);
+    toast.success(i18n.t(($) => $.library.pdfImport.copied));
+  } catch (error) {
+    notifyError(
+      "copy converted LaTeX",
+      error,
+      i18n.t(($) => $.researchTools.converter.copyFailed),
+    );
+  }
+}
 
 function openPdf(file: File): void {
   if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -341,6 +354,8 @@ export function PdfImportView() {
   const scanTranscribed = useImportStore((s) => s.scanTranscribed);
   const transcribeScan = useImportStore((s) => s.transcribeScan);
   const [refineable, setRefineable] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const creatingRef = useRef(false);
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
   const viewLabels = {
@@ -352,6 +367,15 @@ export function PdfImportView() {
     if (active) void refineAvailable().then(setRefineable);
   }, [active]);
   if (!active) return null;
+  const runCreate = (work: () => Promise<unknown>) => {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    void work().finally(() => {
+      creatingRef.current = false;
+      setCreating(false);
+    });
+  };
   return (
     <div data-testid="pdf-import-view" className="flex h-full flex-col bg-background">
       <div
@@ -388,10 +412,7 @@ export function PdfImportView() {
               variant="outline"
               size="sm"
               disabled={!result}
-              onClick={() => {
-                void navigator.clipboard.writeText(result?.tex ?? "");
-                toast.success(t(($) => $.library.pdfImport.copied));
-              }}
+              onClick={() => void copyConvertedSource(result?.tex ?? "")}
             >
               <Copy className="size-4" /> {t(($) => $.library.pdfImport.copy)}
             </Button>
@@ -415,9 +436,9 @@ export function PdfImportView() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!result}
+                disabled={!result || creating}
                 data-testid="import-refine"
-                onClick={() => void refineWithAi()}
+                onClick={() => runCreate(refineWithAi)}
               >
                 <Sparkles className="size-4" /> {t(($) => $.library.pdfImport.refine)}
               </Button>
@@ -436,9 +457,9 @@ export function PdfImportView() {
             )}
             <Button
               size="sm"
-              disabled={!result}
+              disabled={!result || creating}
               data-testid="import-create-project"
-              onClick={() => void createProjectFromConversion()}
+              onClick={() => runCreate(createProjectFromConversion)}
             >
               <FolderPlus className="size-4" /> {t(($) => $.library.pdfImport.createProject)}
             </Button>

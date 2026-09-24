@@ -302,8 +302,6 @@
       "needed": "Este projeto usa recursos que precisam de comandos externos arbitrários. Eles continuam bloqueados até você permitir.",
       "warning": "Exigido pelo minted e por alguns documentos PythonTeX. O LaTeX pode executar programas com as suas permissões de usuário, então ative isso só em um projeto em que você confia. Os auxiliares do próprio TeX Live, como a conversão de EPS, rodam sem isso."
     },
-    "shellEscapeAllowed": "Os comandos externos estão permitidos para este projeto neste computador.",
-    "shellEscapeBlocked": "Comandos externos arbitrários estão bloqueados para este projeto. Os auxiliares do próprio TeX Live, como a conversão de EPS, continuam rodando.",
     "shellEscapeFailed": "Não foi possível atualizar o acesso a comandos externos.",
     "switchFailed": "Não foi possível trocar o motor de compilação.",
     "switched": "Este projeto agora compila com o {{engine}}.",
@@ -498,7 +496,6 @@
         "title": "Sincronização na nuvem"
       },
       "danger": {
-        "closeFailed": "Não foi possível fechar o projeto aberto com segurança.",
         "confirmDeleteAllAction": "Excluir todos os projetos",
         "confirmDeleteAllDescription": "Todos os projetos atuais vão para a Lixeira, com os arquivos e o histórico do Git. Depois você pode restaurar os projetos um a um.",
         "confirmDeleteAllTitle_one": "Excluir todo o {{count}} projeto?",
@@ -509,7 +506,9 @@
         "deleteAllDescription": "Move todos os projetos para a Lixeira. Nada é excluído em definitivo.",
         "deleting": "Excluindo…",
         "moveFailed": "Não foi possível mover os projetos para a Lixeira.",
-        "movePartial": "{{count}} projetos movidos, mas não foi possível concluir a operação.",
+        "movePartial_one": "{{count}} projeto movido para a Lixeira. Os demais não foram movidos.",
+        "movePartial_many": "{{count}} projetos movidos para a Lixeira. Os demais não foram movidos.",
+        "movePartial_other": "{{count}} projetos movidos para a Lixeira. Os demais não foram movidos.",
         "movedCount_one": "{{count}} projeto movido para a Lixeira.",
         "movedCount_many": "{{count}} projetos movidos para a Lixeira.",
         "movedCount_other": "{{count}} projetos movidos para a Lixeira.",
@@ -521,7 +520,9 @@
       "recycleBin": {
         "clearAll": "Esvaziar",
         "clearFailed": "Não foi possível esvaziar a Lixeira.",
-        "clearPartial": "{{count}} projetos excluídos em definitivo, mas não foi possível esvaziar a Lixeira inteira.",
+        "clearPartial_one": "{{count}} projeto excluído em definitivo. Os demais continuam na Lixeira.",
+        "clearPartial_many": "{{count}} projetos excluídos em definitivo. Os demais continuam na Lixeira.",
+        "clearPartial_other": "{{count}} projetos excluídos em definitivo. Os demais continuam na Lixeira.",
         "clearedCount_one": "{{count}} projeto excluído em definitivo.",
         "clearedCount_many": "{{count}} projetos excluídos em definitivo.",
         "clearedCount_other": "{{count}} projetos excluídos em definitivo.",
@@ -860,7 +861,6 @@
     },
     "newProjectName": "Nome do novo projeto",
     "projectName": "Nome do projeto",
-    "projectRenamed": "Projeto renomeado",
     "saveName": "Salvar (Enter)",
     "saveNameAriaLabel": "Salvar nome",
     "untitledProject": "projeto",
@@ -871,7 +871,8 @@
       "pdf": "Visão do PDF",
       "split": "Visão dividida"
     },
-    "moreActions": "Mais ações"
+    "moreActions": "Mais ações",
+    "renameFailed": "Não foi possível renomear o projeto."
   },
   "tour": {
     "chooseColor": "Escolha a sua cor",

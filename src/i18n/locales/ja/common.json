@@ -48,5 +48,8 @@
     "description": "説明",
     "optional": "任意",
     "required": "必須"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

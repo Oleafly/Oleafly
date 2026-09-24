@@ -349,8 +349,6 @@
     "unsave": "Kaydı kaldır",
     "save": "Şablonu kaydet",
     "use": "Bu şablonu kullan",
-    "savedToast": "\"{{name}}\" kitaplığınıza kaydedildi",
-    "removedToast": "\"{{name}}\" kitaplığınızdan kaldırıldı",
     "saveFailed": "Şablon kaydedilemedi.",
     "removeFailed": "Şablon kaldırılamadı."
   },

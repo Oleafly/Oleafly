@@ -40,7 +40,8 @@
     "renameFailed": "Kon de naam van \"{{path}}\" niet wijzigen. Het oorspronkelijke pad is ongewijzigd gebleven.",
     "setMain": "Instellen als hoofddocument",
     "title": "Verkenner",
-    "treeAriaLabel": "Bestandsboom van de verkenner"
+    "treeAriaLabel": "Bestandsboom van de verkenner",
+    "setMainFailed": "Kon \"{{path}}\" niet als hoofddocument instellen."
   },
   "explorer": {
     "resizeSections": "Formaat van {{first}} en {{second}} wijzigen"

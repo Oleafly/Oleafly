@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} を読み込みました（コードのみ、描画はできません）。",
       "importFailed": "そのファイルを読み込めませんでした: {{detail}}",
       "noAiFix": "AI は修正を返しませんでした。",
-      "aiFixApplied": "AI の修正を適用しました。再コンパイルしています…",
       "fixFailed": "修正に失敗しました: {{detail}}",
       "notDrawable": "このコードには描画できるものがありません。コードは変更していません。"
     },

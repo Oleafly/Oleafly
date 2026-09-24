@@ -5,6 +5,7 @@ import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
 import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { usePdfPosition } from "@/lib/use-pdf-position";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
@@ -964,7 +965,8 @@ export function PreviewWindow({
         uint8ToBase64(previewDocument.bytes),
       );
       setExportMessage(t(($) => $.preview.window.downloadSaved));
-    } catch {
+    } catch (error) {
+      void logError("download preview", error);
       setExportMessage(t(($) => $.preview.window.downloadFailed));
     } finally {
       setExporting(false);

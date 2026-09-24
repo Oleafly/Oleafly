@@ -9,6 +9,8 @@ import { i18n } from "@/i18n";
 
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
+const EXPORT_TOAST_KEY = "export-result";
+
 let documentExportInFlight = false;
 
 export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
@@ -32,14 +34,20 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
       }
     };
     assertProject();
-    if (format !== "zip" && !(await ensurePandoc())) return;
+    if (format !== "zip" && !(await ensurePandoc({ notify: true }))) return;
     assertProject();
     await useFilesStore.getState().flushForQuit();
     assertProject();
-    progress = toast.info(`Exporting ${extension.toUpperCase()}…`, undefined, true);
+    progress = toast.infoUnique(
+      EXPORT_TOAST_KEY,
+      i18n.t(($) => $.shell.toolbar.exporting, { format: extension }),
+      undefined,
+      true,
+    );
     if (format === "zip") await downloadProjectZip(projectId, destination);
     else await exportDocument(projectId, mainDoc, format, destination);
     exportSuccessToast(extension.toUpperCase(), destination);
+    progress = undefined;
   } catch (error) {
     notifyError("export document", error);
   } finally {
@@ -62,7 +70,8 @@ function revealExportedFile(dest: string): void {
 
 function exportSuccessToast(kind: string, dest: string): void {
   const fileName = dest.split(/[/\\]/).pop() || kind.toLowerCase();
-  toast.success(
+  toast.successUnique(
+    EXPORT_TOAST_KEY,
     i18n.t(($) => $.core.export.saved, { kind, fileName }),
     {
       label: i18n.t(($) => $.core.export.showInFolder),

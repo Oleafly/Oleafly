@@ -8,7 +8,7 @@ import { useHomeViewStore } from "@/store/home-view";
 import { handoffToAssistant, ensureAiProviderOrOpenSettings } from "@/features/assistant-handoff";
 import { useFilesStore } from "@/store/files";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
-import { toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
 import { activeSelectionText } from "@/components/editor/selection-text";
 
@@ -68,7 +68,7 @@ export function GeneratorsToolView() {
   const [source, setSource] = useState(captureSource);
   const [instructions, setInstructions] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<"sourceChanged" | "assistantFailed" | null>(null);
   const launching = useRef(false);
   const revision = useRef(0);
 
@@ -141,10 +141,9 @@ export function GeneratorsToolView() {
         && current.mainDoc === expected.mainDoc
         && (!usesSelection || current.selection === expected.selection);
     };
-    const changedMessage = t(($) => $.researchTools.generators.sourceChanged);
     if (!matchesSource()) {
       setSource(captureSource());
-      setError(changedMessage);
+      setError("sourceChanged");
       return;
     }
     launching.current = true;
@@ -159,21 +158,31 @@ export function GeneratorsToolView() {
       ) {
         if (useHomeViewStore.getState().page === "generators") {
           setSource(captureSource());
-          setError(changedMessage);
+          setError("sourceChanged");
         }
         return;
       }
       handoffToAssistant(reviewedPrompt, { autoSend: true });
       // Reveal the project assistant after the explicit header action.
       goTo("library");
-    } catch {
-      const message = t(($) => $.researchTools.generators.assistantFailed);
-      setError(message);
-      toast.error(message);
+    } catch (e) {
+      void logError("generators launch", e);
+      setError("assistantFailed");
     } finally {
       launching.current = false;
       setBusy(false);
     }
+  };
+
+  const errorText = error === "assistantFailed"
+    ? t(($) => $.researchTools.generators.assistantFailed)
+    : t(($) => $.researchTools.generators.sourceChanged);
+  const statusText = () => {
+    if (busy) return t(($) => $.researchTools.generators.statusOpening);
+    if (error === "assistantFailed") return errorText;
+    if (error) return t(($) => $.researchTools.generators.statusReview);
+    if (missingSource) return t(($) => $.researchTools.generators.statusChooseSource);
+    return t(($) => $.researchTools.generators.statusReady);
   };
 
   return (
@@ -184,7 +193,7 @@ export function GeneratorsToolView() {
       icon={ListChecks}
       testId="generators-tool-view"
       showTheme
-      status={<ToolStatus state={busy ? "busy" : error ? "error" : "ready"}>{busy ? t(($) => $.researchTools.generators.statusOpening) : error ? t(($) => $.researchTools.generators.statusReview) : missingSource ? t(($) => $.researchTools.generators.statusChooseSource) : t(($) => $.researchTools.generators.statusReady)}</ToolStatus>}
+      status={<ToolStatus state={busy ? "busy" : error ? "error" : "ready"}>{statusText()}</ToolStatus>}
       actions={
         <Button size="sm" disabled={busy || !!missingSource} onClick={() => void launch()} data-testid="generator-launch">
           <Send aria-hidden className="size-4" /> {t(($) => $.researchTools.generators.generate)}
@@ -206,7 +215,7 @@ export function GeneratorsToolView() {
                   data-testid={`generator-${item.id}`}
                   onClick={() => selectTask(item.id)}
                   className={cn(
-                    "flex items-start gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "flex items-start gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:bg-muted",
                     item.id === selectedId && "bg-muted",
                   )}
                 >
@@ -253,10 +262,10 @@ export function GeneratorsToolView() {
                 rows={4}
                 placeholder={t(($) => $.researchTools.generators.instructionsPlaceholder)}
                 onChange={(event) => { revision.current += 1; setInstructions(event.target.value); setError(null); }}
-                className="w-full resize-y rounded-md border bg-transparent px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="w-full resize-y rounded-md border bg-transparent px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus-visible:border-ring"
               />
             </div>
-            {error ? <p role="alert" className="text-xs leading-relaxed text-destructive">{error}</p> : null}
+            {error ? <p role="alert" className="text-xs leading-relaxed text-destructive">{errorText}</p> : null}
           </fieldset>
         </ToolPane>
         <ToolPane title={t(($) => $.researchTools.generators.previewPane)} badge={activeCopy.name} footer={

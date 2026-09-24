@@ -302,8 +302,6 @@
       "needed": "Este proyecto usa funciones que necesitan comandos externos arbitrarios. Seguirán bloqueados hasta que los permitas.",
       "warning": "Lo necesitan minted y algunos documentos con PythonTeX. LaTeX puede ejecutar programas con tus permisos de usuario, así que actívalo solo con proyectos de confianza. Los propios auxiliares de TeX Live, como la conversión de EPS, funcionan sin esto."
     },
-    "shellEscapeAllowed": "Los comandos externos están permitidos para este proyecto en este equipo.",
-    "shellEscapeBlocked": "Los comandos externos arbitrarios están bloqueados para este proyecto. Los propios auxiliares de TeX Live, como la conversión de EPS, siguen funcionando.",
     "shellEscapeFailed": "No se pudo cambiar el acceso a comandos externos.",
     "switchFailed": "No se pudo cambiar el motor de compilación.",
     "switched": "Este proyecto ahora compila con {{engine}}.",
@@ -498,7 +496,6 @@
         "title": "Sincronización en la nube"
       },
       "danger": {
-        "closeFailed": "No se pudo cerrar el proyecto abierto de forma segura.",
         "confirmDeleteAllAction": "Eliminar todos los proyectos",
         "confirmDeleteAllDescription": "Todos los proyectos actuales pasarán a la papelera, con sus archivos y su historial de Git. Después podrás restaurarlos uno a uno.",
         "confirmDeleteAllTitle_one": "¿Eliminar {{count}} proyecto?",
@@ -509,7 +506,9 @@
         "deleteAllDescription": "Mueve todos los proyectos a la papelera. No se elimina nada de forma definitiva.",
         "deleting": "Eliminando…",
         "moveFailed": "No se pudieron mover los proyectos a la papelera.",
-        "movePartial": "Se movieron {{count}} proyectos, pero no se pudo terminar la operación.",
+        "movePartial_one": "Se movió {{count}} proyecto a la papelera. El resto no se movió.",
+        "movePartial_many": "Se movieron {{count}} proyectos a la papelera. El resto no se movió.",
+        "movePartial_other": "Se movieron {{count}} proyectos a la papelera. El resto no se movió.",
         "movedCount_one": "Se movió {{count}} proyecto a la papelera.",
         "movedCount_many": "Se movieron {{count}} proyectos a la papelera.",
         "movedCount_other": "Se movieron {{count}} proyectos a la papelera.",
@@ -521,7 +520,9 @@
       "recycleBin": {
         "clearAll": "Vaciar todo",
         "clearFailed": "No se pudo vaciar la papelera.",
-        "clearPartial": "Se eliminaron definitivamente {{count}} proyectos, pero no se pudo vaciar toda la papelera.",
+        "clearPartial_one": "Se eliminó definitivamente {{count}} proyecto. El resto sigue en la papelera.",
+        "clearPartial_many": "Se eliminaron definitivamente {{count}} proyectos. El resto sigue en la papelera.",
+        "clearPartial_other": "Se eliminaron definitivamente {{count}} proyectos. El resto sigue en la papelera.",
         "clearedCount_one": "Se eliminó definitivamente {{count}} proyecto.",
         "clearedCount_many": "Se eliminaron definitivamente {{count}} proyectos.",
         "clearedCount_other": "Se eliminaron definitivamente {{count}} proyectos.",
@@ -860,7 +861,6 @@
     },
     "newProjectName": "Nombre del proyecto nuevo",
     "projectName": "Nombre del proyecto",
-    "projectRenamed": "Se cambió el nombre del proyecto",
     "saveName": "Guardar (Enter)",
     "saveNameAriaLabel": "Guardar el nombre",
     "untitledProject": "proyecto",
@@ -871,7 +871,8 @@
       "pdf": "Vista del PDF",
       "split": "Vista dividida"
     },
-    "moreActions": "Más acciones"
+    "moreActions": "Más acciones",
+    "renameFailed": "No se pudo cambiar el nombre del proyecto."
   },
   "tour": {
     "chooseColor": "Elige tu color distintivo",

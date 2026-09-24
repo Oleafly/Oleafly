@@ -40,7 +40,8 @@
     "renameFailed": "„{{path}}” nu a putut fi redenumit. Calea originală a rămas neschimbată.",
     "setMain": "Setează ca document principal",
     "title": "Explorator",
-    "treeAriaLabel": "Arborele de fișiere din explorator"
+    "treeAriaLabel": "Arborele de fișiere din explorator",
+    "setMainFailed": "„{{path}}” nu a putut fi setat ca document principal."
   },
   "explorer": {
     "resizeSections": "Redimensionează {{first}} și {{second}}"

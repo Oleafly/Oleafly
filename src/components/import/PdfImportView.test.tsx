@@ -11,6 +11,7 @@ const refineAvailable = vi.fn(async () => false);
 const refineWithAi = vi.fn(async () => {});
 const pdfPageToPng = vi.fn(async () => "data:image/png;base64,page");
 const toastSuccess = vi.fn();
+const notifyError = vi.fn();
 
 vi.mock("@/features/import", () => ({
   createProjectFromConversion: () => createProjectFromConversion(),
@@ -30,6 +31,7 @@ vi.mock("@/lib/pdf-image", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
+  notifyError: (...args: unknown[]) => notifyError(...args),
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: vi.fn(),
@@ -48,6 +50,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
@@ -110,6 +113,7 @@ beforeEach(() => {
   pdfPageToPng.mockReset();
   pdfPageToPng.mockResolvedValue("data:image/png;base64,page");
   toastSuccess.mockReset();
+  notifyError.mockReset();
   writeText.mockReset();
   rerun.mockReset();
   useHomeViewStore.setState({ page: "pdf-import" });
@@ -219,14 +223,60 @@ describe("PdfImportView converted document", () => {
     expect(useImportStore.getState().view).toBe("split");
   });
 
-  it("copies the converted source", () => {
+  it("copies the converted source and confirms only after the clipboard write", async () => {
+    let finish!: () => void;
+    writeText.mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
     seedConverted();
     render(<PdfImportView />);
     fireEvent.click(
       screen.getByRole("button", { name: enLibrary.pdfImport.copy }),
     );
     expect(writeText).toHaveBeenCalledWith(RESULT.tex);
-    expect(toastSuccess).toHaveBeenCalledWith(enLibrary.pdfImport.copied);
+    expect(toastSuccess).not.toHaveBeenCalled();
+    finish();
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledExactlyOnceWith(enLibrary.pdfImport.copied));
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a clipboard failure instead of a false success", async () => {
+    const failure = new Error("clipboard denied");
+    writeText.mockRejectedValueOnce(failure);
+    seedConverted();
+    render(<PdfImportView />);
+    fireEvent.click(
+      screen.getByRole("button", { name: enLibrary.pdfImport.copy }),
+    );
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith(
+        "copy converted LaTeX",
+        failure,
+        enResearchTools.converter.copyFailed,
+      ),
+    );
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("runs Create project and Refine with AI one at a time", async () => {
+    let finish!: () => void;
+    createProjectFromConversion.mockReturnValueOnce(
+      new Promise<void>((resolve) => { finish = resolve; }),
+    );
+    refineAvailable.mockResolvedValue(true);
+    seedConverted();
+    render(<PdfImportView />);
+    const refine = await screen.findByTestId("import-refine");
+    const create = screen.getByTestId("import-create-project");
+    fireEvent.click(create);
+    fireEvent.click(create);
+    fireEvent.click(refine);
+    expect(createProjectFromConversion).toHaveBeenCalledTimes(1);
+    expect(refineWithAi).not.toHaveBeenCalled();
+    expect(create).toBeDisabled();
+    expect(refine).toBeDisabled();
+    finish();
+    await waitFor(() => expect(create).toBeEnabled());
+    fireEvent.click(refine);
+    expect(refineWithAi).toHaveBeenCalledTimes(1);
   });
 
   it("downloads the tex, the zip, a figure and creates a project", () => {

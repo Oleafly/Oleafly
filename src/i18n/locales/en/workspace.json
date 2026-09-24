@@ -40,7 +40,8 @@
     "renameFailed": "Could not rename \"{{path}}\". The original path was left unchanged.",
     "setMain": "Set as main document",
     "title": "Explorer",
-    "treeAriaLabel": "Explorer file tree"
+    "treeAriaLabel": "Explorer file tree",
+    "setMainFailed": "Could not make \"{{path}}\" the main document."
   },
   "explorer": {
     "resizeSections": "Resize {{first}} and {{second}}"

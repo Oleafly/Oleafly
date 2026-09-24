@@ -349,8 +349,6 @@
     "unsave": "Fjern fra lagrede",
     "save": "Lagre malen",
     "use": "Bruk denne malen",
-    "savedToast": "Lagret \"{{name}}\" i biblioteket ditt",
-    "removedToast": "Fjernet \"{{name}}\" fra biblioteket ditt",
     "saveFailed": "Kunne ikke lagre malen.",
     "removeFailed": "Kunne ikke fjerne malen."
   },

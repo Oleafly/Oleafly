@@ -303,8 +303,6 @@
       "needed": "Tento projekt používá funkce, které potřebují libovolné externí příkazy. Zůstanou blokované, dokud je nepovolíte.",
       "warning": "Vyžaduje to minted a některé dokumenty s PythonTeX. LaTeX může spouštět programy s vaším uživatelským oprávněním, proto to zapínejte jen u projektu, kterému věříte. Vlastní pomocníci TeX Live, například převod EPS, běží i bez toho."
     },
-    "shellEscapeAllowed": "Externí příkazy jsou pro tento projekt v tomto počítači povolené.",
-    "shellEscapeBlocked": "Libovolné externí příkazy jsou pro tento projekt blokované. Vlastní pomocníci TeX Live, například převod EPS, běží dál.",
     "shellEscapeFailed": "Přístup k externím příkazům se nepodařilo změnit.",
     "switchFailed": "Engine kompilace se nepodařilo přepnout.",
     "switched": "Tento projekt se teď kompiluje enginem {{engine}}.",
@@ -503,7 +501,6 @@
         "title": "Synchronizace v cloudu"
       },
       "danger": {
-        "closeFailed": "Otevřený projekt se nepodařilo bezpečně zavřít.",
         "confirmDeleteAllAction": "Smazat všechny projekty",
         "confirmDeleteAllDescription": "Každý aktuální projekt se přesune do koše včetně svých souborů a historie Git. Projekty pak můžete obnovovat jednotlivě.",
         "confirmDeleteAllTitle_one": "Smazat {{count}} projekt?",
@@ -515,7 +512,10 @@
         "deleteAllDescription": "Přesune každý projekt do koše. Nic se trvale nesmaže.",
         "deleting": "Maže se…",
         "moveFailed": "Projekty se nepodařilo přesunout do koše.",
-        "movePartial": "Přesunuto {{count}} projektů, ale operaci se nepodařilo dokončit.",
+        "movePartial_one": "{{count}} projekt byl přesunut do koše. Ostatní přesunuty nebyly.",
+        "movePartial_few": "{{count}} projekty byly přesunuty do koše. Ostatní přesunuty nebyly.",
+        "movePartial_many": "{{count}} projektu bylo přesunuto do koše. Ostatní přesunuty nebyly.",
+        "movePartial_other": "{{count}} projektů bylo přesunuto do koše. Ostatní přesunuty nebyly.",
         "movedCount_one": "{{count}} projekt byl přesunut do koše.",
         "movedCount_few": "{{count}} projekty byly přesunuty do koše.",
         "movedCount_many": "{{count}} projektu bylo přesunuto do koše.",
@@ -528,7 +528,10 @@
       "recycleBin": {
         "clearAll": "Vysypat koš",
         "clearFailed": "Koš se nepodařilo vysypat.",
-        "clearPartial": "Trvale bylo smazáno {{count}} projektů, ale koš se nepodařilo vysypat celý.",
+        "clearPartial_one": "Trvale smazán {{count}} projekt. Ostatní zůstaly v koši.",
+        "clearPartial_few": "Trvale smazány {{count}} projekty. Ostatní zůstaly v koši.",
+        "clearPartial_many": "Trvale smazáno {{count}} projektu. Ostatní zůstaly v koši.",
+        "clearPartial_other": "Trvale smazáno {{count}} projektů. Ostatní zůstaly v koši.",
         "clearedCount_one": "Trvale byl smazán {{count}} projekt.",
         "clearedCount_few": "Trvale byly smazány {{count}} projekty.",
         "clearedCount_many": "Trvale bylo smazáno {{count}} projektu.",
@@ -876,7 +879,6 @@
     },
     "newProjectName": "Název nového projektu",
     "projectName": "Název projektu",
-    "projectRenamed": "Projekt byl přejmenován",
     "saveName": "Uložit (Enter)",
     "saveNameAriaLabel": "Uložit název",
     "untitledProject": "projekt",
@@ -887,7 +889,8 @@
       "pdf": "Zobrazení PDF",
       "split": "Rozdělené zobrazení"
     },
-    "moreActions": "Další akce"
+    "moreActions": "Další akce",
+    "renameFailed": "Projekt se nepodařilo přejmenovat."
   },
   "tour": {
     "chooseColor": "Vyberte svou charakteristickou barvu",

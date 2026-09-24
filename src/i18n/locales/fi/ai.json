@@ -527,7 +527,6 @@
     "showAllHistory": "Näytä koko historia ({{count}})"
   },
   "research": {
-    "noSourceLink": "Tässä tuloksessa ei ole linkkiä lähteeseen.",
     "sourceOpenFailed": "Lähdettä ei voitu avata.",
     "noProjectPath": "Tässä tuloksessa ei ole projektitiedoston polkua.",
     "resultOpenFailed": "Tulostiedostoa ei voitu avata."
@@ -645,7 +644,6 @@
     "summarizing": "Tiivistää aiempaa keskustelua…"
   },
   "toasts": {
-    "sessionOpenFailed": "Agentin istuntoa ei voitu avata.",
     "approvalModeSaveFailed": "Hyväksyntätilaa ei voitu tallentaa.",
     "skillDraftSaved": "Taidon luonnos tallennettiin. Tarkista se ennen käyttöönottoa.",
     "skillDraftFailed": "Taidon luonnosta ei voitu tallentaa. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Tätä keskustelua ei voitu arkistoida.",
     "chatForked": "Keskustelu haaroitettiin.",
     "chatForkFailed": "Tätä keskustelua ei voitu haaroittaa.",
-    "engineNotLoaded": "Dokumenttimoottorin tietoja ei ole ladattu. Tekoälymuokkaus on turvallisuuden vuoksi pois käytöstä.",
     "skillsLoadFailed": "Käytössä olevia taitoja ei voitu ladata. Yritä uudelleen.",
     "approvalModeLoadFailed": "Hyväksyntätilaa ei voitu ladata.",
     "approvalRulesLoadFailed": "Projektin hyväksyntäsääntöjä ei voitu ladata.",
-    "restored": "Projektitiedostot palautettiin. Keskustelu säilytettiin.",
     "restoreFailed": "Palautus ei onnistunut: {{error}}",
     "steerFailed": "Käynnissä olevaa vuoroa ei voitu ohjata.",
     "approvalRuleSaveFailed": "Projektin hyväksyntäsääntöä ei voitu tallentaa.",

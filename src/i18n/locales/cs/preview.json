@@ -92,7 +92,12 @@
     "settings": "Nastavení náhledu PDF",
     "fullscreen": "Náhled na celou obrazovku",
     "exitFullscreen": "Ukončit celou obrazovku",
-    "retryCompile": "Zkusit kompilaci znovu"
+    "retryCompile": "Zkusit kompilaci znovu",
+    "chooseEngine": "Vybrat engine…",
+    "installPackages_one": "Najít a nainstalovat {{name}}",
+    "installPackages_few": "Najít a nainstalovat {{count}} soubory",
+    "installPackages_many": "Najít a nainstalovat {{count}} souboru",
+    "installPackages_other": "Najít a nainstalovat {{count}} souborů"
   },
   "stale": {
     "badge": "Zastaralé",
@@ -121,7 +126,7 @@
     "imageSaved": "Obrázek uložen · {{name}}",
     "pdfSaved": "PDF uloženo · {{name}}",
     "showInFolder": "Zobrazit ve složce",
-    "folderUnavailable": "Soubor byl uložen, ale Oleafly nedokázal otevřít jeho složku (přístup byl odepřen). Zkontrolujte umístění, které jste zvolili v dialogu ukládání.",
+    "folderUnavailable": "Složku se nepodařilo otevřít.",
     "imageFailed": "Obrázek se nepodařilo stáhnout.",
     "imageFailedDetail": "Obrázek se nepodařilo stáhnout: {{detail}}",
     "pdfFailed": "PDF se nepodařilo stáhnout.",

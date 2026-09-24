@@ -10,6 +10,7 @@ import { writeBytesFile } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 
 type Convert = (tex: string, display: boolean) => string;
@@ -143,14 +144,20 @@ export function equationAtCursor(): { tex: string; display: boolean } | null {
   return null;
 }
 
+const EQUATION_EXPORT_TOAST_KEY = "equation-export";
+
+export function equationFailureMessage(error: unknown, fallback: string): string {
+  return decodeAppError(error) ? describeError(error) : fallback;
+}
+
 async function saveBytes(defaultName: string, filters: { name: string; extensions: string[] }[], bytes: Uint8Array, kind: string): Promise<void> {
   const dest = await pickSavePath({ defaultPath: defaultName, filters });
   if (!dest) return;
   await writeBytesFile(dest, bytesToBase64(bytes));
-  toast.success(i18n.t(($) => $.editor.equationExport.saved, { kind }), {
+  toast.successUnique(EQUATION_EXPORT_TOAST_KEY, i18n.t(($) => $.editor.equationExport.saved, { kind }), {
     label: i18n.t(($) => $.editor.equationExport.showInFolder),
     onClick: () => void import("@/lib/tauri").then((m) => m.revealInDir(dest)),
-  }, true);
+  });
 }
 
 /** Save the equation under the cursor (or selection) as an SVG file. */
@@ -169,7 +176,11 @@ export async function saveEquationAsSvg(): Promise<void> {
       i18n.t(($) => $.editor.equationExport.svgKind),
     );
   } catch (e) {
-    notifyError("export equation svg", e);
+    notifyError(
+      "export equation svg",
+      e,
+      equationFailureMessage(e, i18n.t(($) => $.researchTools.equation.exportSvgFailed)),
+    );
   }
 }
 
@@ -190,7 +201,11 @@ export async function saveEquationAsPng(scale = 3, background: string | null = "
       i18n.t(($) => $.editor.equationExport.pngKind),
     );
   } catch (e) {
-    notifyError("export equation png", e);
+    notifyError(
+      "export equation png",
+      e,
+      equationFailureMessage(e, i18n.t(($) => $.researchTools.equation.exportImageFailed)),
+    );
   }
 }
 

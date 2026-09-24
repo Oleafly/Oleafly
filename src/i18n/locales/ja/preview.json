@@ -92,7 +92,9 @@
     "settings": "PDF プレビューの設定",
     "fullscreen": "全画面プレビュー",
     "exitFullscreen": "全画面を終了",
-    "retryCompile": "コンパイルを再試行"
+    "retryCompile": "コンパイルを再試行",
+    "chooseEngine": "エンジンを選択…",
+    "installPackages_other": "{{count}} 件のファイルを探してインストール"
   },
   "stale": {
     "badge": "古い",
@@ -121,7 +123,7 @@
     "imageSaved": "画像を保存しました · {{name}}",
     "pdfSaved": "PDF を保存しました · {{name}}",
     "showInFolder": "フォルダに表示",
-    "folderUnavailable": "ファイルは保存されましたが、Oleafly はそのフォルダを開けませんでした（権限がありません）。保存ダイアログで選んだ場所を確認してください。",
+    "folderUnavailable": "フォルダを開けませんでした。",
     "imageFailed": "画像をダウンロードできませんでした。",
     "imageFailedDetail": "画像をダウンロードできませんでした: {{detail}}",
     "pdfFailed": "PDF をダウンロードできませんでした。",

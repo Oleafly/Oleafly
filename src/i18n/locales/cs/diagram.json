@@ -73,7 +73,6 @@
       "importedCodeOnly": "Soubor {{name}} byl importován (pouze kód, nelze kreslit).",
       "importFailed": "Tento soubor se nepodařilo importovat: {{detail}}",
       "noAiFix": "AI nevrátila žádnou opravu.",
-      "aiFixApplied": "Oprava od AI byla použita. Kompiluje se znovu…",
       "fixFailed": "Oprava se nezdařila: {{detail}}",
       "notDrawable": "V tomto kódu nebylo nic, co by šlo nakreslit. Kód zůstal beze změny."
     },

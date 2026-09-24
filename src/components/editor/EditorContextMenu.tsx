@@ -35,12 +35,18 @@ import {
 } from "@/components/ui/context-menu";
 import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
-import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
+import {
+  explainMissingAnalysis,
+  findReferences,
+  goToDefinition,
+  showLookupResult,
+  startRename,
+} from "@/lib/index/nav";
 import { goToSyncTex } from "@/features/synctex";
 import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
 import { useTableImportStore } from "@/store/table-import";
 import { useFilesStore } from "@/store/files";
-import { toast } from "@/lib/toast";
+import { useIndexStore } from "@/store/project-index";
 import {
   HEADING_LEVELS,
   insertAlign,
@@ -184,7 +190,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           onClick={() => {
             const view = getEditorView();
             if (view && !goToDefinition(view)) {
-              toast.info(t(($) => $.editor.contextMenu.noIndexedSymbol));
+              showLookupResult(t(($) => $.editor.contextMenu.noIndexedSymbol));
             }
           }}
         >
@@ -195,7 +201,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           onClick={() => {
             const view = getEditorView();
             if (view && !findReferences(view)) {
-              toast.info(t(($) => $.editor.contextMenu.noIndexedSymbol));
+              showLookupResult(t(($) => $.editor.contextMenu.noIndexedSymbol));
             }
           }}
         >
@@ -205,8 +211,11 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
         <ContextMenuItem
           onClick={() => {
             const view = getEditorView();
-            if (view && !startRename(view)) {
-              toast.info(t(($) => $.editor.contextMenu.noRenamableSymbol));
+            if (!view || startRename(view)) return;
+            if (useIndexStore.getState().index) {
+              showLookupResult(t(($) => $.editor.contextMenu.noRenamableSymbol));
+            } else {
+              explainMissingAnalysis(view.state.doc.toString());
             }
           }}
         >

@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "Billedet er gemt i {{path}}",
     "imageFailed": "Det indsatte billede kunne ikke gemmes i projektet.",
     "noProject": "Åbn et projekt, før du indsætter billeder."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Sprog til stavekontrol",
     "spellLanguageAppSetting": "Brug appens indstilling",
     "spellLanguageAriaLabel": "Sprog til stavekontrol i dette projekt",
-    "spellLanguageHint": "Gælder kun dette projekt. Download flere sprog under Indstillinger."
+    "spellLanguageHint": "Gælder kun dette projekt. Download flere sprog under Indstillinger.",
+    "spellLanguageFailed": "Kunne ikke ændre sproget til stavekontrol."
   },
   "table": {
     "trigger": "Indsæt tabel",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Citer fra projektet",
-    "updating": "Projektets citationer opdateres.",
-    "changed": "Projektets citationer er ændret. Åbn vælgeren igen for at opdatere.",
     "filterPlaceholder": "Nøgle, forfatter eller titel…",
     "filterLabel": "Filtrer projektets citationer",
     "partialCatalog": "Delvist katalog. Ugyldige eller ulæselige litteraturfiler kan mangle.",
@@ -403,10 +401,7 @@
     "error": "Korrekturlæsningen kunne ikke gøre dette dokument færdigt.",
     "unavailable": "Offlinekorrekturlæsning er ikke tilgængelig.",
     "tooLarge": "Korrekturlæsningen er sat på pause, fordi dokumentet er for stort.",
-    "unsupported": "Korrekturlæsning understøttes ikke for dette dokumentformat.",
-    "partial_one": "Korrekturlæsningen fik {{count}} fund med, men en motor blev ikke færdig.",
-    "partial_other": "Korrekturlæsningen fik {{count}} fund med, men en motor blev ikke færdig.",
-    "retry": "Prøv igen"
+    "unsupported": "Korrekturlæsning understøttes ikke for dette dokumentformat."
   },
   "checkpoints": {
     "showInExplorer": "Vis i Stifinder",

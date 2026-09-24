@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { i18n } from "@/i18n";
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { useFilesStore } from "@/store/files";
 import { useProofreadingStore } from "@/store/proofreading";
@@ -13,6 +14,12 @@ import { useSettingsStore } from "@/store/settings";
 const mocks = vi.hoisted(() => ({
   listDictionaries: vi.fn<() => Promise<DictionaryInfo[]>>(),
   setProjectDictionaryLocaleCmd: vi.fn(),
+  notifyError: vi.fn(),
+}));
+
+vi.mock("@/lib/toast", () => ({
+  notifyError: mocks.notifyError,
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -158,6 +165,27 @@ describe("per-project spell-check language", () => {
     await waitFor(() =>
       expect(useFilesStore.getState().projectDictionaryLocale).toBeNull(),
     );
+  });
+
+  it("explains a rejected language change in plain words", async () => {
+    const failure = "failed to set the spelling dictionary: unknown locale";
+    mocks.setProjectDictionaryLocaleCmd.mockRejectedValue(failure);
+    const user = userEvent.setup();
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    });
+    await user.click(control);
+    await user.click(await screen.findByRole("option", { name: "French (France)" }));
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    const message = i18n.t(($) => $.editor.projectInfo.spellLanguageFailed);
+    expect(mocks.notifyError).toHaveBeenCalledWith("set the spelling language", failure, message);
+    expect(message).not.toBe(failure);
+    expect(useFilesStore.getState().projectDictionaryLocale).toBeNull();
+    await waitFor(() => expect(control).not.toBeDisabled());
+    expect(control).toHaveTextContent(enEditor.projectInfo.spellLanguageAppSetting);
   });
 
   it("stays hidden when spell check is off", async () => {

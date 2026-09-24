@@ -681,7 +681,6 @@
     "copyFailed": "Oleafly 無法複製轉換後的原始碼。",
     "saveFailed": "Oleafly 無法儲存轉換後的檔案。",
     "resultName": "{{title}} 結果",
-    "projectCreated": "已依轉換結果建立專案。",
     "projectFailed": "Oleafly 無法建立專案。",
     "cancel": "取消",
     "convert": "轉換",
@@ -920,9 +919,8 @@
       }
     },
     "bibtexBibliography": "BibTeX 參考文獻",
-    "savedBibliography": "已儲存 references.bib",
+    "savedBibliography": "已儲存 {{name}}",
     "saveFailed": "Oleafly 無法儲存這份參考文獻。",
-    "copied": "已複製 {{label}}",
     "copyFailed": "Oleafly 無法複製 {{label}}。",
     "fieldJournal": "期刊",
     "fieldConference": "研討會或論文集",
@@ -1113,7 +1111,6 @@
     "downloadSvg": "下載 SVG",
     "copyMathml": "複製給 Word 用的 MathML",
     "copyKatexHtml": "複製 KaTeX HTML",
-    "copiedSource": "已複製 LaTeX 原始碼",
     "copiedMathml": "已複製 MathML（可貼進 Word）",
     "copiedKatexHtml": "已複製 KaTeX HTML（需要 KaTeX 樣式表）",
     "exportImageFailed": "無法把這段內容匯出成圖片",
@@ -1328,9 +1325,6 @@
     "citationCount": "被引 {{citations}} 次",
     "unknownAuthors": "作者不詳",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "已儲存引用",
-    "toastUpdated": "已更新儲存的引用",
-    "toastCopied": "已複製 BibTeX",
     "toastCopyFailed": "無法複製 BibTeX。",
     "suggestion": {
       "artificialIntelligence": "人工智慧",
@@ -1383,12 +1377,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "加入 .bib",
     "addToBibTooltip": "附加到專案參考文獻並插入 \\cite",
-    "openProjectTooltip": "開啟專案才能附加到參考文獻檔案",
     "citeAdded": "已加入 {{citation}}",
     "addFailed": "無法加入引用。",
-    "toastSaved": "已儲存引用",
-    "toastUpdated": "已更新儲存的引用",
-    "toastCopied": "已複製 BibTeX",
     "toastCopyFailed": "無法複製 BibTeX。"
   }
 }

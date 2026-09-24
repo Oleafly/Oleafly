@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Метаданные установки TexLab некорректны",
     "setUp": "Установить",
-    "retry": "Повторить попытку",
-    "startFailed": "Не удалось запустить языковую службу проекта.",
-    "setupDetailsUnavailable": "Сведения об установке языковой службы недоступны",
     "setupRequired": "Требуется установка языковой службы",
     "installTitle": "Установить {{name}} {{version}}?",
     "licenseAndSource": "Лицензия и исходный код",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Анализ ссылок проекта недоступен.",
-    "updating": "Ссылки проекта обновляются.",
     "noDefinition": "Определение для «{{name}}» не найдено.",
     "definitionsFor": "Определения для {{name}}",
     "multipleDefinitions": "У «{{name}}» найдено определений: {{count}}. Откройте панель источников, чтобы изучить их.",

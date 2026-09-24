@@ -2,12 +2,43 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn(), error: vi.fn(), info: vi.fn(), success: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  success: vi.fn(),
+  errorUnique: vi.fn(),
+  infoUnique: vi.fn(),
+  successUnique: vi.fn(),
+}));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: mocks.invoke }));
-vi.mock("@/lib/toast", () => ({ toast: { error: mocks.error, info: mocks.info, success: mocks.success } }));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: mocks.error,
+    info: mocks.info,
+    success: mocks.success,
+    errorUnique: mocks.errorUnique,
+    infoUnique: mocks.infoUnique,
+    successUnique: mocks.successUnique,
+  },
+}));
+
+function toastCount(): number {
+  return [
+    mocks.error,
+    mocks.info,
+    mocks.success,
+    mocks.errorUnique,
+    mocks.infoUnique,
+    mocks.successUnique,
+  ].reduce(
+    (total, fn) => total + fn.mock.calls.length,
+    0,
+  );
+}
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
-import { useEngineStore } from "@/store/engine";
+import { packageErrorMessage, useEngineStore } from "@/store/engine";
 import { EngineSection } from "@/components/settings/EngineSection";
 
 const detail = "tlmgr install: package tikz not present in repository.";
@@ -42,8 +73,10 @@ beforeEach(() => {
 
 it("preserves the installer failure reason in the visible error", async () => {
   await useEngineStore.getState().addPackage("tikz");
-  const shown = mocks.error.mock.calls.map((call) => call[0]).join("\n");
-  expect(shown).toContain(detail);
+  const failure = useEngineStore.getState().packageError;
+  if (!failure) throw new Error("expected an inline package error");
+  expect(packageErrorMessage(failure)).toContain(detail);
+  expect(toastCount()).toBe(0);
 });
 
 it("uses the TeX Live package owning tikz.sty when the Settings Add button is clicked", async () => {
@@ -104,9 +137,10 @@ it("shows where a personal-tree installation landed", async () => {
       timeout: 12000,
     }),
   ).toBeInTheDocument();
-  expect(mocks.success.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
+  expect(useEngineStore.getState().packageNotice).toContain(
     "personal tree at /Users/t/Library/texmf",
   );
+  expect(toastCount()).toBe(0);
 }, 20000);
 
 it("lists personal-tree packages and removes them from that tree", async () => {

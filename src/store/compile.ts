@@ -11,7 +11,13 @@ import {
   type CompileResult,
   type LogDiagnostic,
 } from "@/lib/tauri";
-import { engineErrorMessage, useFilesStore } from "@/store/files";
+import {
+  engineErrorMessage,
+  projectCompatibilityFindings,
+  reportFileSaveFailure,
+  texDistributionGapNotice,
+  useFilesStore,
+} from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
 import {
   classifyCompileFailure,
@@ -23,6 +29,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
+import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
 
@@ -53,7 +61,19 @@ import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 // the current preview.
 let compileSeq = 0;
 let rerunQueued = false;
+let rerunOrigin: CompileOrigin = "automatic";
 let compileIntentGeneration = 0;
+
+function clearQueuedRerun(): void {
+  rerunQueued = false;
+  rerunOrigin = "automatic";
+}
+
+function queueRerun(origin: CompileOrigin): void {
+  rerunQueued = true;
+  if (origin === "explicit") rerunOrigin = "explicit";
+}
+
 let activeCompileIntent: number | null = null;
 
 export interface CompileRequestIdentity {
@@ -291,9 +311,9 @@ export interface CompileState {
   /// Ends the running compile. Resolves once the compiler has been asked to stop.
   stopCompile: () => Promise<void>;
   reset: () => void;
-  recompile: (
-    options?: { fromScratch?: boolean },
-  ) => Promise<CompileResult | undefined>;
+  recompile: (options?: RecompileOptions) => Promise<CompileResult | undefined>;
+  offer: CompileOffer | null;
+  dismissOffer: () => void;
   /**
    * Seed the preview and success checkpoint from the persisted compile
    * fingerprint plus the already-built PDF on disk, skipping the on-open
@@ -375,27 +395,36 @@ async function mainDocumentSyntaxErrors(
     }));
 }
 
-/**
- * Open the engine-picker modal when a failed Tectonic compile matches a known
- * engine gap. Skipped for latexmk projects (they have the full toolchain) and
- * for finding sets the user already dismissed with "Keep Tectonic".
- *
- * Catch-all: when no specific signature matches but the errors originate in a
- * class or style file rather than the user's own document, treat it as an
- * engine gap too. That is the "it works on Overleaf" long tail (publisher
- * classes relying on toolchain behavior Tectonic does not provide), and it
- * never fires for ordinary typos, which TeX attributes to the user's .tex.
- */
-// Last missing-package suggestion per project, so auto-compile retries of the
-// same failure do not stack identical toasts. Session-scoped on purpose: a
-// fresh launch may as well offer the install again.
-const suggestedPackagesByProject = new Map<string, string>();
+export type CompileOrigin = "explicit" | "automatic";
 
-/**
- * A latexmk compile that failed on a missing .sty/.cls gets a one-click
- * "install via tlmgr and recompile" toast. This closes the gap between a
- * minimal TinyTeX and what a journal template actually loads.
- */
+export interface RecompileOptions {
+  readonly fromScratch?: boolean;
+  readonly origin?: CompileOrigin;
+}
+
+export type CompileOffer =
+  | {
+      readonly kind: "engine-gap";
+      readonly projectId: string;
+      readonly findings: ImportCompatFinding[];
+    }
+  | {
+      readonly kind: "missing-packages";
+      readonly projectId: string;
+      readonly packages: string[];
+    };
+
+const offeredPackageSets = new Map<string, Set<string>>();
+const packageInstallsRunning = new Set<string>();
+const missingPackageToasts = new Map<string, number>();
+const bundleRetryToasts = new Map<string, number>();
+let onlineRetry: { readonly projectId: string; readonly listener: () => void } | null = null;
+let engineLoadWait: (() => void) | null = null;
+
+const MUTATION_CONFLICT = "mutation conflict at generation";
+const USER_TREE_NOTICE =
+  /^The system TeX tree is not writable, so the packages went into your personal tree at (.+?)\.?$/;
+
 // Identifies a set of missing packages independently of the order the log
 // happened to mention them in, so the same gap is only ever offered once.
 export function packageSuggestionSignature(
@@ -406,64 +435,148 @@ export function packageSuggestionSignature(
     .join(",");
 }
 
-function maybeSuggestMissingPackages(log: string): void {
+function rememberOffer(projectId: string, signature: string): boolean {
+  const seen = offeredPackageSets.get(projectId) ?? new Set<string>();
+  if (seen.has(signature)) return false;
+  seen.add(signature);
+  offeredPackageSets.set(projectId, seen);
+  return true;
+}
+
+function forgetOffer(projectId: string, signature: string): void {
+  offeredPackageSets.get(projectId)?.delete(signature);
+}
+
+function dismissOwnedToast(toasts: Map<string, number>, projectId: string): void {
+  const id = toasts.get(projectId);
+  if (id === undefined) return;
+  toasts.delete(projectId);
+  toast.dismiss(id);
+}
+
+function isLatexmkProject(projectId: string): boolean {
   const files = useFilesStore.getState();
-  const projectId = files.projectId;
-  if (files.engine.id !== "latexmk" || !projectId) return;
-  const packages = missingLatexFiles(log);
-  if (packages.length === 0) return;
-  const signature = packageSuggestionSignature(packages);
-  if (suggestedPackagesByProject.get(projectId) === signature) return;
-  void (async () => {
-    const tauri = await import("@/lib/tauri");
-    const info = await tauri.latexEngineInfo().catch(() => null);
-    if (!info?.tlmgr || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
-    if (suggestedPackagesByProject.get(projectId) === signature) return;
-    suggestedPackagesByProject.set(projectId, signature);
-    const label = i18n.t(($) => $.core.missingPackages.action, {
+  return files.projectId === projectId && files.engine.id === "latexmk";
+}
+
+function missingPackagesToastKey(projectId: string): string {
+  return `missing-packages:${projectId}`;
+}
+
+function userTreeNotice(outcome: string): string | null {
+  let path: string | null = null;
+  for (const notice of installerNotices(outcome)) {
+    const match = USER_TREE_NOTICE.exec(notice);
+    if (match && path === null) path = match[1];
+    else void logError("install missing packages", notice);
+  }
+  return path;
+}
+
+function clearOffer(projectId: string): void {
+  useCompileStore.setState((state) =>
+    state.offer?.projectId === projectId ? { offer: null } : state,
+  );
+}
+
+function offerForAttempt(ctx: CompileApplyContext, offer: CompileOffer): boolean {
+  let recorded = false;
+  ctx.set((state) => {
+    if (
+      state.status !== "error" ||
+      state.lastAttemptIdentity?.requestGeneration !== ctx.requestIdentity.requestGeneration
+    ) {
+      return state;
+    }
+    recorded = true;
+    return { offer };
+  });
+  return recorded;
+}
+
+async function installMissingPackages(projectId: string, packages: string[]): Promise<void> {
+  const key = missingPackagesToastKey(projectId);
+  const id = toast.infoUnique(
+    key,
+    i18n.t(($) => $.core.missingPackages.installing, {
       count: packages.length,
       name: packages[0],
+    }),
+    undefined,
+    true,
+  );
+  missingPackageToasts.set(projectId, id);
+  try {
+    const tauri = await import("@/lib/tauri");
+    const outcome = await tauri.tlmgrInstallMissing(packages);
+    const engineStore = await import("@/store/engine");
+    await engineStore.useEngineStore.getState().refreshPackages();
+    const path = userTreeNotice(outcome);
+    missingPackageToasts.delete(projectId);
+    if (path === null) toast.dismiss(id);
+    else toast.infoUnique(key, i18n.t(($) => $.core.missingPackages.userTree, { path }));
+    if (isLatexmkProject(projectId)) void useCompileStore.getState().recompile();
+  } catch (error) {
+    void logError("install missing packages", error);
+    const message = i18n.t(($) => $.settings.engine.packages.error.withDetail, {
+      message: i18n.t(($) => $.settings.engine.packages.error.install, {
+        name: formatList(packages),
+      }),
+      detail: describeError(error),
     });
-    const summary = i18n.t(($) => $.core.missingPackages.summary, {
+    missingPackageToasts.set(projectId, toast.errorUnique(key, message));
+  } finally {
+    forgetOffer(projectId, packageSuggestionSignature(packages));
+  }
+}
+
+export function installOfferedPackages(projectId: string, packages: string[]): void {
+  if (packageInstallsRunning.has(projectId) || !isLatexmkProject(projectId)) return;
+  packageInstallsRunning.add(projectId);
+  clearOffer(projectId);
+  void installMissingPackages(projectId, packages).finally(() => {
+    packageInstallsRunning.delete(projectId);
+  });
+}
+
+function showMissingPackagesOffer(projectId: string, packages: string[]): void {
+  if (!rememberOffer(projectId, packageSuggestionSignature(packages))) return;
+  const id = toast.infoUnique(
+    missingPackagesToastKey(projectId),
+    i18n.t(($) => $.core.missingPackages.summary, {
       count: packages.length,
       name: packages[0],
       names: formatList(packages),
-    });
-    let installing = false;
-    toast.info(
-      summary,
-      {
-        label,
-        onClick: () => {
-          if (installing || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
-          installing = true;
-          void (async () => {
-            toast.info(
-              i18n.t(($) => $.core.missingPackages.installing, {
-                count: packages.length,
-                name: packages[0],
-              }),
-            );
-            try {
-              const outcome = await tauri.tlmgrInstallMissing(packages);
-              for (const notice of installerNotices(outcome)) toast.info(notice);
-              const engineStore = await import("@/store/engine");
-              await engineStore.useEngineStore.getState().refreshPackages();
-              suggestedPackagesByProject.delete(projectId);
-              if (useFilesStore.getState().projectId === projectId && useFilesStore.getState().engine.id === "latexmk") {
-                void useCompileStore.getState().recompile();
-              }
-            } catch (error) {
-              suggestedPackagesByProject.delete(projectId);
-              notifyError("install missing packages", error);
-            } finally {
-              installing = false;
-            }
-          })();
-        },
-      },
-      true,
-    );
+    }),
+    {
+      label: i18n.t(($) => $.core.missingPackages.action, {
+        count: packages.length,
+        name: packages[0],
+      }),
+      onClick: () => installOfferedPackages(projectId, packages),
+    },
+    true,
+  );
+  missingPackageToasts.set(projectId, id);
+}
+
+function maybeSuggestMissingPackages(ctx: CompileApplyContext, log: string): void {
+  const { projectId } = ctx;
+  if (!isLatexmkProject(projectId) || packageInstallsRunning.has(projectId)) return;
+  const packages = missingLatexFiles(log);
+  if (packages.length === 0) return;
+  const gap = texDistributionGapNotice(projectId);
+  if (gap !== null) {
+    if (ctx.origin === "explicit") toast.infoUnique(missingPackagesToastKey(projectId), gap);
+    return;
+  }
+  void (async () => {
+    const tauri = await import("@/lib/tauri");
+    const info = await tauri.latexEngineInfo().catch(() => null);
+    if (!info?.tlmgr || !isLatexmkProject(projectId)) return;
+    if (packageInstallsRunning.has(projectId)) return;
+    if (!offerForAttempt(ctx, { kind: "missing-packages", projectId, packages })) return;
+    if (ctx.origin === "explicit") showMissingPackagesOffer(projectId, packages);
   })();
 }
 
@@ -478,43 +591,151 @@ export function installerNotices(outcome: string): string[] {
     .slice(0, 2);
 }
 
-function offerCompileRetry(projectId: string, finding: ImportCompatFinding): void {
-  let retrying = false;
-  toast.error(
-    finding.detail,
+function disarmOnlineRetry(): void {
+  if (!onlineRetry) return;
+  window.removeEventListener("online", onlineRetry.listener);
+  onlineRetry = null;
+}
+
+function armOnlineRetry(projectId: string): void {
+  if (typeof window === "undefined" || onlineRetry?.projectId === projectId) return;
+  disarmOnlineRetry();
+  const listener = () => {
+    disarmOnlineRetry();
+    if (useFilesStore.getState().projectId === projectId) {
+      void useCompileStore.getState().recompile({ origin: "automatic" });
+    }
+  };
+  window.addEventListener("online", listener);
+  onlineRetry = { projectId, listener };
+}
+
+function reportBundleFetchFailure(ctx: CompileApplyContext): void {
+  const { projectId } = ctx;
+  const message = i18n.t(($) => $.core.compile.bundleFetchFailed);
+  ctx.set((state) =>
+    state.status === "error" &&
+    state.lastAttemptIdentity?.requestGeneration === ctx.requestIdentity.requestGeneration
+      ? { failureReason: message }
+      : state,
+  );
+  armOnlineRetry(projectId);
+  if (ctx.origin !== "explicit") return;
+  const id = toast.errorUnique(
+    `compile-retry:${projectId}`,
+    message,
     {
       label: i18n.t(($) => $.core.compile.retry),
       onClick: () => {
-        if (retrying || useFilesStore.getState().projectId !== projectId) return;
-        retrying = true;
+        if (useFilesStore.getState().projectId !== projectId) return;
         void useCompileStore.getState().recompile();
       },
     },
     true,
   );
+  bundleRetryToasts.set(projectId, id);
 }
 
-function maybePromptEngineGap(log: string, errors: CompileError[]): void {
-  const files = useFilesStore.getState();
-  if (files.engine.id !== "latex" || !files.projectId) return;
-  let findings = classifyCompileFailure(log, { bundledEngine: true });
-  const retryable = findings.find(
-    (finding) => importCompatAction(finding.id) === "retry-compile",
+function engineGapFindings(
+  projectId: string,
+  classified: ImportCompatFinding[],
+  errors: CompileError[],
+): ImportCompatFinding[] {
+  if (classified.length > 0) return classified;
+  const scanned = projectCompatibilityFindings(projectId);
+  if (scanned.length > 0) return scanned;
+  const classFileError = errors.some(
+    (error) =>
+      error.kind === "error" && /\.(cls|sty|bbx|cbx|def|ldf)$/i.test(error.file ?? ""),
   );
-  if (retryable) {
-    offerCompileRetry(files.projectId, retryable);
+  return classFileError ? [importCompatFinding("class-compat")] : [];
+}
+
+function maybeOfferEngineChoice(
+  ctx: CompileApplyContext,
+  log: string,
+  errors: CompileError[],
+): void {
+  const files = useFilesStore.getState();
+  if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
+  const classified = classifyCompileFailure(log, { bundledEngine: true });
+  if (classified.some((finding) => importCompatAction(finding.id) === "retry-compile")) {
+    reportBundleFetchFailure(ctx);
     return;
   }
-  if (findings.length === 0) {
-    const classFileError = errors.some(
-      (error) =>
-        error.kind === "error" && /\.(cls|sty|bbx|cbx|def|ldf)$/i.test(error.file ?? ""),
-    );
-    if (classFileError) findings = [importCompatFinding("class-compat")];
+  const findings = engineGapFindings(ctx.projectId, classified, errors);
+  if (findings.length === 0 || engineHintDismissed(ctx.projectId, findings)) return;
+  if (!offerForAttempt(ctx, { kind: "engine-gap", projectId: ctx.projectId, findings })) return;
+  if (ctx.origin === "explicit") {
+    useEnginePickerStore.getState().openPicker("compile-failure", findings);
   }
-  if (findings.length === 0) return;
-  if (engineHintDismissed(files.projectId, findings)) return;
-  useEnginePickerStore.getState().openPicker("compile-failure", findings);
+}
+
+export function acceptCompileOffer(offer: CompileOffer): void {
+  if (useFilesStore.getState().projectId !== offer.projectId) return;
+  if (offer.kind === "engine-gap") {
+    useEnginePickerStore.getState().openPicker("compile-failure", offer.findings);
+  } else {
+    installOfferedPackages(offer.projectId, offer.packages);
+  }
+}
+
+function settleCompileNotices(projectId: string): void {
+  if (onlineRetry?.projectId === projectId) disarmOnlineRetry();
+  dismissOwnedToast(bundleRetryToasts, projectId);
+  if (!packageInstallsRunning.has(projectId)) dismissOwnedToast(missingPackageToasts, projectId);
+}
+
+export async function saveActiveForCompile(
+  files: ReturnType<typeof useFilesStore.getState>,
+): Promise<void> {
+  try {
+    await files.saveActive();
+  } catch (error) {
+    if (!String(error).includes(MUTATION_CONFLICT)) throw error;
+    await useFilesStore.getState().saveActive();
+  }
+}
+
+export function reportCompileSaveFailure(
+  scope: string,
+  files: ReturnType<typeof useFilesStore.getState>,
+  error: unknown,
+  explicit = false,
+): void {
+  if (files.projectId && files.activePath) {
+    reportFileSaveFailure(scope, files.projectId, files.activePath, error, explicit);
+  } else {
+    void logError(scope, error);
+  }
+}
+
+export function stopRunningCompileQuietly(): boolean {
+  if (useCompileStore.getState().status !== "compiling") return false;
+  clearQueuedRerun();
+  void cancelCompile().catch((error: unknown) => logError("stop compile", error));
+  return true;
+}
+
+function compileWhenEngineLoads(projectId: string, origin: CompileOrigin): void {
+  engineLoadWait?.();
+  let unsubscribe = () => {};
+  const finish = () => {
+    unsubscribe();
+    if (engineLoadWait === finish) engineLoadWait = null;
+  };
+  unsubscribe = useFilesStore.subscribe((state) => {
+    if (state.projectId !== projectId || state.engineError) {
+      finish();
+      return;
+    }
+    if (!state.engineLoaded) return;
+    finish();
+    if (activeCompileIntent === null && useCompileStore.getState().status !== "compiling") {
+      void useCompileStore.getState().recompile({ origin });
+    }
+  });
+  engineLoadWait = finish;
 }
 
 type CompileSet = StoreApi<CompileState>["setState"];
@@ -528,6 +749,7 @@ interface CompileGateContext {
   readonly capturedProjectId: string | null;
   readonly mainDoc: string;
   readonly intent: number;
+  readonly origin: CompileOrigin;
   readonly matchesProjectAndMain: () => boolean;
   readonly checkpointAdvanced: CheckpointAdvanced;
   readonly abortIntent: () => void;
@@ -560,11 +782,8 @@ function engineLoadedGate(ctx: CompileGateContext): boolean {
     ? engineErrorMessage(ctx.files.engineError)
     : i18n.t(($) => $.core.engine.error.stillLoading);
   setCompileUnavailable(ctx, reason);
-  notifyError(
-    "compile",
-    reason,
-    i18n.t(($) => $.core.compile.engineNotLoaded),
-  );
+  if (ctx.files.engineError) void logError("compile", reason);
+  else if (ctx.capturedProjectId) compileWhenEngineLoads(ctx.capturedProjectId, ctx.origin);
   ctx.abortIntent();
   return false;
 }
@@ -572,7 +791,7 @@ function engineLoadedGate(ctx: CompileGateContext): boolean {
 async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
   try {
-    if (!(await ensurePandoc())) {
+    if (!(await ensurePandoc({ notify: ctx.origin === "explicit" }))) {
       setCompileUnavailable(
         ctx,
         "Pandoc is required for this document engine and is not available.",
@@ -582,7 +801,7 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
     }
   } catch (e) {
     setCompileUnavailable(ctx, `Pandoc setup failed: ${String(e)}`);
-    notifyError("Pandoc setup", e);
+    void logError("Pandoc setup", e);
     ctx.abortIntent();
     return false;
   }
@@ -597,7 +816,7 @@ async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boole
   const engineModule = await import("@/store/engine");
   const engineStore = engineModule.useEngineStore.getState();
   if (engineStore.installing) {
-    engineStore.queueCompileAfterInstall();
+    engineStore.queueCompileAfterInstall(ctx.origin);
     setCompileUnavailable(
       ctx,
       "TinyTeX is still downloading. This compile starts automatically when it finishes.",
@@ -610,7 +829,7 @@ async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boole
 
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
   try {
-    await ctx.files.saveActive();
+    await saveActiveForCompile(ctx.files);
   } catch (e) {
     ctx.set({
       status: "error",
@@ -619,7 +838,7 @@ async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> 
       lastAttemptIdentity: gateAttemptIdentity(ctx),
     });
     ctx.abortIntent();
-    notifyError("save before compile", e);
+    reportCompileSaveFailure("save before compile", ctx.files, e, ctx.origin === "explicit");
     return false;
   }
   return compileIdentityGate(ctx);
@@ -677,7 +896,7 @@ async function clearBuildDirGate(
 
 async function runCompileGates(
   ctx: CompileGateContext,
-  options: { fromScratch?: boolean } | undefined,
+  options: RecompileOptions | undefined,
 ): Promise<string | null> {
   if (!engineLoadedGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
@@ -694,6 +913,7 @@ async function runCompileGates(
     errors: [],
     diagnostics: null,
     failureReason: null,
+    offer: null,
     lastAttemptIdentity: identityForGeneration(projectId, ctx.mainDoc, ctx.intent),
   });
   if (!(await saveBeforeCompileGate(ctx))) return null;
@@ -806,7 +1026,7 @@ function createCompileLogPump(
 function applyStoppedCompile(set: CompileSet, identityStale: () => boolean): void {
   // A stop is not a failed document: keep the preview and the previous
   // log rather than reporting an error the source did not cause.
-  rerunQueued = false;
+  clearQueuedRerun();
   set((state) =>
     identityStale()
       ? state
@@ -830,6 +1050,7 @@ interface CompileApplyContext {
   readonly checkpointAdvanced: CheckpointAdvanced;
   readonly offlineNoticePrefix: string;
   readonly compiledSourceSnapshot: CompileSourceSnapshot | null;
+  readonly origin: CompileOrigin;
 }
 
 function successfulOutputRevision(result: CompileResult): number | null {
@@ -940,13 +1161,11 @@ async function applyCompileResult(
     };
   });
   if (!applied) return result;
-  // A failed Tectonic compile whose log matches a known engine gap
-  // (minted, missing index run, shell-escape refusal, unresolved Biber)
-  // gets the engine-picker modal instead of leaving the user to decode
-  // the log. latexmk projects already have the full toolchain.
-  if (!checkpoint) {
-    maybePromptEngineGap(result.log, result.errors);
-    maybeSuggestMissingPackages(result.log);
+  if (checkpoint) {
+    settleCompileNotices(ctx.projectId);
+  } else {
+    maybeOfferEngineChoice(ctx, result.log, result.errors);
+    maybeSuggestMissingPackages(ctx, result.log);
   }
   // Tell detached windows (PDF preview, other OS windows) to reload.
   void import("@/lib/preview-window")
@@ -1034,8 +1253,9 @@ function finishCompileAttempt(args: {
   }
   args.releaseIntent();
   if (ownsIntent && rerunQueued) {
-    rerunQueued = false;
-    if (!args.identityStale()) void args.get().recompile();
+    const origin = rerunOrigin;
+    clearQueuedRerun();
+    if (!args.identityStale()) void args.get().recompile({ origin });
   }
 }
 
@@ -1052,6 +1272,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   lastCompileCheckpoint: null,
   compiledSources: null,
   compileTimeMs: null,
+  offer: null,
   autoCompile: readStoredFlag(AUTO_COMPILE_KEY, false),
   setAutoCompile: (v) => {
     storeFlag(AUTO_COMPILE_KEY, v);
@@ -1079,7 +1300,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   stopCompile: async () => {
     // Drop any queued rerun too: the user asked for compilation to end, not to
     // be replaced by the next one in line.
-    rerunQueued = false;
+    clearQueuedRerun();
     try {
       await cancelCompile();
     } catch (error) {
@@ -1088,7 +1309,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   },
   reset: () => {
     compileSeq++;
-    rerunQueued = false;
+    clearQueuedRerun();
     activeCompileIntent = null;
     compileIntentGeneration++;
     set({
@@ -1104,8 +1325,10 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       lastCompileCheckpoint: null,
       compiledSources: null,
       compileTimeMs: null,
+      offer: null,
     });
   },
+  dismissOffer: () => set({ offer: null }),
   restoreFromDisk: async (projectId, mainDoc) => {
     // Only seed a fresh store: once any compile has produced a checkpoint in
     // this session, disk state is older by definition.
@@ -1153,8 +1376,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     // mid-compile queues exactly one rerun so a manual Cmd+Enter during the
     // on-open auto-compile still compiles the latest edits instead of being
     // silently dropped.
+    const origin = options?.origin ?? "explicit";
     if (activeCompileIntent !== null || get().status === "compiling") {
-      rerunQueued = true;
+      queueRerun(origin);
       return undefined;
     }
     const intent = ++compileIntentGeneration;
@@ -1166,7 +1390,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       const ownsIntent = activeCompileIntent === intent;
       releaseIntent();
       if (ownsIntent) {
-        rerunQueued = false;
+        clearQueuedRerun();
         set((state) => {
           if (
             state.status !== "compiling" ||
@@ -1209,6 +1433,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         capturedProjectId,
         mainDoc,
         intent,
+        origin,
         matchesProjectAndMain,
         checkpointAdvanced,
         abortIntent,
@@ -1275,6 +1500,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       checkpointAdvanced,
       offlineNoticePrefix,
       compiledSourceSnapshot: captured.snapshot,
+      origin,
     };
     try {
       unlisten = await listen<string>("compile:log", (e) => {

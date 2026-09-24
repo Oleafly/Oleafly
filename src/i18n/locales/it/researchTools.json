@@ -687,7 +687,6 @@
     "copyFailed": "Oleafly non è riuscito a copiare il sorgente convertito.",
     "saveFailed": "Oleafly non è riuscito a salvare il file convertito.",
     "resultName": "Risultato di {{title}}",
-    "projectCreated": "Progetto creato dalla conversione.",
     "projectFailed": "Oleafly non è riuscito a creare il progetto.",
     "cancel": "Annulla",
     "convert": "Converti",
@@ -926,9 +925,8 @@
       }
     },
     "bibtexBibliography": "Bibliografia BibTeX",
-    "savedBibliography": "references.bib salvato",
+    "savedBibliography": "{{name}} salvato",
     "saveFailed": "Oleafly non è riuscito a salvare questa bibliografia.",
-    "copied": "{{label}} copiato",
     "copyFailed": "Oleafly non è riuscito a copiare {{label}}.",
     "fieldJournal": "Rivista",
     "fieldConference": "Conferenza o atti",
@@ -1129,7 +1127,6 @@
     "downloadSvg": "Scarica l'SVG",
     "copyMathml": "Copia il MathML per Word",
     "copyKatexHtml": "Copia l'HTML KaTeX",
-    "copiedSource": "Sorgente LaTeX copiato",
     "copiedMathml": "MathML copiato (si incolla in Word)",
     "copiedKatexHtml": "HTML KaTeX copiato (richiede il foglio di stile KaTeX)",
     "exportImageFailed": "Non è stato possibile esportare questo frammento come immagine",
@@ -1350,9 +1347,6 @@
     "citationCount": "{{citations}} citazioni",
     "unknownAuthors": "Autori sconosciuti",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citazione salvata",
-    "toastUpdated": "Citazione salvata aggiornata",
-    "toastCopied": "BibTeX copiato",
     "toastCopyFailed": "Non è stato possibile copiare il BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Intelligenza artificiale",
@@ -1411,12 +1405,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Aggiungi al .bib",
     "addToBibTooltip": "Aggiungi alla bibliografia del progetto e inserisci \\cite",
-    "openProjectTooltip": "Apri un progetto per aggiungere a un file bibliografico",
     "citeAdded": "{{citation}} aggiunta",
     "addFailed": "Non è stato possibile aggiungere la citazione.",
-    "toastSaved": "Citazione salvata",
-    "toastUpdated": "Citazione salvata aggiornata",
-    "toastCopied": "BibTeX copiato",
     "toastCopyFailed": "Non è stato possibile copiare il BibTeX."
   }
 }

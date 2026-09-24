@@ -39,7 +39,7 @@ import {
 } from "./cm/language-service";
 import { resolveVisualAsset } from "./wysiwyg/asset-url";
 import { openFigureEditorAt } from "./figure-edit";
-import { useFilesStore } from "@/store/files";
+import { reportFileSaveFailure, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
@@ -56,7 +56,7 @@ import {
 } from "@/lib/proofreading/client";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
-import { notifyError } from "@/lib/toast";
+import { logError } from "@/lib/log";
 
 function sourceProofreadingContextKey(
   projectId: string | null,
@@ -199,6 +199,20 @@ const VISUAL_PORTS: VisualPorts = {
   openFigureEditor: openFigureEditorAt,
 };
 
+export function saveActiveFromKeymap(): void {
+  const { projectId, activePath } = useFilesStore.getState();
+  void useFilesStore
+    .getState()
+    .saveActive()
+    .catch((error) => {
+      if (projectId && activePath) {
+        reportFileSaveFailure("editor save", projectId, activePath, error, true);
+      } else {
+        void logError("editor save", error);
+      }
+    });
+}
+
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
   t: packageMessage,
@@ -215,12 +229,7 @@ const HOST: EditorHost = {
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
-  saveActive: () => {
-    void useFilesStore
-      .getState()
-      .saveActive()
-      .catch((error) => notifyError("vim save", error));
-  },
+  saveActive: saveActiveFromKeymap,
   isEditLocked: () => {
     const { projectId, activePath } = useFilesStore.getState();
     return (

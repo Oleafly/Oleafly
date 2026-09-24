@@ -342,8 +342,6 @@
     "unsave": "取消保存",
     "save": "保存模板",
     "use": "使用此模板",
-    "savedToast": "已将“{{name}}”保存到你的库。",
-    "removedToast": "已从你的库中移除“{{name}}”。",
     "saveFailed": "无法保存模板。",
     "removeFailed": "无法移除模板。"
   },

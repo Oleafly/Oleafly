@@ -54,18 +54,10 @@
     "present": "{{path}} har allerede Oleafly-posten. Citer den med {{markup}}.",
     "undo": "Fortryd"
   },
-  "compatibility": {
-    "biblatexBiber": "Dette projekt bruger biblatex/Biber til litteraturlisten.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} mere)",
-    "chooseEngine": "Vælg motor…",
-    "importNotes_one": "{{count}} importnote: {{title}}",
-    "importNotes_other": "{{count}} importnoter: {{title}} (+{{more}} mere)"
-  },
   "compile": {
-    "engineNotLoaded": "Kompilering er slået fra, indtil dokumentmotoren er indlæst.",
     "noOfflineMode": "{{engine}} har ingen offlinetilstand for kompilatoren. Kompilerer på normal vis.",
-    "retry": "Kompiler igen"
+    "retry": "Kompiler igen",
+    "bundleFetchFailed": "Oleafly kunne ikke downloade de TeX-pakker, som dette dokument skal bruge. Tjek din forbindelse, og kompiler igen."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Fyld forskningskorpus op"
       }
     },
-    "closeProjectFailed": "Det åbne projekt kunne ikke lukkes sikkert.",
     "confirm": {
       "clearProjects": {
         "action": "Ryd projekter",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "Kunne ikke gemme PDF'en: {{detail}}",
     "pngFailed": "Kunne ikke gemme PNG-filen",
     "pngFailedDetail": "Kunne ikke gemme PNG-filen: {{detail}}",
-    "revealFailed": "Filen blev gemt, men Oleafly kunne ikke åbne dens mappe (adgang nægtet). Se efter på den placering, du valgte i dialogen.",
+    "revealFailed": "Filen blev gemt, men dens mappe kunne ikke åbnes.",
     "saved": "{{kind}} gemt · {{fileName}}",
     "showInFolder": "Vis i mappen"
   },
   "externalChange": {
-    "deletionRestored": "En sletning udefra kom på tværs af ugemte ændringer. Dine lokale ændringer blev gendannet.",
-    "localEditKept": "En ændring udefra i \"{{path}}\" kom, mens du havde ugemte ændringer. Din lokale ændring blev bevaret.",
-    "persistExternalFailed": "Den seneste opdatering udefra af \"{{path}}\" kunne ikke gemmes.",
-    "preserveLocalFailed": "Din lokale opdatering af \"{{path}}\" kunne ikke bevares.",
-    "reloadFailed": "Projektindstillingerne blev opdateret, men nogle ændrede filer kunne ikke genindlæses.",
-    "restoreLocalFailed": "Din ugemte opdatering af \"{{path}}\" kunne ikke gendannes."
+    "reloadFailed": "Projektindstillingerne blev opdateret, men nogle ændrede filer kunne ikke genindlæses."
   },
   "fonts": {
     "systemDefault": "Systemets standard",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Billede til LaTeX mislykkedes: {{detail}}",
-    "inserted": "Indsatte LaTeX fra billedet",
     "transcribing": "Transskriberer billedet…"
   },
   "import": {
-    "arxivImported": "arXiv-kilden er importeret. Kompiler projektet for at se resultatet.",
     "chooseOfferedProjectType": "Vælg en af de projekttyper, der tilbydes til denne fil.",
     "invalidArxivId": "Indsæt et link til en arXiv-artikel eller et id som 2301.01234.",
     "supportedDocumentTypes": "Vælg en af de understøttede dokumenttyper.",
-    "conversionNotice": "Vi har konverteret dit indhold til LaTeX. Du skal måske rette i stilen, især for tabeller, figurer og citationer.",
+    "conversionNotice": "Konverteret til {{format}}. Tabeller, figurer og citationer kan have brug for rettelser i stilen.",
     "figureSaved": "Gemte {{name}}",
-    "pdfProjectCreated": "Projektet er oprettet ud fra en PDF. Gennemgå det, før du stoler på rekonstruktionen.",
-    "pickPdfOrDocx": "Vælg en .pdf- eller .docx-fil",
+    "pickPdfOrDocx": "Vælg en .pdf- eller .docx-fil.",
     "texSaved": "Gemte .tex",
     "unsupportedFile": "Vælg en .zip-, .docx-, .md- eller .markdown-fil.",
     "zipSaveFailed": "Kunne ikke gemme ZIP-arkivet.",
@@ -318,7 +301,8 @@
     "installing_one": "Installerer {{name}}. Kompileringen starter forfra, når den er færdig.",
     "installing_other": "Installerer {{count}} pakker. Kompileringen starter forfra, når de er færdige.",
     "summary_one": "Kompileringen kunne ikke finde \"{{name}}\". Led efter den pakke i TeX Live, der indeholder den.",
-    "summary_other": "Kompileringen kunne ikke finde {{names}}. Led efter deres pakker i TeX Live."
+    "summary_other": "Kompileringen kunne ikke finde {{names}}. Led efter deres pakker i TeX Live.",
+    "userTree": "Systemets TeX-træ er skrivebeskyttet, så pakkerne blev lagt i dit personlige træ i {{path}}."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen",
+    "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen.",
     "downloadingPercent": "Downloader pandoc… {{progress}} %",
     "downloadingSize": "Downloader pandoc… {{megabytes}} MB",
-    "installGuide": "Installationsvejledning",
-    "installed": "pandoc er installeret"
+    "installGuide": "Installationsvejledning"
   },
   "project": {
     "copyFailed": "Kunne ikke kopiere \"{{path}}\".",
     "dateUnavailable": "Ikke tilgængelig",
     "importFailed": "Kunne ikke importere. Se app-loggen for detaljer.",
-    "imported": "Projektet er importeret.",
     "openFailed": "Kunne ikke åbne projektet. Se app-loggen for detaljer.",
-    "restoringUnsavedFiles": "En projektopdatering fjernede filer med ugemte ændringer. Oleafly beholdt dine ændringer og er ved at gendanne filerne.",
     "saveBlockedClose": "Projektet forblev åbent, fordi en eller flere filer ikke kunne gemmes.",
     "saveBlockedDiscard": "Kasser ændringerne, og gå videre",
     "saveBlockedMany": "{{count}} filer kunne ikke gemmes: {{files}}. Den første er åben i editoren med sine ugemte ændringer ({{reason}}). Bliv her for at løse problemet, eller kasser de ugemte ændringer i de filer, og gå videre.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "Opdateret for {{count}} dage siden",
     "updatedOn": "Opdateret {{date}}",
     "updatedToday": "Opdateret i dag",
-    "updatedYesterday": "Opdateret i går"
+    "updatedYesterday": "Opdateret i går",
+    "autosaveFailed": "Kunne ikke gemme dine ændringer. De er stadig i editoren."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen mislykkedes: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Projektet blev låst fast med {{pinned}}. Den aktive {{local}} mangler {{count}} af dens pakker, så kompileringer kan fejle, indtil den distribution bruges igen.",
-    "distributionSkew": "Projektet blev låst fast med {{pinned}}, og denne maskine kompilerer med {{local}}. Resultatet kan afvige en smule.",
-    "installPinned_one": "Installer den",
-    "installPinned_other": "Installer alle {{count}}",
-    "installingPinned_one": "Installerer {{count}} fastlåst pakke…",
-    "installingPinned_other": "Installerer {{count}} fastlåste pakker…",
-    "pinnedPackagesFailed": "Nogle fastlåste pakker kunne ikke installeres. Se Indstillinger → LaTeX-motor.",
-    "pinnedPackagesInstalled": "De fastlåste LaTeX-pakker er installeret.",
-    "pinnedPackagesMissing_one": "Projektet låser {{count}} LaTeX-pakke fast, som ikke er installeret her.",
-    "pinnedPackagesMissing_other": "Projektet låser {{count}} LaTeX-pakker fast, som ikke er installeret her."
+    "distributionGap": "Projektet blev låst fast med {{pinned}}. Den aktive {{local}} mangler {{count}} af dens pakker, så kompileringer kan fejle, indtil den distribution bruges igen."
   },
   "theme": {
     "cssForbiddenSyntax": "Egen CSS må ikke bruge at-regler, URL'er eller selektorer.",
@@ -539,8 +512,8 @@
       "installing": "Installerer…",
       "unpacking": "Pakker ud…"
     },
-    "removeFailed": "Kunne ikke fjerne TinyTeX",
-    "removed": "Fjernede TinyTeX"
+    "removeFailed": "Kunne ikke fjerne TinyTeX.",
+    "removed": "Fjernede TinyTeX."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Projektet blev ændret, mens der blev gemt. Prøv opdateringen igen."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Kunne ikke gemme et kontrolpunkt. Disken er fuld, eller der kan ikke skrives til mappen med kontrolpunkter. Frigør plads, eller tjek mappens tilladelser, og kompiler så igen.",
+    "incompleteCapture": "Kunne ikke gemme de seneste kontrolpunkter, fordi nogle projektfiler ikke kunne læses. Tjek deres tilladelser, og kompiler så igen."
   }
 }

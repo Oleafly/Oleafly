@@ -54,22 +54,10 @@
     "present": "{{path}} už záznam Oleafly obsahuje. Citujte jej pomocí {{markup}}.",
     "undo": "Vrátit zpět"
   },
-  "compatibility": {
-    "biblatexBiber": "Tento projekt používá pro bibliografii biblatex/Biber.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_few": "{{title}} (+{{more}} dalších)",
-    "blockerFinding_many": "{{title}} (+{{more}} dalších)",
-    "blockerFinding_other": "{{title}} (+{{more}} dalších)",
-    "chooseEngine": "Vybrat engine…",
-    "importNotes_one": "{{count}} poznámka k importu: {{title}}",
-    "importNotes_few": "{{count}} poznámky k importu: {{title}} (+{{more}} dalších)",
-    "importNotes_many": "{{count}} poznámky k importu: {{title}} (+{{more}} dalších)",
-    "importNotes_other": "{{count}} poznámek k importu: {{title}} (+{{more}} dalších)"
-  },
   "compile": {
-    "engineNotLoaded": "Kompilace je zakázaná, dokud se nenačte dokumentový engine.",
     "noOfflineMode": "{{engine}} nenabízí offline režim překladače. Kompiluje se běžným způsobem.",
-    "retry": "Kompilovat znovu"
+    "retry": "Kompilovat znovu",
+    "bundleFetchFailed": "Oleafly nedokázal stáhnout balíčky TeXu, které tento dokument potřebuje. Zkontrolujte připojení a spusťte kompilaci znovu."
   },
   "developer": {
     "actions": {
@@ -95,7 +83,6 @@
         "title": "Naplnit výzkumný korpus"
       }
     },
-    "closeProjectFailed": "Otevřený projekt se nepodařilo bezpečně zavřít.",
     "confirm": {
       "clearProjects": {
         "action": "Vymazat projekty",
@@ -170,17 +157,12 @@
     "pdfFailedDetail": "PDF se nepodařilo uložit: {{detail}}",
     "pngFailed": "PNG se nepodařilo uložit",
     "pngFailedDetail": "PNG se nepodařilo uložit: {{detail}}",
-    "revealFailed": "Soubor byl uložen, ale Oleafly nedokázal otevřít jeho složku (přístup byl odepřen). Zkontrolujte umístění, které jste zvolili v dialogu ukládání.",
+    "revealFailed": "Soubor byl uložen, ale jeho složku se nepodařilo otevřít.",
     "saved": "{{kind}} uloženo · {{fileName}}",
     "showInFolder": "Zobrazit ve složce"
   },
   "externalChange": {
-    "deletionRestored": "Smazání zvenčí se střetlo s neuloženými úpravami. Vaše místní úpravy byly obnoveny.",
-    "localEditKept": "Zvenčí přišla úprava souboru „{{path}}“, zatímco jste měli neuložené změny. Vaše místní úprava byla zachována.",
-    "persistExternalFailed": "Nejnovější externí aktualizaci souboru „{{path}}“ se nepodařilo uložit.",
-    "preserveLocalFailed": "Vaši místní aktualizaci souboru „{{path}}“ se nepodařilo zachovat.",
-    "reloadFailed": "Nastavení projektu bylo aktualizováno, ale některé změněné soubory se nepodařilo znovu načíst.",
-    "restoreLocalFailed": "Vaši neuloženou aktualizaci souboru „{{path}}“ se nepodařilo obnovit."
+    "reloadFailed": "Nastavení projektu bylo aktualizováno, ale některé změněné soubory se nepodařilo znovu načíst."
   },
   "fonts": {
     "systemDefault": "Výchozí systémové",
@@ -188,18 +170,15 @@
   },
   "imageToLatex": {
     "failed": "Převod obrázku do LaTeXu selhal: {{detail}}",
-    "inserted": "LaTeX z obrázku byl vložen",
     "transcribing": "Přepisuje se obrázek…"
   },
   "import": {
-    "arxivImported": "Zdroj z arXiv byl importován. Zkompilujte projekt a zkontrolujte výsledek.",
     "chooseOfferedProjectType": "Vyberte některý z typů projektu nabízených pro tento soubor.",
     "invalidArxivId": "Vložte odkaz na článek na arXiv nebo identifikátor, například 2301.01234.",
     "supportedDocumentTypes": "Vyberte některý z podporovaných typů dokumentů.",
-    "conversionNotice": "Váš obsah jsme převedli do LaTeXu. Možná bude potřeba upravit formátování, hlavně u tabulek, obrázků a citací.",
+    "conversionNotice": "Převedeno do formátu {{format}}. Tabulky, obrázky a citace možná budou potřebovat upravit formátování.",
     "figureSaved": "Uloženo {{name}}",
-    "pdfProjectCreated": "Projekt byl vytvořen z PDF. Než rekonstrukci uvěříte, zkontrolujte ji.",
-    "pickPdfOrDocx": "Vyberte soubor .pdf nebo .docx",
+    "pickPdfOrDocx": "Vyberte soubor .pdf nebo .docx.",
     "texSaved": "Uloženo .tex",
     "unsupportedFile": "Vyberte soubor .zip, .docx, .md nebo .markdown.",
     "zipSaveFailed": "Archiv ZIP se nepodařilo uložit.",
@@ -334,7 +313,8 @@
     "summary_one": "Kompilace nenašla „{{name}}“. Vyhledejte v TeX Live balíček, který jej poskytuje.",
     "summary_few": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
     "summary_many": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
-    "summary_other": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live."
+    "summary_other": "Kompilace nenašla {{names}}. Vyhledejte jejich balíčky v TeX Live.",
+    "userTree": "Systémový strom TeXu je jen pro čtení, takže balíčky se nainstalovaly do vašeho osobního stromu v {{path}}."
   },
   "models": {
     "chips": {
@@ -383,19 +363,16 @@
     "renamed": "Přejmenováno na „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) · $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Pandoc se nepodařilo stáhnout. Nainstalujte jej ručně a zkuste to znovu",
+    "downloadFailed": "Pandoc se nepodařilo stáhnout. Nainstalujte jej ručně a zkuste to znovu.",
     "downloadingPercent": "Stahuje se pandoc… {{progress}} %",
     "downloadingSize": "Stahuje se pandoc… {{megabytes}} MB",
-    "installGuide": "Návod k instalaci",
-    "installed": "pandoc nainstalován"
+    "installGuide": "Návod k instalaci"
   },
   "project": {
     "copyFailed": "Nepodařilo se zkopírovat „{{path}}“.",
     "dateUnavailable": "Není k dispozici",
     "importFailed": "Import se nezdařil. Podrobnosti najdete v protokolu aplikace.",
-    "imported": "Projekt byl importován.",
     "openFailed": "Projekt se nepodařilo otevřít. Podrobnosti najdete v protokolu aplikace.",
-    "restoringUnsavedFiles": "Aktualizace projektu odstranila soubory s neuloženými úpravami. Oleafly vaše úpravy zachoval a tyto soubory obnovuje.",
     "saveBlockedClose": "Projekt zůstal otevřený, protože jeden nebo více souborů se nepodařilo uložit.",
     "saveBlockedDiscard": "Zahodit změny a odejít",
     "saveBlockedMany": "{{count}} souborů se nepodařilo uložit: {{files}}. První z nich je otevřený v editoru s neuloženými změnami ({{reason}}). Zůstaňte a problém vyřešte, nebo neuložené změny v těchto souborech zahoďte a odejděte.",
@@ -409,7 +386,8 @@
     "updatedDaysAgo_other": "Aktualizováno před {{count}} dny",
     "updatedOn": "Aktualizováno {{date}}",
     "updatedToday": "Aktualizováno dnes",
-    "updatedYesterday": "Aktualizováno včera"
+    "updatedYesterday": "Aktualizováno včera",
+    "autosaveFailed": "Změny se nepodařilo uložit. Pořád je máte v editoru."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analýza selhala: {{message}}",
@@ -513,22 +491,7 @@
     "defaultTitle": "Terminál {{index}}"
   },
   "tex": {
-    "distributionGap": "Tento projekt byl připnut s {{pinned}}. Aktivní {{local}} postrádá {{count}} jeho balíčků, takže kompilace mohou selhávat, dokud se znovu nepoužije původní distribuce.",
-    "distributionSkew": "Tento projekt byl připnut s {{pinned}} a tento počítač kompiluje s {{local}}. Výstup se může mírně lišit.",
-    "installPinned_one": "Nainstalovat",
-    "installPinned_few": "Nainstalovat všechny {{count}}",
-    "installPinned_many": "Nainstalovat všechny {{count}}",
-    "installPinned_other": "Nainstalovat všech {{count}}",
-    "installingPinned_one": "Instaluje se {{count}} připnutý balíček…",
-    "installingPinned_few": "Instalují se {{count}} připnuté balíčky…",
-    "installingPinned_many": "Instaluje se {{count}} připnutého balíčku…",
-    "installingPinned_other": "Instaluje se {{count}} připnutých balíčků…",
-    "pinnedPackagesFailed": "Některé připnuté balíčky se nepodařilo nainstalovat. Podívejte se do Nastavení → Engine LaTeX.",
-    "pinnedPackagesInstalled": "Připnuté balíčky LaTeX byly nainstalovány.",
-    "pinnedPackagesMissing_one": "Tento projekt připíná {{count}} balíček LaTeX, který tu není nainstalovaný.",
-    "pinnedPackagesMissing_few": "Tento projekt připíná {{count}} balíčky LaTeX, které tu nejsou nainstalované.",
-    "pinnedPackagesMissing_many": "Tento projekt připíná {{count}} balíčku LaTeX, které tu nejsou nainstalované.",
-    "pinnedPackagesMissing_other": "Tento projekt připíná {{count}} balíčků LaTeX, které tu nejsou nainstalované."
+    "distributionGap": "Tento projekt byl připnut s {{pinned}}. Aktivní {{local}} postrádá {{count}} jeho balíčků, takže kompilace mohou selhávat, dokud se znovu nepoužije původní distribuce."
   },
   "theme": {
     "cssForbiddenSyntax": "Vlastní CSS nesmí používat at-pravidla, adresy URL ani selektory.",
@@ -577,8 +540,8 @@
       "installing": "Instaluje se…",
       "unpacking": "Rozbaluje se…"
     },
-    "removeFailed": "TinyTeX se nepodařilo odebrat",
-    "removed": "TinyTeX odebrán"
+    "removeFailed": "TinyTeX se nepodařilo odebrat.",
+    "removed": "TinyTeX odebrán."
   },
   "toolActivity": {
     "labels": {
@@ -635,5 +598,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Projekt se během ukládání změnil. Zkuste aktualizaci prosím znovu."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Záchytný bod se nepodařilo uložit. Disk je plný nebo do složky záchytných bodů nelze zapisovat. Uvolněte místo nebo zkontrolujte oprávnění složky a pak znovu spusťte kompilaci.",
+    "incompleteCapture": "Posledních několik záchytných bodů se nepodařilo uložit, protože některé soubory projektu nešlo přečíst. Zkontrolujte jejich oprávnění a pak znovu spusťte kompilaci."
   }
 }

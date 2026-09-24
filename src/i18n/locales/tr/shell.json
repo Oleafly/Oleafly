@@ -301,8 +301,6 @@
       "needed": "Bu proje, isteğe bağlı dış komutlar gerektiren özellikler kullanıyor. Siz izin verene kadar engellenmiş kalırlar.",
       "warning": "minted ve bazı PythonTeX belgeleri için gereklidir. LaTeX, programları sizin kullanıcı izinlerinizle çalıştırabilir; bu yüzden bunu yalnızca güvendiğiniz bir projede açın. TeX Live'ın kendi yardımcıları, örneğin EPS dönüştürme, buna gerek duymadan çalışır."
     },
-    "shellEscapeAllowed": "Bu bilgisayarda bu proje için dış komutlara izin veriliyor.",
-    "shellEscapeBlocked": "Bu proje için isteğe bağlı dış komutlar engellendi. TeX Live'ın kendi yardımcıları, örneğin EPS dönüştürme, yine de çalışır.",
     "shellEscapeFailed": "Dış komut erişimi güncellenemedi.",
     "switchFailed": "Derleme motoru değiştirilemedi.",
     "switched": "Bu proje artık {{engine}} ile derleniyor.",
@@ -493,7 +491,6 @@
         "title": "Bulut eşitleme"
       },
       "danger": {
-        "closeFailed": "Açık proje güvenli biçimde kapatılamadı.",
         "confirmDeleteAllAction": "Tüm projeleri sil",
         "confirmDeleteAllDescription": "Geçerli her proje, dosyaları ve Git geçmişiyle birlikte Geri Dönüşüm Kutusu'na taşınacak. Sonrasında projeleri tek tek geri yükleyebilirsiniz.",
         "confirmDeleteAllTitle_one": "{{count}} projenin tümü silinsin mi?",
@@ -503,7 +500,8 @@
         "deleteAllDescription": "Her projeyi Geri Dönüşüm Kutusu'na taşır. Hiçbir şey kalıcı olarak silinmez.",
         "deleting": "Siliniyor…",
         "moveFailed": "Projeler Geri Dönüşüm Kutusu'na taşınamadı.",
-        "movePartial": "{{count}} proje taşındı, ancak işlem tamamlanamadı.",
+        "movePartial_one": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı. Diğerleri taşınmadı.",
+        "movePartial_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı. Diğerleri taşınmadı.",
         "movedCount_one": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
         "movedCount_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
         "title": "Tehlikeli bölge"
@@ -514,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Tümünü temizle",
         "clearFailed": "Geri Dönüşüm Kutusu temizlenemedi.",
-        "clearPartial": "{{count}} proje kalıcı olarak silindi, ancak Geri Dönüşüm Kutusu'nun tamamı temizlenemedi.",
+        "clearPartial_one": "{{count}} proje kalıcı olarak silindi. Diğerleri hâlâ Geri Dönüşüm Kutusu'nda.",
+        "clearPartial_other": "{{count}} proje kalıcı olarak silindi. Diğerleri hâlâ Geri Dönüşüm Kutusu'nda.",
         "clearedCount_one": "{{count}} proje kalıcı olarak silindi.",
         "clearedCount_other": "{{count}} proje kalıcı olarak silindi.",
         "clearing": "Temizleniyor…",
@@ -844,7 +843,6 @@
     },
     "newProjectName": "Yeni proje adı",
     "projectName": "Proje adı",
-    "projectRenamed": "Proje yeniden adlandırıldı",
     "saveName": "Kaydet (Enter)",
     "saveNameAriaLabel": "Adı kaydet",
     "untitledProject": "proje",
@@ -855,7 +853,8 @@
       "pdf": "PDF Görünümü",
       "split": "Bölünmüş Görünüm"
     },
-    "moreActions": "Diğer işlemler"
+    "moreActions": "Diğer işlemler",
+    "renameFailed": "Proje yeniden adlandırılamadı."
   },
   "tour": {
     "chooseColor": "İmza renginizi seçin",

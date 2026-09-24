@@ -3,11 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 const toastSuccess = vi.fn();
+const toastError = vi.fn();
+const notifyError = vi.fn();
 
 vi.mock("@/lib/toast", () => ({
+  notifyError: (...args: unknown[]) => notifyError(...args),
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
-    error: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
     info: vi.fn(),
     update: vi.fn(),
     dismiss: vi.fn(),
@@ -38,6 +41,8 @@ function alignLabel(column: number): string {
 
 beforeEach(() => {
   toastSuccess.mockReset();
+  toastError.mockReset();
+  notifyError.mockReset();
   writeText.mockReset();
   useHomeViewStore.setState({ page: "library" });
   Object.defineProperty(navigator, "clipboard", {
@@ -100,7 +105,7 @@ describe("TableGeneratorPanel", () => {
     expect(screen.getByText(/\\begin\{tabular\}\{lrc\}/)).toBeInTheDocument();
   });
 
-  it("copies the generated source and toasts", () => {
+  it("copies the generated source and toasts once the clipboard accepted it", async () => {
     render(<TableGeneratorPanel />);
     fireEvent.click(
       screen.getByRole("button", { name: enCommon.actions.copy }),
@@ -108,9 +113,30 @@ describe("TableGeneratorPanel", () => {
     expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining("\\begin{table}"),
     );
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.table.copiedSource,
+    await vi.waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        enResearchTools.table.copiedSource,
+      ),
     );
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
+  it("does not claim a copy that the clipboard rejected", async () => {
+    const denied = new Error("Document is not focused.");
+    writeText.mockRejectedValueOnce(denied);
+    render(<TableGeneratorPanel />);
+    fireEvent.click(
+      screen.getByRole("button", { name: enCommon.actions.copy }),
+    );
+    await vi.waitFor(() =>
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith(
+        "table copy latex",
+        denied,
+        enResearchTools.equation.copyLatexFailed,
+      ),
+    );
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("hides the header row when the header toggle is off", () => {

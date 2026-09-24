@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   success: vi.fn(),
   startTour: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
@@ -46,12 +47,14 @@ vi.mock("@/lib/toast", async (importOriginal) => ({
   notifyError: mocks.notifyError,
   toast: { success: mocks.success, error: vi.fn(), info: vi.fn() },
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/tours", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   startTour: mocks.startTour,
 }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { i18n } from "@/i18n";
 import {
   AVAILABLE_TOUR_IDS,
   isTourAvailable,
@@ -109,6 +112,14 @@ const project = {
   forked_from: null,
   recovery_pending: false,
 };
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 function openSettings(section: string) {
   useSettingsStore.setState({
@@ -221,9 +232,53 @@ describe("Settings recycle bin failures", () => {
       expect(mocks.notifyError).toHaveBeenCalledWith(
         "clear recycle bin",
         expect.anything(),
-        data.recycleBin.clearPartial.replace("{{count}}", "1"),
+        i18n.t(($) => $.shell.settings.data.recycleBin.clearPartial, { count: 1 }),
       ),
     );
+  });
+
+  it("restores the project even when the library list fails to refresh", async () => {
+    const failure = new Error("list unavailable");
+    mocks.refreshProjects.mockRejectedValue(failure);
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByText(recycled.name);
+    fireEvent.click(screen.getByRole("button", { name: data.recycleBin.restore }));
+    await waitFor(() =>
+      expect(mocks.success).toHaveBeenCalledWith(
+        data.recycleBin.restored.replace("{{name}}", recycled.name),
+      ),
+    );
+    expect(mocks.logError).toHaveBeenCalledWith("refresh projects after restore", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("keeps Clear all busy after a remount until the first run ends", async () => {
+    const pending = deferred();
+    mocks.permanentlyDeleteRecycledProject.mockReturnValue(pending.promise);
+    openSettings("data");
+    const first = render(<SettingsModal />);
+    await screen.findByText(recycled.name);
+    fireEvent.click(screen.getByRole("button", { name: data.recycleBin.clearAll }));
+    fireEvent.click(
+      screen.getByRole("button", { name: data.recycleBin.confirmClearAction }),
+    );
+    await waitFor(() =>
+      expect(mocks.permanentlyDeleteRecycledProject).toHaveBeenCalledOnce(),
+    );
+    first.unmount();
+
+    render(<SettingsModal />);
+    await screen.findByText(recycled.name);
+    expect(screen.getByRole("button", { name: data.recycleBin.clearing })).toBeDisabled();
+
+    pending.resolve();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: data.recycleBin.clearAll })).toBeEnabled(),
+    );
+    expect(mocks.permanentlyDeleteRecycledProject).toHaveBeenCalledOnce();
+    expect(mocks.success).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("reports a bulk recycle that failed", async () => {
@@ -242,6 +297,106 @@ describe("Settings recycle bin failures", () => {
         data.danger.moveFailed,
       ),
     );
+  });
+
+  it("reports a bulk recycle that stopped part way", async () => {
+    useFilesStore.setState({
+      projects: [project, { ...project, id: "notes", name: "Notes" }],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    mocks.recycleProject
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("busy"));
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: data.danger.title });
+    fireEvent.click(screen.getByRole("button", { name: data.danger.deleteAllAction }));
+    fireEvent.click(
+      screen.getByRole("button", { name: data.danger.confirmDeleteAllAction }),
+    );
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "move all projects to recycle bin",
+        expect.anything(),
+        i18n.t(($) => $.shell.settings.data.danger.movePartial, { count: 1 }),
+      ),
+    );
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("reports the move once even when the library list fails to refresh", async () => {
+    const failure = new Error("list unavailable");
+    mocks.refreshProjects.mockRejectedValue(failure);
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: data.danger.title });
+    fireEvent.click(screen.getByRole("button", { name: data.danger.deleteAllAction }));
+    fireEvent.click(
+      screen.getByRole("button", { name: data.danger.confirmDeleteAllAction }),
+    );
+    await waitFor(() =>
+      expect(mocks.success).toHaveBeenCalledWith(
+        i18n.t(($) => $.shell.settings.data.danger.movedCount, { count: 1 }),
+      ),
+    );
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "refresh projects after moving them to the recycle bin",
+      failure,
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("adds no error of its own when the open project could not close", async () => {
+    useFilesStore.setState({ projectId: "active-paper" });
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: data.danger.title });
+    fireEvent.click(screen.getByRole("button", { name: data.danger.deleteAllAction }));
+    fireEvent.click(
+      screen.getByRole("button", { name: data.danger.confirmDeleteAllAction }),
+    );
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith(
+        "move all projects to recycle bin",
+        expect.any(String),
+      ),
+    );
+    expect(mocks.closeProject).toHaveBeenCalledOnce();
+    expect(mocks.recycleProject).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: data.danger.deleteAllAction }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("keeps Delete all busy after a remount until the first run ends", async () => {
+    const pending = deferred();
+    mocks.recycleProject.mockReturnValue(pending.promise);
+    openSettings("data");
+    const first = render(<SettingsModal />);
+    await screen.findByRole("heading", { name: data.danger.title });
+    fireEvent.click(screen.getByRole("button", { name: data.danger.deleteAllAction }));
+    fireEvent.click(
+      screen.getByRole("button", { name: data.danger.confirmDeleteAllAction }),
+    );
+    await waitFor(() => expect(mocks.recycleProject).toHaveBeenCalledOnce());
+    first.unmount();
+
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: data.danger.title });
+    expect(screen.getByRole("button", { name: data.danger.deleting })).toBeDisabled();
+
+    pending.resolve();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: data.danger.deleteAllAction }),
+      ).toBeEnabled(),
+    );
+    expect(mocks.recycleProject).toHaveBeenCalledOnce();
+    expect(mocks.success).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });
 

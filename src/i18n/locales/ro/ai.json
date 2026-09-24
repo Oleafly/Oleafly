@@ -535,7 +535,6 @@
     "showAllHistory": "Arată tot istoricul ({{count}})"
   },
   "research": {
-    "noSourceLink": "Acest rezultat nu include o legătură către sursă.",
     "sourceOpenFailed": "Sursa nu a putut fi deschisă.",
     "noProjectPath": "Acest rezultat nu conține o cale de fișier din proiect.",
     "resultOpenFailed": "Fișierul cu rezultatul nu a putut fi deschis."
@@ -653,7 +652,6 @@
     "summarizing": "Se rezumă conversația anterioară…"
   },
   "toasts": {
-    "sessionOpenFailed": "Sesiunea agentului nu a putut fi deschisă.",
     "approvalModeSaveFailed": "Modul de aprobare nu a putut fi salvat.",
     "skillDraftSaved": "Ciorna de abilitate a fost salvată. Verific-o înainte să o activezi.",
     "skillDraftFailed": "Ciorna de abilitate nu a putut fi salvată. {{error}}",
@@ -661,11 +659,9 @@
     "chatArchiveFailed": "Această conversație nu a putut fi arhivată.",
     "chatForked": "Conversația a fost bifurcată.",
     "chatForkFailed": "Această conversație nu a putut fi bifurcată.",
-    "engineNotLoaded": "Detaliile motorului de documente nu sunt încărcate. Editarea cu AI este dezactivată din motive de siguranță.",
     "skillsLoadFailed": "Abilitățile activate nu au putut fi încărcate. Încearcă din nou.",
     "approvalModeLoadFailed": "Modul de aprobare nu a putut fi încărcat.",
     "approvalRulesLoadFailed": "Regulile de aprobare ale proiectului nu au putut fi încărcate.",
-    "restored": "Fișierele proiectului au fost restabilite. Conversația a fost păstrată.",
     "restoreFailed": "Restabilirea nu a reușit: {{error}}",
     "steerFailed": "Rularea în curs nu a putut fi direcționată.",
     "approvalRuleSaveFailed": "Regula de aprobare a proiectului nu a putut fi salvată.",

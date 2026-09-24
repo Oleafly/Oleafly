@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "De installatiegegevens van TexLab zijn ongeldig",
     "setUp": "Instellen",
-    "retry": "Opnieuw proberen",
-    "startFailed": "De taalservice van het project kon niet worden gestart.",
-    "setupDetailsUnavailable": "Installatiegegevens van de taalservice niet beschikbaar",
     "setupRequired": "De taalservice moet nog worden ingesteld",
     "installTitle": "{{name}} {{version}} installeren?",
     "licenseAndSource": "Licentie en broncode",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "De referentieanalyse van het project is niet beschikbaar.",
-    "updating": "De projectreferenties worden bijgewerkt.",
     "noDefinition": "Geen definitie gevonden voor “{{name}}”.",
     "definitionsFor": "Definities van {{name}}",
     "multipleDefinitions": "“{{name}}” heeft {{count}} definities. Open Referenties om ze te bekijken.",

@@ -4,13 +4,21 @@ import { AlertCircle, AtSign, BookOpen, Loader2, Search } from "lucide-react";
 import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
 import type { CitationHit } from "@/lib/citation/types";
+import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { i18n } from "@/i18n";
+import { useFilesStore } from "@/store/files";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
+
+function citeMarkup(profile: string, key: string): string {
+  if (profile === "typst") return `@${key}`;
+  if (profile === "markdown") return `[@${key}]`;
+  return String.raw`\cite{${key}}`;
+}
 
 const EXAMPLES = [
   {
@@ -95,13 +103,20 @@ export function AddCitationDialog() {
 
   const add = async () => {
     setAdding(true);
-    const r = await addCitation(bibtex);
-    setAdding(false);
-    if ("key" in r) {
-      close();
-      toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: String.raw`\cite{${r.key}}` }));
-    } else {
-      setError(r.error);
+    try {
+      const r = await addCitation(bibtex);
+      if ("key" in r) {
+        const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
+        close();
+        toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: citeMarkup(profile, r.key) }));
+      } else {
+        setError(r.error);
+      }
+    } catch (caught) {
+      void logError("add citation", caught);
+      setError(i18n.t(($) => $.researchTools.citationScan.addFailed));
+    } finally {
+      setAdding(false);
     }
   };
 

@@ -535,7 +535,6 @@
     "showAllHistory": "Ver todo el historial ({{count}})"
   },
   "research": {
-    "noSourceLink": "Este resultado no incluye un enlace a la fuente.",
     "sourceOpenFailed": "No se pudo abrir la fuente.",
     "noProjectPath": "Este resultado no contiene la ruta de un archivo del proyecto.",
     "resultOpenFailed": "No se pudo abrir el archivo del resultado."
@@ -653,7 +652,6 @@
     "summarizing": "Resumiendo la conversación anterior…"
   },
   "toasts": {
-    "sessionOpenFailed": "No se pudo abrir la sesión del agente.",
     "approvalModeSaveFailed": "No se pudo guardar el modo de aprobación.",
     "skillDraftSaved": "Borrador de habilidad guardado. Revísalo antes de activarla.",
     "skillDraftFailed": "No se pudo guardar el borrador de la habilidad. {{error}}",
@@ -661,11 +659,9 @@
     "chatArchiveFailed": "No se pudo archivar este chat.",
     "chatForked": "Chat duplicado.",
     "chatForkFailed": "No se pudo duplicar este chat.",
-    "engineNotLoaded": "Los datos del motor de documentos no están cargados. La edición con IA está desactivada por seguridad.",
     "skillsLoadFailed": "No se pudieron cargar las habilidades activadas. Inténtalo de nuevo.",
     "approvalModeLoadFailed": "No se pudo cargar el modo de aprobación.",
     "approvalRulesLoadFailed": "No se pudieron cargar las reglas de aprobación del proyecto.",
-    "restored": "Se restauraron los archivos del proyecto. La conversación se conservó.",
     "restoreFailed": "No se pudo restaurar: {{error}}",
     "steerFailed": "No se pudo redirigir el turno en marcha.",
     "approvalRuleSaveFailed": "No se pudo guardar la regla de aprobación del proyecto.",

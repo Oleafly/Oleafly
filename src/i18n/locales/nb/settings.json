@@ -817,7 +817,8 @@
       "deleted": "Slettet \"{{name}}\" fra biblioteket ditt",
       "empty": "Ingen AI-genererte maler ennå. Lag en fra malgalleriet.",
       "fallbackDescription": "AI-generert mal",
-      "toggle": "Administrer AI-genererte maler"
+      "toggle": "Administrer AI-genererte maler",
+      "deleteFailed": "Kunne ikke slette \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Stavekontrollordlister",
       "note": "Velg et språk under Generelt for å laste det ned. De fem pakkene som følger med, er alltid tilgjengelige og står ikke i listen her.",
       "tooltip": "Fem språkpakker følger med Oleafly. Alle andre språk lastes ned ved behov når du velger dem som stavekontrollordliste, og blir liggende her så de virker uten nett etterpå. Fjerner du en, frigjøres plassen, og appinnstillingen brukes i stedet."
+    },
+    "errors": {
+      "fontDownloadFailed": "Kunne ikke laste ned skriften.",
+      "fontsDownloadFailed": "Kunne ikke laste ned skriftene.",
+      "fontRemoveFailed": "Kunne ikke fjerne skriften.",
+      "packDownloadFailed": "Kunne ikke laste ned malpakken.",
+      "packsDownloadFailed": "Kunne ikke laste ned malpakkene.",
+      "packRemoveFailed": "Kunne ikke fjerne malpakken."
     }
   },
   "engine": {

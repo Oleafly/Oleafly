@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { notifyError } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useFigureDialogStore } from "@/store/figure-dialog";
@@ -297,7 +297,7 @@ export function FigureDialog() {
       if (added) choose(added);
       else setError(t(($) => $.editor.figureDialog.importFailed));
     } catch (e) {
-      notifyError("import figure", e);
+      void logError("import figure", e);
       setError(t(($) => $.editor.figureDialog.importFailed));
     } finally {
       setImporting(false);

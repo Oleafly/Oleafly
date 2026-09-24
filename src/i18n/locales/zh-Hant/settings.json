@@ -812,7 +812,8 @@
       "deleted": "已從你的範本中刪除「{{name}}」",
       "empty": "還沒有 AI 產生的範本。請從範本庫建立一個。",
       "fallbackDescription": "AI 產生的範本",
-      "toggle": "管理 AI 產生的範本"
+      "toggle": "管理 AI 產生的範本",
+      "deleteFailed": "無法刪除「{{name}}」。"
     },
     "fontPacks": {
       "lato": {
@@ -855,6 +856,14 @@
       "heading": "拼字字典",
       "note": "在「一般」區段選擇語言即可下載。內建的五個語言包一律可用，不會列在這裡。",
       "tooltip": "Oleafly 內建五個語言包。其他語言會在你選為拼字字典時才下載，並保留在這裡，之後就能離線使用。移除其中一個會釋出空間，並回到應用程式的設定。"
+    },
+    "errors": {
+      "fontDownloadFailed": "無法下載字型。",
+      "fontsDownloadFailed": "無法下載這些字型。",
+      "fontRemoveFailed": "無法移除字型。",
+      "packDownloadFailed": "無法下載範本包。",
+      "packsDownloadFailed": "無法下載這些範本包。",
+      "packRemoveFailed": "無法移除範本包。"
     }
   },
   "engine": {

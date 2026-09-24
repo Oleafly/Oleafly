@@ -343,6 +343,28 @@ describe("ResearchToolCard", () => {
     });
   });
 
+  it("offers no Open source button for a paper without a usable link", () => {
+    const openSource = vi.fn();
+    render(
+      <ResearchToolCard
+        expansionKey="chat:search-unlinked"
+        actions={{ openSource }}
+        tc={{
+          name: "literature_search",
+          status: "done",
+          output: JSON.stringify({
+            results: [{ id: "local-42", title: "Unlinked paper", publication_year: 2024 }],
+          }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Search literature/ }));
+    expect(screen.getByText("Unlinked paper")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open source: Unlinked paper" })).toBeNull();
+    expect(openSource).not.toHaveBeenCalled();
+  });
+
   it("bounds long output and keeps expansion after an unmount", () => {
     const output = JSON.stringify({ content: "x".repeat(8_000) });
     const first = render(

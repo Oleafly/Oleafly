@@ -27,6 +27,38 @@ export function openToolsGallery(): Promise<void> {
   return openHomePage("tools");
 }
 
+type TypstMode = Extract<ToolDefinition["destination"], { kind: "typst-project" }>["mode"];
+
+let typstStart: Promise<void> | null = null;
+
+async function createTypstDocument(mode: TypstMode): Promise<void> {
+  const previousProjectId = useFilesStore.getState().projectId;
+  try {
+    await useFilesStore
+      .getState()
+      .createTypstProject(i18n.t(($) => $.researchTools.tools.typstDefaultName));
+  } catch (error) {
+    void logError("open typst editor", error);
+    toast.errorUnique(
+      "typst-start-failed",
+      i18n.t(($) => $.researchTools.tools.typstStartFailed),
+    );
+    return;
+  }
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId || projectId === previousProjectId) return;
+  useSettingsStore.getState().setViewMode(mode === "visual" ? "split" : "editor");
+}
+
+function startTypstDocument(mode: TypstMode): Promise<void> {
+  if (!typstStart) {
+    typstStart = createTypstDocument(mode).finally(() => {
+      typstStart = null;
+    });
+  }
+  return typstStart;
+}
+
 export async function openTool(tool: ToolDefinition): Promise<void> {
   switch (tool.destination.kind) {
     case "page":
@@ -41,19 +73,6 @@ export async function openTool(tool: ToolDefinition): Promise<void> {
       await openHomePage("reference");
       return;
     case "typst-project":
-      try {
-        await useFilesStore
-          .getState()
-          .createTypstProject(i18n.t(($) => $.researchTools.tools.typstDefaultName));
-        // Opening the new project restores its persisted layout. Apply the
-        // tool's requested mode afterwards so project initialization cannot
-        // silently replace it with the default split view.
-        useSettingsStore
-          .getState()
-          .setViewMode(tool.destination.mode === "visual" ? "split" : "editor");
-      } catch (error) {
-        void logError("open typst editor", error);
-        toast.error(i18n.t(($) => $.researchTools.tools.typstStartFailed));
-      }
+      await startTypstDocument(tool.destination.mode);
   }
 }

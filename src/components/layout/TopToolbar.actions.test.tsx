@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   exportCurrentImagePng: vi.fn(async () => {}),
   success: vi.fn(),
   notifyError: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -45,6 +46,7 @@ vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.success, error: vi.fn(), info: vi.fn() },
   notifyError: mocks.notifyError,
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { TopToolbar } from "./TopToolbar";
 import { useCompileStore } from "@/store/compile";
@@ -55,6 +57,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { ThemeProvider } from "@/lib/theme";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import { i18n } from "@/i18n";
 
 const toolbar = enShell.toolbar;
 
@@ -70,7 +73,7 @@ function forkButton(): HTMLElement {
   return screen.getByRole("menuitem", { name: toolbar.forkProject });
 }
 
-const renameProject = vi.fn(async () => {});
+const renameProject = vi.fn(async (_name: string) => {});
 const refreshProjects = vi.fn(async () => {});
 const openProject = vi.fn(async () => {});
 const closeProject = vi.fn(async () => {});
@@ -80,8 +83,8 @@ beforeEach(() => {
   mocks.pickSavePath.mockResolvedValue("/tmp/out.zip");
   mocks.ensurePandoc.mockResolvedValue(true);
   mocks.duplicateProject.mockResolvedValue("p2");
-  renameProject.mockClear();
-  refreshProjects.mockClear();
+  renameProject.mockReset().mockResolvedValue(undefined);
+  refreshProjects.mockReset().mockResolvedValue(undefined);
   openProject.mockClear();
   usePreviewDetachedStore.setState({ projectId: null });
   useFilesStore.setState({
@@ -108,7 +111,10 @@ beforeEach(() => {
 });
 
 describe("TopToolbar title", () => {
-  it("renames the project from the title field", async () => {
+  it("renames the project from the title field and lets the title show it", async () => {
+    renameProject.mockImplementation(async (name: string) => {
+      useFilesStore.setState({ projectName: name });
+    });
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByTestId("project-title"));
@@ -116,7 +122,11 @@ describe("TopToolbar title", () => {
     await user.clear(field);
     await user.type(field, "New name{Enter}");
     await waitFor(() => expect(renameProject).toHaveBeenCalledWith("New name"));
-    expect(mocks.success).toHaveBeenCalledWith(toolbar.projectRenamed);
+    await waitFor(() =>
+      expect(screen.getByTestId("project-title")).toHaveTextContent("New name"),
+    );
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("saves the name from its own button", async () => {
@@ -149,14 +159,42 @@ describe("TopToolbar title", () => {
   });
 
   it("keeps the old name when the rename fails", async () => {
-    renameProject.mockRejectedValueOnce(new Error("taken"));
+    const failure = new Error("project rename task failed: taken");
+    renameProject.mockRejectedValueOnce(failure);
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByTestId("project-title"));
     const field = await screen.findByLabelText(toolbar.projectName);
     await user.clear(field);
     await user.type(field, "Clash{Enter}");
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "rename project",
+        failure,
+        i18n.t(($) => $.shell.toolbar.renameFailed),
+      ),
+    );
+    expect(screen.getByTestId("project-title")).toHaveTextContent("Retrieval study");
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("logs a list refresh that failed after the rename went through", async () => {
+    const failure = new Error("list unavailable");
+    renameProject.mockImplementationOnce(async (name: string) => {
+      useFilesStore.setState({ projectName: name });
+      throw failure;
+    });
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("project-title"));
+    const field = await screen.findByLabelText(toolbar.projectName);
+    await user.clear(field);
+    await user.type(field, "Renamed{Enter}");
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("refresh projects after rename", failure),
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(screen.getByTestId("project-title")).toHaveTextContent("Renamed");
   });
 
   it("falls back to an untitled label", () => {
@@ -343,6 +381,23 @@ describe("TopToolbar fork dialog", () => {
     );
     expect(refreshProjects).toHaveBeenCalled();
     expect(openProject).toHaveBeenCalledWith("p2");
+  });
+
+  it("opens the fork even when the library list fails to refresh", async () => {
+    const failure = new Error("list unavailable");
+    refreshProjects.mockRejectedValueOnce(failure);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("workspace-menu"));
+    await user.click(forkButton());
+    await user.click(await screen.findByRole("button", { name: toolbar.fork }));
+    await waitFor(() => expect(openProject).toHaveBeenCalledWith("p2"));
+    expect(mocks.duplicateProject).toHaveBeenCalledOnce();
+    expect(mocks.logError).toHaveBeenCalledWith("refresh projects after fork", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText(toolbar.newProjectName)).not.toBeInTheDocument(),
+    );
   });
 
   it("reports a failed fork", async () => {

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 
@@ -54,6 +54,15 @@ export function TableGeneratorPanel() {
   );
 
   const previewHeader = cells[0] ?? [];
+
+  const copySource = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success(t(($) => $.researchTools.table.copiedSource));
+    } catch (error) {
+      notifyError("table copy latex", error, t(($) => $.researchTools.equation.copyLatexFailed));
+    }
+  };
 
   return (
     <ToolSplitView storageId="latex-table-generator">
@@ -207,10 +216,7 @@ export function TableGeneratorPanel() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              void navigator.clipboard.writeText(code);
-              toast.success(t(($) => $.researchTools.table.copiedSource));
-            }}
+            onClick={() => void copySource()}
           >
             {t(($) => $.common.actions.copy)}
           </Button>

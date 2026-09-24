@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { i18n } from "@/i18n";
 import { useToastStore } from "@/store/toast";
-import { conversionNotice } from "@/features/import-copy";
 
 const mocks = vi.hoisted(() => ({
+  files: { projectId: null as string | null },
   ensurePandoc: vi.fn(),
   githubImportRepo: vi.fn(),
   importArxivEprint: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@/store/files", () => ({
   useFilesStore: {
     getState: () => ({
+      projectId: mocks.files.projectId,
       importProject: mocks.importProject,
       openProject: mocks.openProject,
       refreshProjects: mocks.refreshProjects,
@@ -44,15 +46,22 @@ import {
   normalizeArxivImportId,
 } from "./project-import";
 
+function notice(format: string): string {
+  return i18n.t(($) => $.core.import.conversionNotice, { format });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.files.projectId = null;
   mocks.ensurePandoc.mockResolvedValue(true);
   mocks.githubImportRepo.mockResolvedValue("github-project");
   mocks.importDocument.mockResolvedValue("converted-project");
   mocks.importProject.mockResolvedValue("archive-project");
-  mocks.openProject.mockResolvedValue(undefined);
+  mocks.openProject.mockImplementation(async (id: string) => {
+    mocks.files.projectId = id;
+  });
   mocks.refreshProjects.mockResolvedValue(undefined);
-  useToastStore.setState({ toasts: [] });
+  useToastStore.getState().reset();
 });
 
 describe("project import file detection", () => {
@@ -82,33 +91,50 @@ describe("project file import", () => {
     async (path) => {
       await expect(importSelectedFile(path)).resolves.toBe(true);
 
-      expect(mocks.ensurePandoc).toHaveBeenCalledOnce();
+      expect(mocks.ensurePandoc).toHaveBeenCalledExactlyOnceWith({ notify: true });
       expect(mocks.importDocument).toHaveBeenCalledWith(path, "latex");
       expect(mocks.refreshProjects).toHaveBeenCalledOnce();
       expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
       expect(useToastStore.getState().toasts).toEqual([
-        expect.objectContaining({ kind: "success", message: conversionNotice() }),
+        expect.objectContaining({ key: "import-conversion", kind: "info", message: notice("LaTeX") }),
       ]);
     },
   );
 
   it.each([
-    ["/tmp/page.html", "latex"],
-    ["/tmp/page.html", "typst"],
-    ["/tmp/paper.typ", "markdown"],
-  ] as const)("converts %s into the requested %s project", async (path, target) => {
+    ["/tmp/page.html", "latex", "LaTeX"],
+    ["/tmp/page.html", "typst", "Typst"],
+    ["/tmp/paper.typ", "markdown", "Markdown"],
+  ] as const)("converts %s into the requested %s project and names that format", async (path, target, format) => {
     await expect(importSelectedFile(path, target)).resolves.toBe(true);
 
     expect(mocks.importDocument).toHaveBeenCalledWith(path, target);
+    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([notice(format)]);
   });
 
-  it("imports an arXiv e-print by id", async () => {
+  it("keeps one conversion notice when imports follow each other", async () => {
+    await importSelectedFile("/tmp/a.docx");
+    await importSelectedFile("/tmp/b.docx");
+
+    expect(useToastStore.getState().toasts).toHaveLength(1);
+  });
+
+  it("shows no conversion notice when the converted project did not open", async () => {
+    mocks.openProject.mockResolvedValue(undefined);
+
+    await expect(importSelectedFile("/tmp/paper.docx")).resolves.toBe(true);
+
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("imports an arXiv e-print by id and lets the opened project confirm it", async () => {
     mocks.importArxivEprint.mockResolvedValue("arxiv-project");
 
     await expect(importArxivPaper("arXiv:2301.01234")).resolves.toBe(true);
 
     expect(mocks.importArxivEprint).toHaveBeenCalledWith("2301.01234");
     expect(mocks.openProject).toHaveBeenCalledWith("arxiv-project");
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
   it("stops cleanly when Pandoc installation is declined", async () => {
@@ -136,6 +162,7 @@ describe("GitHub repository import", () => {
     expect(mocks.githubImportRepo).toHaveBeenCalledWith(repository.full_name);
     expect(mocks.refreshProjects).toHaveBeenCalledOnce();
     expect(mocks.openProject).toHaveBeenCalledWith("github-project");
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 });
 

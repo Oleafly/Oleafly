@@ -92,7 +92,11 @@
     "settings": "Setările previzualizării PDF",
     "fullscreen": "Previzualizare pe ecran complet",
     "exitFullscreen": "Ieși din ecranul complet",
-    "retryCompile": "Reîncearcă compilarea"
+    "retryCompile": "Reîncearcă compilarea",
+    "chooseEngine": "Alege motorul…",
+    "installPackages_one": "Găsește și instalează {{name}}",
+    "installPackages_few": "Găsește și instalează {{count}} fișiere",
+    "installPackages_other": "Găsește și instalează {{count}} de fișiere"
   },
   "stale": {
     "badge": "Învechit",
@@ -121,7 +125,7 @@
     "imageSaved": "Imagine salvată · {{name}}",
     "pdfSaved": "PDF salvat · {{name}}",
     "showInFolder": "Arată în folder",
-    "folderUnavailable": "Fișierul a fost salvat, dar Oleafly nu a putut deschide folderul lui (permisiune refuzată). Verifică locul pe care l-ai ales în fereastra de salvare.",
+    "folderUnavailable": "Folderul nu a putut fi deschis.",
     "imageFailed": "Imaginea nu a putut fi descărcată.",
     "imageFailedDetail": "Imaginea nu a putut fi descărcată: {{detail}}",
     "pdfFailed": "PDF-ul nu a putut fi descărcat.",

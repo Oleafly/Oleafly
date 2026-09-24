@@ -16,9 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
+  CopyLatexLabel,
   EQUATION_EXAMPLES,
   EquationPreviewPanel,
   renderEquation,
+  useCopyStatus,
 } from "@/components/tools/EquationPreviewPanel";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -26,7 +28,8 @@ import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import {
   createImageProject,
   listFiles,
@@ -36,6 +39,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import {
   equationToSvgDocument,
+  equationFailureMessage,
   svgDocumentToPngBytes,
 } from "@/features/equation-export";
 import { toolName } from "@/lib/tool-catalog";
@@ -72,6 +76,13 @@ function pngFileName(value: string): string | null {
   return `${name}.png`;
 }
 
+const EQUATION_PROJECT_TOAST_KEY = "equation-project";
+
+function showProjectOutcome(kind: "success" | "error", message: string): void {
+  if (kind === "success") toast.successUnique(EQUATION_PROJECT_TOAST_KEY, message);
+  else toast.errorUnique(EQUATION_PROJECT_TOAST_KEY, message);
+}
+
 export function EquationToolView() {
   const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
@@ -86,6 +97,7 @@ export function EquationToolView() {
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
   const [assetName, setAssetName] = useState("equation.png");
   const [savingProject, setSavingProject] = useState(false);
+  const latexCopy = useCopyStatus("equation copy latex");
 
   if (activePage !== "equation") return null;
 
@@ -118,11 +130,7 @@ export function EquationToolView() {
         "equation.png",
       );
     } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? e.message
-          : t(($) => $.researchTools.equation.exportImageFailed),
-      );
+      notifyError("equation export png", e, t(($) => $.researchTools.equation.exportImageFailed));
     }
   };
 
@@ -131,9 +139,7 @@ export function EquationToolView() {
       const svg = await equationToSvgDocument(input, display);
       downloadBlob(svg, "image/svg+xml", "equation.svg");
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : t(($) => $.researchTools.equation.exportSvgFailed),
-      );
+      notifyError("equation export svg", e, t(($) => $.researchTools.equation.exportSvgFailed));
     }
   };
 
@@ -149,11 +155,7 @@ export function EquationToolView() {
       await navigator.clipboard.writeText(math.outerHTML);
       toast.success(t(($) => $.researchTools.equation.copiedMathml));
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $.researchTools.equation.mathmlFailed),
-      );
+      notifyError("equation copy mathml", error, t(($) => $.researchTools.equation.mathmlFailed));
     }
   };
 
@@ -163,18 +165,12 @@ export function EquationToolView() {
       await navigator.clipboard.writeText(rendered.html);
       toast.success(t(($) => $.researchTools.equation.copiedKatexHtml));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.researchTools.equation.copyKatexFailed));
+      notifyError("equation copy katex html", error, t(($) => $.researchTools.equation.copyKatexFailed));
     }
   };
 
-  const copyLatex = async () => {
-    try {
-      await navigator.clipboard.writeText(wrapped);
-      toast.success(t(($) => $.researchTools.equation.copiedSource));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.researchTools.equation.copyLatexFailed));
-    }
-  };
+  const refreshProjectList = () =>
+    refreshProjects().catch((error: unknown) => logError("equation refresh projects", error));
 
   const equationPng = async () => {
     const svg = await equationToSvgDocument(input, display);
@@ -189,7 +185,7 @@ export function EquationToolView() {
     if (savingProject) return;
     const fileName = pngFileName(assetName);
     if (!fileName) {
-      toast.error(t(($) => $.researchTools.equation.invalidPngName));
+      showProjectOutcome("error", t(($) => $.researchTools.equation.invalidPngName));
       return;
     }
     const path = `figures/${fileName}`;
@@ -205,10 +201,11 @@ export function EquationToolView() {
       }
       const bytes = await equationPng();
       await writeProjectBytes(project.id, path, bytesToBase64(bytes), generation);
-      await refreshProjects();
-      toast.success(t(($) => $.researchTools.equation.savedToProject, { path, project: project.name }));
+      await refreshProjectList();
+      showProjectOutcome("success", t(($) => $.researchTools.equation.savedToProject, { path, project: project.name }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.researchTools.equation.saveFailed));
+      void logError("equation save to project", error);
+      showProjectOutcome("error", equationFailureMessage(error, t(($) => $.researchTools.equation.saveFailed)));
     } finally {
       setSavingProject(false);
     }
@@ -228,10 +225,11 @@ export function EquationToolView() {
     setSavingProject(true);
     try {
       await createImageProject(projectName, source);
-      await refreshProjects();
-      toast.success(t(($) => $.researchTools.equation.projectCreated));
+      await refreshProjectList();
+      showProjectOutcome("success", t(($) => $.researchTools.equation.projectCreated));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.researchTools.equation.projectCreateFailed));
+      void logError("equation create image project", error);
+      showProjectOutcome("error", equationFailureMessage(error, t(($) => $.researchTools.equation.projectCreateFailed)));
     } finally {
       setSavingProject(false);
     }
@@ -282,9 +280,13 @@ export function EquationToolView() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => void copyLatex()}
+          onClick={() => void latexCopy.copy(wrapped)}
         >
-          <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyLatex)}
+          <CopyLatexLabel
+            status={latexCopy.status}
+            idleLabel={t(($) => $.researchTools.equation.copyLatex)}
+            iconClassName="size-4"
+          />
         </Button>
         {rendered.html && (
           <Popover
@@ -293,7 +295,7 @@ export function EquationToolView() {
             ariaLabel={t(($) => $.researchTools.equation.saveToProject)}
             className="w-72 p-2"
             onOpenChange={(open) => {
-              if (open) void refreshProjects();
+              if (open) void refreshProjectList();
             }}
             trigger={
               <>

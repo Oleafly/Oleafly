@@ -349,8 +349,6 @@
     "unsave": "Fjern fra biblioteket",
     "save": "Gem skabelonen",
     "use": "Brug denne skabelon",
-    "savedToast": "Gemte \"{{name}}\" i dit bibliotek",
-    "removedToast": "Fjernede \"{{name}}\" fra dit bibliotek",
     "saveFailed": "Kunne ikke gemme skabelonen.",
     "removeFailed": "Kunne ikke fjerne skabelonen."
   },

@@ -681,7 +681,6 @@
     "copyFailed": "Oleafly가 변환된 소스를 복사하지 못했습니다.",
     "saveFailed": "Oleafly가 변환된 파일을 저장하지 못했습니다.",
     "resultName": "{{title}} 결과",
-    "projectCreated": "변환 결과로 프로젝트를 만들었습니다.",
     "projectFailed": "Oleafly가 프로젝트를 만들지 못했습니다.",
     "cancel": "취소",
     "convert": "변환",
@@ -920,9 +919,8 @@
       }
     },
     "bibtexBibliography": "BibTeX 참고문헌",
-    "savedBibliography": "references.bib를 저장했습니다",
+    "savedBibliography": "{{name}}을(를) 저장했습니다",
     "saveFailed": "Oleafly가 이 참고문헌을 저장하지 못했습니다.",
-    "copied": "{{label}}을(를) 복사했습니다",
     "copyFailed": "Oleafly가 {{label}}을(를) 복사하지 못했습니다.",
     "fieldJournal": "저널",
     "fieldConference": "학회 또는 논문집",
@@ -1113,7 +1111,6 @@
     "downloadSvg": "SVG 내려받기",
     "copyMathml": "Word용 MathML 복사",
     "copyKatexHtml": "KaTeX HTML 복사",
-    "copiedSource": "LaTeX 소스를 복사했습니다",
     "copiedMathml": "MathML을 복사했습니다(Word에 붙여 넣을 수 있습니다)",
     "copiedKatexHtml": "KaTeX HTML을 복사했습니다(KaTeX 스타일시트가 필요합니다)",
     "exportImageFailed": "이 조각을 이미지로 내보내지 못했습니다",
@@ -1328,9 +1325,6 @@
     "citationCount": "피인용 {{citations}}회",
     "unknownAuthors": "저자 미상",
     "moreAuthors": "{{authors}} 외 {{more}}명",
-    "toastSaved": "인용을 저장했습니다",
-    "toastUpdated": "저장된 인용을 갱신했습니다",
-    "toastCopied": "BibTeX를 복사했습니다",
     "toastCopyFailed": "BibTeX를 복사하지 못했습니다.",
     "suggestion": {
       "artificialIntelligence": "인공지능",
@@ -1383,12 +1377,8 @@
     "moreAuthors": "{{authors}} 외 {{more}}명",
     "addToBib": ".bib에 추가",
     "addToBibTooltip": "프로젝트 참고문헌에 덧붙이고 \\cite를 넣습니다",
-    "openProjectTooltip": "참고문헌 파일에 덧붙이려면 프로젝트를 여세요",
     "citeAdded": "{{citation}}을(를) 추가했습니다",
     "addFailed": "인용을 추가하지 못했습니다.",
-    "toastSaved": "인용을 저장했습니다",
-    "toastUpdated": "저장된 인용을 갱신했습니다",
-    "toastCopied": "BibTeX를 복사했습니다",
     "toastCopyFailed": "BibTeX를 복사하지 못했습니다."
   }
 }

@@ -10,7 +10,8 @@
   },
   "plugins": [
     ".biome/i18n-attributes.grit",
-    ".biome/i18n-toast-literals.grit"
+    ".biome/i18n-toast-literals.grit",
+    ".biome/toast-imports.grit"
   ],
   "linter": {
     "enabled": true,

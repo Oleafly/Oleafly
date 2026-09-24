@@ -3,12 +3,14 @@ import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { dirname } from "@/lib/project-intelligence/source";
+import { logError } from "@/lib/log";
 import { uint8ToBase64, writeProjectBytes } from "@/lib/tauri";
-import { notifyError } from "@/lib/toast";
+import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { clearThumbnailCache } from "@/components/editor/cm/hover-asset";
 
 export const FIGURE_DIRECTORY = "figures";
+export const IMAGE_IMPORT_TOAST_KEY = "image-import";
 export const PASTED_FIGURE_WIDTH = String.raw`0.8\linewidth`;
 
 const EXTENSION_BY_TYPE: Record<string, string> = {
@@ -113,25 +115,45 @@ export function isImportableImagePath(path: string): boolean {
   return /\.(?:png|jpe?g|gif|webp|bmp|svg|pdf)$/iu.test(path);
 }
 
-export async function importImageFile(file: File): Promise<ImportedImage | null> {
+type ImageImportResult = ImportedImage | "failed" | null;
+
+async function importImageFile(file: File, projectId: string): Promise<ImageImportResult> {
   const state = useFilesStore.getState();
-  const projectId = state.projectId;
-  if (!projectId) {
-    notifyError("paste image", new Error("no project"), i18n.t(($) => $.editor.paste.noProject));
-    return null;
-  }
-  if (isEditorMutationLocked(projectId)) return null;
+  if (state.projectId !== projectId || isEditorMutationLocked(projectId)) return null;
   const path = pastedImagePath(file, state.tree, state.mainDoc, new Date());
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     await writeProjectBytes(projectId, path, uint8ToBase64(bytes));
   } catch (error) {
-    notifyError("paste image", error, i18n.t(($) => $.editor.paste.imageFailed));
-    return null;
+    void logError("paste image", error);
+    return "failed";
   }
   clearThumbnailCache();
   if (useFilesStore.getState().projectId !== projectId) return null;
-  await useFilesStore.getState().refreshTree();
+  await useFilesStore
+    .getState()
+    .refreshTree()
+    .catch((error) => logError("refresh files after image paste", error));
   notifyProjectFilesChanged(projectId, [path]);
   return { path, latexPath: latexGraphicsPath(path, state.mainDoc) };
+}
+
+export async function importImageFiles(
+  files: readonly File[],
+  place: (image: ImportedImage) => void,
+): Promise<void> {
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) {
+    toast.errorUnique(IMAGE_IMPORT_TOAST_KEY, i18n.t(($) => $.editor.paste.noProject));
+    return;
+  }
+  let failed = false;
+  for (const file of files) {
+    const result = await importImageFile(file, projectId);
+    if (result === "failed") failed = true;
+    else if (result) place(result);
+  }
+  if (failed) {
+    toast.errorUnique(IMAGE_IMPORT_TOAST_KEY, i18n.t(($) => $.editor.paste.imageFailed));
+  }
 }

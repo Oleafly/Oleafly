@@ -114,7 +114,7 @@ describe("ad-hoc converter registry", () => {
     await expect(runAdHocConverter(id, { text: "source", file: null })).resolves.toEqual(
       converted,
     );
-    expect(mocks.ensurePandoc).toHaveBeenCalledOnce();
+    expect(mocks.ensurePandoc).toHaveBeenCalledExactlyOnceWith({ notify: true });
     expect(mocks.convertAdHoc).toHaveBeenCalledWith({ source, target, text: "source" });
   });
 

@@ -40,7 +40,8 @@ import { createProjectFromAdHoc, writeBytesFile } from "@/lib/tauri";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { toolById } from "@/lib/tool-catalog";
 import { logError } from "@/lib/log";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -184,6 +185,10 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   }
   await writeBytesFile(destination, dataBase64);
   toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
+}
+
+function failureMessage(error: unknown, fallback: string): string {
+  return decodeAppError(error) ? describeError(error) : fallback;
 }
 
 function openLocalModelSettings(): void {
@@ -346,11 +351,10 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     try {
       await saveOutput(output);
     } catch (caught) {
-      void logError(`save converter output ${id}`, caught);
-      toast.error(
-        caught instanceof Error
-          ? caught.message
-          : t(($) => $.researchTools.converter.saveFailed),
+      notifyError(
+        `save converter output ${id}`,
+        caught,
+        failureMessage(caught, t(($) => $.researchTools.converter.saveFailed)),
       );
     }
   };
@@ -375,10 +379,12 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       });
       await useFilesStore.getState().refreshProjects();
       await useFilesStore.getState().openProject(projectId);
-      toast.success(t(($) => $.researchTools.converter.projectCreated));
     } catch (caught) {
-      void logError(`create project from ${id}`, caught);
-      toast.error(caught instanceof Error ? caught.message : t(($) => $.researchTools.converter.projectFailed));
+      notifyError(
+        `create project from ${id}`,
+        caught,
+        failureMessage(caught, t(($) => $.researchTools.converter.projectFailed)),
+      );
     } finally {
       setProjectBusy(false);
     }

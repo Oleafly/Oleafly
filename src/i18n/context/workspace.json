@@ -2,7 +2,8 @@
   "files": {
     "newFile": "Context-menu item that creates an empty file",
     "newFolder": "Context-menu item that creates an empty folder",
-    "setMain": "Marks this file as the document the compiler builds"
+    "setMain": "Marks this file as the document the compiler builds",
+    "setMainFailed": "Error after the user picks Set as main document in the file tree and the project refuses it"
   },
   "outline": {
     "title": "Panel heading listing the headings of the open document"

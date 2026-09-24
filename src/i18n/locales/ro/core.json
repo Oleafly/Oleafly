@@ -54,20 +54,10 @@
     "present": "{{path}} are deja intrarea Oleafly. Citeaz-o cu {{markup}}.",
     "undo": "Anulează"
   },
-  "compatibility": {
-    "biblatexBiber": "Acest proiect folosește biblatex/Biber pentru bibliografie.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_few": "{{title}} (încă {{more}})",
-    "blockerFinding_other": "{{title}} (încă {{more}})",
-    "chooseEngine": "Alege motorul…",
-    "importNotes_one": "{{count}} observație la import: {{title}}",
-    "importNotes_few": "{{count}} observații la import: {{title}} (încă {{more}})",
-    "importNotes_other": "{{count}} de observații la import: {{title}} (încă {{more}})"
-  },
   "compile": {
-    "engineNotLoaded": "Compilarea este dezactivată până când se încarcă motorul de documente.",
     "noOfflineMode": "{{engine}} nu oferă un mod de compilare offline. Se compilează normal.",
-    "retry": "Compilează din nou"
+    "retry": "Compilează din nou",
+    "bundleFetchFailed": "Oleafly nu a putut descărca pachetele TeX de care are nevoie acest document. Verifică conexiunea și compilează din nou."
   },
   "developer": {
     "actions": {
@@ -93,7 +83,6 @@
         "title": "Populează corpusul de cercetare"
       }
     },
-    "closeProjectFailed": "Proiectul deschis nu a putut fi închis în siguranță.",
     "confirm": {
       "clearProjects": {
         "action": "Golește proiectele",
@@ -166,17 +155,12 @@
     "pdfFailedDetail": "PDF-ul nu a putut fi salvat: {{detail}}",
     "pngFailed": "Fișierul PNG nu a putut fi salvat",
     "pngFailedDetail": "Fișierul PNG nu a putut fi salvat: {{detail}}",
-    "revealFailed": "Fișierul a fost salvat, dar Oleafly nu a putut deschide folderul lui (permisiune refuzată). Verifică locul pe care l-ai ales în fereastra de salvare.",
+    "revealFailed": "Fișierul a fost salvat, dar folderul lui nu a putut fi deschis.",
     "saved": "{{kind}} salvat · {{fileName}}",
     "showInFolder": "Arată în folder"
   },
   "externalChange": {
-    "deletionRestored": "O ștergere din exterior s-a suprapus peste modificări nesalvate. Modificările tale locale au fost restabilite.",
-    "localEditKept": "O modificare din exterior asupra „{{path}}” a sosit în timp ce aveai modificări nesalvate. Modificarea ta locală a fost păstrată.",
-    "persistExternalFailed": "Cea mai recentă actualizare externă a „{{path}}” nu a putut fi salvată.",
-    "preserveLocalFailed": "Actualizarea ta locală a „{{path}}” nu a putut fi păstrată.",
-    "reloadFailed": "Setările proiectului au fost actualizate, dar unele fișiere modificate nu au putut fi reîncărcate.",
-    "restoreLocalFailed": "Actualizarea ta nesalvată a „{{path}}” nu a putut fi restabilită."
+    "reloadFailed": "Setările proiectului au fost actualizate, dar unele fișiere modificate nu au putut fi reîncărcate."
   },
   "fonts": {
     "systemDefault": "Fontul implicit al sistemului",
@@ -184,18 +168,15 @@
   },
   "imageToLatex": {
     "failed": "Conversia din imagine în LaTeX a eșuat: {{detail}}",
-    "inserted": "S-a inserat cod LaTeX din imagine",
     "transcribing": "Se transcrie imaginea…"
   },
   "import": {
-    "arxivImported": "Sursa de pe arXiv a fost importată. Compilează proiectul ca să verifici rezultatul.",
     "chooseOfferedProjectType": "Alege unul dintre tipurile de proiect oferite pentru acest fișier.",
     "invalidArxivId": "Lipește un link către o lucrare arXiv sau un identificator precum 2301.01234.",
     "supportedDocumentTypes": "Alege unul dintre tipurile de documente acceptate.",
-    "conversionNotice": "Am convertit conținutul tău în LaTeX. Ar putea fi nevoie să ajustezi stilul, mai ales la tabele, figuri și citări.",
+    "conversionNotice": "Convertit în {{format}}. Tabelele, figurile și citările ar putea avea nevoie de ajustări de stil.",
     "figureSaved": "S-a salvat {{name}}",
-    "pdfProjectCreated": "Proiect creat din PDF. Verifică reconstrucția înainte să te bazezi pe ea.",
-    "pickPdfOrDocx": "Alege un fișier .pdf sau .docx",
+    "pickPdfOrDocx": "Alege un fișier .pdf sau .docx.",
     "texSaved": "Fișierul .tex a fost salvat",
     "unsupportedFile": "Alege un fișier .zip, .docx, .md sau .markdown.",
     "zipSaveFailed": "Arhiva ZIP nu a putut fi salvată.",
@@ -326,7 +307,8 @@
     "installing_other": "Se instalează {{count}} de pachete. Compilarea repornește la final.",
     "summary_one": "Compilarea nu a găsit „{{name}}”. Caută în TeX Live pachetul care îl oferă.",
     "summary_few": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor.",
-    "summary_other": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor."
+    "summary_other": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor.",
+    "userTree": "Arborele TeX de sistem este doar pentru citire, așa că pachetele au ajuns în arborele tău personal din {{path}}."
   },
   "models": {
     "chips": {
@@ -373,19 +355,16 @@
     "renamed": "Redenumit în „{{name}}” ($t(core:navigation.edits, {\"count\": {{edits}} }) în $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Pandoc nu a putut fi descărcat. Instalează-l manual, apoi încearcă din nou",
+    "downloadFailed": "Pandoc nu a putut fi descărcat. Instalează-l manual, apoi încearcă din nou.",
     "downloadingPercent": "Se descarcă pandoc… {{progress}}%",
     "downloadingSize": "Se descarcă pandoc… {{megabytes}} MB",
-    "installGuide": "Ghid de instalare",
-    "installed": "pandoc a fost instalat"
+    "installGuide": "Ghid de instalare"
   },
   "project": {
     "copyFailed": "„{{path}}” nu a putut fi copiat.",
     "dateUnavailable": "Indisponibil",
     "importFailed": "Importul nu a reușit. Consultă jurnalul aplicației pentru detalii.",
-    "imported": "Proiect importat.",
     "openFailed": "Proiectul nu a putut fi deschis. Consultă jurnalul aplicației pentru detalii.",
-    "restoringUnsavedFiles": "O actualizare a proiectului a înlăturat fișiere cu modificări nesalvate. Oleafly ți-a păstrat modificările și restabilește acele fișiere.",
     "saveBlockedClose": "Proiectul a rămas deschis fiindcă unul sau mai multe fișiere nu au putut fi salvate.",
     "saveBlockedDiscard": "Renunță la modificări și ieși",
     "saveBlockedMany": "{{count}} fișiere nu au putut fi salvate: {{files}}. Primul este deschis în editor, cu modificările lui nesalvate ({{reason}}). Rămâi ca să rezolvi problema sau renunță la modificările nesalvate din acele fișiere și ieși.",
@@ -398,7 +377,8 @@
     "updatedDaysAgo_other": "Actualizat acum {{count}} de zile",
     "updatedOn": "Actualizat la {{date}}",
     "updatedToday": "Actualizat astăzi",
-    "updatedYesterday": "Actualizat ieri"
+    "updatedYesterday": "Actualizat ieri",
+    "autosaveFailed": "Modificările nu au putut fi salvate. Sunt încă în editor."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analiza a eșuat: {{message}}",
@@ -497,19 +477,7 @@
     "defaultTitle": "Terminalul {{index}}"
   },
   "tex": {
-    "distributionGap": "Acest proiect a fost fixat cu {{pinned}}. Distribuției active {{local}} îi lipsesc {{count}} dintre pachetele lui, așa că se poate ca unele compilări să eșueze până când folosești din nou acea distribuție.",
-    "distributionSkew": "Acest proiect a fost fixat cu {{pinned}}, iar această mașină compilează cu {{local}}. Rezultatul poate diferi ușor.",
-    "installPinned_one": "Instalează-l",
-    "installPinned_few": "Instalează-le pe toate {{count}}",
-    "installPinned_other": "Instalează-le pe toate {{count}}",
-    "installingPinned_one": "Se instalează {{count}} pachet fixat…",
-    "installingPinned_few": "Se instalează {{count}} pachete fixate…",
-    "installingPinned_other": "Se instalează {{count}} de pachete fixate…",
-    "pinnedPackagesFailed": "Unele pachete fixate nu au putut fi instalate. Vezi Setări → Motor LaTeX.",
-    "pinnedPackagesInstalled": "Pachetele LaTeX fixate au fost instalate.",
-    "pinnedPackagesMissing_one": "Acest proiect fixează {{count}} pachet LaTeX care nu este instalat aici.",
-    "pinnedPackagesMissing_few": "Acest proiect fixează {{count}} pachete LaTeX care nu sunt instalate aici.",
-    "pinnedPackagesMissing_other": "Acest proiect fixează {{count}} de pachete LaTeX care nu sunt instalate aici."
+    "distributionGap": "Acest proiect a fost fixat cu {{pinned}}. Distribuției active {{local}} îi lipsesc {{count}} dintre pachetele lui, așa că se poate ca unele compilări să eșueze până când folosești din nou acea distribuție."
   },
   "theme": {
     "cssForbiddenSyntax": "Codul CSS personalizat nu poate folosi reguli at, adrese URL sau selectori.",
@@ -558,8 +526,8 @@
       "installing": "Se instalează…",
       "unpacking": "Se despachetează…"
     },
-    "removeFailed": "TinyTeX nu a putut fi eliminat",
-    "removed": "TinyTeX a fost eliminat"
+    "removeFailed": "TinyTeX nu a putut fi eliminat.",
+    "removed": "TinyTeX a fost eliminat."
   },
   "toolActivity": {
     "labels": {
@@ -614,5 +582,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Proiectul s-a schimbat în timpul salvării. Încearcă actualizarea din nou."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Un punct de control nu a putut fi salvat. Discul este plin sau în folderul punctelor de control nu se poate scrie. Eliberează spațiu sau verifică permisiunile folderului, apoi compilează din nou.",
+    "incompleteCapture": "Ultimele puncte de control nu au putut fi salvate, deoarece unele fișiere ale proiectului nu au putut fi citite. Verifică-le permisiunile, apoi compilează din nou."
   }
 }

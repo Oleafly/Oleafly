@@ -7,12 +7,15 @@ import { currentLocale } from "@/i18n";
 import { formatDownloadSize } from "@/lib/download-size";
 import { logError } from "@/lib/log";
 import {
+  DEFAULT_DICTIONARY_LOCALE,
   dictionaryLabel,
   loadDictionaryCatalog,
+  normalizeDictionaryLocale,
   refreshDictionaryCatalog,
 } from "@/lib/proofreading/dictionary-catalog";
 import { notifyError } from "@/lib/toast";
 import { removeDictionary } from "@/lib/tauri";
+import { useSettingsStore } from "@/store/settings";
 
 export function DictionaryDownloads() {
   const { t } = useTranslation(["common", "settings"]);
@@ -25,17 +28,39 @@ export function DictionaryDownloads() {
       .catch((error) => void logError("list spelling dictionaries", error));
   }, []);
 
-  const remove = useCallback(async (id: string) => {
-    setBusyId(id);
-    try {
-      await removeDictionary(id);
-      setEntries(await refreshDictionaryCatalog());
-    } catch (error) {
-      notifyError("remove the spelling dictionary", error);
-    } finally {
-      setBusyId(null);
-    }
-  }, []);
+  const remove = useCallback(
+    async (entry: DictionaryInfo) => {
+      setBusyId(entry.id);
+      try {
+        await removeDictionary(entry.id);
+      } catch (error) {
+        notifyError(
+          "remove the spelling dictionary",
+          error,
+          t(($) => $.settings.engine.packages.error.remove, {
+            name: dictionaryLabel(entry, currentLocale()),
+          }),
+        );
+        setBusyId(null);
+        return;
+      }
+      const settings = useSettingsStore.getState();
+      if (
+        normalizeDictionaryLocale(settings.dictionaryLocale) ===
+        normalizeDictionaryLocale(entry.id)
+      ) {
+        settings.setDictionaryLocale(DEFAULT_DICTIONARY_LOCALE);
+      }
+      try {
+        setEntries(await refreshDictionaryCatalog());
+      } catch (error) {
+        void logError("list spelling dictionaries", error);
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [t],
+  );
 
   const uiLocale = currentLocale();
   const installed = entries.filter((entry) => entry.state === "installed");
@@ -87,7 +112,7 @@ export function DictionaryDownloads() {
               <button
                 type="button"
                 data-testid={`dictionary-remove-${entry.id}`}
-                onClick={() => void remove(entry.id)}
+                onClick={() => void remove(entry)}
                 disabled={busyId !== null}
                 className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
               >

@@ -92,7 +92,12 @@
     "settings": "Налаштування перегляду PDF",
     "fullscreen": "Повноекранний перегляд",
     "exitFullscreen": "Вийти з повноекранного режиму",
-    "retryCompile": "Скомпілювати ще раз"
+    "retryCompile": "Скомпілювати ще раз",
+    "chooseEngine": "Вибрати рушій…",
+    "installPackages_one": "Знайти і встановити {{name}}",
+    "installPackages_few": "Знайти і встановити {{count}} файли",
+    "installPackages_many": "Знайти і встановити {{count}} файлів",
+    "installPackages_other": "Знайти і встановити {{count}} файла"
   },
   "stale": {
     "badge": "Застарілий",
@@ -121,7 +126,7 @@
     "imageSaved": "Зображення збережено · {{name}}",
     "pdfSaved": "PDF збережено · {{name}}",
     "showInFolder": "Показати в папці",
-    "folderUnavailable": "Файл збережено, але Oleafly не зміг відкрити його папку (немає дозволу). Перевірте розташування, яке ви вибрали в діалозі збереження.",
+    "folderUnavailable": "Не вдалося відкрити папку.",
     "imageFailed": "Не вдалося завантажити зображення.",
     "imageFailedDetail": "Не вдалося завантажити зображення: {{detail}}",
     "pdfFailed": "Не вдалося завантажити PDF.",

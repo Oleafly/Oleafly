@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Die Einrichtungsdaten von TexLab sind ungültig",
     "setUp": "Einrichten",
-    "retry": "Erneut versuchen",
-    "startFailed": "Der Sprachdienst für das Projekt konnte nicht gestartet werden.",
-    "setupDetailsUnavailable": "Angaben zur Einrichtung des Sprachdienstes nicht verfügbar",
     "setupRequired": "Einrichtung des Sprachdienstes erforderlich",
     "installTitle": "{{name}} {{version}} installieren?",
     "licenseAndSource": "Lizenz und Quellcode",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Die Referenzanalyse für das Projekt ist nicht verfügbar.",
-    "updating": "Die Projektreferenzen werden aktualisiert.",
     "noDefinition": "Keine Definition für „{{name}}“ gefunden.",
     "definitionsFor": "Definitionen von {{name}}",
     "multipleDefinitions": "„{{name}}“ hat {{count}} Definitionen. Öffnen Sie Referenzen, um sie zu prüfen.",

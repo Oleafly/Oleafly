@@ -73,7 +73,6 @@
       "importedCodeOnly": "已导入 {{name}}（仅代码，不可绘制）。",
       "importFailed": "无法导入该文件：{{detail}}",
       "noAiFix": "AI 未返回修复结果。",
-      "aiFixApplied": "已应用 AI 修复，正在重新编译…",
       "fixFailed": "修复失败：{{detail}}",
       "notDrawable": "此代码中没有可绘制的内容。代码保持原样。"
     },

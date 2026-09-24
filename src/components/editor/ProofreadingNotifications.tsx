@@ -1,6 +1,4 @@
-import { useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
+import { useCallback } from "react";
 import {
   getEditorView,
   refreshEditorLints,
@@ -9,15 +7,17 @@ import {
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { retryProofreading } from "@/lib/proofreading/client";
+import {
+  useSilentRetry,
+  type SilentRetryPolicy,
+} from "./LanguageServiceRuntimeBoundary";
 
-/**
- * Renders nothing. Proofreading counts live in the Project info panel now — a
- * floating badge over the document was one more thing between the writer and
- * their page. What stays here is the part that has to interrupt: the toasts for
- * a checker that went offline, gave up on an oversized document, or failed and
- * needs a retry. A partial pass (one engine finished, the other did not) is
- * not announced; the panel still shows what was found.
- */
+export const PROOFREADING_RETRY_POLICY: SilentRetryPolicy = {
+  baseMs: 2_000,
+  maxMs: 300_000,
+  limit: Number.POSITIVE_INFINITY,
+};
+
 export function ProofreadingNotifications({
   path,
   surface,
@@ -25,7 +25,6 @@ export function ProofreadingNotifications({
   path: string | null;
   surface: ProofreadingSurface;
 }) {
-  const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const grammar = useSettingsStore((state) => state.harper);
@@ -47,56 +46,20 @@ export function ProofreadingNotifications({
     );
   }, [path, surface]);
 
-  const failure =
-    relevant &&
-    (status.phase === "unavailable" ||
-      status.phase === "error");
-  const informational =
-    relevant &&
-    (status.phase === "too_large" || status.phase === "unsupported");
-  const phaseMessage = (): string => {
-    if (status.phase === "error") return t(($) => $.editor.proofreading.error);
-    if (status.phase === "unavailable") return t(($) => $.editor.proofreading.unavailable);
-    if (status.phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
-    if (status.phase === "unsupported") return t(($) => $.editor.proofreading.unsupported);
-    return t(($) => $.editor.proofreading.partial, {
-      count: status.diagnosticCount,
-    });
-  };
-  const notificationMessage = status.message ?? phaseMessage();
-
-  useEffect(() => {
-    const toastId = `proofreading:${surface}`;
-    if (!failure && !informational) {
-      toast.dismiss(toastId);
-      return;
-    }
-    const options = {
-      id: toastId,
-      duration: Number.POSITIVE_INFINITY,
-      action: failure
-        ? {
-            label: t(($) => $.editor.proofreading.retry),
-            onClick: retry,
-          }
-        : undefined,
-    };
-    if (failure) {
-      toast.error(notificationMessage, options);
-    } else {
-      toast.warning(notificationMessage, options);
-    }
-    return () => {
-      toast.dismiss(toastId);
-    };
-  }, [
-    failure,
-    informational,
-    notificationMessage,
+  useSilentRetry({
+    failing:
+      relevant &&
+      (status.phase === "unavailable" || status.phase === "error"),
+    recovered:
+      relevant && (status.phase === "ready" || status.phase === "partial"),
     retry,
-    surface,
-    t,
-  ]);
+    policy: PROOFREADING_RETRY_POLICY,
+    scope: `proofreading ${surface}`,
+    detail: status.message
+      ? `${status.phase}: ${status.message}`
+      : status.phase,
+    resetKey: `${surface}:${path ?? ""}`,
+  });
 
   return null;
 }

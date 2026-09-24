@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { pickTableImportPath } from "@/lib/native-file-dialog";
-import { notifyError, toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useTableImportStore } from "@/store/table-import";
 import { insertAtCursor } from "@/components/editor/cm/controller";
@@ -114,7 +115,7 @@ export function TableImportDialog() {
       }
     } catch (e) {
       if (request === selectionRequest.current) {
-        notifyError("import table", e);
+        void logError("import table", e);
         setError(e instanceof Error ? e.message : t(($) => $.editor.tableImport.readFailed));
         setRows([]);
         setFileName(null);
@@ -153,7 +154,7 @@ export function TableImportDialog() {
       await navigator.clipboard.writeText(tableSource);
       toast.success(t(($) => $.editor.tableImport.copied));
     } catch (e) {
-      notifyError("copy table source", e);
+      void logError("copy table source", e);
       setError(t(($) => $.editor.tableImport.copyFailed));
     }
   };

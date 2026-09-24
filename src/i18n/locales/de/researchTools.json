@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly konnte den umgewandelten Quelltext nicht kopieren.",
     "saveFailed": "Oleafly konnte die umgewandelte Datei nicht speichern.",
     "resultName": "Ergebnis von {{title}}",
-    "projectCreated": "Projekt aus der Umwandlung erstellt.",
     "projectFailed": "Oleafly konnte das Projekt nicht anlegen.",
     "cancel": "Abbrechen",
     "convert": "Umwandeln",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX-Literaturverzeichnis",
-    "savedBibliography": "references.bib gespeichert",
+    "savedBibliography": "{{name}} gespeichert",
     "saveFailed": "Oleafly konnte dieses Literaturverzeichnis nicht speichern.",
-    "copied": "{{label}} kopiert",
     "copyFailed": "Oleafly konnte {{label}} nicht kopieren.",
     "fieldJournal": "Zeitschrift",
     "fieldConference": "Konferenz oder Tagungsband",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "SVG herunterladen",
     "copyMathml": "MathML für Word kopieren",
     "copyKatexHtml": "KaTeX-HTML kopieren",
-    "copiedSource": "LaTeX-Quelltext kopiert",
     "copiedMathml": "MathML kopiert (lässt sich in Word einfügen)",
     "copiedKatexHtml": "KaTeX-HTML kopiert (braucht das Stylesheet von KaTeX)",
     "exportImageFailed": "Dieser Ausschnitt ließ sich nicht als Bild exportieren",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} Zitationen",
     "unknownAuthors": "Unbekannte Autoren",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Zitation gespeichert",
-    "toastUpdated": "Gespeicherte Zitation aktualisiert",
-    "toastCopied": "BibTeX kopiert",
     "toastCopyFailed": "BibTeX konnte nicht kopiert werden.",
     "suggestion": {
       "artificialIntelligence": "Künstliche Intelligenz",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Zur .bib hinzufügen",
     "addToBibTooltip": "An das Literaturverzeichnis des Projekts anhängen und \\cite einfügen",
-    "openProjectTooltip": "Öffnen Sie ein Projekt, um an eine Bibliografiedatei anzuhängen",
     "citeAdded": "{{citation}} hinzugefügt",
     "addFailed": "Die Zitation konnte nicht hinzugefügt werden.",
-    "toastSaved": "Zitation gespeichert",
-    "toastUpdated": "Gespeicherte Zitation aktualisiert",
-    "toastCopied": "BibTeX kopiert",
     "toastCopyFailed": "BibTeX konnte nicht kopiert werden."
   }
 }

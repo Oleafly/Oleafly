@@ -54,16 +54,10 @@
     "present": "{{path}} 已包含 Oleafly 条目。使用 {{markup}} 引用它。",
     "undo": "撤销"
   },
-  "compatibility": {
-    "biblatexBiber": "此项目使用 biblatex/Biber 管理参考文献。",
-    "blockerFinding_other": "{{title}}（+{{more}} 项）",
-    "chooseEngine": "选择引擎…",
-    "importNotes_other": "{{count}} 条导入说明：{{title}}（+{{more}} 项）"
-  },
   "compile": {
-    "engineNotLoaded": "文档引擎加载完成前，编译处于禁用状态。",
     "noOfflineMode": "{{engine}} 未提供离线编译模式，将正常编译。",
-    "retry": "重新编译"
+    "retry": "重新编译",
+    "bundleFetchFailed": "Oleafly 无法下载此文档所需的 TeX 宏包。请检查网络连接，然后重新编译。"
   },
   "developer": {
     "actions": {
@@ -89,7 +83,6 @@
         "title": "填充研究语料库"
       }
     },
-    "closeProjectFailed": "无法安全关闭当前打开的项目。",
     "confirm": {
       "clearProjects": {
         "action": "清除项目",
@@ -158,17 +151,12 @@
     "pdfFailedDetail": "无法保存 PDF：{{detail}}",
     "pngFailed": "无法保存 PNG。",
     "pngFailedDetail": "无法保存 PNG：{{detail}}",
-    "revealFailed": "文件已保存，但 Oleafly 无法打开其所在文件夹（权限被拒绝）。请检查你在保存对话框中选择的位置。",
+    "revealFailed": "文件已保存，但无法打开其所在文件夹。",
     "saved": "{{kind}} 已保存 · {{fileName}}",
     "showInFolder": "在文件夹中显示"
   },
   "externalChange": {
-    "deletionRestored": "外部删除与未保存的编辑发生冲突。你的本地编辑已恢复。",
-    "localEditKept": "你有未保存的更改时，“{{path}}” 收到了外部编辑。已保留你的本地编辑。",
-    "persistExternalFailed": "无法保存 “{{path}}” 的最新外部更新。",
-    "preserveLocalFailed": "无法保留你对 “{{path}}” 的本地更新。",
-    "reloadFailed": "项目设置已更新，但部分已更改的文件无法重新加载。",
-    "restoreLocalFailed": "无法恢复你对 “{{path}}” 的未保存更新。"
+    "reloadFailed": "项目设置已更新，但部分已更改的文件无法重新加载。"
   },
   "fonts": {
     "systemDefault": "系统默认",
@@ -176,18 +164,15 @@
   },
   "imageToLatex": {
     "failed": "图片转 LaTeX 失败：{{detail}}",
-    "inserted": "已插入由图片转换的 LaTeX。",
     "transcribing": "正在转录图片…"
   },
   "import": {
-    "arxivImported": "arXiv 源码已导入。请编译项目并检查结果。",
     "chooseOfferedProjectType": "请选择此文件支持的项目类型。",
     "invalidArxivId": "请粘贴 arXiv 论文链接或类似 2301.01234 的编号。",
     "supportedDocumentTypes": "请选择支持的文档类型。",
-    "conversionNotice": "我们已将你的内容转换为 LaTeX。你可能需要调整样式，尤其是表格、图片和引用。",
+    "conversionNotice": "已转换为 {{format}}。表格、图片和引用可能需要调整样式。",
     "figureSaved": "已保存 {{name}}",
-    "pdfProjectCreated": "已从 PDF 创建项目。请先检查，再信任重建结果。",
-    "pickPdfOrDocx": "请选择 .pdf 或 .docx 文件",
+    "pickPdfOrDocx": "请选择 .pdf 或 .docx 文件。",
     "texSaved": "已保存 .tex",
     "unsupportedFile": "请选择 .zip、.docx、.md 或 .markdown 文件。",
     "zipSaveFailed": "无法保存 ZIP 压缩包。",
@@ -310,7 +295,8 @@
   "missingPackages": {
     "action_other": "查找并安装 {{count}} 个文件",
     "installing_other": "正在安装 {{count}} 个宏包。安装完成后将重新编译。",
-    "summary_other": "编译时找不到 {{names}}。请在 TeX Live 中查找对应的宏包。"
+    "summary_other": "编译时找不到 {{names}}。请在 TeX Live 中查找对应的宏包。",
+    "userTree": "系统 TeX 目录树为只读，因此宏包已安装到你位于 {{path}} 的个人目录树。"
   },
   "models": {
     "chips": {
@@ -356,16 +342,13 @@
     "downloadFailed": "无法下载 pandoc。请手动安装后重试。",
     "downloadingPercent": "正在下载 pandoc… {{progress}}%",
     "downloadingSize": "正在下载 pandoc… {{megabytes}} MB",
-    "installGuide": "安装指南",
-    "installed": "已安装 Pandoc"
+    "installGuide": "安装指南"
   },
   "project": {
     "copyFailed": "无法复制“{{path}}”。",
     "dateUnavailable": "不可用",
     "importFailed": "无法导入。详情请查看应用日志。",
-    "imported": "项目已导入",
     "openFailed": "无法打开项目。详情请查看应用日志。",
-    "restoringUnsavedFiles": "项目更新移除了包含未保存编辑的文件。Oleafly 已保留你的编辑，正在恢复这些文件。",
     "saveBlockedClose": "由于一个或多个文件无法保存，项目保持打开状态。",
     "saveBlockedDiscard": "放弃更改并离开",
     "saveBlockedMany": "{{count}} 个文件无法保存：{{files}}。第一个文件已在编辑器中打开并保留未保存的更改（{{reason}}）。留下来解决问题，或放弃这些文件中未保存的更改后离开。",
@@ -376,7 +359,8 @@
     "updatedDaysAgo_other": "更新于 {{count}} 天前",
     "updatedOn": "更新于 {{date}}",
     "updatedToday": "今天更新",
-    "updatedYesterday": "昨天更新"
+    "updatedYesterday": "昨天更新",
+    "autosaveFailed": "无法保存你的更改。更改仍保留在编辑器中。"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失败：{{message}}",
@@ -465,13 +449,7 @@
     "defaultTitle": "终端 {{index}}"
   },
   "tex": {
-    "distributionGap": "此项目已固定使用 {{pinned}}。当前的 {{local}} 缺少其中的 {{count}} 个软件包，在重新使用该发行版之前，编译可能会失败。",
-    "distributionSkew": "此项目已固定使用 {{pinned}}，而本机使用 {{local}} 编译。输出结果可能略有差异。",
-    "installPinned_other": "安装全部 {{count}} 个软件包",
-    "installingPinned_other": "正在安装 {{count}} 个已固定的软件包…",
-    "pinnedPackagesFailed": "部分已固定的软件包无法安装。请查看设置 → LaTeX 引擎。",
-    "pinnedPackagesInstalled": "已安装固定的 LaTeX 软件包。",
-    "pinnedPackagesMissing_other": "此项目固定了 {{count}} 个未在本机安装的 LaTeX 软件包。"
+    "distributionGap": "此项目已固定使用 {{pinned}}。当前的 {{local}} 缺少其中的 {{count}} 个软件包，在重新使用该发行版之前，编译可能会失败。"
   },
   "theme": {
     "cssForbiddenSyntax": "自定义 CSS 不能使用 at 规则、URL 或选择器。",
@@ -521,7 +499,7 @@
       "unpacking": "正在解压…"
     },
     "removeFailed": "无法移除 TinyTeX。",
-    "removed": "已移除 TinyTeX"
+    "removed": "已移除 TinyTeX。"
   },
   "toolActivity": {
     "labels": {
@@ -572,5 +550,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "保存时项目发生了变化。请重试更新。"
+  },
+  "checkpoint": {
+    "storageUnavailable": "无法保存检查点。磁盘已满，或检查点文件夹无法写入。请释放一些空间或检查文件夹权限，然后重新编译。",
+    "incompleteCapture": "由于部分项目文件无法读取，最近的几个检查点未能保存。请检查这些文件的权限，然后重新编译。"
   }
 }

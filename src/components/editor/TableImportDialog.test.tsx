@@ -10,12 +10,13 @@ interface FilesState {
   engine: { id: string };
 }
 const mocks = vi.hoisted(() => ({
-  pick: vi.fn(), read: vi.fn(), insert: vi.fn(), notify: vi.fn(), success: vi.fn(),
+  pick: vi.fn(), read: vi.fn(), insert: vi.fn(), notify: vi.fn(), success: vi.fn(), log: vi.fn(),
   files: {} as FilesState,
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickTableImportPath: mocks.pick }));
 vi.mock("@/lib/tauri", () => ({ readPickedFileBase64: vi.fn(), registerPickedFileForE2E: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notify, toast: { success: mocks.success } }));
+vi.mock("@/lib/log", () => ({ logError: mocks.log }));
 vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: mocks.insert }));
 vi.mock("@/store/files", () => ({
   useFilesStore: Object.assign((select: (state: FilesState) => unknown) => select(mocks.files), { getState: () => mocks.files }),
@@ -104,7 +105,8 @@ describe("TableImportDialog", () => {
     await choose();
     fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("The table was not copied");
-    expect(mocks.notify).toHaveBeenCalledWith("copy table source", expect.any(Error));
+    expect(mocks.log).toHaveBeenCalledWith("copy table source", expect.any(Error));
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(screen.getByTestId("table-import-preview")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
     await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Table source copied to the clipboard."));
@@ -157,6 +159,18 @@ describe("TableImportDialog", () => {
     await act(async () => pending.resolve("/tmp/results.csv"));
     expect(screen.getByRole("alert")).toHaveTextContent("changed while the file picker was open");
     expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.log).toHaveBeenCalledWith("import table", expect.any(Error));
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("shows a failed read only in the open dialog and logs it", async () => {
+    mocks.read.mockRejectedValueOnce(new Error("this table has more than 10 columns."));
+    render(<TableImportDialog />);
+    fireEvent.click(screen.getByRole("button", { name: /Choose CSV/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("more than 10 columns");
+    expect(mocks.log).toHaveBeenCalledExactlyOnceWith("import table", expect.any(Error));
+    expect(mocks.notify).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
   });
 
   it("rejects a document change while rows are loading or before insertion", async () => {

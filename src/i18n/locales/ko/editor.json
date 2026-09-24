@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "{{path}}에 이미지를 저장했습니다",
     "imageFailed": "붙여 넣은 이미지를 프로젝트에 저장하지 못했습니다.",
     "noProject": "이미지를 붙여 넣기 전에 프로젝트를 여세요."
   },
@@ -205,7 +204,8 @@
     "spellLanguage": "맞춤법 검사 언어",
     "spellLanguageAppSetting": "앱 설정 따르기",
     "spellLanguageAriaLabel": "이 프로젝트의 맞춤법 검사 언어",
-    "spellLanguageHint": "이 프로젝트에만 적용됩니다. 설정에서 언어를 더 내려받을 수 있습니다."
+    "spellLanguageHint": "이 프로젝트에만 적용됩니다. 설정에서 언어를 더 내려받을 수 있습니다.",
+    "spellLanguageFailed": "맞춤법 검사 언어를 바꾸지 못했습니다."
   },
   "table": {
     "trigger": "표 삽입",
@@ -367,8 +367,6 @@
   },
   "citations": {
     "trigger": "프로젝트에서 인용",
-    "updating": "프로젝트 인용을 업데이트하는 중입니다.",
-    "changed": "프로젝트 인용이 바뀌었습니다. 선택 창을 다시 열어 새로 고치세요.",
     "filterPlaceholder": "키, 저자 또는 제목…",
     "filterLabel": "프로젝트 인용 필터",
     "partialCatalog": "부분 목록입니다. 형식이 잘못되었거나 읽을 수 없는 참고문헌 파일은 빠질 수 있습니다.",
@@ -400,9 +398,7 @@
     "error": "이 문서의 교정을 끝내지 못했습니다.",
     "unavailable": "오프라인 교정을 사용할 수 없습니다.",
     "tooLarge": "이 문서가 너무 커서 교정을 멈췄습니다.",
-    "unsupported": "이 문서 형식은 교정을 지원하지 않습니다.",
-    "partial_other": "교정에서 결과 {{count}}건을 얻었지만 엔진 하나가 작업을 끝내지 못했습니다.",
-    "retry": "다시 시도"
+    "unsupported": "이 문서 형식은 교정을 지원하지 않습니다."
   },
   "checkpoints": {
     "showInExplorer": "탐색기에서 보기",

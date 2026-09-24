@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "影像已儲存到 {{path}}",
     "imageFailed": "無法將貼上的影像儲存到專案。",
     "noProject": "請先開啟專案，再貼上影像。"
   },
@@ -205,7 +204,8 @@
     "spellLanguage": "拼字檢查語言",
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",
-    "spellLanguageHint": "只會套用到這個專案。可在設定中下載更多語言。"
+    "spellLanguageHint": "只會套用到這個專案。可在設定中下載更多語言。",
+    "spellLanguageFailed": "無法變更拼字檢查語言。"
   },
   "table": {
     "trigger": "插入表格",
@@ -367,8 +367,6 @@
   },
   "citations": {
     "trigger": "從專案引用",
-    "updating": "專案引用正在更新。",
-    "changed": "專案引用已變更。重新開啟選擇器即可更新。",
     "filterPlaceholder": "引用鍵、作者或標題…",
     "filterLabel": "篩選專案引用",
     "partialCatalog": "目錄不完整。格式有誤或無法讀取的參考文獻檔案可能已被略過。",
@@ -400,9 +398,7 @@
     "error": "校對無法完成這份文件。",
     "unavailable": "離線校對無法使用。",
     "tooLarge": "這份文件太大，校對已暫停。",
-    "unsupported": "這種文件格式不支援校對。",
-    "partial_other": "校對取得 {{count}} 項檢查結果，但有一個引擎未完成。",
-    "retry": "重試"
+    "unsupported": "這種文件格式不支援校對。"
   },
   "checkpoints": {
     "showInExplorer": "在檔案總管中顯示",

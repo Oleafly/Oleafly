@@ -349,8 +349,6 @@
     "unsave": "Poista tallennus",
     "save": "Tallenna mallipohja",
     "use": "Käytä tätä mallipohjaa",
-    "savedToast": "\"{{name}}\" tallennettiin kirjastoon",
-    "removedToast": "\"{{name}}\" poistettiin kirjastosta",
     "saveFailed": "Mallipohjan tallentaminen ei onnistunut.",
     "removeFailed": "Mallipohjan poistaminen ei onnistunut."
   },

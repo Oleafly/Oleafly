@@ -817,7 +817,8 @@
       "deleted": "\"{{name}}\" kitaplığınızdan silindi",
       "empty": "Henüz yapay zeka ile oluşturulmuş şablon yok. Şablon galerisinden bir tane oluşturun.",
       "fallbackDescription": "Yapay zeka ile oluşturulan şablon",
-      "toggle": "Yapay zeka ile oluşturulan şablonları yönet"
+      "toggle": "Yapay zeka ile oluşturulan şablonları yönet",
+      "deleteFailed": "\"{{name}}\" silinemedi."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Yazım sözlükleri",
       "note": "Bir dili indirmek için Genel bölümünden seçin. Birlikte gelen beş paket her zaman kullanılabilir ve burada listelenmez.",
       "tooltip": "Oleafly ile beş dil paketi gelir. Diğer diller, yazım sözlüğü olarak seçtiğinizde istendiğinde indirilir ve sonrasında çevrimdışı çalışsın diye burada tutulur. Birini kaldırmak yer açar ve uygulama ayarına döner."
+    },
+    "errors": {
+      "fontDownloadFailed": "Yazı tipi indirilemedi.",
+      "fontsDownloadFailed": "Yazı tipleri indirilemedi.",
+      "fontRemoveFailed": "Yazı tipi kaldırılamadı.",
+      "packDownloadFailed": "Şablon paketi indirilemedi.",
+      "packsDownloadFailed": "Şablon paketleri indirilemedi.",
+      "packRemoveFailed": "Şablon paketi kaldırılamadı."
     }
   },
   "engine": {

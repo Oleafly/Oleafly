@@ -73,7 +73,6 @@
       "importedCodeOnly": "Importerte {{name}} (bare kode, kan ikke tegnes).",
       "importFailed": "Kunne ikke importere den filen: {{detail}}",
       "noAiFix": "AI-en returnerte ingen fiks.",
-      "aiFixApplied": "La inn en AI-fiks. Kompilerer på nytt…",
       "fixFailed": "Fiksen mislyktes: {{detail}}",
       "notDrawable": "Ingenting i denne koden kunne tegnes. Koden er urørt."
     },

@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "{{path}} に画像を保存しました",
     "imageFailed": "貼り付けた画像をプロジェクトに保存できませんでした。",
     "noProject": "画像を貼り付ける前にプロジェクトを開いてください。"
   },
@@ -205,7 +204,8 @@
     "spellLanguage": "スペルチェックの言語",
     "spellLanguageAppSetting": "アプリの設定を使う",
     "spellLanguageAriaLabel": "このプロジェクトのスペルチェック言語",
-    "spellLanguageHint": "このプロジェクトにのみ適用されます。ほかの言語は設定からダウンロードできます。"
+    "spellLanguageHint": "このプロジェクトにのみ適用されます。ほかの言語は設定からダウンロードできます。",
+    "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。"
   },
   "table": {
     "trigger": "表を挿入",
@@ -367,8 +367,6 @@
   },
   "citations": {
     "trigger": "プロジェクトから引用",
-    "updating": "プロジェクトの引用を更新しています。",
-    "changed": "プロジェクトの引用が変更されました。選択画面を開き直すと更新されます。",
     "filterPlaceholder": "キー、著者、タイトル…",
     "filterLabel": "プロジェクトの引用を絞り込む",
     "partialCatalog": "部分的な一覧です。形式が不正な参考文献ファイルや読み取れないファイルは含まれないことがあります。",
@@ -400,9 +398,7 @@
     "error": "この文書の校正を完了できませんでした。",
     "unavailable": "オフライン校正を利用できません。",
     "tooLarge": "この文書が大きすぎるため、校正を一時停止しています。",
-    "unsupported": "この文書形式は校正に対応していません。",
-    "partial_other": "校正で {{count}} 件の指摘を取得しましたが、一方のエンジンが完了しませんでした。",
-    "retry": "再試行"
+    "unsupported": "この文書形式は校正に対応していません。"
   },
   "checkpoints": {
     "showInExplorer": "エクスプローラーで表示",

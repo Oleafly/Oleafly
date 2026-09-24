@@ -4,16 +4,23 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastErrorUnique = vi.fn();
+const logError = vi.fn();
 const searchLiterature = vi.fn();
 
 vi.mock("@/lib/toast", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    errorUnique: (...args: unknown[]) => toastErrorUnique(...args),
     info: vi.fn(),
     update: vi.fn(),
     dismiss: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/log", () => ({
+  logError: (...args: unknown[]) => logError(...args),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -47,6 +54,7 @@ vi.mock("@/lib/publication-year", async () => {
   };
 });
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { LiteratureSearchPanel } from "@/components/tools/LiteratureSearchPanel";
 import { LiteratureSearchToolView } from "@/components/tools/LiteratureSearchToolView";
@@ -148,6 +156,8 @@ async function runQuery(term: string) {
 beforeEach(() => {
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastErrorUnique.mockReset();
+  logError.mockReset();
   writeText.mockReset();
   searchLiterature.mockReset();
   searchLiterature.mockResolvedValue(response());
@@ -222,10 +232,13 @@ describe("LiteratureSearchPanel search mode", () => {
         name: enResearchTools.literature.saveCitation,
       })[0],
     );
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.literature.toastSaved,
-    );
+    expect(toastSuccess).not.toHaveBeenCalled();
     expect(useLiteratureLibraryStore.getState().saved).toHaveLength(1);
+    expect(
+      screen.getAllByRole("button", {
+        name: enResearchTools.literature.savedCitation,
+      }),
+    ).toHaveLength(1);
 
     const savedTab = screen.getByRole("tab", {
       name: new RegExp(enResearchTools.literature.tabMyCitations),
@@ -261,9 +274,10 @@ describe("LiteratureSearchPanel search mode", () => {
     expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining(FULL_RECORD.title),
     );
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.literature.toastCopied,
-    );
+    expect(
+      await screen.findByRole("button", { name: enCommon.actions.copied }),
+    ).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
   it("reports a clipboard failure", async () => {
@@ -276,10 +290,13 @@ describe("LiteratureSearchPanel search mode", () => {
       })[0],
     );
     await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith(
+      expect(toastErrorUnique).toHaveBeenCalledWith(
+        "copy-bibtex",
         enResearchTools.literature.toastCopyFailed,
       ),
     );
+    expect(logError).toHaveBeenCalledWith("copy BibTeX", expect.any(Error));
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("shows the no-results panel with the source error banner", async () => {

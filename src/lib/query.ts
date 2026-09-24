@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
-import { useToastStore } from "@/store/toast";
+import { toast } from "@/lib/toast";
 
 // Server-state families and how long their data stays fresh. Queries pick the
 // family value; anything not listed uses the default below.
@@ -14,11 +15,6 @@ export const staleTimes = {
   /** Project listing: cheap to refetch, mutated from many places. */
   projects: 10_000,
 } as const;
-
-function describe(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
 
 let singleton: QueryClient | null = null;
 
@@ -34,19 +30,15 @@ export function createAppQueryClient(): QueryClient {
     queryCache: new QueryCache({
       onError: (error, query) => {
         logError("query", error);
-        if (query.meta?.silent) return;
-        useToastStore.getState().pushUnique(
-          `query:${query.queryHash}`,
-          "error",
-          describe(error),
-        );
+        if (query.meta?.notify !== true) return;
+        toast.errorUnique(`query:${query.queryHash}`, describeError(error));
       },
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
         logError("mutation", error);
         if (mutation.meta?.silent) return;
-        useToastStore.getState().push("error", describe(error));
+        toast.error(describeError(error));
       },
     }),
     defaultOptions: {

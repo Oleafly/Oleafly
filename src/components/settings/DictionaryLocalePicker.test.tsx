@@ -152,6 +152,38 @@ describe("spelling dictionary picker", () => {
     );
   });
 
+  it("locks the picker while a download runs so one pick gives one result", async () => {
+    let finishInstall = () => {};
+    mocks.installDictionary.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishInstall = () => {
+            mocks.listDictionaries.mockResolvedValue(catalog("installed"));
+            resolve();
+          };
+        }),
+    );
+    const user = userEvent.setup();
+    render(<DictionaryLocalePicker />);
+
+    const control = await screen.findByRole("combobox", {
+      name: copy.ariaLabel,
+    });
+    await user.click(control);
+    await user.click(
+      await screen.findByRole("option", { name: /Spanish \(Spain\)/u }),
+    );
+
+    await waitFor(() => expect(control).toBeDisabled());
+    await user.click(control);
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(mocks.installDictionary).toHaveBeenCalledTimes(1);
+
+    finishInstall();
+    await waitFor(() => expect(control).toBeEnabled());
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses to download while offline mode is on", async () => {
     useSettingsStore.setState({ offline: true });
     const user = userEvent.setup();

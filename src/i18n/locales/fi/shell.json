@@ -301,8 +301,6 @@
       "needed": "Tämä projekti käyttää ominaisuuksia, jotka vaativat mielivaltaisia ulkoisia komentoja. Ne pysyvät estettyinä, kunnes ne sallitaan.",
       "warning": "Vaaditaan mintedissä ja joissakin PythonTeX-dokumenteissa. LaTeX voi ajaa ohjelmia käyttäjäoikeuksillasi, joten ota tämä käyttöön vain projektissa, johon luotat. TeX Liven omat apuohjelmat, kuten EPS-muunnos, toimivat ilman tätä."
     },
-    "shellEscapeAllowed": "Ulkoiset komennot ovat sallittuja tälle projektille tällä koneella.",
-    "shellEscapeBlocked": "Mielivaltaiset ulkoiset komennot on estetty tältä projektilta. TeX Liven omat apuohjelmat, kuten EPS-muunnos, toimivat yhä.",
     "shellEscapeFailed": "Ulkoisten komentojen käyttöoikeutta ei voitu päivittää.",
     "switchFailed": "Käännösmoottoria ei voitu vaihtaa.",
     "switched": "Tämä projekti kääntyy nyt moottorilla {{engine}}.",
@@ -493,7 +491,6 @@
         "title": "Pilvisynkronointi"
       },
       "danger": {
-        "closeFailed": "Avointa projektia ei voitu sulkea turvallisesti.",
         "confirmDeleteAllAction": "Poista kaikki projektit",
         "confirmDeleteAllDescription": "Jokainen nykyinen projekti siirtyy roskakoriin, mukaan lukien sen tiedostot ja Git-historia. Projektit voi palauttaa jälkeenpäin yksitellen.",
         "confirmDeleteAllTitle_one": "Poistetaanko kaikki {{count}} projekti?",
@@ -503,7 +500,8 @@
         "deleteAllDescription": "Siirtää jokaisen projektin roskakoriin. Mitään ei poisteta pysyvästi.",
         "deleting": "Poistetaan…",
         "moveFailed": "Projekteja ei voitu siirtää roskakoriin.",
-        "movePartial": "{{count}} projektia siirrettiin, mutta toimintoa ei voitu viedä loppuun.",
+        "movePartial_one": "{{count}} projekti siirrettiin roskakoriin. Muita ei siirretty.",
+        "movePartial_other": "{{count}} projektia siirrettiin roskakoriin. Muita ei siirretty.",
         "movedCount_one": "{{count}} projekti siirrettiin roskakoriin.",
         "movedCount_other": "{{count}} projektia siirrettiin roskakoriin.",
         "title": "Vaaravyöhyke"
@@ -514,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Tyhjennä kaikki",
         "clearFailed": "Roskakoria ei voitu tyhjentää.",
-        "clearPartial": "{{count}} projektia poistettiin pysyvästi, mutta koko roskakoria ei voitu tyhjentää.",
+        "clearPartial_one": "{{count}} projekti poistettiin pysyvästi. Loput ovat yhä roskakorissa.",
+        "clearPartial_other": "{{count}} projektia poistettiin pysyvästi. Loput ovat yhä roskakorissa.",
         "clearedCount_one": "{{count}} projekti poistettiin pysyvästi.",
         "clearedCount_other": "{{count}} projektia poistettiin pysyvästi.",
         "clearing": "Tyhjennetään…",
@@ -844,7 +843,6 @@
     },
     "newProjectName": "Uuden projektin nimi",
     "projectName": "Projektin nimi",
-    "projectRenamed": "Projekti nimettiin uudelleen",
     "saveName": "Tallenna (Enter)",
     "saveNameAriaLabel": "Tallenna nimi",
     "untitledProject": "projekti",
@@ -855,7 +853,8 @@
       "pdf": "PDF-näkymä",
       "split": "Jaettu näkymä"
     },
-    "moreActions": "Lisää toimintoja"
+    "moreActions": "Lisää toimintoja",
+    "renameFailed": "Projektia ei voitu nimetä uudelleen."
   },
   "tour": {
     "chooseColor": "Valitse oma tunnusvärisi",

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import type { ProofreadingSurface } from "@oleafly/editor";
+import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import {
   Select,
@@ -29,6 +30,10 @@ import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
+import {
+  useLanguageServiceRuntimeUnavailable,
+  useLanguageServiceSetupOffer,
+} from "./LanguageServiceRuntimeBoundary";
 
 const APP_SETTING = "__app__";
 
@@ -94,13 +99,22 @@ function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurfac
     );
   }
   if (status.phase !== "ready" && status.phase !== "partial") {
-    // too_large / unsupported / error / unavailable all already raise a toast
-    // that explains itself; the panel only has to stop claiming a count.
+    const unavailableReason = () => {
+      if (status.phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
+      if (status.phase === "unsupported") return t(($) => $.editor.proofreading.unsupported);
+      if (status.phase === "error") return t(($) => $.editor.proofreading.error);
+      return t(($) => $.editor.proofreading.unavailable);
+    };
     return (
-      <StatRow
-        label={t(($) => $.editor.projectInfo.proofreading)}
-        value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
-      />
+      <>
+        <StatRow
+          label={t(($) => $.editor.projectInfo.proofreading)}
+          value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
+        />
+        <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
+          {unavailableReason()}
+        </p>
+      </>
     );
   }
 
@@ -126,6 +140,52 @@ function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurfac
         </p>
       ) : null}
     </>
+  );
+}
+
+function LanguageRuntimeNotice() {
+  const { t } = useTranslation(["intelligence"]);
+  const unavailable = useLanguageServiceRuntimeUnavailable();
+  if (!unavailable) return null;
+  return (
+    <div data-testid="language-runtime-unavailable" className="space-y-1.5 pt-3">
+      <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+        {t(($) => $.intelligence.languageService.runtimeUnavailable)}
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-6 px-2 text-xs"
+        onClick={() => window.location.reload()}
+      >
+        {t(($) => $.intelligence.languageService.reloadApp)}
+      </Button>
+    </div>
+  );
+}
+
+function LanguageSetupNotice() {
+  const { t } = useTranslation(["intelligence"]);
+  const openSetup = useLanguageServiceSetupOffer();
+  const setWordCountOpen = useSettingsStore((state) => state.setWordCountOpen);
+  if (!openSetup) return null;
+  return (
+    <div data-testid="language-service-setup" className="space-y-1.5 pt-3">
+      <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+        {t(($) => $.intelligence.languageService.setupRequired)}
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-6 px-2 text-xs"
+        onClick={() => {
+          setWordCountOpen(false);
+          openSetup();
+        }}
+      >
+        {t(($) => $.intelligence.languageService.setUp)}
+      </Button>
+    </div>
   );
 }
 
@@ -157,12 +217,16 @@ function ProjectSpellLanguage() {
           projectDictionaryLocale: meta.dictionary_locale ?? null,
         });
       } catch (error) {
-        notifyError("set the spelling language", error);
+        notifyError(
+          "set the spelling language",
+          error,
+          t(($) => $.editor.projectInfo.spellLanguageFailed),
+        );
       } finally {
         setBusy(false);
       }
     },
-    [projectId],
+    [projectId, t],
   );
 
   if (!spellcheck || !projectId) return null;
@@ -273,6 +337,8 @@ export function ProjectInfoContent({
             <ProofreadingSection surface={surface} />
           </div>
           <ProjectSpellLanguage />
+          <LanguageSetupNotice />
+          <LanguageRuntimeNotice />
         </>
       ) : (
         <div className="py-6 text-center text-xs text-muted-foreground/70">
@@ -291,6 +357,7 @@ export function ProjectInfoContent({
 export function ProjectInfoButton({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
+  const setupOffered = useLanguageServiceSetupOffer() !== null;
   // Reopening while a previous read is still in flight must not paint that
   // older answer over the newer one.
   const generationRef = useRef(0);
@@ -324,7 +391,18 @@ export function ProjectInfoButton({ surface }: Readonly<{ surface: ProofreadingS
       // it must not dismiss the thing you are reading.
       closeOnClick={false}
       className="w-64 p-3"
-      trigger={<Info className="size-4" />}
+      trigger={
+        <span className="relative inline-flex">
+          <Info className="size-4" />
+          {setupOffered ? (
+            <span
+              data-testid="project-info-setup-marker"
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary"
+            />
+          ) : null}
+        </span>
+      }
       onOpenChange={load}
     >
       <ProjectInfoContent snapshot={snapshot} surface={surface} />

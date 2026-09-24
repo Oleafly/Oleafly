@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:navn"
   },
   "paste": {
-    "imageSaved": "Bildet er lagret i {{path}}",
     "imageFailed": "Bildet du limte inn, kunne ikke lagres i prosjektet.",
     "noProject": "Åpne et prosjekt før du limer inn bilder."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Språk for stavekontroll",
     "spellLanguageAppSetting": "Bruk innstillingen i appen",
     "spellLanguageAriaLabel": "Språk for stavekontroll i dette prosjektet",
-    "spellLanguageHint": "Gjelder bare dette prosjektet. Last ned flere språk i Innstillinger."
+    "spellLanguageHint": "Gjelder bare dette prosjektet. Last ned flere språk i Innstillinger.",
+    "spellLanguageFailed": "Kunne ikke endre språk for stavekontroll."
   },
   "table": {
     "trigger": "Sett inn tabell",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Siter fra prosjektet",
-    "updating": "Siteringene i prosjektet oppdateres.",
-    "changed": "Siteringene i prosjektet er endret. Åpne velgeren på nytt for å oppdatere.",
     "filterPlaceholder": "Nøkkel, forfatter eller tittel…",
     "filterLabel": "Filtrer siteringene i prosjektet",
     "partialCatalog": "Delvis katalog. Litteraturfiler som er feilformede eller ikke kan leses, kan mangle.",
@@ -403,10 +401,7 @@
     "error": "Korrekturlesingen ble ikke ferdig med dette dokumentet.",
     "unavailable": "Frakoblet korrekturlesing er utilgjengelig.",
     "tooLarge": "Korrekturlesingen er satt på pause fordi dokumentet er for stort.",
-    "unsupported": "Korrekturlesing støttes ikke for dette dokumentformatet.",
-    "partial_one": "Korrekturlesingen fikk med {{count}} funn, men én motor ble ikke ferdig.",
-    "partial_other": "Korrekturlesingen fikk med {{count}} funn, men én motor ble ikke ferdig.",
-    "retry": "Prøv på nytt"
+    "unsupported": "Korrekturlesing støttes ikke for dette dokumentformatet."
   },
   "checkpoints": {
     "showInExplorer": "Vis i Utforsker",

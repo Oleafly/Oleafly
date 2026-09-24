@@ -48,5 +48,8 @@
     "description": "Açıklama",
     "optional": "İsteğe bağlı",
     "required": "Zorunlu"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

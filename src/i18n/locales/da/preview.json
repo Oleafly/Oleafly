@@ -92,7 +92,10 @@
     "settings": "Indstillinger for PDF-forhåndsvisning",
     "fullscreen": "Forhåndsvisning i fuld skærm",
     "exitFullscreen": "Forlad fuld skærm",
-    "retryCompile": "Kompiler igen"
+    "retryCompile": "Kompiler igen",
+    "chooseEngine": "Vælg motor…",
+    "installPackages_one": "Find og installer {{name}}",
+    "installPackages_other": "Find og installer {{count}} filer"
   },
   "stale": {
     "badge": "Forældet",
@@ -121,7 +124,7 @@
     "imageSaved": "Billedet er gemt · {{name}}",
     "pdfSaved": "PDF'en er gemt · {{name}}",
     "showInFolder": "Vis i mappen",
-    "folderUnavailable": "Filen blev gemt, men Oleafly kunne ikke åbne dens mappe (adgang nægtet). Se efter på den placering, du valgte i dialogen.",
+    "folderUnavailable": "Kunne ikke åbne mappen.",
     "imageFailed": "Kunne ikke downloade billedet.",
     "imageFailedDetail": "Kunne ikke downloade billedet: {{detail}}",
     "pdfFailed": "Kunne ikke downloade PDF'en.",

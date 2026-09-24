@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { FileEntry } from "@oleafly/backend-port";
+import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   insertFigureFromDialog: vi.fn(),
@@ -9,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   applyFigureEdit: vi.fn(),
   pickOpenPath: vi.fn(),
   resolveVisualAssetUrl: vi.fn(async (path: string) => (path.endsWith(".png") ? `data:${path}` : null)),
+  logError: vi.fn(),
+  notifyError: vi.fn(),
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), errorUnique: vi.fn() },
 }));
 
 vi.mock("@/components/editor/latex-commands", () => ({
@@ -18,7 +22,8 @@ vi.mock("@/components/editor/latex-commands", () => ({
 vi.mock("@/components/editor/figure-edit", () => ({ applyFigureEdit: mocks.applyFigureEdit }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath }));
 vi.mock("@/components/editor/wysiwyg/asset-url", () => ({ resolveVisualAssetUrl: mocks.resolveVisualAssetUrl }));
-vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: mocks.toast }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { useFilesStore } from "@/store/files";
 import { useFigureDialogStore } from "@/store/figure-dialog";
@@ -167,6 +172,17 @@ describe("FigureDialog", () => {
     openEditDialog("7cm");
     expect(screen.getByTestId("figure-dialog-width-custom")).toHaveAttribute("aria-pressed", "true");
     expect((screen.getByLabelText("Custom width") as HTMLInputElement).value).toBe("7cm");
+  });
+
+  it("explains a failed import inline and only logs the cause", async () => {
+    const failure = new Error("picker crashed");
+    mocks.pickOpenPath.mockRejectedValue(failure);
+    openDialog();
+    fireEvent.click(screen.getByTestId("figure-dialog-import"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(en.figureDialog.importFailed);
+    expect(mocks.logError).toHaveBeenCalledWith("import figure", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    for (const notify of Object.values(mocks.toast)) expect(notify).not.toHaveBeenCalled();
   });
 
   it("shows the empty state without images and keeps a cancelled picker quiet", async () => {

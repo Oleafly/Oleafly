@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Metadata instalace TexLab jsou neplatná",
     "setUp": "Nastavit",
-    "retry": "Zkusit znovu",
-    "startFailed": "Jazykovou službu projektu se nepodařilo spustit.",
-    "setupDetailsUnavailable": "Podrobnosti o instalaci jazykové služby nejsou k dispozici",
     "setupRequired": "Je nutné nastavit jazykovou službu",
     "installTitle": "Nainstalovat {{name}} {{version}}?",
     "licenseAndSource": "Licence a zdrojový kód",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Analýza referencí projektu není k dispozici.",
-    "updating": "Reference projektu se aktualizují.",
     "noDefinition": "Pro „{{name}}“ nebyla nalezena žádná definice.",
     "definitionsFor": "Definice pro {{name}}",
     "multipleDefinitions": "„{{name}}“ má {{count}} definic. Prohlédněte si je v panelu Reference.",

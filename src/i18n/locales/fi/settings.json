@@ -817,7 +817,8 @@
       "deleted": "\"{{name}}\" poistettiin kirjastostasi",
       "empty": "Ei vielä tekoälyn luomia mallipohjia. Luo sellainen mallipohjagalleriasta.",
       "fallbackDescription": "Tekoälyn luoma mallipohja",
-      "toggle": "Hallitse tekoälyn luomia mallipohjia"
+      "toggle": "Hallitse tekoälyn luomia mallipohjia",
+      "deleteFailed": "Kohdetta \"{{name}}\" ei voitu poistaa."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Oikolukusanakirjat",
       "note": "Valitse kieli Yleiset-osiossa, niin se ladataan. Viisi mukana tulevaa pakettia ovat aina käytettävissä eikä niitä listata tässä.",
       "tooltip": "Oleaflyn mukana tulee viisi kielipakettia. Mikä tahansa muu kieli ladataan tarvittaessa, kun valitset sen oikolukusanakirjaksi, ja se säilytetään täällä, jotta se toimii jatkossa ilman verkkoa. Poistaminen vapauttaa tilan ja palaa sovelluksen asetukseen."
+    },
+    "errors": {
+      "fontDownloadFailed": "Fonttia ei voitu ladata.",
+      "fontsDownloadFailed": "Fontteja ei voitu ladata.",
+      "fontRemoveFailed": "Fonttia ei voitu poistaa.",
+      "packDownloadFailed": "Mallipohjapakettia ei voitu ladata.",
+      "packsDownloadFailed": "Mallipohjapaketteja ei voitu ladata.",
+      "packRemoveFailed": "Mallipohjapakettia ei voitu poistaa."
     }
   },
   "engine": {

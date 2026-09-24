@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   ensureProvider: vi.fn(),
   handoff: vi.fn(),
   selection: vi.fn(),
-  error: vi.fn(),
+  logError: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 const files = { projectId: "project" as string | null, activePath: "main.tex" as string | null, docVersion: 0 };
@@ -22,7 +23,8 @@ vi.mock("@/store/files", () => ({
 }));
 vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "main.tex" }) }));
 vi.mock("@/components/editor/selection-text", () => ({ activeSelectionText: mocks.selection }));
-vi.mock("@/lib/toast", () => ({ toast: { error: mocks.error } }));
+vi.mock("@/lib/toast", () => ({ toast: { error: mocks.toastError } }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { GeneratorsToolView } from "./GeneratorsToolView";
 
@@ -127,6 +129,7 @@ describe("GeneratorsToolView", () => {
     files.activePath = "other.tex";
     await act(async () => allowProvider(true));
     expect(screen.getByRole("alert")).toHaveTextContent("The source changed");
+    expect(screen.getByRole("status")).toHaveTextContent("Review source");
     expect(mocks.handoff).not.toHaveBeenCalled();
   });
 
@@ -154,13 +157,28 @@ describe("GeneratorsToolView", () => {
     expect(mocks.handoff).not.toHaveBeenCalled();
   });
 
-  it("shows provider errors and allows retry", async () => {
-    mocks.ensureProvider.mockRejectedValueOnce(new Error("Unavailable"));
+  it("shows provider errors on the page instead of a toast and allows retry", async () => {
+    const unavailable = new Error("Unavailable");
+    mocks.ensureProvider.mockRejectedValueOnce(unavailable);
     render(<ThemeProvider><GeneratorsToolView /></ThemeProvider>);
     generate();
-    await vi.waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Could not open the assistant"));
+    await vi.waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Could not open the assistant. Try again."));
+    expect(screen.getByRole("status")).toHaveTextContent("Could not open the assistant. Try again.");
+    expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("generators launch", unavailable);
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(screen.getByTestId("generator-launch")).toBeEnabled();
     generate();
     await vi.waitFor(() => expect(mocks.handoff).toHaveBeenCalledOnce());
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("clears a launch failure from the header once the prompt changes", async () => {
+    mocks.ensureProvider.mockRejectedValueOnce(new Error("Unavailable"));
+    render(<ThemeProvider><GeneratorsToolView /></ThemeProvider>);
+    generate();
+    await vi.waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Could not open the assistant"));
+    fireEvent.change(screen.getByTestId("generator-instructions"), { target: { value: "Shorter." } });
+    expect(screen.getByRole("status")).toHaveTextContent("Ready");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

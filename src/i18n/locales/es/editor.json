@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nombre"
   },
   "paste": {
-    "imageSaved": "Imagen guardada en {{path}}",
     "imageFailed": "No se pudo guardar en el proyecto la imagen pegada.",
     "noProject": "Abre un proyecto antes de pegar imágenes."
   },
@@ -209,7 +208,8 @@
     "spellLanguage": "Idioma de la revisión ortográfica",
     "spellLanguageAppSetting": "Usar el ajuste de la aplicación",
     "spellLanguageAriaLabel": "Idioma de la revisión ortográfica de este proyecto",
-    "spellLanguageHint": "Se aplica solo a este proyecto. Descarga más idiomas en Ajustes."
+    "spellLanguageHint": "Se aplica solo a este proyecto. Descarga más idiomas en Ajustes.",
+    "spellLanguageFailed": "No se pudo cambiar el idioma de la revisión ortográfica."
   },
   "table": {
     "trigger": "Insertar una tabla",
@@ -373,8 +373,6 @@
   },
   "citations": {
     "trigger": "Citar desde el proyecto",
-    "updating": "Las citas del proyecto se están actualizando.",
-    "changed": "Las citas del proyecto cambiaron. Vuelve a abrir el selector para actualizarlas.",
     "filterPlaceholder": "Clave, autor o título…",
     "filterLabel": "Filtrar las citas del proyecto",
     "partialCatalog": "Catálogo parcial. Puede que se omitan los archivos de bibliografía mal formados o ilegibles.",
@@ -406,11 +404,7 @@
     "error": "La corrección no pudo terminar este documento.",
     "unavailable": "La corrección sin conexión no está disponible.",
     "tooLarge": "La corrección está en pausa porque este documento es demasiado grande.",
-    "unsupported": "La corrección no es compatible con este formato de documento.",
-    "partial_one": "La corrección recuperó {{count}} hallazgo, pero uno de los motores no terminó.",
-    "partial_many": "La corrección recuperó {{count}} hallazgos, pero uno de los motores no terminó.",
-    "partial_other": "La corrección recuperó {{count}} hallazgos, pero uno de los motores no terminó.",
-    "retry": "Reintentar"
+    "unsupported": "La corrección no es compatible con este formato de documento."
   },
   "checkpoints": {
     "showInExplorer": "Mostrar en el Explorador",

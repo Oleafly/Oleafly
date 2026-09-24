@@ -26,7 +26,7 @@ describe("useEnginePickerStore", () => {
   });
 
   it("close keeps the findings for a re-open but closes the modal", () => {
-    useEnginePickerStore.getState().openPicker("project-open", [finding("minted")]);
+    useEnginePickerStore.getState().openPicker("manual", [finding("minted")]);
     useEnginePickerStore.getState().close();
     const state = useEnginePickerStore.getState();
     expect(state.open).toBe(false);

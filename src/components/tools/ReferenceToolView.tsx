@@ -1,4 +1,12 @@
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
@@ -40,11 +48,15 @@ import {
 import type { CitationHit } from "@/lib/citation/types";
 import { writeBytesFile } from "@/lib/tauri";
 import { toolById } from "@/lib/tool-catalog";
+import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
+
+const COPIED_FEEDBACK_MS = 1500;
+const REFERENCE_COPY_TOAST = "reference-copy";
 
 type OutputMode = "reference" | "in-text" | "bibtex";
 type BibliographyInputMode = "fields" | "bibtex";
@@ -148,20 +160,59 @@ async function saveBibtex(bibtex: string): Promise<void> {
     });
     if (!destination) return;
     await writeBytesFile(destination, bytesToBase64(new TextEncoder().encode(bibtex)));
-    toast.success(i18n.t(($) => $.researchTools.references.savedBibliography));
+    const name = destination.split(/[\\/]/).pop() || destination;
+    toast.success(i18n.t(($) => $.researchTools.references.savedBibliography, { name }));
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : i18n.t(($) => $.researchTools.references.saveFailed));
+    void logError("save bibliography", error);
+    toast.error(i18n.t(($) => $.researchTools.references.saveFailed));
   }
 }
 
-async function copyText(text: string, label: string): Promise<void> {
-  if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(i18n.t(($) => $.researchTools.references.copied, { label }));
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : i18n.t(($) => $.researchTools.references.copyFailed, { label }));
-  }
+function CopyButton({
+  text,
+  subject,
+  variant,
+  children,
+}: Readonly<{
+  text: string;
+  subject: string;
+  variant: "outline" | "ghost";
+  children: ReactNode;
+}>) {
+  const { t } = useTranslation(["common", "researchTools"]);
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
+  const copy = async () => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      void logError("copy reference", error);
+      toast.errorUnique(
+        REFERENCE_COPY_TOAST,
+        i18n.t(($) => $.researchTools.references.copyFailed, { label: subject }),
+      );
+      return;
+    }
+    setCopied(true);
+    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    resetTimer.current = window.setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+  };
+
+  return (
+    <Button variant={variant} size="sm" disabled={!text} onClick={() => void copy()}>
+      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      {copied ? t(($) => $.common.actions.copied) : children}
+    </Button>
+  );
 }
 
 function Field({
@@ -396,9 +447,13 @@ function ReferenceOutput({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3">
         <span className="text-xs text-muted-foreground">{t(($) => $.researchTools.references.referenceCount, { count: formatted.entries })}</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={!output} onClick={() => void copyText(output, mode === "bibtex" ? "BibTeX" : t(($) => $.researchTools.references.citation))}>
-            <Copy className="size-3.5" /> {t(($) => $.researchTools.references.copy)}
-          </Button>
+          <CopyButton
+            variant="outline"
+            text={output}
+            subject={mode === "bibtex" ? "BibTeX" : t(($) => $.researchTools.references.citation)}
+          >
+            {t(($) => $.researchTools.references.copy)}
+          </CopyButton>
           <Button size="sm" disabled={!bibtex.trim()} onClick={() => void saveBibtex(bibtex)}>
             <Download className="size-3.5" /> {t(($) => $.researchTools.references.saveBib)}
           </Button>
@@ -476,9 +531,13 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
                   <h3 className="text-sm font-semibold">{style.label}</h3>
                   <p className="text-[11px] text-muted-foreground">{style.fullName}</p>
                 </div>
-                <Button variant="ghost" size="sm" disabled={!style.bibliography} onClick={() => void copyText(style.bibliography, t(($) => $.researchTools.references.styleCitation, { style: style.label }))}>
-                  <Copy className="size-3.5" /> {t(($) => $.researchTools.references.copy)}
-                </Button>
+                <CopyButton
+                  variant="ghost"
+                  text={style.bibliography}
+                  subject={t(($) => $.researchTools.references.styleCitation, { style: style.label })}
+                >
+                  {t(($) => $.researchTools.references.copy)}
+                </CopyButton>
               </div>
               {style.error ? (
                 <p className="mt-3 text-xs text-destructive" role="alert">{style.error}</p>
@@ -834,7 +893,9 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
             : CITATION_STYLES.find((candidate) => candidate.id === style)?.label}
           actions={compareMode ? (
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void copyText(bibtex, "BibTeX")}><Copy className="size-3.5" /> {t(($) => $.researchTools.references.copyBibtex)}</Button>
+              <CopyButton variant="ghost" text={bibtex} subject="BibTeX">
+                {t(($) => $.researchTools.references.copyBibtex)}
+              </CopyButton>
               <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void saveBibtex(bibtex)}><Download className="size-3.5" /> {t(($) => $.researchTools.references.save)}</Button>
             </div>
           ) : undefined}

@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "Afbeelding opgeslagen in {{path}}",
     "imageFailed": "De geplakte afbeelding kon niet in het project worden opgeslagen.",
     "noProject": "Open een project voordat je afbeeldingen plakt."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Taal voor de spellingcontrole",
     "spellLanguageAppSetting": "De app-instelling gebruiken",
     "spellLanguageAriaLabel": "Taal voor de spellingcontrole in dit project",
-    "spellLanguageHint": "Geldt alleen voor dit project. Download meer talen bij Instellingen."
+    "spellLanguageHint": "Geldt alleen voor dit project. Download meer talen bij Instellingen.",
+    "spellLanguageFailed": "Kon de taal voor de spellingcontrole niet wijzigen."
   },
   "table": {
     "trigger": "Tabel invoegen",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Citeren uit het project",
-    "updating": "De citaties van het project worden bijgewerkt.",
-    "changed": "De citaties van het project zijn gewijzigd. Open de kiezer opnieuw om te vernieuwen.",
     "filterPlaceholder": "Sleutel, auteur of titel…",
     "filterLabel": "Citaties van het project filteren",
     "partialCatalog": "Gedeeltelijke catalogus. Onjuiste of onleesbare bibliografiebestanden kunnen ontbreken.",
@@ -403,10 +401,7 @@
     "error": "Het proeflezen kon dit document niet afronden.",
     "unavailable": "Offline proeflezen is niet beschikbaar.",
     "tooLarge": "Het proeflezen staat stil omdat dit document te groot is.",
-    "unsupported": "Proeflezen wordt niet ondersteund voor dit documentformaat.",
-    "partial_one": "Het proeflezen leverde {{count}} bevinding op, maar een van de engines is niet klaargekomen.",
-    "partial_other": "Het proeflezen leverde {{count}} bevindingen op, maar een van de engines is niet klaargekomen.",
-    "retry": "Opnieuw proberen"
+    "unsupported": "Proeflezen wordt niet ondersteund voor dit documentformaat."
   },
   "checkpoints": {
     "showInExplorer": "Tonen in Verkenner",

@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   gotoPage: vi.fn(),
   getFitScale: vi.fn(() => 1),
+  pickSavePath: vi.fn(),
+  writeBytesFile: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
@@ -19,7 +22,11 @@ vi.mock("@/lib/preview-geometry", () => ({ usePreviewGeometry: vi.fn(), readPrev
 vi.mock("@/lib/tauri", () => ({
   readCompiledPdf: mocks.readCompiledPdf,
   appendAppLog: vi.fn(async () => {}),
+  writeBytesFile: mocks.writeBytesFile,
+  uint8ToBase64: () => "AQ==",
 }));
+vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: vi.fn(async () => {}),
@@ -163,6 +170,27 @@ beforeEach(() => {
   mocks.listeners.clear();
   mocks.gotoPage.mockReset();
   mocks.getFitScale.mockClear();
+  mocks.pickSavePath.mockReset();
+  mocks.writeBytesFile.mockReset();
+  mocks.logError.mockReset();
+});
+
+describe("detached preview download", () => {
+  it("logs a failed download and explains it in the window", async () => {
+    mocks.native = true;
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    const failure = new Error("disk full");
+    mocks.pickSavePath.mockResolvedValue("/Users/me/Downloads/main.pdf");
+    mocks.writeBytesFile.mockRejectedValue(failure);
+    render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
+    await screen.findByTestId("detached-pdf-bytes");
+
+    fireEvent.click(screen.getByRole("button", { name: enPreview.actions.downloadPdf }));
+
+    expect(await screen.findByText(enPreview.window.downloadFailed)).toBeInTheDocument();
+    expect(mocks.logError).toHaveBeenCalledWith("download preview", failure);
+  });
 });
 
 describe("detached preview request identity", () => {

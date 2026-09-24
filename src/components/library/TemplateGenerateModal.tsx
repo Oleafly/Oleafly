@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, modKey } from "@/lib/utils";
-import { notifyError, toast } from "@/lib/toast";
+import { notifyError } from "@/lib/toast";
 import { friendlyHint } from "@/components/ai/chat-parts";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import { enabledModels } from "@/lib/ai-model-state";
@@ -238,7 +238,6 @@ export function TemplateGenerateModal({
     try {
       await deleteGeneratedTemplate(parsed.slug);
       setSaved(false);
-      toast.success(t(($) => $.library.generate.removedToast, { name: parsed.name }));
       onSaved();
     } catch (e) {
       notifyError("remove the template", e, t(($) => $.library.generate.removeFailed));
@@ -254,7 +253,6 @@ export function TemplateGenerateModal({
     try {
       await saveGeneratedTemplate(parsed, previewPng);
       setSaved(true);
-      toast.success(t(($) => $.library.generate.savedToast, { name: parsed.name }));
       onSaved();
       return true;
     } catch (e) {

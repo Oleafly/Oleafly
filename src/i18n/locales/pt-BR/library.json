@@ -356,8 +356,6 @@
     "unsave": "Remover dos salvos",
     "save": "Salvar modelo",
     "use": "Usar este modelo",
-    "savedToast": "\"{{name}}\" salvo na sua biblioteca",
-    "removedToast": "\"{{name}}\" removido da sua biblioteca",
     "saveFailed": "Não foi possível salvar o modelo.",
     "removeFailed": "Não foi possível remover o modelo."
   },

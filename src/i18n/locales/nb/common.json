@@ -48,5 +48,8 @@
     "description": "Beskrivelse",
     "optional": "Valgfritt",
     "required": "Påkrevd"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

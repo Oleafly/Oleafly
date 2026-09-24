@@ -301,6 +301,8 @@ export function Library() {
   const setProjectLayout = useSettingsStore((s) => s.setHomeProjectLayout);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
+  const [forkBusy, setForkBusy] = useState(false);
+  const forkBusyRef = useRef(false);
   const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
@@ -442,17 +444,22 @@ export function Library() {
     setDeleteTarget(null);
     try {
       await recycleProject(target.id);
-      await refreshProjects();
-      toast.success(
-        t(($) => $.library.projects.deleteDialog.moved, { name: target.name }),
-      );
     } catch (error) {
       notifyError(
         "delete project",
         error,
         t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
       );
+      return;
     }
+    try {
+      await refreshProjects();
+    } catch (error) {
+      void logError("refresh projects after delete", error);
+    }
+    toast.success(
+      t(($) => $.library.projects.deleteDialog.moved, { name: target.name }),
+    );
   };
   const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
     useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
@@ -522,7 +529,9 @@ export function Library() {
   }, [projectsLoaded]);
 
   const submitFork = async () => {
-    if (!forkTarget) return;
+    if (!forkTarget || forkBusyRef.current) return;
+    forkBusyRef.current = true;
+    setForkBusy(true);
     const n =
       forkName.trim() ||
       t(($) => $.library.projects.forkDialog.copySuffix, { name: forkTarget.name });
@@ -532,6 +541,9 @@ export function Library() {
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
       notifyError("fork project", e, t(($) => $.library.projects.forkDialog.failed));
+    } finally {
+      forkBusyRef.current = false;
+      setForkBusy(false);
     }
     setForkTarget(null);
     setForkName("");
@@ -1512,11 +1524,11 @@ export function Library() {
                 data-modal-initial-focus
                 value={forkName}
                 onChange={(e) => setForkName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void submitFork(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
                 placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
               />
-              <Button onClick={() => void submitFork()}>
+              <Button onClick={() => void submitFork()} disabled={forkBusy}>
                 {t(($) => $.library.projects.forkDialog.confirm)}
               </Button>
             </div>

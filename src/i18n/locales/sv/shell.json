@@ -301,8 +301,6 @@
       "needed": "Det här projektet använder funktioner som kräver godtyckliga externa kommandon. De förblir blockerade tills du tillåter dem.",
       "warning": "Krävs av minted och vissa PythonTeX-dokument. LaTeX kan köra program med dina användarrättigheter, så aktivera det bara för ett projekt du litar på. TeX Lives egna hjälpprogram, som EPS-konvertering, körs utan detta."
     },
-    "shellEscapeAllowed": "Externa kommandon är tillåtna för det här projektet på den här datorn.",
-    "shellEscapeBlocked": "Godtyckliga externa kommandon är blockerade för det här projektet. TeX Lives egna hjälpprogram, som EPS-konvertering, körs ändå.",
     "shellEscapeFailed": "Det gick inte att uppdatera åtkomsten till externa kommandon.",
     "switchFailed": "Det gick inte att byta kompileringsmotor.",
     "switched": "Det här projektet kompileras nu med {{engine}}.",
@@ -493,7 +491,6 @@
         "title": "Molnsynkronisering"
       },
       "danger": {
-        "closeFailed": "Det öppna projektet kunde inte stängas säkert.",
         "confirmDeleteAllAction": "Radera alla projekt",
         "confirmDeleteAllDescription": "Alla aktuella projekt flyttas till papperskorgen, inklusive deras filer och Git-historik. Du kan återställa projekt ett och ett efteråt.",
         "confirmDeleteAllTitle_one": "Vill du radera alla {{count}} projekt?",
@@ -503,7 +500,8 @@
         "deleteAllDescription": "Flyttar alla projekt till papperskorgen. Ingenting raderas permanent.",
         "deleting": "Raderar…",
         "moveFailed": "Det gick inte att flytta projekten till papperskorgen.",
-        "movePartial": "Flyttade {{count}} projekt, men åtgärden kunde inte slutföras.",
+        "movePartial_one": "Flyttade {{count}} projekt till papperskorgen. Resten flyttades inte.",
+        "movePartial_other": "Flyttade {{count}} projekt till papperskorgen. Resten flyttades inte.",
         "movedCount_one": "Flyttade {{count}} projekt till papperskorgen.",
         "movedCount_other": "Flyttade {{count}} projekt till papperskorgen.",
         "title": "Farlig zon"
@@ -514,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Töm allt",
         "clearFailed": "Det gick inte att tömma papperskorgen.",
-        "clearPartial": "Raderade {{count}} projekt permanent, men hela papperskorgen kunde inte tömmas.",
+        "clearPartial_one": "Raderade {{count}} projekt permanent. Resten finns kvar i papperskorgen.",
+        "clearPartial_other": "Raderade {{count}} projekt permanent. Resten finns kvar i papperskorgen.",
         "clearedCount_one": "Raderade {{count}} projekt permanent.",
         "clearedCount_other": "Raderade {{count}} projekt permanent.",
         "clearing": "Tömmer…",
@@ -844,7 +843,6 @@
     },
     "newProjectName": "Namn på det nya projektet",
     "projectName": "Projektnamn",
-    "projectRenamed": "Projektet har bytt namn",
     "saveName": "Spara (Enter)",
     "saveNameAriaLabel": "Spara namnet",
     "untitledProject": "projekt",
@@ -855,7 +853,8 @@
       "pdf": "PDF-vy",
       "split": "Delad vy"
     },
-    "moreActions": "Fler åtgärder"
+    "moreActions": "Fler åtgärder",
+    "renameFailed": "Det gick inte att byta namn på projektet."
   },
   "tour": {
     "chooseColor": "Välj din signaturfärg",

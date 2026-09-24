@@ -300,8 +300,6 @@
       "needed": "此项目使用的功能需要执行任意外部命令。在你允许之前，这些命令会一直被拦截。",
       "warning": "minted 和部分 PythonTeX 文档需要此功能。LaTeX 可以在你的用户权限下运行程序，因此请仅对你信任的项目启用。TeX Live 自带的辅助工具（如 EPS 转换）无需它即可运行。"
     },
-    "shellEscapeAllowed": "此项目在这台电脑上允许运行外部命令。",
-    "shellEscapeBlocked": "此项目的任意外部命令已被阻止。TeX Live 自带的辅助工具（如 EPS 转换）仍会运行。",
     "shellEscapeFailed": "无法更新外部命令访问权限。",
     "switchFailed": "无法切换编译引擎。",
     "switched": "此项目现在使用 {{engine}} 编译。",
@@ -488,7 +486,6 @@
         "title": "云同步"
       },
       "danger": {
-        "closeFailed": "无法安全关闭当前打开的项目。",
         "confirmDeleteAllAction": "删除所有项目",
         "confirmDeleteAllDescription": "每个当前项目都会移入回收站，包括其中的文件和 Git 历史。之后你可以逐个恢复项目。",
         "confirmDeleteAllTitle_other": "要删除全部 {{count}} 个项目吗？",
@@ -497,7 +494,7 @@
         "deleteAllDescription": "将所有项目移入回收站，任何内容都不会被永久删除。",
         "deleting": "正在删除…",
         "moveFailed": "无法将项目移入回收站。",
-        "movePartial": "已移动 {{count}} 个项目，但操作未能完成。",
+        "movePartial_other": "已将 {{count}} 个项目移到回收站。其余项目未移动。",
         "movedCount_other": "已将 {{count}} 个项目移入回收站。",
         "title": "危险区"
       },
@@ -507,7 +504,7 @@
       "recycleBin": {
         "clearAll": "全部清空",
         "clearFailed": "无法清空回收站。",
-        "clearPartial": "已永久删除 {{count}} 个项目，但无法清空整个回收站。",
+        "clearPartial_other": "已永久删除 {{count}} 个项目。其余项目仍在回收站中。",
         "clearedCount_other": "已永久删除 {{count}} 个项目。",
         "clearing": "正在清空…",
         "confirmClearAction": "清空回收站",
@@ -828,7 +825,6 @@
     },
     "newProjectName": "新项目名称",
     "projectName": "项目名称",
-    "projectRenamed": "项目已重命名",
     "saveName": "保存（Enter）",
     "saveNameAriaLabel": "保存名称",
     "untitledProject": "未命名项目",
@@ -839,7 +835,8 @@
       "pdf": "PDF 视图",
       "split": "分屏视图"
     },
-    "moreActions": "更多操作"
+    "moreActions": "更多操作",
+    "renameFailed": "无法重命名项目。"
   },
   "tour": {
     "chooseColor": "选择你的专属颜色。",

@@ -9,17 +9,17 @@ import {
   ExternalLink,
   LoaderCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 import {
   retryActiveLanguageService,
   setupActiveLanguageService,
 } from "@/lib/analysis/language-service-actions";
 import {
-  analysisReasonText,
+  analysisReasonEnglishText,
   type AnalysisReason,
 } from "@/lib/analysis/reason";
 import { getLanguageServiceSetupDisclosure } from "@/lib/language-service/setup-disclosure";
 import type { LanguageServiceKind } from "@/lib/language-service/transport";
+import { logError } from "@/lib/log";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,9 +32,21 @@ import {
 } from "@/components/ui/dialog";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
-import { i18n } from "@/i18n";
+import {
+  offerLanguageServiceSetup,
+  useSilentRetry,
+  type SilentRetryPolicy,
+} from "./LanguageServiceRuntimeBoundary";
 
 const BIBTEX_DOCUMENT = /\.bib$/i;
+
+const START_FAILED: AnalysisReason = { key: "startFailed" };
+
+export const LANGUAGE_SERVICE_RETRY_POLICY: SilentRetryPolicy = {
+  baseMs: 5_000,
+  maxMs: 300_000,
+  limit: Number.POSITIVE_INFINITY,
+};
 
 export function LanguageServiceStatus() {
   const projectId = useFilesStore((state) => state.projectId);
@@ -56,22 +68,30 @@ export function LanguageServiceStatus() {
   );
   const bibtexActive =
     activePath !== null && BIBTEX_DOCUMENT.test(activePath);
+  const setupRequired =
+    projectId !== null && readiness === "setup_required";
+
+  useSilentRetry({
+    failing: projectId !== null && readiness === "unavailable",
+    recovered: readiness === "ready",
+    retry: retryActiveLanguageService,
+    policy: LANGUAGE_SERVICE_RETRY_POLICY,
+    scope: "language service unavailable",
+    detail:
+      failureMessage ??
+      analysisReasonEnglishText(failureReason ?? reason ?? START_FAILED),
+    resetKey: projectId,
+  });
+  const offered = useSetupAvailable({ kind, setupRequired, bibtexActive });
 
   if (!projectId) return null;
 
   return (
-    <LanguageServiceFailureStatus
+    <LanguageServiceSetupDialog
       key={`${projectId}:${kind ?? "none"}`}
-      failureMessage={failureMessage}
-      failureReason={failureReason}
       kind={kind}
-      reason={reason}
-      setupRequired={readiness === "setup_required"}
-      visible={
-        !bibtexActive &&
-        (readiness === "setup_required" ||
-          readiness === "unavailable")
-      }
+      offered={offered}
+      setupRequired={setupRequired}
     />
   );
 }
@@ -87,30 +107,44 @@ function resolveSetupDisclosure(
     return { disclosure: getLanguageServiceSetupDisclosure(kind), disclosureFailure: null };
   } catch (error) {
     const disclosureFailure =
-      error instanceof Error
-        ? error.message
-        : i18n.t(($) => $.intelligence.languageService.setupMetadataInvalid);
+      error instanceof Error ? error.message : "TexLab setup metadata is invalid";
     return { disclosure: null, disclosureFailure };
   }
 }
 
-interface LanguageServiceFailureStatusProps {
-  failureMessage?: string;
-  failureReason?: AnalysisReason;
+function useSetupAvailable({
+  kind,
+  setupRequired,
+  bibtexActive,
+}: {
   kind: LanguageServiceKind | null;
-  reason?: AnalysisReason;
   setupRequired: boolean;
-  visible: boolean;
+  bibtexActive: boolean;
+}): boolean {
+  const { disclosure, disclosureFailure } = resolveSetupDisclosure(
+    kind,
+    setupRequired,
+  );
+
+  useEffect(() => {
+    if (disclosureFailure === null) return;
+    void logError("read the language service setup details", disclosureFailure);
+  }, [disclosureFailure]);
+
+  return setupRequired && !bibtexActive && disclosure !== null;
 }
 
-function LanguageServiceFailureStatus({
-  failureMessage,
-  failureReason,
+interface LanguageServiceSetupDialogProps {
+  kind: LanguageServiceKind | null;
+  offered: boolean;
+  setupRequired: boolean;
+}
+
+function LanguageServiceSetupDialog({
   kind,
-  reason,
+  offered,
   setupRequired,
-  visible,
-}: Readonly<LanguageServiceFailureStatusProps>) {
+}: Readonly<LanguageServiceSetupDialogProps>) {
   const { t } = useTranslation(["common", "intelligence"]);
   const [setupOpen, setSetupOpen] = useState(false);
   const [installPending, setInstallPending] = useState(false);
@@ -124,23 +158,10 @@ function LanguageServiceFailureStatus({
       mounted.current = false;
     };
   }, []);
-  const { disclosure, disclosureFailure } = resolveSetupDisclosure(
+  const { disclosure } = resolveSetupDisclosure(
     kind,
     setupRequired || setupOpen,
   );
-  const canSetUp = setupRequired && disclosure !== null;
-  const actionLabel = canSetUp
-    ? t(($) => $.intelligence.languageService.setUp)
-    : t(($) => $.intelligence.languageService.retry);
-  const unavailableLabel =
-    analysisReasonText(failureReason) ??
-    failureMessage ??
-    analysisReasonText(reason) ??
-    t(($) => $.intelligence.languageService.startFailed);
-  const setupMessage = disclosureFailure
-    ? t(($) => $.intelligence.languageService.setupDetailsUnavailable)
-    : t(($) => $.intelligence.languageService.setupRequired);
-  const statusMessage = setupRequired ? setupMessage : unavailableLabel;
   const installLabel = (detail: SetupDisclosure): string => {
     if (installPending) {
       return t(($) => $.intelligence.languageService.installing, {
@@ -157,36 +178,14 @@ function LanguageServiceFailureStatus({
       version: detail.version,
     });
   };
-  const toastId = `language-service:${kind ?? "unknown"}`;
 
   useEffect(() => {
-    if (!visible) {
-      toast.dismiss(toastId);
-      return;
-    }
-    toast.warning(statusMessage, {
-      id: toastId,
-      duration: Number.POSITIVE_INFINITY,
-      action: {
-        label: actionLabel,
-        onClick: canSetUp
-          ? () => {
-              setInstallFailure(null);
-              setSetupOpen(true);
-            }
-          : retryActiveLanguageService,
-      },
+    if (!offered) return;
+    return offerLanguageServiceSetup(() => {
+      setInstallFailure(null);
+      setSetupOpen(true);
     });
-    return () => {
-      toast.dismiss(toastId);
-    };
-  }, [
-    actionLabel,
-    canSetUp,
-    statusMessage,
-    toastId,
-    visible,
-  ]);
+  }, [offered]);
 
   const install = async () => {
     if (!disclosure || installPending) return;
@@ -230,7 +229,7 @@ function LanguageServiceFailureStatus({
                 </dt>
                 <dd className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
                   <a
-                    className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground focus-visible:rounded-sm focus-visible:bg-muted focus-visible:text-foreground"
                     href={disclosure.license.url}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -244,7 +243,7 @@ function LanguageServiceFailureStatus({
                     />
                   </a>
                   <a
-                    className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground focus-visible:rounded-sm focus-visible:bg-muted focus-visible:text-foreground"
                     href={disclosure.sourceUrl}
                     rel="noopener noreferrer"
                     target="_blank"

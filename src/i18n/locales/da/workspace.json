@@ -40,7 +40,8 @@
     "renameFailed": "Kunne ikke omdøbe \"{{path}}\". Den oprindelige sti blev ikke ændret.",
     "setMain": "Vælg som hoveddokument",
     "title": "Filer",
-    "treeAriaLabel": "Filtræ i filpanelet"
+    "treeAriaLabel": "Filtræ i filpanelet",
+    "setMainFailed": "Kunne ikke gøre \"{{path}}\" til hoveddokument."
   },
   "explorer": {
     "resizeSections": "Tilpas størrelsen på {{first}} og {{second}}"

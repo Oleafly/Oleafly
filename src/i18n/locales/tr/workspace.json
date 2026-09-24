@@ -40,7 +40,8 @@
     "renameFailed": "\"{{path}}\" yeniden adlandırılamadı. Özgün yol değiştirilmeden bırakıldı.",
     "setMain": "Ana belge olarak ayarla",
     "title": "Gezgin",
-    "treeAriaLabel": "Gezgin dosya ağacı"
+    "treeAriaLabel": "Gezgin dosya ağacı",
+    "setMainFailed": "\"{{path}}\" ana belge yapılamadı."
   },
   "explorer": {
     "resizeSections": "{{first}} ve {{second}} bölümlerini yeniden boyutlandır"

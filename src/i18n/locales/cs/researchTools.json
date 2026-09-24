@@ -690,7 +690,6 @@
     "copyFailed": "Oleafly nedokázal převedený zdroj zkopírovat.",
     "saveFailed": "Oleafly nedokázal převedený soubor uložit.",
     "resultName": "Výsledek: {{title}}",
-    "projectCreated": "Projekt byl vytvořen z převodu.",
     "projectFailed": "Oleafly nedokázal projekt vytvořit.",
     "cancel": "Zrušit",
     "convert": "Převést",
@@ -929,9 +928,8 @@
       }
     },
     "bibtexBibliography": "Bibliografie v BibTeXu",
-    "savedBibliography": "Uloženo references.bib",
+    "savedBibliography": "Uloženo {{name}}",
     "saveFailed": "Oleafly nedokázal tuto bibliografii uložit.",
-    "copied": "Zkopírováno {{label}}",
     "copyFailed": "Oleafly nedokázal zkopírovat {{label}}.",
     "fieldJournal": "Časopis",
     "fieldConference": "Konference nebo sborník",
@@ -1137,7 +1135,6 @@
     "downloadSvg": "Stáhnout SVG",
     "copyMathml": "Kopírovat MathML pro Word",
     "copyKatexHtml": "Kopírovat HTML z KaTeX",
-    "copiedSource": "Zdroj v LaTeXu zkopírován",
     "copiedMathml": "MathML zkopírováno (vloží se do Wordu)",
     "copiedKatexHtml": "HTML z KaTeX zkopírováno (potřebuje stylopis KaTeX)",
     "exportImageFailed": "Tento úryvek se nepodařilo vyexportovat jako obrázek",
@@ -1361,9 +1358,6 @@
     "citationCount": "{{citations}} citací",
     "unknownAuthors": "Neznámí autoři",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citace uložena",
-    "toastUpdated": "Uložená citace byla aktualizována",
-    "toastCopied": "BibTeX zkopírován",
     "toastCopyFailed": "BibTeX se nepodařilo zkopírovat.",
     "suggestion": {
       "artificialIntelligence": "Umělá inteligence",
@@ -1425,12 +1419,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Přidat do .bib",
     "addToBibTooltip": "Připojit do bibliografie projektu a vložit \\cite",
-    "openProjectTooltip": "Otevřete projekt, abyste mohli připojovat do souboru bibliografie",
     "citeAdded": "Přidáno {{citation}}",
     "addFailed": "Citaci se nepodařilo přidat.",
-    "toastSaved": "Citace uložena",
-    "toastUpdated": "Uložená citace byla aktualizována",
-    "toastCopied": "BibTeX zkopírován",
     "toastCopyFailed": "BibTeX se nepodařilo zkopírovat."
   }
 }

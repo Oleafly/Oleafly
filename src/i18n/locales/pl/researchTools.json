@@ -690,7 +690,6 @@
     "copyFailed": "Oleafly nie mógł skopiować przekonwertowanego źródła.",
     "saveFailed": "Oleafly nie mógł zapisać przekonwertowanego pliku.",
     "resultName": "Wynik: {{title}}",
-    "projectCreated": "Utworzono projekt z konwersji.",
     "projectFailed": "Oleafly nie mógł utworzyć projektu.",
     "cancel": "Anuluj",
     "convert": "Konwertuj",
@@ -929,9 +928,8 @@
       }
     },
     "bibtexBibliography": "Bibliografia BibTeX",
-    "savedBibliography": "Zapisano references.bib",
+    "savedBibliography": "Zapisano {{name}}",
     "saveFailed": "Oleafly nie mógł zapisać tej bibliografii.",
-    "copied": "Skopiowano {{label}}",
     "copyFailed": "Oleafly nie mógł skopiować {{label}}.",
     "fieldJournal": "Czasopismo",
     "fieldConference": "Konferencja lub materiały konferencyjne",
@@ -1137,7 +1135,6 @@
     "downloadSvg": "Pobierz SVG",
     "copyMathml": "Kopiuj MathML do Word",
     "copyKatexHtml": "Kopiuj HTML z KaTeX",
-    "copiedSource": "Skopiowano kod LaTeX",
     "copiedMathml": "Skopiowano MathML (wkleja się do Word)",
     "copiedKatexHtml": "Skopiowano HTML z KaTeX (wymaga arkusza stylów KaTeX)",
     "exportImageFailed": "Nie udało się wyeksportować tego fragmentu jako obrazu",
@@ -1361,9 +1358,6 @@
     "citationCount": "cytowań: {{citations}}",
     "unknownAuthors": "Nieznani autorzy",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Zapisano cytowanie",
-    "toastUpdated": "Zaktualizowano zapisane cytowanie",
-    "toastCopied": "Skopiowano BibTeX",
     "toastCopyFailed": "Nie udało się skopiować BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Sztuczna inteligencja",
@@ -1425,12 +1419,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Dodaj do .bib",
     "addToBibTooltip": "Dopisz do bibliografii projektu i wstaw \\cite",
-    "openProjectTooltip": "Otwórz projekt, aby dopisać do pliku bibliografii",
     "citeAdded": "Dodano {{citation}}",
     "addFailed": "Nie udało się dodać cytowania.",
-    "toastSaved": "Zapisano cytowanie",
-    "toastUpdated": "Zaktualizowano zapisane cytowanie",
-    "toastCopied": "Skopiowano BibTeX",
     "toastCopyFailed": "Nie udało się skopiować BibTeX."
   }
 }

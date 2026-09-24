@@ -349,8 +349,6 @@
     "unsave": "Niet meer opslaan",
     "save": "Sjabloon opslaan",
     "use": "Dit sjabloon gebruiken",
-    "savedToast": "\"{{name}}\" opgeslagen in je bibliotheek",
-    "removedToast": "\"{{name}}\" uit je bibliotheek weggehaald",
     "saveFailed": "Kon het sjabloon niet opslaan.",
     "removeFailed": "Kon het sjabloon niet weghalen."
   },

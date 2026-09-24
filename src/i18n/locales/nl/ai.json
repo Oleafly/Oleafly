@@ -527,7 +527,6 @@
     "showAllHistory": "Alle geschiedenis tonen ({{count}})"
   },
   "research": {
-    "noSourceLink": "Dit resultaat bevat geen link naar de bron.",
     "sourceOpenFailed": "De bron kon niet worden geopend.",
     "noProjectPath": "Dit resultaat bevat geen pad naar een projectbestand.",
     "resultOpenFailed": "Het resultaatbestand kon niet worden geopend."
@@ -645,7 +644,6 @@
     "summarizing": "Eerder gesprek samenvatten…"
   },
   "toasts": {
-    "sessionOpenFailed": "De agentsessie kon niet worden geopend.",
     "approvalModeSaveFailed": "Kon de goedkeuringsmodus niet opslaan.",
     "skillDraftSaved": "Conceptvaardigheid opgeslagen. Bekijk hem voordat je hem inschakelt.",
     "skillDraftFailed": "Kon het concept van de vaardigheid niet opslaan. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Kon deze chat niet archiveren.",
     "chatForked": "Chat geforkt.",
     "chatForkFailed": "Kon deze chat niet forken.",
-    "engineNotLoaded": "De gegevens van de document-engine zijn niet geladen. AI-bewerking is uit veiligheidsoverwegingen uitgeschakeld.",
     "skillsLoadFailed": "Kon de ingeschakelde vaardigheden niet laden. Probeer het opnieuw.",
     "approvalModeLoadFailed": "Kon de goedkeuringsmodus niet laden.",
     "approvalRulesLoadFailed": "Kon de goedkeuringsregels van het project niet laden.",
-    "restored": "Projectbestanden hersteld. Het gesprek is bewaard.",
     "restoreFailed": "Kon niet herstellen: {{error}}",
     "steerFailed": "De lopende beurt kon niet worden bijgestuurd.",
     "approvalRuleSaveFailed": "Kon de goedkeuringsregel van het project niet opslaan.",

@@ -162,5 +162,8 @@
         "edit": "Small button that opens the exact inline LaTeX for editing"
       }
     }
+  },
+  "projectInfo": {
+    "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info"
   }
 }

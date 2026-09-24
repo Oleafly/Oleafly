@@ -40,7 +40,8 @@
     "renameFailed": "「{{path}}」の名前を変更できませんでした。元のパスは変更されていません。",
     "setMain": "メイン文書に設定",
     "title": "エクスプローラー",
-    "treeAriaLabel": "エクスプローラーのファイルツリー"
+    "treeAriaLabel": "エクスプローラーのファイルツリー",
+    "setMainFailed": "「{{path}}」をメイン文書にできませんでした。"
   },
   "explorer": {
     "resizeSections": "{{first}} と {{second}} のサイズを変更"

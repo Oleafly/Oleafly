@@ -5,6 +5,7 @@ import { i18n } from "@/i18n";
 import type { ToolEntry } from "@/store/chats";
 import { TikzSourceView } from "@/components/ai/TikzSourceView";
 import { Tooltip } from "@/components/ui/tooltip";
+import { logError } from "@/lib/log";
 import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,7 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
     const path = freeFigurePath(existing, "png");
     const base64 = tc.image.split(",")[1] ?? "";
     await writeProjectBytes(projectId, path, base64);
-    await files.refreshTree();
+    await files.refreshTree().catch((error: unknown) => logError("refresh tree after figure save", error));
     return path;
   }
   return null;
@@ -84,7 +85,8 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
       const path = await saveToolPicture(tc);
       if (path) toast.success(i18n.t(($) => $.ai.toolPicture.saved, { path }));
       else toast.error(i18n.t(($) => $.ai.toolPicture.saveNeedsProject));
-    } catch {
+    } catch (error) {
+      void logError("save figure to project", error);
       toast.error(i18n.t(($) => $.ai.toolPicture.saveFailed));
     } finally {
       setSaving(false);

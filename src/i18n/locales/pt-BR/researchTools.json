@@ -687,7 +687,6 @@
     "copyFailed": "O Oleafly não conseguiu copiar o código convertido.",
     "saveFailed": "O Oleafly não conseguiu salvar o arquivo convertido.",
     "resultName": "Resultado de {{title}}",
-    "projectCreated": "Projeto criado a partir da conversão.",
     "projectFailed": "O Oleafly não conseguiu criar o projeto.",
     "cancel": "Cancelar",
     "convert": "Converter",
@@ -926,9 +925,8 @@
       }
     },
     "bibtexBibliography": "Bibliografia BibTeX",
-    "savedBibliography": "references.bib salvo",
+    "savedBibliography": "{{name}} salvo",
     "saveFailed": "O Oleafly não conseguiu salvar esta bibliografia.",
-    "copied": "{{label}} copiado",
     "copyFailed": "O Oleafly não conseguiu copiar {{label}}.",
     "fieldJournal": "Periódico",
     "fieldConference": "Conferência ou anais",
@@ -1129,7 +1127,6 @@
     "downloadSvg": "Baixar SVG",
     "copyMathml": "Copiar MathML para o Word",
     "copyKatexHtml": "Copiar o HTML do KaTeX",
-    "copiedSource": "Código LaTeX copiado",
     "copiedMathml": "MathML copiado (cola no Word)",
     "copiedKatexHtml": "HTML do KaTeX copiado (precisa da folha de estilo do KaTeX)",
     "exportImageFailed": "Não foi possível exportar este trecho como imagem",
@@ -1350,9 +1347,6 @@
     "citationCount": "{{citations}} citações",
     "unknownAuthors": "Autores desconhecidos",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citação salva",
-    "toastUpdated": "Citação salva atualizada",
-    "toastCopied": "BibTeX copiado",
     "toastCopyFailed": "Não foi possível copiar o BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Inteligência artificial",
@@ -1411,12 +1405,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Adicionar ao .bib",
     "addToBibTooltip": "Acrescenta à bibliografia do projeto e insere o \\cite",
-    "openProjectTooltip": "Abra um projeto para acrescentar a um arquivo de bibliografia",
     "citeAdded": "{{citation}} adicionada",
     "addFailed": "Não foi possível adicionar a citação.",
-    "toastSaved": "Citação salva",
-    "toastUpdated": "Citação salva atualizada",
-    "toastCopied": "BibTeX copiado",
     "toastCopyFailed": "Não foi possível copiar o BibTeX."
   }
 }

@@ -73,7 +73,6 @@
       "importedCodeOnly": "Importerade {{name}} (bara kod, går inte att rita).",
       "importFailed": "Det gick inte att importera filen: {{detail}}",
       "noAiFix": "AI:n lämnade ingen åtgärd.",
-      "aiFixApplied": "En AI-åtgärd tillämpades. Kompilerar om…",
       "fixFailed": "Åtgärden misslyckades: {{detail}}",
       "notDrawable": "Inget i den här koden gick att rita. Koden är orörd."
     },

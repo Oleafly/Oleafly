@@ -519,7 +519,6 @@
     "showAllHistory": "顯示全部歷史記錄（{{count}}）"
   },
   "research": {
-    "noSourceLink": "這筆結果沒有附上來源連結。",
     "sourceOpenFailed": "無法開啟來源。",
     "noProjectPath": "這筆結果沒有包含專案檔案路徑。",
     "resultOpenFailed": "無法開啟結果檔案。"
@@ -637,7 +636,6 @@
     "summarizing": "正在摘要先前的對話…"
   },
   "toasts": {
-    "sessionOpenFailed": "無法開啟代理程式的工作階段。",
     "approvalModeSaveFailed": "無法儲存核准模式。",
     "skillDraftSaved": "技能草稿已儲存。啟用前請先審閱。",
     "skillDraftFailed": "無法儲存技能草稿。{{error}}",
@@ -645,11 +643,9 @@
     "chatArchiveFailed": "無法封存這個聊天。",
     "chatForked": "已從聊天建立分支。",
     "chatForkFailed": "無法從這個聊天建立分支。",
-    "engineNotLoaded": "文件引擎的詳細資料尚未載入。為了安全，AI 編輯已停用。",
     "skillsLoadFailed": "無法載入已啟用的技能。請再試一次。",
     "approvalModeLoadFailed": "無法載入核准模式。",
     "approvalRulesLoadFailed": "無法載入專案的核准規則。",
-    "restored": "已還原專案檔案。對話已保留。",
     "restoreFailed": "無法還原：{{error}}",
     "steerFailed": "無法介入正在執行的輪次。",
     "approvalRuleSaveFailed": "無法儲存專案的核准規則。",

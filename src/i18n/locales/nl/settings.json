@@ -817,7 +817,8 @@
       "deleted": "\"{{name}}\" uit je bibliotheek verwijderd",
       "empty": "Nog geen sjablonen die met AI zijn gemaakt. Maak er een via de sjabloongalerij.",
       "fallbackDescription": "Door AI gemaakt sjabloon",
-      "toggle": "Door AI gemaakte sjablonen beheren"
+      "toggle": "Door AI gemaakte sjablonen beheren",
+      "deleteFailed": "Kon \"{{name}}\" niet verwijderen."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Spellingwoordenboeken",
       "note": "Kies een taal in de sectie Algemeen om die te downloaden. De vijf meegeleverde pakketten zijn altijd beschikbaar en staan hier niet bij.",
       "tooltip": "Er komen vijf taalpakketten met Oleafly mee. Elke andere taal wordt op verzoek gedownload zodra je die als spellingwoordenboek kiest, en blijft daarna hier staan zodat hij offline werkt. Er een weghalen maakt de ruimte vrij en valt terug op de app-instelling."
+    },
+    "errors": {
+      "fontDownloadFailed": "Kon het lettertype niet downloaden.",
+      "fontsDownloadFailed": "Kon de lettertypen niet downloaden.",
+      "fontRemoveFailed": "Kon het lettertype niet verwijderen.",
+      "packDownloadFailed": "Kon het sjabloonpakket niet downloaden.",
+      "packsDownloadFailed": "Kon de sjabloonpakketten niet downloaden.",
+      "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen."
     }
   },
   "engine": {

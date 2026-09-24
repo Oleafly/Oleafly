@@ -809,7 +809,7 @@ function AppContent() {
           .catch(() => false);
         if (restored) return undefined;
       }
-      return recompile();
+      return recompile({ origin: "automatic" });
     };
     void compileOrRestore().finally(() => {
       const files = useFilesStore.getState();
@@ -1186,7 +1186,7 @@ function AutoCompileKeeper() {
         timer = setTimeout(attempt, 500);
         return;
       }
-      void recompile();
+      void recompile({ origin: "automatic" });
     };
     timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
     return () => {

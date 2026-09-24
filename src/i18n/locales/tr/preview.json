@@ -92,7 +92,10 @@
     "settings": "PDF önizleme ayarları",
     "fullscreen": "Tam ekran önizleme",
     "exitFullscreen": "Tam ekrandan çık",
-    "retryCompile": "Derlemeyi yeniden dene"
+    "retryCompile": "Derlemeyi yeniden dene",
+    "chooseEngine": "Motor seç…",
+    "installPackages_one": "{{name}} paketini bul ve kur",
+    "installPackages_other": "{{count}} dosyayı bul ve kur"
   },
   "stale": {
     "badge": "Eski",
@@ -121,7 +124,7 @@
     "imageSaved": "Görsel kaydedildi · {{name}}",
     "pdfSaved": "PDF kaydedildi · {{name}}",
     "showInFolder": "Klasörde göster",
-    "folderUnavailable": "Dosya kaydedildi, ancak Oleafly klasörünü açamadı (izin verilmedi). Kaydetme penceresinde seçtiğiniz konuma bakın.",
+    "folderUnavailable": "Klasör açılamadı.",
     "imageFailed": "Görsel indirilemedi.",
     "imageFailedDetail": "Görsel indirilemedi: {{detail}}",
     "pdfFailed": "PDF indirilemedi.",

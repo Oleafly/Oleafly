@@ -40,7 +40,8 @@
     "renameFailed": "無法重新命名「{{path}}」。來源路徑維持不變。",
     "setMain": "設為主要文件",
     "title": "檔案總管",
-    "treeAriaLabel": "檔案總管檔案樹"
+    "treeAriaLabel": "檔案總管檔案樹",
+    "setMainFailed": "無法將「{{path}}」設為主要文件。"
   },
   "explorer": {
     "resizeSections": "調整 {{first}} 與 {{second}} 的大小"

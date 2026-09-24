@@ -300,8 +300,6 @@
       "needed": "이 프로젝트는 임의의 외부 명령이 필요한 기능을 씁니다. 허용하기 전까지는 차단됩니다.",
       "warning": "minted와 일부 PythonTeX 문서에 필요합니다. LaTeX가 사용자 권한으로 프로그램을 실행할 수 있으므로 신뢰하는 프로젝트에서만 켜세요. EPS 변환 같은 TeX Live 자체 보조 도구는 이 설정 없이도 실행됩니다."
     },
-    "shellEscapeAllowed": "이 컴퓨터에서 이 프로젝트의 외부 명령이 허용되었습니다.",
-    "shellEscapeBlocked": "이 프로젝트에서는 임의의 외부 명령이 차단됩니다. EPS 변환 같은 TeX Live 자체 보조 도구는 계속 실행됩니다.",
     "shellEscapeFailed": "외부 명령 접근 설정을 바꾸지 못했습니다.",
     "switchFailed": "컴파일 엔진을 바꾸지 못했습니다.",
     "switched": "이제 이 프로젝트는 {{engine}}(으)로 컴파일합니다.",
@@ -488,7 +486,6 @@
         "title": "클라우드 동기화"
       },
       "danger": {
-        "closeFailed": "열려 있는 프로젝트를 안전하게 닫지 못했습니다.",
         "confirmDeleteAllAction": "모든 프로젝트 삭제",
         "confirmDeleteAllDescription": "현재 모든 프로젝트가 파일과 Git 이력을 포함해 휴지통으로 이동합니다. 나중에 프로젝트를 하나씩 복원할 수 있습니다.",
         "confirmDeleteAllTitle_other": "프로젝트 {{count}}개를 모두 삭제할까요?",
@@ -497,7 +494,7 @@
         "deleteAllDescription": "모든 프로젝트를 휴지통으로 옮깁니다. 완전히 삭제되는 것은 없습니다.",
         "deleting": "삭제하는 중…",
         "moveFailed": "프로젝트를 휴지통으로 옮기지 못했습니다.",
-        "movePartial": "프로젝트 {{count}}개를 옮겼지만 작업을 끝내지 못했습니다.",
+        "movePartial_other": "프로젝트 {{count}}개를 휴지통으로 옮겼습니다. 나머지는 옮기지 못했습니다.",
         "movedCount_other": "프로젝트 {{count}}개를 휴지통으로 옮겼습니다.",
         "title": "위험 구역"
       },
@@ -507,7 +504,7 @@
       "recycleBin": {
         "clearAll": "모두 비우기",
         "clearFailed": "휴지통을 비우지 못했습니다.",
-        "clearPartial": "프로젝트 {{count}}개를 완전히 삭제했지만 휴지통을 모두 비우지는 못했습니다.",
+        "clearPartial_other": "프로젝트 {{count}}개를 완전히 삭제했습니다. 나머지는 휴지통에 그대로 있습니다.",
         "clearedCount_other": "프로젝트 {{count}}개를 완전히 삭제했습니다.",
         "clearing": "비우는 중…",
         "confirmClearAction": "휴지통 비우기",
@@ -828,7 +825,6 @@
     },
     "newProjectName": "새 프로젝트 이름",
     "projectName": "프로젝트 이름",
-    "projectRenamed": "프로젝트 이름을 바꿨습니다",
     "saveName": "저장(Enter)",
     "saveNameAriaLabel": "이름 저장",
     "untitledProject": "프로젝트",
@@ -839,7 +835,8 @@
       "pdf": "PDF 보기",
       "split": "분할 보기"
     },
-    "moreActions": "추가 작업"
+    "moreActions": "추가 작업",
+    "renameFailed": "프로젝트 이름을 바꾸지 못했습니다."
   },
   "tour": {
     "chooseColor": "나만의 색을 고르세요",

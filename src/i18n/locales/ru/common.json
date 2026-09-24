@@ -48,5 +48,8 @@
     "description": "Описание",
     "optional": "Необязательно",
     "required": "Обязательно"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

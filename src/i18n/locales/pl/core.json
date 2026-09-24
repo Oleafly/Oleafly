@@ -54,22 +54,10 @@
     "present": "Plik {{path}} ma już pozycję Oleafly. Zacytuj ją za pomocą {{markup}}.",
     "undo": "Cofnij"
   },
-  "compatibility": {
-    "biblatexBiber": "Ten projekt używa biblatex/Biber do obsługi bibliografii.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_few": "{{title}} (+{{more}} więcej)",
-    "blockerFinding_many": "{{title}} (+{{more}} więcej)",
-    "blockerFinding_other": "{{title}} (+{{more}} więcej)",
-    "chooseEngine": "Wybierz silnik…",
-    "importNotes_one": "{{count}} uwaga dotycząca importu: {{title}}",
-    "importNotes_few": "{{count}} uwagi dotyczące importu: {{title}} (+{{more}} więcej)",
-    "importNotes_many": "{{count}} uwag dotyczących importu: {{title}} (+{{more}} więcej)",
-    "importNotes_other": "{{count}} uwagi dotyczącej importu: {{title}} (+{{more}} więcej)"
-  },
   "compile": {
-    "engineNotLoaded": "Kompilacja jest wyłączona, dopóki silnik dokumentów nie zostanie wczytany.",
     "noOfflineMode": "{{engine}} nie udostępnia trybu kompilacji offline. Trwa zwykła kompilacja.",
-    "retry": "Kompiluj ponownie"
+    "retry": "Kompiluj ponownie",
+    "bundleFetchFailed": "Oleafly nie mógł pobrać pakietów TeX potrzebnych temu dokumentowi. Sprawdź połączenie i skompiluj ponownie."
   },
   "developer": {
     "actions": {
@@ -95,7 +83,6 @@
         "title": "Zasil korpus badawczy"
       }
     },
-    "closeProjectFailed": "Nie udało się bezpiecznie zamknąć otwartego projektu.",
     "confirm": {
       "clearProjects": {
         "action": "Wyczyść projekty",
@@ -170,17 +157,12 @@
     "pdfFailedDetail": "Nie udało się zapisać pliku PDF: {{detail}}",
     "pngFailed": "Nie udało się zapisać pliku PNG",
     "pngFailedDetail": "Nie udało się zapisać pliku PNG: {{detail}}",
-    "revealFailed": "Plik został zapisany, ale Oleafly nie mógł otworzyć jego folderu (brak uprawnień). Sprawdź lokalizację wybraną w oknie zapisu.",
+    "revealFailed": "Plik został zapisany, ale nie udało się otworzyć jego folderu.",
     "saved": "Zapisano {{kind}} · {{fileName}}",
     "showInFolder": "Pokaż w folderze"
   },
   "externalChange": {
-    "deletionRestored": "Zewnętrzne usunięcie zbiegło się z niezapisanymi zmianami. Lokalne zmiany zostały przywrócone.",
-    "localEditKept": "Zewnętrzna zmiana pliku \"{{path}}\" dotarła, gdy były niezapisane zmiany. Zachowano zmianę lokalną.",
-    "persistExternalFailed": "Nie udało się zapisać najnowszej zewnętrznej aktualizacji pliku \"{{path}}\".",
-    "preserveLocalFailed": "Nie udało się zachować lokalnej aktualizacji pliku \"{{path}}\".",
-    "reloadFailed": "Ustawienia projektu zostały zaktualizowane, ale części zmienionych plików nie udało się wczytać ponownie.",
-    "restoreLocalFailed": "Nie udało się przywrócić niezapisanej aktualizacji pliku \"{{path}}\"."
+    "reloadFailed": "Ustawienia projektu zostały zaktualizowane, ale części zmienionych plików nie udało się wczytać ponownie."
   },
   "fonts": {
     "systemDefault": "Domyślny systemowy",
@@ -188,18 +170,15 @@
   },
   "imageToLatex": {
     "failed": "Konwersja obrazu na LaTeX nie powiodła się: {{detail}}",
-    "inserted": "Wstawiono kod LaTeX z obrazu",
     "transcribing": "Przepisywanie obrazu…"
   },
   "import": {
-    "arxivImported": "Zaimportowano źródło z arXiv. Skompiluj projekt, aby sprawdzić wynik.",
     "chooseOfferedProjectType": "Wybierz jeden z typów projektu proponowanych dla tego pliku.",
     "invalidArxivId": "Wklej odsyłacz do artykułu w arXiv albo identyfikator, na przykład 2301.01234.",
     "supportedDocumentTypes": "Wybierz jeden z obsługiwanych typów dokumentów.",
-    "conversionNotice": "Treść została przekonwertowana na LaTeX. Może być konieczne poprawienie stylów, zwłaszcza w tabelach, rysunkach i cytowaniach.",
+    "conversionNotice": "Przekonwertowano na {{format}}. Tabele, rysunki i cytowania mogą wymagać poprawek stylu.",
     "figureSaved": "Zapisano {{name}}",
-    "pdfProjectCreated": "Utworzono projekt z pliku PDF. Sprawdź rekonstrukcję, zanim jej zaufasz.",
-    "pickPdfOrDocx": "Wybierz plik .pdf lub .docx",
+    "pickPdfOrDocx": "Wybierz plik .pdf lub .docx.",
     "texSaved": "Zapisano plik .tex",
     "unsupportedFile": "Wybierz plik .zip, .docx, .md lub .markdown.",
     "zipSaveFailed": "Nie udało się zapisać archiwum ZIP.",
@@ -334,7 +313,8 @@
     "summary_one": "Kompilacja nie znalazła \"{{name}}\". Poszukaj w TeX Live pakietu, który to dostarcza.",
     "summary_few": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
     "summary_many": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
-    "summary_other": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają."
+    "summary_other": "Kompilacja nie znalazła: {{names}}. Poszukaj w TeX Live pakietów, które je dostarczają.",
+    "userTree": "Systemowe drzewo TeX jest tylko do odczytu, więc pakiety trafiły do Twojego drzewa osobistego w {{path}}."
   },
   "models": {
     "chips": {
@@ -383,19 +363,16 @@
     "renamed": "Zmieniono nazwę na \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) w $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Nie udało się pobrać pandoc. Zainstaluj go ręcznie, a potem spróbuj ponownie",
+    "downloadFailed": "Nie udało się pobrać pandoc. Zainstaluj go ręcznie, a potem spróbuj ponownie.",
     "downloadingPercent": "Pobieranie pandoc… {{progress}}%",
     "downloadingSize": "Pobieranie pandoc… {{megabytes}} MB",
-    "installGuide": "Przewodnik instalacji",
-    "installed": "Zainstalowano pandoc"
+    "installGuide": "Przewodnik instalacji"
   },
   "project": {
     "copyFailed": "Nie udało się skopiować \"{{path}}\".",
     "dateUnavailable": "Niedostępna",
     "importFailed": "Nie udało się zaimportować. Szczegóły znajdują się w dzienniku aplikacji.",
-    "imported": "Projekt zaimportowany.",
     "openFailed": "Nie udało się otworzyć projektu. Szczegóły znajdują się w dzienniku aplikacji.",
-    "restoringUnsavedFiles": "Aktualizacja projektu usunęła pliki z niezapisanymi zmianami. Oleafly zachował te zmiany i przywraca pliki.",
     "saveBlockedClose": "Projekt pozostał otwarty, ponieważ nie udało się zapisać co najmniej jednego pliku.",
     "saveBlockedDiscard": "Odrzuć zmiany i wyjdź",
     "saveBlockedMany": "Nie udało się zapisać {{count}} plików: {{files}}. Pierwszy z nich jest otwarty w edytorze wraz z niezapisanymi zmianami ({{reason}}). Zostań, aby rozwiązać problem, albo odrzuć niezapisane zmiany w tych plikach i wyjdź.",
@@ -409,7 +386,8 @@
     "updatedDaysAgo_other": "Zaktualizowano {{count}} dnia temu",
     "updatedOn": "Zaktualizowano {{date}}",
     "updatedToday": "Zaktualizowano dzisiaj",
-    "updatedYesterday": "Zaktualizowano wczoraj"
+    "updatedYesterday": "Zaktualizowano wczoraj",
+    "autosaveFailed": "Nie udało się zapisać zmian. Nadal są w edytorze."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analiza nie powiodła się: {{message}}",
@@ -513,22 +491,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Ten projekt przypięto do {{pinned}}. W aktywnej dystrybucji {{local}} brakuje {{count}} z jego pakietów, więc kompilacje mogą się nie udawać, dopóki ta dystrybucja nie zostanie użyta ponownie.",
-    "distributionSkew": "Ten projekt przypięto do {{pinned}}, a ten komputer kompiluje w {{local}}. Wynik może się nieznacznie różnić.",
-    "installPinned_one": "Zainstaluj go",
-    "installPinned_few": "Zainstaluj wszystkie {{count}}",
-    "installPinned_many": "Zainstaluj wszystkie {{count}}",
-    "installPinned_other": "Zainstaluj wszystkie {{count}}",
-    "installingPinned_one": "Instalowanie {{count}} przypiętego pakietu…",
-    "installingPinned_few": "Instalowanie {{count}} przypiętych pakietów…",
-    "installingPinned_many": "Instalowanie {{count}} przypiętych pakietów…",
-    "installingPinned_other": "Instalowanie {{count}} przypiętego pakietu…",
-    "pinnedPackagesFailed": "Nie udało się zainstalować części przypiętych pakietów. Zobacz Ustawienia → Silnik LaTeX.",
-    "pinnedPackagesInstalled": "Zainstalowano przypięte pakiety LaTeX.",
-    "pinnedPackagesMissing_one": "Ten projekt przypina {{count}} pakiet LaTeX, który nie jest tu zainstalowany.",
-    "pinnedPackagesMissing_few": "Ten projekt przypina {{count}} pakiety LaTeX, które nie są tu zainstalowane.",
-    "pinnedPackagesMissing_many": "Ten projekt przypina {{count}} pakietów LaTeX, które nie są tu zainstalowane.",
-    "pinnedPackagesMissing_other": "Ten projekt przypina {{count}} pakietu LaTeX, który nie jest tu zainstalowany."
+    "distributionGap": "Ten projekt przypięto do {{pinned}}. W aktywnej dystrybucji {{local}} brakuje {{count}} z jego pakietów, więc kompilacje mogą się nie udawać, dopóki ta dystrybucja nie zostanie użyta ponownie."
   },
   "theme": {
     "cssForbiddenSyntax": "Własny CSS nie może zawierać reguł at, adresów URL ani selektorów.",
@@ -577,8 +540,8 @@
       "installing": "Instalowanie…",
       "unpacking": "Rozpakowywanie…"
     },
-    "removeFailed": "Nie udało się usunąć TinyTeX",
-    "removed": "Usunięto TinyTeX"
+    "removeFailed": "Nie udało się usunąć TinyTeX.",
+    "removed": "Usunięto TinyTeX."
   },
   "toolActivity": {
     "labels": {
@@ -635,5 +598,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Projekt zmienił się podczas zapisywania. Spróbuj zaktualizować ponownie."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Nie udało się zapisać punktu kontrolnego. Dysk jest pełny albo nie można zapisywać w folderze punktów kontrolnych. Zwolnij miejsce lub sprawdź uprawnienia folderu, a potem skompiluj ponownie.",
+    "incompleteCapture": "Nie udało się zapisać kilku ostatnich punktów kontrolnych, bo nie można było odczytać części plików projektu. Sprawdź ich uprawnienia, a potem skompiluj ponownie."
   }
 }

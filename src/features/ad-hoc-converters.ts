@@ -555,7 +555,7 @@ function normalizeEquation(value: string): string | null {
 }
 
 async function runPandoc(request: AdHocConversionRequest): Promise<ConverterOutput> {
-  if (!(await ensurePandoc())) throw new Error(i18n.t(($) => $.researchTools.converterErrors.pandocNotReady));
+  if (!(await ensurePandoc({ notify: true }))) throw new Error(i18n.t(($) => $.researchTools.converterErrors.pandocNotReady));
   const result: AdHocConversionResult = await convertAdHoc(request);
   return { ...result };
 }

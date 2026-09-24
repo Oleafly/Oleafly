@@ -8,14 +8,15 @@ import {
   dismissEngineHint,
   useEnginePickerStore,
 } from "@/store/engine-picker";
-import { installPhaseLabel, useEngineStore } from "@/store/engine";
-import { useFilesStore } from "@/store/files";
+import { installPhaseLabel, TINYTEX_INSTALL_TOAST_KEY, useEngineStore } from "@/store/engine";
+import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import {
   latexmkFixesFinding,
   needsPdflatexFinding,
   type ImportCompatFinding,
 } from "@oleafly/latex";
-import { notifyError, toast } from "@/lib/toast";
+import { toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import { formatList } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +29,6 @@ const LEVEL_DOT: Record<ImportCompatFinding["level"], string> = {
 /**
  * The three-way engine choice for projects that need tools beyond Tectonic
  * (minted, glossaries/makeindex, pythontex, shell-escape-heavy templates).
- * Opened from the import-scan toast, from a compile failure that matches a
- * known Tectonic gap, and from the compile options menu.
  */
 export function EnginePickerModal() {
   const { t } = useTranslation(["common", "shell"]);
@@ -83,22 +82,32 @@ export function EnginePickerModal() {
   );
   const needsPdflatex = findings.some((finding) => needsPdflatexFinding(finding.id));
 
+  const reportSwitchFailure = (scope: string, error: unknown, message: string) => {
+    void logError(scope, error);
+    toast.errorUnique(engineSwitchToastKey(projectId ?? ""), message);
+  };
+
   const pinLatexmk = async (afterInstall: boolean) => {
     setSwitching(true);
+    let engineSwitched = false;
     try {
       await setEngine("latexmk", needsPdflatex ? "pdflatex" : null);
       const selected = useFilesStore.getState();
       if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
+      engineSwitched = true;
       if (shellEscapeConsent) await setShellEscape(true);
       if (useFilesStore.getState().projectId !== projectId) return;
       const engineName = needsPdflatex
         ? t(($) => $.shell.enginePicker.engineNames.pdflatexViaLatexmk)
         : t(($) => $.shell.enginePicker.engineNames.latexmk);
-      toast.success(
-        afterInstall
-          ? t(($) => $.shell.enginePicker.switchedAfterInstall, { engine: engineName })
-          : t(($) => $.shell.enginePicker.switched, { engine: engineName }),
-      );
+      if (afterInstall) {
+        toast.successUnique(
+          TINYTEX_INSTALL_TOAST_KEY,
+          t(($) => $.shell.enginePicker.switchedAfterInstall, { engine: engineName }),
+        );
+      } else {
+        toast.success(t(($) => $.shell.enginePicker.switched, { engine: engineName }));
+      }
       close();
       if (source === "compile-failure") {
         const compile = await import("@/store/compile");
@@ -109,7 +118,19 @@ export function EnginePickerModal() {
       if (current.projectId === projectId) {
         setShellEscapeConsent(current.engine.allow_shell_escape);
       }
-      notifyError("switch compile engine", error, t(($) => $.shell.enginePicker.switchFailed));
+      if (engineSwitched) {
+        reportSwitchFailure(
+          "update external command access",
+          error,
+          t(($) => $.shell.enginePicker.shellEscapeFailed),
+        );
+      } else {
+        reportSwitchFailure(
+          "switch compile engine",
+          error,
+          t(($) => $.shell.enginePicker.switchFailed),
+        );
+      }
     } finally {
       setSwitching(false);
     }
@@ -122,14 +143,9 @@ export function EnginePickerModal() {
     setShellEscapeSaving(true);
     try {
       await setShellEscape(allow);
-      toast.success(
-        allow
-          ? t(($) => $.shell.enginePicker.shellEscapeAllowed)
-          : t(($) => $.shell.enginePicker.shellEscapeBlocked),
-      );
     } catch (error) {
       setShellEscapeConsent(previous);
-      notifyError(
+      reportSwitchFailure(
         "update external command access",
         error,
         t(($) => $.shell.enginePicker.shellEscapeFailed),
@@ -149,13 +165,21 @@ export function EnginePickerModal() {
 
   const keepTectonic = async () => {
     if (projectId) dismissEngineHint(projectId, findings);
+    void import("@/store/compile").then(({ useCompileStore }) => {
+      const { offer, dismissOffer } = useCompileStore.getState();
+      if (offer?.kind === "engine-gap" && offer.projectId === projectId) dismissOffer();
+    });
     // For a latexmk project this is a real switch back, not just a dismissal
     // ("xetex" is the stored name of the bundled Tectonic engine).
     if (alreadyLatexmk) {
       try {
         await setEngine("xetex");
       } catch (error) {
-        notifyError("switch compile engine", error);
+        reportSwitchFailure(
+          "switch compile engine",
+          error,
+          t(($) => $.shell.enginePicker.switchFailed),
+        );
       }
     }
     close();

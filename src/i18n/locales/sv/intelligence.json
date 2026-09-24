@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Metadata för TexLab-konfigurationen är ogiltiga",
     "setUp": "Konfigurera",
-    "retry": "Försök igen",
-    "startFailed": "Projektets språktjänst kunde inte startas.",
-    "setupDetailsUnavailable": "Uppgifter om språktjänstens konfiguration är inte tillgängliga",
     "setupRequired": "Språktjänsten måste konfigureras",
     "installTitle": "Vill du installera {{name}} {{version}}?",
     "licenseAndSource": "Licens och källkod",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Referensanalys för projektet är inte tillgänglig.",
-    "updating": "Projektets referenser uppdateras.",
     "noDefinition": "Ingen definition hittades för ”{{name}}”.",
     "definitionsFor": "Definitioner av {{name}}",
     "multipleDefinitions": "”{{name}}” har {{count}} definitioner. Öppna Referenser för att granska dem.",

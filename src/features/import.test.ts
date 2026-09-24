@@ -1,14 +1,20 @@
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { strFromU8, unzipSync, zipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { i18n } from "@/i18n";
 import { useToastStore } from "@/store/toast";
 import { useImportStore } from "@/store/import";
 
 const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   createProjectFromPdfConversion: vi.fn(),
+  createProjectFromDocx: vi.fn(),
+  writeBytesFile: vi.fn(),
+  pickSavePath: vi.fn(),
+  ensurePandoc: vi.fn(),
   refreshProjects: vi.fn(),
   openProject: vi.fn(),
+  files: { projectId: null as string | null },
 }));
 
 vi.mock("@/lib/log", () => ({
@@ -16,13 +22,16 @@ vi.mock("@/lib/log", () => ({
 }));
 vi.mock("@/lib/tauri", () => ({
   createProjectFromPdfConversion: mocks.createProjectFromPdfConversion,
-  createProjectFromDocx: vi.fn(),
+  createProjectFromDocx: mocks.createProjectFromDocx,
   hasPandoc: vi.fn(async () => true),
-  writeBytesFile: vi.fn(async () => {}),
+  writeBytesFile: mocks.writeBytesFile,
 }));
+vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
+vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/store/files", () => ({
   useFilesStore: {
     getState: () => ({
+      projectId: mocks.files.projectId,
       refreshProjects: mocks.refreshProjects,
       openProject: mocks.openProject,
     }),
@@ -34,7 +43,10 @@ import {
   createZipDownloader,
   dataUrlToBase64,
   createProjectFromConversion,
+  downloadFigure,
+  downloadTex,
   handleDownloadZipClick,
+  handlePickedFile,
   zipEntries,
   type ZipDownloadDependencies,
 } from "./import";
@@ -80,25 +92,45 @@ function decodeBase64(value: string): Uint8Array {
   );
 }
 
+function openSucceeds(): void {
+  mocks.openProject.mockImplementation(async (id: string) => {
+    mocks.files.projectId = id;
+  });
+}
+
+function toastMessages(): string[] {
+  return useToastStore.getState().toasts.map((toast) => toast.message);
+}
+
+function loadConversion(): void {
+  useImportStore.setState({
+    open: true,
+    fileName: "Source.pdf",
+    result: makeZipDependencies().getSnapshot().result,
+    figures: makeZipDependencies().getSnapshot().figures,
+  });
+}
+
 beforeEach(() => {
   mocks.logError.mockReset();
   mocks.createProjectFromPdfConversion.mockReset().mockResolvedValue("converted-project");
+  mocks.createProjectFromDocx.mockReset().mockResolvedValue("docx-project");
+  mocks.writeBytesFile.mockReset().mockResolvedValue(undefined);
+  mocks.pickSavePath.mockReset().mockResolvedValue("/exports/out");
+  mocks.ensurePandoc.mockReset().mockResolvedValue(true);
   mocks.refreshProjects.mockReset().mockResolvedValue(undefined);
-  mocks.openProject.mockReset().mockResolvedValue(undefined);
-  useToastStore.setState({ toasts: [] });
+  mocks.openProject.mockReset();
+  mocks.files.projectId = null;
+  openSucceeds();
+  useToastStore.getState().reset();
   useImportStore.getState().close();
 });
 
 describe("converted project publication", () => {
-  it("sends the complete conversion to one transactional backend command", async () => {
-    useImportStore.setState({
-      open: true,
-      fileName: "Source.pdf",
-      result: makeZipDependencies().getSnapshot().result,
-      figures: makeZipDependencies().getSnapshot().figures,
-    });
+  it("sends the complete conversion to one transactional backend command and lets the opened project confirm it", async () => {
+    loadConversion();
 
-    await createProjectFromConversion();
+    await expect(createProjectFromConversion()).resolves.toBe(true);
 
     expect(mocks.createProjectFromPdfConversion).toHaveBeenCalledWith(
       "Source",
@@ -108,33 +140,142 @@ describe("converted project publication", () => {
     expect(mocks.refreshProjects).toHaveBeenCalledOnce();
     expect(useImportStore.getState().open).toBe(false);
     expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
-    expect(useToastStore.getState().toasts).toEqual([
-      expect.objectContaining({
-        kind: "success",
-        message: expect.stringContaining("Project created from PDF"),
-      }),
-    ]);
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
-  it("keeps the conversion open and reports failure when publication rejects", async () => {
+  it("keeps the conversion open and reports failure from the catalog when publication rejects", async () => {
     const error = new Error("disk full");
     mocks.createProjectFromPdfConversion.mockRejectedValue(error);
-    useImportStore.setState({
-      open: true,
-      fileName: "Source.pdf",
-      result: makeZipDependencies().getSnapshot().result,
-      figures: makeZipDependencies().getSnapshot().figures,
-    });
+    loadConversion();
 
-    await createProjectFromConversion();
+    await expect(createProjectFromConversion()).resolves.toBe(false);
 
     expect(useImportStore.getState().open).toBe(true);
     expect(mocks.refreshProjects).not.toHaveBeenCalled();
     expect(mocks.openProject).not.toHaveBeenCalled();
     expect(mocks.logError).toHaveBeenCalledWith("import", error);
-    expect(
-      useToastStore.getState().toasts.some((item) => item.kind === "success"),
-    ).toBe(false);
+    expect(useToastStore.getState().toasts).toEqual([
+      expect.objectContaining({
+        kind: "error",
+        message: i18n.t(($) => $.library.newProject.createFailed),
+      }),
+    ]);
+    expect(toastMessages().join(" ")).not.toContain("disk full");
+  });
+
+  it("creates one project when Create project is triggered twice before the first run ends", async () => {
+    let finish!: (id: string) => void;
+    mocks.createProjectFromPdfConversion.mockReturnValue(
+      new Promise<string>((resolve) => { finish = resolve; }),
+    );
+    loadConversion();
+
+    const first = createProjectFromConversion();
+    const second = createProjectFromConversion();
+    expect(second).toBe(first);
+    finish("converted-project");
+    await expect(first).resolves.toBe(true);
+
+    expect(mocks.createProjectFromPdfConversion).toHaveBeenCalledOnce();
+    expect(mocks.openProject).toHaveBeenCalledOnce();
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("still opens the created project when refreshing the list fails", async () => {
+    const error = new Error("list failed");
+    mocks.refreshProjects.mockRejectedValue(error);
+    loadConversion();
+
+    await expect(createProjectFromConversion()).resolves.toBe(true);
+
+    expect(mocks.logError).toHaveBeenCalledWith("refresh projects after PDF import", error);
+    expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("reports that nothing opened when the open was blocked", async () => {
+    mocks.openProject.mockResolvedValue(undefined);
+    loadConversion();
+
+    await expect(createProjectFromConversion()).resolves.toBe(false);
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+});
+
+describe("picked file import", () => {
+  it("shows the conversion notice once, under a stable key, after a DOCX project opens", async () => {
+    await handlePickedFile(new File(["docx"], "Draft.docx"));
+    await handlePickedFile(new File(["docx"], "Draft.docx"));
+
+    expect(mocks.ensurePandoc).toHaveBeenCalledWith({ notify: true });
+    expect(mocks.openProject).toHaveBeenCalledWith("docx-project");
+    expect(useToastStore.getState().toasts).toEqual([
+      expect.objectContaining({
+        key: "import-conversion",
+        kind: "info",
+        message: i18n.t(($) => $.core.import.conversionNotice, { format: "LaTeX" }),
+      }),
+    ]);
+  });
+
+  it("skips the conversion notice when the new project did not open", async () => {
+    mocks.openProject.mockResolvedValue(undefined);
+
+    await handlePickedFile(new File(["docx"], "Draft.docx"));
+
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("stops quietly when pandoc setup reported its own failure", async () => {
+    mocks.ensurePandoc.mockResolvedValue(false);
+
+    await handlePickedFile(new File(["docx"], "Draft.docx"));
+
+    expect(mocks.createProjectFromDocx).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("reports a failed import with catalog text instead of the raw error", async () => {
+    const error = new Error("Error: backend exploded");
+    mocks.createProjectFromDocx.mockRejectedValue(error);
+
+    await handlePickedFile(new File(["docx"], "Draft.docx"));
+
+    expect(mocks.logError).toHaveBeenCalledWith("import", error);
+    expect(toastMessages()).toEqual([i18n.t(($) => $.core.project.importFailed)]);
+  });
+});
+
+describe("converted file downloads", () => {
+  it("reports a failed .tex save instead of rejecting silently", async () => {
+    loadConversion();
+    const error = new Error("read-only volume");
+    mocks.writeBytesFile.mockRejectedValue(error);
+
+    await expect(downloadTex()).resolves.toBeUndefined();
+
+    expect(mocks.logError).toHaveBeenCalledWith("save converted tex", error);
+    expect(toastMessages()).toEqual([i18n.t(($) => $.researchTools.converter.saveFailed)]);
+  });
+
+  it("confirms a saved .tex once", async () => {
+    loadConversion();
+
+    await downloadTex();
+
+    expect(toastMessages()).toEqual([enCore.import.texSaved]);
+  });
+
+  it("reports a failed figure save instead of rejecting silently", async () => {
+    const error = new Error("read-only volume");
+    mocks.writeBytesFile.mockRejectedValue(error);
+
+    await expect(
+      downloadFigure({ name: "figure_p1_1.png", page: 1, pngDataUrl: "data:image/png;base64,AAAA" }),
+    ).resolves.toBeUndefined();
+
+    expect(mocks.logError).toHaveBeenCalledWith("save extracted figure", error);
+    expect(toastMessages()).toEqual([i18n.t(($) => $.researchTools.converter.saveFailed)]);
   });
 });
 

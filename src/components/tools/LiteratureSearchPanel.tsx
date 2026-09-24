@@ -12,7 +12,6 @@ import {
   BookmarkCheck,
   Check,
   CheckCircle2,
-  Copy,
   ExternalLink,
   FileText,
   Info,
@@ -60,14 +59,16 @@ import {
 } from "@/store/literature";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
-import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import {
   ANY_PUBLICATION_YEAR,
   publicationYearOptions,
   publicationYearRange,
 } from "@/lib/publication-year";
-import { DocumentCitationScanPanel } from "@/components/tools/DocumentCitationScanPanel";
+import {
+  CopyBibtexButton,
+  DocumentCitationScanPanel,
+} from "@/components/tools/DocumentCitationScanPanel";
 import { PaperReviewPanel } from "@/components/tools/PaperReviewPanel";
 
 const SUGGESTIONS = [
@@ -137,15 +138,6 @@ function sourceError(run: LiteratureSourceRun): string {
   return message.toLowerCase().startsWith(label.toLowerCase())
     ? message
     : i18n.t(($) => $.researchTools.literature.sourceMessage, { label, message });
-}
-
-async function copyBibtex(value: string) {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(i18n.t(($) => $.researchTools.literature.toastCopied));
-  } catch {
-    toast.error(i18n.t(($) => $.researchTools.literature.toastCopyFailed));
-  }
 }
 
 function SourceBadge({
@@ -346,8 +338,6 @@ function ResultRow({
   bibtex?: string;
 }>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  const copyRecordBibtex = () =>
-    void copyBibtex(bibtex ?? bibtexForLiteratureRecord(record));
   return (
     <article className="group border-b border-border/70 px-1 py-5 last:border-b-0 sm:px-2">
       <div className="flex items-start gap-4">
@@ -439,14 +429,11 @@ function ResultRow({
                   : t(($) => $.researchTools.literature.saveCitation)}
               </Button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={copyRecordBibtex}
-            >
-              <Copy /> {t(($) => $.researchTools.literature.copyBibtex)}
-            </Button>
+            <CopyBibtexButton
+              bibtex={() => bibtex ?? bibtexForLiteratureRecord(record)}
+              label={t(($) => $.researchTools.literature.copyBibtex)}
+              failedMessage={t(($) => $.researchTools.literature.toastCopyFailed)}
+            />
             {record.pdfUrl && (
               <Button type="button" variant="ghost" size="sm" asChild>
                 <a
@@ -1077,14 +1064,7 @@ export function LiteratureSearchPanel() {
                   key={id}
                   record={record}
                   saved={isSaved}
-                  onSave={() => {
-                    saveCitation(record);
-                    toast.success(
-                      isSaved
-                        ? t(($) => $.researchTools.literature.toastUpdated)
-                        : t(($) => $.researchTools.literature.toastSaved),
-                    );
-                  }}
+                  onSave={() => saveCitation(record)}
                 />
               );
             })}

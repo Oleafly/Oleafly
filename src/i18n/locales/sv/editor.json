@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:namn"
   },
   "paste": {
-    "imageSaved": "Bilden sparades i {{path}}",
     "imageFailed": "Den inklistrade bilden kunde inte sparas i projektet.",
     "noProject": "Öppna ett projekt innan du klistrar in bilder."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Språk för stavningskontroll",
     "spellLanguageAppSetting": "Använd appens inställning",
     "spellLanguageAriaLabel": "Språk för stavningskontroll i det här projektet",
-    "spellLanguageHint": "Gäller bara det här projektet. Ladda ner fler språk i Inställningar."
+    "spellLanguageHint": "Gäller bara det här projektet. Ladda ner fler språk i Inställningar.",
+    "spellLanguageFailed": "Det gick inte att byta språk för stavningskontroll."
   },
   "table": {
     "trigger": "Infoga tabell",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Citera från projektet",
-    "updating": "Projektets citeringar uppdateras.",
-    "changed": "Projektets citeringar ändrades. Öppna väljaren igen för att uppdatera.",
     "filterPlaceholder": "Nyckel, författare eller titel…",
     "filterLabel": "Filtrera projektets citeringar",
     "partialCatalog": "Ofullständig katalog. Felformade bibliografifiler eller filer som inte går att läsa kan saknas.",
@@ -403,10 +401,7 @@
     "error": "Korrekturläsningen kunde inte slutföra det här dokumentet.",
     "unavailable": "Korrekturläsning offline är inte tillgänglig.",
     "tooLarge": "Korrekturläsningen är pausad eftersom dokumentet är för stort.",
-    "unsupported": "Korrekturläsning stöds inte för det här dokumentformatet.",
-    "partial_one": "Korrekturläsningen fick fram {{count}} fynd, men en motor blev inte klar.",
-    "partial_other": "Korrekturläsningen fick fram {{count}} fynd, men en motor blev inte klar.",
-    "retry": "Försök igen"
+    "unsupported": "Korrekturläsning stöds inte för det här dokumentformatet."
   },
   "checkpoints": {
     "showInExplorer": "Visa i Utforskaren",

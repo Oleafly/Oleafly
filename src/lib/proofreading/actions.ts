@@ -6,7 +6,7 @@ import {
   suppressGrammarFinding,
 } from "@/lib/dictionary";
 import { useSettingsStore } from "@/store/settings";
-import { useToastStore } from "@/store/toast";
+import { toast } from "@/lib/toast";
 import {
   ignoreWordHere,
   isFindingSuppressedHere,
@@ -34,7 +34,7 @@ export function installProofreadingActionHost(): void {
       useSettingsStore.getState().disableHarperRule(rule);
     },
     notify: (message) => {
-      useToastStore.getState().push("info", message);
+      toast.info(message);
     },
   });
 }

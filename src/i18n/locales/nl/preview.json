@@ -92,7 +92,10 @@
     "settings": "Instellingen voor het PDF-voorbeeld",
     "fullscreen": "Voorbeeld op volledig scherm",
     "exitFullscreen": "Volledig scherm verlaten",
-    "retryCompile": "Opnieuw compileren"
+    "retryCompile": "Opnieuw compileren",
+    "chooseEngine": "Engine kiezen…",
+    "installPackages_one": "{{name}} zoeken en installeren",
+    "installPackages_other": "{{count}} bestanden zoeken en installeren"
   },
   "stale": {
     "badge": "Verouderd",
@@ -121,7 +124,7 @@
     "imageSaved": "Afbeelding opgeslagen · {{name}}",
     "pdfSaved": "PDF opgeslagen · {{name}}",
     "showInFolder": "In map tonen",
-    "folderUnavailable": "Het bestand is opgeslagen, maar Oleafly kon de map niet openen (geen toestemming). Kijk op de locatie die je in het opslaanvenster koos.",
+    "folderUnavailable": "Kon de map niet openen.",
     "imageFailed": "Downloaden van de afbeelding is niet gelukt.",
     "imageFailedDetail": "Downloaden van de afbeelding is niet gelukt: {{detail}}",
     "pdfFailed": "Downloaden van de PDF is niet gelukt.",

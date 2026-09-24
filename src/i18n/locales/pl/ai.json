@@ -543,7 +543,6 @@
     "showAllHistory": "Pokaż całą historię ({{count}})"
   },
   "research": {
-    "noSourceLink": "Ten wynik nie zawiera odsyłacza do źródła.",
     "sourceOpenFailed": "Nie udało się otworzyć źródła.",
     "noProjectPath": "Ten wynik nie zawiera ścieżki pliku projektu.",
     "resultOpenFailed": "Nie udało się otworzyć pliku wyniku."
@@ -661,7 +660,6 @@
     "summarizing": "Podsumowuję wcześniejszą rozmowę…"
   },
   "toasts": {
-    "sessionOpenFailed": "Nie udało się otworzyć sesji agenta.",
     "approvalModeSaveFailed": "Nie udało się zapisać trybu zatwierdzania.",
     "skillDraftSaved": "Zapisano szkic umiejętności. Przejrzyj go przed włączeniem.",
     "skillDraftFailed": "Nie udało się zapisać szkicu umiejętności. {{error}}",
@@ -669,11 +667,9 @@
     "chatArchiveFailed": "Nie udało się zarchiwizować tego czatu.",
     "chatForked": "Czat rozgałęziony.",
     "chatForkFailed": "Nie udało się rozgałęzić tego czatu.",
-    "engineNotLoaded": "Szczegóły silnika dokumentów nie są wczytane. Edycja przez AI jest wyłączona ze względów bezpieczeństwa.",
     "skillsLoadFailed": "Nie udało się wczytać włączonych umiejętności. Spróbuj ponownie.",
     "approvalModeLoadFailed": "Nie udało się wczytać trybu zatwierdzania.",
     "approvalRulesLoadFailed": "Nie udało się wczytać reguł zatwierdzania dla projektu.",
-    "restored": "Przywrócono pliki projektu. Rozmowa została zachowana.",
     "restoreFailed": "Nie udało się przywrócić: {{error}}",
     "steerFailed": "Nie udało się pokierować trwającą turą.",
     "approvalRuleSaveFailed": "Nie udało się zapisać reguły zatwierdzania dla projektu.",

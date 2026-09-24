@@ -92,7 +92,12 @@
     "settings": "Настройки просмотра PDF",
     "fullscreen": "Полноэкранный просмотр",
     "exitFullscreen": "Выйти из полноэкранного режима",
-    "retryCompile": "Скомпилировать заново"
+    "retryCompile": "Скомпилировать заново",
+    "chooseEngine": "Выбрать движок…",
+    "installPackages_one": "Найти и установить {{name}}",
+    "installPackages_few": "Найти и установить {{count}} файла",
+    "installPackages_many": "Найти и установить {{count}} файлов",
+    "installPackages_other": "Найти и установить {{count}} файла"
   },
   "stale": {
     "badge": "Устарел",
@@ -121,7 +126,7 @@
     "imageSaved": "Изображение сохранено · {{name}}",
     "pdfSaved": "PDF сохранён · {{name}}",
     "showInFolder": "Показать в папке",
-    "folderUnavailable": "Файл сохранён, но Oleafly не смог открыть его папку (доступ запрещён). Проверьте место, которое вы выбрали в окне сохранения.",
+    "folderUnavailable": "Не удалось открыть папку.",
     "imageFailed": "Не удалось скачать изображение.",
     "imageFailedDetail": "Не удалось скачать изображение: {{detail}}",
     "pdfFailed": "Не удалось скачать PDF.",

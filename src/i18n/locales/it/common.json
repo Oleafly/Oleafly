@@ -48,5 +48,8 @@
     "description": "Descrizione",
     "optional": "Facoltativo",
     "required": "Obbligatorio"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

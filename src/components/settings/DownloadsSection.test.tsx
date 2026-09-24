@@ -45,10 +45,32 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { DownloadsSection } from "./DownloadsSection";
 
 const downloads = enSettings.downloads;
+
+const errors = {
+  fontDownload: () => i18n.t(($) => $.settings.downloads.errors.fontDownloadFailed),
+  fontsDownload: () => i18n.t(($) => $.settings.downloads.errors.fontsDownloadFailed),
+  fontRemove: () => i18n.t(($) => $.settings.downloads.errors.fontRemoveFailed),
+  packDownload: () => i18n.t(($) => $.settings.downloads.errors.packDownloadFailed),
+  packsDownload: () => i18n.t(($) => $.settings.downloads.errors.packsDownloadFailed),
+  packRemove: () => i18n.t(($) => $.settings.downloads.errors.packRemoveFailed),
+  aiDelete: (name: string) =>
+    i18n.t(($) => $.settings.downloads.aiTemplates.deleteFailed, { name }),
+};
+
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 const component = (over: Partial<ComponentInfo> = {}): ComponentInfo => ({
   id: "lato",
@@ -217,21 +239,49 @@ describe("DownloadsSection fonts tab", () => {
     await waitFor(() => expect(mocks.unlisten).toHaveBeenCalled());
   });
 
-  it("downloads every font and reports a failure", async () => {
+  it("downloads every font and reports a failure in plain words", async () => {
     const user = userEvent.setup();
-    mocks.downloadAllFonts.mockRejectedValue(new Error("offline"));
+    const failure = new Error("download failed: error sending request for url");
+    mocks.downloadAllFonts.mockRejectedValue(failure);
     mocks.listFontComponents.mockResolvedValue([component()]);
     render(<DownloadsSection />);
 
     await user.click(
       await screen.findByRole("button", { name: downloads.actions.downloadAll }),
     );
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "download the fonts",
+        failure,
+        errors.fontsDownload(),
+      ),
+    );
+    expect(mocks.notifyError).toHaveBeenCalledOnce();
+  });
+
+  it("reports a single font download failure in plain words", async () => {
+    const user = userEvent.setup();
+    const failure = new Error("No such file or directory (os error 2)");
+    mocks.installFontComponent.mockRejectedValue(failure);
+    mocks.listFontComponents.mockResolvedValue([component()]);
+    render(<DownloadsSection />);
+
+    await user.click(
+      await screen.findByRole("button", { name: downloads.actions.download }),
+    );
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "download the font",
+        failure,
+        errors.fontDownload(),
+      ),
+    );
   });
 
   it("removes an installed font and reports a failure", async () => {
     const user = userEvent.setup();
-    mocks.removeFontComponent.mockRejectedValue(new Error("locked"));
+    const failure = new Error("locked");
+    mocks.removeFontComponent.mockRejectedValue(failure);
     mocks.listFontComponents.mockResolvedValue([component({ installed: true })]);
     render(<DownloadsSection />);
 
@@ -239,7 +289,67 @@ describe("DownloadsSection fonts tab", () => {
       await screen.findByRole("button", { name: enCommon.actions.remove }),
     );
     await waitFor(() => expect(mocks.removeFontComponent).toHaveBeenCalledWith("lato"));
-    expect(mocks.notifyError).toHaveBeenCalled();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      "remove the font",
+      failure,
+      errors.fontRemove(),
+    );
+  });
+
+  it("keeps a running font download busy after the section remounts", async () => {
+    const user = userEvent.setup();
+    const pending = deferred();
+    mocks.installFontComponent.mockReturnValue(pending.promise);
+    mocks.listFontComponents.mockResolvedValue([
+      component(),
+      component({ id: "ptserif", installed: true }),
+    ]);
+    const first = render(<DownloadsSection />);
+
+    await user.click(
+      await screen.findByRole("button", { name: downloads.actions.download }),
+    );
+    await waitFor(() => expect(mocks.installFontComponent).toHaveBeenCalledWith("lato"));
+    first.unmount();
+
+    render(<DownloadsSection />);
+    const remove = await screen.findByRole("button", { name: enCommon.actions.remove });
+    expect(remove).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: downloads.actions.downloadAll }),
+    ).toBeDisabled();
+    emit?.({
+      payload: {
+        component: "lato",
+        label: "Lato Bold",
+        file: "lato-bold.ttf",
+        index: 2,
+        total: 4,
+        received: 10,
+        file_total: 100,
+      },
+    });
+    expect(
+      await screen.findByText(
+        downloads.progress
+          .replace("{{label}}", "Lato Bold")
+          .replace("{{index}}", "2")
+          .replace("{{total}}", "4"),
+      ),
+    ).toBeInTheDocument();
+
+    const listsBefore = mocks.listFontComponents.mock.calls.length;
+    mocks.listFontComponents.mockResolvedValue([
+      component({ installed: true }),
+      component({ id: "ptserif", installed: true }),
+    ]);
+    pending.resolve();
+    expect(
+      await screen.findByRole("button", { name: downloads.actions.allDownloaded }),
+    ).toBeDisabled();
+    expect(mocks.listFontComponents.mock.calls.length).toBeGreaterThan(listsBefore);
+    expect(mocks.installFontComponent).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("logs a failed catalog read instead of rendering rows", async () => {
@@ -318,7 +428,8 @@ describe("DownloadsSection templates tab", () => {
   it("skips installed packs when downloading them all and reports a failure", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ settingsScrollTarget: "templates" });
-    mocks.installTemplatePack.mockRejectedValue(new Error("offline"));
+    const failure = new Error("offline");
+    mocks.installTemplatePack.mockRejectedValue(failure);
     mocks.listTemplatePacks.mockResolvedValue([
       pack({ id: "done", installed: true }),
       pack(),
@@ -329,20 +440,106 @@ describe("DownloadsSection templates tab", () => {
     await user.click(
       screen.getByRole("button", { name: downloads.actions.downloadAll }),
     );
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "download the template packs",
+        failure,
+        errors.packsDownload(),
+      ),
+    );
+    expect(mocks.notifyError).toHaveBeenCalledOnce();
     expect(mocks.installTemplatePack).toHaveBeenCalledTimes(1);
     expect(mocks.installTemplatePack).toHaveBeenCalledWith("resumes");
+  });
+
+  it("reports a single pack download failure in plain words", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    const failure = new Error("unknown template pack: resumes");
+    mocks.installTemplatePack.mockRejectedValue(failure);
+    mocks.listTemplatePacks.mockResolvedValue([pack()]);
+    render(<DownloadsSection />);
+
+    await user.click(await screen.findByTestId("pack-install-resumes"));
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "download the template pack",
+        failure,
+        errors.packDownload(),
+      ),
+    );
   });
 
   it("reports a failed pack removal", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ settingsScrollTarget: "templates" });
-    mocks.removeTemplatePack.mockRejectedValue(new Error("locked"));
+    const failure = new Error("locked");
+    mocks.removeTemplatePack.mockRejectedValue(failure);
     mocks.listTemplatePacks.mockResolvedValue([pack({ installed: true })]);
     render(<DownloadsSection />);
 
     await user.click(await screen.findByTestId("pack-remove-resumes"));
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "remove the template pack",
+        failure,
+        errors.packRemove(),
+      ),
+    );
+  });
+
+  it("keeps a running pack download busy after the section remounts", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    const pending = deferred();
+    mocks.installTemplatePack.mockReturnValue(pending.promise);
+    mocks.listTemplatePacks.mockResolvedValue([pack()]);
+    const first = render(<DownloadsSection />);
+
+    await user.click(await screen.findByTestId("pack-install-resumes"));
+    await waitFor(() => expect(mocks.installTemplatePack).toHaveBeenCalledWith("resumes"));
+    first.unmount();
+
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    render(<DownloadsSection />);
+    expect(await screen.findByTestId("pack-install-resumes")).toBeDisabled();
+    await user.click(screen.getByTestId("pack-install-resumes"));
+    expect(mocks.installTemplatePack).toHaveBeenCalledOnce();
+
+    mocks.listTemplatePacks.mockResolvedValue([pack({ installed: true })]);
+    pending.resolve();
+    expect(await screen.findByTestId("pack-remove-resumes")).toBeEnabled();
+    expect(mocks.installTemplatePack).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports one failure when a download from an earlier mount fails", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    const pending = deferred();
+    mocks.installTemplatePack.mockReturnValue(pending.promise);
+    mocks.listTemplatePacks.mockResolvedValue([pack()]);
+    const first = render(<DownloadsSection />);
+
+    await user.click(await screen.findByTestId("pack-install-resumes"));
+    await waitFor(() => expect(mocks.installTemplatePack).toHaveBeenCalledOnce());
+    first.unmount();
+
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    render(<DownloadsSection />);
+    expect(await screen.findByTestId("pack-install-resumes")).toBeDisabled();
+
+    const failure = new Error("download failed: connection reset");
+    pending.reject(failure);
+    await waitFor(() =>
+      expect(screen.getByTestId("pack-install-resumes")).toBeEnabled(),
+    );
+    expect(mocks.notifyError).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      "download the template pack",
+      failure,
+      errors.packDownload(),
+    );
   });
 });
 
@@ -432,7 +629,14 @@ describe("DownloadsSection AI templates", () => {
         name: enCommon.actions.delete,
       }),
     );
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "delete the template",
+        expect.any(Error),
+        errors.aiDelete("Grant draft"),
+      ),
+    );
+    expect(mocks.success).not.toHaveBeenCalled();
   });
 
   it("logs a failed AI template read", async () => {

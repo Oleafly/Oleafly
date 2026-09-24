@@ -11,7 +11,7 @@ import { useFilesStore } from "@/store/files";
 import { useImportStore } from "@/store/import";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { ensurePandoc } from "@/features/pandoc";
-import { conversionNotice } from "@/features/import-copy";
+import { showConversionNotice } from "@/features/project-import";
 import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
@@ -129,12 +129,12 @@ export async function handlePickedFile(file: File): Promise<void> {
   const lower = file.name.toLowerCase();
   try {
     if (lower.endsWith(".docx")) {
-      if (!(await ensurePandoc())) return;
+      if (!(await ensurePandoc({ notify: true }))) return;
       const bytes = new Uint8Array(await file.arrayBuffer());
       const id = await createProjectFromDocx(baseName(file.name), bytesToBase64(bytes));
       await useFilesStore.getState().refreshProjects();
       await useFilesStore.getState().openProject(id);
-      toast.success(conversionNotice());
+      showConversionNotice(id, "latex");
     } else if (lower.endsWith(".pdf")) {
       await useImportStore
         .getState()
@@ -143,16 +143,25 @@ export async function handlePickedFile(file: File): Promise<void> {
       toast.error(i18n.t(($) => $.core.import.pickPdfOrDocx));
     }
   } catch (e) {
-    logError("import", e);
-    toast.error(String(e));
+    notifyError("import", e, i18n.t(($) => $.core.project.importFailed));
   }
 }
 
-export async function createProjectFromConversion(): Promise<void> {
+let conversionInFlight: Promise<boolean> | null = null;
+
+export function createProjectFromConversion(): Promise<boolean> {
+  conversionInFlight ??= publishConversion().finally(() => {
+    conversionInFlight = null;
+  });
+  return conversionInFlight;
+}
+
+async function publishConversion(): Promise<boolean> {
   const { result, figures, fileName, close } = useImportStore.getState();
-  if (!result) return;
+  if (!result) return false;
+  let id: string;
   try {
-    const id = await createProjectFromPdfConversion(
+    id = await createProjectFromPdfConversion(
       baseName(fileName) || "Imported PDF",
       result.tex,
       figures.map((figure) => ({
@@ -160,26 +169,38 @@ export async function createProjectFromConversion(): Promise<void> {
         dataBase64: dataUrlToBase64(figure.pngDataUrl),
       })),
     );
-    await useFilesStore.getState().refreshProjects();
-    close();
-    await useFilesStore.getState().openProject(id);
-    toast.success(i18n.t(($) => $.core.import.pdfProjectCreated));
   } catch (e) {
-    logError("import", e);
-    toast.error(String(e));
+    notifyError("import", e, i18n.t(($) => $.library.newProject.createFailed));
+    return false;
   }
+  try {
+    await useFilesStore.getState().refreshProjects();
+  } catch (e) {
+    void logError("refresh projects after PDF import", e);
+  }
+  close();
+  try {
+    await useFilesStore.getState().openProject(id);
+  } catch (e) {
+    notifyError("open imported project", e, i18n.t(($) => $.core.project.openFailed));
+  }
+  return useFilesStore.getState().projectId === id;
 }
 
 export async function downloadTex(): Promise<void> {
   const { result, fileName } = useImportStore.getState();
   if (!result) return;
-  const dest = await pickSavePath({
-    defaultPath: `${baseName(fileName)}.tex`,
-    filters: [{ name: "LaTeX", extensions: ["tex"] }],
-  });
-  if (!dest) return;
-  await writeBytesFile(dest, bytesToBase64(new TextEncoder().encode(result.tex)));
-  toast.success(i18n.t(($) => $.core.import.texSaved));
+  try {
+    const dest = await pickSavePath({
+      defaultPath: `${baseName(fileName)}.tex`,
+      filters: [{ name: "LaTeX", extensions: ["tex"] }],
+    });
+    if (!dest) return;
+    await writeBytesFile(dest, bytesToBase64(new TextEncoder().encode(result.tex)));
+    toast.success(i18n.t(($) => $.core.import.texSaved));
+  } catch (e) {
+    notifyError("save converted tex", e, i18n.t(($) => $.researchTools.converter.saveFailed));
+  }
 }
 
 export function downloadZip(): Promise<ZipDownloadOutcome> {
@@ -212,13 +233,17 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
 }
 
 export async function downloadFigure(fig: ExtractedFigure): Promise<void> {
-  const dest = await pickSavePath({
-    defaultPath: fig.name,
-    filters: [
-      { name: i18n.t(($) => $.core.dialog.filters.pngImage), extensions: ["png"] },
-    ],
-  });
-  if (!dest) return;
-  await writeBytesFile(dest, dataUrlToBase64(fig.pngDataUrl));
-  toast.success(i18n.t(($) => $.core.import.figureSaved, { name: fig.name }));
+  try {
+    const dest = await pickSavePath({
+      defaultPath: fig.name,
+      filters: [
+        { name: i18n.t(($) => $.core.dialog.filters.pngImage), extensions: ["png"] },
+      ],
+    });
+    if (!dest) return;
+    await writeBytesFile(dest, dataUrlToBase64(fig.pngDataUrl));
+    toast.success(i18n.t(($) => $.core.import.figureSaved, { name: fig.name }));
+  } catch (e) {
+    notifyError("save extracted figure", e, i18n.t(($) => $.researchTools.converter.saveFailed));
+  }
 }

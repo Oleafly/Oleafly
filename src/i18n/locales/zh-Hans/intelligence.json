@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLab 安装元数据无效。",
     "setUp": "开始安装",
-    "retry": "重试",
-    "startFailed": "无法启动项目语言服务。",
-    "setupDetailsUnavailable": "语言服务安装详情不可用。",
     "setupRequired": "需要先安装语言服务。",
     "installTitle": "安装 {{name}} {{version}}？",
     "licenseAndSource": "许可证与源码",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "项目引用分析不可用。",
-    "updating": "正在更新项目引用。",
     "noDefinition": "未找到“{{name}}”的定义。",
     "definitionsFor": "{{name}} 的定义",
     "multipleDefinitions": "“{{name}}”有 {{count}} 个定义。打开引用面板即可查看。",

@@ -302,8 +302,6 @@
       "needed": "Acest proiect folosește funcții care au nevoie de comenzi externe arbitrare. Ele rămân blocate până când le permiți.",
       "warning": "Necesar pentru minted și pentru unele documente PythonTeX. LaTeX poate rula programe cu permisiunile tale de utilizator, așa că activează asta doar pentru un proiect în care ai încredere. Ajutoarele proprii ale TeX Live, precum conversia EPS, rulează și fără."
     },
-    "shellEscapeAllowed": "Comenzile externe sunt permise pentru acest proiect, pe acest computer.",
-    "shellEscapeBlocked": "Comenzile externe arbitrare sunt blocate pentru acest proiect. Ajutoarele proprii ale TeX Live, precum conversia EPS, rulează în continuare.",
     "shellEscapeFailed": "Accesul la comenzi externe nu a putut fi actualizat.",
     "switchFailed": "Motorul de compilare nu a putut fi schimbat.",
     "switched": "Acest proiect se compilează acum cu {{engine}}.",
@@ -498,7 +496,6 @@
         "title": "Sincronizare în cloud"
       },
       "danger": {
-        "closeFailed": "Proiectul deschis nu a putut fi închis în siguranță.",
         "confirmDeleteAllAction": "Șterge toate proiectele",
         "confirmDeleteAllDescription": "Fiecare proiect curent va ajunge în Coșul de reciclare, împreună cu fișierele și cu istoricul lui Git. Poți restabili proiectele pe rând după aceea.",
         "confirmDeleteAllTitle_one": "Ștergi {{count}} proiect, adică toate?",
@@ -509,7 +506,9 @@
         "deleteAllDescription": "Mută fiecare proiect în Coșul de reciclare. Nimic nu se șterge definitiv.",
         "deleting": "Se șterge…",
         "moveFailed": "Proiectele nu au putut fi mutate în Coșul de reciclare.",
-        "movePartial": "S-au mutat {{count}} proiecte, dar operațiunea nu a putut fi dusă la capăt.",
+        "movePartial_one": "S-a mutat {{count}} proiect în Coșul de reciclare. Celelalte nu au fost mutate.",
+        "movePartial_few": "S-au mutat {{count}} proiecte în Coșul de reciclare. Celelalte nu au fost mutate.",
+        "movePartial_other": "S-au mutat {{count}} de proiecte în Coșul de reciclare. Celelalte nu au fost mutate.",
         "movedCount_one": "{{count}} proiect a fost mutat în Coșul de reciclare.",
         "movedCount_few": "{{count}} proiecte au fost mutate în Coșul de reciclare.",
         "movedCount_other": "{{count}} de proiecte au fost mutate în Coșul de reciclare.",
@@ -521,7 +520,9 @@
       "recycleBin": {
         "clearAll": "Golește tot",
         "clearFailed": "Coșul de reciclare nu a putut fi golit.",
-        "clearPartial": "S-au șters definitiv {{count}} proiecte, dar Coșul de reciclare nu a putut fi golit complet.",
+        "clearPartial_one": "S-a șters definitiv {{count}} proiect. Celelalte sunt încă în Coșul de reciclare.",
+        "clearPartial_few": "S-au șters definitiv {{count}} proiecte. Celelalte sunt încă în Coșul de reciclare.",
+        "clearPartial_other": "S-au șters definitiv {{count}} de proiecte. Celelalte sunt încă în Coșul de reciclare.",
         "clearedCount_one": "{{count}} proiect a fost șters definitiv.",
         "clearedCount_few": "{{count}} proiecte au fost șterse definitiv.",
         "clearedCount_other": "{{count}} de proiecte au fost șterse definitiv.",
@@ -860,7 +861,6 @@
     },
     "newProjectName": "Numele proiectului nou",
     "projectName": "Numele proiectului",
-    "projectRenamed": "Proiectul a fost redenumit",
     "saveName": "Salvează (Enter)",
     "saveNameAriaLabel": "Salvează numele",
     "untitledProject": "proiect",
@@ -871,7 +871,8 @@
       "pdf": "Vizualizarea PDF",
       "split": "Vizualizare împărțită"
     },
-    "moreActions": "Mai multe acțiuni"
+    "moreActions": "Mai multe acțiuni",
+    "renameFailed": "Proiectul nu a putut fi redenumit."
   },
   "tour": {
     "chooseColor": "Alege-ți culoarea distinctivă",

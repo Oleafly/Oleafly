@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nazev"
   },
   "paste": {
-    "imageSaved": "Obrázek uložen do {{path}}",
     "imageFailed": "Vložený obrázek se nepodařilo uložit do projektu.",
     "noProject": "Před vkládáním obrázků otevřete projekt."
   },
@@ -211,7 +210,8 @@
     "spellLanguage": "Jazyk kontroly pravopisu",
     "spellLanguageAppSetting": "Použít nastavení aplikace",
     "spellLanguageAriaLabel": "Jazyk kontroly pravopisu pro tento projekt",
-    "spellLanguageHint": "Platí jen pro tento projekt. Další jazyky stáhnete v Nastavení."
+    "spellLanguageHint": "Platí jen pro tento projekt. Další jazyky stáhnete v Nastavení.",
+    "spellLanguageFailed": "Jazyk kontroly pravopisu se nepodařilo změnit."
   },
   "table": {
     "trigger": "Vložit tabulku",
@@ -376,8 +376,6 @@
   },
   "citations": {
     "trigger": "Citovat z projektu",
-    "updating": "Citace projektu se aktualizují.",
-    "changed": "Citace projektu se změnily. Znovu otevřete výběr a obnovte jej.",
     "filterPlaceholder": "Klíč, autor nebo název…",
     "filterLabel": "Filtrovat citace projektu",
     "partialCatalog": "Neúplný katalog. Poškozené nebo nečitelné soubory bibliografie mohou chybět.",
@@ -409,12 +407,7 @@
     "error": "Korektura nedokázala tento dokument dokončit.",
     "unavailable": "Offline korektura není k dispozici.",
     "tooLarge": "Korektura je pozastavená, protože tento dokument je příliš velký.",
-    "unsupported": "Korektura není pro tento formát dokumentu podporovaná.",
-    "partial_one": "Korektura zachytila {{count}} nález, ale jeden engine nedoběhl.",
-    "partial_few": "Korektura zachytila {{count}} nálezy, ale jeden engine nedoběhl.",
-    "partial_many": "Korektura zachytila {{count}} nálezu, ale jeden engine nedoběhl.",
-    "partial_other": "Korektura zachytila {{count}} nálezů, ale jeden engine nedoběhl.",
-    "retry": "Zkusit znovu"
+    "unsupported": "Korektura není pro tento formát dokumentu podporovaná."
   },
   "checkpoints": {
     "showInExplorer": "Zobrazit v Průzkumníku",

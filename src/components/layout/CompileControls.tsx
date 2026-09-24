@@ -23,13 +23,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCompileStore } from "@/store/compile";
-import { useFilesStore } from "@/store/files";
+import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 
 function basename(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -315,14 +317,19 @@ export function CompileControlsView({
                 // engine. Everything else runs through latexmk on a system
                 // TeX: "auto" picks the compiler from the source, an explicit
                 // choice pins it (Overleaf's Compiler setting).
-                if (value === "tectonic") {
-                  void setEngine("xetex");
-                } else {
-                  void setEngine(
-                    "latexmk",
-                    value === "auto" ? null : (value as TexFlavor),
+                const switched =
+                  value === "tectonic"
+                    ? setEngine("xetex")
+                    : setEngine("latexmk", value === "auto" ? null : (value as TexFlavor));
+                void switched.catch((error: unknown) => {
+                  void logError("switch compile engine", error);
+                  const projectId = useFilesStore.getState().projectId;
+                  if (!projectId) return;
+                  toast.errorUnique(
+                    engineSwitchToastKey(projectId),
+                    t(($) => $.shell.enginePicker.switchFailed),
                   );
-                }
+                });
               }}
             >
               <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic">

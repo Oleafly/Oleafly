@@ -48,5 +48,8 @@
     "description": "설명",
     "optional": "선택 사항",
     "required": "필수"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

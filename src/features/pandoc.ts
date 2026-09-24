@@ -7,69 +7,134 @@ import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 
 const INSTALL_DOCS = "https://pandoc.org/installing.html";
+const PANDOC_TOAST_KEY = "pandoc-setup";
+const SILENT_RETRY_BASE_MS = 60_000;
+const SILENT_RETRY_MAX_MS = 30 * 60_000;
 
-// Shared across concurrent callers so two quick exports don't both kick off a
-// download (two progress toasts, two writes to the same binary).
-let inFlight: Promise<boolean> | null = null;
+export interface EnsurePandocOptions {
+  readonly notify?: boolean;
+}
 
-export async function ensurePandoc(): Promise<boolean> {
-  if (inFlight) return inFlight;
-  inFlight = ensurePandocInner();
+interface PandocDownloadProgress {
+  received: number;
+  total: number | null;
+}
+
+interface PandocAttempt {
+  notify: boolean;
+  downloading: boolean;
+  label: string;
+  toastId: number | null;
+}
+
+let current: { state: PandocAttempt; result: Promise<boolean> } | null = null;
+let failures = 0;
+let silentRetryAt = 0;
+
+export function ensurePandoc(options: EnsurePandocOptions = {}): Promise<boolean> {
+  const notify = options.notify === true;
+  if (current) {
+    if (notify) attachProgress(current.state);
+    return current.result;
+  }
+  const state: PandocAttempt = {
+    notify,
+    downloading: false,
+    label: i18n.t(($) => $.core.pandoc.downloadingPercent, { progress: 0 }),
+    toastId: null,
+  };
+  const result = runAttempt(state);
+  current = { state, result };
+  return result;
+}
+
+async function runAttempt(state: PandocAttempt): Promise<boolean> {
   try {
-    return await inFlight;
+    if (await pandocInstalled()) {
+      resetBackoff();
+      return true;
+    }
+    if (!state.notify && Date.now() < silentRetryAt) return false;
+    return await download(state);
   } finally {
-    inFlight = null;
+    if (current?.state === state) current = null;
   }
 }
 
-async function ensurePandocInner(): Promise<boolean> {
+async function pandocInstalled(): Promise<boolean> {
   try {
-    if (await hasPandoc()) return true;
-  } catch {
-    /* fall through and try to download */
+    return await hasPandoc();
+  } catch (error) {
+    void logError("check pandoc", error);
+    return false;
   }
+}
 
-  const id = toast.info(
-    i18n.t(($) => $.core.pandoc.downloadingPercent, { progress: 0 }),
-    undefined,
-    true,
-  );
+async function download(state: PandocAttempt): Promise<boolean> {
+  state.downloading = true;
+  if (state.notify) showProgress(state);
   let unlisten: (() => void) | null = null;
   try {
-    unlisten = await listen<{ received: number; total: number | null }>(
-      "pandoc-download-progress",
-      (e) => {
-        const { received, total } = e.payload;
-        const label = total
-          ? i18n.t(($) => $.core.pandoc.downloadingPercent, {
-              progress: Math.round((received / total) * 100),
-            })
-          : i18n.t(($) => $.core.pandoc.downloadingSize, {
-              megabytes: formatNumber(received / 1_000_000, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              }),
-            });
-        toast.update(id, label);
-      },
-    );
+    unlisten = await listen<PandocDownloadProgress>("pandoc-download-progress", (event) => {
+      state.label = progressLabel(event.payload);
+      if (state.toastId !== null) toast.update(state.toastId, state.label);
+    });
     await downloadPandoc();
-    toast.dismiss(id);
-    toast.success(i18n.t(($) => $.core.pandoc.installed));
+    resetBackoff();
+    if (state.toastId !== null) toast.dismiss(state.toastId);
     return true;
-  } catch (e) {
-    toast.dismiss(id);
-    void logError("download pandoc", e);
-    toast.error(
-      i18n.t(($) => $.core.pandoc.downloadFailed),
-      {
-        label: i18n.t(($) => $.core.pandoc.installGuide),
-        onClick: () => void open(INSTALL_DOCS),
-      },
-      true,
-    );
+  } catch (error) {
+    void logError("download pandoc", error);
+    recordFailure();
+    if (state.notify) showFailure();
     return false;
   } finally {
     unlisten?.();
   }
+}
+
+function attachProgress(state: PandocAttempt): void {
+  state.notify = true;
+  if (state.downloading && state.toastId === null) showProgress(state);
+}
+
+function showProgress(state: PandocAttempt): void {
+  state.toastId = toast.infoUnique(PANDOC_TOAST_KEY, state.label, undefined, true);
+}
+
+function showFailure(): void {
+  toast.errorUnique(
+    PANDOC_TOAST_KEY,
+    i18n.t(($) => $.core.pandoc.downloadFailed),
+    {
+      label: i18n.t(($) => $.core.pandoc.installGuide),
+      onClick: () => void open(INSTALL_DOCS),
+    },
+    true,
+  );
+}
+
+function progressLabel({ received, total }: PandocDownloadProgress): string {
+  if (total) {
+    return i18n.t(($) => $.core.pandoc.downloadingPercent, {
+      progress: Math.round((received / total) * 100),
+    });
+  }
+  return i18n.t(($) => $.core.pandoc.downloadingSize, {
+    megabytes: formatNumber(received / 1_000_000, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }),
+  });
+}
+
+function recordFailure(): void {
+  failures += 1;
+  const ceiling = Math.min(SILENT_RETRY_MAX_MS, SILENT_RETRY_BASE_MS * 2 ** (failures - 1));
+  silentRetryAt = Date.now() + ceiling / 2 + Math.random() * (ceiling / 2);
+}
+
+function resetBackoff(): void {
+  failures = 0;
+  silentRetryAt = 0;
 }

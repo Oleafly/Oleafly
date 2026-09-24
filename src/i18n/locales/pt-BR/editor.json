@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nome"
   },
   "paste": {
-    "imageSaved": "Imagem salva em {{path}}",
     "imageFailed": "Não foi possível salvar no projeto a imagem colada.",
     "noProject": "Abra um projeto antes de colar imagens."
   },
@@ -209,7 +208,8 @@
     "spellLanguage": "Idioma da verificação ortográfica",
     "spellLanguageAppSetting": "Usar a configuração do aplicativo",
     "spellLanguageAriaLabel": "Idioma da verificação ortográfica deste projeto",
-    "spellLanguageHint": "Vale só para este projeto. Baixe mais idiomas em Configurações."
+    "spellLanguageHint": "Vale só para este projeto. Baixe mais idiomas em Configurações.",
+    "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica."
   },
   "table": {
     "trigger": "Inserir tabela",
@@ -373,8 +373,6 @@
   },
   "citations": {
     "trigger": "Citar a partir do projeto",
-    "updating": "As citações do projeto estão sendo atualizadas.",
-    "changed": "As citações do projeto mudaram. Reabra o seletor para atualizar.",
     "filterPlaceholder": "Chave, autor ou título…",
     "filterLabel": "Filtrar as citações do projeto",
     "partialCatalog": "Catálogo parcial. Arquivos de bibliografia malformados ou ilegíveis podem ficar de fora.",
@@ -406,11 +404,7 @@
     "error": "A revisão de texto não conseguiu terminar este documento.",
     "unavailable": "A revisão de texto offline está indisponível.",
     "tooLarge": "A revisão de texto está pausada porque este documento é grande demais.",
-    "unsupported": "A revisão de texto não é compatível com este formato de documento.",
-    "partial_one": "A revisão de texto recuperou {{count}} ocorrência, mas um dos motores não terminou.",
-    "partial_many": "A revisão de texto recuperou {{count}} ocorrências, mas um dos motores não terminou.",
-    "partial_other": "A revisão de texto recuperou {{count}} ocorrências, mas um dos motores não terminou.",
-    "retry": "Tentar novamente"
+    "unsupported": "A revisão de texto não é compatível com este formato de documento."
   },
   "checkpoints": {
     "showInExplorer": "Mostrar no Explorador de Arquivos",

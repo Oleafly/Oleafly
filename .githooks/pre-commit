@@ -25,7 +25,7 @@ fail() {
 }
 
 # Frontend gate: any app source or frontend config file.
-if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig|vite\.config|vitest|biome\.json|index\.html)'; then
+if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig|vite\.config|vitest|biome\.json|\.biome/|index\.html)'; then
   echo "→ frontend: lint"
   pnpm lint || fail "biome lint"
   echo "→ frontend: i18n types + catalogs"

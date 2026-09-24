@@ -119,7 +119,8 @@
     "export": "Toolbar button that saves the project in another format",
     "fork": "Button that confirms copying the project into a new one",
     "layout": "Toolbar button that rearranges the editor, preview, and assistant panes",
-    "untitledProject": "Fallback shown when a project has no name yet"
+    "untitledProject": "Fallback shown when a project has no name yet",
+    "renameFailed": "Error after renaming the project from its title in the toolbar"
   },
   "updateWindow": {
     "available": "Heading of the update window when a newer version exists. The version number is shown next to it in a separate tag.",

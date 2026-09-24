@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   cancelQuitFlush: vi.fn(async () => {}),
   flushForQuit: vi.fn(async () => {}),
   notifyError: vi.fn(),
+  logError: vi.fn(async () => {}),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
@@ -22,6 +23,7 @@ vi.mock("@/lib/tauri", () => ({
   cancelQuitFlush: mocks.cancelQuitFlush,
 }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ flushForQuit: mocks.flushForQuit }) },
 }));
@@ -46,10 +48,15 @@ async function fireQuitRequest(restart = false) {
 beforeEach(() => {
   mocks.events.clear();
   mocks.listen.mockClear();
+  mocks.listen.mockImplementation(async (name, handler) => {
+    mocks.events.set(name, handler);
+    return () => mocks.events.delete(name);
+  });
   mocks.confirmQuitFlush.mockClear().mockResolvedValue(undefined);
   mocks.cancelQuitFlush.mockClear().mockResolvedValue(undefined);
   mocks.flushForQuit.mockReset().mockResolvedValue(undefined);
   mocks.notifyError.mockClear();
+  mocks.logError.mockClear();
 });
 
 describe("QuitGuard", () => {
@@ -82,6 +89,54 @@ describe("QuitGuard", () => {
     await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(/could not be saved/i)).toBeNull();
     expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+  });
+
+  it("logs a failed cancel after the user stays instead of showing an error", async () => {
+    const failure = new Error("ipc closed");
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    mocks.cancelQuitFlush.mockRejectedValue(failure);
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await screen.findByText(/could not be saved/i);
+    fireEvent.click(screen.getByRole("button", { name: /stay/i }));
+
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("stay after failed save", failure),
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("logs a failed update guard registration on every mount without a toast", async () => {
+    const failure = new Error("event bridge unavailable");
+    mocks.listen.mockImplementation(async (name, handler) => {
+      if (name === "update-install-finished") throw failure;
+      mocks.events.set(name, handler);
+      return () => mocks.events.delete(name);
+    });
+    const first = render(<QuitGuard />);
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("prepare updates", failure),
+    );
+    first.unmount();
+    render(<QuitGuard />);
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledTimes(2));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a quit anyway that failed", async () => {
+    const failure = new Error("permission denied");
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    mocks.confirmQuitFlush.mockRejectedValue(failure);
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await screen.findByText(/could not be saved/i);
+    fireEvent.click(screen.getByRole("button", { name: /quit anyway/i }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("quit anyway", failure),
+    );
   });
 
   it("quits anyway on explicit confirmation despite the failed flush", async () => {

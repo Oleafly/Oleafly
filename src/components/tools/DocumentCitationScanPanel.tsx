@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Bookmark,
   BookmarkCheck,
+  Check,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -44,6 +45,7 @@ import { useLiteratureLibraryStore } from "@/store/literature";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -83,13 +85,58 @@ function formatAuthors(authors: string[]): string {
   });
 }
 
-async function copyBibtex(value: string) {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(i18n.t(($) => $.researchTools.citationScan.toastCopied));
-  } catch {
-    toast.error(i18n.t(($) => $.researchTools.citationScan.toastCopyFailed));
-  }
+const COPIED_FEEDBACK_MS = 1500;
+const COPY_BIBTEX_TOAST = "copy-bibtex";
+const ADD_TO_BIB_TOAST = "citation-scan-add-bib";
+
+function citeMarkup(profile: string, key: string): string {
+  if (profile === "typst") return `@${key}`;
+  if (profile === "markdown") return `[@${key}]`;
+  return String.raw`\cite{${key}}`;
+}
+
+export function CopyBibtexButton({
+  bibtex,
+  label,
+  failedMessage,
+}: Readonly<{
+  bibtex: () => string;
+  label: string;
+  failedMessage: string;
+}>) {
+  const { t } = useTranslation(["common"]);
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(bibtex());
+    } catch (error) {
+      void logError("copy BibTeX", error);
+      toast.errorUnique(COPY_BIBTEX_TOAST, failedMessage);
+      return;
+    }
+    setCopied(true);
+    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    resetTimer.current = window.setTimeout(
+      () => setCopied(false),
+      COPIED_FEEDBACK_MS,
+    );
+  };
+
+  return (
+    <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
+      {copied ? <Check /> : <Copy />}
+      {copied ? t(($) => $.common.actions.copied) : label}
+    </Button>
+  );
 }
 
 function scoreBadgeClass(score: number): string {
@@ -136,41 +183,28 @@ function SuggestionCard({
       ? `https://arxiv.org/abs/${record.sourceIds.arxiv}`
       : null);
 
-  const handleSave = () => {
-    const already = useLiteratureLibraryStore.getState().has(record);
-    saveCitation(record);
-    toast.success(
-      already
-        ? i18n.t(($) => $.researchTools.citationScan.toastUpdated)
-        : i18n.t(($) => $.researchTools.citationScan.toastSaved),
-    );
-  };
-
   const handleAddToBib = async () => {
-    // Citation Search is a home tool; after closeProject there is no open
-    // project/.bib. Never toast success unless a project can actually receive
-    // the write (addCitation otherwise returns { key } without persisting).
-    if (!useFilesStore.getState().projectId) {
-      toast.error(i18n.t(($) => $.researchTools.citationScan.openProjectTooltip));
-      return;
-    }
+    if (!useFilesStore.getState().projectId) return;
     setAdding(true);
     try {
       const result = await addCitation(bibtexForLiteratureRecord(record));
       if ("key" in result) {
-        toast.success(
+        const profile =
+          useFilesStore.getState().engine.capabilities.formatting_profile;
+        toast.successUnique(
+          ADD_TO_BIB_TOAST,
           i18n.t(($) => $.researchTools.citationScan.citeAdded, {
-            citation: String.raw`\cite{${result.key}}`,
+            citation: citeMarkup(profile, result.key),
           }),
         );
       } else {
-        toast.error(result.error);
+        toast.errorUnique(ADD_TO_BIB_TOAST, result.error);
       }
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : i18n.t(($) => $.researchTools.citationScan.addFailed),
+    } catch (error) {
+      void logError("citation scan add to bibliography", error);
+      toast.errorUnique(
+        ADD_TO_BIB_TOAST,
+        i18n.t(($) => $.researchTools.citationScan.addFailed),
       );
     } finally {
       setAdding(false);
@@ -269,37 +303,32 @@ function SuggestionCard({
           variant={saved ? "secondary" : "outline"}
           size="sm"
           data-testid="document-citation-save"
-          onClick={handleSave}
+          onClick={() => saveCitation(record)}
         >
           {saved ? <BookmarkCheck /> : <Bookmark />}
           {saved
             ? t(($) => $.researchTools.citationScan.savedCitation)
             : t(($) => $.researchTools.citationScan.saveCitation)}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => void copyBibtex(bibtexForLiteratureRecord(record))}
-        >
-          <Copy /> {t(($) => $.researchTools.citationScan.copyBibtex)}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          data-testid="document-citation-add-bib"
-          disabled={adding}
-          onClick={() => void handleAddToBib()}
-          title={
-            projectId
-              ? t(($) => $.researchTools.citationScan.addToBibTooltip)
-              : t(($) => $.researchTools.citationScan.openProjectTooltip)
-          }
-        >
-          {adding ? <Loader2 className="animate-spin" /> : <Plus />}
-          {t(($) => $.researchTools.citationScan.addToBib)}
-        </Button>
+        <CopyBibtexButton
+          bibtex={() => bibtexForLiteratureRecord(record)}
+          label={t(($) => $.researchTools.citationScan.copyBibtex)}
+          failedMessage={t(($) => $.researchTools.citationScan.toastCopyFailed)}
+        />
+        {projectId ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-testid="document-citation-add-bib"
+            disabled={adding}
+            onClick={() => void handleAddToBib()}
+            title={t(($) => $.researchTools.citationScan.addToBibTooltip)}
+          >
+            {adding ? <Loader2 className="animate-spin" /> : <Plus />}
+            {t(($) => $.researchTools.citationScan.addToBib)}
+          </Button>
+        ) : null}
       </div>
     </article>
   );

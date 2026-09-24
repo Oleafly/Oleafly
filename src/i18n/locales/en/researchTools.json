@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly couldn't copy the converted source.",
     "saveFailed": "Oleafly couldn't save the converted file.",
     "resultName": "{{title}} result",
-    "projectCreated": "Project created from the conversion.",
     "projectFailed": "Oleafly couldn't create the project.",
     "cancel": "Cancel",
     "convert": "Convert",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX bibliography",
-    "savedBibliography": "Saved references.bib",
+    "savedBibliography": "Saved {{name}}",
     "saveFailed": "Oleafly couldn't save this bibliography.",
-    "copied": "Copied {{label}}",
     "copyFailed": "Oleafly couldn't copy {{label}}.",
     "fieldJournal": "Journal",
     "fieldConference": "Conference or proceedings",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "Download SVG",
     "copyMathml": "Copy MathML for Word",
     "copyKatexHtml": "Copy KaTeX HTML",
-    "copiedSource": "Copied LaTeX source",
     "copiedMathml": "Copied MathML (pastes into Word)",
     "copiedKatexHtml": "Copied KaTeX HTML (needs the KaTeX stylesheet)",
     "exportImageFailed": "Couldn't export this snippet as an image",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} citations",
     "unknownAuthors": "Unknown authors",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citation saved",
-    "toastUpdated": "Saved citation updated",
-    "toastCopied": "BibTeX copied",
     "toastCopyFailed": "Could not copy BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Artificial intelligence",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Add to .bib",
     "addToBibTooltip": "Append to project bibliography and insert \\cite",
-    "openProjectTooltip": "Open a project to append to a bibliography file",
     "citeAdded": "Added {{citation}}",
     "addFailed": "Could not add citation.",
-    "toastSaved": "Citation saved",
-    "toastUpdated": "Saved citation updated",
-    "toastCopied": "BibTeX copied",
     "toastCopyFailed": "Could not copy BibTeX."
   }
 }

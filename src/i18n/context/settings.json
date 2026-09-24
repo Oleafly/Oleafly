@@ -219,6 +219,13 @@
     "tabs": {
       "fonts": "Tab label for downloadable font packs.",
       "templates": "Tab label for downloadable document template packs."
+    },
+    "errors": {
+      "fontsDownloadFailed": "Error after Download all in the Fonts tab",
+      "packsDownloadFailed": "Error after Download all in the Templates tab"
+    },
+    "aiTemplates": {
+      "deleteFailed": "{{name}} is the name of an AI generated template the user tried to delete"
     }
   },
   "engine": {

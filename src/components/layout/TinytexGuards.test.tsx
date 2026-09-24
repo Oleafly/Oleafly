@@ -22,6 +22,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { TinytexGuards } from "./TinytexGuards";
 import { useEngineStore } from "@/store/engine";
 
@@ -30,7 +31,13 @@ beforeEach(() => {
   mocks.listen.mockClear();
   mocks.confirmQuitDuringInstall.mockClear();
   mocks.cancelQuitFlush.mockClear();
-  useEngineStore.setState({ installing: true, installWaitNoticeOpen: false });
+  mocks.notifyError.mockClear();
+  useEngineStore.setState({
+    installing: true,
+    installWaitNoticeOpen: false,
+    installWaitNoticeShown: false,
+    compileQueuedDuringInstall: false,
+  });
 });
 
 describe("TinytexGuards quit interception", () => {
@@ -67,5 +74,44 @@ describe("TinytexGuards quit interception", () => {
     fireEvent.click(cancelButtons[cancelButtons.length - 1]);
 
     await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("TinytexGuards compile queued during an install", () => {
+  it("shows the queued compile notice once per install", async () => {
+    render(<TinytexGuards />);
+    act(() => {
+      useEngineStore.getState().queueCompileAfterInstall();
+    });
+    await screen.findByText(enShell.tinytexGuards.wait.title);
+    fireEvent.click(screen.getByRole("button", { name: /^OK/ }));
+    await waitFor(() =>
+      expect(screen.queryByText(enShell.tinytexGuards.wait.title)).toBeNull(),
+    );
+    act(() => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        useEngineStore.getState().queueCompileAfterInstall();
+      }
+    });
+    expect(screen.queryByText(enShell.tinytexGuards.wait.title)).toBeNull();
+    expect(useEngineStore.getState().compileQueuedDuringInstall).toBe(true);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+});
+
+describe("TinytexGuards quit failure", () => {
+  it("reports a quit that failed after the user confirmed it", async () => {
+    const error = new Error("still running");
+    mocks.confirmQuitDuringInstall.mockRejectedValueOnce(error);
+    render(<TinytexGuards />);
+    await waitFor(() => expect(mocks.events.has("tinytex-quit-blocked")).toBe(true));
+    act(() => {
+      mocks.events.get("tinytex-quit-blocked")?.({ payload: undefined });
+    });
+    await screen.findByText(/still installing/i);
+    fireEvent.click(screen.getByRole("button", { name: enShell.tinytexGuards.quit.confirm }));
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("quit during install", error),
+    );
   });
 });

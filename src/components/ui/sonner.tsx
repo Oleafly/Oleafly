@@ -1,12 +1,41 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
-import { useToastStore, type Toast } from "@/store/toast";
+import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;
   if (kind === "success") return sonnerToast.success;
   return sonnerToast.info;
+}
+
+function RepeatedTitle({ message, count }: Readonly<{ message: string; count: number }>) {
+  const { t } = useTranslation(["common"]);
+  return (
+    <span>
+      {message}
+      <span className="ml-1.5 text-xs font-normal tabular-nums text-muted-foreground">
+        {t(($) => $.common.toast.repeatCount, { count })}
+      </span>
+    </span>
+  );
+}
+
+function titleFor(toast: Toast) {
+  return toast.count > 1 ? <RepeatedTitle message={toast.message} count={toast.count} /> : toast.message;
+}
+
+function actionFor(toast: Toast) {
+  const action = toast.action;
+  if (!action) return undefined;
+  return {
+    label: action.label,
+    onClick: () => {
+      useToastStore.getState().dismiss(toast.id);
+      action.onClick();
+    },
+  };
 }
 
 export function Toaster() {
@@ -33,12 +62,12 @@ export function Toaster() {
       const prev = seenRef.current.get(id);
       if (prev === t) continue;
       const show = sonnerFor(t.kind);
-      show(t.message, {
+      show(titleFor(t), {
         id,
-        duration: t.sticky ? Number.POSITIVE_INFINITY : 5000,
-        action: t.action ? { label: t.action.label, onClick: t.action.onClick } : undefined,
-        onDismiss: () => useToastStore.getState().dismiss(id),
-        onAutoClose: () => useToastStore.getState().dismiss(id),
+        duration: t.sticky ? Number.POSITIVE_INFINITY : TOAST_DURATION_MS,
+        action: actionFor(t),
+        onDismiss: () => useToastStore.getState().close(id),
+        onAutoClose: () => useToastStore.getState().close(id),
       });
     }
     for (const id of seenRef.current.keys()) {
@@ -51,6 +80,7 @@ export function Toaster() {
     <SonnerToaster
       position="bottom-right"
       theme={theme}
+      visibleToasts={TOAST_LIMIT}
       className="toaster group"
       closeButton
       icons={{

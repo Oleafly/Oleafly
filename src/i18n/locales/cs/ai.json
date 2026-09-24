@@ -543,7 +543,6 @@
     "showAllHistory": "Zobrazit celou historii ({{count}})"
   },
   "research": {
-    "noSourceLink": "Tento výsledek neobsahuje odkaz na zdroj.",
     "sourceOpenFailed": "Zdroj se nepodařilo otevřít.",
     "noProjectPath": "Tento výsledek neobsahuje cestu k souboru projektu.",
     "resultOpenFailed": "Soubor s výsledkem se nepodařilo otevřít."
@@ -661,7 +660,6 @@
     "summarizing": "Shrnuje se dřívější konverzace…"
   },
   "toasts": {
-    "sessionOpenFailed": "Relaci agenta se nepodařilo otevřít.",
     "approvalModeSaveFailed": "Režim schvalování se nepodařilo uložit.",
     "skillDraftSaved": "Koncept dovednosti byl uložen. Před zapnutím si jej projděte.",
     "skillDraftFailed": "Koncept dovednosti se nepodařilo uložit. {{error}}",
@@ -669,11 +667,9 @@
     "chatArchiveFailed": "Tento chat se nepodařilo archivovat.",
     "chatForked": "Chat byl rozvětven.",
     "chatForkFailed": "Tento chat se nepodařilo rozvětvit.",
-    "engineNotLoaded": "Podrobnosti o dokumentovém enginu nejsou načtené. Úpravy AI jsou pro jistotu vypnuté.",
     "skillsLoadFailed": "Zapnuté dovednosti se nepodařilo načíst. Zkuste to znovu.",
     "approvalModeLoadFailed": "Režim schvalování se nepodařilo načíst.",
     "approvalRulesLoadFailed": "Pravidla schvalování pro projekt se nepodařilo načíst.",
-    "restored": "Soubory projektu byly obnoveny. Konverzace zůstala zachována.",
     "restoreFailed": "Obnovení se nezdařilo: {{error}}",
     "steerFailed": "Probíhající tah se nepodařilo nasměrovat.",
     "approvalRuleSaveFailed": "Pravidlo schvalování pro projekt se nepodařilo uložit.",

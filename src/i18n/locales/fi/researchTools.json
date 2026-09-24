@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly ei voinut kopioida muunnettua lähdekoodia.",
     "saveFailed": "Oleafly ei voinut tallentaa muunnettua tiedostoa.",
     "resultName": "{{title}} tulos",
-    "projectCreated": "Projekti luotiin muunnoksesta.",
     "projectFailed": "Oleafly ei voinut luoda projektia.",
     "cancel": "Peruuta",
     "convert": "Muunna",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX-lähdeluettelo",
-    "savedBibliography": "Tallennettu references.bib",
+    "savedBibliography": "Tallennettu {{name}}",
     "saveFailed": "Oleafly ei voinut tallentaa tätä lähdeluetteloa.",
-    "copied": "Kopioitu {{label}}",
     "copyFailed": "Oleafly ei voinut kopioida kohdetta {{label}}.",
     "fieldJournal": "Lehti",
     "fieldConference": "Konferenssi tai konferenssijulkaisu",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "Lataa SVG",
     "copyMathml": "Kopioi MathML Wordia varten",
     "copyKatexHtml": "Kopioi KaTeX-HTML",
-    "copiedSource": "LaTeX-lähdekoodi kopioitiin",
     "copiedMathml": "MathML kopioitiin (liittyy Wordiin)",
     "copiedKatexHtml": "KaTeX-HTML kopioitiin (vaatii KaTeX-tyylitiedoston)",
     "exportImageFailed": "Tätä katkelmaa ei voitu viedä kuvana",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} viittausta",
     "unknownAuthors": "Tuntemattomat tekijät",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Viittaus tallennettiin",
-    "toastUpdated": "Tallennettu viittaus päivitettiin",
-    "toastCopied": "BibTeX kopioitiin",
     "toastCopyFailed": "BibTeXiä ei voitu kopioida.",
     "suggestion": {
       "artificialIntelligence": "Tekoäly",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Lisää .bib-tiedostoon",
     "addToBibTooltip": "Lisää projektin lähdeluetteloon ja lisää \\cite",
-    "openProjectTooltip": "Avaa projekti, niin viitteen voi lisätä lähdeluettelotiedostoon",
     "citeAdded": "{{citation}} lisättiin",
     "addFailed": "Viittausta ei voitu lisätä.",
-    "toastSaved": "Viittaus tallennettiin",
-    "toastUpdated": "Tallennettu viittaus päivitettiin",
-    "toastCopied": "BibTeX kopioitiin",
     "toastCopyFailed": "BibTeXiä ei voitu kopioida."
   }
 }

@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} tuotiin (vain koodi, ei piirrettävissä).",
       "importFailed": "Tiedostoa ei voitu tuoda: {{detail}}",
       "noAiFix": "Tekoäly ei palauttanut korjausta.",
-      "aiFixApplied": "Tekoälyn korjaus otettiin käyttöön. Käännetään uudelleen…",
       "fixFailed": "Korjaus epäonnistui: {{detail}}",
       "notDrawable": "Tästä koodista ei voitu piirtää mitään. Koodi jäi ennalleen."
     },
