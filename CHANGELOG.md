@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Mermaid to LaTeX converter now produces an image for every diagram
+  it cannot turn into TikZ. Class, state, ER, requirement, mindmap, kanban,
+  block and journey diagrams, and flowcharts with subgraphs, used to fail
+  with a canvas error. The images are sharper too, about 2,000 pixels on the
+  long side, and labels keep their bold, italics, colours, subscripts and
+  superscripts.
 - A compile that stops on a broken image now says which image and what is
   wrong with it, such as an empty or cut-off file or a web page saved with a
   .pdf name, and how to fix it. Before, Tectonic could stop with only a

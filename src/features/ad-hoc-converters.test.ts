@@ -48,6 +48,30 @@ import {
   runAdHocConverter,
   transcribePdfPages,
 } from "./ad-hoc-converters";
+import { MERMAID_EXPORT_DIRECTIVE } from "./mermaid-export";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function parsedSvg(markup: string): Element {
+  const svg = new DOMParser().parseFromString(markup, "text/html").body.firstElementChild;
+  if (!svg) throw new Error("Mermaid fixture did not parse");
+  return svg;
+}
+
+function renderedMermaidSvg(): Element {
+  return parsedSvg(
+    '<svg id="mermaid-1" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width: 320px;" viewBox="0 0 320 180">' +
+      '<g class="label"><foreignObject width="96" height="48"><div xmlns="http://www.w3.org/1999/xhtml">' +
+      '<span class="nodeLabel"><p>Alice<br>says hello</p></span></div></foreignObject></g></svg>',
+  );
+}
+
+function textLines(svg: string): string[] {
+  const root = new DOMParser().parseFromString(svg, "image/svg+xml").documentElement;
+  return Array.from(root.getElementsByTagNameNS(SVG_NS, "text")).flatMap((text) =>
+    Array.from(text.children).map((row) => row.textContent ?? ""),
+  );
+}
 
 const converted = {
   kind: "text" as const,
@@ -75,7 +99,7 @@ beforeEach(() => {
   });
   mocks.extractPagesForConvert.mockResolvedValue({ pages: [{}], figures: [] });
   mocks.pdfPageToPng.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
-  mocks.renderDiagram.mockResolvedValue({ outerHTML: '<svg xmlns="http://www.w3.org/2000/svg" />' });
+  mocks.renderDiagram.mockImplementation(async () => renderedMermaidSvg());
   mocks.svgDocumentToPngBytes.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
 });
 
@@ -184,9 +208,45 @@ describe("ad-hoc converter registry", () => {
       expect.objectContaining({ path: "assets/diagram.png" }),
     ]);
     expect(mocks.renderDiagram).toHaveBeenCalledWith(
-      "sequenceDiagram\nAlice->>Bob: Hello",
+      `sequenceDiagram\nAlice->>Bob: Hello${MERMAID_EXPORT_DIRECTIVE}`,
       "light",
     );
+  });
+
+  it("rasterizes Mermaid HTML labels as well-formed SVG text at print resolution", async () => {
+    await runAdHocConverter("mermaid-to-latex", {
+      text: "stateDiagram-v2\n[*] --> Hello",
+      file: null,
+    });
+    expect(mocks.svgDocumentToPngBytes).toHaveBeenCalledTimes(1);
+    const [svg, scale, background] = mocks.svgDocumentToPngBytes.mock.calls[0];
+    expect([scale, background]).toEqual([2000 / 320, "#ffffff"]);
+    const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+    expect(parsed.querySelector("parsererror")).toBeNull();
+    const root = parsed.documentElement;
+    expect(root.getElementsByTagNameNS(SVG_NS, "foreignObject")).toHaveLength(0);
+    expect([root.getAttribute("width"), root.getAttribute("height")]).toEqual(["320", "180"]);
+    expect(textLines(svg)).toEqual(["Alice", "says hello"]);
+  });
+
+  it("formats inline HTML in SVG text labels using the spacing in the diagram source", async () => {
+    const word = (text: string) =>
+      `<tspan font-style="normal" class="text-inner-tspan" font-weight="normal">${text}</tspan>`;
+    mocks.renderDiagram.mockResolvedValue(
+      parsedSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60"><g class="node default"><g class="label">' +
+          '<text y="-10.1"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em">' +
+          [word("H"), word(" &lt;sub&gt;"), word(" 2"), word(" &lt;/sub&gt;"), word(" O"), word(" &amp;quot;wet&amp;quot;")].join("") +
+          "</tspan></text></g></g></svg>",
+      ),
+    );
+    await runAdHocConverter("mermaid-to-latex", {
+      text: 'flowchart TD\n  subgraph S\n    A["H<sub>2</sub>O #quot;wet#quot;"]\n  end',
+      file: null,
+    });
+    const [svg] = mocks.svgDocumentToPngBytes.mock.calls[0];
+    expect(textLines(svg)).toEqual(['H2O "wet"']);
+    expect(svg).toContain('baseline-shift="sub"');
   });
 
   it("rejects oversized Mermaid input before loading the renderer", async () => {
@@ -490,7 +550,7 @@ describe("ad-hoc converter registry", () => {
     const controller = new AbortController();
     mocks.renderDiagram.mockImplementation(async () => {
       controller.abort();
-      return { outerHTML: "<svg />" };
+      return renderedMermaidSvg();
     });
     await expect(
       runAdHocConverter(

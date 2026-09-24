@@ -652,14 +652,15 @@ async function mermaidOutput(
     // runtime and return a LaTeX snippet plus its local PNG asset instead of
     // silently dropping unsupported nodes or relationships.
     onProgress?.({ step: "mermaid" });
-    const [{ renderDiagram }, { svgDocumentToPngBytes }] = await Promise.all([
+    const [{ renderDiagram }, { svgDocumentToPngBytes }, exporter] = await Promise.all([
       import("@/components/ui/mermaid-diagram"),
       import("@/features/equation-export"),
+      import("@/features/mermaid-export"),
     ]);
-    const diagram = await renderDiagram(source, "light");
+    const diagram = await renderDiagram(exporter.mermaidExportSource(source), "light");
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-    const svg = diagram.outerHTML;
-    const png = await svgDocumentToPngBytes(svg, 2, "#ffffff");
+    const { svg, width, height } = exporter.standaloneMermaidSvg(diagram, source);
+    const png = await svgDocumentToPngBytes(svg, exporter.mermaidRasterScale(width, height), "#ffffff");
     const latex = [
       "% Add \\usepackage{graphicx} to your preamble.",
       "\\begin{figure}[htbp]",

@@ -146,6 +146,7 @@ operator-list names. A source assertion alone is never labeled Render.
 | --- | --- | --- |
 | Tools catalog | all 22 converter cards, all 9 citation and bibliography cards, themed arXiv marks, search, direct command-palette launch | 45, 86 |
 | Ad hoc converters | built-in text examples, file/archive/PDF/spreadsheet inputs, local vision path, syntax-highlighted output, copy/save/project actions | 86 |
+| Mermaid image fallback | diagrams that TikZ can't express export as a PNG in a real browser, inline HTML and entity codes in labels print as formatted text, long journey tasks wrap, a source at the 50,000-character limit still exports | 90, `mermaid-export.test.ts` |
 | Citation generator | structured local example, eight offline styles, formatted reference, in-text citation, BibTeX validation and export | 86, `ReferenceToolView.test.tsx`, `reference-tools.test.ts` |
 | Bibliography generator | structured entry builder, batch BibTeX editor, sorting, validation, style selection and `.bib` export | 86, `ReferenceToolView.test.tsx` |
 | Citation style comparison | APA, MLA, Chicago, IEEE, Harvard, Vancouver, AMA and ACS rendered from the same local record | 86, `reference-tools.test.ts` |
