@@ -63,6 +63,11 @@ describe("release date helpers", () => {
       body: "### Fixed\n- x",
     });
     expect(splitNotesTitle("### Fixed\n- x")).toEqual({ title: null, body: "### Fixed\n- x" });
+    expect(splitNotesTitle("## Release 1.0 ##\r\nBody")).toEqual({ title: "Release 1.0", body: "Body" });
+    expect(splitNotesTitle("# C# support\n\nBody")).toEqual({ title: "C# support", body: "Body" });
+    expect(splitNotesTitle("## Works in C#")).toEqual({ title: "Works in C#", body: "" });
+    expect(splitNotesTitle("##No space\nBody")).toEqual({ title: null, body: "##No space\nBody" });
+    expect(splitNotesTitle(`## ${" ".repeat(50_000)}x`)).toEqual({ title: "x", body: "" });
   });
 });
 

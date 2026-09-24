@@ -1083,6 +1083,89 @@ fn damaged_signature(head: &[u8], declared: ImageFormat) -> bool {
     }
 }
 
+struct PngChunk {
+    size: u64,
+    kind: [u8; 4],
+}
+
+impl PngChunk {
+    fn read(source: &mut Source<'_>, offset: u64) -> Option<Self> {
+        let mut header = [0_u8; 8];
+        source.read_at(offset, &mut header)?;
+        Some(Self {
+            size: u64::from(u32::from_be_bytes([
+                header[0], header[1], header[2], header[3],
+            ])),
+            kind: [header[4], header[5], header[6], header[7]],
+        })
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.size > 0x7fff_ffff || !self.kind.iter().all(u8::is_ascii_alphabetic)
+    }
+
+    fn is(&self, kind: &[u8; 4]) -> bool {
+        &self.kind == kind
+    }
+}
+
+enum PngDataCheck {
+    Fine,
+    Corrupt,
+    OverBudget,
+}
+
+fn png_chunk_out_of_order(index: usize, chunk: &PngChunk, data_seen: bool) -> bool {
+    let is_header = chunk.is(b"IHDR");
+    (index == 0) != is_header
+        || (is_header && chunk.size != 13)
+        || (chunk.is(b"IEND") && !data_seen)
+}
+
+fn png_small_chunk_is_corrupt(
+    source: &mut Source<'_>,
+    chunk: &PngChunk,
+    data_offset: u64,
+) -> Option<bool> {
+    let mut body = vec![0_u8; usize::try_from(chunk.size + 4).ok()?];
+    source.read_at(data_offset, &mut body)?;
+    let (data, stored) = body.split_at(body.len() - 4);
+    let stored = u32::from_be_bytes([stored[0], stored[1], stored[2], stored[3]]);
+    Some(chunk_crc(&chunk.kind, data) != stored || (chunk.is(b"IHDR") && !valid_png_header(data)))
+}
+
+fn png_data_chunk(
+    source: &mut Source<'_>,
+    data_offset: u64,
+    size: u64,
+    first_data_chunk: bool,
+    data_read: &mut u64,
+) -> Option<PngDataCheck> {
+    *data_read += size;
+    if *data_read > MAX_FILE_DATA_BYTES {
+        return Some(PngDataCheck::OverBudget);
+    }
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(b"IDAT");
+    let mut first = [0_u8; 2];
+    let mut first_len = 0;
+    source.stream(data_offset, size, &mut |bytes| {
+        let copy = bytes.len().min(2 - first_len);
+        first[first_len..first_len + copy].copy_from_slice(&bytes[..copy]);
+        first_len += copy;
+        hasher.update(bytes);
+    })?;
+    let mut stored = [0_u8; 4];
+    source.read_at(data_offset + size, &mut stored)?;
+    let crc_mismatch = hasher.finalize() != u32::from_be_bytes(stored);
+    let bad_zlib = first_data_chunk && first_len == 2 && !valid_zlib_header(first[0], first[1]);
+    Some(if crc_mismatch || bad_zlib {
+        PngDataCheck::Corrupt
+    } else {
+        PngDataCheck::Fine
+    })
+}
+
 fn png(source: &mut Source<'_>, strict: bool) -> Option<ImageProblem> {
     let truncated = Some(ImageProblem::Truncated(ImageFormat::Png));
     let corrupt = Some(ImageProblem::Corrupt(ImageFormat::Png));
@@ -1093,67 +1176,36 @@ fn png(source: &mut Source<'_>, strict: bool) -> Option<ImageProblem> {
     for index in 0..MAX_PNG_CHUNKS {
         let checked = !data_seen || strict;
         if offset + 8 > length {
-            return if checked { truncated } else { None };
+            return truncated.filter(|_| checked);
         }
-        let mut header = [0_u8; 8];
-        source.read_at(offset, &mut header)?;
-        let size = u64::from(u32::from_be_bytes([
-            header[0], header[1], header[2], header[3],
-        ]));
-        let kind = [header[4], header[5], header[6], header[7]];
-        let is_header = &kind == b"IHDR";
-        let is_data = &kind == b"IDAT";
-        let is_end = &kind == b"IEND";
-        if size > 0x7fff_ffff || !kind.iter().all(u8::is_ascii_alphabetic) {
-            return if checked { corrupt } else { None };
+        let chunk = PngChunk::read(source, offset)?;
+        if chunk.is_malformed() {
+            return corrupt.filter(|_| checked);
         }
+        let is_data = chunk.is(b"IDAT");
         if !checked && !is_data {
             return None;
         }
-        if (index == 0) != is_header || (is_header && size != 13) || (is_end && !data_seen) {
+        if png_chunk_out_of_order(index, &chunk, data_seen) {
             return corrupt;
         }
         let data_offset = offset + 8;
-        let end = data_offset + size + 4;
+        let end = data_offset + chunk.size + 4;
         if end > length {
             return truncated;
         }
-        if is_header || (!data_seen && &kind == b"PLTE" && size <= 768) {
-            let mut body = vec![0_u8; usize::try_from(size + 4).ok()?];
-            source.read_at(data_offset, &mut body)?;
-            let (data, stored) = body.split_at(body.len() - 4);
-            if chunk_crc(&kind, data)
-                != u32::from_be_bytes([stored[0], stored[1], stored[2], stored[3]])
-                || (is_header && !valid_png_header(data))
-            {
-                return corrupt;
-            }
+        let small = chunk.is(b"IHDR") || (!data_seen && chunk.is(b"PLTE") && chunk.size <= 768);
+        if small && png_small_chunk_is_corrupt(source, &chunk, data_offset)? {
+            return corrupt;
         }
         if is_data && strict {
-            data_read += size;
-            if data_read > MAX_FILE_DATA_BYTES {
-                return None;
-            }
-            let mut hasher = crc32fast::Hasher::new();
-            hasher.update(&kind);
-            let mut first = [0_u8; 2];
-            let mut first_len = 0;
-            source.stream(data_offset, size, &mut |bytes| {
-                let copy = bytes.len().min(2 - first_len);
-                first[first_len..first_len + copy].copy_from_slice(&bytes[..copy]);
-                first_len += copy;
-                hasher.update(bytes);
-            })?;
-            let mut stored = [0_u8; 4];
-            source.read_at(data_offset + size, &mut stored)?;
-            if hasher.finalize() != u32::from_be_bytes(stored) {
-                return corrupt;
-            }
-            if !data_seen && first_len == 2 && !valid_zlib_header(first[0], first[1]) {
-                return corrupt;
+            match png_data_chunk(source, data_offset, chunk.size, !data_seen, &mut data_read)? {
+                PngDataCheck::Corrupt => return corrupt,
+                PngDataCheck::OverBudget => return None,
+                PngDataCheck::Fine => {}
             }
         }
-        if is_end {
+        if chunk.is(b"IEND") {
             return None;
         }
         data_seen |= is_data;

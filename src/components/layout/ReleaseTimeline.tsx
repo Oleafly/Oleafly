@@ -16,11 +16,27 @@ export interface ReleaseHistoryView {
   onRetry: () => void;
 }
 
+function isBlank(char: string | undefined): boolean {
+  return char === " " || char === "\t";
+}
+
+function withoutClosingHashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && isBlank(text[end - 1])) end -= 1;
+  let start = end;
+  while (start > 0 && text[start - 1] === "#") start -= 1;
+  if (start < end && (start === 0 || isBlank(text[start - 1]))) end = start;
+  return text.slice(0, end).trim();
+}
+
 export function splitNotesTitle(notes: string | undefined): { title: string | null; body: string } {
   const source = notes?.trim() ?? "";
-  const match = /^#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\r?\n|$)/.exec(source);
-  if (!match) return { title: null, body: source };
-  return { title: match[1].trim(), body: source.slice(match[0].length).trim() };
+  const lineEnd = source.indexOf("\n");
+  const firstLine = (lineEnd === -1 ? source : source.slice(0, lineEnd)).replace(/\r$/, "");
+  const marker = /^#{1,2}[ \t]/.exec(firstLine);
+  const title = marker ? withoutClosingHashes(firstLine.slice(marker[0].length)) : "";
+  if (!title) return { title: null, body: source };
+  return { title, body: lineEnd === -1 ? "" : source.slice(lineEnd + 1).trim() };
 }
 
 export function parseReleaseDate(value: string | null | undefined): Date | null {

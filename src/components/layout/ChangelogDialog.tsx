@@ -96,7 +96,7 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
   const titleId = useId();
   const [version, setVersion] = useState("");
   const history = useReleaseHistory({ fetchPage: tauriReleasePageFetcher, enabled: open });
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDialogElement>(open, onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -129,13 +129,13 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
-      <div
+      <dialog
         ref={dialogRef}
-        role="dialog"
+        open
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative h-[min(80vh,720px)] w-full max-w-2xl shadow-2xl"
+        className="relative m-0 h-[min(80vh,720px)] w-full max-w-2xl border-0 bg-transparent p-0 text-foreground shadow-2xl"
       >
         <ChangelogView
           titleId={titleId}
@@ -150,7 +150,7 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
           onUpdate={() => void openUpdateWindow({ manual: true })}
           onClose={onClose}
         />
-      </div>
+      </dialog>
     </div>
   );
 }
