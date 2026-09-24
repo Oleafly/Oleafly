@@ -45,6 +45,7 @@ overrides:
   # override also guarantees a single copy — duplicate @codemirror/state
   # instances break Facet identity across the editor.
   "@codemirror/state": 6.7.0
+  "@codemirror/view": 6.43.6
   # One @tiptap/pm instantiation only: split peer graphs produce
   # incompatible editor extension types across the wysiwyg package.
   "@tiptap/pm": 3.29.2

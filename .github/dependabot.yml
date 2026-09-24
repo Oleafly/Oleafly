@@ -30,6 +30,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@codemirror/commands"
         versions: [">=6.11.0"]
+      - dependency-name: "@codemirror/view"
+        versions: [">=6.43.7"]
       - dependency-name: "@tiptap/*"
         versions: [">=3.30.0"]
       - dependency-name: "mermaid"
