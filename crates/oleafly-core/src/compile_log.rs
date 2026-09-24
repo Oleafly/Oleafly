@@ -234,7 +234,7 @@ fn parse_number(capture: Option<regex::Match<'_>>) -> Option<u32> {
     capture.and_then(|m| m.as_str().parse::<u32>().ok())
 }
 
-fn head(log: &str) -> &str {
+pub(crate) fn head(log: &str) -> &str {
     if log.len() <= MAX_COMPILE_LOG_BYTES {
         return log;
     }
@@ -355,22 +355,11 @@ impl Parser<'_> {
             self.inside_box_warn = false;
             return Step::Stop;
         }
-        if line.starts_with("[Oleafly]")
-            && (p.oleafly_biber_mode_a.is_match(line)
-                || p.oleafly_biber_mode_b.is_match(line)
-                || p.oleafly_biber_gap.is_match(line))
-        {
+        if let Some(entry) = oleafly_note(p, line) {
             self.push_current();
             self.search_empty_line = false;
             self.inside_error = false;
-            self.current = Some(Entry {
-                severity: LogSeverity::Error,
-                category: LogCategory::Biber,
-                file: None,
-                line: None,
-                text: trim_js(&p.oleafly_prefix.replace(line, "")).to_string(),
-                context: None,
-            });
+            self.current = Some(entry);
             return Step::Stop;
         }
         if self.search_empty_line {
@@ -666,6 +655,28 @@ impl Parser<'_> {
         }
         None
     }
+}
+
+fn oleafly_note(p: &Patterns, line: &str) -> Option<Entry> {
+    let category = if line.starts_with("[Oleafly]")
+        && (p.oleafly_biber_mode_a.is_match(line)
+            || p.oleafly_biber_mode_b.is_match(line)
+            || p.oleafly_biber_gap.is_match(line))
+    {
+        LogCategory::Biber
+    } else if crate::image_check::is_image_note(line) {
+        LogCategory::Error
+    } else {
+        return None;
+    };
+    Some(Entry {
+        severity: LogSeverity::Error,
+        category,
+        file: None,
+        line: None,
+        text: trim_js(&p.oleafly_prefix.replace(line, "")).to_string(),
+        context: None,
+    })
 }
 
 fn parse_file_stack(line: &str, file_stack: &mut Vec<String>, mut nested: usize) -> usize {

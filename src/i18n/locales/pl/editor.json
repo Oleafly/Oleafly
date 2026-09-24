@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nazwa"
   },
   "paste": {
-    "imageSaved": "Zapisano obraz w {{path}}",
     "imageFailed": "Nie udało się zapisać wklejonego obrazu w projekcie.",
     "noProject": "Otwórz projekt przed wklejeniem obrazów."
   },
@@ -211,7 +210,8 @@
     "spellLanguage": "Język sprawdzania pisowni",
     "spellLanguageAppSetting": "Użyj ustawienia aplikacji",
     "spellLanguageAriaLabel": "Język sprawdzania pisowni w tym projekcie",
-    "spellLanguageHint": "Dotyczy tylko tego projektu. Więcej języków pobierzesz w Ustawieniach."
+    "spellLanguageHint": "Dotyczy tylko tego projektu. Więcej języków pobierzesz w Ustawieniach.",
+    "spellLanguageFailed": "Nie udało się zmienić języka sprawdzania pisowni."
   },
   "table": {
     "trigger": "Wstaw tabelę",
@@ -376,8 +376,6 @@
   },
   "citations": {
     "trigger": "Cytuj z projektu",
-    "updating": "Cytowania w projekcie są aktualizowane.",
-    "changed": "Cytowania w projekcie się zmieniły. Otwórz okno wyboru ponownie, aby je odświeżyć.",
     "filterPlaceholder": "Klucz, autor lub tytuł…",
     "filterLabel": "Filtruj cytowania projektu",
     "partialCatalog": "Katalog częściowy. Uszkodzone lub nieczytelne pliki bibliografii mogą zostać pominięte.",
@@ -409,12 +407,7 @@
     "error": "Korekta nie mogła ukończyć tego dokumentu.",
     "unavailable": "Korekta offline jest niedostępna.",
     "tooLarge": "Korekta jest wstrzymana, ponieważ ten dokument jest za duży.",
-    "unsupported": "Korekta nie jest obsługiwana dla tego formatu dokumentu.",
-    "partial_one": "Korekta odzyskała {{count}} uwagę, ale jeden silnik nie zakończył pracy.",
-    "partial_few": "Korekta odzyskała {{count}} uwagi, ale jeden silnik nie zakończył pracy.",
-    "partial_many": "Korekta odzyskała {{count}} uwag, ale jeden silnik nie zakończył pracy.",
-    "partial_other": "Korekta odzyskała {{count}} uwagi, ale jeden silnik nie zakończył pracy.",
-    "retry": "Ponów"
+    "unsupported": "Korekta nie jest obsługiwana dla tego formatu dokumentu."
   },
   "checkpoints": {
     "showInExplorer": "Pokaż w Eksploratorze",

@@ -93,7 +93,11 @@ export function DictionaryLocalePicker() {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Select value={dictionaryLocale} onValueChange={choose}>
+      <Select
+        value={dictionaryLocale}
+        onValueChange={choose}
+        disabled={busy !== null}
+      >
         <SelectTrigger
           data-testid="dictionary-locale-select"
           aria-label={t(($) => $.shell.settings.general.dictionary.ariaLabel)}

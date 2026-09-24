@@ -519,7 +519,6 @@
     "showAllHistory": "전체 기록 보기({{count}})"
   },
   "research": {
-    "noSourceLink": "이 결과에는 출처 링크가 없습니다.",
     "sourceOpenFailed": "출처를 열지 못했습니다.",
     "noProjectPath": "이 결과에는 프로젝트 파일 경로가 없습니다.",
     "resultOpenFailed": "결과 파일을 열지 못했습니다."
@@ -637,7 +636,6 @@
     "summarizing": "이전 대화를 요약하는 중…"
   },
   "toasts": {
-    "sessionOpenFailed": "에이전트 세션을 열지 못했습니다.",
     "approvalModeSaveFailed": "승인 모드를 저장하지 못했습니다.",
     "skillDraftSaved": "스킬 초안을 저장했습니다. 켜기 전에 검토하세요.",
     "skillDraftFailed": "스킬 초안을 저장하지 못했습니다. {{error}}",
@@ -645,11 +643,9 @@
     "chatArchiveFailed": "이 채팅을 보관하지 못했습니다.",
     "chatForked": "채팅을 포크했습니다.",
     "chatForkFailed": "이 채팅을 포크하지 못했습니다.",
-    "engineNotLoaded": "문서 엔진 정보를 불러오지 않았습니다. 안전을 위해 AI 편집을 껐습니다.",
     "skillsLoadFailed": "켜 놓은 스킬을 불러오지 못했습니다. 다시 시도하세요.",
     "approvalModeLoadFailed": "승인 모드를 불러오지 못했습니다.",
     "approvalRulesLoadFailed": "프로젝트 승인 규칙을 불러오지 못했습니다.",
-    "restored": "프로젝트 파일을 복원했습니다. 대화는 그대로 두었습니다.",
     "restoreFailed": "복원하지 못했습니다: {{error}}",
     "steerFailed": "실행 중인 차례의 방향을 조정하지 못했습니다.",
     "approvalRuleSaveFailed": "프로젝트 승인 규칙을 저장하지 못했습니다.",

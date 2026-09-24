@@ -56,7 +56,7 @@ function MarkdownEngineTab() {
   }, [refresh]);
   const install = async () => {
     setPandoc("installing");
-    const ok = await ensurePandoc();
+    const ok = await ensurePandoc({ notify: true });
     setPandoc(ok ? "ready" : "missing");
   };
   return (

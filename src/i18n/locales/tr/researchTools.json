@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly dönüştürülen kaynağı kopyalayamadı.",
     "saveFailed": "Oleafly dönüştürülen dosyayı kaydedemedi.",
     "resultName": "{{title}} sonucu",
-    "projectCreated": "Dönüştürmeden proje oluşturuldu.",
     "projectFailed": "Oleafly projeyi oluşturamadı.",
     "cancel": "İptal",
     "convert": "Dönüştür",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX kaynakçası",
-    "savedBibliography": "references.bib kaydedildi",
+    "savedBibliography": "{{name}} kaydedildi",
     "saveFailed": "Oleafly bu kaynakçayı kaydedemedi.",
-    "copied": "{{label}} kopyalandı",
     "copyFailed": "Oleafly {{label}} ögesini kopyalayamadı.",
     "fieldJournal": "Dergi",
     "fieldConference": "Konferans veya bildiriler kitabı",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "SVG indir",
     "copyMathml": "Word için MathML kopyala",
     "copyKatexHtml": "KaTeX HTML kopyala",
-    "copiedSource": "LaTeX kaynağı kopyalandı",
     "copiedMathml": "MathML kopyalandı (Word'e yapıştırılır)",
     "copiedKatexHtml": "KaTeX HTML kopyalandı (KaTeX stil sayfası gerekir)",
     "exportImageFailed": "Bu parça görsel olarak dışa aktarılamadı",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} atıf",
     "unknownAuthors": "Yazarlar bilinmiyor",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Atıf kaydedildi",
-    "toastUpdated": "Kayıtlı atıf güncellendi",
-    "toastCopied": "BibTeX kopyalandı",
     "toastCopyFailed": "BibTeX kopyalanamadı.",
     "suggestion": {
       "artificialIntelligence": "Yapay zeka",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": ".bib dosyasına ekle",
     "addToBibTooltip": "Proje kaynakçasına ekler ve \\cite yerleştirir",
-    "openProjectTooltip": "Bir kaynakça dosyasına eklemek için bir proje açın",
     "citeAdded": "{{citation}} eklendi",
     "addFailed": "Atıf eklenemedi.",
-    "toastSaved": "Atıf kaydedildi",
-    "toastUpdated": "Kayıtlı atıf güncellendi",
-    "toastCopied": "BibTeX kopyalandı",
     "toastCopyFailed": "BibTeX kopyalanamadı."
   }
 }

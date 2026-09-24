@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLab kurulum üst verisi geçersiz",
     "setUp": "Kur",
-    "retry": "Yeniden dene",
-    "startFailed": "Proje dil hizmeti başlatılamadı.",
-    "setupDetailsUnavailable": "Dil hizmeti kurulum ayrıntıları kullanılamıyor",
     "setupRequired": "Dil hizmeti kurulumu gerekiyor",
     "installTitle": "{{name}} {{version}} kurulsun mu?",
     "licenseAndSource": "Lisans ve kaynak kodu",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Proje kaynak çözümlemesi kullanılamıyor.",
-    "updating": "Proje kaynakları güncelleniyor.",
     "noDefinition": "“{{name}}” için tanım bulunamadı.",
     "definitionsFor": "{{name}} için tanımlar",
     "multipleDefinitions": "“{{name}}” için {{count}} tanım var. İncelemek için Kaynaklar panelini açın.",

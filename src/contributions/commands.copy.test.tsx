@@ -65,6 +65,7 @@ const mocks = vi.hoisted(() => ({
   },
   documentCitationUi: { requestDocumentScan: vi.fn() },
   toastInfo: vi.fn(),
+  toastInfoUnique: vi.fn(),
   toastError: vi.fn(),
   handoffToAssistant: vi.fn(),
   exportCurrentPdf: vi.fn(),
@@ -101,7 +102,11 @@ vi.mock("@/store/terminals", () => ({
   useTerminalsStore: { getState: () => mocks.terminals },
 }));
 vi.mock("@/lib/toast", () => ({
-  toast: { info: mocks.toastInfo, error: mocks.toastError },
+  toast: {
+    info: mocks.toastInfo,
+    infoUnique: mocks.toastInfoUnique,
+    error: mocks.toastError,
+  },
 }));
 vi.mock("@/features/assistant-handoff", () => ({
   handoffToAssistant: mocks.handoffToAssistant,
@@ -373,14 +378,22 @@ describe("command contributions behaviour", () => {
     expect(mocks.clearBuildCache).not.toHaveBeenCalled();
   });
 
-  it("adds a terminal until the limit, then warns", () => {
+  it("adds a terminal until the limit, then opens the dock and warns in one slot", () => {
     run("palette.new-terminal");
     expect(mocks.settings.setTerminalOpen).toHaveBeenCalledWith(true);
     expect(mocks.terminals.addTerminal).toHaveBeenCalledTimes(1);
     mocks.terminals.projectId = "p1";
     mocks.terminals.tabs = Array.from({ length: 10 }, (_, index) => index);
+    mocks.settings.setTerminalOpen.mockClear();
     run("palette.new-terminal");
-    expect(mocks.toastInfo).toHaveBeenCalledWith(mocks.terminalLimitMessage());
+    run("palette.new-terminal");
+    expect(mocks.settings.setTerminalOpen).toHaveBeenCalledTimes(2);
+    expect(mocks.settings.setTerminalOpen).toHaveBeenCalledWith(true);
+    expect(mocks.toastInfoUnique.mock.calls).toEqual([
+      ["terminal-limit", mocks.terminalLimitMessage()],
+      ["terminal-limit", mocks.terminalLimitMessage()],
+    ]);
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
     expect(mocks.terminals.addTerminal).toHaveBeenCalledTimes(1);
   });
 
@@ -467,7 +480,7 @@ describe("command contributions behaviour", () => {
   it("opens the destination behind every catalog tool command", async () => {
     mocks.files.projectId = null;
     for (const tool of TOOL_DEFINITIONS) {
-      run(`tool.${tool.id}`);
+      if (tool.destination.kind !== "typst-project") run(`tool.${tool.id}`);
     }
     const pages = TOOL_DEFINITIONS.filter((tool) => tool.destination.kind === "page");
     const converters = TOOL_DEFINITIONS.filter(
@@ -496,6 +509,10 @@ describe("command contributions behaviour", () => {
       expect(mocks.homeSetState).toHaveBeenCalledWith({
         activeReferenceTool: tool.destination.tool,
       });
+    }
+    for (const tool of typstProjects) {
+      run(`tool.${tool.id}`);
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
     expect(mocks.files.createTypstProject).toHaveBeenCalledTimes(typstProjects.length);
   });

@@ -319,7 +319,7 @@ export function SymbolsToolView() {
                     selected?.command === entry.command
                       ? "border-primary/40 bg-accent"
                       : "bg-card hover:border-primary/40 hover:bg-accent",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "focus-visible:border-ring",
                   )}
                 >
                   <span className="font-serif text-xl leading-none">{entry.glyph}</span>

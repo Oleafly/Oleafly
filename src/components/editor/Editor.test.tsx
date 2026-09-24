@@ -318,11 +318,11 @@ describe("Editor shell", () => {
     expect(screen.getByTestId("codemirror")).toBe(source);
     expect(source).toBeVisible();
     expect(getWysiwygMode("project")).toBe(true);
-    const group = source.closest("[data-panel-group-direction]");
-    expect(group).toHaveAttribute("data-panel-group-direction", "horizontal");
+    const group = source.closest("[data-group]");
+    expect(group).toHaveStyle({ flexDirection: "row" });
     fireEvent.click(screen.getByRole("button", { name: "Stacked" }));
-    expect(source.closest("[data-panel-group-direction]")).toBe(group);
-    expect(group).toHaveAttribute("data-panel-group-direction", "vertical");
+    expect(source.closest("[data-group]")).toBe(group);
+    expect(group).toHaveStyle({ flexDirection: "column" });
 
     for (const path of ["main.tex", "main.typ", "notes.txt"]) {
       act(() => openFile(path));
@@ -334,7 +334,7 @@ describe("Editor shell", () => {
     render(<Editor />);
     expect(await screen.findByTestId("markdown-preview")).toBeVisible();
     expect(screen.getByTestId("codemirror")).toBeVisible();
-    expect(screen.getByTestId("codemirror").closest("[data-panel-group-direction]")).toHaveAttribute("data-panel-group-direction", "vertical");
+    expect(screen.getByTestId("codemirror").closest("[data-group]")).toHaveStyle({ flexDirection: "column" });
   });
 
   it("locks the surface while an external mutation holds the lease", () => {

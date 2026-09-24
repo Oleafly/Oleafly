@@ -54,18 +54,10 @@
     "present": "{{path}} bevat het Oleafly-item al. Citeer het met {{markup}}.",
     "undo": "Ongedaan maken"
   },
-  "compatibility": {
-    "biblatexBiber": "Dit project gebruikt biblatex/Biber voor de bibliografie.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} meer)",
-    "chooseEngine": "Engine kiezen…",
-    "importNotes_one": "{{count}} importopmerking: {{title}}",
-    "importNotes_other": "{{count}} importopmerkingen: {{title}} (+{{more}} meer)"
-  },
   "compile": {
-    "engineNotLoaded": "Compileren is uitgeschakeld totdat de document-engine is geladen.",
     "noOfflineMode": "{{engine}} heeft geen offline compileermodus. Er wordt normaal gecompileerd.",
-    "retry": "Opnieuw compileren"
+    "retry": "Opnieuw compileren",
+    "bundleFetchFailed": "Oleafly kon de TeX-pakketten die dit document nodig heeft niet downloaden. Controleer je verbinding en compileer opnieuw."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Onderzoekscorpus vullen"
       }
     },
-    "closeProjectFailed": "Het geopende project kon niet veilig worden gesloten.",
     "confirm": {
       "clearProjects": {
         "action": "Projecten wissen",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "Opslaan van de PDF is niet gelukt: {{detail}}",
     "pngFailed": "Opslaan van de PNG is niet gelukt",
     "pngFailedDetail": "Opslaan van de PNG is niet gelukt: {{detail}}",
-    "revealFailed": "Het bestand is opgeslagen, maar Oleafly kon de map niet openen (geen toestemming). Kijk op de locatie die je in het opslaanvenster koos.",
+    "revealFailed": "Het bestand is opgeslagen, maar de map kon niet worden geopend.",
     "saved": "{{kind}} opgeslagen · {{fileName}}",
     "showInFolder": "In map tonen"
   },
   "externalChange": {
-    "deletionRestored": "Een verwijdering van buitenaf botste met niet-opgeslagen bewerkingen. Je lokale bewerkingen zijn hersteld.",
-    "localEditKept": "Er kwam een externe wijziging in \"{{path}}\" binnen terwijl je niet-opgeslagen wijzigingen had. Jouw lokale bewerking is behouden.",
-    "persistExternalFailed": "Kon de laatste externe wijziging in \"{{path}}\" niet vastleggen.",
-    "preserveLocalFailed": "Kon jouw lokale wijziging in \"{{path}}\" niet behouden.",
-    "reloadFailed": "De projectinstellingen zijn bijgewerkt, maar sommige gewijzigde bestanden konden niet opnieuw worden geladen.",
-    "restoreLocalFailed": "Kon jouw niet-opgeslagen wijziging in \"{{path}}\" niet herstellen."
+    "reloadFailed": "De projectinstellingen zijn bijgewerkt, maar sommige gewijzigde bestanden konden niet opnieuw worden geladen."
   },
   "fonts": {
     "systemDefault": "Systeemstandaard",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Afbeelding naar LaTeX is mislukt: {{detail}}",
-    "inserted": "LaTeX uit afbeelding ingevoegd",
     "transcribing": "Afbeelding overnemen…"
   },
   "import": {
-    "arxivImported": "arXiv-broncode geïmporteerd. Compileer het project om het resultaat te controleren.",
     "chooseOfferedProjectType": "Kies een van de projecttypen die voor dit bestand worden aangeboden.",
     "invalidArxivId": "Plak een arXiv-link naar een artikel of een id zoals 2301.01234.",
     "supportedDocumentTypes": "Kies een van de ondersteunde documenttypen.",
-    "conversionNotice": "We hebben je inhoud omgezet naar LaTeX. Mogelijk moet je de opmaak nog bijwerken, vooral bij tabellen, figuren en citaties.",
+    "conversionNotice": "Omgezet naar {{format}}. Tabellen, figuren en citaties hebben mogelijk nog opmaakcorrecties nodig.",
     "figureSaved": "{{name}} opgeslagen",
-    "pdfProjectCreated": "Project aangemaakt vanuit een PDF. Controleer de reconstructie voordat je erop vertrouwt.",
-    "pickPdfOrDocx": "Kies een .pdf- of .docx-bestand",
+    "pickPdfOrDocx": "Kies een .pdf- of .docx-bestand.",
     "texSaved": ".tex opgeslagen",
     "unsupportedFile": "Kies een .zip-, .docx-, .md- of .markdown-bestand.",
     "zipSaveFailed": "Kon het ZIP-archief niet opslaan.",
@@ -318,7 +301,8 @@
     "installing_one": "{{name}} installeren. Het compileren start opnieuw zodra dat klaar is.",
     "installing_other": "{{count}} pakketten installeren. Het compileren start opnieuw zodra ze klaar zijn.",
     "summary_one": "Het compileren kon \"{{name}}\" niet vinden. Zoek in TeX Live het pakket dat dit levert.",
-    "summary_other": "Het compileren kon {{names}} niet vinden. Zoek in TeX Live de bijbehorende pakketten."
+    "summary_other": "Het compileren kon {{names}} niet vinden. Zoek in TeX Live de bijbehorende pakketten.",
+    "userTree": "De TeX-systeemboom is alleen-lezen, dus de pakketten zijn in je persoonlijke boom in {{path}} gezet."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "Hernoemd naar \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Downloaden van pandoc is niet gelukt. Installeer het zelf en probeer het opnieuw",
+    "downloadFailed": "Downloaden van pandoc is niet gelukt. Installeer het zelf en probeer het opnieuw.",
     "downloadingPercent": "pandoc downloaden… {{progress}}%",
     "downloadingSize": "pandoc downloaden… {{megabytes}} MB",
-    "installGuide": "Installatiegids",
-    "installed": "pandoc geïnstalleerd"
+    "installGuide": "Installatiegids"
   },
   "project": {
     "copyFailed": "Kon \"{{path}}\" niet kopiëren.",
     "dateUnavailable": "Niet beschikbaar",
     "importFailed": "Importeren is niet gelukt. Bekijk het app-logboek voor details.",
-    "imported": "Project geïmporteerd.",
     "openFailed": "Kon het project niet openen. Bekijk het app-logboek voor details.",
-    "restoringUnsavedFiles": "Door een projectupdate zijn bestanden met niet-opgeslagen bewerkingen verwijderd. Oleafly heeft je bewerkingen bewaard en zet die bestanden terug.",
     "saveBlockedClose": "Het project is open gebleven omdat een of meer bestanden niet konden worden opgeslagen.",
     "saveBlockedDiscard": "Wijzigingen weggooien en afsluiten",
     "saveBlockedMany": "{{count}} bestanden konden niet worden opgeslagen: {{files}}. Het eerste staat met zijn niet-opgeslagen wijzigingen open in de editor ({{reason}}). Blijf om het probleem op te lossen, of gooi de niet-opgeslagen wijzigingen in die bestanden weg en sluit af.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "{{count}} dagen geleden bijgewerkt",
     "updatedOn": "Bijgewerkt op {{date}}",
     "updatedToday": "Vandaag bijgewerkt",
-    "updatedYesterday": "Gisteren bijgewerkt"
+    "updatedYesterday": "Gisteren bijgewerkt",
+    "autosaveFailed": "Kon je wijzigingen niet opslaan. Ze staan nog in de editor."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyse mislukt: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Dit project is vastgezet met {{pinned}}. In het actieve {{local}} ontbreken {{count}} van die pakketten, dus compileren kan mislukken totdat die distributie weer wordt gebruikt.",
-    "distributionSkew": "Dit project is vastgezet met {{pinned}} en deze computer compileert met {{local}}. De uitvoer kan iets afwijken.",
-    "installPinned_one": "Installeren",
-    "installPinned_other": "Alle {{count}} installeren",
-    "installingPinned_one": "{{count}} vastgezet pakket installeren…",
-    "installingPinned_other": "{{count}} vastgezette pakketten installeren…",
-    "pinnedPackagesFailed": "Sommige vastgezette pakketten konden niet worden geïnstalleerd. Zie Instellingen → LaTeX-engine.",
-    "pinnedPackagesInstalled": "Vastgezette LaTeX-pakketten geïnstalleerd.",
-    "pinnedPackagesMissing_one": "Dit project zet {{count}} LaTeX-pakket vast dat hier niet is geïnstalleerd.",
-    "pinnedPackagesMissing_other": "Dit project zet {{count}} LaTeX-pakketten vast die hier niet zijn geïnstalleerd."
+    "distributionGap": "Dit project is vastgezet met {{pinned}}. In het actieve {{local}} ontbreken {{count}} van die pakketten, dus compileren kan mislukken totdat die distributie weer wordt gebruikt."
   },
   "theme": {
     "cssForbiddenSyntax": "Eigen CSS mag geen at-regels, URL's of selectors gebruiken.",
@@ -539,8 +512,8 @@
       "installing": "Installeren…",
       "unpacking": "Uitpakken…"
     },
-    "removeFailed": "Kon TinyTeX niet verwijderen",
-    "removed": "TinyTeX verwijderd"
+    "removeFailed": "Kon TinyTeX niet verwijderen.",
+    "removed": "TinyTeX verwijderd."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Het project is tijdens het opslaan gewijzigd. Probeer de update opnieuw."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Kon geen checkpoint opslaan. De schijf is vol of er kan niet in de checkpointmap worden geschreven. Maak ruimte vrij of controleer de maprechten en compileer daarna opnieuw.",
+    "incompleteCapture": "Kon de laatste checkpoints niet opslaan omdat sommige projectbestanden niet gelezen konden worden. Controleer hun rechten en compileer daarna opnieuw."
   }
 }

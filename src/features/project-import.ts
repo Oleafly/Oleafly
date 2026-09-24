@@ -4,9 +4,16 @@ import { ensurePandoc } from "@/features/pandoc";
 import { importArxivEprint, importDocument, type ImportTarget } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
-import { conversionNotice } from "@/features/import-copy";
 import { i18n } from "@/i18n";
 import { importRoutes, type SourceFormat } from "@oleafly/conversion-registry";
+
+const CONVERSION_NOTICE_KEY = "import-conversion";
+
+const CONVERSION_FORMATS: Record<ImportTarget, string> = {
+  latex: "LaTeX",
+  markdown: "Markdown",
+  typst: "Typst",
+};
 
 export const IMPORT_FILE_SOURCES = [
   { kind: "project", extensions: ["zip"] },
@@ -102,12 +109,20 @@ export async function importSelectedFile(
   if (!importTargetsForKind(kind).some((option) => option.target === selectedTarget)) {
     throw new Error(i18n.t(($) => $.core.import.chooseOfferedProjectType));
   }
-  if (!(await ensurePandoc())) return false;
+  if (!(await ensurePandoc({ notify: true }))) return false;
   const projectId = await importDocument(path, selectedTarget);
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success(conversionNotice());
+  showConversionNotice(projectId, selectedTarget);
   return true;
+}
+
+export function showConversionNotice(projectId: string, target: ImportTarget): void {
+  if (useFilesStore.getState().projectId !== projectId) return;
+  toast.infoUnique(
+    CONVERSION_NOTICE_KEY,
+    i18n.t(($) => $.core.import.conversionNotice, { format: CONVERSION_FORMATS[target] }),
+  );
 }
 
 /** Download an arXiv e-print and open it as a new project. */
@@ -134,7 +149,6 @@ export async function importArxivPaper(arxivId: string): Promise<boolean> {
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success(i18n.t(($) => $.core.import.arxivImported));
   return true;
 }
 
@@ -143,5 +157,4 @@ export async function importGitHubRepository(repository: GitHubRepo): Promise<vo
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success(i18n.t(($) => $.core.project.imported));
 }

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { test, expect } from "../fixtures";
-import { fillCommandPalette, pressGlobal, waitLong, type Page } from "../helpers";
+import { fillCommandPalette, PANEL_SIZE_SCRIPT, pressGlobal, waitLong, type Page } from "../helpers";
 import { scriptValue } from "../script-value";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
@@ -162,11 +162,12 @@ test("reference tools format, validate, compare, and export locally without a pr
 
   const handle = tauriPage.getByRole("separator", { name: "Resize tool panels" });
   await expect(handle).toBeVisible();
-  const firstPanel = tauriPage.locator('[data-panel-id="reference-citation-generator-start"]');
-  const before = await firstPanel.getAttribute("data-panel-size");
+  const firstPanelSize = () =>
+    tauriPage.evaluate<number>(`${PANEL_SIZE_SCRIPT}("reference-citation-generator-start")`);
+  const before = await firstPanelSize();
   await handle.focus();
-  await tauriPage.keyboard.press(Number.parseFloat(before ?? "50") >= 75 ? "ArrowLeft" : "ArrowRight");
-  await expect.poll(() => firstPanel.getAttribute("data-panel-size")).not.toBe(before);
+  await tauriPage.keyboard.press(before >= 75 ? "ArrowLeft" : "ArrowRight");
+  await expect.poll(firstPanelSize).not.toBe(before);
 
   await openCard(tauriPage, "bibliography-generator");
   await expect(tauriPage.getByText("2 references", { exact: true })).toBeVisible({ timeout: 30_000 });

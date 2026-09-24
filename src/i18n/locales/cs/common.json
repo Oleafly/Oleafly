@@ -48,5 +48,8 @@
     "description": "Popis",
     "optional": "Volitelné",
     "required": "Povinné"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

@@ -690,7 +690,6 @@
     "copyFailed": "Oleafly не зміг скопіювати перетворений код.",
     "saveFailed": "Oleafly не зміг зберегти перетворений файл.",
     "resultName": "Результат: {{title}}",
-    "projectCreated": "Проєкт створено з перетворення.",
     "projectFailed": "Oleafly не зміг створити проєкт.",
     "cancel": "Скасувати",
     "convert": "Перетворити",
@@ -929,9 +928,8 @@
       }
     },
     "bibtexBibliography": "Бібліографія BibTeX",
-    "savedBibliography": "Збережено references.bib",
+    "savedBibliography": "Збережено {{name}}",
     "saveFailed": "Oleafly не зміг зберегти цю бібліографію.",
-    "copied": "Скопійовано {{label}}",
     "copyFailed": "Oleafly не зміг скопіювати {{label}}.",
     "fieldJournal": "Журнал",
     "fieldConference": "Конференція або матеріали",
@@ -1137,7 +1135,6 @@
     "downloadSvg": "Завантажити SVG",
     "copyMathml": "Копіювати MathML для Word",
     "copyKatexHtml": "Копіювати HTML KaTeX",
-    "copiedSource": "Код LaTeX скопійовано",
     "copiedMathml": "MathML скопійовано (вставляється у Word)",
     "copiedKatexHtml": "HTML KaTeX скопійовано (потрібна таблиця стилів KaTeX)",
     "exportImageFailed": "Не вдалося експортувати цей фрагмент як зображення",
@@ -1361,9 +1358,6 @@
     "citationCount": "цитувань: {{citations}}",
     "unknownAuthors": "Автори невідомі",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Цитування збережено",
-    "toastUpdated": "Збережене цитування оновлено",
-    "toastCopied": "BibTeX скопійовано",
     "toastCopyFailed": "Не вдалося скопіювати BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Штучний інтелект",
@@ -1425,12 +1419,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Додати до .bib",
     "addToBibTooltip": "Додати до бібліографії проєкту і вставити \\cite",
-    "openProjectTooltip": "Відкрийте проєкт, щоб додавати до файлу бібліографії",
     "citeAdded": "Додано {{citation}}",
     "addFailed": "Не вдалося додати цитування.",
-    "toastSaved": "Цитування збережено",
-    "toastUpdated": "Збережене цитування оновлено",
-    "toastCopied": "BibTeX скопійовано",
     "toastCopyFailed": "Не вдалося скопіювати BibTeX."
   }
 }

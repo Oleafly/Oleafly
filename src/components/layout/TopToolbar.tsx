@@ -60,7 +60,8 @@ import {
 } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
-import { notifyError, toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
+import { notifyError } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
 import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -301,11 +302,16 @@ export function TopToolbar() {
     const name = titleDraft.trim();
     setEditingTitle(false);
     if (!name || name === projectName) return;
+    const before = useFilesStore.getState();
     try {
       await renameProject(name);
-      toast.success(i18n.t(($) => $.shell.toolbar.projectRenamed));
     } catch (e) {
-      notifyError("rename project", e);
+      const after = useFilesStore.getState();
+      if (after.projectId === before.projectId && after.projectName !== before.projectName) {
+        void logError("refresh projects after rename", e);
+        return;
+      }
+      notifyError("rename project", e, i18n.t(($) => $.shell.toolbar.renameFailed));
     }
   };
   const [dlOpen, setDlOpen] = useState(false);
@@ -355,7 +361,9 @@ export function TopToolbar() {
     setForkBusy(true);
     try {
       const newId = await duplicateProject(projectId, n);
-      await refreshProjects();
+      await refreshProjects().catch((error: unknown) => {
+        void logError("refresh projects after fork", error);
+      });
       setForkOpen(false);
       setForkName("");
       void openProject(newId);

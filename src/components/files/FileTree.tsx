@@ -48,7 +48,7 @@ import { FileIcon } from "@/components/files/fileIcon";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError } from "@/lib/tauri";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { pickOpenPath } from "@/lib/native-file-dialog";
@@ -615,7 +615,12 @@ export function FileTree({
         notifyError("delete file", error, i18n.t(($) => $.workspace.files.deleteFailed, { path })),
       );
     },
-    onSetMain: setMainDoc,
+    onSetMain: (path) => {
+      void setMainDoc(path).catch(() => {
+        if (useFilesStore.getState().mainDoc === path) return;
+        toast.error(i18n.t(($) => $.workspace.files.setMainFailed, { path }));
+      });
+    },
     mainExtensions,
     onCopy: copyEntry,
     onImport: (destDir, mode) => void importInto(destDir, mode),

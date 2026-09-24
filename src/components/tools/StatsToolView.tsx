@@ -21,6 +21,8 @@ import {
   type StatsSampleSizeResult,
 } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
+import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 
 type Tab = "p-value" | "sample-size" | "confidence-interval";
@@ -62,6 +64,10 @@ function ResultLine({ label, value }: { label: string; value: string }) {
   );
 }
 
+function calculationError(caught: unknown, fallback: string): string {
+  return caught instanceof Error || typeof caught === "string" ? describeError(caught) : fallback;
+}
+
 function useCalculation<Result>(name: string) {
   const { t } = useTranslation(["researchTools"]);
   const [result, setResult] = useState<Result | null>(null);
@@ -85,9 +91,9 @@ function useCalculation<Result>(name: string) {
       if (id === request.current) setResult(next);
     } catch (caught) {
       if (id === request.current) {
-        notifyError(name, caught);
+        void logError(name, caught);
         setResult(null);
-        setError(caught instanceof Error ? caught.message : t(($) => $.researchTools.stats.checkValues));
+        setError(calculationError(caught, t(($) => $.researchTools.stats.checkValues)));
       }
     } finally {
       if (id === request.current) setBusy(false);
@@ -152,7 +158,7 @@ async function copyResult(lines: string[]) {
     await navigator.clipboard.writeText(lines.join("\n"));
     toast.success(i18n.t(($) => $.researchTools.stats.resultCopied));
   } catch (caught) {
-    toast.error(caught instanceof Error ? caught.message : i18n.t(($) => $.researchTools.stats.copyFailed));
+    notifyError("stats copy result", caught, i18n.t(($) => $.researchTools.stats.copyFailed));
   }
 }
 

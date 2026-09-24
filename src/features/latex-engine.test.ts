@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   runPreflight: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   notifyError: vi.fn(),
+  logError: vi.fn(),
+  reportCompileSaveFailure: vi.fn(),
   beginCompileRequestIdentity: vi.fn(() => ({
     projectId: "project",
     mainDocument: "main.tex",
@@ -28,6 +30,9 @@ const mocks = vi.hoisted(() => ({
     dismiss: vi.fn(),
     success: vi.fn(),
     error: vi.fn(),
+    infoUnique: vi.fn(() => 2),
+    successUnique: vi.fn(() => 4),
+    errorUnique: vi.fn(() => 3),
   },
 }));
 
@@ -43,6 +48,8 @@ vi.mock("@/store/compile", () => ({
   captureCompileSourceSnapshot: mocks.captureCompileSourceSnapshot,
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
   isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
+  reportCompileSaveFailure: mocks.reportCompileSaveFailure,
+  saveActiveForCompile: (files: { saveActive: () => Promise<void> }) => files.saveActive(),
   useCompileStore: {
     getState: () => mocks.compileState,
     setState: (
@@ -73,6 +80,7 @@ vi.mock("@/lib/toast", () => ({
   toast: mocks.toast,
   notifyError: mocks.notifyError,
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/cross-window", () => ({
   currentCompileProducerId: () => "main-window",
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
@@ -118,6 +126,9 @@ beforeEach(() => {
   mocks.runPreflight.mockReset().mockResolvedValue(undefined);
   mocks.notifyCompileSucceeded.mockReset();
   mocks.notifyError.mockReset();
+  mocks.logError.mockReset();
+  mocks.reportCompileSaveFailure.mockReset();
+  mocks.isCompileOutputStillWanted.mockReset().mockReturnValue(true);
   mocks.refreshPreviewWindow.mockReset();
   for (const fn of Object.values(mocks.toast)) fn.mockClear();
   Object.assign(mocks.compileState, {
@@ -158,7 +169,11 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.notifyCompileSucceeded).toHaveBeenCalledTimes(1);
     expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(2);
     expect(mocks.runPreflight).toHaveBeenCalledTimes(1);
-    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+    expect(mocks.toast.successUnique).toHaveBeenCalledExactlyOnceWith(
+      "tagged-compile:project",
+      "Tagged PDF compiled. See the accessibility verdict below.",
+    );
+    expect(mocks.toast.success).not.toHaveBeenCalled();
   });
 
   it("shows a verified best-effort PDF from a failed tagged compile without checkpointing it", async () => {
@@ -180,7 +195,63 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.compileState.lastCompileCheckpoint).toBeNull();
     expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
     expect(mocks.runPreflight).not.toHaveBeenCalled();
-    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
+    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(
+      "tagged-compile:project",
+      "Tagged compile finished with errors. Check the log.",
+    );
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when the tagged compile was stopped on request", async () => {
+    const bestEffort = new Uint8Array([4, 5, 6]);
+    mocks.compileTagged.mockResolvedValue({
+      success: false,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bestEffort),
+      output_revision: null,
+      log: "pass one\nOleafly stopped the tagged compile on request.\n",
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bestEffort.buffer);
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState.status).toBe("error");
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.toast.successUnique).not.toHaveBeenCalled();
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("reports a tagged compile exception once in the tagged slot", async () => {
+    const error = new Error("lualatex missing");
+    mocks.compileTagged.mockRejectedValue(error);
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState).toMatchObject({
+      status: "error",
+      failureReason: "Tagged compile failed: Error: lualatex missing",
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("compile tagged", error);
+    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(
+      "tagged-compile:project",
+      "Tagged compile failed. Check the engine and try again.",
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("only logs an exception from a tagged attempt that was superseded", async () => {
+    const error = new Error("lualatex missing");
+    mocks.compileTagged.mockImplementation(async () => {
+      mocks.isCompileOutputStillWanted.mockReturnValue(false);
+      throw error;
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.logError).toHaveBeenCalledWith("compile tagged", error);
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
   });
 
   it("rejects successful metadata when the readable PDF was replaced before IPC", async () => {
@@ -313,7 +384,7 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
   });
 
-  it("contains save failures inside the standard log-and-toast error boundary", async () => {
+  it("sends save failures to the shared save notice instead of blaming the engine", async () => {
     const error = new Error("disk full");
     mocks.saveActive.mockRejectedValue(error);
 
@@ -321,12 +392,18 @@ describe("tagged compile checkpoints", () => {
 
     expect(mocks.compileTagged).not.toHaveBeenCalled();
     expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
-    expect(mocks.toast.info).not.toHaveBeenCalled();
-    expect(mocks.notifyError).toHaveBeenCalledOnce();
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "compile tagged",
+    expect(mocks.compileState).toMatchObject({
+      status: "error",
+      failureReason: "Tagged compile failed: Error: disk full",
+    });
+    expect(mocks.reportCompileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+      "save before tagged compile",
+      mocks.files,
       error,
-      "Tagged compile failed. Check the engine and try again.",
+      true,
     );
+    expect(mocks.toast.info).not.toHaveBeenCalled();
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });

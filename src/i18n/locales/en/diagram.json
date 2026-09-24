@@ -73,7 +73,6 @@
       "importedCodeOnly": "Imported {{name}} (code only, not drawable).",
       "importFailed": "Could not import that file: {{detail}}",
       "noAiFix": "The AI did not return a fix.",
-      "aiFixApplied": "Applied an AI fix. Recompiling…",
       "fixFailed": "Fix failed: {{detail}}",
       "notDrawable": "Nothing in this code could be drawn. The code is untouched."
     },

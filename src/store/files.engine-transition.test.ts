@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { supportsFigureTools, LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -21,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastInfoUnique: vi.fn(),
   toastSuccess: vi.fn(),
+  toastErrorUnique: vi.fn(),
+  toastDismiss: vi.fn(),
   setMainDocCmd: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
   deleteFile: vi.fn(),
@@ -61,6 +62,8 @@ vi.mock("@/lib/toast", () => ({
     info: mocks.toastInfo,
     infoUnique: mocks.toastInfoUnique,
     success: mocks.toastSuccess,
+    errorUnique: mocks.toastErrorUnique,
+    dismiss: mocks.toastDismiss,
   },
 }));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
@@ -75,7 +78,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 
-import { useFilesStore } from "./files";
+import { projectCompatibilityFindings, useFilesStore } from "./files";
 import { acquireEditorMutationLease, isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
@@ -100,6 +103,8 @@ beforeEach(async () => {
   mocks.toastInfo.mockReset();
   mocks.toastInfoUnique.mockReset();
   mocks.toastSuccess.mockReset();
+  mocks.toastErrorUnique.mockReset();
+  mocks.toastDismiss.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
   mocks.getProject.mockReset().mockResolvedValue({ name: "Paper", kind: "", main_doc: "main.tex" });
   mocks.createProjectFromTemplate.mockReset().mockResolvedValue("templated-project");
@@ -1110,7 +1115,8 @@ describe("external filesystem reconciliation", () => {
         dirty: false,
       }),
     );
-    expect(mocks.toastInfo).toHaveBeenCalledWith(expect.stringContaining("local edit was kept"));
+    expect(mocks.logError).toHaveBeenCalledWith("external write kept local edit", "main.tex");
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
   });
 
   it("applies an external write directly when the local buffer is clean", () => {
@@ -1277,7 +1283,7 @@ describe("MCP active-project synchronization", () => {
 });
 
 describe("best-effort project loading diagnostics", () => {
-  it("publishes one keyed engine prompt for a compatibility blocker", async () => {
+  it("remembers a compatibility blocker for the compile without prompting on open", async () => {
     mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
     mocks.readFileContent.mockResolvedValue(
       String.raw`\documentclass{article}\usepackage{minted}\begin{document}\end{document}`,
@@ -1286,13 +1292,12 @@ describe("best-effort project loading diagnostics", () => {
     await useFilesStore.getState().openProject("project");
 
     await vi.waitFor(() =>
-      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
-        "engine-compatibility:project",
-        expect.any(String),
-        expect.objectContaining({ label: "Choose engine…" }),
-        true,
+      expect(projectCompatibilityFindings("project").map((finding) => finding.id)).toContain(
+        "minted",
       ),
     );
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
   });
 
   it("logs bibliography preload failures without blocking the project", async () => {
@@ -1554,7 +1559,7 @@ describe("project engine transition", () => {
     expect(ready.loading).toBe(false);
   });
 
-  it("remains fail-closed and surfaces an error when descriptor loading fails", async () => {
+  it("remains fail-closed and records the error for the toolbar when descriptor loading fails", async () => {
     mocks.getProjectEngine.mockRejectedValue(new Error("IPC failed"));
     await useFilesStore.getState().openProject("project");
     const state = useFilesStore.getState();
@@ -1562,11 +1567,9 @@ describe("project engine transition", () => {
     expect(state.engineLoaded).toBe(false);
     expect(state.engine.capabilities.supports_isolated_compile).toBe(false);
     expect(state.engineError).toBe("loadFailed");
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "load document engine",
-      expect.any(Error),
-      enCore.engine.error.loadFailed,
-    );
+    expect(mocks.getProjectEngine).toHaveBeenCalledTimes(3);
+    expect(mocks.logError).toHaveBeenCalledWith("load document engine", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("atomically refetches capabilities when AI or UI changes engine", async () => {
@@ -1803,4 +1806,7 @@ it("removes stale clean buffers after an applied file cannot be reloaded", async
   expect(useFilesStore.getState().activePath).toBeNull();
   expect(useFilesStore.getState().files).toEqual({});
   expect(isEditorMutationLocked("project")).toBe(false);
+  expect(mocks.logError).toHaveBeenCalledWith("reload project after external change", expect.any(Error));
+  expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+  expect(mocks.notifyError).not.toHaveBeenCalled();
 });

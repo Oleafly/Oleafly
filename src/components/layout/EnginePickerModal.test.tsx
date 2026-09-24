@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   setShellEscape: vi.fn(async () => {}),
   picker: {
     open: true,
-    source: "project-open" as "project-open" | "compile-failure",
+    source: "manual" as "manual" | "compile-failure",
     findings: [] as { id: string; level: string; title: string; detail: string }[],
   },
   files: {
@@ -43,6 +43,7 @@ vi.mock("@/store/engine-picker", () => ({
     selector({ ...mocks.picker, close: mocks.close }),
 }));
 vi.mock("@/store/files", () => ({
+  engineSwitchToastKey: (projectId: string) => `engine-switch:${projectId}`,
   useFilesStore: Object.assign(
     (selector: (state: unknown) => unknown) =>
       selector({
@@ -60,6 +61,7 @@ vi.mock("@/store/files", () => ({
   ),
 }));
 vi.mock("@/store/engine", () => ({
+  TINYTEX_INSTALL_TOAST_KEY: "tinytex-install",
   installPhaseLabel: () => "Downloading…",
   useEngineStore: Object.assign(
     (selector: (state: unknown) => unknown) =>
@@ -83,9 +85,9 @@ vi.mock("@oleafly/latex", () => ({
     ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),
 }));
 vi.mock("@/lib/toast", () => ({
-  notifyError: vi.fn(),
-  toast: { success: vi.fn() },
+  toast: { success: vi.fn(), infoUnique: vi.fn(), errorUnique: vi.fn() },
 }));
+vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/store/compile", () => ({
   useCompileStore: { getState: () => ({ recompile: mocks.recompile }) },
 }));
@@ -102,7 +104,7 @@ beforeEach(() => {
   });
   mocks.files.projectId = "project-1";
   mocks.files.engine = { id: "latex", allow_shell_escape: false };
-  mocks.picker.source = "project-open";
+  mocks.picker.source = "manual";
   mocks.picker.findings = [];
   document.body.style.pointerEvents = "none";
 });

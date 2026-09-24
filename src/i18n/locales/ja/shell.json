@@ -61,6 +61,9 @@
     "reload": "再読み込み",
     "setHomePage": "ホームページに設定"
   },
+  "changelog": {
+    "installed": "現在お使いのバージョンです"
+  },
   "citeOleafly": {
     "description": "このプロジェクトに参考文献ファイルが見つからなかったため、何も変更していません。下の項目を参考文献ファイルにコピーしてください。あとから設定の「ヘルプと情報」でも見つけられます。",
     "openHelp": "ヘルプと情報を開く",
@@ -297,8 +300,6 @@
       "needed": "このプロジェクトは任意の外部コマンドを必要とする機能を使っています。許可するまでブロックされたままです。",
       "warning": "minted や一部の PythonTeX 文書に必要です。LaTeX はあなたの権限でプログラムを実行できるため、信頼できるプロジェクトでのみ有効にしてください。EPS 変換など TeX Live 自身の補助ツールは、これがなくても動きます。"
     },
-    "shellEscapeAllowed": "このコンピュータでは、このプロジェクトの外部コマンドが許可されています。",
-    "shellEscapeBlocked": "このプロジェクトでは任意の外部コマンドがブロックされています。EPS 変換など TeX Live 自身の補助ツールは引き続き動きます。",
     "shellEscapeFailed": "外部コマンドの許可設定を更新できませんでした。",
     "switchFailed": "コンパイルエンジンを切り替えられませんでした。",
     "switched": "このプロジェクトは {{engine}} でコンパイルするようになりました。",
@@ -485,7 +486,6 @@
         "title": "クラウド同期"
       },
       "danger": {
-        "closeFailed": "開いているプロジェクトを安全に閉じられませんでした。",
         "confirmDeleteAllAction": "すべてのプロジェクトを削除",
         "confirmDeleteAllDescription": "現在のプロジェクトはすべて、ファイルと Git の履歴ごとごみ箱に移動します。あとから 1 件ずつ復元できます。",
         "confirmDeleteAllTitle_other": "{{count}} 件のプロジェクトをすべて削除しますか？",
@@ -494,7 +494,7 @@
         "deleteAllDescription": "すべてのプロジェクトをごみ箱に移動します。完全に削除されるものはありません。",
         "deleting": "削除中…",
         "moveFailed": "プロジェクトをごみ箱に移動できませんでした。",
-        "movePartial": "{{count}} 件のプロジェクトを移動しましたが、処理を完了できませんでした。",
+        "movePartial_other": "{{count}} 件のプロジェクトをごみ箱に移動しました。残りは移動されていません。",
         "movedCount_other": "{{count}} 件のプロジェクトをごみ箱に移動しました。",
         "title": "危険な操作"
       },
@@ -504,7 +504,7 @@
       "recycleBin": {
         "clearAll": "すべて削除",
         "clearFailed": "ごみ箱を空にできませんでした。",
-        "clearPartial": "{{count}} 件のプロジェクトを完全に削除しましたが、ごみ箱全体は空にできませんでした。",
+        "clearPartial_other": "{{count}} 件のプロジェクトを完全に削除しました。残りはごみ箱に残っています。",
         "clearedCount_other": "{{count}} 件のプロジェクトを完全に削除しました。",
         "clearing": "削除中…",
         "confirmClearAction": "ごみ箱を空にする",
@@ -825,7 +825,6 @@
     },
     "newProjectName": "新しいプロジェクト名",
     "projectName": "プロジェクト名",
-    "projectRenamed": "プロジェクトの名前を変更しました",
     "saveName": "保存（Enter）",
     "saveNameAriaLabel": "名前を保存",
     "untitledProject": "プロジェクト",
@@ -836,7 +835,8 @@
       "pdf": "PDF 表示",
       "split": "分割表示"
     },
-    "moreActions": "その他の操作"
+    "moreActions": "その他の操作",
+    "renameFailed": "プロジェクトの名前を変更できませんでした。"
   },
   "tour": {
     "chooseColor": "あなたらしい色を選んでください",
@@ -875,13 +875,16 @@
     "updateNow": "今すぐ更新"
   },
   "updateWindow": {
+    "available": "アップデートがあります",
     "checking": "アップデートを確認中…",
     "currentVersion": "現在のバージョンは v{{version}} です",
     "error": "アップデートを完了できませんでした。しばらくしてからもう一度お試しください。",
+    "historyFailed": "以前のリリースノートを読み込めませんでした。",
     "later": "あとで",
     "looking": "最新のバージョンを探しています…",
     "packageInstall": "パッケージからインストールされています。更新するには新しいバージョンをダウンロードしてください。",
     "ready": "新しいバージョンをインストールできます。",
+    "released": "{{when}}にリリース",
     "upToDate": "最新の状態です",
     "upToDateGeneric": "最新バージョンの Oleafly を使っています",
     "upToDateHeadline": "最新の状態です",

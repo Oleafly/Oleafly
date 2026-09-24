@@ -92,7 +92,9 @@
     "settings": "PDF 预览设置",
     "fullscreen": "全屏预览",
     "exitFullscreen": "退出全屏",
-    "retryCompile": "重试编译"
+    "retryCompile": "重试编译",
+    "chooseEngine": "选择引擎…",
+    "installPackages_other": "查找并安装 {{count}} 个文件"
   },
   "stale": {
     "badge": "已过期",
@@ -121,7 +123,7 @@
     "imageSaved": "图片已保存 · {{name}}",
     "pdfSaved": "PDF 已保存 · {{name}}",
     "showInFolder": "在文件夹中显示",
-    "folderUnavailable": "文件已保存，但 Oleafly 无法打开其所在文件夹（权限被拒绝）。请检查你在保存对话框中选择的位置。",
+    "folderUnavailable": "无法打开文件夹。",
     "imageFailed": "无法下载图片。",
     "imageFailedDetail": "无法下载图片：{{detail}}",
     "pdfFailed": "无法下载 PDF。",

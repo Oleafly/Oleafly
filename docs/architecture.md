@@ -134,6 +134,57 @@ composer's chat-only mode sends no tools and goes through. Each listed model
 also says where its trust came from (`trustSource` is `catalog` or `probe`),
 so the shell can tell a catalog verdict from one of the user's own probes.
 
+## Notifications
+
+A toast answers something the user just did. They clicked Save and it failed,
+or they exported a file and it is ready. Nothing else gets a toast.
+
+Background and automatic work never toasts. That includes file watchers,
+outline and index refreshes, auto compile, sync, downloads, startup checks,
+language servers, and edits made by an AI agent. This work logs through
+`logError` in `src/lib/log.ts`, retries on its own, or shows its state where the
+app already shows status, like the status bar or the log pane. When a service
+such as a language server fails, it retries in the background without telling
+the user. If the language server is not installed yet, the Project info panel
+offers a Set up button. A dot on the panel's toolbar button shows that setup is
+waiting.
+
+Two background failures can lose the user's work: a failed autosave and a
+checkpoint that could not be saved. Each one gets a single toast per project for
+the whole app session. The toast closes when a later save or checkpoint works,
+and it does not come back for that project even if the failure does. A save the
+user asks for still reports every failure.
+
+Compiles follow the same split. When the user starts a compile with the
+Compile button, the shortcut or the command palette, a failure gets a toast or
+opens the engine picker. Auto compile, the compile that runs when a project
+opens, and compiles run by an AI agent stay quiet. `recompile` takes an
+`origin` of `explicit` or `automatic` to tell them apart. If an automatic
+compile fails for a reason the user can fix, the preview's failure view shows
+the fix as a button, such as Choose engine or Find and install. When the main
+window has no preview (editor-only view, or the preview is in its own window),
+the same button sits next to Compile in the toolbar instead.
+
+Show toasts through `src/lib/toast.ts`. The store in `src/store/toast.ts`
+handles the rest:
+
+- A toast with the same kind and text as one already on screen, or with the
+  same key, refreshes that toast in place. Its timer restarts and a small
+  counter (×2, ×3) marks the repeat. Copies never stack.
+- After a toast closes on screen, by timeout or the close button, the same kind
+  and text stay hidden for two seconds. Any other message shows right away.
+  Dismissing a toast from code does not start this window.
+- At most four toasts are visible. A fifth pushes out the oldest toast that is
+  not sticky.
+- Clicking a toast's action button closes that toast, and the same toast can
+  show again right away.
+- `toast.errorUnique`, `toast.infoUnique` and `toast.successUnique` own a keyed
+  slot, so a result replaces its own progress or failure message in place.
+
+`pnpm lint` enforces the boundary with `.biome/toast-imports.grit`. Only
+`src/components/ui/sonner.tsx` may import `sonner`, and only `src/lib/toast.ts`,
+`src/components/ui/sonner.tsx` and tests may import `@/store/toast`.
+
 ## Security boundary
 
 - Rust resolves user paths through the sandbox before filesystem, process, Git,

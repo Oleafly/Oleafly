@@ -817,7 +817,8 @@
       "deleted": "Raderade \"{{name}}\" från ditt bibliotek",
       "empty": "Inga AI-genererade mallar än. Skapa en i mallgalleriet.",
       "fallbackDescription": "AI-genererad mall",
-      "toggle": "Hantera AI-genererade mallar"
+      "toggle": "Hantera AI-genererade mallar",
+      "deleteFailed": "Det gick inte att radera \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Stavningsordlistor",
       "note": "Välj ett språk i avsnittet Allmänt för att ladda ner det. De fem medföljande paketen är alltid tillgängliga och listas inte här.",
       "tooltip": "Fem språkpaket följer med Oleafly. Alla andra språk laddas ner vid behov när du väljer dem som stavningsordlista, och sparas här så att de fungerar offline efteråt. Att ta bort ett frigör utrymmet och gör att appens inställning används i stället."
+    },
+    "errors": {
+      "fontDownloadFailed": "Det gick inte att ladda ner typsnittet.",
+      "fontsDownloadFailed": "Det gick inte att ladda ner typsnitten.",
+      "fontRemoveFailed": "Det gick inte att ta bort typsnittet.",
+      "packDownloadFailed": "Det gick inte att ladda ner mallpaketet.",
+      "packsDownloadFailed": "Det gick inte att ladda ner mallpaketen.",
+      "packRemoveFailed": "Det gick inte att ta bort mallpaketet."
     }
   },
   "engine": {

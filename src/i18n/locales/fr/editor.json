@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nom"
   },
   "paste": {
-    "imageSaved": "Image enregistrée dans {{path}}",
     "imageFailed": "Impossible d'enregistrer l'image collée dans le projet.",
     "noProject": "Ouvrez un projet avant de coller des images."
   },
@@ -209,7 +208,8 @@
     "spellLanguage": "Langue de correction orthographique",
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",
-    "spellLanguageHint": "Ne s'applique qu'à ce projet. Téléchargez d'autres langues dans les Paramètres."
+    "spellLanguageHint": "Ne s'applique qu'à ce projet. Téléchargez d'autres langues dans les Paramètres.",
+    "spellLanguageFailed": "Impossible de changer la langue de correction orthographique."
   },
   "table": {
     "trigger": "Insérer un tableau",
@@ -373,8 +373,6 @@
   },
   "citations": {
     "trigger": "Citer depuis le projet",
-    "updating": "Les citations du projet sont en cours de mise à jour.",
-    "changed": "Les citations du projet ont changé. Rouvrez le sélecteur pour actualiser.",
     "filterPlaceholder": "Clé, auteur ou titre…",
     "filterLabel": "Filtrer les citations du projet",
     "partialCatalog": "Catalogue partiel. Les fichiers bibliographiques mal formés ou illisibles peuvent être omis.",
@@ -406,11 +404,7 @@
     "error": "La relecture n'a pas pu traiter ce document jusqu'au bout.",
     "unavailable": "La relecture hors ligne est indisponible.",
     "tooLarge": "La relecture est suspendue car ce document est trop volumineux.",
-    "unsupported": "La relecture n'est pas prise en charge pour ce format de document.",
-    "partial_one": "La relecture a récupéré {{count}} observation, mais un moteur n'a pas terminé.",
-    "partial_many": "La relecture a récupéré {{count}} observations, mais un moteur n'a pas terminé.",
-    "partial_other": "La relecture a récupéré {{count}} observations, mais un moteur n'a pas terminé.",
-    "retry": "Réessayer"
+    "unsupported": "La relecture n'est pas prise en charge pour ce format de document."
   },
   "checkpoints": {
     "showInExplorer": "Afficher dans l'Explorateur",

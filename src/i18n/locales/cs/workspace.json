@@ -40,7 +40,8 @@
     "renameFailed": "Nepodařilo se přejmenovat „{{path}}“. Původní cesta zůstala beze změny.",
     "setMain": "Nastavit jako hlavní dokument",
     "title": "Průzkumník",
-    "treeAriaLabel": "Strom souborů v průzkumníku"
+    "treeAriaLabel": "Strom souborů v průzkumníku",
+    "setMainFailed": "„{{path}}“ se nepodařilo nastavit jako hlavní dokument."
   },
   "explorer": {
     "resizeSections": "Změnit velikost sekcí {{first}} a {{second}}"

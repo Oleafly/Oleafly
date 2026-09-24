@@ -822,7 +822,8 @@
       "deleted": "Se eliminó \"{{name}}\" de tu biblioteca",
       "empty": "Todavía no hay plantillas generadas con IA. Crea una desde la galería de plantillas.",
       "fallbackDescription": "Plantilla generada con IA",
-      "toggle": "Gestionar las plantillas generadas con IA"
+      "toggle": "Gestionar las plantillas generadas con IA",
+      "deleteFailed": "No se pudo eliminar \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -865,6 +866,14 @@
       "heading": "Diccionarios ortográficos",
       "note": "Elige un idioma en la sección General para descargarlo. Los cinco packs incluidos están siempre disponibles y no aparecen aquí.",
       "tooltip": "Oleafly incluye cinco packs de idioma. Cualquier otro se descarga cuando lo eliges como diccionario ortográfico y se guarda aquí para que funcione sin conexión. Si quitas uno, liberas el espacio y se vuelve al ajuste de la aplicación."
+    },
+    "errors": {
+      "fontDownloadFailed": "No se pudo descargar la tipografía.",
+      "fontsDownloadFailed": "No se pudieron descargar las tipografías.",
+      "fontRemoveFailed": "No se pudo quitar la tipografía.",
+      "packDownloadFailed": "No se pudo descargar el pack de plantillas.",
+      "packsDownloadFailed": "No se pudieron descargar los packs de plantillas.",
+      "packRemoveFailed": "No se pudo quitar el pack de plantillas."
     }
   },
   "engine": {

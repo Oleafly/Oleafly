@@ -349,8 +349,6 @@
     "unsave": "Ta bort från sparade",
     "save": "Spara mallen",
     "use": "Använd den här mallen",
-    "savedToast": "Sparade \"{{name}}\" i ditt bibliotek",
-    "removedToast": "Tog bort \"{{name}}\" från ditt bibliotek",
     "saveFailed": "Det gick inte att spara mallen.",
     "removeFailed": "Det gick inte att ta bort mallen."
   },

@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { cancelQuitFlush, confirmQuitFlush } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { registerUpdateInstallGuard } from "@/lib/update-install-guard";
@@ -48,7 +49,7 @@ export function QuitGuard() {
     }).then((cleanup) => {
       if (disposed) cleanup();
       else stop = cleanup;
-    }).catch((error) => notifyError("prepare updates", error));
+    }).catch((error) => logError("prepare updates", error));
     return () => { disposed = true; stop?.(); };
   }, []);
 
@@ -113,7 +114,7 @@ export function QuitGuard() {
       }}
       onCancel={() => {
         setFailure(null);
-        void cancelQuitFlush().catch((error) => notifyError("stay after failed save", error));
+        void cancelQuitFlush().catch((error) => logError("stay after failed save", error));
       }}
     />
     </>

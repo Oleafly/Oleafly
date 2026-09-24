@@ -22,7 +22,9 @@
   "actions": {
     "readerView": "Turns on a text-first rendering of the PDF for screen readers",
     "invert": "Inverts the rendered colors of the PDF, a dark mode for the document",
-    "retryCompile": "Starts a new compile after a failed one"
+    "retryCompile": "Starts a new compile after a failed one",
+    "chooseEngine": "Button in the failed-compile panel that opens the compile engine picker",
+    "installPackages_other": "Button in the failed-compile panel that looks up and installs the missing LaTeX packages"
   },
   "stale": {
     "badge": "Short badge over the document meaning the PDF is older than the editor content",

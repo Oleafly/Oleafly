@@ -18,6 +18,7 @@ import {
   isWordIgnoredHere,
   suppressFindingHere,
 } from "@/lib/proofreading/ignored";
+import { useToastStore } from "@/store/toast";
 
 describe("dictionary (ignore list)", () => {
   beforeEach(() => {
@@ -125,6 +126,21 @@ describe("dictionary write outcomes", () => {
   it("says nothing was stored without a project", () => {
     expect(ignoreWordForProject(null, "Spanner")).toBe("no_project");
     expect(notices).toEqual([]);
+  });
+
+  it("answers a rejected word with one info toast that merges repeated clicks", () => {
+    setDictionaryNotice(null);
+    useToastStore.getState().reset();
+    const long = "x".repeat(DICTIONARY_LIMITS.wordCharacters + 1);
+
+    ignoreWordGlobally(long);
+    ignoreWordGlobally(long);
+
+    const toasts = useToastStore.getState().toasts;
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0]).toMatchObject({ kind: "info", count: 2 });
+    expect(toasts[0].message).toContain("too long");
+    useToastStore.getState().reset();
   });
 });
 

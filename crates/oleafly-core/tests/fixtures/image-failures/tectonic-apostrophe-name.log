@@ -1,0 +1,191 @@
+**
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-02-24>
+\pdfgentounicode=\count181
+ (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo
+File: size10.clo 2021/10/04 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count182
+\c@section=\count183
+\c@subsection=\count184
+\c@subsubsection=\count185
+\c@paragraph=\count186
+\c@subparagraph=\count187
+\c@figure=\count188
+\c@table=\count189
+\abovecaptionskip=\skip47
+\belowcaptionskip=\skip48
+\bibindent=\dimen138
+) (graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+ (keyval.sty
+Package: keyval 2014/10/28 v1.15 key=value parser (DPC)
+\KV@toks@=\toks16
+) (graphics.sty
+Package: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)
+ (trig.sty
+Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
+) (graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: xetex.def on input line 107.
+ (xetex.def
+File: xetex.def 2021/03/18 v5.0k Graphics/color driver for xetex
+))
+\Gin@req@height=\dimen139
+\Gin@req@width=\dimen140
+) (l3backend-xetex.def
+File: l3backend-xetex.def 2022-02-07 L3 backend support: XeTeX
+\c__kernel_sys_dvipdfmx_version_int=\count190
+\l__color_backend_stack_int=\count191
+\g__color_backend_stack_int=\count192
+\g__graphics_track_int=\count193
+\l__pdf_internal_box=\box50
+\g__pdf_backend_object_int=\count194
+\g__pdf_backend_annotation_int=\count195
+\g__pdf_backend_link_int=\count196
+) (_oleafly_entry.aux)
+\openout1 = `_oleafly_entry.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 3.
+LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 3
+.
+ (ts1cmr.fd
+File: ts1cmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 3.
+LaTeX Font Info:    ... okay on input line 3.
+
+! Unable to load picture or PDF file '"figures/it's.png"'.
+<to be read again> 
+                   }
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+The requested image couldn't be read because
+it was not a recognized image format.
+
+
+! Package graphics Error: Division by 0.
+
+See the graphics package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+Your command was ignored.
+Type  I <command> <return>  to replace it with another command,
+or  <return>  to continue without it.
+
+File: figures/it's.png Graphic file (type bmp)
+<figures/it's.png>
+[1
+
+] (_oleafly_entry.aux) ) )
+Output written on _oleafly_entry.xdv (1 page, 476 bytes).
+
+[Oleafly] Engine output:
+note: "version 2" Tectonic command-line interface activated
+note: Running TeX ...
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-02-24> (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo)) (graphicx.sty (keyval.sty) (graphics.sty (trig.sty) (graphics.cfg
+) (xetex.def))) (l3backend-xetex.def)
+No file _oleafly_entry.aux.
+(ts1cmr.fd)
+! Unable to load picture or PDF file '"figures/it's.png"'.
+<to be read again> 
+                   }
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+
+! Package graphics Error: Division by 0.
+
+See the graphics package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+[1] (_oleafly_entry.aux) ) )
+Output written on _oleafly_entry.xdv (1 page, 476 bytes).
+Transcript written on _oleafly_entry.log.
+note: Rerunning TeX because "_oleafly_entry.aux" changed ...
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-02-24> (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo)) (graphicx.sty (keyval.sty) (graphics.sty (trig.sty) (graphics.cfg
+) (xetex.def))) (l3backend-xetex.def) (_oleafly_entry.aux) (ts1cmr.fd)
+! Unable to load picture or PDF file '"figures/it's.png"'.
+<to be read again> 
+                   }
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+
+! Package graphics Error: Division by 0.
+
+See the graphics package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.6 ...hics[width=0.5\linewidth]{figures/it's.png}
+                                                  
+[1] (_oleafly_entry.aux) ) )
+Output written on _oleafly_entry.xdv (1 page, 476 bytes).
+Transcript written on _oleafly_entry.log.
+note: Running xdvipdfmx ...
+[1
+warning: Tectonic was unable to detect an image's format
+note: Writing `/project/.oleafly/build/_oleafly_entry.log` (3.509765625 KiB)
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 8-byte read failed
+caused by: failed to fill whole buffer
+error: main.tex:6: Unable to load picture or PDF file '"figures/it's.png"'
+error: main.tex:6: Package graphics Error: Division by 0.
+
+See the graphics package documentation for explanation.
+Type  H <return>  for immediate help
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 8-byte read failed
+caused by: failed to fill whole buffer
+error: main.tex:6: Unable to load picture or PDF file '"figures/it's.png"'
+error: main.tex:6: Package graphics Error: Division by 0.
+
+See the graphics package documentation for explanation.
+Type  H <return>  for immediate help
+warning: errors were issued by the TeX engine, but were ignored; use --print and/or --keep-logs for details.
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 8-byte read failed
+caused by: failed to fill whole buffer
+warning: 2-byte read failed
+caused by: failed to fill whole buffer
+warning: 9-byte read failed
+caused by: failed to fill whole buffer
+warning: Tectonic was unable to detect an image's format
+error: pdf: image inclusion failed for "figures/it's.png".

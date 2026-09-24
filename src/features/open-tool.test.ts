@@ -8,10 +8,23 @@ import { useSettingsStore } from "@/store/settings";
 const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   toastError: vi.fn(),
+  toastErrorUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
-vi.mock("@/lib/toast", () => ({ toast: { error: mocks.toastError } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { error: mocks.toastError, errorUnique: mocks.toastErrorUnique },
+}));
+
+const TYPST_START_FAILED = "Oleafly couldn't start the Typst document.";
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 import { openHomePage, openTool, openToolsGallery } from "./open-tool";
 
@@ -94,9 +107,8 @@ describe("tool navigation", () => {
     ["typst-editor", "editor"],
   ] as const)("creates %s with the requested editor mode", async (id, mode) => {
     const createTypstProject = vi.fn().mockImplementation(async () => {
-      // Project initialization restores its saved layout before resolving.
+      useFilesStore.setState({ projectId: "typst-project" });
       useSettingsStore.setState({ viewMode: "split" });
-      return "typst-project";
     });
     useFilesStore.setState({ createTypstProject });
     await openTool(toolById(id));
@@ -104,13 +116,45 @@ describe("tool navigation", () => {
     expect(createTypstProject).toHaveBeenCalledWith("Untitled Typst document");
   });
 
-  it("reports Typst project creation failures without leaving an unhandled rejection", async () => {
+  it("leaves the current project's layout alone when the new Typst project did not open", async () => {
+    useSettingsStore.setState({ viewMode: "split" });
+    const createTypstProject = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ projectId: "paper", createTypstProject });
+    await openTool(toolById("typst-editor"));
+    expect(createTypstProject).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().viewMode).toBe("split");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+  });
+
+  it("creates one Typst project for overlapping requests", async () => {
+    const pending = deferred();
+    const createTypstProject = vi.fn().mockImplementation(async () => {
+      await pending.promise;
+      useFilesStore.setState({ projectId: "typst-project" });
+    });
+    useFilesStore.setState({ createTypstProject });
+    const first = openTool(toolById("typst-editor"));
+    const second = openTool(toolById("visual-typst-editor"));
+    pending.resolve();
+    await Promise.all([first, second]);
+    expect(createTypstProject).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+
+    useFilesStore.setState({ projectId: null });
+    await openTool(toolById("typst-editor"));
+    expect(createTypstProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports Typst project creation failures in one slot without an unhandled rejection", async () => {
     const failure = new Error("disk full");
     useFilesStore.setState({ createTypstProject: vi.fn().mockRejectedValue(failure) });
     await openTool(toolById("typst-editor"));
+    await openTool(toolById("typst-editor"));
     expect(mocks.logError).toHaveBeenCalledWith("open typst editor", failure);
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Oleafly couldn't start the Typst document.",
-    );
+    expect(mocks.toastErrorUnique.mock.calls).toEqual([
+      ["typst-start-failed", TYPST_START_FAILED],
+      ["typst-start-failed", TYPST_START_FAILED],
+    ]);
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 });

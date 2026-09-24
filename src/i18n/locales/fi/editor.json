@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "Kuva tallennettiin kohteeseen {{path}}",
     "imageFailed": "Liitettyä kuvaa ei voitu tallentaa projektiin.",
     "noProject": "Avaa projekti ennen kuvien liittämistä."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Oikoluvun kieli",
     "spellLanguageAppSetting": "Käytä sovelluksen asetusta",
     "spellLanguageAriaLabel": "Tämän projektin oikoluvun kieli",
-    "spellLanguageHint": "Koskee vain tätä projektia. Lataa lisää kieliä asetuksissa."
+    "spellLanguageHint": "Koskee vain tätä projektia. Lataa lisää kieliä asetuksissa.",
+    "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa."
   },
   "table": {
     "trigger": "Lisää taulukko",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Viittaa projektista",
-    "updating": "Projektin viittaukset päivittyvät.",
-    "changed": "Projektin viittaukset muuttuivat. Päivitä avaamalla valitsin uudelleen.",
     "filterPlaceholder": "Avain, tekijä tai otsikko…",
     "filterLabel": "Suodata projektin viittauksia",
     "partialCatalog": "Osittainen luettelo. Virheelliset tai lukukelvottomat lähdeluettelotiedostot voivat puuttua.",
@@ -403,10 +401,7 @@
     "error": "Kielentarkistus ei saanut tätä dokumenttia valmiiksi.",
     "unavailable": "Offline-kielentarkistus ei ole käytettävissä.",
     "tooLarge": "Kielentarkistus on keskeytetty, koska tämä dokumentti on liian suuri.",
-    "unsupported": "Kielentarkistusta ei tueta tälle dokumenttimuodolle.",
-    "partial_one": "Kielentarkistus sai talteen {{count}} huomion, mutta yksi moottori ei päässyt loppuun.",
-    "partial_other": "Kielentarkistus sai talteen {{count}} huomiota, mutta yksi moottori ei päässyt loppuun.",
-    "retry": "Yritä uudelleen"
+    "unsupported": "Kielentarkistusta ei tueta tälle dokumenttimuodolle."
   },
   "checkpoints": {
     "showInExplorer": "Näytä Resurssienhallinnassa",

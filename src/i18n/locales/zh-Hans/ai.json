@@ -519,7 +519,6 @@
     "showAllHistory": "显示全部历史记录（{{count}}）"
   },
   "research": {
-    "noSourceLink": "该结果不包含来源链接。",
     "sourceOpenFailed": "无法打开来源。",
     "noProjectPath": "该结果不包含项目文件路径。",
     "resultOpenFailed": "无法打开结果文件。"
@@ -637,7 +636,6 @@
     "summarizing": "正在总结之前的对话…"
   },
   "toasts": {
-    "sessionOpenFailed": "无法打开代理会话。",
     "approvalModeSaveFailed": "无法保存审批模式。",
     "skillDraftSaved": "技能草稿已保存。启用前请先审阅。",
     "skillDraftFailed": "无法保存技能草稿。{{error}}",
@@ -645,11 +643,9 @@
     "chatArchiveFailed": "无法归档此对话。",
     "chatForked": "对话已分叉。",
     "chatForkFailed": "无法分叉此对话。",
-    "engineNotLoaded": "文档引擎详情未加载。为安全起见，已禁用 AI 编辑。",
     "skillsLoadFailed": "无法加载已启用的技能。请重试。",
     "approvalModeLoadFailed": "无法加载审批模式。",
     "approvalRulesLoadFailed": "无法加载项目审批规则。",
-    "restored": "已恢复项目文件。对话已保留。",
     "restoreFailed": "无法恢复：{{error}}",
     "steerFailed": "无法调整正在运行的轮次。",
     "approvalRuleSaveFailed": "无法保存项目审批规则。",

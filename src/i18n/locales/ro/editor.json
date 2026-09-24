@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:nume"
   },
   "paste": {
-    "imageSaved": "Imaginea a fost salvată în {{path}}",
     "imageFailed": "Imaginea lipită nu a putut fi salvată în proiect.",
     "noProject": "Deschide un proiect înainte să lipești imagini."
   },
@@ -209,7 +208,8 @@
     "spellLanguage": "Limba verificării ortografice",
     "spellLanguageAppSetting": "Folosește setarea aplicației",
     "spellLanguageAriaLabel": "Limba verificării ortografice pentru acest proiect",
-    "spellLanguageHint": "Se aplică doar acestui proiect. Descarcă mai multe limbi din Setări."
+    "spellLanguageHint": "Se aplică doar acestui proiect. Descarcă mai multe limbi din Setări.",
+    "spellLanguageFailed": "Limba verificării ortografice nu a putut fi schimbată."
   },
   "table": {
     "trigger": "Inserează un tabel",
@@ -373,8 +373,6 @@
   },
   "citations": {
     "trigger": "Citează din proiect",
-    "updating": "Citările proiectului se actualizează.",
-    "changed": "Citările proiectului s-au schimbat. Redeschide selectorul ca să se actualizeze.",
     "filterPlaceholder": "Cheie, autor sau titlu…",
     "filterLabel": "Filtrează citările proiectului",
     "partialCatalog": "Catalog parțial. Fișierele de bibliografie greșit formate sau ilizibile pot lipsi.",
@@ -406,11 +404,7 @@
     "error": "Corectura nu a putut termina acest document.",
     "unavailable": "Corectura offline nu este disponibilă.",
     "tooLarge": "Corectura este suspendată fiindcă documentul este prea mare.",
-    "unsupported": "Corectura nu este acceptată pentru acest format de document.",
-    "partial_one": "Corectura a recuperat {{count}} rezultat, dar unul dintre motoare nu a terminat.",
-    "partial_few": "Corectura a recuperat {{count}} rezultate, dar unul dintre motoare nu a terminat.",
-    "partial_other": "Corectura a recuperat {{count}} de rezultate, dar unul dintre motoare nu a terminat.",
-    "retry": "Reîncearcă"
+    "unsupported": "Corectura nu este acceptată pentru acest format de document."
   },
   "checkpoints": {
     "showInExplorer": "Arată în Explorer",

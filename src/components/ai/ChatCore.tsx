@@ -127,6 +127,8 @@ import {
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
+import { logError } from "@/lib/log";
 import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import {
   enabledModels,
@@ -231,6 +233,15 @@ import {
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
+const FULL_ACCESS_DECLINED = "approvals.full_access_declined";
+const ATTACHMENT_REJECTED_TOAST = "ai-attach";
+
+export function steerRunAlreadyEnded(error: unknown): boolean {
+  let text = "";
+  if (typeof error === "string") text = error;
+  else if (error instanceof Error) text = error.message;
+  return text.startsWith("no active run ");
+}
 
 function figureCodeOf(args: unknown): string | undefined {
   if (!args || typeof args !== "object") return undefined;
@@ -652,7 +663,7 @@ export function ChatCore() {
         void useAcpSessionsStore
           .getState()
           .open(projectId, target.threadId)
-          .catch(() => toast.error(i18n.t(($) => $.ai.toasts.sessionOpenFailed)));
+          .catch((error: unknown) => logError("open agent session", error));
         return;
       }
       setTranscriptThreadId(target.threadId);
@@ -765,7 +776,8 @@ export function ChatCore() {
 
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
-      void setApprovalMode(projectId, nextMode).catch(() => {
+      void setApprovalMode(projectId, nextMode).catch((error: unknown) => {
+        if (decodeAppError(error)?.code === FULL_ACCESS_DECLINED) return;
         toast.error(i18n.t(($) => $.ai.toasts.approvalModeSaveFailed));
       });
     },
@@ -884,6 +896,7 @@ export function ChatCore() {
   } | null>(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
+  const handoffAutoSend = useAgentHandoffStore((s) => s.autoSend);
   const pendingImagesRef = useRef<string[]>([]);
   // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
@@ -942,9 +955,10 @@ export function ChatCore() {
   const addFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const picked: PendingAttachment[] = [];
+    const rejected: string[] = [];
     for (const f of Array.from(files)) {
       if (f.size > MAX_ATTACH_BYTES) {
-        toast.error(i18n.t(($) => $.ai.toasts.attachmentTooLarge, { name: f.name }));
+        rejected.push(i18n.t(($) => $.ai.toasts.attachmentTooLarge, { name: f.name }));
         continue;
       }
       try {
@@ -960,10 +974,12 @@ export function ChatCore() {
           mediaType: f.type || "application/octet-stream",
           dataUrl,
         });
-      } catch {
-        toast.error(i18n.t(($) => $.ai.toasts.attachmentReadFailed, { name: f.name }));
+      } catch (error) {
+        void logError("read attachment", error);
+        rejected.push(i18n.t(($) => $.ai.toasts.attachmentReadFailed, { name: f.name }));
       }
     }
+    if (rejected.length) toast.errorUnique(ATTACHMENT_REJECTED_TOAST, rejected.join(" "));
     if (picked.length) setAttachments((cur) => [...cur, ...picked].slice(0, MAX_ATTACH));
   };
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1095,7 +1111,7 @@ export function ChatCore() {
       openSkillsSettings();
       toast.success(i18n.t(($) => $.ai.toasts.skillDraftSaved));
     } catch (error) {
-      toast.error(i18n.t(($) => $.ai.toasts.skillDraftFailed, { error: String(error) }));
+      toast.error(i18n.t(($) => $.ai.toasts.skillDraftFailed, { error: describeError(error) }));
     }
   }, [openSkillsSettings, queryClient]);
   // Trailing-debounce timer for persisting the streaming conversation.
@@ -1675,10 +1691,7 @@ export function ChatCore() {
       }
       return;
     }
-    if (!engineLoaded) {
-      toast.error(i18n.t(($) => $.ai.toasts.engineNotLoaded));
-      return;
-    }
+    if (!engineLoaded) return;
     if (!apiKey) { openAISettings(); return; }
     if (sendPreparingRef.current) return;
     sendPreparingRef.current = true;
@@ -2643,7 +2656,13 @@ ${sandboxedCustom}`;
         (typeof e === "object" && e !== null && "name" in e && e.name === "AbortError");
       if (queued && !queuedAccepted) {
         rollbackQueuedTurn();
-        if (!aborted) toast.error(formatError(e, activeProviderName));
+        if (!aborted) {
+          void logError("queued follow-up", e);
+          toast.errorUnique(
+            `ai-follow-up:${runChatId ?? queued.id}`,
+            formatError(e, activeProviderName),
+          );
+        }
       } else if (aborted) {
         const note = "_Stopped._";
         if (runChatId) useAgentTurnsStore.getState().interruptTurn(runChatId);
@@ -2822,6 +2841,7 @@ ${sandboxedCustom}`;
         await useFilesStore
           .getState()
           .restoreFromGit(projectId, message.checkpointOid);
+        if (useFilesStore.getState().projectId !== projectId) return;
         setMessages((current) => {
           const restored = current.map((item) =>
             item.id === message.id ? { ...item, checkpointRestored: true } : item,
@@ -2834,9 +2854,8 @@ ${sandboxedCustom}`;
         if (activeChatId && approval.status(activeChatId) === "awaiting") {
           approval.setStatus(activeChatId, "planning");
         }
-        toast.success(i18n.t(($) => $.ai.toasts.restored));
       } catch (error) {
-        toast.error(i18n.t(($) => $.ai.toasts.restoreFailed, { error: String(error) }));
+        toast.error(i18n.t(($) => $.ai.toasts.restoreFailed, { error: describeError(error) }));
       } finally {
         setRestoringCheckpoint(null);
       }
@@ -2850,6 +2869,7 @@ ${sandboxedCustom}`;
   // user already typed instead of clobbering it.
   useEffect(() => {
     if (!handoffPending || streaming || !providerConfigReady) return;
+    if (handoffAutoSend && apiKey && !engineLoaded) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
@@ -2858,7 +2878,7 @@ ${sandboxedCustom}`;
       return;
     }
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
-  }, [handoffPending, streaming, providerConfigReady, apiKey, send, setInput]);
+  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, apiKey, engineLoaded, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -3390,9 +3410,10 @@ ${sandboxedCustom}`;
                                       .markSteered(chatId, item.id);
                                   });
                                 })
-                                .catch(() =>
-                                  toast.error(i18n.t(($) => $.ai.toasts.steerFailed)),
-                                )
+                                .catch((error: unknown) => {
+                                  if (steerRunAlreadyEnded(error)) return;
+                                  toast.error(i18n.t(($) => $.ai.toasts.steerFailed));
+                                })
                                 .finally(() => {
                                   steeringFollowUpIdsRef.current.delete(item.id);
                                   setSteeringFollowUpIds(
@@ -3459,7 +3480,7 @@ ${sandboxedCustom}`;
                   projectId={projectId}
                   parentSessionId={agentThreadId}
                   subagents={delegatedSubagents}
-                  onError={(message) => toast.error(message)}
+                  onError={(message) => toast.error(describeError(message))}
                 />
 
                 <div className="px-3 pb-3 pt-1.5">

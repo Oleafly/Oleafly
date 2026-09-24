@@ -4,19 +4,27 @@ import { Editor } from "@tiptap/core";
 import { createWysiwygExtensions, serializeLatexBody } from "@oleafly/wysiwyg";
 
 const mocks = vi.hoisted(() => ({
-  importImageFile: vi.fn(),
-  success: vi.fn(),
+  importImageFiles: vi.fn(),
+  image: null as { path: string; latexPath: string } | null,
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    errorUnique: vi.fn(),
+    infoUnique: vi.fn(),
+  },
+  notifyError: vi.fn(),
   locked: vi.fn(() => false),
 }));
 
 vi.mock("@/components/editor/figure-import", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/editor/figure-import")>();
-  return { ...actual, importImageFile: mocks.importImageFile };
+  return { ...actual, importImageFiles: mocks.importImageFiles };
 });
 
 vi.mock("@/lib/toast", () => ({
-  toast: { success: mocks.success, error: vi.fn(), info: vi.fn() },
-  notifyError: vi.fn(),
+  toast: mocks.toast,
+  notifyError: mocks.notifyError,
 }));
 
 vi.mock("@/lib/editor-mutation-lease", () => ({
@@ -61,10 +69,20 @@ async function flush(): Promise<void> {
   for (let i = 0; i < 4; i++) await Promise.resolve();
 }
 
+function expectNoNotice(): void {
+  for (const notify of Object.values(mocks.toast)) expect(notify).not.toHaveBeenCalled();
+  expect(mocks.notifyError).not.toHaveBeenCalled();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.locked.mockReturnValue(false);
-  mocks.importImageFile.mockResolvedValue({ path: "figures/pasted.png", latexPath: "figures/pasted.png" });
+  mocks.image = { path: "figures/pasted.png", latexPath: "figures/pasted.png" };
+  mocks.importImageFiles.mockImplementation(
+    async (files: File[], place: (image: { path: string; latexPath: string }) => void) => {
+      for (const _file of files) if (mocks.image) place(mocks.image);
+    },
+  );
 });
 
 afterEach(() => {
@@ -108,19 +126,19 @@ describe("createVisualPasteHandlers", () => {
     mocks.locked.mockReturnValue(true);
     const editor = mount();
     expect(handlers.handlePaste(editor.view, pasteEvent(transfer({}, [pngFile()])))).toBe(false);
-    expect(mocks.importImageFile).not.toHaveBeenCalled();
+    expect(mocks.importImageFiles).not.toHaveBeenCalled();
   });
 
   it("imports pasted images and inserts a figure with a focused caption", async () => {
     const editor = mount();
     expect(handlers.handlePaste(editor.view, pasteEvent(transfer({}, [pngFile()])))).toBe(true);
     await flush();
-    expect(mocks.importImageFile).toHaveBeenCalledOnce();
+    expect(mocks.importImageFiles).toHaveBeenCalledOnce();
     expect(serializeLatexBody(editor.getJSON())).toContain(
       "\\includegraphics[width=0.8\\linewidth]{figures/pasted.png}\n    \\caption{}\n    \\label{fig:pasted}",
     );
     expect(editor.state.selection.$from.parent.type.name).toBe("figureCaption");
-    expect(mocks.success).toHaveBeenCalledOnce();
+    expectNoNotice();
   });
 
   it("inserts dropped images at the drop position and skips moves", async () => {
@@ -131,19 +149,21 @@ describe("createVisualPasteHandlers", () => {
     expect(handlers.handleDrop(view, event, null, true)).toBe(false);
     expect(handlers.handleDrop(view, event, null, false)).toBe(true);
     await flush();
-    expect(mocks.importImageFile).toHaveBeenCalledTimes(2);
+    expect(mocks.importImageFiles).toHaveBeenCalledOnce();
+    expect(mocks.importImageFiles.mock.calls[0][0]).toHaveLength(2);
     expect(editor.getJSON().content?.map((node) => node.type)).toEqual(["paragraph", "figure", "figure", "paragraph"]);
     const latex = serializeLatexBody(editor.getJSON());
     expect(latex.match(/\\begin\{figure\}/gu)).toHaveLength(2);
     expect(latex.endsWith("Hello\n")).toBe(true);
+    expectNoNotice();
   });
 
   it("skips files the importer rejects", async () => {
-    mocks.importImageFile.mockResolvedValue(null);
+    mocks.image = null;
     const editor = mount();
     handlers.handlePaste(editor.view, pasteEvent(transfer({}, [pngFile()])));
     await flush();
     expect(serializeLatexBody(editor.getJSON())).toBe("Hello\n");
-    expect(mocks.success).not.toHaveBeenCalled();
+    expectNoNotice();
   });
 });

@@ -527,7 +527,6 @@
     "showAllHistory": "Tüm geçmişi göster ({{count}})"
   },
   "research": {
-    "noSourceLink": "Bu sonuçta bir kaynak bağlantısı yok.",
     "sourceOpenFailed": "Kaynak açılamadı.",
     "noProjectPath": "Bu sonuçta bir proje dosyası yolu yok.",
     "resultOpenFailed": "Sonuç dosyası açılamadı."
@@ -645,7 +644,6 @@
     "summarizing": "Önceki konuşma özetleniyor…"
   },
   "toasts": {
-    "sessionOpenFailed": "Ajan oturumu açılamadı.",
     "approvalModeSaveFailed": "Onay kipi kaydedilemedi.",
     "skillDraftSaved": "Beceri taslağı kaydedildi. Etkinleştirmeden önce gözden geçirin.",
     "skillDraftFailed": "Beceri taslağı kaydedilemedi. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Bu sohbet arşivlenemedi.",
     "chatForked": "Sohbet çatallandı.",
     "chatForkFailed": "Bu sohbet çatallanamadı.",
-    "engineNotLoaded": "Belge motoru ayrıntıları yüklü değil. Güvenlik için yapay zeka düzenlemesi devre dışı.",
     "skillsLoadFailed": "Etkin beceriler yüklenemedi. Yeniden deneyin.",
     "approvalModeLoadFailed": "Onay kipi yüklenemedi.",
     "approvalRulesLoadFailed": "Proje onay kuralları yüklenemedi.",
-    "restored": "Proje dosyaları geri yüklendi. Konuşma korundu.",
     "restoreFailed": "Geri yüklenemedi: {{error}}",
     "steerFailed": "Çalışan tur yönlendirilemedi.",
     "approvalRuleSaveFailed": "Proje onay kuralı kaydedilemedi.",

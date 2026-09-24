@@ -21,12 +21,9 @@
   "citeOleafly": {
     "undo": "Toast button that removes the citation entry that was just added"
   },
-  "compatibility": {
-    "blockerFinding_one": "The whole message is the finding title supplied by the compatibility scanner; keep it as the bare placeholder",
-    "chooseEngine": "Toast button that opens the compile engine picker"
-  },
   "compile": {
-    "retry": "Toast button that starts the compile again after a failure"
+    "retry": "Toast button that starts the compile again after a failure",
+    "bundleFetchFailed": "Compile error when the bundled TeX engine could not download packages from the internet"
   },
   "developer": {
     "nav": "Settings sidebar entry for the debug-build-only developer panel"
@@ -119,5 +116,15 @@
   },
   "ui": {
     "transparent": "Colour-picker option that clears the colour instead of choosing one"
+  },
+  "project": {
+    "autosaveFailed": "Sticky error after a save fails, from autosave or an explicit save. The unsaved text is still open in the editor"
+  },
+  "checkpoint": {
+    "storageUnavailable": "Shown once after a compile when the automatic version checkpoint could not be written to disk",
+    "incompleteCapture": "Shown after several compiles in a row could not record a version checkpoint because some files were unreadable"
+  },
+  "missingPackages": {
+    "userTree": "{{path}} is a folder path. The personal TeX tree is the per-user package folder, as opposed to the machine-wide one"
   }
 }

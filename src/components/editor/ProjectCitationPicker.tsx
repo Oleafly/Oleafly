@@ -19,8 +19,6 @@ import { insertAtCursor } from "@/components/editor/cm/controller";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import type { CitationCompletion } from "@/lib/project-intelligence/types";
-import { i18n } from "@/i18n";
-import { toast } from "@/lib/toast";
 import { useCitationStore } from "@/store/citation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -122,27 +120,18 @@ export function ProjectCitationPicker({
   );
 
   const insert = (completion: CitationCompletion) => {
-    if (
-      isWysiwygActive() &&
-      !getWysiwygProjectIntelligenceCurrent()
-    ) {
-      toast.info(i18n.t(($) => $.editor.citations.updating));
-      return;
-    }
+    if (isWysiwygActive() && !getWysiwygProjectIntelligenceCurrent()) return;
     const files = useFilesStore.getState();
     const accepted = currentProjectIntelligence(
       files.activePath
         ? files.files[files.activePath]?.content
         : undefined,
     );
-    const entry = accepted?.snapshot.bibliography.entries.find(
-      (candidate) => candidate.id === completion.id,
+    const known = accepted?.snapshot.bibliography.entries.some(
+      (candidate) => candidate.key === completion.key,
     );
-    if (!accepted || accepted.snapshot !== current?.snapshot || !entry) {
-      toast.info(i18n.t(($) => $.editor.citations.changed));
-      return;
-    }
-    insertAtCursor(citationSource(entry.key, formattingProfile));
+    if (!known) return;
+    insertAtCursor(citationSource(completion.key, formattingProfile));
   };
 
   let status: "pending" | "error" | "ready";

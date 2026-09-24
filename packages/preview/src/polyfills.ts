@@ -11,7 +11,7 @@
 
 type Ctor = { prototype: { getOrInsert?: unknown; getOrInsertComputed?: unknown } };
 
-function install(ctor: Ctor | undefined) {
+export function installGetOrInsert(ctor: Ctor | undefined) {
   if (!ctor) return;
   const proto = ctor.prototype as {
     has(key: unknown): boolean;
@@ -45,8 +45,45 @@ function install(ctor: Ctor | undefined) {
   }
 }
 
-install(typeof Map !== "undefined" ? (Map as unknown as Ctor) : undefined);
-install(typeof WeakMap !== "undefined" ? (WeakMap as unknown as Ctor) : undefined);
+installGetOrInsert(typeof Map !== "undefined" ? (Map as unknown as Ctor) : undefined);
+installGetOrInsert(typeof WeakMap !== "undefined" ? (WeakMap as unknown as Ctor) : undefined);
+
+type IteratorPrototype = { find?: unknown };
+
+export function installIteratorFind(prototype: IteratorPrototype | undefined) {
+  if (!prototype || typeof prototype.find === "function") return;
+  Object.defineProperty(prototype, "find", {
+    value: function <T>(this: Iterator<T>, predicate: (value: T, index: number) => unknown) {
+      if (typeof predicate !== "function") {
+        this.return?.();
+        throw new TypeError(`${String(predicate)} is not a function`);
+      }
+      let index = 0;
+      for (let step = this.next(); !step.done; step = this.next()) {
+        let matched: unknown;
+        try {
+          matched = predicate(step.value, index++);
+        } catch (error) {
+          this.return?.();
+          throw error;
+        }
+        if (matched) {
+          this.return?.();
+          return step.value;
+        }
+      }
+      return undefined;
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+installIteratorFind(
+  typeof Symbol === "function"
+    ? (Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as IteratorPrototype)
+    : undefined,
+);
 
 type Uint8ArrayCtor = {
   prototype: {

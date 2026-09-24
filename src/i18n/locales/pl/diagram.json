@@ -73,7 +73,6 @@
       "importedCodeOnly": "Zaimportowano {{name}} (tylko kod, bez możliwości rysowania).",
       "importFailed": "Nie udało się zaimportować tego pliku: {{detail}}",
       "noAiFix": "AI nie zwróciło poprawki.",
-      "aiFixApplied": "Zastosowano poprawkę AI. Trwa ponowna kompilacja…",
       "fixFailed": "Poprawka nie powiodła się: {{detail}}",
       "notDrawable": "Nic w tym kodzie nie dało się narysować. Kod pozostał bez zmian."
     },

@@ -12,6 +12,9 @@
       "title": "Chip label for searching by paper title"
     }
   },
+  "changelog": {
+    "installed": "Marks the release the user has installed in the changelog timeline, next to its version number."
+  },
   "compile": {
     "autoCompile": {
       "off": "Radio option: automatic compiling is turned off",
@@ -116,9 +119,13 @@
     "export": "Toolbar button that saves the project in another format",
     "fork": "Button that confirms copying the project into a new one",
     "layout": "Toolbar button that rearranges the editor, preview, and assistant panes",
-    "untitledProject": "Fallback shown when a project has no name yet"
+    "untitledProject": "Fallback shown when a project has no name yet",
+    "renameFailed": "Error after renaming the project from its title in the toolbar"
   },
   "updateWindow": {
-    "later": "Button that postpones installing an update"
+    "available": "Heading of the update window when a newer version exists. The version number is shown next to it in a separate tag.",
+    "historyFailed": "Shown in the update window when the notes for versions between the installed one and the new one could not be downloaded. A retry button follows.",
+    "later": "Button that postpones installing an update",
+    "released": "When the new version was published. {{when}} is a relative time already localized by the system, such as 3 days ago or yesterday."
   }
 }

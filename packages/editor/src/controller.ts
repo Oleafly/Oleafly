@@ -1,5 +1,5 @@
 import { EditorView } from "@codemirror/view";
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, type Extension, type SelectionRange } from "@codemirror/state";
 import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import { CodeMirror, getCM } from "@replit/codemirror-vim";
@@ -117,6 +117,23 @@ export function scrollEditorPositionLocally(
   });
 }
 
+function centerInEditorScroller(
+  v: EditorView,
+  range: SelectionRange,
+  options: { readonly y: string },
+): boolean {
+  if (options.y !== "center") return false;
+  const block = v.lineBlockAt(range.head);
+  const scroller = v.scrollDOM;
+  const box = scroller.getBoundingClientRect();
+  const middle = v.documentTop + block.top + block.height / 2;
+  const target = box.top + scroller.clientTop + scroller.clientHeight / 2;
+  scroller.scrollTop += (middle - target) / v.scaleY;
+  return true;
+}
+
+export const centerWithinEditor: Extension = EditorView.scrollHandler.of(centerInEditorScroller);
+
 /**
  * Reveal a source range without invoking the browser's ancestor-scrolling
  * algorithm.
@@ -137,11 +154,17 @@ export function revealEditorRange(
   const a = Math.min(Math.max(0, from), max);
   const b = Math.min(Math.max(a, to), max);
 
-  v.dispatch({
-    selection: EditorSelection.single(a, b),
-  });
-
-  scrollEditorPositionLocally(v, a);
+  if (v.state.facet(EditorView.scrollHandler).includes(centerInEditorScroller)) {
+    v.dispatch({
+      selection: EditorSelection.single(a, b),
+      effects: EditorView.scrollIntoView(a, { y: "center" }),
+    });
+  } else {
+    v.dispatch({
+      selection: EditorSelection.single(a, b),
+    });
+    scrollEditorPositionLocally(v, a);
+  }
 
   // CodeMirror prevents scrolling and synchronizes the DOM selection while
   // suppressing its observer. Focusing contentDOM directly can restore the

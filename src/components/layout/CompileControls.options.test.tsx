@@ -7,6 +7,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useToastStore } from "@/store/toast";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { CompileControls } from "./CompileControls";
 
@@ -14,7 +15,7 @@ const copy = enShell.compile;
 
 const recompile = vi.fn(async () => {});
 const stopCompile = vi.fn(async () => {});
-const setEngine = vi.fn(async () => {});
+const setEngine = vi.fn(async (_engine: string, _flavor?: string | null) => {});
 
 async function openOptions() {
   const user = userEvent.setup();
@@ -27,6 +28,7 @@ beforeEach(() => {
   recompile.mockClear();
   stopCompile.mockClear();
   setEngine.mockClear();
+  useToastStore.getState().reset();
   useFilesStore.setState({
     projectId: "p1",
     engine: LATEX_ENGINE,
@@ -152,6 +154,22 @@ describe("CompileControls options menu", () => {
     const user = await openOptions();
     await user.click(screen.getByTestId("compiler-tectonic"));
     await waitFor(() => expect(setEngine).toHaveBeenCalledWith("xetex"));
+  });
+
+  it("tells the user once when the compiler switch is refused", async () => {
+    setEngine.mockRejectedValue(new Error("latexmk is not installed"));
+    render(<CompileControls />);
+    const user = await openOptions();
+    await user.click(screen.getByTestId("compiler-lualatex"));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([
+        expect.objectContaining({
+          key: "engine-switch:p1",
+          kind: "error",
+          message: enShell.enginePicker.switchFailed,
+        }),
+      ]),
+    );
   });
 
   it("ignores a choice that is already in effect", async () => {

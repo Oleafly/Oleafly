@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ImportCompatFinding } from "@oleafly/latex";
 
-export type EnginePickerSource = "project-open" | "compile-failure" | "manual";
+export type EnginePickerSource = "compile-failure" | "manual";
 
 interface EnginePickerStore {
   open: boolean;

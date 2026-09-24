@@ -14,6 +14,7 @@ import {
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
+import type { CompileOrigin } from "@/store/compile";
 
 export type PackageErrorKind = "install" | "read" | "remove";
 
@@ -56,9 +57,13 @@ async function backendNotices(outcome: string): Promise<string[]> {
 
 export type InstallPhase = "download" | "extract" | "packages";
 
+export const TINYTEX_INSTALL_TOAST_KEY = "tinytex-install";
+const TINYTEX_REMOVE_TOAST_KEY = "tinytex-remove";
+
 interface EngineStore {
   info: EngineInfo | null;
   installing: boolean;
+  removing: boolean;
   /** Which install phase is running (null when idle). */
   installPhase: InstallPhase | null;
   /** Download percentage when the total size is known. */
@@ -67,8 +72,10 @@ interface EngineStore {
   partialDownloadBytes: number;
   /** A compile was requested mid-install; run it when the install lands. */
   compileQueuedDuringInstall: boolean;
+  compileQueuedExplicitly: boolean;
   /** "TinyTeX is still downloading" notice (Recompile during install). */
   installWaitNoticeOpen: boolean;
+  installWaitNoticeShown: boolean;
   installed: string[];
   userInstalled: string[];
   systemInstalled: string[];
@@ -83,18 +90,21 @@ interface EngineStore {
   remove: () => Promise<void>;
   addPackage: (name: string) => Promise<void>;
   removePackage: (name: string) => Promise<void>;
-  queueCompileAfterInstall: () => void;
+  queueCompileAfterInstall: (origin?: CompileOrigin) => void;
   closeInstallWaitNotice: () => void;
 }
 
 export const useEngineStore = create<EngineStore>((set, get) => ({
   info: null,
   installing: false,
+  removing: false,
   installPhase: null,
   progress: null,
   partialDownloadBytes: 0,
   compileQueuedDuringInstall: false,
+  compileQueuedExplicitly: false,
   installWaitNoticeOpen: false,
+  installWaitNoticeShown: false,
   installed: [],
   userInstalled: [],
   systemInstalled: [],
@@ -160,19 +170,19 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
 
   install: async () => {
     if (!isTauri() || get().installing) return;
-    // A download must not race a running compile for disk/CPU: stop it first.
-    // The compile is re-queued and runs automatically once the install lands.
+    set({
+      installing: true,
+      installPhase: "download",
+      progress: 0,
+      installWaitNoticeOpen: false,
+      installWaitNoticeShown: false,
+    });
     try {
       const compile = await import("@/store/compile");
-      const compileStore = compile.useCompileStore.getState();
-      if (compileStore.status === "compiling") {
-        void compileStore.stopCompile();
-        get().queueCompileAfterInstall();
-      }
-    } catch {
-      /* compile store unavailable — nothing to pause */
+      if (compile.stopRunningCompileQuietly()) get().queueCompileAfterInstall();
+    } catch (error) {
+      void logError("pause compile for install", error);
     }
-    set({ installing: true, installPhase: "download", progress: 0 });
     let unlisten: (() => void) | null = null;
     try {
       unlisten = await listen<{
@@ -191,12 +201,17 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       });
       const info = await installTinytex();
       set({ info, partialDownloadBytes: 0 });
-      toast.success(i18n.t(($) => $.core.tinytex.installed));
+      toast.successUnique(TINYTEX_INSTALL_TOAST_KEY, i18n.t(($) => $.core.tinytex.installed));
       void get().refreshPackages();
       if (get().compileQueuedDuringInstall) {
-        set({ compileQueuedDuringInstall: false, installWaitNoticeOpen: false });
+        const origin: CompileOrigin = get().compileQueuedExplicitly ? "explicit" : "automatic";
+        set({
+          compileQueuedDuringInstall: false,
+          compileQueuedExplicitly: false,
+          installWaitNoticeOpen: false,
+        });
         const compile = await import("@/store/compile");
-        void compile.useCompileStore.getState().recompile();
+        void compile.useCompileStore.getState().recompile({ origin });
       }
     } catch (e) {
       void logError("install tinytex", e);
@@ -205,13 +220,17 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       set({ partialDownloadBytes: state?.partial_download_bytes ?? 0 });
       // The backend message already says whether progress was kept; show it
       // verbatim instead of a generic apology.
-      toast.error(detail || i18n.t(($) => $.core.tinytex.installFailed), {
-        label: i18n.t(($) => $.core.tinytex.installGuide),
-        onClick: () =>
-          void import("@tauri-apps/plugin-shell").then((m) =>
-            m.open("https://yihui.org/tinytex/"),
-          ),
-      });
+      toast.errorUnique(
+        TINYTEX_INSTALL_TOAST_KEY,
+        detail || i18n.t(($) => $.core.tinytex.installFailed),
+        {
+          label: i18n.t(($) => $.core.tinytex.installGuide),
+          onClick: () =>
+            void import("@tauri-apps/plugin-shell").then((m) =>
+              m.open("https://yihui.org/tinytex/"),
+            ),
+        },
+      );
     } finally {
       unlisten?.();
       set({ installing: false, installPhase: null, progress: null });
@@ -219,15 +238,18 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   },
 
   remove: async () => {
-    if (!isTauri()) return;
+    if (!isTauri() || get().removing) return;
+    set({ removing: true });
     try {
       await deleteTinytex();
-      toast.success(i18n.t(($) => $.core.tinytex.removed));
+      toast.successUnique(TINYTEX_REMOVE_TOAST_KEY, i18n.t(($) => $.core.tinytex.removed));
       set({ installed: [], userInstalled: [], systemInstalled: [], partialDownloadBytes: 0 });
       void get().refresh();
     } catch (e) {
       void logError("delete tinytex", e);
-      toast.error(i18n.t(($) => $.core.tinytex.removeFailed));
+      toast.errorUnique(TINYTEX_REMOVE_TOAST_KEY, i18n.t(($) => $.core.tinytex.removeFailed));
+    } finally {
+      set({ removing: false });
     }
   },
 
@@ -238,16 +260,11 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     try {
       const outcome = await tlmgrInstall([name]);
       const notice = outcome ? ((await backendNotices(outcome))[0] ?? null) : null;
-      if (notice) {
-        set({ packageNotice: notice });
-        toast.success(notice);
-      }
+      if (notice) set({ packageNotice: notice });
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr install", e);
-      const failure = packageError(e, "install", name);
-      set({ packageError: failure });
-      toast.error(packageErrorMessage(failure));
+      set({ packageError: packageError(e, "install", name) });
     } finally {
       set({ busyPkg: null });
     }
@@ -263,16 +280,25 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr remove", e);
-      const failure = packageError(e, "remove", name);
-      set({ packageError: failure });
-      toast.error(packageErrorMessage(failure));
+      set({ packageError: packageError(e, "remove", name) });
     } finally {
       set({ busyPkg: null });
     }
   },
 
-  queueCompileAfterInstall: () => {
-    set({ compileQueuedDuringInstall: true, installWaitNoticeOpen: true });
+  queueCompileAfterInstall: (origin = "explicit") => {
+    const explicit = origin === "explicit";
+    const compileQueuedExplicitly = get().compileQueuedExplicitly || explicit;
+    if (!explicit || get().installWaitNoticeShown) {
+      set({ compileQueuedDuringInstall: true, compileQueuedExplicitly });
+      return;
+    }
+    set({
+      compileQueuedDuringInstall: true,
+      compileQueuedExplicitly,
+      installWaitNoticeOpen: true,
+      installWaitNoticeShown: true,
+    });
   },
 
   closeInstallWaitNotice: () => set({ installWaitNoticeOpen: false }),

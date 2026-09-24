@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Metadatele de configurare TexLab nu sunt valide",
     "setUp": "Configurează",
-    "retry": "Reîncearcă",
-    "startFailed": "Serviciul de limbaj al proiectului nu a putut fi pornit.",
-    "setupDetailsUnavailable": "Detaliile de configurare a serviciului de limbaj nu sunt disponibile",
     "setupRequired": "Este necesară configurarea serviciului de limbaj",
     "installTitle": "Instalezi {{name}} {{version}}?",
     "licenseAndSource": "Licență și sursă",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Analiza referințelor din proiect nu este disponibilă.",
-    "updating": "Referințele proiectului se actualizează.",
     "noDefinition": "Nu s-a găsit nicio definiție pentru „{{name}}”.",
     "definitionsFor": "Definiții pentru {{name}}",
     "multipleDefinitions": "„{{name}}” are {{count}} definiții. Deschide Referințe ca să le inspectezi.",

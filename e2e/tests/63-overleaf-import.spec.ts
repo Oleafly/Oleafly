@@ -158,7 +158,9 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().engine.id === "latex")`,
     15_000,
   );
-  // Reopening the project runs the import scan against the Tectonic engine.
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then((m) => m.useSettingsStore.getState().setViewMode("editor"))`,
+  );
   // openProject owns the library transition. Clicking Home here as well races
   // its readiness check against the outgoing workspace.
   await openProject(tauriPage, "minted-gap");
@@ -167,26 +169,34 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
     30_000,
   );
-  // The blocker toast carries the entry point into the engine picker, and a
-  // toast is transient. Every gap between "the button is there" and "click it"
-  // is a race the toast can win, and it did: this passed on the push run and
-  // timed out on the nightly at the same commit. Count and click inside one
-  // evaluation so there is no window for the toast to dismiss in between.
   await waitLong(
     tauriPage,
     `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
-    20_000,
-  );
-  const actions = await tauriPage.evaluate<number>(
+    60_000,
+  ).catch(async (error: unknown) => {
+    const state = await tauriPage.evaluate<string>(
+      `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+        const s = useCompileStore.getState();
+        return JSON.stringify({
+          status: s.status,
+          offer: s.offer,
+          failureReason: s.failureReason,
+          errors: (s.errors ?? []).slice(0, 8),
+        });
+      })`,
+    );
+    throw new Error(`${String(error)}\ncompile state: ${state}`);
+  });
+  const actions = await tauriPage.evaluate<string[]>(
     `(() => {
       const buttons = [...document.querySelectorAll("button")].filter((b) =>
         (b.textContent ?? "").includes("Choose engine"),
       );
       buttons[0]?.click();
-      return buttons.length;
+      return buttons.map((b) => b.getAttribute("data-testid") ?? "");
     })()`,
   );
-  expect(actions).toBe(1);
+  expect(actions).toEqual(["toolbar-compile-offer"]);
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="engine-picker-modal"]')`,

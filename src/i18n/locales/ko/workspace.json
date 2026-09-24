@@ -40,7 +40,8 @@
     "renameFailed": "\"{{path}}\"의 이름을 바꾸지 못했습니다. 원본 경로는 그대로 두었습니다.",
     "setMain": "주 문서로 지정",
     "title": "탐색기",
-    "treeAriaLabel": "탐색기 파일 트리"
+    "treeAriaLabel": "탐색기 파일 트리",
+    "setMainFailed": "\"{{path}}\"을(를) 주 문서로 지정하지 못했습니다."
   },
   "explorer": {
     "resizeSections": "{{first}}와(과) {{second}} 크기 조절"

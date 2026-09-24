@@ -40,7 +40,8 @@
     "renameFailed": "„{{path}}“ konnte nicht umbenannt werden. Der ursprüngliche Pfad blieb unverändert.",
     "setMain": "Als Hauptdokument festlegen",
     "title": "Explorer",
-    "treeAriaLabel": "Dateibaum im Explorer"
+    "treeAriaLabel": "Dateibaum im Explorer",
+    "setMainFailed": "„{{path}}“ konnte nicht als Hauptdokument festgelegt werden."
   },
   "explorer": {
     "resizeSections": "{{first}} und {{second}} in der Größe ändern"

@@ -62,6 +62,9 @@
     "reload": "Reload",
     "setHomePage": "Set as home page"
   },
+  "changelog": {
+    "installed": "You're on this version"
+  },
   "citeOleafly": {
     "description": "No bibliography file was found in this project, so nothing was changed. Copy the entry below into your bibliography, or find it again later under Settings, Help & About.",
     "openHelp": "Open Help & About",
@@ -298,8 +301,6 @@
       "needed": "This project uses features that need arbitrary external commands. They stay blocked until you allow them.",
       "warning": "Required by minted and some PythonTeX documents. LaTeX can run programs with your user permissions, so enable this only for a project you trust. TeX Live's own helpers, like EPS conversion, run without it."
     },
-    "shellEscapeAllowed": "External commands are allowed for this project on this computer.",
-    "shellEscapeBlocked": "Arbitrary external commands are blocked for this project. TeX Live's own helpers, like EPS conversion, still run.",
     "shellEscapeFailed": "Could not update external command access.",
     "switchFailed": "Could not switch the compile engine.",
     "switched": "This project now compiles with {{engine}}.",
@@ -490,7 +491,6 @@
         "title": "Cloud sync"
       },
       "danger": {
-        "closeFailed": "The open project could not be closed safely.",
         "confirmDeleteAllAction": "Delete all projects",
         "confirmDeleteAllDescription": "Every current project will move to the Recycle Bin, including its files and Git history. You can restore projects individually afterward.",
         "confirmDeleteAllTitle_one": "Delete all {{count}} project?",
@@ -500,7 +500,8 @@
         "deleteAllDescription": "Moves every project to the Recycle Bin. Nothing is permanently deleted.",
         "deleting": "Deleting…",
         "moveFailed": "Couldn't move the projects to the Recycle Bin.",
-        "movePartial": "Moved {{count}} projects, but couldn't finish the operation.",
+        "movePartial_one": "Moved {{count}} project to the Recycle Bin. The rest were not moved.",
+        "movePartial_other": "Moved {{count}} projects to the Recycle Bin. The rest were not moved.",
         "movedCount_one": "Moved {{count}} project to the Recycle Bin.",
         "movedCount_other": "Moved {{count}} projects to the Recycle Bin.",
         "title": "Danger zone"
@@ -511,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Clear all",
         "clearFailed": "Couldn't clear the Recycle Bin.",
-        "clearPartial": "Permanently deleted {{count}} projects, but couldn't clear the entire Recycle Bin.",
+        "clearPartial_one": "Permanently deleted {{count}} project. The rest are still in the Recycle Bin.",
+        "clearPartial_other": "Permanently deleted {{count}} projects. The rest are still in the Recycle Bin.",
         "clearedCount_one": "Permanently deleted {{count}} project.",
         "clearedCount_other": "Permanently deleted {{count}} projects.",
         "clearing": "Clearing…",
@@ -841,7 +843,6 @@
     },
     "newProjectName": "New project name",
     "projectName": "Project name",
-    "projectRenamed": "Project renamed",
     "saveName": "Save (Enter)",
     "saveNameAriaLabel": "Save name",
     "untitledProject": "project",
@@ -852,7 +853,8 @@
       "pdf": "PDF View",
       "split": "Split View"
     },
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "renameFailed": "Couldn't rename the project."
   },
   "tour": {
     "chooseColor": "Choose your signature color",
@@ -891,13 +893,16 @@
     "updateNow": "Update now"
   },
   "updateWindow": {
+    "available": "Update available",
     "checking": "Checking for updates…",
     "currentVersion": "You're on v{{version}}",
     "error": "The update could not finish. Please try again later.",
+    "historyFailed": "Couldn't load earlier release notes.",
     "later": "Later",
     "looking": "Looking for the latest version…",
     "packageInstall": "Installed from a package. Download the new version to update.",
     "ready": "A new version is ready to install.",
+    "released": "Released {{when}}",
     "upToDate": "You're up to date",
     "upToDateGeneric": "You're running the latest version of Oleafly",
     "upToDateHeadline": "You're up to date!",

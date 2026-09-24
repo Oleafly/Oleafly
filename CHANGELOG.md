@@ -7,8 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The update window shows what changed in every version since the one you
+  have, newest first, and loads older releases as you scroll. It says when
+  each release came out, such as yesterday or 3 weeks ago, and hovering the
+  date shows the exact time. Links in the notes open in your browser, and code
+  snippets have a copy button.
+- Help & About > What's new opens the full changelog inside Oleafly. It marks
+  the version you are on and says whether you are up to date.
+
+### Changed
+
+- The update window follows your accent colour and theme, drops the
+  separate hero banner, and keeps everything on one scrolling page. If an
+  update fails, Try again retries it from the window.
+- Notifications only appear for something you just did, and only once.
+  Work that runs on its own, such as outline and index updates, the checks
+  after you import a project, auto compile, language servers, downloads and
+  checkpoints, no longer pops up messages. A message that repeats updates in
+  place instead of stacking, and no more than four show at a time. A failed
+  autosave or checkpoint still warns you, once per project. When an
+  automatic compile fails for a reason you can fix, the preview shows the
+  fix as a button, or the toolbar does when the preview is hidden.
+- Setting up the language service is no longer a pop-up. Project info shows
+  a Set up button, and a dot on its toolbar button tells you setup is
+  waiting.
+- The offer to install a project's pinned TeX packages now appears when a
+  compile fails for lack of them, instead of every time the project opens.
+
 ### Fixed
 
+- Going to a line in a long document, from the outline, a search result,
+  a compile error or the PDF, now puts that line in the middle of the
+  editor. It used to land up to a few rows off, and in a long book the line
+  numbers next to it could end up shifted from their lines.
+- The Mermaid to LaTeX converter now produces an image for every diagram
+  it cannot turn into TikZ. Class, state, ER, requirement, mindmap, kanban,
+  block and journey diagrams, and flowcharts with subgraphs, used to fail
+  with a canvas error. The images are sharper too, about 2,000 pixels on the
+  long side, and labels keep their bold, italics, colours, subscripts and
+  superscripts.
+- A compile that stops on a broken image now says which image and what is
+  wrong with it, such as an empty or cut-off file or a web page saved with a
+  .pdf name, and how to fix it. Before, Tectonic could stop with only a
+  libpng error and no file name. This works in the app and in `oleaflyc`.
+- Old copies of Biber no longer pile up after an update. Each Biber version
+  unpacks into its own folder, and a copy that no Biber on your computer
+  uses any more is removed after 7 days. That cleanup runs in the
+  background when Oleafly starts, never during a compile.
 - The Windows installer carries the Oleafly icon. The downloaded
   `-setup.exe` used to show the generic installer icon in Explorer, in the
   browser download list and on the permission prompt, because the icon for

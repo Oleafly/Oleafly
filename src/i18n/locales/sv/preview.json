@@ -92,7 +92,10 @@
     "settings": "Inställningar för PDF-förhandsvisning",
     "fullscreen": "Förhandsvisning i helskärm",
     "exitFullscreen": "Lämna helskärm",
-    "retryCompile": "Kompilera igen"
+    "retryCompile": "Kompilera igen",
+    "chooseEngine": "Välj motor…",
+    "installPackages_one": "Hitta och installera {{name}}",
+    "installPackages_other": "Hitta och installera {{count}} filer"
   },
   "stale": {
     "badge": "Inaktuell",
@@ -121,7 +124,7 @@
     "imageSaved": "Bilden sparad · {{name}}",
     "pdfSaved": "PDF sparad · {{name}}",
     "showInFolder": "Visa i mappen",
-    "folderUnavailable": "Filen sparades, men Oleafly kunde inte öppna dess mapp (åtkomst nekad). Kontrollera platsen du valde i spardialogen.",
+    "folderUnavailable": "Det gick inte att öppna mappen.",
     "imageFailed": "Det gick inte att ladda ner bilden.",
     "imageFailedDetail": "Det gick inte att ladda ner bilden: {{detail}}",
     "pdfFailed": "Det gick inte att ladda ner PDF:en.",

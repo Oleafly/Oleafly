@@ -1,6 +1,7 @@
 mod build;
 mod compile_log;
 mod error;
+mod image_check;
 pub mod locking;
 mod manifest;
 mod tree;
@@ -11,6 +12,11 @@ pub use compile_log::{
     parse_latex_log, LogCategory, LogDiagnostic, LogSeverity, MAX_COMPILE_LOG_BYTES,
 };
 pub use error::{Error, ErrorKind, Result};
+pub use image_check::{
+    diagnose_image_failures, image_failure_evidence, image_failure_notes, image_findings_lead,
+    place_image_findings, BrokenImage, ImageContent, ImageEvidence, ImageFinding, ImageFormat,
+    ImageProblem, ASK_AI_ERROR_BUDGET,
+};
 pub use manifest::{
     CheckpointCaptureMode, CheckpointPolicy, Engine, ExportRecord, ProjectManifest, TexSpec,
 };

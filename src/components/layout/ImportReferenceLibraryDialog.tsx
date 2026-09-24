@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload } from "lucide-react";
+import { AlertCircle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +14,9 @@ import {
   parseCitationFile,
   type BatchImportResult,
 } from "@/features/citation";
-import { notifyError, toast } from "@/lib/toast";
+import type { ParsedBib } from "@/lib/citation/types";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 
 function ZoteroLogo() {
@@ -77,6 +79,23 @@ function summarize(result: BatchImportResult): string {
         target,
       })
     : i18n.t(($) => $.references.import.added, { count: result.imported, target });
+}
+
+type ReadOutcome = { entries: ParsedBib[] } | { error: string };
+
+async function readEntries(file: File): Promise<ReadOutcome> {
+  let entries: ParsedBib[] | null;
+  try {
+    entries = parseCitationFile(file.name, await file.text());
+  } catch (error) {
+    void logError("import references", error);
+    return { error: i18n.t(($) => $.references.import.readFailed) };
+  }
+  if (!entries) {
+    return { error: i18n.t(($) => $.references.import.unrecognized, { name: file.name }) };
+  }
+  if (!entries.length) return { error: i18n.t(($) => $.references.import.empty) };
+  return { entries };
 }
 
 function describeErrors(errors: readonly string[]): string {
@@ -160,30 +179,38 @@ export function ImportReferenceLibraryDialog({
 }>) {
   const { t } = useTranslation(["references"]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleUpload = async (file: File) => {
-    setBusy(true);
+  useEffect(() => {
+    if (!open) setError(null);
+  }, [open]);
+
+  const importEntries = async (entries: ParsedBib[]) => {
     try {
-      const text = await file.text();
-      const entries = parseCitationFile(file.name, text);
-      if (!entries) {
-        toast.error(i18n.t(($) => $.references.import.unrecognized, { name: file.name }));
-        return;
-      }
-      if (!entries.length) {
-        toast.error(i18n.t(($) => $.references.import.empty));
-        return;
-      }
       const result = await addCitations(entries);
       if (result.errors.length) {
-        toast.error(describeErrors(result.errors));
+        setError(describeErrors(result.errors));
         return;
       }
       toast.success(summarize(result));
       onImported?.();
       onOpenChange(false);
-    } catch (error) {
-      notifyError("import references", error, i18n.t(($) => $.references.import.readFailed));
+    } catch (error_) {
+      void logError("import references", error_);
+      setError(i18n.t(($) => $.references.import.failed));
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const outcome = await readEntries(file);
+      if ("error" in outcome) {
+        setError(outcome.error);
+        return;
+      }
+      await importEntries(outcome.entries);
     } finally {
       setBusy(false);
     }
@@ -216,6 +243,15 @@ export function ImportReferenceLibraryDialog({
             busy={busy}
           />
         </div>
+        {error ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+          >
+            <AlertCircle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
         <p className="text-center text-xs text-muted-foreground">
           {t(($) => $.references.import.duplicateNote)}
         </p>

@@ -2,7 +2,7 @@ import { i18n } from "@/i18n";
 import { create } from "zustand";
 import { trimToWordCharacters } from "@/lib/proofreading/word-edges";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
-import { useToastStore } from "@/store/toast";
+import { toast } from "@/lib/toast";
 import {
   clearWordsIgnoredHere,
   forgetFindingSuppressedHere,
@@ -61,13 +61,14 @@ export type DictionaryWriteOutcome =
 
 type DictionaryNotice = (message: string) => void;
 
-let notice: DictionaryNotice = (message) =>
-  useToastStore.getState().push("info", message);
+function toastNotice(message: string): void {
+  toast.info(message);
+}
+
+let notice: DictionaryNotice = toastNotice;
 
 export function setDictionaryNotice(next: DictionaryNotice | null): void {
-  notice =
-    next ??
-    ((message) => useToastStore.getState().push("info", message));
+  notice = next ?? toastNotice;
 }
 
 function announceProofreadingChange(): void {

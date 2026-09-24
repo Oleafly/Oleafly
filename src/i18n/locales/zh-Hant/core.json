@@ -54,16 +54,10 @@
     "present": "{{path}} 已有 Oleafly 條目。請用 {{markup}} 引用。",
     "undo": "復原"
   },
-  "compatibility": {
-    "biblatexBiber": "本專案使用 biblatex/Biber 處理參考文獻。",
-    "blockerFinding_other": "{{title}}（另有 {{more}} 項）",
-    "chooseEngine": "選擇引擎…",
-    "importNotes_other": "{{count}} 則匯入說明：{{title}}（另有 {{more}} 項）"
-  },
   "compile": {
-    "engineNotLoaded": "在文件引擎載入完成前，編譯功能會停用。",
     "noOfflineMode": "{{engine}} 未提供離線編譯模式，將以一般方式編譯。",
-    "retry": "重新編譯"
+    "retry": "重新編譯",
+    "bundleFetchFailed": "Oleafly 無法下載此文件所需的 TeX 套件。請檢查網路連線，然後重新編譯。"
   },
   "developer": {
     "actions": {
@@ -89,7 +83,6 @@
         "title": "填入研究語料庫"
       }
     },
-    "closeProjectFailed": "無法安全關閉目前開啟的專案。",
     "confirm": {
       "clearProjects": {
         "action": "清除專案",
@@ -158,17 +151,12 @@
     "pdfFailedDetail": "無法儲存 PDF：{{detail}}",
     "pngFailed": "無法儲存 PNG",
     "pngFailedDetail": "無法儲存 PNG：{{detail}}",
-    "revealFailed": "檔案已儲存，但 Oleafly 無法開啟所在的資料夾（權限遭拒）。請確認你在儲存對話框中選擇的位置。",
+    "revealFailed": "檔案已儲存，但無法開啟它所在的資料夾。",
     "saved": "{{kind}} 已儲存 · {{fileName}}",
     "showInFolder": "在資料夾中顯示"
   },
   "externalChange": {
-    "deletionRestored": "外部刪除與未儲存的編輯發生衝突。你的本機編輯已還原。",
-    "localEditKept": "你有未儲存的變更時，「{{path}}」收到了外部編輯。已保留你的本機編輯。",
-    "persistExternalFailed": "無法儲存「{{path}}」最新的外部更新。",
-    "preserveLocalFailed": "無法保留你對「{{path}}」的本機更新。",
-    "reloadFailed": "專案設定已更新，但部分變更過的檔案無法重新載入。",
-    "restoreLocalFailed": "無法還原你對「{{path}}」未儲存的更新。"
+    "reloadFailed": "專案設定已更新，但部分變更過的檔案無法重新載入。"
   },
   "fonts": {
     "systemDefault": "系統預設",
@@ -176,18 +164,15 @@
   },
   "imageToLatex": {
     "failed": "圖片轉 LaTeX 失敗：{{detail}}",
-    "inserted": "已插入從圖片轉換的 LaTeX",
     "transcribing": "正在轉錄圖片…"
   },
   "import": {
-    "arxivImported": "已匯入 arXiv 原始碼。請編譯專案以檢查結果。",
     "chooseOfferedProjectType": "請選擇這個檔案可用的專案類型之一。",
     "invalidArxivId": "請貼上 arXiv 論文連結，或類似 2301.01234 的編號。",
     "supportedDocumentTypes": "請選擇支援的文件類型之一。",
-    "conversionNotice": "我們已將你的內容轉換成 LaTeX。你可能需要調整樣式，尤其是表格、圖片與引用。",
+    "conversionNotice": "已轉換為 {{format}}。表格、圖片與引用可能需要調整樣式。",
     "figureSaved": "已儲存 {{name}}",
-    "pdfProjectCreated": "已從 PDF 建立專案。請先檢查重建結果再採用。",
-    "pickPdfOrDocx": "請選擇 .pdf 或 .docx 檔案",
+    "pickPdfOrDocx": "請選擇 .pdf 或 .docx 檔案。",
     "texSaved": "已儲存 .tex",
     "unsupportedFile": "請選擇 .zip、.docx、.md 或 .markdown 檔案。",
     "zipSaveFailed": "無法儲存 ZIP 壓縮檔。",
@@ -310,7 +295,8 @@
   "missingPackages": {
     "action_other": "尋找並安裝 {{count}} 個檔案",
     "installing_other": "正在安裝 {{count}} 個套件。安裝完成後會重新開始編譯。",
-    "summary_other": "編譯時找不到 {{names}}。請在 TeX Live 中尋找對應的套件。"
+    "summary_other": "編譯時找不到 {{names}}。請在 TeX Live 中尋找對應的套件。",
+    "userTree": "系統 TeX 樹為唯讀，因此套件已安裝到你位於 {{path}} 的個人樹中。"
   },
   "models": {
     "chips": {
@@ -353,19 +339,16 @@
     "renamed": "已重新命名為「{{name}}」（$t(core:navigation.files, {\"count\": {{files}} }) 中的 $t(core:navigation.edits, {\"count\": {{edits}} })）"
   },
   "pandoc": {
-    "downloadFailed": "無法下載 pandoc。請手動安裝後再試一次",
+    "downloadFailed": "無法下載 pandoc。請手動安裝後再試一次。",
     "downloadingPercent": "正在下載 pandoc… {{progress}}%",
     "downloadingSize": "正在下載 pandoc… {{megabytes}} MB",
-    "installGuide": "安裝指南",
-    "installed": "已安裝 pandoc"
+    "installGuide": "安裝指南"
   },
   "project": {
     "copyFailed": "無法複製「{{path}}」。",
     "dateUnavailable": "無法取得",
     "importFailed": "無法匯入。詳情請查看應用程式記錄檔。",
-    "imported": "專案已匯入。",
     "openFailed": "無法開啟專案。詳情請查看應用程式記錄檔。",
-    "restoringUnsavedFiles": "專案更新移除了含有未儲存編輯的檔案。Oleafly 已保留你的編輯，正在還原這些檔案。",
     "saveBlockedClose": "由於有一個以上的檔案無法儲存，專案仍保持開啟。",
     "saveBlockedDiscard": "捨棄變更並離開",
     "saveBlockedMany": "{{count}} 個檔案無法儲存：{{files}}。第一個檔案已在編輯器中開啟，並保留未儲存的變更（{{reason}}）。留下來解決問題，或捨棄這些檔案中未儲存的變更後離開。",
@@ -376,7 +359,8 @@
     "updatedDaysAgo_other": "{{count}} 天前更新",
     "updatedOn": "更新於 {{date}}",
     "updatedToday": "今天更新",
-    "updatedYesterday": "昨天更新"
+    "updatedYesterday": "昨天更新",
+    "autosaveFailed": "無法儲存你的變更。變更仍保留在編輯器中。"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失敗：{{message}}",
@@ -465,13 +449,7 @@
     "defaultTitle": "終端機 {{index}}"
   },
   "tex": {
-    "distributionGap": "本專案釘選了 {{pinned}}。目前使用的 {{local}} 缺少其中 {{count}} 個套件，在重新使用該發行版之前，編譯可能會失敗。",
-    "distributionSkew": "本專案釘選了 {{pinned}}，而這台電腦使用 {{local}} 編譯。輸出結果可能略有差異。",
-    "installPinned_other": "全部安裝 {{count}} 個",
-    "installingPinned_other": "正在安裝 {{count}} 個釘選的套件…",
-    "pinnedPackagesFailed": "部分釘選的套件無法安裝。請查看「設定 → LaTeX 引擎」。",
-    "pinnedPackagesInstalled": "已安裝釘選的 LaTeX 套件。",
-    "pinnedPackagesMissing_other": "本專案釘選了 {{count}} 個尚未在此安裝的 LaTeX 套件。"
+    "distributionGap": "本專案釘選了 {{pinned}}。目前使用的 {{local}} 缺少其中 {{count}} 個套件，在重新使用該發行版之前，編譯可能會失敗。"
   },
   "theme": {
     "cssForbiddenSyntax": "自訂 CSS 不能使用 at 規則、URL 或選擇器。",
@@ -520,8 +498,8 @@
       "installing": "正在安裝…",
       "unpacking": "正在解壓縮…"
     },
-    "removeFailed": "無法移除 TinyTeX",
-    "removed": "已移除 TinyTeX"
+    "removeFailed": "無法移除 TinyTeX。",
+    "removed": "已移除 TinyTeX。"
   },
   "toolActivity": {
     "labels": {
@@ -572,5 +550,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "儲存時專案有變動。請重新嘗試更新。"
+  },
+  "checkpoint": {
+    "storageUnavailable": "無法儲存檢查點。磁碟已滿，或檢查點資料夾無法寫入。請釋放一些空間或檢查資料夾權限，然後重新編譯。",
+    "incompleteCapture": "由於部分專案檔案無法讀取，最近的幾個檢查點未能儲存。請檢查這些檔案的權限，然後重新編譯。"
   }
 }

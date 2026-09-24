@@ -40,7 +40,8 @@
     "renameFailed": "Kohdetta \"{{path}}\" ei voitu nimetä uudelleen. Alkuperäinen polku jäi ennalleen.",
     "setMain": "Aseta päädokumentiksi",
     "title": "Resurssienhallinta",
-    "treeAriaLabel": "Resurssienhallinnan tiedostopuu"
+    "treeAriaLabel": "Resurssienhallinnan tiedostopuu",
+    "setMainFailed": "Kohdetta \"{{path}}\" ei voitu asettaa päädokumentiksi."
   },
   "explorer": {
     "resizeSections": "Muuta osioiden {{first}} ja {{second}} kokoa"

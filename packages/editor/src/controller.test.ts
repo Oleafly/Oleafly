@@ -2,10 +2,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { history } from "@codemirror/commands";
-import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorSelection, EditorState, StateEffect } from "@codemirror/state";
+import { type BlockInfo, EditorView } from "@codemirror/view";
 import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 import {
+  centerWithinEditor,
   editorRedo,
   editorUndo,
   editorVimRedo,
@@ -175,5 +176,81 @@ describe("editor controller navigation", () => {
     expect(document.documentElement.scrollTop).toBe(47);
     expect(document.body.scrollTop).toBe(31);
     expect(focus).toHaveBeenCalled();
+  });
+});
+
+describe("centering inside the source editor", () => {
+  const LINES = Array.from({ length: 120 }, (_, index) => `line ${index + 1}`).join("\n");
+
+  function mountCentered(): EditorView {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc: LINES, extensions: [centerWithinEditor] }),
+    });
+    setEditorView(view);
+    return view;
+  }
+
+  function scrollHandler(current: EditorView) {
+    const [handler] = current.state.facet(EditorView.scrollHandler);
+    return handler;
+  }
+
+  it("lets CodeMirror measure the target before it scrolls", () => {
+    const current = mountCentered();
+    const effects: StateEffect<unknown>[] = [];
+    const listener = EditorView.updateListener.of((update) => {
+      for (const transaction of update.transactions) effects.push(...transaction.effects);
+    });
+    current.dispatch({ effects: StateEffect.appendConfig.of(listener) });
+    const measure = vi.spyOn(current, "requestMeasure");
+    vi.spyOn(current.contentDOM, "focus").mockImplementation(() => undefined);
+
+    gotoLine(96);
+
+    const target = current.state.doc.line(96).from;
+    expect(current.state.selection.main.head).toBe(target);
+    const scroll = effects
+      .map((effect) => effect.value as { range?: { head: number }; y?: string })
+      .find((value) => value?.range?.head === target);
+    expect(scroll?.y).toBe("center");
+    expect(measure.mock.calls.some(([request]) => request !== undefined)).toBe(false);
+  });
+
+  it("moves only the editor's scroller to center a line", () => {
+    const current = mountCentered();
+    document.documentElement.scrollTop = 47;
+    document.body.scrollTop = 31;
+    Object.defineProperty(current.scrollDOM, "clientHeight", { configurable: true, value: 160 });
+    Object.defineProperty(current, "documentTop", { configurable: true, get: () => 0 });
+    Object.defineProperty(current, "scaleY", { configurable: true, get: () => 1 });
+    vi.spyOn(current, "lineBlockAt").mockReturnValue({ top: 900, height: 20 } as BlockInfo);
+
+    const handled = scrollHandler(current)(current, EditorSelection.cursor(5), {
+      x: "nearest",
+      y: "center",
+      xMargin: 5,
+      yMargin: 5,
+    });
+
+    expect(handled).toBe(true);
+    expect(current.scrollDOM.scrollTop).toBe(830);
+    expect(document.documentElement.scrollTop).toBe(47);
+    expect(document.body.scrollTop).toBe(31);
+  });
+
+  it("leaves cursor-following scrolls to CodeMirror", () => {
+    const current = mountCentered();
+    const handled = scrollHandler(current)(current, EditorSelection.cursor(5), {
+      x: "nearest",
+      y: "nearest",
+      xMargin: 5,
+      yMargin: 5,
+    });
+
+    expect(handled).toBe(false);
+    expect(current.scrollDOM.scrollTop).toBe(0);
   });
 });

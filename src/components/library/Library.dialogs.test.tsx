@@ -391,6 +391,51 @@ describe("Library project dialogs", () => {
     await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
   });
 
+  it("forks once while a fork is running, whatever keys and clicks arrive", async () => {
+    let finish!: (id: string) => void;
+    duplicateProject.mockReturnValue(
+      new Promise<string>((resolve) => { finish = resolve; }),
+    );
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.projects.fork }),
+    );
+    const input = await screen.findByPlaceholderText(
+      enLibrary.projects.forkDialog.namePlaceholder,
+    );
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter", repeat: true });
+    fireEvent.keyDown(input, { key: "Enter" });
+    const confirm = screen.getByRole("button", {
+      name: enLibrary.projects.forkDialog.confirm,
+    });
+    fireEvent.click(confirm);
+    expect(duplicateProject).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(confirm).toBeDisabled());
+    finish("fork-1");
+    await waitFor(() =>
+      expect(
+        screen.queryByPlaceholderText(enLibrary.projects.forkDialog.namePlaceholder),
+      ).not.toBeInTheDocument(),
+    );
+    expect(duplicateProject).toHaveBeenCalledTimes(1);
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
+  it("ignores a held Enter key in the fork name field", async () => {
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.projects.fork }),
+    );
+    const input = await screen.findByPlaceholderText(
+      enLibrary.projects.forkDialog.namePlaceholder,
+    );
+    fireEvent.keyDown(input, { key: "Enter", repeat: true });
+    expect(duplicateProject).not.toHaveBeenCalled();
+  });
+
   it("closes the fork dialog", async () => {
     render(<Library />);
     await openListActions(PAPER.name);
@@ -431,6 +476,28 @@ describe("Library project dialogs", () => {
     );
   });
 
+  it("confirms the move when only the list refresh fails afterwards", async () => {
+    refreshProjects.mockRejectedValue(new Error("list failed"));
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.projects.delete }),
+    );
+    refreshProjects.mockClear();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: enLibrary.projects.deleteDialog.confirm,
+      }),
+    );
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledExactlyOnceWith(
+        enLibrary.projects.deleteDialog.moved.replace("{{name}}", PAPER.name),
+      ),
+    );
+    expect(refreshProjects).toHaveBeenCalledOnce();
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
   it("reports a failed deletion", async () => {
     recycleProject.mockRejectedValue(new Error("locked"));
     render(<Library />);
@@ -444,6 +511,7 @@ describe("Library project dialogs", () => {
       }),
     );
     await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
   it("reports a preview that cannot be loaded", async () => {

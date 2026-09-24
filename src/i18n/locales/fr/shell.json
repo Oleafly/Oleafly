@@ -63,6 +63,9 @@
     "reload": "Recharger",
     "setHomePage": "Définir comme page d'accueil"
   },
+  "changelog": {
+    "installed": "Vous êtes sur cette version"
+  },
   "citeOleafly": {
     "description": "Aucun fichier bibliographique n'a été trouvé dans ce projet, rien n'a donc été modifié. Copiez l'entrée ci-dessous dans votre bibliographie, ou retrouvez-la plus tard dans Paramètres, Aide et à propos.",
     "openHelp": "Ouvrir Aide et à propos",
@@ -299,8 +302,6 @@
       "needed": "Ce projet utilise des fonctions qui demandent des commandes externes arbitraires. Elles restent bloquées tant que vous ne les autorisez pas.",
       "warning": "Requis par minted et par certains documents PythonTeX. LaTeX peut exécuter des programmes avec vos droits d'utilisateur : n'activez ceci que pour un projet de confiance. Les utilitaires propres à TeX Live, comme la conversion EPS, fonctionnent sans cela."
     },
-    "shellEscapeAllowed": "Les commandes externes sont autorisées pour ce projet sur cet ordinateur.",
-    "shellEscapeBlocked": "Les commandes externes arbitraires sont bloquées pour ce projet. Les utilitaires propres à TeX Live, comme la conversion EPS, fonctionnent toujours.",
     "shellEscapeFailed": "Impossible de modifier l'accès aux commandes externes.",
     "switchFailed": "Impossible de changer de moteur de compilation.",
     "switched": "Ce projet compile désormais avec {{engine}}.",
@@ -495,7 +496,6 @@
         "title": "Synchronisation cloud"
       },
       "danger": {
-        "closeFailed": "Le projet ouvert n'a pas pu être fermé sans risque.",
         "confirmDeleteAllAction": "Supprimer tous les projets",
         "confirmDeleteAllDescription": "Tous les projets actuels iront à la corbeille, avec leurs fichiers et leur historique Git. Vous pourrez ensuite les restaurer un par un.",
         "confirmDeleteAllTitle_one": "Supprimer le {{count}} projet ?",
@@ -506,7 +506,9 @@
         "deleteAllDescription": "Déplace tous les projets vers la corbeille. Rien n'est supprimé définitivement.",
         "deleting": "Suppression…",
         "moveFailed": "Impossible de déplacer les projets vers la corbeille.",
-        "movePartial": "{{count}} projets déplacés, mais l'opération n'a pas pu aboutir.",
+        "movePartial_one": "{{count}} projet déplacé dans la corbeille. Les autres n'ont pas été déplacés.",
+        "movePartial_many": "{{count}} projets déplacés dans la corbeille. Les autres n'ont pas été déplacés.",
+        "movePartial_other": "{{count}} projets déplacés dans la corbeille. Les autres n'ont pas été déplacés.",
         "movedCount_one": "{{count}} projet déplacé vers la corbeille.",
         "movedCount_many": "{{count}} projets déplacés vers la corbeille.",
         "movedCount_other": "{{count}} projets déplacés vers la corbeille.",
@@ -518,7 +520,9 @@
       "recycleBin": {
         "clearAll": "Tout vider",
         "clearFailed": "Impossible de vider la corbeille.",
-        "clearPartial": "{{count}} projets supprimés définitivement, mais la corbeille n'a pas pu être entièrement vidée.",
+        "clearPartial_one": "{{count}} projet supprimé définitivement. Les autres sont toujours dans la corbeille.",
+        "clearPartial_many": "{{count}} projets supprimés définitivement. Les autres sont toujours dans la corbeille.",
+        "clearPartial_other": "{{count}} projets supprimés définitivement. Les autres sont toujours dans la corbeille.",
         "clearedCount_one": "{{count}} projet supprimé définitivement.",
         "clearedCount_many": "{{count}} projets supprimés définitivement.",
         "clearedCount_other": "{{count}} projets supprimés définitivement.",
@@ -857,7 +861,6 @@
     },
     "newProjectName": "Nom du nouveau projet",
     "projectName": "Nom du projet",
-    "projectRenamed": "Projet renommé",
     "saveName": "Enregistrer (Enter)",
     "saveNameAriaLabel": "Enregistrer le nom",
     "untitledProject": "projet",
@@ -868,7 +871,8 @@
       "pdf": "Vue PDF",
       "split": "Vue partagée"
     },
-    "moreActions": "Autres actions"
+    "moreActions": "Autres actions",
+    "renameFailed": "Impossible de renommer le projet."
   },
   "tour": {
     "chooseColor": "Choisissez votre couleur signature",
@@ -907,13 +911,16 @@
     "updateNow": "Mettre à jour"
   },
   "updateWindow": {
+    "available": "Mise à jour disponible",
     "checking": "Recherche de mises à jour…",
     "currentVersion": "Vous êtes en v{{version}}",
     "error": "La mise à jour n'a pas pu aboutir. Veuillez réessayer plus tard.",
+    "historyFailed": "Impossible de charger les notes des versions précédentes.",
     "later": "Plus tard",
     "looking": "Recherche de la dernière version…",
     "packageInstall": "Installé depuis un paquet. Téléchargez la nouvelle version pour mettre à jour.",
     "ready": "Une nouvelle version est prête à être installée.",
+    "released": "Publiée {{when}}",
     "upToDate": "Vous êtes à jour",
     "upToDateGeneric": "Vous utilisez la dernière version d'Oleafly",
     "upToDateHeadline": "Vous êtes à jour !",

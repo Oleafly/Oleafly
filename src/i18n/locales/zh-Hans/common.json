@@ -48,5 +48,8 @@
     "description": "描述",
     "optional": "可选",
     "required": "必填"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

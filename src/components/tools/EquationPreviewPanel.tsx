@@ -1,17 +1,84 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 // Chemistry equations (\ce{...}) for the examples below.
 import "katex/contrib/mhchem";
-import { Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertCircle, Check, Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { latexMathLanguage } from "@/components/editor/cm/latex";
 import { cn } from "@/lib/utils";
-import { toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
+
+export type CopyStatus = "idle" | "copied" | "failed";
+
+export const COPIED_FEEDBACK_MS = 1500;
+export const COPY_FAILED_FEEDBACK_MS = 4000;
+
+export function useCopyStatus(scope: string): {
+  status: CopyStatus;
+  copy: (text: string) => Promise<void>;
+} {
+  const [status, setStatus] = useState<CopyStatus>("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const copy = useCallback(
+    async (text: string) => {
+      let next: CopyStatus = "copied";
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        next = "failed";
+        void logError(scope, error);
+      }
+      if (!mounted.current) return;
+      if (timer.current) clearTimeout(timer.current);
+      setStatus(next);
+      timer.current = setTimeout(
+        () => setStatus("idle"),
+        next === "copied" ? COPIED_FEEDBACK_MS : COPY_FAILED_FEEDBACK_MS,
+      );
+    },
+    [scope],
+  );
+
+  return { status, copy };
+}
+
+export function CopyLatexLabel({
+  status,
+  idleLabel,
+  iconClassName,
+}: Readonly<{ status: CopyStatus; idleLabel: string; iconClassName: string }>) {
+  const { t } = useTranslation(["common", "researchTools"]);
+  let icon = <Copy aria-hidden className={iconClassName} />;
+  let label = idleLabel;
+  if (status === "copied") {
+    icon = <Check aria-hidden className={iconClassName} />;
+    label = t(($) => $.common.actions.copied);
+  } else if (status === "failed") {
+    icon = <AlertCircle aria-hidden className={cn(iconClassName, "text-destructive")} />;
+    label = t(($) => $.researchTools.equation.copyLatexFailed);
+  }
+  return (
+    <>
+      {icon}
+      <span aria-live="polite">{label}</span>
+    </>
+  );
+}
 
 export const EQUATION_EXAMPLES: { id: string; label: () => string; latex: string }[] = [
   {
@@ -121,11 +188,7 @@ export function EquationPreviewPanel({
 }: Readonly<EquationPreviewPanelProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const previewCardRef = useRef<HTMLDivElement>(null);
-
-  const copyWrapped = () => {
-    void navigator.clipboard.writeText(wrapped);
-    toast.success(t(($) => $.researchTools.equation.copiedSource));
-  };
+  const latexCopy = useCopyStatus("equation copy latex from preview");
 
   const toggleFullscreen = () => {
     const card = previewCardRef.current;
@@ -245,9 +308,13 @@ export function EquationPreviewPanel({
                     ? "border-white/15 bg-white/10 text-white hover:bg-white/20"
                     : "border-black/10 bg-black/5 text-black hover:bg-black/10",
                 )}
-                onClick={copyWrapped}
+                onClick={() => void latexCopy.copy(wrapped)}
               >
-                <Copy className="size-3.5" /> {t(($) => $.common.actions.copy)}
+                <CopyLatexLabel
+                  status={latexCopy.status}
+                  idleLabel={t(($) => $.common.actions.copy)}
+                  iconClassName="size-3.5"
+                />
               </Button>
             )}
             <div

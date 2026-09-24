@@ -40,7 +40,8 @@
     "renameFailed": "Det gick inte att byta namn på \"{{path}}\". Ursprungssökvägen lämnades oförändrad.",
     "setMain": "Ange som huvuddokument",
     "title": "Utforskaren",
-    "treeAriaLabel": "Filträd i utforskaren"
+    "treeAriaLabel": "Filträd i utforskaren",
+    "setMainFailed": "Det gick inte att ange \"{{path}}\" som huvuddokument."
   },
   "explorer": {
     "resizeSections": "Ändra storlek på {{first}} och {{second}}"

@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Os metadados de instalação do TexLab são inválidos",
     "setUp": "Instalar",
-    "retry": "Tentar novamente",
-    "startFailed": "Não foi possível iniciar o serviço de linguagem do projeto.",
-    "setupDetailsUnavailable": "Detalhes de instalação do serviço de linguagem indisponíveis",
     "setupRequired": "É preciso instalar o serviço de linguagem",
     "installTitle": "Instalar o {{name}} {{version}}?",
     "licenseAndSource": "Licença e código-fonte",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "A análise de referências do projeto está indisponível.",
-    "updating": "As referências do projeto estão sendo atualizadas.",
     "noDefinition": "Nenhuma definição encontrada para “{{name}}”.",
     "definitionsFor": "Definições de {{name}}",
     "multipleDefinitions": "“{{name}}” tem {{count}} definições. Abra Referências para inspecioná-las.",

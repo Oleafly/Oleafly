@@ -65,16 +65,34 @@ function compileLabel(t: DiagramTranslator, busy: boolean, hasCompiled: boolean)
   return t("composer.compile");
 }
 
+type CompileFailure = { kind: "failed" } | { kind: "error"; detail: string };
+
+const SAVE_TOAST_KEY = "diagram-save";
+
+function errorDetail(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === "string" && e) return e;
+  return String(e);
+}
+
+function failureText(t: DiagramTranslator, failure: CompileFailure): string {
+  return failure.kind === "error"
+    ? t("toast.compileError", { detail: failure.detail })
+    : t("toast.compileFailed");
+}
+
 function PreviewBody({
   busy,
   png,
   log,
+  failure,
   background,
   t,
 }: Readonly<{
   busy: boolean;
   png: string | null;
   log: string;
+  failure: CompileFailure | null;
   background: string;
   t: DiagramTranslator;
 }>) {
@@ -86,24 +104,37 @@ function PreviewBody({
       </div>
     );
   }
+  const notice = failure ? (
+    <p role="alert" data-testid="diagram-compile-failure" className="mb-2 shrink-0 text-xs text-destructive">
+      {failureText(t, failure)}
+    </p>
+  ) : null;
   if (png) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <img
-          src={png}
-          alt={t("preview.alt")}
-          className={cn(
-            "max-h-full max-w-full object-contain",
-            background === "" &&
-              "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
-          )}
-        />
+      <div className="flex h-full flex-col">
+        {notice}
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <img
+            src={png}
+            alt={t("preview.alt")}
+            className={cn(
+              "max-h-full max-w-full object-contain",
+              background === "" &&
+                "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
+            )}
+          />
+        </div>
       </div>
     );
   }
-  if (log) {
+  if (log || notice) {
     return (
-      <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+      <>
+        {notice}
+        {log ? (
+          <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+        ) : null}
+      </>
     );
   }
   return (
@@ -357,6 +388,7 @@ export function DiagramComposer({
   const nameEditRef = useRef<HTMLSpanElement>(null);
   const [png, setPng] = useState<string | null>(null);
   const [log, setLog] = useState("");
+  const [failure, setFailure] = useState<CompileFailure | null>(null);
   const [busy, setBusy] = useState(false);
   const [hasCompiled, setHasCompiled] = useState(false);
   const [scale, setScale] = useState(2);
@@ -441,6 +473,7 @@ export function DiagramComposer({
     if (!open) return;
     setPng(null);
     setLog("");
+    setFailure(null);
     setHasCompiled(false);
     setPreviewOpen(false);
   }, [open]);
@@ -457,6 +490,7 @@ export function DiagramComposer({
     });
     setBusy(true);
     setLog("");
+    setFailure(null);
     setPreviewOpen(true);
     try {
       const result = await host.compileIsolated(projectId, source);
@@ -474,15 +508,15 @@ export function DiagramComposer({
         );
       } else {
         setPng(null);
-        toast.error(t("toast.compileFailed"));
+        setFailure({ kind: "failed" });
       }
     } catch (e) {
-      toast.error(t("toast.compileError", { detail: String(e) }));
+      setFailure({ kind: "error", detail: errorDetail(e) });
     } finally {
       setBusy(false);
       setHasCompiled(true);
     }
-  }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host, toast, t]);
+  }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host]);
 
   // When a caller (the product tour) forces the preview pane open, compile the
   // starter drawing once so the pane demonstrates a real preview instead of
@@ -519,11 +553,23 @@ export function DiagramComposer({
 
   const openSavePicker = useCallback(async () => {
     if (!png) { toast.error(t("toast.compileBeforeSave")); return; }
-    setProjectPicks(await host.listProjectNames());
+    const picks = await host.listProjectNames().catch(() => [] as { id: string; name: string }[]);
+    setProjectPicks(picks);
     setSavePickerOpen(true);
   }, [png, host, toast, t]);
 
-  const saveToExistingProject = useCallback(async (targetProjectId: string) => {
+  const savingRef = useRef(false);
+  const runSave = useCallback(async (save: () => Promise<void>) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await save();
+    } finally {
+      savingRef.current = false;
+    }
+  }, []);
+
+  const saveToExistingProject = useCallback((targetProjectId: string) => runSave(async () => {
     if (!stem) { toast.error(t("toast.nameRequired")); return; }
     if (!png) return;
     if (!(await confirmOverwrite([`figures/${stem}.png`, `figures/${stem}.tikz`]))) return;
@@ -531,16 +577,16 @@ export function DiagramComposer({
       const b64 = png.slice(png.indexOf(",") + 1);
       await host.writeProjectBytes(targetProjectId, `figures/${stem}.png`, b64);
       await host.writeFileContent(targetProjectId, `figures/${stem}.tikz`, snippetCode);
-      await host.refreshTree();
-      toast.success(t("toast.savedToProject", { path: `figures/${stem}.png` }));
+      await host.refreshTree().catch(() => undefined);
+      toast.successUnique(SAVE_TOAST_KEY, t("toast.savedToProject", { path: `figures/${stem}.png` }));
     } catch (e) {
-      toast.error(t("toast.saveFailed", { detail: String(e) }));
+      toast.errorUnique(SAVE_TOAST_KEY, t("toast.saveFailed", { detail: errorDetail(e) }));
     } finally {
       setSavePickerOpen(false);
     }
-  }, [stem, png, snippetCode, confirmOverwrite, host, toast, t]);
+  }), [stem, png, snippetCode, confirmOverwrite, runSave, host, toast, t]);
 
-  const saveAsNewProject = useCallback(async () => {
+  const saveAsNewProject = useCallback(() => runSave(async () => {
     const src = buildStandaloneDoc({
       code: shouldWriteCode(syncRef.current, hasDrawing) ? serializeDiagram({ ...model, background }) : code,
       libraries: DIAGRAM_LIBS,
@@ -549,26 +595,31 @@ export function DiagramComposer({
     const targetName = name.trim() || t("composer.untitledName");
     try {
       await host.createDiagramProject(targetName, src);
-      await host.refreshProjects();
-      toast.success(t("toast.savedAsProject"));
+      await host.refreshProjects().catch(() => undefined);
+      toast.successUnique(SAVE_TOAST_KEY, t("toast.savedAsProject"));
     } catch (e) {
-      toast.error(t("toast.saveAsProjectFailed", { detail: String(e) }));
+      toast.errorUnique(SAVE_TOAST_KEY, t("toast.saveAsProjectFailed", { detail: errorDetail(e) }));
     } finally {
       setSavePickerOpen(false);
     }
-  }, [name, model, code, hasDrawing, background, host, toast, t]);
+  }), [name, model, code, hasDrawing, background, runSave, host, toast, t]);
 
-  const saveFigureGlobally = useCallback(async () => {
+  const saveFigureGlobally = useCallback(() => runSave(async () => {
     if (!stem) { toast.error(t("toast.nameRequired")); return; }
     if (!png) { toast.error(t("toast.compileBeforeSave")); return; }
     try {
       const b64 = png.slice(png.indexOf(",") + 1);
       const result = await host.saveFigureToCache(stem, b64, snippetCode);
-      toast.success(result.alreadyCached ? t("toast.figureCached") : t("toast.figureSaved"));
+      toast.successUnique(
+        SAVE_TOAST_KEY,
+        result.alreadyCached ? t("toast.figureCached") : t("toast.figureSaved"),
+      );
     } catch (e) {
-      toast.error(t("toast.saveFigureFailed", { detail: String(e) }));
+      toast.errorUnique(SAVE_TOAST_KEY, t("toast.saveFigureFailed", { detail: errorDetail(e) }));
+    } finally {
+      setSavePickerOpen(false);
     }
-  }, [stem, png, snippetCode, host, toast, t]);
+  }), [stem, png, snippetCode, runSave, host, toast, t]);
 
   const [downloadPickerOpen, setDownloadPickerOpen] = useState(false);
 
@@ -576,8 +627,12 @@ export function DiagramComposer({
     if (!png) { toast.error(t("toast.compileBeforeDownload")); return; }
     setDownloadPickerOpen(false);
     const b64 = png.slice(png.indexOf(",") + 1);
-    const saved = await host.saveBytesToDisk(stem || "diagram", format, b64);
-    if (saved) toast.success(t("toast.downloaded"));
+    try {
+      const saved = await host.saveBytesToDisk(stem || "diagram", format, b64);
+      if (saved) toast.successUnique(SAVE_TOAST_KEY, t("toast.downloaded"));
+    } catch (e) {
+      toast.errorUnique(SAVE_TOAST_KEY, t("toast.saveFigureFailed", { detail: errorDetail(e) }));
+    }
   }, [png, stem, host, toast, t]);
 
   const [importing, setImporting] = useState(false);
@@ -599,7 +654,7 @@ export function DiagramComposer({
           : t("toast.importedCodeOnly", { name: picked.name }),
       );
     } catch (e) {
-      toast.error(t("toast.importFailed", { detail: String(e) }));
+      toast.error(t("toast.importFailed", { detail: errorDetail(e) }));
     } finally {
       setImporting(false);
     }
@@ -622,16 +677,15 @@ export function DiagramComposer({
       syncRef.current = readSync(fixed, null);
       setCode(fixed);
       setMode("code");
-      toast.success(t("toast.aiFixApplied"));
       await compile(fixed);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("toast.fixFailed", { detail: String(e) }));
+      toast.error(e instanceof Error ? e.message : t("toast.fixFailed", { detail: errorDetail(e) }));
     } finally {
       setFixing(false);
     }
   }, [fixing, hasDrawing, mode, model, code, log, compile, host, toast, t]);
 
-  const compileFailed = !!log && !png;
+  const compileFailed = failure?.kind === "failed";
 
   // Clicking outside the name editor cancels (same as project title in TopToolbar).
   useEffect(() => {
@@ -706,7 +760,7 @@ export function DiagramComposer({
     setMode(m);
   };
 
-  const hasPreviewResult = !!(png || log);
+  const hasPreviewResult = !!(png || log || failure);
   const showPreview = previewOpen || forcePreviewOpen;
 
   const renderPreviewOpts = () => (
@@ -893,7 +947,7 @@ export function DiagramComposer({
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
-          <PreviewBody busy={busy} png={png} log={log} background={background} t={t} />
+          <PreviewBody busy={busy} png={png} log={log} failure={failure} background={background} t={t} />
         </div>
       </div>
     )
@@ -967,7 +1021,7 @@ export function DiagramComposer({
                 cancelEditName();
               }
             }}
-            className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+            className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm focus:border-ring"
           />
           <span className="text-sm text-muted-foreground">{`.${diagramExt}`}</span>
           <Tooltip label={t("composer.saveNameTooltip")}>

@@ -205,6 +205,24 @@ fn surfaces_oleafly_biber_mode_diagnostics_and_biblatex_rerun_warnings() {
 }
 
 #[test]
+fn surfaces_oleafly_image_notes_as_errors_even_after_an_open_warning() {
+    let named = "The image figures/plot (1).png is damaged and cannot be read. Export the image again or replace the file.";
+    let unnamed = "One of the PNG images in this document is damaged and stopped the compile. Oleafly could not tell which one. Export the document's PNG images again, or replace the damaged one.";
+    for message in [named, unnamed] {
+        let note = format!("[Oleafly] {message}");
+        let diags = parse(&["Package graphics Warning: something odd", &note, ""]);
+        assert_eq!(diags.len(), 2);
+        assert_eq!(diags[0].severity, LogSeverity::Warning);
+        assert_eq!(diags[0].message, "Package graphics: something odd");
+        assert_eq!(diags[1].severity, LogSeverity::Error);
+        assert_eq!(diags[1].category, LogCategory::Error);
+        assert_eq!(diags[1].message, message);
+        assert_eq!(diags[1].file, None);
+        assert_eq!(diags[1].line, None);
+    }
+}
+
+#[test]
 fn only_parses_the_first_max_compile_log_bytes() {
     let filler = format!("{}\n", "x".repeat(1023)).repeat(MAX_COMPILE_LOG_BYTES / 1024);
     let log = format!("{filler}! Undefined control sequence.\nl.3 \\bad\n");

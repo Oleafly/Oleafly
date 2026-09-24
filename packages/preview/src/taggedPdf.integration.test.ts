@@ -228,8 +228,8 @@ describe("real tagged PDF structure", () => {
           ]),
         ).toEqual([
           ["heading", "1", contentIds[0]],
-          [null, null, contentIds[1]],
-          [null, null, contentIds[2]],
+          ["paragraph", null, contentIds[1]],
+          ["paragraph", null, contentIds[2]],
         ]);
       } finally {
         page.cleanup();

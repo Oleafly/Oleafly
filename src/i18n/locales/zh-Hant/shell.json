@@ -61,6 +61,9 @@
     "reload": "重新載入",
     "setHomePage": "設為首頁"
   },
+  "changelog": {
+    "installed": "你目前使用的版本"
+  },
   "citeOleafly": {
     "description": "這個專案中找不到參考文獻檔案，因此未做任何變更。請將下方條目複製到你的參考文獻中，或稍後在設定的「說明與關於」中再次找到它。",
     "openHelp": "開啟「說明與關於」",
@@ -297,8 +300,6 @@
       "needed": "這個專案使用的功能需要執行任意外部指令。在你允許之前，這些指令會一直被封鎖。",
       "warning": "minted 與部分 PythonTeX 文件需要這項功能。LaTeX 可以用你的使用者權限執行程式，因此請只對你信任的專案啟用。TeX Live 自己的輔助工具（例如 EPS 轉換）不需要它也能執行。"
     },
-    "shellEscapeAllowed": "這個專案在這台電腦上可以執行外部指令。",
-    "shellEscapeBlocked": "這個專案的任意外部指令已被封鎖。TeX Live 自己的輔助工具（例如 EPS 轉換）仍會執行。",
     "shellEscapeFailed": "無法更新外部指令的存取權。",
     "switchFailed": "無法切換編譯引擎。",
     "switched": "這個專案現在改用 {{engine}} 編譯。",
@@ -485,7 +486,6 @@
         "title": "雲端同步"
       },
       "danger": {
-        "closeFailed": "無法安全關閉已開啟的專案。",
         "confirmDeleteAllAction": "刪除所有專案",
         "confirmDeleteAllDescription": "目前所有專案都會移到資源回收筒，包括其中的檔案與 Git 歷史記錄。之後你可以逐一還原專案。",
         "confirmDeleteAllTitle_other": "要刪除全部 {{count}} 個專案嗎？",
@@ -494,7 +494,7 @@
         "deleteAllDescription": "將所有專案移到資源回收筒。不會永久刪除任何內容。",
         "deleting": "刪除中…",
         "moveFailed": "無法將專案移到資源回收筒。",
-        "movePartial": "已移動 {{count}} 個專案，但操作未能完成。",
+        "movePartial_other": "已將 {{count}} 個專案移到資源回收筒。其餘專案未移動。",
         "movedCount_other": "已將 {{count}} 個專案移到資源回收筒。",
         "title": "危險區域"
       },
@@ -504,7 +504,7 @@
       "recycleBin": {
         "clearAll": "全部清除",
         "clearFailed": "無法清空資源回收筒。",
-        "clearPartial": "已永久刪除 {{count}} 個專案，但無法清空整個資源回收筒。",
+        "clearPartial_other": "已永久刪除 {{count}} 個專案。其餘專案仍在資源回收筒中。",
         "clearedCount_other": "已永久刪除 {{count}} 個專案。",
         "clearing": "清空中…",
         "confirmClearAction": "清空資源回收筒",
@@ -825,7 +825,6 @@
     },
     "newProjectName": "新專案名稱",
     "projectName": "專案名稱",
-    "projectRenamed": "專案已重新命名",
     "saveName": "儲存（Enter）",
     "saveNameAriaLabel": "儲存名稱",
     "untitledProject": "專案",
@@ -836,7 +835,8 @@
       "pdf": "PDF 檢視",
       "split": "分割檢視"
     },
-    "moreActions": "更多操作"
+    "moreActions": "更多操作",
+    "renameFailed": "無法重新命名專案。"
   },
   "tour": {
     "chooseColor": "選擇你的專屬顏色",
@@ -875,13 +875,16 @@
     "updateNow": "立即更新"
   },
   "updateWindow": {
+    "available": "有可用更新",
     "checking": "正在檢查更新…",
     "currentVersion": "你目前使用 v{{version}}",
     "error": "更新未能完成。請稍後再試。",
+    "historyFailed": "無法載入先前版本的版本資訊。",
     "later": "稍後",
     "looking": "正在尋找最新版本…",
     "packageInstall": "這是透過安裝包安裝的。請下載新版本來更新。",
     "ready": "新版本已可安裝。",
+    "released": "{{when}}發布",
     "upToDate": "你已是最新版本",
     "upToDateGeneric": "你正在使用最新版本的 Oleafly",
     "upToDateHeadline": "你已是最新版本！",

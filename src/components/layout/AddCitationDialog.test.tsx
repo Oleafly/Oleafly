@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   bibtexForHit: vi.fn(),
   addCitation: vi.fn(),
   success: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock("@/features/citation", () => ({
@@ -18,10 +19,13 @@ vi.mock("@/features/citation", () => ({
 vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.success, error: vi.fn(), info: vi.fn() },
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { useCitationStore } from "@/store/citation";
+import { useFilesStore } from "@/store/files";
 import { AddCitationDialog } from "./AddCitationDialog";
 
 const copy = enShell.addCitation;
@@ -38,6 +42,7 @@ beforeEach(() => {
   mocks.bibtexForHit.mockReset();
   mocks.addCitation.mockReset();
   mocks.success.mockClear();
+  mocks.logError.mockClear();
   useCitationStore.setState({ open: true });
 });
 
@@ -119,6 +124,45 @@ describe("AddCitationDialog", () => {
     expect(mocks.success).toHaveBeenCalledWith(
       copy.added.replace("{{cite}}", "\\cite{a}"),
     );
+  });
+
+  it("cites with the markup of a Typst project", async () => {
+    const engine = useFilesStore.getState().engine;
+    useFilesStore.setState({
+      engine: {
+        ...engine,
+        capabilities: { ...engine.capabilities, formatting_profile: "typst" },
+      },
+    });
+    try {
+      mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{a}" });
+      mocks.addCitation.mockResolvedValue({ key: "a" });
+      render(<AddCitationDialog />);
+      const user = userEvent.setup();
+      await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/x{Enter}");
+      await user.click(await screen.findByRole("button", { name: copy.confirm }));
+      await waitFor(() =>
+        expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "@a")),
+      );
+    } finally {
+      useFilesStore.setState({ engine });
+    }
+  });
+
+  it("shows a thrown add failure inline and lets the reader retry", async () => {
+    mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{a}" });
+    mocks.addCitation.mockRejectedValue(new Error("main.typ is read-only"));
+    render(<AddCitationDialog />);
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/x{Enter}");
+    await user.click(await screen.findByRole("button", { name: copy.confirm }));
+    expect(
+      await screen.findByText(enResearchTools.citationScan.addFailed),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.confirm })).toBeEnabled();
+    expect(useCitationStore.getState().open).toBe(true);
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("add citation", expect.any(Error));
   });
 
   it("keeps the preview open when the entry cannot be added", async () => {

@@ -527,7 +527,6 @@
     "showAllHistory": "Vis hele historikken ({{count}})"
   },
   "research": {
-    "noSourceLink": "Dette resultat indeholder ikke noget link til kilden.",
     "sourceOpenFailed": "Kilden kunne ikke åbnes.",
     "noProjectPath": "Dette resultat indeholder ingen sti til en projektfil.",
     "resultOpenFailed": "Resultatfilen kunne ikke åbnes."
@@ -645,7 +644,6 @@
     "summarizing": "Opsummerer den tidligere samtale…"
   },
   "toasts": {
-    "sessionOpenFailed": "Agentsessionen kunne ikke åbnes.",
     "approvalModeSaveFailed": "Kunne ikke gemme godkendelsestilstanden.",
     "skillDraftSaved": "Udkastet til færdigheden er gemt. Gennemgå det, før du slår det til.",
     "skillDraftFailed": "Kunne ikke gemme udkastet til færdigheden. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Kunne ikke arkivere denne chat.",
     "chatForked": "Chatten er forgrenet.",
     "chatForkFailed": "Kunne ikke forgrene denne chat.",
-    "engineNotLoaded": "Oplysningerne om dokumentmotoren er ikke indlæst. AI-redigering er slået fra for en sikkerheds skyld.",
     "skillsLoadFailed": "Kunne ikke indlæse de aktive færdigheder. Prøv igen.",
     "approvalModeLoadFailed": "Kunne ikke indlæse godkendelsestilstanden.",
     "approvalRulesLoadFailed": "Kunne ikke indlæse projektets godkendelsesregler.",
-    "restored": "Projektfilerne er gendannet. Samtalen blev bevaret.",
     "restoreFailed": "Kunne ikke gendanne: {{error}}",
     "steerFailed": "Den igangværende tur kunne ikke styres.",
     "approvalRuleSaveFailed": "Kunne ikke gemme projektets godkendelsesregel.",

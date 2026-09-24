@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Oppsettsdataene for TexLab er ugyldige",
     "setUp": "Sett opp",
-    "retry": "Prøv på nytt",
-    "startFailed": "Språktjenesten for prosjektet kunne ikke startes.",
-    "setupDetailsUnavailable": "Oppsettsdetaljer for språktjenesten er utilgjengelige",
     "setupRequired": "Språktjenesten må settes opp",
     "installTitle": "Installere {{name}} {{version}}?",
     "licenseAndSource": "Lisens og kildekode",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Referanseanalyse for prosjektet er utilgjengelig.",
-    "updating": "Prosjektreferansene oppdateres.",
     "noDefinition": "Fant ingen definisjon av «{{name}}».",
     "definitionsFor": "Definisjoner av {{name}}",
     "multipleDefinitions": "«{{name}}» har {{count}} definisjoner. Åpne Referanser for å se på dem.",

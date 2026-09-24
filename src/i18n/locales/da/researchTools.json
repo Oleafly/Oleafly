@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly kunne ikke kopiere den konverterede kildekode.",
     "saveFailed": "Oleafly kunne ikke gemme den konverterede fil.",
     "resultName": "Resultat af {{title}}",
-    "projectCreated": "Projektet er oprettet ud fra konverteringen.",
     "projectFailed": "Oleafly kunne ikke oprette projektet.",
     "cancel": "Annuller",
     "convert": "Konverter",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX-litteraturliste",
-    "savedBibliography": "Gemte references.bib",
+    "savedBibliography": "Gemte {{name}}",
     "saveFailed": "Oleafly kunne ikke gemme denne litteraturliste.",
-    "copied": "Kopierede {{label}}",
     "copyFailed": "Oleafly kunne ikke kopiere {{label}}.",
     "fieldJournal": "Tidsskrift",
     "fieldConference": "Konference eller proceedings",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "Hent SVG",
     "copyMathml": "Kopier MathML til Word",
     "copyKatexHtml": "Kopier KaTeX-HTML",
-    "copiedSource": "Kopierede LaTeX-kildekoden",
     "copiedMathml": "Kopierede MathML (kan indsættes i Word)",
     "copiedKatexHtml": "Kopierede KaTeX-HTML (kræver KaTeX-stylesheetet)",
     "exportImageFailed": "Kunne ikke eksportere dette uddrag som et billede",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} citationer",
     "unknownAuthors": "Ukendte forfattere",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citationen er gemt",
-    "toastUpdated": "Den gemte citation er opdateret",
-    "toastCopied": "BibTeX er kopieret",
     "toastCopyFailed": "BibTeX kunne ikke kopieres.",
     "suggestion": {
       "artificialIntelligence": "Kunstig intelligens",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Føj til .bib",
     "addToBibTooltip": "Føj til projektets litteraturliste, og indsæt \\cite",
-    "openProjectTooltip": "Åbn et projekt for at føje til en litteraturfil",
     "citeAdded": "Tilføjede {{citation}}",
     "addFailed": "Citationen kunne ikke tilføjes.",
-    "toastSaved": "Citationen er gemt",
-    "toastUpdated": "Den gemte citation er opdateret",
-    "toastCopied": "BibTeX er kopieret",
     "toastCopyFailed": "BibTeX kunne ikke kopieres."
   }
 }

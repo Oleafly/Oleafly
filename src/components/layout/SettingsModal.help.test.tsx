@@ -162,3 +162,30 @@ describe("Settings Help & About support callout", () => {
   });
 
 });
+
+describe("Settings Help & About changelog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.open.mockResolvedValue(undefined);
+    mocks.appVersion.mockResolvedValue("0.3.6");
+    mocks.libraryRoot.mockResolvedValue("");
+    mocks.githubGetPublicRepoStats.mockResolvedValue({ stars: 128, forks: 14 });
+    mocks.discordCommunityStats.mockResolvedValue({ online: 9 });
+    resetDiscordCommunityStatsCache();
+    useSettingsStore.setState({ settingsOpen: true, settingsInitialSection: "help" });
+  });
+
+  it("opens the in-app changelog from the About card and from Resources, never the browser", async () => {
+    render(<SettingsModal />);
+    fireEvent.click(await screen.findByTestId("about-whats-new"));
+    const dialog = await screen.findByRole("dialog", { name: "What's new" });
+    expect(await within(dialog).findByTestId("changelog-status")).toHaveTextContent("You're on v0.3.6");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "What's new" })).not.toBeInTheDocument());
+
+    const entries = screen.getAllByRole("button", { name: "What's new" });
+    fireEvent.click(entries[entries.length - 1]);
+    expect(await screen.findByRole("dialog", { name: "What's new" })).toBeInTheDocument();
+    expect(mocks.open).not.toHaveBeenCalledWith(expect.stringContaining("CHANGELOG"));
+  });
+});

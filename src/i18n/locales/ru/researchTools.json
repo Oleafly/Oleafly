@@ -690,7 +690,6 @@
     "copyFailed": "Oleafly не смог скопировать преобразованный исходник.",
     "saveFailed": "Oleafly не смог сохранить преобразованный файл.",
     "resultName": "Результат: {{title}}",
-    "projectCreated": "Проект создан из преобразования.",
     "projectFailed": "Oleafly не смог создать проект.",
     "cancel": "Отмена",
     "convert": "Преобразовать",
@@ -929,9 +928,8 @@
       }
     },
     "bibtexBibliography": "Библиография BibTeX",
-    "savedBibliography": "Файл references.bib сохранён",
+    "savedBibliography": "Файл {{name}} сохранён",
     "saveFailed": "Oleafly не смог сохранить эту библиографию.",
-    "copied": "Скопировано: {{label}}",
     "copyFailed": "Oleafly не смог скопировать {{label}}.",
     "fieldJournal": "Журнал",
     "fieldConference": "Конференция или сборник трудов",
@@ -1137,7 +1135,6 @@
     "downloadSvg": "Скачать SVG",
     "copyMathml": "Копировать MathML для Word",
     "copyKatexHtml": "Копировать HTML KaTeX",
-    "copiedSource": "Исходник LaTeX скопирован",
     "copiedMathml": "MathML скопирован (вставляется в Word)",
     "copiedKatexHtml": "HTML KaTeX скопирован (нужна таблица стилей KaTeX)",
     "exportImageFailed": "Не удалось экспортировать этот фрагмент как изображение",
@@ -1361,9 +1358,6 @@
     "citationCount": "цитирований: {{citations}}",
     "unknownAuthors": "Авторы неизвестны",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Цитата сохранена",
-    "toastUpdated": "Сохранённая цитата обновлена",
-    "toastCopied": "BibTeX скопирован",
     "toastCopyFailed": "Не удалось скопировать BibTeX.",
     "suggestion": {
       "artificialIntelligence": "Искусственный интеллект",
@@ -1425,12 +1419,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Добавить в .bib",
     "addToBibTooltip": "Дописать в библиографию проекта и вставить \\cite",
-    "openProjectTooltip": "Откройте проект, чтобы дописать в файл библиографии",
     "citeAdded": "Добавлено: {{citation}}",
     "addFailed": "Не удалось добавить цитату.",
-    "toastSaved": "Цитата сохранена",
-    "toastUpdated": "Сохранённая цитата обновлена",
-    "toastCopied": "BibTeX скопирован",
     "toastCopyFailed": "Не удалось скопировать BibTeX."
   }
 }

@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "图片已保存到 {{path}}",
     "imageFailed": "无法将粘贴的图片保存到项目中。",
     "noProject": "请先打开项目，再粘贴图片。"
   },
@@ -205,7 +204,8 @@
     "spellLanguage": "拼写检查语言",
     "spellLanguageAppSetting": "使用应用设置",
     "spellLanguageAriaLabel": "本项目的拼写检查语言",
-    "spellLanguageHint": "仅对本项目生效。可在设置中下载更多语言。"
+    "spellLanguageHint": "仅对本项目生效。可在设置中下载更多语言。",
+    "spellLanguageFailed": "无法更改拼写检查语言。"
   },
   "table": {
     "trigger": "插入表格",
@@ -367,8 +367,6 @@
   },
   "citations": {
     "trigger": "从项目引用",
-    "updating": "项目引用正在更新。",
-    "changed": "项目引用已更改。重新打开选择器以刷新。",
     "filterPlaceholder": "键、作者或标题…",
     "filterLabel": "筛选项目引用",
     "partialCatalog": "目录不完整。格式错误或无法读取的参考文献文件可能被省略。",
@@ -400,9 +398,7 @@
     "error": "无法完成此文档的校对。",
     "unavailable": "离线校对不可用。",
     "tooLarge": "文档过大，校对已暂停。",
-    "unsupported": "此文档格式不支持校对。",
-    "partial_other": "校对已发现 {{count}} 个问题，但有一个引擎未完成。",
-    "retry": "重试"
+    "unsupported": "此文档格式不支持校对。"
   },
   "checkpoints": {
     "showInExplorer": "在资源管理器中显示",

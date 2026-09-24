@@ -812,7 +812,8 @@
       "deleted": "已从库中删除“{{name}}”。",
       "empty": "还没有 AI 生成的模板。可从模板画廊创建一个。",
       "fallbackDescription": "AI 生成的模板。",
-      "toggle": "管理 AI 生成的模板。"
+      "toggle": "管理 AI 生成的模板。",
+      "deleteFailed": "无法删除“{{name}}”。"
     },
     "fontPacks": {
       "lato": {
@@ -855,6 +856,14 @@
       "heading": "拼写词典",
       "note": "在“常规”部分选择语言即可下载。内置的五种语言包始终可用，不在此列出。",
       "tooltip": "Oleafly 内置五种语言包。选择其他语言作为拼写词典时会按需下载，并保存在此处，之后即可离线使用。移除后可释放空间，并回退到应用设置。"
+    },
+    "errors": {
+      "fontDownloadFailed": "无法下载字体。",
+      "fontsDownloadFailed": "无法下载这些字体。",
+      "fontRemoveFailed": "无法移除字体。",
+      "packDownloadFailed": "无法下载模板包。",
+      "packsDownloadFailed": "无法下载这些模板包。",
+      "packRemoveFailed": "无法移除模板包。"
     }
   },
   "engine": {

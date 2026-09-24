@@ -342,8 +342,6 @@
     "unsave": "取消儲存",
     "save": "儲存範本",
     "use": "使用這個範本",
-    "savedToast": "已將「{{name}}」儲存到你的範本庫",
-    "removedToast": "已將「{{name}}」從你的範本庫移除",
     "saveFailed": "無法儲存範本。",
     "removeFailed": "無法移除範本。"
   },

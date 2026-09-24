@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
+import { create } from "zustand";
 import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
@@ -39,11 +40,34 @@ function isFontPackId(id: string): id is FontPackId {
   return (FONT_PACK_IDS as readonly string[]).includes(id);
 }
 
+interface DownloadActivity {
+  fontBusyId: string | null;
+  fontProgress: string;
+  packBusyId: string | null;
+  packProgress: string;
+}
+
+const useDownloadActivity = create<DownloadActivity>(() => ({
+  fontBusyId: null,
+  fontProgress: "",
+  packBusyId: null,
+  packProgress: "",
+}));
+
+const setBusyId = (fontBusyId: string | null) =>
+  useDownloadActivity.setState({ fontBusyId });
+const setProgress = (fontProgress: string) =>
+  useDownloadActivity.setState({ fontProgress });
+const setPackBusyId = (packBusyId: string | null) =>
+  useDownloadActivity.setState({ packBusyId });
+const setPackProgress = (packProgress: string) =>
+  useDownloadActivity.setState({ packProgress });
+
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [components, setComponents] = useState<ComponentInfo[]>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [progress, setProgress] = useState("");
+  const busyId = useDownloadActivity((s) => s.fontBusyId);
+  const progress = useDownloadActivity((s) => s.fontProgress);
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
   const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries">(
@@ -93,8 +117,16 @@ export function DownloadsSection() {
     void refresh();
   }, [refresh]);
 
+  const inheritedFontWork = useRef(busyId !== null);
+  useEffect(() => {
+    if (busyId !== null || !inheritedFontWork.current) return;
+    inheritedFontWork.current = false;
+    void refresh();
+  }, [busyId, refresh]);
+
   const withProgress = useCallback(
-    async (id: string, run: () => Promise<void>, verb: string) => {
+    async (id: string, run: () => Promise<void>, verb: string, failure: () => string) => {
+      if (useDownloadActivity.getState().fontBusyId !== null) return;
       setBusyId(id);
       setProgress("");
       let unlisten: (() => void) | undefined;
@@ -112,7 +144,7 @@ export function DownloadsSection() {
         await run();
         await refresh();
       } catch (e) {
-        notifyError(verb, e);
+        notifyError(verb, e, failure());
       } finally {
         unlisten?.();
         setBusyId(null);
@@ -123,16 +155,21 @@ export function DownloadsSection() {
   );
 
   const install = (id: string) =>
-    withProgress(id, () => installFontComponent(id), "download the font");
+    withProgress(id, () => installFontComponent(id), "download the font", () =>
+      t(($) => $.settings.downloads.errors.fontDownloadFailed),
+    );
   const downloadAll = () =>
-    withProgress(ALL, () => downloadAllFonts(), "download the fonts");
+    withProgress(ALL, () => downloadAllFonts(), "download the fonts", () =>
+      t(($) => $.settings.downloads.errors.fontsDownloadFailed),
+    );
   const remove = async (id: string) => {
+    if (useDownloadActivity.getState().fontBusyId !== null) return;
     setBusyId(id);
     try {
       await removeFontComponent(id);
       await refresh();
     } catch (e) {
-      notifyError("remove the font", e);
+      notifyError("remove the font", e, t(($) => $.settings.downloads.errors.fontRemoveFailed));
     } finally {
       setBusyId(null);
     }
@@ -142,8 +179,8 @@ export function DownloadsSection() {
   const allInstalled = components.length > 0 && components.every((c) => c.installed);
 
   const [packs, setPacks] = useState<PackInfo[]>([]);
-  const [packBusyId, setPackBusyId] = useState<string | null>(null);
-  const [packProgress, setPackProgress] = useState("");
+  const packBusyId = useDownloadActivity((s) => s.packBusyId);
+  const packProgress = useDownloadActivity((s) => s.packProgress);
 
   const refreshPacks = useCallback(async () => {
     try {
@@ -157,6 +194,13 @@ export function DownloadsSection() {
   useEffect(() => {
     void refreshPacks();
   }, [refreshPacks]);
+
+  const inheritedPackWork = useRef(packBusyId !== null);
+  useEffect(() => {
+    if (packBusyId !== null || !inheritedPackWork.current) return;
+    inheritedPackWork.current = false;
+    void refreshPacks();
+  }, [packBusyId, refreshPacks]);
 
   const runPackInstall = async (id: string) => {
     let unlisten: (() => void) | undefined;
@@ -180,17 +224,23 @@ export function DownloadsSection() {
   };
 
   const installPack = async (id: string) => {
+    if (useDownloadActivity.getState().packBusyId !== null) return;
     setPackBusyId(id);
     try {
       await runPackInstall(id);
     } catch (e) {
-      notifyError("download the template pack", e);
+      notifyError(
+        "download the template pack",
+        e,
+        t(($) => $.settings.downloads.errors.packDownloadFailed),
+      );
     } finally {
       setPackBusyId(null);
     }
   };
 
   const downloadAllPacks = async () => {
+    if (useDownloadActivity.getState().packBusyId !== null) return;
     setPackBusyId(ALL);
     try {
       for (const p of packs) {
@@ -198,19 +248,28 @@ export function DownloadsSection() {
         await runPackInstall(p.id);
       }
     } catch (e) {
-      notifyError("download the template packs", e);
+      notifyError(
+        "download the template packs",
+        e,
+        t(($) => $.settings.downloads.errors.packsDownloadFailed),
+      );
     } finally {
       setPackBusyId(null);
     }
   };
 
   const removePack = async (id: string) => {
+    if (useDownloadActivity.getState().packBusyId !== null) return;
     setPackBusyId(id);
     try {
       await removeTemplatePack(id);
       await refreshPacks();
     } catch (e) {
-      notifyError("remove the template pack", e);
+      notifyError(
+        "remove the template pack",
+        e,
+        t(($) => $.settings.downloads.errors.packRemoveFailed),
+      );
     } finally {
       setPackBusyId(null);
     }
@@ -505,7 +564,13 @@ export function DownloadsSection() {
               );
               return refreshAiTemplates();
             })
-            .catch((e) => notifyError("delete the template", e))
+            .catch((e) =>
+              notifyError(
+                "delete the template",
+                e,
+                t(($) => $.settings.downloads.aiTemplates.deleteFailed, { name: target.name }),
+              ),
+            )
             .finally(() => setAiBusy(false));
         }}
         onCancel={() => setAiConfirm(null)}

@@ -73,7 +73,6 @@
       "importedCodeOnly": "Se importó {{name}} (solo código, no se puede dibujar).",
       "importFailed": "No se pudo importar ese archivo: {{detail}}",
       "noAiFix": "La IA no devolvió ninguna corrección.",
-      "aiFixApplied": "Se aplicó una corrección de la IA. Recompilando…",
       "fixFailed": "No se pudo corregir: {{detail}}",
       "notDrawable": "No se pudo dibujar nada de este código. El código queda intacto."
     },

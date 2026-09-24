@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { installGetOrInsert, installIteratorFind } from "./polyfills";
 
 let createPdfLinkService: typeof import("./PdfViewer").createPdfLinkService;
 let createPdfLinkViewerAdapter: typeof import("./PdfViewer").createPdfLinkViewerAdapter;
@@ -286,6 +287,48 @@ describe("PdfViewer link service", () => {
     );
     expect(getAttachmentContent).toHaveBeenCalledWith("supplement");
     annotationLayer.destroy();
+  });
+
+  it("removes an aborted listener on engines without native Map upsert or iterator helpers", async () => {
+    const iteratorPrototype = Object.getPrototypeOf(
+      Object.getPrototypeOf([][Symbol.iterator]()),
+    ) as Record<string, unknown>;
+    const mapPrototype = Map.prototype as unknown as Record<string, unknown>;
+    const removed = [
+      [iteratorPrototype, "find"],
+      [mapPrototype, "getOrInsert"],
+      [mapPrototype, "getOrInsertComputed"],
+    ].map(([target, key]) => ({
+      target: target as Record<string, unknown>,
+      key: key as string,
+      descriptor: Object.getOwnPropertyDescriptor(target, key as string),
+    }));
+    try {
+      for (const { target, key } of removed) {
+        Reflect.deleteProperty(target, key);
+        expect(target[key]).toBeUndefined();
+      }
+      installIteratorFind(iteratorPrototype);
+      installGetOrInsert(Map as never);
+
+      const service = await createPdfLinkService();
+      const listener = vi.fn();
+      const controller = new AbortController();
+      service.eventBus.on("textlayerrendered", listener, {
+        signal: controller.signal,
+      });
+      service.eventBus.dispatch("textlayerrendered", { pageNumber: 1 });
+      expect(listener).toHaveBeenCalledOnce();
+
+      controller.abort();
+      service.eventBus.dispatch("textlayerrendered", { pageNumber: 1 });
+      expect(listener).toHaveBeenCalledOnce();
+    } finally {
+      for (const { target, key, descriptor } of removed) {
+        Reflect.deleteProperty(target, key);
+        if (descriptor) Object.defineProperty(target, key, descriptor);
+      }
+    }
   });
 
   it("sets safe external-link attributes through the real service", async () => {

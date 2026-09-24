@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { FileText, Loader2, Settings2, X } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -26,12 +26,27 @@ import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { getMarkdownSplitSize, setMarkdownSplitSize } from "@/lib/wysiwyg-mode";
+import {
+  PANEL_STYLE,
+  panelLimitProps,
+  percent,
+  useSeparatorHitArea,
+  useSeparatorKeyboard,
+  type PanelLimits,
+} from "@/lib/panel-layout";
 import { flushWysiwygPendingEdits, setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
 const MarkdownPreview = lazy(() => import("./MarkdownPreview").then((module) => ({ default: module.MarkdownPreview })));
+const MARKDOWN_SOURCE_PANEL = "markdown-source-pane";
+const MARKDOWN_PREVIEW_PANEL = "markdown-preview-pane";
+const MARKDOWN_PANE_LIMITS: PanelLimits = { minSize: 20 };
+const MARKDOWN_SPLIT_LIMITS = {
+  [MARKDOWN_SOURCE_PANEL]: MARKDOWN_PANE_LIMITS,
+  [MARKDOWN_PREVIEW_PANEL]: MARKDOWN_PANE_LIMITS,
+};
 
 function basename(p: string) {
   return p.slice(p.lastIndexOf("/") + 1);
@@ -214,9 +229,15 @@ export function Editor() {
   const markdownSplit = isMarkdownFile && markdownSplitEnabled;
   const stackMarkdownSplit = markdownSplitLayout === "stacked";
   const markdownSourceSize = getMarkdownSplitSize(projectId);
-  const saveMarkdownSplitSize = useCallback((sizes: number[]) => {
-    if (projectId && sizes.length === 2) setMarkdownSplitSize(projectId, sizes[0]);
+  const saveMarkdownSplitSize = useCallback((layout: Layout) => {
+    const sourceSize = layout[MARKDOWN_SOURCE_PANEL];
+    if (projectId && sourceSize !== undefined && layout[MARKDOWN_PREVIEW_PANEL] !== undefined) {
+      setMarkdownSplitSize(projectId, sourceSize);
+    }
   }, [projectId]);
+  const markdownGroupRef = useRef<GroupImperativeHandle>(null);
+  const markdownSplitHitArea = useSeparatorHitArea(0.25);
+  const onMarkdownSeparatorKeyDown = useSeparatorKeyboard(markdownGroupRef, MARKDOWN_SPLIT_LIMITS);
   const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
   const markdownMode = markdownSplit ? "both" : markdownVisual ? "visual" : "code";
   const showBreadcrumbs =
@@ -267,27 +288,44 @@ export function Editor() {
           markdownVisual && "invisible pointer-events-none select-none",
         )}
       >
-        <PanelGroup direction={stackMarkdownSplit ? "vertical" : "horizontal"} onLayout={saveMarkdownSplitSize}>
-          <Panel id="markdown-source" order={1} defaultSize={markdownSourceSize} minSize={20}>
+        <Group
+          orientation={stackMarkdownSplit ? "vertical" : "horizontal"}
+          groupRef={markdownGroupRef}
+          onLayoutChanged={saveMarkdownSplitSize}
+          resizeTargetMinimumSize={markdownSplitHitArea}
+        >
+          <Panel
+            id={MARKDOWN_SOURCE_PANEL}
+            defaultSize={percent(markdownSourceSize)}
+            {...panelLimitProps(MARKDOWN_PANE_LIMITS)}
+            style={PANEL_STYLE}
+          >
             <EditorContextMenu>
               <CodeMirrorEditor active={!markdownVisual} />
             </EditorContextMenu>
             <SelectionActionMenu />
           </Panel>
           {markdownSplit && <>
-            <PanelResizeHandle
-              data-testid="markdown-split-resize"
+            <Separator
+              id="markdown-split-resize"
+              disableDoubleClick
               aria-label={`${t(($) => $.editor.toolbar.code)} / ${t(($) => $.editor.preview.markdown)}`}
-              className={cn("shrink-0 bg-border/60 transition-colors hover:bg-primary/30 focus-visible:bg-primary/30",
+              onKeyDownCapture={onMarkdownSeparatorKeyDown}
+              className={cn("shrink-0 select-none bg-border/60 transition-colors hover:bg-primary/30 focus-visible:bg-primary/30",
                 stackMarkdownSplit ? "h-1" : "w-1")}
             />
-            <Panel id="markdown-preview" order={2} defaultSize={100 - markdownSourceSize} minSize={20}>
+            <Panel
+              id={MARKDOWN_PREVIEW_PANEL}
+              defaultSize={percent(100 - markdownSourceSize)}
+              {...panelLimitProps(MARKDOWN_PANE_LIMITS)}
+              style={PANEL_STYLE}
+            >
               <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>}>
                 <MarkdownPreview key={`${projectId}:${activePath}`} />
               </Suspense>
             </Panel>
           </>}
-        </PanelGroup>
+        </Group>
       </div>
       </div>
     </div>

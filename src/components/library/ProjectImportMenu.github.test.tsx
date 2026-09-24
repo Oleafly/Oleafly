@@ -275,6 +275,25 @@ describe("ProjectImportMenu GitHub submenu", () => {
     expect(onImportSelected).toHaveBeenCalledTimes(1);
   });
 
+  it("opens a repository once and reports one failure when Enter is held down", async () => {
+    githubListRepos.mockResolvedValue([PUBLIC_REPO]);
+    openExternal.mockRejectedValue(new Error("no browser"));
+    renderMenu();
+    await openGithubSubmenu();
+    const link = await screen.findByLabelText(
+      enLibrary.import.openRepository.replace(
+        "{{name}}",
+        PUBLIC_REPO.full_name,
+      ),
+    );
+    fireEvent.keyDown(link, { key: "Enter" });
+    fireEvent.keyDown(link, { key: "Enter", repeat: true });
+    fireEvent.keyDown(link, { key: "Enter", repeat: true });
+    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith(PUBLIC_REPO.html_url);
+    expect(importGitHubRepository).not.toHaveBeenCalled();
+  });
+
   it("reports a failure to open a repository page", async () => {
     githubListRepos.mockResolvedValue([PUBLIC_REPO]);
     openExternal.mockRejectedValue(new Error("no browser"));

@@ -64,6 +64,9 @@
     "reload": "Przeładuj",
     "setHomePage": "Ustaw jako stronę główną"
   },
+  "changelog": {
+    "installed": "Masz tę wersję"
+  },
   "citeOleafly": {
     "description": "W tym projekcie nie znaleziono pliku bibliografii, więc nic nie zostało zmienione. Skopiuj poniższą pozycję do swojej bibliografii albo znajdź ją później w Ustawieniach, w sekcji Pomoc i informacje.",
     "openHelp": "Otwórz Pomoc i informacje",
@@ -300,8 +303,6 @@
       "needed": "Ten projekt używa funkcji, które wymagają dowolnych poleceń zewnętrznych. Pozostaną zablokowane, dopóki nie wyrazisz na nie zgody.",
       "warning": "Wymagane przez minted i część dokumentów PythonTeX. LaTeX może uruchamiać programy z Twoimi uprawnieniami, więc włącz to tylko dla zaufanego projektu. Własne narzędzia pomocnicze TeX Live, jak konwersja EPS, działają bez tego."
     },
-    "shellEscapeAllowed": "Polecenia zewnętrzne są dozwolone dla tego projektu na tym komputerze.",
-    "shellEscapeBlocked": "Dowolne polecenia zewnętrzne są zablokowane dla tego projektu. Własne narzędzia pomocnicze TeX Live, jak konwersja EPS, nadal działają.",
     "shellEscapeFailed": "Nie udało się zmienić dostępu do poleceń zewnętrznych.",
     "switchFailed": "Nie udało się zmienić silnika kompilacji.",
     "switched": "Ten projekt kompiluje się teraz przy użyciu {{engine}}.",
@@ -500,7 +501,6 @@
         "title": "Synchronizacja w chmurze"
       },
       "danger": {
-        "closeFailed": "Nie udało się bezpiecznie zamknąć otwartego projektu.",
         "confirmDeleteAllAction": "Usuń wszystkie projekty",
         "confirmDeleteAllDescription": "Każdy bieżący projekt trafi do Kosza, razem z plikami i historią Git. Później można przywracać projekty pojedynczo.",
         "confirmDeleteAllTitle_one": "Usunąć wszystkie projekty ({{count}})?",
@@ -512,7 +512,10 @@
         "deleteAllDescription": "Przenosi każdy projekt do Kosza. Nic nie jest usuwane trwale.",
         "deleting": "Usuwanie…",
         "moveFailed": "Nie udało się przenieść projektów do Kosza.",
-        "movePartial": "Przeniesiono {{count}} projektów, ale nie udało się dokończyć operacji.",
+        "movePartial_one": "Przeniesiono {{count}} projekt do Kosza. Pozostałych nie przeniesiono.",
+        "movePartial_few": "Przeniesiono {{count}} projekty do Kosza. Pozostałych nie przeniesiono.",
+        "movePartial_many": "Przeniesiono {{count}} projektów do Kosza. Pozostałych nie przeniesiono.",
+        "movePartial_other": "Przeniesiono {{count}} projektu do Kosza. Pozostałych nie przeniesiono.",
         "movedCount_one": "Przeniesiono {{count}} projekt do Kosza.",
         "movedCount_few": "Przeniesiono {{count}} projekty do Kosza.",
         "movedCount_many": "Przeniesiono {{count}} projektów do Kosza.",
@@ -525,7 +528,10 @@
       "recycleBin": {
         "clearAll": "Wyczyść wszystko",
         "clearFailed": "Nie udało się opróżnić Kosza.",
-        "clearPartial": "Trwale usunięto {{count}} projektów, ale nie udało się opróżnić całego Kosza.",
+        "clearPartial_one": "Trwale usunięto {{count}} projekt. Pozostałe są nadal w Koszu.",
+        "clearPartial_few": "Trwale usunięto {{count}} projekty. Pozostałe są nadal w Koszu.",
+        "clearPartial_many": "Trwale usunięto {{count}} projektów. Pozostałe są nadal w Koszu.",
+        "clearPartial_other": "Trwale usunięto {{count}} projektu. Pozostałe są nadal w Koszu.",
         "clearedCount_one": "Trwale usunięto {{count}} projekt.",
         "clearedCount_few": "Trwale usunięto {{count}} projekty.",
         "clearedCount_many": "Trwale usunięto {{count}} projektów.",
@@ -873,7 +879,6 @@
     },
     "newProjectName": "Nazwa nowego projektu",
     "projectName": "Nazwa projektu",
-    "projectRenamed": "Zmieniono nazwę projektu",
     "saveName": "Zapisz (Enter)",
     "saveNameAriaLabel": "Zapisz nazwę",
     "untitledProject": "projekt",
@@ -884,7 +889,8 @@
       "pdf": "Widok PDF",
       "split": "Widok dzielony"
     },
-    "moreActions": "Więcej działań"
+    "moreActions": "Więcej działań",
+    "renameFailed": "Nie udało się zmienić nazwy projektu."
   },
   "tour": {
     "chooseColor": "Wybierz swój charakterystyczny kolor",
@@ -923,13 +929,16 @@
     "updateNow": "Zaktualizuj teraz"
   },
   "updateWindow": {
+    "available": "Dostępna aktualizacja",
     "checking": "Sprawdzanie aktualizacji…",
     "currentVersion": "Masz wersję v{{version}}",
     "error": "Nie udało się dokończyć aktualizacji. Spróbuj ponownie później.",
+    "historyFailed": "Nie udało się wczytać informacji o wcześniejszych wydaniach.",
     "later": "Później",
     "looking": "Szukanie najnowszej wersji…",
     "packageInstall": "Zainstalowano z pakietu. Pobierz nową wersję, aby zaktualizować.",
     "ready": "Nowa wersja jest gotowa do instalacji.",
+    "released": "Wydano {{when}}",
     "upToDate": "Wszystko aktualne",
     "upToDateGeneric": "Używasz najnowszej wersji Oleafly",
     "upToDateHeadline": "Wszystko aktualne!",

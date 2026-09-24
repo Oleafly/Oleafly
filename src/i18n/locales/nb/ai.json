@@ -527,7 +527,6 @@
     "showAllHistory": "Vis hele historikken ({{count}})"
   },
   "research": {
-    "noSourceLink": "Dette resultatet har ingen lenke til kilden.",
     "sourceOpenFailed": "Kilden kunne ikke åpnes.",
     "noProjectPath": "Dette resultatet inneholder ingen sti til en prosjektfil.",
     "resultOpenFailed": "Resultatfilen kunne ikke åpnes."
@@ -645,7 +644,6 @@
     "summarizing": "Oppsummerer tidligere samtale…"
   },
   "toasts": {
-    "sessionOpenFailed": "Agentøkten kunne ikke åpnes.",
     "approvalModeSaveFailed": "Kunne ikke lagre godkjenningsmodusen.",
     "skillDraftSaved": "Ferdighetsutkastet er lagret. Se over det før du slår det på.",
     "skillDraftFailed": "Kunne ikke lagre ferdighetsutkastet. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Kunne ikke arkivere denne samtalen.",
     "chatForked": "Samtalen er forgrenet.",
     "chatForkFailed": "Kunne ikke forgrene denne samtalen.",
-    "engineNotLoaded": "Detaljene om dokumentmotoren er ikke lastet. AI-redigering er slått av for sikkerhets skyld.",
     "skillsLoadFailed": "Kunne ikke laste de påslåtte ferdighetene. Prøv igjen.",
     "approvalModeLoadFailed": "Kunne ikke laste godkjenningsmodusen.",
     "approvalRulesLoadFailed": "Kunne ikke laste godkjenningsreglene for prosjektet.",
-    "restored": "Prosjektfilene er gjenopprettet. Samtalen ble beholdt.",
     "restoreFailed": "Kunne ikke gjenopprette: {{error}}",
     "steerFailed": "Kunne ikke styre innlegget som kjører.",
     "approvalRuleSaveFailed": "Kunne ikke lagre godkjenningsregelen for prosjektet.",

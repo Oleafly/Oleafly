@@ -108,6 +108,13 @@ export function caretLineIncludes(needle: string): string {
   })`;
 }
 
+export const PANEL_SIZE_SCRIPT =
+  "((id) => { const size = document.getElementById(id)?.style.flexGrow; return size ? Number(size) : -1; })";
+
+export function panelLayoutStorageKey(groupId: string, panelIds: readonly string[]): string {
+  return `react-resizable-panels:${[groupId, ...panelIds].join(":")}`;
+}
+
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
 // CodeMirror does not: its keydown listener is bound to .cm-content, so an
 // editor binding needs page.press(".cm-content", ...) instead.

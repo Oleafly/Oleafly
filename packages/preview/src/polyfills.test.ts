@@ -1,5 +1,36 @@
-import { describe, expect, it } from "vitest";
-import { installPromiseTry, installUint8ArrayToHex, installURLParse } from "./polyfills";
+import { describe, expect, it, vi } from "vitest";
+import {
+  installGetOrInsert,
+  installIteratorFind,
+  installPromiseTry,
+  installUint8ArrayToHex,
+  installURLParse,
+} from "./polyfills";
+
+function mapBackedPrototype() {
+  const store = new Map<unknown, unknown>();
+  const prototype: Record<string, unknown> = {
+    has: (key: unknown) => store.has(key),
+    get: (key: unknown) => store.get(key),
+    set: (key: unknown, value: unknown) => store.set(key, value),
+  };
+  return { prototype, store };
+}
+
+function trackedIterator(values: number[], prototype: object) {
+  let position = 0;
+  const iterator = Object.create(prototype) as Iterator<number> & { closed: number };
+  iterator.closed = 0;
+  iterator.next = () =>
+    position < values.length
+      ? { done: false, value: values[position++] }
+      : { done: true, value: undefined };
+  iterator.return = () => {
+    iterator.closed += 1;
+    return { done: true, value: undefined };
+  };
+  return iterator;
+}
 
 describe("PDF runtime polyfills", () => {
   it("installs a non-enumerable Uint8Array hexadecimal encoder", () => {
@@ -55,5 +86,90 @@ describe("PDF runtime polyfills", () => {
       "https://oleafly.com/document.pdf",
     );
     expect(parse("not a URL without a base")).toBeNull();
+  });
+
+  it("installs non-enumerable Map upsert methods that insert only missing keys", () => {
+    const { prototype, store } = mapBackedPrototype();
+    installGetOrInsert({ prototype });
+    const getOrInsert = prototype.getOrInsert as (key: unknown, value: unknown) => unknown;
+    const getOrInsertComputed = prototype.getOrInsertComputed as (
+      key: unknown,
+      callback: (key: unknown) => unknown,
+    ) => unknown;
+
+    expect(Object.getOwnPropertyDescriptor(prototype, "getOrInsert")?.enumerable).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(prototype, "getOrInsertComputed")?.enumerable).toBe(false);
+    expect(getOrInsert.call(prototype, "page", 1)).toBe(1);
+    expect(getOrInsert.call(prototype, "page", 2)).toBe(1);
+    const compute = vi.fn((key: unknown) => [key]);
+    const listeners = getOrInsertComputed.call(prototype, "textlayerrendered", compute);
+    expect(getOrInsertComputed.call(prototype, "textlayerrendered", compute)).toBe(listeners);
+    expect(compute).toHaveBeenCalledOnce();
+    expect(compute).toHaveBeenCalledWith("textlayerrendered");
+    expect([...store]).toEqual([
+      ["page", 1],
+      ["textlayerrendered", ["textlayerrendered"]],
+    ]);
+  });
+
+  it("preserves native Map upsert methods", () => {
+    const native = () => "native";
+    const prototype = { getOrInsert: native, getOrInsertComputed: native };
+    installGetOrInsert({ prototype });
+    expect(prototype.getOrInsert).toBe(native);
+    expect(prototype.getOrInsertComputed).toBe(native);
+  });
+
+  it("installs Iterator.prototype.find that stops and closes on the first match", () => {
+    const prototype: { find?: unknown } = {};
+    installIteratorFind(prototype);
+    const find = prototype.find as (
+      this: Iterator<number>,
+      predicate: (value: number, index: number) => unknown,
+    ) => number | undefined;
+    expect(Object.getOwnPropertyDescriptor(prototype, "find")?.enumerable).toBe(false);
+
+    const seen: [number, number][] = [];
+    const matching = trackedIterator([4, 7, 9], prototype);
+    expect(
+      find.call(matching, (value, index) => {
+        seen.push([value, index]);
+        return value > 5;
+      }),
+    ).toBe(7);
+    expect(seen).toEqual([
+      [4, 0],
+      [7, 1],
+    ]);
+    expect(matching.closed).toBe(1);
+
+    const exhausted = trackedIterator([1, 2], prototype);
+    expect(find.call(exhausted, () => false)).toBeUndefined();
+    expect(exhausted.closed).toBe(0);
+  });
+
+  it("closes the iterator when the find predicate throws or is not callable", () => {
+    const prototype: { find?: unknown } = {};
+    installIteratorFind(prototype);
+    const find = prototype.find as (this: Iterator<number>, predicate: unknown) => unknown;
+
+    const throwing = trackedIterator([1, 2], prototype);
+    expect(() =>
+      find.call(throwing, () => {
+        throw new Error("predicate failed");
+      }),
+    ).toThrow("predicate failed");
+    expect(throwing.closed).toBe(1);
+
+    const uncallable = trackedIterator([1], prototype);
+    expect(() => find.call(uncallable, "not a function")).toThrow(TypeError);
+    expect(uncallable.closed).toBe(1);
+  });
+
+  it("preserves a native Iterator.prototype.find", () => {
+    const native = () => "native";
+    const prototype = { find: native };
+    installIteratorFind(prototype);
+    expect(prototype.find).toBe(native);
   });
 });

@@ -9,11 +9,21 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
+  errorUnique: vi.fn(),
+  infoUnique: vi.fn(),
+  successUnique: vi.fn(),
   ensurePandoc: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: mocks.invoke }));
 vi.mock("@/lib/toast", () => ({
-  toast: { error: mocks.error, info: mocks.info, success: mocks.success },
+  toast: {
+    error: mocks.error,
+    info: mocks.info,
+    success: mocks.success,
+    errorUnique: mocks.errorUnique,
+    infoUnique: mocks.infoUnique,
+    successUnique: mocks.successUnique,
+  },
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 
@@ -234,6 +244,7 @@ describe("EngineSection Markdown tab", () => {
       await screen.findByText(engineCopy.markdown.status.installing),
     ).toBeInTheDocument();
     expect(screen.getByText(engineCopy.markdown.downloading)).toBeInTheDocument();
+    expect(mocks.ensurePandoc).toHaveBeenCalledExactlyOnceWith({ notify: true });
 
     release(true);
     expect(

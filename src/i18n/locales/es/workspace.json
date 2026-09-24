@@ -40,7 +40,8 @@
     "renameFailed": "No se pudo cambiar el nombre de \"{{path}}\". La ruta original no se modificó.",
     "setMain": "Establecer como documento principal",
     "title": "Explorador",
-    "treeAriaLabel": "Árbol de archivos del explorador"
+    "treeAriaLabel": "Árbol de archivos del explorador",
+    "setMainFailed": "No se pudo establecer \"{{path}}\" como documento principal."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} y {{second}}"

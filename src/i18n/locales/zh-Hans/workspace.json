@@ -40,7 +40,8 @@
     "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
     "setMain": "已将此文件设为主文档。",
     "title": "资源管理器",
-    "treeAriaLabel": "资源管理器文件树"
+    "treeAriaLabel": "资源管理器文件树",
+    "setMainFailed": "无法将“{{path}}”设为主文档。"
   },
   "explorer": {
     "resizeSections": "调整 {{first}} 与 {{second}} 的大小"

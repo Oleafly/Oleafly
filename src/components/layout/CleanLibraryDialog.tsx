@@ -17,7 +17,9 @@ import {
 import { selectCitationBibliography } from "@/features/citation";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
-import { notifyError, toast } from "@/lib/toast";
+import { describeError } from "@/lib/app-error";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ToolPane, ToolPreviewSurface, ToolSplitView, ToolStatus } from "@/components/tools/ToolWorkspace";
 import { i18n } from "@/i18n";
@@ -190,8 +192,8 @@ export function CleanLibraryDialog({
     } catch (e) {
       if (request === requestId.current) {
         setOutcome(null);
-        setError(e instanceof Error ? e.message : String(e));
-        notifyError("clean library", e);
+        setError(describeError(e));
+        void logError("clean library", e);
       }
     } finally {
       if (request === requestId.current) setBusy(false);

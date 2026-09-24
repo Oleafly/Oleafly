@@ -339,7 +339,7 @@ const HOST: AiToolsHost = {
     if (files.projectId !== projectId) return;
     await files.refreshTree();
   },
-  recompile: () => useCompileStore.getState().recompile(),
+  recompile: () => useCompileStore.getState().recompile({ origin: "automatic" }),
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
   extractPdfText: async (bytes) => {

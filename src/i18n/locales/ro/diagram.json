@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} a fost importat (doar cod, nu se poate desena).",
       "importFailed": "Fișierul nu a putut fi importat: {{detail}}",
       "noAiFix": "AI-ul nu a returnat nicio reparație.",
-      "aiFixApplied": "S-a aplicat o reparație de la AI. Se recompilează…",
       "fixFailed": "Repararea a eșuat: {{detail}}",
       "notDrawable": "Nimic din acest cod nu a putut fi desenat. Codul rămâne neatins."
     },

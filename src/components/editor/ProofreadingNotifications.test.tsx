@@ -1,17 +1,11 @@
 // @vitest-environment jsdom
 
-import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { act, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProofreadingPhase } from "@/store/proofreading";
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
-
-const sonner = vi.hoisted(() => ({
-  error: vi.fn(),
-  warning: vi.fn(),
-  dismiss: vi.fn(),
-}));
+import { useToastStore } from "@/store/toast";
 
 const editor = vi.hoisted(() => ({
   getEditorView: vi.fn(() => null),
@@ -19,14 +13,20 @@ const editor = vi.hoisted(() => ({
 }));
 
 const client = vi.hoisted(() => ({ retryProofreading: vi.fn() }));
+const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 
-vi.mock("sonner", () => ({ toast: sonner }));
 vi.mock("@oleafly/editor", () => editor);
 vi.mock("@/lib/proofreading/client", () => client);
+vi.mock("@/lib/log", () => log);
 
-import { ProofreadingNotifications } from "./ProofreadingNotifications";
+import {
+  PROOFREADING_RETRY_POLICY,
+  ProofreadingNotifications,
+} from "./ProofreadingNotifications";
+import { fixRandomFraction } from "@/lib/test-utils";
 
-const copy = en.proofreading;
+const HARPER_CRASH = "Harper crashed";
+const RETRY_EVENT = "oleafly:proofreading-retry";
 
 function surfaceState(phase: ProofreadingPhase, extra: Record<string, unknown> = {}) {
   return {
@@ -52,10 +52,30 @@ function mount(phase: ProofreadingPhase, extra: Record<string, unknown> = {}) {
   return render(<ProofreadingNotifications path="main.tex" surface="source" />);
 }
 
+function setPhase(phase: ProofreadingPhase, extra: Record<string, unknown> = {}) {
+  act(() => {
+    useProofreadingStore.setState({ source: surfaceState(phase, extra) });
+  });
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
 describe("ProofreadingNotifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    fixRandomFraction(1);
+    useToastStore.getState().reset();
     useSettingsStore.setState({ spellcheck: true, harper: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("renders no chrome of its own", () => {
@@ -64,68 +84,100 @@ describe("ProofreadingNotifications", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("interrupts with a retry action when the checker fails", () => {
-    mount("error");
+  it("never shows a toast for any checker state", () => {
+    for (const phase of [
+      "error",
+      "unavailable",
+      "too_large",
+      "unsupported",
+      "partial",
+      "loading",
+    ] as const) {
+      const view = mount(phase, { message: HARPER_CRASH });
+      view.unmount();
+    }
 
-    expect(sonner.error).toHaveBeenCalledWith(copy.error, expect.anything());
-    const options = sonner.error.mock.lastCall?.[1] as {
-      action: { label: string; onClick: () => void };
-    };
-    expect(options.action.label).toBe(copy.retry);
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
 
-    options.action.onClick();
+  it("retries a failed checker in the background and logs the failure once", async () => {
+    mount("error", { message: HARPER_CRASH });
+    expect(client.retryProofreading).not.toHaveBeenCalled();
+
+    await advance(PROOFREADING_RETRY_POLICY.baseMs);
     expect(client.retryProofreading).toHaveBeenCalledWith("source");
     expect(editor.refreshEditorLints).toHaveBeenCalledOnce();
+    expect(log.logError).toHaveBeenCalledOnce();
+    expect(log.logError).toHaveBeenCalledWith(
+      "proofreading source",
+      `error: ${HARPER_CRASH}`,
+    );
+
+    setPhase("idle");
+    setPhase("loading");
+    setPhase("error", { message: HARPER_CRASH });
+    await advance(PROOFREADING_RETRY_POLICY.baseMs * 2 - 1);
+    expect(client.retryProofreading).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(client.retryProofreading).toHaveBeenCalledTimes(2);
+    expect(log.logError).toHaveBeenCalledOnce();
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
-  it("names the offline checker", () => {
+  it("starts the backoff over once a pass succeeds", async () => {
     mount("unavailable");
+    await advance(PROOFREADING_RETRY_POLICY.baseMs);
+    expect(client.retryProofreading).toHaveBeenCalledTimes(1);
 
-    expect(sonner.error).toHaveBeenCalledWith(copy.unavailable, expect.anything());
+    setPhase("ready");
+    setPhase("unavailable");
+    await advance(PROOFREADING_RETRY_POLICY.baseMs);
+    expect(client.retryProofreading).toHaveBeenCalledTimes(2);
+    expect(log.logError).toHaveBeenCalledTimes(2);
   });
 
-  it("warns without a retry for the states a retry cannot fix", () => {
+  it("does not retry states a retry cannot fix", async () => {
     mount("too_large");
-    expect(sonner.warning).toHaveBeenCalledWith(copy.tooLarge, expect.anything());
-    const warned = sonner.warning.mock.lastCall as [string, { action?: unknown }];
-    expect(warned[1].action).toBeUndefined();
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+    setPhase("unsupported");
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+    setPhase("partial", { diagnosticCount: 4 });
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
 
-    mount("unsupported");
-    expect(sonner.warning).toHaveBeenCalledWith(copy.unsupported, expect.anything());
+    expect(client.retryProofreading).not.toHaveBeenCalled();
+    expect(log.logError).not.toHaveBeenCalled();
   });
 
-  it("stays quiet for a partial pass and clears any earlier notice", () => {
-    mount("partial", {
-      diagnosticCount: 4,
-      message: "Partial proofreading: grammar checking did not finish. Valid findings are still shown.",
-    });
-
-    expect(sonner.warning).not.toHaveBeenCalled();
-    expect(sonner.error).not.toHaveBeenCalled();
-    expect(sonner.dismiss).toHaveBeenCalledWith("proofreading:source");
-  });
-
-  it("prefers a message the checker supplied", () => {
-    mount("error", { message: "Harper crashed" });
-
-    expect(sonner.error).toHaveBeenCalledWith("Harper crashed", expect.anything());
-  });
-
-  it("stays quiet for another file, an idle checker, or proofreading turned off", () => {
+  it("stays quiet for another file, an idle checker, or proofreading turned off", async () => {
     useProofreadingStore.setState({ source: surfaceState("error") });
-    render(<ProofreadingNotifications path="other.tex" surface="source" />);
-    expect(sonner.error).not.toHaveBeenCalled();
+    const other = render(<ProofreadingNotifications path="other.tex" surface="source" />);
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+    other.unmount();
 
-    mount("idle");
-    expect(sonner.error).not.toHaveBeenCalled();
+    const idle = mount("idle");
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+    idle.unmount();
 
     useSettingsStore.setState({ spellcheck: false, harper: false });
     mount("error");
-    expect(sonner.error).not.toHaveBeenCalled();
-    expect(sonner.dismiss).toHaveBeenCalledWith("proofreading:source");
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+
+    expect(client.retryProofreading).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
-  it("retries the visual surface without touching the source lints", () => {
+  it("stops retrying when the editor unmounts", async () => {
+    const view = mount("error");
+    view.unmount();
+
+    await advance(PROOFREADING_RETRY_POLICY.maxMs * 2);
+    expect(client.retryProofreading).not.toHaveBeenCalled();
+  });
+
+  it("retries the visual surface without touching the source lints", async () => {
+    const events: Event[] = [];
+    const listener = (event: Event) => void events.push(event);
+    window.addEventListener(RETRY_EVENT, listener);
     useProofreadingStore.setState({
       visual: surfaceState("error", {
         identity: {
@@ -139,12 +191,11 @@ describe("ProofreadingNotifications", () => {
     });
     render(<ProofreadingNotifications path="main.tex" surface="visual" />);
 
-    const options = sonner.error.mock.lastCall?.[1] as {
-      action: { onClick: () => void };
-    };
-    options.action.onClick();
+    await advance(PROOFREADING_RETRY_POLICY.baseMs);
+    window.removeEventListener(RETRY_EVENT, listener);
 
     expect(client.retryProofreading).toHaveBeenCalledWith("visual");
     expect(editor.refreshEditorLints).not.toHaveBeenCalled();
+    expect(events).toHaveLength(1);
   });
 });

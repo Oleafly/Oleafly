@@ -6,7 +6,7 @@ or {
     $message <: string()
   },
   `toast.$method($key, $message, $...)` where {
-    $method <: or { `errorUnique`, `infoUnique`, `update` },
+    $method <: or { `errorUnique`, `infoUnique`, `successUnique`, `update` },
     $message <: string()
   },
   `notifyError($scope, $error, $message)` where { $message <: string() }

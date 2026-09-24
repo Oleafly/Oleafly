@@ -363,8 +363,6 @@
     "unsave": "Zrušit uložení",
     "save": "Uložit šablonu",
     "use": "Použít tuto šablonu",
-    "savedToast": "Šablona „{{name}}“ byla uložena do vaší knihovny",
-    "removedToast": "Šablona „{{name}}“ byla odebrána z vaší knihovny",
     "saveFailed": "Šablonu se nepodařilo uložit.",
     "removeFailed": "Šablonu se nepodařilo odebrat."
   },

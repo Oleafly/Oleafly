@@ -290,13 +290,10 @@ describe("TemplateGenerateModal result phase", () => {
     expect(screen.getByText("Updated description")).toBeInTheDocument();
   });
 
-  it("saves the template and then removes it", async () => {
+  it("saves the template and then removes it, with the button showing each state instead of a toast", async () => {
     await runGeneration();
     fireEvent.click(screen.getByTestId("template-generate-save"));
     await waitFor(() => expect(saveGeneratedTemplate).toHaveBeenCalledTimes(1));
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enLibrary.generate.savedToast.replace("{{name}}", TEMPLATE.name),
-    );
     expect(onSaved).toHaveBeenCalledTimes(1);
 
     const unsave = await screen.findByRole("button", {
@@ -306,9 +303,10 @@ describe("TemplateGenerateModal result phase", () => {
     await waitFor(() =>
       expect(deleteGeneratedTemplate).toHaveBeenCalledWith(TEMPLATE.slug),
     );
-    expect(toastSuccess).toHaveBeenLastCalledWith(
-      enLibrary.generate.removedToast.replace("{{name}}", TEMPLATE.name),
-    );
+    expect(await screen.findByTestId("template-generate-save")).toBeInTheDocument();
+    expect(onSaved).toHaveBeenCalledTimes(2);
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(notifyError).not.toHaveBeenCalled();
   });
 
   it("reports a failed save", async () => {

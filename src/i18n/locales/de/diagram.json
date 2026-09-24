@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} importiert (nur Code, nicht zeichenbar).",
       "importFailed": "Diese Datei konnte nicht importiert werden: {{detail}}",
       "noAiFix": "Die KI hat keine Behebung geliefert.",
-      "aiFixApplied": "Behebung der KI übernommen. Wird neu kompiliert…",
       "fixFailed": "Behebung fehlgeschlagen: {{detail}}",
       "notDrawable": "Aus diesem Code ließ sich nichts zeichnen. Der Code bleibt unverändert."
     },

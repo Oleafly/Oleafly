@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   setConnectorKey: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -17,11 +18,17 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.success, error: mocks.error },
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { CitationSearchIntegrationSection } from "./CitationSearchIntegrationSection";
 
 const citations = enSettings.citations;
+
+async function expectAnnounced(message: string) {
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(message));
+  expect(mocks.success).not.toHaveBeenCalled();
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -96,9 +103,7 @@ describe("CitationSearchIntegrationSection", () => {
         "s2-token",
       ),
     );
-    expect(mocks.success).toHaveBeenCalledWith(
-      citations.semanticScholar.keySaved,
-    );
+    await expectAnnounced(citations.semanticScholar.keySaved);
 
     await user.click(
       screen.getAllByRole("button", { name: citations.actions.removeKey })[0],
@@ -109,9 +114,7 @@ describe("CitationSearchIntegrationSection", () => {
         "",
       ),
     );
-    expect(mocks.success).toHaveBeenCalledWith(
-      citations.semanticScholar.keyRemoved,
-    );
+    await expectAnnounced(citations.semanticScholar.keyRemoved);
   });
 
   it("saves and then removes the OpenAlex contact email", async () => {
@@ -130,7 +133,7 @@ describe("CitationSearchIntegrationSection", () => {
         "me@example.org",
       ),
     );
-    expect(mocks.success).toHaveBeenCalledWith(citations.openAlex.emailSaved);
+    await expectAnnounced(citations.openAlex.emailSaved);
 
     await user.click(
       screen.getByRole("button", { name: citations.actions.removeEmail }),
@@ -138,7 +141,7 @@ describe("CitationSearchIntegrationSection", () => {
     await waitFor(() =>
       expect(mocks.setConnectorKey).toHaveBeenCalledWith("openalex-email", ""),
     );
-    expect(mocks.success).toHaveBeenCalledWith(citations.openAlex.emailRemoved);
+    await expectAnnounced(citations.openAlex.emailRemoved);
   });
 
   it("saves and then removes the Serper key", async () => {
@@ -157,7 +160,7 @@ describe("CitationSearchIntegrationSection", () => {
         "serper-token",
       ),
     );
-    expect(mocks.success).toHaveBeenCalledWith(citations.serper.keySaved);
+    await expectAnnounced(citations.serper.keySaved);
 
     await user.click(
       screen.getByRole("button", { name: citations.actions.removeKey }),
@@ -165,7 +168,7 @@ describe("CitationSearchIntegrationSection", () => {
     await waitFor(() =>
       expect(mocks.setConnectorKey).toHaveBeenCalledWith("serper", ""),
     );
-    expect(mocks.success).toHaveBeenCalledWith(citations.serper.keyRemoved);
+    await expectAnnounced(citations.serper.keyRemoved);
   });
 
   it("reports a failure for every save and every removal", async () => {
@@ -185,6 +188,11 @@ describe("CitationSearchIntegrationSection", () => {
         citations.semanticScholar.keySaveFailed,
       ),
     );
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "citation search semantic-scholar",
+      expect.any(Error),
+    );
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
 
     await user.type(screen.getByTestId("openalex-email-input"), "b@c.d");
     await user.click(screen.getByTestId("openalex-email-save"));
@@ -232,6 +240,34 @@ describe("CitationSearchIntegrationSection", () => {
     await waitFor(() =>
       expect(mocks.error).toHaveBeenCalledWith(citations.serper.keyRemoveFailed),
     );
+    expect(mocks.logError).toHaveBeenCalledTimes(3);
+  });
+
+  it("saves and then removes the OpenAlex API key", async () => {
+    const user = userEvent.setup();
+    render(<CitationSearchIntegrationSection />);
+
+    await user.type(
+      await screen.findByTestId("openalex-api-key-input"),
+      "oa-key",
+    );
+    await user.click(screen.getByTestId("openalex-api-key-save"));
+    await waitFor(() =>
+      expect(mocks.setConnectorKey).toHaveBeenCalledWith(
+        "openalex-api-key",
+        "oa-key",
+      ),
+    );
+    await expectAnnounced(citations.openAlex.keySaved);
+
+    await user.click(
+      screen.getByRole("button", { name: citations.actions.removeApiKey }),
+    );
+    await waitFor(() =>
+      expect(mocks.setConnectorKey).toHaveBeenCalledWith("openalex-api-key", ""),
+    );
+    await expectAnnounced(citations.openAlex.keyRemoved);
+    expect(screen.getByTestId("openalex-api-key-input")).toBeInTheDocument();
   });
 
   it("treats a failed credential read as not connected", async () => {

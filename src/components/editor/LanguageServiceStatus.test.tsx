@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
@@ -8,13 +8,28 @@ import {
   screen,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-const sonner = vi.hoisted(() => ({
-  dismiss: vi.fn(),
-  warning: vi.fn(),
+const mocks = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/proofreading/dictionary-catalog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/proofreading/dictionary-catalog")>()),
+  loadDictionaryCatalog: async () => [],
 }));
-vi.mock("sonner", () => ({
-  toast: sonner,
-}));
+const disclosure = vi.hoisted(() => ({ fail: false }));
+vi.mock("@/lib/language-service/setup-disclosure", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@/lib/language-service/setup-disclosure")>();
+  return {
+    ...original,
+    getLanguageServiceSetupDisclosure: (
+      ...args: Parameters<typeof original.getLanguageServiceSetupDisclosure>
+    ) => {
+      if (disclosure.fail) {
+        throw new Error("Language-server setup manifest field version is invalid");
+      }
+      return original.getLanguageServiceSetupDisclosure(...args);
+    },
+  };
+});
 import {
   LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
   registerLanguageServiceLifecycleActions,
@@ -30,39 +45,67 @@ import type {
   LanguageServiceFeature,
   TextDocumentItem,
 } from "@/lib/language-service";
+import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
-import { LanguageServiceStatus } from "./LanguageServiceStatus";
+import { useToastStore } from "@/store/toast";
+import {
+  LANGUAGE_SERVICE_RETRY_POLICY,
+  LanguageServiceStatus,
+} from "./LanguageServiceStatus";
+import { ProjectInfoContent } from "./ProjectInfo";
+import { fixRandomFraction } from "@/lib/test-utils";
+
+const SETUP_LABEL = "Set up";
+const SETUP_MESSAGE = "Language service setup required";
+const UNAVAILABLE_SCOPE = "language service unavailable";
+const SETUP_NOTICE = "language-service-setup";
+const PROJECT_INFO_SNAPSHOT = {
+  root: "/projects/project-a/main.tex",
+  fileCount: 1,
+  unreadable: [],
+  stats: EMPTY_DOCUMENT_STATS,
+  selectionWords: null,
+};
+
+beforeEach(() => {
+  useToastStore.getState().reset();
+  disclosure.fail = false;
+});
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   useFilesStore.setState({ projectId: null, activePath: null });
   useProjectAnalysisStore.getState().reset();
 });
 
 function renderStatus(node = <LanguageServiceStatus />) {
-  return render(node);
+  return render(
+    <>
+      {node}
+      <ProjectInfoContent snapshot={PROJECT_INFO_SNAPSHOT} surface="source" />
+    </>,
+  );
 }
 
-async function invokeToastAction(label: string) {
-  await vi.waitFor(() => {
-    expect(sonner.warning).toHaveBeenCalled();
-  });
-  const latest = sonner.warning.mock.calls.at(-1) as
-    | [
-        string,
-        {
-          action?: {
-            label: string;
-            onClick: () => void;
-          };
-        },
-      ]
-    | undefined;
-  expect(latest?.[1].action?.label).toBe(label);
-  act(() => {
-    latest?.[1].action?.onClick();
+function toasts() {
+  return useToastStore.getState().toasts;
+}
+
+function setupNotice() {
+  return screen.queryByTestId(SETUP_NOTICE);
+}
+
+async function openSetupFromProjectInfo(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: SETUP_LABEL }));
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
   });
 }
 
@@ -136,7 +179,7 @@ describe("LanguageServiceStatus", () => {
     });
     renderStatus();
 
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
 
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
@@ -146,7 +189,7 @@ describe("LanguageServiceStatus", () => {
         },
       });
     });
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
   });
 
   it("stays quiet when ready and announces synchronization", () => {
@@ -155,7 +198,7 @@ describe("LanguageServiceStatus", () => {
       readiness: "ready",
     });
     const view = renderStatus();
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
 
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
@@ -163,11 +206,11 @@ describe("LanguageServiceStatus", () => {
         reason: { text: "Synchronizing" },
       });
     });
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
     view.unmount();
   });
 
-  it("discloses TexLab policy before explicit setup and keeps retry separate", async () => {
+  it("discloses TexLab policy before explicit setup from project info and never toasts", async () => {
     activateProject();
     const setup = vi.fn();
     const retry = vi.fn();
@@ -183,7 +226,9 @@ describe("LanguageServiceStatus", () => {
         reason: { text: "Install the pinned server" },
       });
     });
-    await invokeToastAction("Set up");
+    expect(toasts()).toEqual([]);
+    expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+    await openSetupFromProjectInfo(user);
     expect(setup).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", {
       name: "Install TexLab 5.26.0?",
@@ -226,7 +271,7 @@ describe("LanguageServiceStatus", () => {
     );
     expect(setup).not.toHaveBeenCalled();
 
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -240,8 +285,8 @@ describe("LanguageServiceStatus", () => {
         reason: { text: "Server crashed" },
       });
     });
-    await invokeToastAction("Retry");
-    expect(retry).toHaveBeenCalledTimes(1);
+    expect(toasts()).toEqual([]);
+    expect(retry).not.toHaveBeenCalled();
     unregister();
   });
 
@@ -270,7 +315,7 @@ describe("LanguageServiceStatus", () => {
       });
     });
 
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     const install = screen.getByRole("button", {
       name: "Install TexLab 5.26.0",
     });
@@ -287,7 +332,7 @@ describe("LanguageServiceStatus", () => {
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -369,13 +414,13 @@ describe("LanguageServiceStatus", () => {
       </StrictMode>,
     );
 
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     await user.click(
       screen.getByRole("button", { name: "Cancel" }),
     );
     expect(install).not.toHaveBeenCalled();
 
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -445,7 +490,7 @@ describe("LanguageServiceStatus", () => {
     });
     const user = userEvent.setup();
     const view = renderStatus();
-    await invokeToastAction("Set up");
+    await openSetupFromProjectInfo(user);
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -453,7 +498,6 @@ describe("LanguageServiceStatus", () => {
     );
 
     view.unmount();
-    sonner.warning.mockClear();
     useFilesStore.setState({
       projectId: "project-b",
       activePath: "main.tex",
@@ -479,7 +523,7 @@ describe("LanguageServiceStatus", () => {
       await Promise.resolve();
     });
 
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(
       /signed-token|\/Users\/private/u,
@@ -494,6 +538,205 @@ describe("LanguageServiceStatus", () => {
       readiness: "ready",
     });
     renderStatus();
-    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(toasts()).toEqual([]);
+  });
+
+
+  it("offers TexLab setup inline for each project and never raises a toast for it", () => {
+    activateProject();
+    renderStatus();
+    const setupRequired = {
+      kind: "texlab" as const,
+      readiness: "setup_required" as const,
+      reason: { text: "Install the pinned server" },
+    };
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(setupRequired);
+    });
+    expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+    expect(toasts()).toEqual([]);
+
+    act(() => {
+      useFilesStore.setState({ activePath: "references.bib" });
+    });
+    expect(setupNotice()).toBeNull();
+    act(() => {
+      useFilesStore.setState({ activePath: "main.tex" });
+    });
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        reason: { text: "Still missing" },
+      });
+    });
+    expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+    expect(toasts()).toEqual([]);
+
+    act(() => {
+      useFilesStore.setState({ projectId: "project-b", activePath: "main.tex" });
+      useProjectAnalysisStore.getState().activateProject({
+        projectId: "project-b",
+        projectRevision: 1,
+        languageServiceGeneration: 2,
+      });
+    });
+    expect(setupNotice()).toBeNull();
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(setupRequired);
+    });
+    expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+    expect(toasts()).toEqual([]);
+  });
+
+  it("stays silent when an engine reload or a main document rename asks for setup again", () => {
+    activateProject();
+    renderStatus();
+    const setupRequired = {
+      kind: "texlab" as const,
+      readiness: "setup_required" as const,
+      reason: { text: "Install the pinned server" },
+    };
+    for (let round = 0; round < 3; round++) {
+      act(() => {
+        useProjectAnalysisStore.getState().setLanguageService(setupRequired);
+      });
+      expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+      act(() => {
+        useProjectAnalysisStore.getState().setLanguageService({ readiness: "not_run" });
+      });
+      expect(setupNotice()).toBeNull();
+    }
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(setupRequired);
+    });
+    expect(setupNotice()).toHaveTextContent(SETUP_MESSAGE);
+    expect(toasts()).toEqual([]);
+  });
+
+  it("drops the setup offer when setup is no longer needed", () => {
+    activateProject();
+    renderStatus();
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        kind: "texlab",
+        readiness: "setup_required",
+        reason: { text: "Install the pinned server" },
+      });
+    });
+    expect(setupNotice()).not.toBeNull();
+
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        readiness: "installing",
+        reason: { text: "Installing" },
+      });
+    });
+    expect(setupNotice()).toBeNull();
+    expect(toasts()).toEqual([]);
+  });
+
+  it("logs missing setup details instead of offering an action that cannot work", () => {
+    disclosure.fail = true;
+    activateProject();
+    renderStatus();
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        kind: "texlab",
+        readiness: "setup_required",
+        reason: { text: "Install the pinned server" },
+      });
+    });
+
+    expect(toasts()).toEqual([]);
+    expect(setupNotice()).toBeNull();
+    expect(mocks.logError).toHaveBeenCalledTimes(1);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "read the language service setup details",
+      "Language-server setup manifest field version is invalid",
+    );
+  });
+
+  it("retries an unavailable server silently with growing delays and stops when it unmounts", async () => {
+    vi.useFakeTimers();
+    fixRandomFraction(1);
+    activateProject();
+    const retry = vi.fn();
+    const unregister = registerLanguageServiceLifecycleActions({
+      setup: vi.fn(),
+      retry,
+    });
+    const view = renderStatus();
+    const unavailable = {
+      kind: "texlab" as const,
+      readiness: "unavailable" as const,
+      reason: { key: "restartStopped" as const },
+    };
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(unavailable);
+    });
+    expect(toasts()).toEqual([]);
+
+    const first = LANGUAGE_SERVICE_RETRY_POLICY.baseMs;
+    await advance(first - 1);
+    expect(retry).not.toHaveBeenCalled();
+    await advance(1);
+    expect(retry).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        readiness: "starting",
+      });
+    });
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(unavailable);
+    });
+    await advance(first * 2 - 1);
+    expect(retry).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(retry).toHaveBeenCalledTimes(2);
+
+    expect(mocks.logError).toHaveBeenCalledTimes(1);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      UNAVAILABLE_SCOPE,
+      "The language service repeatedly exited and automatic restart was stopped.",
+    );
+    expect(toasts()).toEqual([]);
+
+    view.unmount();
+    await advance(LANGUAGE_SERVICE_RETRY_POLICY.maxMs * 4);
+    expect(retry).toHaveBeenCalledTimes(2);
+    unregister();
+  });
+
+  it("starts the backoff over after the server recovers", async () => {
+    vi.useFakeTimers();
+    fixRandomFraction(1);
+    activateProject();
+    const retry = vi.fn();
+    const unregister = registerLanguageServiceLifecycleActions({
+      setup: vi.fn(),
+      retry,
+    });
+    renderStatus();
+    const unavailable = {
+      kind: "texlab" as const,
+      readiness: "unavailable" as const,
+      reason: { key: "processExited" as const },
+    };
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(unavailable);
+    });
+    await advance(LANGUAGE_SERVICE_RETRY_POLICY.baseMs);
+    expect(retry).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({ readiness: "ready" });
+    });
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService(unavailable);
+    });
+    await advance(LANGUAGE_SERVICE_RETRY_POLICY.baseMs);
+    expect(retry).toHaveBeenCalledTimes(2);
+    expect(mocks.logError).toHaveBeenCalledTimes(2);
+    unregister();
   });
 });

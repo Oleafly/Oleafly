@@ -61,7 +61,6 @@ export const DIAGRAM_MESSAGE_KEYS = [
   "toast.importedCodeOnly",
   "toast.importFailed",
   "toast.noAiFix",
-  "toast.aiFixApplied",
   "toast.fixFailed",
   "toast.notDrawable",
   "confirm.overwrite",

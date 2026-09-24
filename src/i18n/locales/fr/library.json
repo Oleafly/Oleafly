@@ -356,8 +356,6 @@
     "unsave": "Retirer de la bibliothèque",
     "save": "Enregistrer le modèle",
     "use": "Utiliser ce modèle",
-    "savedToast": "\"{{name}}\" enregistré dans votre bibliothèque",
-    "removedToast": "\"{{name}}\" retiré de votre bibliothèque",
     "saveFailed": "Impossible d'enregistrer le modèle.",
     "removeFailed": "Impossible de retirer le modèle."
   },

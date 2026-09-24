@@ -48,5 +48,8 @@
     "description": "Kuvaus",
     "optional": "Valinnainen",
     "required": "Pakollinen"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
   }
 }

@@ -40,7 +40,8 @@
     "renameFailed": "Nie udało się zmienić nazwy \"{{path}}\". Ścieżka źródłowa pozostała bez zmian.",
     "setMain": "Ustaw jako dokument główny",
     "title": "Eksplorator",
-    "treeAriaLabel": "Drzewo plików eksploratora"
+    "treeAriaLabel": "Drzewo plików eksploratora",
+    "setMainFailed": "Nie udało się ustawić \"{{path}}\" jako dokumentu głównego."
   },
   "explorer": {
     "resizeSections": "Zmień rozmiar sekcji {{first}} i {{second}}"

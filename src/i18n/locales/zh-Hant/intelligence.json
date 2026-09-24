@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLab 安裝中繼資料無效",
     "setUp": "設定",
-    "retry": "重試",
-    "startFailed": "無法啟動專案語言服務。",
-    "setupDetailsUnavailable": "無法取得語言服務的安裝詳細資料",
     "setupRequired": "需要設定語言服務",
     "installTitle": "要安裝 {{name}} {{version}} 嗎？",
     "licenseAndSource": "授權與原始碼",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "無法進行專案參照分析。",
-    "updating": "專案參照更新中。",
     "noDefinition": "找不到「{{name}}」的定義。",
     "definitionsFor": "{{name}} 的定義",
     "multipleDefinitions": "「{{name}}」有 {{count}} 個定義。開啟「參考文獻」即可逐一檢視。",

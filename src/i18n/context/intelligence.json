@@ -40,13 +40,11 @@
     "duplicateIndex": "Chip saying which of several entries with the same key this one is"
   },
   "references": {
-    "updating": "Shown when a navigation action runs before the project analysis finished",
     "definitionsFor": "Title of the results panel listing every definition of a name",
     "referencesTo": "Title of the results panel listing every use of a definition"
   },
   "languageService": {
     "setUp": "Starts downloading and installing the language server",
-    "retry": "Tries to start the language server again",
     "install": "Button that downloads and installs the language server",
     "destination": "Filesystem path the language server is installed to",
     "verification": "Heading for the checksum verification note",

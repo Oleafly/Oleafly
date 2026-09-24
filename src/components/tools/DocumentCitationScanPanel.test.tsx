@@ -11,6 +11,8 @@ const scanDocumentForCitations = vi.fn(async (_args?: unknown) => ({
 const addCitation = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastErrorUnique = vi.fn();
+const toastInfoUnique = vi.fn();
 
 vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
@@ -28,11 +30,15 @@ vi.mock("@/lib/toast", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    errorUnique: (...args: unknown[]) => toastErrorUnique(...args),
+    infoUnique: (...args: unknown[]) => toastInfoUnique(...args),
     info: vi.fn(),
     update: vi.fn(),
     dismiss: vi.fn(),
   },
 }));
+
+vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 
 vi.mock("@/lib/document-citation", async () => {
   const actual = await vi.importActual<
@@ -88,6 +94,8 @@ beforeEach(() => {
   addCitation.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastErrorUnique.mockReset();
+  toastInfoUnique.mockReset();
 
   useSettingsStore.setState({ offline: false });
   useDocumentCitationUiStore.setState({
@@ -219,14 +227,14 @@ describe("DocumentCitationScanPanel", () => {
     expect(useLiteratureLibraryStore.getState().saved[0]?.record.title).toBe(
       sampleRecord.title,
     );
-    expect(toastSuccess).toHaveBeenCalledWith("Citation saved");
-    expect(addCitation).not.toHaveBeenCalled();
-    expect(toastSuccess).not.toHaveBeenCalledWith(
-      expect.stringMatching(/Added \\cite/),
+    expect(screen.getByTestId("document-citation-save")).toHaveTextContent(
+      enResearchTools.citationScan.savedCitation,
     );
+    expect(addCitation).not.toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
-  it("Add to .bib without project toasts error and does not claim success", async () => {
+  it("hides Add to .bib when no project can receive the entry", async () => {
     useFilesStore.setState({
       projectId: null,
       activePath: null,
@@ -240,13 +248,12 @@ describe("DocumentCitationScanPanel", () => {
 
     await runScanWithSuggestion();
 
-    fireEvent.click(screen.getByTestId("document-citation-add-bib"));
-
-    expect(toastError).toHaveBeenCalledWith(
-      enResearchTools.citationScan.openProjectTooltip,
-    );
+    expect(
+      screen.queryByTestId("document-citation-add-bib"),
+    ).not.toBeInTheDocument();
     expect(addCitation).not.toHaveBeenCalled();
-    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+    expect(toastErrorUnique).not.toHaveBeenCalled();
   });
 
   it("uses bibOverride when set from command path", async () => {

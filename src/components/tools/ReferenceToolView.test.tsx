@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   writeText: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
+  errorUnique: vi.fn(),
+  logError: vi.fn(),
   formatCitations: vi.fn(),
 }));
 
@@ -20,7 +22,10 @@ vi.mock("@/features/citation", () => ({
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/tauri", () => ({ writeBytesFile: mocks.writeBytesFile }));
-vi.mock("@/lib/toast", () => ({ toast: { success: mocks.success, error: mocks.error } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { success: mocks.success, error: mocks.error, errorUnique: mocks.errorUnique },
+}));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
 vi.mock("@/components/layout/ThemeControls", () => ({ ThemeMenu: () => null }));
@@ -59,7 +64,11 @@ vi.mock("@/components/tools/CodeField", () => ({
   ),
 }));
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { ReferenceToolView } from "./ReferenceToolView";
+
+const references = enResearchTools.references;
 
 const TURING = `@article{turing1950computing,
   author = {Turing, Alan},
@@ -137,6 +146,10 @@ describe("ReferenceToolView", () => {
     await waitFor(() => expect(mocks.writeText).toHaveBeenCalledWith(
       expect.stringContaining("A Revised Local Result"),
     ));
+    expect(
+      await screen.findByRole("button", { name: enCommon.actions.copied }),
+    ).toBeInTheDocument();
+    expect(mocks.success).not.toHaveBeenCalled();
   });
 
   it("loads pasted BibTeX locally and explains an empty lookup", () => {
@@ -344,8 +357,39 @@ describe("ReferenceToolView", () => {
     await waitFor(() => expect(mocks.writeText).toHaveBeenCalledWith(expect.stringContaining("Attention Is All You Need")));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(mocks.writeBytesFile).toHaveBeenCalledWith("/tmp/styles.bib", expect.any(String)));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith(
+      references.savedBibliography.replace("{{name}}", "styles.bib"),
+    ));
     fireEvent.click(screen.getAllByRole("button", { name: /^Copy$/ })[0]);
-    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Copied APA 7 citation"));
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: enCommon.actions.copied })).toHaveLength(2),
+    );
+    expect(mocks.success).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps copy failures from different buttons in one slot", async () => {
+    mocks.writeText.mockRejectedValue(new Error("NotAllowedError: denied"));
+    open("citation-styles");
+    render(<ReferenceToolView />);
+    expect(await screen.findByRole("heading", { name: "ACS" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Copy BibTeX" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /^Copy$/ })[0]);
+    await waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledTimes(2));
+    expect(mocks.errorUnique).toHaveBeenNthCalledWith(
+      1,
+      "reference-copy",
+      references.copyFailed.replace("{{label}}", "BibTeX"),
+    );
+    expect(mocks.errorUnique).toHaveBeenNthCalledWith(
+      2,
+      "reference-copy",
+      references.copyFailed.replace(
+        "{{label}}",
+        references.styleCitation.replace("{{style}}", "APA 7"),
+      ),
+    );
+    expect(mocks.error).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("copy reference", expect.any(Error));
   });
 
   it("isolates a failed style while keeping the remaining comparisons usable", async () => {
@@ -393,9 +437,14 @@ describe("ReferenceToolView", () => {
     mocks.writeText.mockRejectedValueOnce(new Error("Clipboard unavailable"));
     render(<ReferenceToolView />);
     fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Clipboard unavailable"));
+    await waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledWith(
+      "reference-copy",
+      references.copyFailed.replace("{{label}}", references.citation),
+    ));
     fireEvent.click(screen.getByRole("button", { name: "Save .bib" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Disk is full"));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(references.saveFailed));
+    expect(mocks.logError).toHaveBeenCalledWith("copy reference", expect.any(Error));
+    expect(mocks.logError).toHaveBeenCalledWith("save bibliography", expect.any(Error));
   });
 
   it("renders nothing until a reference tool has been selected", () => {

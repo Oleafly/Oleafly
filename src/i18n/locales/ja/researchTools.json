@@ -681,7 +681,6 @@
     "copyFailed": "Oleafly は変換されたソースをコピーできませんでした。",
     "saveFailed": "Oleafly は変換されたファイルを保存できませんでした。",
     "resultName": "{{title}} の結果",
-    "projectCreated": "変換結果からプロジェクトを作成しました。",
     "projectFailed": "Oleafly はプロジェクトを作成できませんでした。",
     "cancel": "キャンセル",
     "convert": "変換",
@@ -920,9 +919,8 @@
       }
     },
     "bibtexBibliography": "BibTeX の参考文献",
-    "savedBibliography": "references.bib を保存しました",
+    "savedBibliography": "{{name}} を保存しました",
     "saveFailed": "Oleafly はこの参考文献を保存できませんでした。",
-    "copied": "{{label}}をコピーしました",
     "copyFailed": "Oleafly は{{label}}をコピーできませんでした。",
     "fieldJournal": "論文誌",
     "fieldConference": "国際会議または予稿集",
@@ -1113,7 +1111,6 @@
     "downloadSvg": "SVG をダウンロード",
     "copyMathml": "Word 用に MathML をコピー",
     "copyKatexHtml": "KaTeX の HTML をコピー",
-    "copiedSource": "LaTeX のソースをコピーしました",
     "copiedMathml": "MathML をコピーしました（Word に貼り付けられます）",
     "copiedKatexHtml": "KaTeX の HTML をコピーしました（KaTeX のスタイルシートが必要です）",
     "exportImageFailed": "この式を画像として書き出せませんでした",
@@ -1328,9 +1325,6 @@
     "citationCount": "被引用 {{citations}} 件",
     "unknownAuthors": "著者不明",
     "moreAuthors": "{{authors}} 他 {{more}} 名",
-    "toastSaved": "引用を保存しました",
-    "toastUpdated": "保存済みの引用を更新しました",
-    "toastCopied": "BibTeX をコピーしました",
     "toastCopyFailed": "BibTeX をコピーできませんでした。",
     "suggestion": {
       "artificialIntelligence": "人工知能",
@@ -1383,12 +1377,8 @@
     "moreAuthors": "{{authors}} 他 {{more}} 名",
     "addToBib": ".bib に追加",
     "addToBibTooltip": "プロジェクトの参考文献に追記して \\cite を挿入します",
-    "openProjectTooltip": "参考文献ファイルに追記するには、プロジェクトを開いてください",
     "citeAdded": "{{citation}} を追加しました",
     "addFailed": "引用を追加できませんでした。",
-    "toastSaved": "引用を保存しました",
-    "toastUpdated": "保存済みの引用を更新しました",
-    "toastCopied": "BibTeX をコピーしました",
     "toastCopyFailed": "BibTeX をコピーできませんでした。"
   }
 }

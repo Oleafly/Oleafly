@@ -18,6 +18,9 @@ const scanDocumentForCitations = vi.fn(
 const addCitation = vi.fn(async (_bibtex?: string) => ({ key: "vaswani2017" }));
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastErrorUnique = vi.fn();
+const toastSuccessUnique = vi.fn();
+const logError = vi.fn();
 
 vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
@@ -35,10 +38,16 @@ vi.mock("@/lib/toast", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    errorUnique: (...args: unknown[]) => toastErrorUnique(...args),
+    successUnique: (...args: unknown[]) => toastSuccessUnique(...args),
     info: vi.fn(),
     update: vi.fn(),
     dismiss: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/log", () => ({
+  logError: (...args: unknown[]) => logError(...args),
 }));
 
 vi.mock("@/lib/document-citation", async () => {
@@ -173,6 +182,9 @@ beforeEach(() => {
   addCitation.mockResolvedValue({ key: "vaswani2017" });
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastErrorUnique.mockReset();
+  toastSuccessUnique.mockReset();
+  logError.mockReset();
   writeText.mockReset();
   useSettingsStore.setState({ offline: false });
   useDocumentCitationUiStore.setState({
@@ -369,7 +381,7 @@ describe("DocumentCitationScanPanel results", () => {
 });
 
 describe("DocumentCitationScanPanel suggestion actions", () => {
-  it("copies BibTeX and reports a clipboard failure", async () => {
+  it("confirms a copy on the button and then restores its label", async () => {
     await scanYielding(paragraph());
     await screen.findByText(RICH_RECORD.title);
     fireEvent.click(
@@ -377,23 +389,39 @@ describe("DocumentCitationScanPanel suggestion actions", () => {
         name: enResearchTools.citationScan.copyBibtex,
       }),
     );
-    await waitFor(() =>
-      expect(toastSuccess).toHaveBeenCalledWith(
-        enResearchTools.citationScan.toastCopied,
+    expect(
+      await screen.findByRole("button", { name: enCommon.actions.copied }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining(RICH_RECORD.title),
+    );
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole(
+        "button",
+        { name: enResearchTools.citationScan.copyBibtex },
+        { timeout: 3000 },
       ),
-    );
+    ).toBeInTheDocument();
+  });
 
+  it("reports a clipboard failure in one shared slot and logs it", async () => {
     writeText.mockRejectedValue(new Error("denied"));
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: enResearchTools.citationScan.copyBibtex,
-      }),
-    );
+    await scanYielding(paragraph());
+    await screen.findByText(RICH_RECORD.title);
+    const copy = screen.getByRole("button", {
+      name: enResearchTools.citationScan.copyBibtex,
+    });
+    fireEvent.click(copy);
     await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith(
+      expect(toastErrorUnique).toHaveBeenCalledWith(
+        "copy-bibtex",
         enResearchTools.citationScan.toastCopyFailed,
       ),
     );
+    expect(logError).toHaveBeenCalledWith("copy BibTeX", expect.any(Error));
+    expect(copy).toHaveTextContent(enResearchTools.citationScan.copyBibtex);
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("appends to the project bibliography and reports the inserted key", async () => {
@@ -401,15 +429,45 @@ describe("DocumentCitationScanPanel suggestion actions", () => {
     await screen.findByText(RICH_RECORD.title);
     fireEvent.click(screen.getByTestId("document-citation-add-bib"));
     await waitFor(() => expect(addCitation).toHaveBeenCalledTimes(1));
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.citationScan.citeAdded.replace(
-        "{{citation}}",
-        "\\cite{vaswani2017}",
+    await waitFor(() =>
+      expect(toastSuccessUnique).toHaveBeenCalledWith(
+        "citation-scan-add-bib",
+        enResearchTools.citationScan.citeAdded.replace(
+          "{{citation}}",
+          "\\cite{vaswani2017}",
+        ),
       ),
     );
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
-  it("surfaces a rejected bibliography write", async () => {
+  it("writes the citation markup of a Typst project", async () => {
+    const engine = useFilesStore.getState().engine;
+    useFilesStore.setState({
+      engine: {
+        ...engine,
+        capabilities: { ...engine.capabilities, formatting_profile: "typst" },
+      },
+    });
+    try {
+      await scanYielding(paragraph());
+      await screen.findByText(RICH_RECORD.title);
+      fireEvent.click(screen.getByTestId("document-citation-add-bib"));
+      await waitFor(() =>
+        expect(toastSuccessUnique).toHaveBeenCalledWith(
+          "citation-scan-add-bib",
+          enResearchTools.citationScan.citeAdded.replace(
+            "{{citation}}",
+            "@vaswani2017",
+          ),
+        ),
+      );
+    } finally {
+      useFilesStore.setState({ engine });
+    }
+  });
+
+  it("surfaces a rejected bibliography write in the same slot", async () => {
     addCitation.mockResolvedValue({
       error: "No bibliography file",
     } as unknown as { key: string });
@@ -417,29 +475,39 @@ describe("DocumentCitationScanPanel suggestion actions", () => {
     await screen.findByText(RICH_RECORD.title);
     fireEvent.click(screen.getByTestId("document-citation-add-bib"));
     await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith("No bibliography file"),
+      expect(toastErrorUnique).toHaveBeenCalledWith(
+        "citation-scan-add-bib",
+        "No bibliography file",
+      ),
     );
   });
 
-  it("surfaces a thrown bibliography write", async () => {
+  it("logs a thrown bibliography write and shows the localized failure", async () => {
     addCitation.mockRejectedValue(new Error("disk full"));
     await scanYielding(paragraph());
     await screen.findByText(RICH_RECORD.title);
     fireEvent.click(screen.getByTestId("document-citation-add-bib"));
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith("disk full"));
+    await waitFor(() =>
+      expect(toastErrorUnique).toHaveBeenCalledWith(
+        "citation-scan-add-bib",
+        enResearchTools.citationScan.addFailed,
+      ),
+    );
+    expect(logError).toHaveBeenCalledWith(
+      "citation scan add to bibliography",
+      expect.any(Error),
+    );
   });
 
-  it("reports an updated citation when the record is already saved", async () => {
+  it("saves a citation silently and shows it as saved", async () => {
     await scanYielding(paragraph());
     await screen.findByText(RICH_RECORD.title);
-    fireEvent.click(screen.getByTestId("document-citation-save"));
-    expect(toastSuccess).toHaveBeenLastCalledWith(
-      enResearchTools.citationScan.toastSaved,
-    );
-    fireEvent.click(screen.getByTestId("document-citation-save"));
-    expect(toastSuccess).toHaveBeenLastCalledWith(
-      enResearchTools.citationScan.toastUpdated,
-    );
+    const save = screen.getByTestId("document-citation-save");
+    fireEvent.click(save);
+    expect(save).toHaveTextContent(enResearchTools.citationScan.savedCitation);
+    fireEvent.click(save);
+    expect(useLiteratureLibraryStore.getState().saved).toHaveLength(1);
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });
 

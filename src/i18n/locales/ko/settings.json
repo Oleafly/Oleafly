@@ -812,7 +812,8 @@
       "deleted": "라이브러리에서 \"{{name}}\"을(를) 삭제했습니다",
       "empty": "아직 AI 생성 템플릿이 없습니다. 템플릿 갤러리에서 만들어 보세요.",
       "fallbackDescription": "AI 생성 템플릿",
-      "toggle": "AI 생성 템플릿 관리"
+      "toggle": "AI 생성 템플릿 관리",
+      "deleteFailed": "\"{{name}}\"을(를) 삭제하지 못했습니다."
     },
     "fontPacks": {
       "lato": {
@@ -855,6 +856,14 @@
       "heading": "맞춤법 사전",
       "note": "일반 항목에서 언어를 고르면 내려받습니다. 기본 제공 다섯 개 팩은 언제나 쓸 수 있으며 여기에 표시되지 않습니다.",
       "tooltip": "Oleafly에는 언어 팩 다섯 개가 들어 있습니다. 다른 언어는 맞춤법 사전으로 고를 때 내려받아 여기에 보관되므로 이후에는 오프라인에서도 동작합니다. 제거하면 공간이 확보되고 앱 설정으로 되돌아갑니다."
+    },
+    "errors": {
+      "fontDownloadFailed": "글꼴을 내려받지 못했습니다.",
+      "fontsDownloadFailed": "글꼴을 내려받지 못했습니다.",
+      "fontRemoveFailed": "글꼴을 제거하지 못했습니다.",
+      "packDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
+      "packsDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
+      "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다."
     }
   },
   "engine": {

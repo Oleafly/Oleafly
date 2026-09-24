@@ -827,7 +827,8 @@
       "deleted": "Usunięto \"{{name}}\" z biblioteki",
       "empty": "Nie ma jeszcze szablonów wygenerowanych przez AI. Utwórz jeden w galerii szablonów.",
       "fallbackDescription": "Szablon wygenerowany przez AI",
-      "toggle": "Zarządzaj szablonami wygenerowanymi przez AI"
+      "toggle": "Zarządzaj szablonami wygenerowanymi przez AI",
+      "deleteFailed": "Nie udało się usunąć \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -870,6 +871,14 @@
       "heading": "Słowniki pisowni",
       "note": "Wybierz język w sekcji Ogólne, aby go pobrać. Pięć dołączonych pakietów jest zawsze dostępnych i nie jest tu wymienionych.",
       "tooltip": "Pięć pakietów językowych jest dołączonych do Oleafly. Każdy inny język pobierany jest na żądanie, gdy wybierzesz go jako słownik pisowni, i zostaje tutaj, aby działać później bez internetu. Usunięcie zwalnia miejsce i przywraca ustawienie aplikacji."
+    },
+    "errors": {
+      "fontDownloadFailed": "Nie udało się pobrać kroju pisma.",
+      "fontsDownloadFailed": "Nie udało się pobrać krojów pisma.",
+      "fontRemoveFailed": "Nie udało się usunąć kroju pisma.",
+      "packDownloadFailed": "Nie udało się pobrać pakietu szablonów.",
+      "packsDownloadFailed": "Nie udało się pobrać pakietów szablonów.",
+      "packRemoveFailed": "Nie udało się usunąć pakietu szablonów."
     }
   },
   "engine": {

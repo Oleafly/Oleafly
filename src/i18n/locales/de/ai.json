@@ -527,7 +527,6 @@
     "showAllHistory": "Gesamten Verlauf anzeigen ({{count}})"
   },
   "research": {
-    "noSourceLink": "Dieses Ergebnis enthält keinen Verweis auf die Quelle.",
     "sourceOpenFailed": "Die Quelle konnte nicht geöffnet werden.",
     "noProjectPath": "Dieses Ergebnis enthält keinen Pfad zu einer Projektdatei.",
     "resultOpenFailed": "Die Ergebnisdatei konnte nicht geöffnet werden."
@@ -645,7 +644,6 @@
     "summarizing": "Früheres Gespräch wird zusammengefasst…"
   },
   "toasts": {
-    "sessionOpenFailed": "Die Sitzung des Agenten konnte nicht geöffnet werden.",
     "approvalModeSaveFailed": "Der Freigabemodus konnte nicht gespeichert werden.",
     "skillDraftSaved": "Skill-Entwurf gespeichert. Prüfen Sie ihn, bevor Sie ihn aktivieren.",
     "skillDraftFailed": "Der Skill-Entwurf konnte nicht gespeichert werden. {{error}}",
@@ -653,11 +651,9 @@
     "chatArchiveFailed": "Dieser Chat konnte nicht archiviert werden.",
     "chatForked": "Chat geforkt.",
     "chatForkFailed": "Dieser Chat konnte nicht geforkt werden.",
-    "engineNotLoaded": "Die Angaben zur Dokument-Engine sind nicht geladen. Das Bearbeiten mit KI ist zur Sicherheit deaktiviert.",
     "skillsLoadFailed": "Die aktivierten Skills konnten nicht geladen werden. Versuchen Sie es erneut.",
     "approvalModeLoadFailed": "Der Freigabemodus konnte nicht geladen werden.",
     "approvalRulesLoadFailed": "Die Freigaberegeln des Projekts konnten nicht geladen werden.",
-    "restored": "Projektdateien wiederhergestellt. Das Gespräch blieb erhalten.",
     "restoreFailed": "Wiederherstellen nicht möglich: {{error}}",
     "steerFailed": "Der laufende Beitrag konnte nicht gelenkt werden.",
     "approvalRuleSaveFailed": "Die Freigaberegel des Projekts konnte nicht gespeichert werden.",

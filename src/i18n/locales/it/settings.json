@@ -822,7 +822,8 @@
       "deleted": "\"{{name}}\" eliminato dalla tua libreria",
       "empty": "Ancora nessun modello generato con l'AI. Creane uno dalla galleria dei modelli.",
       "fallbackDescription": "Modello generato con l'AI",
-      "toggle": "Gestisci i modelli generati con l'AI"
+      "toggle": "Gestisci i modelli generati con l'AI",
+      "deleteFailed": "Impossibile eliminare \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -865,6 +866,14 @@
       "heading": "Dizionari ortografici",
       "note": "Scegli una lingua nella sezione Generali per scaricarla. I cinque pacchetti inclusi sono sempre disponibili e non compaiono qui.",
       "tooltip": "Oleafly include cinque pacchetti linguistici. Qualsiasi altra lingua viene scaricata su richiesta quando la scegli come dizionario ortografico e viene conservata qui, così funziona anche offline. Rimuoverne una libera lo spazio e fa tornare all'impostazione dell'app."
+    },
+    "errors": {
+      "fontDownloadFailed": "Impossibile scaricare il font.",
+      "fontsDownloadFailed": "Impossibile scaricare i font.",
+      "fontRemoveFailed": "Impossibile rimuovere il font.",
+      "packDownloadFailed": "Impossibile scaricare il pacchetto di modelli.",
+      "packsDownloadFailed": "Impossibile scaricare i pacchetti di modelli.",
+      "packRemoveFailed": "Impossibile rimuovere il pacchetto di modelli."
     }
   },
   "engine": {

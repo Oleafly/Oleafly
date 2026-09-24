@@ -92,7 +92,11 @@
     "settings": "Paramètres de l'aperçu PDF",
     "fullscreen": "Aperçu en plein écran",
     "exitFullscreen": "Quitter le plein écran",
-    "retryCompile": "Relancer la compilation"
+    "retryCompile": "Relancer la compilation",
+    "chooseEngine": "Choisir un moteur…",
+    "installPackages_one": "Trouver et installer {{name}}",
+    "installPackages_many": "Trouver et installer {{count}} fichiers",
+    "installPackages_other": "Trouver et installer {{count}} fichiers"
   },
   "stale": {
     "badge": "Obsolète",
@@ -121,7 +125,7 @@
     "imageSaved": "Image enregistrée · {{name}}",
     "pdfSaved": "PDF enregistré · {{name}}",
     "showInFolder": "Afficher dans le dossier",
-    "folderUnavailable": "Le fichier a été enregistré, mais Oleafly n'a pas pu ouvrir son dossier (autorisation refusée). Vérifiez l'emplacement que vous avez choisi dans la boîte de dialogue d'enregistrement.",
+    "folderUnavailable": "Impossible d'ouvrir le dossier.",
     "imageFailed": "Impossible de télécharger l'image.",
     "imageFailedDetail": "Impossible de télécharger l'image : {{detail}}",
     "pdfFailed": "Impossible de télécharger le PDF.",

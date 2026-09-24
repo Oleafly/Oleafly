@@ -535,7 +535,6 @@
     "showAllHistory": "Mostra tutta la cronologia ({{count}})"
   },
   "research": {
-    "noSourceLink": "Questo risultato non include un collegamento alla fonte.",
     "sourceOpenFailed": "Non è stato possibile aprire la fonte.",
     "noProjectPath": "Questo risultato non contiene il percorso di un file di progetto.",
     "resultOpenFailed": "Non è stato possibile aprire il file del risultato."
@@ -653,7 +652,6 @@
     "summarizing": "Riassunto della conversazione precedente…"
   },
   "toasts": {
-    "sessionOpenFailed": "Non è stato possibile aprire la sessione dell'agente.",
     "approvalModeSaveFailed": "Impossibile salvare la modalità di approvazione.",
     "skillDraftSaved": "Bozza della skill salvata. Controllala prima di abilitarla.",
     "skillDraftFailed": "Impossibile salvare la bozza della skill. {{error}}",
@@ -661,11 +659,9 @@
     "chatArchiveFailed": "Impossibile archiviare questa chat.",
     "chatForked": "Chat duplicata.",
     "chatForkFailed": "Impossibile duplicare questa chat.",
-    "engineNotLoaded": "I dettagli del motore del documento non sono caricati. La modifica con l'AI è disattivata per sicurezza.",
     "skillsLoadFailed": "Impossibile caricare le skill abilitate. Riprova.",
     "approvalModeLoadFailed": "Impossibile caricare la modalità di approvazione.",
     "approvalRulesLoadFailed": "Impossibile caricare le regole di approvazione del progetto.",
-    "restored": "File del progetto ripristinati. La conversazione è stata mantenuta.",
     "restoreFailed": "Impossibile ripristinare: {{error}}",
     "steerFailed": "Non è stato possibile indirizzare il turno in corso.",
     "approvalRuleSaveFailed": "Impossibile salvare la regola di approvazione del progetto.",

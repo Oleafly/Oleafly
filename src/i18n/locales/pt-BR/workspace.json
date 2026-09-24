@@ -40,7 +40,8 @@
     "renameFailed": "Não foi possível renomear \"{{path}}\". O caminho original ficou inalterado.",
     "setMain": "Definir como documento principal",
     "title": "Explorador",
-    "treeAriaLabel": "Árvore de arquivos do explorador"
+    "treeAriaLabel": "Árvore de arquivos do explorador",
+    "setMainFailed": "Não foi possível definir \"{{path}}\" como documento principal."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} e {{second}}"

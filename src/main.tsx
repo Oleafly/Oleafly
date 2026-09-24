@@ -6,13 +6,6 @@ import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
-import { RenameDialog } from "@/components/layout/RenameDialog";
-import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
-import { TableImportDialog } from "@/components/editor/TableImportDialog";
-import { FigureDialog } from "@/components/editor/FigureDialog";
-import { UpdateWindow } from "@/components/layout/UpdateWindow";
-import { PreviewWindow } from "@/components/preview/PreviewWindow";
-import { BrowserChrome } from "@/components/browser/BrowserChrome";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
@@ -93,6 +86,28 @@ function prepareWindow(view: WindowView): void {
 // of the webview.
 const queryClient = appQueryClient();
 
+const UpdateWindow = lazy(() =>
+  import("@/components/layout/UpdateWindow").then((module) => ({ default: module.UpdateWindow })),
+);
+const PreviewWindow = lazy(() =>
+  import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
+);
+const BrowserChrome = lazy(() =>
+  import("@/components/browser/BrowserChrome").then((module) => ({ default: module.BrowserChrome })),
+);
+const RenameDialog = lazy(() =>
+  import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
+);
+const AddCitationDialog = lazy(() =>
+  import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+);
+const TableImportDialog = lazy(() =>
+  import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
+);
+const FigureDialog = lazy(() =>
+  import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
+);
+
 // Dev builds only; the conditional import keeps devtools out of the bundle.
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() =>
@@ -106,7 +121,9 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "update") {
     return (
       <ThemeProvider>
-        <UpdateWindow />
+        <Suspense fallback={null}>
+          <UpdateWindow />
+        </Suspense>
       </ThemeProvider>
     );
   }
@@ -114,7 +131,9 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <PreviewWindow />
+          <Suspense fallback={null}>
+            <PreviewWindow />
+          </Suspense>
           <Toaster />
         </ThemeProvider>
       </QueryClientProvider>
@@ -123,7 +142,9 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "browser") {
     return (
       <ThemeProvider>
-        <BrowserChrome />
+        <Suspense fallback={null}>
+          <BrowserChrome />
+        </Suspense>
       </ThemeProvider>
     );
   }
@@ -133,10 +154,12 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <Toaster />
       <DevContextMenu />
       <IndexKeeper />
-      <RenameDialog />
-      <AddCitationDialog />
-      <TableImportDialog />
-      <FigureDialog />
+      <Suspense fallback={null}>
+        <RenameDialog />
+        <AddCitationDialog />
+        <TableImportDialog />
+        <FigureDialog />
+      </Suspense>
       {ReactQueryDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

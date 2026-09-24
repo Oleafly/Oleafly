@@ -92,7 +92,11 @@
     "settings": "Impostazioni dell'anteprima PDF",
     "fullscreen": "Anteprima a schermo intero",
     "exitFullscreen": "Esci dallo schermo intero",
-    "retryCompile": "Riprova la compilazione"
+    "retryCompile": "Riprova la compilazione",
+    "chooseEngine": "Scegli il motore…",
+    "installPackages_one": "Trova e installa {{name}}",
+    "installPackages_many": "Trova e installa {{count}} file",
+    "installPackages_other": "Trova e installa {{count}} file"
   },
   "stale": {
     "badge": "Obsoleto",
@@ -121,7 +125,7 @@
     "imageSaved": "Immagine salvata · {{name}}",
     "pdfSaved": "PDF salvato · {{name}}",
     "showInFolder": "Mostra nella cartella",
-    "folderUnavailable": "Il file è stato salvato, ma Oleafly non è riuscito ad aprirne la cartella (permesso negato). Controlla la posizione che hai scelto nella finestra di salvataggio.",
+    "folderUnavailable": "Impossibile aprire la cartella.",
     "imageFailed": "Non è stato possibile scaricare l'immagine.",
     "imageFailedDetail": "Non è stato possibile scaricare l'immagine: {{detail}}",
     "pdfFailed": "Non è stato possibile scaricare il PDF.",

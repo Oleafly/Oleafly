@@ -54,16 +54,10 @@
     "present": "{{path}}에 이미 Oleafly 항목이 있습니다. {{markup}}으로 인용하세요.",
     "undo": "실행 취소"
   },
-  "compatibility": {
-    "biblatexBiber": "이 프로젝트는 참고문헌에 biblatex/Biber를 씁니다.",
-    "blockerFinding_other": "{{title}}(외 {{more}}건)",
-    "chooseEngine": "엔진 선택…",
-    "importNotes_other": "가져오기 참고 {{count}}건: {{title}}(외 {{more}}건)"
-  },
   "compile": {
-    "engineNotLoaded": "문서 엔진을 불러올 때까지 컴파일을 쓸 수 없습니다.",
     "noOfflineMode": "{{engine}}에는 오프라인 컴파일러 모드가 없습니다. 일반 방식으로 컴파일합니다.",
-    "retry": "다시 컴파일"
+    "retry": "다시 컴파일",
+    "bundleFetchFailed": "Oleafly가 이 문서에 필요한 TeX 패키지를 내려받지 못했습니다. 연결을 확인하고 다시 컴파일하세요."
   },
   "developer": {
     "actions": {
@@ -89,7 +83,6 @@
         "title": "연구 코퍼스 채우기"
       }
     },
-    "closeProjectFailed": "열려 있는 프로젝트를 안전하게 닫지 못했습니다.",
     "confirm": {
       "clearProjects": {
         "action": "프로젝트 비우기",
@@ -158,17 +151,12 @@
     "pdfFailedDetail": "PDF를 저장하지 못했습니다: {{detail}}",
     "pngFailed": "PNG를 저장하지 못했습니다",
     "pngFailedDetail": "PNG를 저장하지 못했습니다: {{detail}}",
-    "revealFailed": "파일은 저장했지만 Oleafly가 해당 폴더를 열지 못했습니다(권한 거부). 저장 대화 상자에서 선택한 위치를 확인하세요.",
+    "revealFailed": "파일은 저장했지만 해당 폴더를 열지 못했습니다.",
     "saved": "{{kind}} 저장됨 · {{fileName}}",
     "showInFolder": "폴더에서 보기"
   },
   "externalChange": {
-    "deletionRestored": "외부에서 삭제가 저장하지 않은 편집과 겹쳤습니다. 로컬 편집 내용을 복원했습니다.",
-    "localEditKept": "저장하지 않은 변경 사항이 있는 동안 \"{{path}}\"에 외부 편집이 도착했습니다. 로컬 편집 내용을 유지했습니다.",
-    "persistExternalFailed": "\"{{path}}\"의 최신 외부 업데이트를 저장하지 못했습니다.",
-    "preserveLocalFailed": "\"{{path}}\"의 로컬 업데이트를 보존하지 못했습니다.",
-    "reloadFailed": "프로젝트 설정은 업데이트했지만 바뀐 파일 일부를 다시 불러오지 못했습니다.",
-    "restoreLocalFailed": "\"{{path}}\"에 저장하지 않은 업데이트를 복원하지 못했습니다."
+    "reloadFailed": "프로젝트 설정은 업데이트했지만 바뀐 파일 일부를 다시 불러오지 못했습니다."
   },
   "fonts": {
     "systemDefault": "시스템 기본값",
@@ -176,18 +164,15 @@
   },
   "imageToLatex": {
     "failed": "이미지를 LaTeX로 변환하지 못했습니다: {{detail}}",
-    "inserted": "이미지에서 얻은 LaTeX를 삽입했습니다",
     "transcribing": "이미지를 옮겨 적는 중…"
   },
   "import": {
-    "arxivImported": "arXiv 소스를 가져왔습니다. 프로젝트를 컴파일해 결과를 확인하세요.",
     "chooseOfferedProjectType": "이 파일에 제시된 프로젝트 형식 중 하나를 고르세요.",
     "invalidArxivId": "arXiv 논문 링크나 2301.01234 같은 아이디를 붙여 넣으세요.",
     "supportedDocumentTypes": "지원되는 문서 형식 중 하나를 고르세요.",
-    "conversionNotice": "내용을 LaTeX로 변환했습니다. 특히 표, 그림, 인용은 서식을 손봐야 할 수 있습니다.",
+    "conversionNotice": "{{format}}(으)로 변환했습니다. 표, 그림, 인용은 서식을 손봐야 할 수 있습니다.",
     "figureSaved": "{{name}}을(를) 저장했습니다",
-    "pdfProjectCreated": "PDF로 프로젝트를 만들었습니다. 재구성 결과를 믿고 쓰기 전에 검토하세요.",
-    "pickPdfOrDocx": ".pdf 또는 .docx 파일을 고르세요",
+    "pickPdfOrDocx": ".pdf 또는 .docx 파일을 고르세요.",
     "texSaved": ".tex 파일을 저장했습니다",
     "unsupportedFile": ".zip, .docx, .md 또는 .markdown 파일을 고르세요.",
     "zipSaveFailed": "ZIP 압축 파일을 저장하지 못했습니다.",
@@ -310,7 +295,8 @@
   "missingPackages": {
     "action_other": "파일 {{count}}개 찾아서 설치",
     "installing_other": "패키지 {{count}}개를 설치하는 중입니다. 설치가 끝나면 컴파일을 다시 시작합니다.",
-    "summary_other": "컴파일이 {{names}}을(를) 찾지 못했습니다. TeX Live에서 해당 패키지를 찾아보세요."
+    "summary_other": "컴파일이 {{names}}을(를) 찾지 못했습니다. TeX Live에서 해당 패키지를 찾아보세요.",
+    "userTree": "시스템 TeX 트리가 읽기 전용이라 패키지를 {{path}}의 개인 트리에 설치했습니다."
   },
   "models": {
     "chips": {
@@ -353,19 +339,16 @@
     "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))"
   },
   "pandoc": {
-    "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요",
+    "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요.",
     "downloadingPercent": "pandoc을 내려받는 중… {{progress}}%",
     "downloadingSize": "pandoc을 내려받는 중… {{megabytes}} MB",
-    "installGuide": "설치 안내",
-    "installed": "pandoc을 설치했습니다"
+    "installGuide": "설치 안내"
   },
   "project": {
     "copyFailed": "\"{{path}}\"을(를) 복사하지 못했습니다.",
     "dateUnavailable": "알 수 없음",
     "importFailed": "가져오지 못했습니다. 자세한 내용은 앱 로그를 확인하세요.",
-    "imported": "프로젝트를 가져왔습니다.",
     "openFailed": "프로젝트를 열지 못했습니다. 자세한 내용은 앱 로그를 확인하세요.",
-    "restoringUnsavedFiles": "프로젝트 업데이트로 저장하지 않은 편집이 있는 파일이 사라졌습니다. Oleafly가 편집 내용을 유지한 채 해당 파일을 복원하고 있습니다.",
     "saveBlockedClose": "파일을 하나 이상 저장하지 못해 프로젝트를 계속 열어 두었습니다.",
     "saveBlockedDiscard": "변경 사항을 버리고 나가기",
     "saveBlockedMany": "파일 {{count}}개를 저장하지 못했습니다: {{files}}. 첫 번째 파일이 저장하지 않은 변경 사항과 함께 편집기에 열려 있습니다({{reason}}). 남아서 문제를 해결하거나, 해당 파일의 저장하지 않은 변경 사항을 버리고 나가세요.",
@@ -376,7 +359,8 @@
     "updatedDaysAgo_other": "{{count}}일 전 업데이트",
     "updatedOn": "{{date}} 업데이트",
     "updatedToday": "오늘 업데이트",
-    "updatedYesterday": "어제 업데이트"
+    "updatedYesterday": "어제 업데이트",
+    "autosaveFailed": "변경 내용을 저장하지 못했습니다. 변경 내용은 편집기에 그대로 있습니다."
   },
   "projectDiagnostics": {
     "analysisFailed": "분석에 실패했습니다: {{message}}",
@@ -465,13 +449,7 @@
     "defaultTitle": "터미널 {{index}}"
   },
   "tex": {
-    "distributionGap": "이 프로젝트는 {{pinned}}에 고정되어 있습니다. 현재 쓰는 {{local}}에는 그중 패키지 {{count}}개가 없어, 해당 배포판을 다시 쓸 때까지 컴파일이 실패할 수 있습니다.",
-    "distributionSkew": "이 프로젝트는 {{pinned}}에 고정되어 있는데 이 컴퓨터는 {{local}}(으)로 컴파일합니다. 결과물이 조금 다를 수 있습니다.",
-    "installPinned_other": "{{count}}개 모두 설치",
-    "installingPinned_other": "고정된 패키지 {{count}}개를 설치하는 중…",
-    "pinnedPackagesFailed": "고정된 패키지 일부를 설치하지 못했습니다. 설정 → LaTeX 엔진을 확인하세요.",
-    "pinnedPackagesInstalled": "고정된 LaTeX 패키지를 설치했습니다.",
-    "pinnedPackagesMissing_other": "이 프로젝트가 고정한 LaTeX 패키지 {{count}}개가 여기에 설치되어 있지 않습니다."
+    "distributionGap": "이 프로젝트는 {{pinned}}에 고정되어 있습니다. 현재 쓰는 {{local}}에는 그중 패키지 {{count}}개가 없어, 해당 배포판을 다시 쓸 때까지 컴파일이 실패할 수 있습니다."
   },
   "theme": {
     "cssForbiddenSyntax": "사용자 지정 CSS에는 at 규칙, URL, 선택자를 쓸 수 없습니다.",
@@ -520,8 +498,8 @@
       "installing": "설치하는 중…",
       "unpacking": "압축을 푸는 중…"
     },
-    "removeFailed": "TinyTeX를 제거하지 못했습니다",
-    "removed": "TinyTeX를 제거했습니다"
+    "removeFailed": "TinyTeX를 제거하지 못했습니다.",
+    "removed": "TinyTeX를 제거했습니다."
   },
   "toolActivity": {
     "labels": {
@@ -572,5 +550,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "저장하는 동안 프로젝트가 바뀌었습니다. 업데이트를 다시 시도하세요."
+  },
+  "checkpoint": {
+    "storageUnavailable": "체크포인트를 저장하지 못했습니다. 디스크가 가득 찼거나 체크포인트 폴더에 쓸 수 없습니다. 공간을 확보하거나 폴더 권한을 확인한 뒤 다시 컴파일하세요.",
+    "incompleteCapture": "일부 프로젝트 파일을 읽지 못해 최근 체크포인트를 저장하지 못했습니다. 파일 권한을 확인한 뒤 다시 컴파일하세요."
   }
 }

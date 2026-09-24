@@ -92,7 +92,10 @@
     "settings": "PDF preview settings",
     "fullscreen": "Fullscreen preview",
     "exitFullscreen": "Exit fullscreen",
-    "retryCompile": "Retry compile"
+    "retryCompile": "Retry compile",
+    "chooseEngine": "Choose engine…",
+    "installPackages_one": "Find and install {{name}}",
+    "installPackages_other": "Find and install {{count}} files"
   },
   "stale": {
     "badge": "Stale",
@@ -121,7 +124,7 @@
     "imageSaved": "Image saved · {{name}}",
     "pdfSaved": "PDF saved · {{name}}",
     "showInFolder": "Show in folder",
-    "folderUnavailable": "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
+    "folderUnavailable": "Couldn't open the folder.",
     "imageFailed": "Couldn't download the image.",
     "imageFailedDetail": "Couldn't download the image: {{detail}}",
     "pdfFailed": "Couldn't download the PDF.",

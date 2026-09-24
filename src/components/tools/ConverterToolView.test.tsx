@@ -8,6 +8,7 @@ import { useSettingsStore } from "@/store/settings";
 const mocks = vi.hoisted(() => ({
   createProjectFromAdHoc: vi.fn(),
   logError: vi.fn(),
+  notifyError: vi.fn(),
   languageForPath: vi.fn(() => []),
   openProject: vi.fn(),
   pickSavePath: vi.fn(),
@@ -62,6 +63,7 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
+  notifyError: mocks.notifyError,
   toast: { error: mocks.toastError, success: mocks.toastSuccess },
 }));
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
@@ -164,10 +166,9 @@ describe("ConverterToolView", () => {
         files: [{ path: "assets/figure.png", dataBase64: "AQID" }],
       });
       expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
-      expect(mocks.toastSuccess).toHaveBeenCalledWith(
-        "Project created from the conversion.",
-      );
     });
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("renders nothing outside a converter route", () => {
@@ -352,10 +353,35 @@ describe("ConverterToolView", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Save" }));
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith("The destination is read-only.");
-      expect(mocks.logError).toHaveBeenCalledWith(
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
         "save converter output markdown-to-latex",
-        expect.any(Error),
+        expect.objectContaining({ message: "The destination is read-only." }),
+        "Oleafly couldn't save the converted file.",
+      );
+    });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("shows the translated backend reason when a save fails with an app error", async () => {
+    mocks.runAdHocConverter.mockResolvedValue({
+      kind: "text",
+      text: "converted",
+      dataBase64: null,
+      fileName: "converted.tex",
+      mediaType: "application/x-tex",
+      files: [],
+    });
+    mocks.pickSavePath.mockResolvedValue("/tmp/converted.tex");
+    mocks.writeBytesFile.mockRejectedValue('@oleafly/error:{"code":"project.name_empty","params":{}}');
+    render(<ConverterToolView />);
+    fireEvent.click(screen.getByTestId("converter-run"));
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+        "save converter output markdown-to-latex",
+        expect.any(String),
+        "Project name cannot be empty.",
       );
     });
   });
@@ -430,8 +456,35 @@ describe("ConverterToolView", () => {
     const create = await screen.findByRole("button", { name: /Create project/i });
     fireEvent.click(create);
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith("Oleafly couldn't create the project.");
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+        "create project from markdown-to-latex",
+        "failed",
+        "Oleafly couldn't create the project.",
+      );
       expect(create).toBeEnabled();
+    });
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("reports a thrown project error with catalog text instead of its raw message", async () => {
+    mocks.runAdHocConverter.mockResolvedValue({
+      kind: "text",
+      text: "converted",
+      dataBase64: null,
+      fileName: "converted.tex",
+      mediaType: "application/x-tex",
+      files: [],
+    });
+    mocks.createProjectFromAdHoc.mockRejectedValue(new Error("EACCES: raw backend text"));
+    render(<ConverterToolView />);
+    fireEvent.click(screen.getByTestId("converter-run"));
+    fireEvent.click(await screen.findByRole("button", { name: /Create project/i }));
+    await waitFor(() => {
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+        "create project from markdown-to-latex",
+        expect.any(Error),
+        "Oleafly couldn't create the project.",
+      );
     });
   });
 });

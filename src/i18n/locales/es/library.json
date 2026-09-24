@@ -356,8 +356,6 @@
     "unsave": "Quitar de guardadas",
     "save": "Guardar la plantilla",
     "use": "Usar esta plantilla",
-    "savedToast": "Se guardó \"{{name}}\" en tu biblioteca",
-    "removedToast": "Se quitó \"{{name}}\" de tu biblioteca",
     "saveFailed": "No se pudo guardar la plantilla.",
     "removeFailed": "No se pudo quitar la plantilla."
   },

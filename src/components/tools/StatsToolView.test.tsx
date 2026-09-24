@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   statsSampleSize: vi.fn(),
   statsConfidenceInterval: vi.fn(),
   notifyError: vi.fn(),
+  logError: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -22,6 +23,7 @@ vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/components/layout/ThemeControls", () => ({ ThemeMenu: () => <div /> }));
 
 import { StatsToolView } from "./StatsToolView";
@@ -78,8 +80,9 @@ describe("StatsToolView", () => {
     expect(compute).toBeEnabled();
   });
 
-  it("keeps invalid backend input out of the result panel and explains the error", async () => {
-    mocks.statsPValue.mockRejectedValue(new Error("the test statistic must be a number"));
+  it("keeps invalid backend input out of the result panel and explains the error there, not in a toast", async () => {
+    const invalid = new Error("the test statistic must be a number");
+    mocks.statsPValue.mockRejectedValue(invalid);
     render(<StatsToolView />);
 
     fireEvent.change(screen.getByLabelText("Statistic"), { target: { value: "not a number" } });
@@ -87,8 +90,35 @@ describe("StatsToolView", () => {
 
     await waitFor(() => expect(screen.getByTestId("stats-p-result")).toHaveTextContent("Couldn't calculate this result"));
     expect(screen.getByTestId("stats-p-result")).toHaveTextContent("the test statistic must be a number");
-    expect(mocks.notifyError).toHaveBeenCalledWith("p-value", expect.any(Error));
+    expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("p-value", invalid);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
     expect(screen.getByTestId("stats-p-run")).toBeEnabled();
+  });
+
+  it("shows the reason of a rejected backend string in the result panel", async () => {
+    mocks.statsPValue.mockRejectedValue("enter degrees of freedom greater than zero");
+    render(<StatsToolView />);
+
+    fireEvent.click(screen.getByTestId("stats-p-run"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("stats-p-result")).toHaveTextContent("enter degrees of freedom greater than zero"),
+    );
+    expect(screen.getByTestId("stats-p-result")).not.toHaveTextContent("Check the values and try again.");
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the catalog hint when the failure carries no reason", async () => {
+    mocks.statsPValue.mockRejectedValue({ code: 7 });
+    render(<StatsToolView />);
+
+    fireEvent.click(screen.getByTestId("stats-p-run"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("stats-p-result")).toHaveTextContent("Check the values and try again."),
+    );
+    expect(mocks.logError).toHaveBeenCalledExactlyOnceWith("p-value", { code: 7 });
   });
 
   it("labels the Wilson interval half-width without relabeling it as a symmetric error", async () => {
@@ -128,15 +158,20 @@ describe("StatsToolView", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Copied result");
   });
 
-  it("reports a clipboard error when a result cannot be copied", async () => {
+  it("reports a clipboard error in the catalog text and logs the raw error", async () => {
     mocks.statsPValue.mockResolvedValue({ p: 0.02664, label: "Two-tailed t-test (28 df)" });
-    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("clipboard denied"));
+    const denied = new Error("clipboard denied");
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(denied);
     render(<StatsToolView />);
 
     fireEvent.click(screen.getByTestId("stats-p-run"));
     await vi.waitFor(() => expect(screen.getByRole("button", { name: "Copy result" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
 
-    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("clipboard denied"));
+    await vi.waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("stats copy result", denied, "Couldn't copy result"),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });

@@ -4,11 +4,14 @@ import {
   beginCompileRequestIdentity,
   captureCompileSourceSnapshot,
   isCompileOutputStillWanted,
+  reportCompileSaveFailure,
+  saveActiveForCompile,
   useCompileStore,
 } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
-import { notifyError, toast } from "@/lib/toast";
+import { toast } from "@/lib/toast";
+import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
 import {
   canApplyLocalCompileOutcome,
@@ -27,6 +30,12 @@ type TaggedCompileResult = Awaited<ReturnType<typeof compileTagged>>;
 type TaggedCompileIdentity = ReturnType<typeof beginCompileRequestIdentity>;
 type TaggedCheckpoint = ReturnType<typeof createCompileSuccessCheckpoint> | null;
 type TaggedSourceSnapshot = Awaited<ReturnType<typeof captureCompileSourceSnapshot>>;
+
+const TAGGED_STOP_NOTICE = "Oleafly stopped the tagged compile on request.";
+
+function taggedCompileToastKey(projectId: string): string {
+  return `tagged-compile:${projectId}`;
+}
 
 interface TaggedOutcomeArgs {
   readonly res: TaggedCompileResult;
@@ -159,27 +168,35 @@ function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
   return outcomeApplied;
 }
 
+function markTaggedCompileFailed(
+  requestIdentity: TaggedCompileIdentity,
+  e: unknown,
+): boolean {
+  if (!isCompileOutputStillWanted(requestIdentity)) return false;
+  useCompileStore.setState({
+    status: "error",
+    phase: "idle",
+    failureReason: `Tagged compile failed: ${String(e)}`,
+    lastAttemptIdentity: requestIdentity,
+  });
+  refreshPreviewWindow({
+    identity: requestIdentity,
+    status: "error",
+    checkpoint: null,
+    message: `Tagged compile failed: ${String(e)}`,
+  });
+  return true;
+}
+
 function reportTaggedCompileException(
   requestIdentity: TaggedCompileIdentity,
   e: unknown,
 ): void {
-  if (isCompileOutputStillWanted(requestIdentity)) {
-    useCompileStore.setState({
-      status: "error",
-      phase: "idle",
-      failureReason: `Tagged compile failed: ${String(e)}`,
-      lastAttemptIdentity: requestIdentity,
-    });
-    refreshPreviewWindow({
-      identity: requestIdentity,
-      status: "error",
-      checkpoint: null,
-      message: `Tagged compile failed: ${String(e)}`,
-    });
-  }
-  notifyError(
-    "compile tagged",
-    e,
+  const wanted = markTaggedCompileFailed(requestIdentity, e);
+  void logError("compile tagged", e);
+  if (!wanted) return;
+  toast.errorUnique(
+    taggedCompileToastKey(requestIdentity.projectId),
     i18n.t(($) => $.core.tagged.compileFailed),
   );
 }
@@ -225,7 +242,14 @@ export async function compileTaggedAndVerify(): Promise<void> {
   };
 
   try {
-    await files.saveActive();
+    await saveActiveForCompile(files);
+  } catch (e) {
+    markTaggedCompileFailed(requestIdentity, e);
+    reportCompileSaveFailure("save before tagged compile", files, e, true);
+    return;
+  }
+
+  try {
     if (taggedAttemptSuperseded(matchesAttemptIdentity, checkpointAtStart)) {
       return;
     }
@@ -272,9 +296,12 @@ export async function compileTaggedAndVerify(): Promise<void> {
       return;
     }
     if (outcome.acceptedSuccess) {
-      toast.success(i18n.t(($) => $.core.tagged.compiled));
-    } else {
-      toast.error(i18n.t(($) => $.core.tagged.compiledWithErrors));
+      toast.successUnique(taggedCompileToastKey(projectId), i18n.t(($) => $.core.tagged.compiled));
+    } else if (!res.log.includes(TAGGED_STOP_NOTICE)) {
+      toast.errorUnique(
+        taggedCompileToastKey(projectId),
+        i18n.t(($) => $.core.tagged.compiledWithErrors),
+      );
     }
   } catch (e) {
     reportTaggedCompileException(requestIdentity, e);

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import {
@@ -85,6 +86,7 @@ import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
 import { i18n } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime, formatNumber } from "@/lib/intl";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
@@ -109,6 +111,10 @@ import {
   type GitHubRepoStats,
 } from "@/lib/github";
 
+const ChangelogDialog = lazy(() =>
+  import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
+
 type Section =
   | "appearance"
   | "general"
@@ -124,6 +130,16 @@ type Section =
   | "help";
 
 type DeveloperSettingsModule = typeof import("@/developer/DeveloperSettings");
+
+interface LibraryBulkActions {
+  clearingRecycleBin: boolean;
+  deletingAllProjects: boolean;
+}
+
+const useLibraryBulkActions = create<LibraryBulkActions>(() => ({
+  clearingRecycleBin: false,
+  deletingAllProjects: false,
+}));
 
 const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   {
@@ -266,9 +282,9 @@ export function SettingsModal() {
   const [permanentDeleteTarget, setPermanentDeleteTarget] =
     useState<RecycledProjectInfo | null>(null);
   const [confirmClearRecycleBin, setConfirmClearRecycleBin] = useState(false);
-  const [clearingRecycleBin, setClearingRecycleBin] = useState(false);
+  const clearingRecycleBin = useLibraryBulkActions((s) => s.clearingRecycleBin);
   const [confirmDeleteAllProjects, setConfirmDeleteAllProjects] = useState(false);
-  const [deletingAllProjects, setDeletingAllProjects] = useState(false);
+  const deletingAllProjects = useLibraryBulkActions((s) => s.deletingAllProjects);
   const [tourConfirmation, setTourConfirmation] = useState<"disable" | "dismiss-all" | null>(
     null,
   );
@@ -347,18 +363,21 @@ export function SettingsModal() {
     setRecycleActionId(project.id);
     try {
       await restoreRecycledProject(project.id);
-      await refreshProjects();
-      toast.success(i18n.t(($) => $.shell.settings.data.recycleBin.restored, { name: project.name }));
-      setStorageRefreshKey((value) => value + 1);
     } catch (error) {
       notifyError(
         "restore recycled project",
         error,
         i18n.t(($) => $.shell.settings.data.recycleBin.restoreFailed, { name: project.name }),
       );
-    } finally {
       setRecycleActionId(null);
+      return;
     }
+    await refreshProjects().catch((error: unknown) => {
+      void logError("refresh projects after restore", error);
+    });
+    toast.success(i18n.t(($) => $.shell.settings.data.recycleBin.restored, { name: project.name }));
+    setStorageRefreshKey((value) => value + 1);
+    setRecycleActionId(null);
   };
 
   const confirmPermanentProjectDeletion = async () => {
@@ -385,7 +404,8 @@ export function SettingsModal() {
 
   const clearRecycleBin = async () => {
     setConfirmClearRecycleBin(false);
-    setClearingRecycleBin(true);
+    if (useLibraryBulkActions.getState().clearingRecycleBin) return;
+    useLibraryBulkActions.setState({ clearingRecycleBin: true });
     const projectsToDelete = [...recycledProjects];
     let deleted = 0;
     try {
@@ -407,26 +427,33 @@ export function SettingsModal() {
           : i18n.t(($) => $.shell.settings.data.recycleBin.clearFailed),
       );
     } finally {
-      setClearingRecycleBin(false);
+      useLibraryBulkActions.setState({ clearingRecycleBin: false });
     }
   };
 
   const deleteAllProjects = async () => {
     setConfirmDeleteAllProjects(false);
-    setDeletingAllProjects(true);
+    if (useLibraryBulkActions.getState().deletingAllProjects) return;
+    useLibraryBulkActions.setState({ deletingAllProjects: true });
     let moved = 0;
     try {
       if (useFilesStore.getState().projectId) {
         await closeProject();
         if (useFilesStore.getState().projectId) {
-          throw new Error(i18n.t(($) => $.shell.settings.data.danger.closeFailed));
+          void logError(
+            "move all projects to recycle bin",
+            "the open project stayed open, so nothing was moved",
+          );
+          return;
         }
       }
       for (const project of projects) {
         await recycleProject(project.id);
         moved += 1;
       }
-      await refreshProjects();
+      await refreshProjects().catch((error: unknown) => {
+        void logError("refresh projects after moving them to the recycle bin", error);
+      });
       toast.success(
         i18n.t(($) => $.shell.settings.data.danger.movedCount, { count: moved }),
       );
@@ -442,7 +469,7 @@ export function SettingsModal() {
           : i18n.t(($) => $.shell.settings.data.danger.moveFailed),
       );
     } finally {
-      setDeletingAllProjects(false);
+      useLibraryBulkActions.setState({ deletingAllProjects: false });
     }
   };
 
@@ -1302,13 +1329,13 @@ const REPO_URL = "https://github.com/Oleafly/Oleafly";
 const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
-const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
 function HelpSection() {
   const { t } = useTranslation(["common", "shell"]);
   const [version, setVersion] = useState("");
   const [copied, setCopied] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
     appVersion().then(setVersion).catch(() => setVersion(""));
@@ -1387,8 +1414,8 @@ function HelpSection() {
     {
       icon: ScrollText,
       label: t(($) => $.shell.settings.help.resources.whatsNew),
-      onClick: ext(CHANGELOG_URL),
-      external: true,
+      onClick: () => setChangelogOpen(true),
+      external: false,
     },
     {
       icon: Scale,
@@ -1475,6 +1502,15 @@ function HelpSection() {
         />
         <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
           <UpdateChecker />
+          <button
+            type="button"
+            data-testid="about-whats-new"
+            onClick={() => setChangelogOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ScrollText className="size-3.5" />
+            {t(($) => $.shell.settings.help.resources.whatsNew)}
+          </button>
           <button
             type="button"
             onClick={copyDiagnostics}
@@ -1595,6 +1631,11 @@ function HelpSection() {
           </button>
         ))}
       </div>
+      {changelogOpen ? (
+        <Suspense fallback={null}>
+          <ChangelogDialog open onClose={() => setChangelogOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

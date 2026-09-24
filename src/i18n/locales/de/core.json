@@ -54,18 +54,10 @@
     "present": "{{path}} enthält den Oleafly-Eintrag bereits. Zitieren Sie ihn mit {{markup}}.",
     "undo": "Rückgängig"
   },
-  "compatibility": {
-    "biblatexBiber": "Dieses Projekt nutzt biblatex/Biber für das Literaturverzeichnis.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} weitere)",
-    "chooseEngine": "Engine wählen…",
-    "importNotes_one": "{{count}} Hinweis zum Import: {{title}}",
-    "importNotes_other": "{{count}} Hinweise zum Import: {{title}} (+{{more}} weitere)"
-  },
   "compile": {
-    "engineNotLoaded": "Kompilieren ist deaktiviert, bis die Dokument-Engine geladen ist.",
     "noOfflineMode": "{{engine}} bietet keinen Offline-Modus zum Kompilieren. Es wird normal kompiliert.",
-    "retry": "Erneut kompilieren"
+    "retry": "Erneut kompilieren",
+    "bundleFetchFailed": "Oleafly konnte die TeX-Pakete, die dieses Dokument braucht, nicht herunterladen. Prüfen Sie Ihre Verbindung und kompilieren Sie erneut."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Forschungskorpus befüllen"
       }
     },
-    "closeProjectFailed": "Das geöffnete Projekt konnte nicht sicher geschlossen werden.",
     "confirm": {
       "clearProjects": {
         "action": "Projekte leeren",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "Das PDF konnte nicht gespeichert werden: {{detail}}",
     "pngFailed": "Das PNG konnte nicht gespeichert werden",
     "pngFailedDetail": "Das PNG konnte nicht gespeichert werden: {{detail}}",
-    "revealFailed": "Die Datei wurde gespeichert, Oleafly konnte ihren Ordner aber nicht öffnen (keine Berechtigung). Prüfen Sie den Ort, den Sie im Speicherdialog gewählt haben.",
+    "revealFailed": "Die Datei wurde gespeichert, ihr Ordner ließ sich aber nicht öffnen.",
     "saved": "{{kind}} gespeichert · {{fileName}}",
     "showInFolder": "Im Ordner anzeigen"
   },
   "externalChange": {
-    "deletionRestored": "Eine Löschung von außen traf auf ungespeicherte Änderungen. Ihre lokalen Änderungen wurden wiederhergestellt.",
-    "localEditKept": "Eine Änderung an „{{path}}“ von außen kam an, während Sie ungespeicherte Änderungen hatten. Ihre lokale Änderung wurde behalten.",
-    "persistExternalFailed": "Die neueste Änderung von außen an „{{path}}“ konnte nicht gesichert werden.",
-    "preserveLocalFailed": "Ihre lokale Änderung an „{{path}}“ konnte nicht bewahrt werden.",
-    "reloadFailed": "Die Projekteinstellungen wurden aktualisiert, einige geänderte Dateien konnten aber nicht neu geladen werden.",
-    "restoreLocalFailed": "Ihre ungespeicherte Änderung an „{{path}}“ konnte nicht wiederhergestellt werden."
+    "reloadFailed": "Die Projekteinstellungen wurden aktualisiert, einige geänderte Dateien konnten aber nicht neu geladen werden."
   },
   "fonts": {
     "systemDefault": "Systemstandard",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Bild zu LaTeX fehlgeschlagen: {{detail}}",
-    "inserted": "LaTeX aus dem Bild eingefügt",
     "transcribing": "Bild wird transkribiert…"
   },
   "import": {
-    "arxivImported": "arXiv-Quelltext importiert. Kompilieren Sie das Projekt, um das Ergebnis zu prüfen.",
     "chooseOfferedProjectType": "Wählen Sie einen der für diese Datei angebotenen Projekttypen.",
     "invalidArxivId": "Fügen Sie einen Link zu einem arXiv-Aufsatz oder eine ID wie 2301.01234 ein.",
     "supportedDocumentTypes": "Wählen Sie einen der unterstützten Dokumenttypen.",
-    "conversionNotice": "Wir haben Ihre Inhalte nach LaTeX umgewandelt. Vor allem bei Tabellen, Abbildungen und Zitationen müssen Sie die Formatierung vielleicht nacharbeiten.",
+    "conversionNotice": "In {{format}} umgewandelt. Bei Tabellen, Abbildungen und Zitationen muss die Formatierung vielleicht nachgebessert werden.",
     "figureSaved": "{{name}} gespeichert",
-    "pdfProjectCreated": "Projekt aus dem PDF erstellt. Prüfen Sie die Rekonstruktion, bevor Sie sich darauf verlassen.",
-    "pickPdfOrDocx": "Wählen Sie eine .pdf- oder .docx-Datei",
+    "pickPdfOrDocx": "Wählen Sie eine .pdf- oder .docx-Datei.",
     "texSaved": ".tex gespeichert",
     "unsupportedFile": "Wählen Sie eine .zip-, .docx-, .md- oder .markdown-Datei.",
     "zipSaveFailed": "Das ZIP-Archiv konnte nicht gespeichert werden.",
@@ -318,7 +301,8 @@
     "installing_one": "{{name}} wird installiert. Das Kompilieren startet danach neu.",
     "installing_other": "{{count}} Pakete werden installiert. Das Kompilieren startet danach neu.",
     "summary_one": "Beim Kompilieren wurde „{{name}}“ nicht gefunden. Suchen Sie in TeX Live nach dem Paket, das es bereitstellt.",
-    "summary_other": "Beim Kompilieren wurden {{names}} nicht gefunden. Suchen Sie in TeX Live nach den passenden Paketen."
+    "summary_other": "Beim Kompilieren wurden {{names}} nicht gefunden. Suchen Sie in TeX Live nach den passenden Paketen.",
+    "userTree": "Der TeX-Systembaum ist schreibgeschützt, daher wurden die Pakete in Ihrem persönlichen Baum unter {{path}} installiert."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "Umbenannt zu „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "pandoc konnte nicht geladen werden. Installieren Sie es von Hand und versuchen Sie es erneut",
+    "downloadFailed": "pandoc konnte nicht geladen werden. Installieren Sie es von Hand und versuchen Sie es erneut.",
     "downloadingPercent": "pandoc wird geladen… {{progress}} %",
     "downloadingSize": "pandoc wird geladen… {{megabytes}} MB",
-    "installGuide": "Installationsanleitung",
-    "installed": "pandoc installiert"
+    "installGuide": "Installationsanleitung"
   },
   "project": {
     "copyFailed": "„{{path}}“ konnte nicht kopiert werden.",
     "dateUnavailable": "Nicht verfügbar",
     "importFailed": "Import nicht möglich. Einzelheiten stehen im Protokoll der App.",
-    "imported": "Projekt importiert.",
     "openFailed": "Das Projekt konnte nicht geöffnet werden. Einzelheiten stehen im Protokoll der App.",
-    "restoringUnsavedFiles": "Eine Projektaktualisierung hat Dateien mit ungespeicherten Änderungen entfernt. Oleafly hat Ihre Änderungen behalten und stellt diese Dateien wieder her.",
     "saveBlockedClose": "Das Projekt blieb geöffnet, weil eine oder mehrere Dateien nicht gespeichert werden konnten.",
     "saveBlockedDiscard": "Änderungen verwerfen und verlassen",
     "saveBlockedMany": "{{count}} Dateien konnten nicht gespeichert werden: {{files}}. Die erste davon ist mit ihren ungespeicherten Änderungen im Editor geöffnet ({{reason}}). Bleiben Sie, um das Problem zu lösen, oder verwerfen Sie die ungespeicherten Änderungen in diesen Dateien und verlassen Sie das Projekt.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "Vor {{count}} Tagen aktualisiert",
     "updatedOn": "Aktualisiert {{date}}",
     "updatedToday": "Heute aktualisiert",
-    "updatedYesterday": "Gestern aktualisiert"
+    "updatedYesterday": "Gestern aktualisiert",
+    "autosaveFailed": "Ihre Änderungen konnten nicht gespeichert werden. Sie sind noch im Editor."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyse fehlgeschlagen: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Dieses Projekt wurde mit {{pinned}} fixiert. Der aktiven Distribution {{local}} fehlen {{count}} ihrer Pakete, deshalb kann das Kompilieren scheitern, bis diese Distribution wieder benutzt wird.",
-    "distributionSkew": "Dieses Projekt wurde mit {{pinned}} fixiert und dieser Rechner kompiliert mit {{local}}. Die Ausgabe kann leicht abweichen.",
-    "installPinned_one": "Installieren",
-    "installPinned_other": "Alle {{count}} installieren",
-    "installingPinned_one": "{{count}} fixiertes Paket wird installiert…",
-    "installingPinned_other": "{{count}} fixierte Pakete werden installiert…",
-    "pinnedPackagesFailed": "Einige fixierte Pakete konnten nicht installiert werden. Siehe Einstellungen → LaTeX-Engine.",
-    "pinnedPackagesInstalled": "Fixierte LaTeX-Pakete installiert.",
-    "pinnedPackagesMissing_one": "Dieses Projekt fixiert {{count}} LaTeX-Paket, das hier nicht installiert ist.",
-    "pinnedPackagesMissing_other": "Dieses Projekt fixiert {{count}} LaTeX-Pakete, die hier nicht installiert sind."
+    "distributionGap": "Dieses Projekt wurde mit {{pinned}} fixiert. Der aktiven Distribution {{local}} fehlen {{count}} ihrer Pakete, deshalb kann das Kompilieren scheitern, bis diese Distribution wieder benutzt wird."
   },
   "theme": {
     "cssForbiddenSyntax": "Eigenes CSS darf keine At-Regeln, URLs oder Selektoren verwenden.",
@@ -539,8 +512,8 @@
       "installing": "Wird installiert…",
       "unpacking": "Wird entpackt…"
     },
-    "removeFailed": "TinyTeX konnte nicht entfernt werden",
-    "removed": "TinyTeX entfernt"
+    "removeFailed": "TinyTeX konnte nicht entfernt werden.",
+    "removed": "TinyTeX entfernt."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Das Projekt hat sich beim Speichern geändert. Versuchen Sie die Aktualisierung bitte erneut."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Ein Checkpoint konnte nicht gespeichert werden. Der Datenträger ist voll oder der Checkpoint-Ordner ist nicht beschreibbar. Geben Sie Speicherplatz frei oder prüfen Sie die Ordnerberechtigungen und kompilieren Sie dann erneut.",
+    "incompleteCapture": "Die letzten Checkpoints konnten nicht gespeichert werden, weil einige Projektdateien nicht lesbar waren. Prüfen Sie deren Berechtigungen und kompilieren Sie dann erneut."
   }
 }

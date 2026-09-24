@@ -62,6 +62,9 @@
     "reload": "Genindlæs",
     "setHomePage": "Vælg som startside"
   },
+  "changelog": {
+    "installed": "Du har denne version"
+  },
   "citeOleafly": {
     "description": "Der blev ikke fundet nogen litteraturfil i dette projekt, så intet blev ændret. Kopier posten nedenfor ind i din litteraturliste, eller find den igen senere under Indstillinger, Hjælp og Om.",
     "openHelp": "Åbn Hjælp og Om",
@@ -298,8 +301,6 @@
       "needed": "Projektet bruger funktioner, der kræver vilkårlige eksterne kommandoer. De er blokeret, indtil du tillader dem.",
       "warning": "Kræves af minted og nogle PythonTeX-dokumenter. LaTeX kan køre programmer med dine brugerrettigheder, så slå kun dette til for et projekt, du har tillid til. TeX Live's egne hjælpeprogrammer, som konvertering af EPS, kører uden."
     },
-    "shellEscapeAllowed": "Eksterne kommandoer er tilladt for dette projekt på denne computer.",
-    "shellEscapeBlocked": "Vilkårlige eksterne kommandoer er blokeret for dette projekt. TeX Live's egne hjælpeprogrammer, som konvertering af EPS, kører stadig.",
     "shellEscapeFailed": "Kunne ikke opdatere adgangen til eksterne kommandoer.",
     "switchFailed": "Kunne ikke skifte kompileringsmotor.",
     "switched": "Projektet kompileres nu med {{engine}}.",
@@ -490,7 +491,6 @@
         "title": "Synkronisering i skyen"
       },
       "danger": {
-        "closeFailed": "Det åbne projekt kunne ikke lukkes sikkert.",
         "confirmDeleteAllAction": "Slet alle projekter",
         "confirmDeleteAllDescription": "Alle nuværende projekter flyttes til papirkurven, inklusive deres filer og Git-historik. Du kan gendanne projekterne enkeltvis bagefter.",
         "confirmDeleteAllTitle_one": "Vil du slette {{count}} projekt?",
@@ -500,7 +500,8 @@
         "deleteAllDescription": "Flytter alle projekter til papirkurven. Intet bliver slettet permanent.",
         "deleting": "Sletter…",
         "moveFailed": "Kunne ikke flytte projekterne til papirkurven.",
-        "movePartial": "Flyttede {{count}} projekter, men kunne ikke gøre handlingen færdig.",
+        "movePartial_one": "Flyttede {{count}} projekt til papirkurven. Resten blev ikke flyttet.",
+        "movePartial_other": "Flyttede {{count}} projekter til papirkurven. Resten blev ikke flyttet.",
         "movedCount_one": "Flyttede {{count}} projekt til papirkurven.",
         "movedCount_other": "Flyttede {{count}} projekter til papirkurven.",
         "title": "Farezone"
@@ -511,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Ryd alt",
         "clearFailed": "Kunne ikke tømme papirkurven.",
-        "clearPartial": "Slettede {{count}} projekter permanent, men kunne ikke tømme hele papirkurven.",
+        "clearPartial_one": "Slettede {{count}} projekt permanent. Resten ligger stadig i papirkurven.",
+        "clearPartial_other": "Slettede {{count}} projekter permanent. Resten ligger stadig i papirkurven.",
         "clearedCount_one": "Slettede {{count}} projekt permanent.",
         "clearedCount_other": "Slettede {{count}} projekter permanent.",
         "clearing": "Tømmer…",
@@ -841,7 +843,6 @@
     },
     "newProjectName": "Navn på nyt projekt",
     "projectName": "Projektnavn",
-    "projectRenamed": "Projektet er omdøbt",
     "saveName": "Gem (Enter)",
     "saveNameAriaLabel": "Gem navnet",
     "untitledProject": "projekt",
@@ -852,7 +853,8 @@
       "pdf": "PDF-visning",
       "split": "Delt visning"
     },
-    "moreActions": "Flere handlinger"
+    "moreActions": "Flere handlinger",
+    "renameFailed": "Kunne ikke omdøbe projektet."
   },
   "tour": {
     "chooseColor": "Vælg din signaturfarve",
@@ -891,13 +893,16 @@
     "updateNow": "Opdater nu"
   },
   "updateWindow": {
+    "available": "Opdatering klar",
     "checking": "Søger efter opdateringer…",
     "currentVersion": "Du har v{{version}}",
     "error": "Opdateringen kunne ikke gøres færdig. Prøv igen senere.",
+    "historyFailed": "Tidligere udgivelsesnoter kunne ikke indlæses.",
     "later": "Senere",
     "looking": "Leder efter den nyeste version…",
     "packageInstall": "Installeret fra en pakke. Download den nye version for at opdatere.",
     "ready": "En ny version er klar til at blive installeret.",
+    "released": "Udgivet {{when}}",
     "upToDate": "Du er opdateret",
     "upToDateGeneric": "Du kører den nyeste version af Oleafly",
     "upToDateHeadline": "Du er helt opdateret!",

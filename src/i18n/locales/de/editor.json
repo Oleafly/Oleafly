@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "Bild gespeichert unter {{path}}",
     "imageFailed": "Das eingefügte Bild konnte nicht im Projekt gespeichert werden.",
     "noProject": "Öffnen Sie ein Projekt, bevor Sie Bilder einfügen."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Sprache der Rechtschreibprüfung",
     "spellLanguageAppSetting": "Einstellung der App verwenden",
     "spellLanguageAriaLabel": "Sprache der Rechtschreibprüfung für dieses Projekt",
-    "spellLanguageHint": "Gilt nur für dieses Projekt. Weitere Sprachen laden Sie in den Einstellungen."
+    "spellLanguageHint": "Gilt nur für dieses Projekt. Weitere Sprachen laden Sie in den Einstellungen.",
+    "spellLanguageFailed": "Die Sprache der Rechtschreibprüfung konnte nicht geändert werden."
   },
   "table": {
     "trigger": "Tabelle einfügen",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Aus dem Projekt zitieren",
-    "updating": "Die Zitationen des Projekts werden aktualisiert.",
-    "changed": "Die Zitationen des Projekts haben sich geändert. Öffnen Sie die Auswahl erneut, um sie aufzufrischen.",
     "filterPlaceholder": "Schlüssel, Autor oder Titel…",
     "filterLabel": "Zitationen des Projekts filtern",
     "partialCatalog": "Unvollständiger Katalog. Fehlerhafte oder unlesbare Bibliografiedateien können fehlen.",
@@ -403,10 +401,7 @@
     "error": "Die Korrekturprüfung konnte dieses Dokument nicht abschließen.",
     "unavailable": "Die Offline-Korrekturprüfung ist nicht verfügbar.",
     "tooLarge": "Die Korrekturprüfung pausiert, weil dieses Dokument zu groß ist.",
-    "unsupported": "Die Korrekturprüfung wird für dieses Dokumentformat nicht unterstützt.",
-    "partial_one": "Die Korrekturprüfung hat {{count}} Fund geliefert, eine Engine wurde aber nicht fertig.",
-    "partial_other": "Die Korrekturprüfung hat {{count}} Funde geliefert, eine Engine wurde aber nicht fertig.",
-    "retry": "Erneut versuchen"
+    "unsupported": "Die Korrekturprüfung wird für dieses Dokumentformat nicht unterstützt."
   },
   "checkpoints": {
     "showInExplorer": "Im Explorer anzeigen",

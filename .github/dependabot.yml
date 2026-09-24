@@ -17,6 +17,8 @@ updates:
       npm-tauri:
         patterns: ["@tauri-apps/*"]
         update-types: ["minor", "patch"]
+      npm-xterm:
+        patterns: ["@xterm/*"]
       npm-all:
         patterns: ["*"]
         update-types: ["minor", "patch"]
@@ -25,6 +27,14 @@ updates:
         update-types: ["major"]
     ignore:
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@codemirror/commands"
+        versions: [">=6.11.0"]
+      - dependency-name: "@codemirror/view"
+        versions: [">=6.43.7"]
+      - dependency-name: "@tiptap/*"
+        versions: [">=3.30.0"]
+      - dependency-name: "mermaid"
         update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 

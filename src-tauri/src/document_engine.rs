@@ -1668,6 +1668,11 @@ async fn finish_compile(
     let ok = compile_succeeded(
         request, &spec, stopped, has_pdf, exit_code, &errors, &mut log,
     );
+    if let Some(main_document) =
+        image_check_main_document(request.engine.id(), request.target, ok, stopped)
+    {
+        explain_image_failures(&spec.working_dir, main_document, &mut log, &mut errors).await;
+    }
     let root_file = match request.target {
         CompileTarget::Main { main_document } => Some(main_document.to_string()),
         CompileTarget::Isolated { .. } => None,
@@ -1687,6 +1692,64 @@ async fn finish_compile(
             log,
         },
     ))
+}
+
+fn image_check_main_document(
+    engine: DocumentEngineId,
+    target: CompileTarget<'_>,
+    ok: bool,
+    stopped: bool,
+) -> Option<&str> {
+    let tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
+    if ok || stopped || !tex {
+        return None;
+    }
+    match target {
+        CompileTarget::Main { main_document } => Some(main_document),
+        CompileTarget::Isolated { .. } => None,
+    }
+}
+
+async fn explain_image_failures(
+    project_dir: &Path,
+    main_document: &str,
+    log: &mut String,
+    errors: &mut Vec<CompileError>,
+) {
+    let Some(evidence) = oleafly_core::image_failure_evidence(log) else {
+        return;
+    };
+    let project_dir = project_dir.to_path_buf();
+    let main_document = main_document.to_string();
+    if let Ok(findings) =
+        tokio::task::spawn_blocking(move || evidence.diagnose(&project_dir, Some(&main_document)))
+            .await
+    {
+        apply_image_findings(&findings, log, errors);
+    }
+}
+
+fn apply_image_findings(
+    findings: &[oleafly_core::ImageFinding],
+    log: &mut String,
+    errors: &mut Vec<CompileError>,
+) {
+    if findings.is_empty() {
+        return;
+    }
+    append_bounded(log, oleafly_core::image_failure_notes(findings).as_bytes());
+    oleafly_core::place_image_findings(
+        errors,
+        findings,
+        |error| error.kind == "error",
+        |message| CompileError {
+            line: None,
+            file: None,
+            message,
+            kind: "error".into(),
+            explanation: None,
+        },
+    );
 }
 
 async fn parse_log_diagnostics(
@@ -2473,6 +2536,7 @@ async fn run_supervised_process_with_environment(
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let is_luatex = is_luatex_invocation(path, args);
+    let path_env = crate::biber_toolchain::compile_path_env_for(path, working_dir);
     let mut command = tokio::process::Command::new(path);
     command.no_console();
     command
@@ -2480,16 +2544,13 @@ async fn run_supervised_process_with_environment(
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
         // Typst/others ignore extra PATH entries that are not present or unused).
-        .env(
-            "PATH",
-            crate::biber_toolchain::compile_path_env_for(path, working_dir),
-        )
+        .env("PATH", &path_env)
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p");
-    if let Some(dir) = crate::paths::oleafly_root()
-        .ok()
-        .and_then(|root| crate::biber_toolchain::prepare_unpack_root(&root))
-    {
+    if let Some(dir) = crate::biber_toolchain::biber_for_child(path, &path_env).and_then(|biber| {
+        let root = crate::paths::oleafly_root().ok()?;
+        crate::biber_toolchain::prepare_unpack_dir(&root, &biber)
+    }) {
         command.env(crate::biber_toolchain::UNPACK_ENV, dir);
     }
     for (name, value) in &environment.variables {
@@ -3082,6 +3143,123 @@ mod tests {
         assert!(dropped.load(std::sync::atomic::Ordering::SeqCst));
     }
 
+    fn image_project() -> tempfile::TempDir {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("figures")).unwrap();
+        std::fs::write(project.path().join("figures/empty.png"), b"").unwrap();
+        std::fs::write(project.path().join("figures/unused.png"), b"").unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\includegraphics{figures/empty.png}\n",
+        )
+        .unwrap();
+        project
+    }
+
+    const EMPTY_IMAGE: &str =
+        "The image figures/empty.png is empty. Export the image again or replace the file.";
+
+    #[tokio::test]
+    async fn failed_compiles_name_the_broken_image_first_and_in_the_log() {
+        let project = image_project();
+        let mut log = "! Unable to load picture or PDF file 'figures/empty.png'.\nl.6 \\includegraphics{figures/empty.png}\n".to_string();
+        let mut errors = parse_tex_log_errors(&log);
+        let original = errors.clone();
+        explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+        assert_eq!(errors[0].message, EMPTY_IMAGE);
+        assert_eq!(errors[0].kind, "error");
+        assert_eq!(errors[1..], original[..]);
+        assert!(log.ends_with(&format!("\n[Oleafly] {EMPTY_IMAGE}\n")));
+        let diagnostics = oleafly_core::parse_latex_log(&log, Some("main.tex"));
+        assert!(diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message == EMPTY_IMAGE));
+    }
+
+    #[tokio::test]
+    async fn an_unnamed_image_failure_is_traced_through_the_main_document() {
+        let project = image_project();
+        let mut log = "(ts1cmr.fd)libpng error: IHDR: CRC error".to_string();
+        let mut errors = parse_tex_log_errors(&log);
+        explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+        assert_eq!(
+            errors
+                .iter()
+                .map(|error| error.message.as_str())
+                .collect::<Vec<_>>(),
+            [EMPTY_IMAGE]
+        );
+    }
+
+    #[tokio::test]
+    async fn compiles_without_a_broken_image_keep_their_log_and_errors() {
+        let project = image_project();
+        for original in [
+            "! Undefined control sequence.\nl.4 \\foo\n",
+            "warning  (file figures/empty.png) (pdf inclusion): odd\n! Undefined control sequence.\nl.4 \\foo\n",
+        ] {
+            let mut log = original.to_string();
+            let mut errors = parse_tex_log_errors(&log);
+            let before_errors = errors.clone();
+            explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+            assert_eq!(log, original);
+            assert_eq!(errors, before_errors);
+        }
+    }
+
+    #[test]
+    fn image_cards_never_push_tex_errors_out_of_the_ask_ai_budget() {
+        let findings = [oleafly_core::ImageFinding::Broken(
+            oleafly_core::BrokenImage {
+                path: "figures/empty.png".into(),
+                problem: oleafly_core::ImageProblem::Empty,
+            },
+        )];
+        let crowded: String = (0..oleafly_core::ASK_AI_ERROR_BUDGET)
+            .map(|index| format!("! Error number {index}.\n"))
+            .collect();
+        let mut log = crowded.clone();
+        let mut errors = parse_tex_log_errors(&log);
+        apply_image_findings(&findings, &mut log, &mut errors);
+        let messages: Vec<&str> = errors.iter().map(|error| error.message.as_str()).collect();
+        assert_eq!(messages.last(), Some(&EMPTY_IMAGE));
+        assert!(messages[..oleafly_core::ASK_AI_ERROR_BUDGET]
+            .iter()
+            .all(|message| message.starts_with("Error number")));
+        let ask_ai = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/features/ask-ai-compile-errors.ts"),
+        )
+        .unwrap();
+        assert!(ask_ai.contains(".filter((error) => error.kind === \"error\")"));
+        assert!(ask_ai.contains(&format!(".slice(0, {})", oleafly_core::ASK_AI_ERROR_BUDGET)));
+    }
+
+    #[test]
+    fn image_check_runs_only_for_failed_main_latex_compiles() {
+        let main = CompileTarget::Main {
+            main_document: "main.tex",
+        };
+        let isolated = CompileTarget::Isolated {
+            source_path: Path::new("chapter.tex"),
+            output_stem: "chapter",
+        };
+        for engine in [DocumentEngineId::Latex, DocumentEngineId::Latexmk] {
+            assert_eq!(
+                image_check_main_document(engine, main, false, false),
+                Some("main.tex")
+            );
+            assert_eq!(image_check_main_document(engine, main, true, false), None);
+            assert_eq!(image_check_main_document(engine, main, false, true), None);
+            assert_eq!(
+                image_check_main_document(engine, isolated, false, false),
+                None
+            );
+        }
+        for engine in [DocumentEngineId::Typst, DocumentEngineId::Markdown] {
+            assert_eq!(image_check_main_document(engine, main, false, false), None);
+        }
+    }
+
     #[test]
     fn tex_errors_get_plain_english_explanations() {
         let log = "! Undefined control sequence.\nl.42 \\foo\n";
@@ -3404,10 +3582,72 @@ mod tests {
             None => std::env::remove_var("OLEAFLY_DATA_DIR"),
         }
         let (log, code) = outcome.unwrap();
-        let expected = crate::biber_toolchain::unpack_root(data.path());
+        let path_env = crate::biber_toolchain::compile_path_env_for(program, data.path());
+        let expected = crate::biber_toolchain::biber_for_child(program, &path_env)
+            .and_then(|biber| crate::biber_toolchain::unpack_dir_for(data.path(), &biber));
+        assert_eq!(code, Some(0), "{log}");
+        match expected {
+            Some(expected) => {
+                assert_eq!(log.trim(), expected.display().to_string());
+                assert!(expected.starts_with(crate::biber_toolchain::unpack_root(data.path())));
+                assert!(expected.is_dir());
+                let kept = crate::biber_toolchain::bibers_for_programs(&[program.to_path_buf()]);
+                assert!(
+                    kept.iter().any(|biber| {
+                        crate::biber_toolchain::unpack_dir_for(data.path(), biber).as_ref()
+                            == Some(&expected)
+                    }),
+                    "{kept:?}"
+                );
+            }
+            None => assert_eq!(log.trim(), ""),
+        }
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn latexmk_children_unpack_for_the_biber_on_their_path() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let tools = tempfile::tempdir().unwrap();
+        let latexmk = tools.path().join("latexmk");
+        std::os::unix::fs::symlink("/bin/sh", &latexmk).unwrap();
+        let biber = tools.path().join("biber");
+        std::fs::write(&biber, b"#!/bin/sh\nexit 0\n").unwrap();
+        let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let outcome = run_supervised_process(
+            &latexmk,
+            &[
+                "-c".to_string(),
+                "printf %s \"$PAR_GLOBAL_TMPDIR\"".to_string(),
+            ],
+            data.path(),
+            None,
+            std::time::Duration::from_secs(30),
+            None,
+        )
+        .await;
+        match previous {
+            Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+        let (log, code) = outcome.unwrap();
+        let expected = crate::biber_toolchain::unpack_dir_for(data.path(), &biber).unwrap();
         assert_eq!(code, Some(0), "{log}");
         assert_eq!(log.trim(), expected.display().to_string());
         assert!(expected.is_dir());
+        assert!(
+            crate::biber_toolchain::bibers_for_programs(std::slice::from_ref(&latexmk))
+                .contains(&biber)
+        );
+        if let Some(bundled) = crate::biber_toolchain::find_tectonic_biber() {
+            assert_ne!(
+                crate::biber_toolchain::unpack_dir_for(data.path(), &bundled),
+                Some(expected)
+            );
+        }
     }
 
     #[cfg(windows)]

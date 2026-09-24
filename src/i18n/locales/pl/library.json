@@ -363,8 +363,6 @@
     "unsave": "Cofnij zapisanie",
     "save": "Zapisz szablon",
     "use": "Użyj tego szablonu",
-    "savedToast": "Zapisano \"{{name}}\" w bibliotece",
-    "removedToast": "Usunięto \"{{name}}\" z biblioteki",
     "saveFailed": "Nie udało się zapisać szablonu.",
     "removeFailed": "Nie udało się usunąć szablonu."
   },

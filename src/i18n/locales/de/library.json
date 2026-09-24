@@ -349,8 +349,6 @@
     "unsave": "Nicht mehr speichern",
     "save": "Vorlage speichern",
     "use": "Diese Vorlage verwenden",
-    "savedToast": "„{{name}}“ in Ihrer Bibliothek gespeichert",
-    "removedToast": "„{{name}}“ aus Ihrer Bibliothek entfernt",
     "saveFailed": "Die Vorlage konnte nicht gespeichert werden.",
     "removeFailed": "Die Vorlage konnte nicht entfernt werden."
   },

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastInfoUnique: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastErrorUnique: vi.fn(),
+  toastDismiss: vi.fn(),
   resetCompile: vi.fn(),
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
@@ -71,6 +74,9 @@ vi.mock("@/lib/toast", () => ({
     info: mocks.toastInfo,
     infoUnique: mocks.toastInfoUnique,
     success: mocks.toastSuccess,
+    error: mocks.toastError,
+    errorUnique: mocks.toastErrorUnique,
+    dismiss: mocks.toastDismiss,
   },
 }));
 vi.mock("@/lib/cross-window", () => ({
@@ -90,7 +96,16 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import type { ProjectMeta, ProjectStateChanged } from "@oleafly/backend-port";
-import { engineErrorMessage, useFilesStore } from "./files";
+import { i18n } from "@/i18n";
+import { engineHintDismissed } from "@/store/engine-picker";
+import {
+  engineErrorMessage,
+  projectCompatibilityFindings,
+  reportFileSaveFailure,
+  saveFailureToastKey,
+  texDistributionGapNotice,
+  useFilesStore,
+} from "./files";
 
 const MAIN_ONLY = [{ path: "main.tex", is_dir: false }];
 const WITH_BIB = [
@@ -774,6 +789,18 @@ async function settle() {
   for (let i = 0; i < 6; i++) await Promise.resolve();
 }
 
+function expectNoToasts() {
+  for (const toastMock of [
+    mocks.toastInfo,
+    mocks.toastInfoUnique,
+    mocks.toastSuccess,
+    mocks.toastError,
+    mocks.toastErrorUnique,
+  ]) {
+    expect(toastMock).not.toHaveBeenCalled();
+  }
+}
+
 async function until(ready: () => boolean) {
   for (let i = 0; i < 200 && !ready(); i++) {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -839,7 +866,7 @@ describe("openProject", () => {
     expect(useFilesStore.getState().projectId).toBeNull();
   });
 
-  it("reports an engine that will not load", async () => {
+  it("retries an engine that will not load and leaves the report to the toolbar", async () => {
     primeOpen();
     mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
     mocks.projectTexStatus.mockResolvedValue(texStatus());
@@ -847,62 +874,53 @@ describe("openProject", () => {
     await useFilesStore.getState().openProject("opened");
     await settle();
 
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "load document engine",
-      expect.anything(),
-      core.engine.error.loadFailed,
-    );
+    expect(mocks.getProjectEngine).toHaveBeenCalledTimes(3);
+    expect(useFilesStore.getState().engineError).toBe("loadFailed");
+    expect(mocks.logError).toHaveBeenCalledWith("load document engine", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
   });
 
-  it("offers a one-click install for the pinned packages this machine lacks", async () => {
+  it("recovers from an engine load hiccup without telling anyone", async () => {
     primeOpen();
-    mocks.projectTexStatus.mockResolvedValue(
-      texStatus({ missing_packages: ["pgf"], can_install_missing: true }),
-    );
-    mocks.tlmgrInstall.mockResolvedValue(undefined);
+    mocks.getProjectEngine
+      .mockRejectedValueOnce(new Error("ipc busy"))
+      .mockResolvedValue(LATEXMK_ENGINE);
+    mocks.projectTexStatus.mockResolvedValue(texStatus());
 
     await useFilesStore.getState().openProject("opened");
-    await settle();
 
-    const call = mocks.toastInfo.mock.calls.at(-1);
-    expect(call?.[0]).toBe(
-      core.tex.pinnedPackagesMissing_one.replace("{{count}}", "1"),
-    );
-    expect(call?.[1]?.label).toBe(core.tex.installPinned_one);
-
-    call?.[1]?.onClick?.();
-    await settle();
-    expect(mocks.tlmgrInstall).toHaveBeenCalledWith(["pgf"]);
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
-      core.tex.installingPinned_one.replace("{{count}}", "1"),
-    );
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(core.tex.pinnedPackagesInstalled);
+    expect(mocks.getProjectEngine).toHaveBeenCalledTimes(2);
+    expect(useFilesStore.getState()).toMatchObject({
+      engine: LATEXMK_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+    expect(mocks.logError).not.toHaveBeenCalledWith("load document engine", expect.anything());
+    expectNoToasts();
   });
 
-  it("reports a pinned package install that fails", async () => {
+  it("logs pinned packages this machine lacks and leaves the install offer to the compile", async () => {
     primeOpen();
     mocks.projectTexStatus.mockResolvedValue(
-      texStatus({ missing_packages: ["pgf", "tools"], can_install_missing: true }),
+      texStatus({ missing_packages: ["tools", "pgf"], can_install_missing: true }),
     );
-    mocks.tlmgrInstall.mockRejectedValue(new Error("tlmgr busy"));
 
     await useFilesStore.getState().openProject("opened");
-    await settle();
+    await until(() =>
+      mocks.logError.mock.calls.some(([scope]) => scope === "tex pin status"),
+    );
 
-    const call = mocks.toastInfo.mock.calls.at(-1);
-    expect(call?.[1]?.label).toBe(
-      core.tex.installPinned_other.replace("{{count}}", "2"),
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "tex pin status",
+      "2 pinned packages are not installed: pgf,tools",
     );
-    call?.[1]?.onClick?.();
-    await settle();
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "install pinned packages",
-      expect.anything(),
-      core.tex.pinnedPackagesFailed,
-    );
+    expect(mocks.tlmgrInstall).not.toHaveBeenCalled();
+    expect(texDistributionGapNotice("opened")).toBeNull();
+    expectNoToasts();
   });
 
-  it("points at the distribution instead of installing a huge gap", async () => {
+  it("remembers a huge gap for the compile instead of announcing it on open", async () => {
     primeOpen();
     mocks.projectTexStatus.mockResolvedValue(
       texStatus({
@@ -914,17 +932,22 @@ describe("openProject", () => {
     );
 
     await useFilesStore.getState().openProject("opened");
-    await settle();
+    await until(() => texDistributionGapNotice("opened") !== null);
 
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
+    expect(texDistributionGapNotice("opened")).toBe(
       core.tex.distributionGap
         .replace("{{pinned}}", "TeX Live 2026")
         .replace("{{local}}", "TinyTeX")
         .replace("{{count}}", "40"),
     );
+    expectNoToasts();
+
+    mocks.projectTexStatus.mockResolvedValue(texStatus());
+    await useFilesStore.getState().openProject("opened");
+    await until(() => texDistributionGapNotice("opened") === null);
   });
 
-  it("warns once when the local distribution differs from the pin", async () => {
+  it("logs a differing local distribution without a toast", async () => {
     primeOpen();
     mocks.projectTexStatus.mockResolvedValue(
       texStatus({
@@ -935,13 +958,15 @@ describe("openProject", () => {
     );
 
     await useFilesStore.getState().openProject("opened");
-    await settle();
-
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
-      core.tex.distributionSkew
-        .replace("{{pinned}}", "TeX Live 2026")
-        .replace("{{local}}", "TinyTeX"),
+    await until(() =>
+      mocks.logError.mock.calls.some(([scope]) => scope === "tex pin status"),
     );
+
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "tex pin status",
+      "pinned with TeX Live 2026, compiling with TinyTeX",
+    );
+    expectNoToasts();
   });
 
   it("keeps the previous project open when its buffers cannot be saved", async () => {
@@ -1091,15 +1116,18 @@ describe("setContent", () => {
 });
 
 describe("importProject", () => {
-  it("announces the import", async () => {
+  it("lets the opened project confirm the import", async () => {
     primeOpen(LATEX_ENGINE);
     mocks.importOverleafProjectCmd.mockResolvedValue("opened");
     mocks.projectTexStatus.mockResolvedValue(texStatus());
 
-    await useFilesStore.getState().importProject("/tmp/paper.zip");
+    await expect(useFilesStore.getState().importProject("/tmp/paper.zip")).resolves.toBe(
+      "opened",
+    );
     await settle();
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(core.project.imported);
+    expect(useFilesStore.getState().projectId).toBe("opened");
+    expectNoToasts();
   });
 });
 
@@ -1130,7 +1158,7 @@ describe("file mutation failures", () => {
 });
 
 describe("external changes", () => {
-  it("keeps a local edit that an external write raced", async () => {
+  it("keeps a local edit that an external write raced without a toast", async () => {
     useFilesStore.setState({
       files: { "main.tex": { content: "mine\n", dirty: true } },
       openTabs: ["main.tex"],
@@ -1141,12 +1169,11 @@ describe("external changes", () => {
     expect(
       useFilesStore.getState().applyExternalWrite("project", "main.tex", "theirs\n"),
     ).toBe(false);
-    expect(mocks.toastInfo).toHaveBeenCalledWith(
-      core.externalChange.localEditKept.replace("{{path}}", "main.tex"),
-    );
+    expect(mocks.logError).toHaveBeenCalledWith("external write kept local edit", "main.tex");
+    expectNoToasts();
   });
 
-  it("reports a local edit that could not be written back", async () => {
+  it("logs a local edit that could not be written back and queues it for autosave", async () => {
     useFilesStore.setState({
       files: { "main.tex": { content: "mine\n", dirty: true } },
       openTabs: ["main.tex"],
@@ -1155,16 +1182,16 @@ describe("external changes", () => {
     mocks.writeFileContent.mockRejectedValue(new Error("read only volume"));
 
     useFilesStore.getState().applyExternalWrite("project", "main.tex", "theirs\n");
-    await until(() => mocks.notifyError.mock.calls.length > 0);
-
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "preserve local file change",
-      expect.anything(),
-      core.externalChange.preserveLocalFailed.replace("{{path}}", "main.tex"),
+    await until(() =>
+      mocks.logError.mock.calls.some(([scope]) => scope === "preserve local file change"),
     );
+
+    expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(true);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
   });
 
-  it("restores unsaved edits that an external delete removed", async () => {
+  it("restores unsaved edits that an external delete removed without a toast", async () => {
     useFilesStore.setState({
       files: { "main.tex": { content: "mine\n", dirty: true } },
       openTabs: ["main.tex"],
@@ -1175,10 +1202,11 @@ describe("external changes", () => {
     expect(useFilesStore.getState().applyExternalDelete("project", "main.tex")).toBe(
       false,
     );
-    expect(mocks.toastInfo).toHaveBeenCalledWith(core.externalChange.deletionRestored);
+    expect(mocks.logError).toHaveBeenCalledWith("external delete kept unsaved files", "main.tex");
+    expectNoToasts();
   });
 
-  it("reports an unsaved edit that could not be restored after a delete", async () => {
+  it("logs an unsaved edit that could not be restored after a delete", async () => {
     useFilesStore.setState({
       files: { "main.tex": { content: "mine\n", dirty: true } },
       openTabs: ["main.tex"],
@@ -1187,13 +1215,14 @@ describe("external changes", () => {
     mocks.writeFileContent.mockRejectedValue(new Error("read only volume"));
 
     useFilesStore.getState().applyExternalDelete("project", "main.tex");
-    await until(() => mocks.notifyError.mock.calls.length > 0);
-
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "restore local file after external delete",
-      expect.anything(),
-      core.externalChange.restoreLocalFailed.replace("{{path}}", "main.tex"),
+    await until(() =>
+      mocks.logError.mock.calls.some(
+        ([scope]) => scope === "restore local file after external delete",
+      ),
     );
+
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
   });
 });
 
@@ -1209,24 +1238,33 @@ describe("applyProjectStateChanged", () => {
       engine: LATEX_ENGINE,
     }) as ProjectStateChanged;
 
-  it("reports files it could not reload", async () => {
+  it("reports files it could not reload in one keyed toast", async () => {
     mocks.listFiles
+      .mockRejectedValueOnce(new Error("tree unavailable"))
+      .mockResolvedValueOnce(MAIN_ONLY)
       .mockRejectedValueOnce(new Error("tree unavailable"))
       .mockResolvedValue(MAIN_ONLY);
 
-    const applied = await useFilesStore
+    const first = await useFilesStore
       .getState()
       .applyProjectStateChanged(event(Date.now()));
+    const second = await useFilesStore
+      .getState()
+      .applyProjectStateChanged(event(Date.now() + 1));
 
-    expect(applied).toBe(false);
-    expect(mocks.notifyError).toHaveBeenCalledWith(
+    expect([first, second]).toEqual([false, false]);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith(
       "reload project after external change",
-      expect.anything(),
-      core.externalChange.reloadFailed,
+      expect.any(Error),
     );
+    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(2);
+    for (const call of mocks.toastErrorUnique.mock.calls) {
+      expect(call).toEqual(["project-reload:project", core.externalChange.reloadFailed]);
+    }
   });
 
-  it("restores unsaved files a project update removed", async () => {
+  it("restores unsaved files a project update removed without a toast", async () => {
     useFilesStore.setState({
       files: { "gone.tex": { content: "mine\n", dirty: true } },
       openTabs: ["gone.tex"],
@@ -1236,9 +1274,14 @@ describe("applyProjectStateChanged", () => {
     mocks.readFileContent.mockResolvedValue("");
     mocks.writeFileContent.mockResolvedValue({ path: "gone.tex", generation: 12 });
 
-    await useFilesStore.getState().applyProjectStateChanged(event(Date.now() + 1));
+    await useFilesStore.getState().applyProjectStateChanged(event(Date.now() + 2));
 
-    expect(mocks.toastInfo).toHaveBeenCalledWith(core.project.restoringUnsavedFiles);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "restore unsaved files after project update",
+      "gone.tex",
+    );
+    expect(useFilesStore.getState().files["gone.tex"]).toMatchObject({ content: "mine\n" });
+    expectNoToasts();
   });
 });
 
@@ -1256,46 +1299,73 @@ describe("import compatibility findings", () => {
     mocks.mcpSetActiveProject.mockResolvedValue(undefined);
   }
 
-  it("offers the engine picker when a project has blockers", async () => {
+  it("remembers blockers for the compile instead of prompting on open", async () => {
     primeScan("blockers", MINTED);
 
     await useFilesStore.getState().openProject("blockers");
-    await until(() => mocks.toastInfoUnique.mock.calls.length > 0);
+    await until(() => projectCompatibilityFindings("blockers").length > 0);
 
-    const [key, message, options] = mocks.toastInfoUnique.mock.calls[0];
-    expect(key).toBe("engine-compatibility:blockers");
-    expect(message).toContain("minted");
-    expect(options?.label).toBe(core.compatibility.chooseEngine);
+    const ids = projectCompatibilityFindings("blockers").map((finding) => finding.id);
+    expect(ids).toContain("minted");
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "project compatibility",
+      expect.stringContaining("minted"),
+    );
+    expectNoToasts();
   });
 
-  it("names the single biblatex note on its own", async () => {
+  it("forgets remembered blockers once the user keeps the bundled engine", async () => {
+    primeScan("kept", MINTED);
+
+    await useFilesStore.getState().openProject("kept");
+    await until(() => projectCompatibilityFindings("kept").length > 0);
+    localStorage.setItem(
+      "oleafly.engineHint.kept",
+      projectCompatibilityFindings("kept").map((finding) => finding.id).join(","),
+    );
+
+    expect(projectCompatibilityFindings("kept")).toEqual([]);
+  });
+
+  it("logs the single biblatex note and remembers it as seen", async () => {
     primeScan("biblatex", BIBLATEX);
 
     await useFilesStore.getState().openProject("biblatex");
     await until(() =>
-      mocks.toastInfo.mock.calls.some(
-        ([message]) => message === core.compatibility.biblatexBiber,
-      ),
+      mocks.logError.mock.calls.some(([scope]) => scope === "project compatibility"),
     );
+
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "project compatibility",
+      "import notes found on open: biblatex-biber",
+    );
+    expect(
+      engineHintDismissed("biblatex", [
+        { id: "biblatex-biber", level: "warning", title: "", detail: "" },
+      ]),
+    ).toBe(true);
+    expect(projectCompatibilityFindings("biblatex")).toEqual([]);
+    expectNoToasts();
   });
 
-  it("counts several import notes together", async () => {
+  it("logs several import notes together", async () => {
     primeScan("notes", BIBLATEX_AND_SHELL);
-
-    const expected = core.compatibility.importNotes_other
-      .replace("{{count}}", "2")
-      .replace("{{title}}", "Bibliography uses biblatex / Biber")
-      .replace("{{more}}", "1");
 
     await useFilesStore.getState().openProject("notes");
     await until(() =>
-      mocks.toastInfo.mock.calls.some(([message]) => message === expected),
+      mocks.logError.mock.calls.some(([scope]) => scope === "project compatibility"),
     );
+
+    const [, detail] =
+      mocks.logError.mock.calls.find(([scope]) => scope === "project compatibility") ?? [];
+    expect(detail).toContain("biblatex-biber");
+    expect(String(detail).split(", ")).toHaveLength(2);
+    expectNoToasts();
   });
 });
 
 describe("external write over a queued save", () => {
-  it("reports an external update that could not be persisted", async () => {
+  it("logs an external update that could not be persisted and keeps it dirty", async () => {
     let release: (value: { path: string; generation: number }) => void = () => {};
     const started = new Promise<void>((resolveStarted) => {
       mocks.writeFileContent.mockImplementationOnce(() => {
@@ -1326,14 +1396,346 @@ describe("external write over a queued save", () => {
     release({ path: "references.bib", generation: 9 });
     await write;
     await until(() =>
-      mocks.notifyError.mock.calls.some(
+      mocks.logError.mock.calls.some(
         ([label]) => label === "preserve external file change",
       ),
     );
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "preserve external file change",
-      expect.anything(),
-      core.externalChange.persistExternalFailed.replace("{{path}}", "references.bib"),
+    expect(useFilesStore.getState().files["references.bib"]).toEqual({
+      content: "theirs\n",
+      dirty: true,
+    });
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
+  });
+});
+
+
+describe("autosave failures", () => {
+  const AUTOSAVE_MS = 1_500;
+  let projectRun = 0;
+  let projectId = "";
+
+  function autosaveFailedCopy() {
+    return i18n.t(($) => $.core.project.autosaveFailed);
+  }
+
+  function autosaveLogs() {
+    return mocks.logError.mock.calls.filter(([scope]) => scope === "autosave").length;
+  }
+
+  beforeEach(() => {
+    projectRun += 1;
+    projectId = `autosave-project-${projectRun}`;
+    useFilesStore.setState({
+      projectId,
+      files: { "main.tex": { content: "start\n", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    mocks.toastErrorUnique.mockReturnValue(41);
+  });
+
+  afterEach(async () => {
+    useFilesStore.setState({ files: {}, saveBlocked: null });
+    await useFilesStore.getState().closeProject();
+  });
+
+  it("shows one sticky error for automatic saves and does not raise it again after a save lands", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+      for (const content of ["a\n", "ab\n", "abc\n"]) {
+        useFilesStore.getState().setContent("main.tex", content);
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      }
+      await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(3));
+      await vi.waitFor(() => expect(autosaveLogs()).toBe(3));
+
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+      expect(mocks.toastErrorUnique).toHaveBeenCalledWith(
+        saveFailureToastKey(projectId),
+        autosaveFailedCopy(),
+        undefined,
+        true,
+      );
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+
+      mocks.writeFileContent.mockResolvedValue({ path: "main.tex", generation: 9 });
+      useFilesStore.getState().setContent("main.tex", "abcd\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastDismiss).toHaveBeenCalledWith(41));
+      expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false);
+
+      for (let cycle = 1; cycle <= 3; cycle++) {
+        mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+        useFilesStore.getState().setContent("main.tex", `failed ${cycle}\n`);
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+        await vi.waitFor(() => expect(autosaveLogs()).toBe(3 + cycle));
+
+        mocks.writeFileContent.mockResolvedValue({ path: "main.tex", generation: 9 });
+        useFilesStore.getState().setContent("main.tex", `saved ${cycle}\n`);
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+        await vi.waitFor(() =>
+          expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+            content: `saved ${cycle}\n`,
+            dirty: false,
+          }),
+        );
+      }
+
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays quiet about automatic saves after the project is closed and opened again", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1));
+
+      useFilesStore.setState({ files: { "main.tex": { content: "typed\n", dirty: false } } });
+      await useFilesStore.getState().closeProject();
+      useFilesStore.setState({
+        projectId,
+        files: { "main.tex": { content: "start\n", dirty: false } },
+        openTabs: ["main.tex"],
+        activePath: "main.tex",
+      });
+      useFilesStore.getState().setContent("main.tex", "typed again\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(autosaveLogs()).toBe(2));
+
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the error up while another file still fails to save", async () => {
+    vi.useFakeTimers();
+    try {
+      useFilesStore.setState({
+        files: {
+          "main.tex": { content: "start\n", dirty: false },
+          "notes.tex": { content: "notes\n", dirty: false },
+        },
+        openTabs: ["main.tex", "notes.tex"],
+      });
+      mocks.writeFileContent.mockImplementation(async (_project: string, path: string) => {
+        if (path === "notes.tex") throw new Error("permission denied");
+        return { path, generation: 9 };
+      });
+
+      useFilesStore.getState().setContent("notes.tex", "notes, edited\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1));
+
+      useFilesStore.getState().setContent("main.tex", "main, edited\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() =>
+        expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false),
+      );
+
+      expect(useFilesStore.getState().files["notes.tex"]?.dirty).toBe(true);
+      expect(mocks.toastDismiss).not.toHaveBeenCalled();
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retries a generation conflict quietly", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent
+        .mockRejectedValueOnce(
+          new Error("mutation conflict at generation 8: the target changed after expectedGeneration"),
+        )
+        .mockResolvedValue({ path: "main.tex", generation: 9 });
+
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() =>
+        expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false),
+      );
+
+      expect(mocks.writeFileContent).toHaveBeenCalledTimes(2);
+      expect(mocks.logError).toHaveBeenCalledWith("autosave", expect.any(Error));
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+      expectNoToasts();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("answers every explicit save that fails, but not repeated autosaves", async () => {
+    vi.useFakeTimers();
+    try {
+      const failure = new Error("disk full");
+      mocks.writeFileContent.mockRejectedValue(failure);
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1));
+
+      reportFileSaveFailure("editor save", projectId, "main.tex", failure, true);
+      reportFileSaveFailure("editor save", projectId, "main.tex", failure, true);
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(3);
+      expect(mocks.toastErrorUnique).toHaveBeenLastCalledWith(
+        saveFailureToastKey(projectId),
+        autosaveFailedCopy(),
+        undefined,
+        true,
+      );
+
+      useFilesStore.getState().setContent("main.tex", "typed more\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+      expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops the error once the failing file no longer has unsaved changes", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1));
+
+      useFilesStore.setState({ files: {}, openTabs: [], activePath: null });
+
+      expect(mocks.toastDismiss).toHaveBeenCalledWith(41);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops the error when the project closes", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1));
+
+      useFilesStore.setState({ files: { "main.tex": { content: "typed\n", dirty: false } } });
+      await useFilesStore.getState().closeProject();
+
+      expect(mocks.toastDismiss).toHaveBeenCalledWith(41);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("engine setting failures", () => {
+  beforeEach(() => {
+    useFilesStore.setState({ engine: LATEX_ENGINE, engineLoaded: true, engineError: null });
+  });
+
+  it("logs a refused main document, reloads the unchanged engine and leaves the report to the caller", async () => {
+    const failure = new Error("not a source file");
+    mocks.setMainDocCmd.mockRejectedValue(failure);
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await expect(useFilesStore.getState().setMainDoc("figure.png")).rejects.toBe(failure);
+
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("set main document", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
+  });
+
+  it("logs a refused engine switch and keeps the project compilable", async () => {
+    const failure = new Error("latexmk is not installed");
+    mocks.setProjectEngineCmd.mockRejectedValue(failure);
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await expect(useFilesStore.getState().setEngine("latexmk")).rejects.toBe(failure);
+
+    expect(useFilesStore.getState()).toMatchObject({
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("set compile engine", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
+  });
+
+  it("marks the engine unavailable when it cannot be reloaded after a refused switch", async () => {
+    const failure = new Error("latexmk is not installed");
+    mocks.setProjectEngineCmd.mockRejectedValue(failure);
+    mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
+
+    await expect(useFilesStore.getState().setEngine("latexmk")).rejects.toBe(failure);
+
+    expect(mocks.getProjectEngine).toHaveBeenCalledTimes(3);
+    expect(useFilesStore.getState()).toMatchObject({
+      engineLoaded: false,
+      engineError: "loadFailed",
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("load document engine", expect.any(Error));
+    expectNoToasts();
+  });
+
+  it("logs a refused external command setting and leaves the report to the picker", async () => {
+    const failure = new Error("project.json is read only");
+    mocks.setProjectShellEscapeCmd.mockRejectedValue(failure);
+
+    await expect(useFilesStore.getState().setShellEscape(true)).rejects.toBe(failure);
+
+    expect(mocks.logError).toHaveBeenCalledWith("allow external TeX commands", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
+  });
+
+  it("retries the engine after the main document is renamed and only logs a lasting failure", async () => {
+    mocks.renameFile.mockResolvedValue("paper.tex");
+    mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
+
+    await expect(useFilesStore.getState().renameEntry("main.tex", "paper.tex")).resolves.toBe(
+      "paper.tex",
     );
+
+    expect(mocks.getProjectEngine).toHaveBeenCalledTimes(3);
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "paper.tex",
+      engineLoaded: false,
+      engineError: "renameReloadFailed",
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("rename main document", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expectNoToasts();
+  });
+
+  it("recovers the engine after the main document is renamed through a brief failure", async () => {
+    mocks.renameFile.mockResolvedValue("paper.tex");
+    mocks.getProjectEngine
+      .mockRejectedValueOnce(new Error("ipc busy"))
+      .mockResolvedValue(LATEX_ENGINE);
+
+    await useFilesStore.getState().renameEntry("main.tex", "paper.tex");
+
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "paper.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+    expectNoToasts();
   });
 });

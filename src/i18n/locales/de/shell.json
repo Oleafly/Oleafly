@@ -62,6 +62,9 @@
     "reload": "Neu laden",
     "setHomePage": "Als Startseite festlegen"
   },
+  "changelog": {
+    "installed": "Sie nutzen diese Version"
+  },
   "citeOleafly": {
     "description": "In diesem Projekt wurde keine Bibliografiedatei gefunden, deshalb wurde nichts geändert. Kopieren Sie den Eintrag unten in Ihr Literaturverzeichnis oder finden Sie ihn später unter Einstellungen, Hilfe & Über wieder.",
     "openHelp": "Hilfe & Über öffnen",
@@ -298,8 +301,6 @@
       "needed": "Dieses Projekt nutzt Funktionen, die beliebige externe Befehle brauchen. Sie bleiben blockiert, bis Sie sie erlauben.",
       "warning": "Wird von minted und manchen PythonTeX-Dokumenten benötigt. LaTeX kann Programme mit Ihren Benutzerrechten ausführen, aktivieren Sie das also nur für ein Projekt, dem Sie vertrauen. Die eigenen Hilfsprogramme von TeX Live, etwa die EPS-Umwandlung, laufen auch ohne."
     },
-    "shellEscapeAllowed": "Externe Befehle sind für dieses Projekt auf diesem Computer erlaubt.",
-    "shellEscapeBlocked": "Beliebige externe Befehle sind für dieses Projekt blockiert. Die eigenen Hilfsprogramme von TeX Live, etwa die EPS-Umwandlung, laufen weiterhin.",
     "shellEscapeFailed": "Der Zugriff auf externe Befehle konnte nicht geändert werden.",
     "switchFailed": "Die Compiler-Engine konnte nicht gewechselt werden.",
     "switched": "Dieses Projekt kompiliert jetzt mit {{engine}}.",
@@ -490,7 +491,6 @@
         "title": "Cloud-Abgleich"
       },
       "danger": {
-        "closeFailed": "Das geöffnete Projekt konnte nicht sicher geschlossen werden.",
         "confirmDeleteAllAction": "Alle Projekte löschen",
         "confirmDeleteAllDescription": "Jedes aktuelle Projekt wandert in den Papierkorb, samt Dateien und Git-Historie. Sie können Projekte danach einzeln wiederherstellen.",
         "confirmDeleteAllTitle_one": "Alle {{count}} Projekte löschen?",
@@ -500,7 +500,8 @@
         "deleteAllDescription": "Verschiebt jedes Projekt in den Papierkorb. Nichts wird endgültig gelöscht.",
         "deleting": "Wird gelöscht…",
         "moveFailed": "Die Projekte konnten nicht in den Papierkorb verschoben werden.",
-        "movePartial": "{{count}} Projekte verschoben, der Vorgang ließ sich aber nicht abschließen.",
+        "movePartial_one": "{{count}} Projekt in den Papierkorb verschoben. Die übrigen wurden nicht verschoben.",
+        "movePartial_other": "{{count}} Projekte in den Papierkorb verschoben. Die übrigen wurden nicht verschoben.",
         "movedCount_one": "{{count}} Projekt in den Papierkorb verschoben.",
         "movedCount_other": "{{count}} Projekte in den Papierkorb verschoben.",
         "title": "Gefahrenbereich"
@@ -511,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Alle leeren",
         "clearFailed": "Der Papierkorb konnte nicht geleert werden.",
-        "clearPartial": "{{count}} Projekte endgültig gelöscht, der Papierkorb ließ sich aber nicht vollständig leeren.",
+        "clearPartial_one": "{{count}} Projekt endgültig gelöscht. Die übrigen sind noch im Papierkorb.",
+        "clearPartial_other": "{{count}} Projekte endgültig gelöscht. Die übrigen sind noch im Papierkorb.",
         "clearedCount_one": "{{count}} Projekt endgültig gelöscht.",
         "clearedCount_other": "{{count}} Projekte endgültig gelöscht.",
         "clearing": "Wird geleert…",
@@ -841,7 +843,6 @@
     },
     "newProjectName": "Name des neuen Projekts",
     "projectName": "Projektname",
-    "projectRenamed": "Projekt umbenannt",
     "saveName": "Speichern (Enter)",
     "saveNameAriaLabel": "Namen speichern",
     "untitledProject": "Projekt",
@@ -852,7 +853,8 @@
       "pdf": "PDF-Ansicht",
       "split": "Geteilte Ansicht"
     },
-    "moreActions": "Weitere Aktionen"
+    "moreActions": "Weitere Aktionen",
+    "renameFailed": "Das Projekt konnte nicht umbenannt werden."
   },
   "tour": {
     "chooseColor": "Wählen Sie Ihre Signaturfarbe",
@@ -891,13 +893,16 @@
     "updateNow": "Jetzt aktualisieren"
   },
   "updateWindow": {
+    "available": "Update verfügbar",
     "checking": "Es wird nach Updates gesucht…",
     "currentVersion": "Sie nutzen v{{version}}",
     "error": "Das Update konnte nicht abgeschlossen werden. Versuchen Sie es bitte später erneut.",
+    "historyFailed": "Frühere Versionshinweise konnten nicht geladen werden.",
     "later": "Später",
     "looking": "Die neueste Version wird gesucht…",
     "packageInstall": "Aus einem Paket installiert. Laden Sie die neue Version herunter, um zu aktualisieren.",
     "ready": "Eine neue Version ist zur Installation bereit.",
+    "released": "Veröffentlicht {{when}}",
     "upToDate": "Sie sind auf dem neuesten Stand",
     "upToDateGeneric": "Sie nutzen die neueste Version von Oleafly",
     "upToDateHeadline": "Sie sind auf dem neuesten Stand!",

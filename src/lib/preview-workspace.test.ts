@@ -15,13 +15,18 @@ const mocks = vi.hoisted(() => ({
   setAutoCompile: vi.fn(), setCompileMode: vi.fn(), setCheckSyntaxBeforeCompile: vi.fn(), setStopOnFirstError: vi.fn(),
   setEngine: vi.fn(async () => {}), refreshTree: vi.fn(async () => {}),
   off: vi.fn(),
+  logError: vi.fn(async () => {}),
+  errorUnique: vi.fn(),
+  notifyError: vi.fn(),
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique }, notifyError: mocks.notifyError }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: mocks.emitTo,
   listen: vi.fn(async (name, handler) => { mocks.handlers.set(name, handler); return mocks.off; }),
 }));
-vi.mock("@/store/files", () => ({ useFilesStore: {
+vi.mock("@/store/files", () => ({ engineSwitchToastKey: (projectId: string) => `engine-switch:${projectId}`, useFilesStore: {
   getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, refreshTree: mocks.refreshTree }),
   subscribe: () => mocks.unsubscribeFiles,
 } }));
@@ -34,6 +39,7 @@ vi.mock("@/store/compile", () => ({ useCompileStore: {
     setCheckSyntaxBeforeCompile: mocks.setCheckSyntaxBeforeCompile, setStopOnFirstError: mocks.setStopOnFirstError }),
   subscribe: () => mocks.unsubscribe,
 } }));
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { startPreviewWorkspaceBridge } from "./preview-workspace";
 
 beforeEach(() => { vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {}; });
@@ -128,4 +134,32 @@ describe("detached compile commands", () => {
     cleanup();
   });
 
+  it("reports a failed engine switch once, in the slot the toolbar shares", async () => {
+    const failure = new Error("latexmk is not installed");
+    mocks.setEngine.mockRejectedValueOnce(failure);
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "engine", engine: "xetex" } });
+
+    await vi.waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledOnce());
+    expect(mocks.errorUnique).toHaveBeenCalledWith("engine-switch:current", enShell.enginePicker.switchFailed);
+    expect(mocks.logError).toHaveBeenCalledWith("preview command engine", failure);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("only logs failures of the other preview commands", async () => {
+    mocks.recompile.mockRejectedValueOnce(new Error("compile queue closed"));
+    mocks.refreshTree.mockRejectedValueOnce(new Error("tree unavailable"));
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "compile" });
+    command({ projectId: "current", action: "refresh-files" });
+
+    await vi.waitFor(() => expect(mocks.logError).toHaveBeenCalledTimes(2));
+    expect(mocks.logError).toHaveBeenCalledWith("preview command compile", expect.any(Error));
+    expect(mocks.logError).toHaveBeenCalledWith("preview command refresh-files", expect.any(Error));
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    cleanup();
+  });
 });

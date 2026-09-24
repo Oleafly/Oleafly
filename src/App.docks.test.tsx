@@ -109,59 +109,89 @@ function selectorStore<T extends object>(state: T) {
 
 vi.mock("react-resizable-panels", async () => {
   const React = await import("react");
-  const Panel = React.forwardRef(
-    (
-      props: {
-        children?: React.ReactNode;
-        defaultSize?: number;
-        id: string;
-        onCollapse?: () => void;
-        onExpand?: () => void;
+  type Layout = Record<string, number>;
+  type GroupState = { initialized: boolean; layout: Layout; emit: () => void };
+  const GroupContext = React.createContext<GroupState | null>(null);
+  const toPercent = (size: number | string | undefined) =>
+    typeof size === "string" ? Number.parseFloat(size) : (size ?? 30);
+  function Group({
+    children,
+    defaultLayout,
+    onLayoutChange,
+  }: {
+    children?: React.ReactNode;
+    defaultLayout?: Layout;
+    onLayoutChange?: (layout: Layout) => void;
+  }) {
+    const state = React.useRef<GroupState>({
+      initialized: false,
+      layout: {},
+      emit: () => {},
+    }).current;
+    if (!state.initialized) {
+      state.initialized = true;
+      Object.assign(state.layout, defaultLayout);
+    }
+    state.emit = () => onLayoutChange?.({ ...state.layout });
+    React.useEffect(() => {
+      const timer = setTimeout(() => state.emit(), 0);
+      return () => clearTimeout(timer);
+    }, [state]);
+    return <GroupContext.Provider value={state}>{children}</GroupContext.Provider>;
+  }
+  function Panel({
+    children,
+    defaultSize,
+    id,
+    panelRef,
+  }: {
+    children?: React.ReactNode;
+    defaultSize?: number | string;
+    id: string;
+    panelRef?: React.Ref<{
+      collapse: () => void;
+      expand: () => void;
+      getSize: () => { asPercentage: number; inPixels: number };
+      isCollapsed: () => boolean;
+      resize: (size: number | string) => void;
+    }>;
+  }) {
+    const group = React.useContext(GroupContext);
+    if (!group) throw new Error("Panel rendered outside a Group");
+    if (group.layout[id] === undefined) group.layout[id] = toPercent(defaultSize);
+    const lastExpanded = React.useRef(group.layout[id] || 30);
+    const setSize = (size: number) => {
+      if (size > 0) lastExpanded.current = size;
+      group.layout[id] = size;
+      group.emit();
+    };
+    React.useImperativeHandle(panelRef, () => ({
+      collapse: () => setSize(0),
+      expand: () => setSize(lastExpanded.current),
+      getSize: () => ({ asPercentage: group.layout[id] ?? 0, inPixels: 0 }),
+      isCollapsed: () => (group.layout[id] ?? 0) === 0,
+      resize: (size) => {
+        panelHandleMocks.resize(id, size);
+        setSize(toPercent(size));
       },
-      ref: React.ForwardedRef<{
-        collapse: () => void;
-        expand: () => void;
-        getSize: () => number;
-        isCollapsed: () => boolean;
-        isExpanded: () => boolean;
-        resize: (size: number) => void;
-      }>,
-    ) => {
-      const initiallyExpanded = (props.defaultSize ?? 0) > 0;
-      const expanded = React.useRef(initiallyExpanded);
-      const size = React.useRef(props.defaultSize ?? 30);
-      React.useImperativeHandle(ref, () => ({
-        collapse: () => {
-          expanded.current = false;
-          props.onCollapse?.();
-        },
-        expand: () => {
-          expanded.current = true;
-          props.onExpand?.();
-        },
-        getSize: () => (expanded.current ? size.current : 0),
-        isCollapsed: () => !expanded.current,
-        isExpanded: () => expanded.current,
-        resize: (nextSize) => {
-          size.current = nextSize;
-          panelHandleMocks.resize(props.id, nextSize);
-        },
-      }));
-      panelHandleMocks.callbacks.set(props.id, {
-        collapse: props.onCollapse,
-        expand: props.onExpand,
-      });
-      React.useEffect(() => {
-        if (!initiallyExpanded) return;
-        setTimeout(() => props.onExpand?.(), 0);
-      }, []);
-      return props.children;
-    },
-  );
+    }));
+    panelHandleMocks.callbacks.set(id, {
+      collapse: () => setSize(0),
+      expand: () => setSize(lastExpanded.current),
+    });
+    React.useEffect(
+      () => () => {
+        delete group.layout[id];
+      },
+      [group, id],
+    );
+    return children;
+  }
   return {
+    Group,
     Panel,
-    PanelGroup: ({ children }: { children?: React.ReactNode }) => children,
-    PanelResizeHandle: ({ children }: { children?: React.ReactNode }) => children,
+    Separator: ({ children }: { children?: React.ReactNode }) => children ?? null,
+    useDefaultLayout: () => ({ defaultLayout: undefined, onLayoutChanged: () => {} }),
   };
 });
 
@@ -473,7 +503,7 @@ describe("project dock layout", () => {
     });
 
     expect(useSettingsStore.getState()).toMatchObject({ showTree: true });
-    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", expect.any(Number));
+    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", expect.stringMatching(/%$/));
   });
 
   it("reopens the terminal when its panel is dragged back up after collapsing", async () => {

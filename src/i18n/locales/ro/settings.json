@@ -822,7 +822,8 @@
       "deleted": "„{{name}}” a fost șters din biblioteca ta",
       "empty": "Încă nu ai șabloane generate cu AI. Creează unul din galeria de șabloane.",
       "fallbackDescription": "Șablon generat cu AI",
-      "toggle": "Gestionează șabloanele generate cu AI"
+      "toggle": "Gestionează șabloanele generate cu AI",
+      "deleteFailed": "„{{name}}” nu a putut fi șters."
     },
     "fontPacks": {
       "lato": {
@@ -865,6 +866,14 @@
       "heading": "Dicționare ortografice",
       "note": "Alege o limbă în secțiunea General ca să o descarci. Cele cinci pachete incluse sunt mereu disponibile și nu apar aici.",
       "tooltip": "Cinci pachete de limbă vin cu Oleafly. Orice altă limbă se descarcă la cerere, când o alegi ca dicționar ortografic, și se păstrează aici ca să funcționeze offline după aceea. Eliminarea uneia eliberează spațiul și revine la setarea aplicației."
+    },
+    "errors": {
+      "fontDownloadFailed": "Fontul nu a putut fi descărcat.",
+      "fontsDownloadFailed": "Fonturile nu au putut fi descărcate.",
+      "fontRemoveFailed": "Fontul nu a putut fi eliminat.",
+      "packDownloadFailed": "Pachetul de șabloane nu a putut fi descărcat.",
+      "packsDownloadFailed": "Pachetele de șabloane nu au putut fi descărcate.",
+      "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat."
     }
   },
   "engine": {

@@ -73,7 +73,6 @@
       "importedCodeOnly": "{{name}} geïmporteerd (alleen code, niet tekenbaar).",
       "importFailed": "Kon dat bestand niet importeren: {{detail}}",
       "noAiFix": "De AI gaf geen oplossing terug.",
-      "aiFixApplied": "AI-oplossing toegepast. Opnieuw compileren…",
       "fixFailed": "Reparatie mislukt: {{detail}}",
       "notDrawable": "Er kon niets uit deze code getekend worden. De code is ongewijzigd."
     },

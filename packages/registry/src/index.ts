@@ -46,8 +46,6 @@ export interface CommandContribution {
   run: (ctx: AppContext) => void;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: opts/tools are typed at both app
-// ends (contribution + chat surface); the registry is just the meeting point.
 export type AiToolsetSource =
   | { kind: "project" }
   | { kind: "figure" }

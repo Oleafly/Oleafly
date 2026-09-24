@@ -54,18 +54,10 @@
     "present": "Tiedostossa {{path}} on jo Oleafly-viite. Viittaa siihen merkinnällä {{markup}}.",
     "undo": "Kumoa"
   },
-  "compatibility": {
-    "biblatexBiber": "Tämä projekti käyttää lähdeluettelossa biblatexia ja Biberiä.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} muuta)",
-    "chooseEngine": "Valitse moottori…",
-    "importNotes_one": "{{count}} tuontihuomio: {{title}}",
-    "importNotes_other": "{{count}} tuontihuomiota: {{title}} (+{{more}} muuta)"
-  },
   "compile": {
-    "engineNotLoaded": "Kääntäminen ei ole käytettävissä ennen kuin dokumenttimoottori on ladattu.",
     "noOfflineMode": "{{engine}} ei tarjoa offline-käännöstilaa. Käännetään normaalisti.",
-    "retry": "Käännä uudelleen"
+    "retry": "Käännä uudelleen",
+    "bundleFetchFailed": "Oleafly ei voinut ladata TeX-paketteja, joita tämä dokumentti tarvitsee. Tarkista yhteys ja käännä uudelleen."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Alusta tutkimuskorpus"
       }
     },
-    "closeProjectFailed": "Avointa projektia ei voitu sulkea turvallisesti.",
     "confirm": {
       "clearProjects": {
         "action": "Tyhjennä projektit",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "PDF:n tallennus ei onnistunut: {{detail}}",
     "pngFailed": "PNG:n tallennus ei onnistunut",
     "pngFailedDetail": "PNG:n tallennus ei onnistunut: {{detail}}",
-    "revealFailed": "Tiedosto tallennettiin, mutta Oleafly ei voinut avata sen kansiota (käyttöoikeus evätty). Tarkista tallennusikkunassa valittu sijainti.",
+    "revealFailed": "Tiedosto tallennettiin, mutta sen kansiota ei voitu avata.",
     "saved": "{{kind}} tallennettu · {{fileName}}",
     "showInFolder": "Näytä kansiossa"
   },
   "externalChange": {
-    "deletionRestored": "Ulkoinen poisto osui yhteen tallentamattomien muokkausten kanssa. Paikalliset muokkaukset palautettiin.",
-    "localEditKept": "Tiedostoon \"{{path}}\" tuli ulkoinen muutos, kun siinä oli tallentamattomia muutoksia. Paikallinen muokkaus säilytettiin.",
-    "persistExternalFailed": "Viimeisintä ulkoista päivitystä tiedostoon \"{{path}}\" ei voitu tallentaa.",
-    "preserveLocalFailed": "Paikallista päivitystä tiedostoon \"{{path}}\" ei voitu säilyttää.",
-    "reloadFailed": "Projektin asetukset päivitettiin, mutta joitakin muuttuneita tiedostoja ei voitu ladata uudelleen.",
-    "restoreLocalFailed": "Tallentamatonta päivitystä tiedostoon \"{{path}}\" ei voitu palauttaa."
+    "reloadFailed": "Projektin asetukset päivitettiin, mutta joitakin muuttuneita tiedostoja ei voitu ladata uudelleen."
   },
   "fonts": {
     "systemDefault": "Järjestelmän oletus",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Kuvasta LaTeXiin epäonnistui: {{detail}}",
-    "inserted": "Kuvasta luettu LaTeX lisättiin",
     "transcribing": "Litteroidaan kuvaa…"
   },
   "import": {
-    "arxivImported": "arXiv-lähdekoodi tuotiin. Tarkista tulos kääntämällä projekti.",
     "chooseOfferedProjectType": "Valitse jokin tälle tiedostolle tarjotuista projektityypeistä.",
     "invalidArxivId": "Liitä arXiv-artikkelin linkki tai tunnus, esimerkiksi 2301.01234.",
     "supportedDocumentTypes": "Valitse jokin tuetuista dokumenttityypeistä.",
-    "conversionNotice": "Sisältö muunnettiin LaTeX-muotoon. Muotoilua voi joutua korjaamaan käsin, erityisesti taulukoissa, kuvissa ja viittauksissa.",
+    "conversionNotice": "Muunnettu muotoon {{format}}. Taulukoiden, kuvien ja viittausten muotoilua voi joutua korjaamaan.",
     "figureSaved": "{{name}} tallennettiin",
-    "pdfProjectCreated": "Projekti luotiin PDF-tiedostosta. Tarkista jälleenrakennus ennen kuin luotat siihen.",
-    "pickPdfOrDocx": "Valitse .pdf- tai .docx-tiedosto",
+    "pickPdfOrDocx": "Valitse .pdf- tai .docx-tiedosto.",
     "texSaved": ".tex tallennettiin",
     "unsupportedFile": "Valitse .zip-, .docx-, .md- tai .markdown-tiedosto.",
     "zipSaveFailed": "ZIP-arkistoa ei voitu tallentaa.",
@@ -318,7 +301,8 @@
     "installing_one": "Asennetaan {{name}}. Kääntäminen käynnistyy uudelleen, kun asennus on valmis.",
     "installing_other": "Asennetaan {{count}} pakettia. Kääntäminen käynnistyy uudelleen, kun asennus on valmis.",
     "summary_one": "Kääntäminen ei löytänyt kohdetta \"{{name}}\". Etsi TeX Livestä paketti, joka sisältää sen.",
-    "summary_other": "Kääntäminen ei löytänyt kohteita {{names}}. Etsi niiden paketit TeX Livestä."
+    "summary_other": "Kääntäminen ei löytänyt kohteita {{names}}. Etsi niiden paketit TeX Livestä.",
+    "userTree": "Järjestelmän TeX-puu on vain luku -tilassa, joten paketit asennettiin omaan puuhusi sijaintiin {{path}}."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "Nimettiin muotoon \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) kohteessa $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Pandocin lataus ei onnistunut. Asenna se käsin ja yritä sitten uudelleen",
+    "downloadFailed": "Pandocin lataus ei onnistunut. Asenna se käsin ja yritä sitten uudelleen.",
     "downloadingPercent": "Ladataan pandocia… {{progress}} %",
     "downloadingSize": "Ladataan pandocia… {{megabytes}} MB",
-    "installGuide": "Asennusohje",
-    "installed": "pandoc asennettu"
+    "installGuide": "Asennusohje"
   },
   "project": {
     "copyFailed": "Kohdetta \"{{path}}\" ei voitu kopioida.",
     "dateUnavailable": "Ei saatavilla",
     "importFailed": "Tuonti ei onnistunut. Katso lisätiedot sovelluslokista.",
-    "imported": "Projekti tuotiin.",
     "openFailed": "Projektia ei voitu avata. Katso lisätiedot sovelluslokista.",
-    "restoringUnsavedFiles": "Projektipäivitys poisti tiedostoja, joissa oli tallentamattomia muokkauksia. Oleafly säilytti muokkaukset ja palauttaa nyt nuo tiedostot.",
     "saveBlockedClose": "Projekti jäi auki, koska yhtä tai useampaa tiedostoa ei voitu tallentaa.",
     "saveBlockedDiscard": "Hylkää muutokset ja poistu",
     "saveBlockedMany": "{{count}} tiedostoa ei voitu tallentaa: {{files}}. Ensimmäinen niistä on auki editorissa tallentamattomine muutoksineen ({{reason}}). Jää korjaamaan ongelma tai hylkää näiden tiedostojen tallentamattomat muutokset ja poistu.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "Päivitetty {{count}} päivää sitten",
     "updatedOn": "Päivitetty {{date}}",
     "updatedToday": "Päivitetty tänään",
-    "updatedYesterday": "Päivitetty eilen"
+    "updatedYesterday": "Päivitetty eilen",
+    "autosaveFailed": "Muutoksia ei voitu tallentaa. Ne ovat yhä editorissa."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyysi epäonnistui: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Pääte {{index}}"
   },
   "tex": {
-    "distributionGap": "Tämä projekti kiinnitettiin jakeluun {{pinned}}. Aktiivisesta jakelusta {{local}} puuttuu {{count}} sen pakettia, joten kääntäminen voi epäonnistua, kunnes tuo jakelu on taas käytössä.",
-    "distributionSkew": "Tämä projekti kiinnitettiin jakeluun {{pinned}}, ja tämä kone kääntää jakelulla {{local}}. Tulos voi poiketa hieman.",
-    "installPinned_one": "Asenna se",
-    "installPinned_other": "Asenna kaikki {{count}}",
-    "installingPinned_one": "Asennetaan {{count}} kiinnitettyä pakettia…",
-    "installingPinned_other": "Asennetaan {{count}} kiinnitettyä pakettia…",
-    "pinnedPackagesFailed": "Joitakin kiinnitettyjä paketteja ei voitu asentaa. Katso Asetukset → LaTeX-moottori.",
-    "pinnedPackagesInstalled": "Kiinnitetyt LaTeX-paketit asennettiin.",
-    "pinnedPackagesMissing_one": "Tämä projekti kiinnittää {{count}} LaTeX-paketin, jota ei ole asennettu tälle koneelle.",
-    "pinnedPackagesMissing_other": "Tämä projekti kiinnittää {{count}} LaTeX-pakettia, joita ei ole asennettu tälle koneelle."
+    "distributionGap": "Tämä projekti kiinnitettiin jakeluun {{pinned}}. Aktiivisesta jakelusta {{local}} puuttuu {{count}} sen pakettia, joten kääntäminen voi epäonnistua, kunnes tuo jakelu on taas käytössä."
   },
   "theme": {
     "cssForbiddenSyntax": "Mukautettu CSS ei voi käyttää at-sääntöjä, URL-osoitteita eikä valitsimia.",
@@ -539,8 +512,8 @@
       "installing": "Asennetaan…",
       "unpacking": "Puretaan…"
     },
-    "removeFailed": "TinyTeXiä ei voitu poistaa",
-    "removed": "TinyTeX poistettiin"
+    "removeFailed": "TinyTeXiä ei voitu poistaa.",
+    "removed": "TinyTeX poistettiin."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Projekti muuttui tallennuksen aikana. Yritä päivitystä uudelleen."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Tarkistuspistettä ei voitu tallentaa. Levy on täynnä tai tarkistuspisteiden kansioon ei voi kirjoittaa. Vapauta tilaa tai tarkista kansion käyttöoikeudet ja käännä sitten uudelleen.",
+    "incompleteCapture": "Viimeisimpiä tarkistuspisteitä ei voitu tallentaa, koska joitakin projektin tiedostoja ei voitu lukea. Tarkista niiden käyttöoikeudet ja käännä sitten uudelleen."
   }
 }

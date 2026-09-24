@@ -817,7 +817,8 @@
       "deleted": "„{{name}}“ aus Ihrer Bibliothek gelöscht",
       "empty": "Noch keine mit KI erzeugten Vorlagen. Erzeugen Sie eine in der Vorlagengalerie.",
       "fallbackDescription": "Mit KI erzeugte Vorlage",
-      "toggle": "Mit KI erzeugte Vorlagen verwalten"
+      "toggle": "Mit KI erzeugte Vorlagen verwalten",
+      "deleteFailed": "„{{name}}“ konnte nicht gelöscht werden."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Rechtschreibwörterbücher",
       "note": "Wählen Sie im Bereich Allgemein eine Sprache, um sie zu laden. Die fünf enthaltenen Pakete sind immer verfügbar und stehen hier nicht.",
       "tooltip": "Fünf Sprachpakete liegen Oleafly bei. Jede andere Sprache wird bei Bedarf geladen, sobald Sie sie als Rechtschreibwörterbuch wählen, und bleibt hier, damit sie danach offline funktioniert. Wer eines entfernt, gewinnt den Platz zurück und fällt auf die Einstellung der App zurück."
+    },
+    "errors": {
+      "fontDownloadFailed": "Die Schrift konnte nicht heruntergeladen werden.",
+      "fontsDownloadFailed": "Die Schriften konnten nicht heruntergeladen werden.",
+      "fontRemoveFailed": "Die Schrift konnte nicht entfernt werden.",
+      "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
+      "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
+      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden."
     }
   },
   "engine": {

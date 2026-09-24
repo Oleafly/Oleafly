@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:name"
   },
   "paste": {
-    "imageSaved": "Image saved to {{path}}",
     "imageFailed": "The pasted image could not be saved to the project.",
     "noProject": "Open a project before pasting images."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Spell-check language",
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",
-    "spellLanguageHint": "Applies to this project only. Download more languages in Settings."
+    "spellLanguageHint": "Applies to this project only. Download more languages in Settings.",
+    "spellLanguageFailed": "Couldn't change the spell-check language."
   },
   "table": {
     "trigger": "Insert table",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Cite from project",
-    "updating": "Project citations are updating.",
-    "changed": "Project citations changed. Reopen the picker to refresh.",
     "filterPlaceholder": "Key, author, or title…",
     "filterLabel": "Filter project citations",
     "partialCatalog": "Partial catalog. Malformed or unreadable bibliography files may be omitted.",
@@ -403,10 +401,7 @@
     "error": "Proofreading could not finish this document.",
     "unavailable": "Offline proofreading is unavailable.",
     "tooLarge": "Proofreading is paused because this document is too large.",
-    "unsupported": "Proofreading is not supported for this document format.",
-    "partial_one": "Proofreading recovered {{count}} finding, but one engine did not finish.",
-    "partial_other": "Proofreading recovered {{count}} findings, but one engine did not finish.",
-    "retry": "Retry"
+    "unsupported": "Proofreading is not supported for this document format."
   },
   "checkpoints": {
     "showInExplorer": "Show in Explorer",

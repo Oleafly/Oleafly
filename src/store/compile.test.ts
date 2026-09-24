@@ -7,6 +7,15 @@ const mocks = vi.hoisted(() => ({
   tlmgrInstallMissing: vi.fn(),
   toastInfo: vi.fn(),
   toastError: vi.fn(),
+  infoUnique: vi.fn((_key: string, _message: string, _action?: unknown, _sticky?: boolean) => 0),
+  errorUnique: vi.fn((_key: string, _message: string, _action?: unknown, _sticky?: boolean) => 0),
+  dismiss: vi.fn(),
+  notifyError: vi.fn(),
+  logError: vi.fn(),
+  reportFileSaveFailure: vi.fn(),
+  projectCompatibilityFindings: vi.fn((_projectId: string): unknown[] => []),
+  texDistributionGapNotice: vi.fn((_projectId: string): string | null => null),
+  fileListeners: new Set<(state: unknown) => void>(),
   refreshPackages: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
@@ -38,6 +47,7 @@ const mocks = vi.hoisted(() => ({
   },
   files: {
     projectId: "project" as string | null,
+    activePath: "main.tex" as string | null,
     mainDoc: "main.tex",
     engine: null as unknown,
     engineLoaded: true,
@@ -67,7 +77,19 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
-vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
+vi.mock("@/store/files", () => ({
+  engineErrorMessage: (reason: string) => `engine error: ${reason}`,
+  projectCompatibilityFindings: mocks.projectCompatibilityFindings,
+  reportFileSaveFailure: mocks.reportFileSaveFailure,
+  texDistributionGapNotice: mocks.texDistributionGapNotice,
+  useFilesStore: {
+    getState: () => mocks.files,
+    subscribe: (listener: (state: unknown) => void) => {
+      mocks.fileListeners.add(listener);
+      return () => mocks.fileListeners.delete(listener);
+    },
+  },
+}));
 vi.mock("@/store/project-index", () => ({
   currentProjectSourcePaths: () =>
     [
@@ -84,11 +106,17 @@ vi.mock("@/store/project-index", () => ({
 }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
-  notifyError: vi.fn(),
-  toast: { errorUnique: vi.fn(), error: mocks.toastError, info: mocks.toastInfo },
+  notifyError: mocks.notifyError,
+  toast: {
+    error: mocks.toastError,
+    info: mocks.toastInfo,
+    infoUnique: mocks.infoUnique,
+    errorUnique: mocks.errorUnique,
+    dismiss: mocks.dismiss,
+  },
 }));
 vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
 }));
@@ -97,9 +125,13 @@ vi.mock("@/lib/cross-window", () => ({
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
 }));
 
+import { importCompatFinding } from "@oleafly/latex";
 import {
+  acceptCompileOffer,
   installerNotices,
   isCompileCheckpointCurrent,
+  saveActiveForCompile,
+  stopRunningCompileQuietly,
   useCompileStore,
 } from "./compile";
 import { useEnginePickerStore } from "@/store/engine-picker";
@@ -130,7 +162,24 @@ function checkpoint(bytes: Uint8Array, outputRevision: number) {
   });
 }
 
+let toastId = 0;
+
+function notifyFiles(): void {
+  for (const listener of [...mocks.fileListeners]) listener(mocks.files);
+}
+
 beforeEach(() => {
+  mocks.infoUnique.mockReset().mockImplementation(() => ++toastId);
+  mocks.errorUnique.mockReset().mockImplementation(() => ++toastId);
+  mocks.dismiss.mockReset();
+  mocks.toastInfo.mockReset();
+  mocks.toastError.mockReset();
+  mocks.notifyError.mockReset();
+  mocks.logError.mockReset();
+  mocks.reportFileSaveFailure.mockReset();
+  mocks.projectCompatibilityFindings.mockReset().mockReturnValue([]);
+  mocks.texDistributionGapNotice.mockReset().mockReturnValue(null);
+  mocks.fileListeners.clear();
   mocks.events.clear();
   mocks.listen.mockClear();
   mocks.compileProject.mockReset();
@@ -159,6 +208,7 @@ beforeEach(() => {
   );
   mocks.files.saveActive = mocks.saveActive;
   mocks.files.projectId = "project";
+  mocks.files.activePath = "main.tex";
   mocks.files.mainDoc = "main.tex";
   mocks.files.engine = LATEX_ENGINE;
   mocks.files.engineLoaded = true;
@@ -368,6 +418,54 @@ describe("compile output lifecycle", () => {
     await useCompileStore.getState().recompile();
     expect(mocks.compileProject).toHaveBeenCalledOnce();
   });
+
+  it("waits for a loading engine and compiles once it is ready, without a toast", async () => {
+    mocks.files.engineLoaded = false;
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+    await useCompileStore.getState().recompile();
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("unavailable");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.fileListeners.size).toBe(1);
+    notifyFiles();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    mocks.files.engineLoaded = true;
+    notifyFiles();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+    expect(mocks.fileListeners.size).toBe(0);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+
+  it("drops the queued compile when another project opens before the engine loads", async () => {
+    mocks.files.engineLoaded = false;
+    await useCompileStore.getState().recompile();
+    mocks.files.projectId = "another-project";
+    notifyFiles();
+    expect(mocks.fileListeners.size).toBe(0);
+    mocks.files.engineLoaded = true;
+    notifyFiles();
+    await vi.dynamicImportSettled();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps an engine that failed to load in the status and the log", async () => {
+    mocks.files.engineLoaded = false;
+    mocks.files.engineError = "loadFailed";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await useCompileStore.getState().recompile();
+    }
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: "engine error: loadFailed",
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("compile", "engine error: loadFailed");
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.fileListeners.size).toBe(0);
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
   it("keeps the last good PDF visible while a new compile runs", async () => {
     let rejectCompile: ((reason: Error) => void) | undefined;
     mocks.compileProject.mockReturnValue(new Promise((_resolve, reject) => { rejectCompile = reject; }));
@@ -429,9 +527,11 @@ describe("compile output lifecycle", () => {
     };
     mocks.ensurePandoc.mockResolvedValue(false);
     await useCompileStore.getState().recompile();
-    expect(mocks.ensurePandoc).toHaveBeenCalledOnce();
+    expect(mocks.ensurePandoc).toHaveBeenCalledExactlyOnceWith({ notify: true });
     expect(mocks.compileProject).not.toHaveBeenCalled();
     expect(useCompileStore.getState().status).toBe("unavailable");
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.ensurePandoc).toHaveBeenLastCalledWith({ notify: false });
   });
 
   it("revalidates the captured project after awaiting Markdown installation", async () => {
@@ -654,6 +754,9 @@ describe("compile output lifecycle", () => {
     mocks.files.engine = { ...LATEX_ENGINE, id: "markdown", source_extensions: ["md"], capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "pandoc" } };
     mocks.ensurePandoc.mockRejectedValue(new Error("setup failed"));
     await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("unavailable");
+    expect(mocks.logError).toHaveBeenCalledWith("Pandoc setup", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
     mocks.ensurePandoc.mockResolvedValue(true);
     mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
     await useCompileStore.getState().recompile();
@@ -691,6 +794,81 @@ describe("compile output lifecycle", () => {
     pendingSave.resolve();
     await compiling;
     expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("saving before a compile", () => {
+  const failedResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  it("retries a write that lost a race with an outside edit once, silently", async () => {
+    mocks.saveActive
+      .mockRejectedValueOnce("mutation conflict at generation 42: the target changed after expectedGeneration")
+      .mockResolvedValueOnce(undefined);
+    mocks.compileProject.mockResolvedValue(failedResult);
+    await useCompileStore.getState().recompile();
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a save that keeps failing through the shared autosave notice", async () => {
+    const error = new Error("disk full");
+    mocks.saveActive.mockRejectedValue(error);
+    await useCompileStore.getState().recompile();
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().failureReason).toContain("disk full");
+    expect(mocks.reportFileSaveFailure).toHaveBeenNthCalledWith(
+      1,
+      "save before compile",
+      "project",
+      "main.tex",
+      error,
+      true,
+    );
+    expect(mocks.reportFileSaveFailure).toHaveBeenNthCalledWith(
+      2,
+      "save before compile",
+      "project",
+      "main.tex",
+      error,
+      false,
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("retries only a mutation conflict and passes other failures on", async () => {
+    const files = mocks.files as unknown as Parameters<typeof saveActiveForCompile>[0];
+    mocks.saveActive.mockRejectedValueOnce(new Error("read-only folder"));
+    await expect(saveActiveForCompile(files)).rejects.toThrow("read-only folder");
+    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    mocks.saveActive
+      .mockRejectedValueOnce("mutation conflict at generation 3")
+      .mockRejectedValueOnce("mutation conflict at generation 4");
+    await expect(saveActiveForCompile(files)).rejects.toBe("mutation conflict at generation 4");
+    expect(mocks.saveActive).toHaveBeenCalledTimes(3);
+  });
+
+  it("logs a save failure when no file is active", async () => {
+    const error = new Error("closed");
+    mocks.files.activePath = null;
+    mocks.saveActive.mockRejectedValue(error);
+    await useCompileStore.getState().recompile();
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("save before compile", error);
   });
 });
 
@@ -877,6 +1055,34 @@ describe("compile options", () => {
     await useCompileStore.getState().stopCompile();
     expect(mocks.cancelCompile).toHaveBeenCalledTimes(1);
   });
+
+  it("reports a stop the user asked for when the backend refuses it", async () => {
+    const error = new Error("no compiler");
+    mocks.cancelCompile.mockRejectedValue(error);
+    await useCompileStore.getState().stopCompile();
+    expect(mocks.notifyError).toHaveBeenCalledWith("stop compile", error);
+  });
+
+  it("pauses a running compile for a TinyTeX install without a toast", async () => {
+    const compile = deferred<typeof failedResult & { stopped: boolean }>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const error = new Error("no compiler");
+    mocks.cancelCompile.mockRejectedValue(error);
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+    expect(stopRunningCompileQuietly()).toBe(true);
+    expect(mocks.cancelCompile).toHaveBeenCalledOnce();
+    compile.resolve({ ...failedResult, stopped: true });
+    await compiling;
+    await vi.waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("stop compile", error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().log).toContain("Compile stopped.");
+  });
+
+  it("leaves an idle compile alone when an install starts", () => {
+    expect(stopRunningCompileQuietly()).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+  });
 });
 
 describe("compile log diagnostics", () => {
@@ -926,34 +1132,85 @@ describe("compile log diagnostics", () => {
   });
 });
 
+type ToastActionMock = { label: string; onClick: () => void };
+
+function failedCompile(log: string): CompileResult {
+  return {
+    ok: false,
+    has_pdf: false,
+    output_id: null,
+    output_revision: null,
+    log,
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+}
+
+function succeedNextCompile(revision: number): void {
+  const bytes = new Uint8Array([revision, 1, 2]);
+  mocks.compileProject.mockResolvedValue({
+    ok: true,
+    has_pdf: true,
+    output_id: fingerprintCompileOutput(bytes),
+    output_revision: revision,
+    log: "Output written on main.pdf.",
+    errors: [],
+    synctex_path: null,
+    out_dir: "/build",
+    compile_time_ms: 1,
+  });
+  mocks.readCompiledPdf.mockResolvedValue(bytes.buffer.slice(0));
+}
+
 describe("missing TeX file installation", () => {
   let project = 0;
+  const key = () => `missing-packages:${mocks.files.projectId}`;
+  const offers = () => mocks.infoUnique.mock.calls.filter((call) => call[2] !== undefined);
+
   beforeEach(() => {
     mocks.files.projectId = `missing-packages-${++project}`;
     mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
     mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
     mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
     mocks.refreshPackages.mockReset().mockResolvedValue(undefined);
-    mocks.toastInfo.mockReset();
-    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, output_id: null, output_revision: null, log: "! LaTeX Error: File `tikz.sty' not found.", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+    mocks.compileProject.mockResolvedValue(
+      failedCompile("! LaTeX Error: File `tikz.sty' not found."),
+    );
   });
 
-  async function offer() {
+  async function offer(): Promise<ToastActionMock> {
     await useCompileStore.getState().recompile();
-    await vi.waitFor(() => expect(mocks.toastInfo).toHaveBeenCalled());
-    return mocks.toastInfo.mock.calls.find((call) => call[1]?.onClick)?.[1] as { onClick: () => void };
+    await vi.waitFor(() => expect(offers()).toHaveLength(1));
+    return offers()[0][2] as ToastActionMock;
   }
 
   it("sends filenames to the resolver and recompiles only after installation", async () => {
     const action = await offer();
+    expect(offers()[0][0]).toBe(key());
+    expect(offers()[0][3]).toBe(true);
     const install = deferred<string>();
     mocks.tlmgrInstallMissing.mockReturnValue(install.promise);
     action.onClick();
     action.onClick();
-    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tikz.sty"]);
+    await vi.waitFor(() =>
+      expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tikz.sty"]),
+    );
+    expect(mocks.infoUnique).toHaveBeenCalledTimes(2);
+    expect(mocks.infoUnique).toHaveBeenLastCalledWith(
+      key(),
+      expect.stringContaining("tikz.sty"),
+      undefined,
+      true,
+    );
+    const installingId = mocks.infoUnique.mock.results[1].value;
     expect(mocks.compileProject).toHaveBeenCalledTimes(1);
     install.resolve("installed");
     await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+    expect(mocks.dismiss).toHaveBeenCalledWith(installingId);
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("does not compile a different project after an installation finishes", async () => {
@@ -968,34 +1225,120 @@ describe("missing TeX file installation", () => {
     expect(mocks.compileProject).toHaveBeenCalledTimes(1);
   });
 
-  it("offers a retry after failure and ignores an action from another project", async () => {
+  it("reports a failed install in the same notice and offers the set again on the next compile", async () => {
     const action = await offer();
-    mocks.tlmgrInstallMissing.mockRejectedValueOnce("Repository unavailable");
+    mocks.tlmgrInstallMissing.mockRejectedValueOnce(
+      "TeX Live has no package that provides tikz.sty.",
+    );
     action.onClick();
-    await vi.waitFor(() => expect(mocks.tlmgrInstallMissing).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledOnce());
+    const [errorKey, message] = mocks.errorUnique.mock.calls[0];
+    expect(errorKey).toBe(key());
+    expect(message).toContain("tikz.sty");
+    expect(message).toContain("TeX Live has no package");
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "install missing packages",
+      "TeX Live has no package that provides tikz.sty.",
+    );
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(offers()).toHaveLength(2));
+    expect(offers()[1][0]).toBe(key());
+    await useCompileStore.getState().recompile();
     await vi.dynamicImportSettled();
-    mocks.toastInfo.mockClear();
-    const retry = await offer();
-    expect(retry).toBeDefined();
-    mocks.files.projectId = "another-project";
-    retry.onClick();
+    expect(offers()).toHaveLength(2);
     expect(mocks.tlmgrInstallMissing).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
-  it("repeats the backend notice when packages land in the personal TeX tree", async () => {
+  it("keeps an automatic compile quiet and leaves the install in the preview", async () => {
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    await vi.waitFor(() =>
+      expect(useCompileStore.getState().offer).toEqual({
+        kind: "missing-packages",
+        projectId: mocks.files.projectId,
+        packages: ["tikz.sty"],
+      }),
+    );
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+
+    const offered = useCompileStore.getState().offer;
+    if (!offered) throw new Error("expected a compile offer");
+    acceptCompileOffer(offered);
+    expect(useCompileStore.getState().offer).toBeNull();
+    await vi.waitFor(() =>
+      expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tikz.sty"]),
+    );
+  });
+
+  it("points at the distribution gap instead of offering a one-by-one install", async () => {
+    mocks.texDistributionGapNotice.mockReturnValue("Pinned with TeX Live, missing 900 packages.");
+    await useCompileStore.getState().recompile();
+    await vi.dynamicImportSettled();
+    expect(mocks.infoUnique).toHaveBeenCalledExactlyOnceWith(
+      key(),
+      "Pinned with TeX Live, missing 900 packages.",
+    );
+    expect(offers()).toHaveLength(0);
+
+    mocks.infoUnique.mockClear();
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    await vi.dynamicImportSettled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+
+  it("ignores an install action once another project is open", async () => {
     const action = await offer();
+    mocks.files.projectId = "another-project";
+    action.onClick();
+    expect(mocks.tlmgrInstallMissing).not.toHaveBeenCalled();
+  });
+
+  it("offers each set of missing files once, however often the compile repeats", async () => {
+    await offer();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await useCompileStore.getState().recompile();
+    }
+    await vi.dynamicImportSettled();
+    expect(offers()).toHaveLength(1);
+    mocks.compileProject.mockResolvedValue(
+      failedCompile("! LaTeX Error: File `pgfplots.sty' not found."),
+    );
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(offers()).toHaveLength(2));
+    expect(offers()[1][0]).toBe(key());
+    expect(offers()[1][1]).toContain("pgfplots.sty");
+  });
+
+  it("folds the personal tree notice into the same notice", async () => {
+    const action = await offer();
+    succeedNextCompile(11);
     mocks.tlmgrInstallMissing.mockResolvedValue(
       "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at /home/u/texmf.\ntlmgr: installing pgf",
     );
-    mocks.toastInfo.mockClear();
     action.onClick();
-    await vi.waitFor(() =>
-      expect(
-        mocks.toastInfo.mock.calls.some((call) =>
-          String(call[0]).includes("personal tree at /home/u/texmf"),
-        ),
-      ).toBe(true),
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+    expect(mocks.infoUnique).toHaveBeenCalledTimes(3);
+    const final = mocks.infoUnique.mock.calls[2];
+    expect(final[0]).toBe(key());
+    expect(final[1]).toContain("/home/u/texmf");
+    expect(final[2]).toBeUndefined();
+    expect(final[3]).toBeUndefined();
+    expect(mocks.dismiss).not.toHaveBeenCalled();
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalledWith(
+      "install missing packages",
+      expect.stringContaining("personal tree"),
     );
+  });
+
+  it("clears the offer after the next successful compile", async () => {
+    await offer();
+    const offerId = mocks.infoUnique.mock.results[0].value;
+    succeedNextCompile(7);
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(mocks.dismiss).toHaveBeenCalledWith(offerId);
   });
 
   it("reads only Oleafly notices out of the installer output", () => {
@@ -1009,30 +1352,24 @@ describe("missing TeX file installation", () => {
 
 describe("bundled-engine compile failures", () => {
   let project = 0;
+  const bundleFailure = [
+    "error: this bundle isn't cached, and we couldn't get it from the internet",
+    "caused by: unexpected HTTP response code 503 for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
+    "! LaTeX Error: File `amsmath.sty' not found.",
+  ].join("\n");
+
   beforeEach(() => {
     mocks.files.projectId = `bundled-engine-${++project}`;
     mocks.files.engine = LATEX_ENGINE;
     mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
-    mocks.toastInfo.mockReset();
-    mocks.toastError.mockReset();
     useEnginePickerStore.setState({ open: false, source: "manual", findings: [] });
   });
 
   function failWith(log: string) {
-    mocks.compileProject.mockResolvedValue({
-      ok: false,
-      has_pdf: false,
-      output_id: null,
-      output_revision: null,
-      log,
-      errors: [],
-      synctex_path: null,
-      out_dir: null,
-      compile_time_ms: 1,
-    });
+    mocks.compileProject.mockResolvedValue(failedCompile(log));
   }
 
-  it("opens the picker with the pdfLaTeX findings a Tectonic template failure produces", async () => {
+  it("opens the engine picker for a Tectonic template failure the user compiled", async () => {
     failWith(
       [
         "! Package hyperref Error: Wrong driver option `pdftex',",
@@ -1047,42 +1384,136 @@ describe("bundled-engine compile failures", () => {
       "hyperref-pdftex-driver",
       "eps-image",
     ]);
+    expect(useCompileStore.getState().offer).toMatchObject({ kind: "engine-gap" });
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
     expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
-  it("offers a plain retry for a failed bundle download and never opens the picker", async () => {
+  it("keeps an automatic compile quiet and leaves the engine choice in the preview", async () => {
     failWith(
       [
-        "error: this bundle isn't cached, and we couldn't get it from the internet",
-        "caused by: unexpected HTTP response code 503 for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
-        "! LaTeX Error: File `amsmath.sty' not found.",
+        "! Package hyperref Error: Wrong driver option `pdftex',",
+        'error: pdf: image inclusion failed for "images/MDHlogga.eps"',
       ].join("\n"),
     );
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    const offered = useCompileStore.getState().offer;
+    expect(offered).toMatchObject({ kind: "engine-gap", projectId: mocks.files.projectId });
+    if (!offered) throw new Error("expected a compile offer");
+
+    acceptCompileOffer(offered);
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.source).toBe("compile-failure");
+    expect(picker.findings.map((f) => f.id)).toEqual([
+      "hyperref-pdftex-driver",
+      "eps-image",
+    ]);
+  });
+
+  it("falls back to the findings of the open scan when the log names no known gap", async () => {
+    const minted = importCompatFinding("minted");
+    mocks.projectCompatibilityFindings.mockReturnValue([minted]);
+    failWith("! Undefined control sequence.");
+    await useCompileStore.getState().recompile();
+    expect(mocks.projectCompatibilityFindings).toHaveBeenCalledWith(mocks.files.projectId);
+    expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toEqual(["minted"]);
+  });
+
+  it("offers the engine choice for a known gap even when the package download failed", async () => {
+    const minted = importCompatFinding("minted");
+    mocks.projectCompatibilityFindings.mockReturnValue([minted]);
+    failWith(bundleFailure);
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toMatchObject({
+      kind: "engine-gap",
+      projectId: mocks.files.projectId,
+      findings: [expect.objectContaining({ id: "minted" })],
+    });
+    await useCompileStore.getState().recompile();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.findings.map((f) => f.id)).toEqual(["minted"]);
+  });
+
+  it("clears the offer when the next compile starts", async () => {
+    failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(useCompileStore.getState().offer).not.toBeNull();
+    succeedNextCompile(12);
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(useCompileStore.getState().status).toBe("success");
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("answers a failed bundle download the user compiled, and stays quiet for automatic compiles", async () => {
+    failWith(bundleFailure);
     await useCompileStore.getState().recompile();
     expect(useEnginePickerStore.getState().open).toBe(false);
-    const call = mocks.toastError.mock.calls.at(-1);
-    expect(String(call?.[0])).toContain("HTTP 503");
-    expect(call?.[1]?.label).toBe("Compile again");
-    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
-    call?.[1]?.onClick();
-    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+    expect(mocks.errorUnique).toHaveBeenCalledOnce();
+    const [key, message, action, sticky] = mocks.errorUnique.mock.calls[0];
+    expect(key).toBe(`compile-retry:${mocks.files.projectId}`);
+    expect(sticky).toBe(true);
+    expect(message).not.toContain("HTTP 503");
+    expect(message).toContain("Check your connection");
+    expect((action as ToastActionMock).label).toBe("Compile again");
+    expect(useCompileStore.getState().failureReason).toBe(message);
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.errorUnique).toHaveBeenCalledOnce();
+    expect(useCompileStore.getState().failureReason).toBe(message);
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    (action as ToastActionMock).onClick();
+    await vi.waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledTimes(2));
+    expect(mocks.compileProject).toHaveBeenCalledTimes(4);
+    expect(mocks.errorUnique.mock.calls[1][0]).toBe(key);
+  });
+
+  it("retries once when the connection returns and clears the notice after a success", async () => {
+    vi.stubGlobal("window", new EventTarget());
+    try {
+      failWith(bundleFailure);
+      await useCompileStore.getState().recompile();
+      const noticeId = mocks.errorUnique.mock.results[0].value;
+      succeedNextCompile(9);
+      globalThis.window.dispatchEvent(new Event("online"));
+      await vi.waitFor(() => expect(useCompileStore.getState().status).toBe("success"));
+      expect(mocks.compileProject).toHaveBeenCalledTimes(2);
+      expect(mocks.dismiss).toHaveBeenCalledWith(noticeId);
+      globalThis.window.dispatchEvent(new Event("online"));
+      await vi.dynamicImportSettled();
+      expect(mocks.compileProject).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("runs the missing-package offer on the first failure after the switch to latexmk", async () => {
     failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
     await useCompileStore.getState().recompile();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(useEnginePickerStore.getState().open).toBe(true);
     expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toContain(
       "missing-sty-on-bundled-engine",
     );
-    expect(mocks.toastInfo).not.toHaveBeenCalled();
 
     mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
     mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
     await useCompileStore.getState().recompile();
     await vi.waitFor(() =>
       expect(
-        mocks.toastInfo.mock.calls.some((call) =>
-          String(call[0]).includes("thesisMDU.cls"),
+        mocks.infoUnique.mock.calls.some(
+          (call) =>
+            call[0] === `missing-packages:${mocks.files.projectId}` &&
+            String(call[1]).includes("thesisMDU.cls"),
         ),
       ).toBe(true),
     );

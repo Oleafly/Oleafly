@@ -54,16 +54,10 @@
     "present": "{{path}} にはすでに Oleafly の項目があります。{{markup}} で引用できます。",
     "undo": "元に戻す"
   },
-  "compatibility": {
-    "biblatexBiber": "このプロジェクトは参考文献に biblatex と Biber を使っています。",
-    "blockerFinding_other": "{{title}}（ほか {{more}} 件）",
-    "chooseEngine": "エンジンを選択…",
-    "importNotes_other": "読み込み時の注意 {{count}} 件: {{title}}（ほか {{more}} 件）"
-  },
   "compile": {
-    "engineNotLoaded": "ドキュメントエンジンが読み込まれるまで、コンパイルはできません。",
     "noOfflineMode": "{{engine}} にはオフラインのコンパイルモードがありません。通常どおりコンパイルします。",
-    "retry": "もう一度コンパイル"
+    "retry": "もう一度コンパイル",
+    "bundleFetchFailed": "この文書に必要な TeX パッケージを Oleafly がダウンロードできませんでした。接続を確認して、もう一度コンパイルしてください。"
   },
   "developer": {
     "actions": {
@@ -89,7 +83,6 @@
         "title": "研究コーパスを投入"
       }
     },
-    "closeProjectFailed": "開いているプロジェクトを安全に閉じられませんでした。",
     "confirm": {
       "clearProjects": {
         "action": "プロジェクトを消去",
@@ -158,17 +151,12 @@
     "pdfFailedDetail": "PDF を保存できませんでした: {{detail}}",
     "pngFailed": "PNG を保存できませんでした",
     "pngFailedDetail": "PNG を保存できませんでした: {{detail}}",
-    "revealFailed": "ファイルは保存されましたが、Oleafly はそのフォルダを開けませんでした（権限がありません）。保存ダイアログで選んだ場所を確認してください。",
+    "revealFailed": "ファイルは保存されましたが、そのフォルダを開けませんでした。",
     "saved": "{{kind}} を保存しました · {{fileName}}",
     "showInFolder": "フォルダに表示"
   },
   "externalChange": {
-    "deletionRestored": "外部からの削除と未保存の編集が競合しました。ローカルの編集内容を復元しました。",
-    "localEditKept": "未保存の変更がある状態で「{{path}}」への外部からの編集が届きました。ローカルの編集内容を残しました。",
-    "persistExternalFailed": "「{{path}}」への最新の外部更新を保存できませんでした。",
-    "preserveLocalFailed": "「{{path}}」へのローカルの更新を保持できませんでした。",
-    "reloadFailed": "プロジェクトの設定は更新されましたが、変更されたファイルの一部を再読み込みできませんでした。",
-    "restoreLocalFailed": "「{{path}}」への未保存の更新を復元できませんでした。"
+    "reloadFailed": "プロジェクトの設定は更新されましたが、変更されたファイルの一部を再読み込みできませんでした。"
   },
   "fonts": {
     "systemDefault": "システムの既定",
@@ -176,18 +164,15 @@
   },
   "imageToLatex": {
     "failed": "画像から LaTeX への変換に失敗しました: {{detail}}",
-    "inserted": "画像から LaTeX を挿入しました",
     "transcribing": "画像を文字起こししています…"
   },
   "import": {
-    "arxivImported": "arXiv のソースを読み込みました。結果を確認するにはプロジェクトをコンパイルしてください。",
     "chooseOfferedProjectType": "このファイルで選べるプロジェクトの種類から 1 つ選んでください。",
     "invalidArxivId": "arXiv の論文リンク、または 2301.01234 のような ID を貼り付けてください。",
     "supportedDocumentTypes": "対応している文書形式のいずれかを選んでください。",
-    "conversionNotice": "内容を LaTeX に変換しました。表、図、引用を中心に、体裁を調整する必要があるかもしれません。",
+    "conversionNotice": "{{format}} に変換しました。表、図、引用の体裁を調整する必要があるかもしれません。",
     "figureSaved": "{{name}} を保存しました",
-    "pdfProjectCreated": "PDF からプロジェクトを作成しました。再構成の結果を確認してから使ってください。",
-    "pickPdfOrDocx": ".pdf または .docx のファイルを選んでください",
+    "pickPdfOrDocx": ".pdf または .docx のファイルを選んでください。",
     "texSaved": ".tex を保存しました",
     "unsupportedFile": ".zip、.docx、.md、.markdown のいずれかのファイルを選んでください。",
     "zipSaveFailed": "ZIP アーカイブを保存できませんでした。",
@@ -310,7 +295,8 @@
   "missingPackages": {
     "action_other": "{{count}} 件のファイルを探してインストール",
     "installing_other": "{{count}} 件のパッケージをインストールしています。完了するとコンパイルが再開します。",
-    "summary_other": "コンパイル時に {{names}} が見つかりませんでした。TeX Live でこれらを提供するパッケージを探してください。"
+    "summary_other": "コンパイル時に {{names}} が見つかりませんでした。TeX Live でこれらを提供するパッケージを探してください。",
+    "userTree": "システムの TeX ツリーは読み取り専用のため、パッケージは {{path}} にある個人のツリーに入りました。"
   },
   "models": {
     "chips": {
@@ -353,19 +339,16 @@
     "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）"
   },
   "pandoc": {
-    "downloadFailed": "pandoc をダウンロードできませんでした。手動でインストールしてから、もう一度お試しください",
+    "downloadFailed": "pandoc をダウンロードできませんでした。手動でインストールしてから、もう一度お試しください。",
     "downloadingPercent": "pandoc をダウンロード中… {{progress}}%",
     "downloadingSize": "pandoc をダウンロード中… {{megabytes}} MB",
-    "installGuide": "インストール手順",
-    "installed": "pandoc をインストールしました"
+    "installGuide": "インストール手順"
   },
   "project": {
     "copyFailed": "「{{path}}」をコピーできませんでした。",
     "dateUnavailable": "不明",
     "importFailed": "読み込めませんでした。詳細はアプリのログを確認してください。",
-    "imported": "プロジェクトを読み込みました。",
     "openFailed": "プロジェクトを開けませんでした。詳細はアプリのログを確認してください。",
-    "restoringUnsavedFiles": "プロジェクトの更新により、未保存の編集があるファイルが削除されました。Oleafly は編集内容を保持し、それらのファイルを復元しています。",
     "saveBlockedClose": "保存できないファイルがあったため、プロジェクトは開いたままです。",
     "saveBlockedDiscard": "変更を破棄して閉じる",
     "saveBlockedMany": "{{count}} 件のファイルを保存できませんでした: {{files}}。最初の 1 件は未保存の変更とともにエディタで開いています（{{reason}}）。このまま問題を直すか、それらのファイルの未保存の変更を破棄して閉じてください。",
@@ -376,7 +359,8 @@
     "updatedDaysAgo_other": "{{count}} 日前に更新",
     "updatedOn": "{{date}} に更新",
     "updatedToday": "今日更新",
-    "updatedYesterday": "昨日更新"
+    "updatedYesterday": "昨日更新",
+    "autosaveFailed": "変更を保存できませんでした。変更はエディターに残っています。"
   },
   "projectDiagnostics": {
     "analysisFailed": "解析に失敗しました: {{message}}",
@@ -465,13 +449,7 @@
     "defaultTitle": "ターミナル {{index}}"
   },
   "tex": {
-    "distributionGap": "このプロジェクトは {{pinned}} で固定されています。現在の {{local}} にはそのうち {{count}} 件のパッケージがないため、同じディストリビューションに戻すまでコンパイルが失敗することがあります。",
-    "distributionSkew": "このプロジェクトは {{pinned}} で固定されていますが、このマシンは {{local}} でコンパイルします。出力がわずかに異なることがあります。",
-    "installPinned_other": "{{count}} 件すべてインストール",
-    "installingPinned_other": "固定された {{count}} 件のパッケージをインストール中…",
-    "pinnedPackagesFailed": "固定されたパッケージの一部をインストールできませんでした。設定 → LaTeX エンジンを確認してください。",
-    "pinnedPackagesInstalled": "固定された LaTeX パッケージをインストールしました。",
-    "pinnedPackagesMissing_other": "このプロジェクトは、ここにインストールされていない LaTeX パッケージを {{count}} 件固定しています。"
+    "distributionGap": "このプロジェクトは {{pinned}} で固定されています。現在の {{local}} にはそのうち {{count}} 件のパッケージがないため、同じディストリビューションに戻すまでコンパイルが失敗することがあります。"
   },
   "theme": {
     "cssForbiddenSyntax": "カスタム CSS では at 規則、URL、セレクタは使えません。",
@@ -520,8 +498,8 @@
       "installing": "インストール中…",
       "unpacking": "展開中…"
     },
-    "removeFailed": "TinyTeX を削除できませんでした",
-    "removed": "TinyTeX を削除しました"
+    "removeFailed": "TinyTeX を削除できませんでした。",
+    "removed": "TinyTeX を削除しました。"
   },
   "toolActivity": {
     "labels": {
@@ -572,5 +550,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "保存中にプロジェクトが変更されました。もう一度更新をお試しください。"
+  },
+  "checkpoint": {
+    "storageUnavailable": "チェックポイントを保存できませんでした。ディスクがいっぱいか、チェックポイントのフォルダに書き込めません。空き容量を確保するかフォルダの権限を確認してから、もう一度コンパイルしてください。",
+    "incompleteCapture": "一部のプロジェクトファイルを読み込めなかったため、直近のチェックポイントを保存できませんでした。ファイルの権限を確認してから、もう一度コンパイルしてください。"
   }
 }

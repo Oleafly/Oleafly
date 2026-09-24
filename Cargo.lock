@@ -3057,7 +3057,10 @@ dependencies = [
 name = "oleafly-core"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
+ "crc32fast",
  "fs4",
+ "memchr",
  "regex",
  "serde",
  "serde_json",

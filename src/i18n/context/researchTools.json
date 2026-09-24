@@ -82,7 +82,8 @@
     "reference": "A full bibliography entry, contrasted with an in-text citation",
     "inText": "A short citation placed inside prose",
     "localEditing": "Badge saying edits and formatting happen on this device",
-    "styleCount": "Number of citation styles available for comparison"
+    "styleCount": "Number of citation styles available for comparison",
+    "savedBibliography": "{{name}} is the file name the user saved the bibliography as, for example references.bib"
   },
   "stats": {
     "tabInterval": "Short tab label for the confidence interval calculator",

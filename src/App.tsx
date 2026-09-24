@@ -9,15 +9,19 @@ import {
   Suspense,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
+  type KeyboardEventHandler,
   type ReactNode,
 } from "react";
 import {
-  PanelGroup,
+  Group,
   Panel,
-  PanelResizeHandle,
-  type ImperativePanelHandle,
+  Separator,
+  type GroupImperativeHandle,
+  type Layout,
+  type PanelImperativeHandle,
 } from "react-resizable-panels";
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
@@ -76,6 +80,22 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
+import {
+  PANEL_STYLE,
+  afterPanelLayout,
+  collapsePanel,
+  expandPanel,
+  hasStoredPanelLayout,
+  panelLimitProps,
+  percent,
+  useCollapseTransitions,
+  useDismissiblePanelLayout,
+  usePersistentPanelLayout,
+  useSeparatorHitArea,
+  useSeparatorKeyboard,
+  useSteadyPanelWidth,
+  type PanelLimits,
+} from "@/lib/panel-layout";
 import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
@@ -179,47 +199,57 @@ function SurfaceLoading({ label }: Readonly<{ label: string }>) {
   );
 }
 
-// Control cluster is offset from the centered grab thumb so it never fights the drag.
 function VHandle({
   id,
-  children,
-  placement = "center",
+  onKeyDownCapture,
 }: Readonly<{
   id: string;
-  children?: ReactNode;
-  placement?: "top" | "center" | "bottom";
+  onKeyDownCapture: KeyboardEventHandler<HTMLElement>;
 }>) {
   return (
-    <div className="resize-handle-col relative flex w-1.5 shrink-0 bg-background">
-      <PanelResizeHandle
-        id={id}
-        style={{ cursor: "col-resize" }}
+    <Separator
+      id={id}
+      disableDoubleClick
+      onKeyDownCapture={onKeyDownCapture}
+      style={{ cursor: "col-resize" }}
+      className="resize-handle-col group relative flex w-1.5 shrink-0 select-none bg-background"
+    >
+      <span
         className={cn(
-          "group absolute inset-0 flex items-center justify-center",
+          "absolute inset-0 flex items-center justify-center",
           "transition-colors hover:bg-accent/40"
         )}
       >
         <span
           className={cn(
             "pointer-events-none h-10 w-1 rounded-full bg-border transition-colors",
-            "group-hover:bg-ring group-data-[resize-handle-state=drag]:bg-ring"
+            "group-hover:bg-ring group-data-[separator=active]:bg-ring"
           )}
         />
-      </PanelResizeHandle>
-      {children && (
-        <div
-          className={cn(
-            "absolute left-1/2 z-10 flex -translate-x-1/2 items-center",
-            placement === "center" && "inset-y-0",
-            placement === "top" && "top-1",
-            placement === "bottom" && "bottom-1"
-          )}
-        >
-          {children}
-        </div>
-      )}
-    </div>
+      </span>
+    </Separator>
   );
+}
+
+const VERTICAL_PANELS = ["content-band", "terminal"];
+const HORIZONTAL_PANELS = ["sidebar", "editorpdf", "assistant"];
+const DOCUMENT_PANELS = ["editor", "pdf"];
+const VERTICAL_LIMITS = {
+  "content-band": { minSize: 25 },
+  terminal: { minSize: 10, collapsible: true, collapsedSize: 0 },
+} satisfies Record<string, PanelLimits>;
+const DOCUMENT_LIMITS = {
+  editor: { minSize: 15 },
+  pdf: { minSize: 15 },
+} satisfies Record<string, PanelLimits>;
+
+function closeAssistant() {
+  const settings = useSettingsStore.getState();
+  if (settings.assistantOpen) settings.setAssistantOpen(false);
+}
+
+function workspaceGroupId(projectId: string | null, group: string): string | undefined {
+  return projectId ? workspacePanelId(projectId, group) : undefined;
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
@@ -262,10 +292,32 @@ function AppContent() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
-  const editorPanelRef = useRef<ImperativePanelHandle>(null);
-  const pdfPanelRef = useRef<ImperativePanelHandle>(null);
-  const terminalPanelRef = useRef<ImperativePanelHandle>(null);
+  const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
+  const editorPanelRef = useRef<PanelImperativeHandle>(null);
+  const pdfPanelRef = useRef<PanelImperativeHandle>(null);
+  const terminalPanelRef = useRef<PanelImperativeHandle>(null);
+  const verticalGroupRef = useRef<GroupImperativeHandle>(null);
+  const horizontalGroupRef = useRef<GroupImperativeHandle>(null);
+  const documentGroupRef = useRef<GroupImperativeHandle>(null);
+  const verticalGroupId = workspaceGroupId(projectId, "vertical");
+  const horizontalGroupId = workspaceGroupId(projectId, "horizontal");
+  const documentGroupId = workspaceGroupId(projectId, "document");
+  const hasStoredHorizontalLayout = useMemo(
+    () => (horizontalGroupId ? hasStoredPanelLayout(horizontalGroupId) : false),
+    [horizontalGroupId],
+  );
+  const verticalLayout = usePersistentPanelLayout(verticalGroupId, VERTICAL_PANELS, VERTICAL_PANELS);
+  const documentLayout = usePersistentPanelLayout(
+    documentGroupId,
+    DOCUMENT_PANELS,
+    DOCUMENT_PANELS.filter(
+      (id) => (id === "editor" && viewMode !== "pdf") || (id === "pdf" && viewMode !== "editor"),
+    ),
+  );
+  const trackVerticalCollapse = useCollapseTransitions();
+  const onVerticalSeparatorKeyDown = useSeparatorKeyboard(verticalGroupRef, VERTICAL_LIMITS);
+  const onDocumentSeparatorKeyDown = useSeparatorKeyboard(documentGroupRef, DOCUMENT_LIMITS);
+  const separatorHitArea = useSeparatorHitArea(0.375);
 
   useLayoutEffect(() => {
     if (projectId) return restoreWorkspaceLayout(projectId);
@@ -273,13 +325,14 @@ function AppContent() {
 
   useLayoutEffect(() => {
     if (!projectId) return;
-    const panel = terminalPanelRef.current;
-    if (!panel) return;
-    if (terminalOpen) {
-      if (panel.isCollapsed()) panel.expand(30);
-    } else if (panel.isExpanded()) {
-      panel.collapse();
-    }
+    const groupId = workspacePanelId(projectId, "vertical");
+    return afterPanelLayout(
+      () => terminalPanelRef.current,
+      (panel) => {
+        if (terminalOpen) expandPanel(groupId, "terminal", panel, 30);
+        else collapsePanel(groupId, "terminal", panel);
+      },
+    );
   }, [terminalOpen, projectId]);
 
   // The browser opens as its own window, so computer use just needs a CUA
@@ -315,6 +368,35 @@ function AppContent() {
       : 22;
   const workspacePanelDefaultSize =
     viewMode === "split" ? 50 : 100;
+  const horizontalLimits = useMemo(
+    () =>
+      ({
+        sidebar: { minSize: sidebarMinSize, maxSize: 65 },
+        editorpdf: {},
+        assistant: {
+          minSize: assistantMinSize,
+          maxSize: workspaceHidden ? 100 : 55,
+          collapsible: true,
+          collapsedSize: 0,
+        },
+      }) satisfies Record<string, PanelLimits>,
+    [assistantMinSize, sidebarMinSize, workspaceHidden],
+  );
+  const assistantDefaultSize = workspaceHidden ? 100 : Math.max(28, assistantMinSize);
+  const horizontalLayout = useDismissiblePanelLayout(
+    horizontalGroupRef,
+    horizontalGroupId,
+    HORIZONTAL_PANELS,
+    HORIZONTAL_PANELS.filter(
+      (id) =>
+        (id === "sidebar" && showTree) ||
+        (id === "editorpdf" && !workspaceHidden) ||
+        (id === "assistant" && assistantOpen),
+    ),
+    horizontalLimits,
+    { id: "assistant", defaultSize: assistantDefaultSize, onDismiss: closeAssistant },
+  );
+  const onHorizontalSeparatorKeyDown = useSeparatorKeyboard(horizontalGroupRef, horizontalLimits);
 
   useEffect(() => {
     // React owns the screen from here: retire the inline HTML splash and
@@ -335,38 +417,15 @@ function AppContent() {
     }
   }, [projectId]);
 
-  // Panels are sized in percentages, so a window resize would scale the sidebar
-  // with it and leave it far from the width it was opened at. Hold its pixel
-  // width steady and let the editor and preview absorb the change instead.
-  const lastPanelGroupWidthRef = useRef(0);
-  useEffect(() => {
-    const previousWidth = lastPanelGroupWidthRef.current;
-    lastPanelGroupWidthRef.current = panelGroupWidth;
-    if (!showTree || panelGroupWidth <= 0) return;
-    const panel = sidebarPanelRef.current;
-    if (!panel) return;
-    if (previousWidth <= 0) {
-      // The pane had not been measured when the sidebar mounted, so it opened
-      // on the flat percentage fallback rather than SIDEBAR_DEFAULT_PX. Apply
-      // the intended width now that the real width is known.
-      if (!localStorage.getItem(`react-resizable-panels:${workspacePanelId(projectId ?? "", "horizontal")}`)) {
-        panel.resize(sidebarDefaultSize);
-      }
-      return;
-    }
-    const pixels = (panel.getSize() / 100) * previousWidth;
-    const next = Math.min(
-      65,
-      Math.max(sidebarMinSize, (pixels / panelGroupWidth) * 100),
-    );
-    panel.resize(next);
-  }, [
-    panelGroupWidth,
-    showTree,
-    sidebarMinSize,
-    sidebarDefaultSize,
-    projectId,
-  ]);
+  useSteadyPanelWidth({
+    panelRef: sidebarPanelRef,
+    active: showTree,
+    groupWidth: panelGroupWidth,
+    minSize: sidebarMinSize,
+    maxSize: 65,
+    defaultSize: sidebarDefaultSize,
+    applyDefault: !hasStoredHorizontalLayout,
+  });
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -733,7 +792,7 @@ function AppContent() {
           .catch(() => false);
         if (restored) return undefined;
       }
-      return recompile();
+      return recompile({ origin: "automatic" });
     };
     void compileOrRestore().finally(() => {
       const files = useFilesStore.getState();
@@ -855,29 +914,66 @@ function AppContent() {
               </div>
             }
           >
-            <PanelGroup key={projectId} autoSaveId={workspacePanelId(projectId, "vertical")} direction="vertical" className="min-h-0 min-w-0 flex-1">
+            <Group
+              key={projectId}
+              groupRef={verticalGroupRef}
+              orientation="vertical"
+              defaultLayout={
+                verticalLayout.defaultLayout ?? {
+                  "content-band": terminalOpen ? 72 : 100,
+                  terminal: terminalOpen ? 28 : 0,
+                }
+              }
+              onLayoutChange={(layout: Layout) =>
+                trackVerticalCollapse(layout, {
+                  terminal: {
+                    collapsedSize: 0,
+                    onCollapse: () => {
+                      if (useSettingsStore.getState().terminalOpen) {
+                        useSettingsStore.getState().setTerminalOpen(false);
+                      }
+                    },
+                    onExpand: () => {
+                      if (!useSettingsStore.getState().terminalOpen) {
+                        useSettingsStore.getState().setTerminalOpen(true);
+                      }
+                    },
+                  },
+                })
+              }
+              onLayoutChanged={verticalLayout.onLayoutChanged}
+              resizeTargetMinimumSize={separatorHitArea}
+              className="min-h-0 min-w-0 flex-1"
+            >
               <Panel
                 id="content-band"
-                order={1}
-                defaultSize={terminalOpen ? 72 : 100}
-                minSize={25}
+                defaultSize={percent(72)}
+                {...panelLimitProps(VERTICAL_LIMITS["content-band"])}
+                style={PANEL_STYLE}
                 className="min-h-0 min-w-0"
               >
-                <PanelGroup autoSaveId={workspacePanelId(projectId, "horizontal")} direction="horizontal" className="h-full min-h-0 min-w-0">
+                <Group
+                  groupRef={horizontalGroupRef}
+                  orientation="horizontal"
+                  defaultLayout={horizontalLayout.defaultLayout}
+                  onLayoutChange={horizontalLayout.onLayoutChange}
+                  onLayoutChanged={horizontalLayout.onLayoutChanged}
+                  resizeTargetMinimumSize={separatorHitArea}
+                  className="h-full min-h-0 min-w-0"
+                >
               {showTree && (
                 <Fragment key="sidebar">
                   <Panel
-                    ref={sidebarPanelRef}
+                    panelRef={sidebarPanelRef}
                     id="sidebar"
-                    order={1}
-                    defaultSize={sidebarDefaultSize}
-                    minSize={sidebarMinSize}
-                    maxSize={65}
+                    defaultSize={percent(sidebarDefaultSize)}
+                    {...panelLimitProps(horizontalLimits.sidebar)}
+                    style={PANEL_STYLE}
                     className="bg-sidebar"
                   >
                     <Sidebar />
                   </Panel>
-                  <VHandle id="h-tree" />
+                  <VHandle id="h-tree" onKeyDownCapture={onHorizontalSeparatorKeyDown} />
                 </Fragment>
               )}
 
@@ -885,18 +981,26 @@ function AppContent() {
               <Panel
                   key="editorpdf"
                   id="editorpdf"
-                  order={2}
-                  defaultSize={showTree ? 85 : 100}
+                  defaultSize={percent(showTree ? 85 : 100)}
+                  {...panelLimitProps(horizontalLimits.editorpdf)}
+                  style={PANEL_STYLE}
                   className="min-h-0 min-w-0"
                 >
-                  <PanelGroup autoSaveId={workspacePanelId(projectId, "document")} direction="horizontal" className="h-full min-h-0 min-w-0">
+                  <Group
+                    groupRef={documentGroupRef}
+                    orientation="horizontal"
+                    defaultLayout={documentLayout.defaultLayout}
+                    onLayoutChanged={documentLayout.onLayoutChanged}
+                    resizeTargetMinimumSize={separatorHitArea}
+                    className="h-full min-h-0 min-w-0"
+                  >
                         {viewMode !== "pdf" && (
                           <Panel
-                            ref={editorPanelRef}
+                            panelRef={editorPanelRef}
                             id="editor"
-                            order={1}
-                            defaultSize={workspacePanelDefaultSize}
-                            minSize={15}
+                            defaultSize={percent(workspacePanelDefaultSize)}
+                            {...panelLimitProps(DOCUMENT_LIMITS.editor)}
+                            style={PANEL_STYLE}
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="editor" resetKey={projectId}>
@@ -906,14 +1010,16 @@ function AppContent() {
                             </ErrorBoundary>
                           </Panel>
                         )}
-                        {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
+                        {viewMode === "split" && (
+                          <VHandle id="h-mid" onKeyDownCapture={onDocumentSeparatorKeyDown} />
+                        )}
                         {viewMode !== "editor" && (
                           <Panel
-                            ref={pdfPanelRef}
+                            panelRef={pdfPanelRef}
                             id="pdf"
-                            order={2}
-                            defaultSize={workspacePanelDefaultSize}
-                            minSize={15}
+                            defaultSize={percent(workspacePanelDefaultSize)}
+                            {...panelLimitProps(DOCUMENT_LIMITS.pdf)}
+                            style={PANEL_STYLE}
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="PDF preview" resetKey={projectId}>
@@ -923,26 +1029,20 @@ function AppContent() {
                             </ErrorBoundary>
                           </Panel>
                         )}
-                  </PanelGroup>
+                  </Group>
                 </Panel>
               )}
 
               {assistantOpen && (
                 <Fragment key="assistant">
-                  {!workspaceHidden && <VHandle id="h-assistant" />}
+                  {!workspaceHidden && (
+                    <VHandle id="h-assistant" onKeyDownCapture={onHorizontalSeparatorKeyDown} />
+                  )}
                   <Panel
                     id="assistant"
-                    order={3}
-                    defaultSize={workspaceHidden ? 100 : Math.max(28, assistantMinSize)}
-                    minSize={assistantMinSize}
-                    maxSize={workspaceHidden ? 100 : 55}
-                    collapsible
-                    collapsedSize={0}
-                    onCollapse={() => {
-                      if (useSettingsStore.getState().assistantOpen) {
-                        useSettingsStore.getState().setAssistantOpen(false);
-                      }
-                    }}
+                    defaultSize={percent(assistantDefaultSize)}
+                    {...panelLimitProps(horizontalLimits.assistant)}
+                    style={PANEL_STYLE}
                     className="min-h-0 min-w-0 border-l"
                   >
                     <ErrorBoundary surface="AI assistant" resetKey={projectId}>
@@ -953,37 +1053,28 @@ function AppContent() {
                   </Panel>
                 </Fragment>
               )}
-                </PanelGroup>
+                </Group>
               </Panel>
-              <PanelResizeHandle
+              <Separator
                 id="v-terminal"
+                disabled={!terminalOpen}
+                disableDoubleClick
+                onKeyDownCapture={onVerticalSeparatorKeyDown}
                 style={{ cursor: "row-resize" }}
                 className={cn(
-                  "resize-handle-row group flex h-1.5 items-center justify-center bg-background",
+                  "resize-handle-row group flex h-1.5 select-none items-center justify-center bg-background",
                   "transition-colors hover:bg-accent/40",
-                  !terminalOpen && "hidden",
+                  !terminalOpen && "invisible h-0 overflow-hidden",
                 )}
               >
                 <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
-              </PanelResizeHandle>
+              </Separator>
               <Panel
-                ref={terminalPanelRef}
+                panelRef={terminalPanelRef}
                 id="terminal"
-                order={2}
-                defaultSize={terminalOpen ? 28 : 0}
-                minSize={10}
-                collapsible
-                collapsedSize={0}
-                onCollapse={() => {
-                  if (useSettingsStore.getState().terminalOpen) {
-                    useSettingsStore.getState().setTerminalOpen(false);
-                  }
-                }}
-                onExpand={() => {
-                  if (!useSettingsStore.getState().terminalOpen) {
-                    useSettingsStore.getState().setTerminalOpen(true);
-                  }
-                }}
+                defaultSize={percent(28)}
+                {...panelLimitProps(VERTICAL_LIMITS.terminal)}
+                style={PANEL_STYLE}
                 className="min-h-0 min-w-0"
               >
                 <div
@@ -1003,7 +1094,7 @@ function AppContent() {
                   </ErrorBoundary>
                 </div>
               </Panel>
-            </PanelGroup>
+            </Group>
           </ErrorBoundary>
         </div>
 
@@ -1078,7 +1169,7 @@ function AutoCompileKeeper() {
         timer = setTimeout(attempt, 500);
         return;
       }
-      void recompile();
+      void recompile({ origin: "automatic" });
     };
     timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
     return () => {

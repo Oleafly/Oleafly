@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLab のセットアップ情報が不正です",
     "setUp": "セットアップ",
-    "retry": "再試行",
-    "startFailed": "プロジェクトの言語サービスを起動できませんでした。",
-    "setupDetailsUnavailable": "言語サービスのセットアップ情報を取得できません",
     "setupRequired": "言語サービスのセットアップが必要です",
     "installTitle": "{{name}} {{version}} をインストールしますか？",
     "licenseAndSource": "ライセンスとソース",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "プロジェクトの参照解析を利用できません。",
-    "updating": "プロジェクトの参照を更新しています。",
     "noDefinition": "「{{name}}」の定義が見つかりません。",
     "definitionsFor": "{{name}} の定義",
     "multipleDefinitions": "「{{name}}」には定義が {{count}} 件あります。参考文献パネルを開いて確認してください。",

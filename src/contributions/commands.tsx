@@ -405,11 +405,11 @@ export function registerPaletteCommands() {
     when: (ctx) => !!ctx.projectId,
     run: () => {
       const terminals = useTerminalsStore.getState();
+      useSettingsStore.getState().setTerminalOpen(true);
       if (terminals.projectId && terminals.tabs.length >= TERMINAL_LIMIT) {
-        toast.info(terminalLimitMessage());
+        toast.infoUnique("terminal-limit", terminalLimitMessage());
         return;
       }
-      useSettingsStore.getState().setTerminalOpen(true);
       terminals.addTerminal();
     },
   });

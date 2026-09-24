@@ -687,7 +687,6 @@
     "copyFailed": "Oleafly nu a putut copia sursa convertită.",
     "saveFailed": "Oleafly nu a putut salva fișierul convertit.",
     "resultName": "Rezultatul {{title}}",
-    "projectCreated": "S-a creat un proiect din conversie.",
     "projectFailed": "Oleafly nu a putut crea proiectul.",
     "cancel": "Anulează",
     "convert": "Convertește",
@@ -926,9 +925,8 @@
       }
     },
     "bibtexBibliography": "Bibliografie BibTeX",
-    "savedBibliography": "S-a salvat references.bib",
+    "savedBibliography": "S-a salvat {{name}}",
     "saveFailed": "Oleafly nu a putut salva această bibliografie.",
-    "copied": "S-a copiat {{label}}",
     "copyFailed": "Oleafly nu a putut copia {{label}}.",
     "fieldJournal": "Revistă",
     "fieldConference": "Conferință sau volum de lucrări",
@@ -1129,7 +1127,6 @@
     "downloadSvg": "Descarcă SVG",
     "copyMathml": "Copiază MathML pentru Word",
     "copyKatexHtml": "Copiază HTML KaTeX",
-    "copiedSource": "Sursa LaTeX a fost copiată",
     "copiedMathml": "S-a copiat MathML (se lipește în Word)",
     "copiedKatexHtml": "S-a copiat HTML KaTeX (are nevoie de foaia de stil KaTeX)",
     "exportImageFailed": "Acest fragment nu a putut fi exportat ca imagine",
@@ -1350,9 +1347,6 @@
     "citationCount": "{{citations}} citări",
     "unknownAuthors": "Autori necunoscuți",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citarea a fost salvată",
-    "toastUpdated": "Citarea salvată a fost actualizată",
-    "toastCopied": "BibTeX copiat",
     "toastCopyFailed": "Codul BibTeX nu a putut fi copiat.",
     "suggestion": {
       "artificialIntelligence": "Inteligență artificială",
@@ -1411,12 +1405,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Adaugă în .bib",
     "addToBibTooltip": "Adaugă la bibliografia proiectului și inserează \\cite",
-    "openProjectTooltip": "Deschide un proiect ca să poți adăuga într-un fișier de bibliografie",
     "citeAdded": "S-a adăugat {{citation}}",
     "addFailed": "Citarea nu a putut fi adăugată.",
-    "toastSaved": "Citarea a fost salvată",
-    "toastUpdated": "Citarea salvată a fost actualizată",
-    "toastCopied": "BibTeX copiat",
     "toastCopyFailed": "Codul BibTeX nu a putut fi copiat."
   }
 }

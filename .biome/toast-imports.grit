@@ -1,0 +1,37 @@
+language js
+
+or {
+  JsModuleSource() as $source,
+  JsImportCallExpression(arguments = $source)
+} where {
+  or {
+    and {
+      $source <: r"\(?['\"]sonner(?:/[^'\"]*)?['\"]\)?",
+      not $filename <: r".*src[/\\]components[/\\]ui[/\\]sonner\.tsx",
+      register_diagnostic(
+        span = $source,
+        message = "Show notifications with toast from @/lib/toast. Only src/components/ui/sonner.tsx imports sonner.",
+        severity = "error"
+      )
+    },
+    and {
+      or {
+        $source <: r"\(?['\"](?:@/store/|(?:\.\.?/)+store/)toast(?:\.tsx?)?['\"]\)?",
+        and {
+          $source <: r"\(?['\"](?:\.\.?/)+toast(?:\.tsx?)?['\"]\)?",
+          $filename <: r".*src[/\\]store[/\\].+"
+        }
+      },
+      not $filename <: or {
+        r".*src[/\\]lib[/\\]toast\.ts",
+        r".*src[/\\]components[/\\]ui[/\\]sonner\.tsx",
+        r".*\.test\.tsx?"
+      },
+      register_diagnostic(
+        span = $source,
+        message = "Show notifications with toast from @/lib/toast. Only src/lib/toast.ts and src/components/ui/sonner.tsx import the toast store.",
+        severity = "error"
+      )
+    }
+  }
+}

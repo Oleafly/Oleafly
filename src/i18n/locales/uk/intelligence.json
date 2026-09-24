@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "Метадані налаштування TexLab недійсні",
     "setUp": "Налаштувати",
-    "retry": "Повторити",
-    "startFailed": "Не вдалося запустити мовну службу проєкту.",
-    "setupDetailsUnavailable": "Подробиці налаштування мовної служби недоступні",
     "setupRequired": "Потрібне налаштування мовної служби",
     "installTitle": "Встановити {{name}} {{version}}?",
     "licenseAndSource": "Ліцензія та початковий код",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Аналіз посилань проєкту недоступний.",
-    "updating": "Посилання проєкту оновлюються.",
     "noDefinition": "Визначення для «{{name}}» не знайдено.",
     "definitionsFor": "Визначення для {{name}}",
     "multipleDefinitions": "«{{name}}» має {{count}} визначень. Відкрийте панель посилань, щоб їх переглянути.",

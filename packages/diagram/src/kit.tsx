@@ -49,7 +49,13 @@ export interface DiagramKit {
   SelectValue: ComponentType<{ placeholder?: string }>;
   SelectContent: ComponentType<{ className?: string; children?: ReactNode }>;
   SelectItem: ComponentType<{ value: string; className?: string; children?: ReactNode }>;
-  toast: { success: (msg: string) => void; error: (msg: string) => void; info: (msg: string) => void };
+  toast: {
+    success: (msg: string) => void;
+    error: (msg: string) => void;
+    info: (msg: string) => void;
+    successUnique: (key: string, msg: string) => void;
+    errorUnique: (key: string, msg: string) => void;
+  };
   useThemeMode: () => "light" | "dark";
   usePrimaryColor: () => string;
   t: DiagramTranslator;

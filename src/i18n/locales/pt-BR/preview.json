@@ -92,7 +92,11 @@
     "settings": "Configurações da visualização do PDF",
     "fullscreen": "Visualização em tela cheia",
     "exitFullscreen": "Sair da tela cheia",
-    "retryCompile": "Compilar de novo"
+    "retryCompile": "Compilar de novo",
+    "chooseEngine": "Escolher motor…",
+    "installPackages_one": "Localizar e instalar {{name}}",
+    "installPackages_many": "Localizar e instalar {{count}} arquivos",
+    "installPackages_other": "Localizar e instalar {{count}} arquivos"
   },
   "stale": {
     "badge": "Desatualizado",
@@ -121,7 +125,7 @@
     "imageSaved": "Imagem salva · {{name}}",
     "pdfSaved": "PDF salvo · {{name}}",
     "showInFolder": "Mostrar na pasta",
-    "folderUnavailable": "O arquivo foi salvo, mas o Oleafly não conseguiu abrir a pasta dele (permissão negada). Confira o local que você escolheu na caixa de diálogo de salvamento.",
+    "folderUnavailable": "Não foi possível abrir a pasta.",
     "imageFailed": "Não foi possível baixar a imagem.",
     "imageFailedDetail": "Não foi possível baixar a imagem: {{detail}}",
     "pdfFailed": "Não foi possível baixar o PDF.",

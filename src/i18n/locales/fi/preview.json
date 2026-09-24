@@ -92,7 +92,10 @@
     "settings": "PDF-esikatselun asetukset",
     "fullscreen": "Koko näytön esikatselu",
     "exitFullscreen": "Poistu koko näytöstä",
-    "retryCompile": "Käännä uudelleen"
+    "retryCompile": "Käännä uudelleen",
+    "chooseEngine": "Valitse moottori…",
+    "installPackages_one": "Etsi ja asenna {{name}}",
+    "installPackages_other": "Etsi ja asenna {{count}} tiedostoa"
   },
   "stale": {
     "badge": "Vanhentunut",
@@ -121,7 +124,7 @@
     "imageSaved": "Kuva tallennettu · {{name}}",
     "pdfSaved": "PDF tallennettu · {{name}}",
     "showInFolder": "Näytä kansiossa",
-    "folderUnavailable": "Tiedosto tallennettiin, mutta Oleafly ei voinut avata sen kansiota (käyttöoikeus evätty). Tarkista tallennusikkunassa valittu sijainti.",
+    "folderUnavailable": "Kansiota ei voitu avata.",
     "imageFailed": "Kuvan lataus ei onnistunut.",
     "imageFailedDetail": "Kuvan lataus ei onnistunut: {{detail}}",
     "pdfFailed": "PDF:n lataus ei onnistunut.",

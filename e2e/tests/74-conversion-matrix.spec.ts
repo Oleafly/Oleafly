@@ -106,7 +106,7 @@ async function exportThroughMenu(page: Page, label: string, destination: string)
 
 async function convertTable(page: Page, path: string, target: "latex" | "typst") {
   return page.evaluate<string>(
-    `window.__e2eConvertTableFile(${scriptValue(path)}, { header: true, target: ${scriptValue(target)} })`,
+    `import("/src/features/table-import.ts").then(() => window.__e2eConvertTableFile(${scriptValue(path)}, { header: true, target: ${scriptValue(target)} }))`,
   );
 }
 

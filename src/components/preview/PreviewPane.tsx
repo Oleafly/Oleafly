@@ -52,6 +52,7 @@ import {
   type CompilePhase,
   type CompileStatus,
 } from "@/store/compile";
+import { CompileOfferButton } from "./CompileOfferButton";
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
@@ -84,6 +85,7 @@ import {
   type AnalysisReasonKey,
 } from "@/lib/analysis/reason";
 import { i18n } from "@/i18n";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -578,6 +580,7 @@ export function checkpointIdentity(
   });
 }
 
+const PREVIEW_DOWNLOAD_TOAST_KEY = "preview-download";
 
 export function PreviewPane() {
   const { t } = useTranslation(["common", "preview"]);
@@ -1011,8 +1014,11 @@ export function PreviewPane() {
     return () => root.removeEventListener("keydown", onKeyDown);
   }, [outlineOpen, pdfZoomShortcuts, searchOpen, tab, userZoom]);
 
+  const refreshTreeQuietly = () =>
+    refreshTree().catch((error) => void logError("refresh files after preview save", error));
+
   const submitSavePdf = async () => {
-    if (!projectId || !displayedBytes) return;
+    if (!projectId || !displayedBytes || saving) return;
     setSaving(true);
     try {
       if (isImage) {
@@ -1021,7 +1027,7 @@ export function PreviewPane() {
         const { pdfPageToPng } = await import("@/lib/pdf-image");
         const dataUrl = await pdfPageToPng(displayedBytes, 1, 3);
         await saveFileBase64(projectId, name, dataUrl.slice(dataUrl.indexOf(",") + 1));
-        await refreshTree();
+        await refreshTreeQuietly();
         setSaveOpen(false);
         setSaveName("");
         toast.success(t(($) => $.preview.save.imageSaved));
@@ -1033,7 +1039,7 @@ export function PreviewPane() {
           name,
           uint8ToBase64(displayedBytes),
         );
-        await refreshTree();
+        await refreshTreeQuietly();
         setSaveOpen(false);
         setSaveName("");
         toast.success(t(($) => $.preview.save.pdfSaved));
@@ -1061,6 +1067,24 @@ export function PreviewPane() {
     const fallback = isImage ? "figure" : "document";
     return (
       trimEdgeCharacter((projectName || fallback).replace(/[^\w.-]+/g, "_"), "_") || fallback
+    );
+  };
+
+  const showDownloadSaved = (destination: string, fileName: string) => {
+    toast.successUnique(
+      PREVIEW_DOWNLOAD_TOAST_KEY,
+      isImage
+        ? t(($) => $.preview.download.imageSaved, { name: fileName })
+        : t(($) => $.preview.download.pdfSaved, { name: fileName }),
+      {
+        label: t(($) => $.preview.download.showInFolder),
+        onClick: () => {
+          revealInDir(destination).catch((error) => {
+            void logError("reveal downloaded preview", error);
+            toast.info(t(($) => $.preview.download.folderUnavailable));
+          });
+        },
+      },
     );
   };
 
@@ -1102,21 +1126,7 @@ export function PreviewPane() {
       await writeBytesFile(destination, uint8ToBase64(exportBytes));
       const fileName =
         destination.split(/[/\\]/).pop() || (isImage ? "image.png" : "document.pdf");
-      const revealAction = {
-        label: t(($) => $.preview.download.showInFolder),
-        onClick: () => {
-          revealInDir(destination).catch(() => {
-            toast.info(t(($) => $.preview.download.folderUnavailable));
-          });
-        },
-      };
-      toast.success(
-        isImage
-          ? t(($) => $.preview.download.imageSaved, { name: fileName })
-          : t(($) => $.preview.download.pdfSaved, { name: fileName }),
-        revealAction,
-        true,
-      );
+      showDownloadSaved(destination, fileName);
     } catch (error) {
       reportExportFailure(error);
     } finally {
@@ -1232,7 +1242,8 @@ export function PreviewPane() {
         status={status} errors={errors} compileTimeMs={compileTimeMs} />
 
       {tab === "logs" && hasError && (
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-1">
+          <CompileOfferButton placement="log" />
           <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
             <Sparkles data-icon="inline-start" />
             {t(($) => $.preview.toolbar.askAi)}
@@ -1610,9 +1621,12 @@ export function PreviewPane() {
                   ? t(($) => $.preview.empty.compileUnavailable)
                   : t(($) => $.preview.empty.compileFailed))}
             </p>
-            <Button size="sm" onClick={() => void recompile()}>
-              {t(($) => $.preview.actions.retryCompile)}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="sm" onClick={() => void recompile()}>
+                {t(($) => $.preview.actions.retryCompile)}
+              </Button>
+              <CompileOfferButton placement="preview" />
+            </div>
           </div>
         ) : (
           <DocumentStartupProgress

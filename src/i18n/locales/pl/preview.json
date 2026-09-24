@@ -92,7 +92,12 @@
     "settings": "Ustawienia podglądu PDF",
     "fullscreen": "Podgląd pełnoekranowy",
     "exitFullscreen": "Wyjdź z pełnego ekranu",
-    "retryCompile": "Ponów kompilację"
+    "retryCompile": "Ponów kompilację",
+    "chooseEngine": "Wybierz silnik…",
+    "installPackages_one": "Znajdź i zainstaluj {{name}}",
+    "installPackages_few": "Znajdź i zainstaluj {{count}} pliki",
+    "installPackages_many": "Znajdź i zainstaluj {{count}} plików",
+    "installPackages_other": "Znajdź i zainstaluj {{count}} pliku"
   },
   "stale": {
     "badge": "Nieaktualny",
@@ -121,7 +126,7 @@
     "imageSaved": "Obraz zapisany · {{name}}",
     "pdfSaved": "PDF zapisany · {{name}}",
     "showInFolder": "Pokaż w folderze",
-    "folderUnavailable": "Plik został zapisany, ale Oleafly nie mógł otworzyć jego folderu (brak uprawnień). Sprawdź lokalizację wybraną w oknie zapisu.",
+    "folderUnavailable": "Nie udało się otworzyć folderu.",
     "imageFailed": "Nie udało się pobrać obrazu.",
     "imageFailedDetail": "Nie udało się pobrać obrazu: {{detail}}",
     "pdfFailed": "Nie udało się pobrać pliku PDF.",

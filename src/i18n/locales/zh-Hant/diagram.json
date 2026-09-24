@@ -73,7 +73,6 @@
       "importedCodeOnly": "已匯入 {{name}}（僅程式碼，無法繪製）。",
       "importFailed": "無法匯入那個檔案：{{detail}}",
       "noAiFix": "AI 沒有傳回修正內容。",
-      "aiFixApplied": "已套用 AI 修正。重新編譯中…",
       "fixFailed": "修正失敗：{{detail}}",
       "notDrawable": "這段程式碼沒有可繪製的內容，程式碼維持不變。"
     },

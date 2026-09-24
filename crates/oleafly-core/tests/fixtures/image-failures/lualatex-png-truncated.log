@@ -1,0 +1,30 @@
+\nofMPsegments=\count270
+\nofMParguments=\count271
+\everyMPshowfont=\toks18
+\MPscratchCnt=\count272
+\MPscratchDim=\dimen144
+\MPnumerator=\count273
+\makeMPintoPDFobject=\count274
+\everyMPtoPDFconversion=\toks19
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+<figures/plot.png, id=1, 64.24pt x 32.12pt>
+File: figures/plot.png Graphic file (type png)
+<use figures/plot.png>
+Package luatex.def Info: figures/plot.png  used on input line 6.
+(luatex.def)             Requested size: 172.5pt x 86.25705pt.
+
+
+[1
+
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}<./figures
+/plot.png
+! error:  (writepng): reading chunk type failed
+!  ==> Fatal error occurred, no output PDF file produced!

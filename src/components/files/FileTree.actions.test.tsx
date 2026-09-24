@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   notifyError: vi.fn(),
+  toastError: vi.fn(),
   logError: vi.fn(),
   pickOpenPath: vi.fn(),
 }));
@@ -17,7 +18,14 @@ vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath })
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
-  toast: { info: vi.fn(), infoUnique: vi.fn(), success: vi.fn() },
+  toast: {
+    info: vi.fn(),
+    infoUnique: vi.fn(),
+    success: vi.fn(),
+    error: mocks.toastError,
+    errorUnique: vi.fn(),
+    dismiss: vi.fn(),
+  },
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: vi.fn(),
@@ -26,6 +34,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { i18n } from "@/i18n";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -33,6 +42,7 @@ import { useSettingsStore } from "@/store/settings";
 import { FileTree } from "./FileTree";
 
 const files = enWorkspace.files;
+
 const TREE = [
   { path: "main.tex", is_dir: false },
   { path: "chapters", is_dir: true },
@@ -60,6 +70,7 @@ function backend(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   backend();
   mocks.notifyError.mockReset();
+  mocks.toastError.mockReset();
   mocks.pickOpenPath.mockReset().mockResolvedValue(null);
   useSettingsStore.setState({ hiddenFilePatterns: [] });
   useFilesStore.setState({
@@ -983,6 +994,45 @@ describe("FileTree row actions", () => {
     fireEvent.click(within(menu).getByText(enCommon.actions.open));
 
     await waitFor(() => expect(useFilesStore.getState().activePath).toBe("main.tex"));
+  });
+
+  it("reports a main document change the backend refused, once", async () => {
+    backend({ set_main_doc: new Error("not a source file") });
+    render(<FileTree />);
+
+    fireEvent.click(screen.getByText("chapters"));
+    openRowMenu("intro.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.setMain));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledOnce());
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      i18n.t(($) => $.workspace.files.setMainFailed, { path: "chapters/intro.tex" }),
+    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("set main document", expect.any(Error));
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+  });
+
+  it("leaves a main document change whose engine could not load to the toolbar", async () => {
+    backend({
+      set_main_doc: { main_doc: "chapters/intro.tex" },
+      project_engine: new Error("engine gone"),
+    });
+    render(<FileTree />);
+
+    fireEvent.click(screen.getByText("chapters"));
+    openRowMenu("intro.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.setMain));
+
+    await waitFor(() => expect(useFilesStore.getState().engineError).toBe("loadFailed"));
+    expect(useFilesStore.getState().mainDoc).toBe("chapters/intro.tex");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("offers creation and import actions on a folder row", async () => {

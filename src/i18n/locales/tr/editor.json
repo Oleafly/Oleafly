@@ -72,7 +72,6 @@
     "labelPlaceholder": "tab:ad"
   },
   "paste": {
-    "imageSaved": "Görsel {{path}} konumuna kaydedildi",
     "imageFailed": "Yapıştırılan görsel projeye kaydedilemedi.",
     "noProject": "Görsel yapıştırmadan önce bir proje açın."
   },
@@ -207,7 +206,8 @@
     "spellLanguage": "Yazım denetimi dili",
     "spellLanguageAppSetting": "Uygulama ayarını kullan",
     "spellLanguageAriaLabel": "Bu proje için yazım denetimi dili",
-    "spellLanguageHint": "Yalnızca bu proje için geçerlidir. Daha fazla dili Ayarlar'dan indirin."
+    "spellLanguageHint": "Yalnızca bu proje için geçerlidir. Daha fazla dili Ayarlar'dan indirin.",
+    "spellLanguageFailed": "Yazım denetimi dili değiştirilemedi."
   },
   "table": {
     "trigger": "Tablo ekle",
@@ -370,8 +370,6 @@
   },
   "citations": {
     "trigger": "Projeden atıf ver",
-    "updating": "Proje atıfları güncelleniyor.",
-    "changed": "Proje atıfları değişti. Yenilemek için seçiciyi yeniden açın.",
     "filterPlaceholder": "Anahtar, yazar veya başlık…",
     "filterLabel": "Proje atıflarını filtrele",
     "partialCatalog": "Kısmi katalog. Bozuk veya okunamayan kaynakça dosyaları dışarıda kalabilir.",
@@ -403,10 +401,7 @@
     "error": "Redaksiyon bu belgeyi tamamlayamadı.",
     "unavailable": "Çevrimdışı redaksiyon kullanılamıyor.",
     "tooLarge": "Bu belge çok büyük olduğu için redaksiyon duraklatıldı.",
-    "unsupported": "Redaksiyon bu belge biçiminde desteklenmiyor.",
-    "partial_one": "Redaksiyon {{count}} bulgu kurtardı, ancak motorlardan biri tamamlanmadı.",
-    "partial_other": "Redaksiyon {{count}} bulgu kurtardı, ancak motorlardan biri tamamlanmadı.",
-    "retry": "Yeniden dene"
+    "unsupported": "Redaksiyon bu belge biçiminde desteklenmiyor."
   },
   "checkpoints": {
     "showInExplorer": "Dosya Gezgini'nde göster",

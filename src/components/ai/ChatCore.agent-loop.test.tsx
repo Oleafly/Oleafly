@@ -67,6 +67,9 @@ const mocks = vi.hoisted(() => ({
   mcpAgentToolAuthorize: vi.fn(),
   mcpAgentToolCall: vi.fn(),
   toastError: vi.fn(),
+  toastErrorUnique: vi.fn(),
+  toastSuccess: vi.fn(),
+  logError: vi.fn(),
   createSkill: vi.fn(),
   refetchSkills: vi.fn(),
   skillEntries: [] as Array<Record<string, unknown>>,
@@ -144,8 +147,13 @@ vi.mock("@/lib/ai-budget", () => ({
 vi.mock("@/lib/toast", () => ({
   toast: {
     error: (...args: unknown[]) => mocks.toastError(...args),
-    success: vi.fn(),
+    errorUnique: (...args: unknown[]) => mocks.toastErrorUnique(...args),
+    success: (...args: unknown[]) => mocks.toastSuccess(...args),
   },
+}));
+
+vi.mock("@/lib/log", () => ({
+  logError: (...args: unknown[]) => mocks.logError(...args),
 }));
 
 vi.mock("@/lib/ai-context", () => ({
@@ -414,6 +422,9 @@ let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
 let useAssistantRuntimeStore: typeof import("@/store/assistant-runtime").useAssistantRuntimeStore;
+let useAgentHandoffStore: typeof import("@/store/agent-handoff").useAgentHandoffStore;
+let steerRunAlreadyEnded: typeof import("./ChatCore").steerRunAlreadyEnded;
+let APP_ERROR_PREFIX: string;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -485,7 +496,9 @@ beforeAll(async () => {
     planModeHint,
     PLAN_MODE_PLANNING_PROMPT,
     PLAN_MODE_REVISION_LINE,
+    steerRunAlreadyEnded,
   } = await import("./ChatCore"));
+  ({ APP_ERROR_PREFIX } = await import("@/lib/app-error"));
   ({ ChatPanel } = await import("./ChatPanel"));
   ({ CopilotOverlay } = await import("./CopilotOverlay"));
   ({ resetProviderConfigCache } = await import("./provider-config"));
@@ -503,6 +516,7 @@ beforeAll(async () => {
   ({ useChatGoalStore } = await import("@/store/chat-goal"));
   ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
   ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
+  ({ useAgentHandoffStore } = await import("@/store/agent-handoff"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
   // Load the lazy dialog before timing interactions with its trigger.
   await import("@/components/usage/UsageReport");
@@ -527,6 +541,7 @@ beforeEach(() => {
   mocks.agentThreadRead.mockReset().mockResolvedValue([]);
   mocks.acpOpen.mockReset().mockResolvedValue(undefined);
   useAssistantRuntimeStore.setState({ runtime: "built-in", handoffRuntime: null });
+  useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [] });
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
@@ -574,6 +589,9 @@ beforeEach(() => {
     content: [{ type: "text", text: "No papers found" }],
   });
   mocks.toastError.mockReset();
+  mocks.toastErrorUnique.mockReset();
+  mocks.toastSuccess.mockReset();
+  mocks.logError.mockReset().mockResolvedValue(undefined);
   mocks.createSkill.mockReset().mockResolvedValue(
     skillEntry({
       id: "recorded-review",
@@ -781,6 +799,28 @@ function skillEntry(
   };
 }
 
+function seedCheckpointChat() {
+  useChatsStore.setState((state) => ({
+    chats: state.chats.map((chat) =>
+      chat.id === "chat-1"
+        ? {
+            ...chat,
+            messages: [
+              { id: "edit-user", role: "user", content: "Rename the intro" },
+              {
+                id: "edit-assistant",
+                role: "assistant",
+                content: "Renamed it.",
+                checkpointOid: "checkpoint-oid",
+                toolCalls: [{ id: "t1", name: "write_file", status: "done" }],
+              },
+            ],
+          }
+        : chat,
+    ),
+  }));
+}
+
 function seedCompletedChat() {
   useChatsStore.setState((state) => ({
     chats: state.chats.map((chat) =>
@@ -852,6 +892,21 @@ describe("ChatCore agent turns", () => {
     expect(mocks.acpOpen).toHaveBeenCalledWith(useFilesStore.getState().projectId, "acp-child");
     expect(mocks.agentThreadRead).not.toHaveBeenCalled();
     expect(document.querySelector('[data-testid="session-transcript-dialog"]')).toBeNull();
+  });
+
+  it("logs a CLI child that fails to open and leaves the notice to the CLI view", async () => {
+    const failure = new Error("session gone");
+    mocks.acpOpen.mockRejectedValueOnce(failure);
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Open CLI child" }));
+
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("open agent session", failure),
+    );
+    expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
   });
 
   it("opens assistant MCP settings from the chat header chip", async () => {
@@ -1273,6 +1328,15 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(mocks.runAgentHarness).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(activeChatRun()).toBeNull());
 
+    expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
+      "ai-follow-up:chat-1",
+      "Error: backend startup failed",
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "queued follow-up",
+      expect.objectContaining({ message: "backend startup failed" }),
+    );
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toEqual([
       expect.objectContaining({
         text: "Keep this after startup failure",
@@ -2766,6 +2830,8 @@ describe("ChatCore agent turns", () => {
       expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
       expect(useAgentTodoStore.getState().todos).toEqual([]);
       expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+      expect(rendered.getByText(enAi.conversation.checkpointRestored)).toBeTruthy();
+      expect(mocks.toastSuccess).not.toHaveBeenCalled();
 
       submit(rendered, "Plan the next change");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
@@ -3453,6 +3519,38 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Committed"));
   });
 
+  it("stays quiet when the user cancels the Full access confirmation", async () => {
+    mocks.approvalsModeSet.mockRejectedValue(
+      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "approvals.full_access_declined", params: {}, detail: null })}`,
+    );
+    const rendered = await renderChat();
+    fireEvent.click(
+      rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Full access" }));
+
+    await waitFor(() => expect(mocks.approvalsModeSet).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
+      ).toBeTruthy(),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("reports an approval mode the backend could not save", async () => {
+    mocks.approvalsModeSet.mockRejectedValue(new Error("approvals db locked"));
+    const rendered = await renderChat();
+    fireEvent.click(
+      rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Full access" }));
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(enAi.toasts.approvalModeSaveFailed),
+    );
+  });
+
   it("persists a mode selected from the composer footer", async () => {
     const rendered = await renderChat();
     fireEvent.click(
@@ -3986,20 +4084,68 @@ describe("ChatCore failure notices", () => {
     );
   });
 
-  it("refuses to send while the document engine is unavailable", async () => {
+  it("keeps a send quiet while the document engine is unavailable", async () => {
     useFilesStore.setState({ engineLoaded: false });
     const rendered = await renderChat();
 
-    expect(
-      rendered.getByPlaceholderText(enAi.composer.placeholderEngineUnavailable),
-    ).toBeTruthy();
+    const composer = rendered.getByPlaceholderText(enAi.composer.placeholderEngineUnavailable);
     changeComposer("Fix the preamble");
     pressComposerKey("Enter");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(mocks.runs).toHaveLength(0);
+    expect(activeChatRun()).toBeNull();
+    expect(composer).toHaveValue("Fix the preamble");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("holds an auto-send handoff until the document engine loads", async () => {
+    const image = "data:image/png;base64,SEFORE9GRg==";
+    useFilesStore.setState({ engineLoaded: false });
+    await renderChat();
+
+    act(() => {
+      useAgentHandoffStore
+        .getState()
+        .handoff("Fix the compile errors", { autoSend: true, images: [image] });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(mocks.runs).toHaveLength(0);
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBe("Fix the compile errors");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+
+    act(() => useFilesStore.setState({ engineLoaded: true }));
+
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull();
+    expect(plainTranscript(mocks.runs[0].options.messages).at(-1)).toEqual({
+      role: "user",
+      content: "Fix the compile errors",
+    });
+    expect(mocks.runs[0].options.takePendingImages()).toEqual([image]);
+    await act(async () => finishRun(0, "Fixed"));
+  });
+
+  it("still drafts a handoff into the composer while the engine loads", async () => {
+    useFilesStore.setState({ engineLoaded: false });
+    const rendered = await renderChat();
+
+    act(() => {
+      useAgentHandoffStore.getState().handoff("Explain this error", { autoSend: false });
+    });
 
     await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.engineNotLoaded),
+      expect(
+        rendered.getByPlaceholderText(enAi.composer.placeholderEngineUnavailable),
+      ).toHaveValue("Explain this error"),
     );
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull();
     expect(mocks.runs).toHaveLength(0);
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
   it("refuses an attachment that is larger than the cap", async () => {
@@ -4012,10 +4158,49 @@ describe("ChatCore failure notices", () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
+      expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
+        "ai-attach",
         enAi.toasts.attachmentTooLarge.replace("{{name}}", "huge.pdf"),
       ),
     );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("reports every file one selection rejected in a single notice", async () => {
+    const rendered = await renderChat();
+    const input = rendered.container.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
+    const huge = new File(["x"], "huge.pdf", { type: "application/pdf" });
+    Object.defineProperty(huge, "size", { value: 20 * 1024 * 1024 });
+    const broken = new File(["y"], "broken.txt", { type: "text/plain" });
+    const notes = new File(["notes"], "notes.txt", { type: "text/plain", lastModified: 1 });
+    const readAsDataURL = FileReader.prototype.readAsDataURL;
+    const reads = vi
+      .spyOn(FileReader.prototype, "readAsDataURL")
+      .mockImplementation(function (this: FileReader, blob: Blob) {
+        if (blob !== broken) {
+          readAsDataURL.call(this, blob);
+          return;
+        }
+        setTimeout(() => this.onerror?.call(this, {} as ProgressEvent<FileReader>), 0);
+      });
+
+    try {
+      fireEvent.change(input, { target: { files: [huge, broken, notes] } });
+
+      await waitFor(() => expect(rendered.getByText("notes.txt")).toBeTruthy());
+      expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
+        "ai-attach",
+        [
+          enAi.toasts.attachmentTooLarge.replace("{{name}}", "huge.pdf"),
+          enAi.toasts.attachmentReadFailed.replace("{{name}}", "broken.txt"),
+        ].join(" "),
+      );
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(mocks.logError).toHaveBeenCalledWith("read attachment", null);
+    } finally {
+      reads.mockRestore();
+    }
   });
 
   it("reports skills that could not be loaded before the send", async () => {
@@ -4070,6 +4255,40 @@ describe("ChatCore failure notices", () => {
 });
 
 describe("ChatCore failure notices, continued", () => {
+  it("recognizes the backend answer for a run that already ended", () => {
+    expect(steerRunAlreadyEnded("no active run request-7 to steer")).toBe(true);
+    expect(steerRunAlreadyEnded(new Error("no active run request-7"))).toBe(true);
+    expect(steerRunAlreadyEnded(new Error("run gone"))).toBe(false);
+    expect(steerRunAlreadyEnded(undefined)).toBe(false);
+  });
+
+  it("stays quiet when the run already dropped its steer channel", async () => {
+    mocks.agentSteer.mockRejectedValueOnce("no active run request-1 to steer");
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    submit(rendered, "Use this next");
+
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+
+    await waitFor(() => expect(mocks.agentSteer).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(rendered.getByText("Queued for the next turn: Use this next")).toBeTruthy(),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(
+      useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.status),
+    ).toEqual(["pending"]);
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(plainTranscript(mocks.runs[1].options.messages).at(-1)).toEqual({
+      role: "user",
+      content: "Use this next",
+    });
+    await act(async () => finishRun(1, "Second response"));
+  });
+
   it("reports a steer the backend refused", async () => {
     mocks.agentSteer.mockRejectedValue(new Error("run gone"));
     const rendered = await renderChat();
@@ -4095,12 +4314,57 @@ describe("ChatCore failure notices, continued", () => {
 
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
-        enAi.toasts.skillDraftFailed.replace(
-          "{{error}}",
-          "Error: skills dir read only",
-        ),
+        enAi.toasts.skillDraftFailed.replace("{{error}}", "skills dir read only"),
       ),
     );
+  });
+
+  it("reports a failed checkpoint restore with the plain error text", async () => {
+    const originalRestoreFromGit = useFilesStore.getState().restoreFromGit;
+    const restoreFromGit = vi.fn().mockRejectedValue(new Error("index is locked"));
+    useFilesStore.setState({ restoreFromGit });
+    seedCheckpointChat();
+    try {
+      const rendered = await renderChat();
+      fireEvent.click(rendered.getByTestId("ai-restore-checkpoint"));
+
+      await waitFor(() =>
+        expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(
+          enAi.toasts.restoreFailed.replace("{{error}}", "index is locked"),
+        ),
+      );
+      expect(rendered.getByTestId("ai-restore-checkpoint")).not.toBeDisabled();
+      expect(rendered.queryByText(enAi.conversation.checkpointRestored)).toBeNull();
+      expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    } finally {
+      useFilesStore.setState({ restoreFromGit: originalRestoreFromGit });
+    }
+  });
+
+  it("leaves the chat untouched when a project switch cuts a restore short", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    const originalRestoreFromGit = useFilesStore.getState().restoreFromGit;
+    const restoreFromGit = vi.fn(async () => {
+      useFilesStore.setState({ projectId: `${projectId}-other` });
+    });
+    useFilesStore.setState({ restoreFromGit });
+    seedCheckpointChat();
+    const saveMessages = vi.spyOn(useChatsStore.getState(), "saveMessages");
+    try {
+      const rendered = await renderChat();
+      fireEvent.click(rendered.getByTestId("ai-restore-checkpoint"));
+
+      await waitFor(() => expect(restoreFromGit).toHaveBeenCalledWith(projectId, "checkpoint-oid"));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(saveMessages).not.toHaveBeenCalled();
+      expect(mocks.toastSuccess).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    } finally {
+      saveMessages.mockRestore();
+      useFilesStore.setState({ restoreFromGit: originalRestoreFromGit });
+    }
   });
 
   it("reports a project approval rule that could not be saved", async () => {

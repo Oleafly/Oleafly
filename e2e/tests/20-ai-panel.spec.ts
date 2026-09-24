@@ -10,7 +10,7 @@ test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   // The assistant is its own side panel now: it opens beside the editor
   // instead of taking over the sidebar and forcing the PDF view.
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
-  await expect(tauriPage.locator('[data-panel-id="assistant"]')).toBeVisible();
+  await expect(tauriPage.locator('[data-panel][id="assistant"]')).toBeVisible();
   await expect(tauriPage.locator(".cm-content")).toBeVisible();
   await tauriPage.getByText("Connect a provider").click();
   await expect(tauriPage.getByText("Ollama")).toBeVisible({ timeout: 10_000 });

@@ -535,7 +535,6 @@
     "showAllHistory": "Afficher tout l'historique ({{count}})"
   },
   "research": {
-    "noSourceLink": "Ce résultat ne contient pas de lien vers la source.",
     "sourceOpenFailed": "La source n'a pas pu être ouverte.",
     "noProjectPath": "Ce résultat ne contient pas de chemin de fichier du projet.",
     "resultOpenFailed": "Le fichier de résultat n'a pas pu être ouvert."
@@ -653,7 +652,6 @@
     "summarizing": "Résumé de la conversation antérieure…"
   },
   "toasts": {
-    "sessionOpenFailed": "La session de l'agent n'a pas pu être ouverte.",
     "approvalModeSaveFailed": "Impossible d'enregistrer le mode d'autorisation.",
     "skillDraftSaved": "Brouillon de compétence enregistré. Vérifiez-le avant de l'activer.",
     "skillDraftFailed": "Impossible d'enregistrer le brouillon de compétence. {{error}}",
@@ -661,11 +659,9 @@
     "chatArchiveFailed": "Impossible d'archiver cette discussion.",
     "chatForked": "Discussion dupliquée.",
     "chatForkFailed": "Impossible de dupliquer cette discussion.",
-    "engineNotLoaded": "Les détails du moteur de document ne sont pas chargés. L'édition par l'IA est désactivée par sécurité.",
     "skillsLoadFailed": "Impossible de charger les compétences activées. Réessayez.",
     "approvalModeLoadFailed": "Impossible de charger le mode d'autorisation.",
     "approvalRulesLoadFailed": "Impossible de charger les règles d'autorisation du projet.",
-    "restored": "Fichiers du projet restaurés. La conversation a été conservée.",
     "restoreFailed": "Restauration impossible : {{error}}",
     "steerFailed": "Le tour en cours n'a pas pu être réorienté.",
     "approvalRuleSaveFailed": "Impossible d'enregistrer la règle d'autorisation du projet.",

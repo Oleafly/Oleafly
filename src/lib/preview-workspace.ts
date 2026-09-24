@@ -1,10 +1,12 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCompileStore, type CompileState } from "@/store/compile";
-import { useFilesStore } from "@/store/files";
+import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
-import { notifyError } from "@/lib/toast";
+import { i18n } from "@/i18n";
+import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import type { TexFlavor } from "@/lib/tauri";
 import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
@@ -52,7 +54,8 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
   };
   const offRequest = await listen<PreviewWorkspaceCommand & { projectId?: string }>("preview:command", ({ payload }) => {
-    if (!payload || payload.projectId !== useFilesStore.getState().projectId) return;
+    const projectId = payload?.projectId;
+    if (!projectId || projectId !== useFilesStore.getState().projectId) return;
     const run = async () => {
       const compile = useCompileStore.getState();
       const files = useFilesStore.getState();
@@ -105,7 +108,14 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
         }
       }
     };
-    void run().catch((error) => notifyError("preview command", error));
+    void run().catch((error) => {
+      void logError(`preview command ${payload.action}`, error);
+      if (payload.action !== "engine") return;
+      toast.errorUnique(
+        engineSwitchToastKey(projectId),
+        i18n.t(($) => $.shell.enginePicker.switchFailed),
+      );
+    });
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {

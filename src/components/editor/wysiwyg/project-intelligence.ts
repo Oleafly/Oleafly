@@ -17,14 +17,17 @@ import type {
   ProjectUse,
 } from "@/lib/project-intelligence/types";
 import { i18n } from "@/i18n";
-import { toast } from "@/lib/toast";
-import { useIndexStore } from "@/store/project-index";
+import {
+  explainMissingAnalysis,
+  showLookupResult,
+} from "@/lib/index/nav";
 import { useReferencesStore } from "@/store/references";
 import { useSettingsStore } from "@/store/settings";
 import { setWysiwygProjectIntelligenceCurrent } from "./controller";
-import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 type VisualTokenKind = "citation" | "reference" | "ambiguous";
+
+type VisualActivation = "pointer" | "definition" | "references";
 
 interface VisualToken {
   key: string;
@@ -489,19 +492,11 @@ function showQuery(
 
 function runVisualTokenActivation(
   token: VisualToken,
-  findAllReferences: boolean,
+  activation: VisualActivation,
 ): void {
   const current = currentProjectIntelligence();
-  if (!current) {
-    const state = useIndexStore.getState().intelligenceState;
-    if (state.status === "error" || state.status === "unavailable") {
-      toast.error(
-        projectIntelligenceFailureText(state) ??
-          i18n.t(($) => $.intelligence.references.unavailable),
-      );
-    }
-    return;
-  }
+  if (!current) return;
+  const explicit = activation !== "pointer";
 
   const resolved = resolvedToken(current.snapshot, current.path, token);
   const use = resolved.useId
@@ -514,7 +509,13 @@ function runVisualTokenActivation(
   );
 
   if (definitions.length === 0) {
-    toast.info(i18n.t(($) => $.intelligence.references.noDefinition, { name: resolved.key }));
+    if (explicit) {
+      showLookupResult(
+        i18n.t(($) => $.intelligence.references.noDefinition, {
+          name: resolved.key,
+        }),
+      );
+    }
     return;
   }
   if (definitions.length > 1) {
@@ -526,7 +527,7 @@ function runVisualTokenActivation(
         i18n.t(($) => $.intelligence.references.definitionsFor, { name: resolved.key }),
       );
     } else {
-      toast.info(
+      showLookupResult(
         i18n.t(($) => $.intelligence.references.multipleDefinitions, {
           name: resolved.key,
           count: definitions.length,
@@ -538,10 +539,14 @@ function runVisualTokenActivation(
   }
 
   const definition = definitions[0];
-  if (findAllReferences) {
+  if (activation === "references") {
     const uses = referencesFor(current.snapshot, definition.id);
     if (uses.length === 0) {
-      toast.info(i18n.t(($) => $.intelligence.references.noReferences, { name: definition.name }));
+      showLookupResult(
+        i18n.t(($) => $.intelligence.references.noReferences, {
+          name: definition.name,
+        }),
+      );
       return;
     }
     showQuery(
@@ -560,19 +565,25 @@ function runVisualTokenActivation(
   });
 }
 
-function activateVisualToken(
-  token: VisualToken,
-  findAllReferences: boolean,
-): boolean {
-  runVisualTokenActivation(token, findAllReferences);
-  return true;
+function visualEditPending(view: EditorView): boolean {
+  return visualProjectIntelligenceKey.getState(view.state)?.dirty === true;
 }
 
 function visualAnalysisIsCurrent(view: EditorView): boolean {
-  return (
-    !visualProjectIntelligenceKey.getState(view.state)?.dirty &&
-    currentProjectIntelligence() !== null
-  );
+  return !visualEditPending(view) && currentProjectIntelligence() !== null;
+}
+
+function lookUpVisualToken(
+  view: EditorView,
+  token: VisualToken,
+  activation: Exclude<VisualActivation, "pointer">,
+): boolean {
+  if (!visualAnalysisIsCurrent(view)) {
+    explainMissingAnalysis(undefined, visualEditPending(view));
+    return true;
+  }
+  runVisualTokenActivation(token, activation);
+  return true;
 }
 
 function publishVisualCurrent(view: EditorView) {
@@ -610,33 +621,35 @@ export const VisualProjectIntelligence = Extension.create({
               const token = tokenFromElement(event.target);
               if (!token) return false;
               event.preventDefault();
-              if (!visualAnalysisIsCurrent(view)) return true;
-              return activateVisualToken(token, event.shiftKey);
+              if (event.detail > 1) return true;
+              if (visualAnalysisIsCurrent(view)) {
+                runVisualTokenActivation(token, event.shiftKey ? "references" : "pointer");
+              }
+              return true;
             },
             keydown(view, event) {
-              const isGoToDefinition =
-                event.key === "F12" && !event.shiftKey;
-              const isFindReferences =
-                (event.key === "F12" && event.shiftKey) ||
-                (event.key === "Enter" && event.shiftKey);
-              const isKeyboardActivation =
-                event.key === "Enter" && !event.shiftKey;
-              if (
-                !isGoToDefinition &&
-                !isFindReferences &&
-                !isKeyboardActivation
-              ) {
-                return false;
-              }
-              if (!visualAnalysisIsCurrent(view)) {
+              if (event.key === "Enter") {
+                const focused = tokenFromElement(event.target);
+                if (!focused) return false;
                 event.preventDefault();
+                if (event.repeat) return true;
+                if (event.shiftKey) return lookUpVisualToken(view, focused, "references");
+                if (visualAnalysisIsCurrent(view)) {
+                  runVisualTokenActivation(focused, "pointer");
+                }
                 return true;
               }
+              if (event.key !== "F12") return false;
               const token =
                 tokenFromElement(event.target) ?? tokenAtSelection(view);
               if (!token) return false;
               event.preventDefault();
-              return activateVisualToken(token, isFindReferences);
+              if (event.repeat) return true;
+              return lookUpVisualToken(
+                view,
+                token,
+                event.shiftKey ? "references" : "definition",
+              );
             },
           },
         },
@@ -666,13 +679,15 @@ export function refreshVisualProjectIntelligence(
 }
 
 export function goToVisualDefinition(editor: Editor): boolean {
-  if (!visualAnalysisIsCurrent(editor.view)) return true;
   const token = tokenAtSelection(editor.view);
-  return token ? activateVisualToken(token, false) : false;
+  return token
+    ? lookUpVisualToken(editor.view, token, "definition")
+    : false;
 }
 
 export function findVisualReferences(editor: Editor): boolean {
-  if (!visualAnalysisIsCurrent(editor.view)) return true;
   const token = tokenAtSelection(editor.view);
-  return token ? activateVisualToken(token, true) : false;
+  return token
+    ? lookUpVisualToken(editor.view, token, "references")
+    : false;
 }

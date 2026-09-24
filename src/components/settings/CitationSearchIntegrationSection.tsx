@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getConnectorKey, setConnectorKey } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 
 const KEY_FREE_SOURCES = ["arXiv", "Crossref", "PubMed"] as const;
@@ -36,6 +37,8 @@ export function CitationSearchIntegrationSection() {
   const [serperKey, setSerperKey] = useState("");
   const [serperConnected, setSerperConnected] = useState<boolean | null>(null);
   const [serperBusy, setSerperBusy] = useState(false);
+
+  const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -72,127 +75,138 @@ export function CitationSearchIntegrationSection() {
     };
   }, []);
 
-  const save = async () => {
-    const nextKey = apiKey.trim();
-    if (!nextKey) return;
-    setBusy(true);
+  const updateCredential = async (
+    connector: string,
+    value: string,
+    setPending: (pending: boolean) => void,
+    apply: () => void,
+    doneMessage: string,
+    failedMessage: string,
+  ) => {
+    setPending(true);
+    setAnnouncement("");
     try {
-      await setConnectorKey("semantic-scholar", nextKey);
-      setApiKey("");
-      setConnected(true);
-      toast.success(t(($) => $.settings.citations.semanticScholar.keySaved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.semanticScholar.keySaveFailed));
+      await setConnectorKey(connector, value);
+      apply();
+      setAnnouncement(doneMessage);
+    } catch (error) {
+      void logError(`citation search ${connector}`, error);
+      toast.error(failedMessage);
     } finally {
-      setBusy(false);
+      setPending(false);
     }
   };
 
-  const remove = async () => {
-    setBusy(true);
-    try {
-      await setConnectorKey("semantic-scholar", "");
-      setConnected(false);
-      toast.success(t(($) => $.settings.citations.semanticScholar.keyRemoved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.semanticScholar.keyRemoveFailed));
-    } finally {
-      setBusy(false);
-    }
+  const save = async () => {
+    const nextKey = apiKey.trim();
+    if (!nextKey) return;
+    await updateCredential(
+      "semantic-scholar",
+      nextKey,
+      setBusy,
+      () => {
+        setApiKey("");
+        setConnected(true);
+      },
+      t(($) => $.settings.citations.semanticScholar.keySaved),
+      t(($) => $.settings.citations.semanticScholar.keySaveFailed),
+    );
   };
+
+  const remove = () =>
+    updateCredential(
+      "semantic-scholar",
+      "",
+      setBusy,
+      () => setConnected(false),
+      t(($) => $.settings.citations.semanticScholar.keyRemoved),
+      t(($) => $.settings.citations.semanticScholar.keyRemoveFailed),
+    );
 
   const saveOpenAlexEmail = async () => {
     const email = openAlexEmail.trim();
     if (!email) return;
-    setOpenAlexBusy(true);
-    try {
-      await setConnectorKey("openalex-email", email);
-      setOpenAlexEmail("");
-      setOpenAlexConnected(true);
-      toast.success(t(($) => $.settings.citations.openAlex.emailSaved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.openAlex.emailSaveFailed));
-    } finally {
-      setOpenAlexBusy(false);
-    }
+    await updateCredential(
+      "openalex-email",
+      email,
+      setOpenAlexBusy,
+      () => {
+        setOpenAlexEmail("");
+        setOpenAlexConnected(true);
+      },
+      t(($) => $.settings.citations.openAlex.emailSaved),
+      t(($) => $.settings.citations.openAlex.emailSaveFailed),
+    );
   };
 
   const saveOpenAlexKey = async () => {
     const key = openAlexKey.trim();
     if (!key) return;
-    setOpenAlexKeyBusy(true);
-    try {
-      await setConnectorKey("openalex-api-key", key);
-      setOpenAlexKey("");
-      setOpenAlexKeyConnected(true);
-      toast.success(t(($) => $.settings.citations.openAlex.keySaved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.openAlex.keySaveFailed));
-    } finally {
-      setOpenAlexKeyBusy(false);
-    }
+    await updateCredential(
+      "openalex-api-key",
+      key,
+      setOpenAlexKeyBusy,
+      () => {
+        setOpenAlexKey("");
+        setOpenAlexKeyConnected(true);
+      },
+      t(($) => $.settings.citations.openAlex.keySaved),
+      t(($) => $.settings.citations.openAlex.keySaveFailed),
+    );
   };
 
-  const removeOpenAlexKey = async () => {
-    setOpenAlexKeyBusy(true);
-    try {
-      await setConnectorKey("openalex-api-key", "");
-      setOpenAlexKeyConnected(false);
-      toast.success(t(($) => $.settings.citations.openAlex.keyRemoved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.openAlex.keyRemoveFailed));
-    } finally {
-      setOpenAlexKeyBusy(false);
-    }
-  };
+  const removeOpenAlexKey = () =>
+    updateCredential(
+      "openalex-api-key",
+      "",
+      setOpenAlexKeyBusy,
+      () => setOpenAlexKeyConnected(false),
+      t(($) => $.settings.citations.openAlex.keyRemoved),
+      t(($) => $.settings.citations.openAlex.keyRemoveFailed),
+    );
 
-  const removeOpenAlexEmail = async () => {
-    setOpenAlexBusy(true);
-    try {
-      await setConnectorKey("openalex-email", "");
-      setOpenAlexConnected(false);
-      toast.success(t(($) => $.settings.citations.openAlex.emailRemoved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.openAlex.emailRemoveFailed));
-    } finally {
-      setOpenAlexBusy(false);
-    }
-  };
+  const removeOpenAlexEmail = () =>
+    updateCredential(
+      "openalex-email",
+      "",
+      setOpenAlexBusy,
+      () => setOpenAlexConnected(false),
+      t(($) => $.settings.citations.openAlex.emailRemoved),
+      t(($) => $.settings.citations.openAlex.emailRemoveFailed),
+    );
 
   const saveSerper = async () => {
     const nextKey = serperKey.trim();
     if (!nextKey) return;
-    setSerperBusy(true);
-    try {
-      await setConnectorKey("serper", nextKey);
-      setSerperKey("");
-      setSerperConnected(true);
-      toast.success(t(($) => $.settings.citations.serper.keySaved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.serper.keySaveFailed));
-    } finally {
-      setSerperBusy(false);
-    }
+    await updateCredential(
+      "serper",
+      nextKey,
+      setSerperBusy,
+      () => {
+        setSerperKey("");
+        setSerperConnected(true);
+      },
+      t(($) => $.settings.citations.serper.keySaved),
+      t(($) => $.settings.citations.serper.keySaveFailed),
+    );
   };
 
-  const removeSerper = async () => {
-    setSerperBusy(true);
-    try {
-      await setConnectorKey("serper", "");
-      setSerperConnected(false);
-      toast.success(t(($) => $.settings.citations.serper.keyRemoved));
-    } catch {
-      toast.error(t(($) => $.settings.citations.serper.keyRemoveFailed));
-    } finally {
-      setSerperBusy(false);
-    }
-  };
+  const removeSerper = () =>
+    updateCredential(
+      "serper",
+      "",
+      setSerperBusy,
+      () => setSerperConnected(false),
+      t(($) => $.settings.citations.serper.keyRemoved),
+      t(($) => $.settings.citations.serper.keyRemoveFailed),
+    );
 
   return (
     <div
       data-testid="citation-search-integration"
       className="space-y-4"
     >
+      <output className="sr-only">{announcement}</output>
       <div className="flex items-start gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-blue-500/10 text-blue-700 dark:text-blue-300">
           <LibraryBig className="size-5" />

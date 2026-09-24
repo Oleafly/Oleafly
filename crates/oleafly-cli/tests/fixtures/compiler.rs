@@ -1,5 +1,18 @@
+const IMAGE_FAILURE_MARKER: &str = "fixture-libpng-error";
+
+fn reports_an_image_failure() -> bool {
+    std::env::args_os()
+        .last()
+        .and_then(|source| std::fs::read_to_string(source).ok())
+        .is_some_and(|text| text.contains(IMAGE_FAILURE_MARKER))
+}
+
 #[cfg(fixture_failure)]
 fn main() {
+    if reports_an_image_failure() {
+        eprintln!("(ts1cmr.fd)libpng error: IHDR: CRC error");
+        std::process::exit(1);
+    }
     eprintln!("! Fixture failure");
     std::process::exit(7);
 }
@@ -41,6 +54,9 @@ fn main() {
     )
     .unwrap();
     println!("fixture-ok:{}", source.display());
+    if reports_an_image_failure() {
+        eprintln!("libpng error: IHDR: CRC error");
+    }
 }
 
 #[cfg(not(fixture_failure))]

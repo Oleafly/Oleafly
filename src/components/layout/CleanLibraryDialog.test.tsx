@@ -9,9 +9,10 @@ interface TestStore {
   runExternalProjectMutation: ReturnType<typeof vi.fn>;
   flushForQuit: ReturnType<typeof vi.fn>;
 }
-const mocks = vi.hoisted(() => ({ clean: vi.fn(), notify: vi.fn(), success: vi.fn(), mutation: vi.fn(), flush: vi.fn(), state: {} as TestStore }));
+const mocks = vi.hoisted(() => ({ clean: vi.fn(), notify: vi.fn(), success: vi.fn(), log: vi.fn(), mutation: vi.fn(), flush: vi.fn(), state: {} as TestStore }));
 vi.mock("@/lib/tauri", () => ({ cleanBibtexLibrary: mocks.clean }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notify, toast: { success: mocks.success } }));
+vi.mock("@/lib/log", () => ({ logError: mocks.log }));
 vi.mock("@/features/citation", () => ({ selectCitationBibliography: (_profile: string, _source: string, paths: string[]) => paths[0] }));
 vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "main.tex" }) }));
 vi.mock("@/store/files", () => ({ useFilesStore: Object.assign((select: (s: TestStore) => unknown) => select(mocks.state), { getState: () => mocks.state }) }));
@@ -33,7 +34,9 @@ describe("CleanLibraryDialog", () => {
     render(<CleanLibraryDialog open onClose={vi.fn()} />);
     mocks.flush.mockRejectedValueOnce(new Error("Disk full"));
     fireEvent.click(screen.getByTestId("clean-library-dry-run"));
-    await waitFor(() => expect(mocks.notify).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("alert")).toHaveTextContent("Disk full");
+    expect(mocks.log).toHaveBeenCalledExactlyOnceWith("clean library", expect.any(Error));
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
     await plan();
     expect(mocks.flush.mock.invocationCallOrder[1]).toBeLessThan(mocks.clean.mock.invocationCallOrder[0]);
@@ -73,9 +76,28 @@ describe("CleanLibraryDialog", () => {
     await plan();
     mocks.clean.mockRejectedValueOnce(new Error("The project changed after the preview."));
     fireEvent.click(screen.getByTestId("clean-library-apply"));
-    await waitFor(() => expect(mocks.notify).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("alert")).toHaveTextContent("The project changed after the preview.");
+    expect(mocks.log).toHaveBeenCalledExactlyOnceWith("clean library", expect.any(Error));
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(screen.queryByTestId("clean-library-apply")).not.toBeInTheDocument();
     expect(mocks.success).not.toHaveBeenCalled();
+  });
+  it("shows a translated backend error inline instead of the raw envelope", async () => {
+    render(<CleanLibraryDialog open onClose={vi.fn()} />);
+    mocks.clean.mockRejectedValueOnce('@oleafly/error:{"code":"project.name_empty","params":{}}');
+    fireEvent.click(screen.getByTestId("clean-library-dry-run"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Project name cannot be empty.");
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+  it("confirms an applied clean once and closes", async () => {
+    const close = vi.fn();
+    render(<CleanLibraryDialog open onClose={close} />);
+    await plan();
+    mocks.clean.mockResolvedValue({ ...preview, applied: true, projectState: { projectId: "one" } });
+    fireEvent.click(screen.getByTestId("clean-library-apply"));
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(mocks.success).toHaveBeenCalledOnce();
+    expect(mocks.notify).not.toHaveBeenCalled();
   });
   it("does not allow advisory-only plans to write files", async () => {
     mocks.clean.mockResolvedValue({ ...preview, changedFiles: [], actions: [{ kind: "advisory", key: "old", field: "missing year" }] });

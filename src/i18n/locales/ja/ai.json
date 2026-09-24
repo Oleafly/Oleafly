@@ -519,7 +519,6 @@
     "showAllHistory": "すべての履歴を表示（{{count}}）"
   },
   "research": {
-    "noSourceLink": "この結果には出典のリンクが含まれていません。",
     "sourceOpenFailed": "出典を開けませんでした。",
     "noProjectPath": "この結果にはプロジェクトのファイルパスが含まれていません。",
     "resultOpenFailed": "結果のファイルを開けませんでした。"
@@ -637,7 +636,6 @@
     "summarizing": "これまでの会話を要約しています…"
   },
   "toasts": {
-    "sessionOpenFailed": "エージェントのセッションを開けませんでした。",
     "approvalModeSaveFailed": "承認モードを保存できませんでした。",
     "skillDraftSaved": "スキルの下書きを保存しました。有効にする前に内容を確認してください。",
     "skillDraftFailed": "スキルの下書きを保存できませんでした。{{error}}",
@@ -645,11 +643,9 @@
     "chatArchiveFailed": "このチャットをアーカイブできませんでした。",
     "chatForked": "チャットをフォークしました。",
     "chatForkFailed": "このチャットをフォークできませんでした。",
-    "engineNotLoaded": "ドキュメントエンジンの情報が読み込まれていません。安全のため、AI による編集を無効にしています。",
     "skillsLoadFailed": "有効なスキルを読み込めませんでした。もう一度お試しください。",
     "approvalModeLoadFailed": "承認モードを読み込めませんでした。",
     "approvalRulesLoadFailed": "プロジェクトの承認ルールを読み込めませんでした。",
-    "restored": "プロジェクトのファイルを復元しました。会話はそのまま残っています。",
     "restoreFailed": "復元できませんでした: {{error}}",
     "steerFailed": "実行中のやり取りに指示を差し込めませんでした。",
     "approvalRuleSaveFailed": "プロジェクトの承認ルールを保存できませんでした。",

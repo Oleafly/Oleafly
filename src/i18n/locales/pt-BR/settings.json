@@ -822,7 +822,8 @@
       "deleted": "\"{{name}}\" excluído da sua biblioteca",
       "empty": "Ainda não há modelos gerados por IA. Crie um pela galeria de modelos.",
       "fallbackDescription": "Modelo gerado por IA",
-      "toggle": "Gerenciar os modelos gerados por IA"
+      "toggle": "Gerenciar os modelos gerados por IA",
+      "deleteFailed": "Não foi possível excluir \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -865,6 +866,14 @@
       "heading": "Dicionários ortográficos",
       "note": "Escolha um idioma na seção Geral para baixá-lo. Os cinco pacotes incluídos estão sempre disponíveis e não aparecem aqui.",
       "tooltip": "Cinco pacotes de idioma vêm com o Oleafly. Qualquer outro idioma é baixado sob demanda quando você o escolhe como dicionário ortográfico e fica guardado aqui, para funcionar offline depois. Remover um libera o espaço e volta para a configuração do aplicativo."
+    },
+    "errors": {
+      "fontDownloadFailed": "Não foi possível baixar a fonte.",
+      "fontsDownloadFailed": "Não foi possível baixar as fontes.",
+      "fontRemoveFailed": "Não foi possível remover a fonte.",
+      "packDownloadFailed": "Não foi possível baixar o pacote de modelos.",
+      "packsDownloadFailed": "Não foi possível baixar os pacotes de modelos.",
+      "packRemoveFailed": "Não foi possível remover o pacote de modelos."
     }
   },
   "engine": {

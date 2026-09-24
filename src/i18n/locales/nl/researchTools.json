@@ -684,7 +684,6 @@
     "copyFailed": "Oleafly kon de omgezette broncode niet kopiëren.",
     "saveFailed": "Oleafly kon het omgezette bestand niet opslaan.",
     "resultName": "Resultaat van {{title}}",
-    "projectCreated": "Project aangemaakt vanuit de conversie.",
     "projectFailed": "Oleafly kon het project niet aanmaken.",
     "cancel": "Annuleren",
     "convert": "Omzetten",
@@ -923,9 +922,8 @@
       }
     },
     "bibtexBibliography": "BibTeX-bibliografie",
-    "savedBibliography": "references.bib opgeslagen",
+    "savedBibliography": "{{name}} opgeslagen",
     "saveFailed": "Oleafly kon deze bibliografie niet opslaan.",
-    "copied": "{{label}} gekopieerd",
     "copyFailed": "Oleafly kon {{label}} niet kopiëren.",
     "fieldJournal": "Tijdschrift",
     "fieldConference": "Conferentie of proceedings",
@@ -1121,7 +1119,6 @@
     "downloadSvg": "SVG downloaden",
     "copyMathml": "MathML voor Word kopiëren",
     "copyKatexHtml": "KaTeX-HTML kopiëren",
-    "copiedSource": "LaTeX-broncode gekopieerd",
     "copiedMathml": "MathML gekopieerd (plakt in Word)",
     "copiedKatexHtml": "KaTeX-HTML gekopieerd (vereist de KaTeX-stylesheet)",
     "exportImageFailed": "Kon dit fragment niet als afbeelding exporteren",
@@ -1339,9 +1336,6 @@
     "citationCount": "{{citations}} citaties",
     "unknownAuthors": "Onbekende auteurs",
     "moreAuthors": "{{authors}} +{{more}}",
-    "toastSaved": "Citatie bewaard",
-    "toastUpdated": "Bewaarde citatie bijgewerkt",
-    "toastCopied": "BibTeX gekopieerd",
     "toastCopyFailed": "Kon BibTeX niet kopiëren.",
     "suggestion": {
       "artificialIntelligence": "Kunstmatige intelligentie",
@@ -1397,12 +1391,8 @@
     "moreAuthors": "{{authors}} +{{more}}",
     "addToBib": "Aan .bib toevoegen",
     "addToBibTooltip": "Toevoegen aan de bibliografie van het project en \\cite invoegen",
-    "openProjectTooltip": "Open een project om aan een bibliografiebestand toe te voegen",
     "citeAdded": "{{citation}} toegevoegd",
     "addFailed": "Kon de citatie niet toevoegen.",
-    "toastSaved": "Citatie bewaard",
-    "toastUpdated": "Bewaarde citatie bijgewerkt",
-    "toastCopied": "BibTeX gekopieerd",
     "toastCopyFailed": "Kon BibTeX niet kopiëren."
   }
 }

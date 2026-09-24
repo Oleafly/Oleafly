@@ -8,7 +8,11 @@ import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 
-const view = vi.hoisted(() => ({ dispatch: vi.fn(), posAtCoords: vi.fn(() => 7) }));
+const view = vi.hoisted(() => ({
+  dispatch: vi.fn(),
+  posAtCoords: vi.fn(() => 7),
+  state: { doc: { toString: () => "See \\ref{fig:plot}." } },
+}));
 
 const controller = vi.hoisted(() => ({
   getEditorView: vi.fn<() => unknown>(() => null),
@@ -20,7 +24,11 @@ const nav = vi.hoisted(() => ({
   goToDefinition: vi.fn(() => true),
   findReferences: vi.fn(() => true),
   startRename: vi.fn(() => true),
+  showLookupResult: vi.fn(),
+  explainMissingAnalysis: vi.fn(() => true),
 }));
+
+const projectIndex = vi.hoisted(() => ({ state: { index: {} as unknown } }));
 
 const inlineAi = vi.hoisted(() => ({ openInlineEdit: vi.fn() }));
 const synctex = vi.hoisted(() => ({ goToSyncTex: vi.fn() }));
@@ -51,6 +59,9 @@ vi.mock("./cm/inline-ai/openSession", () => inlineAi);
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/features/synctex", () => synctex);
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
+vi.mock("@/store/project-index", () => ({
+  useIndexStore: { getState: () => projectIndex.state },
+}));
 
 vi.mock("@/components/editor/latex-commands", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/editor/latex-commands")>();
@@ -90,6 +101,7 @@ describe("EditorContextMenu", () => {
     nav.goToDefinition.mockReturnValue(true);
     nav.findReferences.mockReturnValue(true);
     nav.startRename.mockReturnValue(true);
+    projectIndex.state = { index: {} };
   });
 
   it("offers only a disabled notice before an engine is loaded", () => {
@@ -234,27 +246,59 @@ describe("EditorContextMenu", () => {
     expect(latexCommands.insertItemize).toHaveBeenCalledOnce();
   });
 
-  it("explains when navigation finds no symbol", () => {
+  it("explains a missing symbol in the shared lookup notice", () => {
     nav.goToDefinition.mockReturnValue(false);
     nav.findReferences.mockReturnValue(false);
     nav.startRename.mockReturnValue(false);
 
     openMenu(LATEX_ENGINE, true);
     fireEvent.click(screen.getByText(toolbar.goToDefinition));
-    expect(toasts.info).toHaveBeenCalledWith(menu.noIndexedSymbol);
+    expect(nav.showLookupResult).toHaveBeenCalledWith(menu.noIndexedSymbol);
 
     openMenu(LATEX_ENGINE, true);
     fireEvent.click(screen.getByText(toolbar.findReferences));
-    expect(toasts.info).toHaveBeenCalledTimes(2);
+    expect(nav.showLookupResult).toHaveBeenCalledTimes(2);
+    expect(nav.showLookupResult).toHaveBeenLastCalledWith(menu.noIndexedSymbol);
 
     openMenu(LATEX_ENGINE, true);
     fireEvent.click(screen.getByText(toolbar.renameSymbol));
-    expect(toasts.info).toHaveBeenLastCalledWith(menu.noRenamableSymbol);
+    expect(nav.showLookupResult).toHaveBeenLastCalledWith(menu.noRenamableSymbol);
+    expect(nav.explainMissingAnalysis).not.toHaveBeenCalled();
+    expect(toasts.info).not.toHaveBeenCalled();
+    expect(toasts.error).not.toHaveBeenCalled();
+  });
+
+  it("adds nothing when navigation has already explained itself", () => {
+    openMenu(LATEX_ENGINE, true);
+    fireEvent.click(screen.getByText(toolbar.goToDefinition));
+    openMenu(LATEX_ENGINE, true);
+    fireEvent.click(screen.getByText(toolbar.findReferences));
+    openMenu(LATEX_ENGINE, true);
+    fireEvent.click(screen.getByText(toolbar.renameSymbol));
+
+    expect(nav.goToDefinition).toHaveBeenCalledWith(view);
+    expect(nav.findReferences).toHaveBeenCalledWith(view);
+    expect(nav.startRename).toHaveBeenCalledWith(view);
+    expect(nav.showLookupResult).not.toHaveBeenCalled();
+    expect(toasts.info).not.toHaveBeenCalled();
+  });
+
+  it("explains the analysis state instead of denying a rename before the index exists", () => {
+    nav.startRename.mockReturnValue(false);
+    projectIndex.state = { index: null };
+
+    openMenu(LATEX_ENGINE, true);
+    fireEvent.click(screen.getByText(toolbar.renameSymbol));
+
+    expect(nav.explainMissingAnalysis).toHaveBeenCalledWith(view.state.doc.toString());
+    expect(nav.showLookupResult).not.toHaveBeenCalled();
+    expect(toasts.info).not.toHaveBeenCalled();
   });
 
   it("stays quiet when navigation succeeds and jumps to the PDF", () => {
     openMenu(LATEX_ENGINE, true);
     fireEvent.click(screen.getByText(toolbar.goToDefinition));
+    expect(nav.showLookupResult).not.toHaveBeenCalled();
     expect(toasts.info).not.toHaveBeenCalled();
 
     openMenu(LATEX_ENGINE, true);

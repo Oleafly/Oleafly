@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   equationAtCursor,
   equationToSvgDocument,
+  equationFailureMessage,
   saveEquationAsPng,
   saveEquationAsSvg,
   svgDocumentToPngBytes,
@@ -17,7 +18,10 @@ const mocks = vi.hoisted(() => ({
   writeBytes: vi.fn(),
   reveal: vi.fn(),
   success: vi.fn(),
+  successUnique: vi.fn(),
+  error: vi.fn(),
   info: vi.fn(),
+  dismiss: vi.fn(),
   notifyError: vi.fn(),
 }));
 vi.mock("@oleafly/editor", () => ({ getEditorView: mocks.editor }));
@@ -25,10 +29,28 @@ vi.mock("@/components/editor/selection-text", () => ({ activeSelectionText: mock
 vi.mock("@/components/editor/cm/hover-math", () => ({ enclosingMathEnvironment: mocks.enclosing }));
 vi.mock("@/lib/tauri", () => ({ writeBytesFile: mocks.writeBytes, revealInDir: mocks.reveal }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
-vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: { success: mocks.success, info: mocks.info } }));
+vi.mock("@/lib/toast", () => ({
+  notifyError: mocks.notifyError,
+  toast: {
+    success: mocks.success,
+    successUnique: mocks.successUnique,
+    error: mocks.error,
+    info: mocks.info,
+    dismiss: mocks.dismiss,
+  },
+}));
+
+const SVG_FAILED = "Couldn't export this snippet as SVG";
+const PNG_FAILED = "Couldn't export this snippet as an image";
+
+let toastId = 0;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  toastId = 0;
+  mocks.success.mockImplementation(() => ++toastId);
+  mocks.successUnique.mockImplementation(() => ++toastId);
+  mocks.error.mockImplementation(() => ++toastId);
   mocks.editor.mockReturnValue({ state: { doc: { toString: () => "Document with math" }, selection: { main: { head: 7 } } } });
   mocks.selection.mockReturnValue("x^2");
   mocks.enclosing.mockReturnValue(null);
@@ -211,8 +233,12 @@ describe("saving equations", () => {
     expect(saved).toMatch(/^<svg[^>]*xmlns=/);
     expect(saved).toContain("<path");
     expect(saved.endsWith("</svg>")).toBe(true);
-    expect(mocks.success).toHaveBeenCalledWith("Equation SVG saved", expect.objectContaining({ label: "Show in folder" }), true);
-    mocks.success.mock.calls[0][1].onClick();
+    expect(mocks.successUnique).toHaveBeenCalledExactlyOnceWith(
+      expect.any(String),
+      "Equation SVG saved",
+      expect.objectContaining({ label: "Show in folder" }),
+    );
+    mocks.successUnique.mock.calls[0][2].onClick();
     await vi.waitFor(() => expect(mocks.reveal).toHaveBeenCalledWith("/exports/equation.svg"));
   });
 
@@ -225,7 +251,11 @@ describe("saving equations", () => {
     expect(browser.canvas()).toMatchObject({ width: 120, height: 30 });
     expect(mocks.pickSavePath).toHaveBeenCalledWith({ defaultPath: "equation.png", filters: [{ name: "PNG image", extensions: ["png"] }] });
     expect(mocks.writeBytes).toHaveBeenCalledExactlyOnceWith("/exports/equation.png", Buffer.from(bytes).toString("base64"));
-    expect(mocks.success).toHaveBeenCalledWith("Equation PNG saved", expect.anything(), true);
+    expect(mocks.successUnique).toHaveBeenCalledExactlyOnceWith(
+      expect.any(String),
+      "Equation PNG saved",
+      expect.anything(),
+    );
     expect(browser.revokeUrl).toHaveBeenCalledOnce();
   });
 
@@ -242,7 +272,7 @@ describe("saving equations", () => {
     mocks.pickSavePath.mockResolvedValue(null);
     await save();
     expect(mocks.writeBytes).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.successUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
     if (save === saveEquationAsPng) expect(browser.revokeUrl).toHaveBeenCalledOnce();
   });
@@ -255,9 +285,13 @@ describe("saving equations", () => {
     const error = new Error("Save dialog unavailable");
     mocks.pickSavePath.mockRejectedValue(error);
     await save();
-    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(operation, error);
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      operation,
+      error,
+      save === saveEquationAsSvg ? SVG_FAILED : PNG_FAILED,
+    );
     expect(mocks.writeBytes).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.successUnique).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -268,8 +302,12 @@ describe("saving equations", () => {
     const error = new Error("Disk is full");
     mocks.writeBytes.mockRejectedValue(error);
     await save();
-    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(operation, error);
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      operation,
+      error,
+      save === saveEquationAsSvg ? SVG_FAILED : PNG_FAILED,
+    );
+    expect(mocks.successUnique).not.toHaveBeenCalled();
     if (save === saveEquationAsPng) expect(browser.revokeUrl).toHaveBeenCalledOnce();
   });
 
@@ -279,7 +317,11 @@ describe("saving equations", () => {
   ] as const)("rejects invalid TeX before asking for a destination (%s)", async (save, operation) => {
     mocks.selection.mockReturnValue("\\begin{aligned}");
     await save();
-    expect(mocks.notifyError).toHaveBeenCalledWith(operation, expect.any(Error));
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      operation,
+      expect.objectContaining({ message: expect.stringContaining("MathJax could not render") }),
+      save === saveEquationAsSvg ? SVG_FAILED : PNG_FAILED,
+    );
     expect(mocks.pickSavePath).not.toHaveBeenCalled();
     expect(mocks.writeBytes).not.toHaveBeenCalled();
   });
@@ -287,8 +329,60 @@ describe("saving equations", () => {
   it("reports rasterization failure before showing the PNG save picker", async () => {
     const browser = rasterizer({ loadError: true });
     await saveEquationAsPng();
-    expect(mocks.notifyError).toHaveBeenCalledWith("export equation png", expect.any(Error));
+    expect(mocks.notifyError).toHaveBeenCalledWith("export equation png", expect.any(Error), PNG_FAILED);
     expect(mocks.pickSavePath).not.toHaveBeenCalled();
     expect(browser.revokeUrl).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the reason of an app error from the file write", async () => {
+    rasterizer();
+    const denied = '@oleafly/error:{"code":"project.name_conflict","params":{"name":"equation"}}';
+    mocks.writeBytes.mockRejectedValue(denied);
+    await saveEquationAsSvg();
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      "export equation svg",
+      denied,
+      "A project named equation already exists.",
+    );
+  });
+
+  it("replaces the saved notice of an earlier export instead of stacking a second one", async () => {
+    const browser = rasterizer();
+    mocks.selection.mockReturnValue("$$x^2$$");
+    await saveEquationAsSvg();
+    mocks.pickSavePath.mockResolvedValue("/exports/equation.png");
+    await saveEquationAsPng();
+
+    const [svgKey] = mocks.successUnique.mock.calls[0];
+    expect(mocks.successUnique).toHaveBeenLastCalledWith(svgKey, "Equation PNG saved", expect.anything());
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.dismiss).not.toHaveBeenCalled();
+    mocks.successUnique.mock.calls[1][2].onClick();
+    await vi.waitFor(() => expect(mocks.reveal).toHaveBeenCalledWith("/exports/equation.png"));
+    expect(browser.revokeUrl).toHaveBeenCalledOnce();
+  });
+
+  it("lets a repeated identical export merge into the notice already on screen", async () => {
+    rasterizer();
+    await saveEquationAsPng();
+    await saveEquationAsPng();
+    expect(mocks.successUnique).toHaveBeenCalledTimes(2);
+    const [firstKey] = mocks.successUnique.mock.calls[0];
+    expect(mocks.successUnique).toHaveBeenLastCalledWith(firstKey, "Equation PNG saved", expect.anything());
+    expect(mocks.dismiss).not.toHaveBeenCalled();
+  });
+});
+
+describe("equationFailureMessage", () => {
+  it("uses the catalog text for anything that is not an app error", () => {
+    expect(equationFailureMessage(new Error("the PNG could not be encoded"), "Fallback.")).toBe("Fallback.");
+    expect(equationFailureMessage("plain rejection", "Fallback.")).toBe("Fallback.");
+    expect(equationFailureMessage(undefined, "Fallback.")).toBe("Fallback.");
+  });
+
+  it("describes an app error in its own words", () => {
+    expect(
+      equationFailureMessage('@oleafly/error:{"code":"project.name_conflict","params":{"name":"x"}}', "Fallback."),
+    ).toBe("A project named x already exists.");
   });
 });

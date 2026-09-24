@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 
 vi.mock("@oleafly/preview/pdf.worker?worker&url", () => ({ default: "pdf.worker.js" }));
 vi.mock("pdfjs-dist", async () => await import("pdfjs-dist/legacy/build/pdf.mjs"));
@@ -82,5 +83,33 @@ describe("real PDF/UA-1 files from the veraPDF corpus", () => {
     ]);
     expect(pass.ua.displayDocTitle).not.toBe(fail.ua.displayDocTitle);
     expect(pass.tagged).toBe(fail.tagged);
+  });
+});
+
+async function markedUntaggedPdf(): Promise<Uint8Array> {
+  const document = await PDFDocument.create({ updateMetadata: false });
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  document.addPage([612, 792]).drawText("Marked but without a structure tree", {
+    x: 72,
+    y: 720,
+    size: 12,
+    font,
+  });
+  document.catalog.set(
+    PDFName.of("MarkInfo"),
+    document.context.obj({ Marked: true, Suspects: true }),
+  );
+  return document.save({ useObjectStreams: false });
+}
+
+describe("MarkInfo read through the real pdf.js API", () => {
+  it("reads the Marked and Suspects flags from the catalog", async () => {
+    const result = await extractForPreflight(await markedUntaggedPdf());
+
+    expect(result.struct.root).toBeNull();
+    expect(result.extraction.markInfo).toBe("ok");
+    expect(result.tagged).toBe(true);
+    expect(result.ua.suspects).toBe(true);
+    expect(verifyStructure(result.struct).map((finding) => finding.id)).toContain("pdf-suspects");
   });
 });

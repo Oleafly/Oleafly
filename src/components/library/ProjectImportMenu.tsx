@@ -229,6 +229,7 @@ export function ProjectImportMenu({
                 if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
                 event.stopPropagation();
+                if (event.repeat) return;
                 void openExternal(repository.html_url).catch((error) => {
                   notifyError("open repository", error);
                 });

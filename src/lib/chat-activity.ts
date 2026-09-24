@@ -319,6 +319,13 @@ export function safeWebUrl(value: string | undefined): string | undefined {
   }
 }
 
+export function resolveSourceUrl(target: ResearchSourceTarget): string | undefined {
+  const doi = target.doi?.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "");
+  return safeWebUrl(target.url) ?? safeWebUrl(target.sourceId) ??
+    (doi && /^10\.\d{4,9}\/\S+$/i.test(doi) ? `https://doi.org/${encodeURI(doi)}` : undefined) ??
+    (target.sourceId && /^W\d+$/.test(target.sourceId) ? `https://openalex.org/${target.sourceId}` : undefined);
+}
+
 function diagnosticMessages(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value

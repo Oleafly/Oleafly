@@ -12,6 +12,18 @@ export type CiteOleaflyOutcome =
   | { kind: "no-bibliography" }
   | { kind: "no-project" };
 
+let pendingRun: Promise<void> | null = null;
+
+async function writeBibliography(projectId: string, path: string, content: string): Promise<void> {
+  const files = useFilesStore.getState();
+  if (files.projectId === projectId && files.files[path] !== undefined) {
+    files.setContent(path, content);
+    await useFilesStore.getState().saveFile(path);
+    return;
+  }
+  await files.writeProjectFile(projectId, path, content);
+}
+
 function citationMarkup(): string {
   const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
   if (profile === "typst") return `@${OLEAFLY_CITATION_KEY}`;
@@ -39,18 +51,27 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
   const entry = oleaflyBibtex(version);
   const trimmed = content.trimEnd();
   const next = trimmed ? `${trimmed}\n\n${entry}\n` : `${entry}\n`;
-  await useFilesStore.getState().writeProjectFile(projectId, path, next);
+  await writeBibliography(projectId, path, next);
   return {
     kind: "added",
     path,
     undo: async () => {
       if (useFilesStore.getState().projectId !== projectId) return;
-      await useFilesStore.getState().writeProjectFile(projectId, path, content);
+      await writeBibliography(projectId, path, content);
     },
   };
 }
 
-export async function runCiteOleaflyAction(options: { path?: string } = {}): Promise<void> {
+export function runCiteOleaflyAction(options: { path?: string } = {}): Promise<void> {
+  if (pendingRun) return pendingRun;
+  const run = reportCiteOleafly(options).finally(() => {
+    pendingRun = null;
+  });
+  pendingRun = run;
+  return run;
+}
+
+async function reportCiteOleafly(options: { path?: string }): Promise<void> {
   try {
     const outcome = await citeOleafly(options);
     switch (outcome.kind) {

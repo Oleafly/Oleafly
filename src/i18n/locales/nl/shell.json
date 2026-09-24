@@ -62,6 +62,9 @@
     "reload": "Opnieuw laden",
     "setHomePage": "Instellen als startpagina"
   },
+  "changelog": {
+    "installed": "Je hebt deze versie"
+  },
   "citeOleafly": {
     "description": "Er is geen bibliografiebestand in dit project gevonden, dus er is niets gewijzigd. Kopieer het item hieronder naar je bibliografie, of vind het later terug bij Instellingen, Help en Over.",
     "openHelp": "Help en Over openen",
@@ -298,8 +301,6 @@
       "needed": "Dit project gebruikt functies die willekeurige externe opdrachten nodig hebben. Die blijven geblokkeerd totdat je ze toestaat.",
       "warning": "Nodig voor minted en sommige PythonTeX-documenten. LaTeX kan programma's uitvoeren met jouw gebruikersrechten, dus zet dit alleen aan voor een project dat je vertrouwt. De eigen hulpprogramma's van TeX Live, zoals EPS-conversie, werken ook zonder."
     },
-    "shellEscapeAllowed": "Externe opdrachten zijn voor dit project op deze computer toegestaan.",
-    "shellEscapeBlocked": "Willekeurige externe opdrachten zijn voor dit project geblokkeerd. De eigen hulpprogramma's van TeX Live, zoals EPS-conversie, werken nog wel.",
     "shellEscapeFailed": "Kon de toegang voor externe opdrachten niet bijwerken.",
     "switchFailed": "Kon niet van compileerengine wisselen.",
     "switched": "Dit project compileert nu met {{engine}}.",
@@ -490,7 +491,6 @@
         "title": "Cloudsynchronisatie"
       },
       "danger": {
-        "closeFailed": "Het geopende project kon niet veilig worden gesloten.",
         "confirmDeleteAllAction": "Alle projecten verwijderen",
         "confirmDeleteAllDescription": "Elk huidig project gaat naar de Prullenbak, inclusief de bestanden en de Git-geschiedenis. Je kunt projecten daarna één voor één terugzetten.",
         "confirmDeleteAllTitle_one": "Alle {{count}} project verwijderen?",
@@ -500,7 +500,8 @@
         "deleteAllDescription": "Verplaatst elk project naar de Prullenbak. Er wordt niets definitief verwijderd.",
         "deleting": "Verwijderen…",
         "moveFailed": "Kon de projecten niet naar de Prullenbak verplaatsen.",
-        "movePartial": "{{count}} projecten verplaatst, maar de bewerking kon niet worden afgerond.",
+        "movePartial_one": "{{count}} project naar de Prullenbak verplaatst. De rest is niet verplaatst.",
+        "movePartial_other": "{{count}} projecten naar de Prullenbak verplaatst. De rest is niet verplaatst.",
         "movedCount_one": "{{count}} project naar de Prullenbak verplaatst.",
         "movedCount_other": "{{count}} projecten naar de Prullenbak verplaatst.",
         "title": "Gevarenzone"
@@ -511,7 +512,8 @@
       "recycleBin": {
         "clearAll": "Alles wissen",
         "clearFailed": "Kon de Prullenbak niet legen.",
-        "clearPartial": "{{count}} projecten definitief verwijderd, maar de Prullenbak kon niet helemaal worden geleegd.",
+        "clearPartial_one": "{{count}} project definitief verwijderd. De rest staat nog in de Prullenbak.",
+        "clearPartial_other": "{{count}} projecten definitief verwijderd. De rest staat nog in de Prullenbak.",
         "clearedCount_one": "{{count}} project definitief verwijderd.",
         "clearedCount_other": "{{count}} projecten definitief verwijderd.",
         "clearing": "Legen…",
@@ -841,7 +843,6 @@
     },
     "newProjectName": "Naam van het nieuwe project",
     "projectName": "Projectnaam",
-    "projectRenamed": "Project hernoemd",
     "saveName": "Opslaan (Enter)",
     "saveNameAriaLabel": "Naam opslaan",
     "untitledProject": "project",
@@ -852,7 +853,8 @@
       "pdf": "PDF-weergave",
       "split": "Gesplitste weergave"
     },
-    "moreActions": "Meer acties"
+    "moreActions": "Meer acties",
+    "renameFailed": "Kon het project niet hernoemen."
   },
   "tour": {
     "chooseColor": "Kies je eigen kleur",
@@ -891,13 +893,16 @@
     "updateNow": "Nu bijwerken"
   },
   "updateWindow": {
+    "available": "Update beschikbaar",
     "checking": "Controleren op updates…",
     "currentVersion": "Je hebt v{{version}}",
     "error": "De update kon niet worden voltooid. Probeer het later opnieuw.",
+    "historyFailed": "Kon eerdere releaseopmerkingen niet laden.",
     "later": "Later",
     "looking": "Zoeken naar de nieuwste versie…",
     "packageInstall": "Geïnstalleerd vanuit een pakket. Download de nieuwe versie om bij te werken.",
     "ready": "Er staat een nieuwe versie klaar om te installeren.",
+    "released": "Uitgebracht {{when}}",
     "upToDate": "Je bent up-to-date",
     "upToDateGeneric": "Je gebruikt de nieuwste versie van Oleafly",
     "upToDateHeadline": "Je bent helemaal bij!",

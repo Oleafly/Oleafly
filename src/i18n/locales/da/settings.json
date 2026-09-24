@@ -817,7 +817,8 @@
       "deleted": "Slettede »{{name}}« fra dit bibliotek",
       "empty": "Der er endnu ingen AI-genererede skabeloner. Opret en fra skabelongalleriet.",
       "fallbackDescription": "AI-genereret skabelon",
-      "toggle": "Administrer AI-genererede skabeloner"
+      "toggle": "Administrer AI-genererede skabeloner",
+      "deleteFailed": "Kunne ikke slette \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Staveordbøger",
       "note": "Vælg et sprog under Generelt for at hente det. De fem medfølgende pakker er altid tilgængelige og står ikke her.",
       "tooltip": "Fem sprogpakker følger med Oleafly. Alle andre sprog hentes, når du vælger dem som din staveordbog, og gemmes her, så de virker offline bagefter. Fjerner du et, frigøres pladsen, og appens indstilling bruges i stedet."
+    },
+    "errors": {
+      "fontDownloadFailed": "Kunne ikke hente skrifttypen.",
+      "fontsDownloadFailed": "Kunne ikke hente skrifttyperne.",
+      "fontRemoveFailed": "Kunne ikke fjerne skrifttypen.",
+      "packDownloadFailed": "Kunne ikke hente skabelonpakken.",
+      "packsDownloadFailed": "Kunne ikke hente skabelonpakkerne.",
+      "packRemoveFailed": "Kunne ikke fjerne skabelonpakken."
     }
   },
   "engine": {

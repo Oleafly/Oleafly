@@ -15,7 +15,7 @@ export function codeIntel() {
         if (pos == null) return false;
         view.dispatch({ selection: { anchor: pos } });
         event.preventDefault();
-        goToDefinition(view);
+        goToDefinition(view, "pointer");
         return true;
       },
     }),

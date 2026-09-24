@@ -1,3 +1,4 @@
+import "@oleafly/preview/polyfills";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import { bitmapToPngDataUrl, rawToRgba, rgbaToPngDataUrl } from "./figure-decode";
@@ -8,7 +9,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 const MIN_FIGURE_PX = 32;
 
 /** Infer the pixel layout when pdf.js omits `kind` (e.g. decoded JPEGs). */
-// biome-ignore lint/suspicious/noExplicitAny: pdf.js image objects are untyped
 function guessKind(img: any): number {
   const len = img.data?.length ?? 0;
   const px = (img.width ?? 0) * (img.height ?? 0);
@@ -30,7 +30,6 @@ function makeFaceResolver(page: PdfPage): (id: string) => string {
     if (cached) return cached;
     let name = id;
     try {
-      // biome-ignore lint/suspicious/noExplicitAny: pdf.js font objects are untyped
       const font = page.commonObjs.has(id) ? (page.commonObjs.get(id) as any) : null;
       if (font?.name) name = String(font.name);
     } catch {
@@ -60,7 +59,6 @@ function readTextItems(content: PdfTextContent, faceOf: (id: string) => string):
 }
 
 function makeObjectResolver(page: PdfPage): (objName: string) => Promise<any> {
-  // biome-ignore lint/suspicious/noExplicitAny: pdf.js image objects are untyped
   return (objName: string): Promise<any> =>
     new Promise((resolve) => {
       try {

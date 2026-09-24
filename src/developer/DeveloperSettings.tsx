@@ -15,6 +15,7 @@ import {
   listProjects,
   recycleProject,
 } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
@@ -98,17 +99,17 @@ export function DeveloperSettings() {
     void libraryRoot().then(setRoot).catch(() => setRoot(""));
   }, []);
 
-  const closeOpenProject = async () => {
+  const closeOpenProject = async (scope: string): Promise<boolean> => {
     const store = useFilesStore.getState();
-    if (!store.projectId) return;
+    if (!store.projectId) return true;
     await store.closeProject();
-    if (useFilesStore.getState().projectId) {
-      throw new Error(i18n.t(($) => $.core.developer.closeProjectFailed));
-    }
+    if (!useFilesStore.getState().projectId) return true;
+    void logError(scope, "the open project stayed open, so the action stopped");
+    return false;
   };
 
-  const moveAllProjectsToRecycleBin = async () => {
-    await closeOpenProject();
+  const moveAllProjectsToRecycleBin = async (): Promise<number | null> => {
+    if (!(await closeOpenProject("reset development data"))) return null;
     const projects = await listProjects();
     for (const project of projects) {
       await recycleProject(project.id);
@@ -162,7 +163,10 @@ export function DeveloperSettings() {
       for (const key of Object.values(LEGACY_TOUR_KEYS)) {
         if (key) localStorage.removeItem(key);
       }
-      await closeOpenProject();
+      if (!(await closeOpenProject("replay first run"))) {
+        setBusy(false);
+        return;
+      }
       useSettingsStore.getState().setSettingsOpen(false);
       window.location.reload();
     } catch (error) {
@@ -178,7 +182,7 @@ export function DeveloperSettings() {
     setBusy(true);
     try {
       if (action === "reset-browser") {
-        await closeOpenProject();
+        if (!(await closeOpenProject("reset development data"))) return;
         for (let index = localStorage.length - 1; index >= 0; index -= 1) {
           const key = localStorage.key(index);
           if (key?.startsWith("oleafly.") || key?.startsWith("ol-")) {
@@ -190,6 +194,7 @@ export function DeveloperSettings() {
       }
 
       const removed = await moveAllProjectsToRecycleBin();
+      if (removed === null) return;
       if (action === "reset-and-seed") {
         const result = await seedSampleProjects();
         reportSeedResult(result, removed);

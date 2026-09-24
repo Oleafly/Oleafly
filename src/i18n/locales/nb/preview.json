@@ -92,7 +92,10 @@
     "settings": "Innstillinger for PDF-forhåndsvisning",
     "fullscreen": "Forhåndsvisning i fullskjerm",
     "exitFullscreen": "Avslutt fullskjerm",
-    "retryCompile": "Kompiler på nytt"
+    "retryCompile": "Kompiler på nytt",
+    "chooseEngine": "Velg motor…",
+    "installPackages_one": "Finn og installer {{name}}",
+    "installPackages_other": "Finn og installer {{count}} filer"
   },
   "stale": {
     "badge": "Utdatert",
@@ -121,7 +124,7 @@
     "imageSaved": "Bildet er lagret · {{name}}",
     "pdfSaved": "PDF-en er lagret · {{name}}",
     "showInFolder": "Vis i mappen",
-    "folderUnavailable": "Filen ble lagret, men Oleafly kunne ikke åpne mappen (ingen tilgang). Sjekk stedet du valgte i lagringsdialogen.",
+    "folderUnavailable": "Kunne ikke åpne mappen.",
     "imageFailed": "Kunne ikke laste ned bildet.",
     "imageFailedDetail": "Kunne ikke laste ned bildet: {{detail}}",
     "pdfFailed": "Kunne ikke laste ned PDF-en.",

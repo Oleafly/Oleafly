@@ -6,9 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramModel } from "@oleafly/latex";
 import type { DiagramHost } from "./host";
 
-const kit = vi.hoisted(() => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
-}));
+const kit = vi.hoisted(() => {
+  const toast = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    keys: vi.fn(),
+    successUnique: vi.fn(),
+    errorUnique: vi.fn(),
+  };
+  toast.successUnique.mockImplementation((key: string, message: string) => {
+    toast.keys(key);
+    toast.success(message);
+  });
+  toast.errorUnique.mockImplementation((key: string, message: string) => {
+    toast.keys(key);
+    toast.error(message);
+  });
+  return { toast };
+});
 
 const canvas = vi.hoisted(() => ({
   props: {} as {
@@ -226,28 +242,102 @@ describe("DiagramComposer", () => {
     expect(screen.queryByAltText("preview.alt")).not.toBeInTheDocument();
   });
 
-  it("reports a compile that produced no document, then one that threw", async () => {
+  it("shows a compile that produced no document in the preview pane, not a toast", async () => {
     const host = makeHost({
       compileIsolated: vi.fn(async () => ({ log: "! Undefined control sequence", has_pdf: false })),
+      fixWithAi: vi.fn(async () => "fixed"),
     });
     open(host);
 
     fireEvent.click(screen.getByTestId("diagram-compile"));
-    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("toast.compileFailed"));
+    await waitFor(() =>
+      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileFailed"),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("toast.compileFailed");
     expect(screen.getByText("! Undefined control sequence")).toBeInTheDocument();
+    expect(screen.getByText("composer.fixWithAi")).toBeInTheDocument();
+    expect(kit.toast.error).not.toHaveBeenCalled();
+  });
 
-    cleanup();
-    const broken = makeHost({
+  it("shows a failed compile with an empty log instead of the empty placeholder", async () => {
+    const host = makeHost({
+      compileIsolated: vi.fn(async () => ({ log: "", has_pdf: false })),
+    });
+    open(host);
+
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await waitFor(() =>
+      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileFailed"),
+    );
+    expect(screen.queryByText("preview.empty")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("preview.minimize"));
+    expect(canvas.props.showPreviewAction).toBe(true);
+    expect(kit.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("shows a compile that threw in the preview pane without offering an AI fix", async () => {
+    const host = makeHost({
       compileIsolated: vi.fn(async () => {
         throw new Error("boom");
       }),
+      fixWithAi: vi.fn(async () => "fixed"),
     });
-    open(broken);
+    open(host);
     fireEvent.click(screen.getByTestId("diagram-compile"));
 
     await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.compileError Error: boom"),
+      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileError boom"),
     );
+    expect(screen.queryByText("preview.empty")).not.toBeInTheDocument();
+    expect(screen.queryByText("composer.fixWithAi")).not.toBeInTheDocument();
+    expect(kit.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last preview and names the failure when a recompile throws", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+
+    (host.compileIsolated as ReturnType<typeof vi.fn>).mockRejectedValue(
+      "engine `x` does not support isolated compilation",
+    );
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent(
+        "toast.compileError engine `x` does not support isolated compilation",
+      ),
+    );
+    expect(screen.getByAltText("preview.alt")).toBeInTheDocument();
+    expect(kit.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("clears the failure notice once a compile succeeds", async () => {
+    const host = makeHost({
+      compileIsolated: vi.fn(async () => ({ log: "! error", has_pdf: false })),
+    });
+    open(host);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await screen.findByTestId("diagram-compile-failure");
+
+    (host.compileIsolated as ReturnType<typeof vi.fn>).mockResolvedValue({ log: "ok", has_pdf: true });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+
+    await waitFor(() => expect(screen.getByAltText("preview.alt")).toBeInTheDocument());
+    expect(screen.queryByTestId("diagram-compile-failure")).not.toBeInTheDocument();
+  });
+
+  it("shows the compile result of the forced tour preview without a toast", async () => {
+    const host = makeHost({
+      compileIsolated: vi.fn(async () => ({ log: "! error", has_pdf: false })),
+    });
+    open(host, { forcePreviewOpen: true });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileFailed"),
+    );
+    expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
   it("asks for a compile before saving or downloading", async () => {
@@ -296,6 +386,8 @@ describe("DiagramComposer", () => {
     await waitFor(() =>
       expect(kit.toast.success).toHaveBeenCalledWith("toast.savedAsProject"),
     );
+    expect(kit.toast.keys).toHaveBeenCalledTimes(2);
+    expect(kit.toast.keys.mock.calls[1][0]).toBe(kit.toast.keys.mock.calls[0][0]);
   });
 
   it("reports a failed save to a project and a failed save as a project", async () => {
@@ -313,14 +405,124 @@ describe("DiagramComposer", () => {
     await openProjectPicker();
     fireEvent.click(screen.getByText("Other paper"));
     await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFailed Error: disk full"),
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFailed disk full"),
     );
 
     await openProjectPicker();
     fireEvent.click(screen.getByText("composer.newProject"));
     await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveAsProjectFailed Error: no room"),
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveAsProjectFailed no room"),
     );
+    expect(kit.toast.success).not.toHaveBeenCalled();
+  });
+
+  it("reports a save as saved when only the refresh afterwards fails", async () => {
+    const host = makeHost({
+      refreshTree: vi.fn(async () => {
+        throw new Error("tree offline");
+      }),
+      refreshProjects: vi.fn(async () => {
+        throw new Error("list offline");
+      }),
+    });
+    open(host);
+    await compileOnce(host);
+
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("Other paper"));
+    await waitFor(() =>
+      expect(kit.toast.success).toHaveBeenCalledWith("toast.savedToProject figures/diagram.png"),
+    );
+    await waitFor(() => expect(host.refreshTree).toHaveBeenCalledOnce());
+
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("composer.newProject"));
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.savedAsProject"));
+    await waitFor(() => expect(host.refreshProjects).toHaveBeenCalledOnce());
+    expect(host.createDiagramProject).toHaveBeenCalledOnce();
+    expect(kit.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("confirms a save only after the refresh, as before", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("Other paper"));
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledOnce());
+    expect((host.refreshTree as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]).toBeLessThan(
+      kit.toast.success.mock.invocationCallOrder[0],
+    );
+
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("composer.newProject"));
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledTimes(2));
+    expect((host.refreshProjects as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]).toBeLessThan(
+      kit.toast.success.mock.invocationCallOrder[1],
+    );
+  });
+
+  it("runs one save for a double click on a save target", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+
+    await openProjectPicker();
+    const row = screen.getByText("Other paper");
+    fireEvent.click(row);
+    fireEvent.click(row);
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledOnce());
+    expect(host.writeProjectBytes).toHaveBeenCalledOnce();
+    expect(host.listFiles).toHaveBeenCalledOnce();
+
+    await openProjectPicker();
+    const newProject = screen.getByText("composer.newProject");
+    fireEvent.click(newProject);
+    fireEvent.click(newProject);
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledTimes(2));
+    expect(host.createDiagramProject).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByLabelText("composer.save"));
+    const figure = await screen.findByText("composer.saveFigure");
+    fireEvent.click(figure);
+    fireEvent.click(figure);
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledTimes(3));
+    expect(host.saveFigureToCache).toHaveBeenCalledOnce();
+  });
+
+  it("asks before overwriting only once for a double click", async () => {
+    const host = makeHost({
+      listFiles: vi.fn(async () => [{ path: "figures/diagram.png" }]),
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    open(host);
+    await compileOnce(host);
+
+    await openProjectPicker();
+    const row = screen.getByText("Other paper");
+    fireEvent.click(row);
+    fireEvent.click(row);
+
+    await waitFor(() => expect(host.writeProjectBytes).toHaveBeenCalledOnce());
+    expect(confirm).toHaveBeenCalledOnce();
+    confirm.mockRestore();
+  });
+
+  it("opens the save menu even when the project list cannot load", async () => {
+    const host = makeHost({
+      listProjectNames: vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    });
+    open(host);
+    await compileOnce(host);
+
+    await openProjectPicker();
+
+    expect(screen.getByText("composer.noOtherProjects")).toBeInTheDocument();
+    expect(screen.getByText("composer.saveFigure")).toBeInTheDocument();
+    expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
   it("says when the project list is empty", async () => {
@@ -341,6 +543,7 @@ describe("DiagramComposer", () => {
     fireEvent.click(screen.getByLabelText("composer.save"));
     fireEvent.click(await screen.findByText("composer.saveFigure"));
     await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.figureSaved"));
+    await waitFor(() => expect(screen.queryByText("composer.saveFigure")).not.toBeInTheDocument());
 
     (host.saveFigureToCache as ReturnType<typeof vi.fn>).mockResolvedValue({
       hash: "h",
@@ -354,8 +557,9 @@ describe("DiagramComposer", () => {
     fireEvent.click(screen.getByLabelText("composer.save"));
     fireEvent.click(await screen.findByText("composer.saveFigure"));
     await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFigureFailed Error: nope"),
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFigureFailed nope"),
     );
+    expect(screen.queryByText("composer.saveFigure")).not.toBeInTheDocument();
   });
 
   it("downloads the compiled figure", async () => {
@@ -369,6 +573,37 @@ describe("DiagramComposer", () => {
 
     await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.downloaded"));
     expect(host.saveBytesToDisk).toHaveBeenCalledWith("diagram", "png", "AAAA");
+  });
+
+  it("reports a download whose file could not be written", async () => {
+    const host = makeHost({
+      saveBytesToDisk: vi.fn(async () => {
+        throw "disk full";
+      }),
+    });
+    open(host);
+    await compileOnce(host);
+
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByText("composer.formatPng"));
+
+    await waitFor(() =>
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFigureFailed disk full"),
+    );
+    expect(kit.toast.success).not.toHaveBeenCalled();
+  });
+
+  it("says nothing when the download dialog is cancelled", async () => {
+    const host = makeHost({ saveBytesToDisk: vi.fn(async () => false) });
+    open(host);
+    await compileOnce(host);
+
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByText("composer.formatPng"));
+
+    await waitFor(() => expect(host.saveBytesToDisk).toHaveBeenCalledOnce());
+    expect(kit.toast.success).not.toHaveBeenCalled();
+    expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
   it("imports a drawable file, a code-only file, and reports a failure", async () => {
@@ -392,7 +627,7 @@ describe("DiagramComposer", () => {
     (host.pickTikzFile as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("cancelled"));
     fireEvent.click(screen.getByLabelText("composer.importLabel"));
     await waitFor(() =>
-      expect(kit.toast.error).toHaveBeenCalledWith("toast.importFailed Error: cancelled"),
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.importFailed cancelled"),
     );
   });
 
@@ -452,8 +687,11 @@ describe("DiagramComposer", () => {
     const fix = await screen.findByText("composer.fixWithAi");
 
     fireEvent.click(fix);
-    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.aiFixApplied"));
+    await waitFor(() => expect(host.compileIsolated).toHaveBeenCalledTimes(2));
     expect(host.fixWithAi).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("code-editor")).toHaveValue("\\draw (0,0) -- (1,1);\n");
+    expect(kit.toast.success).not.toHaveBeenCalled();
+    expect(kit.toast.error).not.toHaveBeenCalled();
   });
 
   it("reports an AI fix that returned nothing and one that threw", async () => {
@@ -469,6 +707,12 @@ describe("DiagramComposer", () => {
     (host.fixWithAi as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("no key"));
     fireEvent.click(screen.getByText("composer.fixWithAi"));
     await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("no key"));
+
+    (host.fixWithAi as ReturnType<typeof vi.fn>).mockRejectedValue("config unreadable");
+    fireEvent.click(screen.getByText("composer.fixWithAi"));
+    await waitFor(() =>
+      expect(kit.toast.error).toHaveBeenCalledWith("toast.fixFailed config unreadable"),
+    );
   });
 
   it("asks before overwriting files that already exist", async () => {

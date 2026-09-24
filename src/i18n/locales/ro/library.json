@@ -356,8 +356,6 @@
     "unsave": "Renunță la salvare",
     "save": "Salvează șablonul",
     "use": "Folosește acest șablon",
-    "savedToast": "„{{name}}” a fost salvat în biblioteca ta",
-    "removedToast": "„{{name}}” a fost eliminat din biblioteca ta",
     "saveFailed": "Șablonul nu a putut fi salvat.",
     "removeFailed": "Șablonul nu a putut fi eliminat."
   },

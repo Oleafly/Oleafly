@@ -92,7 +92,11 @@
     "settings": "Ajustes de la vista previa del PDF",
     "fullscreen": "Vista previa a pantalla completa",
     "exitFullscreen": "Salir de la pantalla completa",
-    "retryCompile": "Volver a compilar"
+    "retryCompile": "Volver a compilar",
+    "chooseEngine": "Elegir motor…",
+    "installPackages_one": "Buscar e instalar {{name}}",
+    "installPackages_many": "Buscar e instalar {{count}} archivos",
+    "installPackages_other": "Buscar e instalar {{count}} archivos"
   },
   "stale": {
     "badge": "Desactualizado",
@@ -121,7 +125,7 @@
     "imageSaved": "Imagen guardada · {{name}}",
     "pdfSaved": "PDF guardado · {{name}}",
     "showInFolder": "Mostrar en la carpeta",
-    "folderUnavailable": "El archivo se guardó, pero Oleafly no pudo abrir su carpeta (permiso denegado). Revisa la ubicación que elegiste en el diálogo de guardado.",
+    "folderUnavailable": "No se pudo abrir la carpeta.",
     "imageFailed": "No se pudo descargar la imagen.",
     "imageFailedDetail": "No se pudo descargar la imagen: {{detail}}",
     "pdfFailed": "No se pudo descargar el PDF.",

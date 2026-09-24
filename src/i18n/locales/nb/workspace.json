@@ -40,7 +40,8 @@
     "renameFailed": "Kunne ikke gi \"{{path}}\" nytt navn. Den opprinnelige stien ble stående uendret.",
     "setMain": "Bruk som hoveddokument",
     "title": "Utforsker",
-    "treeAriaLabel": "Filtreet i utforskeren"
+    "treeAriaLabel": "Filtreet i utforskeren",
+    "setMainFailed": "Kunne ikke bruke \"{{path}}\" som hoveddokument."
   },
   "explorer": {
     "resizeSections": "Endre størrelse på {{first}} og {{second}}"

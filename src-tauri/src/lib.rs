@@ -58,6 +58,7 @@ mod project_sources;
 mod protocol;
 mod quit_gate;
 mod rag;
+mod release_notes;
 mod research_lifecycle;
 mod research_mcp;
 mod research_tasks;
@@ -212,6 +213,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
+    tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
 
     // Start the MCP server on boot when the user has enabled it. Failure to
     // bind must not prevent the app from starting; Settings shows the state.
@@ -486,6 +488,7 @@ pub fn run() {
             github::gh_public_repo_stats,
             github::gh_import_repo,
             community::discord_community_stats,
+            release_notes::release_notes_page,
             ollama::ollama_list_models,
             ollama::ollama_installed,
             ollama::ollama_start,

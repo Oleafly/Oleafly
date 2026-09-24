@@ -54,18 +54,10 @@
     "present": "{{path}} har redan Oleafly-posten. Citera den med {{markup}}.",
     "undo": "Ångra"
   },
-  "compatibility": {
-    "biblatexBiber": "Det här projektet använder biblatex/Biber för bibliografin.",
-    "blockerFinding_one": "{{title}}",
-    "blockerFinding_other": "{{title}} (+{{more}} till)",
-    "chooseEngine": "Välj motor…",
-    "importNotes_one": "{{count}} importnotering: {{title}}",
-    "importNotes_other": "{{count}} importnoteringar: {{title}} (+{{more}} till)"
-  },
   "compile": {
-    "engineNotLoaded": "Kompilering är avstängd tills dokumentmotorn har lästs in.",
     "noOfflineMode": "{{engine}} har inget offlineläge för kompilering. Kompilerar som vanligt.",
-    "retry": "Kompilera igen"
+    "retry": "Kompilera igen",
+    "bundleFetchFailed": "Oleafly kunde inte ladda ner de TeX-paket som dokumentet behöver. Kontrollera anslutningen och kompilera igen."
   },
   "developer": {
     "actions": {
@@ -91,7 +83,6 @@
         "title": "Fyll på forskningskorpus"
       }
     },
-    "closeProjectFailed": "Det öppna projektet kunde inte stängas säkert.",
     "confirm": {
       "clearProjects": {
         "action": "Rensa projekt",
@@ -162,17 +153,12 @@
     "pdfFailedDetail": "Det gick inte att spara PDF:en: {{detail}}",
     "pngFailed": "Det gick inte att spara PNG-filen",
     "pngFailedDetail": "Det gick inte att spara PNG-filen: {{detail}}",
-    "revealFailed": "Filen sparades, men Oleafly kunde inte öppna dess mapp (åtkomst nekad). Kontrollera platsen du valde i spardialogen.",
+    "revealFailed": "Filen sparades, men dess mapp kunde inte öppnas.",
     "saved": "{{kind}} sparad · {{fileName}}",
     "showInFolder": "Visa i mappen"
   },
   "externalChange": {
-    "deletionRestored": "En extern borttagning krockade med osparade ändringar. Dina lokala ändringar återställdes.",
-    "localEditKept": "En extern ändring av \"{{path}}\" kom in medan du hade osparade ändringar. Din lokala ändring behölls.",
-    "persistExternalFailed": "Det gick inte att spara den senaste externa uppdateringen av \"{{path}}\".",
-    "preserveLocalFailed": "Det gick inte att bevara din lokala uppdatering av \"{{path}}\".",
-    "reloadFailed": "Projektinställningarna uppdaterades, men några ändrade filer kunde inte läsas in på nytt.",
-    "restoreLocalFailed": "Det gick inte att återställa din osparade uppdatering av \"{{path}}\"."
+    "reloadFailed": "Projektinställningarna uppdaterades, men några ändrade filer kunde inte läsas in på nytt."
   },
   "fonts": {
     "systemDefault": "Systemets standard",
@@ -180,18 +166,15 @@
   },
   "imageToLatex": {
     "failed": "Bild till LaTeX misslyckades: {{detail}}",
-    "inserted": "Infogade LaTeX från bilden",
     "transcribing": "Transkriberar bilden…"
   },
   "import": {
-    "arxivImported": "arXiv-källan är importerad. Kompilera projektet för att kontrollera resultatet.",
     "chooseOfferedProjectType": "Välj en av projekttyperna som erbjuds för den här filen.",
     "invalidArxivId": "Klistra in en länk till en arXiv-artikel eller ett id som 2301.01234.",
     "supportedDocumentTypes": "Välj en av de dokumenttyper som stöds.",
-    "conversionNotice": "Vi har konverterat ditt innehåll till LaTeX. Du kan behöva justera formateringen, särskilt för tabeller, figurer och citeringar.",
+    "conversionNotice": "Konverterat till {{format}}. Tabeller, figurer och citeringar kan behöva justeras i formateringen.",
     "figureSaved": "Sparade {{name}}",
-    "pdfProjectCreated": "Projektet är skapat från PDF. Granska innan du litar på rekonstruktionen.",
-    "pickPdfOrDocx": "Välj en .pdf- eller .docx-fil",
+    "pickPdfOrDocx": "Välj en .pdf- eller .docx-fil.",
     "texSaved": "Sparade .tex",
     "unsupportedFile": "Välj en .zip-, .docx-, .md- eller .markdown-fil.",
     "zipSaveFailed": "Det gick inte att spara ZIP-arkivet.",
@@ -318,7 +301,8 @@
     "installing_one": "Installerar {{name}}. Kompileringen startar om när den är klar.",
     "installing_other": "Installerar {{count}} paket. Kompileringen startar om när de är klara.",
     "summary_one": "Kompileringen hittade inte \"{{name}}\". Leta efter paketet som innehåller den i TeX Live.",
-    "summary_other": "Kompileringen hittade inte {{names}}. Leta efter deras paket i TeX Live."
+    "summary_other": "Kompileringen hittade inte {{names}}. Leta efter deras paket i TeX Live.",
+    "userTree": "TeX-systemträdet är skrivskyddat, så paketen hamnade i ditt personliga träd i {{path}}."
   },
   "models": {
     "chips": {
@@ -363,19 +347,16 @@
     "renamed": "Bytte namn till \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
   },
   "pandoc": {
-    "downloadFailed": "Det gick inte att ladda ner pandoc. Installera det manuellt och försök igen",
+    "downloadFailed": "Det gick inte att ladda ner pandoc. Installera det manuellt och försök igen.",
     "downloadingPercent": "Laddar ner pandoc… {{progress}} %",
     "downloadingSize": "Laddar ner pandoc… {{megabytes}} MB",
-    "installGuide": "Installationsguide",
-    "installed": "pandoc installerat"
+    "installGuide": "Installationsguide"
   },
   "project": {
     "copyFailed": "Det gick inte att kopiera \"{{path}}\".",
     "dateUnavailable": "Inte tillgängligt",
     "importFailed": "Det gick inte att importera. Se appens logg för mer information.",
-    "imported": "Projektet är importerat.",
     "openFailed": "Det gick inte att öppna projektet. Se appens logg för mer information.",
-    "restoringUnsavedFiles": "En projektuppdatering tog bort filer med osparade ändringar. Oleafly behöll dina ändringar och återställer filerna.",
     "saveBlockedClose": "Projektet förblev öppet eftersom en eller flera filer inte kunde sparas.",
     "saveBlockedDiscard": "Släng ändringarna och lämna",
     "saveBlockedMany": "{{count}} filer kunde inte sparas: {{files}}. Den första är öppen i redigeraren med sina osparade ändringar ({{reason}}). Stanna kvar för att lösa problemet, eller släng de osparade ändringarna i filerna och lämna.",
@@ -387,7 +368,8 @@
     "updatedDaysAgo_other": "Uppdaterad för {{count}} dagar sedan",
     "updatedOn": "Uppdaterad {{date}}",
     "updatedToday": "Uppdaterad i dag",
-    "updatedYesterday": "Uppdaterad i går"
+    "updatedYesterday": "Uppdaterad i går",
+    "autosaveFailed": "Det gick inte att spara dina ändringar. De finns kvar i redigeraren."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen misslyckades: {{message}}",
@@ -481,16 +463,7 @@
     "defaultTitle": "Terminal {{index}}"
   },
   "tex": {
-    "distributionGap": "Det här projektet nålades fast med {{pinned}}. Den aktiva {{local}} saknar {{count}} av dess paket, så kompileringar kan misslyckas tills den distributionen används igen.",
-    "distributionSkew": "Det här projektet nålades fast med {{pinned}} och den här datorn kompilerar med {{local}}. Resultatet kan skilja sig något.",
-    "installPinned_one": "Installera det",
-    "installPinned_other": "Installera alla {{count}}",
-    "installingPinned_one": "Installerar {{count}} fastnålat paket…",
-    "installingPinned_other": "Installerar {{count}} fastnålade paket…",
-    "pinnedPackagesFailed": "Några fastnålade paket kunde inte installeras. Se Inställningar → LaTeX-motor.",
-    "pinnedPackagesInstalled": "De fastnålade LaTeX-paketen är installerade.",
-    "pinnedPackagesMissing_one": "Det här projektet nålar fast {{count}} LaTeX-paket som inte är installerat här.",
-    "pinnedPackagesMissing_other": "Det här projektet nålar fast {{count}} LaTeX-paket som inte är installerade här."
+    "distributionGap": "Det här projektet nålades fast med {{pinned}}. Den aktiva {{local}} saknar {{count}} av dess paket, så kompileringar kan misslyckas tills den distributionen används igen."
   },
   "theme": {
     "cssForbiddenSyntax": "Egen CSS får inte använda at-regler, URL:er eller selektorer.",
@@ -539,8 +512,8 @@
       "installing": "Installerar…",
       "unpacking": "Packar upp…"
     },
-    "removeFailed": "Det gick inte att ta bort TinyTeX",
-    "removed": "TinyTeX borttaget"
+    "removeFailed": "Det gick inte att ta bort TinyTeX.",
+    "removed": "TinyTeX borttaget."
   },
   "toolActivity": {
     "labels": {
@@ -593,5 +566,9 @@
   },
   "update": {
     "projectChangedWhileSaving": "Projektet ändrades medan det sparades. Försök med uppdateringen igen."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Det gick inte att spara en kontrollpunkt. Disken är full eller så går det inte att skriva till mappen för kontrollpunkter. Frigör utrymme eller kontrollera mappens behörigheter och kompilera sedan igen.",
+    "incompleteCapture": "Det gick inte att spara de senaste kontrollpunkterna eftersom vissa projektfiler inte kunde läsas. Kontrollera deras behörigheter och kompilera sedan igen."
   }
 }

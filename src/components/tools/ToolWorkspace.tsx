@@ -1,6 +1,15 @@
-import { Children, useEffect, useState, type ReactNode } from "react";
+import { Children, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator, type GroupImperativeHandle } from "react-resizable-panels";
+import {
+  PANEL_STYLE,
+  panelLimitProps,
+  percent,
+  usePersistentPanelLayout,
+  useSeparatorHitArea,
+  useSeparatorKeyboard,
+  type PanelLimits,
+} from "@/lib/panel-layout";
 import { cn } from "@/lib/utils";
 
 function useDesktopSplit(): boolean {
@@ -31,7 +40,6 @@ export function ToolSplitView({
   className?: string;
   storageId?: string;
 }) {
-  const { t } = useTranslation(["researchTools"]);
   const panes = Children.toArray(children);
   const desktop = useDesktopSplit();
 
@@ -47,27 +55,75 @@ export function ToolSplitView({
   }
 
   return (
-    <PanelGroup
-      direction="horizontal"
-      autoSaveId={storageId}
-      data-testid="tool-split-view"
+    <ToolSplitGroup className={className} storageId={storageId} start={panes[0]} end={panes[1]} />
+  );
+}
+
+const TOOL_PANE_LIMITS: PanelLimits = { minSize: 20 };
+
+function ToolSplitGroup({
+  className,
+  storageId,
+  start,
+  end,
+}: Readonly<{
+  className?: string;
+  storageId?: string;
+  start: ReactNode;
+  end: ReactNode;
+}>) {
+  const { t } = useTranslation(["researchTools"]);
+  const groupRef = useRef<GroupImperativeHandle>(null);
+  const generatedId = useId();
+  const baseId = storageId ?? generatedId;
+  const startId = `${baseId}-start`;
+  const endId = `${baseId}-end`;
+  const panelIds = storageId ? [startId, endId] : [];
+  const { defaultLayout, onLayoutChanged } = usePersistentPanelLayout(storageId, panelIds, panelIds);
+  const hitArea = useSeparatorHitArea(0.5);
+  const limits = useMemo(
+    () => ({ [startId]: TOOL_PANE_LIMITS, [endId]: TOOL_PANE_LIMITS }),
+    [endId, startId],
+  );
+  const onSeparatorKeyDown = useSeparatorKeyboard(groupRef, limits);
+
+  return (
+    <Group
+      orientation="horizontal"
+      groupRef={groupRef}
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+      resizeTargetMinimumSize={hitArea}
       className={cn("min-h-0 min-w-0 flex-1 overflow-hidden", className)}
     >
-      <Panel id={storageId ? `${storageId}-start` : undefined} order={1} defaultSize={50} minSize={20} className="min-w-0">
-        {panes[0]}
-      </Panel>
-      <PanelResizeHandle
-        id={storageId ? `${storageId}-handle` : undefined}
-        aria-label={t(($) => $.researchTools.tools.resizePanels)}
-        data-testid="tool-split-resize-handle"
-        className="group relative flex w-2 shrink-0 cursor-col-resize items-center justify-center border-x border-border/70 bg-background transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      <Panel
+        id={startId}
+        defaultSize={percent(50)}
+        {...panelLimitProps(TOOL_PANE_LIMITS)}
+        style={PANEL_STYLE}
+        className="min-w-0"
       >
-        <span className="pointer-events-none h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-ring group-data-[resize-handle-state=drag]:bg-ring" />
-      </PanelResizeHandle>
-      <Panel id={storageId ? `${storageId}-end` : undefined} order={2} defaultSize={50} minSize={20} className="min-w-0">
-        {panes[1]}
+        {start}
       </Panel>
-    </PanelGroup>
+      <Separator
+        id={storageId ? `${storageId}-handle` : undefined}
+        disableDoubleClick
+        aria-label={t(($) => $.researchTools.tools.resizePanels)}
+        onKeyDownCapture={onSeparatorKeyDown}
+        className="group relative flex w-2 shrink-0 cursor-col-resize select-none items-center justify-center border-x border-border/70 bg-background transition-colors hover:bg-accent/50"
+      >
+        <span className="pointer-events-none h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-ring group-data-[separator=active]:bg-ring" />
+      </Separator>
+      <Panel
+        id={endId}
+        defaultSize={percent(50)}
+        {...panelLimitProps(TOOL_PANE_LIMITS)}
+        style={PANEL_STYLE}
+        className="min-w-0"
+      >
+        {end}
+      </Panel>
+    </Group>
   );
 }
 

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import type { ToolEntry } from "@/store/chats";
 import {
   projectToolEntry,
+  resolveSourceUrl,
   type ResearchArtifactPreview,
   type ResearchChatActions,
   type ResearchToolStatus,
@@ -66,7 +67,9 @@ function LiteratureResults({ view, actions }: Readonly<{ view: ResearchToolView;
   return (
     <ol className="space-y-2 py-1">
       {view.results.slice(0, 10).map((result, index) => {
-        const canOpen = Boolean(actions?.openSource && (result.id || result.url || result.doi));
+        const canOpen = Boolean(
+          actions?.openSource && resolveSourceUrl({ sourceId: result.id, url: result.url, doi: result.doi }),
+        );
         return (
           <li key={result.id ?? result.doi ?? `${result.title}:${index}`} className="min-w-0">
             <div className="flex items-start gap-2">
@@ -250,7 +253,7 @@ export function ResearchToolCard({
   const preview = full ? view.output : view.output.slice(0, PREVIEW_LIMIT);
   const truncated = view.output.length > PREVIEW_LIMIT;
   const canOpenArtifact = Boolean(actions?.openArtifact && view.artifactTarget);
-  const canOpenSource = Boolean(actions?.openSource && (view.url || view.doi));
+  const canOpenSource = Boolean(actions?.openSource && resolveSourceUrl({ url: view.url, doi: view.doi }));
   const canOpenSession = Boolean(actions?.openSession && view.threadId);
   const artifactButtonLabel = () => {
     if (view.artifactTarget?.scope !== "linked") return t(($) => $.ai.toolCard.openFile);

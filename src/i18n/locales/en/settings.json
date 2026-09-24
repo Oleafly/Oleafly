@@ -817,7 +817,8 @@
       "deleted": "Deleted \"{{name}}\" from your library",
       "empty": "No AI generated templates yet. Create one from the template gallery.",
       "fallbackDescription": "AI generated template",
-      "toggle": "Manage AI generated templates"
+      "toggle": "Manage AI generated templates",
+      "deleteFailed": "Couldn't delete \"{{name}}\"."
     },
     "fontPacks": {
       "lato": {
@@ -860,6 +861,14 @@
       "heading": "Spelling dictionaries",
       "note": "Pick a language in the General section to download it. The five included packs are always available and are not listed here.",
       "tooltip": "Five language packs are included with Oleafly. Any other language is downloaded on demand when you pick it as your spelling dictionary, and is kept here so it works offline afterwards. Removing one frees the space and falls back to the app setting."
+    },
+    "errors": {
+      "fontDownloadFailed": "Couldn't download the font.",
+      "fontsDownloadFailed": "Couldn't download the fonts.",
+      "fontRemoveFailed": "Couldn't remove the font.",
+      "packDownloadFailed": "Couldn't download the template pack.",
+      "packsDownloadFailed": "Couldn't download the template packs.",
+      "packRemoveFailed": "Couldn't remove the template pack."
     }
   },
   "engine": {

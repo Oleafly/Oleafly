@@ -1,10 +1,6 @@
 {
   "languageService": {
-    "setupMetadataInvalid": "TexLabin asennuksen metatiedot ovat virheelliset",
     "setUp": "Ota käyttöön",
-    "retry": "Yritä uudelleen",
-    "startFailed": "Projektin kielipalvelua ei voitu käynnistää.",
-    "setupDetailsUnavailable": "Kielipalvelun asennustiedot eivät ole saatavilla",
     "setupRequired": "Kielipalvelu on otettava käyttöön",
     "installTitle": "Asennetaanko {{name}} {{version}}?",
     "licenseAndSource": "Lisenssi ja lähdekoodi",
@@ -88,8 +84,6 @@
     }
   },
   "references": {
-    "unavailable": "Projektin viiteanalyysi ei ole käytettävissä.",
-    "updating": "Projektin viitteet päivittyvät.",
     "noDefinition": "Kohteelle ”{{name}}” ei löytynyt määritelmää.",
     "definitionsFor": "Kohteen {{name}} määritelmät",
     "multipleDefinitions": "Kohteella ”{{name}}” on {{count}} määritelmää. Tutki niitä avaamalla Viitteet.",

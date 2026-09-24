@@ -92,7 +92,9 @@
     "settings": "PDF 미리보기 설정",
     "fullscreen": "전체 화면 미리보기",
     "exitFullscreen": "전체 화면 종료",
-    "retryCompile": "컴파일 다시 시도"
+    "retryCompile": "컴파일 다시 시도",
+    "chooseEngine": "엔진 선택…",
+    "installPackages_other": "파일 {{count}}개 찾아서 설치"
   },
   "stale": {
     "badge": "최신 아님",
@@ -121,7 +123,7 @@
     "imageSaved": "이미지 저장됨 · {{name}}",
     "pdfSaved": "PDF 저장됨 · {{name}}",
     "showInFolder": "폴더에서 보기",
-    "folderUnavailable": "파일은 저장했지만 Oleafly가 해당 폴더를 열지 못했습니다(권한 거부). 저장 대화 상자에서 선택한 위치를 확인하세요.",
+    "folderUnavailable": "폴더를 열지 못했습니다.",
     "imageFailed": "이미지를 다운로드하지 못했습니다.",
     "imageFailedDetail": "이미지를 다운로드하지 못했습니다: {{detail}}",
     "pdfFailed": "PDF를 다운로드하지 못했습니다.",
