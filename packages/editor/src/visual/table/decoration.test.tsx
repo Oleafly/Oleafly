@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { history, undo } from "@codemirror/commands";
 import { EditorState, type Range, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
@@ -27,7 +27,7 @@ Outro text.
 
 function decorate(state: EditorState): DecorationSet {
   const ranges: Range<Decoration>[] = [];
-  syntaxTree(state).iterate({
+  (ensureSyntaxTree(state, state.doc.length, 5_000) ?? syntaxTree(state)).iterate({
     enter(ref) {
       if (ref.type.is("TabularEnvironment")) {
         ranges.push(...createTabularDecoration(ref, state));

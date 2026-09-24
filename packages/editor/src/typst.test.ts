@@ -1,4 +1,4 @@
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { classHighlighter, highlightTree } from "@lezer/highlight";
 import { describe, expect, it } from "vitest";
@@ -7,7 +7,8 @@ import { typstLanguage } from "./typst";
 function highlighted(text: string): { from: number; to: number; classes: string }[] {
   const state = EditorState.create({ doc: text, extensions: [typstLanguage()] });
   const spans: { from: number; to: number; classes: string }[] = [];
-  highlightTree(syntaxTree(state), classHighlighter, (from, to, classes) => spans.push({ from, to, classes }));
+  const tree = ensureSyntaxTree(state, state.doc.length, 5_000) ?? syntaxTree(state);
+  highlightTree(tree, classHighlighter, (from, to, classes) => spans.push({ from, to, classes }));
   return spans;
 }
 
