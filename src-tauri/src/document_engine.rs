@@ -2473,6 +2473,7 @@ async fn run_supervised_process_with_environment(
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let is_luatex = is_luatex_invocation(path, args);
+    let path_env = crate::biber_toolchain::compile_path_env_for(path, working_dir);
     let mut command = tokio::process::Command::new(path);
     command.no_console();
     command
@@ -2480,16 +2481,13 @@ async fn run_supervised_process_with_environment(
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
         // Typst/others ignore extra PATH entries that are not present or unused).
-        .env(
-            "PATH",
-            crate::biber_toolchain::compile_path_env_for(path, working_dir),
-        )
+        .env("PATH", &path_env)
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p");
-    if let Some(dir) = crate::paths::oleafly_root()
-        .ok()
-        .and_then(|root| crate::biber_toolchain::prepare_unpack_root(&root))
-    {
+    if let Some(dir) = crate::biber_toolchain::biber_for_child(path, &path_env).and_then(|biber| {
+        let root = crate::paths::oleafly_root().ok()?;
+        crate::biber_toolchain::prepare_unpack_dir(&root, &biber)
+    }) {
         command.env(crate::biber_toolchain::UNPACK_ENV, dir);
     }
     for (name, value) in &environment.variables {
@@ -3404,10 +3402,72 @@ mod tests {
             None => std::env::remove_var("OLEAFLY_DATA_DIR"),
         }
         let (log, code) = outcome.unwrap();
-        let expected = crate::biber_toolchain::unpack_root(data.path());
+        let path_env = crate::biber_toolchain::compile_path_env_for(program, data.path());
+        let expected = crate::biber_toolchain::biber_for_child(program, &path_env)
+            .and_then(|biber| crate::biber_toolchain::unpack_dir_for(data.path(), &biber));
+        assert_eq!(code, Some(0), "{log}");
+        match expected {
+            Some(expected) => {
+                assert_eq!(log.trim(), expected.display().to_string());
+                assert!(expected.starts_with(crate::biber_toolchain::unpack_root(data.path())));
+                assert!(expected.is_dir());
+                let kept = crate::biber_toolchain::bibers_for_programs(&[program.to_path_buf()]);
+                assert!(
+                    kept.iter().any(|biber| {
+                        crate::biber_toolchain::unpack_dir_for(data.path(), biber).as_ref()
+                            == Some(&expected)
+                    }),
+                    "{kept:?}"
+                );
+            }
+            None => assert_eq!(log.trim(), ""),
+        }
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn latexmk_children_unpack_for_the_biber_on_their_path() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let tools = tempfile::tempdir().unwrap();
+        let latexmk = tools.path().join("latexmk");
+        std::os::unix::fs::symlink("/bin/sh", &latexmk).unwrap();
+        let biber = tools.path().join("biber");
+        std::fs::write(&biber, b"#!/bin/sh\nexit 0\n").unwrap();
+        let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let outcome = run_supervised_process(
+            &latexmk,
+            &[
+                "-c".to_string(),
+                "printf %s \"$PAR_GLOBAL_TMPDIR\"".to_string(),
+            ],
+            data.path(),
+            None,
+            std::time::Duration::from_secs(30),
+            None,
+        )
+        .await;
+        match previous {
+            Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+        let (log, code) = outcome.unwrap();
+        let expected = crate::biber_toolchain::unpack_dir_for(data.path(), &biber).unwrap();
         assert_eq!(code, Some(0), "{log}");
         assert_eq!(log.trim(), expected.display().to_string());
         assert!(expected.is_dir());
+        assert!(
+            crate::biber_toolchain::bibers_for_programs(std::slice::from_ref(&latexmk))
+                .contains(&biber)
+        );
+        if let Some(bundled) = crate::biber_toolchain::find_tectonic_biber() {
+            assert_ne!(
+                crate::biber_toolchain::unpack_dir_for(data.path(), &bundled),
+                Some(expected)
+            );
+        }
     }
 
     #[cfg(windows)]

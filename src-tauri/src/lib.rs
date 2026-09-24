@@ -213,6 +213,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
+    tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
 
     // Start the MCP server on boot when the user has enabled it. Failure to
     // bind must not prevent the app from starting; Settings shows the state.
