@@ -23,6 +23,7 @@ import {
   PROOFREADING_RETRY_POLICY,
   ProofreadingNotifications,
 } from "./ProofreadingNotifications";
+import { fixRandomFraction } from "@/lib/test-utils";
 
 const HARPER_CRASH = "Harper crashed";
 const RETRY_EVENT = "oleafly:proofreading-retry";
@@ -67,7 +68,7 @@ describe("ProofreadingNotifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(1);
+    fixRandomFraction(1);
     useToastStore.getState().reset();
     useSettingsStore.setState({ spellcheck: true, harper: true });
   });

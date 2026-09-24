@@ -54,6 +54,7 @@ import {
   LanguageServiceStatus,
 } from "./LanguageServiceStatus";
 import { ProjectInfoContent } from "./ProjectInfo";
+import { fixRandomFraction } from "@/lib/test-utils";
 
 const SETUP_LABEL = "Set up";
 const SETUP_MESSAGE = "Language service setup required";
@@ -656,7 +657,7 @@ describe("LanguageServiceStatus", () => {
 
   it("retries an unavailable server silently with growing delays and stops when it unmounts", async () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(1);
+    fixRandomFraction(1);
     activateProject();
     const retry = vi.fn();
     const unregister = registerLanguageServiceLifecycleActions({
@@ -708,7 +709,7 @@ describe("LanguageServiceStatus", () => {
 
   it("starts the backoff over after the server recovers", async () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(1);
+    fixRandomFraction(1);
     activateProject();
     const retry = vi.fn();
     const unregister = registerLanguageServiceLifecycleActions({

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { logError } from "@/lib/log";
+import { randomFraction } from "@/lib/random";
 
 export interface LanguageServiceRuntimeModule {
   LanguageServiceRuntime: ComponentType;
@@ -34,7 +35,7 @@ export const LANGUAGE_SERVICE_RUNTIME_RETRY_POLICY: SilentRetryPolicy = {
 export function silentRetryDelay(
   attempt: number,
   policy: SilentRetryPolicy,
-  random: () => number = Math.random,
+  random: () => number = randomFraction,
 ): number {
   const ceiling = Math.min(policy.maxMs, policy.baseMs * 2 ** attempt);
   return Math.round(ceiling / 2 + random() * (ceiling / 2));

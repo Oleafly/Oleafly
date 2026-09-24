@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
+import { randomFraction } from "@/lib/random";
 
 const INSTALL_DOCS = "https://pandoc.org/installing.html";
 const PANDOC_TOAST_KEY = "pandoc-setup";
@@ -131,7 +132,7 @@ function progressLabel({ received, total }: PandocDownloadProgress): string {
 function recordFailure(): void {
   failures += 1;
   const ceiling = Math.min(SILENT_RETRY_MAX_MS, SILENT_RETRY_BASE_MS * 2 ** (failures - 1));
-  silentRetryAt = Date.now() + ceiling / 2 + Math.random() * (ceiling / 2);
+  silentRetryAt = Date.now() + ceiling / 2 + randomFraction() * (ceiling / 2);
 }
 
 function resetBackoff(): void {

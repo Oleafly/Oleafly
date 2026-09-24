@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/i18n";
+import { fixRandomFraction } from "@/lib/test-utils";
 
 type ProgressListener = (event: { payload: { received: number; total: number | null } }) => void;
 
@@ -48,7 +49,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-23T12:00:00Z"));
-  vi.spyOn(Math, "random").mockReturnValue(1);
+  fixRandomFraction(1);
   mocks.listener = null;
   mocks.hasPandoc.mockResolvedValue(false);
   mocks.downloadPandoc.mockResolvedValue(undefined);
@@ -123,7 +124,7 @@ describe("ensurePandoc", () => {
   });
 
   it("spreads background retries with jitter below the ceiling", async () => {
-    vi.mocked(Math.random).mockReturnValue(0);
+    fixRandomFraction(0);
     mocks.downloadPandoc.mockRejectedValue(new Error("offline"));
     const { ensurePandoc } = await loadPandoc();
     await ensurePandoc();

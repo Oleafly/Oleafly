@@ -57,6 +57,7 @@ import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
+import { randomFraction } from "@/lib/random";
 
 // CodeMirror's document model is LF-based on every platform. Canonicalize
 // backend text before publishing it to the shared store so Windows CRLF files
@@ -167,7 +168,7 @@ const ENGINE_RETRY_CAP_MS = 1_000;
 
 function engineRetryDelay(retry: number): number {
   const ceiling = Math.min(ENGINE_RETRY_CAP_MS, ENGINE_RETRY_BASE_MS * 2 ** retry);
-  return ceiling / 2 + Math.random() * (ceiling / 2);
+  return ceiling / 2 + randomFraction() * (ceiling / 2);
 }
 
 async function fetchProjectEngineQuietly(

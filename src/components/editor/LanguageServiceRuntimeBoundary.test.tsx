@@ -26,6 +26,7 @@ import {
   type LanguageServiceRuntimeModule,
   type SilentRetryPolicy,
 } from "./LanguageServiceRuntimeBoundary";
+import { fixRandomFraction } from "@/lib/test-utils";
 
 const RUNTIME_SCOPE = "language service runtime";
 const HARNESS_SCOPE = "harness";
@@ -148,7 +149,7 @@ function RetryHarness({
 describe("useSilentRetry", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(1);
+    fixRandomFraction(1);
   });
 
   it("backs off exponentially while the failure lasts and starts over after a recovery", async () => {
