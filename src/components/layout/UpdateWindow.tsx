@@ -4,7 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { UpdateDialog, type UpdatePhase } from "@/components/layout/UpdateDialog";
-import { openableReleaseLink } from "@/components/layout/ReleaseNotes";
+import { loadReleaseNotesRenderer, openableReleaseLink } from "@/components/layout/ReleaseNotes";
 import { findUpdate, installUpdate } from "@/lib/updater";
 import { tauriReleasePageFetcher, useReleaseHistory } from "@/lib/release-history";
 import { logError } from "@/lib/log";
@@ -40,6 +40,7 @@ export function UpdateWindow() {
 
   useEffect(() => {
     void appVersion().then(setVersion).catch(() => setVersion(""));
+    loadReleaseNotesRenderer().catch(() => undefined);
   }, []);
 
   useEffect(() => {

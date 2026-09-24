@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { UpdateDialog, type UpdateDialogProps, type UpdateHistoryView } from "./UpdateDialog";
 import { parseReleaseDate, relativeTimeLabel, splitNotesTitle } from "./ReleaseTimeline";
+import { loadReleaseNotesRenderer } from "./ReleaseNotes";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const NOW = Date.parse("2026-09-24T12:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;
 
+beforeAll(() => loadReleaseNotesRenderer());
 afterEach(cleanup);
 
 function props(overrides: Partial<UpdateDialogProps> = {}): UpdateDialogProps {

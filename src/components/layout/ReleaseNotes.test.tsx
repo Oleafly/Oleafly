@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { openableReleaseLink, ReleaseNotes } from "./ReleaseNotes";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { loadReleaseNotesRenderer, openableReleaseLink, ReleaseNotes } from "./ReleaseNotes";
 
 afterEach(cleanup);
 
@@ -16,7 +16,19 @@ describe("openableReleaseLink", () => {
   });
 });
 
+describe("ReleaseNotes before its renderer loads", () => {
+  it("shows the notes as plain text, then renders the markdown", async () => {
+    render(<ReleaseNotes source={"### Fixed\n\n- One fix."} onOpenLink={vi.fn()} />);
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.getByTestId("release-notes")).toHaveTextContent("### Fixed - One fix.");
+    expect(await screen.findByRole("heading", { level: 3, name: "Fixed" })).toBeInTheDocument();
+    expect(screen.getByText("One fix.")).toBeInTheDocument();
+  });
+});
+
 describe("ReleaseNotes", () => {
+  beforeAll(() => loadReleaseNotesRenderer());
+
   it("opens links through the handler instead of navigating the window", () => {
     const onOpenLink = vi.fn();
     render(<ReleaseNotes source="See the [notes](https://github.com/Oleafly/Oleafly)." onOpenLink={onOpenLink} />);

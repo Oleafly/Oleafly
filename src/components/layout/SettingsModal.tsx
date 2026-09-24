@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
@@ -49,7 +49,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
-import { ChangelogDialog } from "@/components/layout/ChangelogDialog";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
@@ -109,6 +108,10 @@ import {
   githubGetPublicRepoStats,
   type GitHubRepoStats,
 } from "@/lib/github";
+
+const ChangelogDialog = lazy(() =>
+  import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
 
 type Section =
   | "appearance"
@@ -1605,7 +1608,11 @@ function HelpSection() {
           </button>
         ))}
       </div>
-      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
+      {changelogOpen ? (
+        <Suspense fallback={null}>
+          <ChangelogDialog open onClose={() => setChangelogOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

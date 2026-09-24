@@ -5,7 +5,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { LeafLogo } from "@/components/layout/LeafLogo";
-import { openableReleaseLink } from "@/components/layout/ReleaseNotes";
+import { loadReleaseNotesRenderer, openableReleaseLink } from "@/components/layout/ReleaseNotes";
 import { ReleaseTimeline, VersionTag, type ReleaseHistoryView } from "@/components/layout/ReleaseTimeline";
 import { compareVersions, tauriReleasePageFetcher, useReleaseHistory } from "@/lib/release-history";
 import { appVersion } from "@/lib/tauri";
@@ -101,6 +101,7 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
   useEffect(() => {
     if (!open) return;
     let active = true;
+    loadReleaseNotesRenderer().catch(() => undefined);
     void appVersion()
       .then((value) => {
         if (active) setVersion(value);
