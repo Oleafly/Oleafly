@@ -15,6 +15,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/components/editor/wysiwyg/controller.ts": () =>
     import("@/components/editor/wysiwyg/controller"),
   "/src/features/project-import.ts": () => import("@/features/project-import"),
+  "/src/features/table-import.ts": () => import("@/features/table-import"),
   "/src/store/table-import.ts": () => import("@/store/table-import"),
   "/src/store/home-view.ts": () => import("@/store/home-view"),
   "/packages/pdf-to-latex/src/index.ts": () => import("@oleafly/pdf-to-latex"),
