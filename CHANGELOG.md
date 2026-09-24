@@ -22,9 +22,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The update window follows your accent colour and theme, drops the
   separate hero banner, and keeps everything on one scrolling page. If an
   update fails, Try again retries it from the window.
+- Notifications only appear for something you just did, and only once.
+  Work that runs on its own, such as outline and index updates, the checks
+  after you import a project, auto compile, language servers, downloads and
+  checkpoints, no longer pops up messages. A message that repeats updates in
+  place instead of stacking, and no more than four show at a time. A failed
+  autosave or checkpoint still warns you, once per project. When an
+  automatic compile fails for a reason you can fix, the preview shows the
+  fix as a button.
+- Setting up the language service is no longer a pop-up. Project info shows
+  a Set up button, and a dot on its toolbar button tells you setup is
+  waiting.
+- The offer to install a project's pinned TeX packages now appears when a
+  compile fails for lack of them, instead of every time the project opens.
 
 ### Fixed
 
+- A compile that stops on a broken image now says which image and what is
+  wrong with it, such as an empty or cut-off file or a web page saved with a
+  .pdf name, and how to fix it. Before, Tectonic could stop with only a
+  libpng error and no file name. This works in the app and in `oleaflyc`.
+- Old copies of Biber no longer pile up after an update. Each Biber version
+  unpacks into its own folder, and a copy that no Biber on your computer
+  uses any more is removed after 7 days. That cleanup runs in the
+  background when Oleafly starts, never during a compile.
 - The Windows installer carries the Oleafly icon. The downloaded
   `-setup.exe` used to show the generic installer icon in Explorer, in the
   browser download list and on the permission prompt, because the icon for
