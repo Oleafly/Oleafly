@@ -1,5 +1,11 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, waitLong } from "../helpers";
+import {
+  openProject,
+  openRailTab,
+  PANEL_SIZE_SCRIPT,
+  panelLayoutStorageKey,
+  waitLong,
+} from "../helpers";
 
 test("the workspace appearance menu sets the real theme", async ({ tauriPage }) => {
   await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
@@ -100,10 +106,6 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
 });
 
 test("Explorer sections collapse, resize, and restore as one stack", async ({ tauriPage }) => {
-  const storageKey = "react-resizable-panels:sidebar-explorer-sections-v3";
-  const previousLayout = await tauriPage.evaluate<string | null>(
-    `localStorage.getItem(${JSON.stringify(storageKey)})`,
-  );
   const sectionIds = ["source-tree", "document-outline", "project-structure"] as const;
   const panelIds = [
     "source-tree-v",
@@ -111,14 +113,23 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     "project-structure-v",
     "explorer-filler-v",
   ] as const;
+  const storageKey = panelLayoutStorageKey("sidebar-explorer-sections-v3", panelIds);
+  const storageKeys = [
+    storageKey,
+    "react-resizable-panels:sidebar-explorer-sections-v3",
+    "oleafly.panel-expand-sizes.sidebar-explorer-sections-v3",
+  ];
+  const previousStorage = await tauriPage.evaluate<(string | null)[]>(
+    `${JSON.stringify(storageKeys)}.map((key) => localStorage.getItem(key))`,
+  );
   const panelSizes = () =>
     tauriPage.evaluate<number[]>(`(() => {
       const ids = ${JSON.stringify(panelIds)};
-      return ids.map((id) => Number(document.querySelector('[data-panel-id="' + id + '"]')?.getAttribute('data-panel-size') ?? -1));
+      return ids.map((id) => ${PANEL_SIZE_SCRIPT}(id));
     })()`);
   const waitForFillerReclaimed = async () => {
     await tauriPage.waitForFunction(
-      `Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1) < 0.2`,
+      `${PANEL_SIZE_SCRIPT}("explorer-filler-v") < 0.2`,
       5_000,
     );
   };
@@ -126,9 +137,9 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     await tauriPage.waitForFunction(
       `(() => {
         const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
-        const structure = document.querySelector('[data-panel-id="project-structure-v"]')?.getBoundingClientRect();
+        const structure = document.getElementById("project-structure-v")?.getBoundingClientRect();
         const toggle = document.querySelector('[data-testid="project-structure"] button[aria-controls="project-structure-content"]');
-        const fillerSize = Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1);
+        const fillerSize = ${PANEL_SIZE_SCRIPT}("explorer-filler-v");
         return toggle?.getAttribute('aria-expanded') === 'false'
           && fillerSize < 0.2
           && !!stack
@@ -161,7 +172,9 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     // saved split, then remount the Explorer so the panel group reads them.
     await openRailTab(tauriPage, "Search Project");
     await new Promise((resolve) => setTimeout(resolve, 150));
-    await tauriPage.evaluate(`localStorage.removeItem(${JSON.stringify(storageKey)})`);
+    await tauriPage.evaluate(
+      `${JSON.stringify(storageKeys)}.forEach((key) => localStorage.removeItem(key))`,
+    );
     await openRailTab(tauriPage, "Explorer");
 
     await expect(sectionToggle("source-tree")).toContainText("Explorer");
@@ -186,7 +199,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       height: number;
     }>(`(() => {
       const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
-      const structure = document.querySelector('[data-panel-id="project-structure-v"]')?.getBoundingClientRect();
+      const structure = document.getElementById("project-structure-v")?.getBoundingClientRect();
       if (!stack || !structure) throw new Error("Explorer structure geometry is missing");
       return { bottomGap: Math.abs(stack.bottom - structure.bottom), height: structure.height };
     })()`);
@@ -313,7 +326,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     await waitForFillerReclaimed();
     const structureBottomGap = await tauriPage.evaluate<number>(`(() => {
       const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
-      const structure = document.querySelector('[data-panel-id="project-structure-v"]')?.getBoundingClientRect();
+      const structure = document.getElementById("project-structure-v")?.getBoundingClientRect();
       if (!stack || !structure) throw new Error("Explorer structure geometry is missing");
       return Math.abs(stack.bottom - structure.bottom);
     })()`);
@@ -328,8 +341,8 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
         outlineTop: number;
         outlineHeight: number;
       }>(`(() => {
-        const source = document.querySelector('[data-panel-id="source-tree-v"]')?.getBoundingClientRect();
-        const outline = document.querySelector('[data-panel-id="document-outline-v"]')?.getBoundingClientRect();
+        const source = document.getElementById("source-tree-v")?.getBoundingClientRect();
+        const outline = document.getElementById("document-outline-v")?.getBoundingClientRect();
         if (!source || !outline) throw new Error("Explorer panels are missing");
         return { sourceHeight: source.height, outlineTop: outline.top, outlineHeight: outline.height };
       })()`);
@@ -341,7 +354,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     await handle.focus();
     await tauriPage.keyboard.press("ArrowDown");
     await tauriPage.waitForFunction(
-      `Math.abs((document.querySelector('[data-panel-id="source-tree-v"]')?.getBoundingClientRect().height ?? 0) - ${JSON.stringify(beforeResize.sourceHeight)}) >= 1`,
+      `Math.abs((document.getElementById("source-tree-v")?.getBoundingClientRect().height ?? 0) - ${JSON.stringify(beforeResize.sourceHeight)}) >= 1`,
       5_000,
     );
     const afterResize = await geometry();
@@ -369,7 +382,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       `(() => {
         const ids = ${JSON.stringify(panelIds)};
         const expected = ${JSON.stringify(persistedLayout)};
-        const actual = ids.map((id) => Number(document.querySelector('[data-panel-id="' + id + '"]')?.getAttribute('data-panel-size') ?? -1));
+        const actual = ids.map((id) => ${PANEL_SIZE_SCRIPT}(id));
         return actual.every((size, index) => Math.abs(size - expected[index]) < 0.6);
       })()`,
       5_000,
@@ -397,17 +410,20 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       // If setup failed before the rail mounted, there is nothing to unmount.
     }
     await tauriPage.evaluate(`(() => {
-      const key = ${JSON.stringify(storageKey)};
-      const value = ${JSON.stringify(previousLayout)};
-      if (value === null) localStorage.removeItem(key);
-      else localStorage.setItem(key, value);
+      const keys = ${JSON.stringify(storageKeys)};
+      const values = ${JSON.stringify(previousStorage)};
+      keys.forEach((key, index) => {
+        const value = values[index];
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
       return true;
     })()`);
     expect(
-      await tauriPage.evaluate<string | null>(
-        `localStorage.getItem(${JSON.stringify(storageKey)})`,
+      await tauriPage.evaluate<(string | null)[]>(
+        `${JSON.stringify(storageKeys)}.map((key) => localStorage.getItem(key))`,
       ),
-    ).toBe(previousLayout);
+    ).toEqual(previousStorage);
   }
 });
 
@@ -422,7 +438,7 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
     )`,
   );
   await tauriPage.waitForFunction(
-    `!!document.querySelector('[data-panel-resize-handle-id="h-mid"]')`,
+    `!!document.getElementById('h-mid')`,
     10_000,
   );
   const editorWidth = () =>
@@ -434,11 +450,11 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
   // editor/preview split (h-tree is the sidebar's).
   await tauriPage.evaluate(
     `(() => {
-      const h = document.querySelector('[data-panel-resize-handle-id="h-mid"]');
+      const h = document.getElementById('h-mid');
       if (!h) throw new Error('no resize handle');
       h.focus();
       for (let i = 0; i < 5; i++) {
-        h.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        h.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
       }
       return 1;
     })()`,
@@ -451,10 +467,10 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
   expect(after).not.toBe(before);
   await tauriPage.evaluate(
     `(() => {
-      const h = document.querySelector('[data-panel-resize-handle-id="h-mid"]');
+      const h = document.getElementById('h-mid');
       h.focus();
       for (let i = 0; i < 5; i++) {
-        h.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        h.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
       }
       return 1;
     })()`,

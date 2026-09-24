@@ -1,5 +1,5 @@
 import { test, expect, reloadNativePage } from "../fixtures";
-import { createBlankProject, waitLong } from "../helpers";
+import { createBlankProject, PANEL_SIZE_SCRIPT, panelLayoutStorageKey, waitLong } from "../helpers";
 import { scriptValue } from "../script-value";
 
 async function toolbarGeometry(page: Parameters<typeof createBlankProject>[0]) {
@@ -148,22 +148,23 @@ test("detached preview shares compilation and keeps logs in its window", async (
 test("sidebar width and document split survive a new session", async ({ tauriPage: page }) => {
   await createBlankProject(page, "Pane sizes");
   await page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>{ const s=useSettingsStore.getState(); s.setViewMode('split'); s.setShowTree(true); })`);
-  await waitLong(page, `!!document.querySelector('[data-panel-resize-handle-id="h-mid"]') && !!document.querySelector('[data-panel-resize-handle-id="h-tree"]')`, 15_000);
+  await waitLong(page, `!!document.getElementById('h-mid') && !!document.getElementById('h-tree')`, 15_000);
   await page.evaluate(`(() => {
     for (const id of ['h-tree','h-mid']) {
-      const handle = document.querySelector('[data-panel-resize-handle-id="'+id+'"]');
+      const handle = document.getElementById(id);
       handle.focus();
-      for(let i=0;i<3;i++) handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+      for(let i=0;i<3;i++) handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
     }
   })()`);
-  const sizes = await page.evaluate<number[]>(`['sidebar','editor'].map(id=>Number(document.querySelector('[data-panel-id="'+id+'"]').getAttribute('data-panel-size')))`);
+  const sizes = await page.evaluate<number[]>(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`);
   const projectId = await page.evaluate<string>(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().projectId)`);
-  await expect.poll(async () => page.evaluate(`!!localStorage.getItem('react-resizable-panels:oleafly.workspace.${projectId}.document')`)).toBe(true);
+  const documentLayoutKey = panelLayoutStorageKey(`oleafly.workspace.${projectId}.document`, ["editor", "pdf"]);
+  await expect.poll(async () => page.evaluate(`!!localStorage.getItem(${JSON.stringify(documentLayoutKey)})`)).toBe(true);
   await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().closeProject())`);
   await waitLong(page, `!!document.querySelector('[data-testid="library"]')`, 15_000);
   await reloadNativePage(page);
   await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${scriptValue(projectId)}))`);
-  await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>Number(document.querySelector('[data-panel-id="'+id+'"]')?.getAttribute('data-panel-size') ?? -1))`)).toEqual(sizes);
+  await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`)).toEqual(sizes);
 });
 
 test("grouped layouts open the assistant and its sidebar button hides it", async ({ tauriPage: page }) => {

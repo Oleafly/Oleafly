@@ -3,17 +3,20 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type KeyboardEventHandler,
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  PanelGroup,
+  Group,
   Panel,
-  PanelResizeHandle,
-  type ImperativePanelGroupHandle,
-  type ImperativePanelHandle,
+  Separator,
+  type GroupImperativeHandle,
+  type Layout,
+  type PanelImperativeHandle,
 } from "react-resizable-panels";
 import { FileText, Loader2, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -27,6 +30,18 @@ import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Input } from "@/components/ui/input";
+import {
+  PANEL_STYLE,
+  collapsePanel,
+  expandPanel,
+  panelLimitProps,
+  percent,
+  useCollapseTransitions,
+  usePersistentPanelLayout,
+  useSeparatorHitArea,
+  useSeparatorKeyboard,
+  type PanelLimits,
+} from "@/lib/panel-layout";
 
 const DocumentOutline = lazy(() =>
   import("@/components/layout/DocumentOutline").then((module) => ({
@@ -39,6 +54,13 @@ const ProjectStructure = lazy(() =>
     default: module.Outline,
   })),
 );
+
+const EXPLORER_GROUP_ID = "sidebar-explorer-sections-v3";
+const SOURCE_PANEL = "source-tree-v";
+const OUTLINE_PANEL = "document-outline-v";
+const STRUCTURE_PANEL = "project-structure-v";
+const FILLER_PANEL = "explorer-filler-v";
+const EXPLORER_PANELS = [SOURCE_PANEL, OUTLINE_PANEL, STRUCTURE_PANEL, FILLER_PANEL];
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -157,11 +179,11 @@ export function FilesPanel() {
   const [sourceCollapsed, setSourceCollapsed] = useState(false);
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
   const [structureCollapsed, setStructureCollapsed] = useState(true);
-  const sourcePanelRef = useRef<ImperativePanelHandle>(null);
-  const outlinePanelRef = useRef<ImperativePanelHandle>(null);
-  const structurePanelRef = useRef<ImperativePanelHandle>(null);
-  const fillerPanelRef = useRef<ImperativePanelHandle>(null);
-  const explorerGroupRef = useRef<ImperativePanelGroupHandle>(null);
+  const sourcePanelRef = useRef<PanelImperativeHandle>(null);
+  const outlinePanelRef = useRef<PanelImperativeHandle>(null);
+  const structurePanelRef = useRef<PanelImperativeHandle>(null);
+  const fillerPanelRef = useRef<PanelImperativeHandle>(null);
+  const explorerGroupRef = useRef<GroupImperativeHandle>(null);
   const fillerResetTimer = useRef<number | null>(null);
   const stackRef = useRef<HTMLDivElement>(null);
   const [collapsedSize, setCollapsedSize] = useState(6);
@@ -169,16 +191,27 @@ export function FilesPanel() {
   const sourceTitle = t(($) => $.workspace.files.title);
   const outlineTitle = t(($) => $.workspace.outline.title);
   const structureTitle = t(($) => $.workspace.structure.title);
+  const { defaultLayout, onLayoutChanged } = usePersistentPanelLayout(
+    EXPLORER_GROUP_ID,
+    EXPLORER_PANELS,
+    EXPLORER_PANELS,
+  );
+  const trackCollapse = useCollapseTransitions();
+  const hitArea = useSeparatorHitArea(0.625);
 
   const reclaimCurrentExplorerFiller = useCallback(() => {
     if (!stackRef.current?.isConnected) return;
     const panelGroup = explorerGroupRef.current;
     if (!panelGroup) return;
-    const nextLayout = reclaimExplorerFillerLayout(
-      panelGroup.getLayout(),
-      collapsedSizeRef.current,
-    );
-    if (nextLayout) panelGroup.setLayout(nextLayout);
+    const layout = panelGroup.getLayout();
+    const sizes = EXPLORER_PANELS.map((id) => layout[id]);
+    if (!sizes.every((size): size is number => size !== undefined)) return;
+    const nextLayout = reclaimExplorerFillerLayout(sizes, collapsedSizeRef.current);
+    if (nextLayout) {
+      panelGroup.setLayout(
+        Object.fromEntries(EXPLORER_PANELS.map((id, index) => [id, nextLayout[index] ?? 0])),
+      );
+    }
   }, []);
 
   const scheduleFillerReclaim = useCallback(() => {
@@ -233,63 +266,97 @@ export function FilesPanel() {
   ]);
 
   const minExpandedSize = Math.max(16, Math.min(32, collapsedSize + 4));
+  const explorerLimits = useMemo(() => {
+    const section: PanelLimits = {
+      minSize: minExpandedSize,
+      collapsible: true,
+      collapsedSize,
+    };
+    return {
+      [SOURCE_PANEL]: section,
+      [OUTLINE_PANEL]: section,
+      [STRUCTURE_PANEL]: section,
+      [FILLER_PANEL]: { minSize: 0 },
+    } satisfies Record<string, PanelLimits>;
+  }, [collapsedSize, minExpandedSize]);
+  const onSeparatorKeyDown = useSeparatorKeyboard(explorerGroupRef, explorerLimits);
   const resizeLabel = (first: string, second: string) =>
     t(($) => $.workspace.explorer.resizeSections, { first, second });
 
-  const keepVisibleStackAtBottom = (layout: number[]) => {
-    if ((layout[3] ?? 0) < 0.1) return;
+  const keepVisibleStackAtBottom = (layout: Layout) => {
+    if ((layout[FILLER_PANEL] ?? 0) < 0.1) return;
     // The filler exists only so all three sections can be reduced to header
     // height at once. As soon as any section is open, atomically give that
     // spare space to an already-open section so collapsed panels stay closed.
     scheduleFillerReclaim();
   };
 
+  const onExplorerLayoutChange = (layout: Layout) => {
+    trackCollapse(layout, {
+      [SOURCE_PANEL]: {
+        collapsedSize,
+        onCollapse: () => setSourceCollapsed(true),
+        onExpand: () => setSourceCollapsed(false),
+      },
+      [OUTLINE_PANEL]: {
+        collapsedSize,
+        onCollapse: () => setOutlineCollapsed(true),
+        onExpand: () => setOutlineCollapsed(false),
+      },
+      [STRUCTURE_PANEL]: {
+        collapsedSize,
+        onCollapse: () => setStructureCollapsed(true),
+        onExpand: () => setStructureCollapsed(false),
+      },
+    });
+    keepVisibleStackAtBottom(layout);
+  };
+
   const changeCollapsed = (
     next: boolean,
-    panelRef: RefObject<ImperativePanelHandle | null>,
+    panelId: string,
+    panelRef: RefObject<PanelImperativeHandle | null>,
     setCollapsed: (collapsed: boolean) => void,
-    followingPanelRefs: readonly RefObject<ImperativePanelHandle | null>[],
+    followingPanelRefs: readonly RefObject<PanelImperativeHandle | null>[],
   ) => {
     setCollapsed(next);
     const panel = panelRef.current;
     if (!panel) return;
-    if (next && panel.isExpanded()) panel.collapse();
+    if (next) collapsePanel(EXPLORER_GROUP_ID, panelId, panel);
     if (!next && panel.isCollapsed()) {
       const reserve = fillerPanelRef.current;
       const canGrowForward = followingPanelRefs.some(
-        (ref) => ref.current?.isExpanded() === true,
+        (ref) => ref.current?.isCollapsed() === false,
       );
-      if (!canGrowForward && reserve && reserve.getSize() < minExpandedSize) {
-        reserve.resize(minExpandedSize);
+      if (!canGrowForward && reserve && reserve.getSize().asPercentage < minExpandedSize) {
+        reserve.resize(percent(minExpandedSize));
       }
-      panel.expand();
+      expandPanel(EXPLORER_GROUP_ID, panelId, panel, minExpandedSize);
     }
   };
 
   return (
     <div ref={stackRef} data-testid="explorer-stack" className="h-full min-h-0">
-        <PanelGroup
-          ref={explorerGroupRef}
-          direction="vertical"
-          autoSaveId="sidebar-explorer-sections-v3"
-          onLayout={keepVisibleStackAtBottom}
-          className="h-full min-h-0"
-        >
+      <Group
+        groupRef={explorerGroupRef}
+        orientation="vertical"
+        defaultLayout={defaultLayout}
+        onLayoutChange={onExplorerLayoutChange}
+        onLayoutChanged={onLayoutChanged}
+        resizeTargetMinimumSize={hitArea}
+        className="h-full min-h-0"
+      >
         <Panel
-          ref={sourcePanelRef}
-          id="source-tree-v"
-          order={1}
-          defaultSize={(100 - collapsedSize) / 2}
-          minSize={minExpandedSize}
-          collapsible
-          collapsedSize={collapsedSize}
-          onCollapse={() => setSourceCollapsed(true)}
-          onExpand={() => setSourceCollapsed(false)}
+          panelRef={sourcePanelRef}
+          id={SOURCE_PANEL}
+          defaultSize={percent((100 - collapsedSize) / 2)}
+          {...panelLimitProps(explorerLimits[SOURCE_PANEL])}
+          style={PANEL_STYLE}
         >
           <FileTree
             collapsed={sourceCollapsed}
             onCollapsedChange={(next) =>
-              changeCollapsed(next, sourcePanelRef, setSourceCollapsed, [
+              changeCollapsed(next, SOURCE_PANEL, sourcePanelRef, setSourceCollapsed, [
                 outlinePanelRef,
                 structurePanelRef,
               ])
@@ -299,23 +366,20 @@ export function FilesPanel() {
         <SidebarSectionHandle
           id="source-outline-resize"
           ariaLabel={resizeLabel(sourceTitle, outlineTitle)}
+          onKeyDownCapture={onSeparatorKeyDown}
         />
         <Panel
-          ref={outlinePanelRef}
-          id="document-outline-v"
-          order={2}
-          defaultSize={(100 - collapsedSize) / 2}
-          minSize={minExpandedSize}
-          collapsible
-          collapsedSize={collapsedSize}
-          onCollapse={() => setOutlineCollapsed(true)}
-          onExpand={() => setOutlineCollapsed(false)}
+          panelRef={outlinePanelRef}
+          id={OUTLINE_PANEL}
+          defaultSize={percent((100 - collapsedSize) / 2)}
+          {...panelLimitProps(explorerLimits[OUTLINE_PANEL])}
+          style={PANEL_STYLE}
         >
           <Suspense fallback={<SidebarPanelFallback />}>
             <DocumentOutline
               collapsed={outlineCollapsed}
               onCollapsedChange={(next) =>
-                changeCollapsed(next, outlinePanelRef, setOutlineCollapsed, [
+                changeCollapsed(next, OUTLINE_PANEL, outlinePanelRef, setOutlineCollapsed, [
                   structurePanelRef,
                 ])
               }
@@ -325,46 +389,43 @@ export function FilesPanel() {
         <SidebarSectionHandle
           id="outline-structure-resize"
           ariaLabel={resizeLabel(outlineTitle, structureTitle)}
+          onKeyDownCapture={onSeparatorKeyDown}
         />
         <Panel
-          ref={structurePanelRef}
-          id="project-structure-v"
-          order={3}
-          defaultSize={collapsedSize}
-          minSize={minExpandedSize}
-          collapsible
-          collapsedSize={collapsedSize}
-          onCollapse={() => setStructureCollapsed(true)}
-          onExpand={() => setStructureCollapsed(false)}
+          panelRef={structurePanelRef}
+          id={STRUCTURE_PANEL}
+          defaultSize={percent(collapsedSize)}
+          {...panelLimitProps(explorerLimits[STRUCTURE_PANEL])}
+          style={PANEL_STYLE}
         >
           <Suspense fallback={<SidebarPanelFallback />}>
             <ProjectStructure
               collapsed={structureCollapsed}
               onCollapsedChange={(next) =>
-                changeCollapsed(next, structurePanelRef, setStructureCollapsed, [])
+                changeCollapsed(next, STRUCTURE_PANEL, structurePanelRef, setStructureCollapsed, [])
               }
             />
           </Suspense>
         </Panel>
-        <PanelResizeHandle
+        <Separator
           id="explorer-filler-resize"
           disabled
+          disableDoubleClick
           aria-hidden="true"
-          tabIndex={-1}
-          className="hidden"
+          className="invisible h-0 overflow-hidden"
         />
         <Panel
-          ref={fillerPanelRef}
-          id="explorer-filler-v"
-          order={4}
-          defaultSize={0}
-          minSize={0}
+          panelRef={fillerPanelRef}
+          id={FILLER_PANEL}
+          defaultSize={percent(0)}
+          {...panelLimitProps(explorerLimits[FILLER_PANEL])}
           aria-hidden="true"
+          style={PANEL_STYLE}
           className="pointer-events-none"
         >
           <span />
         </Panel>
-        </PanelGroup>
+      </Group>
     </div>
   );
 }
@@ -372,22 +433,26 @@ export function FilesPanel() {
 function SidebarSectionHandle({
   id,
   ariaLabel,
+  onKeyDownCapture,
 }: Readonly<{
   id: string;
   ariaLabel: string;
+  onKeyDownCapture: KeyboardEventHandler<HTMLElement>;
 }>) {
   return (
-    <PanelResizeHandle
+    <Separator
       id={id}
+      disableDoubleClick
       aria-label={ariaLabel}
+      onKeyDownCapture={onKeyDownCapture}
       style={{ cursor: "row-resize" }}
       className={cn(
-        "resize-handle-row group flex h-2.5 items-center justify-center",
-        "transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "resize-handle-row group flex h-2.5 select-none items-center justify-center",
+        "transition-colors hover:bg-accent/40",
       )}
     >
-      <span className="h-0.5 w-8 rounded-full bg-transparent opacity-0 transition-[background-color,opacity] group-hover:bg-ring group-hover:opacity-100 group-focus-visible:bg-ring group-focus-visible:opacity-100 group-data-[resize-handle-state=drag]:bg-ring group-data-[resize-handle-state=drag]:opacity-100" />
-    </PanelResizeHandle>
+      <span className="h-0.5 w-8 rounded-full bg-transparent opacity-0 transition-[background-color,opacity] group-hover:bg-ring group-hover:opacity-100 group-focus-visible:bg-ring group-focus-visible:opacity-100 group-data-[separator=active]:bg-ring group-data-[separator=active]:opacity-100" />
+    </Separator>
   );
 }
 

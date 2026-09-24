@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,14 +13,6 @@ const sourceLabel = "Explorer";
 const outlineLabel = "Outline";
 const structureLabel = "Structure";
 
-vi.mock("react-resizable-panels", () =>
-  vi.importActual(
-    new URL(
-      "../../../node_modules/react-resizable-panels/dist/react-resizable-panels.browser.development.cjs.js",
-      import.meta.url,
-    ).pathname,
-  ),
-);
 vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 vi.mock("@/components/files/FileTree", () => ({
@@ -86,6 +78,7 @@ import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" }
 import { registry } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { panelExpandSizesKey, panelLayoutKey } from "@/lib/panel-layout";
 import {
   FilesPanel,
   ProjectSearch,
@@ -199,7 +192,7 @@ describe("Sidebar", () => {
       "opacity-0",
       "group-hover:opacity-100",
       "group-focus-visible:opacity-100",
-      "group-data-[resize-handle-state=drag]:opacity-100",
+      "group-data-[separator=active]:opacity-100",
     );
     expect(
       screen.getByLabelText(
@@ -250,12 +243,26 @@ describe("Sidebar", () => {
 });
 
 describe("FilesPanel section expansion", () => {
-  const panelSize = (id: string) =>
-    Number(
-      document
-        .querySelector(`[data-panel-id="${id}"]`)
-        ?.getAttribute("data-panel-size") ?? -1,
-    );
+  const explorerPanels = [
+    "source-tree-v",
+    "document-outline-v",
+    "project-structure-v",
+    "explorer-filler-v",
+  ];
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.hasAttribute("data-panel") || this.hasAttribute("data-separator") ? 100 : 0;
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  const panelSize = (id: string) => {
+    const size = document.getElementById(id)?.style.flexGrow;
+    return size ? Number(size) : -1;
+  };
   const layout = () =>
     ["source-tree-v", "document-outline-v", "project-structure-v", "explorer-filler-v"]
       .map((id) => `${id}=${panelSize(id)}`)
@@ -277,8 +284,39 @@ describe("FilesPanel section expansion", () => {
     );
   };
 
+  it("keeps the hidden filler separator in layout order", () => {
+    render(<FilesPanel />);
+    const filler = document.getElementById("explorer-filler-resize");
+    expect(filler).toHaveAttribute("aria-disabled", "true");
+    expect(filler).not.toHaveClass("hidden");
+    expect(filler).toHaveClass("invisible", "h-0");
+  });
+
+  it("collapses and reopens Explorer from its separator with Enter", async () => {
+    localStorage.removeItem(panelLayoutKey("sidebar-explorer-sections-v3", explorerPanels));
+    localStorage.removeItem(panelExpandSizesKey("sidebar-explorer-sections-v3"));
+    render(<FilesPanel />);
+    const separator = document.getElementById("source-outline-resize");
+    if (!separator) throw new Error("missing Explorer separator");
+    await expectSize("source-tree-v", (size) => size > 16);
+
+    act(() => separator.focus());
+    fireEvent.keyDown(separator, { key: "Enter" });
+    await expectSize("source-tree-v", (size) => size <= 6.1);
+    await waitFor(() =>
+      expect(screen.getByTestId("file-tree")).toHaveAttribute("aria-expanded", "false"),
+    );
+
+    fireEvent.keyDown(separator, { key: "Enter" });
+    await expectSize("source-tree-v", (size) => Math.abs(size - 16) < 0.01);
+    await waitFor(() =>
+      expect(screen.getByTestId("file-tree")).toHaveAttribute("aria-expanded", "true"),
+    );
+  });
+
   it("reopens Outline after Explorer reclaimed every spare pixel above it", async () => {
-    localStorage.removeItem("react-resizable-panels:sidebar-explorer-sections-v3");
+    localStorage.removeItem(panelLayoutKey("sidebar-explorer-sections-v3", explorerPanels));
+    localStorage.removeItem(panelExpandSizesKey("sidebar-explorer-sections-v3"));
     render(<FilesPanel />);
     const user = userEvent.setup();
 
