@@ -7,7 +7,7 @@ or {
   or {
     and {
       $source <: r"\(?['\"]sonner(?:/[^'\"]*)?['\"]\)?",
-      not $filename <: r".*src/components/ui/sonner\.tsx",
+      not $filename <: r".*src[/\\]components[/\\]ui[/\\]sonner\.tsx",
       register_diagnostic(
         span = $source,
         message = "Show notifications with toast from @/lib/toast. Only src/components/ui/sonner.tsx imports sonner.",
@@ -19,12 +19,12 @@ or {
         $source <: r"\(?['\"](?:@/store/|(?:\.\.?/)+store/)toast(?:\.tsx?)?['\"]\)?",
         and {
           $source <: r"\(?['\"](?:\.\.?/)+toast(?:\.tsx?)?['\"]\)?",
-          $filename <: r".*src/store/.+"
+          $filename <: r".*src[/\\]store[/\\].+"
         }
       },
       not $filename <: or {
-        r".*src/lib/toast\.ts",
-        r".*src/components/ui/sonner\.tsx",
+        r".*src[/\\]lib[/\\]toast\.ts",
+        r".*src[/\\]components[/\\]ui[/\\]sonner\.tsx",
         r".*\.test\.tsx?"
       },
       register_diagnostic(
