@@ -161,7 +161,9 @@ opens the engine picker. Auto compile, the compile that runs when a project
 opens, and compiles run by an AI agent stay quiet. `recompile` takes an
 `origin` of `explicit` or `automatic` to tell them apart. If an automatic
 compile fails for a reason the user can fix, the preview's failure view shows
-the fix as a button, such as Choose engine or Find and install.
+the fix as a button, such as Choose engine or Find and install. When the main
+window has no preview (editor-only view, or the preview is in its own window),
+the same button sits next to Compile in the toolbar instead.
 
 Show toasts through `src/lib/toast.ts`. The store in `src/store/toast.ts`
 handles the rest:

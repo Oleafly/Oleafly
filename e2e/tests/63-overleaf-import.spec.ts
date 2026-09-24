@@ -158,6 +158,9 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().engine.id === "latex")`,
     15_000,
   );
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then((m) => m.useSettingsStore.getState().setViewMode("editor"))`,
+  );
   // openProject owns the library transition. Clicking Home here as well races
   // its readiness check against the outgoing workspace.
   await openProject(tauriPage, "minted-gap");
@@ -184,16 +187,16 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     );
     throw new Error(`${String(error)}\ncompile state: ${state}`);
   });
-  const actions = await tauriPage.evaluate<number>(
+  const actions = await tauriPage.evaluate<string[]>(
     `(() => {
       const buttons = [...document.querySelectorAll("button")].filter((b) =>
         (b.textContent ?? "").includes("Choose engine"),
       );
       buttons[0]?.click();
-      return buttons.length;
+      return buttons.map((b) => b.getAttribute("data-testid") ?? "");
     })()`,
   );
-  expect(actions).toBe(1);
+  expect(actions).toEqual(["toolbar-compile-offer"]);
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="engine-picker-modal"]')`,

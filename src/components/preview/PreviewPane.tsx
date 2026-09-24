@@ -47,13 +47,12 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
 import {
-  acceptCompileOffer,
   isCompileCheckpointCurrent,
   useCompileStore,
-  type CompileOffer,
   type CompilePhase,
   type CompileStatus,
 } from "@/store/compile";
+import { CompileOfferButton } from "./CompileOfferButton";
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
@@ -582,35 +581,6 @@ export function checkpointIdentity(
 }
 
 const PREVIEW_DOWNLOAD_TOAST_KEY = "preview-download";
-
-function offerMatchesEngine(offer: CompileOffer, engineId: string): boolean {
-  return offer.kind === "engine-gap" ? engineId === "latex" : engineId === "latexmk";
-}
-
-function CompileOfferButton({ inToolbar = false }: Readonly<{ inToolbar?: boolean }>) {
-  const { t } = useTranslation(["preview"]);
-  const offer = useCompileStore((s) => s.offer);
-  const projectId = useFilesStore((s) => s.projectId);
-  const engineId = useFilesStore((s) => s.engine.id);
-  if (!offer || offer.projectId !== projectId || !offerMatchesEngine(offer, engineId)) return null;
-  const label =
-    offer.kind === "engine-gap"
-      ? t(($) => $.preview.actions.chooseEngine)
-      : t(($) => $.preview.actions.installPackages, {
-          count: offer.packages.length,
-          name: offer.packages[0],
-        });
-  return (
-    <Button
-      size={inToolbar ? "xs" : "sm"}
-      variant={inToolbar ? "ghostPrimary" : "outline"}
-      data-testid={inToolbar ? "log-compile-offer" : "preview-compile-offer"}
-      onClick={() => acceptCompileOffer(offer)}
-    >
-      {label}
-    </Button>
-  );
-}
 
 export function PreviewPane() {
   const { t } = useTranslation(["common", "preview"]);
@@ -1273,7 +1243,7 @@ export function PreviewPane() {
 
       {tab === "logs" && hasError && (
         <div className="ml-auto flex items-center gap-1">
-          <CompileOfferButton inToolbar />
+          <CompileOfferButton placement="log" />
           <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
             <Sparkles data-icon="inline-start" />
             {t(($) => $.preview.toolbar.askAi)}
@@ -1655,7 +1625,7 @@ export function PreviewPane() {
               <Button size="sm" onClick={() => void recompile()}>
                 {t(($) => $.preview.actions.retryCompile)}
               </Button>
-              <CompileOfferButton />
+              <CompileOfferButton placement="preview" />
             </div>
           </div>
         ) : (

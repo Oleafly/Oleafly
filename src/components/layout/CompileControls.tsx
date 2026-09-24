@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { CompileOfferButton } from "@/components/preview/CompileOfferButton";
 import { useCompileStore } from "@/store/compile";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -151,6 +152,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
         return recompile(options);
       }}
     />
+    {(viewMode === "editor" || detached) && <CompileOfferButton placement="toolbar" />}
   </>;
 }
 

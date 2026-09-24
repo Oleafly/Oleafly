@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   place instead of stacking, and no more than four show at a time. A failed
   autosave or checkpoint still warns you, once per project. When an
   automatic compile fails for a reason you can fix, the preview shows the
-  fix as a button.
+  fix as a button, or the toolbar does when the preview is hidden.
 - Setting up the language service is no longer a pop-up. Project info shows
   a Set up button, and a dot on its toolbar button tells you setup is
   waiting.
