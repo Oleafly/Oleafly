@@ -6,10 +6,6 @@ import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
-import { RenameDialog } from "@/components/layout/RenameDialog";
-import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
-import { TableImportDialog } from "@/components/editor/TableImportDialog";
-import { FigureDialog } from "@/components/editor/FigureDialog";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
@@ -99,6 +95,18 @@ const PreviewWindow = lazy(() =>
 const BrowserChrome = lazy(() =>
   import("@/components/browser/BrowserChrome").then((module) => ({ default: module.BrowserChrome })),
 );
+const RenameDialog = lazy(() =>
+  import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
+);
+const AddCitationDialog = lazy(() =>
+  import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+);
+const TableImportDialog = lazy(() =>
+  import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
+);
+const FigureDialog = lazy(() =>
+  import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
+);
 
 // Dev builds only; the conditional import keeps devtools out of the bundle.
 const ReactQueryDevtools = import.meta.env.DEV
@@ -146,10 +154,12 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <Toaster />
       <DevContextMenu />
       <IndexKeeper />
-      <RenameDialog />
-      <AddCitationDialog />
-      <TableImportDialog />
-      <FigureDialog />
+      <Suspense fallback={null}>
+        <RenameDialog />
+        <AddCitationDialog />
+        <TableImportDialog />
+        <FigureDialog />
+      </Suspense>
       {ReactQueryDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />
