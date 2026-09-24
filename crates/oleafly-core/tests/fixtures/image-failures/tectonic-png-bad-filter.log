@@ -1,0 +1,24 @@
+note: "version 2" Tectonic command-line interface activated
+note: Running TeX ...
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-02-24> (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo)) (graphicx.sty (keyval.sty) (graphics.sty (trig.sty) (graphics.cfg
+) (xetex.def))) (l3backend-xetex.def)
+No file _oleafly_entry.aux.
+(ts1cmr.fd) [1] (_oleafly_entry.aux) ) )
+Output written on _oleafly_entry.xdv (1 page, 488 bytes).
+Transcript written on _oleafly_entry.log.
+note: Rerunning TeX because "_oleafly_entry.aux" changed ...
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-02-24> (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo)) (graphicx.sty (keyval.sty) (graphics.sty (trig.sty) (graphics.cfg
+) (xetex.def))) (l3backend-xetex.def) (_oleafly_entry.aux) (ts1cmr.fd) [1]
+(_oleafly_entry.aux) ) )
+Output written on _oleafly_entry.xdv (1 page, 488 bytes).
+Transcript written on _oleafly_entry.log.
+note: Running xdvipdfmx ...
+libpng error: bad adaptive filter value

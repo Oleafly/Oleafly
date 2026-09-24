@@ -1,6 +1,7 @@
 use crate::process;
 use oleafly_core::{
-    slash_path, walk_source_tree, Engine, Error, ErrorKind, PreparedBuild, Result, Workspace,
+    image_failure_evidence, image_failure_notes, place_image_findings, slash_path,
+    walk_source_tree, Engine, Error, ErrorKind, ImageFinding, PreparedBuild, Result, Workspace,
 };
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -187,7 +188,7 @@ impl NativeCompiler {
         if command.produced_output != build.build_directory().join(format!("{OUTPUT_STEM}.pdf")) {
             remove_if_exists(&command.produced_output)?;
         }
-        let (log, exit_code) = run_command(
+        let (mut log, exit_code) = run_command(
             &command.executable,
             &command.arguments,
             build.project_root(),
@@ -200,10 +201,14 @@ impl NativeCompiler {
             tokio::fs::rename(&command.produced_output, &output).await?;
         }
         let output = output.is_file().then_some(output);
-        let errors = parse_errors(build.engine(), &log);
+        let mut errors = parse_errors(build.engine(), &log);
         let ok = exit_code == Some(0)
             && output.is_some()
             && !errors.iter().any(|error| error.kind == "error");
+        if image_check_applies(ok, build.engine()) {
+            self.explain_image_failures(build, &mut log, &mut errors)
+                .await;
+        }
         let output_id = output.as_deref().map(fingerprint_file).transpose()?;
         Ok(BuildResult {
             ok,
@@ -214,6 +219,52 @@ impl NativeCompiler {
             errors,
             compile_time_ms: started.elapsed().as_millis() as u64,
         })
+    }
+
+    async fn explain_image_failures(
+        &self,
+        build: &PreparedBuild,
+        log: &mut String,
+        errors: &mut Vec<BuildError>,
+    ) {
+        let Some(evidence) = image_failure_evidence(log) else {
+            return;
+        };
+        let project_root = build.project_root().to_path_buf();
+        let main_document = build.main_document().to_string();
+        let Ok(findings) = tokio::task::spawn_blocking(move || {
+            evidence.diagnose(&project_root, Some(&main_document))
+        })
+        .await
+        else {
+            return;
+        };
+        self.apply_image_findings(&findings, log, errors);
+    }
+
+    fn apply_image_findings(
+        &self,
+        findings: &[ImageFinding],
+        log: &mut String,
+        errors: &mut Vec<BuildError>,
+    ) {
+        if findings.is_empty() {
+            return;
+        }
+        let notes = image_failure_notes(findings);
+        self.log.emit(&notes);
+        append_bounded(log, notes.as_bytes());
+        place_image_findings(
+            errors,
+            findings,
+            |error| error.kind == "error",
+            |message| BuildError {
+                line: None,
+                file: None,
+                message,
+                kind: "error".to_string(),
+            },
+        );
     }
 
     fn command(&self, build: &PreparedBuild, options: BuildOptions) -> Result<BuildCommand> {
@@ -867,6 +918,10 @@ fn fingerprint_file(path: &Path) -> Result<String> {
     Ok(format!("pdf-sha256:{length}:{:x}", hasher.finalize()))
 }
 
+fn image_check_applies(ok: bool, engine: Engine) -> bool {
+    !ok && matches!(engine, Engine::Tectonic | Engine::Latexmk)
+}
+
 fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {
     match engine {
         Engine::Typst => parse_typst_errors(log),
@@ -1344,6 +1399,131 @@ mod tests {
             .build_dir_path()
             .join("_oleafly_entry.pdf")
             .exists());
+    }
+
+    fn image_project(engine: Engine, main: &str) -> (TempDir, Workspace) {
+        let project = TempDir::new().unwrap();
+        let workspace = workspace_for_engine(&project, engine, None);
+        std::fs::write(project.path().join(engine.default_main_document()), main).unwrap();
+        std::fs::create_dir_all(project.path().join("figures")).unwrap();
+        std::fs::write(project.path().join("figures/plot.png"), b"").unwrap();
+        std::fs::write(project.path().join("figures/unused.png"), b"").unwrap();
+        (project, workspace)
+    }
+
+    const EMPTY_PLOT: &str =
+        "The image figures/plot.png is empty. Export the image again or replace the file.";
+
+    #[tokio::test]
+    async fn failed_tex_builds_name_a_broken_image_in_the_log_errors_and_stream() {
+        let (_project, workspace) = image_project(Engine::Tectonic, "document");
+        let streamed = Arc::new(Mutex::new(String::new()));
+        let sink = streamed.clone();
+        let compiler =
+            NativeCompiler::new(BuildTools::default()).with_log(CompilerLog::new(move |text| {
+                sink.lock().unwrap().push_str(text)
+            }));
+        let build = workspace.prepare_build().unwrap();
+        let mut log = "! Unable to load picture or PDF file 'figures/plot.png'.\nl.6 \\includegraphics{figures/plot.png}\n".to_string();
+        let mut errors = parse_errors(Engine::Tectonic, &log);
+        let original = errors.clone();
+        compiler
+            .explain_image_failures(&build, &mut log, &mut errors)
+            .await;
+        let note = format!("\n[Oleafly] {EMPTY_PLOT}\n");
+        assert_eq!(
+            errors[0],
+            BuildError {
+                line: None,
+                file: None,
+                message: EMPTY_PLOT.into(),
+                kind: "error".into(),
+            }
+        );
+        assert_eq!(errors[1..], original[..]);
+        assert!(log.ends_with(&note));
+        assert_eq!(*streamed.lock().unwrap(), note);
+    }
+
+    #[tokio::test]
+    async fn failures_without_image_evidence_keep_their_log_and_errors() {
+        let (_project, workspace) =
+            image_project(Engine::Tectonic, "\\includegraphics{figures/plot.png}");
+        let compiler = NativeCompiler::new(BuildTools::default());
+        let build = workspace.prepare_build().unwrap();
+        for original in [
+            "! Fixture failure",
+            "! Undefined control sequence.\nl.4 \\foo\nlibpng warning: iCCP: known incorrect sRGB profile\n",
+        ] {
+            let mut log = original.to_string();
+            let mut errors = parse_errors(Engine::Tectonic, &log);
+            let before = errors.clone();
+            compiler
+                .explain_image_failures(&build, &mut log, &mut errors)
+                .await;
+            assert_eq!(log, original);
+            assert_eq!(errors, before);
+        }
+    }
+
+    #[test]
+    fn image_check_runs_only_for_failed_tex_builds() {
+        assert!(image_check_applies(false, Engine::Tectonic));
+        assert!(image_check_applies(false, Engine::Latexmk));
+        assert!(!image_check_applies(true, Engine::Tectonic));
+        assert!(!image_check_applies(true, Engine::Latexmk));
+        assert!(!image_check_applies(false, Engine::Typst));
+        assert!(!image_check_applies(false, Engine::Markdown));
+    }
+
+    #[tokio::test]
+    async fn native_builds_explain_broken_images_only_when_a_tex_build_fails() {
+        let tools = TempDir::new().unwrap();
+        let success = NativeCompiler::new(BuildTools {
+            tectonic: Some(compiler_fixture(&tools, false)),
+            ..BuildTools::default()
+        });
+        let failure = NativeCompiler::new(BuildTools {
+            tectonic: Some(compiler_fixture(&tools, true)),
+            ..BuildTools::default()
+        });
+        let with_evidence = "\\includegraphics{figures/plot.png}\n% fixture-libpng-error\n";
+        let (_project, workspace) = image_project(Engine::Tectonic, with_evidence);
+
+        let result = success
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(result.ok);
+        assert!(result.log.contains("libpng error: IHDR: CRC error"));
+        assert!(!result.log.contains("[Oleafly]"));
+        assert!(result.errors.is_empty());
+
+        let result = failure
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!result.ok);
+        assert_eq!(
+            result
+                .errors
+                .iter()
+                .map(|error| error.message.as_str())
+                .collect::<Vec<_>>(),
+            [EMPTY_PLOT]
+        );
+        assert!(result.log.ends_with(&format!("\n[Oleafly] {EMPTY_PLOT}\n")));
+
+        let (_project, workspace) =
+            image_project(Engine::Tectonic, "\\includegraphics{figures/plot.png}\n");
+        let result = failure
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!result.ok);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.errors[0].message, "Fixture failure");
+        assert!(!result.log.contains("[Oleafly]"));
     }
 
     #[tokio::test]

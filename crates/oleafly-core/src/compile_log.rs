@@ -234,7 +234,7 @@ fn parse_number(capture: Option<regex::Match<'_>>) -> Option<u32> {
     capture.and_then(|m| m.as_str().parse::<u32>().ok())
 }
 
-fn head(log: &str) -> &str {
+pub(crate) fn head(log: &str) -> &str {
     if log.len() <= MAX_COMPILE_LOG_BYTES {
         return log;
     }
@@ -366,6 +366,20 @@ impl Parser<'_> {
             self.current = Some(Entry {
                 severity: LogSeverity::Error,
                 category: LogCategory::Biber,
+                file: None,
+                line: None,
+                text: trim_js(&p.oleafly_prefix.replace(line, "")).to_string(),
+                context: None,
+            });
+            return Step::Stop;
+        }
+        if crate::image_check::is_image_note(line) {
+            self.push_current();
+            self.search_empty_line = false;
+            self.inside_error = false;
+            self.current = Some(Entry {
+                severity: LogSeverity::Error,
+                category: LogCategory::Error,
                 file: None,
                 line: None,
                 text: trim_js(&p.oleafly_prefix.replace(line, "")).to_string(),

@@ -1668,6 +1668,11 @@ async fn finish_compile(
     let ok = compile_succeeded(
         request, &spec, stopped, has_pdf, exit_code, &errors, &mut log,
     );
+    if let Some(main_document) =
+        image_check_main_document(request.engine.id(), request.target, ok, stopped)
+    {
+        explain_image_failures(&spec.working_dir, main_document, &mut log, &mut errors).await;
+    }
     let root_file = match request.target {
         CompileTarget::Main { main_document } => Some(main_document.to_string()),
         CompileTarget::Isolated { .. } => None,
@@ -1687,6 +1692,64 @@ async fn finish_compile(
             log,
         },
     ))
+}
+
+fn image_check_main_document(
+    engine: DocumentEngineId,
+    target: CompileTarget<'_>,
+    ok: bool,
+    stopped: bool,
+) -> Option<&str> {
+    let tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
+    if ok || stopped || !tex {
+        return None;
+    }
+    match target {
+        CompileTarget::Main { main_document } => Some(main_document),
+        CompileTarget::Isolated { .. } => None,
+    }
+}
+
+async fn explain_image_failures(
+    project_dir: &Path,
+    main_document: &str,
+    log: &mut String,
+    errors: &mut Vec<CompileError>,
+) {
+    let Some(evidence) = oleafly_core::image_failure_evidence(log) else {
+        return;
+    };
+    let project_dir = project_dir.to_path_buf();
+    let main_document = main_document.to_string();
+    if let Ok(findings) =
+        tokio::task::spawn_blocking(move || evidence.diagnose(&project_dir, Some(&main_document)))
+            .await
+    {
+        apply_image_findings(&findings, log, errors);
+    }
+}
+
+fn apply_image_findings(
+    findings: &[oleafly_core::ImageFinding],
+    log: &mut String,
+    errors: &mut Vec<CompileError>,
+) {
+    if findings.is_empty() {
+        return;
+    }
+    append_bounded(log, oleafly_core::image_failure_notes(findings).as_bytes());
+    oleafly_core::place_image_findings(
+        errors,
+        findings,
+        |error| error.kind == "error",
+        |message| CompileError {
+            line: None,
+            file: None,
+            message,
+            kind: "error".into(),
+            explanation: None,
+        },
+    );
 }
 
 async fn parse_log_diagnostics(
@@ -3078,6 +3141,123 @@ mod tests {
                 .is_err()
         );
         assert!(dropped.load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    fn image_project() -> tempfile::TempDir {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("figures")).unwrap();
+        std::fs::write(project.path().join("figures/empty.png"), b"").unwrap();
+        std::fs::write(project.path().join("figures/unused.png"), b"").unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\includegraphics{figures/empty.png}\n",
+        )
+        .unwrap();
+        project
+    }
+
+    const EMPTY_IMAGE: &str =
+        "The image figures/empty.png is empty. Export the image again or replace the file.";
+
+    #[tokio::test]
+    async fn failed_compiles_name_the_broken_image_first_and_in_the_log() {
+        let project = image_project();
+        let mut log = "! Unable to load picture or PDF file 'figures/empty.png'.\nl.6 \\includegraphics{figures/empty.png}\n".to_string();
+        let mut errors = parse_tex_log_errors(&log);
+        let original = errors.clone();
+        explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+        assert_eq!(errors[0].message, EMPTY_IMAGE);
+        assert_eq!(errors[0].kind, "error");
+        assert_eq!(errors[1..], original[..]);
+        assert!(log.ends_with(&format!("\n[Oleafly] {EMPTY_IMAGE}\n")));
+        let diagnostics = oleafly_core::parse_latex_log(&log, Some("main.tex"));
+        assert!(diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message == EMPTY_IMAGE));
+    }
+
+    #[tokio::test]
+    async fn an_unnamed_image_failure_is_traced_through_the_main_document() {
+        let project = image_project();
+        let mut log = "(ts1cmr.fd)libpng error: IHDR: CRC error".to_string();
+        let mut errors = parse_tex_log_errors(&log);
+        explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+        assert_eq!(
+            errors
+                .iter()
+                .map(|error| error.message.as_str())
+                .collect::<Vec<_>>(),
+            [EMPTY_IMAGE]
+        );
+    }
+
+    #[tokio::test]
+    async fn compiles_without_a_broken_image_keep_their_log_and_errors() {
+        let project = image_project();
+        for original in [
+            "! Undefined control sequence.\nl.4 \\foo\n",
+            "warning  (file figures/empty.png) (pdf inclusion): odd\n! Undefined control sequence.\nl.4 \\foo\n",
+        ] {
+            let mut log = original.to_string();
+            let mut errors = parse_tex_log_errors(&log);
+            let before_errors = errors.clone();
+            explain_image_failures(project.path(), "main.tex", &mut log, &mut errors).await;
+            assert_eq!(log, original);
+            assert_eq!(errors, before_errors);
+        }
+    }
+
+    #[test]
+    fn image_cards_never_push_tex_errors_out_of_the_ask_ai_budget() {
+        let findings = [oleafly_core::ImageFinding::Broken(
+            oleafly_core::BrokenImage {
+                path: "figures/empty.png".into(),
+                problem: oleafly_core::ImageProblem::Empty,
+            },
+        )];
+        let crowded: String = (0..oleafly_core::ASK_AI_ERROR_BUDGET)
+            .map(|index| format!("! Error number {index}.\n"))
+            .collect();
+        let mut log = crowded.clone();
+        let mut errors = parse_tex_log_errors(&log);
+        apply_image_findings(&findings, &mut log, &mut errors);
+        let messages: Vec<&str> = errors.iter().map(|error| error.message.as_str()).collect();
+        assert_eq!(messages.last(), Some(&EMPTY_IMAGE));
+        assert!(messages[..oleafly_core::ASK_AI_ERROR_BUDGET]
+            .iter()
+            .all(|message| message.starts_with("Error number")));
+        let ask_ai = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/features/ask-ai-compile-errors.ts"),
+        )
+        .unwrap();
+        assert!(ask_ai.contains(".filter((error) => error.kind === \"error\")"));
+        assert!(ask_ai.contains(&format!(".slice(0, {})", oleafly_core::ASK_AI_ERROR_BUDGET)));
+    }
+
+    #[test]
+    fn image_check_runs_only_for_failed_main_latex_compiles() {
+        let main = CompileTarget::Main {
+            main_document: "main.tex",
+        };
+        let isolated = CompileTarget::Isolated {
+            source_path: Path::new("chapter.tex"),
+            output_stem: "chapter",
+        };
+        for engine in [DocumentEngineId::Latex, DocumentEngineId::Latexmk] {
+            assert_eq!(
+                image_check_main_document(engine, main, false, false),
+                Some("main.tex")
+            );
+            assert_eq!(image_check_main_document(engine, main, true, false), None);
+            assert_eq!(image_check_main_document(engine, main, false, true), None);
+            assert_eq!(
+                image_check_main_document(engine, isolated, false, false),
+                None
+            );
+        }
+        for engine in [DocumentEngineId::Typst, DocumentEngineId::Markdown] {
+            assert_eq!(image_check_main_document(engine, main, false, false), None);
+        }
     }
 
     #[test]
