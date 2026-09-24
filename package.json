@@ -134,7 +134,7 @@
     "mermaid": "^11.16.1",
     "pdfjs-dist": "6.3.289",
     "react": "^19.3.0",
-    "react-day-picker": "^9.14.0",
+    "react-day-picker": "^10.0.1",
     "react-dom": "^19.3.0",
     "react-i18next": "17.0.14",
     "react-joyride": "^3.2.0",
