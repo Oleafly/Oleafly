@@ -90,6 +90,7 @@ import {
   findReferences,
   goToDefinition,
   startRename,
+  symbolLikeRanges,
 } from "./nav";
 
 const EDITOR_TEXT = "See \\ref{fig:x}.";
@@ -414,5 +415,83 @@ describe("symbol lookups", () => {
       "This symbol cannot be renamed.",
     );
     expectNoPlainToasts();
+  });
+});
+
+const SYMBOL_LIKE_TABLE: ReadonlyArray<readonly [string, ReadonlyArray<readonly [number, number]>]> = [
+  ["\\ref", [[0, 4]]],
+  ["\\Ref", [[0, 4]]],
+  ["\\ref{fig:x}", [[0, 11]]],
+  ["See \\ref{fig:x}.", [[4, 15]]],
+  ["\\section*{Intro}", [[0, 16]]],
+  ["\\ref*{x}", [[0, 8]]],
+  ["\\ref**", [[0, 5]]],
+  ["\\cite[p.~4]{knuth}", [[0, 18]]],
+  ["\\cite[p.~4]", [[0, 11]]],
+  ["\\cite[p]x", [[0, 8]]],
+  ["\\includegraphics[width=\\linewidth]{a.png}", [[0, 41]]],
+  ["\\ref[]{}", [[0, 8]]],
+  ["\\ref{}", [[0, 6]]],
+  ["\\ref{fig:x", [[0, 10]]],
+  ["\\cite[p. 4", [[0, 5]]],
+  ["\\ref[a]{b", [[0, 9]]],
+  ["\\ref[a]}", [[0, 7]]],
+  ["\\ref[{]", [[0, 7]]],
+  ["\\ref{a}{b}", [[0, 7]]],
+  ["\\ref[a][b]", [[0, 7]]],
+  ["\\ref{a}[b]", [[0, 7]]],
+  ["\\ref{\\label{x}}", [[0, 14]]],
+  ["\\ref {x}", [[0, 4]]],
+  ["\\ref{a\nb}", [[0, 6]]],
+  ["\\cite[a\nb]{c}", [[0, 5]]],
+  ["\\foo@bar", [[0, 8]]],
+  ["\\makeatletter\\@author", [[0, 13], [13, 21]]],
+  ["\\a@b1", [[0, 4]]],
+  ["\\foo\\bar", [[0, 4], [4, 8]]],
+  ["\\cite{a}\\cite{b}", [[0, 8], [8, 16]]],
+  ["\\\\", []],
+  ["\\\\ref", [[1, 5]]],
+  ["\\1", []],
+  ["\\*", []],
+  ["\\_x", []],
+  ["\\é", []],
+  ["\\", []],
+  ["@article{knuth84,", [[0, 8]]],
+  ["@fig:x.y-z_1", [[0, 12]]],
+  ["email@example.com", [[5, 17]]],
+  ["a@b@c", [[1, 3], [3, 5]]],
+  ["@", []],
+  ["@@", []],
+  ["@ foo", []],
+  ["@é", []],
+  ["<fig:x>", [[0, 7]]],
+  ["<a-b.c:d_1>", [[0, 11]]],
+  ["<<a>>", [[1, 4]]],
+  ["<>", []],
+  ["<a b>", []],
+  ["<a", []],
+  ["a < b > c", []],
+  ["<a\\b>", [[2, 4]]],
+  ["<@a>", [[1, 3]]],
+  ["\\a{<b>}", [[0, 7]]],
+  ["\\ref{@key} and @other <tag>", [[0, 10], [15, 21], [22, 27]]],
+  ["Plain prose with no symbols.", []],
+  ["", []],
+];
+
+describe("symbol-like text under the caret", () => {
+  it.each(SYMBOL_LIKE_TABLE)("finds the symbol-like spans in %j", (text, ranges) => {
+    expect(symbolLikeRanges(text)).toEqual(ranges);
+  });
+
+  it("explains an update only when the caret touches a span, ends included", () => {
+    indexState.intelligenceState = { status: "running", stale: false };
+    for (const [text, ranges] of SYMBOL_LIKE_TABLE) {
+      if (text.includes("\n")) continue;
+      for (let column = 0; column <= text.length; column++) {
+        const touches = ranges.some(([start, end]) => column >= start && column <= end);
+        expect(goToDefinition(editorView(text, column)), `${JSON.stringify(text)} at ${column}`).toBe(touches);
+      }
+    }
   });
 });

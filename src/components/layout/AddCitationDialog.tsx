@@ -112,8 +112,8 @@ export function AddCitationDialog() {
       } else {
         setError(r.error);
       }
-    } catch (caught) {
-      void logError("add citation", caught);
+    } catch (error_) {
+      void logError("add citation", error_);
       setError(i18n.t(($) => $.researchTools.citationScan.addFailed));
     } finally {
       setAdding(false);

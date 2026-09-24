@@ -631,20 +631,12 @@ describe("dismissible assistant panel", () => {
     if (!handle) throw new Error("the assistant handle is not rendered");
     const pointer = { clientY: 50, pointerType: "mouse", button: 0, buttons: 1 };
 
-    act(() => {
-      fireEvent.pointerDown(handle, { ...pointer, clientX: 503 });
-    });
-    act(() => {
-      fireEvent.pointerMove(handle, { ...pointer, clientX: 521 });
-    });
+    fireEvent.pointerDown(handle, { ...pointer, clientX: 503 });
+    fireEvent.pointerMove(handle, { ...pointer, clientX: 521 });
     expect(workspaceSizes()).toEqual([20, 58, 22]);
-    act(() => {
-      fireEvent.pointerMove(handle, { ...pointer, clientX: 563 });
-    });
+    fireEvent.pointerMove(handle, { ...pointer, clientX: 563 });
     expect(assistantOpen()).toBe(false);
-    act(() => {
-      fireEvent.pointerUp(document, { ...pointer, clientX: 563, buttons: 0 });
-    });
+    fireEvent.pointerUp(document, { ...pointer, clientX: 563, buttons: 0 });
 
     await settle(() => workspace.setAssistantOpen(true));
     expect(assistantOpen()).toBe(true);

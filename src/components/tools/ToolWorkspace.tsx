@@ -66,12 +66,12 @@ function ToolSplitGroup({
   storageId,
   start,
   end,
-}: {
+}: Readonly<{
   className?: string;
   storageId?: string;
   start: ReactNode;
   end: ReactNode;
-}) {
+}>) {
   const { t } = useTranslation(["researchTools"]);
   const groupRef = useRef<GroupImperativeHandle>(null);
   const generatedId = useId();

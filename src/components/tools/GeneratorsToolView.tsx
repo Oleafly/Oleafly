@@ -184,6 +184,10 @@ export function GeneratorsToolView() {
     if (missingSource) return t(($) => $.researchTools.generators.statusChooseSource);
     return t(($) => $.researchTools.generators.statusReady);
   };
+  const statusState = () => {
+    if (busy) return "busy";
+    return error ? "error" : "ready";
+  };
 
   return (
     <ToolPageShell
@@ -193,7 +197,7 @@ export function GeneratorsToolView() {
       icon={ListChecks}
       testId="generators-tool-view"
       showTheme
-      status={<ToolStatus state={busy ? "busy" : error ? "error" : "ready"}>{statusText()}</ToolStatus>}
+      status={<ToolStatus state={statusState()}>{statusText()}</ToolStatus>}
       actions={
         <Button size="sm" disabled={busy || !!missingSource} onClick={() => void launch()} data-testid="generator-launch">
           <Send aria-hidden className="size-4" /> {t(($) => $.researchTools.generators.generate)}

@@ -51,11 +51,9 @@ async function createTypstDocument(mode: TypstMode): Promise<void> {
 }
 
 function startTypstDocument(mode: TypstMode): Promise<void> {
-  if (!typstStart) {
-    typstStart = createTypstDocument(mode).finally(() => {
-      typstStart = null;
-    });
-  }
+  typstStart ??= createTypstDocument(mode).finally(() => {
+    typstStart = null;
+  });
   return typstStart;
 }
 

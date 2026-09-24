@@ -87,8 +87,8 @@ async function readEntries(file: File): Promise<ReadOutcome> {
   let entries: ParsedBib[] | null;
   try {
     entries = parseCitationFile(file.name, await file.text());
-  } catch (caught) {
-    void logError("import references", caught);
+  } catch (error) {
+    void logError("import references", error);
     return { error: i18n.t(($) => $.references.import.readFailed) };
   }
   if (!entries) {
@@ -195,8 +195,8 @@ export function ImportReferenceLibraryDialog({
       toast.success(summarize(result));
       onImported?.();
       onOpenChange(false);
-    } catch (caught) {
-      void logError("import references", caught);
+    } catch (error_) {
+      void logError("import references", error_);
       setError(i18n.t(($) => $.references.import.failed));
     }
   };

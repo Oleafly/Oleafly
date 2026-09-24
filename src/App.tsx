@@ -246,6 +246,10 @@ function closeAssistant() {
   if (settings.assistantOpen) settings.setAssistantOpen(false);
 }
 
+function workspaceGroupId(projectId: string | null, group: string): string | undefined {
+  return projectId ? workspacePanelId(projectId, group) : undefined;
+}
+
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 // Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
@@ -293,9 +297,9 @@ function AppContent() {
   const verticalGroupRef = useRef<GroupImperativeHandle>(null);
   const horizontalGroupRef = useRef<GroupImperativeHandle>(null);
   const documentGroupRef = useRef<GroupImperativeHandle>(null);
-  const verticalGroupId = projectId ? workspacePanelId(projectId, "vertical") : undefined;
-  const horizontalGroupId = projectId ? workspacePanelId(projectId, "horizontal") : undefined;
-  const documentGroupId = projectId ? workspacePanelId(projectId, "document") : undefined;
+  const verticalGroupId = workspaceGroupId(projectId, "vertical");
+  const horizontalGroupId = workspaceGroupId(projectId, "horizontal");
+  const documentGroupId = workspaceGroupId(projectId, "document");
   const hasStoredHorizontalLayout = useMemo(
     () => (horizontalGroupId ? hasStoredPanelLayout(horizontalGroupId) : false),
     [horizontalGroupId],

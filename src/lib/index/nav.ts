@@ -124,17 +124,34 @@ export function explainMissingAnalysis(
   return true;
 }
 
-const SYMBOL_LIKE = /\\[A-Za-z@]+\*?(?:\[[^\]\n]*\])?(?:\{[^}\n]*\}?)?|@[\w:.-]+|<[\w:.-]+>/g;
+const SYMBOL_START = /[\\@<]/g;
+const COMMAND_LIKE = /^\\[A-Za-z@]+\*?(?:\[[^\]\n]*\])?(?:\{[^}\n]*\}?)?/;
+const KEY_LIKE = /^(?:@[\w:.-]+|<[\w:.-]+>)/;
+
+function symbolLikeLengthAt(text: string, start: number): number {
+  const rest = text.slice(start);
+  const pattern = rest.startsWith("\\") ? COMMAND_LIKE : KEY_LIKE;
+  return pattern.exec(rest)?.[0].length ?? 0;
+}
+
+export function symbolLikeRanges(text: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  let end = 0;
+  for (const { index } of text.matchAll(SYMBOL_START)) {
+    if (index < end) continue;
+    const length = symbolLikeLengthAt(text, index);
+    if (length === 0) continue;
+    end = index + length;
+    ranges.push([index, end]);
+  }
+  return ranges;
+}
 
 function cursorOnSymbolLikeText(view: EditorView): boolean {
   const head = view.state.selection.main.head;
   const line = view.state.doc.lineAt(head);
   const column = head - line.from;
-  for (const match of line.text.matchAll(SYMBOL_LIKE)) {
-    const start = match.index;
-    if (column >= start && column <= start + match[0].length) return true;
-  }
-  return false;
+  return symbolLikeRanges(line.text).some(([start, end]) => column >= start && column <= end);
 }
 
 export type LookupSource = "keyboard" | "pointer";

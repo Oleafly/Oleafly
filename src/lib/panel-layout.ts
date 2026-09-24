@@ -141,39 +141,54 @@ function writeExpandSizes(groupId: string, sizes: Record<string, number>): void 
 
 const migratedGroups = new Set<string>();
 
+function parseLegacyEntries(serialized: string): [string, LegacyGroupEntry][] | null {
+  let state: unknown;
+  try {
+    state = JSON.parse(serialized);
+  } catch {
+    return null;
+  }
+  if (typeof state !== "object" || state === null) return null;
+  const entries = Object.entries(state);
+  if (!entries.every(([, entry]) => isLegacyGroupEntry(entry))) return null;
+  return entries as [string, LegacyGroupEntry][];
+}
+
+function migrateLegacyEntry(
+  groupId: string,
+  panelOrder: readonly string[],
+  [sortedPanelIds, entry]: [string, LegacyGroupEntry],
+  expandSizes: Record<string, number>,
+): void {
+  const present = new Set(sortedPanelIds.split(","));
+  const panelIds = panelOrder.filter((id) => present.has(id));
+  const sizes = entry.layout;
+  if (panelIds.length !== present.size || panelIds.length !== sizes.length) return;
+  if (!sizes.every(isFiniteSize)) return;
+  const key = panelLayoutKey(groupId, panelIds);
+  if (readStorage(key) === null) {
+    writeStorage(
+      key,
+      JSON.stringify(Object.fromEntries(panelIds.map((id, index) => [id, sizes[index]]))),
+    );
+  }
+  for (const [panelId, size] of Object.entries(entry.expandToSizes ?? {})) {
+    if (panelOrder.includes(panelId) && isFiniteSize(size)) expandSizes[panelId] = size;
+  }
+}
+
 export function migrateLegacyPanelLayout(groupId: string, panelOrder: readonly string[]): void {
   if (migratedGroups.has(groupId)) return;
   migratedGroups.add(groupId);
   const legacyKey = `${LAYOUT_PREFIX}${groupId}`;
   const serialized = readStorage(legacyKey);
   if (serialized === null) return;
-  let state: unknown;
-  try {
-    state = JSON.parse(serialized);
-  } catch {
-    return;
-  }
-  if (typeof state !== "object" || state === null) return;
-  const entries = Object.entries(state);
-  if (!entries.every(([, entry]) => isLegacyGroupEntry(entry))) return;
+  const entries = parseLegacyEntries(serialized);
+  if (entries === null) return;
 
   const expandSizes: Record<string, number> = {};
-  for (const [sortedPanelIds, entry] of entries as [string, LegacyGroupEntry][]) {
-    const present = new Set(sortedPanelIds.split(","));
-    const panelIds = panelOrder.filter((id) => present.has(id));
-    const sizes = entry.layout;
-    if (panelIds.length !== present.size || panelIds.length !== sizes.length) continue;
-    if (!sizes.every(isFiniteSize)) continue;
-    const key = panelLayoutKey(groupId, panelIds);
-    if (readStorage(key) === null) {
-      writeStorage(
-        key,
-        JSON.stringify(Object.fromEntries(panelIds.map((id, index) => [id, sizes[index]]))),
-      );
-    }
-    for (const [panelId, size] of Object.entries(entry.expandToSizes ?? {})) {
-      if (panelOrder.includes(panelId) && isFiniteSize(size)) expandSizes[panelId] = size;
-    }
+  for (const entry of entries) {
+    migrateLegacyEntry(groupId, panelOrder, entry, expandSizes);
   }
   if (
     Object.keys(expandSizes).length > 0 &&
@@ -339,6 +354,11 @@ function reachedDelta(applied: number, delta: number): boolean {
   );
 }
 
+function widenDelta(delta: number, distance: number): number {
+  if (compareSizes(distance, Math.abs(delta)) > 0) return delta < 0 ? -distance : distance;
+  return delta;
+}
+
 function snapKeyboardDelta(
   layout: readonly number[],
   limits: readonly ResolvedLimits[],
@@ -348,15 +368,15 @@ function snapKeyboardDelta(
   let delta = requested;
   const opening = delta < 0 ? after : before;
   const openingLimits = limits[opening];
-  if (openingLimits?.collapsible && sameSize(layout[opening] ?? 0, openingLimits.collapsedSize)) {
-    const distance = openingLimits.minSize - (layout[opening] ?? 0);
-    if (compareSizes(distance, Math.abs(delta)) > 0) delta = delta < 0 ? -distance : distance;
+  const openingSize = layout[opening] ?? 0;
+  if (openingLimits?.collapsible && sameSize(openingSize, openingLimits.collapsedSize)) {
+    delta = widenDelta(delta, openingLimits.minSize - openingSize);
   }
   const closing = delta < 0 ? before : after;
   const closingLimits = limits[closing];
-  if (closingLimits?.collapsible && sameSize(layout[closing] ?? 0, closingLimits.minSize)) {
-    const distance = (layout[closing] ?? 0) - closingLimits.collapsedSize;
-    if (compareSizes(distance, Math.abs(delta)) > 0) delta = delta < 0 ? -distance : distance;
+  const closingSize = layout[closing] ?? 0;
+  if (closingLimits?.collapsible && sameSize(closingSize, closingLimits.minSize)) {
+    delta = widenDelta(delta, closingSize - closingLimits.collapsedSize);
   }
   return delta;
 }
@@ -404,16 +424,16 @@ function resizeSizes(
   return shiftLayout(layout, limits, pivot, clampToAvailable(layout, limits, pivot, requested));
 }
 
-function shiftLayout(
+function shrinkFrom(
   layout: readonly number[],
   resolved: readonly ResolvedLimits[],
-  [before, after]: readonly [number, number],
+  start: number,
   delta: number,
-): readonly number[] {
+): Readonly<{ next: number[]; applied: number }> {
   const next = [...layout];
   let applied = 0;
   const shrinkStep = delta < 0 ? -1 : 1;
-  for (let index = delta < 0 ? before : after; index >= 0 && index < layout.length; index += shrinkStep) {
+  for (let index = start; index >= 0 && index < layout.length; index += shrinkStep) {
     const size = layout[index] ?? 0;
     const remaining = Math.abs(delta) - Math.abs(applied);
     const shrunk = constrainSize(resolved[index] ?? NO_LIMITS, size - remaining);
@@ -423,24 +443,42 @@ function shiftLayout(
       if (reachedDelta(applied, delta)) break;
     }
   }
+  return { next, applied };
+}
+
+function spillFrom(
+  next: number[],
+  resolved: readonly ResolvedLimits[],
+  growing: number,
+  overflow: number,
+  delta: number,
+): void {
+  let remaining = overflow;
+  const spillStep = delta > 0 ? -1 : 1;
+  for (let index = growing; index >= 0 && index < next.length; index += spillStep) {
+    const size = next[index] ?? 0;
+    const spilled = constrainSize(resolved[index] ?? NO_LIMITS, size + remaining);
+    if (!sameSize(size, spilled)) {
+      remaining -= spilled - size;
+      next[index] = spilled;
+    }
+    if (sameSize(remaining, 0)) break;
+  }
+}
+
+function shiftLayout(
+  layout: readonly number[],
+  resolved: readonly ResolvedLimits[],
+  [before, after]: readonly [number, number],
+  delta: number,
+): readonly number[] {
+  const { next, applied } = shrinkFrom(layout, resolved, delta < 0 ? before : after, delta);
   if (next.every((size, index) => size === layout[index])) return layout;
   const growing = delta < 0 ? after : before;
   const target = (layout[growing] ?? 0) + applied;
   const grown = constrainSize(resolved[growing] ?? NO_LIMITS, target);
   next[growing] = grown;
-  if (!sameSize(grown, target)) {
-    let remaining = target - grown;
-    const spillStep = delta > 0 ? -1 : 1;
-    for (let index = growing; index >= 0 && index < next.length; index += spillStep) {
-      const size = next[index] ?? 0;
-      const spilled = constrainSize(resolved[index] ?? NO_LIMITS, size + remaining);
-      if (!sameSize(size, spilled)) {
-        remaining -= spilled - size;
-        next[index] = spilled;
-      }
-      if (sameSize(remaining, 0)) break;
-    }
-  }
+  if (!sameSize(grown, target)) spillFrom(next, resolved, growing, target - grown, delta);
   const total = next.reduce((sum, size) => sum + size, 0);
   return Math.abs(roundedSize(total) - 100) <= LAYOUT_TOTAL_TOLERANCE ? next : layout;
 }
@@ -606,12 +644,32 @@ export function useDismissiblePanelLayout(
   return { defaultLayout, onLayoutChange, onLayoutChanged };
 }
 
+function isPanelElement(element: Element): boolean {
+  return (element as HTMLElement).dataset.panel !== undefined;
+}
+
 function adjacentPanelId(separator: Element, forward: boolean): string | undefined {
   let sibling = forward ? separator.nextElementSibling : separator.previousElementSibling;
-  while (sibling && !sibling.hasAttribute("data-panel")) {
+  while (sibling && !isPanelElement(sibling)) {
     sibling = forward ? sibling.nextElementSibling : sibling.previousElementSibling;
   }
   return sibling?.id || undefined;
+}
+
+function toggleDelta(limits: PanelLimits | undefined, size: number): number | undefined {
+  const toggled = resolveLimits(limits);
+  if (!toggled.collapsible) return undefined;
+  return sameSize(size, toggled.collapsedSize)
+    ? toggled.minSize - toggled.collapsedSize
+    : toggled.collapsedSize - size;
+}
+
+function arrowDelta(key: string, shiftKey: boolean, resizesWidth: boolean): number {
+  const forward = resizesWidth ? "ArrowRight" : "ArrowDown";
+  const backward = resizesWidth ? "ArrowLeft" : "ArrowUp";
+  if (key !== forward && key !== backward) return 0;
+  const step = shiftKey ? KEYBOARD_JUMP : KEYBOARD_STEP;
+  return key === forward ? step : -step;
 }
 
 export function useSeparatorKeyboard(
@@ -624,8 +682,6 @@ export function useSeparatorKeyboard(
       const separator = event.currentTarget;
       if (separator.getAttribute("aria-disabled") === "true") return;
       const resizesWidth = separator.getAttribute("aria-orientation") !== "horizontal";
-      const forward = resizesWidth ? "ArrowRight" : "ArrowDown";
-      const backward = resizesWidth ? "ArrowLeft" : "ArrowUp";
       const arrow = ["ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp"].includes(event.key);
       if (!arrow && event.key !== "Enter") return;
       const group = groupRef.current;
@@ -638,18 +694,11 @@ export function useSeparatorKeyboard(
       event.preventDefault();
       const sizes = ids.map((id) => layout[id] ?? 0);
       const panelLimits = ids.map((id) => limits[id] ?? {});
-      let delta = 0;
-      if (event.key === "Enter") {
-        const toggled = resolveLimits(panelLimits[before]);
-        if (!toggled.collapsible) return;
-        const size = sizes[before] ?? 0;
-        delta = sameSize(size, toggled.collapsedSize)
-          ? toggled.minSize - toggled.collapsedSize
-          : toggled.collapsedSize - size;
-      } else if (event.key === forward || event.key === backward) {
-        const step = event.shiftKey ? KEYBOARD_JUMP : KEYBOARD_STEP;
-        delta = event.key === forward ? step : -step;
-      }
+      const delta =
+        event.key === "Enter"
+          ? toggleDelta(panelLimits[before], sizes[before] ?? 0)
+          : arrowDelta(event.key, event.shiftKey, resizesWidth);
+      if (delta === undefined) return;
       const next = keyboardResizeLayout(sizes, panelLimits, [before, after], delta);
       if (next === sizes) return;
       group.setLayout(Object.fromEntries(ids.map((id, index) => [id, next[index] ?? 0])));

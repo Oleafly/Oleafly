@@ -317,10 +317,11 @@ export function CompileControlsView({
                 // engine. Everything else runs through latexmk on a system
                 // TeX: "auto" picks the compiler from the source, an explicit
                 // choice pins it (Overleaf's Compiler setting).
+                const flavor = value === "auto" ? null : (value as TexFlavor);
                 const switched =
                   value === "tectonic"
                     ? setEngine("xetex")
-                    : setEngine("latexmk", value === "auto" ? null : (value as TexFlavor));
+                    : setEngine("latexmk", flavor);
                 void switched.catch((error: unknown) => {
                   void logError("switch compile engine", error);
                   const projectId = useFilesStore.getState().projectId;
