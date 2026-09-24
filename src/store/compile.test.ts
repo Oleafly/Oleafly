@@ -1425,6 +1425,24 @@ describe("bundled-engine compile failures", () => {
     expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toEqual(["minted"]);
   });
 
+  it("offers the engine choice for a known gap even when the package download failed", async () => {
+    const minted = importCompatFinding("minted");
+    mocks.projectCompatibilityFindings.mockReturnValue([minted]);
+    failWith(bundleFailure);
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toMatchObject({
+      kind: "engine-gap",
+      projectId: mocks.files.projectId,
+      findings: [expect.objectContaining({ id: "minted" })],
+    });
+    await useCompileStore.getState().recompile();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.findings.map((f) => f.id)).toEqual(["minted"]);
+  });
+
   it("clears the offer when the next compile starts", async () => {
     failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
     await useCompileStore.getState().recompile({ origin: "automatic" });

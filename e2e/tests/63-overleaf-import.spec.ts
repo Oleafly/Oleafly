@@ -170,7 +170,20 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     tauriPage,
     `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
     60_000,
-  );
+  ).catch(async (error: unknown) => {
+    const state = await tauriPage.evaluate<string>(
+      `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+        const s = useCompileStore.getState();
+        return JSON.stringify({
+          status: s.status,
+          offer: s.offer,
+          failureReason: s.failureReason,
+          errors: (s.errors ?? []).slice(0, 8),
+        });
+      })`,
+    );
+    throw new Error(`${String(error)}\ncompile state: ${state}`);
+  });
   const actions = await tauriPage.evaluate<number>(
     `(() => {
       const buttons = [...document.querySelectorAll("button")].filter((b) =>

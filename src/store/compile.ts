@@ -659,11 +659,15 @@ function maybeOfferEngineChoice(
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
   const classified = classifyCompileFailure(log, { bundledEngine: true });
-  if (classified.some((finding) => importCompatAction(finding.id) === "retry-compile")) {
+  const fetchFailed = classified.some((finding) => importCompatAction(finding.id) === "retry-compile");
+  if (fetchFailed && projectCompatibilityFindings(ctx.projectId).length === 0) {
     reportBundleFetchFailure(ctx);
     return;
   }
-  const findings = engineGapFindings(ctx.projectId, classified, errors);
+  const engineFindings = classified.filter(
+    (finding) => importCompatAction(finding.id) !== "retry-compile",
+  );
+  const findings = engineGapFindings(ctx.projectId, engineFindings, errors);
   if (findings.length === 0 || engineHintDismissed(ctx.projectId, findings)) return;
   if (!offerForAttempt(ctx, { kind: "engine-gap", projectId: ctx.projectId, findings })) return;
   if (ctx.origin === "explicit") {
