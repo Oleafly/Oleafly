@@ -32,6 +32,8 @@ updates:
         versions: [">=6.11.0"]
       - dependency-name: "@tiptap/*"
         versions: [">=3.30.0"]
+      - dependency-name: "mermaid"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: cargo
