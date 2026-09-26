@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
-import type { ProofreadingSurface } from "@oleafly/editor";
+import type { ProofreadingDiagnostic, ProofreadingSurface } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import {
@@ -22,13 +22,20 @@ import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import {
   dictionaryLabel,
+  effectiveDictionaryLocale,
+  isEnglishDictionaryLocale,
   loadDictionaryCatalog,
+  subscribeDictionaryCatalog,
 } from "@/lib/proofreading/dictionary-catalog";
 import { notifyError } from "@/lib/toast";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
-import { useProofreadingStore } from "@/store/proofreading";
+import {
+  useProofreadingStore,
+  type ProofreadingPhase,
+  type ProofreadingSurfaceState,
+} from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import {
   useLanguageServiceRuntimeUnavailable,
@@ -76,11 +83,164 @@ function StatRow({
   );
 }
 
+function useDictionaryCatalog(): DictionaryInfo[] {
+  const [entries, setEntries] = useState<DictionaryInfo[]>([]);
+  useEffect(() => {
+    let live = true;
+    const unsubscribe = subscribeDictionaryCatalog((next) => {
+      if (live) setEntries(next);
+    });
+    loadDictionaryCatalog()
+      .then((next) => {
+        if (live) setEntries(next);
+      })
+      .catch((error) => void logError("list spelling dictionaries", error));
+    return () => {
+      live = false;
+      unsubscribe();
+    };
+  }, []);
+  return entries;
+}
+
+function useEffectiveDictionaryLocale(): string {
+  const project = useFilesStore((state) => state.projectDictionaryLocale);
+  const global = useSettingsStore((state) => state.dictionaryLocale);
+  return effectiveDictionaryLocale({ project, global });
+}
+
+function ProofreadingNote({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
+      {children}
+    </p>
+  );
+}
+
+function ProofreadingUnavailable({
+  phase,
+  grammarEnglishOnly,
+  missingNote,
+}: Readonly<{
+  phase: ProofreadingPhase;
+  grammarEnglishOnly: boolean;
+  missingNote: React.ReactNode;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const unavailableReason = () => {
+    if (phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
+    if (phase === "unsupported") {
+      return grammarEnglishOnly
+        ? t(($) => $.editor.projectInfo.grammarEnglishOnly)
+        : t(($) => $.editor.proofreading.unsupported);
+    }
+    if (phase === "error") return t(($) => $.editor.proofreading.error);
+    return t(($) => $.editor.proofreading.unavailable);
+  };
+  return (
+    <>
+      <StatRow
+        label={t(($) => $.editor.projectInfo.proofreading)}
+        value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
+      />
+      {phase === "unavailable" && missingNote ? (
+        missingNote
+      ) : (
+        <ProofreadingNote>{unavailableReason()}</ProofreadingNote>
+      )}
+    </>
+  );
+}
+
+function countDiagnostics(diagnostics: readonly ProofreadingDiagnostic[]) {
+  let spelling = 0;
+  let style = 0;
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.source === "hunspell") spelling++;
+    else style++;
+  }
+  return { spelling, style };
+}
+
+function ProofreadingFindings({
+  status,
+  spellcheck,
+  grammar,
+  grammarEnglishOnly,
+  dictionaryMissing,
+  missingNote,
+  grammarNote,
+}: Readonly<{
+  status: ProofreadingSurfaceState;
+  spellcheck: boolean;
+  grammar: boolean;
+  grammarEnglishOnly: boolean;
+  dictionaryMissing: boolean;
+  missingNote: React.ReactNode;
+  grammarNote: React.ReactNode;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const { spelling, style } = countDiagnostics(status.diagnostics);
+
+  const notChecked = t(($) => $.editor.projectInfo.notChecked);
+  const spellingSkipped =
+    dictionaryMissing ||
+    (status.phase === "partial" && !status.activeDictionaryLocale);
+
+  return (
+    <>
+      <StatRow label={t(($) => $.editor.projectInfo.issues)} value={status.diagnosticCount} />
+      {spellcheck ? (
+        <StatRow
+          indent
+          label={t(($) => $.editor.projectInfo.spelling)}
+          value={spellingSkipped ? notChecked : spelling}
+        />
+      ) : null}
+      {grammar ? (
+        <StatRow
+          indent
+          label={t(($) => $.editor.projectInfo.grammarAndStyle)}
+          value={grammarEnglishOnly ? notChecked : style}
+        />
+      ) : null}
+      {status.truncated ? (
+        <ProofreadingNote>
+          {t(($) => $.editor.projectInfo.findingsTruncated)}
+        </ProofreadingNote>
+      ) : null}
+      {missingNote}
+      {grammarNote}
+    </>
+  );
+}
+
 function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const grammar = useSettingsStore((state) => state.harper);
+  const entries = useDictionaryCatalog();
+  const locale = useEffectiveDictionaryLocale();
+  const missingEntry =
+    spellcheck && status.activeDictionaryLocale !== locale
+      ? entries.find(
+          (entry) => entry.id === locale && entry.state === "available",
+        )
+      : undefined;
+  const grammarEnglishOnly = grammar && !isEnglishDictionaryLocale(locale);
+  const missingNote = missingEntry ? (
+    <ProofreadingNote>
+      {t(($) => $.editor.projectInfo.dictionaryMissing, {
+        name: dictionaryLabel(missingEntry, currentLocale()),
+      })}
+    </ProofreadingNote>
+  ) : null;
+  const grammarNote = grammarEnglishOnly ? (
+    <ProofreadingNote>
+      {t(($) => $.editor.projectInfo.grammarEnglishOnly)}
+    </ProofreadingNote>
+  ) : null;
 
   if (!spellcheck && !grammar) {
     return (
@@ -99,47 +259,25 @@ function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurfac
     );
   }
   if (status.phase !== "ready" && status.phase !== "partial") {
-    const unavailableReason = () => {
-      if (status.phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
-      if (status.phase === "unsupported") return t(($) => $.editor.proofreading.unsupported);
-      if (status.phase === "error") return t(($) => $.editor.proofreading.error);
-      return t(($) => $.editor.proofreading.unavailable);
-    };
     return (
-      <>
-        <StatRow
-          label={t(($) => $.editor.projectInfo.proofreading)}
-          value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
-        />
-        <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
-          {unavailableReason()}
-        </p>
-      </>
+      <ProofreadingUnavailable
+        phase={status.phase}
+        grammarEnglishOnly={grammarEnglishOnly}
+        missingNote={missingNote}
+      />
     );
   }
 
-  let spelling = 0;
-  let style = 0;
-  for (const diagnostic of status.diagnostics) {
-    if (diagnostic.source === "hunspell") spelling++;
-    else style++;
-  }
-
   return (
-    <>
-      <StatRow label={t(($) => $.editor.projectInfo.issues)} value={status.diagnosticCount} />
-      {spellcheck ? (
-        <StatRow indent label={t(($) => $.editor.projectInfo.spelling)} value={spelling} />
-      ) : null}
-      {grammar ? (
-        <StatRow indent label={t(($) => $.editor.projectInfo.grammarAndStyle)} value={style} />
-      ) : null}
-      {status.truncated ? (
-        <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
-          {t(($) => $.editor.projectInfo.findingsTruncated)}
-        </p>
-      ) : null}
-    </>
+    <ProofreadingFindings
+      status={status}
+      spellcheck={spellcheck}
+      grammar={grammar}
+      grammarEnglishOnly={grammarEnglishOnly}
+      dictionaryMissing={Boolean(missingEntry)}
+      missingNote={missingNote}
+      grammarNote={grammarNote}
+    />
   );
 }
 
@@ -194,14 +332,8 @@ function ProjectSpellLanguage() {
   const projectId = useFilesStore((state) => state.projectId);
   const projectLocale = useFilesStore((state) => state.projectDictionaryLocale);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
-  const [entries, setEntries] = useState<DictionaryInfo[]>([]);
+  const entries = useDictionaryCatalog();
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    loadDictionaryCatalog()
-      .then(setEntries)
-      .catch((error) => void logError("list spelling dictionaries", error));
-  }, []);
 
   const choose = useCallback(
     async (value: string) => {
@@ -255,16 +387,24 @@ function ProjectSpellLanguage() {
           <SelectItem value={APP_SETTING} data-dictionary-id={APP_SETTING}>
             {t(($) => $.editor.projectInfo.spellLanguageAppSetting)}
           </SelectItem>
-          {usable.map((entry) => (
-            <SelectItem
-              key={entry.id}
-              value={entry.id}
-              data-dictionary-id={entry.id}
-              data-label={dictionaryLabel(entry, uiLocale)}
-            >
-              {dictionaryLabel(entry, uiLocale)}
-            </SelectItem>
-          ))}
+          {usable.map((entry) => {
+            const label =
+              entry.state === "available"
+                ? t(($) => $.editor.projectInfo.spellLanguageNotDownloaded, {
+                    name: dictionaryLabel(entry, uiLocale),
+                  })
+                : dictionaryLabel(entry, uiLocale);
+            return (
+              <SelectItem
+                key={entry.id}
+                value={entry.id}
+                data-dictionary-id={entry.id}
+                data-label={label}
+              >
+                {label}
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
       <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">

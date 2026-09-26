@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { collectLatexOutlineMacros, renderLatexOutlineTitle } from "./outline-title";
 
 describe("renderLatexOutlineTitle", () => {
+  it("decodes accent macros into letters", () => {
+    expect(renderLatexOutlineTitle(String.raw`\'Uvod do \v{C}e\v{s}tiny`)).toBe("Úvod do Češtiny");
+    expect(renderLatexOutlineTitle(String.raw`Stra\ss e und \"Uberblick`)).toBe("Straße und Überblick");
+  });
+
+  it("expands project macros spelled with Unicode letters", () => {
+    const macros = collectLatexOutlineMacros({
+      "main.tex": String.raw`\newcommand{\výsledek}{Výsledky}\def\αβ{Alfa}`,
+    });
+    expect(renderLatexOutlineTitle(String.raw`\výsledek a \αβ`, macros)).toBe("Výsledky a Alfa");
+  });
+
   it("strips every simple text command it knows", () => {
     const names = [
       "emph",

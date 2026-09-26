@@ -873,6 +873,24 @@ export async function openAssistant(page: Page) {
   throw new Error("openAssistant: the assistant panel never opened");
 }
 
+export async function closeAssistant(page: Page) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const open = await page.evaluate<boolean>(
+      `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute("aria-pressed") === "true"`,
+    );
+    if (!open) return;
+    await page.evaluate(
+      `(() => {
+        const button = document.querySelector('[data-testid="rail-assistant-toggle"]');
+        if (button instanceof HTMLElement) button.click();
+        return true;
+      })()`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error("closeAssistant: the assistant panel never closed");
+}
+
 // The sidebar view switchers live in a bar at the top of the sidebar, which
 // only renders while the sidebar is open. Reveal the sidebar first, then select
 // the view; a view button reports aria-current="page" when it is the active

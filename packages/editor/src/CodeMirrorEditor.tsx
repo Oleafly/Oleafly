@@ -2,8 +2,11 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import {
   EditorState,
   Compartment,
+  EditorSelection,
   Prec,
+  Transaction,
   type Extension,
+  type StateEffect,
 } from "@codemirror/state";
 import {
   EditorView,
@@ -24,7 +27,13 @@ import {
   bracketMatching,
   foldKeymap,
 } from "@codemirror/language";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyField,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
 import {
   autocompletion,
   completionKeymap,
@@ -171,6 +180,150 @@ function indentExtensions(tabSize: number): Extension {
   return [indentUnit.of(" ".repeat(tabSize)), EditorState.tabSize.of(tabSize)];
 }
 
+interface PathViewState {
+  doc: string;
+  selection: EditorSelection;
+  history: unknown;
+  scroll: StateEffect<unknown>;
+}
+
+function clampedSelection(selection: EditorSelection, length: number): EditorSelection {
+  return EditorSelection.create(
+    selection.ranges.map((range) =>
+      EditorSelection.range(Math.min(range.anchor, length), Math.min(range.head, length)),
+    ),
+    selection.mainIndex,
+  );
+}
+
+function startsWithHighSurrogate(text: string, index: number): boolean {
+  const code = text.codePointAt(index) ?? 0;
+  return code > 0xffff || (code >= 0xd800 && code <= 0xdbff);
+}
+
+export function minimalReplacement(before: string, after: string) {
+  const limit = Math.min(before.length, after.length);
+  let prefix = 0;
+  while (prefix < limit && before[prefix] === after[prefix]) prefix++;
+  if (prefix > 0 && startsWithHighSurrogate(before, prefix - 1)) prefix--;
+  let suffix = 0;
+  while (
+    suffix < limit - prefix &&
+    before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
+  if (suffix > 0 && startsWithHighSurrogate(before, before.length - suffix - 1)) suffix--;
+  return {
+    from: prefix,
+    to: before.length - suffix,
+    insert: after.slice(prefix, after.length - suffix),
+  };
+}
+
+function capturePathViewState(view: EditorView, doc: string): PathViewState {
+  return {
+    doc,
+    selection: view.state.selection,
+    history: view.state.field(historyField, false),
+    scroll: view.scrollSnapshot(),
+  };
+}
+
+function takeSavedPathState(
+  states: Map<string, PathViewState>,
+  path: string,
+  pathChanged: boolean,
+  content: string,
+): { restorable: PathViewState | undefined; selection: EditorSelection | undefined } {
+  const saved = pathChanged ? states.get(path) : undefined;
+  if (!saved) return { restorable: undefined, selection: undefined };
+  states.delete(path);
+  return {
+    restorable: saved.doc === content ? saved : undefined,
+    selection: clampedSelection(saved.selection, content.length),
+  };
+}
+
+function dispatchDocumentSync(
+  view: EditorView,
+  current: string,
+  next: string,
+  pathChanged: boolean,
+  selection: EditorSelection | undefined,
+  effects: StateEffect<unknown>[],
+): void {
+  if (current === next) {
+    view.dispatch({ effects, selection });
+    return;
+  }
+  if (pathChanged) {
+    view.dispatch({
+      filter: false,
+      changes: { from: 0, to: view.state.doc.length, insert: next },
+      selection,
+      effects,
+    });
+    return;
+  }
+  view.dispatch({
+    filter: false,
+    changes: minimalReplacement(current, next),
+    effects,
+    annotations: Transaction.addToHistory.of(false),
+  });
+}
+
+function restorePathHistory(
+  view: EditorView,
+  compartment: Compartment,
+  restorable: PathViewState | undefined,
+): void {
+  view.dispatch({
+    effects: compartment.reconfigure(
+      restorable?.history
+        ? [historyField.init(() => restorable.history), history()]
+        : history(),
+    ),
+  });
+  if (restorable) view.dispatch({ effects: restorable.scroll });
+}
+
+function clearEditorDocument(
+  view: EditorView,
+  compartments: Compartment[],
+  historyCompartment: Compartment,
+): void {
+  view.dispatch(setDiagnostics(view.state, []));
+  view.dispatch({
+    filter: false,
+    changes: {
+      from: 0,
+      to: view.state.doc.length,
+      insert: "",
+    },
+    effects: compartments.map((compartment) => compartment.reconfigure([])),
+  });
+  view.dispatch({
+    effects: historyCompartment.reconfigure(
+      history(),
+    ),
+  });
+}
+
+function resolveForPath<T>(resolve: ((path: string | null) => T[]) | undefined, path: string): T[] {
+  return resolve?.(path) ?? [];
+}
+
+function spellExtensionsForPath(
+  path: string,
+  proofreading: { spell: boolean; harper: boolean },
+): Extension {
+  return isProseSourcePath(path) && (proofreading.spell || proofreading.harper)
+    ? spellLintExtensions(proofreading)
+    : [];
+}
+
 export const isLatexSourcePath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx|sty|cls)$/i.test(path);
 export const isBibtexSourcePath = (path: string | null): boolean =>
@@ -232,13 +385,23 @@ function applyVisualCompartments(
   lineWrap: boolean,
 ): void {
   view.dispatch({
-    effects: [
-      compartments.language.reconfigure(languageExtensionFor(path, rendered ? visualModule : null)),
-      compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports)),
-      compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
-    ],
+    effects: visualCompartmentEffects(compartments, path, rendered, ports, lineWrap),
   });
   view.requestMeasure();
+}
+
+function visualCompartmentEffects(
+  compartments: VisualCompartments,
+  path: string | null,
+  rendered: boolean,
+  ports: VisualPorts | undefined,
+  lineWrap: boolean,
+): StateEffect<unknown>[] {
+  return [
+    compartments.language.reconfigure(languageExtensionFor(path, rendered ? visualModule : null)),
+    compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports)),
+    compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
+  ];
 }
 
 function applyVisualModeWhenLoaded(
@@ -412,6 +575,7 @@ export function CodeMirrorEditor({
   const sourceToolsCompartmentRef = useRef<Compartment | null>(null);
   const hostToolsCompartmentRef = useRef<Compartment | null>(null);
   const prevPathRef = useRef<string | null>(null);
+  const pathStatesRef = useRef(new Map<string, PathViewState>());
   const suppressSyncRef = useRef(false);
   const synchronizeRef = useRef<() => void>(() => {});
 
@@ -706,29 +870,20 @@ export function CodeMirrorEditor({
       // next project opens another file with the same path (usually
       // `main.tex`).
       cancelSourceProofreading(prevPathRef.current ?? undefined);
+      pathStatesRef.current.clear();
       suppressSyncRef.current = true;
-      view.dispatch(setDiagnostics(view.state, []));
-      view.dispatch({
-        filter: false,
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: "",
-        },
-        effects: [
-          langCompartmentRef.current!.reconfigure([]),
-          visualCompartmentRef.current!.reconfigure([]),
-          sourceToolsCompartmentRef.current!.reconfigure([]),
-          hostToolsCompartmentRef.current!.reconfigure([]),
-          spellCompartmentRef.current!.reconfigure([]),
-          historyCompartmentRef.current!.reconfigure([]),
+      clearEditorDocument(
+        view,
+        [
+          langCompartmentRef.current!,
+          visualCompartmentRef.current!,
+          sourceToolsCompartmentRef.current!,
+          hostToolsCompartmentRef.current!,
+          spellCompartmentRef.current!,
+          historyCompartmentRef.current!,
         ],
-      });
-      view.dispatch({
-        effects: historyCompartmentRef.current!.reconfigure(
-          history(),
-        ),
-      });
+        historyCompartmentRef.current!,
+      );
       prevPathRef.current = null;
       setEditorDocumentPath(null);
       queueMicrotask(() => {
@@ -738,31 +893,37 @@ export function CodeMirrorEditor({
     }
     const activeContent = host.getContent(activePath);
     const pathChanged = prevPathRef.current !== activePath;
-    if (pathChanged && prevPathRef.current) {
-      cancelSourceProofreading(prevPathRef.current);
-    }
+    const leavingPath = pathChanged ? prevPathRef.current : null;
+    if (leavingPath) cancelSourceProofreading(leavingPath);
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
+    if (leavingPath) {
+      pathStatesRef.current.set(leavingPath, capturePathViewState(view, current));
+    }
+    const { restorable, selection } = takeSavedPathState(
+      pathStatesRef.current,
+      activePath,
+      pathChanged,
+      activeContent,
+    );
     const visualRendered = visualRendersPath(
       activePath,
       visualActiveRef.current,
       host.visualPorts,
     );
-    const completionSources =
-      extraCompletionSourcesForPath?.(activePath) ?? [];
-    const ghostCompletionSources =
-      extraGhostCompletionSourcesForPath?.(activePath) ?? [];
-    const effects = [
-      langCompartmentRef.current!.reconfigure(
-        languageExtensionFor(activePath, visualRendered ? visualModule : null),
-      ),
-      visualCompartmentRef.current!.reconfigure(
-        visualExtensionFor(visualRendered ? visualModule : null, host.visualPorts),
-      ),
-      lineWrapCompartmentRef.current!.reconfigure(
-        lineWrapExtensionFor(lineWrap, visualRendered),
-      ),
-    ];
+    const completionSources = resolveForPath(extraCompletionSourcesForPath, activePath);
+    const ghostCompletionSources = resolveForPath(extraGhostCompletionSourcesForPath, activePath);
+    const effects = visualCompartmentEffects(
+      {
+        language: langCompartmentRef.current!,
+        visual: visualCompartmentRef.current!,
+        wrap: lineWrapCompartmentRef.current!,
+      },
+      activePath,
+      visualRendered,
+      host.visualPorts,
+      lineWrap,
+    );
     applyVisualModeWhenLoaded(
       visualRendered,
       () => viewRef.current === view && host.getActivePath() === activePath,
@@ -794,11 +955,9 @@ export function CodeMirrorEditor({
           mathPreview,
         ),
       ),
-      hostToolsCompartmentRef.current!.reconfigure(extraExtensionsForPath?.(activePath) ?? []),
+      hostToolsCompartmentRef.current!.reconfigure(resolveForPath(extraExtensionsForPath, activePath)),
       spellCompartmentRef.current!.reconfigure(
-        isProseSourcePath(activePath) && (spellcheck || harper)
-          ? spellLintExtensions({ spell: spellcheck, harper })
-          : [],
+        spellExtensionsForPath(activePath, { spell: spellcheck, harper }),
       ),
     );
     // Drop the undo history when moving to a different file, so undo/redo never
@@ -813,18 +972,9 @@ export function CodeMirrorEditor({
         ),
       );
     }
-    if (current !== activeContent) {
-      view.dispatch({
-        filter: false,
-        changes: { from: 0, to: view.state.doc.length, insert: activeContent },
-        effects,
-      });
-    } else {
-      view.dispatch({ effects });
-    }
-    // Re-install a fresh, empty history for the new file.
+    dispatchDocumentSync(view, current, activeContent, pathChanged, selection, effects);
     if (pathChanged) {
-      view.dispatch({ effects: historyCompartmentRef.current!.reconfigure(history()) });
+      restorePathHistory(view, historyCompartmentRef.current!, restorable);
     }
     prevPathRef.current = activePath;
     setEditorDocumentPath(activePath);

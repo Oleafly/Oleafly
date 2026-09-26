@@ -16,4 +16,25 @@ describe("serializeMarkdownBody", () => {
     const second = serializeMarkdownBody(parseMarkdownBody(first).doc);
     expect(second).toBe(first);
   });
+
+  it("keeps Pandoc citations, footnotes, comments and a bare < when a block is rewritten", () => {
+    const body =
+      "Jak uvádí [@novak2020, s. 3; viz @dvorak_2019], papír[^1] <!-- ověřit --> a 1 < 2.\n\n[^1]: Poznámka.";
+    expect(serializeMarkdownBody(parseMarkdownBody(body).doc)).toBe(body);
+  });
+
+  it("escapes text that would read back as HTML or a link", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Tag <b> and [@key](x) stay text." }],
+        },
+      ],
+    };
+    const out = serializeMarkdownBody(doc);
+    expect(out).toBe("Tag &lt;b> and \\[@key\\](x) stay text.");
+    expect(serializeMarkdownBody(parseMarkdownBody(out).doc)).toBe(out);
+  });
 });

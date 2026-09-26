@@ -154,3 +154,61 @@ describe("Typst prose masking", () => {
     },
   );
 });
+
+describe("Typst email addresses", () => {
+  it("masks addresses with non-ASCII local parts before citations claim the at-sign", () => {
+    const source = "Napište na пример@почта.рф nebo ředitel@firma.cz dnes, viz @knuth.";
+    expect(typstSpellcheckRanges(source).map((range) => range.word)).toEqual([
+      "Napište",
+      "na",
+      "nebo",
+      "dnes",
+      "viz",
+    ]);
+  });
+});
+
+describe("Typst prose masking outside ASCII", () => {
+  const words = (source: string) =>
+    typstSpellcheckRanges(source).map((range) => range.word);
+
+  it("masks whole calls with combining-mark and NFD identifiers", () => {
+    expect(words('यो #परिणाम("गणना मान", विधि: "तेज") हो')).toEqual(["यो", "हो"]);
+    const decomposed = 'Text #výsledek("skrytý kód", režim: 1) konec'.normalize("NFD");
+    expect(words(decomposed)).toEqual(["Text", "konec"]);
+    expect(words("Text #model.výstup(\"skryto\") konec")).toEqual(["Text", "konec"]);
+  });
+
+  it("masks digit-first and dotted references without the sentence period", () => {
+    const source = "Viz @2020dvořák a @obr.1.";
+    const masked = maskTypstToProse(source);
+    expect(words(source)).toEqual(["Viz"]);
+    expect(masked.endsWith(".")).toBe(true);
+  });
+
+  it("keeps prose after escaped characters", () => {
+    expect(words("Cena je 5 \\$.\n\nDruhý odstavec obsahuje chiba slovo.\n")).toEqual(
+      ["Cena", "je", "Druhý", "odstavec", "obsahuje", "chiba", "slovo"],
+    );
+    expect(words("Cena 5 \\$ a 10 \\$ celkem.")).toEqual(["Cena", "celkem"]);
+    expect(words("Text \\#hashtag a \\u{1F600} slovo.")).toEqual([
+      "Text",
+      "hashtag",
+      "slovo",
+    ]);
+    expect(words("Mail jan\\@firma.cz dnes.")).toEqual(["Mail", "jan", "dnes"]);
+    expect(words("Znak \\u{41 slovo a \\u{1F600}konec")).toEqual([
+      "Znak",
+      "slovo",
+      "konec",
+    ]);
+  });
+
+  it("masks URLs instead of treating them as line comments", () => {
+    const source = "Viz https://example.com/a a pak chiba tady. https://a.b // skryto";
+    expect(words(source)).toEqual(["Viz", "pak", "chiba", "tady"]);
+    const caption =
+      "#figure(image(\"a.png\"), caption: [Viz https://x.org/y])\nDalší odstavec chiba.\n";
+    expect(words(caption)).toEqual(["Další", "odstavec", "chiba"]);
+  });
+});

@@ -1,3 +1,10 @@
+import {
+  isTypstEscaped,
+  TYPST_LABEL_PATTERN,
+  TYPST_NAME_CHARACTER_PATTERN,
+  trimTypstReference,
+  typstAutolinkEnd,
+} from "@oleafly/editor/typst-syntax";
 import type { FileSymbols, Sym, SymKind } from "./types";
 
 type SymSpan = {
@@ -26,11 +33,15 @@ function maskTypstComments(text: string): string {
   let i = 0;
   let blockDepth = 0;
   while (i < text.length) {
+    const link = blockDepth > 0 ? null : typstAutolinkEnd(text, i);
     if (blockDepth > 0) {
       const step = maskTypstBlockStep(text, i, blockDepth);
       out += step.out;
       i = step.next;
       blockDepth = step.depth;
+    } else if (link !== null) {
+      out += text.slice(i, link);
+      i = link;
     } else if (text.startsWith("//", i)) {
       const end = text.indexOf("\n", i);
       const stop = end < 0 ? text.length : end;
@@ -72,11 +83,18 @@ function opensLineCode(text: string, hash: number): boolean {
 
 function maskMarkupStep(
   text: string,
+  chars: string[],
   i: number,
   frame: MarkupFrame,
   frames: Frame[],
 ): number {
   const char = text[i];
+  if (char === "\\") return i + 2;
+  const link = typstAutolinkEnd(text, i);
+  if (link !== null) {
+    for (let index = i; index < link; index++) chars[index] = " ";
+    return link;
+  }
   if (frame.close && char === "]" && frame.brackets === 0) {
     frames.pop();
     return i + 1;
@@ -181,7 +199,7 @@ function maskStrings(text: string): string {
   let i = 0;
   while (i < text.length) {
     const frame = frames.at(-1) as Frame;
-    if (frame.mode === "markup") i = maskMarkupStep(text, i, frame, frames);
+    if (frame.mode === "markup") i = maskMarkupStep(text, chars, i, frame, frames);
     else if (frame.quoted) i = maskQuotedStep(text, chars, i, frame);
     else i = maskCodeStep(text, chars, i, frame, frames);
   }
@@ -237,8 +255,9 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     }, { level: match[1].length - 1 });
   }
 
-  const label = /<([A-Za-z_][\w:-]*)>/g;
+  const label = new RegExp(`<(${TYPST_LABEL_PATTERN})>`, "gu");
   for (const match of code.matchAll(label)) {
+    if (isTypstEscaped(code, match.index)) continue;
     const nameFrom = match.index + 1;
     push(defs, "label", match[1], {
       from: match.index,
@@ -248,15 +267,20 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     });
   }
 
-  const atUse = /(?:^|[^\w])@([A-Za-z_][\w:-]*)/g;
+  const atUse = new RegExp(
+    `(?<!${TYPST_NAME_CHARACTER_PATTERN})@(${TYPST_LABEL_PATTERN})`,
+    "gu",
+  );
   for (const match of code.matchAll(atUse)) {
-    const at = match.index + match[0].lastIndexOf("@");
+    if (isTypstEscaped(code, match.index)) continue;
+    const name = trimTypstReference(match[1]);
+    const at = match.index;
     const nameFrom = at + 1;
-    push(uses, "atuse", match[1], {
+    push(uses, "atuse", name, {
       from: at,
-      to: at + match[1].length + 1,
+      to: nameFrom + name.length,
       nameFrom,
-      nameTo: nameFrom + match[1].length,
+      nameTo: nameFrom + name.length,
     });
   }
 

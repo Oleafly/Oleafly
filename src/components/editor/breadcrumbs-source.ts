@@ -1,6 +1,7 @@
 import { syntaxTree } from "@codemirror/language";
 import type { EditorState, Text } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
+import { decodeLatexAccents } from "@oleafly/latex";
 
 export interface SectionCrumb {
   line: number;
@@ -48,9 +49,11 @@ function balancedTitle(text: string, openBrace: number): { title: string; start:
 }
 
 export function readableTitle(raw: string): string {
-  return raw
-    .replaceAll(/\\[a-zA-Z]+\s*/gu, "")
-    .replaceAll(/[{}]/gu, "")
+  return decodeLatexAccents(raw)
+    .replaceAll(
+      /\\(?:([%$&#_{}])|([,;:! ~\\])|[\p{L}\p{M}@]+\s*|.?)|[{}]/gu,
+      (_whole, escaped?: string, space?: string) => escaped ?? (space ? " " : ""),
+    )
     .replaceAll(/\s+/gu, " ")
     .trim();
 }

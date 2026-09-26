@@ -19,6 +19,12 @@ const proofreading = vi.hoisted(() => ({
   ignore: vi.fn(() => true),
   refresh: vi.fn(),
   current: vi.fn(() => true),
+  suggest: vi.fn(async (_word: string, _locale: string) => [] as { text: string; kind: 0 | 1 | 2 }[]),
+}));
+
+vi.mock("@/lib/proofreading/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/proofreading/client")>()),
+  suggestSpelling: proofreading.suggest,
 }));
 
 vi.mock("./proofreading", async () => {
@@ -33,6 +39,7 @@ vi.mock("./proofreading", async () => {
     },
     isVisualProofreadingIssueCurrent: proofreading.current,
     visualProofreadingIssueGroup: () => proofreading.group,
+    visualProofreadingMessage: (issue: VisualProofreadingIssue) => issue.message,
     applyVisualProofreadingSuggestion: proofreading.apply,
     ignoreVisualProofreadingIssue: proofreading.ignore,
   };
@@ -246,6 +253,43 @@ describe("WysiwygEditor proofreading popover", () => {
 
     fireEvent.keyDown(panel, { key: "a" });
     expect(document.activeElement).toBe(actions[actions.length - 1]);
+  });
+
+  it("loads suggestions the proofreading pass had no time for", async () => {
+    let resolve!: (value: { text: string; kind: 0 }[]) => void;
+    proofreading.suggest.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const panel = show(
+      issueWith({ word: "papiru", suggestions: [], suggestionsDeferred: true }),
+    );
+
+    expect(panel).toHaveTextContent(visual.findingSuggestions);
+    expect(proofreading.suggest).toHaveBeenCalledWith("papiru", "en_US");
+    await act(async () => resolve([{ text: "papíru", kind: 0 }]));
+
+    expect(panel).not.toHaveTextContent(visual.findingSuggestions);
+    fireEvent.click(
+      screen.getByText(visual.suggestionReplaceText.replace("{{text}}", "papíru")),
+    );
+    expect(proofreading.apply).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ word: "papiru" }),
+      { text: "papíru", kind: 0 },
+    );
+  });
+
+  it("does not look up suggestions for findings that already carry them", () => {
+    show(issueWith({ suggestions: [{ kind: 0, text: "Hello" }] }));
+    act(() =>
+      proofreading.listener?.(
+        issueWith({ id: "issue-2", source: "harper", suggestionsDeferred: true }),
+      ),
+    );
+    expect(proofreading.suggest).not.toHaveBeenCalled();
   });
 
   it("drops the panel when the finding no longer matches the document", () => {

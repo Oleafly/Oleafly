@@ -293,4 +293,45 @@ describe("LogPane", () => {
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText.mock.calls[0][0]).toContain("LaTeX does not recognize this command.");
   });
+
+  it("shows one card for a LaTeX or package error that both parsers report", () => {
+    const diagnostic = (line: number | null, message: string): PortLogDiagnostic => ({
+      severity: "error",
+      category: "error",
+      file: "./main.tex",
+      line,
+      message,
+    });
+    setCompileState({
+      status: "error",
+      log: SUCCESS_LOG,
+      errors: [
+        {
+          line: 4,
+          file: "main.tex",
+          message: "LaTeX Error: \\begin{itemize} on input line 2 ended by \\end{enumerate}.",
+          kind: "error",
+          explanation: null,
+        },
+        {
+          line: 7,
+          file: "main.tex",
+          message: "Package babel Error: Unknown option `xyz'.",
+          kind: "error",
+          explanation: null,
+        },
+        { line: 9, file: "main.tex", message: "Undefined control sequence.", kind: "error", explanation: null },
+      ],
+      diagnostics: [
+        diagnostic(4, "\\begin{itemize} on input line 2 ended by \\end{enumerate}."),
+        diagnostic(null, "Package babel: Unknown option `xyz'."),
+        diagnostic(12, "Undefined control sequence."),
+      ],
+    });
+    const { container } = render(<LogPane />);
+    const text = container.textContent ?? "";
+    expect(text.split("ended by").length - 1).toBe(1);
+    expect(text.split("Unknown option").length - 1).toBe(1);
+    expect(text.split("Undefined control sequence").length - 1).toBe(2);
+  });
 });

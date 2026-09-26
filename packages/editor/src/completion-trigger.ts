@@ -16,14 +16,14 @@ export type CompletionSyntax =
 const LATEX_COMMAND = /\\[A-Za-z@]*$/u;
 const LATEX_SLASH_COMMAND = /\/[A-Za-z]*$/u;
 const LATEX_AT_SHORTCUT = /@[A-Za-z()[\]{}|<>+\-*=.]*$/u;
-const MARKDOWN_ANCHOR = /\]\(#[\p{L}\p{N}_:.+/-]*$/u;
-const AT_REFERENCE = /(?:^|[\s[(;,])@[\p{L}\p{N}_:.+/-]*$/u;
+const MARKDOWN_ANCHOR = /\]\(#[\p{L}\p{M}\p{N}_:.+/-]*$/u;
+const AT_REFERENCE = /(?:^|[\s[(;,])@[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_CITATION =
-  /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")[\p{L}\p{N}_:.+/-]*$/u;
+  /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_REFERENCE =
-  /#(?:ref|link)\(\s*<[\p{L}\p{N}_:.+/-]*$/u;
+  /#(?:ref|link)\(\s*<[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const BIBTEX_REFERENCE =
-  /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*[\p{L}\p{N}_:.+/-]*$/iu;
+  /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*[\p{L}\p{M}\p{N}_:.+/-]*$/iu;
 const BIBTEX_ENTRY_TYPE = /(?:^|\n)[ \t]*@[A-Za-z]*$/u;
 const BIBTEX_FIELD_NAME = /,[ \t\r\n]*[A-Za-z]*$/u;
 

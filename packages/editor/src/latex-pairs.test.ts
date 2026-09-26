@@ -22,6 +22,7 @@ import {
   mathContextAt,
 } from "./latex-lexical";
 import { type LatexDelimiterCompletionSpec } from "./latex-delimiters";
+import { latexTreeSupport } from "./latex-tree";
 import {
   latexDelimiterCompletionApply,
   latexPairChange,
@@ -47,6 +48,7 @@ afterEach(() => {
 interface PairOptions {
   math?: boolean;
   brackets?: boolean;
+  tree?: boolean;
 }
 
 function mount(
@@ -65,7 +67,7 @@ function mount(
         EditorState.allowMultipleSelections.of(true),
         history(),
         indentUnit.of("  "),
-        latexLanguage(),
+        options.tree ? latexTreeSupport() : latexLanguage(),
         closeBrackets(),
         latexPairInputHandler({
           math: options.math ?? true,
@@ -508,10 +510,29 @@ describe("typing brackets after a backslash", () => {
     expect(typed("$x|$", "[")).toBe("$x[|]$");
   });
 
-  it("keeps the library quote pairs", () => {
-    expect(typed("say |", "'")).toBe("say '|'");
-    expect(typed("say |", '"')).toBe('say "|"');
+  it("leaves quotes unpaired", () => {
+    expect(typed("say |", "'")).toBe("say '|");
+    expect(typed("say |", '"')).toBe('say "|');
   });
+
+  for (const tree of [false, true]) {
+    const language = tree ? "the tree language" : "the stream language";
+
+    it(`types TeX and babel quotes without a stray partner in ${language}`, () => {
+      const cases: [string, string, string][] = [
+        ["say |", "``word'' next", "say ``word'' next|"],
+        ["say | rest", "``word''", "say ``word''| rest"],
+        ["sagte |", "\"`Hallo\"' und", "sagte \"`Hallo\"' und|"],
+        ["Die |", "\"Ubersicht ist", "Die \"Ubersicht ist|"],
+        ["the |", "students' work", "the students' work|"],
+      ];
+      for (const [doc, keys, expected] of cases) {
+        const target = editor(doc, { tree });
+        for (const key of keys) type(target, key);
+        expect(marked(target)).toBe(expected);
+      }
+    });
+  }
 
   it("leaves a backtick unpaired", () => {
     expect(typed("say |", "`")).toBe("say `|");

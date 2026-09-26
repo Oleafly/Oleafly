@@ -436,6 +436,22 @@ describe("ai-tools: command approval", () => {
     expect(result).toMatchObject({ exit_code: null, timed_out: true });
   });
 
+  it("saves open edits before the command and rereads open files after it", async () => {
+    mocks.filesState.files = { "main.tex": { content: "old\n", dirty: false } };
+    mocks.api.readFileContent.mockResolvedValue("rewritten by sed\n");
+    await createOleaflyTools({ confirm: async () => true, runId: () => "run-1" }).run_command.execute({
+      command: "sed -i s/old/new/ main.tex",
+    });
+
+    const flushed = mocks.filesState.prepareExternalMutation.mock.invocationCallOrder.at(-1) ?? Number.POSITIVE_INFINITY;
+    const executed = mocks.api.agentExec.mock.invocationCallOrder[0];
+    expect(flushed).toBeLessThan(mocks.api.agentExecAuthorize.mock.invocationCallOrder[0]);
+    expect(flushed).toBeLessThan(executed);
+    await vi.waitFor(() => expect(mocks.api.readFileContent).toHaveBeenCalledWith("proj", "main.tex"));
+    expect(mocks.api.readFileContent.mock.invocationCallOrder[0]).toBeGreaterThan(executed);
+    expect(mocks.filesState.refreshTree).toHaveBeenCalled();
+  });
+
   it("refuses an approved command if the project switches while approval is pending", async () => {
     let approve!: (value: boolean) => void;
     const confirm = vi.fn(

@@ -80,6 +80,7 @@ import {
   canUseSyncTexForCheckpoint,
   forwardFromCursor,
   inverseFromClick,
+  openFileAndGotoLine,
 } from "./synctex";
 
 beforeEach(() => {
@@ -299,5 +300,63 @@ describe("stale SyncTeX source translation", () => {
     });
 
     expect(mocks.synctexInverse).not.toHaveBeenCalled();
+  });
+});
+
+describe("source locations in projects with repeated or unusual file names", () => {
+  it("opens the file SyncTeX names among files that share a basename", async () => {
+    mocks.state.tree = [
+      { path: "main.tex", is_dir: false },
+      { path: "cast/a/intro.tex", is_dir: false },
+      { path: "cast/b/intro.tex", is_dir: false },
+    ];
+    mocks.synctexInverse.mockResolvedValue({ file: "cast/b/intro.tex", line: 3 });
+    await inverseFromClick(1, 100, 228);
+    expect(mocks.openFile).toHaveBeenCalledWith("cast/b/intro.tex");
+    expect(mocks.gotoLine).toHaveBeenCalledWith(3);
+  });
+
+  it("does not jump inside the active file when the hit cannot be resolved", async () => {
+    mocks.state.tree = [
+      { path: "main.tex", is_dir: false },
+      { path: "cast/a/intro.tex", is_dir: false },
+      { path: "cast/b/intro.tex", is_dir: false },
+    ];
+    mocks.synctexInverse.mockResolvedValue({ file: "intro.tex", line: 3 });
+    await inverseFromClick(1, 100, 228);
+    expect(mocks.openFile).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("opens an NFD-named file for the NFC name TeX recorded", async () => {
+    const decomposed = "kapitoly/u\u0301vod.tex";
+    mocks.state.tree = [
+      { path: "main.tex", is_dir: false },
+      { path: decomposed, is_dir: false },
+    ];
+    mocks.synctexInverse.mockResolvedValue({ file: "kapitoly/\u00favod.tex", line: 2 });
+    await inverseFromClick(1, 100, 100);
+    expect(mocks.openFile).toHaveBeenCalledWith(decomposed);
+  });
+
+  it("opens kapitoly/úvod.tex for Tectonic's extensionless log name", async () => {
+    mocks.state.tree = [
+      { path: "main.tex", is_dir: false },
+      { path: "kapitoly/úvod.tex", is_dir: false },
+    ];
+    await openFileAndGotoLine("./kapitoly/úvod", 2);
+    expect(mocks.openFile).toHaveBeenCalledWith("kapitoly/úvod.tex");
+    expect(mocks.gotoLine).toHaveBeenCalledWith(2);
+  });
+
+  it("leaves the editor alone for a location in a file outside the project", async () => {
+    await openFileAndGotoLine("/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls", 40);
+    expect(mocks.openFile).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("still jumps within the active file for a location without a file", async () => {
+    await openFileAndGotoLine(null, 5);
+    expect(mocks.gotoLine).toHaveBeenCalledWith(5);
   });
 });

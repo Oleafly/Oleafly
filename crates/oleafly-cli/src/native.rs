@@ -1,7 +1,8 @@
 use crate::process;
 use oleafly_core::{
     image_failure_evidence, image_failure_notes, place_image_findings, slash_path,
-    walk_source_tree, Engine, Error, ErrorKind, ImageFinding, PreparedBuild, Result, Workspace,
+    walk_source_tree, Engine, Error, ErrorKind, ImageFinding, PreparedBuild, Result,
+    Utf8StreamDecoder, Workspace,
 };
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -837,14 +838,17 @@ where
 {
     let mut output = String::new();
     let mut buffer = [0_u8; 8192];
+    let mut decoder = Utf8StreamDecoder::default();
     loop {
         let read = stream.read(&mut buffer).await?;
+        let text = decoder.push(&buffer[..read], read == 0);
+        if !text.is_empty() {
+            sink.emit(&text);
+            append_bounded(&mut output, text.as_bytes());
+        }
         if read == 0 {
             break;
         }
-        let text = String::from_utf8_lossy(&buffer[..read]);
-        sink.emit(&text);
-        append_bounded(&mut output, text.as_bytes());
     }
     Ok(output)
 }
@@ -1036,6 +1040,21 @@ mod tests {
 
     fn compiler_fixture(directory: &TempDir, failure: bool) -> PathBuf {
         crate::support::compiler_fixture(directory.path(), failure)
+    }
+
+    #[tokio::test]
+    async fn compiler_output_keeps_characters_split_between_reads() {
+        let text = "kapitoly/úvod.typ:1:9: error: x";
+        let bytes = text.as_bytes();
+        let cut = text.find('ú').unwrap() + 1;
+        let emitted = Arc::new(Mutex::new(String::new()));
+        let sink_emitted = emitted.clone();
+        let sink = CompilerLog::new(move |chunk| sink_emitted.lock().unwrap().push_str(chunk));
+        let output = read_stream((&bytes[..cut]).chain(&bytes[cut..]), sink)
+            .await
+            .unwrap();
+        assert_eq!(output, text);
+        assert_eq!(*emitted.lock().unwrap(), text);
     }
 
     #[test]

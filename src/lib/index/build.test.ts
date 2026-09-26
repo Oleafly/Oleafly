@@ -14,6 +14,12 @@ describe("buildIndex: macrouse second pass", () => {
     expect(idx.uses.some((u) => u.kind === "macrouse" && u.name === "foo")).toBe(false);
   });
 
+  it("reads Unicode macro names whole when linking uses", () => {
+    const idx = buildIndex({ "m.tex": "\\newcommand{\\foo}{x}\n\\fooé \\foo é\n\\newcommand{\\výsledek}{42}\n\\výsledek" });
+    const names = idx.uses.filter((u) => u.kind === "macrouse").map((u) => u.name);
+    expect(names).toEqual(["foo", "výsledek"]);
+  });
+
   it("finds macro uses in other files", () => {
     const idx = buildIndex({
       "macros.tex": "\\newcommand{\\R}{\\mathbb{R}}",

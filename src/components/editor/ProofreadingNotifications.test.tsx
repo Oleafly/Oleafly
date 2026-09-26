@@ -43,6 +43,7 @@ function surfaceState(phase: ProofreadingPhase, extra: Record<string, unknown> =
     diagnostics: [],
     truncated: false,
     activeDictionaryLocale: null,
+    retryable: true,
     ...extra,
   };
 }
@@ -134,6 +135,14 @@ describe("ProofreadingNotifications", () => {
     await advance(PROOFREADING_RETRY_POLICY.baseMs);
     expect(client.retryProofreading).toHaveBeenCalledTimes(2);
     expect(log.logError).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not keep restarting the worker for a dictionary that is not installed", async () => {
+    mount("unavailable", { retryable: false });
+    await advance(PROOFREADING_RETRY_POLICY.maxMs);
+
+    expect(client.retryProofreading).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
   it("does not retry states a retry cannot fix", async () => {

@@ -1527,7 +1527,7 @@ fn append_engine_output_on_failure(
         .map(|(index, _)| index)
         .find(|index| *index >= start)
         .unwrap_or(stdout.len());
-    append_bounded(&mut log, b"\n[Oleafly] Engine output:\n");
+    append_bounded(&mut log, format!("\n{ENGINE_OUTPUT_MARKER}\n").as_bytes());
     append_bounded(&mut log, &stdout.as_bytes()[start..]);
     log
 }
@@ -1677,7 +1677,14 @@ async fn finish_compile(
         CompileTarget::Main { main_document } => Some(main_document.to_string()),
         CompileTarget::Isolated { .. } => None,
     };
-    let (log, diagnostics) = parse_log_diagnostics(request.engine.id(), log, root_file).await?;
+    let (log, diagnostics, errors) = parse_log_diagnostics(
+        request.engine.id(),
+        log,
+        root_file,
+        spec.working_dir.clone(),
+        errors,
+    )
+    .await?;
     Ok(build_compile_result(
         capabilities,
         spec,
@@ -1752,21 +1759,68 @@ fn apply_image_findings(
     );
 }
 
+type ParsedCompileLog = (String, Vec<oleafly_core::LogDiagnostic>, Vec<CompileError>);
+
 async fn parse_log_diagnostics(
     engine: DocumentEngineId,
     log: String,
     root_file: Option<String>,
-) -> Result<(String, Vec<oleafly_core::LogDiagnostic>), String> {
+    project_dir: PathBuf,
+    mut errors: Vec<CompileError>,
+) -> Result<ParsedCompileLog, String> {
     let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
-    if !is_tex || root_file.is_none() {
-        return Ok((log, Vec::new()));
+    if !is_tex {
+        return Ok((log, Vec::new(), errors));
     }
     tokio::task::spawn_blocking(move || {
-        let diagnostics = oleafly_core::parse_latex_log(&log, root_file.as_deref());
-        (log, diagnostics)
+        let mut diagnostics = match root_file.as_deref() {
+            Some(root) => oleafly_core::parse_latex_log(&log, Some(root)),
+            None => Vec::new(),
+        };
+        resolve_extensionless_inputs(&project_dir, &mut errors, &mut diagnostics);
+        (log, diagnostics, errors)
     })
     .await
     .map_err(|error| format!("failed to parse the compile log: {error}"))
+}
+
+fn with_tex_extension(project_dir: &Path, file: &str) -> Option<String> {
+    let relative = file.strip_prefix("./").unwrap_or(file);
+    let path = Path::new(relative);
+    if relative.is_empty() || path.is_absolute() || path.extension().is_some() {
+        return None;
+    }
+    project_dir
+        .join(format!("{relative}.tex"))
+        .is_file()
+        .then(|| format!("{file}.tex"))
+}
+
+fn resolve_extensionless_inputs(
+    project_dir: &Path,
+    errors: &mut [CompileError],
+    diagnostics: &mut [oleafly_core::LogDiagnostic],
+) {
+    let mut resolved: std::collections::HashMap<String, Option<String>> =
+        std::collections::HashMap::new();
+    let mut resolve = |file: &mut Option<String>| {
+        let Some(name) = file.as_deref() else {
+            return;
+        };
+        let replacement = resolved
+            .entry(name.to_string())
+            .or_insert_with(|| with_tex_extension(project_dir, name))
+            .clone();
+        if replacement.is_some() {
+            *file = replacement;
+        }
+    };
+    for error in errors.iter_mut() {
+        resolve(&mut error.file);
+    }
+    for diagnostic in diagnostics.iter_mut() {
+        resolve(&mut diagnostic.file);
+    }
 }
 
 fn compile_succeeded(
@@ -2201,7 +2255,7 @@ fn read_log_bounded(path: &Path) -> std::io::Result<String> {
         .take((MAX_LOG_BYTES + 1) as u64)
         .read_to_end(&mut bytes)?;
     let mut output = String::new();
-    append_bounded(&mut output, &bytes);
+    append_bounded(&mut output, &oleafly_core::rejoin_split_utf8_lines(&bytes));
     Ok(output)
 }
 
@@ -2272,50 +2326,6 @@ pub(crate) fn resolve_bundled_sidecar(name: &str) -> Result<PathBuf, String> {
         .ok_or_else(|| format!("bundled sidecar not found: {}", path.display()))
 }
 
-#[derive(Default)]
-struct Utf8StreamDecoder {
-    pending: Vec<u8>,
-}
-
-impl Utf8StreamDecoder {
-    fn push(&mut self, bytes: &[u8], finish: bool) -> String {
-        self.pending.extend_from_slice(bytes);
-        let mut output = String::new();
-        let mut consumed = 0;
-        while consumed < self.pending.len() {
-            match std::str::from_utf8(&self.pending[consumed..]) {
-                Ok(valid) => {
-                    output.push_str(valid);
-                    consumed = self.pending.len();
-                }
-                Err(error) => {
-                    let valid_end = consumed + error.valid_up_to();
-                    output.push_str(
-                        std::str::from_utf8(&self.pending[consumed..valid_end])
-                            .expect("valid_up_to must identify valid UTF-8"),
-                    );
-                    consumed = valid_end;
-                    match error.error_len() {
-                        Some(invalid_len) => {
-                            output.push('\u{fffd}');
-                            consumed += invalid_len;
-                        }
-                        None if finish => {
-                            output.push_str(&String::from_utf8_lossy(&self.pending[consumed..]));
-                            consumed = self.pending.len();
-                        }
-                        None => break,
-                    }
-                }
-            }
-        }
-        if consumed > 0 {
-            self.pending.drain(..consumed);
-        }
-        output
-    }
-}
-
 fn emit_and_collect_compiler_text(
     text: &str,
     app: Option<&tauri::AppHandle>,
@@ -2347,7 +2357,7 @@ where
 {
     use tokio::io::AsyncReadExt;
     let mut collected = String::new();
-    let mut decoder = Utf8StreamDecoder::default();
+    let mut decoder = oleafly_core::Utf8StreamDecoder::default();
     let mut chunk = [0_u8; 8192];
     loop {
         match reader.read(&mut chunk).await {
@@ -2909,12 +2919,68 @@ fn looks_like_tex_path(token: &str) -> bool {
     token.starts_with('/')
         || token.starts_with("./")
         || (token.contains('.') && token.contains('/'))
+        || is_bare_relative_path(token)
         || token.rsplit('.').next().is_some_and(|ext| {
             matches!(
                 ext,
                 "tex" | "sty" | "cls" | "def" | "ldf" | "bbl" | "bib" | "clo" | "fd" | "cfg"
             )
         })
+}
+
+fn is_bare_relative_path(token: &str) -> bool {
+    let Some((head, tail)) = token.split_once('/') else {
+        return false;
+    };
+    head.chars()
+        .find(|c| !c.is_numeric() && *c != '-')
+        .is_some_and(|first| first.is_alphabetic() || first == '_')
+        && !head.contains(':')
+        && !token.contains(char::is_whitespace)
+        && !tail.is_empty()
+        && !tail.ends_with('/')
+}
+
+fn tex_path_token_end(bytes: &[u8], start: usize) -> usize {
+    let quoted = bytes.get(start) == Some(&b'"');
+    let spaced = quoted || bytes[start..].starts_with(b"./") || bytes.get(start) == Some(&b'/');
+    let mut end = start + usize::from(quoted);
+    while end < bytes.len() {
+        let stop = match bytes[end] {
+            b'(' | b')' | b'[' | b']' => true,
+            b'"' | b'{' | b'}' | b'<' | b'>' => spaced,
+            b' ' | b'\t' => !spaced,
+            _ => false,
+        };
+        if stop {
+            break;
+        }
+        end += 1;
+    }
+    end
+}
+
+fn has_file_extension(path: &str) -> bool {
+    path.rsplit('/')
+        .next()
+        .and_then(|name| name.rsplit_once('.'))
+        .is_some_and(|(stem, extension)| {
+            !stem.is_empty()
+                && !extension.is_empty()
+                && extension.chars().all(|c| c.is_ascii_alphanumeric())
+        })
+}
+
+fn path_before_trailing_text(token: &str) -> &str {
+    if !token.contains([' ', '\t']) || has_file_extension(token) {
+        return token;
+    }
+    token
+        .match_indices([' ', '\t'])
+        .rev()
+        .map(|(index, _)| &token[..index])
+        .find(|prefix| has_file_extension(prefix))
+        .unwrap_or_else(|| token.split([' ', '\t']).next().unwrap_or(token))
 }
 
 // TeX marks the file it is reading with balanced parens: `(path` on open, `)` on
@@ -2928,13 +2994,14 @@ fn update_tex_file_stack(line: &str, stack: &mut Vec<String>) {
         match bytes[idx] {
             b'(' => {
                 let start = idx + 1;
-                let mut end = start;
-                while end < bytes.len()
-                    && !matches!(bytes[end], b'(' | b')' | b' ' | b'\t' | b'[' | b']')
-                {
-                    end += 1;
-                }
-                stack.push(line[start..end].trim_start_matches("./").to_owned());
+                let end = tex_path_token_end(bytes, start);
+                let token = line[start..end].trim_start_matches('"').trim_end();
+                let token = if bytes.get(start) == Some(&b'"') {
+                    token
+                } else {
+                    path_before_trailing_text(token)
+                };
+                stack.push(token.trim_start_matches("./").to_owned());
                 idx = end;
             }
             b')' => {
@@ -3031,11 +3098,24 @@ fn float_warning(line: &str) -> Option<&'static str> {
     None
 }
 
+const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
+
 fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     let mut out = Vec::new();
     let lines: Vec<&str> = log.lines().collect();
     let mut stack: Vec<String> = Vec::new();
+    let mut in_engine_output = false;
     for i in 0..lines.len() {
+        if lines[i].trim_end() == ENGINE_OUTPUT_MARKER {
+            in_engine_output = true;
+            continue;
+        }
+        if in_engine_output {
+            if !lines[i].starts_with("[Oleafly]") {
+                continue;
+            }
+            in_engine_output = false;
+        }
         update_tex_file_stack(lines[i], &mut stack);
         if let Some(explanation) = float_warning(lines[i]) {
             out.push(CompileError {
@@ -3101,18 +3181,6 @@ mod tests {
 
     fn joined(dir: &str, name: &str) -> String {
         Path::new(dir).join(name).to_string_lossy().into_owned()
-    }
-
-    #[test]
-    fn compiler_output_utf8_decoder_preserves_split_codepoints() {
-        let mut decoder = Utf8StreamDecoder::default();
-        assert_eq!(decoder.push(b"prefix \xf0\x9f", false), "prefix ");
-        assert_eq!(decoder.push(b"\x98\x80 suffix", false), "😀 suffix");
-        assert_eq!(decoder.push(&[], true), "");
-
-        let mut truncated = Utf8StreamDecoder::default();
-        assert_eq!(truncated.push(b"bad \xe2\x82", false), "bad ");
-        assert_eq!(truncated.push(&[], true), "�");
     }
 
     #[tokio::test]
@@ -3321,6 +3389,139 @@ mod tests {
         let log = "(./main.tex (Font) (2021/01/01)\n! Undefined control sequence.\nl.9 \\bad\n)\n";
         let errors = parse_tex_log_errors(log);
         assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
+    }
+
+    #[test]
+    fn tex_errors_attribute_to_tectonic_extensionless_inputs() {
+        let log = "(_oleafly_entry.tex (main.tex (article.cls\n) (2021/01/01)\n(kapitoly/\u{fa}vod\n! Undefined control sequence.\nl.2 \\bad\n) (chapters/intro\n! Missing $ inserted.\nl.5 x_1\n)\n! Emergency stop.\n";
+        let files: Vec<_> = parse_tex_log_errors(log)
+            .into_iter()
+            .map(|error| (error.file, error.line))
+            .collect();
+        assert_eq!(
+            files,
+            [
+                (Some("kapitoly/\u{fa}vod".to_string()), Some(2)),
+                (Some("chapters/intro".to_string()), Some(5)),
+                (Some("main.tex".to_string()), None),
+            ]
+        );
+    }
+
+    #[test]
+    fn tex_errors_keep_input_paths_with_spaces_or_quotes() {
+        for log in [
+            "(./main.tex (./kapitoly/\u{fa}vod pr\u{e1}ce.tex\n! Undefined control sequence.\nl.2 \\bad\n))\n",
+            "(./main.tex (\"./kapitoly/\u{fa}vod pr\u{e1}ce.tex\"\n! Undefined control sequence.\nl.2 \\bad\n))\n",
+        ] {
+            let errors = parse_tex_log_errors(log);
+            assert_eq!(
+                errors[0].file.as_deref(),
+                Some("kapitoly/\u{fa}vod pr\u{e1}ce.tex")
+            );
+        }
+    }
+
+    #[test]
+    fn tex_errors_ignore_text_printed_after_an_input_path() {
+        for (log, file) in [
+            (
+                "(./main.tex (./sec.tex Chapter 1.\n! Undefined control sequence.\nl.2 \\bad\n))\n",
+                "sec.tex",
+            ),
+            (
+                "(./main.tex (./kapitoly/\u{fa}vod pr\u{e1}ce.tex ABD: EveryShipout\n! Undefined control sequence.\nl.2 \\bad\n))\n",
+                "kapitoly/\u{fa}vod pr\u{e1}ce.tex",
+            ),
+            (
+                "(_oleafly_entry.tex (main.tex (01-uvod/text\n! Undefined control sequence.\nl.2 \\bad\n)))\n",
+                "01-uvod/text",
+            ),
+        ] {
+            let errors = parse_tex_log_errors(log);
+            assert_eq!(errors[0].file.as_deref(), Some(file), "{log}");
+        }
+        let dated = parse_tex_log_errors(
+            "(main.tex (2021-01/01)\n! Undefined control sequence.\nl.2 \\bad\n)\n",
+        );
+        assert_eq!(dated[0].file.as_deref(), Some("main.tex"));
+    }
+
+    #[test]
+    fn tex_errors_skip_the_engine_output_tail() {
+        let log = concat!(
+            "(main.tex\n! Undefined control sequence.\nl.2 \\bad\n)\n",
+            "\n[Oleafly] Engine output:\n",
+            "(main.tex\nerror: main.tex:2: Undefined control sequence\n",
+            "! Undefined control sequence.\nl.2 \\bad\n)\n",
+            "[Oleafly] Running pinned Biber on _oleafly_entry...\n",
+            "! Undefined control sequence.\nl.7 \\later\n",
+        );
+        let lines: Vec<_> = parse_tex_log_errors(log)
+            .into_iter()
+            .map(|error| error.line)
+            .collect();
+        assert_eq!(lines, [Some(2), Some(7)]);
+    }
+
+    #[test]
+    fn extensionless_inputs_resolve_to_tex_files_in_the_project() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("kapitoly")).unwrap();
+        std::fs::write(project.path().join("kapitoly/\u{fa}vod.tex"), "x").unwrap();
+        std::fs::create_dir_all(project.path().join("data")).unwrap();
+        std::fs::write(project.path().join("data/table"), "x").unwrap();
+        let error = |file: &str| CompileError {
+            line: Some(2),
+            file: Some(file.to_string()),
+            message: "Undefined control sequence.".into(),
+            kind: "error".into(),
+            explanation: None,
+        };
+        let mut errors = vec![
+            error("kapitoly/\u{fa}vod"),
+            error("data/table"),
+            error("main.tex"),
+            error("article.cls"),
+        ];
+        let mut diagnostics = oleafly_core::parse_latex_log(
+            "(./main.tex (kapitoly/\u{fa}vod\n! Undefined control sequence.\nl.2 \\bad\n\n))",
+            Some("main.tex"),
+        );
+        resolve_extensionless_inputs(project.path(), &mut errors, &mut diagnostics);
+        let files: Vec<_> = errors.iter().map(|error| error.file.as_deref()).collect();
+        assert_eq!(
+            files,
+            [
+                Some("kapitoly/\u{fa}vod.tex"),
+                Some("data/table"),
+                Some("main.tex"),
+                Some("article.cls"),
+            ]
+        );
+        assert_eq!(
+            diagnostics[0].file.as_deref(),
+            Some("./kapitoly/\u{fa}vod.tex")
+        );
+    }
+
+    #[test]
+    fn log_files_rejoin_characters_split_by_the_tex_line_wrap() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("x.log");
+        let warning =
+            "LaTeX Warning: Reference `\u{17e}\u{17e}' on page 1 undefined on input line 3.";
+        let bytes = warning.as_bytes();
+        let cut = warning.find('`').unwrap() + 2;
+        std::fs::write(&path, [&bytes[..cut], b"\n", &bytes[cut..]].concat()).unwrap();
+        let log = read_log_bounded(&path).unwrap();
+        assert_eq!(log, warning);
+        let diagnostics = oleafly_core::parse_latex_log(&log, Some("main.tex"));
+        assert_eq!(diagnostics[0].line, Some(3));
+        assert_eq!(
+            diagnostics[0].message,
+            "Cannot find reference `\u{17e}\u{17e}`."
+        );
     }
 
     #[test]
@@ -4834,10 +5035,12 @@ mod tests {
     #[tokio::test]
     async fn only_tex_engines_parse_structured_log_diagnostics() {
         for engine in [DocumentEngineId::Typst, DocumentEngineId::Markdown] {
-            let (log, diagnostics) = parse_log_diagnostics(
+            let (log, diagnostics, _) = parse_log_diagnostics(
                 engine,
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
+                PathBuf::new(),
+                Vec::new(),
             )
             .await
             .unwrap();
@@ -4848,10 +5051,15 @@ mod tests {
 
     #[tokio::test]
     async fn an_isolated_compile_has_no_root_file_to_attribute_diagnostics_to() {
-        let (log, diagnostics) =
-            parse_log_diagnostics(DocumentEngineId::Latex, DIAGNOSTIC_LOG.to_string(), None)
-                .await
-                .unwrap();
+        let (log, diagnostics, _) = parse_log_diagnostics(
+            DocumentEngineId::Latex,
+            DIAGNOSTIC_LOG.to_string(),
+            None,
+            PathBuf::new(),
+            Vec::new(),
+        )
+        .await
+        .unwrap();
         assert_eq!(log, DIAGNOSTIC_LOG);
         assert!(diagnostics.is_empty());
     }
@@ -4859,10 +5067,12 @@ mod tests {
     #[tokio::test]
     async fn a_tex_compile_returns_errors_and_warnings_against_the_root_file() {
         for engine in [DocumentEngineId::Latex, DocumentEngineId::Latexmk] {
-            let (log, diagnostics) = parse_log_diagnostics(
+            let (log, diagnostics, _) = parse_log_diagnostics(
                 engine,
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
+                PathBuf::new(),
+                Vec::new(),
             )
             .await
             .unwrap();
@@ -4886,10 +5096,12 @@ mod tests {
 
     #[tokio::test]
     async fn an_empty_log_parses_to_no_diagnostics() {
-        let (log, diagnostics) = parse_log_diagnostics(
+        let (log, diagnostics, _) = parse_log_diagnostics(
             DocumentEngineId::Latex,
             String::new(),
             Some("main.tex".to_string()),
+            PathBuf::new(),
+            Vec::new(),
         )
         .await
         .unwrap();

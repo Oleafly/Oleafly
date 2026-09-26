@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Tarkista englannin kielioppi ja tyyli LaTeXin ja Markdownin lähdekoodi- ja visuaalisessa muokkauksessa sekä Typstin lähdekoodissa, yhden napsautuksen korjauksilla.",
-        "label": "Kielioppi ja tyyli (Harper)"
+        "label": "Kielioppi ja tyyli (Harper)",
+        "englishOnly": "Kieliopin tarkistus toimii vain englannille. Se on tauolla, kun oikeinkirjoitussanakirja on {{name}}."
       },
       "offline": {
         "description": "Käännä valitsimella --only-cached äläkä koskaan hae paketteja verkosta.",

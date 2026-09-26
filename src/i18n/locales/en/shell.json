@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes.",
-        "label": "Grammar & style (Harper)"
+        "label": "Grammar & style (Harper)",
+        "englishOnly": "Grammar checking only works for English. It is paused while the spelling dictionary is {{name}}."
       },
       "offline": {
         "description": "Compile with --only-cached and never fetch packages over the network.",

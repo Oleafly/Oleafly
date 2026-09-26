@@ -97,6 +97,16 @@ describe("latexFromClipboard", () => {
     expect(latex).toContain(String.raw`\begin{tabular}`);
     expect(latex).toContain(String.raw`\textbf{A} & 1 \\`);
   });
+
+  it("keeps Word non-breaking spaces as ties and drops filler paragraphs", () => {
+    const latex = latexFromClipboard(
+      clipboard({
+        html: '<html xmlns:o="urn:schemas-microsoft-com:office:office"><body><p class=MsoNormal>Hrany v&nbsp;místě a&nbsp;na <b>okraji</b></p><p class=MsoNormal>&nbsp;</p><p>Druhý&nbsp;&nbsp;odstavec</p></body></html>',
+        text: "Hrany v\u00A0místě a\u00A0na okraji\n\nDruhý odstavec",
+      }),
+    );
+    expect(latex).toBe(String.raw`Hrany v~místě a~na \textbf{okraji}` + "\n\nDruhý odstavec");
+  });
 });
 
 describe("pasteHtml", () => {

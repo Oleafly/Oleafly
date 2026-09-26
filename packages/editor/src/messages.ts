@@ -38,6 +38,7 @@ export const EDITOR_MESSAGE_KEYS = [
   "spellcheck.suggestionReplace",
   "spellcheck.didYouMean",
   "spellcheck.notInDictionary",
+  "spellcheck.findingSuggestions",
   "spellcheck.possibleMisspelling",
   "spellcheck.repeatedWord",
   "spellcheck.possibleIssue",

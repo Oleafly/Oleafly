@@ -83,6 +83,7 @@ export interface AiToolsHost {
   applyExternalRename(projectId: string, from: string, to: string): boolean;
   applyExternalDelete(projectId: string, path: string): boolean;
   refreshTree(projectId: string): Promise<void>;
+  refreshOpenFiles?(projectId: string): void;
   recompile(): Promise<
     { ok?: boolean; errors?: unknown[]; has_pdf?: boolean; log?: string | null } | null | undefined
   >;
@@ -1183,10 +1184,15 @@ export function createOleaflyTools(
           }))) {
             return { ...declined("run_command"), command };
           }
-          assertMutationAllowed(projectId);
+          await prepareMutation(projectId);
           const authorization = await authorizeExec(projectId, command, ownerOverride);
           assertMutationAllowed(projectId);
-          const result = await execCommand(projectId, command, authorization);
+          let result: Awaited<ReturnType<typeof execCommand>>;
+          try {
+            result = await execCommand(projectId, command, authorization);
+          } finally {
+            host.refreshOpenFiles?.(projectId);
+          }
           return {
             // Structured so the exec card renders command, output, and status;
             // the model also reads the flat fields.

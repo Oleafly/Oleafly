@@ -211,7 +211,11 @@
     "spellLanguageAppSetting": "Як у налаштуваннях застосунку",
     "spellLanguageAriaLabel": "Мова перевірки орфографії для цього проєкту",
     "spellLanguageHint": "Діє лише для цього проєкту. Завантажте більше мов у налаштуваннях.",
-    "spellLanguageFailed": "Не вдалося змінити мову перевірки орфографії."
+    "spellLanguageFailed": "Не вдалося змінити мову перевірки орфографії.",
+    "notChecked": "Не перевірено",
+    "dictionaryMissing": "{{name}} не завантажено, тому правопис не перевіряється. Завантажте його в налаштуваннях або виберіть іншу мову.",
+    "grammarEnglishOnly": "Перевірка граматики працює лише для документів англійською.",
+    "spellLanguageNotDownloaded": "{{name}} (не завантажено)"
   },
   "table": {
     "trigger": "Вставити таблицю",
@@ -566,6 +570,7 @@
     "previousFinding": "Попереднє зауваження в цьому сирому блоці",
     "nextFinding": "Наступне зауваження в цьому сирому блоці",
     "suggestedFixes": "Пропоновані виправлення",
+    "findingSuggestions": "Шукаємо варіанти…",
     "suggestionRemove": "Вилучити",
     "suggestionInsert": "Вставити",
     "suggestionInsertText": "Вставити «{{text}}»",
@@ -576,7 +581,12 @@
     "keyboardHint": "Переходьте між діями клавішею Tab або стрілками. Натисніть Escape, щоб закрити.",
     "endOfDocument": "Кінець документа",
     "hidePreamble": "Сховати преамбулу документа",
-    "showPreamble": "Показати преамбулу документа"
+    "showPreamble": "Показати преамбулу документа",
+    "findingLabel": "{{message}}. Відкрити пропозиції коректури.",
+    "rawBlockFindings_one": "{{count}} зауваження коректури в цьому вихідному блоці. {{message}}. Відкрити пропозиції.",
+    "rawBlockFindings_few": "{{count}} зауваження коректури в цьому вихідному блоці. {{message}}. Відкрити пропозиції.",
+    "rawBlockFindings_many": "{{count}} зауважень коректури в цьому вихідному блоці. {{message}}. Відкрити пропозиції.",
+    "rawBlockFindings_other": "{{count}} зауваження коректури в цьому вихідному блоці. {{message}}. Відкрити пропозиції."
   },
   "package": {
     "search": {
@@ -624,6 +634,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Можливо, ви мали на увазі {{suggestion}}?",
       "notInDictionary": "Немає у словнику: {{word}}",
+      "findingSuggestions": "Шукаємо варіанти…",
       "possibleMisspelling": "Можлива помилка в слові: «{{word}}»",
       "repeatedWord": "Повторене слово: «{{word}}»",
       "possibleIssue": "Можлива помилка орфографії чи граматики: «{{word}}»"

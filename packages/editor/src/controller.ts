@@ -181,31 +181,80 @@ export function gotoLine(line: number) {
   revealEditorRange(v, lineObj.from);
 }
 
+const WORD_CHARACTER = /[\p{L}\p{M}\p{N}\u200C\u200D]/u;
+
+function characterBefore(text: string, index: number): string | undefined {
+  return index > 0 ? Array.from(text.slice(Math.max(0, index - 2), index)).pop() : undefined;
+}
+
+function characterAt(text: string, index: number): string | undefined {
+  const codePoint = text.codePointAt(index);
+  return codePoint === undefined ? undefined : String.fromCodePoint(codePoint);
+}
+
+const COMPOSES_WITH_PREVIOUS = /[\p{M}\u1160-\u11FF\uD7B0-\uD7FF]/u;
+
+function normalizedSegments(text: string): { text: string; offsets: [number, number][] } {
+  const offsets: [number, number][] = [[0, 0]];
+  let normalized = "";
+  let start = 0;
+  let offset = 0;
+  for (const character of text) {
+    if (offset > start && !COMPOSES_WITH_PREVIOUS.test(character)) {
+      normalized += text.slice(start, offset).normalize("NFC");
+      offsets.push([offset, normalized.length]);
+      start = offset;
+    }
+    offset += character.length;
+  }
+  normalized += text.slice(start).normalize("NFC");
+  offsets.push([offset, normalized.length]);
+  return { text: normalized, offsets };
+}
+
+function originalOffset(offsets: readonly [number, number][], index: number, roundUp: boolean): number {
+  if (roundUp) {
+    return (offsets.find(([, normalized]) => normalized >= index) ?? (offsets.at(-1) as [number, number]))[0];
+  }
+  let original = 0;
+  for (const [start, normalized] of offsets) {
+    if (normalized > index) break;
+    original = start;
+  }
+  return original;
+}
+
 export function selectWordNearLine(line: number, word: string): boolean {
   const v = getEditorView();
   if (!v) return false;
-  const needle = word.trim();
+  const needle = word.trim().normalize("NFC");
   if (!needle) return false;
   const doc = v.state.doc;
   const total = doc.lines;
   const target = Math.min(Math.max(1, line), total);
-  const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
+  const isWordChar = (c: string | undefined) => !!c && WORD_CHARACTER.test(c);
 
   const findInLine = (ln: number): { from: number; to: number } | null => {
     if (ln < 1 || ln > total) return null;
     const l = doc.line(ln);
-    const text = l.text;
+    const segments = l.text.normalize("NFC") === l.text ? null : normalizedSegments(l.text);
+    const text = segments?.text ?? l.text;
     let whole = -1;
     let anySub = -1;
     for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
       if (anySub < 0) anySub = i;
-      if (!isWordChar(text[i - 1]) && !isWordChar(text[i + needle.length])) {
+      if (!isWordChar(characterBefore(text, i)) && !isWordChar(characterAt(text, i + needle.length))) {
         whole = i; // prefer a standalone occurrence
         break;
       }
     }
     const idx = whole >= 0 ? whole : anySub;
-    return idx < 0 ? null : { from: l.from + idx, to: l.from + idx + needle.length };
+    if (idx < 0) return null;
+    if (!segments) return { from: l.from + idx, to: l.from + idx + needle.length };
+    return {
+      from: l.from + originalOffset(segments.offsets, idx, false),
+      to: l.from + originalOffset(segments.offsets, idx + needle.length, true),
+    };
   };
 
   const furthestLine = Math.max(target - 1, total - target);

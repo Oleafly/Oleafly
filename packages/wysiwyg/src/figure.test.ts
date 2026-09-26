@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { createFigure, figureWidthPercent } from "./figure";
+import { parseMarkdownBody } from "./markdown/parse";
+import { serializeMarkdownBody } from "./markdown/serialize";
 import type { WysiwygExtensionOptions } from "./options";
 import { createWysiwygExtensions } from "./schema";
 
@@ -151,5 +153,33 @@ describe("Figure controls", () => {
     label.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(document.activeElement).not.toBe(label);
     label.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+  });
+});
+
+describe("Figure in Markdown", () => {
+  it("serializes a pasted figure as a Markdown image without LaTeX-only attributes", () => {
+    const markdown = serializeMarkdownBody({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Obrázek:" }] },
+        createFigure({
+          path: "figures/pasted-image-1.png",
+          width: String.raw`0.8\linewidth`,
+          caption: "",
+          label: "fig:pasted-image-1",
+        }),
+        createFigure({ path: "../obrázky/řez (1).png", caption: "Řez *vzorkem*" }),
+      ],
+    });
+    expect(markdown).toBe(
+      "Obrázek:\n\n![](figures/pasted-image-1.png)\n\n![Řez \\*vzorkem\\*](<../obrázky/řez (1).png>)",
+    );
+    const images = (parseMarkdownBody(markdown).doc.content ?? []).filter(
+      (node) => node.type === "image",
+    );
+    expect(images.map((node) => node.attrs?.src)).toEqual([
+      "figures/pasted-image-1.png",
+      "../obr%C3%A1zky/%C5%99ez%20(1).png",
+    ]);
   });
 });

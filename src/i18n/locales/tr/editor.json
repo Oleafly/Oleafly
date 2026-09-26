@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Uygulama ayarını kullan",
     "spellLanguageAriaLabel": "Bu proje için yazım denetimi dili",
     "spellLanguageHint": "Yalnızca bu proje için geçerlidir. Daha fazla dili Ayarlar'dan indirin.",
-    "spellLanguageFailed": "Yazım denetimi dili değiştirilemedi."
+    "spellLanguageFailed": "Yazım denetimi dili değiştirilemedi.",
+    "notChecked": "Denetlenmedi",
+    "dictionaryMissing": "{{name}} indirilmedi, bu yüzden yazım denetlenmiyor. Ayarlar'dan indirin veya başka bir dil seçin.",
+    "grammarEnglishOnly": "Dil bilgisi denetimi yalnızca İngilizce belgelerde çalışır.",
+    "spellLanguageNotDownloaded": "{{name}} (indirilmedi)"
   },
   "table": {
     "trigger": "Tablo ekle",
@@ -556,6 +560,7 @@
     "previousFinding": "Bu ham bloktaki önceki bulgu",
     "nextFinding": "Bu ham bloktaki sonraki bulgu",
     "suggestedFixes": "Önerilen düzeltmeler",
+    "findingSuggestions": "Öneriler aranıyor…",
     "suggestionRemove": "Kaldır",
     "suggestionInsert": "Ekle",
     "suggestionInsertText": "“{{text}}” ekle",
@@ -566,7 +571,10 @@
     "keyboardHint": "Eylemler arasında geçmek için Tab veya ok tuşlarını kullanın. Kapatmak için Escape tuşuna basın.",
     "endOfDocument": "Belgenin sonu",
     "hidePreamble": "Belge ön bölümünü gizle",
-    "showPreamble": "Belge ön bölümünü göster"
+    "showPreamble": "Belge ön bölümünü göster",
+    "findingLabel": "{{message}}. Düzeltme önerilerini aç.",
+    "rawBlockFindings_one": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç.",
+    "rawBlockFindings_other": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç."
   },
   "package": {
     "search": {
@@ -612,6 +620,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Şunu mu demek istediniz: {{suggestion}}?",
       "notInDictionary": "Sözlükte yok: {{word}}",
+      "findingSuggestions": "Öneriler aranıyor…",
       "possibleMisspelling": "Olası yazım hatası: \"{{word}}\"",
       "repeatedWord": "Yinelenen sözcük: “{{word}}”",
       "possibleIssue": "Olası yazım veya dil bilgisi sorunu: “{{word}}”"

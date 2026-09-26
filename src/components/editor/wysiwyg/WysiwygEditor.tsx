@@ -24,6 +24,7 @@ import {
 import { renderMathExpression } from "@oleafly/editor/math-render";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
 import {
+  createMarkdownSourceSnapshot,
   createWysiwygExtensions,
   parseLatexBody,
   serializeLatexBody,
@@ -33,11 +34,13 @@ import {
   serializeMarkdownBody,
   theoremEnvironmentsFromPreamble,
   type LatexDocumentSplit,
+  type MarkdownSourceSnapshot,
 } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
-import { cancelProofreading } from "@/lib/proofreading/client";
+import { cancelProofreading, suggestSpelling } from "@/lib/proofreading/client";
+import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
@@ -70,6 +73,7 @@ import {
   type VisualProofreadingIssue,
   VisualProofreading,
   visualProofreadingIssueGroup,
+  visualProofreadingMessage,
 } from "./proofreading";
 import { scrollVisualSelectionLocally } from "./scroll";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
@@ -179,9 +183,34 @@ function VisualProofreadingPopover({
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
   const issueGroup = visualProofreadingIssueGroup(editor, issue);
+  const deferred =
+    issue.source === "hunspell" &&
+    issue.suggestionsDeferred === true &&
+    issue.suggestions.length === 0;
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    suggestions: VisualProofreadingIssue["suggestions"];
+  } | null>(null);
+  useEffect(() => {
+    if (!deferred) return;
+    let live = true;
+    void suggestSpelling(issue.word, currentDictionaryLocale()).then(
+      (found) => {
+        if (live) setLoaded({ id: issue.id, suggestions: found });
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [deferred, issue.id, issue.word]);
+  const findingSuggestions = deferred && loaded?.id !== issue.id;
+  const offered =
+    deferred && loaded?.id === issue.id
+      ? loaded.suggestions
+      : issue.suggestions;
   const suggestions = [
     ...new Map(
-      issue.suggestions.map((suggestion) => [
+      offered.map((suggestion) => [
         `${suggestion.kind}:${suggestion.text}`,
         suggestion,
       ]),
@@ -356,7 +385,9 @@ function VisualProofreadingPopover({
               ? t(($) => $.editor.visual.spelling)
               : t(($) => $.editor.visual.grammarAndStyle)}
           </div>
-          <p className="mt-1 text-sm leading-snug">{issue.message}</p>
+          <p className="mt-1 text-sm leading-snug">
+            {visualProofreadingMessage(issue)}
+          </p>
         </div>
         <Button
           type="button"
@@ -412,6 +443,15 @@ function VisualProofreadingPopover({
             </Button>
           </div>
         </div>
+      )}
+
+      {findingSuggestions && (
+        <p
+          className="mt-2 px-2 text-xs text-muted-foreground"
+          aria-live="polite"
+        >
+          {t(($) => $.editor.visual.findingSuggestions)}
+        </p>
       )}
 
       {suggestions.length > 0 && (
@@ -489,6 +529,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const saveFile = useFilesStore((s) => s.saveFile);
   const latexSplitRef = useRef<LatexDocumentSplit | null>(null);
   const frontmatterRef = useRef("");
+  const markdownSourceRef = useRef<MarkdownSourceSnapshot | null>(null);
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activePath;
   const projectIdRef = useRef<string | null>(null);
@@ -557,7 +598,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     const json = editorInstance.getJSON();
     let nextSource: string;
     if (isMarkdownPath(path)) {
-      const body = serializeMarkdownBody(json);
+      const body = serializeMarkdownBody(json, markdownSourceRef.current);
       const frontmatter = frontmatterRef.current;
       nextSource = frontmatter ? `${frontmatter}\n\n${body}` : body;
     } else {
@@ -747,6 +788,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       visualDirtyRef.current = false;
       lastSyncedPathRef.current = null;
       lastSyncedTextRef.current = "";
+      markdownSourceRef.current = null;
       replaceContentAndResetHistory(editor, { type: "doc", content: [{ type: "paragraph" }] });
       return;
     }
@@ -761,7 +803,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     lastSyncedPathRef.current = activePath;
     visualDirtyRef.current = false;
     if (isMarkdownPath(activePath)) {
-      const { doc, frontmatter } = parseMarkdownBody(raw, {
+      const { doc, frontmatter, layout } = parseMarkdownBody(raw, {
         preservedInlineRanges: markdownMathRanges(raw),
       });
       frontmatterRef.current = frontmatter;
@@ -771,7 +813,9 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       setHasDocumentEnv(false);
       setWysiwygDocumentContext(null);
       replaceContentAndResetHistory(editor, doc);
+      markdownSourceRef.current = createMarkdownSourceSnapshot(layout, editor.getJSON());
     } else {
+      markdownSourceRef.current = null;
       const split = splitLatexDocument(raw);
       latexSplitRef.current = split;
       preambleRef.current = split.preamble;

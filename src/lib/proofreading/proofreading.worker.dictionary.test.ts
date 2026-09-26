@@ -128,6 +128,7 @@ describe("worker dictionary delivery", () => {
     expect(response.type).toBe("error");
     if (response.type !== "error") return;
     expect(response.error.code).toBe("initialization_failed");
+    expect(response.error.retryable).toBe(false);
     expect(mocks.created).not.toContain("it_IT");
   });
 

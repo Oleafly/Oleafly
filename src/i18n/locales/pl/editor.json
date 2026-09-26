@@ -211,7 +211,11 @@
     "spellLanguageAppSetting": "Użyj ustawienia aplikacji",
     "spellLanguageAriaLabel": "Język sprawdzania pisowni w tym projekcie",
     "spellLanguageHint": "Dotyczy tylko tego projektu. Więcej języków pobierzesz w Ustawieniach.",
-    "spellLanguageFailed": "Nie udało się zmienić języka sprawdzania pisowni."
+    "spellLanguageFailed": "Nie udało się zmienić języka sprawdzania pisowni.",
+    "notChecked": "Nie sprawdzono",
+    "dictionaryMissing": "{{name}} nie jest pobrany, więc pisownia nie jest sprawdzana. Pobierz go w Ustawieniach lub wybierz inny język.",
+    "grammarEnglishOnly": "Sprawdzanie gramatyki działa tylko w dokumentach po angielsku.",
+    "spellLanguageNotDownloaded": "{{name}} (nie pobrano)"
   },
   "table": {
     "trigger": "Wstaw tabelę",
@@ -566,6 +570,7 @@
     "previousFinding": "Poprzednia uwaga w tym bloku źródłowym",
     "nextFinding": "Następna uwaga w tym bloku źródłowym",
     "suggestedFixes": "Proponowane poprawki",
+    "findingSuggestions": "Szukanie sugestii…",
     "suggestionRemove": "Usuń",
     "suggestionInsert": "Wstaw",
     "suggestionInsertText": "Wstaw „{{text}}”",
@@ -576,7 +581,12 @@
     "keyboardHint": "Użyj klawisza Tab lub strzałek, aby przechodzić między działaniami. Naciśnij Escape, aby zamknąć.",
     "endOfDocument": "Koniec dokumentu",
     "hidePreamble": "Ukryj preambułę dokumentu",
-    "showPreamble": "Pokaż preambułę dokumentu"
+    "showPreamble": "Pokaż preambułę dokumentu",
+    "findingLabel": "{{message}}. Otwórz sugestie korekty.",
+    "rawBlockFindings_one": "{{count}} uwaga korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
+    "rawBlockFindings_few": "{{count}} uwagi korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
+    "rawBlockFindings_many": "{{count}} uwag korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
+    "rawBlockFindings_other": "{{count}} uwagi korekty w tym surowym bloku. {{message}}. Otwórz sugestie."
   },
   "package": {
     "search": {
@@ -624,6 +634,7 @@
       "suggestionReplace": "„{{text}}”",
       "didYouMean": "Czy chodziło o {{suggestion}}?",
       "notInDictionary": "Brak w słowniku: {{word}}",
+      "findingSuggestions": "Szukanie sugestii…",
       "possibleMisspelling": "Możliwy błąd pisowni: \"{{word}}\"",
       "repeatedWord": "Powtórzone słowo: „{{word}}”",
       "possibleIssue": "Możliwy błąd pisowni lub gramatyki: „{{word}}”"

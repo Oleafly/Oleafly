@@ -57,6 +57,21 @@ describe("session word ignores", () => {
     );
   });
 
+  it("keeps final combining marks so a shared stem stays flagged", () => {
+    ignoreWordHere("alpha", "marks.tex", "\u092D\u093E\u0937\u093E");
+    expect(
+      isWordIgnoredHere("alpha", "marks.tex", "\u092D\u093E\u0937\u093E"),
+    ).toBe(true);
+    expect(
+      isWordIgnoredHere("alpha", "marks.tex", "\u092D\u093E\u0937\u0940"),
+    ).toBe(false);
+  });
+
+  it("matches a soft-hyphenated word and its plain spelling", () => {
+    ignoreWordHere("alpha", "shy.tex", "Silben\u00ADtrennung");
+    expect(isWordIgnoredHere("alpha", "shy.tex", "Silbentrennung")).toBe(true);
+  });
+
   it("clears one file, one project, or everything", () => {
     ignoreWordHere("alpha", "main.tex", "one");
     ignoreWordHere("alpha", "intro.tex", "two");

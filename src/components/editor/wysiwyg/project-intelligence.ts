@@ -310,7 +310,7 @@ function textTokens(
   text: string,
 ): Array<{ from: number; to: number; token: VisualToken }> {
   const tokens: Array<{ from: number; to: number; token: VisualToken }> = [];
-  const at = /(?:^|[\s[(;,])@([\p{L}\p{N}_:.+/-]+)/gu;
+  const at = /(?:^|[\s[(;,])@([\p{L}\p{M}\p{N}_:.+/-]+)/gu;
   for (const match of text.matchAll(at)) {
     const key = match[1];
     if (!key || match.index === undefined) continue;

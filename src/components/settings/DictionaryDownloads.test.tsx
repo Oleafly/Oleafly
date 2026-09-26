@@ -4,11 +4,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
   listDictionaries: vi.fn<() => Promise<DictionaryInfo[]>>(),
   removeDictionary: vi.fn<(id: string) => Promise<void>>(),
+  setProjectDictionaryLocaleCmd: vi.fn(),
   notifyError: vi.fn(),
   logError: vi.fn(async () => {}),
 }));
@@ -17,6 +19,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   listDictionaries: mocks.listDictionaries,
   removeDictionary: mocks.removeDictionary,
+  setProjectDictionaryLocaleCmd: mocks.setProjectDictionaryLocaleCmd,
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -69,7 +72,18 @@ beforeEach(async () => {
   mocks.removeDictionary.mockImplementation(async () => {
     mocks.listDictionaries.mockResolvedValue(catalog("available"));
   });
+  mocks.setProjectDictionaryLocaleCmd.mockImplementation(
+    async (_projectId: string, locale: string | null) => ({
+      name: "Guide",
+      main_doc: "main.tex",
+      engine: "xetex",
+      dictionary_locale: locale,
+      allow_shell_escape: false,
+      checkpoints: { mode: "engine_dependencies" },
+    }),
+  );
   useSettingsStore.setState({ dictionaryLocale: ITALIAN });
+  useFilesStore.setState({ projectId: "guide", projectDictionaryLocale: null });
   await refreshDictionaryCatalog();
 });
 
@@ -135,5 +149,35 @@ describe("downloaded dictionaries", () => {
     );
     expect(mocks.notifyError).not.toHaveBeenCalled();
     expect(screen.getByTestId(`dictionary-remove-${SPANISH}`)).toBeEnabled();
+  });
+
+  it("moves the open project back to the app setting when its dictionary is removed", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: SPANISH });
+    const events: string[] = [];
+    const listener = (event: Event) =>
+      events.push((event as CustomEvent<{ setting: string }>).detail.setting);
+    window.addEventListener("oleafly:proofreading-settings-changed", listener);
+
+    await removeSpanish();
+
+    await waitFor(() =>
+      expect(useFilesStore.getState().projectDictionaryLocale).toBeNull(),
+    );
+    window.removeEventListener("oleafly:proofreading-settings-changed", listener);
+    expect(mocks.setProjectDictionaryLocaleCmd).toHaveBeenCalledWith("guide", null);
+    expect(useSettingsStore.getState().dictionaryLocale).toBe(ITALIAN);
+    expect(events).toEqual(["projectDictionaryLocale"]);
+  });
+
+  it("leaves a project on another language alone", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: ITALIAN });
+
+    await removeSpanish();
+
+    await waitFor(() =>
+      expect(screen.queryByTestId(`dictionary-row-${SPANISH}`)).toBeNull(),
+    );
+    expect(mocks.setProjectDictionaryLocaleCmd).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectDictionaryLocale).toBe(ITALIAN);
   });
 });

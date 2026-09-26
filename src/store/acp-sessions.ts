@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import {
   acpCatalog, acpDisconnect, acpEvents, acpSessions, acpSnapshot, acpStart, onAcpEvent, onAcpResync,
   type AcpAgentStatus, type AcpEvent, type AcpImage, type AcpPermission, type AcpSession, type AcpSnapshot,
@@ -159,6 +160,10 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   }),
 }));
 
+function mayHaveChangedFiles(event: AcpEvent): boolean {
+  return event.kind === "turn_complete" || (event.kind === "tool_call_update" && event.data.status === "completed");
+}
+
 let listenerCount = 0;
 let stopListeners: (() => void) | undefined;
 let listenerPromise: Promise<void> | undefined;
@@ -188,6 +193,9 @@ export async function attachAcpListeners(): Promise<() => void> {
         useAcpSessionsStore.getState().ingest(batch);
         for (const event of batch) if (event.kind === "controls" || event.kind === "status" || event.kind === "turn_complete") {
           void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
+        }
+        for (const projectId of new Set(batch.filter(mayHaveChangedFiles).map((event) => event.projectId))) {
+          refreshOpenFilesFromDisk(projectId);
         }
       }, 32);
     });

@@ -1,4 +1,4 @@
-import { trimToLetters } from "./word-edges";
+import { trimToLetters, withoutSoftHyphens } from "./word-edges";
 export const BUILTIN_PROOFREADING_WORDS = new Set([
   "api",
   "argv",
@@ -50,7 +50,9 @@ function scopeKey(projectId: string | null, path: string): string {
 }
 
 function hereKey(word: string): string {
-  return trimToLetters(word.normalize("NFKC")).trim().toLocaleLowerCase("en-US");
+  return trimToLetters(withoutSoftHyphens(word.normalize("NFKC")))
+    .trim()
+    .toLocaleLowerCase("en-US");
 }
 
 function remember(

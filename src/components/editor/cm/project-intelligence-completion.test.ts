@@ -529,3 +529,53 @@ describe("project diagnostics in a BibTeX buffer", () => {
     expect(messages.some((text) => text.includes("Citation key"))).toBe(true);
   });
 });
+
+describe("project completion for keys with combining marks", () => {
+  function complete(
+    sources: Readonly<Record<string, string>>,
+    active: string,
+  ): CompletionResult | null {
+    installProject(sources);
+    useFilesStore.setState({ activePath: active });
+    setEditorDocumentPath(active);
+    const doc = sources[active];
+    const state = EditorState.create({ doc });
+    return synchronousProjectCompletion(
+      new CompletionContext(state, doc.length, false),
+    );
+  }
+
+  const bibliography = [
+    "@book{परिचय2020, title={A}}",
+    "@book{kap:úvod, title={B}}",
+    "@book{รูปภาพ, title={C}}",
+  ].join("\n");
+
+  it.each([
+    ["main.typ", "= Intro\nsee @परि", "परिचय2020"],
+    ["main.typ", "= Intro\nsee @รู", "รูปภาพ"],
+    ["main.md", "Hello @परि", "परिचय2020"],
+  ])("completes %s %s", (active, doc, key) => {
+    const result = complete({ [active]: doc, "refs.bib": bibliography }, active);
+    expect(result?.options.map((candidate) => candidate.label)).toContain(key);
+    expect(result?.from).toBe(doc.lastIndexOf("@") + 1);
+    expect(result?.filter).toBe(true);
+  });
+
+  it("matches a decomposed query against a composed key", () => {
+    const doc = "= Intro\nsee @kap:u\u0301";
+    const result = complete({ "main.typ": doc, "refs.bib": bibliography }, "main.typ");
+    expect(result?.options.map((candidate) => candidate.label)).toEqual([
+      "kap:úvod",
+    ]);
+    expect(result?.filter).toBe(false);
+  });
+
+  it("offers a decomposed file name for a composed path prefix", () => {
+    const chapter = "kapitoly/u\u0301vod.tex";
+    const doc = "\\documentclass{article}\\begin{document}\\input{kapitoly/úv";
+    const result = complete({ "main.tex": doc, [chapter]: "Text" }, "main.tex");
+    expect(result?.options.map((candidate) => candidate.label)).toContain(chapter);
+    expect(result?.filter).toBe(false);
+  });
+});

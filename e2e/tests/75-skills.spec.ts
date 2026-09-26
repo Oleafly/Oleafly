@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  closeAssistant,
   createBlankProject,
   fillTextarea,
   newChat,
@@ -55,24 +56,6 @@ async function openChat(page: Page) {
   await expect(page.locator(TA)).toBeVisible({ timeout: 10_000 });
   await newChat(page);
   await waitLong(page, `document.querySelector(${JSON.stringify(TA)})?.value === ""`, 10_000);
-}
-
-async function closeAssistant(page: Page) {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const open = await page.evaluate<boolean>(
-      `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute("aria-pressed") === "true"`,
-    );
-    if (!open) return;
-    await page.evaluate(
-      `(() => {
-        const button = document.querySelector('[data-testid="rail-assistant-toggle"]');
-        if (button instanceof HTMLElement) button.click();
-        return true;
-      })()`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-  throw new Error("closeAssistant: the assistant panel never closed");
 }
 
 async function openSkillsSettings(page: Page) {

@@ -1,16 +1,21 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { compilePathResolver } from "@/lib/compile-file-path";
 
 export function createCompileErrorLinter() {
   return linter((view): Diagnostic[] => {
-    const activePath = useFilesStore.getState().activePath;
+    const files = useFilesStore.getState();
+    const activePath = files.activePath;
     if (!activePath) return [];
-    const activeBase = activePath.split("/").pop();
+    const resolve = compilePathResolver([
+      ...files.tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
+      activePath,
+    ]);
     const diags: Diagnostic[] = [];
     for (const err of useCompileStore.getState().errors) {
       if (err.line == null) continue;
-      if (err.file && err.file.split("/").pop() !== activeBase) continue;
+      if (err.file && resolve(err.file) !== activePath) continue;
       const lineNo = Math.min(Math.max(1, err.line), view.state.doc.lines);
       const lineObj = view.state.doc.line(lineNo);
       diags.push({

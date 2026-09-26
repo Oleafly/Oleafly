@@ -1,0 +1,166 @@
+{
+ "rootFile": "w.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OMS/cmsy/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OT1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for T1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for TS1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Trying to load font information for TS1+cmr\n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for TU/lmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OMX/cmex/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for U/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./w.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 3,
+   "message": "Cannot find reference `žžžžžžžžžžžžžžžžžžžžžžžžžžžžžžžž`."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 4,
+   "message": "Cannot find reference `ažžžžžžžžžžžžžžžžžžžžžžžžžžžžžžžž`."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 5,
+   "message": "Cannot find reference `aažžžžžžžžžžžžžžžžžžžžžžžžžžžžžžžž`."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 6,
+   "message": "Cannot find reference `aaažžžžžžžžžžžžžžžžžžžžžžžžžžžžžžžž`."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 7,
+   "message": "Cannot find reference `fig:experimental-setup`."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./w.tex",
+   "line": 8,
+   "message": "Cannot find reference `图表实验设置`."
+  }
+ ]
+}

@@ -21,6 +21,7 @@ import {
   useIndexStore,
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { resolveCompilePath } from "@/lib/compile-file-path";
 import { logError } from "@/lib/log";
 
 type SyncTexContext = readonly [
@@ -58,19 +59,6 @@ function contextStillValid(context: SyncTexContext): boolean {
   );
 }
 
-function basename(path: string): string {
-  return path.replaceAll("\\", "/").split("/").pop() ?? path;
-}
-
-function resolvePath(path: string, candidates: string[]): string | null {
-  if (candidates.includes(path)) return path;
-  const wanted = basename(path);
-  const matches = candidates.filter(
-    (candidate) => basename(candidate) === wanted,
-  );
-  return matches.length === 1 ? matches[0] : null;
-}
-
 function currentSource(path: string): string | null {
   const files = useFilesStore.getState();
   return (
@@ -95,9 +83,9 @@ async function mapStaleLine(
 ): Promise<StaleLineMapping | null> {
   const snapshot = context[1];
   if (!snapshot) return null;
-  const compiledPath = resolvePath(path, Object.keys(snapshot.texts));
+  const compiledPath = resolveCompilePath(path, Object.keys(snapshot.texts));
   const currentPath = compiledPath
-    ? resolvePath(compiledPath, currentProjectSourcePaths())
+    ? resolveCompilePath(compiledPath, currentProjectSourcePaths())
     : null;
   if (!compiledPath || !currentPath) return null;
   const source = currentSource(currentPath);
@@ -198,8 +186,9 @@ function nextFrames(n: number): Promise<void> {
 export async function openFileAndGotoLine(file: string | null, line: number) {
   const store = useFilesStore.getState();
   const target = file
-    ? resolvePath(file, currentProjectSourcePaths())
+    ? resolveCompilePath(file, currentProjectSourcePaths())
     : null;
+  if (file && !target) return;
   if (target && target !== store.activePath) {
     await store.openFile(target);
     await nextFrames(2);
@@ -208,8 +197,9 @@ export async function openFileAndGotoLine(file: string | null, line: number) {
 }
 
 // In a multi-file project the click may land on content from a different file
-// (an `\input` child), so switch to that file before jumping. `hit.file` is a
-// basename; resolve it against the project tree.
+// (an `\input` child), so switch to that file before jumping. `hit.file` is
+// project-relative when the input lives in the project; resolve it against the
+// project tree.
 async function resolveInverseTarget(
   context: SyncTexContext,
   hitFile: string,
@@ -217,8 +207,9 @@ async function resolveInverseTarget(
 ): Promise<{ path: string | null; line: number } | null> {
   if (!context[1]) {
     const path = hitFile
-      ? resolvePath(hitFile, currentProjectSourcePaths())
+      ? resolveCompilePath(hitFile, currentProjectSourcePaths())
       : useFilesStore.getState().activePath;
+    if (hitFile && !path) return null;
     return { path, line: hitLine };
   }
   const mapped = await mapStaleLine(context, hitFile, hitLine, false);

@@ -29,6 +29,14 @@ describe("maskLatex", () => {
     expect(masked.split("\n")).toHaveLength(s.split("\n").length);
   });
 
+  it("masks a whole control sequence spelled with Unicode letters", () => {
+    const w = words(String.raw`Text \výsledek konec a \αβ dále Dvo\v{r}ák`);
+    expect(w.has("sledek")).toBe(false);
+    expect(w.has("ýsledek")).toBe(false);
+    expect(w.has("Text")).toBe(true);
+    expect(w.has("konec")).toBe(true);
+  });
+
   describe("removes non-prose (false positives)", () => {
     it("drops \\ref / \\eqref / \\cite / \\label keys", () => {
       const w = words("See \\eqref{eq:sdpa} and \\cite{vaswani2017}; \\label{sec:intro}.");
@@ -410,3 +418,246 @@ describe("intersectsMaskedRegion", () => {
     expect(intersectsMaskedRegion([], 0, 10)).toBe(false);
   });
 });
+
+describe("command arguments that are not prose", () => {
+  const spelled = (tex: string) => spellcheckRanges(tex).map((r) => r.word);
+
+  it("masks the issue #203 preamble and \\includesvg lines", () => {
+    const source = String.raw`\documentclass{article}
+\usepackage{svg}
+\svgsetup{inkscapeexe={env LD_LIBRARY_PATH= inkscape}}\usepackage{graphicx} % Required
+\begin{document}
+Text \includesvg[width=0.5\linewidth]{imgs/udoliHora.svg} more.
+\end{document}`;
+    expect(spelled(source)).toEqual(["Text", "more"]);
+    const prose = maskLatexForProse(source);
+    for (const gone of ["inkscape", "LIBRARY", "width", "imgs", "udoliHora", "svg"]) {
+      expect(prose).not.toContain(gone);
+    }
+    expect(prose).toContain("Text");
+    expect(prose).toContain("more.");
+  });
+
+  it("masks \\svgsetup options in a fragment without a preamble", () => {
+    expect(
+      spelled(String.raw`\svgsetup{inkscapeexe={env LD_LIBRARY_PATH= inkscape}} Body`),
+    ).toEqual(["Body"]);
+  });
+
+  it("keeps a fragment without \\begin{document} as body text", () => {
+    expect(spelled(String.raw`\section{Úvod} Text kapitoly.`)).toEqual([
+      "Úvod",
+      "Text",
+      "kapitoly",
+    ]);
+  });
+
+  it("ignores a commented-out or verbatim \\begin{document}", () => {
+    expect(
+      spelled(String.raw`Intro text.
+% \documentclass{article}\begin{document}
+\begin{verbatim}
+\documentclass{article}
+\begin{document}
+\end{verbatim}
+Outro text.`),
+    ).toEqual(["Intro", "text", "Outro", "text"]);
+  });
+
+  it.each([
+    [String.raw`\includepdf[pages=-,scale=0.9]{prilohy/zadani_prace}`, []],
+    [String.raw`\lstset{language=Python, basicstyle=\ttfamily}`, []],
+    [String.raw`\tikzset{uzel/.style={circle, draw}}`, []],
+    [String.raw`\captionsetup{font=footnotesize, labelfont=bf}`, []],
+    [String.raw`\sisetup{output-decimal-marker={,}}`, []],
+    [String.raw`\selectlanguage{czech} Text`, ["Text"]],
+    [String.raw`\foreignlanguage{english}{the crease}`, ["the", "crease"]],
+    [String.raw`\setmainfont{TeX Gyre Pagella}[Scale=MatchLowercase] Text`, ["Text"]],
+    [String.raw`\babelfont{rm}{Linux Libertine O} Text`, ["Text"]],
+    [String.raw`\newfontfamily\cyrfont{Times New Roman}[Script=Cyrillic] Text`, ["Text"]],
+    [String.raw`\bibitem{novak2020kniha} Novák, J.: Kniha.`, ["Novák", "J", "Kniha"]],
+    [String.raw`\bibitem[Nov20]{novak} {\em Kniha}`, ["Kniha"]],
+    [String.raw`\hyperlink{sekce-uvod}{Úvod}`, ["Úvod"]],
+    [String.raw`\hypertarget{sekce-uvod}{Úvod}`, ["Úvod"]],
+    [String.raw`\color{darkgreen} text`, ["text"]],
+    [String.raw`\color{red}{text}`, ["text"]],
+    [String.raw`\fontsize{12pt}{14pt}\selectfont Text`, ["Text"]],
+    [String.raw`\newtheorem{veta}{Věta}`, ["Věta"]],
+    [String.raw`\newtheorem{lemma}[theorem]{Lemma}`, ["Lemma"]],
+    [String.raw`\crefname{obr}{obrázek}{obrázky}`, ["obrázek", "obrázky"]],
+    [String.raw`\newacronym{cnn}{CNN}{convolutional network}`, ["convolutional", "network"]],
+    [String.raw`\DeclareMathOperator{\argmax}{argmax}`, []],
+    [String.raw`\DeclareMathOperator*\argmin{argmin}`, []],
+    [String.raw`\newcommand\foo{bodyword}`, []],
+    [String.raw`\subfile{kapitoly/uvod}`, []],
+    [String.raw`\import{kapitoly/}{uvod}`, []],
+    [String.raw`\externaldocument{prilohy}`, []],
+    [String.raw`\addcontentsline{toc}{section}{Úvod}`, ["Úvod"]],
+    [String.raw`\setcounter{secnumdepth}{3} Text`, ["Text"]],
+    [String.raw`\newcounter{priklad}`, []],
+    [String.raw`\renewenvironment{abstract}{a}{b}`, []],
+    [String.raw`\newglossaryentry{kornout}{name=kornout, description={tvar}}`, []],
+    [String.raw`viz \labelcref{obr:udoli} a \cpageref{obr:hora}`, ["viz", "a"]],
+    [String.raw`\custommacro[width=3cm, keepaspectratio]{Visible prose}`, ["Visible", "prose"]],
+    [String.raw`\item[Label] tail`, ["Label", "tail"]],
+  ])("masks the non-prose arguments of %s", (source, expected) => {
+    expect(spelled(source)).toEqual(expected);
+  });
+
+  it("keeps prose after an optional argument that never closes", () => {
+    expect(
+      spelled("Start \\section[Short = x\n\nLater prose with a = b"),
+    ).toEqual(["Start", "Short", "x", "Later", "prose", "with", "a", "b"]);
+    expect(spelled(String.raw`\mycmd[a=b ${"x ".repeat(600)}`)).toHaveLength(602);
+  });
+
+  it("keeps reference placeholders readable for grammar checking", () => {
+    const source = String.raw`See \cpageref{fig:a}.`;
+    const prose = maskLatexForProse(source);
+    expect(prose).toHaveLength(source.length);
+    expect(prose.replace(/\s+/gu, " ")).toBe("See Dummy .");
+  });
+});
+
+describe("accent macros and hyphenation hints", () => {
+  const spelled = (tex: string) => spellcheckRanges(tex).map((r) => r.word);
+
+  it.each([
+    [String.raw`Antonín Dvo\v{r}\'ak složil`, ["Antonín", "Dvořák", "složil"]],
+    [String.raw`Kate\v{r}ina a \v{C}esk\'a republika, p\v{r}\'{\i}klad.`, ["Kateřina", "a", "Česká", "republika", "příklad"]],
+    [String.raw`Dvo\v rák`, ["Dvořák"]],
+    [String.raw`Schr\"odinger und M\"uller gr\"o\ss er.`, ["Schrödinger", "und", "Müller", "größer"]],
+    [String.raw`Sch{\"o}n und {\ss}`, ["Schön", "und", "ß"]],
+    [String.raw`Le caf\'e na\"\i f et l'\'el\`eve.`, ["Le", "café", "naïf", "et", "l'élève"]],
+    [String.raw`na\"{\i}ve Cr\`eme br\^ul\'ee`, ["naïve", "Crème", "brûlée"]],
+    [String.raw`\L\'od\'z i \.Zubr.`, ["Łódź", "i", "Żubr"]],
+    [String.raw`Ko\l{}obrzeg, \L{}\'od\'z, \o{}l, \ae{}ther`, ["Kołobrzeg", "Łódź", "øl", "æther"]],
+    [String.raw`Erd\H{o}s and Fran\c{c}ais`, ["Erdős", "and", "Français"]],
+    [String.raw`hyphen\-ation and Donau\-dampf\-schiff`, ["hyphenation", "and", "Donaudampfschiff"]],
+  ])("reads %s as whole words", (source, expected) => {
+    expect(spelled(source)).toEqual(expected);
+  });
+
+  it("covers the whole source word so a suggestion replaces all of it", () => {
+    const source = String.raw`Le caf\'e et Kate\v{r}ina.`;
+    const ranges = spellcheckRanges(source);
+    expect(ranges.map((r) => source.slice(r.from, r.to))).toEqual([
+      "Le",
+      String.raw`caf\'e`,
+      "et",
+      String.raw`Kate\v{r}ina`,
+    ]);
+  });
+
+  it("never widens a word over the braces of a command argument", () => {
+    const source = String.raw`\emph{\'e}tatt \textbf {\ss}e \{\'e} \\{\'e} \textcolor{red}{\'e} x{\"o}y`;
+    const ranges = spellcheckRanges(source);
+    expect(ranges.map((r) => source.slice(r.from, r.to))).toEqual([
+      String.raw`\'e`,
+      "tatt",
+      String.raw`\ss`,
+      "e",
+      String.raw`\'e`,
+      String.raw`\'e`,
+      String.raw`\'e`,
+      String.raw`x{\"o}y`,
+    ]);
+  });
+
+  it("leaves unrelated commands, math and accent macros without a letter alone", () => {
+    expect(spelled(String.raw`\label{x}\omega \textbf{x}y $\"o$ \'{} tail`)).toEqual([
+      "x",
+      "y",
+      "tail",
+    ]);
+    expect(spelled(String.raw`\cite{Dvo\v{r}ak} text`)).toEqual(["text"]);
+  });
+
+  it("does not decode accents in the preamble", () => {
+    expect(
+      spelled(String.raw`\documentclass{article}
+\newcommand{\name}{Dvo\v{r}\'ak}
+\begin{document}
+Body
+\end{document}`),
+    ).toEqual(["Body"]);
+  });
+
+  it("reads German babel shorthands only when German babel is loaded", () => {
+    const body = String.raw`Sch"on, gr"o"ser, Stra"se, Donau"=dampf"-schiff`;
+    expect(spelled(body)).toContain("Sch");
+    const german = String.raw`\documentclass{article}
+\usepackage[ngerman]{babel}
+\begin{document}
+${body}
+\end{document}`;
+    const ranges = spellcheckRanges(german);
+    expect(ranges.map((r) => r.word)).toEqual([
+      "Schön",
+      "größer",
+      "Straße",
+      "Donau",
+      "dampfschiff",
+    ]);
+    expect(ranges.at(-1)?.compound?.word).toBe("Donau-dampfschiff");
+    const commented = german.replace(
+      String.raw`\usepackage[ngerman]{babel}`,
+      String.raw`% \usepackage[ngerman]{babel}`,
+    );
+    expect(spellcheckRanges(commented).map((r) => r.word)).toContain("Sch");
+  });
+
+  it("gives the grammar checker whole words at the same offsets", () => {
+    const source = String.raw`Antonín Dvo\v{r}\'ak složil symfonii.`;
+    const { prose, masked } = maskLatexForProseRegions(source);
+    expect(prose).toHaveLength(source.length);
+    expect(prose.replace(/\s+/gu, " ")).toBe("Antonín Dvořák složil symfonii.");
+    const start = source.indexOf("Dvo");
+    expect(intersectsMaskedRegion(masked, start, start + 1)).toBe(true);
+    for (let index = 1; index < masked.length; index++) {
+      expect(masked[index].from).toBeGreaterThanOrEqual(masked[index - 1].to);
+    }
+  });
+
+  it("keeps maskToProse offsets one to one", () => {
+    const source = String.raw`caf\'e ok`;
+    const { prose, map } = maskToProse(source);
+    expect(map).toHaveLength(prose.length);
+    for (let index = 0; index < prose.length; index++) {
+      if (prose[index] !== " ") expect(source[map[index]]).toBe(prose[index]);
+    }
+  });
+});
+
+describe("email addresses", () => {
+  it("masks addresses with non-ASCII local parts and domains", () => {
+    const source = "Napište na пример@почта.рф nebo ředitel@firma.cz dnes.";
+    expect(spellcheckRanges(source).map((r) => r.word)).toEqual([
+      "Napište",
+      "na",
+      "nebo",
+      "dnes",
+    ]);
+    expect(maskLatexForProse(source)).not.toMatch(/ř |пример|почта/u);
+  });
+});
+
+describe("babel option scanning", () => {
+  it("stays linear on unterminated option lists", () => {
+    const source = "\\usepackage[\\".repeat(25_000);
+    expect(spellcheckRanges(source).length).toBeGreaterThanOrEqual(0);
+    expect(maskLatex(source)).toHaveLength(source.length);
+  });
+
+  it("reads German shorthands when the class options load German", () => {
+    const words = spellcheckRanges(
+      String.raw`\documentclass[a4paper,ngerman]{article}
+\usepackage{babel}
+\begin{document}
+Die Stra"se.
+\end{document}`,
+    ).map((range) => range.word);
+    expect(words).toContain("Straße");
+  });
+});
+

@@ -920,6 +920,25 @@ mod bounded_read_tests {
     }
 
     #[test]
+    fn a_write_with_a_stale_disk_hash_is_refused_and_leaves_the_file_alone() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("main.tex");
+        std::fs::write(&path, "loaded\r\n").unwrap();
+        let loaded = crate::project_sources::source_hash(b"loaded\r\n");
+
+        assert!(super::ensure_disk_unchanged(&path, Some(&loaded), "main.tex").is_ok());
+        assert!(super::ensure_disk_unchanged(&path, None, "main.tex").is_ok());
+
+        std::fs::write(&path, "agent edit\n").unwrap();
+        let error = super::ensure_disk_unchanged(&path, Some(&loaded), "main.tex").unwrap_err();
+        assert!(error.starts_with(super::DISK_CONFLICT));
+        assert_eq!(std::fs::read(&path).unwrap(), b"agent edit\n");
+
+        let missing = directory.path().join("deleted.tex");
+        assert!(super::ensure_disk_unchanged(&missing, Some(&loaded), "deleted.tex").is_ok());
+    }
+
+    #[test]
     fn legacy_encoded_text_cannot_enter_an_editable_buffer_lossily() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("IEEEfull.bib");
@@ -1543,6 +1562,7 @@ pub async fn write_file(
     path: String,
     content: String,
     expected_generation: Option<u64>,
+    expected_hash: Option<String>,
 ) -> Result<FileMutationResult, String> {
     let relative = mutation_relative_path(&path, false)?;
     let admission = admit_mutation(
@@ -1553,6 +1573,7 @@ pub async fn write_file(
     tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
         let (_, generation) = admission.run(|| {
             let p = resolve(&project_id, &path)?;
+            ensure_disk_unchanged(&p, expected_hash.as_deref(), &path)?;
             if let Some(parent) = p.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
@@ -1562,6 +1583,26 @@ pub async fn write_file(
     })
     .await
     .map_err(|e| format!("file write task failed: {e}"))?
+}
+
+const DISK_CONFLICT: &str = "file changed on disk";
+
+fn ensure_disk_unchanged(
+    target: &Path,
+    expected_hash: Option<&str>,
+    path: &str,
+) -> Result<(), String> {
+    let Some(expected) = expected_hash else {
+        return Ok(());
+    };
+    match std::fs::read(target) {
+        Ok(bytes) if crate::project_sources::source_hash(&bytes) != expected => Err(format!(
+            "{DISK_CONFLICT}: {path} was changed outside Oleafly after it was loaded"
+        )),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("Could not read {path}: {error}")),
+    }
 }
 
 pub(crate) struct ProjectFileWrite {
@@ -7222,10 +7263,15 @@ mod tests {
             .unwrap_err();
         assert!(queued_error.contains("mutation conflict"));
 
-        let late_error =
-            super::write_file(project_id.clone(), "main.tex".into(), "late".into(), None)
-                .await
-                .unwrap_err();
+        let late_error = super::write_file(
+            project_id.clone(),
+            "main.tex".into(),
+            "late".into(),
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
         assert!(late_error.contains("does not exist"));
         assert!(!project_dir.exists());
 
@@ -9164,10 +9210,15 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let project_id = super::create_project("Reserved Metadata".into()).unwrap();
 
-        let write_error =
-            super::write_file(project_id.clone(), "project.json".into(), "{}".into(), None)
-                .await
-                .unwrap_err();
+        let write_error = super::write_file(
+            project_id.clone(),
+            "project.json".into(),
+            "{}".into(),
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
         assert!(write_error.contains("managed by Oleafly"));
         assert!(
             super::admit_project_file_write(project_id.clone(), "PROJECT.JSON".into(), None,)
@@ -9209,6 +9260,7 @@ mod tests {
                 project_id.clone(),
                 internal.into(),
                 "untrusted".into(),
+                None,
                 None,
             )
             .await

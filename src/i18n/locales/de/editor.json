@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Einstellung der App verwenden",
     "spellLanguageAriaLabel": "Sprache der Rechtschreibprüfung für dieses Projekt",
     "spellLanguageHint": "Gilt nur für dieses Projekt. Weitere Sprachen laden Sie in den Einstellungen.",
-    "spellLanguageFailed": "Die Sprache der Rechtschreibprüfung konnte nicht geändert werden."
+    "spellLanguageFailed": "Die Sprache der Rechtschreibprüfung konnte nicht geändert werden.",
+    "notChecked": "Nicht geprüft",
+    "dictionaryMissing": "{{name}} ist nicht heruntergeladen, daher wird die Rechtschreibung nicht geprüft. Laden Sie es in den Einstellungen herunter oder wählen Sie eine andere Sprache.",
+    "grammarEnglishOnly": "Die Grammatikprüfung funktioniert nur für englische Dokumente.",
+    "spellLanguageNotDownloaded": "{{name}} (nicht heruntergeladen)"
   },
   "table": {
     "trigger": "Tabelle einfügen",
@@ -556,6 +560,7 @@
     "previousFinding": "Vorheriger Fund in diesem Rohblock",
     "nextFinding": "Nächster Fund in diesem Rohblock",
     "suggestedFixes": "Vorgeschlagene Korrekturen",
+    "findingSuggestions": "Vorschläge werden gesucht…",
     "suggestionRemove": "Entfernen",
     "suggestionInsert": "Einfügen",
     "suggestionInsertText": "„{{text}}“ einfügen",
@@ -566,7 +571,10 @@
     "keyboardHint": "Mit Tab oder den Pfeiltasten zwischen den Aktionen wechseln. Zum Schließen Escape drücken.",
     "endOfDocument": "Ende des Dokuments",
     "hidePreamble": "Präambel des Dokuments ausblenden",
-    "showPreamble": "Präambel des Dokuments anzeigen"
+    "showPreamble": "Präambel des Dokuments anzeigen",
+    "findingLabel": "{{message}}. Korrekturvorschläge öffnen.",
+    "rawBlockFindings_one": "{{count}} Korrekturhinweis in diesem Rohblock. {{message}}. Vorschläge öffnen.",
+    "rawBlockFindings_other": "{{count}} Korrekturhinweise in diesem Rohblock. {{message}}. Vorschläge öffnen."
   },
   "package": {
     "search": {
@@ -612,6 +620,7 @@
       "suggestionReplace": "„{{text}}“",
       "didYouMean": "Meinten Sie {{suggestion}}?",
       "notInDictionary": "Nicht im Wörterbuch: {{word}}",
+      "findingSuggestions": "Vorschläge werden gesucht…",
       "possibleMisspelling": "Mögliche Falschschreibung: „{{word}}“",
       "repeatedWord": "Wiederholtes Wort: „{{word}}“",
       "possibleIssue": "Mögliches Rechtschreib- oder Grammatikproblem: „{{word}}“"

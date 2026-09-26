@@ -88,7 +88,7 @@ function collectFileMacroUses(
 ): void {
   const text = maskComments(rawText);
   const lineAt = lineCounter(text);
-  const re = new RegExp(String.raw`\\(${alt})(?![a-zA-Z@])`, "g");
+  const re = new RegExp(String.raw`\\(${alt})(?![\p{L}\p{M}@])`, "gu");
   for (const m of text.matchAll(re)) {
     const at = m.index;
     if (spans.some(([f, t]) => at >= f && at < t)) continue;

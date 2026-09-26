@@ -197,9 +197,9 @@ function collectLabels(sink: SymSink): void {
 
 // Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
 const MACRO_PATTERNS: readonly RegExp[] = [
-  /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([a-zA-Z@]+)/g,
-  /\\def\s*\\([a-zA-Z@]+)/g,
-  /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z@]+)/g,
+  /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([\p{L}\p{M}@]+)/gu,
+  /\\def\s*\\([\p{L}\p{M}@]+)/gu,
+  /\\DeclareMathOperator\*?\s*\{\s*\\([\p{L}\p{M}@]+)/gu,
 ];
 
 function collectMacroDefinitions(sink: SymSink): void {

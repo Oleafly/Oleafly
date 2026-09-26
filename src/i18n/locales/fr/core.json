@@ -133,6 +133,7 @@
   },
   "dictionary": {
     "full": "Votre dictionnaire est plein, ce mot est donc simplement masqué dans ce document. Retirez-en un dans les Paramètres pour l'enregistrer.",
+    "unsupportedCharacters": "Ce mot contient des caractères que le dictionnaire ne peut pas enregistrer.",
     "wordTooLong": "C'est trop long pour être enregistré comme mot, c'est donc masqué dans ce document. Un mot peut compter jusqu'à {{max}} caractères."
   },
   "documentScan": {
@@ -378,7 +379,11 @@
     "updatedOn": "Mis à jour le {{date}}",
     "updatedToday": "Mis à jour aujourd'hui",
     "updatedYesterday": "Mis à jour hier",
-    "autosaveFailed": "Impossible d'enregistrer vos modifications. Elles sont toujours dans l'éditeur."
+    "autosaveFailed": "Impossible d'enregistrer vos modifications. Elles sont toujours dans l'éditeur.",
+    "changedOnDisk": "« {{path}} » a été modifié en dehors d’Oleafly. Rechargez-le, ou enregistrez à nouveau pour garder votre version.",
+    "openFileEncoding": "Impossible d’ouvrir « {{path}} », car ce n’est pas un fichier texte UTF-8. S’il s’agit de texte, enregistrez-le en UTF-8, puis rouvrez-le.",
+    "openFileFailed": "Impossible d’ouvrir « {{path}} ». Consultez le journal de l’application pour plus de détails.",
+    "reloadFromDisk": "Recharger"
   },
   "projectDiagnostics": {
     "analysisFailed": "L'analyse a échoué : {{message}}",

@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Controleer Engelse grammatica en stijl in LaTeX en Markdown, in Broncode en Visueel, plus in Typst-broncode, met oplossingen in één klik.",
-        "label": "Grammatica en stijl (Harper)"
+        "label": "Grammatica en stijl (Harper)",
+        "englishOnly": "Grammaticacontrole werkt alleen voor Engels. Deze is gepauzeerd zolang het spellingwoordenboek {{name}} is."
       },
       "offline": {
         "description": "Compileer met --only-cached en haal nooit pakketten op via het netwerk.",

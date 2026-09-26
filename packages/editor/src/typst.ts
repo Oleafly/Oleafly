@@ -4,6 +4,13 @@ import {
   type StreamParser,
   type StringStream,
 } from "@codemirror/language";
+import {
+  TYPST_IDENTIFIER_END_PATTERN,
+  TYPST_IDENTIFIER_PATTERN,
+  TYPST_NUMBER_END_PATTERN,
+  typstAutolinkEnd,
+  typstReferenceEnd,
+} from "./typst-syntax";
 
 interface TypstState {
   blockCommentDepth: number;
@@ -73,19 +80,43 @@ function consumeRawFenceOpener(
 
 const TYPST_TOKEN_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [
-    /^#(?:let|set|show|import|include|if|else|for|while|return|context)\b/,
+    new RegExp(
+      `^#(?:let|set|show|import|include|if|else|for|while|return|context)${TYPST_IDENTIFIER_END_PATTERN}`,
+      "u",
+    ),
     "keyword",
   ],
-  [/^#[A-Za-z_][\w-]*/, "variableName.function"],
+  [new RegExp(`^#${TYPST_IDENTIFIER_PATTERN}`, "u"), "variableName.function"],
   [/^<[^>\n]+>/, "labelName"],
-  [/^@[\w:-]+/, "link"],
   [/^"(?:[^"\\]|\\.)*"?/, "string"],
   [/^\$[^$\n]*\$?/, "string-2"],
-  [/^(?:true|false|none|auto)\b/, "bool"],
-  [/^\d+(?:\.\d+)?(?:pt|mm|cm|in|em|fr|%|deg)?\b/, "number"],
+  [
+    new RegExp(`^(?:true|false|none|auto)${TYPST_IDENTIFIER_END_PATTERN}`, "u"),
+    "bool",
+  ],
+  [
+    new RegExp(
+      String.raw`^\d+(?:\.\d+)?(?:pt|mm|cm|in|em|fr|%|deg)?${TYPST_NUMBER_END_PATTERN}`,
+      "u",
+    ),
+    "number",
+  ],
 ];
 
+function atLineContentStart(stream: StringStream): boolean {
+  return stream.string.slice(0, stream.pos).trim() === "";
+}
+
+function typstReferenceToken(stream: StringStream): boolean {
+  if (stream.peek() !== "@") return false;
+  const end = typstReferenceEnd(stream.string, stream.pos + 1);
+  if (end === stream.pos + 1) return false;
+  stream.pos = end;
+  return true;
+}
+
 function typstPatternToken(stream: StringStream): string | null {
+  if (typstReferenceToken(stream)) return "link";
   for (const [pattern, tag] of TYPST_TOKEN_PATTERNS) {
     if (stream.match(pattern)) return tag;
   }
@@ -105,6 +136,12 @@ const typstMode: StreamParser<TypstState> = {
       return consumeBlockComment(stream, state);
     }
     if (state.headingLine) return consumeHeadingLine(stream, state);
+    if (stream.match(/^\\(?:u\{[\dA-Fa-f]*\}?|.)?/u)) return "escape";
+    const link = typstAutolinkEnd(stream.string, stream.pos);
+    if (link !== null) {
+      stream.pos = link;
+      return "url";
+    }
     if (stream.match("//")) {
       stream.skipToEnd();
       return "comment";
@@ -118,7 +155,12 @@ const typstMode: StreamParser<TypstState> = {
       state.headingLine = true;
       return "heading";
     }
-    if (stream.match(/^[-+](?=\s)/) || stream.match(/^\d+[.)](?=\s)/)) return "list";
+    if (
+      atLineContentStart(stream) &&
+      (stream.match(/^[-+](?=\s)/) || stream.match(/^\d+\.(?=\s)/))
+    ) {
+      return "list";
+    }
     const tag = typstPatternToken(stream);
     if (tag) return tag;
     stream.next();

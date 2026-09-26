@@ -36,6 +36,14 @@ describe("parseFile: definitions", () => {
     expect(def("\\DeclareMathOperator*{\\Argmin}{arg min}", "macro", "Argmin")).toBeDefined();
   });
 
+  it("keeps Unicode letters in XeTeX macro names", () => {
+    const t = "\\newcommand{\\výsledek}{42} Dvo\\v{r}\\'ak";
+    const d = required(def(t, "macro", "výsledek"));
+    expect(t.slice(d.nameFrom, d.nameTo)).toBe("výsledek");
+    expect(def(t, "macro", "v")).toBeUndefined();
+    expect(def("\\def\\αβ{AB}", "macro", "αβ")).toBeDefined();
+  });
+
   it("finds \\newtheorem, \\newenvironment, and glossary entries", () => {
     expect(def("\\newtheorem{thm}{Theorem}", "theorem", "thm")).toBeDefined();
     expect(def("\\newenvironment{myenv}{a}{b}", "environment", "myenv")).toBeDefined();

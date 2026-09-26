@@ -44,4 +44,18 @@ describe("Settings language picker", () => {
     await applyLocale("en");
     expect(await screen.findByText(enSettings.language.label)).toBeInTheDocument();
   });
+
+  it("says grammar checking is paused for a non-English dictionary", () => {
+    useSettingsStore.setState({ harper: true, dictionaryLocale: "cs_CZ" });
+    render(<SettingsModal />);
+    expect(screen.getByTestId("settings-grammar-english-only")).toHaveTextContent(
+      "Grammar checking only works for English. It is paused while the spelling dictionary is Czech (Czechia).",
+    );
+  });
+
+  it("hides the grammar notice for an English dictionary", () => {
+    useSettingsStore.setState({ harper: true, dictionaryLocale: "en_GB" });
+    render(<SettingsModal />);
+    expect(screen.queryByTestId("settings-grammar-english-only")).toBeNull();
+  });
 });

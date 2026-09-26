@@ -122,6 +122,15 @@ function restoreNode(
   return { ...base, content };
 }
 
+export function restoreInlineText(
+  text: string,
+  tokenPrefix: string,
+  sources: readonly string[],
+): string {
+  const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
+  return text.replace(token, (match: string, index: string) => sources[Number(index)] ?? match);
+}
+
 export function restoreInlineSources(
   node: JSONContent,
   tokenPrefix: string,

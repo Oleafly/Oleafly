@@ -1,5 +1,6 @@
 import { Node, mergeAttributes, type JSONContent, type NodeViewRenderer } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
+import type { MarkdownNodeSpec } from "tiptap-markdown";
 import { booleanAttribute, stringAttribute } from "./attribute-specs";
 import type { GraphicsCommand } from "./latex/parse-figure";
 import { wysiwygMessage } from "./messages";
@@ -57,6 +58,11 @@ export function figureWidthPercent(width: string | null): string | null {
   if (!match) return null;
   const fraction = match[1] === undefined ? 1 : Number(match[1]);
   return `${Math.min(100, Math.max(0, fraction * 100))}%`;
+}
+
+function markdownImageDestination(path: string): string {
+  if (!/[\s()<>]/u.test(path)) return path;
+  return `<${path.replace(/[<>]/gu, (char) => encodeURIComponent(char))}>`;
 }
 
 export const FigureCaption = Node.create({
@@ -274,6 +280,18 @@ export const Figure = Node.create<FigureOptions>({
 
   addOptions() {
     return { resolveAssetUrl: null };
+  },
+
+  addStorage() {
+    const markdown: MarkdownNodeSpec = {
+      serialize(state, node) {
+        state.write("![");
+        if (node.firstChild) state.renderInline(node.firstChild, false);
+        state.write(`](${markdownImageDestination(String(node.attrs.path ?? ""))})`);
+        state.closeBlock(node);
+      },
+    };
+    return { markdown };
   },
 
   addAttributes() {

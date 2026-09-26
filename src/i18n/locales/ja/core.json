@@ -129,6 +129,7 @@
   },
   "dictionary": {
     "full": "辞書がいっぱいのため、その単語はこの文書の中でのみ非表示にしました。保存するには設定でどれかを削除してください。",
+    "unsupportedCharacters": "この単語には辞書に保存できない文字が含まれています。",
     "wordTooLong": "単語として保存するには長すぎるため、この文書の中でのみ非表示にしました。単語は {{max}} 文字までです。"
   },
   "documentScan": {
@@ -360,7 +361,11 @@
     "updatedOn": "{{date}} に更新",
     "updatedToday": "今日更新",
     "updatedYesterday": "昨日更新",
-    "autosaveFailed": "変更を保存できませんでした。変更はエディターに残っています。"
+    "autosaveFailed": "変更を保存できませんでした。変更はエディターに残っています。",
+    "changedOnDisk": "「{{path}}」が Oleafly の外で変更されました。再読み込みするか、もう一度保存して自分の版を残してください。",
+    "openFileEncoding": "「{{path}}」は UTF-8 のテキストファイルではないため開けません。テキストの場合は UTF-8 で保存してから、もう一度開いてください。",
+    "openFileFailed": "「{{path}}」を開けませんでした。詳細はアプリのログを確認してください。",
+    "reloadFromDisk": "再読み込み"
   },
   "projectDiagnostics": {
     "analysisFailed": "解析に失敗しました: {{message}}",

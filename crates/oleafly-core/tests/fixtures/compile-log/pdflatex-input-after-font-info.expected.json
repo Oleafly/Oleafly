@@ -1,0 +1,138 @@
+{
+ "rootFile": "m.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "/usr/local/texlive/2025/texmf-dist/tex/generic/babel-czech/czech.ldf",
+   "line": 172,
+   "message": "Package babel: Making \" an active character.\n\\cs@wordlen=\\count272"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "/usr/local/texlive/2025/texmf-dist/tex/generic/babel-czech/czech.ldf",
+   "line": 226,
+   "message": "Package babel: Making - an active character."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "/usr/local/texlive/2025/texmf-dist/tex/generic/babel/locale/cs/babel-czech.tex",
+   "line": 11,
+   "message": "Package babel: Importing font and identification data for czech\n(babel)\tfrom babel-cs.ini. Reported."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for OMS/cmsy/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for OT1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for T1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for TS1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for OMX/cmex/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: Checking defaults for U/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./m.tex",
+   "line": 3,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./ch/one.tex",
+   "line": 1,
+   "message": "Cannot find reference `nope`."
+  },
+  {
+   "severity": "typesetting",
+   "category": "overfull-box",
+   "file": "./ch/one.tex",
+   "line": 2,
+   "message": "Overfull \\hbox (99.27823pt too wide)"
+  }
+ ]
+}

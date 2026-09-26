@@ -124,6 +124,7 @@ import {
 } from "@/lib/assistant-layout";
 import {
   applyExternalFileChange,
+  refreshOpenFilesFromDisk,
   type ExternalFileChangePayload,
 } from "@/lib/external-file-changes";
 
@@ -510,9 +511,12 @@ function AppContent() {
   useEffect(() => {
     const tick = () => refreshGitStatus(useFilesStore.getState().projectId);
     const id = window.setInterval(tick, 60_000);
-    const onFocus = () => tick();
+    const onFocus = () => {
+      tick();
+      refreshOpenFilesFromDisk(useFilesStore.getState().projectId);
+    };
     const onVis = () => {
-      if (document.visibilityState === "visible") tick();
+      if (document.visibilityState === "visible") onFocus();
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);

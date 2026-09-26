@@ -209,7 +209,11 @@
     "spellLanguageAppSetting": "Usa l'impostazione dell'app",
     "spellLanguageAriaLabel": "Lingua del controllo ortografico per questo progetto",
     "spellLanguageHint": "Vale solo per questo progetto. Scarica altre lingue nelle impostazioni.",
-    "spellLanguageFailed": "Impossibile cambiare la lingua del controllo ortografico."
+    "spellLanguageFailed": "Impossibile cambiare la lingua del controllo ortografico.",
+    "notChecked": "Non controllato",
+    "dictionaryMissing": "{{name}} non è scaricato, quindi l’ortografia non viene controllata. Scaricalo nelle Impostazioni o scegli un’altra lingua.",
+    "grammarEnglishOnly": "Il controllo grammaticale funziona solo per i documenti in inglese.",
+    "spellLanguageNotDownloaded": "{{name}} (non scaricato)"
   },
   "table": {
     "trigger": "Inserisci una tabella",
@@ -561,6 +565,7 @@
     "previousFinding": "Segnalazione precedente in questo blocco grezzo",
     "nextFinding": "Segnalazione successiva in questo blocco grezzo",
     "suggestedFixes": "Correzioni suggerite",
+    "findingSuggestions": "Ricerca di suggerimenti…",
     "suggestionRemove": "Rimuovi",
     "suggestionInsert": "Inserisci",
     "suggestionInsertText": "Inserisci “{{text}}”",
@@ -571,7 +576,11 @@
     "keyboardHint": "Usa Tab o le frecce per spostarti tra le azioni. Premi Escape per chiudere.",
     "endOfDocument": "Fine del documento",
     "hidePreamble": "Nascondi il preambolo del documento",
-    "showPreamble": "Mostra il preambolo del documento"
+    "showPreamble": "Mostra il preambolo del documento",
+    "findingLabel": "{{message}}. Apri i suggerimenti di correzione.",
+    "rawBlockFindings_one": "{{count}} segnalazione di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
+    "rawBlockFindings_many": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
+    "rawBlockFindings_other": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti."
   },
   "package": {
     "search": {
@@ -618,6 +627,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Intendevi {{suggestion}}?",
       "notInDictionary": "Non è nel dizionario: {{word}}",
+      "findingSuggestions": "Ricerca di suggerimenti…",
       "possibleMisspelling": "Possibile errore di ortografia: \"{{word}}\"",
       "repeatedWord": "Parola ripetuta: “{{word}}”",
       "possibleIssue": "Possibile problema di ortografia o grammatica: “{{word}}”"

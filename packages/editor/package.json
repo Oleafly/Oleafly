@@ -15,7 +15,8 @@
     "./math-preview": "./src/math-preview.ts",
     "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx",
     "./visual": "./src/visual/index.ts",
-    "./latex-tree": "./src/latex-tree.ts"
+    "./latex-tree": "./src/latex-tree.ts",
+    "./typst-syntax": "./src/typst-syntax.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",

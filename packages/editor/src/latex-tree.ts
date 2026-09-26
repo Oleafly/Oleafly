@@ -175,7 +175,7 @@ export const latexTreeLanguage = LRLanguage.define({
   languageData: {
     commentTokens: { line: "%" },
     closeBrackets: {
-      brackets: ["(", "[", "{", "'", '"'],
+      brackets: ["(", "[", "{"],
       before: ")]}:;>$",
     },
   },

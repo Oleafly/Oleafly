@@ -1,3 +1,5 @@
+import { decodeLatexAccents } from "./tex-text";
+
 const SIMPLE_TEXT_COMMANDS =
   /\\(?:emph|footnotesize|[Hh]uge|LARGE|[Ll]arge|mathbf|mathit|mathrm|mathsf|scriptsize|small|textbf|textit|textnormal|textrm|textsf|texttt|tiny)\s*\{([^{}]*)\}/gu;
 
@@ -41,7 +43,7 @@ function matchingBrace(text: string, open: number): number {
 
 function collectNewCommands(text: string, macros: Map<string, string>): void {
   const command =
-    /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([A-Za-z@]+)\s*(?:\}\s*)?(?:\[(\d+)\]\s*)?\{/gu;
+    /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([\p{L}\p{M}@]+)\s*(?:\}\s*)?(?:\[(\d+)\]\s*)?\{/gu;
   for (let match = command.exec(text); match; match = command.exec(text)) {
     if (match[2] && match[2] !== "0") continue;
     const open = command.lastIndex - 1;
@@ -53,7 +55,7 @@ function collectNewCommands(text: string, macros: Map<string, string>): void {
 }
 
 function collectDefinitions(text: string, macros: Map<string, string>): void {
-  const definition = /\\def\s*\\([A-Za-z@]+)\s*\{/gu;
+  const definition = /\\def\s*\\([\p{L}\p{M}@]+)\s*\{/gu;
   for (
     let match = definition.exec(text);
     match;
@@ -88,7 +90,7 @@ function expandProjectMacros(
   for (let depth = 0; depth < 8; depth += 1) {
     let changed = false;
     result = result.replace(
-      /\\([A-Za-z@]+)(?:\s*\{\s*\})?/gu,
+      /\\([\p{L}\p{M}@]+)(?:\s*\{\s*\})?/gu,
       (whole, name: string) => {
         const replacement = macros.get(name);
         if (replacement === undefined) return whole;
@@ -105,7 +107,7 @@ export function renderLatexOutlineTitle(
   source: string,
   macros: ReadonlyMap<string, string> = new Map(),
 ): string {
-  let result = expandProjectMacros(source, macros);
+  let result = decodeLatexAccents(expandProjectMacros(source, macros));
   let previous = "";
   while (result !== previous) {
     previous = result;

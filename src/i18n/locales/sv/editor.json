@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Använd appens inställning",
     "spellLanguageAriaLabel": "Språk för stavningskontroll i det här projektet",
     "spellLanguageHint": "Gäller bara det här projektet. Ladda ner fler språk i Inställningar.",
-    "spellLanguageFailed": "Det gick inte att byta språk för stavningskontroll."
+    "spellLanguageFailed": "Det gick inte att byta språk för stavningskontroll.",
+    "notChecked": "Inte kontrollerad",
+    "dictionaryMissing": "{{name}} är inte nedladdad, så stavningen kontrolleras inte. Ladda ned den i Inställningar eller välj ett annat språk.",
+    "grammarEnglishOnly": "Grammatikkontroll fungerar bara för engelska dokument.",
+    "spellLanguageNotDownloaded": "{{name}} (inte nedladdad)"
   },
   "table": {
     "trigger": "Infoga tabell",
@@ -556,6 +560,7 @@
     "previousFinding": "Föregående fynd i det här råblocket",
     "nextFinding": "Nästa fynd i det här råblocket",
     "suggestedFixes": "Föreslagna åtgärder",
+    "findingSuggestions": "Letar efter förslag…",
     "suggestionRemove": "Ta bort",
     "suggestionInsert": "Infoga",
     "suggestionInsertText": "Infoga ”{{text}}”",
@@ -566,7 +571,10 @@
     "keyboardHint": "Använd Tab eller piltangenterna för att flytta mellan åtgärder. Tryck på Escape för att stänga.",
     "endOfDocument": "Dokumentets slut",
     "hidePreamble": "Dölj dokumentets ingress",
-    "showPreamble": "Visa dokumentets ingress"
+    "showPreamble": "Visa dokumentets ingress",
+    "findingLabel": "{{message}}. Öppna korrekturförslag.",
+    "rawBlockFindings_one": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
+    "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag."
   },
   "package": {
     "search": {
@@ -612,6 +620,7 @@
       "suggestionReplace": "”{{text}}”",
       "didYouMean": "Menade du {{suggestion}}?",
       "notInDictionary": "Finns inte i ordlistan: {{word}}",
+      "findingSuggestions": "Letar efter förslag…",
       "possibleMisspelling": "Möjlig felstavning: \"{{word}}\"",
       "repeatedWord": "Upprepat ord: ”{{word}}”",
       "possibleIssue": "Möjligt stavnings- eller grammatikfel: ”{{word}}”"

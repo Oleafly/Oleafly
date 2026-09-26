@@ -1,4 +1,9 @@
 import { scanMathExpressions } from "./math-source";
+import {
+  EMAIL_ADDRESS_PATTERN,
+  spellingWordRanges,
+  type SpellingWord,
+} from "./spelling-words";
 
 export interface MarkdownRange {
   from: number;
@@ -7,6 +12,23 @@ export interface MarkdownRange {
 }
 
 const TRAILING_PUNCT = new Set([".", ",", ":", "!", "?", ")", "]", "}", "'"]);
+
+const PANDOC_ATTRIBUTES = String.raw`\{[ \t]*(?:[#.=][^{}\n]*|-[ \t]*|[\p{L}\p{N}_:-]+[ \t]*=[^{}\n]*)\}`;
+const INLINE_ATTRIBUTES = new RegExp(
+  String.raw`(?<=[\])\x60])${PANDOC_ATTRIBUTES}`,
+  "gu",
+);
+const HEADING_ATTRIBUTES = [
+  new RegExp(
+    String.raw`^([ \t]{0,3}#{1,6}[ \t][^\n]*?[ \t])${PANDOC_ATTRIBUTES}[ \t]*\r?$`,
+    "gmu",
+  ),
+  new RegExp(
+    String.raw`^([^\n]*?\S[ \t]+)${PANDOC_ATTRIBUTES}[ \t]*(?=\r?\n[ \t]{0,3}(?:=+|-+)[ \t]*\r?$)`,
+    "gmu",
+  ),
+];
+const FENCED_DIV = /^[ \t]*:::.*$/gmu;
 
 function blank(chars: string[], from: number, to: number) {
   for (let i = from; i < to; i++) if (chars[i] !== "\n") chars[i] = " ";
@@ -103,6 +125,37 @@ function maskInlineCode(chars: string[]): void {
   }
 }
 
+function bracketedSpanOpen(source: string, close: number): number {
+  let depth = 0;
+  for (let index = close; index >= 0 && source[index] !== "\n"; index--) {
+    if (source[index] === "]") depth++;
+    else if (source[index] === "[" && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function maskPandocAttributes(chars: string[]): void {
+  const source = chars.join("");
+  for (const match of source.matchAll(INLINE_ATTRIBUTES)) {
+    const at = match.index;
+    blank(chars, at, at + match[0].length);
+    if (source[at - 1] !== "]") continue;
+    const open = bracketedSpanOpen(source, at - 1);
+    if (open < 0) continue;
+    blank(chars, open, open + 1);
+    blank(chars, at - 1, at);
+  }
+  for (const pattern of HEADING_ATTRIBUTES) {
+    for (const match of source.matchAll(pattern)) {
+      const at = match.index + match[1].length;
+      blank(chars, at, match.index + match[0].length);
+    }
+  }
+  for (const match of source.matchAll(FENCED_DIV)) {
+    blank(chars, match.index, match.index + match[0].length);
+  }
+}
+
 function referenceBracketEnd(source: string, from: number): number {
   const close = source.indexOf("]", from);
   if (close < 0) return -1;
@@ -193,6 +246,7 @@ export function maskMarkdown(text: string): string {
   for (const match of chars.join("").matchAll(/<\/?[A-Za-z][^>\n]*>/gu)) {
     blank(chars, match.index!, match.index! + match[0].length);
   }
+  maskPandocAttributes(chars);
   maskInlineCode(chars);
   maskLinkDestinations(chars);
   maskReferenceLinks(chars);
@@ -200,7 +254,7 @@ export function maskMarkdown(text: string): string {
     /<(?:https?:\/\/|mailto:)[^>\n]+>/giu,
     /<[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}>/giu,
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+    EMAIL_ADDRESS_PATTERN,
   ]) {
     for (const match of chars.join("").matchAll(pattern)) {
       blank(chars, match.index!, match.index! + match[0].length);
@@ -258,11 +312,6 @@ export function markdownToProse(text: string): { prose: string; map: number[] } 
   return { prose, map };
 }
 
-export function markdownSpellcheckRanges(text: string): MarkdownRange[] {
-  const masked = maskMarkdown(text);
-  const ranges: MarkdownRange[] = [];
-  for (const match of masked.matchAll(/[A-Za-z][A-Za-z']*/g)) {
-    ranges.push({ from: match.index!, to: match.index! + match[0].length, word: match[0] });
-  }
-  return ranges;
+export function markdownSpellcheckRanges(text: string): SpellingWord[] {
+  return spellingWordRanges(maskMarkdown(text), text);
 }

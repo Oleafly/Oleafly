@@ -360,6 +360,23 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
 
 const NO_DIAGNOSTICS: readonly LogDiagnostic[] = [];
 
+function errorText(message: string): string {
+  return (message.split("\n")[0] ?? "")
+    .trim()
+    .replace(/^LaTeX Error:\s*/, "")
+    .replace(/^((?:Package|Class|Module) \S+) Error:\s*/, "$1: ")
+    .replace(/\.$/, "");
+}
+
+function reportedAsError(diagnostic: LogDiagnostic, errors: readonly CompileError[]): boolean {
+  const text = errorText(diagnostic.message);
+  return errors.some(
+    (error) =>
+      errorText(error.message) === text &&
+      (error.line == null || diagnostic.line == null || error.line === diagnostic.line),
+  );
+}
+
 export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Readonly<{
   snapshot?: Pick<CompileState, "log" | "errors" | "status" | "diagnostics"> & { mainDoc: string };
   onOpenLocation?: typeof openFileAndGotoLine;
@@ -383,7 +400,6 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     return parseLatexLog(log, mainDoc);
   }, [diagnostics, log, mainDoc, status]);
   const groups = useMemo(() => {
-    const existing = new Set(errors.map((e) => e.message));
     const errs: LogDiagnostic[] = [];
     const refs: LogDiagnostic[] = [];
     const warns: LogDiagnostic[] = [];
@@ -392,7 +408,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     for (const d of structured) {
       if (d.severity === "error") {
         // Rust-side errors[] cards stay authoritative; skip duplicates.
-        if (!existing.has(d.message)) errs.push(d);
+        if (!reportedAsError(d, errors)) errs.push(d);
       } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
         refs.push(d);
       } else if (d.severity === "typesetting") {

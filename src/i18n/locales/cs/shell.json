@@ -624,7 +624,8 @@
       },
       "harper": {
         "description": "Kontroluje anglickou gramatiku a styl v LaTeXu a Markdownu ve zdrojovém i vizuálním režimu a v Typstu ve zdrojovém režimu, s opravami na jedno kliknutí.",
-        "label": "Gramatika a styl (Harper)"
+        "label": "Gramatika a styl (Harper)",
+        "englishOnly": "Kontrola gramatiky funguje jen pro angličtinu. Je pozastavena, dokud je slovník pravopisu {{name}}."
       },
       "offline": {
         "description": "Kompilovat s --only-cached a nikdy nestahovat balíčky přes síť.",

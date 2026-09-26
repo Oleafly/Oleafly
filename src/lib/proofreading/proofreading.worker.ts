@@ -1,4 +1,4 @@
-import { trimToWordCharacters } from "./word-edges";
+import { trimToWordCharacters, withoutSoftHyphens } from "./word-edges";
 import type {
   LocalLinter,
   Lint,
@@ -13,15 +13,26 @@ import {
   guardProofreadingDiagnostics,
   type ProofreadingDialect,
   type ProofreadingDiagnostic,
+  type ProofreadingCancelRequest,
   type ProofreadingDictionaryDelivery,
   type ProofreadingError,
   type ProofreadingIdentity,
   type ProofreadingRequest,
   type ProofreadingResult,
+  type ProofreadingSuggestRequest,
+  type ProofreadingSuggestResult,
   type ProofreadingSuggestion,
   type ProofreadingWorkerRequest,
   type ProofreadingWorkerResponse,
 } from "../../../packages/editor/src/proofreading";
+import {
+  EMAIL_ADDRESS_PATTERN,
+  mapSpellingWords,
+  restoreApostrophes,
+  spellingLookupForms,
+  spellingWordSpans,
+  type SpellingWord,
+} from "../../../packages/editor/src/spelling-words";
 import {
   PROSE_PLACEHOLDER,
   intersectsMaskedRegion,
@@ -40,6 +51,7 @@ import {
 } from "./ignored";
 import { harperDialectFor } from "./dialects";
 import {
+  DictionaryLoadError,
   loadHunspellDictionary,
   normalizeDictionaryLocaleId,
   type DictionaryPayload,
@@ -55,7 +67,9 @@ interface WorkerScope {
     type: "message",
     listener: (event: MessageEvent<unknown>) => void,
   ): void;
-  postMessage(message: ProofreadingWorkerResponse): void;
+  postMessage(
+    message: ProofreadingWorkerResponse | ProofreadingSuggestResult,
+  ): void;
   close(): void;
   location: Location;
 }
@@ -67,8 +81,6 @@ interface CachedResult {
   diagnostics: ProofreadingDiagnostic[];
   characters: number;
 }
-
-type WordRange = { from: number; to: number; word: string };
 
 const workerScope = self as unknown as WorkerScope;
 const MAX_CACHE_ENTRIES = 8;
@@ -82,7 +94,11 @@ let grammarDialectValues: typeof import("harper.js").Dialect | null = null;
 let grammarRuleNames: ReadonlySet<string> | null = null;
 let grammarLintConfigKey: string | null = null;
 const MAX_SPELLCHECKERS = 2;
+const SUGGESTION_BUDGET_MS = 1_500;
+const MAX_CACHED_SUGGESTIONS = 4_000;
+const CANCELLATION_CHECK_MS = 50;
 const spellcheckers = new Map<string, Promise<Hunspell>>();
+const suggestionCache = new Map<string, ProofreadingSuggestion[]>();
 const deliveredDictionaries = new Map<string, DictionaryPayload>();
 const queuedRequests = new Map<string, ProofreadingRequest>();
 let running = false;
@@ -94,11 +110,15 @@ function lane(identity: ProofreadingIdentity): string {
 }
 
 function normalizeWord(word: string): string {
-  return word.normalize("NFKC").trim().toLocaleLowerCase("en-US");
+  return withoutSoftHyphens(word.normalize("NFKC"))
+    .trim()
+    .toLocaleLowerCase("en-US");
 }
 
 function isIgnoredToken(word: string, ignored: ReadonlySet<string>): boolean {
-  const normalized = normalizeWord(trimToWordCharacters(word));
+  const normalized = normalizeWord(
+    trimToWordCharacters(withoutSoftHyphens(word.normalize("NFKC"))),
+  );
   if (!normalized) return true;
   return ignored.has(normalized) || isSessionIgnoredWord(word);
 }
@@ -107,6 +127,32 @@ function identityIsLatest(identity: ProofreadingIdentity): boolean {
   return (
     latestGeneration.get(lane(identity)) === identity.requestGeneration
   );
+}
+
+class ProofreadingCancelledError extends Error {
+  constructor() {
+    super("Proofreading was cancelled.");
+    this.name = "ProofreadingCancelledError";
+  }
+}
+
+function yieldToMessages(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function cancelLanes(surface: unknown, path: unknown) {
+  if (surface !== "source" && surface !== "visual") return;
+  if (path !== undefined && typeof path !== "string") return;
+  const matches = (requestLane: string) => {
+    const [laneSurface, , lanePath] = requestLane.split("\0");
+    return laneSurface === surface && (path === undefined || lanePath === path);
+  };
+  for (const requestLane of Array.from(queuedRequests.keys())) {
+    if (matches(requestLane)) queuedRequests.delete(requestLane);
+  }
+  for (const requestLane of Array.from(latestGeneration.keys())) {
+    if (matches(requestLane)) latestGeneration.delete(requestLane);
+  }
 }
 
 function errorResponse(
@@ -263,7 +309,7 @@ function plaintextToProse(text: string): {
   const characters = text.split("");
   const patterns = [
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+    EMAIL_ADDRESS_PATTERN,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -321,7 +367,7 @@ function grammarInput(request: ProofreadingRequest): GrammarInput {
   };
 }
 
-function spellingRanges(request: ProofreadingRequest): WordRange[] {
+function spellingRanges(request: ProofreadingRequest): SpellingWord[] {
   if (request.format === "latex") {
     return spellcheckRanges(request.text);
   }
@@ -332,14 +378,7 @@ function spellingRanges(request: ProofreadingRequest): WordRange[] {
     return typstSpellcheckRanges(request.text);
   }
   const { prose, map } = plaintextToProse(request.text);
-  const ranges: WordRange[] = [];
-  for (const match of prose.matchAll(/\p{L}[\p{L}'’]*/gu)) {
-    if (match.index === undefined || match[0].length < 2) continue;
-    const from = map[match.index];
-    const to = (map[match.index + match[0].length - 1] ?? from) + 1;
-    ranges.push({ from, to, word: request.text.slice(from, to) });
-  }
-  return ranges;
+  return mapSpellingWords(spellingWordSpans(prose), map, request.text);
 }
 
 async function getGrammarLinter(): Promise<LocalLinter> {
@@ -465,9 +504,17 @@ function evictSpellcheckers() {
     if (oldest.done) return;
     const evicted = spellcheckers.get(oldest.value);
     spellcheckers.delete(oldest.value);
+    forgetSuggestions(oldest.value);
     void evicted
       ?.then((spellchecker) => spellchecker.dispose())
       .catch(() => undefined);
+  }
+}
+
+function forgetSuggestions(locale: string) {
+  const prefix = `${locale}\0`;
+  for (const key of suggestionCache.keys()) {
+    if (key.startsWith(prefix)) suggestionCache.delete(key);
   }
 }
 
@@ -478,6 +525,7 @@ function rememberDeliveredDictionary(
   const safeLocale = normalizeDictionaryLocaleId(locale);
   deliveredDictionaries.delete(safeLocale);
   deliveredDictionaries.set(safeLocale, payload);
+  forgetSuggestions(safeLocale);
   const stale = spellcheckers.get(safeLocale);
   if (stale) {
     spellcheckers.delete(safeLocale);
@@ -493,7 +541,10 @@ function rememberDeliveredDictionary(
 }
 
 async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
-  const safeLocale = normalizeDictionaryLocaleId(locale);
+  return spellcheckerFor(normalizeDictionaryLocaleId(locale));
+}
+
+function spellcheckerFor(safeLocale: string): Promise<Hunspell> {
   const cached = spellcheckers.get(safeLocale);
   if (cached) {
     spellcheckers.delete(safeLocale);
@@ -744,63 +795,228 @@ async function grammarDiagnostics(
   return { diagnostics, malformedLintCount };
 }
 
+function spelledCorrectly(spellchecker: Hunspell, word: string): boolean {
+  return spellingLookupForms(word).some((form) => spellchecker.spell(form));
+}
+
+function computeSuggestions(
+  spellchecker: Hunspell,
+  word: string,
+): ProofreadingSuggestion[] {
+  const seen = new Set<string>();
+  const output: ProofreadingSuggestion[] = [];
+  for (const form of spellingLookupForms(word).reverse()) {
+    for (const text of spellchecker.suggest(form)) {
+      const restored = restoreApostrophes(word, text);
+      if (!restored || seen.has(restored)) continue;
+      seen.add(restored);
+      output.push({ text: restored, kind: 0 });
+      if (output.length === 8) return output;
+    }
+    if (output.length > 0) return output;
+  }
+  return output;
+}
+
+function cachedSuggestions(
+  locale: string,
+  word: string,
+): ProofreadingSuggestion[] | undefined {
+  const key = `${locale}\0${word}`;
+  const cached = suggestionCache.get(key);
+  if (!cached) return undefined;
+  suggestionCache.delete(key);
+  suggestionCache.set(key, cached);
+  return cached;
+}
+
+function rememberSuggestions(
+  locale: string,
+  word: string,
+  suggestions: ProofreadingSuggestion[],
+) {
+  suggestionCache.set(`${locale}\0${word}`, suggestions);
+  while (suggestionCache.size > MAX_CACHED_SUGGESTIONS) {
+    const oldest = suggestionCache.keys().next();
+    if (oldest.done) return;
+    suggestionCache.delete(oldest.value);
+  }
+}
+
+function suggestionsFor(
+  spellchecker: Hunspell,
+  locale: string,
+  word: string,
+): ProofreadingSuggestion[] {
+  const cached = cachedSuggestions(locale, word);
+  if (cached) return cached;
+  const suggestions = computeSuggestions(spellchecker, word);
+  rememberSuggestions(locale, word, suggestions);
+  return suggestions;
+}
+
+function spellableToken(word: string, ignored: ReadonlySet<string>): boolean {
+  return (
+    word.length >= 2 &&
+    word.length <= PROOFREADING_LIMITS.wordCharacters &&
+    !isIgnoredToken(word, ignored)
+  );
+}
+
+interface SpellingSession {
+  loaded: Promise<Hunspell>;
+  spellchecker: Hunspell;
+  correctness: Map<string, boolean>;
+}
+
+function sessionSpelledCorrectly(
+  session: SpellingSession,
+  word: string,
+): boolean {
+  let correct = session.correctness.get(word);
+  if (correct === undefined) {
+    correct = spelledCorrectly(session.spellchecker, word);
+    session.correctness.set(word, correct);
+  }
+  return correct;
+}
+
+function misspelledRange(
+  range: SpellingWord,
+  ignored: ReadonlySet<string>,
+  session: SpellingSession,
+): boolean {
+  if (!spellableToken(range.word, ignored)) return false;
+  if (
+    range.compound &&
+    range.compound.word.length <= PROOFREADING_LIMITS.wordCharacters &&
+    sessionSpelledCorrectly(session, range.compound.word)
+  ) {
+    return false;
+  }
+  return !sessionSpelledCorrectly(session, range.word);
+}
+
+function supersededByDifferentAnalysis(
+  request: ProofreadingRequest,
+  key: string,
+): boolean {
+  if (identityIsLatest(request.identity)) return false;
+  const newest = queuedRequests.get(lane(request.identity));
+  return (
+    !newest ||
+    validateRequest(newest) !== null ||
+    analysisKeys(newest).key !== key
+  );
+}
+
+function throwIfSuperseded(request: ProofreadingRequest, key: string): void {
+  if (supersededByDifferentAnalysis(request, key)) {
+    throw new ProofreadingCancelledError();
+  }
+}
+
+function suggestionsWithinBudget(
+  session: SpellingSession,
+  locale: string,
+  word: string,
+  deadline: number,
+): ProofreadingSuggestion[] | undefined {
+  const suggestions = cachedSuggestions(locale, word);
+  if (!suggestions && performance.now() < deadline) {
+    return suggestionsFor(session.spellchecker, locale, word);
+  }
+  return suggestions;
+}
+
+function spellingDiagnostic(
+  range: SpellingWord,
+  suggestions: ProofreadingSuggestion[] | undefined,
+): ProofreadingDiagnostic {
+  return {
+    from: range.from,
+    to: range.to,
+    message: `Possible misspelling: “${range.word}”`,
+    kind: "Spelling",
+    source: "hunspell",
+    word: range.word,
+    suggestions: suggestions ?? [],
+    ...(suggestions ? {} : { suggestionsDeferred: true }),
+    rule: null,
+  };
+}
+
 async function spellingDiagnostics(
   request: ProofreadingRequest,
-  ignored: ReadonlySet<string>,
+  keys: AnalyzeKeys,
 ): Promise<ProofreadingDiagnostic[]> {
-  const spellchecker = await getSpellchecker(request.preferences.dictionaryLocale);
+  const { ignored } = keys;
+  const locale = activeDictionaryLocaleFor(request);
+  const safeLocale = normalizeDictionaryLocaleId(locale);
+  const loaded = spellcheckerFor(safeLocale);
+  const session: SpellingSession = {
+    loaded,
+    spellchecker: await loaded,
+    correctness: new Map<string, boolean>(),
+  };
   const diagnostics: ProofreadingDiagnostic[] = [];
-  // Hunspell suggestions are substantially more expensive than its boolean
-  // lookup. Long manuscripts naturally repeat vocabulary, so calculate each
-  // exact token once per request and reuse the immutable result at every
-  // source range. This preserves every diagnostic and suggestion while
-  // avoiding tens of thousands of duplicate WASM calls in book-sized files.
-  const tokenResults = new Map<
-    string,
-    {
-      correct: boolean;
-      suggestions: ProofreadingSuggestion[];
-    }
-  >();
+  const deadline = performance.now() + SUGGESTION_BUDGET_MS;
+  let nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
   for (const range of spellingRanges(request)) {
-    if (
-      range.word.length < 2 ||
-      range.word.length > PROOFREADING_LIMITS.wordCharacters ||
-      isIgnoredToken(range.word, ignored)
-    ) {
-      continue;
+    if (performance.now() >= nextCancellationCheck) {
+      await yieldToMessages();
+      throwIfSuperseded(request, keys.key);
+      if (spellcheckers.get(safeLocale) !== session.loaded) {
+        session.loaded = spellcheckerFor(safeLocale);
+        session.spellchecker = await session.loaded;
+        session.correctness.clear();
+      }
+      nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
     }
-    let tokenResult = tokenResults.get(range.word);
-    if (!tokenResult) {
-      const correct = spellchecker.spell(range.word);
-      tokenResult = {
-        correct,
-        suggestions: correct
-          ? []
-          : spellchecker
-              .suggest(range.word)
-              .slice(0, 8)
-              .filter((text) => text.length > 0)
-              .map<ProofreadingSuggestion>((text) => ({
-                text,
-                kind: 0,
-              })),
-      };
-      tokenResults.set(range.word, tokenResult);
-    }
-    if (tokenResult.correct) continue;
-    diagnostics.push({
-      from: range.from,
-      to: range.to,
-      message: `Possible misspelling: “${range.word}”`,
-      kind: "Spelling",
-      source: "hunspell",
-      word: range.word,
-      suggestions: tokenResult.suggestions,
-      rule: null,
-    });
+    if (!misspelledRange(range, ignored, session)) continue;
+    const suggestions = suggestionsWithinBudget(
+      session,
+      locale,
+      range.word,
+      deadline,
+    );
+    diagnostics.push(spellingDiagnostic(range, suggestions));
   }
   return diagnostics;
+}
+
+function validSuggestRequest(request: ProofreadingSuggestRequest): boolean {
+  return (
+    Number.isSafeInteger(request.requestId) &&
+    request.requestId > 0 &&
+    typeof request.locale === "string" &&
+    /^[A-Za-z]{2,3}(?:[_-][A-Za-z]{2,4})?$/u.test(request.locale) &&
+    typeof request.word === "string" &&
+    request.word.length > 0 &&
+    request.word.length <= PROOFREADING_LIMITS.wordCharacters
+  );
+}
+
+async function answerSuggestRequest(request: ProofreadingSuggestRequest) {
+  const locale = normalizeDictionaryLocaleId(request.locale);
+  let suggestions: ProofreadingSuggestion[] = [];
+  try {
+    const spellchecker = await getSpellchecker(locale);
+    suggestions = spelledCorrectly(spellchecker, request.word)
+      ? []
+      : suggestionsFor(spellchecker, locale, request.word);
+  } catch {
+    suggestions = [];
+  }
+  if (disposed) return;
+  workerScope.postMessage({
+    protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+    type: "suggestions",
+    requestId: request.requestId,
+    locale,
+    word: request.word,
+    suggestions,
+  });
 }
 
 function fingerprint(value: string): string {
@@ -886,6 +1102,29 @@ type AnalyzeKeys = {
   readonly suppressed: ReadonlySet<string>;
 };
 
+const analysisKeysByRequest = new WeakMap<ProofreadingRequest, AnalyzeKeys>();
+
+function analysisKeys(request: ProofreadingRequest): AnalyzeKeys {
+  const known = analysisKeysByRequest.get(request);
+  if (known) return known;
+  const normalizedIgnored = [
+    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
+  ].sort((a, b) => Number(a > b) - Number(a < b));
+  const ignoredKey = normalizedIgnored.join("\0");
+  const suppressed = new Set(request.suppressions ?? []);
+  const suppressedKey = [...suppressed]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join("\0");
+  const keys: AnalyzeKeys = {
+    key: cacheKey(request, ignoredKey, suppressedKey),
+    ignoredKey,
+    ignored: new Set(normalizedIgnored),
+    suppressed,
+  };
+  analysisKeysByRequest.set(request, keys);
+  return keys;
+}
+
 function activeDictionaryLocaleFor(request: ProofreadingRequest): string {
   return request.preferences.dictionaryLocale?.replace("-", "_") ?? "en_US";
 }
@@ -933,7 +1172,7 @@ async function analyzeSpellingMode(
 ): Promise<ProofreadingResult | ProofreadingError> {
   try {
     const diagnostics = guardProofreadingDiagnostics(
-      await spellingDiagnostics(request, keys.ignored),
+      await spellingDiagnostics(request, keys),
       request.text,
     );
     writeCache(keys.key, request.text, keys.ignoredKey, diagnostics);
@@ -949,7 +1188,10 @@ async function analyzeSpellingMode(
         : `The requested ${
             request.preferences.dictionaryLocale ?? "en_US"
           } spelling dictionary could not start.`,
-      true,
+      !(
+        error instanceof DictionaryLoadError &&
+        error.reason === "not_installed"
+      ),
     );
   }
 }
@@ -981,7 +1223,7 @@ async function analyzeCombinedMode(
 ): Promise<ProofreadingResult | ProofreadingError> {
   const [grammarResult, spellingResult] = await Promise.allSettled([
     grammarDiagnostics(request, keys.ignored, keys.suppressed),
-    spellingDiagnostics(request, keys.ignored),
+    spellingDiagnostics(request, keys),
   ]);
   if (
     grammarResult.status === "rejected" &&
@@ -1053,16 +1295,8 @@ async function analyze(
     });
   }
 
-  const normalizedIgnored = [
-    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
-  ].sort((a, b) => Number(a > b) - Number(a < b));
-  const ignoredKey = normalizedIgnored.join("\0");
-  const suppressed = new Set(request.suppressions ?? []);
-  const suppressedKey = [...suppressed]
-    .sort((a, b) => Number(a > b) - Number(a < b))
-    .join("\0");
-  const key = cacheKey(request, ignoredKey, suppressedKey);
-  const cached = readCache(key, request.text, ignoredKey);
+  const keys = analysisKeys(request);
+  const cached = readCache(keys.key, request.text, keys.ignoredKey);
   if (cached) {
     return resultResponse(request, "ready", cached, {
       ...(request.mode !== "grammar"
@@ -1071,15 +1305,22 @@ async function analyze(
     });
   }
 
-  const keys: AnalyzeKeys = {
-    key,
-    ignoredKey,
-    ignored: new Set(normalizedIgnored),
-    suppressed,
-  };
+  if (!grammarSupported(request)) {
+    if (request.mode === "grammar") {
+      return resultResponse(request, "unsupported", [], {
+        message: "Grammar checking only works for English documents.",
+      });
+    }
+    return analyzeSpellingMode(request, keys);
+  }
   if (request.mode === "grammar") return analyzeGrammarMode(request, keys);
   if (request.mode === "spelling") return analyzeSpellingMode(request, keys);
   return analyzeCombinedMode(request, keys);
+}
+
+function grammarSupported(request: ProofreadingRequest): boolean {
+  const language = activeDictionaryLocaleFor(request).split("_")[0];
+  return language.toLowerCase() === "en";
 }
 
 async function drainQueue() {
@@ -1130,6 +1371,7 @@ workerScope.addEventListener("message", (event) => {
     }
     spellcheckers.clear();
     deliveredDictionaries.clear();
+    suggestionCache.clear();
     grammarPromise?.then((linter) => linter.dispose()).catch(() => {
       // Worker termination is authoritative.
     });
@@ -1148,6 +1390,16 @@ workerScope.addEventListener("message", (event) => {
         dic: delivery.dic,
       });
     }
+    return;
+  }
+  if (message.type === "cancel") {
+    const cancel = message as ProofreadingCancelRequest;
+    cancelLanes(cancel.surface, cancel.path);
+    return;
+  }
+  if (message.type === "suggest") {
+    const suggest = message as ProofreadingSuggestRequest;
+    if (validSuggestRequest(suggest)) void answerSuggestRequest(suggest);
     return;
   }
   if (message.type !== "proofread") return;

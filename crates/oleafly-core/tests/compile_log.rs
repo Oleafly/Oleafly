@@ -313,11 +313,11 @@ fn does_not_treat_next_line_as_whitespace_like_the_typescript_parser() {
 fn treats_the_byte_order_mark_as_whitespace_like_the_typescript_parser() {
     let diags = parse(&["! Undefined control sequence.", "\u{feff}", "l.3 \\bad", ""]);
     assert_eq!(diags.len(), 1);
-    assert_eq!(diags[0].line, None);
+    assert_eq!(diags[0].line, Some(3));
     assert_eq!(diags[0].message, "Undefined control sequence.");
     assert_eq!(
         diags[0].error_context.as_deref(),
-        Some("! Undefined control sequence.")
+        Some("! Undefined control sequence.\nl.3 \\bad")
     );
     let diags = parse(&["[Oleafly] Bibliography needs Biber (biblatex).\u{feff}", ""]);
     assert_eq!(diags.len(), 1);
@@ -539,5 +539,142 @@ fn surfaces_tectonic_missing_input_files_as_errors() {
     assert_eq!(
         diags[0].message,
         "The compile could not open missing.bib. Check the file name and that the file is in the project."
+    );
+}
+
+#[test]
+fn attributes_errors_to_an_extensionless_input_but_not_to_dates_or_words() {
+    let diags = parse(&[
+        "(./main.tex",
+        "Package: foo 2021/01/01 (v1.0)",
+        "(2021/01/01) (Font) (see chapters/intro)",
+        "(kapitoly/úvod",
+        "! Undefined control sequence.",
+        "l.3 \\bad",
+        "",
+        ")",
+        "! Undefined control sequence.",
+        "l.9 \\bad",
+        "",
+        "(01-uvod/text (2021-01/01)",
+        "! Undefined control sequence.",
+        "l.4 \\bad",
+        "",
+        ")",
+    ]);
+    let located: Vec<_> = diags.iter().map(|d| (d.file.as_deref(), d.line)).collect();
+    assert_eq!(
+        located,
+        [
+            (Some("./kapitoly/úvod"), Some(3)),
+            (Some("./main.tex"), Some(9)),
+            (Some("./01-uvod/text"), Some(4))
+        ]
+    );
+}
+
+#[test]
+fn reads_the_line_of_a_latex_error_through_its_help_block() {
+    let diags = parse(&[
+        "(./main.tex",
+        "! LaTeX Error: \\begin{itemize} on input line 2 ended by \\end{enumerate}.",
+        "",
+        "See the LaTeX manual or LaTeX Companion for explanation.",
+        "Type  H <return>  for immediate help.",
+        " ...                                              ",
+        "                                                  ",
+        "l.4 \\end{enumerate}",
+        "",
+        ")",
+    ]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].line, Some(4));
+    assert_eq!(
+        diags[0].message,
+        "\\begin{itemize} on input line 2 ended by \\end{enumerate}."
+    );
+    assert_eq!(
+        diags[0].error_context.as_deref(),
+        Some("! LaTeX Error: \\begin{itemize} on input line 2 ended by \\end{enumerate}.\nl.4 \\end{enumerate}")
+    );
+}
+
+#[test]
+fn keeps_the_input_file_opened_right_after_an_info_line() {
+    let diags = parse(&[
+        "(./m.tex",
+        "LaTeX Font Info:    ... okay on input line 3.",
+        " (./ch/one.tex",
+        "LaTeX Warning: Reference `nope' on page 1 undefined on input line 1.",
+        ")",
+        "LaTeX Font Info:    ... okay on input line 3.",
+        "! Undefined control sequence.",
+        "l.5 \\bad",
+        "",
+    ]);
+    let located: Vec<_> = diags
+        .iter()
+        .filter(|d| d.severity != LogSeverity::Info)
+        .map(|d| (d.category, d.file.as_deref(), d.line))
+        .collect();
+    assert_eq!(
+        located,
+        [
+            (
+                LogCategory::UndefinedReference,
+                Some("./ch/one.tex"),
+                Some(1)
+            ),
+            (LogCategory::Error, Some("./m.tex"), Some(5)),
+        ]
+    );
+}
+
+#[test]
+fn recovers_warnings_hard_wrapped_at_79_columns() {
+    let diags = parse(&[
+        "LaTeX Warning: Citation `knuth:the-art-of-computer-programming' on page 1 undefi",
+        "ned on input line 12.",
+        "",
+        "LaTeX Font Info:    Trying to load font information for TU+ptm on input line 50",
+        "3.",
+        "",
+    ]);
+    assert_eq!(diags[0].category, LogCategory::UndefinedCitation);
+    assert_eq!(diags[0].line, Some(12));
+    assert_eq!(
+        diags[0].message,
+        "Cannot find citation `knuth:the-art-of-computer-programming`."
+    );
+    assert_eq!(diags[1].line, Some(503));
+}
+
+#[test]
+fn ignores_the_engine_output_tail_but_keeps_missing_file_errors() {
+    let diags = parse(&[
+        "(main.tex",
+        "! Undefined control sequence.",
+        "l.2 \\bad",
+        "",
+        ")",
+        "[Oleafly] Engine output:",
+        "(main.tex",
+        "error: main.tex:2: Undefined control sequence",
+        "! Undefined control sequence.",
+        "l.2 \\bad",
+        "error: can't open path `missing.bib`",
+        "[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.",
+    ]);
+    let summary: Vec<_> = diags
+        .iter()
+        .map(|d| (d.category, d.file.as_deref(), d.line))
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            (LogCategory::Error, Some("./main.tex"), Some(2)),
+            (LogCategory::Error, None, None),
+            (LogCategory::Biber, None, None),
+        ]
     );
 }

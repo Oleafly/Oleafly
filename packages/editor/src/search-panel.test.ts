@@ -171,4 +171,39 @@ describe("VS Code-style search panel", () => {
     click("Replace next");
     expect(editor.state.doc.toString()).toBe("first changed second target");
   });
+
+  it.each([
+    ["an NFD document", "Na papíru.".normalize("NFD"), "papíru", "listu", "Na listu."],
+    ["a ligature", "\uFB01nance", "finance", "money", "money"],
+    ["an escaped newline query", "a\nb", "a\\nb", "c", "c"],
+  ])("replaces the selected match on %s with preserve case on", (_label, doc, find, replace, expected) => {
+    const editor = setup(doc);
+    click("Toggle Replace");
+    fill("Find", find);
+    fill("Replace", replace);
+    click("Preserve case");
+    click("Replace next");
+    click("Replace next");
+    expect(editor.state.doc.toString()).toBe(expected);
+  });
+
+  it("keeps a cased replacement as typed for caseless matches", () => {
+    const editor = setup("数据 and 数据");
+    click("Toggle Replace");
+    fill("Find", "数据");
+    fill("Replace", "GPU");
+    click("Preserve case");
+    click("Replace all");
+    expect(editor.state.doc.toString()).toBe("GPU and GPU");
+  });
+
+  it("unquotes escapes in the replacement with preserve case on", () => {
+    const editor = setup("one two");
+    click("Toggle Replace");
+    fill("Find", " ");
+    fill("Replace", "\\n");
+    click("Preserve case");
+    click("Replace all");
+    expect(editor.state.doc.toString()).toBe("one\ntwo");
+  });
 });

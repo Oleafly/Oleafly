@@ -205,7 +205,11 @@
     "spellLanguageAppSetting": "アプリの設定を使う",
     "spellLanguageAriaLabel": "このプロジェクトのスペルチェック言語",
     "spellLanguageHint": "このプロジェクトにのみ適用されます。ほかの言語は設定からダウンロードできます。",
-    "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。"
+    "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。",
+    "notChecked": "未チェック",
+    "dictionaryMissing": "{{name}} がダウンロードされていないため、スペルはチェックされません。設定でダウンロードするか、別の言語を選んでください。",
+    "grammarEnglishOnly": "文法チェックは英語のドキュメントでのみ機能します。",
+    "spellLanguageNotDownloaded": "{{name}}（未ダウンロード）"
   },
   "table": {
     "trigger": "表を挿入",
@@ -551,6 +555,7 @@
     "previousFinding": "この生ブロック内の前の指摘",
     "nextFinding": "この生ブロック内の次の指摘",
     "suggestedFixes": "修正候補",
+    "findingSuggestions": "候補を検索中…",
     "suggestionRemove": "削除",
     "suggestionInsert": "挿入",
     "suggestionInsertText": "「{{text}}」を挿入",
@@ -561,7 +566,9 @@
     "keyboardHint": "Tab または矢印キーで操作を移動できます。Escape で閉じます。",
     "endOfDocument": "文書の終わり",
     "hidePreamble": "文書のプリアンブルを隠す",
-    "showPreamble": "文書のプリアンブルを表示"
+    "showPreamble": "文書のプリアンブルを表示",
+    "findingLabel": "{{message}}。校正の候補を開きます。",
+    "rawBlockFindings_other": "この未加工ブロックに校正の指摘が {{count}} 件あります。{{message}}。候補を開きます。"
   },
   "package": {
     "search": {
@@ -606,6 +613,7 @@
       "suggestionReplace": "「{{text}}」",
       "didYouMean": "もしかして {{suggestion}} ですか？",
       "notInDictionary": "辞書にありません: {{word}}",
+      "findingSuggestions": "候補を検索中…",
       "possibleMisspelling": "スペルの誤りの可能性: 「{{word}}」",
       "repeatedWord": "単語の繰り返し: 「{{word}}」",
       "possibleIssue": "スペルまたは文法の問題の可能性: 「{{word}}」"

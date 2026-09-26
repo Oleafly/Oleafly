@@ -205,7 +205,11 @@
     "spellLanguageAppSetting": "使用应用设置",
     "spellLanguageAriaLabel": "本项目的拼写检查语言",
     "spellLanguageHint": "仅对本项目生效。可在设置中下载更多语言。",
-    "spellLanguageFailed": "无法更改拼写检查语言。"
+    "spellLanguageFailed": "无法更改拼写检查语言。",
+    "notChecked": "未检查",
+    "dictionaryMissing": "{{name}} 尚未下载，因此不会检查拼写。请在设置中下载，或选择其他语言。",
+    "grammarEnglishOnly": "语法检查仅适用于英文文档。",
+    "spellLanguageNotDownloaded": "{{name}}（未下载）"
   },
   "table": {
     "trigger": "插入表格",
@@ -551,6 +555,7 @@
     "previousFinding": "此原始块中的上一个问题",
     "nextFinding": "此原始块中的下一个问题",
     "suggestedFixes": "建议的修改",
+    "findingSuggestions": "正在查找建议…",
     "suggestionRemove": "删除",
     "suggestionInsert": "插入",
     "suggestionInsertText": "插入“{{text}}”",
@@ -561,7 +566,9 @@
     "keyboardHint": "使用 Tab 或方向键在各操作间切换。按 Escape 关闭。",
     "endOfDocument": "文档结尾",
     "hidePreamble": "隐藏文档导言区",
-    "showPreamble": "显示文档导言区"
+    "showPreamble": "显示文档导言区",
+    "findingLabel": "{{message}}。打开校对建议。",
+    "rawBlockFindings_other": "此原始块中有 {{count}} 条校对发现。{{message}}。打开建议。"
   },
   "package": {
     "search": {
@@ -606,6 +613,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "你是想输入 {{suggestion}} 吗？",
       "notInDictionary": "词典中没有该词：{{word}}",
+      "findingSuggestions": "正在查找建议…",
       "possibleMisspelling": "可能拼写错误：“{{word}}”",
       "repeatedWord": "重复单词：“{{word}}”",
       "possibleIssue": "可能的拼写或语法问题：“{{word}}”"

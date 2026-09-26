@@ -211,7 +211,11 @@
     "spellLanguageAppSetting": "Как в настройках приложения",
     "spellLanguageAriaLabel": "Язык проверки орфографии для этого проекта",
     "spellLanguageHint": "Действует только для этого проекта. Другие языки скачиваются в настройках.",
-    "spellLanguageFailed": "Не удалось изменить язык проверки орфографии."
+    "spellLanguageFailed": "Не удалось изменить язык проверки орфографии.",
+    "notChecked": "Не проверено",
+    "dictionaryMissing": "{{name}} не скачан, поэтому орфография не проверяется. Скачайте его в настройках или выберите другой язык.",
+    "grammarEnglishOnly": "Проверка грамматики работает только для документов на английском.",
+    "spellLanguageNotDownloaded": "{{name}} (не скачан)"
   },
   "table": {
     "trigger": "Вставить таблицу",
@@ -566,6 +570,7 @@
     "previousFinding": "Предыдущее замечание в этом сыром блоке",
     "nextFinding": "Следующее замечание в этом сыром блоке",
     "suggestedFixes": "Предлагаемые исправления",
+    "findingSuggestions": "Ищем варианты…",
     "suggestionRemove": "Убрать",
     "suggestionInsert": "Вставить",
     "suggestionInsertText": "Вставить «{{text}}»",
@@ -576,7 +581,12 @@
     "keyboardHint": "Используйте Tab или стрелки для перехода между действиями. Нажмите Escape, чтобы закрыть.",
     "endOfDocument": "Конец документа",
     "hidePreamble": "Скрыть преамбулу документа",
-    "showPreamble": "Показать преамбулу документа"
+    "showPreamble": "Показать преамбулу документа",
+    "findingLabel": "{{message}}. Открыть предложения корректуры.",
+    "rawBlockFindings_one": "{{count}} замечание корректуры в этом исходном блоке. {{message}}. Открыть предложения.",
+    "rawBlockFindings_few": "{{count}} замечания корректуры в этом исходном блоке. {{message}}. Открыть предложения.",
+    "rawBlockFindings_many": "{{count}} замечаний корректуры в этом исходном блоке. {{message}}. Открыть предложения.",
+    "rawBlockFindings_other": "{{count}} замечания корректуры в этом исходном блоке. {{message}}. Открыть предложения."
   },
   "package": {
     "search": {
@@ -624,6 +634,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Возможно, вы имели в виду {{suggestion}}?",
       "notInDictionary": "Нет в словаре: {{word}}",
+      "findingSuggestions": "Ищем варианты…",
       "possibleMisspelling": "Возможная опечатка: «{{word}}»",
       "repeatedWord": "Повтор слова: «{{word}}»",
       "possibleIssue": "Возможная ошибка орфографии или грамматики: «{{word}}»"

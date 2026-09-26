@@ -1,4 +1,5 @@
 import type { FileEntry } from "@oleafly/backend-port";
+import { foldLatinDiacritics } from "@oleafly/latex";
 import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
@@ -58,9 +59,8 @@ function trimEdges(value: string, edge: string): string {
   return value.slice(start, end);
 }
 
-function sanitizedBaseName(name: string): string {
-  const collapsed = name
-    .replace(/^.*[/\\]/u, "")
+function sanitizedStem(stem: string): string {
+  const collapsed = foldLatinDiacritics(stem)
     .replace(/[^A-Za-z0-9._-]+/gu, "-")
     .replace(/-{2,}/gu, "-")
     .replace(/-(?=\.)/gu, "");
@@ -68,10 +68,17 @@ function sanitizedBaseName(name: string): string {
 }
 
 export function preferredImageName(file: File, now: Date): string {
-  const extension = EXTENSION_BY_TYPE[file.type] ?? "png";
-  const base = sanitizedBaseName(file.name);
-  if (base === "" || GENERIC_NAME.test(base)) return timestampedImageName(now, extension);
-  return /\.[A-Za-z0-9]+$/u.test(base) ? base : `${base}.${extension}`;
+  const name = file.name.replace(/^.*[/\\]/u, "");
+  const dot = name.lastIndexOf(".");
+  const ownExtension = dot >= 0 && /^[A-Za-z0-9]+$/u.test(name.slice(dot + 1)) ? name.slice(dot + 1) : "";
+  const stem = ownExtension === "" ? name : name.slice(0, dot);
+  const extension = ownExtension || (EXTENSION_BY_TYPE[file.type] ?? "png");
+  const base = sanitizedStem(stem);
+  const lostEveryLetter = !/[A-Za-z]/u.test(base) && /\p{L}/u.test(stem);
+  if (base === "" || GENERIC_NAME.test(base) || lostEveryLetter) {
+    return timestampedImageName(now, EXTENSION_BY_TYPE[file.type] ?? "png");
+  }
+  return `${base}.${extension}`;
 }
 
 export function uniqueProjectPath(candidate: string, tree: readonly FileEntry[]): string {
@@ -101,9 +108,7 @@ export function latexGraphicsPath(projectPath: string, mainDoc: string): string 
 
 export function suggestedFigureLabel(path: string): string {
   const stem = trimEdges(
-    path
-      .replace(/^.*\//u, "")
-      .replace(/\.[A-Za-z0-9]+$/u, "")
+    foldLatinDiacritics(path.replace(/^.*\//u, "").replace(/\.[A-Za-z0-9]+$/u, ""))
       .toLowerCase()
       .replace(/[^a-z0-9]+/gu, "-"),
     "-",

@@ -53,6 +53,7 @@ import {
   cancelProofreading,
   getRetainedProofreadingResult,
   proofreadDocument,
+  suggestSpelling,
 } from "@/lib/proofreading/client";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
@@ -154,6 +155,8 @@ setSpellHost({
       surface: "source",
     }),
   presentDiagnostics: proofreadingPresentationDiagnostics,
+  getDictionaryLocale: currentDictionaryLocale,
+  suggest: (word) => suggestSpelling(word, currentDictionaryLocale()),
   cancelProofreading,
   isSessionIgnored: isSessionIgnoredWord,
   isWordIgnored,
@@ -203,7 +206,7 @@ export function saveActiveFromKeymap(): void {
   const { projectId, activePath } = useFilesStore.getState();
   void useFilesStore
     .getState()
-    .saveActive()
+    .saveActive({ overwrite: true })
     .catch((error) => {
       if (projectId && activePath) {
         reportFileSaveFailure("editor save", projectId, activePath, error, true);

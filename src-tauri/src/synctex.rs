@@ -1,8 +1,8 @@
 use flate2::read::GzDecoder;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Read;
-use std::path::Path;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::paths;
 
@@ -12,7 +12,7 @@ const SP_TO_BP: f64 = 1.0 / 65781.76;
 #[derive(Default)]
 struct Doc {
     /// synctex tag → input file path.
-    inputs: HashMap<i32, String>,
+    inputs: BTreeMap<i32, String>,
     nodes: Vec<Node>,
 }
 
@@ -401,34 +401,86 @@ fn parse_box(line: &str, page: i32) -> Option<Node> {
     })
 }
 
-/// Resolve a synctex tag for a file. Tries exact basename first, then a
-/// path-suffix match (handles "sections/intro.tex" against absolute paths).
-fn tag_for_file(doc: &Doc, file: &str) -> Option<i32> {
-    let want = Path::new(file)
-        .file_name()
-        .and_then(std::ffi::OsStr::to_str)
-        .unwrap_or(file);
-    if let Some((t, _)) = doc
+fn normalized_path(path: &str) -> String {
+    let slashed = path.replace('\\', "/");
+    let parts: Vec<&str> = slashed.split('/').filter(|part| *part != ".").collect();
+    parts.join("/").nfc().collect()
+}
+
+fn project_relative(path: &str, roots: &[String]) -> Option<String> {
+    roots
+        .iter()
+        .filter(|root| !root.is_empty())
+        .find_map(|root| path.strip_prefix(root.as_str())?.strip_prefix('/'))
+        .filter(|relative| !relative.is_empty())
+        .map(str::to_string)
+}
+
+fn basename(path: &str) -> &str {
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+fn tag_for_file(doc: &Doc, file: &str, roots: &[String]) -> Option<i32> {
+    let want = normalized_path(file);
+    if want.is_empty() {
+        return None;
+    }
+    let inputs: Vec<(i32, String, Option<String>)> = doc
         .inputs
         .iter()
-        .find(|(_, p)| Path::new(p).file_name().and_then(std::ffi::OsStr::to_str) == Some(want))
-    {
-        return Some(*t);
-    }
-    let want_norm = file.replace('\\', "/");
-    doc.inputs
-        .iter()
-        .find(|(_, p)| {
-            let p_norm = p.replace('\\', "/");
-            p_norm == want_norm || p_norm.ends_with(&want_norm)
+        .map(|(tag, path)| {
+            let path = normalized_path(path);
+            let relative = project_relative(&path, roots);
+            (*tag, path, relative)
         })
-        .map(|(t, _)| *t)
+        .collect();
+    if let Some((tag, _, _)) = inputs
+        .iter()
+        .find(|(_, path, relative)| relative.as_deref() == Some(want.as_str()) || *path == want)
+    {
+        return Some(*tag);
+    }
+    let suffix = format!("/{want}");
+    let depth = |path: &str| path.matches('/').count();
+    let containing: Vec<&(i32, String, Option<String>)> = inputs
+        .iter()
+        .filter(|(_, path, _)| path.ends_with(&suffix))
+        .collect();
+    if let Some(shallowest) = containing.iter().map(|(_, path, _)| depth(path)).min() {
+        let mut closest = containing
+            .iter()
+            .filter(|(_, path, _)| depth(path) == shallowest);
+        return match (closest.next(), closest.next()) {
+            (Some((tag, _, _)), None) => Some(*tag),
+            _ => None,
+        };
+    }
+    let name = basename(&want);
+    let mut named = inputs.iter().filter(|(_, path, _)| basename(path) == name);
+    match (named.next(), named.next()) {
+        (Some((tag, _, _)), None) => Some(*tag),
+        _ => None,
+    }
+}
+
+fn project_roots(project_id: &str) -> Vec<String> {
+    let Ok(dir) = paths::project_dir(project_id) else {
+        return Vec::new();
+    };
+    let mut roots = vec![normalized_path(&dir.to_string_lossy())];
+    if let Ok(canonical) = dir.canonicalize() {
+        let canonical = normalized_path(&canonical.to_string_lossy());
+        if !roots.contains(&canonical) {
+            roots.push(canonical);
+        }
+    }
+    roots
 }
 
 /// Forward search: (file, line) → tightest box on its page. Returns a rect in
 /// PDF bp with origin at the page's top-left (y grows downward).
-fn forward(doc: &Doc, file: &str, line: i32) -> Option<SynctexRect> {
-    let tag = tag_for_file(doc, file)?;
+fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<SynctexRect> {
+    let tag = tag_for_file(doc, file, roots)?;
     let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
 
     // Prefer an exact-line match; among those, the tightest (smallest) real box.
@@ -465,7 +517,7 @@ fn to_rect(n: &Node) -> SynctexRect {
 }
 
 /// Inverse search: (page, x, y) in bp → nearest node → (file, line).
-fn inverse(doc: &Doc, page: i32, x: f64, y: f64) -> Option<SynctexHit> {
+fn inverse(doc: &Doc, page: i32, x: f64, y: f64, roots: &[String]) -> Option<SynctexHit> {
     let best = doc.nodes.iter().filter(|n| n.page == page).min_by(|a, b| {
         let da = dist(a, x, y);
         let db = dist(b, x, y);
@@ -474,11 +526,9 @@ fn inverse(doc: &Doc, page: i32, x: f64, y: f64) -> Option<SynctexHit> {
     let file = doc
         .inputs
         .get(&best.tag)
-        .and_then(|p| {
-            Path::new(p)
-                .file_name()
-                .and_then(std::ffi::OsStr::to_str)
-                .map(str::to_string)
+        .map(|path| {
+            let path = normalized_path(path);
+            project_relative(&path, roots).unwrap_or(path)
         })
         .unwrap_or_default();
     Some(SynctexHit {
@@ -505,7 +555,7 @@ pub async fn synctex_forward(
     tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexRect>, String> {
         let text = read_synctex_text(&project_id, &main_doc)?;
         let doc = parse(&text);
-        Ok(forward(&doc, &file, line))
+        Ok(forward(&doc, &file, line, &project_roots(&project_id)))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -522,7 +572,7 @@ pub async fn synctex_inverse(
     tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexHit>, String> {
         let text = read_synctex_text(&project_id, &main_doc)?;
         let doc = parse(&text);
-        Ok(inverse(&doc, page, x, y))
+        Ok(inverse(&doc, page, x, y, &project_roots(&project_id)))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -569,7 +619,8 @@ mod tests {
             return;
         };
         let doc = parse(&text);
-        let tag = tag_for_file(&doc, "main.tex").expect("main.tex has a synctex tag");
+        let roots = project_roots("default");
+        let tag = tag_for_file(&doc, "main.tex", &roots).expect("main.tex has a synctex tag");
         let node = doc
             .nodes
             .iter()
@@ -577,7 +628,8 @@ mod tests {
             .expect("a main.tex node exists");
         let line = node.line;
 
-        let rect = forward(&doc, "main.tex", line).expect("forward should resolve a known line");
+        let rect =
+            forward(&doc, "main.tex", line, &roots).expect("forward should resolve a known line");
         assert!(rect.page >= 1, "page should be >= 1");
         // A box at the very top margin can sit a hair above the reference point,
         // so allow a small negative y rather than requiring y >= 0.
@@ -591,9 +643,54 @@ mod tests {
         // Inverse at the box center must round-trip to the same source line.
         let cx = rect.x + rect.width / 2.0;
         let cy = rect.y + rect.height / 2.0;
-        let hit = inverse(&doc, rect.page, cx, cy).expect("inverse should hit");
+        let hit = inverse(&doc, rect.page, cx, cy, &roots).expect("inverse should hit");
         assert_eq!(hit.file, "main.tex");
         assert_eq!(hit.line, line, "inverse should round-trip to line {line}");
+    }
+
+    const DUPLICATE_BASENAMES: &str = "SyncTeX Version:1\n\
+Input:1:/p/build/_oleafly_entry.tex\n\
+Input:2:/p/main.tex\n\
+Input:8:/p/cast/a/intro.tex\n\
+Input:9:/p/./cast/b/intro.tex\n\
+Input:10:/p/kapitoly/u\u{301}vod.tex\n\
+Content:\n\
+{1\n\
+[8,3:4736286,4736286:22609920,655360,0\n\
+[9,3:4736286,9736286:22609920,655360,0\n\
+[10,2:4736286,14736286:22609920,655360,0\n\
+}1\n";
+
+    #[test]
+    fn forward_search_tells_files_with_the_same_basename_apart() {
+        let roots = vec!["/p".to_string()];
+        for _ in 0..8 {
+            let doc = parse(DUPLICATE_BASENAMES);
+            assert_eq!(tag_for_file(&doc, "cast/a/intro.tex", &roots), Some(8));
+            assert_eq!(tag_for_file(&doc, "cast/b/intro.tex", &roots), Some(9));
+        }
+        let doc = parse(DUPLICATE_BASENAMES);
+        assert_eq!(tag_for_file(&doc, "intro.tex", &roots), None);
+        assert_eq!(tag_for_file(&doc, "main.tex", &roots), Some(2));
+        assert_eq!(tag_for_file(&doc, "./main.tex", &roots), Some(2));
+        assert_eq!(
+            tag_for_file(&doc, "kapitoly/\u{fa}vod.tex", &roots),
+            Some(10)
+        );
+        assert_eq!(tag_for_file(&doc, "cast/b/intro.tex", &[]), Some(9));
+        assert_eq!(tag_for_file(&doc, "b/intro.tex", &[]), Some(9));
+    }
+
+    #[test]
+    fn inverse_search_reports_the_project_relative_path() {
+        let doc = parse(DUPLICATE_BASENAMES);
+        let roots = vec!["/p".to_string()];
+        let y = 9_736_286.0 * SP_TO_BP - 5.0;
+        let hit = inverse(&doc, 1, 100.0, y, &roots).expect("inverse should hit");
+        assert_eq!(hit.file, "cast/b/intro.tex");
+        assert_eq!(hit.line, 3);
+        let outside = inverse(&doc, 1, 100.0, y, &[]).expect("inverse should hit");
+        assert_eq!(outside.file, "/p/cast/b/intro.tex");
     }
 
     #[test]

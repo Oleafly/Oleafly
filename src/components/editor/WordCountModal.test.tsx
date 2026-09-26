@@ -50,6 +50,7 @@ describe("WordCountModal", () => {
         diagnostics: [],
         truncated: false,
         activeDictionaryLocale: null,
+        retryable: true,
       },
     });
   });

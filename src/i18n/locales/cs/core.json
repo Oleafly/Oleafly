@@ -135,6 +135,7 @@
   },
   "dictionary": {
     "full": "Váš slovník je plný, takže se toto slovo místo uložení jen skryje v tomto dokumentu. Uvolněte místo odebráním jiného v Nastavení.",
+    "unsupportedCharacters": "Toto slovo obsahuje znaky, které slovník nedokáže uložit.",
     "wordTooLong": "Tohle je na uložení jako slovo příliš dlouhé, proto se jen skryje v tomto dokumentu. Slovo může mít nejvýše {{max}} znaků."
   },
   "documentScan": {
@@ -387,7 +388,11 @@
     "updatedOn": "Aktualizováno {{date}}",
     "updatedToday": "Aktualizováno dnes",
     "updatedYesterday": "Aktualizováno včera",
-    "autosaveFailed": "Změny se nepodařilo uložit. Pořád je máte v editoru."
+    "autosaveFailed": "Změny se nepodařilo uložit. Pořád je máte v editoru.",
+    "changedOnDisk": "Soubor „{{path}}“ byl změněn mimo Oleafly. Načtěte ho znovu, nebo ho uložte ještě jednou a ponechte svou verzi.",
+    "openFileEncoding": "Soubor „{{path}}“ nelze otevřít, protože nejde o textový soubor v kódování UTF-8. Pokud jde o text, uložte ho v UTF-8 a otevřete ho znovu.",
+    "openFileFailed": "Soubor „{{path}}“ nelze otevřít. Podrobnosti najdete v protokolu aplikace.",
+    "reloadFromDisk": "Načíst znovu"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analýza selhala: {{message}}",

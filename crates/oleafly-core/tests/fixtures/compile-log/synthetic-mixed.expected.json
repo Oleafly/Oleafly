@@ -6,54 +6,68 @@
    "category": "info",
    "file": "./hyperref.sty",
    "line": 4137,
-   "message": "Package hyperref: Hyper figures OFF.\nPackage hyperref Info: Link nesting OFF on input line 4142.\n\\c@Hy@tempcnt=\\count291\n) (\"C:\\texlive\\2022\\texmf-dist\\tex\\latex\\base\\ifthen.sty\"\nPackage: ifthen 2020/11/24 v1.1c Standard LaTeX ifthen package (DPC)\n) (/usr/share/texmf/tex/latex/graphics/graphicx.sty\nPackage: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)\n) (chapters/intro.tex\nLaTeX Warning: Reference `fig:teaser' on page 1 undefined on input line 7."
+   "message": "Package hyperref: Hyper figures OFF."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./hyperref.sty",
+   "line": 4142,
+   "message": "Package hyperref: Link nesting OFF.\n\\c@Hy@tempcnt=\\count291"
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-reference",
+   "file": "./chapters/intro.tex",
+   "line": 7,
+   "message": "Cannot find reference `fig:teaser`."
   },
   {
    "severity": "warning",
    "category": "undefined-citation",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": 9,
    "message": "Cannot find citation `vaswani2017`."
   },
   {
    "severity": "typesetting",
    "category": "overfull-box",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": 12,
    "message": "Overfull \\hbox (23.44pt too wide)"
   },
   {
    "severity": "typesetting",
    "category": "underfull-box",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": 18,
    "message": "Underfull \\hbox (badness 10000)"
   },
   {
    "severity": "typesetting",
    "category": "overfull-box",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": null,
    "message": "Overfull \\vbox (12.0pt too high) in page 3"
   },
   {
    "severity": "typesetting",
    "category": "underfull-box",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": null,
    "message": "Underfull \\vbox (badness 10000)"
   },
   {
    "severity": "warning",
    "category": "missing-character",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": null,
    "message": "Missing character: There is no ő in font [lmroman10-regular]!"
   },
   {
    "severity": "warning",
    "category": "missing-character",
-   "file": "./hyperref.sty",
+   "file": "./chapters/intro.tex",
    "line": null,
    "message": "Missing character: There is no → in font [lmroman10-regular]!"
   },
@@ -69,17 +83,17 @@
    "severity": "error",
    "category": "error",
    "file": "./chapters/methods.tex",
-   "line": null,
+   "line": 22,
    "message": "Package amsmath: \\begin{split} won't work here.",
-   "errorContext": "! Package amsmath Error: \\begin{split} won't work here."
+   "errorContext": "! Package amsmath Error: \\begin{split} won't work here.\nl.22 \\begin{split}"
   },
   {
    "severity": "error",
    "category": "error",
    "file": "./chapters/methods.tex",
-   "line": null,
+   "line": 30,
    "message": "Environment itemize undefined.",
-   "errorContext": "! LaTeX Error: Environment itemize undefined."
+   "errorContext": "! LaTeX Error: Environment itemize undefined.\nl.30 \\begin{itemize}"
   },
   {
    "severity": "error",
@@ -201,7 +215,35 @@
    "category": "info",
    "file": "./chapters/methods.tex",
    "line": null,
-   "message": "Module foo: Some module info without a period\nPackage caption Info: Begin \\AtBeginDocument code.\nPackage caption Info: End \\AtBeginDocument code.\nLaTeX Info: Redefining \\ref on input line 80.\nLaTeX Info: Redefining \\pageref on input line 81?\n) [1"
+   "message": "Module foo: Some module info without a period"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Package caption: Begin \\AtBeginDocument code."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Package caption: End \\AtBeginDocument code."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./chapters/methods.tex",
+   "line": 80,
+   "message": "LaTeX: Redefining \\ref."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./chapters/methods.tex",
+   "line": 81,
+   "message": "LaTeX: Redefining \\pageref?"
   },
   {
    "severity": "typesetting",

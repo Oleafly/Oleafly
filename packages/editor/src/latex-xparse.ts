@@ -72,8 +72,8 @@ function delimiterTokenEnd(
   }
   if (character !== "\\") return from + 1;
   let cursor = from + 1;
-  if (/[A-Za-z@]/u.test(source[cursor] ?? "")) {
-    while (/[A-Za-z@]/u.test(source[cursor] ?? "")) cursor += 1;
+  if (/[\p{L}\p{M}@]/u.test(source[cursor] ?? "")) {
+    while (/[\p{L}\p{M}@]/u.test(source[cursor] ?? "")) cursor += 1;
     return cursor;
   }
   return Math.min(source.length, cursor + 1);

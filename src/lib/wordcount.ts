@@ -1,4 +1,4 @@
-import { maskLatex, maskToProse, spellcheckRanges } from "@oleafly/editor";
+import { countedWordStarts, maskLatex, maskToProse } from "@oleafly/editor";
 import { splitLatexDocument } from "@oleafly/wysiwyg";
 
 export interface WordCountStats {
@@ -17,7 +17,7 @@ export interface WordCountStats {
 /**
  * Counts prose words/characters/lines in a (LaTeX) document.
  *
- * Words are the tokens the spellchecker would check (`spellcheckRanges`), so
+ * Words are counted over the spellchecker's mask (`countedWordStarts`), so
  * the count matches what a reader perceives as prose: equation bodies, code
  * listings, comments, keys, and dimension arguments do not inflate it.
  * Characters and lines come from the same mask: characters over the compacted
@@ -26,9 +26,10 @@ export interface WordCountStats {
  */
 export function countWords(tex: string): WordCountStats {
   try {
-    const words = spellcheckRanges(tex).length;
+    const masked = maskLatex(tex);
+    const words = countedWordStarts(masked).length;
     const characters = maskToProse(tex).prose.length;
-    const lines = maskLatex(tex)
+    const lines = masked
       .split("\n")
       .filter((line) => line.trim().length > 0).length;
     return { words, characters, lines, method: "masked" };

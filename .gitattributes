@@ -17,3 +17,10 @@
 
 # Vitest's module runner cannot load a CRLF hashbang in this imported script.
 scripts/update-tagging-status.mjs text eol=lf
+
+
+src-tauri/resources/templates/**/*.tex text eol=lf
+src-tauri/resources/templates/**/*.typ text eol=lf
+src-tauri/resources/templates/**/*.bib text eol=lf
+src-tauri/resources/templates/**/*.md text eol=lf
+src-tauri/resources/templates/**/*.json text eol=lf

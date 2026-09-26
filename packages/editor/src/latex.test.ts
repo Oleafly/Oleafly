@@ -14,6 +14,7 @@ import { EditorSelection, EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bibKeysFromSources,
   latexCommandCompletions,
   latexCompletions,
   latexReferenceCitationCompletions,
@@ -1168,5 +1169,42 @@ describe("bibliography style completion", () => {
     );
     expect(project?.detail).toBe("style file in this project");
     expect(project?.boost).toBeGreaterThan(0);
+  });
+});
+
+describe("bibKeysFromSources", () => {
+  it("lists entry keys and skips BibTeX directives", () => {
+    const bibliography = [
+      '@string{jcs = "Journal of Czech Studies"}',
+      '@preamble{"\\newcommand{\\noopsort}[1]{}"}',
+      "@article{nov\u00E1k2020, author={Nov{\\'a}k}, journal=jcs}",
+      "@book(\u010Capek1920, title={R.U.R.})",
+      "@Comment{jabref-meta: databaseType:bibtex;}",
+      "@COMMENT{grouping, x}",
+    ].join("\n");
+    expect(bibKeysFromSources([bibliography])).toEqual([
+      "nov\u00E1k2020",
+      "\u010Capek1920",
+    ]);
+  });
+
+  it("keeps entries without fields and parentheses inside brace keys", () => {
+    const bibliography = [
+      "@misc{nofields}",
+      "@misc{a(b)c, title={x}}",
+      "@misc(paren)",
+      "@book{half",
+    ].join("\n");
+    expect(bibKeysFromSources([bibliography])).toEqual([
+      "nofields",
+      "a(b)c",
+      "paren",
+    ]);
+  });
+
+  it("scans unterminated entries in linear time", () => {
+    expect(bibKeysFromSources(["@0{{".repeat(25_000)])).toEqual([]);
+    expect(bibKeysFromSources(["@0(!".repeat(25_000)])).toEqual([]);
+    expect(bibKeysFromSources(["@misc{half @misc{whole, x}"])).toEqual(["whole"]);
   });
 });

@@ -129,6 +129,7 @@
   },
   "dictionary": {
     "full": "你的字典已滿，因此改為在這份文件中隱藏該字詞。請在設定中移除一個字詞，才能儲存它。",
+    "unsupportedCharacters": "這個字詞含有字典無法儲存的字元。",
     "wordTooLong": "內容太長，無法存成字詞，因此改為在這份文件中隱藏。一個字詞最多 {{max}} 個字元。"
   },
   "documentScan": {
@@ -360,7 +361,11 @@
     "updatedOn": "更新於 {{date}}",
     "updatedToday": "今天更新",
     "updatedYesterday": "昨天更新",
-    "autosaveFailed": "無法儲存你的變更。變更仍保留在編輯器中。"
+    "autosaveFailed": "無法儲存你的變更。變更仍保留在編輯器中。",
+    "changedOnDisk": "「{{path}}」已在 Oleafly 以外被修改。請重新載入，或再次儲存以保留你的版本。",
+    "openFileEncoding": "無法開啟「{{path}}」，因為它不是 UTF-8 文字檔。如果是文字檔，請以 UTF-8 儲存後再重新開啟。",
+    "openFileFailed": "無法開啟「{{path}}」。詳情請查看應用程式記錄。",
+    "reloadFromDisk": "重新載入"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失敗：{{message}}",

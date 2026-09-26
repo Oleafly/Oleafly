@@ -79,7 +79,11 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import { useFilesStore } from "@/store/files";
-import { applyExternalFileChange } from "./external-file-changes";
+import {
+  applyExternalFileChange,
+  flushOpenFilesToDisk,
+  refreshOpenFilesFromDisk,
+} from "./external-file-changes";
 
 const TREE = [
   { path: "main.tex", is_dir: false },
@@ -206,5 +210,41 @@ describe("applyExternalFileChange", () => {
     await vi.waitFor(() => {
       expect(useFilesStore.getState().openTabs).toEqual(["references.bib"]);
     });
+  });
+});
+
+describe("open files and programs outside the editor", () => {
+  it("reloads every clean open buffer from disk and leaves unsaved edits alone", async () => {
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "typed\n", dirty: true },
+        "references.bib": { content: "old\n", dirty: false },
+      },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    refreshOpenFilesFromDisk("project");
+
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().files["references.bib"]?.content).toBe("fresh\n");
+    });
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "typed\n", dirty: true });
+    expect(mocks.listFiles).toHaveBeenCalled();
+  });
+
+  it("ignores a project that is not open", () => {
+    refreshOpenFilesFromDisk("other");
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+  });
+
+  it("writes unsaved edits to disk before another program runs", async () => {
+    mocks.writeFileContent.mockResolvedValue({ generation: 4 });
+    useFilesStore.setState({ files: { "main.tex": { content: "typed\n", dirty: true } } });
+
+    await flushOpenFilesToDisk("project", "save before agent prompt");
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "typed\n", 3);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 });

@@ -585,7 +585,8 @@
       },
       "harper": {
         "description": "LaTeX와 Markdown의 소스 및 비주얼 편집, Typst 소스 편집에서 영어 문법과 문체를 검사하고 한 번의 클릭으로 고칩니다.",
-        "label": "문법 및 문체(Harper)"
+        "label": "문법 및 문체(Harper)",
+        "englishOnly": "문법 검사는 영어에서만 작동합니다. 맞춤법 사전이 {{name}}인 동안에는 일시 중지됩니다."
       },
       "offline": {
         "description": "--only-cached로 컴파일하고 네트워크에서 패키지를 내려받지 않습니다.",

@@ -356,7 +356,15 @@ export const writeFileContent = (
   path: string,
   content: string,
   expectedGeneration?: number,
-) => invoke<FileMutationResult>("write_file", { projectId, path, content, expectedGeneration });
+  expectedHash?: string,
+) =>
+  invoke<FileMutationResult>("write_file", {
+    projectId,
+    path,
+    content,
+    expectedGeneration,
+    ...(expectedHash ? { expectedHash } : {}),
+  });
 
 export async function createFile(
   projectId: string,

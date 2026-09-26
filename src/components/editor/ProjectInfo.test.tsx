@@ -39,6 +39,7 @@ const IDLE = {
   diagnostics: [],
   truncated: false,
   activeDictionaryLocale: null,
+  retryable: true,
 };
 
 describe("ProjectInfoContent", () => {

@@ -1,11 +1,29 @@
+const WORD_CHARACTER = /[\p{L}\p{M}\p{N}]/u;
+const WORD_JOINER = /[\u200C\u200D]/u;
+
 export function wordInText(text: string, offset: number): string | null {
-  const isWordChar = (character: string | undefined) =>
-    !!character && /[\p{L}\p{N}]/u.test(character);
-  let start = Math.min(Math.max(0, offset), text.length);
-  let end = start;
-  while (start > 0 && isWordChar(text[start - 1])) start--;
-  while (end < text.length && isWordChar(text[end])) end++;
-  const word = text.slice(start, end);
+  const characters = Array.from(text);
+  const isWordChar = (index: number) => {
+    const character = characters[index];
+    if (character === undefined) return false;
+    if (WORD_CHARACTER.test(character)) return true;
+    return (
+      WORD_JOINER.test(character) &&
+      WORD_CHARACTER.test(characters[index - 1] ?? "") &&
+      WORD_CHARACTER.test(characters[index + 1] ?? "")
+    );
+  };
+  const target = Math.min(Math.max(0, offset), text.length);
+  let index = 0;
+  for (let unit = 0; index < characters.length; index++) {
+    unit += characters[index].length;
+    if (unit > target) break;
+  }
+  let start = index;
+  let end = index;
+  while (start > 0 && isWordChar(start - 1)) start--;
+  while (end < characters.length && isWordChar(end)) end++;
+  const word = characters.slice(start, end).join("");
   return word.length ? word : null;
 }
 

@@ -611,7 +611,8 @@
       },
       "harper": {
         "description": "Vérifier la grammaire et le style anglais dans l'édition LaTeX et Markdown en mode Source et Visuel, ainsi qu'en mode Source Typst, avec des corrections en un clic.",
-        "label": "Grammaire et style (Harper)"
+        "label": "Grammaire et style (Harper)",
+        "englishOnly": "La vérification grammaticale ne fonctionne qu’en anglais. Elle est en pause tant que le dictionnaire orthographique est {{name}}."
       },
       "offline": {
         "description": "Compiler avec --only-cached et ne jamais récupérer de paquets sur le réseau.",

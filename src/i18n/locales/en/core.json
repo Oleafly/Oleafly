@@ -131,6 +131,7 @@
   },
   "dictionary": {
     "full": "Your dictionary is full, so that word is hidden in this document instead. Remove one in Settings to save it.",
+    "unsupportedCharacters": "That word has characters the dictionary can't save.",
     "wordTooLong": "That is too long to save as a word, so it is hidden in this document instead. A word can be up to {{max}} characters."
   },
   "documentScan": {
@@ -369,7 +370,11 @@
     "updatedOn": "Updated {{date}}",
     "updatedToday": "Updated today",
     "updatedYesterday": "Updated yesterday",
-    "autosaveFailed": "Could not save your changes. They are still in the editor."
+    "autosaveFailed": "Could not save your changes. They are still in the editor.",
+    "changedOnDisk": "\"{{path}}\" changed outside Oleafly. Reload it, or save again to keep your version.",
+    "openFileEncoding": "Could not open \"{{path}}\" because it is not a UTF-8 text file. If it is text, save it as UTF-8 and open it again.",
+    "openFileFailed": "Could not open \"{{path}}\". See the app log for details.",
+    "reloadFromDisk": "Reload"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysis failed: {{message}}",

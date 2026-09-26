@@ -207,6 +207,14 @@ function definitionCompletionType(
   return "variable";
 }
 
+function completionKey(text: string): string {
+  return text.normalize("NFC").toLocaleLowerCase();
+}
+
+function isNfc(text: string): boolean {
+  return text === text.normalize("NFC");
+}
+
 function definitionOptions(
   snapshot: ProjectIntelligenceSnapshot,
   guard: CompletionGuard,
@@ -214,12 +222,12 @@ function definitionOptions(
   query: string,
   includeEnvironmentArguments = false,
 ): Completion[] {
-  const normalizedQuery = query.toLocaleLowerCase();
+  const normalizedQuery = completionKey(query);
   const candidates = snapshot.definitions.filter(
     (definition) =>
       kinds.has(definition.kind) &&
       (!normalizedQuery ||
-        definition.name.toLocaleLowerCase().includes(normalizedQuery)),
+        completionKey(definition.name).includes(normalizedQuery)),
   );
   const counts = new Map<string, number>();
   for (const candidate of candidates) {
@@ -228,8 +236,8 @@ function definitionOptions(
 
   return [...candidates]
     .sort((left, right) => {
-      const leftPrefix = left.name.toLocaleLowerCase().startsWith(normalizedQuery);
-      const rightPrefix = right.name.toLocaleLowerCase().startsWith(normalizedQuery);
+      const leftPrefix = completionKey(left.name).startsWith(normalizedQuery);
+      const rightPrefix = completionKey(right.name).startsWith(normalizedQuery);
       if (leftPrefix !== rightPrefix) return leftPrefix ? -1 : 1;
       return left.name.localeCompare(right.name) ||
         left.location.file.localeCompare(right.location.file) ||
@@ -373,12 +381,13 @@ function corpusNameInfo(
 function completionResult(
   from: number,
   options: Completion[],
+  query = "",
 ): CompletionResult | null {
   if (options.length === 0) return null;
   return {
     from,
     options,
-    filter: true,
+    filter: isNfc(query) && options.every((option) => isNfc(option.label)),
   };
 }
 
@@ -627,6 +636,7 @@ function importPathCompletion(
       ).filter((option) =>
         fileTargetAccepts("input", String(option.label)),
       ),
+      query,
     );
   }
 
@@ -650,6 +660,7 @@ function fileTargetCompletion(
       ).filter((option) =>
         fileTargetAccepts(fileTarget.command, String(option.label)),
       ),
+      query,
     );
   }
 
@@ -666,6 +677,7 @@ function citationCompletion(
     return completionResult(
       context.pos - query.length,
       citationOptions(snapshot, guard, query),
+      query,
     );
   }
 
@@ -687,6 +699,7 @@ function referenceCompletion(
         new Set(["label", "anchor"]),
         query,
       ),
+      query,
     );
   }
 
@@ -707,6 +720,7 @@ function glossaryCompletion(
         new Set(["glossary"]),
         glossaryKey.query,
       ),
+      glossaryKey.query,
     );
   }
 
@@ -855,7 +869,7 @@ function markdownCompletion(
   guard: CompletionGuard,
   before: string,
 ): CompletionResult | null {
-  const anchor = /\]\(#([\p{L}\p{N}_:.+/-]*)$/u.exec(before);
+  const anchor = /\]\(#([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(before);
   if (anchor) {
     const query = anchor[1] ?? "";
     return completionResult(
@@ -866,10 +880,11 @@ function markdownCompletion(
         new Set(["label", "anchor", "section"]),
         query,
       ),
+      query,
     );
   }
 
-  const at = /(?:^|[[(\s;,])@([\p{L}\p{N}_:.+/-]*)$/u.exec(before);
+  const at = /(?:^|[[(\s;,])@([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(before);
   if (!at || before.endsWith(String.raw`\@`)) return null;
   const query = at[1] ?? "";
   const definitions = definitionOptions(
@@ -884,6 +899,7 @@ function markdownCompletion(
       0,
       FILTERED_COMPLETION_LIMIT,
     ),
+    query,
   );
 }
 
@@ -894,7 +910,7 @@ function typstCompletion(
   before: string,
 ): CompletionResult | null {
   const explicitCitation =
-    /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")([\p{L}\p{N}_:.+/-]*)$/u.exec(
+    /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(
       before,
     );
   if (explicitCitation) {
@@ -902,10 +918,11 @@ function typstCompletion(
     return completionResult(
       context.pos - query.length,
       citationOptions(snapshot, guard, query),
+      query,
     );
   }
 
-  const explicitReference = /#(?:ref|link)\(\s*<([\p{L}\p{N}_:.+/-]*)$/u.exec(
+  const explicitReference = /#(?:ref|link)\(\s*<([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(
     before,
   );
   if (explicitReference) {
@@ -918,10 +935,11 @@ function typstCompletion(
         new Set(["label", "anchor", "section"]),
         query,
       ),
+      query,
     );
   }
 
-  const at = /(?:^|[\s[(;,])@([\p{L}\p{N}_:.+/-]*)$/u.exec(before);
+  const at = /(?:^|[\s[(;,])@([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(before);
   if (!at) return null;
   const query = at[1] ?? "";
   return completionResult(
@@ -935,6 +953,7 @@ function typstCompletion(
         query,
       ),
     ].slice(0, FILTERED_COMPLETION_LIMIT),
+    query,
   );
 }
 
@@ -944,7 +963,7 @@ function bibtexCompletion(
   guard: CompletionGuard,
   before: string,
 ): CompletionResult | null {
-  const crossReference = /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*([\p{L}\p{N}_:.+/-]*)$/iu.exec(
+  const crossReference = /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*([\p{L}\p{M}\p{N}_:.+/-]*)$/iu.exec(
     before,
   );
   if (!crossReference) return null;
@@ -952,6 +971,7 @@ function bibtexCompletion(
   return completionResult(
     context.pos - query.length,
     citationOptions(snapshot, guard, query),
+    query,
   );
 }
 

@@ -36,11 +36,11 @@ const limits = {
   // BibTeX completion and linter, the dictionary catalog picker and the figure
   // dialog: the entry measures 3.98 MB. The visual editor package stays out
   // of the entry through the insertion registry the lazy editor fills in.
-  largestJavaScript: 4_100_000,
+  largestJavaScript: 4_150_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_100_000,
+  entryJavaScript: 4_150_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.

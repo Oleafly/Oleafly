@@ -49,7 +49,35 @@ const IDLE = {
   diagnostics: [],
   truncated: false,
   activeDictionaryLocale: null,
+  retryable: true,
 };
+
+const IDENTITY = {
+  projectId: "guide",
+  path: "main.tex",
+  revision: 1,
+  requestGeneration: 1,
+  surface: "source" as const,
+};
+
+function hunspellFinding(word: string) {
+  return {
+    from: 0,
+    to: word.length,
+    message: `Possible misspelling: “${word}”`,
+    kind: "Spelling",
+    source: "hunspell" as const,
+    word,
+    suggestions: [],
+    rule: null,
+  };
+}
+
+function statRow(label: string): HTMLElement {
+  const row = screen.getByText(label, { selector: "span" }).parentElement;
+  if (!row) throw new Error(`missing row ${label}`);
+  return row;
+}
 
 function entry(
   id: string,
@@ -216,5 +244,205 @@ describe("per-project spell-check language", () => {
     view.unmount();
     await act(async () => finish({ dictionary_locale: "fr_FR" }));
     expect(useFilesStore.getState().projectDictionaryLocale).toBe("en_US");
+  });
+});
+
+describe("proofreading summary for the project language", () => {
+  it("asks the open editors to re-proofread after the language changes", async () => {
+    const events: string[] = [];
+    const listener = (event: Event) =>
+      events.push((event as CustomEvent<{ setting: string }>).detail.setting);
+    window.addEventListener("oleafly:proofreading-settings-changed", listener);
+    const user = userEvent.setup();
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    await user.click(await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    }));
+    await user.click(await screen.findByRole("option", { name: "French (France)" }));
+    await waitFor(() =>
+      expect(useFilesStore.getState().projectDictionaryLocale).toBe("fr_FR"),
+    );
+    window.removeEventListener("oleafly:proofreading-settings-changed", listener);
+    expect(events).toEqual(["projectDictionaryLocale"]);
+  });
+
+  it("stays quiet when the project picks the language the app already uses", () => {
+    const events: string[] = [];
+    const listener = () => events.push("changed");
+    window.addEventListener("oleafly:proofreading-settings-changed", listener);
+    useSettingsStore.setState({ dictionaryLocale: "fr_FR" });
+    useFilesStore.setState({ projectDictionaryLocale: "fr_FR" });
+    useFilesStore.setState({ projectDictionaryLocale: null });
+    window.removeEventListener("oleafly:proofreading-settings-changed", listener);
+    useSettingsStore.setState({ dictionaryLocale: "en_US" });
+    expect(events).toEqual([]);
+  });
+
+  it("flags a project language whose pack is not downloaded", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: "it_IT" });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "unavailable",
+        identity: IDENTITY,
+        message: "The it_IT spelling dictionary could not be loaded.",
+        retryable: false,
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    });
+    expect(control).toHaveTextContent("Italian (Italy) (not downloaded)");
+    expect(
+      await screen.findByText(
+        "Italian (Italy) is not downloaded, so spelling is not checked. Download it in Settings or pick another language.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enEditor.proofreading.unavailable),
+    ).not.toBeInTheDocument();
+  });
+
+  it("trusts a finished spelling pass over an outdated download list", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: "it_IT" });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "ready",
+        identity: IDENTITY,
+        diagnosticCount: 1,
+        diagnostics: [hunspellFinding("sbaglio")],
+        activeDictionaryLocale: "it_IT",
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    });
+    expect(statRow(enEditor.projectInfo.spelling)).toHaveTextContent("1");
+    expect(
+      screen.queryByText(/is not downloaded, so spelling is not checked/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("drops the missing-pack note once the pack is downloaded", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: "it_IT" });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "unavailable",
+        identity: IDENTITY,
+        retryable: false,
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    expect(
+      await screen.findByText(/is not downloaded, so spelling is not checked/),
+    ).toBeInTheDocument();
+
+    mocks.listDictionaries.mockResolvedValue([
+      entry("en_US", "English", "United States", "bundled"),
+      entry("it_IT", "Italian", "Italy", "installed"),
+    ]);
+    await act(async () => {
+      await refreshDictionaryCatalog();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/is not downloaded, so spelling is not checked/),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("combobox", {
+        name: enEditor.projectInfo.spellLanguageAriaLabel,
+      }),
+    ).not.toHaveTextContent("not downloaded");
+  });
+
+  it("does not report a clean spelling pass when spelling never ran", async () => {
+    useSettingsStore.setState({ harper: true });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "partial",
+        identity: IDENTITY,
+        message: "Partial proofreading",
+        diagnosticCount: 1,
+        diagnostics: [{ ...hunspellFinding("teh"), source: "harper", kind: "Style" }],
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    await waitFor(() =>
+      expect(statRow(enEditor.projectInfo.spelling)).toHaveTextContent(
+        enEditor.projectInfo.notChecked,
+      ),
+    );
+    expect(statRow(enEditor.projectInfo.grammarAndStyle)).toHaveTextContent("1");
+  });
+
+  it("keeps the spelling count when only grammar was partial", async () => {
+    useSettingsStore.setState({ harper: true });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "partial",
+        identity: IDENTITY,
+        diagnosticCount: 1,
+        diagnostics: [hunspellFinding("teh")],
+        activeDictionaryLocale: "en_US",
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    await waitFor(() =>
+      expect(statRow(enEditor.projectInfo.spelling)).toHaveTextContent("1"),
+    );
+  });
+
+  it("says grammar is not checked for a non-English document", async () => {
+    useSettingsStore.setState({ harper: true });
+    useFilesStore.setState({ projectDictionaryLocale: "fr_FR" });
+    useProofreadingStore.setState({
+      source: {
+        ...IDLE,
+        phase: "ready",
+        identity: IDENTITY,
+        diagnosticCount: 1,
+        diagnostics: [hunspellFinding("fautte")],
+        activeDictionaryLocale: "fr_FR",
+      },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    await waitFor(() =>
+      expect(statRow(enEditor.projectInfo.grammarAndStyle)).toHaveTextContent(
+        enEditor.projectInfo.notChecked,
+      ),
+    );
+    expect(statRow(enEditor.projectInfo.spelling)).toHaveTextContent("1");
+    expect(
+      screen.getByText(enEditor.projectInfo.grammarEnglishOnly),
+    ).toBeInTheDocument();
+  });
+
+  it("explains grammar-only checking outside English", async () => {
+    useSettingsStore.setState({ spellcheck: false, harper: true });
+    useFilesStore.setState({ projectDictionaryLocale: "fr_FR" });
+    useProofreadingStore.setState({
+      source: { ...IDLE, phase: "unsupported", identity: IDENTITY },
+    });
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    expect(
+      await screen.findByText(enEditor.projectInfo.grammarEnglishOnly),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enEditor.proofreading.unsupported),
+    ).not.toBeInTheDocument();
   });
 });

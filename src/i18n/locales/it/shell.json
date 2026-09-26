@@ -611,7 +611,8 @@
       },
       "harper": {
         "description": "Controlla grammatica e stile dell'inglese nella scrittura LaTeX e Markdown, in modalità Sorgente e Visuale, e in Typst Sorgente, con correzioni in un clic.",
-        "label": "Grammatica e stile (Harper)"
+        "label": "Grammatica e stile (Harper)",
+        "englishOnly": "Il controllo grammaticale funziona solo per l’inglese. È in pausa finché il dizionario ortografico è {{name}}."
       },
       "offline": {
         "description": "Compila con --only-cached e non scarica mai pacchetti dalla rete.",

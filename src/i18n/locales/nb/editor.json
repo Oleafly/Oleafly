@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Bruk innstillingen i appen",
     "spellLanguageAriaLabel": "Språk for stavekontroll i dette prosjektet",
     "spellLanguageHint": "Gjelder bare dette prosjektet. Last ned flere språk i Innstillinger.",
-    "spellLanguageFailed": "Kunne ikke endre språk for stavekontroll."
+    "spellLanguageFailed": "Kunne ikke endre språk for stavekontroll.",
+    "notChecked": "Ikke kontrollert",
+    "dictionaryMissing": "{{name}} er ikke lastet ned, så stavingen kontrolleres ikke. Last den ned i Innstillinger, eller velg et annet språk.",
+    "grammarEnglishOnly": "Grammatikkontroll fungerer bare for engelske dokumenter.",
+    "spellLanguageNotDownloaded": "{{name}} (ikke lastet ned)"
   },
   "table": {
     "trigger": "Sett inn tabell",
@@ -556,6 +560,7 @@
     "previousFinding": "Forrige funn i denne råblokken",
     "nextFinding": "Neste funn i denne råblokken",
     "suggestedFixes": "Foreslåtte rettelser",
+    "findingSuggestions": "Ser etter forslag…",
     "suggestionRemove": "Fjern",
     "suggestionInsert": "Sett inn",
     "suggestionInsertText": "Sett inn «{{text}}»",
@@ -566,7 +571,10 @@
     "keyboardHint": "Bruk Tab eller piltastene for å bevege deg mellom handlingene. Trykk Escape for å lukke.",
     "endOfDocument": "Slutten av dokumentet",
     "hidePreamble": "Skjul innledningen i dokumentet",
-    "showPreamble": "Vis innledningen i dokumentet"
+    "showPreamble": "Vis innledningen i dokumentet",
+    "findingLabel": "{{message}}. Åpne korrekturforslag.",
+    "rawBlockFindings_one": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
+    "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag."
   },
   "package": {
     "search": {
@@ -612,6 +620,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Mente du {{suggestion}}?",
       "notInDictionary": "Ikke i ordlisten: {{word}}",
+      "findingSuggestions": "Ser etter forslag…",
       "possibleMisspelling": "Mulig skrivefeil: \"{{word}}\"",
       "repeatedWord": "Gjentatt ord: «{{word}}»",
       "possibleIssue": "Mulig stave- eller grammatikkfeil: «{{word}}»"

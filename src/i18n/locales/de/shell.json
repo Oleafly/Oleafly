@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Prüft englische Grammatik und englischen Stil beim Bearbeiten von LaTeX und Markdown in Quelltext und visueller Ansicht sowie im Typst-Quelltext, mit Korrekturen per Klick.",
-        "label": "Grammatik & Stil (Harper)"
+        "label": "Grammatik & Stil (Harper)",
+        "englishOnly": "Die Grammatikprüfung funktioniert nur für Englisch. Sie ist pausiert, solange das Rechtschreibwörterbuch {{name}} ist."
       },
       "offline": {
         "description": "Mit --only-cached kompilieren und niemals Pakete über das Netzwerk holen.",

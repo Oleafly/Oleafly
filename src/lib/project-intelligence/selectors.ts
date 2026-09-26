@@ -1,4 +1,6 @@
+import { searchFold } from "./bibtex-text";
 import type {
+  BibliographyEntry,
   CitationCompletion,
   ProjectDefinition,
   ProjectEdge,
@@ -113,14 +115,32 @@ export function projectChildren(
   };
 }
 
+interface FoldedEntry {
+  key: string;
+  title: string;
+  author: string;
+}
+
+const foldedEntries = new WeakMap<BibliographyEntry, FoldedEntry>();
+
+function foldedEntry(entry: BibliographyEntry): FoldedEntry {
+  const cached = foldedEntries.get(entry);
+  if (cached) return cached;
+  const folded = {
+    key: searchFold(entry.key),
+    title: searchFold(entry.title ?? ""),
+    author: searchFold(entry.author ?? ""),
+  };
+  foldedEntries.set(entry, folded);
+  return folded;
+}
+
 function completionScore(
-  completion: CitationCompletion,
+  entry: BibliographyEntry,
   normalizedQuery: string,
 ): number {
   if (!normalizedQuery) return 4;
-  const key = completion.key.toLocaleLowerCase("en-US");
-  const title = completion.title?.toLocaleLowerCase("en-US") ?? "";
-  const author = completion.author?.toLocaleLowerCase("en-US") ?? "";
+  const { key, title, author } = foldedEntry(entry);
   if (key === normalizedQuery) return 0;
   if (key.startsWith(normalizedQuery)) return 1;
   if (key.includes(normalizedQuery)) return 2;
@@ -138,14 +158,17 @@ export function citationCompletions(
   const safeLimit = Number.isInteger(limit)
     ? Math.max(0, Math.min(500, limit))
     : 100;
-  const normalizedQuery = query
-    .trim()
-    .replace(/^@/, "")
-    .toLocaleLowerCase("en-US");
+  const normalizedQuery = searchFold(query.trim().replace(/^@/, ""));
   return snapshot.bibliography.entries
+    .map((entry) => ({
+      entry,
+      score: completionScore(entry, normalizedQuery),
+    }))
+    .filter(({ score }) => Number.isFinite(score))
     .map(
-      (entry) =>
-        ({
+      ({ entry, score }) => ({
+        score,
+        completion: {
           id: entry.id,
           key: entry.key,
           label: entry.key,
@@ -158,13 +181,9 @@ export function citationCompletions(
           duplicate: entry.duplicate,
           duplicateIndex: entry.duplicateIndex,
           duplicateCount: entry.duplicateCount,
-        }) satisfies CitationCompletion,
+        } satisfies CitationCompletion,
+      }),
     )
-    .map((completion) => ({
-      completion,
-      score: completionScore(completion, normalizedQuery),
-    }))
-    .filter(({ score }) => Number.isFinite(score))
     .sort(
       (left, right) =>
         left.score - right.score ||

@@ -1,8 +1,8 @@
 import {
+  countedWordStarts,
   maskLatex,
   maskToProse,
   scanMathExpressions,
-  spellcheckRanges,
 } from "@oleafly/editor";
 
 /**
@@ -267,13 +267,14 @@ function scanStructure(text: string): StructureScan {
  * count degrades to zero rather than reporting a number nobody can trust.
  */
 export function documentStats(text: string): DocumentStats {
-  let ranges: ReturnType<typeof spellcheckRanges>;
+  let starts: number[];
   let characters: number;
   let lines: number;
   try {
-    ranges = spellcheckRanges(text);
+    const masked = maskLatex(text);
+    starts = countedWordStarts(masked);
     characters = maskToProse(text).prose.length;
-    lines = maskLatex(text)
+    lines = masked
       .split("\n")
       .filter((line) => line.trim().length > 0).length;
   } catch {
@@ -283,9 +284,9 @@ export function documentStats(text: string): DocumentStats {
   const structure = scanStructure(text);
   let wordsInHeaders = 0;
   let wordsOutsideText = 0;
-  for (const range of ranges) {
-    if (inSpans(structure.headerArgs, range.from)) wordsInHeaders++;
-    else if (inSpans(structure.outsideArgs, range.from)) wordsOutsideText++;
+  for (const start of starts) {
+    if (inSpans(structure.headerArgs, start)) wordsInHeaders++;
+    else if (inSpans(structure.outsideArgs, start)) wordsOutsideText++;
   }
 
   let mathInline = 0;
@@ -300,8 +301,8 @@ export function documentStats(text: string): DocumentStats {
   }
 
   return {
-    words: ranges.length,
-    wordsInText: ranges.length - wordsInHeaders - wordsOutsideText,
+    words: starts.length,
+    wordsInText: starts.length - wordsInHeaders - wordsOutsideText,
     wordsInHeaders,
     wordsOutsideText,
     headers: structure.headers,

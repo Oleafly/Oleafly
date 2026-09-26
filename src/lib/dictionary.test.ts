@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
   DICTIONARY_LIMITS,
+  canStoreWord,
   grammarSuppressionsFor,
   isGrammarFindingSuppressed,
   isWordIgnored,
@@ -121,6 +122,7 @@ describe("dictionary write outcomes", () => {
       "unsupported_word",
     );
     expect(notices).toHaveLength(1);
+    expect(notices[0]).not.toContain("too long");
   });
 
   it("says nothing was stored without a project", () => {
@@ -230,6 +232,74 @@ describe("dictionaryWordFromSelection", () => {
     ignoreWordForProject("p", "Spanner,");
     expect(useDictionary.getState().ignored.p).toEqual(["Spanner"]);
     expect(isWordIgnored("p", "Spanner")).toBe(true);
+  });
+
+  it.each([
+    ["Hindi", "\u0939\u093F\u0902\u0926\u0940", "\u0939\u093F\u0902\u0926"],
+    ["Hindi", "\u0932\u0921\u093C\u0915\u093E", "\u0932\u0921\u093C\u0915"],
+    ["Thai", "\u0E14\u0E35", "\u0E14"],
+    ["Hebrew", "\u05E9\u05C1\u05B8\u05DC\u05D5\u05B9\u05DD\u05B8", "\u05E9\u05C1\u05B8\u05DC\u05D5\u05B9\u05DD"],
+  ])("keeps the final combining marks of a %s word", (_script, word, stem) => {
+    const stored = word.normalize("NFKC");
+    expect(dictionaryWordFromSelection(`${word},`)).toBe(stored);
+    expect(ignoreWordGlobally(word)).toBe("stored");
+    expect(useDictionary.getState().global).toEqual([stored]);
+    expect(isWordIgnored(null, word)).toBe(true);
+    expect(isWordIgnored(null, stem)).toBe(false);
+  });
+
+  it("composes decomposed accents before trimming", () => {
+    const decomposed = "kafe\u0301";
+    expect(dictionaryWordFromSelection(decomposed)).toBe("kaf\u00E9");
+    ignoreWordGlobally(decomposed);
+    expect(isWordIgnored(null, decomposed)).toBe(true);
+    expect(isWordIgnored(null, "kafe")).toBe(false);
+  });
+
+  it("does not keep a combining mark at the start of a selection", () => {
+    expect(dictionaryWordFromSelection("\u0301word")).toBe("word");
+  });
+});
+
+describe("words with joiners and soft hyphens", () => {
+  const notices: string[] = [];
+
+  beforeEach(() => {
+    notices.length = 0;
+    setDictionaryNotice((message) => void notices.push(message));
+    useDictionary.setState(RESET);
+  });
+
+  afterEach(() => setDictionaryNotice(null));
+
+  it.each([
+    ["a Persian word with ZWNJ", "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645"],
+    ["a Hindi half-form with ZWJ", "\u0915\u094D\u200D\u0937"],
+  ])("stores %s", (_label, word) => {
+    expect(canStoreWord(word)).toBe(true);
+    expect(ignoreWordForProject("p", word)).toBe("stored");
+    expect(ignoreWordGlobally(word)).toBe("stored");
+    expect(isWordIgnored("p", word)).toBe(true);
+    expect(notices).toEqual([]);
+  });
+
+  it("stores a soft-hyphenated word without the soft hyphen", () => {
+    expect(ignoreWordGlobally("Silben\u00ADtrennung")).toBe("stored");
+    expect(useDictionary.getState().global).toEqual(["Silbentrennung"]);
+    expect(isWordIgnored(null, "Silben\u00ADtrennung")).toBe(true);
+    expect(isWordIgnored(null, "Silbentrennung")).toBe(true);
+  });
+
+  it("refuses joiners at the edges and other format characters", () => {
+    expect(canStoreWord("\u200Cword")).toBe(false);
+    expect(canStoreWord("word\u200D")).toBe(false);
+    expect(canStoreWord("wo\u202Erd")).toBe(false);
+    expect(canStoreWord("wo\uFEFFrd")).toBe(false);
+  });
+
+  it("names the characters, not the length, when it refuses a short word", () => {
+    expect(ignoreWordGlobally("wo\u202Erd")).toBe("unsupported_word");
+    expect(notices).toEqual(["That word has characters the dictionary can't save."]);
   });
 });
 

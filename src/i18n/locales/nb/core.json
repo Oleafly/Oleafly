@@ -131,6 +131,7 @@
   },
   "dictionary": {
     "full": "Ordlisten din er full, så ordet skjules i dette dokumentet i stedet. Fjern ett i Innstillinger for å lagre det.",
+    "unsupportedCharacters": "Ordet har tegn som ordboken ikke kan lagre.",
     "wordTooLong": "Dette er for langt til å lagres som et ord, så det skjules i dette dokumentet i stedet. Et ord kan være opptil {{max}} tegn."
   },
   "documentScan": {
@@ -369,7 +370,11 @@
     "updatedOn": "Oppdatert {{date}}",
     "updatedToday": "Oppdatert i dag",
     "updatedYesterday": "Oppdatert i går",
-    "autosaveFailed": "Kunne ikke lagre endringene. De er fortsatt i redigeringsprogrammet."
+    "autosaveFailed": "Kunne ikke lagre endringene. De er fortsatt i redigeringsprogrammet.",
+    "changedOnDisk": "«{{path}}» ble endret utenfor Oleafly. Last inn filen på nytt, eller lagre igjen for å beholde din versjon.",
+    "openFileEncoding": "«{{path}}» kan ikke åpnes fordi det ikke er en UTF-8-tekstfil. Hvis det er tekst, lagrer du den som UTF-8 og åpner den på nytt.",
+    "openFileFailed": "Kunne ikke åpne «{{path}}». Se appens logg for detaljer.",
+    "reloadFromDisk": "Last inn på nytt"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen mislyktes: {{message}}",

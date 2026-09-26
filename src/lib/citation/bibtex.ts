@@ -1,3 +1,4 @@
+import { decodeLatexAccents, foldLatinDiacritics } from "@oleafly/latex";
 import type { ParsedBib } from "./types";
 
 type EntryValue = { value: string; next: number };
@@ -70,11 +71,8 @@ export function parseEntry(bibtex: string): ParsedBib | null {
 
 const STOP = new Set(["the", "a", "an", "of", "on", "in", "for", "and", "to", "with", "using", "via", "from", "by"]);
 
-function ascii(s: string): string {
-  return s
-    .normalize("NFKD")
-    .replace(/[^\w]/g, "")
-    .toLowerCase();
+function keyLetters(s: string): string {
+  return foldLatinDiacritics(s.normalize("NFKC").toLowerCase()).replace(/[^a-z0-9]/g, "");
 }
 
 function firstAuthorFamily(author: string): string {
@@ -86,9 +84,12 @@ function firstAuthorFamily(author: string): string {
 }
 
 function firstTitleWord(title: string): string {
-  for (const w of title.replace(/[{}]/g, "").split(/\s+/)) {
-    const c = w.replace(/[^A-Za-z]/g, "").toLowerCase();
-    if (c.length > 2 && !STOP.has(c)) return c;
+  const plain = decodeLatexAccents(title).replace(/\\[\p{L}\p{M}@]+/gu, " ").replace(/[{}]/g, "");
+  for (const w of plain.split(/\s+/)) {
+    const c = keyLetters(w).replace(/\d/g, "");
+    if (c.length > 2 && !STOP.has(c)) {
+      return c;
+    }
   }
   return "";
 }
@@ -107,11 +108,10 @@ function collisionSuffix(n: number): string {
 }
 
 export function generateCiteKey(fields: Record<string, string>, existing: Set<string>): string {
-  const family = ascii(firstAuthorFamily(fields.author ?? ""));
+  const family = keyLetters(decodeLatexAccents(firstAuthorFamily(fields.author ?? "")));
   const year = /\d{4}/.exec(fields.year ?? "")?.[0] ?? "";
   const word = firstTitleWord(fields.title ?? "");
-  let base = `${family}${year}${word}`;
-  if (!base) base = `ref${year}`;
+  const base = family || word ? `${family}${year}${word}` : `ref${year}`;
   let key = base;
   let n = 0;
   while (existing.has(key)) {
