@@ -315,9 +315,12 @@ function resolveForPath<T>(resolve: ((path: string | null) => T[]) | undefined, 
   return resolve?.(path) ?? [];
 }
 
-function spellExtensionsForPath(path: string, spell: boolean, harper: boolean): Extension {
-  return isProseSourcePath(path) && (spell || harper)
-    ? spellLintExtensions({ spell, harper })
+function spellExtensionsForPath(
+  path: string,
+  proofreading: { spell: boolean; harper: boolean },
+): Extension {
+  return isProseSourcePath(path) && (proofreading.spell || proofreading.harper)
+    ? spellLintExtensions(proofreading)
     : [];
 }
 
@@ -954,7 +957,7 @@ export function CodeMirrorEditor({
       ),
       hostToolsCompartmentRef.current!.reconfigure(resolveForPath(extraExtensionsForPath, activePath)),
       spellCompartmentRef.current!.reconfigure(
-        spellExtensionsForPath(activePath, spellcheck, harper),
+        spellExtensionsForPath(activePath, { spell: spellcheck, harper }),
       ),
     );
     // Drop the undo history when moving to a different file, so undo/redo never
