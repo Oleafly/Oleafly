@@ -260,6 +260,7 @@
     "texRootBroken": "% !TEX root in {{file}} verweist auf eine fehlende Datei ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root in {{file}} verweist auf {{target}}, das keine LaTeX-Datei ist",
     "texRootOverride": "root: {{path}} (gesetzt durch % !TEX root in {{file}})"
   },
   "datePicker": {

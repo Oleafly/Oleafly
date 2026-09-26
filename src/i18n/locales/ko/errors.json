@@ -22,7 +22,8 @@
     "copy_nothing_open": "열린 파일이 없어 저장할 내용이 없습니다.",
     "copy_too_large": "열린 파일이 너무 커서 사본으로 저장할 수 없습니다.",
     "copy_failed": "Oleafly가 그 위치에 사본을 저장하지 못했습니다. 쓰기 권한이 있는 폴더를 선택하세요.",
-    "folder_picker_failed": "Oleafly가 폴더 선택 창을 열지 못했습니다. 다시 시도하세요."
+    "folder_picker_failed": "Oleafly가 폴더 선택 창을 열지 못했습니다. 다시 시도하세요.",
+    "import_no_main": "가져온 항목에 컴파일할 LaTeX, Typst 또는 Markdown 문서가 없습니다."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

@@ -22,7 +22,8 @@
     "copy_nothing_open": "Er zijn geen bestanden geopend, dus er valt niets op te slaan.",
     "copy_too_large": "De geopende bestanden zijn te groot om als kopie op te slaan.",
     "copy_failed": "Oleafly kon de kopie daar niet opslaan. Kies een map waarin je kunt schrijven.",
-    "folder_picker_failed": "Oleafly kon de mapkiezer niet openen. Probeer het opnieuw."
+    "folder_picker_failed": "Oleafly kon de mapkiezer niet openen. Probeer het opnieuw.",
+    "import_no_main": "Deze import bevat geen LaTeX-, Typst- of Markdown-document om te compileren."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

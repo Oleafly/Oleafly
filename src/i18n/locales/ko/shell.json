@@ -259,6 +259,7 @@
     "texRootBroken": "{{file}}의 % !TEX root가 없는 파일을 가리킵니다({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}}의 % !TEX root가 LaTeX 파일이 아닌 {{target}}을(를) 가리킵니다",
     "texRootOverride": "root: {{path}}({{file}}의 % !TEX root로 지정됨)"
   },
   "datePicker": {

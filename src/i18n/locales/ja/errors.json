@@ -22,7 +22,8 @@
     "copy_nothing_open": "開いているファイルがないため、保存するものはありません。",
     "copy_too_large": "開いているファイルが大きすぎるため、コピーとして保存できません。",
     "copy_failed": "Oleafly はそこにコピーを保存できませんでした。書き込みできるフォルダを選択してください。",
-    "folder_picker_failed": "Oleafly はフォルダの選択画面を開けませんでした。もう一度お試しください。"
+    "folder_picker_failed": "Oleafly はフォルダの選択画面を開けませんでした。もう一度お試しください。",
+    "import_no_main": "読み込んだ内容に、コンパイルできる LaTeX、Typst、Markdown の文書がありません。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

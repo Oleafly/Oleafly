@@ -262,6 +262,7 @@
     "texRootBroken": "% !TEX root v {{file}} odkazuje na chybějící soubor ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "kořen: {{name}}",
+    "texRootNotTex": "% !TEX root v {{file}} odkazuje na {{target}}, což není soubor LaTeX",
     "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})"
   },
   "datePicker": {

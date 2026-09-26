@@ -261,6 +261,7 @@
     "texRootBroken": "% !TEX root din {{file}} trimite la un fișier inexistent ({{target}})",
     "texRootLabel": "rădăcină TEX",
     "texRootName": "rădăcină: {{name}}",
+    "texRootNotTex": "% !TEX root din {{file}} trimite la {{target}}, care nu este un fișier LaTeX",
     "texRootOverride": "rădăcină: {{path}} (setată de % !TEX root din {{file}})"
   },
   "datePicker": {

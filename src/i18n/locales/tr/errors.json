@@ -22,7 +22,8 @@
     "copy_nothing_open": "Açık dosya yok, bu yüzden kaydedilecek bir şey yok.",
     "copy_too_large": "Açık dosyalar kopya olarak kaydedilemeyecek kadar büyük.",
     "copy_failed": "Oleafly kopyayı oraya kaydedemedi. Yazma izniniz olan bir klasör seçin.",
-    "folder_picker_failed": "Oleafly klasör seçiciyi açamadı. Tekrar deneyin."
+    "folder_picker_failed": "Oleafly klasör seçiciyi açamadı. Tekrar deneyin.",
+    "import_no_main": "İçe aktarılan dosyalarda derlenecek LaTeX, Typst veya Markdown belgesi yok."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

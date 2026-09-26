@@ -22,7 +22,8 @@
     "copy_nothing_open": "Nejsou otevřené žádné soubory, takže není co uložit.",
     "copy_too_large": "Otevřené soubory jsou příliš velké na uložení kopie.",
     "copy_failed": "Oleafly tam kopii nemohl uložit. Vyberte složku, do které můžete zapisovat.",
-    "folder_picker_failed": "Oleafly nemohl otevřít výběr složky. Zkuste to znovu."
+    "folder_picker_failed": "Oleafly nemohl otevřít výběr složky. Zkuste to znovu.",
+    "import_no_main": "Tento import neobsahuje žádný dokument LaTeX, Typst ani Markdown ke kompilaci."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

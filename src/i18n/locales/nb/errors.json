@@ -22,7 +22,8 @@
     "copy_nothing_open": "Ingen filer er åpne, så det er ingenting å lagre.",
     "copy_too_large": "De åpne filene er for store til å lagres som en kopi.",
     "copy_failed": "Oleafly kunne ikke lagre kopien der. Velg en mappe du kan skrive til.",
-    "folder_picker_failed": "Oleafly kunne ikke åpne mappevelgeren. Prøv igjen."
+    "folder_picker_failed": "Oleafly kunne ikke åpne mappevelgeren. Prøv igjen.",
+    "import_no_main": "Importen inneholder ikke noe LaTeX-, Typst- eller Markdown-dokument som kan kompileres."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."

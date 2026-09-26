@@ -261,6 +261,7 @@
     "texRootBroken": "O % !TEX root em {{file}} aponta para um arquivo inexistente ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "raiz: {{name}}",
+    "texRootNotTex": "O % !TEX root em {{file}} aponta para {{target}}, que não é um arquivo LaTeX",
     "texRootOverride": "raiz: {{path}} (definida por % !TEX root em {{file}})"
   },
   "datePicker": {

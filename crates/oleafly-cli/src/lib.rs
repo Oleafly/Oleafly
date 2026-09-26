@@ -1,5 +1,6 @@
 extern crate self as oleafly_cli;
 
+mod desktop_link;
 mod native;
 mod process;
 
@@ -288,10 +289,31 @@ fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8,
 }
 
 async fn run_build(path: &Path, request: BuildRequest) -> Result<u8, Error> {
-    let workspace = Workspace::open(path)?;
+    let workspace = open_or_detect(path, request.reporter)?;
     let result = compile(&workspace, request).await?;
     report_build(&result, request.reporter, "build")?;
     Ok(if result.ok { EXIT_SUCCESS } else { EXIT_BUILD })
+}
+
+fn open_or_detect(path: &Path, reporter: Reporter) -> Result<Workspace, Error> {
+    let (workspace, detected) = detected_workspace(path)?;
+    if detected && !reporter.json {
+        eprintln!(
+            "No Oleafly project.json here, so building {}",
+            workspace.manifest().main_doc
+        );
+    }
+    Ok(workspace)
+}
+
+fn detected_workspace(path: &Path) -> Result<(Workspace, bool), Error> {
+    match Workspace::open(path) {
+        Err(error) if error.kind() == ErrorKind::NotInitialized => {
+            let saved = desktop_link::saved_main_document(path);
+            Workspace::detected(path, saved.as_deref()).map(|workspace| (workspace, true))
+        }
+        opened => opened.map(|workspace| (workspace, false)),
+    }
 }
 
 async fn compile(workspace: &Workspace, request: BuildRequest) -> Result<BuildResult, Error> {
@@ -322,17 +344,23 @@ fn report_build(result: &BuildResult, reporter: Reporter, command: &str) -> Resu
 }
 
 fn run_clean(path: &Path, reporter: Reporter) -> Result<u8, Error> {
-    let workspace = Workspace::open(path)?;
-    let removed = workspace.clean()?;
+    let (removed, build_directory) = match Workspace::open(path) {
+        Ok(workspace) => (workspace.clean()?, workspace.build_dir_path()),
+        Err(error) if error.kind() == ErrorKind::NotInitialized => (
+            Workspace::clean_build_directory(path)?,
+            Workspace::build_directory_path(path)?,
+        ),
+        Err(error) => return Err(error),
+    };
     reporter.value(json!({
         "ok": true,
         "command": "clean",
         "removed": removed,
-        "build_directory": workspace.build_dir_path()
+        "build_directory": build_directory
     }))?;
     if !reporter.json {
         if removed {
-            println!("Removed {}", workspace.build_dir_path().display());
+            println!("Removed {}", build_directory.display());
         } else {
             println!("Build directory is already clean");
         }
@@ -382,9 +410,22 @@ fn install_hint(tool: &str) -> Option<String> {
 }
 
 fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
-    let workspace = Workspace::open(path)?;
+    let (workspace, detected) = detected_workspace(path)?;
     let tools = BuildTools::discover(workspace.root());
     let mut report = workspace.doctor();
+    if detected {
+        if let Some(check) = report
+            .checks
+            .iter_mut()
+            .find(|check| check.name == "manifest")
+        {
+            check.status = DoctorStatus::Warning;
+            check.message = format!(
+                "No Oleafly project.json here, so these checks use {}",
+                workspace.manifest().main_doc
+            );
+        }
+    }
     for (name, path) in tools.required_for_engine(workspace.manifest().engine()?) {
         let rejected = tools.rejected_override(name);
         report.checks.push(match (path, rejected) {
@@ -468,7 +509,7 @@ fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
 
 async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let reporter = request.reporter;
-    let workspace = Workspace::open(path)?;
+    let workspace = open_or_detect(path, reporter)?;
     let workspace_root = workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let mut watcher = create_watcher(sender)?;
@@ -541,7 +582,7 @@ async fn watch_build(path: &Path, request: BuildRequest) -> Result<bool, Error> 
     reporter.value(json!({"ok": true, "event": "build_started"}))?;
     let result = tokio::select! {
         result = async {
-            let workspace = Workspace::open(path)?;
+            let (workspace, _) = detected_workspace(path)?;
             compile(&workspace, request).await
         } => result,
         signal = tokio::signal::ctrl_c() => {

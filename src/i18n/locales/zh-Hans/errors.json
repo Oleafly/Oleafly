@@ -22,7 +22,8 @@
     "copy_nothing_open": "没有打开的文件，因此没有可保存的内容。",
     "copy_too_large": "打开的文件太大，无法另存为副本。",
     "copy_failed": "Oleafly 无法将副本保存到该位置。请选择一个你有写入权限的文件夹。",
-    "folder_picker_failed": "Oleafly 无法打开文件夹选择器。请重试。"
+    "folder_picker_failed": "Oleafly 无法打开文件夹选择器。请重试。",
+    "import_no_main": "导入的内容中没有可编译的 LaTeX、Typst 或 Markdown 文档。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

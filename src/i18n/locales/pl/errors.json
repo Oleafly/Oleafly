@@ -22,7 +22,8 @@
     "copy_nothing_open": "Żadne pliki nie są otwarte, więc nie ma czego zapisać.",
     "copy_too_large": "Otwarte pliki są zbyt duże, aby zapisać je jako kopię.",
     "copy_failed": "Oleafly nie mógł zapisać tam kopii. Wybierz folder, w którym możesz zapisywać.",
-    "folder_picker_failed": "Oleafly nie mógł otworzyć okna wyboru folderu. Spróbuj ponownie."
+    "folder_picker_failed": "Oleafly nie mógł otworzyć okna wyboru folderu. Spróbuj ponownie.",
+    "import_no_main": "Ten import nie zawiera dokumentu LaTeX, Typst ani Markdown do skompilowania."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

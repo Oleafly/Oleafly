@@ -2870,6 +2870,26 @@ fn tectonic_args(
     args
 }
 
+pub(crate) fn search_compile_directory_first(
+    mut spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> EngineCompileSpec {
+    let project = format!("search-path={}", project_dir.to_string_lossy());
+    if let Some(position) = spec.args.iter().position(|argument| *argument == project) {
+        if position > 0 && spec.args[position - 1] == "-Z" {
+            spec.args.splice(
+                position - 1..position - 1,
+                [
+                    "-Z".to_string(),
+                    format!("search-path={}", compile_dir.to_string_lossy()),
+                ],
+            );
+        }
+    }
+    spec
+}
+
 fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
     vec![
         "--color".into(),
@@ -3930,6 +3950,42 @@ mod tests {
         assert!(engine_for("unknown", "main.typ").is_err());
         assert!(engine_for("xetex", "main.md").is_err());
         assert!(engine_for("typst", "main.tex").is_err());
+    }
+
+    #[test]
+    fn a_nested_compile_directory_is_searched_before_the_project_root() {
+        let engine = engine_for("xetex", "paper/main.tex").unwrap();
+        let spec = engine
+            .compile_spec(
+                Path::new("/build"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "paper/main.tex",
+                },
+                CompileOptions::default(),
+            )
+            .unwrap();
+        let untouched = spec.args.clone();
+        let nested = search_compile_directory_first(
+            spec.clone(),
+            Path::new("/project"),
+            Path::new("/project/paper"),
+        );
+        assert_eq!(nested.args.len(), untouched.len() + 2);
+        assert_eq!(
+            nested.args[nested.args.len() - 5..],
+            [
+                "-Z".to_string(),
+                "search-path=/project/paper".to_string(),
+                "-Z".to_string(),
+                "search-path=/project".to_string(),
+                joined("/build", "_oleafly_entry.tex"),
+            ]
+        );
+        assert_eq!(nested.working_dir, spec.working_dir);
+        let elsewhere =
+            search_compile_directory_first(spec, Path::new("/other"), Path::new("/other/paper"));
+        assert_eq!(elsewhere.args, untouched);
     }
 
     #[test]

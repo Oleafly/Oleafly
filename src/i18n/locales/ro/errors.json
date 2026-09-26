@@ -22,7 +22,8 @@
     "copy_nothing_open": "Nu este deschis niciun fișier, deci nu ai ce salva.",
     "copy_too_large": "Fișierele deschise sunt prea mari pentru a fi salvate ca o copie.",
     "copy_failed": "Oleafly nu a putut salva copia acolo. Alege un folder în care poți scrie.",
-    "folder_picker_failed": "Oleafly nu a putut deschide selectorul de foldere. Încearcă din nou."
+    "folder_picker_failed": "Oleafly nu a putut deschide selectorul de foldere. Încearcă din nou.",
+    "import_no_main": "Acest import nu conține niciun document LaTeX, Typst sau Markdown de compilat."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

@@ -22,7 +22,8 @@
     "copy_nothing_open": "Avoimia tiedostoja ei ole, joten tallennettavaa ei ole.",
     "copy_too_large": "Avoimet tiedostot ovat liian suuria tallennettaviksi kopiona.",
     "copy_failed": "Oleafly ei voinut tallentaa kopiota sinne. Valitse kansio, johon voit kirjoittaa.",
-    "folder_picker_failed": "Oleafly ei voinut avata kansion valintaa. Yritä uudelleen."
+    "folder_picker_failed": "Oleafly ei voinut avata kansion valintaa. Yritä uudelleen.",
+    "import_no_main": "Tuonnissa ei ole LaTeX-, Typst- tai Markdown-dokumenttia käännettäväksi."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

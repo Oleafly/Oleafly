@@ -260,6 +260,7 @@
     "texRootBroken": "{{file}} içindeki % !TEX root eksik bir dosyayı gösteriyor ({{target}})",
     "texRootLabel": "TEX kökü",
     "texRootName": "kök: {{name}}",
+    "texRootNotTex": "{{file}} içindeki % !TEX root, LaTeX dosyası olmayan {{target}} dosyasını gösteriyor",
     "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)"
   },
   "datePicker": {

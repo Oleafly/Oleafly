@@ -262,6 +262,7 @@
     "texRootBroken": "% !TEX root у {{file}} вказує на відсутній файл ({{target}})",
     "texRootLabel": "Корінь TEX",
     "texRootName": "корінь: {{name}}",
+    "texRootNotTex": "% !TEX root у {{file}} вказує на {{target}}, який не є файлом LaTeX",
     "texRootOverride": "корінь: {{path}} (задано через % !TEX root у {{file}})"
   },
   "datePicker": {

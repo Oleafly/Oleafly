@@ -259,6 +259,7 @@
     "texRootBroken": "{{file}} 中的 % !TEX root 指向不存在的檔案（{{target}}）",
     "texRootLabel": "TEX 根檔案",
     "texRootName": "根檔案：{{name}}",
+    "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 檔案",
     "texRootOverride": "根檔案：{{path}}（由 {{file}} 中的 % !TEX root 設定）"
   },
   "datePicker": {

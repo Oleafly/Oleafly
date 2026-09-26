@@ -91,6 +91,26 @@ impl ProjectLocation {
         crate::paths::linked_state_directory(&self.state_dir, relative, true)?
             .ok_or_else(|| "linked project data is missing".to_string())
     }
+
+    pub(crate) fn compile_search_dir(&self, main_doc: &str) -> Option<PathBuf> {
+        if self.kind != ProjectKind::Linked {
+            return None;
+        }
+        let recorded = self
+            .compile_dir
+            .strip_prefix(&self.root)
+            .ok()
+            .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+            .filter(|relative| !relative.is_empty());
+        let relative = recorded.or_else(|| oleafly_core::compile_dir_for(&self.root, main_doc))?;
+        let directory = relative
+            .split('/')
+            .filter(|part| !part.is_empty())
+            .fold(self.root.clone(), |path, part| path.join(part));
+        let canonical = directory.canonicalize().ok()?;
+        (canonical == directory && canonical.is_dir() && canonical != self.root)
+            .then_some(canonical)
+    }
 }
 
 #[cfg(test)]
@@ -513,6 +533,71 @@ mod tests {
         let location = locate(&record.id).unwrap();
         assert_eq!(location.root, folder);
         assert_eq!(location.compile_dir, folder.join("paper"));
+    }
+
+    #[test]
+    fn only_linked_projects_search_a_nested_compile_directory() {
+        let fixture = Fixture::new();
+        let folder = fixture.folder("repo");
+        std::fs::create_dir_all(folder.join("paper/sections")).unwrap();
+        std::fs::write(
+            folder.join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(folder.join("paper/sections/intro.tex"), "Intro.").unwrap();
+        std::fs::write(folder.join("top.tex"), "\\documentclass{article}\n").unwrap();
+        let record = register_folder_for_test(&folder);
+        let location = locate(&record.id).unwrap();
+        assert_eq!(
+            location.compile_search_dir("paper/main.tex"),
+            Some(folder.join("paper"))
+        );
+        assert_eq!(location.compile_search_dir("top.tex"), None);
+
+        update(&record.id, |next| {
+            next.compile_dir = Some("paper".into());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            locate(&record.id).unwrap().compile_search_dir("top.tex"),
+            Some(folder.join("paper"))
+        );
+
+        let library = crate::paths::create_project_dir("library").unwrap();
+        std::fs::create_dir_all(library.join("paper/sections")).unwrap();
+        std::fs::copy(
+            folder.join("paper/main.tex"),
+            library.join("paper/main.tex"),
+        )
+        .unwrap();
+        std::fs::write(library.join("paper/sections/intro.tex"), "Intro.").unwrap();
+        assert_eq!(
+            locate("library")
+                .unwrap()
+                .compile_search_dir("paper/main.tex"),
+            None
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_compile_directory_is_never_searched() {
+        let fixture = Fixture::new();
+        let folder = fixture.folder("repo");
+        let outside = fixture.folder("outside");
+        std::os::unix::fs::symlink(&outside, folder.join("paper")).unwrap();
+        let record = register_folder_for_test(&folder);
+        update(&record.id, |next| {
+            next.compile_dir = Some("paper".into());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            locate(&record.id).unwrap().compile_search_dir("main.tex"),
+            None
+        );
     }
 
     #[test]

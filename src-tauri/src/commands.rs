@@ -339,7 +339,8 @@ pub async fn compile_project(
     }
     let cancel_scope = crate::document_engine::CompileCancelScope::new(Some(&state.compile_cancel));
 
-    let project_dir = paths::project_dir(&project_id)?;
+    let location = crate::project_location::locate(&project_id).map_err(String::from)?;
+    let project_dir = location.root.clone();
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let workspace = desktop_workspace(&project_dir, &meta, &main_doc)?;
     let prepared = workspace
@@ -366,6 +367,16 @@ pub async fn compile_project(
         options,
     )
     .await?;
+    let prepared_spec = match location.compile_search_dir(&main_doc) {
+        Some(compile_dir) if engine.id() == crate::document_engine::DocumentEngineId::Latex => {
+            crate::document_engine::search_compile_directory_first(
+                prepared_spec,
+                &project_dir,
+                &compile_dir,
+            )
+        }
+        _ => prepared_spec,
+    };
     crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)?;
     drop(worktree);
 

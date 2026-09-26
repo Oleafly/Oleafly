@@ -22,7 +22,8 @@
     "copy_nothing_open": "Inga filer är öppna, så det finns inget att spara.",
     "copy_too_large": "De öppna filerna är för stora för att sparas som en kopia.",
     "copy_failed": "Oleafly kunde inte spara kopian där. Välj en mapp som du kan skriva till.",
-    "folder_picker_failed": "Oleafly kunde inte öppna mappväljaren. Försök igen."
+    "folder_picker_failed": "Oleafly kunde inte öppna mappväljaren. Försök igen.",
+    "import_no_main": "Importen innehåller inget LaTeX-, Typst- eller Markdown-dokument att kompilera."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} är inte tillgängligt."

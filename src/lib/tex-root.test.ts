@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   parseTexMagicComments,
   resolveEffectiveMainDoc,
   resolveTexRootPath,
 } from "./tex-root";
+import type { ProjectInfo, ProjectLocationInfo } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 
 describe("parseTexMagicComments", () => {
@@ -29,17 +32,33 @@ describe("parseTexMagicComments", () => {
     });
   });
 
-  it("only scans the first 10 lines", () => {
-    const filler = Array.from({ length: 10 }, (_, i) => `line ${i}`);
+  it("only scans the first 50 lines", () => {
+    const filler = Array.from({ length: 50 }, (_, i) => `line ${i}`);
     const text = [...filler, "% !TEX root = late.tex"].join("\n");
-    expect(parseTexMagicComments(text)).toEqual({
-      root: null,
-      program: null,
-    });
+    expect(parseTexMagicComments(text)).toEqual({ root: null, program: null });
+    const inRange = [...filler.slice(0, 49), "% !TEX root = fiftieth.tex"].join("\n");
+    expect(parseTexMagicComments(inRange).root).toBe("fiftieth.tex");
+  });
 
-    const nine = Array.from({ length: 9 }, (_, i) => `line ${i}`);
-    const inRange = [...nine, "% !TEX root = tenth.tex"].join("\n");
-    expect(parseTexMagicComments(inRange).root).toBe("tenth.tex");
+  it("accepts an indented comment without a bang and with loose spacing", () => {
+    expect(parseTexMagicComments("  % TeX  root  =  main.tex  \n").root).toBe("main.tex");
+  });
+
+  it("skips an empty root and keeps looking", () => {
+    expect(parseTexMagicComments("% !TEX root = \n% !TEX root = main.tex\n").root).toBe("main.tex");
+  });
+
+  it("parses every shared case the same way as the Rust detector", () => {
+    const cases = JSON.parse(
+      readFileSync(
+        path.join(process.cwd(), "crates/oleafly-core/tests/fixtures/tex-magic-comments.json"),
+        "utf8",
+      ),
+    ) as { text: string; root: string | null; program: string | null }[];
+    expect(cases.length).toBeGreaterThanOrEqual(15);
+    for (const { text, root, program } of cases) {
+      expect(parseTexMagicComments(text), JSON.stringify(text)).toEqual({ root, program });
+    }
   });
 
   it("keeps the first occurrence of each key", () => {
@@ -90,6 +109,7 @@ describe("resolveEffectiveMainDoc", () => {
   const resetState = {
     projectId: null,
     projectName: "",
+    projects: [],
     mainDoc: "main.tex",
     activePath: null,
     tree: [],
@@ -151,8 +171,83 @@ describe("resolveEffectiveMainDoc", () => {
       brokenRoot: {
         declaredIn: "chapters/ch1.tex",
         target: "../missing.tex",
+        reason: "missing",
       },
     });
+  });
+
+  it("rejects a root comment that points at a file LaTeX can't compile", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      mainDoc: "thesis.tex",
+      activePath: "chapters/ch1.tex",
+      tree: [
+        { path: "chapters/ch1.tex", is_dir: false },
+        { path: "notes.md", is_dir: false },
+        { path: "thesis.tex", is_dir: false },
+      ],
+      files: {
+        "chapters/ch1.tex": { content: "% !TEX root = ../notes.md\n", dirty: false },
+      },
+    });
+    expect(resolveEffectiveMainDoc()).toEqual({
+      mainDoc: "thesis.tex",
+      overriddenBy: null,
+      brokenRoot: { declaredIn: "chapters/ch1.tex", target: "../notes.md", reason: "not_tex" },
+    });
+  });
+
+  it("keeps the strict parser for library projects and the shared one for linked folders", () => {
+    const project = (id: string, location?: ProjectLocationInfo): ProjectInfo => ({
+      id,
+      name: id,
+      main_doc: "thesis.tex",
+      kind: "",
+      created_at: 0,
+      updated_at: 0,
+      has_preview: false,
+      exports: [],
+      forked_from: null,
+      recovery_pending: false,
+      location,
+    });
+    const linked = project("linked-thesis", {
+      kind: "linked",
+      display_path: "~/thesis",
+      availability: "ok",
+    });
+    const filler = Array.from({ length: 20 }, (_, index) => `% line ${index}`);
+    for (const content of [
+      "  % TeX root = ../main.tex\n",
+      "% TeX root = ../main.tex\n",
+      [...filler, "% !TEX root = ../main.tex"].join("\n"),
+    ]) {
+      const state = {
+        mainDoc: "thesis.tex",
+        activePath: "chapters/ch1.tex",
+        tree: [
+          { path: "chapters/ch1.tex", is_dir: false },
+          { path: "main.tex", is_dir: false },
+          { path: "thesis.tex", is_dir: false },
+        ],
+        files: { "chapters/ch1.tex": { content, dirty: false } },
+        projects: [project("library"), linked],
+      };
+      for (const projectId of ["library", "unlisted"]) {
+        useFilesStore.setState({ ...state, projectId });
+        expect(resolveEffectiveMainDoc(), `${projectId} ${content}`).toEqual({
+          mainDoc: "thesis.tex",
+          overriddenBy: null,
+          brokenRoot: null,
+        });
+      }
+      useFilesStore.setState({ ...state, projectId: "linked-thesis" });
+      expect(resolveEffectiveMainDoc(), content).toEqual({
+        mainDoc: "main.tex",
+        overriddenBy: "chapters/ch1.tex",
+        brokenRoot: null,
+      });
+    }
   });
 
   it("ignores magic-looking comments in non-TeX active files", () => {

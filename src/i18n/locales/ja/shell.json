@@ -259,6 +259,7 @@
     "texRootBroken": "{{file}} の % !TEX root が存在しないファイル（{{target}}）を指しています",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}} の % !TEX root が、LaTeX ファイルではない {{target}} を指しています",
     "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）"
   },
   "datePicker": {

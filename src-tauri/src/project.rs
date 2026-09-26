@@ -3150,67 +3150,21 @@ fn project_main_file_is_usable(project_id: &str, main_doc: &str) -> bool {
         && engine_for_untrusted_project(main_doc).is_ok()
 }
 
-fn main_document_family(path: &str) -> u8 {
-    match Path::new(path)
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .map(str::to_ascii_lowercase)
-        .as_deref()
-    {
-        Some("tex" | "ltx" | "latex") => 0,
-        Some("typ") => 1,
-        Some("md" | "markdown") => 2,
-        _ => 3,
-    }
-}
-
 fn infer_external_main_document(root: &Path, preferred: &str) -> Result<String, String> {
-    let preferred_family = main_document_family(preferred);
-    let cancelled = AtomicBool::new(false);
-    let limits = FileListLimits {
-        max_results: MCP_LIST_RESULT_LIMIT,
-        max_entries: MCP_LIST_ENTRY_SCAN_LIMIT,
-        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
-    };
-    let mut listing = BoundedFileList {
-        entries: Vec::new(),
-        scanned_entries: 0,
-        truncated: false,
-    };
-    bounded_list_walk(root, root, &mut listing, limits, &cancelled, 0)?;
-    let mut candidates: Vec<String> = listing
-        .entries
-        .into_iter()
-        .filter(|entry| !entry.is_dir && engine_for_untrusted_project(&entry.path).is_ok())
-        .map(|entry| entry.path)
-        .collect();
-    candidates.sort_by_key(|candidate| {
-        let family = main_document_family(candidate);
-        let filename = candidate
-            .rsplit('/')
-            .next()
-            .unwrap_or(candidate)
-            .to_ascii_lowercase();
-        let has_document_class =
-            family == 0 && read_head_for_import(&root.join(candidate)).contains("\\documentclass");
-        (
-            family != preferred_family,
-            !has_document_class,
-            !matches!(
-                filename.as_str(),
-                "main.tex" | "main.ltx" | "main.latex" | "main.typ" | "main.md" | "main.markdown"
-            ),
-            candidate.matches('/').count(),
-            candidate.to_ascii_lowercase(),
-        )
-    });
-    candidates.into_iter().next().ok_or_else(|| {
-        if listing.truncated {
-            "project metadata is invalid and no supported main document was found within the bounded worktree scan".into()
-        } else {
-            "project metadata is invalid and the worktree has no supported main document".into()
-        }
-    })
+    let detection =
+        oleafly_core::detect_main_document(root, &oleafly_core::DetectOptions::default())
+            .map_err(|error| error.to_string())?;
+    oleafly_core::SourceFamily::of(preferred)
+        .and_then(|family| detection.best_of(family))
+        .or_else(|| detection.best())
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            if detection.truncated {
+                "project metadata is invalid and no supported main document was found within the bounded worktree scan".into()
+            } else {
+                "project metadata is invalid and the worktree has no supported main document".into()
+            }
+        })
 }
 
 fn reconcile_external_worktree_meta(
@@ -4154,10 +4108,6 @@ fn import_skip(rel: &str) -> bool {
 }
 
 /// Import an Overleaf export (ZIP) or a plain folder as a new project.
-/// The main document is inferred when the archive has no project.json:
-/// a `% !TeX root` magic comment wins, then `\documentclass` +
-/// `\begin{document}` + a root-level `main.tex`-style name score best, and a
-/// lone `.tex` file is simply it.
 #[tauri::command]
 pub async fn import_overleaf_project(name: Option<String>, path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
@@ -4367,126 +4317,14 @@ fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Pick the compile entry point for an imported project. See
-/// `import_overleaf_project` for the strategy.
 fn infer_main_document(dir: &Path) -> Result<String, String> {
-    let mut tex_files: Vec<String> = Vec::new();
-    collect_tex_files(dir, dir, 0, &mut tex_files);
-    if tex_files.is_empty() {
-        return Err(
-            "No .tex file was found in the import, so there is nothing to compile. \
-             Pick an Overleaf ZIP export or a folder containing a LaTeX project."
-                .to_string(),
-        );
-    }
-    tex_files.sort();
-    if tex_files.len() == 1 {
-        return Ok(tex_files.remove(0));
-    }
-    let mut heads: Vec<(String, String)> = tex_files
-        .iter()
-        .map(|rel| (rel.clone(), read_head_for_import(&dir.join(rel))))
-        .collect();
-    // A `% !TeX root = ...` magic comment anywhere wins when its target exists.
-    for (rel, head) in &heads {
-        if let Some(target) = tex_root_magic_target(head) {
-            let base = Path::new(rel).parent().unwrap_or(Path::new(""));
-            let joined = normalize_relative(&base.join(&target));
-            if let Some(joined) = joined {
-                if tex_files.iter().any(|candidate| candidate == &joined) {
-                    return Ok(joined);
-                }
-            }
-        }
-    }
-    heads.sort_by_key(|(rel, head)| {
-        let mut score: i32 = 0;
-        if head.contains("\\documentclass") {
-            score += 4;
-        }
-        if head.contains("\\begin{document}") {
-            score += 2;
-        }
-        if !rel.contains('/') {
-            score += 2;
-        }
-        let filename = rel.rsplit('/').next().unwrap_or(rel).to_ascii_lowercase();
-        if filename == "main.tex" {
-            score += 3;
-        } else if filename.starts_with("main") || filename == "root.tex" {
-            score += 1;
-        }
-        // Sort ascending: best score first via negation, then shallow, then name.
-        (-score, rel.matches('/').count(), rel.clone())
-    });
-    Ok(heads.remove(0).0)
-}
-
-fn collect_tex_files(root: &Path, dir: &Path, depth: usize, output: &mut Vec<String>) {
-    if depth > IMPORT_MAX_DEPTH {
-        return;
-    }
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
-        if file_type.is_symlink() {
-            continue;
-        }
-        let path = entry.path();
-        if file_type.is_dir() {
-            if entry.file_name() != ".oleafly" {
-                collect_tex_files(root, &path, depth + 1, output);
-            }
-        } else if path
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("tex"))
-        {
-            if let Ok(rel) = path.strip_prefix(root) {
-                output.push(
-                    rel.components()
-                        .map(|c| c.as_os_str().to_string_lossy())
-                        .collect::<Vec<_>>()
-                        .join("/"),
-                );
-            }
-        }
-    }
-}
-
-fn read_head_for_import(path: &Path) -> String {
-    use std::io::Read;
-    const MAX_HEAD: u64 = 64 * 1024;
-    let Ok(file) = std::fs::File::open(path) else {
-        return String::new();
-    };
-    let mut bytes = Vec::new();
-    let _ = file.take(MAX_HEAD).read_to_end(&mut bytes);
-    String::from_utf8_lossy(&bytes).into_owned()
-}
-
-/// `% !TeX root = ../main.tex` (TeXShop/latexmk convention, case-insensitive).
-fn tex_root_magic_target(head: &str) -> Option<String> {
-    for line in head.lines().take(50) {
-        let trimmed = line.trim();
-        let Some(rest) = trimmed.strip_prefix('%') else {
-            continue;
-        };
-        let lower = rest.trim().trim_start_matches('!').to_ascii_lowercase();
-        if !lower.starts_with("tex root") {
-            continue;
-        }
-        let original = rest.trim().trim_start_matches('!');
-        let value = original
-            .split_once('=')
-            .map(|(_, rest)| rest.trim())
-            .filter(|v| !v.is_empty())?;
-        return Some(value.to_string());
-    }
-    None
+    let detection =
+        oleafly_core::detect_main_document(dir, &oleafly_core::DetectOptions::default())
+            .map_err(|error| error.to_string())?;
+    detection
+        .best()
+        .map(str::to_owned)
+        .ok_or_else(|| crate::app_error::AppError::new("project.import_no_main").into())
 }
 
 /// Resolve `.`/`..` inside a joined relative path; None when it escapes root.
@@ -6705,10 +6543,10 @@ mod tests {
         normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
         read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
         safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
-        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
+        write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest, CreateFileResult,
+        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
+        SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -10097,6 +9935,40 @@ mod tests {
     }
 
     #[test]
+    fn a_reconciled_worktree_keeps_the_previous_document_family() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("reconcile-family");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = mutation_project_id("reconcile-family");
+        let project_dir = data.join("projects").join(&project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        std::fs::write(
+            project_dir.join("paper.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project_dir.join("aaa.tex"),
+            "%\\documentclass{article}\n%\\begin{document}\n",
+        )
+        .unwrap();
+        std::fs::write(project_dir.join("main.typ"), "= Notes\n").unwrap();
+        std::fs::write(
+            project_dir.join("project.json"),
+            r#"{"name":"Gone","main_doc":"gone.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let previous = read_meta(&project_id).unwrap();
+        let reconciled = super::reconcile_external_worktree_meta(&project_id, &previous).unwrap();
+        assert_eq!(
+            (reconciled.main_doc.as_str(), reconciled.engine.as_str()),
+            ("paper.tex", "xetex")
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
     fn metadata_setters_leave_an_unchanged_project_json_untouched() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = test_dir("metadata-unchanged");
@@ -10968,19 +10840,6 @@ mod tests {
     }
 
     #[test]
-    fn tex_root_magic_comment_parses_case_and_spacing_variants() {
-        assert_eq!(
-            tex_root_magic_target("% !TeX root = ../thesis.tex\n").as_deref(),
-            Some("../thesis.tex")
-        );
-        assert_eq!(
-            tex_root_magic_target("%!TEX root=main.tex\n").as_deref(),
-            Some("main.tex")
-        );
-        assert_eq!(tex_root_magic_target("% just a comment\n"), None);
-    }
-
-    #[test]
     fn normalize_relative_resolves_dots_and_rejects_escapes() {
         assert_eq!(
             normalize_relative(Path::new("chapters/../thesis.tex")).as_deref(),
@@ -11041,6 +10900,53 @@ mod tests {
         let dir = test_dir("infer-main-none");
         std::fs::write(dir.join("readme.md"), "hello\n").unwrap();
         assert!(infer_main_document(&dir).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_accepts_typst_and_markdown_folders() {
+        let typst = test_dir("infer-main-typst");
+        std::fs::write(typst.join("main.typ"), "= Report\n").unwrap();
+        std::fs::write(typst.join("lib.typ"), "#let x = 1\n").unwrap();
+        assert_eq!(infer_main_document(&typst).unwrap(), "main.typ");
+        std::fs::remove_dir_all(typst).unwrap();
+
+        let markdown = test_dir("infer-main-markdown");
+        std::fs::write(markdown.join("README.md"), "# Readme\n").unwrap();
+        std::fs::write(markdown.join("paper.md"), "# Paper\n").unwrap();
+        assert_eq!(infer_main_document(&markdown).unwrap(), "paper.md");
+        std::fs::remove_dir_all(markdown).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_skips_subfiles_and_commented_classes() {
+        let dir = test_dir("infer-main-subfiles");
+        std::fs::create_dir_all(dir.join("chapters")).unwrap();
+        std::fs::write(
+            dir.join("book.tex"),
+            "\\documentclass{book}\n\\begin{document}\n\\subfile{chapters/a}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("chapters/a.tex"),
+            "\\documentclass[../book.tex]{subfiles}\n\\begin{document}\nA\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("aaa.tex"),
+            "%\\documentclass{article}\n%\\begin{document}\n",
+        )
+        .unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "book.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_reports_a_folder_with_nothing_to_compile() {
+        let dir = test_dir("infer-main-nothing");
+        std::fs::write(dir.join("fragment.tex"), "\\section{Only}\n").unwrap();
+        let error = infer_main_document(&dir).unwrap_err();
+        assert!(error.contains("project.import_no_main"), "{error}");
         std::fs::remove_dir_all(dir).unwrap();
     }
 

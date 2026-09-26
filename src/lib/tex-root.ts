@@ -1,3 +1,4 @@
+import { isLibraryProject } from "@/lib/project-location";
 import { resolveProjectPath } from "@/lib/project-intelligence/source";
 import { useFilesStore } from "@/store/files";
 
@@ -17,26 +18,25 @@ export interface TexMagicComments {
   program: string | null;
 }
 
-// One magic comment per line, within the first lines of the file, e.g.
-//   % !TEX root = ../thesis.tex
-//   %!TEX program = xelatex
-// `program` is parsed for completeness but deliberately not acted on.
-const MAGIC_COMMENT = /^%\s*!\s*TEX\s+(root|program)\s*=\s*(.+?)\s*$/i;
-const MAGIC_COMMENT_MAX_LINES = 10;
+export type TexMagicCommentRule = "shared" | "library";
 
-/** Parses TeX magic comments from the first 10 lines of `text`. */
-export function parseTexMagicComments(text: string): TexMagicComments {
+const MAGIC_COMMENT_RULES: Record<TexMagicCommentRule, { pattern: RegExp; maxLines: number }> = {
+  shared: { pattern: /^\s*%\s*!?\s*TeX\s+(root|program)\s*=\s*(.*?)\s*$/i, maxLines: 50 },
+  library: { pattern: /^%\s*!\s*TEX\s+(root|program)\s*=\s*(.+?)\s*$/i, maxLines: 10 },
+};
+
+export function parseTexMagicComments(
+  text: string,
+  rule: TexMagicCommentRule = "shared",
+): TexMagicComments {
+  const { pattern, maxLines } = MAGIC_COMMENT_RULES[rule];
   const result: TexMagicComments = { root: null, program: null };
   let start = 0;
-  for (
-    let line = 0;
-    line < MAGIC_COMMENT_MAX_LINES && start <= text.length;
-    line++
-  ) {
+  for (let line = 0; line < maxLines && start <= text.length; line++) {
     let end = text.indexOf("\n", start);
     if (end < 0) end = text.length;
-    const match = MAGIC_COMMENT.exec(text.slice(start, end));
-    if (match) {
+    const match = pattern.exec(text.slice(start, end));
+    if (match?.[2]) {
       const key = match[1].toLowerCase() as keyof TexMagicComments;
       // First occurrence of each key wins.
       result[key] ??= match[2];
@@ -58,6 +58,8 @@ export function resolveTexRootPath(
   return resolveProjectPath(declaredIn, rawTarget);
 }
 
+export type BrokenTexRootReason = "missing" | "not_tex";
+
 export interface EffectiveMainDoc {
   /** Project-relative path of the document to compile. */
   mainDoc: string;
@@ -71,7 +73,7 @@ export interface EffectiveMainDoc {
    * existing project file. `mainDoc` then falls back to the stored main
    * document, and the UI surfaces a warning.
    */
-  brokenRoot: { declaredIn: string; target: string } | null;
+  brokenRoot: { declaredIn: string; target: string; reason: BrokenTexRootReason } | null;
 }
 
 // Only TeX sources can redirect the root; a magic-looking comment in e.g. a
@@ -101,18 +103,24 @@ export function resolveEffectiveMainDoc(): EffectiveMainDoc {
   }
   const text = files.files[activePath]?.content;
   if (text === undefined) return fallback;
-  const root = parseTexMagicComments(text).root;
+  const project = files.projects?.find((entry) => entry.id === files.projectId);
+  const rule = project && !isLibraryProject(project) ? "shared" : "library";
+  const root = parseTexMagicComments(text, rule).root;
   if (root === null) return fallback;
   const resolved = resolveTexRootPath(activePath, root);
-  if (
+  const exists =
     resolved !== null &&
-    files.tree.some((entry) => !entry.is_dir && entry.path === resolved)
-  ) {
+    files.tree.some((entry) => !entry.is_dir && entry.path === resolved);
+  if (resolved !== null && exists && OVERRIDE_CAPABLE_FILE.test(resolved)) {
     return { mainDoc: resolved, overriddenBy: activePath, brokenRoot: null };
   }
   return {
     mainDoc: stored,
     overriddenBy: null,
-    brokenRoot: { declaredIn: activePath, target: root },
+    brokenRoot: {
+      declaredIn: activePath,
+      target: root,
+      reason: exists ? "not_tex" : "missing",
+    },
   };
 }

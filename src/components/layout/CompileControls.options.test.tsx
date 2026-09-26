@@ -243,4 +243,21 @@ describe("CompileControls TeX root indicator", () => {
       copy.texRootLabel,
     );
   });
+
+  it("warns when the root comment points at a file LaTeX can't compile", async () => {
+    useFilesStore.setState({
+      activePath: "chapter.tex",
+      files: { "chapter.tex": { content: "% !TEX root = notes.md\n" } },
+      tree: [
+        { path: "chapter.tex", is_dir: false },
+        { path: "notes.md", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    const user = userEvent.setup();
+    await user.hover(screen.getByTestId("tex-root-broken"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.texRootNotTex.replace("{{file}}", "chapter.tex").replace("{{target}}", "notes.md"),
+    );
+  });
 });

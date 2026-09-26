@@ -22,7 +22,8 @@
     "copy_nothing_open": "Aucun fichier n'est ouvert, il n'y a donc rien à enregistrer.",
     "copy_too_large": "Les fichiers ouverts sont trop volumineux pour être enregistrés en copie.",
     "copy_failed": "Oleafly n'a pas pu enregistrer la copie à cet endroit. Choisissez un dossier dans lequel vous pouvez écrire.",
-    "folder_picker_failed": "Oleafly n'a pas pu ouvrir le sélecteur de dossier. Réessayez."
+    "folder_picker_failed": "Oleafly n'a pas pu ouvrir le sélecteur de dossier. Réessayez.",
+    "import_no_main": "Cette importation ne contient aucun document LaTeX, Typst ou Markdown à compiler."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

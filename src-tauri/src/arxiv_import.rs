@@ -463,7 +463,15 @@ pub async fn extract_arxiv_source(
             .map_err(|error| format!("Could not prepare the source preview: {error}"))?;
         unpack_source_archive(&bytes, directory.path(), MAX_AD_HOC_SOURCE_BYTES)?;
         let source_files = collect_source_files(directory.path())?;
-        let main_index = main_source_index(&source_files)
+        let detection = oleafly_core::detect_main_document(
+            directory.path(),
+            &oleafly_core::DetectOptions::default(),
+        )
+        .map_err(|error| format!("Could not inspect the source archive: {error}"))?;
+        let main_index = detection
+            .best_of(oleafly_core::SourceFamily::Latex)
+            .and_then(|main| source_files.iter().position(|file| file.path == main))
+            .or_else(|| main_source_index(&source_files))
             .ok_or_else(|| "The source archive does not contain a .tex document.".to_string())?;
         let main_file = source_files[main_index].path.clone();
         let main_source = String::from_utf8_lossy(&source_files[main_index].bytes).into_owned();
@@ -716,6 +724,66 @@ mod tests {
             STANDARD.decode(&result.files[0].data_base64).unwrap(),
             b"image"
         );
+    }
+
+    #[tokio::test]
+    async fn an_arxiv_readme_names_the_previewed_main_document() {
+        let archive = source_archive(&[
+            (
+                "ms.tex",
+                b"\\documentclass{article}\\begin{document}Paper\\end{document}",
+            ),
+            (
+                "response.tex",
+                b"\\documentclass{article}\\begin{document}Reply\\end{document}",
+            ),
+            (
+                "00README.json",
+                br#"{"sources":[{"filename":"ms.tex","usage":"toplevel"}]}"#,
+            ),
+        ]);
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(archive)),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "ms.tex");
+        assert!(result.main_source.contains("Paper"));
+    }
+
+    #[tokio::test]
+    async fn a_plain_tex_submission_is_still_previewed() {
+        let mut gzip = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gzip.write_all(b"\\input harvmac\n\\Title{Plain}\n\\bye\n")
+            .unwrap();
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(gzip.finish().unwrap())),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "main.tex");
+        assert!(result.main_source.contains("Plain"));
+    }
+
+    #[tokio::test]
+    async fn a_plain_tex_source_split_across_files_is_still_previewed() {
+        let archive = source_archive(&[
+            ("defs.tex", b"\\def\\version{2}\n"),
+            (
+                "paper.tex",
+                b"\\input harvmac\n\\input defs\n\\Title{Plain}\n\\bye\n",
+            ),
+        ]);
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(archive)),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "paper.tex");
+        assert!(result.main_source.contains("Plain"));
     }
 
     #[tokio::test]
