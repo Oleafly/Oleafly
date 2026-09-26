@@ -5358,6 +5358,7 @@ mod tests {
         assert!(!windows_network_path(Path::new(r"\\?\C:\thesis")));
     }
 
+    #[cfg(unix)]
     fn write_real_tex_fixture(project: &Path, biber: bool) {
         std::fs::create_dir_all(project.join("sections")).unwrap();
         std::fs::create_dir_all(project.join("chapters")).unwrap();
