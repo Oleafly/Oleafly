@@ -36,6 +36,8 @@ mod deadlines;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
+#[allow(dead_code)]
+mod fs_identity;
 mod fsperm;
 mod git;
 mod github;
