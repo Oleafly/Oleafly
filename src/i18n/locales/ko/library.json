@@ -43,7 +43,8 @@
       "name": "이름",
       "type": "유형",
       "engine": "엔진",
-      "modified": "수정일"
+      "modified": "수정일",
+      "activity": "최근 활동"
     },
     "filters": {
       "engine": "엔진",
@@ -69,7 +70,17 @@
       "lastYear": "최근 1년"
     },
     "openFolder": "폴더 열기…",
-    "openFolderShortcut": "폴더 열기({{shortcut}})"
+    "openFolderShortcut": "폴더 열기({{shortcut}})",
+    "createFirstProject": "새 프로젝트 만들기",
+    "scope": {
+      "label": "프로젝트 보기",
+      "all": "전체",
+      "library": "Oleafly 안",
+      "folders": "폴더"
+    },
+    "recent": {
+      "title": "최근"
+    }
   },
   "projects": {
     "open": "{{name}} 열기",
@@ -462,5 +473,70 @@
   },
   "openFolder": {
     "dismiss": "닫기"
+  },
+  "folder": {
+    "badge": "폴더",
+    "noMain": "주 문서 없음",
+    "openedToday": "오늘 열었음",
+    "openedYesterday": "어제 열었음",
+    "openedOn": "{{date}}에 열었음",
+    "state": {
+      "missing": "폴더 없음",
+      "offline": "드라이브 연결 안 됨",
+      "replaced": "폴더가 바뀜",
+      "permissionDenied": "권한 없음"
+    },
+    "menu": {
+      "showInFinder": "Finder에서 보기",
+      "showInExplorer": "파일 탐색기에서 보기",
+      "showInFileManager": "파일 관리자에서 보기",
+      "copyToLibrary": "라이브러리로 복사",
+      "remove": "Oleafly에서 제거"
+    },
+    "remove": {
+      "title": "“{{name}}”을(를) Oleafly에서 제거할까요?",
+      "description": "파일은 그대로 남습니다. Oleafly는 이 폴더를 위해 만든 빌드 파일을 지우고 신뢰, 승인, 연결된 폴더를 초기화합니다. 30일 안에 폴더를 다시 열면 채팅과 기록을 되찾을 수 있습니다. 나머지는 다시 설정해야 합니다.",
+      "confirm": "Oleafly에서 제거",
+      "done": "“{{name}}”을(를) Oleafly에서 제거했습니다. 파일은 폴더에 그대로 있습니다.",
+      "failed": "“{{name}}”을(를) Oleafly에서 제거하지 못했습니다."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "“{{name}}”을(를) 찾을 수 없음",
+        "body": "{{path}}에 있었지만 이동되었거나 삭제되었을 수 있습니다. 채팅과 기록을 유지하려면 위치를 지정하세요."
+      },
+      "offline": {
+        "title": "“{{name}}”이(가) 연결되지 않은 드라이브에 있음",
+        "body": "{{path}}이(가) 있는 드라이브나 네트워크 공유를 연결한 다음 다시 시도하세요."
+      },
+      "replaced": {
+        "title": "“{{name}}”이(가) 바뀌었음",
+        "body": "{{path}}에 있는 폴더는 이전에 연 폴더가 아닙니다. 신뢰할 수 있을 때만 사용하세요. 전환하면 Oleafly가 신뢰와 승인을 끕니다."
+      },
+      "permissionDenied": {
+        "title": "Oleafly가 “{{name}}”을(를) 열 수 없음",
+        "bodyMac": "시스템 설정 › 개인정보 보호 및 보안 › 파일 및 폴더에서 Oleafly가 이 폴더를 사용하도록 허용한 다음 다시 시도하세요.",
+        "bodyOther": "계정이 {{path}}을(를) 읽을 수 없습니다. 폴더 권한을 확인한 다음 다시 시도하세요."
+      },
+      "back": {
+        "title": "“{{name}}”에 다시 연결되었습니다",
+        "body": "Oleafly가 {{path}}에 다시 접근할 수 있습니다."
+      },
+      "locate": "위치 지정…",
+      "tryAgain": "다시 시도",
+      "useThisFolder": "이 폴더 사용",
+      "checking": "확인 중…",
+      "still": "Oleafly가 아직 폴더에 접근할 수 없습니다."
+    },
+    "copy": {
+      "title": "“{{name}}”을(를) 라이브러리로 복사",
+      "description": "Oleafly는 파일을 라이브러리의 새 프로젝트로 복사하고 폴더는 그대로 둡니다. Git 기록은 함께 복사되지만 Git 훅과 빌드 파일은 복사되지 않습니다.",
+      "counting": "파일 세는 중…",
+      "copying": "파일 복사 중…",
+      "count": "{{done}} / {{total}}",
+      "done": "“{{name}}”이(가) 이제 라이브러리에 있습니다.",
+      "doneLeftOut": "“{{name}}”이(가) 이제 라이브러리에 있습니다. 다른 곳의 파일을 가리키는 링크와 너무 깊이 중첩된 폴더는 복사하지 않았습니다.",
+      "failed": "“{{name}}”을(를) 라이브러리로 복사하지 못했습니다."
+    }
   }
 }

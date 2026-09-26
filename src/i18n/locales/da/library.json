@@ -44,7 +44,8 @@
       "name": "Navn",
       "type": "Type",
       "engine": "Motor",
-      "modified": "Ændret"
+      "modified": "Ændret",
+      "activity": "Seneste aktivitet"
     },
     "filters": {
       "engine": "Motor",
@@ -70,7 +71,17 @@
       "lastYear": "Sidste år"
     },
     "openFolder": "Åbn mappe…",
-    "openFolderShortcut": "Åbn mappe ({{shortcut}})"
+    "openFolderShortcut": "Åbn mappe ({{shortcut}})",
+    "createFirstProject": "Opret nyt projekt",
+    "scope": {
+      "label": "Vis projekter",
+      "all": "Alle",
+      "library": "I Oleafly",
+      "folders": "Mapper"
+    },
+    "recent": {
+      "title": "Seneste"
+    }
   },
   "projects": {
     "open": "Åbn {{name}}",
@@ -471,5 +482,70 @@
   },
   "openFolder": {
     "dismiss": "Luk"
+  },
+  "folder": {
+    "badge": "Mappe",
+    "noMain": "Intet hoveddokument",
+    "openedToday": "Åbnet i dag",
+    "openedYesterday": "Åbnet i går",
+    "openedOn": "Åbnet {{date}}",
+    "state": {
+      "missing": "Mappen mangler",
+      "offline": "Drevet er ikke tilsluttet",
+      "replaced": "Mappen er erstattet",
+      "permissionDenied": "Ingen tilladelse"
+    },
+    "menu": {
+      "showInFinder": "Vis i Finder",
+      "showInExplorer": "Vis i Stifinder",
+      "showInFileManager": "Vis i filhåndtering",
+      "copyToLibrary": "Kopiér til biblioteket",
+      "remove": "Fjern fra Oleafly"
+    },
+    "remove": {
+      "title": "Vil du fjerne »{{name}}« fra Oleafly?",
+      "description": "Dine filer bliver, hvor de er. Oleafly sletter sine buildfiler for mappen og nulstiller dens tillid, godkendelser og tilknyttede mapper. Åbn mappen igen inden for 30 dage for at få dens chats og historik tilbage. Resten skal du sætte op igen.",
+      "confirm": "Fjern fra Oleafly",
+      "done": "»{{name}}« er fjernet fra Oleafly. Filerne ligger stadig i mappen.",
+      "failed": "»{{name}}« kunne ikke fjernes fra Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "»{{name}}« kan ikke findes",
+        "body": "Mappen lå i {{path}} og er måske blevet flyttet eller slettet. Find den for at beholde dens chats og historik."
+      },
+      "offline": {
+        "title": "»{{name}}« ligger på et drev, der ikke er tilsluttet",
+        "body": "Tilslut drevet eller netværksdrevet med {{path}}, og prøv igen."
+      },
+      "replaced": {
+        "title": "»{{name}}« er blevet erstattet",
+        "body": "Mappen i {{path}} er ikke den, du åbnede før. Brug den kun, hvis du stoler på den. Oleafly slår tillid og godkendelser fra, når du skifter."
+      },
+      "permissionDenied": {
+        "title": "Oleafly kan ikke åbne »{{name}}«",
+        "bodyMac": "Giv Oleafly adgang til mappen under Systemindstillinger › Anonymitet og sikkerhed › Filer og mapper, og prøv igen.",
+        "bodyOther": "Din konto kan ikke læse {{path}}. Tjek mappens tilladelser, og prøv igen."
+      },
+      "back": {
+        "title": "»{{name}}« er tilbage",
+        "body": "Oleafly kan nå {{path}} igen."
+      },
+      "locate": "Find…",
+      "tryAgain": "Prøv igen",
+      "useThisFolder": "Brug denne mappe",
+      "checking": "Kontrollerer…",
+      "still": "Oleafly kan stadig ikke nå mappen."
+    },
+    "copy": {
+      "title": "Kopiér »{{name}}« til dit bibliotek",
+      "description": "Oleafly kopierer filerne til et nyt biblioteksprojekt og lader mappen blive, hvor den er. Git-historikken kommer med, men Git-hooks og buildfiler gør ikke.",
+      "counting": "Tæller filer…",
+      "copying": "Kopierer filer…",
+      "count": "{{done}} af {{total}}",
+      "done": "»{{name}}« er nu i dit bibliotek.",
+      "doneLeftOut": "»{{name}}« er nu i dit bibliotek. Links til filer andre steder og mapper, der ligger for dybt, blev ikke kopieret.",
+      "failed": "»{{name}}« kunne ikke kopieres til dit bibliotek."
+    }
   }
 }

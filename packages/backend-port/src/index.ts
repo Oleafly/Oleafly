@@ -390,6 +390,7 @@ export interface ProjectInfo {
     forked_from: string | null;
     recovery_pending: boolean;
     location?: ProjectLocationInfo;
+    last_opened_at?: number;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;

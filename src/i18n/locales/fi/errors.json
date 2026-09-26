@@ -26,7 +26,13 @@
     "import_no_main": "Tuonnissa ei ole LaTeX-, Typst- tai Markdown-dokumenttia käännettäväksi.",
     "settings_file_exists": "Tässä kansiossa on jo project.json, joten Oleafly jätti sen ennalleen.",
     "settings_need_main": "Valitse ensin päädokumentti ja tallenna sitten projektin asetukset tähän kansioon.",
-    "settings_write_failed": "Oleafly ei voinut tallentaa projektin asetuksia tähän kansioon."
+    "settings_write_failed": "Oleafly ei voinut tallentaa projektin asetuksia tähän kansioon.",
+    "copy_entry_limit": "Kansiossa on yli 5 000 tiedostoa ja kansiota. Se on enemmän kuin Oleafly voi kopioida kerralla.",
+    "copy_entry_limit_git": "Git-historia mukaan lukien kansiossa on yli 5 000 tiedostoa ja kansiota. Se on enemmän kuin Oleafly voi kopioida kerralla.",
+    "copy_size_limit": "Kansio on yli 2 Gt. Se on enemmän kuin Oleafly voi kopioida kerralla.",
+    "copy_cancelled": "Kopiointi peruttiin.",
+    "copy_needs_folder": "Vain paikallaan avatut kansiot voi kopioida kirjastoon.",
+    "not_removable": "Vain paikallaan avatut kansiot voi poistaa Oleaflysta."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

@@ -26,7 +26,13 @@
     "import_no_main": "가져온 항목에 컴파일할 LaTeX, Typst 또는 Markdown 문서가 없습니다.",
     "settings_file_exists": "이 폴더에 이미 project.json이 있어서 Oleafly가 그대로 두었습니다.",
     "settings_need_main": "먼저 주 문서를 선택한 다음 프로젝트 설정을 이 폴더에 저장하세요.",
-    "settings_write_failed": "Oleafly가 프로젝트 설정을 이 폴더에 저장하지 못했습니다."
+    "settings_write_failed": "Oleafly가 프로젝트 설정을 이 폴더에 저장하지 못했습니다.",
+    "copy_entry_limit": "이 폴더에는 파일과 폴더가 5,000개를 넘습니다. Oleafly가 한 번에 복사할 수 있는 양보다 많습니다.",
+    "copy_entry_limit_git": "Git 기록까지 포함하면 이 폴더에는 파일과 폴더가 5,000개를 넘습니다. Oleafly가 한 번에 복사할 수 있는 양보다 많습니다.",
+    "copy_size_limit": "이 폴더는 2GB보다 큽니다. Oleafly가 한 번에 복사할 수 있는 양보다 많습니다.",
+    "copy_cancelled": "복사를 취소했습니다.",
+    "copy_needs_folder": "제자리에서 연 폴더만 라이브러리로 복사할 수 있습니다.",
+    "not_removable": "제자리에서 연 폴더만 Oleafly에서 제거할 수 있습니다."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

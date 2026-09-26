@@ -43,7 +43,8 @@
       "name": "名称",
       "type": "类型",
       "engine": "引擎",
-      "modified": "修改时间"
+      "modified": "修改时间",
+      "activity": "最近活动"
     },
     "filters": {
       "engine": "引擎",
@@ -69,7 +70,17 @@
       "lastYear": "最近一年"
     },
     "openFolder": "打开文件夹…",
-    "openFolderShortcut": "打开文件夹（{{shortcut}}）"
+    "openFolderShortcut": "打开文件夹（{{shortcut}}）",
+    "createFirstProject": "创建新项目",
+    "scope": {
+      "label": "显示项目",
+      "all": "全部",
+      "library": "Oleafly 中",
+      "folders": "文件夹"
+    },
+    "recent": {
+      "title": "最近"
+    }
   },
   "projects": {
     "open": "打开 {{name}}",
@@ -462,5 +473,70 @@
   },
   "openFolder": {
     "dismiss": "关闭"
+  },
+  "folder": {
+    "badge": "文件夹",
+    "noMain": "没有主文档",
+    "openedToday": "今天打开",
+    "openedYesterday": "昨天打开",
+    "openedOn": "{{date}} 打开",
+    "state": {
+      "missing": "文件夹丢失",
+      "offline": "驱动器未连接",
+      "replaced": "文件夹已被替换",
+      "permissionDenied": "没有权限"
+    },
+    "menu": {
+      "showInFinder": "在访达中显示",
+      "showInExplorer": "在文件资源管理器中显示",
+      "showInFileManager": "在文件管理器中显示",
+      "copyToLibrary": "复制到库",
+      "remove": "从 Oleafly 中移除"
+    },
+    "remove": {
+      "title": "要从 Oleafly 中移除“{{name}}”吗？",
+      "description": "你的文件保留在原处。Oleafly 会删除它为此文件夹生成的构建文件，并重置它的信任、批准和已链接文件夹。在 30 天内再次打开此文件夹，即可找回它的聊天和历史记录。其余设置需要重新配置。",
+      "confirm": "从 Oleafly 中移除",
+      "done": "已从 Oleafly 中移除“{{name}}”。文件仍在文件夹中。",
+      "failed": "无法从 Oleafly 中移除“{{name}}”。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "找不到“{{name}}”",
+        "body": "它原来在 {{path}}，可能已被移动或删除。定位它即可保留它的聊天和历史记录。"
+      },
+      "offline": {
+        "title": "“{{name}}”位于未连接的驱动器上",
+        "body": "请连接包含 {{path}} 的驱动器或网络共享，然后重试。"
+      },
+      "replaced": {
+        "title": "“{{name}}”已被替换",
+        "body": "{{path}} 处的文件夹不是你之前打开的那个。只有在信任它时才使用。切换后，Oleafly 会关闭信任和批准。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly 无法打开“{{name}}”",
+        "bodyMac": "请在系统设置 › 隐私与安全性 › 文件和文件夹中允许 Oleafly 使用此文件夹，然后重试。",
+        "bodyOther": "你的帐户无法读取 {{path}}。请检查文件夹的权限，然后重试。"
+      },
+      "back": {
+        "title": "“{{name}}”已恢复连接",
+        "body": "Oleafly 可以再次访问 {{path}}。"
+      },
+      "locate": "定位…",
+      "tryAgain": "重试",
+      "useThisFolder": "使用此文件夹",
+      "checking": "正在检查…",
+      "still": "Oleafly 仍无法访问它。"
+    },
+    "copy": {
+      "title": "将“{{name}}”复制到你的库",
+      "description": "Oleafly 会把文件复制到库中的新项目，文件夹保留在原处。Git 历史记录会一并复制，但 Git 钩子和构建文件不会。",
+      "counting": "正在统计文件…",
+      "copying": "正在复制文件…",
+      "count": "{{done}} / {{total}}",
+      "done": "“{{name}}”现已在你的库中。",
+      "doneLeftOut": "“{{name}}”现已在你的库中。指向其他位置文件的链接和嵌套过深的文件夹未被复制。",
+      "failed": "无法将“{{name}}”复制到你的库。"
+    }
   }
 }

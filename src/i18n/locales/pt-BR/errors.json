@@ -26,7 +26,13 @@
     "import_no_main": "Esta importação não tem nenhum documento LaTeX, Typst ou Markdown para compilar.",
     "settings_file_exists": "Esta pasta já tem um project.json, então o Oleafly o deixou como estava.",
     "settings_need_main": "Escolha primeiro um documento principal e depois salve as configurações do projeto nesta pasta.",
-    "settings_write_failed": "O Oleafly não conseguiu salvar as configurações do projeto nesta pasta."
+    "settings_write_failed": "O Oleafly não conseguiu salvar as configurações do projeto nesta pasta.",
+    "copy_entry_limit": "Esta pasta tem mais de 5.000 arquivos e pastas. É mais do que o Oleafly consegue copiar de uma vez.",
+    "copy_entry_limit_git": "Com o histórico do Git, esta pasta tem mais de 5.000 arquivos e pastas. É mais do que o Oleafly consegue copiar de uma vez.",
+    "copy_size_limit": "Esta pasta tem mais de 2 GB. É mais do que o Oleafly consegue copiar de uma vez.",
+    "copy_cancelled": "A cópia foi cancelada.",
+    "copy_needs_folder": "Só pastas abertas no próprio local podem ser copiadas para a biblioteca.",
+    "not_removable": "Só pastas abertas no próprio local podem ser removidas do Oleafly."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

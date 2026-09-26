@@ -26,7 +26,13 @@
     "import_no_main": "İçe aktarılan dosyalarda derlenecek LaTeX, Typst veya Markdown belgesi yok.",
     "settings_file_exists": "Bu klasörde zaten bir project.json var, bu yüzden Oleafly ona dokunmadı.",
     "settings_need_main": "Önce bir ana belge seçin, ardından proje ayarlarını bu klasöre kaydedin.",
-    "settings_write_failed": "Oleafly proje ayarlarını bu klasöre kaydedemedi."
+    "settings_write_failed": "Oleafly proje ayarlarını bu klasöre kaydedemedi.",
+    "copy_entry_limit": "Bu klasörde 5.000'den fazla dosya ve klasör var. Bu, Oleafly'ın tek seferde kopyalayabileceğinden fazla.",
+    "copy_entry_limit_git": "Git geçmişiyle birlikte bu klasörde 5.000'den fazla dosya ve klasör var. Bu, Oleafly'ın tek seferde kopyalayabileceğinden fazla.",
+    "copy_size_limit": "Bu klasör 2 GB'tan büyük. Bu, Oleafly'ın tek seferde kopyalayabileceğinden fazla.",
+    "copy_cancelled": "Kopyalama iptal edildi.",
+    "copy_needs_folder": "Kitaplığa yalnızca yerinde açılan klasörler kopyalanabilir.",
+    "not_removable": "Oleafly'dan yalnızca yerinde açılan klasörler kaldırılabilir."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

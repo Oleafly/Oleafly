@@ -507,8 +507,7 @@
     "readOnly": {
       "banner": "這個資料夾為唯讀。你可以編譯，但無法儲存編輯內容。",
       "copy": "複製到專案庫",
-      "copied": "Oleafly 已將這個資料夾複製到你的專案庫。你現在編輯的是副本。",
-      "copyFailed": "無法將這個資料夾複製到你的專案庫。"
+      "copied": "Oleafly 已將這個資料夾複製到你的專案庫。你現在編輯的是副本。"
     },
     "sync": {
       "syncsWith": "與 {{service}} 同步",

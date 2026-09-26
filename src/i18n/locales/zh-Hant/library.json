@@ -43,7 +43,8 @@
       "name": "名稱",
       "type": "類型",
       "engine": "引擎",
-      "modified": "修改時間"
+      "modified": "修改時間",
+      "activity": "最近活動"
     },
     "filters": {
       "engine": "引擎",
@@ -69,7 +70,17 @@
       "lastYear": "過去一年"
     },
     "openFolder": "開啟資料夾…",
-    "openFolderShortcut": "開啟資料夾（{{shortcut}}）"
+    "openFolderShortcut": "開啟資料夾（{{shortcut}}）",
+    "createFirstProject": "建立新專案",
+    "scope": {
+      "label": "顯示專案",
+      "all": "全部",
+      "library": "Oleafly 中",
+      "folders": "資料夾"
+    },
+    "recent": {
+      "title": "最近"
+    }
   },
   "projects": {
     "open": "開啟 {{name}}",
@@ -462,5 +473,70 @@
   },
   "openFolder": {
     "dismiss": "關閉"
+  },
+  "folder": {
+    "badge": "資料夾",
+    "noMain": "沒有主文件",
+    "openedToday": "今天開啟",
+    "openedYesterday": "昨天開啟",
+    "openedOn": "{{date}} 開啟",
+    "state": {
+      "missing": "資料夾遺失",
+      "offline": "磁碟機未連線",
+      "replaced": "資料夾已被取代",
+      "permissionDenied": "沒有權限"
+    },
+    "menu": {
+      "showInFinder": "在 Finder 中顯示",
+      "showInExplorer": "在檔案總管中顯示",
+      "showInFileManager": "在檔案管理員中顯示",
+      "copyToLibrary": "複製到專案庫",
+      "remove": "從 Oleafly 移除"
+    },
+    "remove": {
+      "title": "要從 Oleafly 移除「{{name}}」嗎？",
+      "description": "你的檔案會留在原處。Oleafly 會刪除它為這個資料夾產生的建置檔案，並重設它的信任、核准與已連結資料夾。在 30 天內再次開啟這個資料夾，就能找回它的聊天與歷史紀錄。其餘項目需要重新設定。",
+      "confirm": "從 Oleafly 移除",
+      "done": "已從 Oleafly 移除「{{name}}」。檔案仍在資料夾中。",
+      "failed": "無法從 Oleafly 移除「{{name}}」。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "找不到「{{name}}」",
+        "body": "它原本在 {{path}}，可能已被移動或刪除。找到它就能保留它的聊天與歷史紀錄。"
+      },
+      "offline": {
+        "title": "「{{name}}」位於未連線的磁碟機上",
+        "body": "請連接含有 {{path}} 的磁碟機或網路共用，然後再試一次。"
+      },
+      "replaced": {
+        "title": "「{{name}}」已被取代",
+        "body": "{{path}} 的資料夾不是你之前開啟的那一個。只有在信任它時才使用。切換後，Oleafly 會關閉信任與核准。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly 無法開啟「{{name}}」",
+        "bodyMac": "請在系統設定 › 隱私權與安全性 › 檔案與檔案夾中允許 Oleafly 使用這個資料夾，然後再試一次。",
+        "bodyOther": "你的帳號無法讀取 {{path}}。請檢查資料夾的權限，然後再試一次。"
+      },
+      "back": {
+        "title": "「{{name}}」已恢復連線",
+        "body": "Oleafly 可以再次存取 {{path}}。"
+      },
+      "locate": "尋找…",
+      "tryAgain": "再試一次",
+      "useThisFolder": "使用這個資料夾",
+      "checking": "正在檢查…",
+      "still": "Oleafly 仍然無法存取它。"
+    },
+    "copy": {
+      "title": "將「{{name}}」複製到你的專案庫",
+      "description": "Oleafly 會把檔案複製到專案庫的新專案，資料夾則留在原處。Git 歷史紀錄會一併複製，但 Git 掛鉤與建置檔案不會。",
+      "counting": "正在計算檔案…",
+      "copying": "正在複製檔案…",
+      "count": "{{done}} / {{total}}",
+      "done": "「{{name}}」現在已在你的專案庫中。",
+      "doneLeftOut": "「{{name}}」現在已在你的專案庫中。指向其他位置檔案的連結，以及層級過深的資料夾都沒有複製。",
+      "failed": "無法將「{{name}}」複製到你的專案庫。"
+    }
   }
 }

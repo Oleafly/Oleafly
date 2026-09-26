@@ -83,6 +83,9 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
+  badge,
+  details,
+  dimmed = false,
 }: Readonly<{
   title: string;
   color?: string;
@@ -101,6 +104,9 @@ export function Book({
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
+  badge?: ReactNode;
+  details?: ReactNode;
+  dimmed?: boolean;
 }>) {
   const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
@@ -137,7 +143,10 @@ export function Book({
         onFocus={onPreviewRequest}
         className="block w-full cursor-pointer rounded-md text-left focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <div style={{ perspective: "1600px" }}>
+        <div
+          style={{ perspective: "1600px" }}
+          className={cn(dimmed && "opacity-60 grayscale transition-[filter,opacity]")}
+        >
         <div
           className={cn(
             "relative transition-transform duration-500 ease-out [transform-style:preserve-3d]",
@@ -169,6 +178,7 @@ export function Book({
             )}
 
             {illustration}
+            {badge}
 
             <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-end p-3">
               {engine && (
@@ -233,7 +243,7 @@ export function Book({
         </div>
       )}
       <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
-        <div className="min-w-0">
+        {details ? <div className="min-w-0 flex-1">{details}</div> : <div className="min-w-0">
         {kind && (
           <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
             <span>{kind}</span>
@@ -257,7 +267,7 @@ export function Book({
           </div>
         )}
         {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
-        </div>
+        </div>}
         {menu}
       </div>
     </div>

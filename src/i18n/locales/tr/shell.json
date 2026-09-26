@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "Bu klasör salt okunur. Derleyebilirsiniz ama düzenlemeler kaydedilemez.",
       "copy": "Kitaplığa kopyala",
-      "copied": "Oleafly bu klasörü kitaplığınıza kopyaladı. Şu anda kopyayı düzenliyorsunuz.",
-      "copyFailed": "Bu klasör kitaplığınıza kopyalanamadı."
+      "copied": "Oleafly bu klasörü kitaplığınıza kopyaladı. Şu anda kopyayı düzenliyorsunuz."
     },
     "sync": {
       "syncsWith": "{{service}} ile eşitleniyor",

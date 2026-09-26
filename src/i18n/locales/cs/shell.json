@@ -513,8 +513,7 @@
     "readOnly": {
       "banner": "Tato složka je jen pro čtení. Můžete kompilovat, ale úpravy nepůjde uložit.",
       "copy": "Zkopírovat do knihovny",
-      "copied": "Oleafly zkopíroval tuto složku do vaší knihovny. Teď upravujete kopii.",
-      "copyFailed": "Tuto složku se nepodařilo zkopírovat do vaší knihovny."
+      "copied": "Oleafly zkopíroval tuto složku do vaší knihovny. Teď upravujete kopii."
     },
     "sync": {
       "syncsWith": "Synchronizuje se se službou {{service}}",

@@ -45,7 +45,8 @@
       "name": "Nome",
       "type": "Tipo",
       "engine": "Motore",
-      "modified": "Modificato"
+      "modified": "Modificato",
+      "activity": "Ultima attività"
     },
     "filters": {
       "engine": "Motore",
@@ -71,7 +72,17 @@
       "lastYear": "Ultimo anno"
     },
     "openFolder": "Apri cartella…",
-    "openFolderShortcut": "Apri cartella ({{shortcut}})"
+    "openFolderShortcut": "Apri cartella ({{shortcut}})",
+    "createFirstProject": "Crea un nuovo progetto",
+    "scope": {
+      "label": "Mostra progetti",
+      "all": "Tutti",
+      "library": "In Oleafly",
+      "folders": "Cartelle"
+    },
+    "recent": {
+      "title": "Recenti"
+    }
   },
   "projects": {
     "open": "Apri {{name}}",
@@ -480,5 +491,70 @@
   },
   "openFolder": {
     "dismiss": "Chiudi"
+  },
+  "folder": {
+    "badge": "Cartella",
+    "noMain": "Nessun documento principale",
+    "openedToday": "Aperto oggi",
+    "openedYesterday": "Aperto ieri",
+    "openedOn": "Aperto il {{date}}",
+    "state": {
+      "missing": "Cartella mancante",
+      "offline": "Unità non collegata",
+      "replaced": "Cartella sostituita",
+      "permissionDenied": "Nessun permesso"
+    },
+    "menu": {
+      "showInFinder": "Mostra nel Finder",
+      "showInExplorer": "Mostra in Esplora file",
+      "showInFileManager": "Mostra nel gestore file",
+      "copyToLibrary": "Copia nella libreria",
+      "remove": "Rimuovi da Oleafly"
+    },
+    "remove": {
+      "title": "Rimuovere “{{name}}” da Oleafly?",
+      "description": "I tuoi file restano dove sono. Oleafly elimina i propri file di compilazione per questa cartella e ne reimposta attendibilità, approvazioni e cartelle collegate. Riapri la cartella entro 30 giorni per recuperare le chat e la cronologia. Il resto andrà configurato di nuovo.",
+      "confirm": "Rimuovi da Oleafly",
+      "done": "“{{name}}” è stato rimosso da Oleafly. I file sono ancora nella cartella.",
+      "failed": "Impossibile rimuovere “{{name}}” da Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Impossibile trovare “{{name}}”",
+        "body": "Si trovava in {{path}} e potrebbe essere stata spostata o eliminata. Individuala per conservare chat e cronologia."
+      },
+      "offline": {
+        "title": "“{{name}}” si trova su un'unità non collegata",
+        "body": "Collega l'unità o la condivisione di rete che contiene {{path}}, poi riprova."
+      },
+      "replaced": {
+        "title": "“{{name}}” è stata sostituita",
+        "body": "La cartella in {{path}} non è quella che avevi aperto. Usala solo se ti fidi. Con il cambio, Oleafly disattiva attendibilità e approvazioni."
+      },
+      "permissionDenied": {
+        "title": "Oleafly non riesce ad aprire “{{name}}”",
+        "bodyMac": "Consenti a Oleafly di usare questa cartella in Impostazioni di Sistema › Privacy e sicurezza › File e cartelle, poi riprova.",
+        "bodyOther": "Il tuo account non può leggere {{path}}. Controlla i permessi della cartella, poi riprova."
+      },
+      "back": {
+        "title": "“{{name}}” è di nuovo disponibile",
+        "body": "Oleafly può di nuovo raggiungere {{path}}."
+      },
+      "locate": "Individua…",
+      "tryAgain": "Riprova",
+      "useThisFolder": "Usa questa cartella",
+      "checking": "Verifica in corso…",
+      "still": "Oleafly non riesce ancora a raggiungerla."
+    },
+    "copy": {
+      "title": "Copia “{{name}}” nella tua libreria",
+      "description": "Oleafly copia i file in un nuovo progetto della libreria e lascia la cartella dov'è. La cronologia Git viene copiata, ma gli hook Git e i file di compilazione no.",
+      "counting": "Conteggio dei file…",
+      "copying": "Copia dei file…",
+      "count": "{{done}} di {{total}}",
+      "done": "“{{name}}” ora è nella tua libreria.",
+      "doneLeftOut": "“{{name}}” ora è nella tua libreria. I collegamenti a file altrove e le cartelle annidate troppo in profondità non sono stati copiati.",
+      "failed": "Impossibile copiare “{{name}}” nella tua libreria."
+    }
   }
 }

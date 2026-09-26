@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
 import type { OpenedFolder } from "@/lib/folder-detection";
@@ -821,6 +821,43 @@ export const revealInDir = (path: string) =>
 export const revealProject = (projectId: string, path?: string | null) =>
   invoke<void>("reveal_project", { projectId, path: path ?? null });
 
+export interface CopyIntoLibraryProgress {
+  phase: "counting" | "copying";
+  entriesDone: number;
+  entriesTotal: number;
+  bytesDone: number;
+  bytesTotal: number;
+}
+
+export interface CopiedIntoLibrary {
+  projectId: string;
+  leftOut: number;
+}
+
+export async function copyLinkedIntoLibrary(
+  projectId: string,
+  operationId: string,
+  onProgress: (progress: CopyIntoLibraryProgress) => void,
+): Promise<CopiedIntoLibrary> {
+  const channel = new Channel<CopyIntoLibraryProgress>();
+  channel.onmessage = onProgress;
+  try {
+    return await invoke<CopiedIntoLibrary>("copy_linked_into_library", {
+      projectId,
+      operationId,
+      onProgress: channel,
+    });
+  } finally {
+    channel.onmessage = () => {};
+  }
+}
+
+export const cancelCopyIntoLibrary = (operationId: string) =>
+  invoke<boolean>("cancel_copy_into_library", { operationId });
+
+export const removeLinkedProject = (projectId: string) =>
+  invoke<void>("remove_linked_project", { projectId });
+
 export interface ProjectAvailabilityEvent {
   projectId: string;
   availability: ProjectAvailability;
@@ -1421,8 +1458,6 @@ export const projectFolderStatus = (projectId: string) =>
   invoke<FolderStatus | null>("project_folder_status", { projectId });
 export const projectDocumentCandidates = (projectId: string) =>
   invoke<FolderDetection>("project_document_candidates", { projectId });
-export const copyLinkedIntoLibrary = (projectId: string) =>
-  invoke<string>("copy_linked_into_library", { projectId });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

@@ -43,7 +43,8 @@
       "name": "名前",
       "type": "種類",
       "engine": "エンジン",
-      "modified": "更新日"
+      "modified": "更新日",
+      "activity": "最終アクティビティ"
     },
     "filters": {
       "engine": "エンジン",
@@ -69,7 +70,17 @@
       "lastYear": "過去 1 年間"
     },
     "openFolder": "フォルダを開く…",
-    "openFolderShortcut": "フォルダを開く（{{shortcut}}）"
+    "openFolderShortcut": "フォルダを開く（{{shortcut}}）",
+    "createFirstProject": "新規プロジェクトを作成",
+    "scope": {
+      "label": "プロジェクトの表示",
+      "all": "すべて",
+      "library": "Oleafly 内",
+      "folders": "フォルダ"
+    },
+    "recent": {
+      "title": "最近"
+    }
   },
   "projects": {
     "open": "{{name}} を開く",
@@ -462,5 +473,70 @@
   },
   "openFolder": {
     "dismiss": "閉じる"
+  },
+  "folder": {
+    "badge": "フォルダ",
+    "noMain": "メイン文書なし",
+    "openedToday": "今日開いた",
+    "openedYesterday": "昨日開いた",
+    "openedOn": "{{date}} に開いた",
+    "state": {
+      "missing": "フォルダが見つかりません",
+      "offline": "ドライブ未接続",
+      "replaced": "フォルダが置き換えられました",
+      "permissionDenied": "アクセス権なし"
+    },
+    "menu": {
+      "showInFinder": "Finder に表示",
+      "showInExplorer": "エクスプローラーで表示",
+      "showInFileManager": "ファイルマネージャーで表示",
+      "copyToLibrary": "ライブラリにコピー",
+      "remove": "Oleafly から削除"
+    },
+    "remove": {
+      "title": "「{{name}}」を Oleafly から削除しますか？",
+      "description": "ファイルはそのままの場所に残ります。Oleafly はこのフォルダ用に作ったビルドファイルを削除し、信頼、承認、リンクしたフォルダをリセットします。30 日以内にフォルダをもう一度開くと、チャットと履歴が戻ります。それ以外はもう一度設定する必要があります。",
+      "confirm": "Oleafly から削除",
+      "done": "「{{name}}」を Oleafly から削除しました。ファイルはフォルダに残っています。",
+      "failed": "「{{name}}」を Oleafly から削除できませんでした。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "「{{name}}」が見つかりません",
+        "body": "{{path}} にありましたが、移動または削除された可能性があります。チャットと履歴を残すには場所を指定してください。"
+      },
+      "offline": {
+        "title": "「{{name}}」は接続されていないドライブにあります",
+        "body": "{{path}} を含むドライブまたはネットワーク共有を接続して、もう一度お試しください。"
+      },
+      "replaced": {
+        "title": "「{{name}}」は置き換えられました",
+        "body": "{{path}} のフォルダは以前開いたものとは異なります。信頼できる場合だけ使用してください。切り替えると、Oleafly は信頼と承認をオフにします。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly は「{{name}}」を開けません",
+        "bodyMac": "システム設定 › プライバシーとセキュリティ › ファイルとフォルダで Oleafly にこのフォルダの使用を許可してから、もう一度お試しください。",
+        "bodyOther": "お使いのアカウントでは {{path}} を読み取れません。フォルダのアクセス権を確認して、もう一度お試しください。"
+      },
+      "back": {
+        "title": "「{{name}}」が戻りました",
+        "body": "Oleafly から {{path}} に再びアクセスできるようになりました。"
+      },
+      "locate": "場所を指定…",
+      "tryAgain": "再試行",
+      "useThisFolder": "このフォルダを使用",
+      "checking": "確認しています…",
+      "still": "Oleafly はまだアクセスできません。"
+    },
+    "copy": {
+      "title": "「{{name}}」をライブラリにコピー",
+      "description": "Oleafly はファイルをライブラリの新しいプロジェクトにコピーし、フォルダはそのまま残します。Git の履歴はコピーされますが、Git フックとビルドファイルはコピーされません。",
+      "counting": "ファイルを数えています…",
+      "copying": "ファイルをコピーしています…",
+      "count": "{{done}} / {{total}}",
+      "done": "「{{name}}」をライブラリに追加しました。",
+      "doneLeftOut": "「{{name}}」をライブラリに追加しました。別の場所にあるファイルへのリンクと、階層が深すぎるフォルダはコピーされませんでした。",
+      "failed": "「{{name}}」をライブラリにコピーできませんでした。"
+    }
   }
 }

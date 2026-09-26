@@ -511,8 +511,7 @@
     "readOnly": {
       "banner": "Acest folder este doar în citire. Poți compila, dar modificările nu pot fi salvate.",
       "copy": "Copiază în bibliotecă",
-      "copied": "Oleafly a copiat acest folder în biblioteca ta. Acum editezi copia.",
-      "copyFailed": "Folderul nu a putut fi copiat în biblioteca ta."
+      "copied": "Oleafly a copiat acest folder în biblioteca ta. Acum editezi copia."
     },
     "sync": {
       "syncsWith": "Se sincronizează cu {{service}}",

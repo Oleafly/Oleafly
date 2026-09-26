@@ -26,7 +26,13 @@
     "import_no_main": "Tento import neobsahuje žádný dokument LaTeX, Typst ani Markdown ke kompilaci.",
     "settings_file_exists": "Tato složka už obsahuje soubor project.json, proto ho Oleafly ponechal beze změny.",
     "settings_need_main": "Nejprve vyberte hlavní dokument a pak uložte nastavení projektu do této složky.",
-    "settings_write_failed": "Oleafly nemohl uložit nastavení projektu do této složky."
+    "settings_write_failed": "Oleafly nemohl uložit nastavení projektu do této složky.",
+    "copy_entry_limit": "Tato složka obsahuje více než 5 000 souborů a složek. To je víc, než Oleafly dokáže zkopírovat najednou.",
+    "copy_entry_limit_git": "I s historií Gitu obsahuje tato složka více než 5 000 souborů a složek. To je víc, než Oleafly dokáže zkopírovat najednou.",
+    "copy_size_limit": "Tato složka je větší než 2 GB. To je víc, než Oleafly dokáže zkopírovat najednou.",
+    "copy_cancelled": "Kopírování bylo zrušeno.",
+    "copy_needs_folder": "Do knihovny lze zkopírovat jen složky otevřené na místě.",
+    "not_removable": "Z Oleafly lze odebrat jen složky otevřené na místě."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

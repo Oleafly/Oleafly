@@ -49,6 +49,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
+import { CopyIntoLibraryDialog } from "@/components/library/CopyIntoLibraryDialog";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
@@ -867,6 +868,7 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
+        <CopyIntoLibraryDialog />
         <Suspense fallback={null}>
           {homePage === "pdf-import" && <PdfImportView />}
           {homePage === "equation" && <EquationToolView />}
@@ -1120,6 +1122,7 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
+        <CopyIntoLibraryDialog />
         <AssistantOutputsBridge />
         <ExternalToolApprovals />
         <EnginePickerModal />

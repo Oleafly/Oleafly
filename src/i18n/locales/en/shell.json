@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "This folder is read-only. You can compile, but edits can't be saved.",
       "copy": "Copy into library",
-      "copied": "Oleafly copied this folder into your library. You're editing the copy now.",
-      "copyFailed": "Couldn't copy this folder into your library."
+      "copied": "Oleafly copied this folder into your library. You're editing the copy now."
     },
     "sync": {
       "syncsWith": "Syncs with {{service}}",

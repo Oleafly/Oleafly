@@ -511,8 +511,7 @@
     "readOnly": {
       "banner": "Ce dossier est en lecture seule. Vous pouvez compiler, mais les modifications ne peuvent pas être enregistrées.",
       "copy": "Copier dans la bibliothèque",
-      "copied": "Oleafly a copié ce dossier dans votre bibliothèque. Vous modifiez maintenant la copie.",
-      "copyFailed": "Impossible de copier ce dossier dans votre bibliothèque."
+      "copied": "Oleafly a copié ce dossier dans votre bibliothèque. Vous modifiez maintenant la copie."
     },
     "sync": {
       "syncsWith": "Synchronisé avec {{service}}",

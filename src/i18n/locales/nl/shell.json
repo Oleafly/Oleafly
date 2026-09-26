@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "Deze map is alleen-lezen. Je kunt compileren, maar wijzigingen kunnen niet worden opgeslagen.",
       "copy": "Kopiëren naar bibliotheek",
-      "copied": "Oleafly heeft deze map naar je bibliotheek gekopieerd. Je bewerkt nu de kopie.",
-      "copyFailed": "Kan deze map niet naar je bibliotheek kopiëren."
+      "copied": "Oleafly heeft deze map naar je bibliotheek gekopieerd. Je bewerkt nu de kopie."
     },
     "sync": {
       "syncsWith": "Synchroniseert met {{service}}",

@@ -26,7 +26,13 @@
     "import_no_main": "Importen indeholder ikke et LaTeX-, Typst- eller Markdown-dokument, der kan kompileres.",
     "settings_file_exists": "Mappen har allerede en project.json, så Oleafly har ladet den være.",
     "settings_need_main": "Vælg først et hoveddokument, og gem derefter projektindstillingerne i denne mappe.",
-    "settings_write_failed": "Oleafly kunne ikke gemme projektindstillingerne i denne mappe."
+    "settings_write_failed": "Oleafly kunne ikke gemme projektindstillingerne i denne mappe.",
+    "copy_entry_limit": "Mappen indeholder mere end 5.000 filer og mapper. Det er mere, end Oleafly kan kopiere på én gang.",
+    "copy_entry_limit_git": "Med Git-historikken indeholder mappen mere end 5.000 filer og mapper. Det er mere, end Oleafly kan kopiere på én gang.",
+    "copy_size_limit": "Mappen er større end 2 GB. Det er mere, end Oleafly kan kopiere på én gang.",
+    "copy_cancelled": "Kopieringen blev annulleret.",
+    "copy_needs_folder": "Kun mapper, der er åbnet på stedet, kan kopieres til biblioteket.",
+    "not_removable": "Kun mapper, der er åbnet på stedet, kan fjernes fra Oleafly."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."

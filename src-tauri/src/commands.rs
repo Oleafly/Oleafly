@@ -1150,6 +1150,45 @@ mod tests {
     }
 
     #[test]
+    fn folder_reveals_take_no_paths_and_never_fall_back_when_the_folder_is_gone() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), b"x").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let inside = folder.canonicalize().unwrap().join("main.tex");
+
+        for absolute in [
+            inside.to_string_lossy().into_owned(),
+            r"C:\Windows\System32".to_string(),
+            r"\\server\share\paper".to_string(),
+            "~/Desktop".to_string(),
+        ] {
+            assert!(
+                revealable_project_path(&linked.id, Some(&absolute)).is_err(),
+                "{absolute}"
+            );
+        }
+
+        std::fs::remove_dir_all(&folder).unwrap();
+        let missing = revealable_project_path(&linked.id, None).unwrap_err();
+        assert!(missing.contains("project.linked_missing"), "{missing}");
+
+        crate::linked_registry::update(&linked.id, |record| {
+            record.removed_at = Some(1);
+            Ok(())
+        })
+        .unwrap();
+        std::fs::create_dir_all(&folder).unwrap();
+        assert!(revealable_project_path(&linked.id, None).is_err());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
     fn clearing_a_library_build_keeps_the_in_project_layout() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = tempfile::tempdir().unwrap();

@@ -20,13 +20,22 @@
     "resetFilters": "Button that returns every advanced filter to its default",
     "columns": {
       "type": "Column header for the project kind: document, image or diagram",
-      "engine": "Column header for the compiler a project uses"
+      "engine": "Column header for the compiler a project uses",
+      "activity": "List column header over dates that read either Updated for library projects or Opened for folders"
     },
     "filters": {
       "bookmarkAll": "Select option meaning the bookmark filter is off",
       "previewAll": "Select option meaning the PDF preview filter is off",
       "previewYes": "A compiled PDF exists for the project",
       "previewNo": "No compiled PDF exists for the project"
+    },
+    "scope": {
+      "label": "Accessible name of the chip group that filters the project shelf by where each project lives",
+      "library": "Filter chip: projects stored inside the Oleafly library, as opposed to folders opened where they are on disk",
+      "folders": "Filter chip: folders the user opened in place from anywhere on disk"
+    },
+    "recent": {
+      "title": "Heading of a row listing the most recently opened projects and folders"
     }
   },
   "projects": {
@@ -84,5 +93,29 @@
       "seconds": "Countdown unit label"
     },
     "nextDeadline": "{{kind}} is a deadline name from the dataset, such as Abstract or Submission, and stays verbatim"
+  },
+  "folder": {
+    "badge": "Short badge on a project card that was opened in place from a folder on disk",
+    "state": {
+      "offline": "The external or network drive that holds the folder is not connected",
+      "replaced": "A different folder now sits at the saved path"
+    },
+    "menu": {
+      "copyToLibrary": "Menu item that copies an opened folder into a new project inside the Oleafly library",
+      "remove": "Forgets the folder in Oleafly without deleting any of its files"
+    },
+    "unavailable": {
+      "locate": "Button that opens a folder picker so the user can point Oleafly at the moved folder",
+      "permissionDenied": {
+        "bodyMac": "Path through macOS System Settings; use the names macOS shows in this language"
+      },
+      "back": {
+        "title": "A folder that could not be reached a moment ago can be reached again"
+      }
+    },
+    "copy": {
+      "count": "Progress, for example 12 of 40 items or 1.2 MB of 3 MB",
+      "doneLeftOut": "Links are symbolic links pointing outside the folder; nested too deeply means past the folder depth Oleafly walks"
+    }
   }
 }

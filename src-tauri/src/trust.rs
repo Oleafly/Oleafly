@@ -204,6 +204,11 @@ fn subject(project_id: &str) -> Result<Subject, AppError> {
         .map_err(unavailable)?
         .is_none()
     {
+        if crate::linked_registry::id_reserved(project_id).map_err(unavailable)?
+            && matches!(crate::paths::library_project_root(project_id), Ok(None))
+        {
+            return Err(unavailable("the folder was removed from Oleafly"));
+        }
         return Ok(Subject::Library);
     }
     let location = crate::project_location::locate(project_id)
@@ -865,7 +870,6 @@ pub fn restricted_git_env(
     env
 }
 
-#[cfg(test)]
 pub fn mark_library_restricted(project_id: &str) -> Result<(), AppError> {
     crate::paths::validate_project_id(project_id).map_err(unavailable)?;
     update(|file| {

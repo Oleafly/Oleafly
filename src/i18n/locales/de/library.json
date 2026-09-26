@@ -44,7 +44,8 @@
       "name": "Name",
       "type": "Art",
       "engine": "Engine",
-      "modified": "Geändert"
+      "modified": "Geändert",
+      "activity": "Letzte Aktivität"
     },
     "filters": {
       "engine": "Engine",
@@ -70,7 +71,17 @@
       "lastYear": "Letztes Jahr"
     },
     "openFolder": "Ordner öffnen…",
-    "openFolderShortcut": "Ordner öffnen ({{shortcut}})"
+    "openFolderShortcut": "Ordner öffnen ({{shortcut}})",
+    "createFirstProject": "Neues Projekt anlegen",
+    "scope": {
+      "label": "Projekte anzeigen",
+      "all": "Alle",
+      "library": "In Oleafly",
+      "folders": "Ordner"
+    },
+    "recent": {
+      "title": "Zuletzt geöffnet"
+    }
   },
   "projects": {
     "open": "{{name}} öffnen",
@@ -471,5 +482,70 @@
   },
   "openFolder": {
     "dismiss": "Schließen"
+  },
+  "folder": {
+    "badge": "Ordner",
+    "noMain": "Kein Hauptdokument",
+    "openedToday": "Heute geöffnet",
+    "openedYesterday": "Gestern geöffnet",
+    "openedOn": "Geöffnet am {{date}}",
+    "state": {
+      "missing": "Ordner fehlt",
+      "offline": "Laufwerk nicht verbunden",
+      "replaced": "Ordner ersetzt",
+      "permissionDenied": "Keine Berechtigung"
+    },
+    "menu": {
+      "showInFinder": "Im Finder anzeigen",
+      "showInExplorer": "Im Datei-Explorer anzeigen",
+      "showInFileManager": "Im Dateimanager anzeigen",
+      "copyToLibrary": "In die Bibliothek kopieren",
+      "remove": "Aus Oleafly entfernen"
+    },
+    "remove": {
+      "title": "„{{name}}“ aus Oleafly entfernen?",
+      "description": "Ihre Dateien bleiben, wo sie sind. Oleafly löscht seine Build-Dateien für diesen Ordner und setzt Vertrauen, Freigaben und verknüpfte Ordner zurück. Öffnen Sie den Ordner innerhalb von 30 Tagen erneut, um seine Chats und seinen Verlauf zurückzubekommen. Den Rest müssen Sie neu einrichten.",
+      "confirm": "Aus Oleafly entfernen",
+      "done": "„{{name}}“ wurde aus Oleafly entfernt. Die Dateien liegen weiterhin im Ordner.",
+      "failed": "„{{name}}“ konnte nicht aus Oleafly entfernt werden."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "„{{name}}“ wurde nicht gefunden",
+        "body": "Der Ordner lag unter {{path}} und wurde vielleicht verschoben oder gelöscht. Suchen Sie ihn, um seine Chats und seinen Verlauf zu behalten."
+      },
+      "offline": {
+        "title": "„{{name}}“ liegt auf einem Laufwerk, das nicht verbunden ist",
+        "body": "Verbinden Sie das Laufwerk oder die Netzwerkfreigabe mit {{path}} und versuchen Sie es erneut."
+      },
+      "replaced": {
+        "title": "„{{name}}“ wurde ersetzt",
+        "body": "Der Ordner unter {{path}} ist nicht der, den Sie zuvor geöffnet haben. Verwenden Sie ihn nur, wenn Sie ihm vertrauen. Beim Wechsel schaltet Oleafly Vertrauen und Freigaben ab."
+      },
+      "permissionDenied": {
+        "title": "Oleafly kann „{{name}}“ nicht öffnen",
+        "bodyMac": "Erlauben Sie Oleafly den Zugriff auf diesen Ordner unter Systemeinstellungen › Datenschutz & Sicherheit › Dateien und Ordner und versuchen Sie es erneut.",
+        "bodyOther": "Ihr Konto kann {{path}} nicht lesen. Prüfen Sie die Berechtigungen des Ordners und versuchen Sie es erneut."
+      },
+      "back": {
+        "title": "„{{name}}“ ist wieder da",
+        "body": "Oleafly kann {{path}} wieder erreichen."
+      },
+      "locate": "Suchen…",
+      "tryAgain": "Erneut versuchen",
+      "useThisFolder": "Diesen Ordner verwenden",
+      "checking": "Wird geprüft…",
+      "still": "Oleafly kann den Ordner weiterhin nicht erreichen."
+    },
+    "copy": {
+      "title": "„{{name}}“ in Ihre Bibliothek kopieren",
+      "description": "Oleafly kopiert die Dateien in ein neues Bibliotheksprojekt und lässt den Ordner, wo er ist. Der Git-Verlauf wird mitkopiert, Git-Hooks und Build-Dateien nicht.",
+      "counting": "Dateien werden gezählt…",
+      "copying": "Dateien werden kopiert…",
+      "count": "{{done}} von {{total}}",
+      "done": "„{{name}}“ ist jetzt in Ihrer Bibliothek.",
+      "doneLeftOut": "„{{name}}“ ist jetzt in Ihrer Bibliothek. Verknüpfungen zu Dateien an anderen Orten und zu tief verschachtelte Ordner wurden nicht kopiert.",
+      "failed": "„{{name}}“ konnte nicht in Ihre Bibliothek kopiert werden."
+    }
   }
 }

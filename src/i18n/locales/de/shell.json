@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "Dieser Ordner ist schreibgeschützt. Sie können kompilieren, aber Änderungen lassen sich nicht speichern.",
       "copy": "In die Bibliothek kopieren",
-      "copied": "Oleafly hat diesen Ordner in Ihre Bibliothek kopiert. Sie bearbeiten jetzt die Kopie.",
-      "copyFailed": "Dieser Ordner konnte nicht in Ihre Bibliothek kopiert werden."
+      "copied": "Oleafly hat diesen Ordner in Ihre Bibliothek kopiert. Sie bearbeiten jetzt die Kopie."
     },
     "sync": {
       "syncsWith": "Wird mit {{service}} synchronisiert",

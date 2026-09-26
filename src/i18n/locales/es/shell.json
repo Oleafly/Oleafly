@@ -511,8 +511,7 @@
     "readOnly": {
       "banner": "Esta carpeta es de solo lectura. Puedes compilar, pero los cambios no se pueden guardar.",
       "copy": "Copiar a la biblioteca",
-      "copied": "Oleafly copió esta carpeta en tu biblioteca. Ahora estás editando la copia.",
-      "copyFailed": "No se pudo copiar esta carpeta en tu biblioteca."
+      "copied": "Oleafly copió esta carpeta en tu biblioteca. Ahora estás editando la copia."
     },
     "sync": {
       "syncsWith": "Se sincroniza con {{service}}",

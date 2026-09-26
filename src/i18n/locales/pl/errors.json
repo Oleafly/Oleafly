@@ -26,7 +26,13 @@
     "import_no_main": "Ten import nie zawiera dokumentu LaTeX, Typst ani Markdown do skompilowania.",
     "settings_file_exists": "Ten folder ma już plik project.json, więc Oleafly zostawił go bez zmian.",
     "settings_need_main": "Najpierw wybierz dokument główny, a potem zapisz ustawienia projektu w tym folderze.",
-    "settings_write_failed": "Oleafly nie mógł zapisać ustawień projektu w tym folderze."
+    "settings_write_failed": "Oleafly nie mógł zapisać ustawień projektu w tym folderze.",
+    "copy_entry_limit": "Ten folder zawiera ponad 5000 plików i folderów. To więcej, niż Oleafly może skopiować naraz.",
+    "copy_entry_limit_git": "Razem z historią Git ten folder zawiera ponad 5000 plików i folderów. To więcej, niż Oleafly może skopiować naraz.",
+    "copy_size_limit": "Ten folder ma ponad 2 GB. To więcej, niż Oleafly może skopiować naraz.",
+    "copy_cancelled": "Kopiowanie zostało anulowane.",
+    "copy_needs_folder": "Do biblioteki można skopiować tylko foldery otwarte w miejscu.",
+    "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w miejscu."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

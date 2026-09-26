@@ -6,9 +6,12 @@ import {
   BookmarkX,
   Check,
   Clock3,
+  CopyPlus,
   Eye,
   FileText,
   FolderInput,
+  FolderMinus,
+  FolderOpen,
   GitFork,
   History,
   Info,
@@ -93,13 +96,42 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn, isWindows } from "@/lib/utils";
+import { cn, isMac, isWindows } from "@/lib/utils";
 import {
   recycleProject,
   duplicateProject,
   readCompiledPdf,
+  removeLinkedProject,
+  revealProject,
+  type ProjectAvailability,
   type ProjectInfo,
 } from "@/lib/tauri";
+import {
+  RECENT_LIMIT,
+  folderAvailability,
+  folderDisplayPath,
+  folderOpenedLabel,
+  folderUnavailable,
+  isFolderProject,
+  projectInScope,
+  recentProjects,
+  scopeCounts,
+  type LibraryScope,
+} from "@/lib/library-projects";
+import {
+  FolderBookDetails,
+  FolderCoverBadge,
+  FolderInlineBadge,
+  FolderPath,
+  FolderStateLine,
+  asUnavailable,
+  type UnavailableFolder,
+} from "@/components/library/folder-state";
+import { FolderUnavailableDialog } from "@/components/library/FolderUnavailableDialog";
+import { LibraryRecentRow } from "@/components/library/LibraryRecentRow";
+import { LibraryScopeChips } from "@/components/library/LibraryScopeChips";
+import { copyIntoLibrary } from "@/store/copy-into-library";
+import { useLibraryAvailabilityStore } from "@/store/library-availability";
 import { formatNumber } from "@/lib/intl";
 import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
@@ -177,6 +209,7 @@ function projectMetadataText(project: ProjectInfo) {
   return [
     project.id,
     project.name,
+    folderDisplayPath(project) ?? "",
     project.engine,
     projectEngineLabel(project.engine, project.main_doc),
     project.kind,
@@ -318,6 +351,37 @@ export function Library() {
     id: string;
     name: string;
   } | null>(null);
+  const [scope, setScope] = useState<LibraryScope>("all");
+  const [removeTarget, setRemoveTarget] = useState<ProjectInfo | null>(null);
+  const [unavailableTarget, setUnavailableTarget] = useState<{
+    project: ProjectInfo;
+    state: UnavailableFolder;
+  } | null>(null);
+  const checkedFolders = useLibraryAvailabilityStore((s) => s.checked);
+  const checkFolders = useLibraryAvailabilityStore((s) => s.check);
+  const folderKey = useMemo(
+    () => projects.filter(isFolderProject).map((project) => project.id).join("\n"),
+    [projects],
+  );
+  const hasFolders = folderKey.length > 0;
+  const activeScope: LibraryScope = hasFolders ? scope : "all";
+  const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
+    folderAvailability(project, checkedFolders);
+  const coverColor = (project: ProjectInfo) =>
+    projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR);
+  const revealLabel = () => {
+    if (isMac) return t(($) => $.library.folder.menu.showInFinder);
+    if (isWindows) return t(($) => $.library.folder.menu.showInExplorer);
+    return t(($) => $.library.folder.menu.showInFileManager);
+  };
+  const openFromLibrary = (project: ProjectInfo) => {
+    const state = asUnavailable(availabilityOf(project));
+    if (state) {
+      window.setTimeout(() => setUnavailableTarget({ project, state }), 0);
+      return;
+    }
+    void openProject(project.id);
+  };
   const currentDetailsProject =
     detailsProject && projects.find((project) => project.id === detailsProject.id) || detailsProject;
   const currentHistoryProject =
@@ -382,6 +446,66 @@ export function Library() {
         </Item>
       );
     }
+    const colorSub = (
+      <Sub>
+        <SubTrigger>
+          <Palette className="mr-2 size-4" /> {t(($) => $.library.projects.changeColor)}
+        </SubTrigger>
+        <SubContent className="w-44">
+          {BOOK_COLOR_OPTIONS.map((c) => {
+            const active = coverColor(p) === c.hex;
+            return (
+              <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
+                <span
+                  className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
+                  style={{ background: c.hex }}
+                />
+                {colorLabels[c.name] ?? c.name}
+                {active && <Check className="ml-auto size-3.5" />}
+              </Item>
+            );
+          })}
+        </SubContent>
+      </Sub>
+    );
+    if (isFolderProject(p)) {
+      const reachable = !folderUnavailable(availabilityOf(p));
+      const starred = favs.includes(p.id);
+      return (
+        <>
+          <Item onClick={() => openFromLibrary(p)}>
+            <FileText className="mr-2 size-4" /> {t(($) => $.library.projects.openProject)}
+          </Item>
+          <Item
+            disabled={!reachable}
+            onClick={() => {
+              void revealProject(p.id).catch((error: unknown) =>
+                notifyError("reveal folder", error),
+              );
+            }}
+          >
+            <FolderOpen className="mr-2 size-4" /> {revealLabel()}
+          </Item>
+          <Item disabled={!reachable} onClick={() => void copyIntoLibrary(p.id, p.name)}>
+            <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}
+          </Item>
+          {colorSub}
+          <Item onClick={() => toggleFav(p.id)}>
+            {starred ? (
+              <BookmarkCheck className="mr-2 size-4" />
+            ) : (
+              <Bookmark className="mr-2 size-4" />
+            )}
+            {starred
+              ? t(($) => $.library.projects.favoriteRemove)
+              : t(($) => $.library.projects.favoriteAdd)}
+          </Item>
+          <Item onClick={() => window.setTimeout(() => setRemoveTarget(p), 0)}>
+            <FolderMinus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.remove)}
+          </Item>
+        </>
+      );
+    }
     return (
       <>
         <Item onClick={() => void openProject(p.id)}>
@@ -393,27 +517,7 @@ export function Library() {
         <Item onClick={() => window.setTimeout(() => setHistoryProject(p), 0)}>
           <History className="mr-2 size-4" /> {t(($) => $.library.projects.exportHistory)}
         </Item>
-        <Sub>
-          <SubTrigger>
-            <Palette className="mr-2 size-4" /> {t(($) => $.library.projects.changeColor)}
-          </SubTrigger>
-          <SubContent className="w-44">
-            {BOOK_COLOR_OPTIONS.map((c) => {
-              const active =
-                (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
-              return (
-                <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
-                  <span
-                    className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
-                    style={{ background: c.hex }}
-                  />
-                  {colorLabels[c.name] ?? c.name}
-                  {active && <Check className="ml-auto size-3.5" />}
-                </Item>
-              );
-            })}
-          </SubContent>
-        </Sub>
+        {colorSub}
         <Item
           onClick={() => {
             setForkName(t(($) => $.library.projects.forkDialog.copySuffix, { name: p.name }));
@@ -472,6 +576,29 @@ export function Library() {
       t(($) => $.library.projects.deleteDialog.moved, { name: target.name }),
     );
   };
+  const confirmFolderRemoval = async () => {
+    const target = removeTarget;
+    if (!target) return;
+    setRemoveTarget(null);
+    try {
+      await removeLinkedProject(target.id);
+    } catch (error) {
+      notifyError(
+        "remove folder from library",
+        error,
+        decodeAppError(error)
+          ? undefined
+          : t(($) => $.library.folder.remove.failed, { name: target.name }),
+      );
+      return;
+    }
+    try {
+      await refreshProjects();
+    } catch (error) {
+      void logError("refresh projects after removing a folder", error);
+    }
+    toast.success(t(($) => $.library.folder.remove.done, { name: target.name }));
+  };
   const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
     useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
 
@@ -524,9 +651,21 @@ export function Library() {
   const bookmarkIsOnlyActiveFilter =
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
-    () => projects.filter((project) => projectPassesFilters(project, filters, favs)),
-    [projects, favs, filters],
+    () =>
+      projects.filter(
+        (project) =>
+          projectInScope(project, activeScope) && projectPassesFilters(project, filters, favs),
+      ),
+    [projects, favs, filters, activeScope],
   );
+  const scopedProjects = useMemo(
+    () => projects.filter((project) => projectInScope(project, activeScope)),
+    [projects, activeScope],
+  );
+  const recent = useMemo(() => recentProjects(scopedProjects), [scopedProjects]);
+  const searching = filters.metadata.trim().length > 0 || activeFilterCount > 0;
+  const showRecent =
+    hasFolders && !searching && recent.length > 0 && scopedProjects.length > RECENT_LIMIT;
 
   // Returning to the library refetches, so externally created or edited
   // projects (and their dates) show up. The store single-flights this with
@@ -538,6 +677,22 @@ export function Library() {
   useEffect(() => {
     if (projectsLoaded) markBootStage("projects-loaded");
   }, [projectsLoaded]);
+
+  useEffect(() => {
+    if (page !== "library" || !projectsLoaded || !folderKey) return;
+    const ids = folderKey.split("\n");
+    let timer = 0;
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => void checkFolders(ids), 0);
+    });
+    const recheck = () => void checkFolders(ids);
+    window.addEventListener("focus", recheck);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [page, projectsLoaded, folderKey, checkFolders]);
 
   const submitFork = async () => {
     if (!forkTarget || forkBusyRef.current) return;
@@ -609,7 +764,10 @@ export function Library() {
       data-testid="project-grid"
       className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
     >
-      {visibleProjects.map((p) => (
+      {visibleProjects.map((p) => {
+        const folderPath = folderDisplayPath(p);
+        const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
+        return (
         <ContextMenu key={p.id}>
           <ContextMenuTrigger asChild>
             <div className="flex justify-center">
@@ -627,6 +785,17 @@ export function Library() {
                     : projectEngineLabel(p.engine, p.main_doc)
                 }
                 forkedFrom={p.forked_from}
+                badge={folderPath === null ? undefined : <FolderCoverBadge />}
+                details={
+                  folderPath === null ? undefined : (
+                    <FolderBookDetails
+                      path={folderPath}
+                      mainDoc={p.main_doc}
+                      availability={availabilityOf(p)}
+                    />
+                  )
+                }
+                dimmed={folderState !== null}
                 kind={
                   p.recovery_pending
                     ? t(($) => $.library.projects.openToRecover)
@@ -663,14 +832,14 @@ export function Library() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 }
-                onClick={() => void openProject(p.id)}
+                onClick={() => openFromLibrary(p)}
                 onPreviewRequest={
-                  p.recovery_pending
+                  p.recovery_pending || folderState
                     ? undefined
                     : () => hoverPreview && loadThumb(p.id, p.updated_at)
                 }
                 preview={
-                  !p.recovery_pending && hoverPreview
+                  !p.recovery_pending && !folderState && hoverPreview
                     ? thumbs[p.id]
                     : undefined
                 }
@@ -687,7 +856,8 @@ export function Library() {
             })}
           </ContextMenuContent>
         </ContextMenu>
-      ))}
+        );
+      })}
     </div>
     ) : (
     <div data-testid="project-list" className="border-b border-border/70">
@@ -698,12 +868,18 @@ export function Library() {
         <span>{t(($) => $.library.home.columns.name)}</span>
         <span>{t(($) => $.library.home.columns.type)}</span>
         <span>{t(($) => $.library.home.columns.engine)}</span>
-        <span>{t(($) => $.library.home.columns.modified)}</span>
+        <span>
+          {visibleProjects.some(isFolderProject)
+            ? t(($) => $.library.home.columns.activity)
+            : t(($) => $.library.home.columns.modified)}
+        </span>
         <span />
       </div>
       {visibleProjects.map((p) => {
         const recoveryPending = p.recovery_pending;
-        const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
+        const color = coverColor(p);
+        const folderPath = folderDisplayPath(p);
+        const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
         const starred = favs.includes(p.id);
         const forkSource = p.forked_from
           ? projects.find((project) => project.id === p.forked_from)?.name ??
@@ -774,7 +950,7 @@ export function Library() {
             >
               <button
                 type="button"
-                disabled={!p.has_preview}
+                disabled={!p.has_preview || folderState !== null}
                 onClick={() => void openProjectPreview(p)}
                 aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
@@ -816,9 +992,9 @@ export function Library() {
                       ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
                       : t(($) => $.library.projects.open, { name: p.name })
                   }
-                  onClick={() => void openProject(p.id)}
+                  onClick={() => openFromLibrary(p)}
                   onMouseEnter={() => {
-                    if (recoveryPending || !hoverPreview) return;
+                    if (recoveryPending || folderState || !hoverPreview) return;
                     setPreviewProjectId(p.id);
                     loadThumb(p.id, p.updated_at);
                   }}
@@ -828,7 +1004,7 @@ export function Library() {
                     )
                   }
                   onFocus={() => {
-                    if (recoveryPending || !hoverPreview) return;
+                    if (recoveryPending || folderState || !hoverPreview) return;
                     setPreviewProjectId(p.id);
                     loadThumb(p.id, p.updated_at);
                   }}
@@ -841,7 +1017,10 @@ export function Library() {
                 >
                   <span
                     aria-hidden="true"
-                    className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm"
+                    className={cn(
+                      "relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
+                      folderState && "opacity-60 grayscale",
+                    )}
                     style={{ backgroundColor: color }}
                   >
                     {hoverPreview &&
@@ -857,10 +1036,24 @@ export function Library() {
                     ) : null}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {p.name}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {p.name}
+                      </span>
+                      {folderPath === null ? null : <FolderInlineBadge />}
                     </span>
-                    {recoveryPending ? (
+                    {folderPath === null ? null : (
+                      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                        {folderState ? (
+                          <>
+                            <FolderStateLine state={folderState} className="shrink-0" />
+                            <span aria-hidden="true">·</span>
+                          </>
+                        ) : null}
+                        <FolderPath path={folderPath} />
+                      </span>
+                    )}
+                    {folderPath !== null ? null : recoveryPending ? (
                       <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
                         {t(($) => $.library.projects.openToRecover)}
                       </span>
@@ -884,7 +1077,9 @@ export function Library() {
                 <span className="hidden text-xs text-muted-foreground sm:block">
                   {recoveryPending
                     ? t(($) => $.library.projects.recoveryModified)
-                    : projectModifiedLabel(p.updated_at)}
+                    : folderPath === null
+                      ? projectModifiedLabel(p.updated_at)
+                      : folderOpenedLabel(p.last_opened_at || p.updated_at)}
                 </span>
                 {renderProjectRowActions()}
               </div>
@@ -1123,6 +1318,27 @@ export function Library() {
       </DialogContent>
     </Dialog>
   );
+
+  const renderFolderNavigation = () =>
+    hasFolders && projects.length > 0 ? (
+      <>
+        <div className="mb-6">
+          <LibraryScopeChips
+            value={activeScope}
+            counts={scopeCounts(projects)}
+            onChange={setScope}
+          />
+        </div>
+        {showRecent ? (
+          <LibraryRecentRow
+            projects={recent}
+            colorOf={coverColor}
+            availabilityOf={availabilityOf}
+            onOpen={openFromLibrary}
+          />
+        ) : null}
+      </>
+    ) : null;
 
   const renderFirstRunWelcome = () => (
     projects.length === 0 && (
@@ -1482,6 +1698,7 @@ export function Library() {
         >
           {renderFirstRunWelcome()}
           {projects.length > 0 ? <OpenFolderNotice className="mb-5" /> : null}
+          {renderFolderNavigation()}
           {renderNoMatchesEmpty()}
           {renderProjectCollection()}
         </div>
@@ -1554,6 +1771,34 @@ export function Library() {
         destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmProjectDeletion()}
+      />
+      <ConfirmationDialog
+        open={removeTarget !== null}
+        title={t(($) => $.library.folder.remove.title, { name: removeTarget?.name ?? "" })}
+        description={t(($) => $.library.folder.remove.description)}
+        confirmLabel={t(($) => $.library.folder.remove.confirm)}
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={() => void confirmFolderRemoval()}
+      />
+      <FolderUnavailableDialog
+        key={unavailableTarget?.project.id ?? "closed"}
+        project={unavailableTarget?.project ?? null}
+        availability={unavailableTarget?.state ?? "missing"}
+        reachable={
+          unavailableTarget !== null && availabilityOf(unavailableTarget.project) === "ok"
+        }
+        onClose={() => {
+          setUnavailableTarget(null);
+          releasePointerLock();
+        }}
+        onOpen={(projectId) => {
+          setUnavailableTarget(null);
+          void openProject(projectId);
+        }}
+        onRemove={(project) => {
+          setUnavailableTarget(null);
+          window.setTimeout(() => setRemoveTarget(project), 0);
+        }}
       />
     </div>
   );

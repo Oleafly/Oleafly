@@ -46,7 +46,8 @@
       "name": "Nazwa",
       "type": "Rodzaj",
       "engine": "Silnik",
-      "modified": "Zmodyfikowano"
+      "modified": "Zmodyfikowano",
+      "activity": "Ostatnia aktywność"
     },
     "filters": {
       "engine": "Silnik",
@@ -72,7 +73,17 @@
       "lastYear": "Ostatni rok"
     },
     "openFolder": "Otwórz folder…",
-    "openFolderShortcut": "Otwórz folder ({{shortcut}})"
+    "openFolderShortcut": "Otwórz folder ({{shortcut}})",
+    "createFirstProject": "Utwórz nowy projekt",
+    "scope": {
+      "label": "Pokaż projekty",
+      "all": "Wszystkie",
+      "library": "W Oleafly",
+      "folders": "Foldery"
+    },
+    "recent": {
+      "title": "Ostatnie"
+    }
   },
   "projects": {
     "open": "Otwórz {{name}}",
@@ -489,5 +500,70 @@
   },
   "openFolder": {
     "dismiss": "Zamknij"
+  },
+  "folder": {
+    "badge": "Folder",
+    "noMain": "Brak dokumentu głównego",
+    "openedToday": "Otwarto dzisiaj",
+    "openedYesterday": "Otwarto wczoraj",
+    "openedOn": "Otwarto {{date}}",
+    "state": {
+      "missing": "Brak folderu",
+      "offline": "Dysk niepodłączony",
+      "replaced": "Folder zastąpiony",
+      "permissionDenied": "Brak uprawnień"
+    },
+    "menu": {
+      "showInFinder": "Pokaż w Finderze",
+      "showInExplorer": "Pokaż w Eksploratorze plików",
+      "showInFileManager": "Pokaż w menedżerze plików",
+      "copyToLibrary": "Skopiuj do biblioteki",
+      "remove": "Usuń z Oleafly"
+    },
+    "remove": {
+      "title": "Usunąć „{{name}}” z Oleafly?",
+      "description": "Twoje pliki zostają na miejscu. Oleafly usuwa swoje pliki kompilacji dla tego folderu i resetuje jego zaufanie, zgody i powiązane foldery. Otwórz folder ponownie w ciągu 30 dni, aby odzyskać jego czaty i historię. Resztę trzeba będzie skonfigurować od nowa.",
+      "confirm": "Usuń z Oleafly",
+      "done": "Usunięto „{{name}}” z Oleafly. Pliki nadal są w folderze.",
+      "failed": "Nie udało się usunąć „{{name}}” z Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Nie można znaleźć „{{name}}”",
+        "body": "Folder był w {{path}} i mógł zostać przeniesiony lub usunięty. Wskaż go, aby zachować jego czaty i historię."
+      },
+      "offline": {
+        "title": "„{{name}}” jest na dysku, który nie jest podłączony",
+        "body": "Podłącz dysk lub udział sieciowy z {{path}} i spróbuj ponownie."
+      },
+      "replaced": {
+        "title": "Folder „{{name}}” został zastąpiony",
+        "body": "Folder w {{path}} to nie ten, który był otwarty wcześniej. Używaj go tylko wtedy, gdy mu ufasz. Po zmianie Oleafly wyłącza zaufanie i zgody."
+      },
+      "permissionDenied": {
+        "title": "Oleafly nie może otworzyć „{{name}}”",
+        "bodyMac": "Zezwól Oleafly na dostęp do tego folderu w Ustawieniach systemowych › Prywatność i ochrona › Pliki i foldery, a potem spróbuj ponownie.",
+        "bodyOther": "Twoje konto nie może odczytać {{path}}. Sprawdź uprawnienia folderu i spróbuj ponownie."
+      },
+      "back": {
+        "title": "Znów masz dostęp do „{{name}}”",
+        "body": "Oleafly może znów odczytać {{path}}."
+      },
+      "locate": "Wskaż…",
+      "tryAgain": "Spróbuj ponownie",
+      "useThisFolder": "Użyj tego folderu",
+      "checking": "Sprawdzanie…",
+      "still": "Oleafly nadal nie ma do niego dostępu."
+    },
+    "copy": {
+      "title": "Skopiuj „{{name}}” do biblioteki",
+      "description": "Oleafly kopiuje pliki do nowego projektu w bibliotece i zostawia folder na miejscu. Historia Git jest kopiowana, ale hooki Git i pliki kompilacji nie.",
+      "counting": "Liczenie plików…",
+      "copying": "Kopiowanie plików…",
+      "count": "{{done}} z {{total}}",
+      "done": "„{{name}}” jest teraz w bibliotece.",
+      "doneLeftOut": "„{{name}}” jest teraz w bibliotece. Nie skopiowano linków do plików w innych miejscach ani folderów zagnieżdżonych zbyt głęboko.",
+      "failed": "Nie udało się skopiować „{{name}}” do biblioteki."
+    }
   }
 }

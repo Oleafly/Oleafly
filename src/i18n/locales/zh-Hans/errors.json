@@ -26,7 +26,13 @@
     "import_no_main": "导入的内容中没有可编译的 LaTeX、Typst 或 Markdown 文档。",
     "settings_file_exists": "此文件夹中已有 project.json，Oleafly 未对其做任何更改。",
     "settings_need_main": "请先选择主文档，再将项目设置保存到此文件夹。",
-    "settings_write_failed": "Oleafly 无法将项目设置保存到此文件夹。"
+    "settings_write_failed": "Oleafly 无法将项目设置保存到此文件夹。",
+    "copy_entry_limit": "此文件夹包含超过 5,000 个文件和文件夹，超出了 Oleafly 一次能复制的数量。",
+    "copy_entry_limit_git": "算上 Git 历史记录，此文件夹包含超过 5,000 个文件和文件夹，超出了 Oleafly 一次能复制的数量。",
+    "copy_size_limit": "此文件夹大于 2 GB，超出了 Oleafly 一次能复制的大小。",
+    "copy_cancelled": "已取消复制。",
+    "copy_needs_folder": "只有就地打开的文件夹才能复制到库。",
+    "not_removable": "只有就地打开的文件夹才能从 Oleafly 中移除。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

@@ -1,5 +1,5 @@
 use crate::app_error::AppError;
-use crate::fs_identity::IdentityMatch;
+use crate::fs_identity::{IdentityMatch, VolumeKind};
 use crate::linked_registry::{self, LinkRecord, Membership};
 use std::path::{Path, PathBuf};
 
@@ -33,9 +33,19 @@ pub(crate) struct ProjectLocation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LocateError {
     NotFound(String),
-    Unavailable { id: String, folder: String },
-    Replaced { id: String, folder: String },
-    PermissionDenied { id: String, folder: String },
+    Unavailable {
+        id: String,
+        folder: String,
+        offline: bool,
+    },
+    Replaced {
+        id: String,
+        folder: String,
+    },
+    PermissionDenied {
+        id: String,
+        folder: String,
+    },
     Invalid(String),
 }
 
@@ -247,7 +257,74 @@ fn folder_label(path: &Path) -> String {
         .unwrap_or_else(|| path.display().to_string())
 }
 
+#[cfg(test)]
+thread_local! {
+    static FOLDER_CHECKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(crate) fn folder_checks_on_this_thread() -> usize {
+    FOLDER_CHECKS.with(std::cell::Cell::get)
+}
+
+type VolumeSeen = Option<(Option<String>, VolumeKind)>;
+
+const MOUNT_PARENTS: [&str; 4] = ["/Volumes", "/media", "/run/media", "/mnt"];
+
+fn drive_disconnected(
+    recorded: &Path,
+    recorded_volume: Option<&str>,
+    recorded_kind: VolumeKind,
+    error: std::io::ErrorKind,
+    seen: impl Fn(&Path) -> Option<VolumeSeen>,
+) -> bool {
+    if !matches!(
+        error,
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+    ) {
+        return true;
+    }
+    let Some((ancestor, found)) = recorded
+        .ancestors()
+        .skip(1)
+        .find_map(|ancestor| seen(ancestor).map(|found| (ancestor, found)))
+    else {
+        return true;
+    };
+    let Some((volume, kind)) = found else {
+        return false;
+    };
+    match recorded_volume {
+        Some(recorded_volume) => volume.as_deref() != Some(recorded_volume),
+        None if recorded_kind == VolumeKind::Network => kind != VolumeKind::Network,
+        None => MOUNT_PARENTS
+            .iter()
+            .any(|parent| ancestor == Path::new(parent)),
+    }
+}
+
+fn volume_seen(path: &Path) -> Option<VolumeSeen> {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => Some(
+            crate::fs_identity::identify_directory(path)
+                .ok()
+                .map(|observed| (observed.identity.volume, observed.volume_kind)),
+        ),
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+            ) =>
+        {
+            None
+        }
+        Err(_) => Some(None),
+    }
+}
+
 fn linked_location(record: LinkRecord, state_dir: PathBuf) -> Result<ProjectLocation, LocateError> {
+    #[cfg(test)]
+    FOLDER_CHECKS.with(|checks| checks.set(checks.get() + 1));
     let recorded = PathBuf::from(&record.canonical_path);
     let folder = folder_label(&recorded);
     let id = record.id.clone();
@@ -260,9 +337,16 @@ fn linked_location(record: LinkRecord, state_dir: PathBuf) -> Result<ProjectLoca
             id: id.clone(),
             folder: folder.clone(),
         },
-        _ => LocateError::Unavailable {
+        kind => LocateError::Unavailable {
             id: id.clone(),
             folder: folder.clone(),
+            offline: drive_disconnected(
+                &recorded,
+                record.identity.volume.as_deref(),
+                record.volume_kind,
+                kind,
+                volume_seen,
+            ),
         },
     };
     let metadata = std::fs::symlink_metadata(&recorded).map_err(inaccessible)?;
@@ -707,6 +791,135 @@ mod tests {
         assert!(message.contains("project.linked_missing"));
         assert!(message.contains("\"folder\":\"thesis\""));
         assert!(!message.contains(folder.parent().unwrap().to_str().unwrap()));
+    }
+
+    #[test]
+    fn a_missing_folder_counts_as_a_disconnected_drive_only_when_its_volume_is_gone() {
+        use std::io::ErrorKind::{NotADirectory, NotFound, Other, TimedOut};
+        let recorded = Path::new("/Volumes/USB/papers/thesis");
+        let usb = Some("uuid:USB");
+        let on = |present: &'static str, volume: Option<&'static str>, kind: VolumeKind| {
+            move |path: &Path| {
+                (path == Path::new(present)).then(|| Some((volume.map(String::from), kind)))
+            }
+        };
+        let local = VolumeKind::Local;
+        let network = VolumeKind::Network;
+
+        assert!(drive_disconnected(
+            recorded,
+            usb,
+            local,
+            NotFound,
+            on("/Volumes", Some("uuid:DATA"), local)
+        ));
+        assert!(!drive_disconnected(
+            recorded,
+            usb,
+            local,
+            NotFound,
+            on("/Volumes/USB/papers", usb, local)
+        ));
+        assert!(!drive_disconnected(
+            recorded,
+            usb,
+            local,
+            NotADirectory,
+            on("/Volumes/USB/papers", usb, local)
+        ));
+        assert!(drive_disconnected(
+            recorded,
+            usb,
+            local,
+            NotFound,
+            |_: &Path| None
+        ));
+        assert!(drive_disconnected(
+            recorded,
+            usb,
+            local,
+            TimedOut,
+            on("/Volumes/USB/papers", usb, local)
+        ));
+        assert!(drive_disconnected(
+            recorded,
+            usb,
+            local,
+            Other,
+            on("/Volumes/USB/papers", usb, local)
+        ));
+        assert!(!drive_disconnected(
+            recorded,
+            usb,
+            local,
+            NotFound,
+            |path: &Path| { (path == Path::new("/Volumes/USB/papers")).then_some(None) }
+        ));
+
+        let share = Path::new("/Volumes/lab/thesis");
+        assert!(drive_disconnected(
+            share,
+            None,
+            network,
+            NotFound,
+            on("/Volumes", Some("uuid:DATA"), local)
+        ));
+        assert!(!drive_disconnected(
+            share,
+            None,
+            network,
+            NotFound,
+            on("/Volumes/lab", None, network)
+        ));
+
+        assert!(drive_disconnected(
+            recorded,
+            None,
+            local,
+            NotFound,
+            on("/Volumes", None, local)
+        ));
+        assert!(!drive_disconnected(
+            recorded,
+            None,
+            local,
+            NotFound,
+            on("/Volumes/USB/papers", None, local)
+        ));
+    }
+
+    #[test]
+    fn a_folder_on_a_drive_that_is_gone_is_offline_and_a_deleted_one_is_missing() {
+        let fixture = Fixture::new();
+        let unplugged = fixture.folder("usb/thesis");
+        let deleted = fixture.folder("notes");
+        let unplugged_record = register_folder_for_test(&unplugged);
+        let deleted_record = register_folder_for_test(&deleted);
+        update(&unplugged_record.id, |next| {
+            next.identity.volume = Some("uuid:00000000-0000-0000-0000-00000000DEAD".into());
+            Ok(())
+        })
+        .unwrap();
+        std::fs::remove_dir_all(unplugged.parent().unwrap()).unwrap();
+        std::fs::remove_dir(&deleted).unwrap();
+
+        let reports = crate::project_availability::probe_linked_projects(
+            vec![unplugged_record.id.clone(), deleted_record.id.clone()],
+            std::time::Duration::from_secs(5),
+        );
+
+        assert_eq!(
+            reports
+                .iter()
+                .map(|report| report.availability)
+                .collect::<Vec<_>>(),
+            vec![
+                crate::project_availability::ProjectAvailability::Offline,
+                crate::project_availability::ProjectAvailability::Missing,
+            ]
+        );
+        let message = String::from(locate(&unplugged_record.id).unwrap_err());
+        assert!(message.contains("project.linked_missing"), "{message}");
     }
 
     #[test]

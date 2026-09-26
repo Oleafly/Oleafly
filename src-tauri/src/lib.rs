@@ -49,7 +49,9 @@ mod known_folders;
 mod language_service;
 mod latex_engine;
 mod library_db;
+mod linked_copy;
 mod linked_registry;
+mod linked_removal;
 mod literature;
 // Two-bucket logging; emit sites land with per-sidecar adoption.
 #[allow(dead_code)]
@@ -68,6 +70,7 @@ mod project_grants;
 mod project_location;
 mod project_manifest;
 mod project_rebind;
+mod project_recents;
 mod project_sources;
 mod protocol;
 mod quit_gate;
@@ -239,6 +242,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     crate::open_request::start(app.handle());
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
+    tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
 
     // Start the MCP server on boot when the user has enabled it. Failure to
     // bind must not prevent the app from starting; Settings shows the state.
@@ -635,6 +639,9 @@ pub fn run() {
             project::save_project_settings_to_folder,
             project::list_projects,
             project_availability::probe_project_availability,
+            linked_removal::remove_linked_project,
+            linked_copy::copy_linked_into_library,
+            linked_copy::cancel_copy_into_library,
             project_rebind::locate_project_folder,
             project_rebind::adopt_replaced_folder,
             buffer_copy::save_open_buffers_copy,

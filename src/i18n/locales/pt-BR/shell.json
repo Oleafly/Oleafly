@@ -511,8 +511,7 @@
     "readOnly": {
       "banner": "Esta pasta é somente leitura. Você pode compilar, mas as edições não podem ser salvas.",
       "copy": "Copiar para a biblioteca",
-      "copied": "O Oleafly copiou esta pasta para a sua biblioteca. Agora você está editando a cópia.",
-      "copyFailed": "Não foi possível copiar esta pasta para a sua biblioteca."
+      "copied": "O Oleafly copiou esta pasta para a sua biblioteca. Agora você está editando a cópia."
     },
     "sync": {
       "syncsWith": "Sincroniza com o {{service}}",

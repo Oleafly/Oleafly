@@ -45,7 +45,8 @@
       "name": "Nombre",
       "type": "Tipo",
       "engine": "Motor",
-      "modified": "Modificado"
+      "modified": "Modificado",
+      "activity": "Última actividad"
     },
     "filters": {
       "engine": "Motor",
@@ -71,7 +72,17 @@
       "lastYear": "Último año"
     },
     "openFolder": "Abrir carpeta…",
-    "openFolderShortcut": "Abrir carpeta ({{shortcut}})"
+    "openFolderShortcut": "Abrir carpeta ({{shortcut}})",
+    "createFirstProject": "Crear un proyecto nuevo",
+    "scope": {
+      "label": "Mostrar proyectos",
+      "all": "Todos",
+      "library": "En Oleafly",
+      "folders": "Carpetas"
+    },
+    "recent": {
+      "title": "Recientes"
+    }
   },
   "projects": {
     "open": "Abrir {{name}}",
@@ -480,5 +491,70 @@
   },
   "openFolder": {
     "dismiss": "Cerrar"
+  },
+  "folder": {
+    "badge": "Carpeta",
+    "noMain": "Sin documento principal",
+    "openedToday": "Abierto hoy",
+    "openedYesterday": "Abierto ayer",
+    "openedOn": "Abierto el {{date}}",
+    "state": {
+      "missing": "Falta la carpeta",
+      "offline": "Unidad no conectada",
+      "replaced": "Carpeta reemplazada",
+      "permissionDenied": "Sin permiso"
+    },
+    "menu": {
+      "showInFinder": "Mostrar en Finder",
+      "showInExplorer": "Mostrar en el Explorador de archivos",
+      "showInFileManager": "Mostrar en el gestor de archivos",
+      "copyToLibrary": "Copiar a la biblioteca",
+      "remove": "Quitar de Oleafly"
+    },
+    "remove": {
+      "title": "¿Quitar “{{name}}” de Oleafly?",
+      "description": "Tus archivos se quedan donde están. Oleafly borra sus archivos de compilación de esta carpeta y restablece su confianza, sus aprobaciones y sus carpetas enlazadas. Vuelve a abrir la carpeta en un plazo de 30 días para recuperar sus chats y su historial. Lo demás tendrás que configurarlo de nuevo.",
+      "confirm": "Quitar de Oleafly",
+      "done": "Se quitó “{{name}}” de Oleafly. Sus archivos siguen en la carpeta.",
+      "failed": "No se pudo quitar “{{name}}” de Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "No se encuentra “{{name}}”",
+        "body": "Estaba en {{path}} y puede que se haya movido o borrado. Localízala para conservar sus chats y su historial."
+      },
+      "offline": {
+        "title": "“{{name}}” está en una unidad que no está conectada",
+        "body": "Conecta la unidad o el recurso de red que contiene {{path}} y vuelve a intentarlo."
+      },
+      "replaced": {
+        "title": "“{{name}}” se reemplazó",
+        "body": "La carpeta de {{path}} no es la que abriste antes. Úsala solo si confías en ella. Oleafly desactiva la confianza y las aprobaciones al cambiar."
+      },
+      "permissionDenied": {
+        "title": "Oleafly no puede abrir “{{name}}”",
+        "bodyMac": "Permite que Oleafly use esta carpeta en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas, y vuelve a intentarlo.",
+        "bodyOther": "Tu cuenta no puede leer {{path}}. Revisa los permisos de la carpeta y vuelve a intentarlo."
+      },
+      "back": {
+        "title": "“{{name}}” ha vuelto",
+        "body": "Oleafly vuelve a tener acceso a {{path}}."
+      },
+      "locate": "Localizar…",
+      "tryAgain": "Reintentar",
+      "useThisFolder": "Usar esta carpeta",
+      "checking": "Comprobando…",
+      "still": "Oleafly sigue sin poder acceder a ella."
+    },
+    "copy": {
+      "title": "Copiar “{{name}}” a tu biblioteca",
+      "description": "Oleafly copia los archivos en un nuevo proyecto de la biblioteca y deja la carpeta donde está. El historial de Git se copia, pero los hooks de Git y los archivos de compilación no.",
+      "counting": "Contando archivos…",
+      "copying": "Copiando archivos…",
+      "count": "{{done}} de {{total}}",
+      "done": "“{{name}}” ya está en tu biblioteca.",
+      "doneLeftOut": "“{{name}}” ya está en tu biblioteca. No se copiaron los enlaces a archivos de otros sitios ni las carpetas anidadas a demasiada profundidad.",
+      "failed": "No se pudo copiar “{{name}}” a tu biblioteca."
+    }
   }
 }

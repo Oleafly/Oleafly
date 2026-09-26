@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   projectTrustState: vi.fn(),
   projectFolderStatus: vi.fn(),
   trustFolder: vi.fn(),
-  copyLinkedIntoLibrary: vi.fn(),
+  copyIntoLibrary: vi.fn(),
   openProject: vi.fn(),
   notifyError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -18,8 +18,14 @@ vi.mock("@/lib/tauri", () => ({
   projectTrustState: mocks.projectTrustState,
   projectFolderStatus: mocks.projectFolderStatus,
   trustFolder: mocks.trustFolder,
-  copyLinkedIntoLibrary: mocks.copyLinkedIntoLibrary,
 }));
+vi.mock("@/store/copy-into-library", async () => {
+  const { create } = await import("zustand");
+  return {
+    copyIntoLibrary: mocks.copyIntoLibrary,
+    useCopyIntoLibraryStore: create(() => ({ status: "idle" })),
+  };
+});
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
   toast: { success: mocks.toastSuccess },
@@ -30,6 +36,7 @@ vi.mock("@/store/files", async () => {
   return {
     useFilesStore: create(() => ({
       projectId: "linked-a" as string | null,
+      projectName: "thesis",
       openProject: mocks.openProject,
     })),
   };
@@ -150,29 +157,17 @@ describe("read-only banner", () => {
     expect(readOnly.compareDocumentPosition(trust) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("copies the folder into the library and opens the copy", async () => {
-    mocks.copyLinkedIntoLibrary.mockResolvedValue("thesis-copy");
+  it("copies the folder into the library through the shared copy flow and opens the copy", async () => {
+    mocks.copyIntoLibrary.mockResolvedValue("thesis-copy");
     render(<OpenedFolderBanners />);
     await open(trusted, { read_only: true, synced_with: null });
     fireEvent.click(screen.getByRole("button", { name: labels.readOnly.copy }));
-    await waitFor(() => expect(mocks.openProject).toHaveBeenCalledWith("thesis-copy"));
-    expect(mocks.copyLinkedIntoLibrary).toHaveBeenCalledWith("linked-a");
-    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(labels.readOnly.copied);
-  });
-
-  it("reports a failed copy once and stays put", async () => {
-    mocks.copyLinkedIntoLibrary.mockRejectedValue(new Error("disk full"));
-    render(<OpenedFolderBanners />);
-    await open(trusted, { read_only: true, synced_with: null });
-    fireEvent.click(screen.getByRole("button", { name: labels.readOnly.copy }));
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledTimes(1));
-    expect(mocks.notifyError.mock.calls[0]?.[2]).toBe(labels.readOnly.copyFailed);
-    expect(mocks.openProject).not.toHaveBeenCalled();
-    expect(mocks.toastSuccess).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: labels.readOnly.copy })).not.toBeDisabled(),
+      expect(mocks.copyIntoLibrary).toHaveBeenCalledWith("linked-a", "thesis", {
+        openAfterCopy: true,
+      }),
     );
+    expect(mocks.copyIntoLibrary).toHaveBeenCalledTimes(1);
   });
 
   it("stays hidden for a writable folder", async () => {

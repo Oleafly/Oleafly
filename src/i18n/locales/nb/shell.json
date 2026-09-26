@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "Denne mappen er skrivebeskyttet. Du kan kompilere, men endringer kan ikke lagres.",
       "copy": "Kopier til biblioteket",
-      "copied": "Oleafly kopierte mappen til biblioteket ditt. Du redigerer nå kopien.",
-      "copyFailed": "Kunne ikke kopiere mappen til biblioteket ditt."
+      "copied": "Oleafly kopierte mappen til biblioteket ditt. Du redigerer nå kopien."
     },
     "sync": {
       "syncsWith": "Synkroniseres med {{service}}",

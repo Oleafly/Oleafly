@@ -507,8 +507,7 @@
     "readOnly": {
       "banner": "此文件夹为只读。你可以编译，但无法保存修改。",
       "copy": "复制到项目库",
-      "copied": "Oleafly 已将此文件夹复制到你的项目库。你现在编辑的是副本。",
-      "copyFailed": "无法将此文件夹复制到你的项目库。"
+      "copied": "Oleafly 已将此文件夹复制到你的项目库。你现在编辑的是副本。"
     },
     "sync": {
       "syncsWith": "与 {{service}} 同步",

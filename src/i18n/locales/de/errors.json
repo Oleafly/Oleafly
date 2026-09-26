@@ -26,7 +26,13 @@
     "import_no_main": "Dieser Import enthält kein LaTeX-, Typst- oder Markdown-Dokument zum Kompilieren.",
     "settings_file_exists": "Dieser Ordner enthält bereits eine project.json. Oleafly hat sie unverändert gelassen.",
     "settings_need_main": "Wählen Sie zuerst ein Hauptdokument und speichern Sie dann die Projekteinstellungen in diesem Ordner.",
-    "settings_write_failed": "Oleafly konnte die Projekteinstellungen nicht in diesem Ordner speichern."
+    "settings_write_failed": "Oleafly konnte die Projekteinstellungen nicht in diesem Ordner speichern.",
+    "copy_entry_limit": "Dieser Ordner enthält mehr als 5.000 Dateien und Ordner. So viel kann Oleafly nicht auf einmal kopieren.",
+    "copy_entry_limit_git": "Mit dem Git-Verlauf enthält dieser Ordner mehr als 5.000 Dateien und Ordner. So viel kann Oleafly nicht auf einmal kopieren.",
+    "copy_size_limit": "Dieser Ordner ist größer als 2 GB. So viel kann Oleafly nicht auf einmal kopieren.",
+    "copy_cancelled": "Das Kopieren wurde abgebrochen.",
+    "copy_needs_folder": "Nur direkt geöffnete Ordner können in die Bibliothek kopiert werden.",
+    "not_removable": "Nur direkt geöffnete Ordner können aus Oleafly entfernt werden."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

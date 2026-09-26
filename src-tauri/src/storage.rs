@@ -441,7 +441,7 @@ fn checkpoint_cleanup_root() -> Result<PathBuf, String> {
 }
 
 #[cfg(unix)]
-fn sync_directory(path: &Path) -> Result<(), String> {
+pub(crate) fn sync_directory(path: &Path) -> Result<(), String> {
     #[cfg(test)]
     maybe_fail_directory_sync()?;
     File::open(path)
@@ -450,7 +450,7 @@ fn sync_directory(path: &Path) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-fn sync_directory(path: &Path) -> Result<(), String> {
+pub(crate) fn sync_directory(path: &Path) -> Result<(), String> {
     use std::os::windows::fs::OpenOptionsExt as _;
     use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_BACKUP_SEMANTICS;
 
@@ -466,7 +466,7 @@ fn sync_directory(path: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(any(unix, windows)))]
-fn sync_directory(_path: &Path) -> Result<(), String> {
+pub(crate) fn sync_directory(_path: &Path) -> Result<(), String> {
     #[cfg(test)]
     maybe_fail_directory_sync()?;
     Ok(())

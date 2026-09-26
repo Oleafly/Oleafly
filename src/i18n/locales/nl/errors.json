@@ -26,7 +26,13 @@
     "import_no_main": "Deze import bevat geen LaTeX-, Typst- of Markdown-document om te compileren.",
     "settings_file_exists": "Deze map heeft al een project.json, dus Oleafly heeft die ongewijzigd gelaten.",
     "settings_need_main": "Kies eerst een hoofddocument en sla daarna de projectinstellingen in deze map op.",
-    "settings_write_failed": "Oleafly kon de projectinstellingen niet in deze map opslaan."
+    "settings_write_failed": "Oleafly kon de projectinstellingen niet in deze map opslaan.",
+    "copy_entry_limit": "Deze map bevat meer dan 5.000 bestanden en mappen. Dat is meer dan Oleafly in één keer kan kopiëren.",
+    "copy_entry_limit_git": "Met de Git-geschiedenis erbij bevat deze map meer dan 5.000 bestanden en mappen. Dat is meer dan Oleafly in één keer kan kopiëren.",
+    "copy_size_limit": "Deze map is groter dan 2 GB. Dat is meer dan Oleafly in één keer kan kopiëren.",
+    "copy_cancelled": "Het kopiëren is geannuleerd.",
+    "copy_needs_folder": "Alleen mappen die ter plekke zijn geopend, kunnen naar de bibliotheek worden gekopieerd.",
+    "not_removable": "Alleen mappen die ter plekke zijn geopend, kunnen uit Oleafly worden verwijderd."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

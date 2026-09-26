@@ -55,7 +55,6 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
-  copyLinkedIntoLibrary,
   projectDocumentCandidates,
   projectFolderStatus,
   projectTrustState,
@@ -545,11 +544,6 @@ describe("opened folder bridge", () => {
     });
     await projectDocumentCandidates("linked-1");
     expect(mocks.invoke).toHaveBeenLastCalledWith("project_document_candidates", {
-      projectId: "linked-1",
-    });
-    mocks.invoke.mockResolvedValue("paper-copy");
-    await expect(copyLinkedIntoLibrary("linked-1")).resolves.toBe("paper-copy");
-    expect(mocks.invoke).toHaveBeenLastCalledWith("copy_linked_into_library", {
       projectId: "linked-1",
     });
   });

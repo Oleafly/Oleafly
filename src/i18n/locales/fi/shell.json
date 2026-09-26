@@ -509,8 +509,7 @@
     "readOnly": {
       "banner": "Tämä kansio on vain luku -tilassa. Voit kääntää, mutta muutoksia ei voi tallentaa.",
       "copy": "Kopioi kirjastoon",
-      "copied": "Oleafly kopioi kansion kirjastoosi. Muokkaat nyt kopiota.",
-      "copyFailed": "Kansion kopioiminen kirjastoon epäonnistui."
+      "copied": "Oleafly kopioi kansion kirjastoosi. Muokkaat nyt kopiota."
     },
     "sync": {
       "syncsWith": "Synkronoidaan palveluun {{service}}",

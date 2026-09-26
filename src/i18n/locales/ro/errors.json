@@ -26,7 +26,13 @@
     "import_no_main": "Acest import nu conține niciun document LaTeX, Typst sau Markdown de compilat.",
     "settings_file_exists": "Acest folder are deja un project.json, așa că Oleafly l-a lăsat neschimbat.",
     "settings_need_main": "Alege mai întâi un document principal, apoi salvează setările proiectului în acest folder.",
-    "settings_write_failed": "Oleafly nu a putut salva setările proiectului în acest folder."
+    "settings_write_failed": "Oleafly nu a putut salva setările proiectului în acest folder.",
+    "copy_entry_limit": "Folderul are peste 5.000 de fișiere și foldere. Este mai mult decât poate copia Oleafly dintr-odată.",
+    "copy_entry_limit_git": "Împreună cu istoricul Git, folderul are peste 5.000 de fișiere și foldere. Este mai mult decât poate copia Oleafly dintr-odată.",
+    "copy_size_limit": "Folderul are peste 2 GB. Este mai mult decât poate copia Oleafly dintr-odată.",
+    "copy_cancelled": "Copierea a fost anulată.",
+    "copy_needs_folder": "Doar folderele deschise pe loc pot fi copiate în bibliotecă.",
+    "not_removable": "Doar folderele deschise pe loc pot fi eliminate din Oleafly."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

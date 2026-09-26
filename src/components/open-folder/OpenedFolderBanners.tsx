@@ -1,11 +1,8 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, Lock, ShieldAlert, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
-import { decodeAppError } from "@/lib/app-error";
-import { copyLinkedIntoLibrary } from "@/lib/tauri";
-import { notifyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { copyIntoLibrary, useCopyIntoLibraryStore } from "@/store/copy-into-library";
 import { useFilesStore } from "@/store/files";
 import { folderIsReadOnly, folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
@@ -80,24 +77,14 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
 function ReadOnlyBanner({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["shell"]);
   const readOnly = useFolderAccessStore((state) => folderIsReadOnly(state, projectId));
-  const [copying, setCopying] = useState(false);
+  const projectName = useFilesStore((state) => state.projectName);
+  const copying = useCopyIntoLibraryStore(
+    (state) => state.status === "running" || state.status === "cancelling",
+  );
   if (!readOnly) return null;
-  const copy = async () => {
+  const copy = () => {
     if (copying) return;
-    setCopying(true);
-    try {
-      const copied = await copyLinkedIntoLibrary(projectId);
-      await useFilesStore.getState().openProject(copied);
-      toast.success(t(($) => $.shell.openedFolder.readOnly.copied));
-    } catch (error) {
-      notifyError(
-        "copy folder into library",
-        error,
-        decodeAppError(error) ? undefined : t(($) => $.shell.openedFolder.readOnly.copyFailed),
-      );
-    } finally {
-      setCopying(false);
-    }
+    void copyIntoLibrary(projectId, projectName ?? "", { openAfterCopy: true });
   };
   return (
     <div
@@ -110,7 +97,7 @@ function ReadOnlyBanner({ projectId }: Readonly<{ projectId: string }>) {
         type="button"
         className={READ_ONLY_BUTTON}
         disabled={copying}
-        onClick={() => void copy()}
+        onClick={copy}
       >
         {copying ? (
           <Loader2 aria-hidden className="size-3 animate-spin motion-reduce:animate-none" />

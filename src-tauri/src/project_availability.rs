@@ -132,6 +132,7 @@ fn session_availability(
     use crate::project_location::LocateError;
     match result {
         Ok(_) => Some(ProjectAvailability::Ok),
+        Err(LocateError::Unavailable { offline: true, .. }) => Some(ProjectAvailability::Offline),
         Err(LocateError::Unavailable { .. }) => Some(ProjectAvailability::Missing),
         Err(LocateError::Replaced { .. }) => Some(ProjectAvailability::Replaced),
         Err(LocateError::PermissionDenied { .. }) => Some(ProjectAvailability::PermissionDenied),
@@ -199,6 +200,7 @@ fn availability_of(
     use crate::project_location::LocateError;
     match result {
         Ok(_) => ProjectAvailability::Ok,
+        Err(LocateError::Unavailable { offline: true, .. }) => ProjectAvailability::Offline,
         Err(
             LocateError::Unavailable { .. } | LocateError::NotFound(_) | LocateError::Invalid(_),
         ) => ProjectAvailability::Missing,
@@ -420,6 +422,69 @@ mod tests {
             ]
         );
         assert!(probe_blocking(vec!["../x".into()], Duration::from_secs(1)).is_err());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn slow_folders_each_get_the_budget_instead_of_adding_up() {
+        let slow: Probe = Arc::new(|_| {
+            std::thread::sleep(Duration::from_millis(900));
+            ProjectAvailability::Ok
+        });
+        let ids: Vec<String> = (0..8)
+            .map(|index| format!("linked-{:032x}", 0x5100 + index))
+            .collect();
+        let started = Instant::now();
+
+        let reports = probe_all(ids.clone(), Duration::from_millis(150), slow);
+
+        assert!(started.elapsed() < Duration::from_millis(700));
+        assert_eq!(
+            reports
+                .iter()
+                .map(|report| (report.project_id.clone(), report.availability))
+                .collect::<Vec<_>>(),
+            ids.into_iter()
+                .map(|id| (id, ProjectAvailability::Offline))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn listing_folder_projects_never_looks_at_the_folders() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        crate::paths::projects_root().unwrap();
+        let mut ids = Vec::new();
+        for name in ["thesis", "slides", "notes"] {
+            let folder = directory.path().join(name);
+            std::fs::create_dir(&folder).unwrap();
+            std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+            ids.push(crate::linked_registry::register_folder_for_test(&folder).id);
+        }
+        let before = crate::project_location::folder_checks_on_this_thread();
+
+        let listed = crate::project::list_projects_blocking().unwrap();
+
+        assert_eq!(
+            crate::project_location::folder_checks_on_this_thread(),
+            before
+        );
+        for id in &ids {
+            let entry = listed.iter().find(|project| &project.id == id).unwrap();
+            assert_eq!(
+                serde_json::to_value(&entry.location).unwrap()["availability"],
+                "unknown"
+            );
+        }
+        crate::project_location::locate(&ids[0]).unwrap();
+        assert_eq!(
+            crate::project_location::folder_checks_on_this_thread(),
+            before + 1
+        );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

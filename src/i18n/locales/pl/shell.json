@@ -513,8 +513,7 @@
     "readOnly": {
       "banner": "Ten folder jest tylko do odczytu. Możesz kompilować, ale nie da się zapisać zmian.",
       "copy": "Kopiuj do biblioteki",
-      "copied": "Oleafly skopiował ten folder do Twojej biblioteki. Edytujesz teraz kopię.",
-      "copyFailed": "Nie udało się skopiować tego folderu do biblioteki."
+      "copied": "Oleafly skopiował ten folder do Twojej biblioteki. Edytujesz teraz kopię."
     },
     "sync": {
       "syncsWith": "Synchronizacja z usługą {{service}}",

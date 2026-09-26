@@ -26,7 +26,13 @@
     "import_no_main": "Cette importation ne contient aucun document LaTeX, Typst ou Markdown à compiler.",
     "settings_file_exists": "Ce dossier contient déjà un fichier project.json, Oleafly l'a donc laissé tel quel.",
     "settings_need_main": "Choisissez d'abord un document principal, puis enregistrez les paramètres du projet dans ce dossier.",
-    "settings_write_failed": "Oleafly n'a pas pu enregistrer les paramètres du projet dans ce dossier."
+    "settings_write_failed": "Oleafly n'a pas pu enregistrer les paramètres du projet dans ce dossier.",
+    "copy_entry_limit": "Ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_entry_limit_git": "Avec son historique Git, ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_size_limit": "Ce dossier dépasse 2 Go. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_cancelled": "La copie a été annulée.",
+    "copy_needs_folder": "Seuls les dossiers ouverts sur place peuvent être copiés dans la bibliothèque.",
+    "not_removable": "Seuls les dossiers ouverts sur place peuvent être retirés d'Oleafly."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

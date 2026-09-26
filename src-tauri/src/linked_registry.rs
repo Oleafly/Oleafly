@@ -635,6 +635,68 @@ pub(crate) fn rebind(
 }
 
 pub(crate) use management::{current_records, get, transaction, NewLink, Transaction};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Retirement {
+    Retired,
+    Kept,
+}
+
+const RETIRED_PREFIX: &str = ".retired-";
+
+fn retired_directory(linked_root: &Path, project_id: &str) -> PathBuf {
+    linked_root.join(format!("{RETIRED_PREFIX}{project_id}"))
+}
+
+fn remove_entry(path: &Path) -> Result<(), String> {
+    match std::fs::symlink_metadata(path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not inspect a removed folder entry: {error}")),
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            std::fs::remove_dir_all(path)
+                .map_err(|error| format!("could not delete a removed folder entry: {error}"))
+        }
+        Ok(_) => std::fs::remove_file(path)
+            .map_err(|error| format!("could not delete a removed folder entry: {error}")),
+    }
+}
+
+pub(crate) fn retire_removed(project_id: &str, removed_at: u64) -> Result<Retirement, String> {
+    if !is_linked_id(project_id) {
+        return Err(format!("project does not exist: {project_id}"));
+    }
+    let _lock = lock_registry_writes()?;
+    let Some(linked_root) = crate::paths::existing_linked_root()? else {
+        return Ok(Retirement::Retired);
+    };
+    let directory = linked_root.join(project_id);
+    if !entry_directory_exists(&directory)? {
+        return Ok(Retirement::Retired);
+    }
+    if let Some(record) = read_record(&directory, project_id)? {
+        if record.removed_at != Some(removed_at) {
+            return Ok(Retirement::Kept);
+        }
+    }
+    let retired = retired_directory(&linked_root, project_id);
+    remove_entry(&retired)?;
+    std::fs::rename(&directory, &retired)
+        .map_err(|error| format!("could not retire a removed folder entry: {error}"))?;
+    let data_root = crate::paths::oleafly_root()?;
+    store_entry(&data_root, &linked_root, project_id, None);
+    Ok(Retirement::Retired)
+}
+
+pub(crate) fn discard_retired(project_id: &str) -> Result<(), String> {
+    if !is_linked_id(project_id) {
+        return Err(format!("project does not exist: {project_id}"));
+    }
+    let Some(linked_root) = crate::paths::existing_linked_root()? else {
+        return Ok(());
+    };
+    remove_entry(&retired_directory(&linked_root, project_id))
+}
+
 #[cfg(test)]
 pub(crate) use management::{
     folder_snapshot_for_test, register, register_folder_for_test, Registration,

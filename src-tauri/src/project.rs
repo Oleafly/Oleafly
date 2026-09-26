@@ -595,6 +595,7 @@ pub struct ProjectInfo {
     /// Checkpoint restore must be recovered before project metadata is read.
     pub recovery_pending: bool,
     pub location: crate::project_availability::ProjectLocationInfo,
+    pub last_opened_at: f64,
 }
 
 pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
@@ -645,8 +646,12 @@ fn read_routed_meta(project_id: &str, route: &Route) -> Result<ProjectMeta, Stri
     if let Route::Split { location, folder } = route {
         merge_folder_fields(location, &mut meta, folder);
     }
-    if location.kind == ProjectKind::Linked && meta.name.trim().is_empty() {
-        meta.name = folder_name(location).unwrap_or_else(|| project_id.to_string());
+    if location.kind == ProjectKind::Linked {
+        if let Some(name) = linked_display_name_override(project_id) {
+            meta.name = name;
+        } else if meta.name.trim().is_empty() {
+            meta.name = folder_name(location).unwrap_or_else(|| project_id.to_string());
+        }
     }
     meta.allow_shell_escape =
         meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
@@ -973,7 +978,7 @@ fn write_meta_value_at(path: &Path, disk_meta: &serde_json::Value) -> Result<(),
     atomic_write(path, s.as_bytes()).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
-fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
+pub(crate) fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
     write_meta_value_at(path, &project_meta_disk_value(meta)?)
 }
 
@@ -3154,6 +3159,11 @@ pub async fn set_main_doc(
     Ok(meta)
 }
 
+#[cfg(test)]
+pub(crate) fn set_main_doc_for_test(project_id: &str, main_doc: &str) {
+    set_main_doc_unlocked(project_id.to_string(), main_doc.to_string()).unwrap();
+}
+
 fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<ProjectMeta, String> {
     with_project_metadata(&project_id, || {
         let main_doc = main_doc.trim().to_string();
@@ -3657,6 +3667,9 @@ pub async fn rename_project(project_id: String, name: String) -> Result<ProjectM
 }
 
 fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMeta, String> {
+    if crate::project_location::kind_of(&project_id)? == ProjectKind::Linked {
+        return rename_linked_project(&project_id, name.trim());
+    }
     with_project_metadata(&project_id, || {
         let trimmed = name.trim();
         if trimmed.is_empty() {
@@ -3667,6 +3680,27 @@ fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMe
         write_meta(&project_id, &meta)?;
         Ok(meta)
     })
+}
+
+fn rename_linked_project(project_id: &str, name: &str) -> Result<ProjectMeta, String> {
+    if name.is_empty() {
+        return Err(crate::app_error::AppError::new("project.name_empty").into());
+    }
+    crate::linked_registry::update(project_id, |record| {
+        record.display_name = Some(name.to_string());
+        Ok(())
+    })?;
+    read_meta(project_id)
+}
+
+fn linked_display_name_override(project_id: &str) -> Option<String> {
+    match crate::linked_registry::cached_membership(project_id) {
+        Ok(crate::linked_registry::Membership::Active(member)) => member
+            .record
+            .display_name
+            .filter(|name| !name.trim().is_empty()),
+        _ => None,
+    }
 }
 
 #[tauri::command]
@@ -3772,7 +3806,9 @@ async fn open_project<R: tauri::Runtime>(
         let read_project_id = project_id.clone();
         let project = tauri::async_runtime::spawn_blocking(move || {
             let _ = refresh_linked_mirror(&read_project_id);
-            read_meta(&read_project_id)
+            let project = read_meta(&read_project_id)?;
+            crate::project_recents::record_project_opened_now(&read_project_id);
+            Ok::<ProjectMeta, String>(project)
         })
         .await
         .map_err(|error| format!("project open task failed: {error}"))??;
@@ -3791,6 +3827,11 @@ async fn open_project<R: tauri::Runtime>(
     })
     .await
     .map_err(|error| format!("project recovery task failed: {error}"))??;
+    let recorded = project_id.clone();
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        crate::project_recents::record_project_opened_now(&recorded)
+    })
+    .await;
     if recovered {
         let _ = publish_project_state_changed(
             app,
@@ -3895,6 +3936,7 @@ fn recovery_pending_project_info(
         forked_from: None,
         recovery_pending: true,
         location,
+        last_opened_at: 0.0,
         id: project_id,
     }
 }
@@ -4046,6 +4088,7 @@ fn linked_project_info(
         forked_from: None,
         recovery_pending: false,
         location,
+        last_opened_at: record.last_opened_at as f64 / 1000.0,
     })
 }
 
@@ -4078,6 +4121,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
     let root = paths::projects_root()?;
     let linked = linked_listing_entries();
     let linked_ids = claimed_by_linked_registry(&linked);
+    let opened = crate::project_recents::library_opened_at();
     let mut out = Vec::new();
     let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
     for entry in entries.flatten() {
@@ -4161,6 +4205,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             forked_from: meta.forked_from,
             recovery_pending: false,
             location: crate::project_availability::ProjectLocationInfo::Library,
+            last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
             id,
             updated_at,
         });
@@ -4838,6 +4883,20 @@ fn normalize_relative(path: &Path) -> Option<String> {
         }
     }
     Some(parts.join("/"))
+}
+
+pub(crate) fn create_library_project_with<F>(initialize: F) -> Result<String, String>
+where
+    F: FnOnce(&str, &Path) -> Result<(), String>,
+{
+    let root = paths::projects_root()?;
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let staging = create_unique_temporary_directory(&root, ".oleafly-folder-copy")?;
+    if let Err(error) = initialize(reservation.project_id(), &staging) {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    reservation.publish_staged(&staging)
 }
 
 fn create_project_transaction<F>(
@@ -7402,6 +7461,71 @@ mod tests {
     }
 
     #[test]
+    fn renaming_a_folder_project_sets_a_name_for_this_device_and_leaves_the_folder_alone() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        oleafly_core::Workspace::init(
+            &folder,
+            oleafly_core::InitOptions {
+                name: Some("Thesis".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let (plain_id, plain) = fixture.link("notes");
+        std::fs::write(plain.join("notes.md"), "# Notes").unwrap();
+        let manifest = std::fs::read_to_string(folder.join("project.json")).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+        let plain_before = crate::linked_registry::folder_snapshot_for_test(&plain);
+
+        let renamed =
+            super::rename_project_blocking(project_id.clone(), "  My thesis  ".into()).unwrap();
+        super::rename_project_blocking(plain_id.clone(), "Reading notes".into()).unwrap();
+
+        assert_eq!(renamed.name, "My thesis");
+        assert_eq!(read_meta(&project_id).unwrap().name, "My thesis");
+        assert_eq!(read_meta(&plain_id).unwrap().name, "Reading notes");
+        assert_eq!(
+            crate::linked_registry::get(&project_id)
+                .unwrap()
+                .unwrap()
+                .display_name
+                .as_deref(),
+            Some("My thesis")
+        );
+        let listed = super::list_projects_blocking().unwrap();
+        let name_of = |id: &str| {
+            listed
+                .iter()
+                .find(|project| project.id == id)
+                .unwrap()
+                .name
+                .clone()
+        };
+        assert_eq!(name_of(&project_id), "My thesis");
+        assert_eq!(name_of(&plain_id), "Reading notes");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&plain),
+            plain_before
+        );
+        assert!(
+            super::rename_project_blocking(project_id.clone(), "   ".into())
+                .err()
+                .unwrap()
+                .contains("project.name_empty")
+        );
+        assert_eq!(read_meta(&project_id).unwrap().name, "My thesis");
+    }
+
+    #[test]
     fn explicit_changes_to_shared_settings_rewrite_only_those_values_in_the_folder_manifest() {
         let fixture = crate::trust::testing::LinkedFixture::new();
         let (project_id, folder) = fixture.link("thesis");
@@ -7424,10 +7548,7 @@ mod tests {
         );
         super::rename_project_blocking(project_id.clone(), "Thesis draft".into()).unwrap();
         let renamed = std::fs::read_to_string(folder.join("project.json")).unwrap();
-        assert_eq!(
-            renamed,
-            after.replace("\"name\": \"Thesis\"", "\"name\": \"Thesis draft\"")
-        );
+        assert_eq!(renamed, after);
 
         let modified = std::fs::metadata(folder.join("project.json"))
             .unwrap()
@@ -8712,6 +8833,75 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn opening_records_when_each_kind_of_project_was_last_opened_without_touching_it() {
+        use tauri::Manager as _;
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("last-opened");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        write_git_auto_init(false);
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let handle = app.handle().clone();
+        let state = app.state::<crate::state::AppState>();
+        let library = super::create_project("Paper".into()).unwrap();
+        let folder = test_dir("last-opened-folder");
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let never = super::create_project("Never opened".into()).unwrap();
+        let library_dir = crate::paths::project_dir(&library).unwrap();
+        let library_before = crate::linked_registry::folder_snapshot_for_test(&library_dir);
+        let folder_before = crate::linked_registry::folder_snapshot_for_test(&folder);
+        let listed_at = |project_id: &str| {
+            super::list_projects_blocking()
+                .unwrap()
+                .into_iter()
+                .find(|project| project.id == project_id)
+                .unwrap()
+                .last_opened_at
+        };
+        assert_eq!(listed_at(&library), 0.0);
+
+        let started = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+        for project_id in [&library, &linked.id] {
+            tauri::async_runtime::block_on(super::open_project(
+                &handle,
+                &state,
+                project_id.clone(),
+            ))
+            .unwrap();
+        }
+
+        assert!(listed_at(&library) >= started.floor());
+        assert!(listed_at(&linked.id) >= started.floor());
+        assert_eq!(listed_at(&never), 0.0);
+        assert_eq!(
+            crate::linked_registry::get(&linked.id)
+                .unwrap()
+                .unwrap()
+                .last_opened_at as f64
+                / 1000.0,
+            listed_at(&linked.id)
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&library_dir),
+            library_before
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            folder_before
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(folder).unwrap();
     }
 
     #[test]
