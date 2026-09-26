@@ -96,7 +96,7 @@ const TYPST_TOKEN_PATTERNS: readonly (readonly [RegExp, string])[] = [
   ],
   [
     new RegExp(
-      `^\\d+(?:\\.\\d+)?(?:pt|mm|cm|in|em|fr|%|deg)?${TYPST_NUMBER_END_PATTERN}`,
+      String.raw`^\d+(?:\.\d+)?(?:pt|mm|cm|in|em|fr|%|deg)?${TYPST_NUMBER_END_PATTERN}`,
       "u",
     ),
     "number",

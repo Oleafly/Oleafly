@@ -246,7 +246,7 @@ class ProofreadingWorkerClient {
   }
 
   private abandonSuggestions(): void {
-    for (const requestId of [...this.pendingSuggestions.keys()]) {
+    for (const requestId of Array.from(this.pendingSuggestions.keys())) {
       this.settleSuggestions(requestId, []);
     }
   }
@@ -436,7 +436,7 @@ class ProofreadingWorkerClient {
 
   forgetDictionary(locale: string): boolean {
     const safeLocale = normalizeDictionaryLocale(locale);
-    for (const key of [...this.suggestions.keys()]) {
+    for (const key of Array.from(this.suggestions.keys())) {
       if (key.startsWith(`${safeLocale}\0`)) this.suggestions.delete(key);
     }
     if (
@@ -455,7 +455,7 @@ class ProofreadingWorkerClient {
       "worker_restarted",
       true,
     );
-    for (const pending of [...this.pending.values()]) {
+    for (const pending of Array.from(this.pending.values())) {
       this.rejectRequest(pending.request.requestId, restartError);
       useProofreadingStore
         .getState()

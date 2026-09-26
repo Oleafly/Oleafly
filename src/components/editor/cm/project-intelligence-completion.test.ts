@@ -563,7 +563,7 @@ describe("project completion for keys with combining marks", () => {
   });
 
   it("matches a decomposed query against a composed key", () => {
-    const doc = "= Intro\nsee @kap:ú";
+    const doc = "= Intro\nsee @kap:u\u0301";
     const result = complete({ "main.typ": doc, "refs.bib": bibliography }, "main.typ");
     expect(result?.options.map((candidate) => candidate.label)).toEqual([
       "kap:úvod",
@@ -572,7 +572,7 @@ describe("project completion for keys with combining marks", () => {
   });
 
   it("offers a decomposed file name for a composed path prefix", () => {
-    const chapter = "kapitoly/úvod.tex";
+    const chapter = "kapitoly/u\u0301vod.tex";
     const doc = "\\documentclass{article}\\begin{document}\\input{kapitoly/úv";
     const result = complete({ "main.tex": doc, [chapter]: "Text" }, "main.tex");
     expect(result?.options.map((candidate) => candidate.label)).toContain(chapter);

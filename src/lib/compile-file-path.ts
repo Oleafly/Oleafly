@@ -15,38 +15,55 @@ function lookupVariants(path: string): string[] {
   return /\.[^./]+$/.test(basename(path)) ? [path] : [path, `${path}.tex`];
 }
 
+type KnownPath = readonly [candidate: string, name: string];
+
+function exactMatch(known: readonly KnownPath[], variants: string[]): string | undefined {
+  for (const variant of variants) {
+    const exact = known.find(([, name]) => name === variant);
+    if (exact) return exact[0];
+  }
+  return undefined;
+}
+
+function containingMatch(known: readonly KnownPath[], variants: string[]): string | undefined {
+  for (const variant of variants) {
+    const containing = known
+      .filter(([, name]) => variant.endsWith(`/${name}`))
+      .sort((a, b) => b[1].length - a[1].length);
+    if (containing.length > 0) return containing[0][0];
+  }
+  return undefined;
+}
+
+function uniqueMatch(
+  known: readonly KnownPath[],
+  variants: string[],
+  matches: (name: string, variant: string) => boolean,
+): string | null | undefined {
+  for (const variant of variants) {
+    const found = known.filter(([, name]) => matches(name, variant));
+    if (found.length === 1) return found[0][0];
+    if (found.length > 1) return null;
+  }
+  return undefined;
+}
+
 export function compilePathResolver(
   candidates: readonly string[],
 ): (path: string) => string | null {
   const known = [...new Set(candidates)].map(
-    (candidate) => [candidate, normalizeCompilePath(candidate)] as const,
+    (candidate): KnownPath => [candidate, normalizeCompilePath(candidate)],
   );
   return (path) => {
     const wanted = normalizeCompilePath(path);
     if (!wanted) return null;
     const variants = lookupVariants(wanted);
-    for (const variant of variants) {
-      const exact = known.find(([, name]) => name === variant);
-      if (exact) return exact[0];
-    }
-    for (const variant of variants) {
-      const containing = known
-        .filter(([, name]) => variant.endsWith(`/${name}`))
-        .sort((a, b) => b[1].length - a[1].length);
-      if (containing.length > 0) return containing[0][0];
-    }
-    for (const variant of variants) {
-      const nested = known.filter(([, name]) => name.endsWith(`/${variant}`));
-      if (nested.length === 1) return nested[0][0];
-      if (nested.length > 1) return null;
-    }
+    const direct = exactMatch(known, variants) ?? containingMatch(known, variants);
+    if (direct !== undefined) return direct;
+    const nested = uniqueMatch(known, variants, (name, variant) => name.endsWith(`/${variant}`));
+    if (nested !== undefined) return nested;
     if (wanted.includes("/")) return null;
-    for (const variant of variants) {
-      const named = known.filter(([, name]) => basename(name) === variant);
-      if (named.length === 1) return named[0][0];
-      if (named.length > 1) return null;
-    }
-    return null;
+    return uniqueMatch(known, variants, (name, variant) => basename(name) === variant) ?? null;
   };
 }
 

@@ -1,21 +1,39 @@
 import { Node } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
 
-const PANDOC_TEXT =
-  /\[\^[^\]\s[]+\]|\[(?:[^[\]\n]*?[\s;])?-?@[\p{L}\p{N}_][^[\]\n]*\]|(?<![\p{L}\p{N}_.@\\])@[\p{L}\p{N}_](?:[\p{L}\p{N}_]|[:.#$%&+?~/-](?=[\p{L}\p{N}_]))*/gu;
+const FOOTNOTE_REFERENCE = /\[\^[^\]\s[]+\]/uy;
+const BRACKETED_CITATION = /\[(?:[^[\]\n]*?[\s;])?-?@[\p{L}\p{N}_][^[\]\n]*\]/uy;
+const BARE_CITATION =
+  /(?<![\p{L}\p{N}_.@\\])@[\p{L}\p{N}_](?:[\p{L}\p{N}_]|[:.#$%&+?~/-](?=[\p{L}\p{N}_]))*/uy;
+const PANDOC_PATTERNS = [FOOTNOTE_REFERENCE, BRACKETED_CITATION, BARE_CITATION];
 
 export function escapeMarkdownHtml(text: string): string {
   return text.replace(/<(?=[A-Za-z/!?])/gu, "&lt;");
 }
 
+function pandocMatchLength(text: string, index: number): number {
+  if (text[index] !== "[" && text[index] !== "@") return 0;
+  for (const pattern of PANDOC_PATTERNS) {
+    pattern.lastIndex = index;
+    const match = pattern.exec(text);
+    if (match) return match[0].length;
+  }
+  return 0;
+}
+
 export function pandocTextRanges(text: string): { from: number; to: number }[] {
   const ranges: { from: number; to: number }[] = [];
-  for (const match of text.matchAll(PANDOC_TEXT)) {
-    const from = match.index;
-    const to = from + match[0].length;
+  let from = 0;
+  while (from < text.length) {
+    const length = pandocMatchLength(text, from);
+    if (length === 0) {
+      from++;
+      continue;
+    }
+    const to = from + length;
     const next = text[to];
-    if (match[0].startsWith("[") && (next === "(" || next === "[")) continue;
-    ranges.push({ from, to });
+    if (text[from] !== "[" || (next !== "(" && next !== "[")) ranges.push({ from, to });
+    from = to;
   }
   return ranges;
 }

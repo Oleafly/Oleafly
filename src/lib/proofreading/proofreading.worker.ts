@@ -147,10 +147,10 @@ function cancelLanes(surface: unknown, path: unknown) {
     const [laneSurface, , lanePath] = requestLane.split("\0");
     return laneSurface === surface && (path === undefined || lanePath === path);
   };
-  for (const requestLane of [...queuedRequests.keys()]) {
+  for (const requestLane of Array.from(queuedRequests.keys())) {
     if (matches(requestLane)) queuedRequests.delete(requestLane);
   }
-  for (const requestLane of [...latestGeneration.keys()]) {
+  for (const requestLane of Array.from(latestGeneration.keys())) {
     if (matches(requestLane)) latestGeneration.delete(requestLane);
   }
 }
@@ -863,63 +863,110 @@ function spellableToken(word: string, ignored: ReadonlySet<string>): boolean {
   );
 }
 
+interface SpellingSession {
+  loaded: Promise<Hunspell>;
+  spellchecker: Hunspell;
+  correctness: Map<string, boolean>;
+}
+
+function sessionSpelledCorrectly(
+  session: SpellingSession,
+  word: string,
+): boolean {
+  let correct = session.correctness.get(word);
+  if (correct === undefined) {
+    correct = spelledCorrectly(session.spellchecker, word);
+    session.correctness.set(word, correct);
+  }
+  return correct;
+}
+
+function misspelledRange(
+  range: SpellingWord,
+  ignored: ReadonlySet<string>,
+  session: SpellingSession,
+): boolean {
+  if (!spellableToken(range.word, ignored)) return false;
+  if (
+    range.compound &&
+    range.compound.word.length <= PROOFREADING_LIMITS.wordCharacters &&
+    sessionSpelledCorrectly(session, range.compound.word)
+  ) {
+    return false;
+  }
+  return !sessionSpelledCorrectly(session, range.word);
+}
+
+function throwIfSuperseded(request: ProofreadingRequest): void {
+  if (!identityIsLatest(request.identity)) {
+    throw new ProofreadingCancelledError();
+  }
+}
+
+function suggestionsWithinBudget(
+  session: SpellingSession,
+  locale: string,
+  word: string,
+  deadline: number,
+): ProofreadingSuggestion[] | undefined {
+  const suggestions = cachedSuggestions(locale, word);
+  if (!suggestions && performance.now() < deadline) {
+    return suggestionsFor(session.spellchecker, locale, word);
+  }
+  return suggestions;
+}
+
+function spellingDiagnostic(
+  range: SpellingWord,
+  suggestions: ProofreadingSuggestion[] | undefined,
+): ProofreadingDiagnostic {
+  return {
+    from: range.from,
+    to: range.to,
+    message: `Possible misspelling: “${range.word}”`,
+    kind: "Spelling",
+    source: "hunspell",
+    word: range.word,
+    suggestions: suggestions ?? [],
+    ...(suggestions ? {} : { suggestionsDeferred: true }),
+    rule: null,
+  };
+}
+
 async function spellingDiagnostics(
   request: ProofreadingRequest,
   ignored: ReadonlySet<string>,
 ): Promise<ProofreadingDiagnostic[]> {
   const locale = activeDictionaryLocaleFor(request);
   const safeLocale = normalizeDictionaryLocaleId(locale);
-  let loaded = spellcheckerFor(safeLocale);
-  let spellchecker = await loaded;
-  const diagnostics: ProofreadingDiagnostic[] = [];
-  const correctness = new Map<string, boolean>();
-  const isCorrect = (word: string) => {
-    let correct = correctness.get(word);
-    if (correct === undefined) {
-      correct = spelledCorrectly(spellchecker, word);
-      correctness.set(word, correct);
-    }
-    return correct;
+  const loaded = spellcheckerFor(safeLocale);
+  const session: SpellingSession = {
+    loaded,
+    spellchecker: await loaded,
+    correctness: new Map<string, boolean>(),
   };
+  const diagnostics: ProofreadingDiagnostic[] = [];
   const deadline = performance.now() + SUGGESTION_BUDGET_MS;
   let nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
   for (const range of spellingRanges(request)) {
     if (performance.now() >= nextCancellationCheck) {
       await yieldToMessages();
-      if (!identityIsLatest(request.identity)) {
-        throw new ProofreadingCancelledError();
-      }
-      if (spellcheckers.get(safeLocale) !== loaded) {
-        loaded = spellcheckerFor(safeLocale);
-        spellchecker = await loaded;
-        correctness.clear();
+      throwIfSuperseded(request);
+      if (spellcheckers.get(safeLocale) !== session.loaded) {
+        session.loaded = spellcheckerFor(safeLocale);
+        session.spellchecker = await session.loaded;
+        session.correctness.clear();
       }
       nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
     }
-    if (!spellableToken(range.word, ignored)) continue;
-    if (
-      range.compound &&
-      range.compound.word.length <= PROOFREADING_LIMITS.wordCharacters &&
-      isCorrect(range.compound.word)
-    ) {
-      continue;
-    }
-    if (isCorrect(range.word)) continue;
-    let suggestions = cachedSuggestions(locale, range.word);
-    if (!suggestions && performance.now() < deadline) {
-      suggestions = suggestionsFor(spellchecker, locale, range.word);
-    }
-    diagnostics.push({
-      from: range.from,
-      to: range.to,
-      message: `Possible misspelling: “${range.word}”`,
-      kind: "Spelling",
-      source: "hunspell",
-      word: range.word,
-      suggestions: suggestions ?? [],
-      ...(suggestions ? {} : { suggestionsDeferred: true }),
-      rule: null,
-    });
+    if (!misspelledRange(range, ignored, session)) continue;
+    const suggestions = suggestionsWithinBudget(
+      session,
+      locale,
+      range.word,
+      deadline,
+    );
+    diagnostics.push(spellingDiagnostic(range, suggestions));
   }
   return diagnostics;
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
-import type { ProofreadingSurface } from "@oleafly/editor";
+import type { ProofreadingDiagnostic, ProofreadingSurface } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import {
@@ -31,7 +31,11 @@ import { notifyError } from "@/lib/toast";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
-import { useProofreadingStore } from "@/store/proofreading";
+import {
+  useProofreadingStore,
+  type ProofreadingPhase,
+  type ProofreadingSurfaceState,
+} from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import {
   useLanguageServiceRuntimeUnavailable,
@@ -113,6 +117,104 @@ function ProofreadingNote({ children }: Readonly<{ children: React.ReactNode }>)
   );
 }
 
+function ProofreadingUnavailable({
+  phase,
+  grammarEnglishOnly,
+  missingNote,
+}: Readonly<{
+  phase: ProofreadingPhase;
+  grammarEnglishOnly: boolean;
+  missingNote: React.ReactNode;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const unavailableReason = () => {
+    if (phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
+    if (phase === "unsupported") {
+      return grammarEnglishOnly
+        ? t(($) => $.editor.projectInfo.grammarEnglishOnly)
+        : t(($) => $.editor.proofreading.unsupported);
+    }
+    if (phase === "error") return t(($) => $.editor.proofreading.error);
+    return t(($) => $.editor.proofreading.unavailable);
+  };
+  return (
+    <>
+      <StatRow
+        label={t(($) => $.editor.projectInfo.proofreading)}
+        value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
+      />
+      {phase === "unavailable" && missingNote ? (
+        missingNote
+      ) : (
+        <ProofreadingNote>{unavailableReason()}</ProofreadingNote>
+      )}
+    </>
+  );
+}
+
+function countDiagnostics(diagnostics: readonly ProofreadingDiagnostic[]) {
+  let spelling = 0;
+  let style = 0;
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.source === "hunspell") spelling++;
+    else style++;
+  }
+  return { spelling, style };
+}
+
+function ProofreadingFindings({
+  status,
+  spellcheck,
+  grammar,
+  grammarEnglishOnly,
+  dictionaryMissing,
+  missingNote,
+  grammarNote,
+}: Readonly<{
+  status: ProofreadingSurfaceState;
+  spellcheck: boolean;
+  grammar: boolean;
+  grammarEnglishOnly: boolean;
+  dictionaryMissing: boolean;
+  missingNote: React.ReactNode;
+  grammarNote: React.ReactNode;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const { spelling, style } = countDiagnostics(status.diagnostics);
+
+  const notChecked = t(($) => $.editor.projectInfo.notChecked);
+  const spellingSkipped =
+    dictionaryMissing ||
+    (status.phase === "partial" && !status.activeDictionaryLocale);
+
+  return (
+    <>
+      <StatRow label={t(($) => $.editor.projectInfo.issues)} value={status.diagnosticCount} />
+      {spellcheck ? (
+        <StatRow
+          indent
+          label={t(($) => $.editor.projectInfo.spelling)}
+          value={spellingSkipped ? notChecked : spelling}
+        />
+      ) : null}
+      {grammar ? (
+        <StatRow
+          indent
+          label={t(($) => $.editor.projectInfo.grammarAndStyle)}
+          value={grammarEnglishOnly ? notChecked : style}
+        />
+      ) : null}
+      {status.truncated ? (
+        <ProofreadingNote>
+          {t(($) => $.editor.projectInfo.findingsTruncated)}
+        </ProofreadingNote>
+      ) : null}
+      {missingNote}
+      {grammarNote}
+    </>
+  );
+}
+
 function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
@@ -157,68 +259,25 @@ function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurfac
     );
   }
   if (status.phase !== "ready" && status.phase !== "partial") {
-    const unavailableReason = () => {
-      if (status.phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
-      if (status.phase === "unsupported") {
-        return grammarEnglishOnly
-          ? t(($) => $.editor.projectInfo.grammarEnglishOnly)
-          : t(($) => $.editor.proofreading.unsupported);
-      }
-      if (status.phase === "error") return t(($) => $.editor.proofreading.error);
-      return t(($) => $.editor.proofreading.unavailable);
-    };
     return (
-      <>
-        <StatRow
-          label={t(($) => $.editor.projectInfo.proofreading)}
-          value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
-        />
-        {status.phase === "unavailable" && missingNote ? (
-          missingNote
-        ) : (
-          <ProofreadingNote>{unavailableReason()}</ProofreadingNote>
-        )}
-      </>
+      <ProofreadingUnavailable
+        phase={status.phase}
+        grammarEnglishOnly={grammarEnglishOnly}
+        missingNote={missingNote}
+      />
     );
   }
 
-  let spelling = 0;
-  let style = 0;
-  for (const diagnostic of status.diagnostics) {
-    if (diagnostic.source === "hunspell") spelling++;
-    else style++;
-  }
-
-  const notChecked = t(($) => $.editor.projectInfo.notChecked);
-  const spellingSkipped =
-    Boolean(missingEntry) ||
-    (status.phase === "partial" && !status.activeDictionaryLocale);
-
   return (
-    <>
-      <StatRow label={t(($) => $.editor.projectInfo.issues)} value={status.diagnosticCount} />
-      {spellcheck ? (
-        <StatRow
-          indent
-          label={t(($) => $.editor.projectInfo.spelling)}
-          value={spellingSkipped ? notChecked : spelling}
-        />
-      ) : null}
-      {grammar ? (
-        <StatRow
-          indent
-          label={t(($) => $.editor.projectInfo.grammarAndStyle)}
-          value={grammarEnglishOnly ? notChecked : style}
-        />
-      ) : null}
-      {status.truncated ? (
-        <ProofreadingNote>
-          {t(($) => $.editor.projectInfo.findingsTruncated)}
-        </ProofreadingNote>
-      ) : null}
-      {missingNote}
-      {grammarNote}
-    </>
+    <ProofreadingFindings
+      status={status}
+      spellcheck={spellcheck}
+      grammar={grammar}
+      grammarEnglishOnly={grammarEnglishOnly}
+      dictionaryMissing={Boolean(missingEntry)}
+      missingNote={missingNote}
+      grammarNote={grammarNote}
+    />
   );
 }
 

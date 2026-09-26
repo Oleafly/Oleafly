@@ -34,15 +34,15 @@ describe("PDF click words across scripts", () => {
     ["Hindi clicked inside the word", "यह हिन्दी भाषा है", 5, "हिन्दी"],
     ["Thai with above-base vowels", "สวัสดีครับ", 0, "สวัสดีครับ"],
     ["Hebrew with niqqud", "שָׁלוֹם עולם", 1, "שָׁלוֹם"],
-    ["Persian with a zero-width non-joiner", "می‌خواهم رفتن", 0, "می‌خواهم"],
+    ["Persian with a zero-width non-joiner", "می\u200Cخواهم رفتن", 0, "می\u200Cخواهم"],
     ["a CJK Extension B character", "𠮷野家です", 1, "𠮷野家です"],
-    ["decomposed Latin", "café noir", 2, "café"],
+    ["decomposed Latin", "cafe\u0301 noir", 2, "cafe\u0301"],
     ["an English contraction", "don’t stop", 1, "don"],
   ])("%s", (_label, text, offset, expected) => {
     expect(wordInText(text, offset)).toBe(expected);
   });
 
   it("does not extend a word across a joiner at its edge", () => {
-    expect(wordInText("word‌ next", 1)).toBe("word");
+    expect(wordInText("word\u200C next", 1)).toBe("word");
   });
 });

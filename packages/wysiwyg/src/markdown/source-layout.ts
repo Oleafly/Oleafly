@@ -67,6 +67,21 @@ function afterCodeSpan(text: string, index: number): number {
   return close < 0 ? index + run : close + run;
 }
 
+function footnoteRangeAt(text: string, cursor: number): PreservedInlineRange | null {
+  if (text[cursor] !== "[" || text[cursor + 1] !== "^") return null;
+  const footnote = /^\[\^[^\]\s[]+\]/u.exec(text.slice(cursor, cursor + 256))?.[0];
+  return footnote ? { from: cursor, to: cursor + footnote.length } : null;
+}
+
+function afterUnpreserved(text: string, cursor: number): number {
+  const char = text[cursor];
+  if (char === "`" || char === "~") {
+    const fenceEnd = afterFence(text, cursor);
+    if (fenceEnd !== null) return fenceEnd;
+  }
+  return char === "`" ? afterCodeSpan(text, cursor) : cursor + 1;
+}
+
 export function markdownPreservedRanges(
   text: string,
   from = 0,
@@ -74,34 +89,20 @@ export function markdownPreservedRanges(
   const ranges: PreservedInlineRange[] = [];
   let cursor = from;
   while (cursor < text.length) {
-    const char = text[cursor];
-    if (char === "\\") {
+    if (text[cursor] === "\\") {
       cursor += 2;
       continue;
     }
-    if (char === "<" && text.startsWith("<!--", cursor)) {
+    if (text.startsWith("<!--", cursor)) {
       const end = text.indexOf("-->", cursor + 4);
       if (end < 0) break;
       ranges.push({ from: cursor, to: end + 3 });
       cursor = end + 3;
       continue;
     }
-    if (char === "[" && text[cursor + 1] === "^") {
-      const footnote = /^\[\^[^\]\s[]+\]/u.exec(text.slice(cursor, cursor + 256))?.[0];
-      if (footnote) {
-        ranges.push({ from: cursor, to: cursor + footnote.length });
-        cursor += footnote.length;
-        continue;
-      }
-    }
-    if (char === "`" || char === "~") {
-      const fenceEnd = afterFence(text, cursor);
-      if (fenceEnd !== null) {
-        cursor = fenceEnd;
-        continue;
-      }
-    }
-    cursor = char === "`" ? afterCodeSpan(text, cursor) : cursor + 1;
+    const footnote = footnoteRangeAt(text, cursor);
+    if (footnote) ranges.push(footnote);
+    cursor = footnote ? footnote.to : afterUnpreserved(text, cursor);
   }
   return ranges;
 }
@@ -123,7 +124,11 @@ export function planMarkdownUnits(
   if (/\r(?!\n)/u.test(content)) return null;
   const lines = content === "" ? [] : content.split(/(?<=\n)/u);
   const offsets = [0];
-  for (const line of lines) offsets.push(offsets[offsets.length - 1] + line.length);
+  let offset = 0;
+  for (const line of lines) {
+    offset += line.length;
+    offsets.push(offset);
+  }
 
   const spans: { start: number; end: number }[] = [];
   const pushGap = (from: number, to: number) => {
@@ -158,13 +163,15 @@ export function planMarkdownUnits(
     from: offsets[start],
     to: offsets[end - 1] + withoutLineBreak(lines[end - 1]),
   }));
+  const [firstBound] = bounds;
+  const lastBound = bounds.at(-1) ?? firstBound;
   return {
-    leading: content.slice(0, bounds[0].from),
+    leading: content.slice(0, firstBound.from),
     units: bounds.map(({ from, to }) => content.slice(from, to)),
     separators: bounds
       .slice(1)
       .map((bound, index) => content.slice(bounds[index].to, bound.from)),
-    trailing: content.slice(bounds[bounds.length - 1].to),
+    trailing: content.slice(lastBound.to),
   };
 }
 
@@ -325,22 +332,13 @@ function alignNodes(original: readonly string[], current: readonly string[]): nu
   return match;
 }
 
-export function serializeWithSourceLayout(
-  doc: JSONContent,
-  snapshot: MarkdownSourceSnapshot,
-  serializeNodes: (nodes: JSONContent[]) => string,
-): string {
-  const { layout, keys, unitOfNode, firstNode, preservable } = snapshot;
-  const current = doc.content ?? [];
-  const match = alignNodes(
-    keys,
-    current.map((node) => JSON.stringify(node)),
-  );
+function intactUnits(snapshot: MarkdownSourceSnapshot, match: readonly number[]): boolean[] {
+  const { layout, keys, firstNode, preservable } = snapshot;
   const matchedAt = new Array<number>(keys.length).fill(-1);
   match.forEach((original, index) => {
     if (original >= 0) matchedAt[original] = index;
   });
-  const intact = layout.units.map((unit, index) => {
+  return layout.units.map((unit, index) => {
     if (unit.nodes === 0 || !preservable[index]) return false;
     const first = matchedAt[firstNode[index]];
     if (first < 0) return false;
@@ -349,6 +347,15 @@ export function serializeWithSourceLayout(
     }
     return true;
   });
+}
+
+function planItems(
+  current: readonly JSONContent[],
+  match: readonly number[],
+  snapshot: MarkdownSourceSnapshot,
+): Item[] {
+  const { layout, unitOfNode, firstNode } = snapshot;
+  const intact = intactUnits(snapshot, match);
   const hidden = layout.units.flatMap((unit, index) => (unit.nodes === 0 ? [index] : []));
 
   const items: Item[] = [];
@@ -388,12 +395,41 @@ export function serializeWithSourceLayout(
   }
   closeFresh();
   flushHidden(Number.POSITIVE_INFINITY);
+  return items;
+}
 
-  const eol = [layout.trailing, ...layout.separators, ...layout.units.map((unit) => unit.source)].some(
+function layoutLineEnding(layout: MarkdownSourceLayout): string {
+  return [layout.trailing, ...layout.separators, ...layout.units.map((unit) => unit.source)].some(
     (text) => text.includes("\r\n"),
   )
     ? "\r\n"
     : "\n";
+}
+
+function separatorBetween(
+  layout: MarkdownSourceLayout,
+  previous: number | null,
+  unit: number | null,
+  eol: string,
+): string {
+  return unit !== null && previous !== null && unit === previous + 1
+    ? layout.separators[previous]
+    : eol + eol;
+}
+
+export function serializeWithSourceLayout(
+  doc: JSONContent,
+  snapshot: MarkdownSourceSnapshot,
+  serializeNodes: (nodes: JSONContent[]) => string,
+): string {
+  const { layout, keys } = snapshot;
+  const current = doc.content ?? [];
+  const match = alignNodes(
+    keys,
+    current.map((node) => JSON.stringify(node)),
+  );
+  const items = planItems(current, match, snapshot);
+  const eol = layoutLineEnding(layout);
   let output = "";
   let previous: number | null = null;
   let started = false;
@@ -404,12 +440,7 @@ export function serializeWithSourceLayout(
         : serializeNodes(item.fresh).replace(/\r?\n/gu, eol);
     if (text === "") continue;
     const unit = "unit" in item ? item.unit : null;
-    if (started) {
-      output +=
-        unit !== null && previous !== null && unit === previous + 1
-          ? layout.separators[previous]
-          : eol + eol;
-    }
+    if (started) output += separatorBetween(layout, previous, unit, eol);
     output += text;
     started = true;
     previous = unit;

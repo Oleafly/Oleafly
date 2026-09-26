@@ -178,8 +178,9 @@ const GERMAN_SHORTHANDS = new Map<string, string>([
   ["=", "-"],
   ["~", "-"],
 ]);
-const GERMAN_BABEL =
-  /\\(?:usepackage|documentclass)\s*\[[^\]]*\b(?:n?german|n?austrian|n?swissgerman)\b[^\]]*\]|\\usepackage\s*\{\s*n?german\s*\}/gu;
+const BABEL_OPTION_LIST = /\\(?:usepackage|documentclass)\s*\[([^\]]*)\]/gu;
+const GERMAN_BABEL_OPTION = /\bn?(?:german|austrian|swissgerman)\b/u;
+const GERMAN_BABEL_PACKAGE = /\\usepackage\s*\{\s*n?german\s*\}/gu;
 
 const LATEX_SPECIAL = new Set(["{", "}", "[", "]", "~", "&", "#", "^", "_"]);
 
@@ -360,6 +361,19 @@ function collectLatexRegions(
     return { end: k, spans };
   };
 
+  const endOfHyperrefPrefix = (
+    k: number,
+    spans: MaskSpan[],
+  ): { end: number; spans: MaskSpan[] } => {
+    const start = skipInlineSpace(k);
+    if (chars[start] !== "{" && chars[start] !== "[") {
+      return { end: k, spans };
+    }
+    const end = matchGroup(start);
+    spans.push({ from: start, to: end });
+    return { end, spans };
+  };
+
   const endOfOpaquePrefix = (
     k: number,
     name: string,
@@ -369,15 +383,7 @@ function collectLatexRegions(
       spans.push({ from: k, to: k + 1 });
       k++;
     }
-    if (name === "hyperref") {
-      const start = skipInlineSpace(k);
-      if (chars[start] !== "{" && chars[start] !== "[") {
-        return { end: k, spans };
-      }
-      const end = matchGroup(start);
-      spans.push({ from: start, to: end });
-      return { end, spans };
-    }
+    if (name === "hyperref") return endOfHyperrefPrefix(k, spans);
     const braces = OPAQUE_BRACE_PREFIX_COUNTS.get(name) ?? 1;
     const controlWord = CONTROL_WORD_ARG_CMDS.has(name);
     let consumed = 0;
@@ -663,28 +669,22 @@ function collectLatexRegions(
     return stop;
   };
 
-  let i = 0;
-  while (i < n) {
+  const regionAt = (i: number): number => {
     const c = chars[i];
     const next = chars[i + 1] ?? "";
-
-    if (c === "\n") {
-      i++;
-    } else if (c === "%") {
+    if (c === "%") {
       const stop = endOfLine(i);
       push(i, stop, "block");
-      i = stop;
-    } else if (c === "\\") {
-      i = backslashRegion(i, next);
-    } else if (c === "$") {
-      i = dollarRegion(i, next);
-    } else if (LATEX_SPECIAL.has(c)) {
-      push(i, i + 1, "block");
-      i++;
-    } else {
-      i++;
+      return stop;
     }
-  }
+    if (c === "\\") return backslashRegion(i, next);
+    if (c === "$") return dollarRegion(i, next);
+    if (LATEX_SPECIAL.has(c)) push(i, i + 1, "block");
+    return i + 1;
+  };
+
+  let i = 0;
+  while (i < n) i = regionAt(i);
 
   const maskedPreambleEnd = options.preamble ? preambleEnd : -1;
   if (maskedPreambleEnd > 0) push(0, maskedPreambleEnd, "block");
@@ -736,9 +736,31 @@ function uncommented(text: string, index: number): boolean {
   return !/(?:^|[^\\])(?:\\\\)*%/u.test(line);
 }
 
+function germanBabelIndices(text: string): number[] {
+  const options = [...text.matchAll(BABEL_OPTION_LIST)].filter((match) =>
+    GERMAN_BABEL_OPTION.test(match[1]),
+  );
+  const indices = options.map((match) => match.index ?? 0);
+  let next = 0;
+  for (const match of text.matchAll(GERMAN_BABEL_PACKAGE)) {
+    const index = match.index ?? 0;
+    while (
+      next < options.length &&
+      (options[next].index ?? 0) + options[next][0].length <= index
+    ) {
+      next++;
+    }
+    const option = options[next];
+    if (option === undefined || (option.index ?? 0) > index) {
+      indices.push(index);
+    }
+  }
+  return indices;
+}
+
 function germanShorthands(text: string, masked: string): LatexConstruct[] {
-  const active = [...text.matchAll(GERMAN_BABEL)].some((match) =>
-    uncommented(text, match.index ?? 0),
+  const active = germanBabelIndices(text).some((index) =>
+    uncommented(text, index),
   );
   if (!active) return [];
   const constructs: LatexConstruct[] = [];
@@ -777,13 +799,10 @@ function decodeScan(text: string, scan: LatexScan): DecodedLatexProse {
       starts.push(cursor);
       ends.push(cursor + 1);
     }
-    for (const character of construct.text) {
-      decoded += character;
-      for (let unit = 0; unit < character.length; unit++) {
-        starts.push(construct.from);
-        ends.push(construct.to);
-      }
-    }
+    const units = construct.text.split("");
+    decoded += construct.text;
+    starts.push(...units.map(() => construct.from));
+    ends.push(...units.map(() => construct.to));
     cursor = construct.to;
   }
   for (; cursor < masked.length; cursor++) {
@@ -865,18 +884,15 @@ function writeProsePlaceholder(
   }
 }
 
-function writeDecodedWords(
+function writeDecodedUnits(
   out: string[],
-  masked: MaskSpan[],
   text: string,
   prose: DecodedLatexProse,
 ): MaskSpan[] {
-  if (!prose.decoded) return masked;
   const written: MaskSpan[] = [];
   for (const word of decodedWords(prose, text)) {
     const unit = word.compound ?? word;
-    const previous = written.at(-1);
-    if (previous && previous.from === unit.from) continue;
+    if (written.at(-1)?.from === unit.from) continue;
     if (unit.word === text.slice(unit.from, unit.to)) continue;
     if (unit.word.length > unit.to - unit.from) continue;
     blankInto(out, unit.from, unit.to);
@@ -885,6 +901,17 @@ function writeDecodedWords(
     }
     written.push({ from: unit.from, to: unit.to });
   }
+  return written;
+}
+
+function writeDecodedWords(
+  out: string[],
+  masked: MaskSpan[],
+  text: string,
+  prose: DecodedLatexProse,
+): MaskSpan[] {
+  if (!prose.decoded) return masked;
+  const written = writeDecodedUnits(out, text, prose);
   if (written.length === 0) return masked;
   const merged: MaskSpan[] = [];
   for (const span of [...masked, ...written].sort(

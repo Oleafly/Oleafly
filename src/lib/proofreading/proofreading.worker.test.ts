@@ -253,7 +253,7 @@ describe("proofreading worker outcomes", () => {
     expect(response.diagnostics.map((diagnostic) => diagnostic.source)).toEqual([
       "hunspell",
     ]);
-    expect(mocks.lintLanguage.mock.calls.length).toBe(lintCalls);
+    expect(mocks.lintLanguage.mock.calls).toHaveLength(lintCalls);
   });
 
   it("reports grammar-only checking as unsupported outside English", async () => {
@@ -266,7 +266,7 @@ describe("proofreading worker outcomes", () => {
     if (response.type !== "result") return;
     expect(response.status).toBe("unsupported");
     expect(response.diagnostics).toEqual([]);
-    expect(mocks.lintLanguage.mock.calls.length).toBe(lintCalls);
+    expect(mocks.lintLanguage.mock.calls).toHaveLength(lintCalls);
   });
 
   it("reports malformed engine findings as partial instead of silent success", async () => {

@@ -86,7 +86,7 @@ function firstAuthorFamily(author: string): string {
 function firstTitleWord(title: string): string {
   const plain = decodeLatexAccents(title).replace(/\\[\p{L}\p{M}@]+/gu, " ").replace(/[{}]/g, "");
   for (const w of plain.split(/\s+/)) {
-    const c = keyLetters(w).replace(/[0-9]/g, "");
+    const c = keyLetters(w).replace(/\d/g, "");
     if (c.length > 2 && !STOP.has(c)) {
       return c;
     }

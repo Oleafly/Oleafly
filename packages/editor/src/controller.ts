@@ -214,7 +214,7 @@ function normalizedSegments(text: string): { text: string; offsets: [number, num
 
 function originalOffset(offsets: readonly [number, number][], index: number, roundUp: boolean): number {
   if (roundUp) {
-    return (offsets.find(([, normalized]) => normalized >= index) ?? offsets[offsets.length - 1])[0];
+    return (offsets.find(([, normalized]) => normalized >= index) ?? (offsets.at(-1) as [number, number]))[0];
   }
   let original = 0;
   for (const [start, normalized] of offsets) {

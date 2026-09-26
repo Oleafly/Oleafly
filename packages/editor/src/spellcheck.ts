@@ -637,6 +637,24 @@ function presentedProofreadingDiagnostics(
   const presented: readonly ProofreadingDiagnostic[] =
     h.presentDiagnostics?.(result) ?? result.diagnostics;
   const suppressionKey = createGrammarSuppressionKeyer(text);
+  const visibleKey = (
+    diagnostic: ProofreadingDiagnostic,
+    word: string,
+    from: number,
+  ): string | null => {
+    if (isSpellingDiagnosticKind(diagnostic.kind)) {
+      const ignored =
+        h.isSessionIgnored(word) ||
+        h.isWordIgnored(projectId, word) ||
+        actionHost?.isIgnoredHere(projectId, path, word);
+      return ignored ? null : "";
+    }
+    const key = suppressionKey(diagnostic.rule, from);
+    const suppressed =
+      actionHost?.isFindingSuppressed(projectId, key) ||
+      actionHost?.isSuppressedHere(projectId, path, key);
+    return suppressed ? null : key;
+  };
   for (const diagnostic of guardProofreadingDiagnostics(presented, text)) {
     const from = Math.max(
       0,
@@ -649,24 +667,8 @@ function presentedProofreadingDiagnostics(
     if (to <= from) continue;
     const word = diagnostic.word || text.slice(from, to);
     const exact = from === diagnostic.from && to === diagnostic.to;
-    let key = "";
-    if (isSpellingDiagnosticKind(diagnostic.kind)) {
-      if (
-        h.isSessionIgnored(word) ||
-        h.isWordIgnored(projectId, word) ||
-        actionHost?.isIgnoredHere(projectId, path, word)
-      ) {
-        continue;
-      }
-    } else {
-      key = suppressionKey(diagnostic.rule, from);
-      if (
-        actionHost?.isFindingSuppressed(projectId, key) ||
-        actionHost?.isSuppressedHere(projectId, path, key)
-      ) {
-        continue;
-      }
-    }
+    const key = visibleKey(diagnostic, word, from);
+    if (key === null) continue;
     output.push(
       proofreadingDiagnostic(
         h,

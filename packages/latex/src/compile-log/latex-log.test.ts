@@ -18,6 +18,20 @@ function golden(name: string) {
 }
 
 describe("parseLatexLog", () => {
+  it("reads logs written with Windows line endings like the same log with LF", () => {
+    const names = readdirSync(GOLDEN_DIR)
+      .filter((name) => name.endsWith(".log"))
+      .map((name) => name.slice(0, -".log".length));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      const { expected } = golden(name);
+      const log = readFileSync(`${GOLDEN_DIR}${name}.log`, "utf8").replaceAll("\r\n", "\n");
+      const lf = parseLatexLog(log, expected.rootFile ?? undefined);
+      const crlf = parseLatexLog(log.replaceAll("\n", "\r\n"), expected.rootFile ?? undefined);
+      expect(crlf, name).toEqual(lf);
+    }
+  });
+
   it("parses a bang-style error with its l.<n> context excerpt", () => {
     const log = [
       "! Undefined control sequence.",

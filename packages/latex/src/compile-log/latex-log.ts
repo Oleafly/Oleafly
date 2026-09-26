@@ -163,7 +163,7 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
     out: [],
   };
 
-  const lines = log.slice(0, MAX_COMPILE_LOG_BYTES).split("\n");
+  const lines = log.slice(0, MAX_COMPILE_LOG_BYTES).split(/\r?\n/);
   try {
     for (const line of lines) {
       parseLine(line, state);

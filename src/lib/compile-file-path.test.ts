@@ -34,7 +34,7 @@ describe("resolveCompilePath", () => {
   });
 
   it("matches NFC names from TeX against NFD names on disk", () => {
-    const decomposed = "kapitoly/úvod.tex";
+    const decomposed = "kapitoly/u\u0301vod.tex";
     expect(resolveCompilePath("kapitoly/úvod.tex", ["main.tex", decomposed])).toBe(decomposed);
     expect(resolveCompilePath("úvod.tex", ["main.tex", decomposed])).toBe(decomposed);
   });

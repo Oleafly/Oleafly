@@ -84,8 +84,8 @@ function diskSnapshotOf(raw: string): DiskSnapshot {
   return { hash: diskHash(raw), crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw) };
 }
 
-function diskBytes(content: string, crlf: boolean): string {
-  return crlf ? content.replaceAll("\n", "\r\n") : content;
+function crlfBytes(content: string): string {
+  return content.replaceAll("\n", "\r\n");
 }
 
 async function readDiskText(
@@ -511,36 +511,46 @@ function settleDiskConflict(key: string): void {
   diskConflicts.delete(key);
 }
 
+function projectKeysWhere(
+  keys: Iterable<string>,
+  projectId: string,
+  matches: (path: string) => boolean,
+): string[] {
+  const prefix = `${projectId}\0`;
+  const found: string[] = [];
+  for (const key of keys) {
+    if (key.startsWith(prefix) && matches(key.slice(prefix.length))) found.push(key);
+  }
+  return found;
+}
+
 function resetDiskState(): void {
-  for (const key of [...diskConflicts.keys()]) settleDiskConflict(key);
+  for (const key of Array.from(diskConflicts.keys())) settleDiskConflict(key);
   diskSnapshots.clear();
 }
 
 function forgetDiskStateUnder(projectId: string, isForgotten: (path: string) => boolean): void {
-  const prefix = `${projectId}\0`;
-  for (const key of [...diskSnapshots.keys()]) {
-    if (key.startsWith(prefix) && isForgotten(key.slice(prefix.length))) diskSnapshots.delete(key);
+  for (const key of projectKeysWhere(diskSnapshots.keys(), projectId, isForgotten)) {
+    diskSnapshots.delete(key);
   }
-  for (const key of [...diskConflicts.keys()]) {
-    if (key.startsWith(prefix) && isForgotten(key.slice(prefix.length))) settleDiskConflict(key);
+  for (const key of projectKeysWhere(diskConflicts.keys(), projectId, isForgotten)) {
+    settleDiskConflict(key);
   }
 }
 
 function remapDiskState(projectId: string, remap: (path: string) => string): void {
   const prefix = `${projectId}\0`;
-  const moved: Array<[string, DiskSnapshot]> = [];
-  for (const [key, snapshot] of [...diskSnapshots.entries()]) {
+  const moved: Array<[string, string, DiskSnapshot]> = [];
+  for (const [key, snapshot] of diskSnapshots) {
     if (!key.startsWith(prefix)) continue;
     const next = writeKey(projectId, remap(key.slice(prefix.length)));
-    if (next === key) continue;
-    diskSnapshots.delete(key);
-    moved.push([next, snapshot]);
+    if (next !== key) moved.push([key, next, snapshot]);
   }
-  for (const [key, snapshot] of moved) diskSnapshots.set(key, snapshot);
-  for (const key of [...diskConflicts.keys()]) {
-    if (key.startsWith(prefix) && remap(key.slice(prefix.length)) !== key.slice(prefix.length)) {
-      settleDiskConflict(key);
-    }
+  for (const [key] of moved) diskSnapshots.delete(key);
+  for (const [, next, snapshot] of moved) diskSnapshots.set(next, snapshot);
+  const renamed = (path: string) => remap(path) !== path;
+  for (const key of projectKeysWhere(diskConflicts.keys(), projectId, renamed)) {
+    settleDiskConflict(key);
   }
 }
 
@@ -589,7 +599,7 @@ function enqueueWrite(
     .then(async (expectedGeneration) => {
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
-      const bytes = diskBytes(content, crlf);
+      const bytes = crlf ? crlfBytes(content) : content;
       const expectedHash = overwrite ? undefined : snapshot?.hash;
       const result = expectedHash === undefined
         ? await writeFileContent(projectId, path, bytes, expectedGeneration)
@@ -1286,6 +1296,55 @@ async function reloadUnchangedEngine(
   }
 }
 
+function recordFailedSave(projectId: string, path: string, error: unknown, get: FilesGet): void {
+  const key = writeKey(projectId, path);
+  if (isDiskConflict(error) && !diskConflicts.has(key)) diskConflicts.set(key, { warned: false });
+  if (get().projectId !== projectId || !get().files[path]?.dirty) return;
+  pendingSaves.add(path);
+  if (isMutationConflict(error)) scheduleAutosave(get);
+}
+
+function rememberAdoptedSnapshots(
+  projectId: string,
+  adopted: readonly string[],
+  snapshots: ReadonlyMap<string, DiskSnapshot>,
+): void {
+  for (const path of adopted) {
+    const snapshot = snapshots.get(path);
+    if (snapshot) rememberDiskSnapshot(projectId, path, snapshot);
+  }
+}
+
+function settleProjectStateReloadFailure(
+  projectId: string,
+  metadata: ProjectMetadataState,
+  error: unknown,
+  set: FilesSet,
+  get: FilesGet,
+): void {
+  projectStateReloadFailure = { projectId, error };
+  const leaseHolderReports = isEditorMutationLocked(projectId);
+  if (leaseHolderReports) {
+    set((state) => {
+      const files = Object.fromEntries(Object.entries(state.files).filter(([, file]) => file.dirty));
+      const openTabs = state.openTabs.filter((path) => files[path]);
+      return {
+        ...metadata, files, openTabs,
+        activePath: state.activePath && files[state.activePath] ? state.activePath : openTabs.at(-1) ?? null,
+        docVersion: state.docVersion + 1,
+      };
+    });
+  } else set(metadata);
+  void get().refreshTree();
+  void logError("reload project after external change", error);
+  if (!leaseHolderReports) {
+    toast.errorUnique(
+      `project-reload:${projectId}`,
+      i18n.t(($) => $.core.externalChange.reloadFailed),
+    );
+  }
+}
+
 function restoreRemovedDirtyFiles(paths: string[], get: FilesGet): void {
   if (paths.length === 0) return;
   void logError("restore unsaved files after project update", paths.join(", "));
@@ -1572,13 +1631,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     try {
       await enqueueWrite(projectId, path, written, overwrite);
     } catch (error) {
-      if (isDiskConflict(error) && !diskConflicts.has(key)) diskConflicts.set(key, { warned: false });
-      if (get().projectId === projectId && get().files[path]?.dirty) {
-        pendingSaves.add(path);
-        if (isMutationConflict(error)) {
-          scheduleAutosave(get);
-        }
-      }
+      recordFailedSave(projectId, path, error, get);
       throw error;
     }
     settleSaveFailure(projectId, path, get().files);
@@ -1889,7 +1942,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const expectedGeneration = await get().prepareExternalMutation(projectId);
     const canonicalContent = normalizeTextContent(content);
     const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
-    const bytes = diskBytes(canonicalContent, crlf);
+    const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const result = await writeFileContent(
       projectId,
       path,
@@ -2187,36 +2240,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
         return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted);
       });
-      for (const path of adopted) {
-        const snapshot = reloaded.snapshots.get(path);
-        if (snapshot) rememberDiskSnapshot(projectId, path, snapshot);
-      }
+      rememberAdoptedSnapshots(projectId, adopted, reloaded.snapshots);
       restoreRemovedDirtyFiles(removedDirty, get);
       scheduleAutosave(get);
       return true;
     } catch (error) {
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
-      projectStateReloadFailure = { projectId, error };
-      const leaseHolderReports = isEditorMutationLocked(projectId);
-      if (leaseHolderReports) {
-        set((state) => {
-          const files = Object.fromEntries(Object.entries(state.files).filter(([, file]) => file.dirty));
-          const openTabs = state.openTabs.filter((path) => files[path]);
-          return {
-            ...metadata, files, openTabs,
-            activePath: state.activePath && files[state.activePath] ? state.activePath : openTabs.at(-1) ?? null,
-            docVersion: state.docVersion + 1,
-          };
-        });
-      } else set(metadata);
-      void get().refreshTree();
-      void logError("reload project after external change", error);
-      if (!leaseHolderReports) {
-        toast.errorUnique(
-          `project-reload:${projectId}`,
-          i18n.t(($) => $.core.externalChange.reloadFailed),
-        );
-      }
+      settleProjectStateReloadFailure(projectId, metadata, error, set, get);
       return false;
     }
     })();

@@ -40,7 +40,7 @@ function splitAtBoundaries(nodes: readonly JSONContent[], sentinel: string): JSO
   const groups: JSONContent[][] = [[]];
   for (const node of nodes) {
     if (isBoundary(node, sentinel)) groups.push([]);
-    else groups[groups.length - 1].push(node);
+    else groups.at(-1)?.push(node);
   }
   return groups;
 }
@@ -94,7 +94,7 @@ export function parseMarkdownBody(
     if (plan?.units.length === 1) counts = [parsed.content?.length ?? 0];
   }
   const last = parsed.content?.at(-1);
-  if (counts && counts.at(-1) && last?.type === "paragraph" && !last.content?.length) {
+  if (counts?.at(-1) && last?.type === "paragraph" && !last.content?.length) {
     counts[counts.length - 1]--;
   }
   const restore = (text: string) => restoreInlineText(text, tokenPrefix, sources);

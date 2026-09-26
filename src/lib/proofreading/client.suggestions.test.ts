@@ -65,7 +65,7 @@ function suggestRequests(): ProofreadingSuggestRequest[] {
 }
 
 async function nextSuggestRequest(count: number) {
-  await vi.waitFor(() => expect(suggestRequests().length).toBe(count));
+  await vi.waitFor(() => expect(suggestRequests()).toHaveLength(count));
   return suggestRequests()[count - 1] as ProofreadingSuggestRequest;
 }
 

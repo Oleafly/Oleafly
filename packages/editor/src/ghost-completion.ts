@@ -204,30 +204,33 @@ function syncResult(
   return result && !(result instanceof Promise) ? result : null;
 }
 
-function computeGhost(
-  view: EditorView,
-  sources: CompletionSource[],
-  syntax: CompletionSyntax,
-): GhostSuggestion | null {
+function ghostAnchor(view: EditorView): number | null {
   const selection = view.state.selection.main;
   if (!selection.empty || view.state.readOnly) return null;
   const pos = selection.head;
   if (view.state.field(dismissedField, false) === pos) return null;
-  if (!atWordEnd(view, pos)) return null;
-  const before = boundedCompletionContext(view.state, pos);
-  if (!before || /\s$/u.test(before)) return null;
+  return atWordEnd(view, pos) ? pos : null;
+}
 
-  // Popup open: mirror the highlighted option so the two never disagree.
-  if (completionStatus(view.state) === "active") {
-    const selected = selectedCompletion(view.state);
-    if (!selected) return null;
-    const prefix = typedPrefix(before, overlapLength(before, optionText(selected)));
-    const label = prefix ? previewLabel(selected, prefix) : null;
-    return prefix && label ? { pos, text: label.slice(prefix.length) } : null;
-  }
+function popupGhost(
+  view: EditorView,
+  before: string,
+  pos: number,
+): GhostSuggestion | null {
+  const selected = selectedCompletion(view.state);
+  if (!selected) return null;
+  const prefix = typedPrefix(before, overlapLength(before, optionText(selected)));
+  if (!prefix) return null;
+  const label = previewLabel(selected, prefix);
+  return label ? { pos, text: label.slice(prefix.length) } : null;
+}
 
-  if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
-
+function sourceGhost(
+  view: EditorView,
+  sources: CompletionSource[],
+  before: string,
+  pos: number,
+): GhostSuggestion | null {
   const context = new CompletionContext(view.state, pos, false);
   for (const source of sources) {
     const result = syncResult(source, context);
@@ -238,6 +241,24 @@ function computeGhost(
     if (label) return { pos, text: label.slice(prefix.length) };
   }
   return null;
+}
+
+function computeGhost(
+  view: EditorView,
+  sources: CompletionSource[],
+  syntax: CompletionSyntax,
+): GhostSuggestion | null {
+  const pos = ghostAnchor(view);
+  if (pos === null) return null;
+  const before = boundedCompletionContext(view.state, pos);
+  if (!before || /\s$/u.test(before)) return null;
+
+  // Popup open: mirror the highlighted option so the two never disagree.
+  if (completionStatus(view.state) === "active") return popupGhost(view, before, pos);
+
+  if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
+
+  return sourceGhost(view, sources, before, pos);
 }
 
 /** Insert the pending ghost suggestion. Bound to Tab. */

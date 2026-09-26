@@ -184,39 +184,55 @@ export function maskLatexComments(text: string): string {
   return chars.join("");
 }
 
+function blankTypstPair(chars: string[], index: number): void {
+  chars[index] = " ";
+  chars[index + 1] = " ";
+}
+
+function maskTypstBlockStep(
+  text: string,
+  chars: string[],
+  index: number,
+): number {
+  if (text.startsWith("/*", index)) {
+    blankTypstPair(chars, index);
+    return 1;
+  }
+  if (text.startsWith("*/", index)) {
+    blankTypstPair(chars, index);
+    return -1;
+  }
+  if (chars[index] !== "\n") chars[index] = " ";
+  return 0;
+}
+
+function maskTypstLineComment(chars: string[], index: number): number {
+  let cursor = index;
+  while (cursor < chars.length && chars[cursor] !== "\n") {
+    chars[cursor] = " ";
+    cursor++;
+  }
+  return cursor;
+}
+
 export function maskTypstComments(text: string): string {
   const chars = text.split("");
   let blockDepth = 0;
   let index = 0;
   while (index < chars.length) {
     if (blockDepth > 0) {
-      if (text.startsWith("/*", index)) {
-        chars[index] = " ";
-        chars[index + 1] = " ";
-        blockDepth++;
-        index += 2;
-      } else if (text.startsWith("*/", index)) {
-        chars[index] = " ";
-        chars[index + 1] = " ";
-        blockDepth--;
-        index += 2;
-      } else {
-        if (chars[index] !== "\n") chars[index] = " ";
-        index++;
-      }
+      const change = maskTypstBlockStep(text, chars, index);
+      blockDepth += change;
+      index += change === 0 ? 1 : 2;
       continue;
     }
     const link = typstAutolinkEnd(text, index);
     if (link !== null) {
       index = Math.max(link, index + 1);
     } else if (text.startsWith("//", index)) {
-      while (index < chars.length && chars[index] !== "\n") {
-        chars[index] = " ";
-        index++;
-      }
+      index = maskTypstLineComment(chars, index);
     } else if (text.startsWith("/*", index)) {
-      chars[index] = " ";
-      chars[index + 1] = " ";
+      blankTypstPair(chars, index);
       blockDepth = 1;
       index += 2;
     } else {

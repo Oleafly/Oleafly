@@ -12,7 +12,7 @@ const UNSEGMENTED_SCRIPTS = String.raw`\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\
 const LETTER = String.raw`(?:(?![${UNSEGMENTED_SCRIPTS}])\p{L})`;
 const RUN = String.raw`${LETTER}(?:${LETTER}|\p{M})*`;
 const JOINER = String.raw`(?:['’ʼ׳״·\u00AD\u200C\u200D]+|"(?=\p{sc=Hebrew}))`;
-const WORD = String.raw`${RUN}(?:${JOINER}${RUN})*`;
+const WORD = `${RUN}(?:${JOINER}${RUN})*`;
 const HYPHEN = String.raw`[-\u2010]`;
 
 const IDEOGRAPH = String.raw`(?=\p{L})[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}]`;
@@ -28,7 +28,7 @@ const COUNTED_WORD_PATTERN = new RegExp(
 export const EMAIL_ADDRESS_PATTERN =
   /(?<![\p{L}\p{M}\p{N}._%+-])[\p{L}\p{M}\p{N}._%+-]+@[\p{L}\p{M}\p{N}.-]+\.\p{L}[\p{L}\p{M}]+(?![\p{L}\p{M}\p{N}])/gu;
 const COMPOUND_PATTERN = new RegExp(
-  String.raw`${WORD}(?:${HYPHEN}${WORD})*`,
+  `${WORD}(?:${HYPHEN}${WORD})*`,
   "gu",
 );
 
@@ -97,15 +97,15 @@ export function mapSpellingWords(
 }
 
 export function spellingLookupForms(word: string): string[] {
-  const normalized = word.normalize("NFC").replaceAll(/\u00AD/gu, "");
+  const normalized = word.normalize("NFC").replaceAll("\u00AD", "");
   const ascii = normalized
     .replaceAll(/[’ʼ׳]/gu, "'")
-    .replaceAll(/״/gu, '"');
+    .replaceAll("״", '"');
   return ascii === normalized ? [normalized] : [normalized, ascii];
 }
 
 export function restoreApostrophes(original: string, suggestion: string): string {
   const typographic = /[’ʼ]/u.exec(original)?.[0];
   if (!typographic || original.includes("'")) return suggestion;
-  return suggestion.replaceAll(/'/gu, typographic);
+  return suggestion.replaceAll("'", typographic);
 }

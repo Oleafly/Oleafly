@@ -1,22 +1,22 @@
 const SYMBOL_ACCENTS: Readonly<Record<string, string>> = {
-  "'": "́",
-  "`": "̀",
-  "^": "̂",
-  '"': "̈",
-  "~": "̃",
-  "=": "̄",
-  ".": "̇",
+  "'": "\u0301",
+  "`": "\u0300",
+  "^": "\u0302",
+  '"': "\u0308",
+  "~": "\u0303",
+  "=": "\u0304",
+  ".": "\u0307",
 };
 
 const WORD_ACCENTS: Readonly<Record<string, string>> = {
-  u: "̆",
-  v: "̌",
-  H: "̋",
-  c: "̧",
-  k: "̨",
-  r: "̊",
-  d: "̣",
-  b: "̱",
+  u: "\u0306",
+  v: "\u030C",
+  H: "\u030B",
+  c: "\u0327",
+  k: "\u0328",
+  r: "\u030A",
+  d: "\u0323",
+  b: "\u0331",
 };
 
 const LETTER_MACROS: Readonly<Record<string, string>> = {
@@ -90,9 +90,15 @@ function closingBrace(value: string, open: number): number {
   return -1;
 }
 
+function dottedLetter(letter: string): string {
+  if (letter === "ı") return "i";
+  if (letter === "ȷ") return "j";
+  return letter;
+}
+
 function withAccent(base: string, mark: string): string {
   const [first = "", ...rest] = [...base];
-  const letter = first === "ı" ? "i" : first === "ȷ" ? "j" : first;
+  const letter = dottedLetter(first);
   return `${letter}${mark}${rest.join("")}`;
 }
 
