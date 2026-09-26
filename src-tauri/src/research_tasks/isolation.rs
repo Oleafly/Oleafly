@@ -59,7 +59,7 @@ pub(crate) fn prepare(
     cancel: &CancellationToken,
 ) -> Result<TaskIsolation, String> {
     crate::trust::require_trusted(&task.project_id, crate::trust::Capability::ResearchTasks)?;
-    let location = crate::project_location::locate(&task.project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(&task.project_id)?;
     let source = match location.kind {
         crate::project_location::ProjectKind::Library => IsolationSource::Repository,
         crate::project_location::ProjectKind::Linked => IsolationSource::Snapshot,
