@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 use std::ffi::OsString;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
 use crate::app_error::AppError;
 use crate::fs_identity::FsIdentity;
+use crate::known_folders::is_broad_folder;
 use crate::project::ProjectMeta;
 
 const TRUST_FILE: &str = "folders.json";
@@ -45,32 +46,6 @@ const EXECUTABLE_CONFIG_NAMES: &[&str] = &[
     "taskfile.yaml",
     "taskfile.yml",
 ];
-const BROAD_HOME_FOLDERS: &[&str] = &[
-    "applications",
-    "desktop",
-    "documents",
-    "downloads",
-    "dropbox",
-    "google drive",
-    "icloud drive",
-    "library",
-    "movies",
-    "music",
-    "pictures",
-    "public",
-    "videos",
-];
-const CLOUD_ROOT_PARENTS: &[&str] = &["Library/CloudStorage", "Library/Mobile Documents"];
-const SHARED_ROOTS: &[&str] = &[
-    "/tmp",
-    "/var/tmp",
-    "/private/tmp",
-    "/private/var/tmp",
-    "/Users/Shared",
-    "/dev/shm",
-];
-const MOUNT_PARENTS: &[&str] = &["/Volumes", "/mnt", "/media"];
-const USER_MOUNT_PARENTS: &[&str] = &["/media", "/run/media"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Capability {
@@ -358,58 +333,6 @@ fn evaluate(
         return TrustState::Trusted(TrustSource::ParentFolder);
     }
     TrustState::Restricted
-}
-
-fn broad_folder_among(path: &Path, home: Option<&Path>, protected: &[&Path]) -> bool {
-    let depth = path
-        .components()
-        .filter(|component| matches!(component, Component::Normal(_)))
-        .count();
-    if depth <= 1 || protected.iter().any(|base| base.starts_with(path)) {
-        return true;
-    }
-    if let Some(home) = home {
-        if path.parent() == Some(home) {
-            let name = folder_name(path).to_lowercase();
-            if BROAD_HOME_FOLDERS.contains(&name.as_str()) || name.starts_with("onedrive") {
-                return true;
-            }
-        }
-        for parent in CLOUD_ROOT_PARENTS {
-            let cloud = home.join(parent);
-            if cloud.starts_with(path) || path.parent() == Some(cloud.as_path()) {
-                return true;
-            }
-        }
-    }
-    if SHARED_ROOTS
-        .iter()
-        .any(|shared| Path::new(shared).starts_with(path))
-    {
-        return true;
-    }
-    let parent = path.parent();
-    let grandparent = parent.and_then(Path::parent);
-    parent.is_some_and(|parent| MOUNT_PARENTS.iter().any(|mount| parent == Path::new(mount)))
-        || grandparent.is_some_and(|grandparent| {
-            USER_MOUNT_PARENTS
-                .iter()
-                .any(|mount| grandparent == Path::new(mount))
-        })
-}
-
-fn resolved(path: PathBuf) -> PathBuf {
-    path.canonicalize().unwrap_or(path)
-}
-
-fn is_broad_folder(path: &Path) -> bool {
-    let home = crate::paths::home_dir().ok().map(resolved);
-    let mut protected: Vec<PathBuf> = vec![resolved(std::env::temp_dir())];
-    protected.extend(home.clone());
-    protected.extend(crate::paths::oleafly_root().ok().map(resolved));
-    protected.extend(std::env::var_os("PUBLIC").map(PathBuf::from).map(resolved));
-    let protected: Vec<&Path> = protected.iter().map(PathBuf::as_path).collect();
-    broad_folder_among(&resolved(path.to_path_buf()), home.as_deref(), &protected)
 }
 
 fn trust_file_for_read() -> Result<PathBuf, String> {
@@ -1290,6 +1213,7 @@ pub(crate) mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::known_folders::broad_folder_among;
 
     fn grant(id: Option<&str>, scope: TrustScope, path: &str, identity: &str) -> FolderGrant {
         FolderGrant {

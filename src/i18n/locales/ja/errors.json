@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly は {{name}} 全体を信頼できません。もっと小さいフォルダを選んでください。",
     "declined": "フォルダは信頼されませんでした。",
     "unavailable": "Oleafly はこのフォルダが信頼されているかどうかを確認できませんでした。"
+  },
+  "open_folder": {
+    "not_absolute": "フォルダのフルパスを指定してください。",
+    "not_found": "Oleafly でこのフォルダが見つかりません。",
+    "permission_denied": "Oleafly にはこのフォルダを開く権限がありません。",
+    "not_a_folder": "ファイルではなくフォルダを選んでください。",
+    "unsupported_folder": "Oleafly ではこの種類のフォルダを開けません。",
+    "path_not_unicode": "このフォルダのパスには Oleafly が読み取れない文字が含まれています。フォルダ名を変更してからもう一度お試しください。",
+    "too_broad": "{{name}} は 1 つのプロジェクトとして開くには大きすぎます。その中のフォルダを選んでください。",
+    "protected": "Oleafly では {{name}} の中のフォルダを開けません。",
+    "app_data": "このフォルダは Oleafly のアプリデータの一部です。その外にあるフォルダを選んでください。",
+    "contains_project": "このフォルダには {{name}} が含まれており、すでに Oleafly で独立したプロジェクトとして開かれています。",
+    "research_folder": "{{project}} はリンクしたフォルダを通じて、このフォルダ内のファイルをすでに編集できます。先にそちらでリンクを解除してください。",
+    "failed": "Oleafly でこのフォルダを開けませんでした。"
+  },
+  "research": {
+    "linked_project_folder": "このフォルダは Oleafly で独立したプロジェクトとして開かれています。代わりに読み取り専用でリンクしてください。"
   }
 }

@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly ne peut pas faire confiance à tout {{name}}. Choisissez un dossier plus petit.",
     "declined": "Le dossier n'a pas été approuvé.",
     "unavailable": "Oleafly n'a pas pu vérifier si ce dossier est approuvé."
+  },
+  "open_folder": {
+    "not_absolute": "Indiquez le chemin complet du dossier.",
+    "not_found": "Oleafly ne trouve pas ce dossier.",
+    "permission_denied": "Oleafly n'a pas l'autorisation d'ouvrir ce dossier.",
+    "not_a_folder": "Choisissez un dossier, pas un fichier.",
+    "unsupported_folder": "Oleafly ne peut pas ouvrir ce type de dossier.",
+    "path_not_unicode": "Le chemin de ce dossier contient des caractères qu'Oleafly ne peut pas lire. Renommez le dossier et réessayez.",
+    "too_broad": "{{name}} contient trop de choses pour être ouvert comme un seul projet. Choisissez un dossier à l'intérieur.",
+    "protected": "Oleafly ne peut pas ouvrir les dossiers situés dans {{name}}.",
+    "app_data": "Ce dossier fait partie des données de l'application Oleafly. Choisissez un dossier en dehors.",
+    "contains_project": "Ce dossier contient {{name}}, déjà ouvert dans Oleafly comme projet à part entière.",
+    "research_folder": "{{project}} peut déjà modifier des fichiers de ce dossier via ses dossiers liés. Supprimez d'abord le lien là-bas.",
+    "failed": "Oleafly n'a pas pu ouvrir ce dossier."
+  },
+  "research": {
+    "linked_project_folder": "Ce dossier est ouvert dans Oleafly comme projet à part entière. Liez-le plutôt en lecture seule."
   }
 }

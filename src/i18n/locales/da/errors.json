@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly kan ikke stole på hele {{name}}. Vælg en mindre mappe.",
     "declined": "Mappen blev ikke betroet.",
     "unavailable": "Oleafly kunne ikke kontrollere, om denne mappe er betroet."
+  },
+  "open_folder": {
+    "not_absolute": "Brug den fulde sti til mappen.",
+    "not_found": "Oleafly kan ikke finde denne mappe.",
+    "permission_denied": "Oleafly har ikke tilladelse til at åbne denne mappe.",
+    "not_a_folder": "Vælg en mappe, ikke en fil.",
+    "unsupported_folder": "Oleafly kan ikke åbne denne type mappe.",
+    "path_not_unicode": "Stien til denne mappe indeholder tegn, som Oleafly ikke kan læse. Omdøb mappen, og prøv igen.",
+    "too_broad": "{{name}} indeholder for meget til at blive åbnet som ét projekt. Vælg en mappe inde i den.",
+    "protected": "Oleafly kan ikke åbne mapper inde i {{name}}.",
+    "app_data": "Denne mappe er en del af Oleaflys appdata. Vælg en mappe uden for den.",
+    "contains_project": "Denne mappe indeholder {{name}}, som allerede er åbnet i Oleafly som et selvstændigt projekt.",
+    "research_folder": "{{project}} kan allerede redigere filer i denne mappe via sine tilknyttede mapper. Fjern tilknytningen der først.",
+    "failed": "Oleafly kunne ikke åbne denne mappe."
+  },
+  "research": {
+    "linked_project_folder": "Denne mappe er åbnet i Oleafly som et selvstændigt projekt. Tilknyt den i stedet som skrivebeskyttet."
   }
 }

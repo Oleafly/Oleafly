@@ -28,13 +28,41 @@ pub(crate) struct LinkRecord {
     pub(crate) volume_kind: VolumeKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) compile_dir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) displaced: Option<Displacement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) reattach: Option<ReattachOffer>,
     #[serde(flatten)]
     pub(crate) extra: BTreeMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Displacement {
+    pub(crate) by: String,
+    pub(crate) at_ms: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ReattachReason {
+    Replaced,
+    Removed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ReattachOffer {
+    pub(crate) from_id: String,
+    pub(crate) reason: ReattachReason,
+    pub(crate) offered_at_ms: u64,
 }
 
 impl LinkRecord {
     pub(crate) fn is_active(&self) -> bool {
         self.removed_at.is_none()
+    }
+
+    pub(crate) fn is_current(&self) -> bool {
+        self.is_active() && self.displaced.is_none()
     }
 }
 
@@ -392,7 +420,7 @@ pub(crate) fn id_reserved(project_id: &str) -> Result<bool, String> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LinkEntry {
-    Record(LinkRecord),
+    Record(Box<LinkRecord>),
     Corrupt { id: String, error: String },
 }
 
@@ -415,7 +443,7 @@ pub(crate) fn list() -> Result<Vec<LinkEntry>, String> {
         .entries
         .iter()
         .map(|(project_id, cached)| match cached {
-            Cached::Record { record, .. } => LinkEntry::Record(record.as_ref().clone()),
+            Cached::Record { record, .. } => LinkEntry::Record(record.clone()),
             Cached::Corrupt { error, .. } => LinkEntry::Corrupt {
                 id: project_id.clone(),
                 error: error.clone(),
@@ -432,8 +460,8 @@ pub(crate) fn list() -> Result<Vec<LinkEntry>, String> {
 
 #[cfg(test)]
 pub(crate) use management::{
-    folder_snapshot_for_test, get, register, register_folder_for_test, update, NewLink,
-    Registration,
+    folder_snapshot_for_test, get, register, register_folder_for_test, transaction, update,
+    NewLink, Registration, Transaction,
 };
 
 #[cfg(test)]
@@ -570,13 +598,10 @@ mod management {
             && (record.identity == *identity || (record.identity.weak && identity.weak))
     }
 
-    fn active_record_for(
-        linked_root: &Path,
-        canonical_path: &str,
-        identity: &FsIdentity,
-    ) -> Result<Option<LinkRecord>, String> {
+    fn records_in(linked_root: &Path) -> Result<Vec<LinkRecord>, String> {
         let listing = std::fs::read_dir(linked_root)
             .map_err(|error| format!("could not read the folder registry: {error}"))?;
+        let mut records = Vec::new();
         for entry in listing.flatten() {
             let Some(project_id) = entry.file_name().to_str().map(str::to_owned) else {
                 continue;
@@ -584,14 +609,12 @@ mod management {
             if !is_linked_id(&project_id) {
                 continue;
             }
-            let Ok(Some(record)) = read_record(&linked_root.join(&project_id), &project_id) else {
-                continue;
-            };
-            if same_folder(&record, canonical_path, identity) {
-                return Ok(Some(record));
+            if let Ok(Some(record)) = read_record(&linked_root.join(&project_id), &project_id) {
+                records.push(record);
             }
         }
-        Ok(None)
+        records.sort_by(|left, right| left.id.cmp(&right.id));
+        Ok(records)
     }
 
     pub(super) struct LinkedReservation {
@@ -663,34 +686,65 @@ mod management {
         }))
     }
 
-    pub(crate) fn register(link: NewLink) -> Result<Registration, String> {
-        let _lock = lock_registry_writes()?;
-        let canonical_path = registrable_path(&link.canonical_path)?;
-        let linked_root = crate::paths::linked_root()?;
-        if let Some(existing) = active_record_for(&linked_root, &canonical_path, &link.identity)? {
-            return Ok(Registration::Existing(existing));
+    pub(crate) struct Transaction {
+        records: Vec<LinkRecord>,
+        _lock: RegistryWriteLock,
+    }
+
+    impl Transaction {
+        pub(crate) fn records(&self) -> &[LinkRecord] {
+            &self.records
         }
-        let now = now_ms();
-        for _ in 0..RESERVATION_ATTEMPTS {
-            let project_id = new_linked_id();
-            let Some(reservation) = try_reserve_linked_id(&linked_root, &project_id)? else {
-                continue;
+
+        pub(crate) fn create(
+            &mut self,
+            link: NewLink,
+            reattach: Option<ReattachOffer>,
+        ) -> Result<LinkRecord, String> {
+            self.create_with(link, reattach, |_, _| Ok(()))
+        }
+
+        pub(crate) fn create_with<F>(
+            &mut self,
+            link: NewLink,
+            reattach: Option<ReattachOffer>,
+            before_commit: F,
+        ) -> Result<LinkRecord, String>
+        where
+            F: FnOnce(&mut Self, &LinkRecord) -> Result<(), String>,
+        {
+            let canonical_path = registrable_path(&link.canonical_path)?;
+            let linked_root = crate::paths::linked_root()?;
+            let now = now_ms();
+            let mut reserved = None;
+            for _ in 0..RESERVATION_ATTEMPTS {
+                let project_id = new_linked_id();
+                if let Some(reservation) = try_reserve_linked_id(&linked_root, &project_id)? {
+                    reserved = Some((project_id, reservation));
+                    break;
+                }
+            }
+            let Some((project_id, reservation)) = reserved else {
+                return Err(crate::app_error::AppError::new("project.folder_unavailable").into());
             };
             let record = LinkRecord {
                 version: LINK_VERSION,
                 id: project_id.clone(),
-                canonical_path: canonical_path.clone(),
+                canonical_path,
                 weak_identity: link.identity.weak,
-                identity: link.identity.clone(),
-                display_name: link.display_name.clone(),
+                identity: link.identity,
+                display_name: link.display_name,
                 created_at: now,
                 last_opened_at: now,
                 removed_at: None,
                 volume_kind: link.volume_kind,
                 compile_dir: None,
+                displaced: None,
+                reattach,
                 extra: BTreeMap::new(),
             };
             write_record(&reservation.directory, &record)?;
+            before_commit(self, &record)?;
             let directory = reservation.commit();
             let data_root = crate::paths::oleafly_root()?;
             store_entry(
@@ -699,48 +753,92 @@ mod management {
                 &project_id,
                 read_cached(&directory, &project_id),
             );
-            return Ok(Registration::Created(record));
+            self.records.push(record.clone());
+            Ok(record)
         }
-        Err(crate::app_error::AppError::new("project.folder_unavailable").into())
+
+        pub(crate) fn update<F>(
+            &mut self,
+            project_id: &str,
+            change: F,
+        ) -> Result<LinkRecord, String>
+        where
+            F: FnOnce(&mut LinkRecord) -> Result<(), String>,
+        {
+            let missing = || format!("project does not exist: {project_id}");
+            if !is_linked_id(project_id) {
+                return Err(missing());
+            }
+            let linked_root = crate::paths::existing_linked_root()?.ok_or_else(missing)?;
+            let directory = linked_root.join(project_id);
+            let current = read_record(&directory, project_id)?.ok_or_else(missing)?;
+            let mut next = current.clone();
+            change(&mut next)?;
+            next.weak_identity = next.identity.weak;
+            if next.id != current.id
+                || next.version != current.version
+                || next.created_at != current.created_at
+            {
+                return Err("a folder link cannot change its identity".into());
+            }
+            if next.canonical_path != current.canonical_path {
+                next.canonical_path = registrable_path(Path::new(&next.canonical_path))?;
+            }
+            validate_record(&next, project_id)?;
+            if next != current {
+                write_record(&directory, &next)?;
+            }
+            let data_root = crate::paths::oleafly_root()?;
+            note_disk_read();
+            store_entry(
+                &data_root,
+                &linked_root,
+                project_id,
+                read_cached(&directory, project_id),
+            );
+            match self.records.iter_mut().find(|record| record.id == next.id) {
+                Some(slot) => *slot = next.clone(),
+                None => self.records.push(next.clone()),
+            }
+            Ok(next)
+        }
+    }
+
+    pub(crate) fn transaction<T, E, F>(work: F) -> Result<T, E>
+    where
+        E: From<String>,
+        F: FnOnce(&mut Transaction) -> Result<T, E>,
+    {
+        let lock = lock_registry_writes()?;
+        let records = match crate::paths::existing_linked_root()? {
+            Some(linked_root) => records_in(&linked_root)?,
+            None => Vec::new(),
+        };
+        work(&mut Transaction {
+            records,
+            _lock: lock,
+        })
+    }
+
+    pub(crate) fn register(link: NewLink) -> Result<Registration, String> {
+        transaction(|txn| {
+            let canonical_path = registrable_path(&link.canonical_path)?;
+            if let Some(existing) = txn
+                .records
+                .iter()
+                .find(|record| same_folder(record, &canonical_path, &link.identity))
+            {
+                return Ok(Registration::Existing(existing.clone()));
+            }
+            txn.create(link, None).map(Registration::Created)
+        })
     }
 
     pub(crate) fn update<F>(project_id: &str, change: F) -> Result<LinkRecord, String>
     where
         F: FnOnce(&mut LinkRecord) -> Result<(), String>,
     {
-        let missing = || format!("project does not exist: {project_id}");
-        if !is_linked_id(project_id) {
-            return Err(missing());
-        }
-        let _lock = lock_registry_writes()?;
-        let linked_root = crate::paths::existing_linked_root()?.ok_or_else(missing)?;
-        let directory = linked_root.join(project_id);
-        let current = read_record(&directory, project_id)?.ok_or_else(missing)?;
-        let mut next = current.clone();
-        change(&mut next)?;
-        next.weak_identity = next.identity.weak;
-        if next.id != current.id
-            || next.version != current.version
-            || next.created_at != current.created_at
-        {
-            return Err("a folder link cannot change its identity".into());
-        }
-        if next.canonical_path != current.canonical_path {
-            next.canonical_path = registrable_path(Path::new(&next.canonical_path))?;
-        }
-        validate_record(&next, project_id)?;
-        if next != current {
-            write_record(&directory, &next)?;
-        }
-        let data_root = crate::paths::oleafly_root()?;
-        note_disk_read();
-        store_entry(
-            &data_root,
-            &linked_root,
-            project_id,
-            read_cached(&directory, project_id),
-        );
-        Ok(next)
+        transaction(|txn| txn.update(project_id, change))
     }
 
     pub(crate) fn register_folder_for_test(folder: &Path) -> LinkRecord {
@@ -801,6 +899,8 @@ mod tests {
             removed_at: None,
             volume_kind: observed.volume_kind,
             compile_dir: None,
+            displaced: None,
+            reattach: None,
             extra: BTreeMap::new(),
         }
     }
@@ -849,6 +949,42 @@ mod tests {
         let text = std::fs::read_to_string(directory.join(LINK_FILE)).unwrap();
         assert!(text.contains("\"lens\""));
         assert!(!text.contains("removed_at"));
+    }
+
+    #[test]
+    fn displacement_and_reattach_offers_round_trip_and_stay_out_of_plain_records() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = tempfile::tempdir().unwrap();
+        let id = format!("{LINKED_ID_PREFIX}{:032x}", 11);
+        let directory = data.path().join(&id);
+        std::fs::create_dir(&directory).unwrap();
+        let plain = record_for(folder.path(), &id);
+        write_record(&directory, &plain).unwrap();
+        let text = std::fs::read_to_string(directory.join(LINK_FILE)).unwrap();
+        assert!(
+            !text.contains("displaced") && !text.contains("reattach"),
+            "{text}"
+        );
+
+        let mut record = plain;
+        record.displaced = Some(Displacement {
+            by: format!("{LINKED_ID_PREFIX}{:032x}", 12),
+            at_ms: 5,
+        });
+        record.reattach = Some(ReattachOffer {
+            from_id: format!("{LINKED_ID_PREFIX}{:032x}", 13),
+            reason: ReattachReason::Replaced,
+            offered_at_ms: 6,
+        });
+        write_record(&directory, &record).unwrap();
+
+        let read = read_record(&directory, &id).unwrap().unwrap();
+        assert_eq!(read, record);
+        assert!(read.extra.is_empty());
+        let json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join(LINK_FILE)).unwrap()).unwrap();
+        assert_eq!(json["reattach"]["reason"], "replaced");
+        assert_eq!(json["displaced"]["at_ms"], 5);
     }
 
     #[test]
@@ -1326,7 +1462,10 @@ mod tests {
         assert_eq!(get("paper").unwrap(), None);
         assert_eq!(
             list().unwrap(),
-            vec![LinkEntry::Record(earlier), LinkEntry::Record(later)]
+            vec![
+                LinkEntry::Record(Box::new(earlier)),
+                LinkEntry::Record(Box::new(later))
+            ]
         );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

@@ -53,7 +53,7 @@ pub(crate) fn abbreviated_display_path(path: &Path, home: Option<&Path>) -> Stri
     shown.to_string_lossy().into_owned()
 }
 
-fn without_verbatim_prefix(path: &Path) -> PathBuf {
+pub(crate) fn without_verbatim_prefix(path: &Path) -> PathBuf {
     let text = path.to_string_lossy();
     if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
         return PathBuf::from(format!(r"\\{rest}"));

@@ -42,6 +42,7 @@ mod git;
 mod github;
 mod i18n;
 mod initial_state;
+mod known_folders;
 mod language_service;
 mod latex_engine;
 mod library_db;
@@ -53,6 +54,8 @@ mod logsafe;
 mod mcp;
 mod menu;
 mod ollama;
+#[cfg(test)]
+mod open_folder;
 mod paths;
 mod proc;
 mod process_identity;

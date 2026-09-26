@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly ei voi luottaa koko kansioon {{name}}. Valitse pienempi kansio.",
     "declined": "Kansioon ei luotettu.",
     "unavailable": "Oleafly ei voinut tarkistaa, onko tähän kansioon luotettu."
+  },
+  "open_folder": {
+    "not_absolute": "Käytä kansion koko polkua.",
+    "not_found": "Oleafly ei löydä tätä kansiota.",
+    "permission_denied": "Oleaflylla ei ole oikeutta avata tätä kansiota.",
+    "not_a_folder": "Valitse kansio, ei tiedostoa.",
+    "unsupported_folder": "Oleafly ei voi avata tämäntyyppistä kansiota.",
+    "path_not_unicode": "Tämän kansion polussa on merkkejä, joita Oleafly ei pysty lukemaan. Nimeä kansio uudelleen ja yritä sitten uudestaan.",
+    "too_broad": "{{name}} sisältää liikaa avattavaksi yhtenä projektina. Valitse kansio sen sisältä.",
+    "protected": "Oleafly ei voi avata kansioita, jotka ovat kohteessa {{name}}.",
+    "app_data": "Tämä kansio kuuluu Oleaflyn sovellustietoihin. Valitse kansio sen ulkopuolelta.",
+    "contains_project": "Tämä kansio sisältää kohteen {{name}}, joka on jo avattu Oleaflyssa omana projektinaan.",
+    "research_folder": "{{project}} voi jo muokata tämän kansion tiedostoja linkitettyjen kansioidensa kautta. Poista linkitys sieltä ensin.",
+    "failed": "Oleafly ei voinut avata tätä kansiota."
+  },
+  "research": {
+    "linked_project_folder": "Tämä kansio on avattu Oleaflyssa omana projektinaan. Linkitä se sen sijaan vain luettavaksi."
   }
 }

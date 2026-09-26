@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly non può considerare affidabile tutta la cartella {{name}}. Scegli una cartella più piccola.",
     "declined": "La cartella non è stata considerata affidabile.",
     "unavailable": "Oleafly non è riuscito a verificare se questa cartella è affidabile."
+  },
+  "open_folder": {
+    "not_absolute": "Usa il percorso completo della cartella.",
+    "not_found": "Oleafly non trova questa cartella.",
+    "permission_denied": "Oleafly non ha l'autorizzazione per aprire questa cartella.",
+    "not_a_folder": "Scegli una cartella, non un file.",
+    "unsupported_folder": "Oleafly non può aprire questo tipo di cartella.",
+    "path_not_unicode": "Il percorso di questa cartella contiene caratteri che Oleafly non riesce a leggere. Rinomina la cartella e riprova.",
+    "too_broad": "{{name}} contiene troppo per essere aperta come un unico progetto. Scegli una cartella al suo interno.",
+    "protected": "Oleafly non può aprire le cartelle dentro {{name}}.",
+    "app_data": "Questa cartella fa parte dei dati dell'app di Oleafly. Scegli una cartella al di fuori.",
+    "contains_project": "Questa cartella contiene {{name}}, già aperta in Oleafly come progetto a sé.",
+    "research_folder": "{{project}} può già modificare i file di questa cartella tramite le sue cartelle collegate. Prima rimuovi il collegamento lì.",
+    "failed": "Oleafly non è riuscito ad aprire questa cartella."
+  },
+  "research": {
+    "linked_project_folder": "Questa cartella è aperta in Oleafly come progetto a sé. Collegala invece in sola lettura."
   }
 }

@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly nu poate avea încredere în tot folderul {{name}}. Alege un folder mai mic.",
     "declined": "Folderul nu a fost marcat ca de încredere.",
     "unavailable": "Oleafly nu a putut verifica dacă acest folder este de încredere."
+  },
+  "open_folder": {
+    "not_absolute": "Folosește calea completă către folder.",
+    "not_found": "Oleafly nu găsește acest folder.",
+    "permission_denied": "Oleafly nu are permisiunea de a deschide acest folder.",
+    "not_a_folder": "Alege un folder, nu un fișier.",
+    "unsupported_folder": "Oleafly nu poate deschide acest tip de folder.",
+    "path_not_unicode": "Calea acestui folder conține caractere pe care Oleafly nu le poate citi. Redenumește folderul și încearcă din nou.",
+    "too_broad": "{{name}} conține prea mult pentru a fi deschis ca un singur proiect. Alege un folder din interiorul lui.",
+    "protected": "Oleafly nu poate deschide foldere din {{name}}.",
+    "app_data": "Acest folder face parte din datele aplicației Oleafly. Alege un folder din afara lui.",
+    "contains_project": "Acest folder conține {{name}}, care este deja deschis în Oleafly ca proiect separat.",
+    "research_folder": "{{project}} poate deja edita fișiere din acest folder prin folderele sale asociate. Mai întâi elimină asocierea de acolo.",
+    "failed": "Oleafly nu a putut deschide acest folder."
+  },
+  "research": {
+    "linked_project_folder": "Acest folder este deschis în Oleafly ca proiect separat. Asociază-l în schimb doar pentru citire."
   }
 }

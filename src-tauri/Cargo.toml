@@ -65,6 +65,7 @@ aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
 zeroize = "=1.9.0"
 libc = "0.2"
+dirs = "6"
 serde_yaml = "0.9"
 same-file = "1"
 tempfile = { workspace = true }

@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly {{name}} klasörünün tamamına güvenemez. Daha küçük bir klasör seçin.",
     "declined": "Klasöre güvenilmedi.",
     "unavailable": "Oleafly bu klasöre güvenilip güvenilmediğini denetleyemedi."
+  },
+  "open_folder": {
+    "not_absolute": "Klasörün tam yolunu kullanın.",
+    "not_found": "Oleafly bu klasörü bulamıyor.",
+    "permission_denied": "Oleafly'nin bu klasörü açma izni yok.",
+    "not_a_folder": "Dosya değil, bir klasör seçin.",
+    "unsupported_folder": "Oleafly bu tür bir klasörü açamaz.",
+    "path_not_unicode": "Bu klasörün yolunda Oleafly'nin okuyamadığı karakterler var. Klasörü yeniden adlandırıp tekrar deneyin.",
+    "too_broad": "{{name}} tek bir proje olarak açılamayacak kadar çok şey içeriyor. İçinden bir klasör seçin.",
+    "protected": "Oleafly {{name}} içindeki klasörleri açamaz.",
+    "app_data": "Bu klasör Oleafly'nin uygulama verilerinin bir parçası. Bunun dışında bir klasör seçin.",
+    "contains_project": "Bu klasör, Oleafly'de zaten ayrı bir proje olarak açık olan {{name}} öğesini içeriyor.",
+    "research_folder": "{{project}}, bağlı klasörleri aracılığıyla bu klasördeki dosyaları zaten düzenleyebiliyor. Önce oradaki bağlantıyı kaldırın.",
+    "failed": "Oleafly bu klasörü açamadı."
+  },
+  "research": {
+    "linked_project_folder": "Bu klasör Oleafly'de ayrı bir proje olarak açık. Bunun yerine salt okunur olarak bağlayın."
   }
 }

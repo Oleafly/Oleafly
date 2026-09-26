@@ -338,7 +338,7 @@ pub fn existing_linked_root() -> Result<Option<PathBuf>, String> {
     Ok(Some(linked))
 }
 
-pub(crate) fn overlaps_app_data(folder: &Path) -> Result<bool, String> {
+pub(crate) fn app_data_roots() -> Result<Vec<PathBuf>, String> {
     let data = oleafly_root()?
         .canonicalize()
         .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
@@ -365,7 +365,11 @@ pub(crate) fn overlaps_app_data(folder: &Path) -> Result<bool, String> {
             }
         }
     }
-    Ok(roots
+    Ok(roots)
+}
+
+pub(crate) fn overlaps_app_data(folder: &Path) -> Result<bool, String> {
+    Ok(app_data_roots()?
         .iter()
         .any(|root| folder.starts_with(root) || root.starts_with(folder)))
 }
@@ -581,6 +585,76 @@ pub(crate) fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
 #[cfg(not(windows))]
 pub(crate) fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ReparseClass {
+    None,
+    Cloud,
+    NameSurrogate,
+    Other,
+}
+
+#[cfg(test)]
+impl ReparseClass {
+    pub(crate) fn opens_as_folder(self) -> bool {
+        !matches!(self, Self::NameSurrogate)
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn classify_reparse_tag(attributes: u32, tag: u32) -> ReparseClass {
+    const REPARSE_POINT_ATTRIBUTE: u32 = 0x0000_0400;
+    const NAME_SURROGATE_TAG_BIT: u32 = 0x2000_0000;
+    const CLOUD_TAG: u32 = 0x9000_001A;
+    const CLOUD_TAG_VARIANT_BITS: u32 = 0x0000_F000;
+    const LEGACY_ONEDRIVE_TAG: u32 = 0x8000_0021;
+    if attributes & REPARSE_POINT_ATTRIBUTE == 0 {
+        return ReparseClass::None;
+    }
+    if tag & NAME_SURROGATE_TAG_BIT != 0 {
+        return ReparseClass::NameSurrogate;
+    }
+    if tag & !CLOUD_TAG_VARIANT_BITS == CLOUD_TAG || tag == LEGACY_ONEDRIVE_TAG {
+        return ReparseClass::Cloud;
+    }
+    ReparseClass::Other
+}
+
+#[cfg(all(test, windows))]
+pub(crate) fn reparse_class(path: &Path) -> std::io::Result<ReparseClass> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use windows_sys::Win32::Storage::FileSystem::{
+        FileAttributeTagInfo, GetFileInformationByHandleEx, FILE_ATTRIBUTE_TAG_INFO,
+        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
+    };
+    let handle = std::fs::OpenOptions::new()
+        .access_mode(0)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(path)?;
+    let mut information = FILE_ATTRIBUTE_TAG_INFO::default();
+    let succeeded = unsafe {
+        GetFileInformationByHandleEx(
+            handle.as_raw_handle(),
+            FileAttributeTagInfo,
+            std::ptr::addr_of_mut!(information).cast(),
+            std::mem::size_of::<FILE_ATTRIBUTE_TAG_INFO>() as u32,
+        )
+    };
+    if succeeded == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(classify_reparse_tag(
+        information.FileAttributes,
+        information.ReparseTag,
+    ))
+}
+
+#[cfg(all(test, not(windows)))]
+pub(crate) fn reparse_class(_path: &Path) -> std::io::Result<ReparseClass> {
+    Ok(ReparseClass::None)
 }
 
 /// Serializes every process environment mutation a test performs, because a
@@ -943,5 +1017,71 @@ mod tests {
         assert!(existing_checkpoint_store_dir("paper").is_err());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn reparse_tags_are_classified_by_the_name_surrogate_bit() {
+        const REPARSE: u32 = 0x0000_0400;
+        const DIRECTORY: u32 = 0x0000_0010;
+        const MOUNT_POINT: u32 = 0xA000_0003;
+        const SYMLINK: u32 = 0xA000_000C;
+        const LX_SYMLINK: u32 = 0xA000_001D;
+        const WCI_LINK: u32 = 0xA000_0027;
+        const CLOUD: u32 = 0x9000_001A;
+        const CLOUD_3: u32 = 0x9000_301A;
+        const CLOUD_F: u32 = 0x9000_F01A;
+        const ONEDRIVE: u32 = 0x8000_0021;
+        const PROJFS: u32 = 0x9000_001C;
+        const APPEXECLINK: u32 = 0x8000_001B;
+        assert_eq!(classify_reparse_tag(DIRECTORY, SYMLINK), ReparseClass::None);
+        for tag in [MOUNT_POINT, SYMLINK, LX_SYMLINK, WCI_LINK] {
+            assert_eq!(
+                classify_reparse_tag(REPARSE | DIRECTORY, tag),
+                ReparseClass::NameSurrogate,
+                "{tag:#x}"
+            );
+        }
+        for tag in [CLOUD, CLOUD_3, CLOUD_F, ONEDRIVE] {
+            assert_eq!(
+                classify_reparse_tag(REPARSE | DIRECTORY, tag),
+                ReparseClass::Cloud,
+                "{tag:#x}"
+            );
+        }
+        for tag in [PROJFS, APPEXECLINK] {
+            assert_eq!(
+                classify_reparse_tag(REPARSE | DIRECTORY, tag),
+                ReparseClass::Other,
+                "{tag:#x}"
+            );
+        }
+        assert!(ReparseClass::None.opens_as_folder());
+        assert!(ReparseClass::Cloud.opens_as_folder());
+        assert!(ReparseClass::Other.opens_as_folder());
+        assert!(!ReparseClass::NameSurrogate.opens_as_folder());
+    }
+
+    #[test]
+    fn a_plain_directory_has_no_reparse_class() {
+        let directory = tempfile::tempdir().unwrap();
+        assert_eq!(reparse_class(directory.path()).unwrap(), ReparseClass::None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_is_a_name_surrogate() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("target");
+        let link = directory.path().join("link");
+        std::fs::create_dir(&target).unwrap();
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&link)
+            .arg(&target)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        assert_eq!(reparse_class(&link).unwrap(), ReparseClass::NameSurrogate);
+        assert!(is_reparse_point(&std::fs::symlink_metadata(&link).unwrap()));
     }
 }

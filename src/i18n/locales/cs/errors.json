@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly nemůže důvěřovat celé složce {{name}}. Vyberte menší složku.",
     "declined": "Složce nebyla udělena důvěra.",
     "unavailable": "Oleafly nemohl ověřit, zda je tato složka důvěryhodná."
+  },
+  "open_folder": {
+    "not_absolute": "Zadejte úplnou cestu ke složce.",
+    "not_found": "Oleafly tuto složku nemůže najít.",
+    "permission_denied": "Oleafly nemá oprávnění otevřít tuto složku.",
+    "not_a_folder": "Vyberte složku, ne soubor.",
+    "unsupported_folder": "Oleafly nemůže otevřít tento typ složky.",
+    "path_not_unicode": "Cesta k této složce obsahuje znaky, které Oleafly neumí přečíst. Složku přejmenujte a zkuste to znovu.",
+    "too_broad": "Složka {{name}} obsahuje příliš mnoho, než aby se dala otevřít jako jeden projekt. Vyberte složku uvnitř.",
+    "protected": "Oleafly nemůže otevírat složky uvnitř {{name}}.",
+    "app_data": "Tato složka patří k datům aplikace Oleafly. Vyberte složku mimo ni.",
+    "contains_project": "Tato složka obsahuje {{name}}, která je už v Oleafly otevřená jako samostatný projekt.",
+    "research_folder": "Projekt {{project}} už může upravovat soubory v této složce přes své propojené složky. Nejdřív tam propojení zrušte.",
+    "failed": "Oleafly tuto složku nemohl otevřít."
+  },
+  "research": {
+    "linked_project_folder": "Tato složka je v Oleafly otevřená jako samostatný projekt. Propojte ji raději jen pro čtení."
   }
 }

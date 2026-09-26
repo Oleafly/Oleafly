@@ -131,7 +131,6 @@ pub(crate) fn same_path(left: &Path, right: &Path, case: CaseSensitivity) -> boo
     }
 }
 
-#[cfg(test)]
 pub(crate) fn path_is_within(path: &Path, ancestor: &Path, case: CaseSensitivity) -> bool {
     let mut path = path.components();
     ancestor.components().all(|expected| {
@@ -140,7 +139,10 @@ pub(crate) fn path_is_within(path: &Path, ancestor: &Path, case: CaseSensitivity
     })
 }
 
-#[cfg(test)]
+pub(crate) fn paths_overlap(left: &Path, right: &Path, case: CaseSensitivity) -> bool {
+    path_is_within(left, right, case) || path_is_within(right, left, case)
+}
+
 fn same_component(
     left: std::path::Component<'_>,
     right: std::path::Component<'_>,

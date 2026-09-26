@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly 無法信任整個 {{name}}。請選擇較小的資料夾。",
     "declined": "未信任該資料夾。",
     "unavailable": "Oleafly 無法檢查這個資料夾是否受信任。"
+  },
+  "open_folder": {
+    "not_absolute": "請使用資料夾的完整路徑。",
+    "not_found": "Oleafly 找不到此資料夾。",
+    "permission_denied": "Oleafly 沒有開啟此資料夾的權限。",
+    "not_a_folder": "請選擇資料夾，而不是檔案。",
+    "unsupported_folder": "Oleafly 無法開啟這類資料夾。",
+    "path_not_unicode": "此資料夾的路徑包含 Oleafly 無法讀取的字元。請重新命名資料夾後再試一次。",
+    "too_broad": "{{name}} 包含的內容太多，無法作為單一專案開啟。請選擇其中的資料夾。",
+    "protected": "Oleafly 無法開啟 {{name}} 中的資料夾。",
+    "app_data": "此資料夾屬於 Oleafly 的應用程式資料。請選擇其外部的資料夾。",
+    "contains_project": "此資料夾包含 {{name}}，它已在 Oleafly 中作為獨立專案開啟。",
+    "research_folder": "{{project}} 已可透過其已連結資料夾編輯此資料夾中的檔案。請先在該處取消連結。",
+    "failed": "Oleafly 無法開啟此資料夾。"
+  },
+  "research": {
+    "linked_project_folder": "此資料夾已在 Oleafly 中作為獨立專案開啟。請改為以唯讀方式連結。"
   }
 }

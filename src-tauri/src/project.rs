@@ -3516,7 +3516,7 @@ fn admit_enumeration(project_id: &str) -> EnumerationAdmission {
     }
 }
 
-fn linked_listing_meta(project_id: &str) -> Option<ProjectMeta> {
+pub(crate) fn linked_listing_meta(project_id: &str) -> Option<ProjectMeta> {
     let state_dir = crate::project_location::linked_state_dir(project_id).ok()??;
     let path = state_dir.join(crate::project_location::MANIFEST_FILE);
     let metadata = std::fs::symlink_metadata(&path).ok()?;
@@ -3529,7 +3529,7 @@ fn linked_listing_meta(project_id: &str) -> Option<ProjectMeta> {
     parse_project_meta(&std::fs::read(&path).ok()?).ok()
 }
 
-fn linked_display_name(
+pub(crate) fn linked_display_name(
     record: &crate::linked_registry::LinkRecord,
     meta: Option<&ProjectMeta>,
 ) -> String {
@@ -6076,7 +6076,9 @@ fn search_linked_folders(
     let records: Vec<&crate::linked_registry::LinkRecord> = linked
         .iter()
         .filter_map(|entry| match entry {
-            crate::linked_registry::LinkEntry::Record(record) if record.is_active() => Some(record),
+            crate::linked_registry::LinkEntry::Record(record) if record.is_active() => {
+                Some(record.as_ref())
+            }
             _ => None,
         })
         .collect();

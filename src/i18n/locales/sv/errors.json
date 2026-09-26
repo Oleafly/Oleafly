@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly kan inte lita på hela {{name}}. Välj en mindre mapp.",
     "declined": "Mappen markerades inte som betrodd.",
     "unavailable": "Oleafly kunde inte kontrollera om den här mappen är betrodd."
+  },
+  "open_folder": {
+    "not_absolute": "Använd den fullständiga sökvägen till mappen.",
+    "not_found": "Oleafly hittar inte den här mappen.",
+    "permission_denied": "Oleafly har inte behörighet att öppna den här mappen.",
+    "not_a_folder": "Välj en mapp, inte en fil.",
+    "unsupported_folder": "Oleafly kan inte öppna den här typen av mapp.",
+    "path_not_unicode": "Sökvägen till den här mappen innehåller tecken som Oleafly inte kan läsa. Byt namn på mappen och försök igen.",
+    "too_broad": "{{name}} innehåller för mycket för att öppnas som ett enda projekt. Välj en mapp inuti den.",
+    "protected": "Oleafly kan inte öppna mappar inuti {{name}}.",
+    "app_data": "Den här mappen är en del av Oleaflys appdata. Välj en mapp utanför den.",
+    "contains_project": "Den här mappen innehåller {{name}}, som redan är öppet i Oleafly som ett eget projekt.",
+    "research_folder": "{{project}} kan redan redigera filer i den här mappen via sina länkade mappar. Ta bort länken där först.",
+    "failed": "Oleafly kunde inte öppna den här mappen."
+  },
+  "research": {
+    "linked_project_folder": "Den här mappen är öppen i Oleafly som ett eget projekt. Länka den som skrivskyddad i stället."
   }
 }

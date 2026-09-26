@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly kann nicht dem ganzen Ordner {{name}} vertrauen. Wählen Sie einen kleineren Ordner.",
     "declined": "Dem Ordner wurde nicht vertraut.",
     "unavailable": "Oleafly konnte nicht prüfen, ob diesem Ordner vertraut wird."
+  },
+  "open_folder": {
+    "not_absolute": "Geben Sie den vollständigen Pfad zum Ordner an.",
+    "not_found": "Oleafly kann diesen Ordner nicht finden.",
+    "permission_denied": "Oleafly hat keine Berechtigung, diesen Ordner zu öffnen.",
+    "not_a_folder": "Wählen Sie einen Ordner, keine Datei.",
+    "unsupported_folder": "Oleafly kann diese Art von Ordner nicht öffnen.",
+    "path_not_unicode": "Der Pfad dieses Ordners enthält Zeichen, die Oleafly nicht lesen kann. Benennen Sie den Ordner um und versuchen Sie es erneut.",
+    "too_broad": "{{name}} enthält zu viel, um als ein Projekt geöffnet zu werden. Wählen Sie einen Ordner darin.",
+    "protected": "Oleafly kann keine Ordner in {{name}} öffnen.",
+    "app_data": "Dieser Ordner gehört zu den App-Daten von Oleafly. Wählen Sie einen Ordner außerhalb davon.",
+    "contains_project": "Dieser Ordner enthält {{name}}, das in Oleafly bereits als eigenes Projekt geöffnet ist.",
+    "research_folder": "{{project}} kann über seine verknüpften Ordner bereits Dateien in diesem Ordner bearbeiten. Heben Sie die Verknüpfung zuerst dort auf.",
+    "failed": "Oleafly konnte diesen Ordner nicht öffnen."
+  },
+  "research": {
+    "linked_project_folder": "Dieser Ordner ist in Oleafly als eigenes Projekt geöffnet. Verknüpfen Sie ihn stattdessen schreibgeschützt."
   }
 }

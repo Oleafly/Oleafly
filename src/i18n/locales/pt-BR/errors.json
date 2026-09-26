@@ -54,5 +54,22 @@
     "broad_folder": "O Oleafly não pode confiar em toda a pasta {{name}}. Escolha uma pasta menor.",
     "declined": "A pasta não foi marcada como confiável.",
     "unavailable": "O Oleafly não conseguiu verificar se esta pasta é confiável."
+  },
+  "open_folder": {
+    "not_absolute": "Use o caminho completo da pasta.",
+    "not_found": "O Oleafly não encontra esta pasta.",
+    "permission_denied": "O Oleafly não tem permissão para abrir esta pasta.",
+    "not_a_folder": "Escolha uma pasta, não um arquivo.",
+    "unsupported_folder": "O Oleafly não consegue abrir este tipo de pasta.",
+    "path_not_unicode": "O caminho desta pasta contém caracteres que o Oleafly não consegue ler. Renomeie a pasta e tente novamente.",
+    "too_broad": "{{name}} contém coisas demais para ser aberta como um único projeto. Escolha uma pasta dentro dela.",
+    "protected": "O Oleafly não pode abrir pastas dentro de {{name}}.",
+    "app_data": "Esta pasta faz parte dos dados do aplicativo Oleafly. Escolha uma pasta fora dela.",
+    "contains_project": "Esta pasta contém {{name}}, que já está aberta no Oleafly como um projeto próprio.",
+    "research_folder": "{{project}} já pode editar arquivos desta pasta pelas suas pastas vinculadas. Primeiro desvincule a pasta lá.",
+    "failed": "O Oleafly não conseguiu abrir esta pasta."
+  },
+  "research": {
+    "linked_project_folder": "Esta pasta está aberta no Oleafly como um projeto próprio. Vincule-a como somente leitura."
   }
 }

@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly no puede confiar en toda la carpeta {{name}}. Elige una carpeta más pequeña.",
     "declined": "No se confió en la carpeta.",
     "unavailable": "Oleafly no pudo comprobar si esta carpeta es de confianza."
+  },
+  "open_folder": {
+    "not_absolute": "Usa la ruta completa de la carpeta.",
+    "not_found": "Oleafly no encuentra esta carpeta.",
+    "permission_denied": "Oleafly no tiene permiso para abrir esta carpeta.",
+    "not_a_folder": "Elige una carpeta, no un archivo.",
+    "unsupported_folder": "Oleafly no puede abrir este tipo de carpeta.",
+    "path_not_unicode": "La ruta de esta carpeta contiene caracteres que Oleafly no puede leer. Cambia el nombre de la carpeta e inténtalo de nuevo.",
+    "too_broad": "{{name}} contiene demasiado para abrirse como un solo proyecto. Elige una carpeta dentro de ella.",
+    "protected": "Oleafly no puede abrir carpetas dentro de {{name}}.",
+    "app_data": "Esta carpeta forma parte de los datos de la aplicación de Oleafly. Elige una carpeta fuera de ella.",
+    "contains_project": "Esta carpeta contiene {{name}}, que ya está abierta en Oleafly como un proyecto independiente.",
+    "research_folder": "{{project}} ya puede editar archivos de esta carpeta a través de sus carpetas enlazadas. Primero quita el enlace allí.",
+    "failed": "Oleafly no pudo abrir esta carpeta."
+  },
+  "research": {
+    "linked_project_folder": "Esta carpeta está abierta en Oleafly como un proyecto independiente. Enlázala en modo de solo lectura."
   }
 }

@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly kan niet heel {{name}} vertrouwen. Kies een kleinere map.",
     "declined": "De map is niet vertrouwd.",
     "unavailable": "Oleafly kon niet controleren of deze map wordt vertrouwd."
+  },
+  "open_folder": {
+    "not_absolute": "Gebruik het volledige pad naar de map.",
+    "not_found": "Oleafly kan deze map niet vinden.",
+    "permission_denied": "Oleafly heeft geen toestemming om deze map te openen.",
+    "not_a_folder": "Kies een map, geen bestand.",
+    "unsupported_folder": "Oleafly kan dit soort map niet openen.",
+    "path_not_unicode": "Het pad van deze map bevat tekens die Oleafly niet kan lezen. Geef de map een andere naam en probeer het opnieuw.",
+    "too_broad": "{{name}} bevat te veel om als één project te openen. Kies een map daarbinnen.",
+    "protected": "Oleafly kan geen mappen binnen {{name}} openen.",
+    "app_data": "Deze map hoort bij de appgegevens van Oleafly. Kies een map daarbuiten.",
+    "contains_project": "Deze map bevat {{name}}, dat al als eigen project in Oleafly is geopend.",
+    "research_folder": "{{project}} kan via zijn gekoppelde mappen al bestanden in deze map bewerken. Ontkoppel de map daar eerst.",
+    "failed": "Oleafly kon deze map niet openen."
+  },
+  "research": {
+    "linked_project_folder": "Deze map is in Oleafly als eigen project geopend. Koppel de map in plaats daarvan als alleen-lezen."
   }
 }

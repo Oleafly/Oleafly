@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly 无法信任整个 {{name}}。请选择一个更小的文件夹。",
     "declined": "未信任该文件夹。",
     "unavailable": "Oleafly 无法检查此文件夹是否受信任。"
+  },
+  "open_folder": {
+    "not_absolute": "请使用文件夹的完整路径。",
+    "not_found": "Oleafly 找不到此文件夹。",
+    "permission_denied": "Oleafly 没有打开此文件夹的权限。",
+    "not_a_folder": "请选择文件夹，而不是文件。",
+    "unsupported_folder": "Oleafly 无法打开此类文件夹。",
+    "path_not_unicode": "此文件夹的路径包含 Oleafly 无法读取的字符。请重命名文件夹后重试。",
+    "too_broad": "{{name}} 包含的内容太多，无法作为一个项目打开。请选择其中的某个文件夹。",
+    "protected": "Oleafly 无法打开 {{name}} 中的文件夹。",
+    "app_data": "此文件夹属于 Oleafly 的应用数据。请选择其外部的文件夹。",
+    "contains_project": "此文件夹包含 {{name}}，它已在 Oleafly 中作为独立项目打开。",
+    "research_folder": "{{project}} 已可通过其已链接文件夹编辑此文件夹中的文件。请先在那里取消链接。",
+    "failed": "Oleafly 无法打开此文件夹。"
+  },
+  "research": {
+    "linked_project_folder": "此文件夹已在 Oleafly 中作为独立项目打开。请改为以只读方式链接。"
   }
 }

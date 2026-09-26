@@ -497,3 +497,100 @@ fn all_starters_have_distinct_section_sets_and_shared_workflow_files() {
     }
     assert_eq!(mains.len(), 4);
 }
+
+#[test]
+fn a_folder_open_as_its_own_project_can_only_be_linked_read_only() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+    let projects = crate::paths::projects_root().unwrap();
+    std::fs::create_dir(projects.join("survey")).unwrap();
+    std::fs::write(projects.join("survey").join("project.json"), "{}").unwrap();
+    let folder = temp.path().join("outer").join("paper");
+    std::fs::create_dir_all(folder.join("data")).unwrap();
+    crate::linked_registry::register_folder_for_test(&folder);
+    let request = |path: &std::path::Path, access| AddResearchRootRequest {
+        project_id: "survey".into(),
+        path: path.to_string_lossy().into_owned(),
+        label: "Paper".into(),
+        role: ResearchRootRole::Data,
+        access,
+    };
+    for path in [
+        folder.clone(),
+        folder.join("data"),
+        temp.path().join("outer"),
+    ] {
+        let error = roots::add_root(request(&path, ResearchRootAccess::ReadWrite)).unwrap_err();
+        assert!(
+            error.contains("\"code\":\"research.linked_project_folder\""),
+            "{path:?}: {error}"
+        );
+    }
+    let workspace = roots::add_root(request(&folder, ResearchRootAccess::ReadOnly)).unwrap();
+    let error = roots::update_root(super::model::UpdateResearchRootRequest {
+        project_id: "survey".into(),
+        root_id: workspace.roots[0].id.clone(),
+        label: "Paper".into(),
+        role: ResearchRootRole::Data,
+        access: ResearchRootAccess::ReadWrite,
+    })
+    .unwrap_err();
+    assert!(
+        error.contains("\"code\":\"research.linked_project_folder\""),
+        "{error}"
+    );
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
+fn writes_stop_when_a_writable_folder_is_also_open_as_its_own_project() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+    let projects = crate::paths::projects_root().unwrap();
+    std::fs::create_dir(projects.join("survey")).unwrap();
+    std::fs::write(projects.join("survey").join("project.json"), "{}").unwrap();
+    let folder = temp.path().join("shared");
+    std::fs::create_dir(&folder).unwrap();
+    let workspace = roots::add_root(AddResearchRootRequest {
+        project_id: "survey".into(),
+        path: folder.to_string_lossy().into_owned(),
+        label: "Shared".into(),
+        role: ResearchRootRole::Data,
+        access: ResearchRootAccess::ReadWrite,
+    })
+    .unwrap();
+    let root_id = workspace.roots[0].id.clone();
+    let write = || {
+        roots::write_root_file(
+            "survey",
+            &root_id,
+            "notes.txt",
+            b"x",
+            ResearchRootConsumer::Native,
+        )
+    };
+    write().unwrap();
+    let linked = crate::linked_registry::register_folder_for_test(&folder);
+    let error = write().unwrap_err();
+    assert!(
+        error.contains("\"code\":\"research.linked_project_folder\""),
+        "{error}"
+    );
+    crate::linked_registry::update(&linked.id, |record| {
+        record.removed_at = Some(1);
+        Ok(())
+    })
+    .unwrap();
+    write().unwrap();
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}

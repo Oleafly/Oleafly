@@ -3201,6 +3201,7 @@ dependencies = [
  "cap-fs-ext",
  "cap-std",
  "cbc",
+ "dirs",
  "flate2",
  "fs4",
  "futures-util",

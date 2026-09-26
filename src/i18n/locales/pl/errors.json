@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly nie może zaufać całemu folderowi {{name}}. Wybierz mniejszy folder.",
     "declined": "Folder nie został uznany za zaufany.",
     "unavailable": "Oleafly nie mógł sprawdzić, czy ten folder jest zaufany."
+  },
+  "open_folder": {
+    "not_absolute": "Podaj pełną ścieżkę do folderu.",
+    "not_found": "Oleafly nie może znaleźć tego folderu.",
+    "permission_denied": "Oleafly nie ma uprawnień do otwarcia tego folderu.",
+    "not_a_folder": "Wybierz folder, a nie plik.",
+    "unsupported_folder": "Oleafly nie może otworzyć tego typu folderu.",
+    "path_not_unicode": "Ścieżka tego folderu zawiera znaki, których Oleafly nie potrafi odczytać. Zmień nazwę folderu i spróbuj ponownie.",
+    "too_broad": "Folder {{name}} zawiera za dużo, aby otworzyć go jako jeden projekt. Wybierz folder w jego wnętrzu.",
+    "protected": "Oleafly nie może otwierać folderów w {{name}}.",
+    "app_data": "Ten folder należy do danych aplikacji Oleafly. Wybierz folder poza nim.",
+    "contains_project": "Ten folder zawiera {{name}}, który jest już otwarty w Oleafly jako osobny projekt.",
+    "research_folder": "Projekt {{project}} może już edytować pliki w tym folderze przez swoje powiązane foldery. Najpierw usuń tam powiązanie.",
+    "failed": "Oleafly nie udało się otworzyć tego folderu."
+  },
+  "research": {
+    "linked_project_folder": "Ten folder jest otwarty w Oleafly jako osobny projekt. Zamiast tego powiąż go tylko do odczytu."
   }
 }

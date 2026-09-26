@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly kan ikke stole på hele {{name}}. Velg en mindre mappe.",
     "declined": "Mappen ble ikke klarert.",
     "unavailable": "Oleafly kunne ikke sjekke om denne mappen er klarert."
+  },
+  "open_folder": {
+    "not_absolute": "Bruk hele banen til mappen.",
+    "not_found": "Oleafly finner ikke denne mappen.",
+    "permission_denied": "Oleafly har ikke tillatelse til å åpne denne mappen.",
+    "not_a_folder": "Velg en mappe, ikke en fil.",
+    "unsupported_folder": "Oleafly kan ikke åpne denne typen mappe.",
+    "path_not_unicode": "Banen til denne mappen inneholder tegn som Oleafly ikke kan lese. Gi mappen nytt navn og prøv igjen.",
+    "too_broad": "{{name}} inneholder for mye til å åpnes som ett prosjekt. Velg en mappe inni den.",
+    "protected": "Oleafly kan ikke åpne mapper inni {{name}}.",
+    "app_data": "Denne mappen er en del av appdataene til Oleafly. Velg en mappe utenfor den.",
+    "contains_project": "Denne mappen inneholder {{name}}, som allerede er åpnet i Oleafly som et eget prosjekt.",
+    "research_folder": "{{project}} kan allerede redigere filer i denne mappen via sine lenkede mapper. Fjern lenken der først.",
+    "failed": "Oleafly kunne ikke åpne denne mappen."
+  },
+  "research": {
+    "linked_project_folder": "Denne mappen er åpnet i Oleafly som et eget prosjekt. Lenk den heller som skrivebeskyttet."
   }
 }

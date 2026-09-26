@@ -54,5 +54,22 @@
     "broad_folder": "Oleafly can't trust all of {{name}}. Choose a smaller folder.",
     "declined": "The folder wasn't trusted.",
     "unavailable": "Oleafly couldn't check whether this folder is trusted."
+  },
+  "open_folder": {
+    "not_absolute": "Use the full path to the folder.",
+    "not_found": "Oleafly can't find this folder.",
+    "permission_denied": "Oleafly doesn't have permission to open this folder.",
+    "not_a_folder": "Choose a folder, not a file.",
+    "unsupported_folder": "Oleafly can't open this type of folder.",
+    "path_not_unicode": "This folder's path contains characters Oleafly can't read. Rename the folder and try again.",
+    "too_broad": "{{name}} holds too much to open as one project. Choose a folder inside it.",
+    "protected": "Oleafly can't open folders inside {{name}}.",
+    "app_data": "This folder is part of Oleafly's app data. Choose a folder outside it.",
+    "contains_project": "This folder contains {{name}}, which is already open in Oleafly as its own project.",
+    "research_folder": "{{project}} can already edit files in this folder through its linked folders. Unlink it there first.",
+    "failed": "Oleafly couldn't open this folder."
+  },
+  "research": {
+    "linked_project_folder": "This folder is open in Oleafly as its own project. Link it as read-only instead."
   }
 }
