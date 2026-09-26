@@ -221,6 +221,10 @@
         "titleCase": "první velká písmena text",
         "uppercase": "velká písmena velikost text"
       }
+    },
+    "openFolder": {
+      "label": "Otevřít složku…",
+      "keywords": "otevřít složka adresář existující místní soubory disk"
     }
   },
   "community": {
@@ -850,7 +854,8 @@
     "loadingCore": "Načítá se Oleafly Core",
     "loadingHarness": "Načítá se Oleafly Harness",
     "loadingParsers": "Načítají se Oleafly Parsers",
-    "starting": "Spouští se Oleafly"
+    "starting": "Spouští se Oleafly",
+    "opening": "Otevírá se {{name}}…"
   },
   "theme": {
     "dark": "Tmavý",
@@ -984,5 +989,21 @@
   "windows": {
     "preview": "Náhled: {{title}}",
     "update": "Aktualizace Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Zastavit a otevřít {{name}}?",
+    "confirmCompile": "{{project}} se stále kompiluje. Otevřením {{name}} se kompilace zastaví. Vaše změny se nejdřív uloží.",
+    "confirmAssistant": "Asistent v {{project}} stále pracuje. Otevřením {{name}} se jeho odpověď zastaví. Vaše změny se nejdřív uloží.",
+    "confirmBoth": "{{project}} se stále kompiluje a asistent stále pracuje. Otevřením {{name}} se zastaví obojí. Vaše změny se nejdřív uloží.",
+    "confirmAction": "Zastavit a otevřít",
+    "chooseSubfolder": "Vybrat podsložku",
+    "refusedTitle": "{{name}} nelze otevřít",
+    "refused": "{{name}} nelze otevřít. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "V Nastavení systému otevřete Soukromí a zabezpečení, potom Soubory a složky, a zapněte Oleafly. Pokud tam Oleafly není, přidejte ho v části Přístup k celému disku a zkuste to znovu.",
+      "windows": "Na kartě Zabezpečení ve Vlastnostech složky ověřte, že ji váš účet může číst, a zkuste to znovu.",
+      "linux": "Ověřte, že váš účet může tuto složku číst, a zkuste to znovu."
+    }
   }
 }

@@ -219,6 +219,10 @@
         "titleCase": "beginhoofdletters hoofdlettergebruik tekst",
         "uppercase": "hoofdletters hoofdlettergebruik tekst"
       }
+    },
+    "openFolder": {
+      "label": "Map openen…",
+      "keywords": "openen map directory bestaand lokaal bestanden schijf"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Oleafly Core laden",
     "loadingHarness": "Oleafly Harness laden",
     "loadingParsers": "Oleafly Parsers laden",
-    "starting": "Oleafly starten"
+    "starting": "Oleafly starten",
+    "opening": "{{name}} openen…"
   },
   "theme": {
     "dark": "Donker",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Voorbeeld: {{title}}",
     "update": "Oleafly-update"
+  },
+  "openFolder": {
+    "confirmTitle": "Stoppen en {{name}} openen?",
+    "confirmCompile": "{{project}} wordt nog gecompileerd. Als je {{name}} opent, stopt het compileren. Je wijzigingen worden eerst opgeslagen.",
+    "confirmAssistant": "De assistent is nog bezig in {{project}}. Als je {{name}} opent, stopt het antwoord. Je wijzigingen worden eerst opgeslagen.",
+    "confirmBoth": "{{project}} wordt nog gecompileerd en de assistent is nog bezig. Als je {{name}} opent, stopt allebei. Je wijzigingen worden eerst opgeslagen.",
+    "confirmAction": "Stoppen en openen",
+    "chooseSubfolder": "Kies een submap",
+    "refusedTitle": "Kan {{name}} niet openen",
+    "refused": "Kan {{name}} niet openen. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Open in Systeeminstellingen Privacy en beveiliging en daarna Bestanden en mappen, en zet Oleafly aan. Staat Oleafly er niet bij, voeg het dan toe onder Volledige schijftoegang en probeer het opnieuw.",
+      "windows": "Controleer op het tabblad Beveiliging in de Eigenschappen van de map of je account de map kan lezen, en probeer het opnieuw.",
+      "linux": "Controleer of je account deze map kan lezen, en probeer het opnieuw."
+    }
   }
 }

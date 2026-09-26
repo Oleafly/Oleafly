@@ -218,6 +218,10 @@
         "titleCase": "标题大小写 首字母大写 文本",
         "uppercase": "大写 大小写 文本"
       }
+    },
+    "openFolder": {
+      "label": "打开文件夹…",
+      "keywords": "打开 文件夹 目录 现有 本地 文件 磁盘"
     }
   },
   "community": {
@@ -793,7 +797,8 @@
     "loadingCore": "正在加载 Oleafly Core",
     "loadingHarness": "正在加载 Oleafly Harness",
     "loadingParsers": "正在加载 Oleafly Parsers",
-    "starting": "正在启动 Oleafly"
+    "starting": "正在启动 Oleafly",
+    "opening": "正在打开 {{name}}…"
   },
   "theme": {
     "dark": "深色",
@@ -927,5 +932,21 @@
   "windows": {
     "preview": "预览：{{title}}",
     "update": "Oleafly 更新"
+  },
+  "openFolder": {
+    "confirmTitle": "停止并打开 {{name}}？",
+    "confirmCompile": "{{project}} 仍在编译。打开 {{name}} 会停止编译。你的更改会先保存。",
+    "confirmAssistant": "助手仍在 {{project}} 中工作。打开 {{name}} 会停止它的回复。你的更改会先保存。",
+    "confirmBoth": "{{project}} 仍在编译，助手也仍在工作。打开 {{name}} 会同时停止两者。你的更改会先保存。",
+    "confirmAction": "停止并打开",
+    "chooseSubfolder": "选择子文件夹",
+    "refusedTitle": "无法打开 {{name}}",
+    "refused": "无法打开 {{name}}。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "请在“系统设置”中打开“隐私与安全性”，再进入“文件和文件夹”，为 Oleafly 打开访问权限。如果列表中没有 Oleafly，请将它添加到“完全磁盘访问权限”，然后重试。",
+      "windows": "请在文件夹“属性”的“安全”选项卡中确认你的账户可以读取它，然后重试。",
+      "linux": "请确认你的账户可以读取此文件夹，然后重试。"
+    }
   }
 }

@@ -220,6 +220,10 @@
         "titleCase": "capitales initiales casse texte",
         "uppercase": "majuscules casse texte"
       }
+    },
+    "openFolder": {
+      "label": "Ouvrir un dossier…",
+      "keywords": "ouvrir dossier répertoire existant local fichiers disque"
     }
   },
   "community": {
@@ -831,7 +835,8 @@
     "loadingCore": "Chargement d'Oleafly Core",
     "loadingHarness": "Chargement d'Oleafly Harness",
     "loadingParsers": "Chargement d'Oleafly Parsers",
-    "starting": "Démarrage d'Oleafly"
+    "starting": "Démarrage d'Oleafly",
+    "opening": "Ouverture de {{name}}…"
   },
   "theme": {
     "dark": "Sombre",
@@ -965,5 +970,21 @@
   "windows": {
     "preview": "Aperçu : {{title}}",
     "update": "Mise à jour d'Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Arrêter et ouvrir {{name}} ?",
+    "confirmCompile": "{{project}} est encore en cours de compilation. Ouvrir {{name}} arrête la compilation. Vos modifications sont enregistrées avant.",
+    "confirmAssistant": "L'assistant travaille encore dans {{project}}. Ouvrir {{name}} arrête sa réponse. Vos modifications sont enregistrées avant.",
+    "confirmBoth": "{{project}} est encore en cours de compilation et l'assistant travaille encore. Ouvrir {{name}} arrête les deux. Vos modifications sont enregistrées avant.",
+    "confirmAction": "Arrêter et ouvrir",
+    "chooseSubfolder": "Choisir un sous-dossier",
+    "refusedTitle": "Impossible d'ouvrir {{name}}",
+    "refused": "Impossible d'ouvrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Dans Réglages Système, ouvrez Confidentialité et sécurité, puis Fichiers et dossiers, et activez Oleafly. Si Oleafly n'y figure pas, ajoutez-le dans Accès complet au disque, puis réessayez.",
+      "windows": "Vérifiez dans l'onglet Sécurité des Propriétés du dossier que votre compte peut le lire, puis réessayez.",
+      "linux": "Vérifiez que votre compte peut lire ce dossier, puis réessayez."
+    }
   }
 }

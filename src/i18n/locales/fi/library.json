@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly-sovelluksen kuvake",
     "welcomeTitle": "Tervetuloa Oleaflyyn",
     "welcomeDescription": "Kirjoita, käännä ja oikolue LaTeX-, Typst- ja Markdown-dokumentteja. Hallitse viittauksia, tarkista PDF-tiedostoja, seuraa muutoksia Git-versionhallinnassa ja työskentele valitsemiesi tekoälymallien kanssa.",
-    "createFirstProject": "Luo uusi projekti",
     "loading": "Luetaan kirjastoa…",
     "noBookmarksTitle": "Ei vielä kirjanmerkkejä",
     "noBookmarksDescription": "Vie osoitin kirjan päälle ja napsauta sen kirjanmerkkiä.",
@@ -69,7 +68,9 @@
       "last7Days": "Viimeiset 7 päivää",
       "last30Days": "Viimeiset 30 päivää",
       "lastYear": "Viimeinen vuosi"
-    }
+    },
+    "openFolder": "Avaa kansio…",
+    "openFolderShortcut": "Avaa kansio ({{shortcut}})"
   },
   "projects": {
     "open": "Avaa {{name}}",
@@ -461,5 +462,14 @@
       "sourcesBody": "Tiedot yhdistävät avoimen ccf-deadlines-aineiston ja Oleaflyn seuraamat konferenssien viralliset sivustot.",
       "confirm": "Varmista jokainen päivämäärä konferenssin virallisilta sivuilta ennen jättämistä."
     }
+  },
+  "start": {
+    "newProjectTitle": "Uusi projekti",
+    "newProjectDescription": "Aloita mallipohjasta tai tyhjältä sivulta.",
+    "openFolderTitle": "Avaa kansio",
+    "openFolderDescription": "Työskentele tiedostoilla, jotka ovat jo tietokoneellasi. Ne pysyvät paikoillaan."
+  },
+  "openFolder": {
+    "dismiss": "Sulje"
   }
 }

@@ -15,7 +15,11 @@
     "selectAll": "Tümünü Seç",
     "view": "Görünüm",
     "toggleTerminal": "Terminali Aç/Kapat",
-    "toggleBrowser": "Tarayıcıyı Aç/Kapat"
+    "toggleBrowser": "Tarayıcıyı Aç/Kapat",
+    "file": "Dosya",
+    "openFolder": "Klasör Aç…",
+    "openRecent": "Son Kullanılanlar",
+    "noRecent": "Son proje yok"
   },
   "window": {
     "browser": "Oleafly Tarayıcı",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Kopyanın kaydedileceği yeri seçin",
       "folderSuffix": "kopya"
+    },
+    "openFolder": {
+      "title": "Bir klasör aç",
+      "inside": "{{name}} içinde bir klasör seçin"
     }
   },
   "errors": {

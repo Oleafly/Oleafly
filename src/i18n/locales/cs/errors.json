@@ -83,7 +83,9 @@
     "app_data": "Tato složka patří k datům aplikace Oleafly. Vyberte složku mimo ni.",
     "contains_project": "Tato složka obsahuje {{name}}, která je už v Oleafly otevřená jako samostatný projekt.",
     "research_folder": "Projekt {{project}} už může upravovat soubory v této složce přes své propojené složky. Nejdřív tam propojení zrušte.",
-    "failed": "Oleafly tuto složku nemohl otevřít."
+    "failed": "Oleafly tuto složku nemohl otevřít.",
+    "request_expired": "Platnost tohoto požadavku vypršela. Otevřete složku znovu.",
+    "timed_out": "Oleafly se k této složce nemohl dostat. Zkontrolujte, zda je disk připojený, a zkuste to znovu."
   },
   "research": {
     "linked_project_folder": "Tato složka je v Oleafly otevřená jako samostatný projekt. Propojte ji raději jen pro čtení."

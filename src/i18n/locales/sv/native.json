@@ -15,7 +15,11 @@
     "selectAll": "Markera allt",
     "view": "Visa",
     "toggleTerminal": "Visa eller dölj terminalen",
-    "toggleBrowser": "Visa eller dölj webbläsaren"
+    "toggleBrowser": "Visa eller dölj webbläsaren",
+    "file": "Arkiv",
+    "openFolder": "Öppna mapp…",
+    "openRecent": "Öppna senaste",
+    "noRecent": "Inga senaste projekt"
   },
   "window": {
     "browser": "Oleafly-webbläsaren",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Välj var kopian ska sparas",
       "folderSuffix": "kopia"
+    },
+    "openFolder": {
+      "title": "Öppna en mapp",
+      "inside": "Välj en mapp i {{name}}"
     }
   },
   "errors": {

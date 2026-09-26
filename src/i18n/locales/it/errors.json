@@ -83,7 +83,9 @@
     "app_data": "Questa cartella fa parte dei dati dell'app di Oleafly. Scegli una cartella al di fuori.",
     "contains_project": "Questa cartella contiene {{name}}, già aperta in Oleafly come progetto a sé.",
     "research_folder": "{{project}} può già modificare i file di questa cartella tramite le sue cartelle collegate. Prima rimuovi il collegamento lì.",
-    "failed": "Oleafly non è riuscito ad aprire questa cartella."
+    "failed": "Oleafly non è riuscito ad aprire questa cartella.",
+    "request_expired": "Questa richiesta di apertura è scaduta. Apri di nuovo la cartella.",
+    "timed_out": "Oleafly non è riuscito a raggiungere questa cartella. Controlla che l'unità sia collegata, poi riprova."
   },
   "research": {
     "linked_project_folder": "Questa cartella è aperta in Oleafly come progetto a sé. Collegala invece in sola lettura."

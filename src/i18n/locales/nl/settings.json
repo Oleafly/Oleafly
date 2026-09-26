@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"
+      },
+      "openFolder": {
+        "label": "Map openen",
+        "description": "Open een map van je computer als project."
       }
     },
     "application": {

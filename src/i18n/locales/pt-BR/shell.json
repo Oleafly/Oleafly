@@ -220,6 +220,10 @@
         "titleCase": "iniciais maiúsculas capitalizar texto",
         "uppercase": "maiúsculas caixa texto"
       }
+    },
+    "openFolder": {
+      "label": "Abrir pasta…",
+      "keywords": "abrir pasta diretório existente local arquivos disco"
     }
   },
   "community": {
@@ -831,7 +835,8 @@
     "loadingCore": "Carregando o núcleo do Oleafly",
     "loadingHarness": "Carregando o ambiente do Oleafly",
     "loadingParsers": "Carregando os analisadores do Oleafly",
-    "starting": "Iniciando o Oleafly"
+    "starting": "Iniciando o Oleafly",
+    "opening": "Abrindo {{name}}…"
   },
   "theme": {
     "dark": "Escuro",
@@ -965,5 +970,21 @@
   "windows": {
     "preview": "Visualização: {{title}}",
     "update": "Atualização do Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Parar e abrir {{name}}?",
+    "confirmCompile": "{{project}} ainda está compilando. Abrir {{name}} interrompe a compilação. Suas alterações são salvas antes.",
+    "confirmAssistant": "O assistente ainda está trabalhando em {{project}}. Abrir {{name}} interrompe a resposta. Suas alterações são salvas antes.",
+    "confirmBoth": "{{project}} ainda está compilando e o assistente ainda está trabalhando. Abrir {{name}} interrompe os dois. Suas alterações são salvas antes.",
+    "confirmAction": "Parar e abrir",
+    "chooseSubfolder": "Escolher uma subpasta",
+    "refusedTitle": "Não foi possível abrir {{name}}",
+    "refused": "Não foi possível abrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Nos Ajustes do Sistema, abra Privacidade e Segurança, depois Arquivos e Pastas, e ative o Oleafly. Se o Oleafly não aparecer, adicione-o em Acesso Total ao Disco e tente de novo.",
+      "windows": "Verifique na aba Segurança das Propriedades da pasta se a sua conta consegue lê-la e tente de novo.",
+      "linux": "Verifique se a sua conta consegue ler esta pasta e tente de novo."
+    }
   }
 }

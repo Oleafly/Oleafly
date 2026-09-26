@@ -15,7 +15,11 @@
     "selectAll": "全選",
     "view": "檢視",
     "toggleTerminal": "切換終端機",
-    "toggleBrowser": "切換瀏覽器"
+    "toggleBrowser": "切換瀏覽器",
+    "file": "檔案",
+    "openFolder": "開啟資料夾…",
+    "openRecent": "最近開啟",
+    "noRecent": "沒有最近的專案"
   },
   "window": {
     "browser": "Oleafly 瀏覽器",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "選擇副本的儲存位置",
       "folderSuffix": "副本"
+    },
+    "openFolder": {
+      "title": "開啟資料夾",
+      "inside": "選擇 {{name}} 中的資料夾"
     }
   },
   "errors": {

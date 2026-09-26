@@ -965,6 +965,21 @@ function rememberCompatibilityFindings(
 type FilesSet = StoreApi<FilesStore>["setState"];
 type FilesGet = StoreApi<FilesStore>["getState"];
 
+type SaveBlockedListener = (blocked: SaveBlockedState, left: boolean) => void;
+
+const saveBlockedListeners = new Set<SaveBlockedListener>();
+
+export function onSaveBlockedSettled(listener: SaveBlockedListener): () => void {
+  saveBlockedListeners.add(listener);
+  return () => {
+    saveBlockedListeners.delete(listener);
+  };
+}
+
+function settleSaveBlocked(blocked: SaveBlockedState, left: boolean): void {
+  for (const listener of [...saveBlockedListeners]) listener(blocked, left);
+}
+
 function reportSaveBlocked(
   error: unknown,
   action: SaveBlockedState["action"],
@@ -1079,7 +1094,10 @@ async function loadOpenedProject(
   });
   if (engine.failure !== null) void logError("load document engine", engine.failure);
   await preloadBibliographies(id, tree, superseded, set);
-  await get().openFile(meta.main_doc || "main.tex");
+  const mainDoc = meta.main_doc || "main.tex";
+  if (manifestHome === "library" || tree.some((entry) => !entry.is_dir && entry.path === mainDoc)) {
+    await get().openFile(mainDoc);
+  }
   if (superseded()) return;
   await activation;
   if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
@@ -1495,7 +1513,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set(EMPTY_PROJECT_STATE);
   }),
 
-  dismissSaveBlocked: () => set({ saveBlocked: null }),
+  dismissSaveBlocked: () => {
+    const blocked = get().saveBlocked;
+    set({ saveBlocked: null });
+    if (blocked) settleSaveBlocked(blocked, false);
+  },
 
   discardUnsavedAndLeave: async () => {
     const blocked = get().saveBlocked;
@@ -1509,10 +1531,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return { files, saveBlocked: null };
     });
     for (const { path } of blocked.failures) pendingSaves.delete(path);
-    if (blocked.action === "switch" && blocked.targetProjectId) {
-      await get().openProject(blocked.targetProjectId);
-    } else {
-      await get().closeProject();
+    try {
+      if (blocked.action === "switch" && blocked.targetProjectId) {
+        await get().openProject(blocked.targetProjectId);
+      } else {
+        await get().closeProject();
+      }
+    } finally {
+      settleSaveBlocked(blocked, true);
     }
   },
 

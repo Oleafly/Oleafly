@@ -1432,6 +1432,10 @@
       "toggleTerminal": {
         "description": "Pokaż albo ukryj terminal projektu.",
         "label": "Przełącz terminal"
+      },
+      "openFolder": {
+        "label": "Otwórz folder",
+        "description": "Otwórz folder z komputera jako projekt."
       }
     },
     "application": {

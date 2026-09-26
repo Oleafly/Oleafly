@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"
+      },
+      "openFolder": {
+        "label": "Avaa kansio",
+        "description": "Avaa tietokoneen kansio projektina."
       }
     },
     "application": {

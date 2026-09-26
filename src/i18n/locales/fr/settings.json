@@ -1416,6 +1416,10 @@
       "toggleTerminal": {
         "description": "Afficher ou masquer le terminal du projet.",
         "label": "Afficher ou masquer le terminal"
+      },
+      "openFolder": {
+        "label": "Ouvrir un dossier",
+        "description": "Ouvrir un dossier de votre ordinateur comme projet."
       }
     },
     "application": {

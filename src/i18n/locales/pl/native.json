@@ -15,7 +15,11 @@
     "selectAll": "Zaznacz wszystko",
     "view": "Widok",
     "toggleTerminal": "Przełącz terminal",
-    "toggleBrowser": "Przełącz przeglądarkę"
+    "toggleBrowser": "Przełącz przeglądarkę",
+    "file": "Plik",
+    "openFolder": "Otwórz folder…",
+    "openRecent": "Otwórz ostatnie",
+    "noRecent": "Brak ostatnich projektów"
   },
   "window": {
     "browser": "Przeglądarka Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Wybierz, gdzie zapisać kopię",
       "folderSuffix": "kopia"
+    },
+    "openFolder": {
+      "title": "Otwórz folder",
+      "inside": "Wybierz folder w {{name}}"
     }
   },
   "errors": {

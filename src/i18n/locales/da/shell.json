@@ -219,6 +219,10 @@
         "titleCase": "stort begyndelsesbogstav tekst title case capitalize",
         "uppercase": "store bogstaver tekst uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Åbn mappe…",
+      "keywords": "åbn mappe bibliotek eksisterende lokale filer disk"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Indlæser Oleafly Core",
     "loadingHarness": "Indlæser Oleafly Harness",
     "loadingParsers": "Indlæser Oleafly Parsers",
-    "starting": "Starter Oleafly"
+    "starting": "Starter Oleafly",
+    "opening": "Åbner {{name}}…"
   },
   "theme": {
     "dark": "Mørkt",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Forhåndsvisning: {{title}}",
     "update": "Oleafly-opdatering"
+  },
+  "openFolder": {
+    "confirmTitle": "Stop og åbn {{name}}?",
+    "confirmCompile": "{{project}} kompileres stadig. Hvis du åbner {{name}}, stopper kompileringen. Dine ændringer gemmes først.",
+    "confirmAssistant": "Assistenten arbejder stadig i {{project}}. Hvis du åbner {{name}}, stopper svaret. Dine ændringer gemmes først.",
+    "confirmBoth": "{{project}} kompileres stadig, og assistenten arbejder stadig. Hvis du åbner {{name}}, stopper begge dele. Dine ændringer gemmes først.",
+    "confirmAction": "Stop og åbn",
+    "chooseSubfolder": "Vælg en undermappe",
+    "refusedTitle": "Kunne ikke åbne {{name}}",
+    "refused": "Kunne ikke åbne {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Åbn Anonymitet & sikkerhed i Systemindstillinger, gå til Arkiver og mapper, og slå Oleafly til. Hvis Oleafly ikke står på listen, så tilføj det under Fuld diskadgang, og prøv igen.",
+      "windows": "Tjek fanen Sikkerhed under mappens Egenskaber for at sikre, at din konto kan læse den, og prøv igen.",
+      "linux": "Tjek, at din konto kan læse denne mappe, og prøv igen."
+    }
   }
 }

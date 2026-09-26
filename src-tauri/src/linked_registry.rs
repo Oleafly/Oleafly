@@ -634,13 +634,12 @@ pub(crate) fn rebind(
     })
 }
 
+pub(crate) use management::{current_records, get, transaction, NewLink, Transaction};
 #[cfg(test)]
 pub(crate) use management::{
-    folder_snapshot_for_test, get, register, register_folder_for_test, transaction, NewLink,
-    Registration, Transaction,
+    folder_snapshot_for_test, register, register_folder_for_test, Registration,
 };
 
-#[cfg(test)]
 mod management {
     use super::*;
 
@@ -665,12 +664,14 @@ mod management {
         pub(crate) display_name: Option<String>,
     }
 
+    #[cfg(test)]
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub(crate) enum Registration {
         Created(LinkRecord),
         Existing(LinkRecord),
     }
 
+    #[cfg(test)]
     impl Registration {
         pub(crate) fn record(&self) -> &LinkRecord {
             match self {
@@ -688,6 +689,7 @@ mod management {
             .unwrap_or_default()
     }
 
+    #[cfg(test)]
     fn same_folder(record: &LinkRecord, canonical_path: &str, identity: &FsIdentity) -> bool {
         record.is_active()
             && record.canonical_path == canonical_path
@@ -870,22 +872,27 @@ mod management {
         }
     }
 
+    pub(crate) fn current_records() -> Result<Vec<LinkRecord>, String> {
+        match crate::paths::existing_linked_root()? {
+            Some(linked_root) => records_in(&linked_root),
+            None => Ok(Vec::new()),
+        }
+    }
+
     pub(crate) fn transaction<T, E, F>(work: F) -> Result<T, E>
     where
         E: From<String>,
         F: FnOnce(&mut Transaction) -> Result<T, E>,
     {
         let lock = lock_registry_writes()?;
-        let records = match crate::paths::existing_linked_root()? {
-            Some(linked_root) => records_in(&linked_root)?,
-            None => Vec::new(),
-        };
+        let records = current_records()?;
         work(&mut Transaction {
             records,
             _lock: lock,
         })
     }
 
+    #[cfg(test)]
     pub(crate) fn register(link: NewLink) -> Result<Registration, String> {
         transaction(|txn| {
             let canonical_path = registrable_path(&link.canonical_path)?;
@@ -900,6 +907,7 @@ mod management {
         })
     }
 
+    #[cfg(test)]
     pub(crate) fn register_folder_for_test(folder: &Path) -> LinkRecord {
         let canonical = folder.canonicalize().unwrap();
         let observed = crate::fs_identity::identify_directory(&canonical).unwrap();
@@ -914,6 +922,7 @@ mod management {
         .clone()
     }
 
+    #[cfg(test)]
     pub(crate) fn folder_snapshot_for_test(root: &Path) -> Vec<(String, u64, Option<SystemTime>)> {
         fn visit(root: &Path, path: &Path, out: &mut Vec<(String, u64, Option<SystemTime>)>) {
             let metadata = std::fs::symlink_metadata(path).unwrap();

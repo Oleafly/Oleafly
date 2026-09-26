@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Das Terminal des Projekts ein- oder ausblenden.",
         "label": "Terminal ein- oder ausblenden"
+      },
+      "openFolder": {
+        "label": "Ordner öffnen",
+        "description": "Einen Ordner von Ihrem Computer als Projekt öffnen."
       }
     },
     "application": {

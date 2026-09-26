@@ -1384,6 +1384,10 @@
       "toggleTerminal": {
         "description": "프로젝트 터미널을 표시하거나 숨깁니다.",
         "label": "터미널 전환"
+      },
+      "openFolder": {
+        "label": "폴더 열기",
+        "description": "컴퓨터의 폴더를 프로젝트로 엽니다."
       }
     },
     "application": {

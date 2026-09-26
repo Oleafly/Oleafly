@@ -83,7 +83,9 @@
     "app_data": "Ten folder należy do danych aplikacji Oleafly. Wybierz folder poza nim.",
     "contains_project": "Ten folder zawiera {{name}}, który jest już otwarty w Oleafly jako osobny projekt.",
     "research_folder": "Projekt {{project}} może już edytować pliki w tym folderze przez swoje powiązane foldery. Najpierw usuń tam powiązanie.",
-    "failed": "Oleafly nie udało się otworzyć tego folderu."
+    "failed": "Oleafly nie udało się otworzyć tego folderu.",
+    "request_expired": "To żądanie otwarcia folderu wygasło. Otwórz folder ponownie.",
+    "timed_out": "Oleafly nie może uzyskać dostępu do tego folderu. Sprawdź, czy dysk jest podłączony, i spróbuj ponownie."
   },
   "research": {
     "linked_project_folder": "Ten folder jest otwarty w Oleafly jako osobny projekt. Zamiast tego powiąż go tylko do odczytu."

@@ -83,7 +83,9 @@
     "app_data": "Tämä kansio kuuluu Oleaflyn sovellustietoihin. Valitse kansio sen ulkopuolelta.",
     "contains_project": "Tämä kansio sisältää kohteen {{name}}, joka on jo avattu Oleaflyssa omana projektinaan.",
     "research_folder": "{{project}} voi jo muokata tämän kansion tiedostoja linkitettyjen kansioidensa kautta. Poista linkitys sieltä ensin.",
-    "failed": "Oleafly ei voinut avata tätä kansiota."
+    "failed": "Oleafly ei voinut avata tätä kansiota.",
+    "request_expired": "Tämän kansiopyynnön voimassaolo päättyi. Avaa kansio uudelleen.",
+    "timed_out": "Oleafly ei tavoittanut tätä kansiota. Tarkista, että asema on kytketty, ja yritä uudelleen."
   },
   "research": {
     "linked_project_folder": "Tämä kansio on avattu Oleaflyssa omana projektinaan. Linkitä se sen sijaan vain luettavaksi."

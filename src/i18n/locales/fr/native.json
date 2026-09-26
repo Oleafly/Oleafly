@@ -15,7 +15,11 @@
     "selectAll": "Tout sélectionner",
     "view": "Affichage",
     "toggleTerminal": "Afficher ou masquer le terminal",
-    "toggleBrowser": "Afficher ou masquer le navigateur"
+    "toggleBrowser": "Afficher ou masquer le navigateur",
+    "file": "Fichier",
+    "openFolder": "Ouvrir un dossier…",
+    "openRecent": "Ouvrir l'élément récent",
+    "noRecent": "Aucun projet récent"
   },
   "window": {
     "browser": "Navigateur Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Choisissez où enregistrer une copie",
       "folderSuffix": "copie"
+    },
+    "openFolder": {
+      "title": "Ouvrir un dossier",
+      "inside": "Choisissez un dossier dans {{name}}"
     }
   },
   "errors": {

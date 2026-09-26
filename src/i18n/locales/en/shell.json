@@ -219,6 +219,10 @@
         "titleCase": "title case capitalize text",
         "uppercase": "uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Open folder…",
+      "keywords": "open folder directory existing local files disk"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Loading Oleafly Core",
     "loadingHarness": "Loading Oleafly Harness",
     "loadingParsers": "Loading Oleafly Parsers",
-    "starting": "Starting Oleafly"
+    "starting": "Starting Oleafly",
+    "opening": "Opening {{name}}…"
   },
   "theme": {
     "dark": "Dark",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Preview: {{title}}",
     "update": "Oleafly Update"
+  },
+  "openFolder": {
+    "confirmTitle": "Stop and open {{name}}?",
+    "confirmCompile": "{{project}} is still compiling. Opening {{name}} stops the compile. Your changes are saved first.",
+    "confirmAssistant": "The assistant is still working in {{project}}. Opening {{name}} stops its reply. Your changes are saved first.",
+    "confirmBoth": "{{project}} is still compiling and the assistant is still working. Opening {{name}} stops both. Your changes are saved first.",
+    "confirmAction": "Stop and open",
+    "chooseSubfolder": "Choose a subfolder",
+    "refusedTitle": "Couldn't open {{name}}",
+    "refused": "Couldn't open {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "In System Settings, open Privacy & Security, then Files and Folders, and turn on Oleafly. If Oleafly isn't listed, add it under Full Disk Access and try again.",
+      "windows": "Check the Security tab in the folder's Properties to make sure your account can read it, then try again.",
+      "linux": "Check that your account can read this folder, then try again."
+    }
   }
 }

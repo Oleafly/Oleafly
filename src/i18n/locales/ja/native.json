@@ -15,7 +15,11 @@
     "selectAll": "すべてを選択",
     "view": "表示",
     "toggleTerminal": "ターミナルの表示を切り替え",
-    "toggleBrowser": "ブラウザの表示を切り替え"
+    "toggleBrowser": "ブラウザの表示を切り替え",
+    "file": "ファイル",
+    "openFolder": "フォルダを開く…",
+    "openRecent": "最近使った項目を開く",
+    "noRecent": "最近のプロジェクトはありません"
   },
   "window": {
     "browser": "Oleafly ブラウザ",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "コピーの保存先を選択",
       "folderSuffix": "コピー"
+    },
+    "openFolder": {
+      "title": "フォルダを開く",
+      "inside": "{{name}} 内のフォルダを選択"
     }
   },
   "errors": {

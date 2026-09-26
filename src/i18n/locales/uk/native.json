@@ -15,7 +15,11 @@
     "selectAll": "Виділити все",
     "view": "Вигляд",
     "toggleTerminal": "Перемкнути термінал",
-    "toggleBrowser": "Перемкнути браузер"
+    "toggleBrowser": "Перемкнути браузер",
+    "file": "Файл",
+    "openFolder": "Відкрити папку…",
+    "openRecent": "Відкрити нещодавні",
+    "noRecent": "Немає нещодавніх проєктів"
   },
   "window": {
     "browser": "Браузер Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Виберіть, куди зберегти копію",
       "folderSuffix": "копія"
+    },
+    "openFolder": {
+      "title": "Відкрити папку",
+      "inside": "Виберіть папку всередині {{name}}"
     }
   },
   "errors": {

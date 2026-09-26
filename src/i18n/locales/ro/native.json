@@ -15,7 +15,11 @@
     "selectAll": "Selectează tot",
     "view": "Vizualizare",
     "toggleTerminal": "Arată sau ascunde terminalul",
-    "toggleBrowser": "Arată sau ascunde browserul"
+    "toggleBrowser": "Arată sau ascunde browserul",
+    "file": "Fișier",
+    "openFolder": "Deschide folderul…",
+    "openRecent": "Deschide recente",
+    "noRecent": "Niciun proiect recent"
   },
   "window": {
     "browser": "Browser Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Alege unde să salvezi o copie",
       "folderSuffix": "copie"
+    },
+    "openFolder": {
+      "title": "Deschide un folder",
+      "inside": "Alege un folder din {{name}}"
     }
   },
   "errors": {

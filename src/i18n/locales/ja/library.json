@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly のアプリアイコン",
     "welcomeTitle": "Oleafly へようこそ",
     "welcomeDescription": "LaTeX、Typst、Markdown を書き、コンパイルし、校正できます。引用を管理し、PDF を確認し、Git で変更を追い、好きな AI モデルと一緒に作業できます。",
-    "createFirstProject": "新規プロジェクトを作成",
     "loading": "ライブラリを読み込んでいます…",
     "noBookmarksTitle": "ブックマークはまだありません",
     "noBookmarksDescription": "本にカーソルを合わせ、しおりをクリックすると追加できます。",
@@ -68,7 +67,9 @@
       "last7Days": "過去 7 日間",
       "last30Days": "過去 30 日間",
       "lastYear": "過去 1 年間"
-    }
+    },
+    "openFolder": "フォルダを開く…",
+    "openFolderShortcut": "フォルダを開く（{{shortcut}}）"
   },
   "projects": {
     "open": "{{name}} を開く",
@@ -452,5 +453,14 @@
       "sourcesBody": "記録は、公開されている ccf-deadlines のデータセットと、Oleafly が追跡している公式の会議サイトを組み合わせたものです。",
       "confirm": "投稿する前に、必ず公式の会議サイトですべての日付を確認してください。"
     }
+  },
+  "start": {
+    "newProjectTitle": "新規プロジェクト",
+    "newProjectDescription": "テンプレートか白紙のページから始めます。",
+    "openFolderTitle": "フォルダを開く",
+    "openFolderDescription": "パソコンにすでにあるファイルで作業します。ファイルは元の場所に置いたままです。"
+  },
+  "openFolder": {
+    "dismiss": "閉じる"
   }
 }

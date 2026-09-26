@@ -218,6 +218,10 @@
         "titleCase": "各単語の先頭を大文字 テキスト",
         "uppercase": "大文字 大文字小文字 テキスト"
       }
+    },
+    "openFolder": {
+      "label": "フォルダを開く…",
+      "keywords": "開く フォルダ ディレクトリ 既存 ローカル ファイル ディスク"
     }
   },
   "community": {
@@ -793,7 +797,8 @@
     "loadingCore": "Oleafly Core を読み込んでいます",
     "loadingHarness": "Oleafly Harness を読み込んでいます",
     "loadingParsers": "Oleafly Parsers を読み込んでいます",
-    "starting": "Oleafly を起動しています"
+    "starting": "Oleafly を起動しています",
+    "opening": "{{name}} を開いています…"
   },
   "theme": {
     "dark": "ダーク",
@@ -927,5 +932,21 @@
   "windows": {
     "preview": "プレビュー: {{title}}",
     "update": "Oleafly のアップデート"
+  },
+  "openFolder": {
+    "confirmTitle": "停止して {{name}} を開きますか？",
+    "confirmCompile": "{{project}} はまだコンパイル中です。{{name}} を開くとコンパイルは停止します。変更は先に保存されます。",
+    "confirmAssistant": "アシスタントはまだ {{project}} で作業中です。{{name}} を開くと応答は停止します。変更は先に保存されます。",
+    "confirmBoth": "{{project}} はまだコンパイル中で、アシスタントも作業中です。{{name}} を開くと両方とも停止します。変更は先に保存されます。",
+    "confirmAction": "停止して開く",
+    "chooseSubfolder": "サブフォルダを選択",
+    "refusedTitle": "{{name}} を開けませんでした",
+    "refused": "{{name}} を開けませんでした。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "システム設定の「プライバシーとセキュリティ」で「ファイルとフォルダ」を開き、Oleafly をオンにしてください。Oleafly が一覧にない場合は「フルディスクアクセス」に追加してから、もう一度お試しください。",
+      "windows": "フォルダのプロパティの「セキュリティ」タブで、お使いのアカウントに読み取り権限があることを確認してから、もう一度お試しください。",
+      "linux": "お使いのアカウントにこのフォルダの読み取り権限があることを確認してから、もう一度お試しください。"
+    }
   }
 }

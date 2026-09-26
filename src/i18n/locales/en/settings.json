@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Show or hide the project terminal.",
         "label": "Toggle terminal"
+      },
+      "openFolder": {
+        "label": "Open folder",
+        "description": "Open a folder from your computer as a project."
       }
     },
     "application": {

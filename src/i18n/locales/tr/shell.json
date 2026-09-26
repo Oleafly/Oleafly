@@ -219,6 +219,10 @@
         "titleCase": "her sözcük büyük harf title case capitalize text",
         "uppercase": "büyük harf metin uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Klasör aç…",
+      "keywords": "aç klasör dizin mevcut yerel dosyalar disk"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Oleafly Core yükleniyor",
     "loadingHarness": "Oleafly Harness yükleniyor",
     "loadingParsers": "Oleafly Parsers yükleniyor",
-    "starting": "Oleafly açılıyor"
+    "starting": "Oleafly açılıyor",
+    "opening": "{{name}} açılıyor…"
   },
   "theme": {
     "dark": "Koyu",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Önizleme: {{title}}",
     "update": "Oleafly Güncellemesi"
+  },
+  "openFolder": {
+    "confirmTitle": "Durdurup {{name}} açılsın mı?",
+    "confirmCompile": "{{project}} hâlâ derleniyor. {{name}} açılırsa derleme durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmAssistant": "Asistan hâlâ {{project}} içinde çalışıyor. {{name}} açılırsa yanıtı durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmBoth": "{{project}} hâlâ derleniyor ve asistan hâlâ çalışıyor. {{name}} açılırsa ikisi de durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmAction": "Durdur ve aç",
+    "chooseSubfolder": "Alt klasör seç",
+    "refusedTitle": "{{name}} açılamadı",
+    "refused": "{{name}} açılamadı. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Sistem Ayarları'nda Gizlilik ve Güvenlik'i, ardından Dosyalar ve Klasörler'i açıp Oleafly'yi etkinleştirin. Oleafly listede yoksa Tam Disk Erişimi bölümüne ekleyip yeniden deneyin.",
+      "windows": "Klasörün Özellikler penceresindeki Güvenlik sekmesinden hesabınızın klasörü okuyabildiğini kontrol edip yeniden deneyin.",
+      "linux": "Hesabınızın bu klasörü okuyabildiğini kontrol edip yeniden deneyin."
+    }
   }
 }

@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"
+      },
+      "openFolder": {
+        "label": "Klasör aç",
+        "description": "Bilgisayarınızdaki bir klasörü proje olarak açın."
       }
     },
     "application": {

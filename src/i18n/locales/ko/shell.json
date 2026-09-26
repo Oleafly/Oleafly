@@ -218,6 +218,10 @@
         "titleCase": "제목 표기 첫 글자 대문자 텍스트",
         "uppercase": "대문자 대소문자 텍스트"
       }
+    },
+    "openFolder": {
+      "label": "폴더 열기…",
+      "keywords": "열기 폴더 디렉터리 기존 로컬 파일 디스크"
     }
   },
   "community": {
@@ -793,7 +797,8 @@
     "loadingCore": "Oleafly Core를 불러오는 중",
     "loadingHarness": "Oleafly Harness를 불러오는 중",
     "loadingParsers": "Oleafly Parsers를 불러오는 중",
-    "starting": "Oleafly를 시작하는 중"
+    "starting": "Oleafly를 시작하는 중",
+    "opening": "{{name}} 여는 중…"
   },
   "theme": {
     "dark": "어둡게",
@@ -927,5 +932,21 @@
   "windows": {
     "preview": "미리보기: {{title}}",
     "update": "Oleafly 업데이트"
+  },
+  "openFolder": {
+    "confirmTitle": "중지하고 {{name}}을(를) 열까요?",
+    "confirmCompile": "{{project}}이(가) 아직 컴파일 중입니다. {{name}}을(를) 열면 컴파일이 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmAssistant": "어시스턴트가 아직 {{project}}에서 작업 중입니다. {{name}}을(를) 열면 응답이 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmBoth": "{{project}}이(가) 아직 컴파일 중이고 어시스턴트도 작업 중입니다. {{name}}을(를) 열면 둘 다 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmAction": "중지하고 열기",
+    "chooseSubfolder": "하위 폴더 선택",
+    "refusedTitle": "{{name}}을(를) 열 수 없습니다",
+    "refused": "{{name}}을(를) 열 수 없습니다. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "시스템 설정에서 개인정보 보호 및 보안을 열고 파일 및 폴더에서 Oleafly를 켜세요. Oleafly가 목록에 없으면 전체 디스크 접근 권한에 추가한 뒤 다시 시도하세요.",
+      "windows": "폴더 속성의 보안 탭에서 계정에 이 폴더를 읽을 권한이 있는지 확인한 뒤 다시 시도하세요.",
+      "linux": "계정에 이 폴더를 읽을 권한이 있는지 확인한 뒤 다시 시도하세요."
+    }
   }
 }

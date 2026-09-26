@@ -218,6 +218,10 @@
         "titleCase": "標題大小寫 首字母大寫 文字 title case capitalize text",
         "uppercase": "大寫 大小寫 文字 uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "開啟資料夾…",
+      "keywords": "開啟 資料夾 目錄 現有 本機 檔案 磁碟"
     }
   },
   "community": {
@@ -793,7 +797,8 @@
     "loadingCore": "正在載入 Oleafly Core",
     "loadingHarness": "正在載入 Oleafly Harness",
     "loadingParsers": "正在載入 Oleafly Parsers",
-    "starting": "正在啟動 Oleafly"
+    "starting": "正在啟動 Oleafly",
+    "opening": "正在開啟 {{name}}…"
   },
   "theme": {
     "dark": "深色",
@@ -927,5 +932,21 @@
   "windows": {
     "preview": "預覽：{{title}}",
     "update": "Oleafly 更新"
+  },
+  "openFolder": {
+    "confirmTitle": "停止並開啟 {{name}}？",
+    "confirmCompile": "{{project}} 仍在編譯。開啟 {{name}} 會停止編譯。你的變更會先儲存。",
+    "confirmAssistant": "助理仍在 {{project}} 中工作。開啟 {{name}} 會停止它的回覆。你的變更會先儲存。",
+    "confirmBoth": "{{project}} 仍在編譯，助理也仍在工作。開啟 {{name}} 會同時停止兩者。你的變更會先儲存。",
+    "confirmAction": "停止並開啟",
+    "chooseSubfolder": "選擇子資料夾",
+    "refusedTitle": "無法開啟 {{name}}",
+    "refused": "無法開啟 {{name}}。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "請在「系統設定」中開啟「隱私權與安全性」，再進入「檔案與資料夾」，為 Oleafly 開啟取用權限。如果列表中沒有 Oleafly，請將它加入「完整磁碟取用權限」，然後再試一次。",
+      "windows": "請在資料夾「內容」的「安全性」分頁中確認你的帳號可以讀取它，然後再試一次。",
+      "linux": "請確認你的帳號可以讀取此資料夾，然後再試一次。"
+    }
   }
 }

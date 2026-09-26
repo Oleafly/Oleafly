@@ -219,6 +219,10 @@
         "titleCase": "inledande versal text",
         "uppercase": "versaler gemener text"
       }
+    },
+    "openFolder": {
+      "label": "Öppna mapp…",
+      "keywords": "öppna mapp katalog befintlig lokala filer disk"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Läser in Oleafly Core",
     "loadingHarness": "Läser in Oleafly Harness",
     "loadingParsers": "Läser in Oleafly Parsers",
-    "starting": "Startar Oleafly"
+    "starting": "Startar Oleafly",
+    "opening": "Öppnar {{name}}…"
   },
   "theme": {
     "dark": "Mörkt",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Förhandsvisning: {{title}}",
     "update": "Oleafly-uppdatering"
+  },
+  "openFolder": {
+    "confirmTitle": "Stoppa och öppna {{name}}?",
+    "confirmCompile": "{{project}} kompileras fortfarande. Om du öppnar {{name}} stoppas kompileringen. Dina ändringar sparas först.",
+    "confirmAssistant": "Assistenten arbetar fortfarande i {{project}}. Om du öppnar {{name}} stoppas svaret. Dina ändringar sparas först.",
+    "confirmBoth": "{{project}} kompileras fortfarande och assistenten arbetar fortfarande. Om du öppnar {{name}} stoppas båda. Dina ändringar sparas först.",
+    "confirmAction": "Stoppa och öppna",
+    "chooseSubfolder": "Välj en undermapp",
+    "refusedTitle": "Det gick inte att öppna {{name}}",
+    "refused": "Det gick inte att öppna {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Öppna Integritet och säkerhet i Systeminställningar, gå till Filer och mappar och slå på Oleafly. Om Oleafly inte finns i listan lägger du till det under Fullständig diskåtkomst och försöker igen.",
+      "windows": "Kontrollera på fliken Säkerhet under mappens Egenskaper att ditt konto kan läsa den och försök igen.",
+      "linux": "Kontrollera att ditt konto kan läsa den här mappen och försök igen."
+    }
   }
 }

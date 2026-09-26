@@ -83,7 +83,9 @@
     "app_data": "Acest folder face parte din datele aplicației Oleafly. Alege un folder din afara lui.",
     "contains_project": "Acest folder conține {{name}}, care este deja deschis în Oleafly ca proiect separat.",
     "research_folder": "{{project}} poate deja edita fișiere din acest folder prin folderele sale asociate. Mai întâi elimină asocierea de acolo.",
-    "failed": "Oleafly nu a putut deschide acest folder."
+    "failed": "Oleafly nu a putut deschide acest folder.",
+    "request_expired": "Această cerere de deschidere a expirat. Deschide din nou folderul.",
+    "timed_out": "Oleafly nu a putut accesa acest folder. Verifică dacă unitatea este conectată, apoi încearcă din nou."
   },
   "research": {
     "linked_project_folder": "Acest folder este deschis în Oleafly ca proiect separat. Asociază-l în schimb doar pentru citire."

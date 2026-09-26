@@ -1416,6 +1416,10 @@
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"
+      },
+      "openFolder": {
+        "label": "Deschide un folder",
+        "description": "Deschide un folder de pe computer ca proiect."
       }
     },
     "application": {

@@ -15,7 +15,11 @@
     "selectAll": "Selecionar tudo",
     "view": "Exibir",
     "toggleTerminal": "Alternar terminal",
-    "toggleBrowser": "Alternar navegador"
+    "toggleBrowser": "Alternar navegador",
+    "file": "Arquivo",
+    "openFolder": "Abrir pasta…",
+    "openRecent": "Abrir recentes",
+    "noRecent": "Nenhum projeto recente"
   },
   "window": {
     "browser": "Navegador do Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Escolha onde salvar uma cópia",
       "folderSuffix": "cópia"
+    },
+    "openFolder": {
+      "title": "Abrir uma pasta",
+      "inside": "Escolha uma pasta dentro de {{name}}"
     }
   },
   "errors": {

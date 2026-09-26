@@ -76,6 +76,7 @@ function syncNativeAccelerators(): Promise<void> {
   return invoke("set_dock_shortcut_accelerators", {
     terminalAccelerator: nativeAccelerator(bindings.toggleTerminal),
     browserAccelerator: nativeAccelerator(bindings.toggleBrowser),
+    openFolderAccelerator: nativeAccelerator(bindings.openFolder),
   });
 }
 
@@ -91,7 +92,8 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
   const unsubscribeStore = useShortcutStore.subscribe((state, previous) => {
     if (
       state.bindings.toggleTerminal !== previous.bindings.toggleTerminal ||
-      state.bindings.toggleBrowser !== previous.bindings.toggleBrowser
+      state.bindings.toggleBrowser !== previous.bindings.toggleBrowser ||
+      state.bindings.openFolder !== previous.bindings.openFolder
     ) {
       void sync();
     }

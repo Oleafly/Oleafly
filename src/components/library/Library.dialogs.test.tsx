@@ -169,6 +169,21 @@ describe("Library states", () => {
     expect(useSettingsStore.getState().newProjectOpen).toBe(true);
   });
 
+  it("offers to open an existing folder next to a new project when the library is empty", () => {
+    useFilesStore.setState({ projects: [], projectsLoaded: true });
+    render(<Library />);
+    expect(
+      screen.getByRole("button", { name: new RegExp(enLibrary.start.openFolderTitle) }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("open-folder-button")).not.toBeInTheDocument();
+  });
+
+  it("keeps an Open folder button beside Import once projects exist", () => {
+    render(<Library />);
+    expect(screen.getByRole("button", { name: enLibrary.home.openFolder })).toBeInTheDocument();
+    expect(screen.getByTestId("import-project-button")).toBeInTheDocument();
+  });
+
   it("explains an empty bookmark filter", async () => {
     useFavoritesStore.setState({ favs: [] });
     render(<Library />);

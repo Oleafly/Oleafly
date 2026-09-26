@@ -118,7 +118,6 @@ fn birth_ns(metadata: &std::fs::Metadata) -> Option<i64> {
         .filter(|nanos| *nanos > 0)
 }
 
-#[cfg(test)]
 pub(crate) fn same_path(left: &Path, right: &Path, case: CaseSensitivity) -> bool {
     let mut left = left.components();
     let mut right = right.components();

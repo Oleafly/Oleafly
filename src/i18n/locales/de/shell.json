@@ -219,6 +219,10 @@
         "titleCase": "Anfangsbuchstaben groß Schreibweise Text title case capitalize",
         "uppercase": "Großbuchstaben Schreibweise Text uppercase case"
       }
+    },
+    "openFolder": {
+      "label": "Ordner öffnen…",
+      "keywords": "öffnen Ordner Verzeichnis vorhanden lokal Dateien Festplatte"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Oleafly Core wird geladen",
     "loadingHarness": "Oleafly Harness wird geladen",
     "loadingParsers": "Oleafly Parsers werden geladen",
-    "starting": "Oleafly startet"
+    "starting": "Oleafly startet",
+    "opening": "{{name}} wird geöffnet…"
   },
   "theme": {
     "dark": "Dunkel",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Vorschau: {{title}}",
     "update": "Oleafly Update"
+  },
+  "openFolder": {
+    "confirmTitle": "Anhalten und {{name}} öffnen?",
+    "confirmCompile": "{{project}} wird noch kompiliert. Wenn Sie {{name}} öffnen, wird das Kompilieren angehalten. Ihre Änderungen werden vorher gespeichert.",
+    "confirmAssistant": "Der Assistent arbeitet noch in {{project}}. Wenn Sie {{name}} öffnen, wird seine Antwort angehalten. Ihre Änderungen werden vorher gespeichert.",
+    "confirmBoth": "{{project}} wird noch kompiliert und der Assistent arbeitet noch. Wenn Sie {{name}} öffnen, wird beides angehalten. Ihre Änderungen werden vorher gespeichert.",
+    "confirmAction": "Anhalten und öffnen",
+    "chooseSubfolder": "Unterordner wählen",
+    "refusedTitle": "{{name}} konnte nicht geöffnet werden",
+    "refused": "{{name}} konnte nicht geöffnet werden. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Öffnen Sie in den Systemeinstellungen Datenschutz & Sicherheit und dann Dateien und Ordner, und aktivieren Sie Oleafly. Fehlt Oleafly dort, fügen Sie es unter Festplattenvollzugriff hinzu und versuchen Sie es erneut.",
+      "windows": "Prüfen Sie im Tab Sicherheit in den Eigenschaften des Ordners, ob Ihr Konto ihn lesen kann, und versuchen Sie es erneut.",
+      "linux": "Prüfen Sie, ob Ihr Konto diesen Ordner lesen kann, und versuchen Sie es erneut."
+    }
   }
 }

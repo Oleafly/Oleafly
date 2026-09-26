@@ -1432,6 +1432,10 @@
       "toggleTerminal": {
         "description": "Zobrazit nebo skrýt terminál projektu.",
         "label": "Přepnout terminál"
+      },
+      "openFolder": {
+        "label": "Otevřít složku",
+        "description": "Otevřít složku z počítače jako projekt."
       }
     },
     "application": {

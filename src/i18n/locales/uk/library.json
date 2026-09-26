@@ -37,7 +37,6 @@
     "appIconAlt": "Піктограма застосунку Oleafly",
     "welcomeTitle": "Вітаємо в Oleafly",
     "welcomeDescription": "Пишіть, компілюйте та вичитуйте LaTeX, Typst і Markdown. Керуйте цитуваннями, переглядайте PDF, відстежуйте зміни в Git і працюйте з моделями ШІ на ваш вибір.",
-    "createFirstProject": "Створити новий проєкт",
     "loading": "Читаємо вашу бібліотеку…",
     "noBookmarksTitle": "Закладок поки немає",
     "noBookmarksDescription": "Наведіть на книгу і натисніть її закладку, щоб додати.",
@@ -71,7 +70,9 @@
       "last7Days": "Останні 7 днів",
       "last30Days": "Останні 30 днів",
       "lastYear": "Останній рік"
-    }
+    },
+    "openFolder": "Відкрити папку…",
+    "openFolderShortcut": "Відкрити папку ({{shortcut}})"
   },
   "projects": {
     "open": "Відкрити {{name}}",
@@ -479,5 +480,14 @@
       "sourcesBody": "Записи поєднують відкритий набір даних ccf-deadlines з офіційними сайтами конференцій, які відстежує Oleafly.",
       "confirm": "Перед поданням перевірте кожну дату на офіційному сайті конференції."
     }
+  },
+  "start": {
+    "newProjectTitle": "Новий проєкт",
+    "newProjectDescription": "Почніть із шаблону або з чистого аркуша.",
+    "openFolderTitle": "Відкрити папку",
+    "openFolderDescription": "Працюйте з файлами, які вже є на комп'ютері. Вони залишаться на своїх місцях."
+  },
+  "openFolder": {
+    "dismiss": "Закрити"
   }
 }

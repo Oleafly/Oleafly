@@ -15,7 +15,11 @@
     "selectAll": "Выбрать все",
     "view": "Вид",
     "toggleTerminal": "Показать или скрыть терминал",
-    "toggleBrowser": "Показать или скрыть браузер"
+    "toggleBrowser": "Показать или скрыть браузер",
+    "file": "Файл",
+    "openFolder": "Открыть папку…",
+    "openRecent": "Открыть недавние",
+    "noRecent": "Нет недавних проектов"
   },
   "window": {
     "browser": "Браузер Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Выберите, куда сохранить копию",
       "folderSuffix": "копия"
+    },
+    "openFolder": {
+      "title": "Открыть папку",
+      "inside": "Выберите папку внутри {{name}}"
     }
   },
   "errors": {

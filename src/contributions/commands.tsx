@@ -9,6 +9,7 @@ import {
   Download,
   Eraser,
   FileJson,
+  FolderOpen,
   FolderPlus,
   Image as ImageIcon,
   Italic,
@@ -76,6 +77,8 @@ import {
   openTool,
   openToolsGallery,
 } from "@/features/open-tool";
+import { openFolderWithPicker } from "@/features/open-folder";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 
 const engine = () => useFilesStore.getState().engine;
 const engineLoaded = () => useFilesStore.getState().engineLoaded;
@@ -117,6 +120,7 @@ const ENGLISH_KEYWORDS = {
   surroundEnvironment: "surround wrap environment begin end latex",
   appearance: "theme appearance mode",
   saveSettingsToFolder: "save project settings folder project.json share main document engine",
+  openFolder: "open folder directory existing local files disk",
 } as const;
 
 const EDITOR_COMMAND_KEYWORDS = {
@@ -300,6 +304,18 @@ export function registerPaletteCommands() {
     icon: () => <FolderPlus className="size-4" />,
     order: 100,
     run: openNewProject,
+  });
+  registerCommand({
+    id: "palette.open-folder",
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.openFolder.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.openFolder.keywords)} ${ENGLISH_KEYWORDS.openFolder}`,
+    icon: () => <FolderOpen className="size-4" />,
+    hint: () => shortcutLabel(useShortcutStore.getState().bindings.openFolder),
+    order: 110,
+    run: () => void openFolderWithPicker(),
   });
   palette({
     id: "palette.save-settings-to-folder",

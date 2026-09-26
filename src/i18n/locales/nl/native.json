@@ -15,7 +15,11 @@
     "selectAll": "Alles selecteren",
     "view": "Beeld",
     "toggleTerminal": "Terminal tonen of verbergen",
-    "toggleBrowser": "Browser tonen of verbergen"
+    "toggleBrowser": "Browser tonen of verbergen",
+    "file": "Archief",
+    "openFolder": "Map openen…",
+    "openRecent": "Open recent",
+    "noRecent": "Geen recente projecten"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Kies waar je een kopie wilt opslaan",
       "folderSuffix": "kopie"
+    },
+    "openFolder": {
+      "title": "Een map openen",
+      "inside": "Kies een map in {{name}}"
     }
   },
   "errors": {

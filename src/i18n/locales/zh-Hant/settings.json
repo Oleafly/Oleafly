@@ -1384,6 +1384,10 @@
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"
+      },
+      "openFolder": {
+        "label": "開啟資料夾",
+        "description": "將電腦上的資料夾作為專案開啟。"
       }
     },
     "application": {

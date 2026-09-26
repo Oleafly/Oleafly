@@ -83,7 +83,9 @@
     "app_data": "Dieser Ordner gehört zu den App-Daten von Oleafly. Wählen Sie einen Ordner außerhalb davon.",
     "contains_project": "Dieser Ordner enthält {{name}}, das in Oleafly bereits als eigenes Projekt geöffnet ist.",
     "research_folder": "{{project}} kann über seine verknüpften Ordner bereits Dateien in diesem Ordner bearbeiten. Heben Sie die Verknüpfung zuerst dort auf.",
-    "failed": "Oleafly konnte diesen Ordner nicht öffnen."
+    "failed": "Oleafly konnte diesen Ordner nicht öffnen.",
+    "request_expired": "Diese Ordneranfrage ist abgelaufen. Öffnen Sie den Ordner erneut.",
+    "timed_out": "Oleafly konnte diesen Ordner nicht erreichen. Prüfen Sie, ob das Laufwerk verbunden ist, und versuchen Sie es erneut."
   },
   "research": {
     "linked_project_folder": "Dieser Ordner ist in Oleafly als eigenes Projekt geöffnet. Verknüpfen Sie ihn stattdessen schreibgeschützt."

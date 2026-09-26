@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
+import type { OpenedFolder } from "@/lib/folder-detection";
 
 export interface McpRegistrySearchRequest {
   query: string;
@@ -75,6 +76,7 @@ import type {
   GitPullResult,
   ImportPathsResult,
   InitialState,
+  PendingOpenRequest,
   LibraryStorageSummary,
   ManifestHome,
   McpConnectionInfo,
@@ -840,6 +842,30 @@ export const adoptReplacedFolder = (projectId: string) =>
   invoke<LocateFolderOutcome>("adopt_replaced_folder", { projectId });
 export const saveOpenBuffersCopy = (projectId: string, name: string, files: BufferCopyFile[]) =>
   invoke<SavedBufferCopy | null>("save_open_buffers_copy", { projectId, name, files });
+
+export interface OpenRequestPreview {
+  project_id: string | null;
+  display_name: string;
+}
+export const pendingOpenRequests = () =>
+  invoke<PendingOpenRequest[]>("pending_open_requests");
+export const beginOpenSession = () => invoke<number>("begin_open_session");
+export const prepareOpenRequest = (token: string, session: number | null) =>
+  invoke<OpenRequestPreview>("prepare_open_request", { token, session });
+export const discardOpenRequest = (token: string, session: number | null) =>
+  invoke<void>("discard_open_request", { token, session });
+export const openFolderRequest = (token: string, session: number | null) =>
+  invoke<OpenedFolder>("open_folder_request", { token, session });
+export const pickOpenFolder = (browse: string | null = null) =>
+  invoke<PendingOpenRequest | null>("pick_open_folder", { browse });
+export const debugInjectOpenRequest = (path: string) =>
+  invoke<PendingOpenRequest>("debug_inject_open_request", { path });
+export interface RecentProjectEntry {
+  id: string;
+  name: string;
+}
+export const setRecentProjects = (projects: RecentProjectEntry[]) =>
+  invoke<void>("set_recent_projects", { projects });
 
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });

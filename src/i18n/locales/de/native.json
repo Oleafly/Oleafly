@@ -15,7 +15,11 @@
     "selectAll": "Alles auswählen",
     "view": "Ansicht",
     "toggleTerminal": "Terminal ein- oder ausblenden",
-    "toggleBrowser": "Browser ein- oder ausblenden"
+    "toggleBrowser": "Browser ein- oder ausblenden",
+    "file": "Ablage",
+    "openFolder": "Ordner öffnen…",
+    "openRecent": "Zuletzt benutzt",
+    "noRecent": "Keine zuletzt benutzten Projekte"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Speicherort für die Kopie wählen",
       "folderSuffix": "Kopie"
+    },
+    "openFolder": {
+      "title": "Ordner öffnen",
+      "inside": "Wählen Sie einen Ordner in {{name}}"
     }
   },
   "errors": {

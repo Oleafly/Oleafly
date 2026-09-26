@@ -36,7 +36,6 @@
     "appIconAlt": "Pictograma aplicației Oleafly",
     "welcomeTitle": "Bun venit în Oleafly",
     "welcomeDescription": "Scrie, compilează și corectează LaTeX, Typst și Markdown. Gestionează citările, verifică fișiere PDF, urmărește modificările în Git și lucrează cu modelele AI pe care le alegi.",
-    "createFirstProject": "Creează un proiect nou",
     "loading": "Se citește biblioteca ta…",
     "noBookmarksTitle": "Încă nu ai semne de carte",
     "noBookmarksDescription": "Treci cu mouse-ul peste o carte și apasă pe semnul ei de carte ca să adaugi unul.",
@@ -70,7 +69,9 @@
       "last7Days": "Ultimele 7 zile",
       "last30Days": "Ultimele 30 de zile",
       "lastYear": "Ultimul an"
-    }
+    },
+    "openFolder": "Deschide folderul…",
+    "openFolderShortcut": "Deschide folderul ({{shortcut}})"
   },
   "projects": {
     "open": "Deschide {{name}}",
@@ -470,5 +471,14 @@
       "sourcesBody": "Înregistrările combină setul de date deschis ccf-deadlines cu site-urile oficiale ale conferințelor urmărite de Oleafly.",
       "confirm": "Confirmă fiecare dată pe site-ul oficial al conferinței înainte să trimiți."
     }
+  },
+  "start": {
+    "newProjectTitle": "Proiect nou",
+    "newProjectDescription": "Pornește de la un șablon sau de la o pagină goală.",
+    "openFolderTitle": "Deschide un folder",
+    "openFolderDescription": "Lucrează cu fișiere care sunt deja pe computer. Rămân unde sunt."
+  },
+  "openFolder": {
+    "dismiss": "Închide"
   }
 }

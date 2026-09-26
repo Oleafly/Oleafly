@@ -1,32 +1,7 @@
-use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
-use std::sync::{Mutex, PoisonError};
+use std::path::PathBuf;
 
 use tauri::Manager;
-
-const FORWARDED_LAUNCH_LIMIT: usize = 16;
-
-#[derive(Default)]
-pub(crate) struct ForwardedLaunches(Mutex<VecDeque<(Vec<String>, String)>>);
-
-impl ForwardedLaunches {
-    fn push(&self, args: Vec<String>, cwd: String) {
-        let mut launches = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        if launches.len() == FORWARDED_LAUNCH_LIMIT {
-            launches.pop_front();
-        }
-        launches.push_back((args, cwd));
-    }
-
-    #[cfg(test)]
-    fn take(&self) -> Vec<(Vec<String>, String)> {
-        self.0
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .drain(..)
-            .collect()
-    }
-}
 
 pub(crate) fn should_enable(
     debug_build: bool,
@@ -59,10 +34,13 @@ pub(crate) fn enabled_for_this_launch() -> bool {
 
 pub(crate) fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri_plugin_single_instance::init(|app, args, cwd| {
-        if let Some(launches) = app.try_state::<ForwardedLaunches>() {
-            launches.push(args, cwd);
-        }
         reveal_main_window(app);
+        crate::open_request::arrive(
+            app,
+            args.into_iter().map(OsString::from).collect(),
+            Some(PathBuf::from(cwd)),
+            crate::open_request::OpenSource::Forwarded,
+        );
     })
 }
 
@@ -103,18 +81,6 @@ mod tests {
             OsString::from("/Users/me/Thèse #1 ✨/paper"),
         ]));
         assert!(args_are_forwardable(Vec::<OsString>::new()));
-    }
-
-    #[test]
-    fn forwarded_launches_keep_only_the_newest_sixteen() {
-        let launches = ForwardedLaunches::default();
-        for index in 0..20 {
-            launches.push(vec![format!("launch-{index}")], "/".into());
-        }
-        let kept = launches.take();
-        assert_eq!(kept.len(), 16);
-        assert_eq!(kept[0].0, ["launch-4"]);
-        assert_eq!(kept[15].0, ["launch-19"]);
     }
 
     #[cfg(unix)]

@@ -15,7 +15,11 @@
     "selectAll": "全选",
     "view": "视图",
     "toggleTerminal": "切换终端",
-    "toggleBrowser": "切换浏览器"
+    "toggleBrowser": "切换浏览器",
+    "file": "文件",
+    "openFolder": "打开文件夹…",
+    "openRecent": "最近打开",
+    "noRecent": "没有最近的项目"
   },
   "window": {
     "browser": "Oleafly 浏览器",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "选择副本的保存位置",
       "folderSuffix": "副本"
+    },
+    "openFolder": {
+      "title": "打开文件夹",
+      "inside": "选择 {{name}} 中的文件夹"
     }
   },
   "errors": {

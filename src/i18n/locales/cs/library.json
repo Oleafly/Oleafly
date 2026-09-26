@@ -37,7 +37,6 @@
     "appIconAlt": "Ikona aplikace Oleafly",
     "welcomeTitle": "Vítejte v Oleafly",
     "welcomeDescription": "Pište, kompilujte a korigujte v LaTeXu, Typstu a Markdownu. Spravujte citace, procházejte PDF, sledujte změny v Gitu a pracujte s modely AI, které si zvolíte.",
-    "createFirstProject": "Vytvořit nový projekt",
     "loading": "Načítá se vaše knihovna…",
     "noBookmarksTitle": "Zatím žádné záložky",
     "noBookmarksDescription": "Najeďte na knihu a kliknutím na záložku ji přidáte.",
@@ -71,7 +70,9 @@
       "last7Days": "Posledních 7 dní",
       "last30Days": "Posledních 30 dní",
       "lastYear": "Poslední rok"
-    }
+    },
+    "openFolder": "Otevřít složku…",
+    "openFolderShortcut": "Otevřít složku ({{shortcut}})"
   },
   "projects": {
     "open": "Otevřít {{name}}",
@@ -479,5 +480,14 @@
       "sourcesBody": "Záznamy kombinují otevřenou datovou sadu ccf-deadlines s oficiálními weby konferencí, které Oleafly sleduje.",
       "confirm": "Před odesláním si každé datum ověřte na oficiálním webu konference."
     }
+  },
+  "start": {
+    "newProjectTitle": "Nový projekt",
+    "newProjectDescription": "Začněte šablonou nebo prázdnou stránkou.",
+    "openFolderTitle": "Otevřít složku",
+    "openFolderDescription": "Pracujte se soubory, které už máte v počítači. Zůstanou tam, kde jsou."
+  },
+  "openFolder": {
+    "dismiss": "Zavřít"
   }
 }

@@ -83,7 +83,9 @@
     "app_data": "Esta carpeta forma parte de los datos de la aplicación de Oleafly. Elige una carpeta fuera de ella.",
     "contains_project": "Esta carpeta contiene {{name}}, que ya está abierta en Oleafly como un proyecto independiente.",
     "research_folder": "{{project}} ya puede editar archivos de esta carpeta a través de sus carpetas enlazadas. Primero quita el enlace allí.",
-    "failed": "Oleafly no pudo abrir esta carpeta."
+    "failed": "Oleafly no pudo abrir esta carpeta.",
+    "request_expired": "Esta solicitud de carpeta ha caducado. Vuelve a abrir la carpeta.",
+    "timed_out": "Oleafly no pudo acceder a esta carpeta. Comprueba que su unidad esté conectada y vuelve a intentarlo."
   },
   "research": {
     "linked_project_folder": "Esta carpeta está abierta en Oleafly como un proyecto independiente. Enlázala en modo de solo lectura."

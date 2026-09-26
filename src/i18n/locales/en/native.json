@@ -15,7 +15,11 @@
     "selectAll": "Select All",
     "view": "View",
     "toggleTerminal": "Toggle Terminal",
-    "toggleBrowser": "Toggle Browser"
+    "toggleBrowser": "Toggle Browser",
+    "file": "File",
+    "openFolder": "Open Folder…",
+    "openRecent": "Open Recent",
+    "noRecent": "No Recent Projects"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Choose where to save a copy",
       "folderSuffix": "copy"
+    },
+    "openFolder": {
+      "title": "Open a folder",
+      "inside": "Choose a folder inside {{name}}"
     }
   },
   "errors": {

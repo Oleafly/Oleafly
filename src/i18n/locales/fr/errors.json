@@ -83,7 +83,9 @@
     "app_data": "Ce dossier fait partie des données de l'application Oleafly. Choisissez un dossier en dehors.",
     "contains_project": "Ce dossier contient {{name}}, déjà ouvert dans Oleafly comme projet à part entière.",
     "research_folder": "{{project}} peut déjà modifier des fichiers de ce dossier via ses dossiers liés. Supprimez d'abord le lien là-bas.",
-    "failed": "Oleafly n'a pas pu ouvrir ce dossier."
+    "failed": "Oleafly n'a pas pu ouvrir ce dossier.",
+    "request_expired": "Cette demande d'ouverture a expiré. Ouvrez le dossier à nouveau.",
+    "timed_out": "Oleafly n'a pas pu accéder à ce dossier. Vérifiez que son disque est connecté, puis réessayez."
   },
   "research": {
     "linked_project_folder": "Ce dossier est ouvert dans Oleafly comme projet à part entière. Liez-le plutôt en lecture seule."

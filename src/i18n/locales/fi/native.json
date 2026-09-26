@@ -15,7 +15,11 @@
     "selectAll": "Valitse kaikki",
     "view": "Näytä",
     "toggleTerminal": "Näytä tai piilota pääte",
-    "toggleBrowser": "Näytä tai piilota selain"
+    "toggleBrowser": "Näytä tai piilota selain",
+    "file": "Arkisto",
+    "openFolder": "Avaa kansio…",
+    "openRecent": "Avaa viimeaikainen",
+    "noRecent": "Ei viimeaikaisia projekteja"
   },
   "window": {
     "browser": "Oleafly-selain",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Valitse, minne kopio tallennetaan",
       "folderSuffix": "kopio"
+    },
+    "openFolder": {
+      "title": "Avaa kansio",
+      "inside": "Valitse kansio kohteesta {{name}}"
     }
   },
   "errors": {

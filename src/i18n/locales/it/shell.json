@@ -220,6 +220,10 @@
         "titleCase": "iniziali maiuscole testo title case capitalize text",
         "uppercase": "maiuscolo testo uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Apri cartella…",
+      "keywords": "apri cartella directory esistente locale file disco"
     }
   },
   "community": {
@@ -831,7 +835,8 @@
     "loadingCore": "Caricamento di Oleafly Core",
     "loadingHarness": "Caricamento di Oleafly Harness",
     "loadingParsers": "Caricamento di Oleafly Parsers",
-    "starting": "Avvio di Oleafly"
+    "starting": "Avvio di Oleafly",
+    "opening": "Apertura di {{name}}…"
   },
   "theme": {
     "dark": "Scuro",
@@ -965,5 +970,21 @@
   "windows": {
     "preview": "Anteprima: {{title}}",
     "update": "Aggiornamento di Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Interrompere e aprire {{name}}?",
+    "confirmCompile": "{{project}} è ancora in compilazione. Aprire {{name}} interrompe la compilazione. Le tue modifiche vengono salvate prima.",
+    "confirmAssistant": "L'assistente sta ancora lavorando in {{project}}. Aprire {{name}} interrompe la sua risposta. Le tue modifiche vengono salvate prima.",
+    "confirmBoth": "{{project}} è ancora in compilazione e l'assistente sta ancora lavorando. Aprire {{name}} interrompe entrambi. Le tue modifiche vengono salvate prima.",
+    "confirmAction": "Interrompi e apri",
+    "chooseSubfolder": "Scegli una sottocartella",
+    "refusedTitle": "Impossibile aprire {{name}}",
+    "refused": "Impossibile aprire {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "In Impostazioni di Sistema, apri Privacy e sicurezza, poi File e cartelle, e attiva Oleafly. Se Oleafly non compare, aggiungilo in Accesso completo al disco e riprova.",
+      "windows": "Controlla nella scheda Sicurezza delle Proprietà della cartella che il tuo account possa leggerla, poi riprova.",
+      "linux": "Controlla che il tuo account possa leggere questa cartella, poi riprova."
+    }
   }
 }

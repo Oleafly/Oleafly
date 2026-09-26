@@ -83,7 +83,9 @@
     "app_data": "Deze map hoort bij de appgegevens van Oleafly. Kies een map daarbuiten.",
     "contains_project": "Deze map bevat {{name}}, dat al als eigen project in Oleafly is geopend.",
     "research_folder": "{{project}} kan via zijn gekoppelde mappen al bestanden in deze map bewerken. Ontkoppel de map daar eerst.",
-    "failed": "Oleafly kon deze map niet openen."
+    "failed": "Oleafly kon deze map niet openen.",
+    "request_expired": "Dit mapverzoek is verlopen. Open de map opnieuw.",
+    "timed_out": "Oleafly kon deze map niet bereiken. Controleer of de schijf is aangesloten en probeer het opnieuw."
   },
   "research": {
     "linked_project_folder": "Deze map is in Oleafly als eigen project geopend. Koppel de map in plaats daarvan als alleen-lezen."

@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly 앱 아이콘",
     "welcomeTitle": "Oleafly에 오신 것을 환영합니다",
     "welcomeDescription": "LaTeX, Typst, Markdown으로 쓰고, 컴파일하고, 교정하세요. 인용을 관리하고, PDF를 검토하고, Git으로 변경 이력을 추적하며, 원하는 AI 모델과 함께 작업할 수 있습니다.",
-    "createFirstProject": "새 프로젝트 만들기",
     "loading": "라이브러리를 읽는 중…",
     "noBookmarksTitle": "아직 북마크가 없습니다",
     "noBookmarksDescription": "책 위에 마우스를 올리고 북마크를 클릭해 추가하세요.",
@@ -68,7 +67,9 @@
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
       "lastYear": "최근 1년"
-    }
+    },
+    "openFolder": "폴더 열기…",
+    "openFolderShortcut": "폴더 열기({{shortcut}})"
   },
   "projects": {
     "open": "{{name}} 열기",
@@ -452,5 +453,14 @@
       "sourcesBody": "기록은 공개된 ccf-deadlines 데이터셋과 Oleafly가 추적하는 공식 학회 웹사이트를 합친 것입니다.",
       "confirm": "제출하기 전에 공식 학회 웹사이트에서 모든 날짜를 확인하세요."
     }
+  },
+  "start": {
+    "newProjectTitle": "새 프로젝트",
+    "newProjectDescription": "템플릿이나 빈 페이지로 시작합니다.",
+    "openFolderTitle": "폴더 열기",
+    "openFolderDescription": "컴퓨터에 이미 있는 파일로 작업합니다. 파일은 원래 위치에 그대로 둡니다."
+  },
+  "openFolder": {
+    "dismiss": "닫기"
   }
 }

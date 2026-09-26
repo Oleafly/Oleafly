@@ -56,8 +56,8 @@ mod logsafe;
 mod mcp;
 mod menu;
 mod ollama;
-#[cfg(test)]
 mod open_folder;
+mod open_request;
 mod paths;
 mod proc;
 mod process_identity;
@@ -235,6 +235,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
+    crate::open_request::start(app.handle());
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
 
@@ -284,14 +285,18 @@ pub fn run() {
     if research_mcp::stdio_bridge_requested() {
         std::process::exit(research_mcp::serve_stdio_bridge());
     }
+    let open_intake = open_request::OpenIntake::default();
+    open_intake.enqueue(
+        open_request::launch_targets(),
+        open_request::OpenSource::Launch,
+    );
     i18n::startup();
     let mut builder = tauri::Builder::default();
     if single_instance::enabled_for_this_launch() {
-        builder = builder
-            .manage(single_instance::ForwardedLaunches::default())
-            .plugin(single_instance::plugin());
+        builder = builder.plugin(single_instance::plugin());
     }
     builder = builder
+        .manage(open_intake)
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
@@ -459,6 +464,13 @@ pub fn run() {
             browser_cookie_import::import_browser_cookies,
             protocol::backend_protocol_info,
             initial_state::initial_state,
+            open_request::pending_open_requests,
+            open_request::begin_open_session,
+            open_request::prepare_open_request,
+            open_request::discard_open_request,
+            open_request::open_folder_request,
+            open_request::pick_open_folder,
+            open_request::debug_inject_open_request,
             chunked::chunked_ack,
             chunked::read_app_log_chunked,
             logsafe::export_log_archive,
@@ -507,6 +519,7 @@ pub fn run() {
             terminal::term_resize,
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
+            menu::set_recent_projects,
             i18n::set_ui_locale,
             i18n::get_ui_locale,
             cua_policy::cua_action_confirm,

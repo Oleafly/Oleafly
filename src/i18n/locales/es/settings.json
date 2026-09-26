@@ -1416,6 +1416,10 @@
       "toggleTerminal": {
         "description": "Muestra u oculta el terminal del proyecto.",
         "label": "Alternar el terminal"
+      },
+      "openFolder": {
+        "label": "Abrir carpeta",
+        "description": "Abre una carpeta de tu ordenador como proyecto."
       }
     },
     "application": {

@@ -16,7 +16,6 @@ import {
   List,
   Loader2,
   Palette,
-  Plus,
   Search,
   SearchX,
   SlidersHorizontal,
@@ -104,6 +103,9 @@ import {
 import { formatNumber } from "@/lib/intl";
 import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
+import { LibraryStartChoices } from "@/components/library/LibraryStartChoices";
+import { OpenFolderButton } from "@/components/library/OpenFolderButton";
+import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -1141,17 +1143,8 @@ export function Library() {
             {t(($) => $.library.home.welcomeDescription)}
           </EmptyDescription>
         </EmptyHeader>
-        <EmptyContent className="max-w-2xl">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button
-              data-testid="create-first-project"
-              data-tour="new-project"
-              className="bg-primary text-white hover:bg-primary"
-              onClick={() => setNewProjectOpen(true)}
-            >
-              <Plus className="size-4" /> {t(($) => $.library.home.createFirstProject)}
-            </Button>
-          </div>
+        <EmptyContent className="max-w-2xl items-center">
+          <LibraryStartChoices onNewProject={() => setNewProjectOpen(true)} />
         </EmptyContent>
       </Empty>
       ) : (
@@ -1243,6 +1236,7 @@ export function Library() {
       data-tauri-drag-region
       className="flex shrink-0 items-center gap-1.5"
     >
+    {projects.length > 0 ? <OpenFolderButton className="order-2" /> : null}
     {projects.length > 0 ? (
       <div className="order-2">
         <ProjectImportMenu
@@ -1487,6 +1481,7 @@ export function Library() {
           )}
         >
           {renderFirstRunWelcome()}
+          {projects.length > 0 ? <OpenFolderNotice className="mb-5" /> : null}
           {renderNoMatchesEmpty()}
           {renderProjectCollection()}
         </div>

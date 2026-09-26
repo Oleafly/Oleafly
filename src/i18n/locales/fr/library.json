@@ -36,7 +36,6 @@
     "appIconAlt": "Icône de l'application Oleafly",
     "welcomeTitle": "Bienvenue dans Oleafly",
     "welcomeDescription": "Rédigez, compilez et relisez du LaTeX, du Typst et du Markdown. Gérez vos citations, relisez vos PDF, suivez vos modifications dans Git et travaillez avec les modèles d'IA de votre choix.",
-    "createFirstProject": "Créer un projet",
     "loading": "Lecture de votre bibliothèque…",
     "noBookmarksTitle": "Aucun favori pour l'instant",
     "noBookmarksDescription": "Survolez un livre et cliquez sur son marque-page pour en ajouter un.",
@@ -70,7 +69,9 @@
       "last7Days": "7 derniers jours",
       "last30Days": "30 derniers jours",
       "lastYear": "Dernière année"
-    }
+    },
+    "openFolder": "Ouvrir un dossier…",
+    "openFolderShortcut": "Ouvrir un dossier ({{shortcut}})"
   },
   "projects": {
     "open": "Ouvrir {{name}}",
@@ -470,5 +471,14 @@
       "sourcesBody": "Les fiches combinent le jeu de données ouvert ccf-deadlines et les sites officiels des conférences suivis par Oleafly.",
       "confirm": "Vérifiez chaque date sur le site officiel de la conférence avant de soumettre."
     }
+  },
+  "start": {
+    "newProjectTitle": "Nouveau projet",
+    "newProjectDescription": "Partez d'un modèle ou d'une page blanche.",
+    "openFolderTitle": "Ouvrir un dossier",
+    "openFolderDescription": "Travaillez sur des fichiers déjà présents sur votre ordinateur. Ils restent là où ils sont."
+  },
+  "openFolder": {
+    "dismiss": "Fermer"
   }
 }

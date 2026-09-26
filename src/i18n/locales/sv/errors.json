@@ -83,7 +83,9 @@
     "app_data": "Den här mappen är en del av Oleaflys appdata. Välj en mapp utanför den.",
     "contains_project": "Den här mappen innehåller {{name}}, som redan är öppet i Oleafly som ett eget projekt.",
     "research_folder": "{{project}} kan redan redigera filer i den här mappen via sina länkade mappar. Ta bort länken där först.",
-    "failed": "Oleafly kunde inte öppna den här mappen."
+    "failed": "Oleafly kunde inte öppna den här mappen.",
+    "request_expired": "Den här mappbegäran har gått ut. Öppna mappen igen.",
+    "timed_out": "Oleafly kunde inte nå den här mappen. Kontrollera att enheten är ansluten och försök igen."
   },
   "research": {
     "linked_project_folder": "Den här mappen är öppen i Oleafly som ett eget projekt. Länka den som skrivskyddad i stället."

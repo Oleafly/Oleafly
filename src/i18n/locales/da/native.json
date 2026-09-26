@@ -15,7 +15,11 @@
     "selectAll": "Vælg alt",
     "view": "Vis",
     "toggleTerminal": "Vis eller skjul terminalen",
-    "toggleBrowser": "Vis eller skjul browseren"
+    "toggleBrowser": "Vis eller skjul browseren",
+    "file": "Arkiv",
+    "openFolder": "Åbn mappe…",
+    "openRecent": "Åbn seneste",
+    "noRecent": "Ingen seneste projekter"
   },
   "window": {
     "browser": "Oleafly-browser",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Vælg, hvor kopien skal gemmes",
       "folderSuffix": "kopi"
+    },
+    "openFolder": {
+      "title": "Åbn en mappe",
+      "inside": "Vælg en mappe i {{name}}"
     }
   },
   "errors": {

@@ -1384,6 +1384,10 @@
       "toggleTerminal": {
         "description": "プロジェクトのターミナルを表示または非表示にします。",
         "label": "ターミナルの表示を切り替え"
+      },
+      "openFolder": {
+        "label": "フォルダを開く",
+        "description": "パソコン上のフォルダをプロジェクトとして開きます。"
       }
     },
     "application": {

@@ -83,7 +83,9 @@
     "app_data": "Esta pasta faz parte dos dados do aplicativo Oleafly. Escolha uma pasta fora dela.",
     "contains_project": "Esta pasta contém {{name}}, que já está aberta no Oleafly como um projeto próprio.",
     "research_folder": "{{project}} já pode editar arquivos desta pasta pelas suas pastas vinculadas. Primeiro desvincule a pasta lá.",
-    "failed": "O Oleafly não conseguiu abrir esta pasta."
+    "failed": "O Oleafly não conseguiu abrir esta pasta.",
+    "request_expired": "Esta solicitação de pasta expirou. Abra a pasta novamente.",
+    "timed_out": "O Oleafly não conseguiu acessar esta pasta. Verifique se a unidade está conectada e tente novamente."
   },
   "research": {
     "linked_project_folder": "Esta pasta está aberta no Oleafly como um projeto próprio. Vincule-a como somente leitura."

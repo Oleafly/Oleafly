@@ -220,6 +220,10 @@
         "titleCase": "inițiale majuscule text",
         "uppercase": "litere mari majuscule text"
       }
+    },
+    "openFolder": {
+      "label": "Deschide folderul…",
+      "keywords": "deschide folder director existent local fișiere disc"
     }
   },
   "community": {
@@ -831,7 +835,8 @@
     "loadingCore": "Se încarcă nucleul Oleafly",
     "loadingHarness": "Se încarcă structura Oleafly",
     "loadingParsers": "Se încarcă analizatoarele Oleafly",
-    "starting": "Pornește Oleafly"
+    "starting": "Pornește Oleafly",
+    "opening": "Se deschide {{name}}…"
   },
   "theme": {
     "dark": "Întunecată",
@@ -965,5 +970,21 @@
   "windows": {
     "preview": "Previzualizare: {{title}}",
     "update": "Actualizare Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Oprești și deschizi {{name}}?",
+    "confirmCompile": "{{project}} încă se compilează. Deschiderea {{name}} oprește compilarea. Modificările tale sunt salvate mai întâi.",
+    "confirmAssistant": "Asistentul încă lucrează în {{project}}. Deschiderea {{name}} îi oprește răspunsul. Modificările tale sunt salvate mai întâi.",
+    "confirmBoth": "{{project}} încă se compilează, iar asistentul încă lucrează. Deschiderea {{name}} le oprește pe amândouă. Modificările tale sunt salvate mai întâi.",
+    "confirmAction": "Oprește și deschide",
+    "chooseSubfolder": "Alege un subfolder",
+    "refusedTitle": "{{name}} nu a putut fi deschis",
+    "refused": "{{name}} nu a putut fi deschis. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "În Configurări sistem, deschide Confidențialitate și securitate, apoi Fișiere și dosare, și activează Oleafly. Dacă Oleafly nu apare, adaugă-l la Acces complet la disc și încearcă din nou.",
+      "windows": "Verifică în fila Securitate din Proprietățile folderului dacă contul tău îl poate citi, apoi încearcă din nou.",
+      "linux": "Verifică dacă contul tău poate citi acest folder, apoi încearcă din nou."
+    }
   }
 }

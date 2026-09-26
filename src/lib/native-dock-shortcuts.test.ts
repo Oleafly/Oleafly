@@ -118,6 +118,7 @@ describe("native dock shortcuts", () => {
       {
         terminalAccelerator: "Ctrl+`",
         browserAccelerator: "Ctrl+Shift+B",
+        openFolderAccelerator: "Cmd+Shift+O",
       },
     );
 
@@ -133,6 +134,20 @@ describe("native dock shortcuts", () => {
         {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
+          openFolderAccelerator: "Cmd+Shift+O",
+        },
+      );
+    });
+
+    useShortcutStore.getState().setBinding("openFolder", { key: "k", mod: true, alt: true });
+
+    await vi.waitFor(() => {
+      expect(native.invoke).toHaveBeenLastCalledWith(
+        "set_dock_shortcut_accelerators",
+        {
+          terminalAccelerator: "Ctrl+`",
+          browserAccelerator: "Ctrl+Shift+E",
+          openFolderAccelerator: "Cmd+Alt+K",
         },
       );
     });

@@ -15,7 +15,11 @@
     "selectAll": "Vybrat vše",
     "view": "Zobrazit",
     "toggleTerminal": "Přepnout terminál",
-    "toggleBrowser": "Přepnout prohlížeč"
+    "toggleBrowser": "Přepnout prohlížeč",
+    "file": "Soubor",
+    "openFolder": "Otevřít složku…",
+    "openRecent": "Otevřít nedávné",
+    "noRecent": "Žádné nedávné projekty"
   },
   "window": {
     "browser": "Prohlížeč Oleafly",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "Vyberte, kam uložit kopii",
       "folderSuffix": "kopie"
+    },
+    "openFolder": {
+      "title": "Otevřít složku",
+      "inside": "Vyberte složku v {{name}}"
     }
   },
   "errors": {

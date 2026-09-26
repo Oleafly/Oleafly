@@ -83,7 +83,9 @@
     "app_data": "此文件夹属于 Oleafly 的应用数据。请选择其外部的文件夹。",
     "contains_project": "此文件夹包含 {{name}}，它已在 Oleafly 中作为独立项目打开。",
     "research_folder": "{{project}} 已可通过其已链接文件夹编辑此文件夹中的文件。请先在那里取消链接。",
-    "failed": "Oleafly 无法打开此文件夹。"
+    "failed": "Oleafly 无法打开此文件夹。",
+    "request_expired": "此文件夹请求已过期。请重新打开该文件夹。",
+    "timed_out": "Oleafly 无法访问此文件夹。请检查所在的驱动器是否已连接，然后重试。"
   },
   "research": {
     "linked_project_folder": "此文件夹已在 Oleafly 中作为独立项目打开。请改为以只读方式链接。"

@@ -3178,6 +3178,24 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
     })
 }
 
+pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result<bool, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        if meta.main_doc == main_doc || !resolve(project_id, main_doc)?.is_file() {
+            return Ok(false);
+        }
+        let engine = engine_for_main_document(&meta.engine, main_doc)?;
+        meta.main_doc = main_doc.to_string();
+        if engine != "latexmk" {
+            meta.tex_flavor = None;
+            meta.allow_shell_escape = false;
+        }
+        meta.engine = engine;
+        write_device_meta(project_id, &meta)?;
+        Ok(true)
+    })
+}
+
 /// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
 /// bundled Tectonic, "latexmk" for a system TeX toolchain). Shares the compile
 /// lock with `set_main_doc` so an engine switch never lands between a compile's

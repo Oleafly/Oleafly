@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly uygulama simgesi",
     "welcomeTitle": "Oleafly'ye hoş geldiniz",
     "welcomeDescription": "LaTeX, Typst ve Markdown yazın, derleyin ve redaksiyondan geçirin. Atıfları yönetin, PDF'leri inceleyin, değişiklikleri Git ile izleyin ve seçtiğiniz yapay zeka modelleriyle çalışın.",
-    "createFirstProject": "Yeni proje oluştur",
     "loading": "Kitaplığınız okunuyor…",
     "noBookmarksTitle": "Henüz yer imi yok",
     "noBookmarksDescription": "Eklemek için bir kitabın üzerine gelip yer imine tıklayın.",
@@ -69,7 +68,9 @@
       "last7Days": "Son 7 gün",
       "last30Days": "Son 30 gün",
       "lastYear": "Son bir yıl"
-    }
+    },
+    "openFolder": "Klasör aç…",
+    "openFolderShortcut": "Klasör aç ({{shortcut}})"
   },
   "projects": {
     "open": "{{name}} projesini aç",
@@ -461,5 +462,14 @@
       "sourcesBody": "Kayıtlar, açık ccf-deadlines veri kümesini Oleafly'nin izlediği resmi konferans siteleriyle birleştirir.",
       "confirm": "Göndermeden önce her tarihi resmi konferans web sitesinden doğrulayın."
     }
+  },
+  "start": {
+    "newProjectTitle": "Yeni proje",
+    "newProjectDescription": "Bir şablonla ya da boş bir sayfayla başlayın.",
+    "openFolderTitle": "Bir klasör aç",
+    "openFolderDescription": "Bilgisayarınızda zaten bulunan dosyalar üzerinde çalışın. Dosyalar oldukları yerde kalır."
+  },
+  "openFolder": {
+    "dismiss": "Kapat"
   }
 }

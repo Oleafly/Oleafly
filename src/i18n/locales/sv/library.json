@@ -35,7 +35,6 @@
     "appIconAlt": "Oleaflys appikon",
     "welcomeTitle": "Välkommen till Oleafly",
     "welcomeDescription": "Skriv, kompilera och korrekturläs LaTeX, Typst och Markdown. Hantera citeringar, granska PDF-filer, följ ändringar i Git och arbeta med de AI-modeller du väljer.",
-    "createFirstProject": "Skapa nytt projekt",
     "loading": "Läser ditt bibliotek…",
     "noBookmarksTitle": "Inga bokmärken än",
     "noBookmarksDescription": "Håll muspekaren över en bok och klicka på dess bokmärke för att lägga till ett.",
@@ -69,7 +68,9 @@
       "last7Days": "Senaste 7 dagarna",
       "last30Days": "Senaste 30 dagarna",
       "lastYear": "Senaste året"
-    }
+    },
+    "openFolder": "Öppna mapp…",
+    "openFolderShortcut": "Öppna mapp ({{shortcut}})"
   },
   "projects": {
     "open": "Öppna {{name}}",
@@ -461,5 +462,14 @@
       "sourcesBody": "Posterna kombinerar den öppna datamängden ccf-deadlines med officiella konferenswebbplatser som Oleafly följer.",
       "confirm": "Bekräfta varje datum på konferensens officiella webbplats innan du skickar in."
     }
+  },
+  "start": {
+    "newProjectTitle": "Nytt projekt",
+    "newProjectDescription": "Börja med en mall eller en tom sida.",
+    "openFolderTitle": "Öppna en mapp",
+    "openFolderDescription": "Arbeta med filer som redan finns på datorn. De stannar där de är."
+  },
+  "openFolder": {
+    "dismiss": "Stäng"
   }
 }

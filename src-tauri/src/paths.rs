@@ -304,7 +304,6 @@ pub(crate) fn library_project_root(project_id: &str) -> Result<Option<PathBuf>, 
     verify_project_directory(root, dir).map(Some)
 }
 
-#[cfg(test)]
 pub fn linked_root() -> Result<PathBuf, String> {
     let data = oleafly_root()?;
     std::fs::create_dir_all(&data)
@@ -593,7 +592,6 @@ pub(crate) fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-#[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ReparseClass {
     None,
@@ -602,14 +600,12 @@ pub(crate) enum ReparseClass {
     Other,
 }
 
-#[cfg(test)]
 impl ReparseClass {
     pub(crate) fn opens_as_folder(self) -> bool {
         !matches!(self, Self::NameSurrogate)
     }
 }
 
-#[cfg(test)]
 pub(crate) fn classify_reparse_tag(attributes: u32, tag: u32) -> ReparseClass {
     const REPARSE_POINT_ATTRIBUTE: u32 = 0x0000_0400;
     const NAME_SURROGATE_TAG_BIT: u32 = 0x2000_0000;
@@ -628,7 +624,7 @@ pub(crate) fn classify_reparse_tag(attributes: u32, tag: u32) -> ReparseClass {
     ReparseClass::Other
 }
 
-#[cfg(all(test, windows))]
+#[cfg(windows)]
 pub(crate) fn reparse_class(path: &Path) -> std::io::Result<ReparseClass> {
     use std::os::windows::fs::OpenOptionsExt as _;
     use std::os::windows::io::AsRawHandle as _;
@@ -658,9 +654,9 @@ pub(crate) fn reparse_class(path: &Path) -> std::io::Result<ReparseClass> {
     ))
 }
 
-#[cfg(all(test, not(windows)))]
+#[cfg(not(windows))]
 pub(crate) fn reparse_class(_path: &Path) -> std::io::Result<ReparseClass> {
-    Ok(ReparseClass::None)
+    Ok(classify_reparse_tag(0, 0))
 }
 
 /// Serializes every process environment mutation a test performs, because a

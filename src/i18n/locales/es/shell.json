@@ -220,6 +220,10 @@
         "titleCase": "mayúscula inicial capitalizar texto title case capitalize",
         "uppercase": "mayúsculas texto uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Abrir carpeta…",
+      "keywords": "abrir carpeta directorio existente local archivos disco"
     }
   },
   "community": {
@@ -831,7 +835,8 @@
     "loadingCore": "Cargando Oleafly Core",
     "loadingHarness": "Cargando Oleafly Harness",
     "loadingParsers": "Cargando Oleafly Parsers",
-    "starting": "Arrancando Oleafly"
+    "starting": "Arrancando Oleafly",
+    "opening": "Abriendo {{name}}…"
   },
   "theme": {
     "dark": "Oscuro",
@@ -965,5 +970,21 @@
   "windows": {
     "preview": "Vista previa: {{title}}",
     "update": "Actualización de Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "¿Detener y abrir {{name}}?",
+    "confirmCompile": "{{project}} todavía se está compilando. Abrir {{name}} detiene la compilación. Tus cambios se guardan antes.",
+    "confirmAssistant": "El asistente sigue trabajando en {{project}}. Abrir {{name}} detiene su respuesta. Tus cambios se guardan antes.",
+    "confirmBoth": "{{project}} todavía se está compilando y el asistente sigue trabajando. Abrir {{name}} detiene ambos. Tus cambios se guardan antes.",
+    "confirmAction": "Detener y abrir",
+    "chooseSubfolder": "Elegir una subcarpeta",
+    "refusedTitle": "No se pudo abrir {{name}}",
+    "refused": "No se pudo abrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "En Ajustes del Sistema, abre Privacidad y seguridad, luego Archivos y carpetas, y activa Oleafly. Si Oleafly no aparece, añádelo en Acceso total al disco y vuelve a intentarlo.",
+      "windows": "Revisa en la pestaña Seguridad de las Propiedades de la carpeta que tu cuenta pueda leerla y vuelve a intentarlo.",
+      "linux": "Comprueba que tu cuenta pueda leer esta carpeta y vuelve a intentarlo."
+    }
   }
 }

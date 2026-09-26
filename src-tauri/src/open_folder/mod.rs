@@ -352,6 +352,62 @@ fn register_or_resolve_folder_with(
     .map_err(name_projects)
 }
 
+pub(crate) fn resolve_folder(requested: &Path) -> Result<Option<String>, OpenFolderError> {
+    resolve_folder_with(requested, &KnownFolders::current(), &DiskProbe)
+}
+
+fn resolve_folder_with(
+    requested: &Path,
+    known: &KnownFolders,
+    probe: &dyn RootProbe,
+) -> Result<Option<String>, OpenFolderError> {
+    let folder = match inspect_folder_with(requested, known)? {
+        Inspection::Library { project_id, .. } => return Ok(Some(project_id)),
+        Inspection::Folder(folder) => folder,
+    };
+    let research = crate::research_workspace::roots::writable_roots_overlapping(
+        &folder.canonical,
+        folder.case,
+    )?;
+    let records = crate::linked_registry::current_records()?;
+    let candidate = Candidate {
+        path: &folder.canonical,
+        identity: &folder.identity,
+        case: folder.case,
+    };
+    let decision = matching::decide(&candidate, &records, probe);
+    research_refusal(&decision, research.first()).map_err(name_projects)?;
+    match decision {
+        Decision::Overlap { children } => Err(name_projects(OpenFolderError::ContainsProjects {
+            children,
+        })),
+        Decision::Inside { id, .. }
+        | Decision::Existing { id }
+        | Decision::Moved { id, .. }
+        | Decision::Remounted { id, .. }
+        | Decision::Revived { id, .. } => Ok(Some(id)),
+        Decision::Replace { .. } | Decision::New { .. } => Ok(None),
+    }
+}
+
+fn research_refusal(
+    decision: &Decision,
+    research: Option<&WritableRootOverlap>,
+) -> Result<(), OpenFolderError> {
+    let registers = !matches!(
+        decision,
+        Decision::Existing { .. } | Decision::Inside { .. } | Decision::Overlap { .. }
+    );
+    match (registers, research) {
+        (true, Some(overlap)) => Err(OpenFolderError::WritableResearchRoot {
+            project_id: overlap.project_id.clone(),
+            root_id: overlap.root_id.clone(),
+            project_name: String::new(),
+        }),
+        _ => Ok(()),
+    }
+}
+
 fn name_projects(error: OpenFolderError) -> OpenFolderError {
     match error {
         OpenFolderError::WritableResearchRoot {
@@ -400,17 +456,7 @@ fn apply(
     decision: Decision,
     research: Option<&WritableRootOverlap>,
 ) -> Result<OpenedFolder, OpenFolderError> {
-    let registers = !matches!(
-        decision,
-        Decision::Existing { .. } | Decision::Inside { .. } | Decision::Overlap { .. }
-    );
-    if let (true, Some(overlap)) = (registers, research) {
-        return Err(OpenFolderError::WritableResearchRoot {
-            project_id: overlap.project_id.clone(),
-            root_id: overlap.root_id.clone(),
-            project_name: String::new(),
-        });
-    }
+    research_refusal(&decision, research)?;
     let now = now_ms();
     match decision {
         Decision::Inside { id, reveal } => {
@@ -536,6 +582,7 @@ fn new_link(folder: &InspectedFolder) -> NewLink {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn pending_reattach(project_id: &str) -> Result<Option<ReattachOffer>, String> {
     let records: Vec<LinkRecord> = crate::linked_registry::list()?
         .into_iter()
@@ -547,6 +594,7 @@ pub(crate) fn pending_reattach(project_id: &str) -> Result<Option<ReattachOffer>
     Ok(live_offer(project_id, &records))
 }
 
+#[cfg(test)]
 pub(crate) fn dismiss_reattach(project_id: &str) -> Result<(), String> {
     crate::linked_registry::update(project_id, |record| {
         record.reattach = None;

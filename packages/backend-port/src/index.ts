@@ -61,6 +61,13 @@ export type AgentRequestDecision =
 export interface InitialState {
     config: AppConfig | null;
     projects: ProjectInfo[];
+    pending_open?: PendingOpenRequest[];
+}
+export type OpenRequestSource = "launch" | "forwarded" | "os" | "picker" | "test";
+export interface PendingOpenRequest {
+    token: string;
+    display_name: string;
+    source: OpenRequestSource;
 }
 /** Persisted per-project tool-approval decision (~/.oleafly/approvals.toml). */
 export type ToolDecision = "allow" | "deny";

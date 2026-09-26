@@ -83,7 +83,9 @@
     "app_data": "Bu klasör Oleafly'nin uygulama verilerinin bir parçası. Bunun dışında bir klasör seçin.",
     "contains_project": "Bu klasör, Oleafly'de zaten ayrı bir proje olarak açık olan {{name}} öğesini içeriyor.",
     "research_folder": "{{project}}, bağlı klasörleri aracılığıyla bu klasördeki dosyaları zaten düzenleyebiliyor. Önce oradaki bağlantıyı kaldırın.",
-    "failed": "Oleafly bu klasörü açamadı."
+    "failed": "Oleafly bu klasörü açamadı.",
+    "request_expired": "Bu klasör isteğinin süresi doldu. Klasörü yeniden açın.",
+    "timed_out": "Oleafly bu klasöre ulaşamadı. Sürücünün bağlı olduğunu kontrol edip yeniden deneyin."
   },
   "research": {
     "linked_project_folder": "Bu klasör Oleafly'de ayrı bir proje olarak açık. Bunun yerine salt okunur olarak bağlayın."

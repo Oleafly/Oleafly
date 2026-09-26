@@ -243,6 +243,10 @@ vi.mock("@/components/layout/AboutModal", () => ({ AboutModal: () => null }));
 vi.mock("@/components/layout/EnginePickerModal", () => ({ EnginePickerModal: () => null }));
 vi.mock("@/components/layout/TinytexGuards", () => ({ TinytexGuards: () => null }));
 vi.mock("@/components/layout/QuitGuard", () => ({ QuitGuard: () => null }));
+vi.mock("@/components/layout/OpenFolderGuards", () => ({
+  OpenFolderStopDialog: () => null,
+  useOpenFolderIntake: () => {},
+}));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
@@ -263,6 +267,7 @@ vi.mock("@/components/tools/LiteratureSearchToolView", () => ({
   LiteratureSearchToolView: () => null,
 }));
 vi.mock("@/lib/boot-telemetry", () => ({
+  bootSplashHeld: () => false,
   dismissBootSplash: vi.fn(),
   markBootStage: vi.fn(),
 }));

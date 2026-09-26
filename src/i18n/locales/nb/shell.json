@@ -219,6 +219,10 @@
         "titleCase": "stor forbokstav tittel tekst title case capitalize text",
         "uppercase": "store bokstaver tekst uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Åpne mappe…",
+      "keywords": "åpne mappe katalog eksisterende lokale filer disk"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Laster Oleafly Core",
     "loadingHarness": "Laster Oleafly Harness",
     "loadingParsers": "Laster Oleafly Parsers",
-    "starting": "Starter Oleafly"
+    "starting": "Starter Oleafly",
+    "opening": "Åpner {{name}}…"
   },
   "theme": {
     "dark": "Mørkt",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Forhåndsvisning: {{title}}",
     "update": "Oleafly-oppdatering"
+  },
+  "openFolder": {
+    "confirmTitle": "Stopp og åpne {{name}}?",
+    "confirmCompile": "{{project}} kompileres fortsatt. Hvis du åpner {{name}}, stopper kompileringen. Endringene dine lagres først.",
+    "confirmAssistant": "Assistenten jobber fortsatt i {{project}}. Hvis du åpner {{name}}, stopper svaret. Endringene dine lagres først.",
+    "confirmBoth": "{{project}} kompileres fortsatt, og assistenten jobber fortsatt. Hvis du åpner {{name}}, stopper begge deler. Endringene dine lagres først.",
+    "confirmAction": "Stopp og åpne",
+    "chooseSubfolder": "Velg en undermappe",
+    "refusedTitle": "Kunne ikke åpne {{name}}",
+    "refused": "Kunne ikke åpne {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Åpne Personvern og sikkerhet i Systeminnstillinger, gå til Filer og mapper, og slå på Oleafly. Hvis Oleafly ikke står der, legger du det til under Full disktilgang og prøver igjen.",
+      "windows": "Sjekk fanen Sikkerhet under mappens Egenskaper for å se at kontoen din kan lese den, og prøv igjen.",
+      "linux": "Sjekk at kontoen din kan lese denne mappen, og prøv igjen."
+    }
   }
 }

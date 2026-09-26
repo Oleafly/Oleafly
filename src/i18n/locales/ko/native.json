@@ -15,7 +15,11 @@
     "selectAll": "모두 선택",
     "view": "보기",
     "toggleTerminal": "터미널 전환",
-    "toggleBrowser": "브라우저 전환"
+    "toggleBrowser": "브라우저 전환",
+    "file": "파일",
+    "openFolder": "폴더 열기…",
+    "openRecent": "최근 항목 열기",
+    "noRecent": "최근 프로젝트 없음"
   },
   "window": {
     "browser": "Oleafly 브라우저",
@@ -70,6 +74,10 @@
     "saveCopy": {
       "title": "사본을 저장할 위치 선택",
       "folderSuffix": "사본"
+    },
+    "openFolder": {
+      "title": "폴더 열기",
+      "inside": "{{name}} 안의 폴더 선택"
     }
   },
   "errors": {

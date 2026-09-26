@@ -1416,6 +1416,10 @@
       "toggleTerminal": {
         "description": "Mostra o nascondi il terminale del progetto.",
         "label": "Mostra o nascondi il terminale"
+      },
+      "openFolder": {
+        "label": "Apri cartella",
+        "description": "Apri una cartella del computer come progetto."
       }
     },
     "application": {

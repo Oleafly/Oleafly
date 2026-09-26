@@ -57,7 +57,7 @@ import {
   LanguageServiceRuntimeUnavailable,
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { Library } from "@/components/library/Library";
-import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
+import { bootSplashHeld, dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
@@ -107,6 +107,7 @@ import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
+import { OpenFolderStopDialog, useOpenFolderIntake } from "@/components/layout/OpenFolderGuards";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
   CHECKPOINT_PUBLICATION_EVENT,
@@ -345,6 +346,8 @@ function AppContent() {
   // reveal. The computer_use tool is only exposed when the browser flag is on.
   useEffect(() => registerBrowserCuaSurface(), []);
 
+  useOpenFolderIntake();
+
   const SIDEBAR_DEFAULT_PX = 340;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
@@ -407,7 +410,7 @@ function AppContent() {
     // React owns the screen from here: retire the inline HTML splash and
     // stamp the boot milestones the BootProgress card reports against.
     markBootStage("react-mounted");
-    dismissBootSplash();
+    if (!bootSplashHeld()) dismissBootSplash();
     void refreshProjects();
     void useGithubStore.getState().refresh();
     markBootStage("stores-ready");
@@ -881,6 +884,7 @@ function AppContent() {
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
+        <OpenFolderStopDialog />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -1118,6 +1122,7 @@ function AppContent() {
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
+        <OpenFolderStopDialog />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

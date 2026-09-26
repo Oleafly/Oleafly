@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Vis eller skjul terminalen i prosjektet.",
         "label": "Vis eller skjul terminalen"
+      },
+      "openFolder": {
+        "label": "Åpne mappe",
+        "description": "Åpne en mappe fra datamaskinen som et prosjekt."
       }
     },
     "application": {

@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly 应用图标",
     "welcomeTitle": "欢迎使用 Oleafly",
     "welcomeDescription": "编写、编译并校对 LaTeX、Typst 和 Markdown 文档。管理引用、审阅 PDF、通过 Git 跟踪更改，并使用你选择的 AI 模型。",
-    "createFirstProject": "创建新项目",
     "loading": "正在读取你的库…",
     "noBookmarksTitle": "暂无收藏",
     "noBookmarksDescription": "将鼠标悬停在书本上，点击书签图标即可收藏。",
@@ -68,7 +67,9 @@
       "last7Days": "最近 7 天",
       "last30Days": "最近 30 天",
       "lastYear": "最近一年"
-    }
+    },
+    "openFolder": "打开文件夹…",
+    "openFolderShortcut": "打开文件夹（{{shortcut}}）"
   },
   "projects": {
     "open": "打开 {{name}}",
@@ -452,5 +453,14 @@
       "sourcesBody": "记录数据整合了开源的 ccf-deadlines 数据集与 Oleafly 跟踪的官方会议网站。",
       "confirm": "提交前请在会议官网确认所有日期"
     }
+  },
+  "start": {
+    "newProjectTitle": "新建项目",
+    "newProjectDescription": "从模板或空白页面开始。",
+    "openFolderTitle": "打开文件夹",
+    "openFolderDescription": "处理电脑上已有的文件。文件会留在原来的位置。"
+  },
+  "openFolder": {
+    "dismiss": "关闭"
   }
 }

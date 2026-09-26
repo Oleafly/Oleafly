@@ -219,6 +219,10 @@
         "titleCase": "alkukirjaimet isoiksi kirjainkoko teksti title case capitalize",
         "uppercase": "isot kirjaimet kirjainkoko teksti uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Avaa kansio…",
+      "keywords": "avaa kansio hakemisto olemassa oleva paikallinen tiedostot levy"
     }
   },
   "community": {
@@ -812,7 +816,8 @@
     "loadingCore": "Ladataan Oleafly Corea",
     "loadingHarness": "Ladataan Oleafly Harnessia",
     "loadingParsers": "Ladataan Oleafly Parsersia",
-    "starting": "Käynnistetään Oleaflyä"
+    "starting": "Käynnistetään Oleaflyä",
+    "opening": "Avataan {{name}}…"
   },
   "theme": {
     "dark": "Tumma",
@@ -946,5 +951,21 @@
   "windows": {
     "preview": "Esikatselu: {{title}}",
     "update": "Oleafly-päivitys"
+  },
+  "openFolder": {
+    "confirmTitle": "Pysäytetäänkö ja avataan {{name}}?",
+    "confirmCompile": "{{project}} kääntyy yhä. Kun avaat kohteen {{name}}, kääntäminen pysähtyy. Muutoksesi tallennetaan ensin.",
+    "confirmAssistant": "Avustaja työskentelee yhä projektissa {{project}}. Kun avaat kohteen {{name}}, vastaus pysähtyy. Muutoksesi tallennetaan ensin.",
+    "confirmBoth": "{{project}} kääntyy yhä ja avustaja työskentelee yhä. Kun avaat kohteen {{name}}, molemmat pysähtyvät. Muutoksesi tallennetaan ensin.",
+    "confirmAction": "Pysäytä ja avaa",
+    "chooseSubfolder": "Valitse alikansio",
+    "refusedTitle": "Kohdetta {{name}} ei voitu avata",
+    "refused": "Kohdetta {{name}} ei voitu avata. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Avaa Järjestelmäasetuksista Tietosuoja ja suojaus ja sitten Tiedostot ja kansiot, ja salli Oleafly. Jos Oleaflya ei ole luettelossa, lisää se kohtaan Täysi levyn käyttöoikeus ja yritä uudelleen.",
+      "windows": "Varmista kansion Ominaisuudet-ikkunan Suojaus-välilehdeltä, että tililläsi on lukuoikeus kansioon, ja yritä uudelleen.",
+      "linux": "Varmista, että tililläsi on lukuoikeus tähän kansioon, ja yritä uudelleen."
+    }
   }
 }

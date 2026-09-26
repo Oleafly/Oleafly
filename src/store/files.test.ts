@@ -106,6 +106,7 @@ import { engineHintDismissed } from "@/store/engine-picker";
 import {
   collectOpenBuffersForCopy,
   engineErrorMessage,
+  onSaveBlockedSettled,
   projectCompatibilityFindings,
   reportFileSaveFailure,
   saveFailureToastKey,
@@ -1081,12 +1082,19 @@ describe("closeProject", () => {
     });
     mocks.writeFileContent.mockRejectedValue(new Error("managed by Oleafly"));
     await useFilesStore.getState().closeProject();
-    expect(useFilesStore.getState().saveBlocked?.action).toBe("close");
+    const blocked = useFilesStore.getState().saveBlocked;
+    expect(blocked?.action).toBe("close");
+    const settled = vi.fn(() => {
+      expect(useFilesStore.getState().projectId).toBeNull();
+    });
+    const stop = onSaveBlockedSettled(settled);
 
     await useFilesStore.getState().discardUnsavedAndLeave();
 
     expect(useFilesStore.getState().saveBlocked).toBeNull();
     expect(useFilesStore.getState().projectId).toBeNull();
+    expect(settled).toHaveBeenCalledExactlyOnceWith(blocked, true);
+    stop();
   });
 
   it("dismissing the blocked dialog keeps the project and its unsaved buffer", async () => {
@@ -1098,9 +1106,15 @@ describe("closeProject", () => {
     });
     mocks.writeFileContent.mockRejectedValue(new Error("managed by Oleafly"));
     await useFilesStore.getState().closeProject();
+    const blocked = useFilesStore.getState().saveBlocked;
+    const settled = vi.fn();
+    const stop = onSaveBlockedSettled(settled);
 
     useFilesStore.getState().dismissSaveBlocked();
+    stop();
+    useFilesStore.getState().dismissSaveBlocked();
 
+    expect(settled).toHaveBeenCalledExactlyOnceWith(blocked, false);
     expect(useFilesStore.getState().saveBlocked).toBeNull();
     expect(useFilesStore.getState().projectId).toBe("project");
     expect(useFilesStore.getState().files["project.json"]?.dirty).toBe(true);
@@ -1867,6 +1881,38 @@ describe("engine setting failures", () => {
 });
 
 describe("project.json in an opened folder", () => {
+  it("opens a folder without a main document on its file tree and stays quiet", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockResolvedValue("device");
+    mocks.listFiles.mockResolvedValue([
+      { path: "alpha/report.tex", is_dir: false },
+      { path: "beta/report.tex", is_dir: false },
+    ]);
+    mocks.readFileContent.mockRejectedValue(new Error("main.tex: not found"));
+
+    await useFilesStore.getState().openProject("linked-0123");
+    await settle();
+
+    expect(mocks.readFileContent).not.toHaveBeenCalledWith("linked-0123", "main.tex", expect.anything());
+    expect(useFilesStore.getState()).toMatchObject({
+      projectId: "linked-0123",
+      openTabs: [],
+      activePath: null,
+    });
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+  });
+
+  it("still reports a library project whose main document is missing", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.listFiles.mockResolvedValue([{ path: "notes.tex", is_dir: false }]);
+    mocks.readFileContent.mockRejectedValue(new Error("main.tex: not found"));
+
+    await useFilesStore.getState().openProject("library-1");
+    await settle();
+
+    expect(mocks.toastErrorUnique).toHaveBeenCalled();
+  });
+
   it("follows where the open project keeps its settings", async () => {
     primeOpen(LATEX_ENGINE);
     mocks.projectManifestHome.mockResolvedValue("device_foreign");

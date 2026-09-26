@@ -1400,6 +1400,10 @@
       "toggleTerminal": {
         "description": "Visa eller dölj projektets terminal.",
         "label": "Visa eller dölj terminalen"
+      },
+      "openFolder": {
+        "label": "Öppna mapp",
+        "description": "Öppna en mapp från datorn som ett projekt."
       }
     },
     "application": {

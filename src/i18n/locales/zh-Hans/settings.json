@@ -1384,6 +1384,10 @@
       "toggleTerminal": {
         "description": "显示或隐藏项目终端。",
         "label": "切换终端"
+      },
+      "openFolder": {
+        "label": "打开文件夹",
+        "description": "将电脑上的文件夹作为项目打开。"
       }
     },
     "application": {

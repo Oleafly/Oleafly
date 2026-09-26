@@ -83,7 +83,9 @@
     "app_data": "此資料夾屬於 Oleafly 的應用程式資料。請選擇其外部的資料夾。",
     "contains_project": "此資料夾包含 {{name}}，它已在 Oleafly 中作為獨立專案開啟。",
     "research_folder": "{{project}} 已可透過其已連結資料夾編輯此資料夾中的檔案。請先在該處取消連結。",
-    "failed": "Oleafly 無法開啟此資料夾。"
+    "failed": "Oleafly 無法開啟此資料夾。",
+    "request_expired": "此資料夾要求已過期。請重新開啟該資料夾。",
+    "timed_out": "Oleafly 無法存取此資料夾。請檢查所在的磁碟是否已連接，然後再試一次。"
   },
   "research": {
     "linked_project_folder": "此資料夾已在 Oleafly 中作為獨立專案開啟。請改為以唯讀方式連結。"

@@ -267,14 +267,12 @@ fn validate_linked_separation(
     Ok(())
 }
 
-#[cfg(test)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WritableRootOverlap {
     pub(crate) project_id: String,
     pub(crate) root_id: String,
 }
 
-#[cfg(test)]
 pub(crate) fn writable_roots_overlapping(
     candidate: &Path,
     case: crate::fs_identity::CaseSensitivity,

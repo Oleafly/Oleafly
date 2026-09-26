@@ -35,7 +35,6 @@
     "appIconAlt": "App-pictogram van Oleafly",
     "welcomeTitle": "Welkom bij Oleafly",
     "welcomeDescription": "Schrijf, compileer en proeflees LaTeX, Typst en Markdown. Beheer citaties, bekijk PDF's, volg wijzigingen in Git en werk met de AI-modellen die jij kiest.",
-    "createFirstProject": "Nieuw project maken",
     "loading": "Je bibliotheek lezen…",
     "noBookmarksTitle": "Nog geen bladwijzers",
     "noBookmarksDescription": "Beweeg over een boek en klik op de bladwijzer om er een toe te voegen.",
@@ -69,7 +68,9 @@
       "last7Days": "Laatste 7 dagen",
       "last30Days": "Laatste 30 dagen",
       "lastYear": "Laatste jaar"
-    }
+    },
+    "openFolder": "Map openen…",
+    "openFolderShortcut": "Map openen ({{shortcut}})"
   },
   "projects": {
     "open": "{{name}} openen",
@@ -461,5 +462,14 @@
       "sourcesBody": "De records combineren de open ccf-deadlines-dataset met officiële conferentiewebsites die Oleafly bijhoudt.",
       "confirm": "Controleer elke datum op de officiële website van de conferentie voordat je inzendt."
     }
+  },
+  "start": {
+    "newProjectTitle": "Nieuw project",
+    "newProjectDescription": "Begin met een sjabloon of een lege pagina.",
+    "openFolderTitle": "Een map openen",
+    "openFolderDescription": "Werk aan bestanden die al op je computer staan. Ze blijven waar ze zijn."
+  },
+  "openFolder": {
+    "dismiss": "Sluiten"
   }
 }

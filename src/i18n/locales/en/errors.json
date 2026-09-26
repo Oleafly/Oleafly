@@ -83,7 +83,9 @@
     "app_data": "This folder is part of Oleafly's app data. Choose a folder outside it.",
     "contains_project": "This folder contains {{name}}, which is already open in Oleafly as its own project.",
     "research_folder": "{{project}} can already edit files in this folder through its linked folders. Unlink it there first.",
-    "failed": "Oleafly couldn't open this folder."
+    "failed": "Oleafly couldn't open this folder.",
+    "request_expired": "This folder request has expired. Open the folder again.",
+    "timed_out": "Oleafly couldn't reach this folder. Check that its drive is connected, then try again."
   },
   "research": {
     "linked_project_folder": "This folder is open in Oleafly as its own project. Link it as read-only instead."
