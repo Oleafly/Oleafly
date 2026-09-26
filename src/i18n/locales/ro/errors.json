@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Numele proiectului nu poate fi gol.",
     "name_conflict": "Există deja un proiect numit {{name}}.",
-    "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect."
+    "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect.",
+    "not_found": "Acest proiect nu mai este în biblioteca ta.",
+    "not_recyclable": "Acest proiect nu poate fi mutat în Coșul de reciclare."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

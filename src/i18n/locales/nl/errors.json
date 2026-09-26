@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "De projectnaam mag niet leeg zijn.",
     "name_conflict": "Er bestaat al een project met de naam {{name}}.",
-    "folder_unavailable": "Kon geen nieuwe projectmap reserveren."
+    "folder_unavailable": "Kon geen nieuwe projectmap reserveren.",
+    "not_found": "Dit project staat niet meer in je bibliotheek.",
+    "not_recyclable": "Dit project kan niet naar de Prullenbak worden verplaatst."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

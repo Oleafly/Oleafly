@@ -320,7 +320,8 @@ fn map_source_line(
 }
 
 fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String> {
-    let build = paths::build_dir(project_id)?;
+    let build = paths::existing_build_dir(project_id)?
+        .ok_or_else(|| "failed to read synctex: this project has not been compiled".to_string())?;
     // Compiles run through the `_oleafly_entry` wrapper, so the synctex file
     // is named after it.
     let path = build.join(format!("{}.synctex.gz", paths::ENTRY_STEM));
@@ -741,5 +742,18 @@ Content:\n\
                 exact: true
             })
         );
+    }
+
+    #[test]
+    fn reading_synctex_for_an_uncompiled_project_creates_nothing() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = crate::paths::create_project_dir("fresh").unwrap();
+
+        assert!(read_synctex_text("fresh", "main.tex").is_err());
+        assert!(!project.join(".oleafly").exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

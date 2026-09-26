@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "프로젝트 이름은 비워 둘 수 없습니다.",
     "name_conflict": "{{name}} 이름의 프로젝트가 이미 있습니다.",
-    "folder_unavailable": "새 프로젝트 폴더를 확보하지 못했습니다."
+    "folder_unavailable": "새 프로젝트 폴더를 확보하지 못했습니다.",
+    "not_found": "이 프로젝트는 더 이상 라이브러리에 없습니다.",
+    "not_recyclable": "이 프로젝트는 휴지통으로 이동할 수 없습니다."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

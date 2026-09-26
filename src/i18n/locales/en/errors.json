@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Project name cannot be empty.",
     "name_conflict": "A project named {{name}} already exists.",
-    "folder_unavailable": "Could not reserve a new project folder."
+    "folder_unavailable": "Could not reserve a new project folder.",
+    "not_found": "This project is no longer in your library.",
+    "not_recyclable": "This project can't be moved to the Recycle Bin."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

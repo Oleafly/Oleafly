@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 
 export const APP_ERROR_PREFIX = "@oleafly/error:";
+export const PROJECT_NOT_FOUND = "project.not_found";
 
 const dynamic = i18n as unknown as {
   t(key: string, params?: Record<string, unknown>): string;

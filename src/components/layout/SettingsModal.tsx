@@ -90,6 +90,7 @@ import {
   isEnglishDictionaryLocale,
 } from "@/lib/proofreading/dictionary-catalog";
 import { formatDateTime, formatNumber } from "@/lib/intl";
+import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -453,7 +454,12 @@ export function SettingsModal() {
         }
       }
       for (const project of projects) {
-        await recycleProject(project.id);
+        try {
+          await recycleProject(project.id);
+        } catch (error) {
+          if (decodeAppError(error)?.code !== PROJECT_NOT_FOUND) throw error;
+          continue;
+        }
         moved += 1;
       }
       await refreshProjects().catch((error: unknown) => {

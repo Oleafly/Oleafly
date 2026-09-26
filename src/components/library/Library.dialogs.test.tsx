@@ -514,6 +514,27 @@ describe("Library project dialogs", () => {
     expect(toastSuccess).not.toHaveBeenCalled();
   });
 
+  it("refreshes the library and explains a project that is already gone", async () => {
+    recycleProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`,
+    );
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.projects.delete }),
+    );
+    refreshProjects.mockClear();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: enLibrary.projects.deleteDialog.confirm,
+      }),
+    );
+    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(notifyError.mock.calls[0]?.[2]).toBeUndefined();
+    expect(refreshProjects).toHaveBeenCalledOnce();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
   it("reports a preview that cannot be loaded", async () => {
     readCompiledPdf.mockRejectedValue(new Error("no pdf"));
     render(<Library />);

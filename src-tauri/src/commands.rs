@@ -684,7 +684,8 @@ pub async fn compile_isolated(
 pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let dir = paths::figure_build_dir(&project_id)?;
+        let dir = paths::existing_figure_build_dir(&project_id)?
+            .ok_or_else(|| "no figure PDF: no figure has been compiled".to_string())?;
         std::fs::read(dir.join("_figure.pdf")).map_err(|e| format!("no figure PDF: {e}"))
     })
     .await
@@ -808,8 +809,12 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let meta = crate::project::read_meta(&project_id)?;
-        let pdf =
-            crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
+        let pdf = crate::document_engine::existing_compiled_pdf_path(
+            &project_id,
+            &meta.engine,
+            &meta.main_doc,
+        )?
+        .ok_or_else(|| "no compiled PDF: this project has not been compiled".to_string())?;
         std::fs::read(&pdf).map_err(|e| format!("no compiled PDF: {e}"))
     })
     .await
@@ -958,5 +963,21 @@ mod tests {
 
         assert!(!orx_on_path(Some(&path)));
         assert!(!orx_on_path(None));
+    }
+
+    #[test]
+    fn reading_outputs_of_an_uncompiled_project_creates_no_build_directories() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = crate::paths::create_project_dir("uncompiled").unwrap();
+
+        let pdf = tauri::async_runtime::block_on(read_compiled_pdf("uncompiled".into()));
+        let figure = tauri::async_runtime::block_on(read_isolated_pdf("uncompiled".into()));
+
+        assert!(matches!(pdf, Err(error) if error.contains("no compiled PDF")));
+        assert!(matches!(figure, Err(error) if error.contains("no figure PDF")));
+        assert!(!project.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

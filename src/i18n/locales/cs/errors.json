@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Název projektu nesmí být prázdný.",
     "name_conflict": "Projekt s názvem {{name}} už existuje.",
-    "folder_unavailable": "Nepodařilo se vyhradit novou složku projektu."
+    "folder_unavailable": "Nepodařilo se vyhradit novou složku projektu.",
+    "not_found": "Tento projekt už ve vaší knihovně není.",
+    "not_recyclable": "Tento projekt nelze přesunout do koše."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

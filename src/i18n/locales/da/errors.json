@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Projektnavnet må ikke være tomt.",
     "name_conflict": "Der findes allerede et projekt, der hedder {{name}}.",
-    "folder_unavailable": "Kunne ikke reservere en ny projektmappe."
+    "folder_unavailable": "Kunne ikke reservere en ny projektmappe.",
+    "not_found": "Projektet er ikke længere i dit bibliotek.",
+    "not_recyclable": "Projektet kan ikke flyttes til papirkurven."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."

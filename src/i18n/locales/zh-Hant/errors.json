@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "專案名稱不可為空白。",
     "name_conflict": "已有名為 {{name}} 的專案。",
-    "folder_unavailable": "無法保留新的專案資料夾。"
+    "folder_unavailable": "無法保留新的專案資料夾。",
+    "not_found": "此專案已不在你的專案庫中。",
+    "not_recyclable": "無法將此專案移至資源回收筒。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

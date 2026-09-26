@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Nazwa projektu nie może być pusta.",
     "name_conflict": "Projekt o nazwie {{name}} już istnieje.",
-    "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu."
+    "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu.",
+    "not_found": "Tego projektu nie ma już w bibliotece.",
+    "not_recyclable": "Tego projektu nie można przenieść do Kosza."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

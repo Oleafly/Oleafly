@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Proje adı boş olamaz.",
     "name_conflict": "{{name}} adlı bir proje zaten var.",
-    "folder_unavailable": "Yeni bir proje klasörü ayrılamadı."
+    "folder_unavailable": "Yeni bir proje klasörü ayrılamadı.",
+    "not_found": "Bu proje artık kitaplığınızda değil.",
+    "not_recyclable": "Bu proje Geri Dönüşüm Kutusu'na taşınamaz."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

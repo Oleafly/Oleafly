@@ -333,6 +333,49 @@ pub fn builds_metadata_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "builds")
 }
 
+pub fn existing_build_dir(project_id: &str) -> Result<Option<PathBuf>, String> {
+    existing_build_subdirectory(project_id, "build")
+}
+
+pub fn existing_figure_build_dir(project_id: &str) -> Result<Option<PathBuf>, String> {
+    existing_build_subdirectory(project_id, "figbuild")
+}
+
+fn existing_build_subdirectory(project_id: &str, name: &str) -> Result<Option<PathBuf>, String> {
+    let project = project_dir(project_id)?;
+    existing_build_subdirectory_in(&project, name)
+}
+
+fn existing_build_subdirectory_in(project: &Path, name: &str) -> Result<Option<PathBuf>, String> {
+    let project = project
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project directory: {e}"))?;
+    let Some(internal) = existing_real_directory(&project.join(".oleafly"), "project data")? else {
+        return Ok(None);
+    };
+    if internal.parent() != Some(project.as_path()) {
+        return Err("project data directory escapes the project root".to_string());
+    }
+    let Some(output) = existing_real_directory(&internal.join(name), "build")? else {
+        return Ok(None);
+    };
+    if output.parent() != Some(internal.as_path()) || !output.starts_with(&project) {
+        return Err("build directory escapes the project root".to_string());
+    }
+    Ok(Some(output))
+}
+
+fn existing_real_directory(path: &Path, label: &str) -> Result<Option<PathBuf>, String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) => validate_real_directory_metadata(path, label, &metadata)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("failed to inspect {label} path {path:?}: {error}")),
+    }
+    path.canonicalize()
+        .map(Some)
+        .map_err(|e| format!("failed to resolve {label} directory: {e}"))
+}
+
 fn secure_build_subdirectory(project_id: &str, name: &str) -> Result<PathBuf, String> {
     let project = project_dir(project_id)?;
     secure_build_subdirectory_in(&project, name)
@@ -399,13 +442,13 @@ fn validate_real_directory_metadata(
 }
 
 #[cfg(windows)]
-fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+pub(crate) fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
     use std::os::windows::fs::MetadataExt;
     metadata.file_attributes() & 0x400 != 0
 }
 
 #[cfg(not(windows))]
-fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+pub(crate) fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
@@ -511,6 +554,45 @@ mod tests {
         std::fs::create_dir(project.join(".oleafly")).unwrap();
         symlink(&outside, project.join(".oleafly/build")).unwrap();
         assert!(secure_build_subdirectory_in(&project, "build").is_err());
+    }
+
+    #[test]
+    fn existing_build_lookups_never_create_directories() {
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = create_project_dir("fresh").unwrap();
+
+        assert_eq!(existing_build_dir("fresh").unwrap(), None);
+        assert_eq!(existing_figure_build_dir("fresh").unwrap(), None);
+        assert!(!project.join(".oleafly").exists());
+
+        let created = build_dir("fresh").unwrap();
+        assert_eq!(existing_build_dir("fresh").unwrap(), Some(created));
+        assert_eq!(existing_figure_build_dir("fresh").unwrap(), None);
+        assert!(!project.join(".oleafly").join("figbuild").exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_build_lookups_reject_symlink_components() {
+        use std::os::unix::fs::symlink;
+
+        let directory = tempfile::tempdir().unwrap();
+        let temp = directory.path();
+        let project = temp.join("project");
+        let outside = temp.join("outside");
+        std::fs::create_dir(&project).unwrap();
+        std::fs::create_dir_all(outside.join("build")).unwrap();
+        symlink(&outside, project.join(".oleafly")).unwrap();
+        assert!(existing_build_subdirectory_in(&project, "build").is_err());
+
+        std::fs::remove_file(project.join(".oleafly")).unwrap();
+        std::fs::create_dir(project.join(".oleafly")).unwrap();
+        symlink(outside.join("build"), project.join(".oleafly/build")).unwrap();
+        assert!(existing_build_subdirectory_in(&project, "build").is_err());
     }
 
     #[cfg(unix)]

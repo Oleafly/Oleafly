@@ -226,4 +226,27 @@ describe("Settings Data Storage recycle bin", () => {
       expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
     });
   });
+
+  it("skips a project that already left the library when moving every project", async () => {
+    const notFound = `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`;
+    const [active] = useFilesStore.getState().projects;
+    useFilesStore.setState({
+      projects: [{ ...active, id: "gone-paper", name: "Gone paper" }, active],
+    });
+    mocks.recycleProject.mockImplementation((projectId: string) =>
+      projectId === "gone-paper" ? Promise.reject(notFound) : Promise.resolve(undefined),
+    );
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Danger zone" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all projects" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
+    });
+    expect(mocks.refreshProjects).toHaveBeenCalled();
+  });
 });

@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "El nombre del proyecto no puede estar vacío.",
     "name_conflict": "Ya existe un proyecto con el nombre {{name}}.",
-    "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto."
+    "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto.",
+    "not_found": "Este proyecto ya no está en tu biblioteca.",
+    "not_recyclable": "Este proyecto no se puede mover a la papelera."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

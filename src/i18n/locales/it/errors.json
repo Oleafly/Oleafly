@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Il nome del progetto non può essere vuoto.",
     "name_conflict": "Esiste già un progetto di nome {{name}}.",
-    "folder_unavailable": "Impossibile riservare una nuova cartella di progetto."
+    "folder_unavailable": "Impossibile riservare una nuova cartella di progetto.",
+    "not_found": "Questo progetto non è più nella tua libreria.",
+    "not_recyclable": "Questo progetto non può essere spostato nel cestino."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

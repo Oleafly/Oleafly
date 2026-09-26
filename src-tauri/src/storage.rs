@@ -1131,12 +1131,44 @@ fn directory_size(root: &Path) -> u64 {
     bytes
 }
 
+fn library_project_directory(project_id: &str, candidate: &Path) -> Result<PathBuf, String> {
+    let metadata = match std::fs::symlink_metadata(candidate) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(crate::app_error::AppError::new("project.not_found").into());
+        }
+        Err(error) => {
+            return Err(format!(
+                "failed to inspect project before deletion: {error}"
+            ))
+        }
+    };
+    if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+        return Err(crate::app_error::AppError::new("project.not_recyclable").into());
+    }
+    let projects = crate::paths::projects_root()?
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve projects root: {error}"))?;
+    let resolved = candidate
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve project before deletion: {error}"))?;
+    let named_for_project = resolved
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|name| name.eq_ignore_ascii_case(project_id));
+    if resolved.parent() != Some(projects.as_path()) || !named_for_project {
+        return Err(crate::app_error::AppError::new("project.not_recyclable").into());
+    }
+    Ok(resolved)
+}
+
 pub(crate) fn recycle_project_directory(
     project_id: &str,
     name: &str,
     project_directory: &Path,
 ) -> Result<String, String> {
     crate::paths::validate_project_id(project_id)?;
+    let project_directory = &library_project_directory(project_id, project_directory)?;
     let recycle_root = crate::paths::recycle_bin_root()?;
     let deleted_at = timestamp_seconds();
     let timestamp = timestamp_millis();
@@ -1513,6 +1545,34 @@ mod tests {
         assert!(list_recycled_projects_sync().unwrap().is_empty());
         assert!(!checkpoint_store.exists());
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn recycling_refuses_paths_that_are_not_library_projects() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let projects = crate::paths::projects_root().unwrap();
+        let outside = directory.path().join("paper");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("main.tex"), b"source").unwrap();
+        let other = projects.join("other");
+        std::fs::create_dir(&other).unwrap();
+
+        for (candidate, code) in [
+            (outside.clone(), "project.not_recyclable"),
+            (other.clone(), "project.not_recyclable"),
+            (projects.join("paper"), "project.not_found"),
+        ] {
+            let error = recycle_project_directory("paper", "Paper", &candidate).unwrap_err();
+            assert!(error.contains(&format!("\"code\":\"{code}\"")), "{error}");
+        }
+        assert!(outside.join("main.tex").is_file());
+        assert!(other.is_dir());
+        assert!(list_recycled_projects_sync().unwrap().is_empty());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

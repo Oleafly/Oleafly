@@ -3157,16 +3157,19 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     out
 }
 
-pub fn compiled_pdf_path(
+pub fn existing_compiled_pdf_path(
     project_id: &str,
     metadata_name: &str,
     main_document: &str,
-) -> Result<PathBuf, String> {
+) -> Result<Option<PathBuf>, String> {
     let engine = engine_for(metadata_name, main_document)?;
-    let build = crate::paths::build_dir(project_id)?;
+    let Some(build) = crate::paths::existing_build_dir(project_id)? else {
+        return Ok(None);
+    };
     engine
         .artifacts(&build, CompileTarget::Main { main_document })
         .pdf
+        .map(Some)
         .ok_or_else(|| {
             format!(
                 "engine `{}` does not produce PDF output",

@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Le nom du projet ne peut pas être vide.",
     "name_conflict": "Un projet nommé {{name}} existe déjà.",
-    "folder_unavailable": "Impossible de réserver un nouveau dossier de projet."
+    "folder_unavailable": "Impossible de réserver un nouveau dossier de projet.",
+    "not_found": "Ce projet n'est plus dans votre bibliothèque.",
+    "not_recyclable": "Ce projet ne peut pas être déplacé vers la corbeille."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "项目名称不能为空。",
     "name_conflict": "已存在名为 {{name}} 的项目。",
-    "folder_unavailable": "无法预留新的项目文件夹。"
+    "folder_unavailable": "无法预留新的项目文件夹。",
+    "not_found": "此项目已不在你的库中。",
+    "not_recyclable": "无法将此项目移入回收站。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

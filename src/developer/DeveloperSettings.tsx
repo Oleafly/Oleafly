@@ -15,6 +15,7 @@ import {
   listProjects,
   recycleProject,
 } from "@/lib/tauri";
+import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
@@ -111,11 +112,18 @@ export function DeveloperSettings() {
   const moveAllProjectsToRecycleBin = async (): Promise<number | null> => {
     if (!(await closeOpenProject("reset development data"))) return null;
     const projects = await listProjects();
+    let moved = 0;
     for (const project of projects) {
-      await recycleProject(project.id);
+      try {
+        await recycleProject(project.id);
+      } catch (error) {
+        if (decodeAppError(error)?.code !== PROJECT_NOT_FOUND) throw error;
+        continue;
+      }
+      moved += 1;
     }
     await useFilesStore.getState().refreshProjects();
-    return projects.length;
+    return moved;
   };
 
   const seedSampleProjects = async () => {

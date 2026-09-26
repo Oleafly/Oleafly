@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Der Projektname darf nicht leer sein.",
     "name_conflict": "Ein Projekt mit dem Namen {{name}} gibt es bereits.",
-    "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden."
+    "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden.",
+    "not_found": "Dieses Projekt ist nicht mehr in Ihrer Bibliothek.",
+    "not_recyclable": "Dieses Projekt kann nicht in den Papierkorb verschoben werden."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

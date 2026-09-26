@@ -4,7 +4,9 @@
   "project": {
     "name_empty": "Projektin nimi ei voi olla tyhjä.",
     "name_conflict": "Projekti nimeltä {{name}} on jo olemassa.",
-    "folder_unavailable": "Uutta projektikansiota ei voitu varata."
+    "folder_unavailable": "Uutta projektikansiota ei voitu varata.",
+    "not_found": "Tämä projekti ei ole enää kirjastossa.",
+    "not_recyclable": "Tätä projektia ei voi siirtää roskakoriin."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
