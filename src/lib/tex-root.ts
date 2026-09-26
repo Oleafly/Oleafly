@@ -35,9 +35,9 @@ export function parseTexMagicComments(
   for (let line = 0; line < maxLines && start <= text.length; line++) {
     let end = text.indexOf("\n", start);
     if (end < 0) end = text.length;
-    const line = text.slice(start, end);
-    const match = pattern.exec(line);
-    const value = match ? line.slice(match[0].length).trim() : "";
+    const lineText = text.slice(start, end);
+    const match = pattern.exec(lineText);
+    const value = match ? lineText.slice(match[0].length).trim() : "";
     if (match && value) {
       const key = match[1].toLowerCase() as keyof TexMagicComments;
       // First occurrence of each key wins.
