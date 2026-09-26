@@ -976,6 +976,33 @@ describe("compile options", () => {
     );
   });
 
+  it("sends the active file's % !TEX root target to the compiler", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    mocks.files.activePath = "chapters/ch1.tex";
+    mocks.files.tree = [
+      { path: "chapters/ch1.tex", is_dir: false },
+      { path: "main.tex", is_dir: false },
+      { path: "thesis.tex", is_dir: false },
+    ];
+    mocks.files.files = {
+      ...mocks.files.files,
+      "chapters/ch1.tex": {
+        content: "% !TEX root = ../thesis.tex\n\\chapter{One}\n",
+        dirty: false,
+      },
+    };
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).toHaveBeenCalledWith(
+      "project",
+      "thesis.tex",
+      false,
+      false,
+      false,
+    );
+  });
+
   it("refuses to compile a main document the syntax check rejects", async () => {
     mocks.readFileContent.mockResolvedValue(
       "\\begin{document}\nunclosed\n",

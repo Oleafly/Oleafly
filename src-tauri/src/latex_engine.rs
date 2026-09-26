@@ -1860,7 +1860,7 @@ impl Drop for TaggedCancelGuard<'_> {
 struct TaggedCompilePlan {
     project_id: String,
     main_doc: String,
-    engine_id: String,
+    meta: crate::project::ProjectMeta,
     lualatex: PathBuf,
     project_dir: PathBuf,
     pdf: PathBuf,
@@ -1897,7 +1897,7 @@ async fn prepare_tagged_compile(
     Ok(TaggedCompilePlan {
         project_id,
         main_doc,
-        engine_id: meta.engine,
+        meta,
         lualatex: PathBuf::from(lualatex),
         project_dir,
         pdf,
@@ -1970,11 +1970,9 @@ fn publish_tagged_compile(
         output_revision: None,
         log: execution.log,
     };
-    if let Err(error) = crate::project::ensure_compile_meta_unchanged(
-        &plan.project_id,
-        &plan.main_doc,
-        &plan.engine_id,
-    ) {
+    if let Err(error) =
+        crate::project::ensure_compile_meta_unchanged(&plan.project_id, &plan.main_doc, &plan.meta)
+    {
         result.success = false;
         result.has_pdf = false;
         result.output_id = None;

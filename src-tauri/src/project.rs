@@ -588,22 +588,36 @@ pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     write_meta_at(&p, meta)
 }
 
+const MAIN_DOCUMENT_CHANGED: &str =
+    "The main document changed. Refresh the project and compile again.";
+
 pub(crate) fn read_compile_meta(project_id: &str, main_doc: &str) -> Result<ProjectMeta, String> {
     let meta = read_meta(project_id)?;
-    if meta.main_doc != main_doc {
-        return Err("The main document changed. Refresh the project and compile again.".into());
+    if meta.main_doc != main_doc && !is_tex_root_override(project_id, &meta, main_doc) {
+        return Err(MAIN_DOCUMENT_CHANGED.into());
     }
     Ok(meta)
+}
+
+fn is_tex_root_override(project_id: &str, meta: &ProjectMeta, main_doc: &str) -> bool {
+    let Ok(engine) = crate::document_engine::engine_for(&meta.engine, main_doc) else {
+        return false;
+    };
+    matches!(
+        engine.id(),
+        crate::document_engine::DocumentEngineId::Latex
+            | crate::document_engine::DocumentEngineId::Latexmk
+    ) && resolve(project_id, main_doc).is_ok_and(|path| path.is_file())
 }
 
 pub(crate) fn ensure_compile_meta_unchanged(
     project_id: &str,
     main_doc: &str,
-    expected_engine: &str,
+    started: &ProjectMeta,
 ) -> Result<(), String> {
     let current = read_compile_meta(project_id, main_doc)?;
-    if current.engine != expected_engine {
-        return Err("The main document changed. Refresh the project and compile again.".into());
+    if current.main_doc != started.main_doc || current.engine != started.engine {
+        return Err(MAIN_DOCUMENT_CHANGED.into());
     }
     Ok(())
 }
@@ -4902,7 +4916,7 @@ pub async fn export_document(
     guard_export_dest(&dest)?;
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
-    if meta.main_doc != main_doc {
+    if meta.main_doc != main_doc && !is_tex_root_override(&project_id, &meta, &main_doc) {
         return Err("The main document changed. Reopen the export menu and try again.".into());
     }
     let writer = validate_conversion_export(&meta, &format, &dest)?;
@@ -8423,9 +8437,140 @@ mod tests {
         assert_eq!(selected.main_doc, "replacement.typ");
         assert_eq!(selected.engine, "typst");
         assert_eq!(read_meta(project_id).unwrap().main_doc, "replacement.typ");
-        assert!(super::ensure_compile_meta_unchanged(project_id, "main.tex", "xetex").is_err());
+        let before_switch = ProjectMeta {
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
         assert!(
-            super::ensure_compile_meta_unchanged(project_id, "replacement.typ", "typst").is_ok()
+            super::ensure_compile_meta_unchanged(project_id, "main.tex", &before_switch).is_err()
+        );
+        assert!(
+            super::ensure_compile_meta_unchanged(project_id, "replacement.typ", &selected).is_ok()
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn compile_meta_accepts_a_tex_root_override_the_stored_engine_can_compile() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("tex-root-override");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "tex-root-override";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(project_dir.join("chapters")).unwrap();
+        std::fs::create_dir_all(project_dir.join("folder.tex")).unwrap();
+        std::fs::write(project_dir.join("main.tex"), "\\documentclass{article}\n").unwrap();
+        std::fs::write(project_dir.join("thesis.tex"), "\\documentclass{report}\n").unwrap();
+        std::fs::write(
+            project_dir.join("chapters/ch1.tex"),
+            "% !TeX root = ../thesis.tex\n\\chapter{One}\n",
+        )
+        .unwrap();
+        std::fs::write(project_dir.join("notes.md"), "# Notes\n").unwrap();
+        std::fs::write(project_dir.join("slides.typ"), "= Slides\n").unwrap();
+        std::fs::write(project_dir.join("handout.typ"), "= Handout\n").unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Override".into(),
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+
+        let meta = super::read_compile_meta(project_id, "thesis.tex").unwrap();
+        assert_eq!(meta.main_doc, "main.tex");
+        assert_eq!(meta.engine, "xetex");
+        assert!(super::read_compile_meta(project_id, "main.tex").is_ok());
+        assert!(super::read_compile_meta(project_id, "chapters/ch1.tex").is_ok());
+        for rejected in [
+            "missing.tex",
+            "folder.tex",
+            "notes.md",
+            "slides.typ",
+            "../escape.tex",
+            "/etc/hosts.tex",
+        ] {
+            assert!(
+                super::read_compile_meta(project_id, rejected).is_err(),
+                "{rejected} must not be accepted as a compile target"
+            );
+        }
+
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Override".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        assert!(super::read_compile_meta(project_id, "thesis.tex").is_ok());
+
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Override".into(),
+                main_doc: "slides.typ".into(),
+                engine: "typst".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        assert!(super::read_compile_meta(project_id, "slides.typ").is_ok());
+        assert!(super::read_compile_meta(project_id, "handout.typ").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn compile_meta_recheck_rejects_a_moved_stored_main_for_either_target() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("tex-root-recheck");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "tex-root-recheck";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        for name in ["main.tex", "thesis.tex", "other.tex"] {
+            std::fs::write(project_dir.join(name), "\\documentclass{article}\n").unwrap();
+        }
+        let stored = ProjectMeta {
+            name: "Recheck".into(),
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+        write_meta_at(&project_dir.join("project.json"), &stored).unwrap();
+
+        let override_start = super::read_compile_meta(project_id, "thesis.tex").unwrap();
+        let stored_start = super::read_compile_meta(project_id, "main.tex").unwrap();
+        assert!(
+            super::ensure_compile_meta_unchanged(project_id, "thesis.tex", &override_start).is_ok()
+        );
+
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                main_doc: "other.tex".into(),
+                ..stored
+            },
+        )
+        .unwrap();
+
+        assert!(
+            super::ensure_compile_meta_unchanged(project_id, "thesis.tex", &override_start)
+                .is_err()
+        );
+        assert!(
+            super::ensure_compile_meta_unchanged(project_id, "main.tex", &stored_start).is_err()
         );
 
         std::env::remove_var("OLEAFLY_DATA_DIR");

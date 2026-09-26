@@ -1,9 +1,13 @@
 import { test, expect } from "../fixtures";
 import {
+  compileAndWait,
   createBlankProject,
+  expectCompiledPdfAbsent,
+  expectCompiledPdfContains,
   pressGlobal,
   replaceEditorSource,
   typeInEditorAfter,
+  writeProjectText,
   type Page,
 } from "../helpers";
 
@@ -180,4 +184,23 @@ test("% !TEX root override and broken-root warning surface in the toolbar", asyn
     tauriPage.getByTestId("tex-root-broken"),
   ).toBeVisible({ timeout: 15_000 });
   await maybeScreenshot(tauriPage, "e2e-texroot-broken.png");
+});
+
+test("% !TEX root override compiles the declared root", async ({ tauriPage }) => {
+  test.setTimeout(300_000);
+  await createBlankProject(tauriPage, "Tex Root Compile");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await writeProjectText(
+    tauriPage,
+    "thesis.tex",
+    "\\documentclass{article}\n\\begin{document}\nROOTOVERRIDEMARK\n\\end{document}\n",
+  );
+  await replaceEditorSource(
+    tauriPage,
+    "% !TEX root = thesis.tex\n\\documentclass{article}\n\\begin{document}\nSTOREDMAINMARK\n\\end{document}\n",
+  );
+  await expect(tauriPage.getByTestId("tex-root-indicator")).toBeVisible({ timeout: 15_000 });
+  await compileAndWait(tauriPage);
+  await expectCompiledPdfContains(tauriPage, "ROOTOVERRIDEMARK");
+  await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");
 });

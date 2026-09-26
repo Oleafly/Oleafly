@@ -308,7 +308,7 @@ pub async fn compile_project(
 
     let project_dir = paths::project_dir(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let workspace = desktop_workspace(&project_dir, &meta)?;
+    let workspace = desktop_workspace(&project_dir, &meta, &main_doc)?;
     let prepared = workspace
         .prepare_build()
         .map_err(|error| error.to_string())?;
@@ -333,7 +333,7 @@ pub async fn compile_project(
         options,
     )
     .await?;
-    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)?;
+    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)?;
     drop(worktree);
 
     let mut result = crate::document_engine::compile(CompileRequest {
@@ -353,8 +353,7 @@ pub async fn compile_project(
     // `document_engine::compile` has now fingerprinted the output, but do not
     // publish that identity or allocate a revision until the persisted
     // project/main selection is revalidated under the same compile lock.
-    if let Err(error) =
-        crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)
+    if let Err(error) = crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)
     {
         result.ok = false;
         result.has_pdf = false;
@@ -446,7 +445,7 @@ pub async fn compile_project(
             &project_id,
             &project_dir,
             &meta.engine,
-            &main_doc,
+            &meta.main_doc,
         );
     }
     #[cfg(debug_assertions)]
@@ -514,12 +513,13 @@ pub async fn validate_compile_fingerprint(
 fn desktop_workspace(
     project_dir: &std::path::Path,
     meta: &crate::project::ProjectMeta,
+    main_doc: &str,
 ) -> Result<oleafly_core::Workspace, String> {
     oleafly_core::Workspace::from_manifest(
         project_dir,
         oleafly_core::ProjectManifest {
             name: meta.name.clone(),
-            main_doc: meta.main_doc.clone(),
+            main_doc: main_doc.to_owned(),
             engine: meta.engine.clone(),
             tex_flavor: meta.tex_flavor.clone(),
             checkpoints: meta.checkpoints.clone(),
@@ -890,7 +890,7 @@ mod tests {
             checkpoints,
             ..crate::project::ProjectMeta::default()
         };
-        let workspace = desktop_workspace(directory.path(), &meta).unwrap();
+        let workspace = desktop_workspace(directory.path(), &meta, &meta.main_doc).unwrap();
         let prepared = workspace.prepare_build().unwrap();
         assert_eq!(prepared.engine(), oleafly_core::Engine::Typst);
         assert_eq!(prepared.main_document(), "paper.typ");
@@ -900,6 +900,27 @@ mod tests {
             workspace.manifest().checkpoints.extra["legacy_always_include"],
             serde_json::json!(["research/notes"])
         );
+    }
+
+    #[test]
+    fn desktop_build_adapter_prepares_the_requested_tex_root() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("thesis.tex"),
+            "\\documentclass{report}",
+        )
+        .unwrap();
+        let meta = crate::project::ProjectMeta {
+            name: "Thesis".into(),
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..crate::project::ProjectMeta::default()
+        };
+        let workspace = desktop_workspace(directory.path(), &meta, "thesis.tex").unwrap();
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(prepared.engine(), oleafly_core::Engine::Tectonic);
+        assert_eq!(prepared.main_document(), "thesis.tex");
+        assert!(prepared.source_path().ends_with("thesis.tex"));
     }
 
     #[test]
