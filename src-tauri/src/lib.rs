@@ -255,6 +255,27 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[cfg(feature = "e2e-testing")]
+fn e2e_localstorage_seed(var: &str) -> Option<serde_json::Value> {
+    let seed = std::env::var(var).ok()?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&seed).unwrap_or_else(|_| panic!("{var} must be valid JSON"));
+    assert!(parsed.is_object(), "{var} must be a JSON object");
+    Some(parsed)
+}
+
+#[cfg(feature = "e2e-testing")]
+fn e2e_boot_seed_script(
+    every_load: &serde_json::Value,
+    once_per_launch: &serde_json::Value,
+    launch: &str,
+) -> String {
+    let launch = serde_json::Value::String(launch.to_owned());
+    format!(
+        "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const apply = (seed) => {{ for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }}; apply({every_load}); if (localStorage.getItem(\"oleafly.e2e.launch\") !== {launch}) {{ apply({once_per_launch}); localStorage.setItem(\"oleafly.e2e.launch\", {launch}); }} }})();"
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if research_mcp::stdio_bridge_requested() {
@@ -307,15 +328,21 @@ pub fn run() {
         // runs instead. The env var holds a JSON object of key -> string
         // (null removes the key); it is validated here so a malformed value
         // fails the launch instead of silently skipping the seed.
-        if let Ok(seed) = std::env::var("OLEAFLY_E2E_BOOT_LOCALSTORAGE") {
-            let parsed: serde_json::Value = serde_json::from_str(&seed)
-                .expect("OLEAFLY_E2E_BOOT_LOCALSTORAGE must be valid JSON");
-            assert!(
-                parsed.is_object(),
-                "OLEAFLY_E2E_BOOT_LOCALSTORAGE must be a JSON object"
+        let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
+        let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
+        if every_load.is_some() || once_per_launch.is_some() {
+            let empty = serde_json::Value::Object(serde_json::Map::new());
+            let launch = format!(
+                "{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| elapsed.as_nanos())
             );
-            let script = format!(
-                "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const seed = {parsed}; for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }})();"
+            let script = e2e_boot_seed_script(
+                every_load.as_ref().unwrap_or(&empty),
+                once_per_launch.as_ref().unwrap_or(&empty),
+                &launch,
             );
             builder = builder.plugin(
                 tauri::plugin::Builder::<tauri::Wry, ()>::new("oleafly-e2e-boot-seed")
