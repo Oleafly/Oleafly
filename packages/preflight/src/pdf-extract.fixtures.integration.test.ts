@@ -28,7 +28,7 @@ beforeAll(async () => {
   pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(
     resolve("pdfjs-dist/legacy/build/pdf.worker.mjs"),
   ).href;
-});
+}, 60_000);
 
 describe("real PDF/UA-1 files from the veraPDF corpus", () => {
   it("reads a conforming file as tagged, titled, and displaying its title", async () => {
