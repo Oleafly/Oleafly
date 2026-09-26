@@ -38,6 +38,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Spell check works for languages other than English. Words with accented
+  or other non-English letters, such as Czech "papíru" or German "Größe", were
+  split at those letters, and each piece was marked as a mistake. Choosing a
+  suggestion then mangled the word. Dictionaries whose suggestions are slow to
+  compute, such as Czech, French or Greek, no longer stop with "Offline
+  proofreading timed out"; suggestions that take longer now load when you
+  open the card (#203).
+- Grammar checking only runs on English documents. With a Czech or German
+  spelling dictionary it used to flag correct text, such as the Czech word
+  "a", as grammar mistakes. Settings and Project info now say so.
+- Changing a project's spell-check language in Project info takes effect at
+  once. Removing a downloaded dictionary switches the projects that used it
+  back to your app language, and a project whose dictionary is missing shows
+  "Not checked" instead of retrying in the background.
+- Words written with LaTeX accents, such as `Kate\v{r}ina`, are checked as
+  whole words. File paths and options in commands such as `\includesvg` and
+  `\svgsetup` are no longer spell-checked.
+- A file changed on disk by an agent, the terminal or another editor is no
+  longer overwritten by the copy open in Oleafly. You are asked to reload it
+  or keep your version. Open files are saved before an agent starts and
+  reloaded when it finishes.
+- Switching between files keeps each file's undo history, cursor and scroll
+  position, and a change made to the open file by an agent or git no longer
+  moves the cursor to the top.
+- Files with Windows line endings (CRLF) keep them when saved. Files saved in
+  an older encoding, such as Windows-1250, say why they cannot be opened
+  instead of doing nothing.
+- Typing during a git pull or restore no longer undoes the pulled changes.
+- Compile errors in files included with `\input{folder/file}` point at that
+  file, and wrapped warnings about undefined references and citations keep
+  their line numbers. Clicking in the PDF finds the right file when two files
+  share a name.
+- Typst labels and references with accented or non-Latin names, such as
+  `<úvod>`, are recognised. Markdown heading links follow Pandoc's rules for
+  headings with accents or the same title.
+- Editing in Markdown Visual mode no longer rewrites the rest of the file.
+  Comments, citations and footnotes you did not touch are saved as they were.
+- Word counts include Chinese, Japanese, Cyrillic, Greek and other scripts,
+  and Project info agrees with the word count window.
+- Adding a word to the dictionary keeps Hindi vowel signs and Persian
+  joiners. Typing `'` or `"` in LaTeX no longer inserts a second quote, and
+  citation keys for new entries spell accented names with plain letters
+  (Novák becomes `novak`).
 - Going to a line in a long document, from the outline, a search result,
   a compile error or the PDF, now puts that line in the middle of the
   editor. It used to land up to a few rows off, and in a long book the line
