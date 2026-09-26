@@ -566,6 +566,7 @@
     "previousFinding": "Предыдущее замечание в этом сыром блоке",
     "nextFinding": "Следующее замечание в этом сыром блоке",
     "suggestedFixes": "Предлагаемые исправления",
+    "findingSuggestions": "Ищем варианты…",
     "suggestionRemove": "Убрать",
     "suggestionInsert": "Вставить",
     "suggestionInsertText": "Вставить «{{text}}»",
@@ -624,6 +625,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Возможно, вы имели в виду {{suggestion}}?",
       "notInDictionary": "Нет в словаре: {{word}}",
+      "findingSuggestions": "Ищем варианты…",
       "possibleMisspelling": "Возможная опечатка: «{{word}}»",
       "repeatedWord": "Повтор слова: «{{word}}»",
       "possibleIssue": "Возможная ошибка орфографии или грамматики: «{{word}}»"

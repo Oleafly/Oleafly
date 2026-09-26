@@ -75,6 +75,7 @@ export {
   type BibliographyStyleFamily,
 } from "./bibliography-styles";
 export * from "./latex-mask";
+export * from "./spelling-words";
 // math-preview / math-render are deliberately NOT exported here: they import
 // KaTeX (plus its CSS), which would ride in every chunk that touches this
 // index. Import them via the "@oleafly/editor/math-preview" or
@@ -103,6 +104,7 @@ export {
   createGrammarSuppressionKeyer,
   grammarSuppressionKey,
   guardProofreadingDiagnostics,
+  isProofreadingSuggestResult,
   isProofreadingWorkerResponse,
   isSpellingDiagnosticKind,
   proofreadingContextSentence,
@@ -119,6 +121,8 @@ export {
   type ProofreadingResult,
   type ProofreadingResultStatus,
   type ProofreadingSuggestion,
+  type ProofreadingSuggestRequest,
+  type ProofreadingSuggestResult,
   type ProofreadingSurface,
   type ProofreadingWorkerRequest,
   type ProofreadingWorkerResponse,

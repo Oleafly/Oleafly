@@ -37,7 +37,8 @@ import {
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
-import { cancelProofreading } from "@/lib/proofreading/client";
+import { cancelProofreading, suggestSpelling } from "@/lib/proofreading/client";
+import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
@@ -179,9 +180,34 @@ function VisualProofreadingPopover({
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
   const issueGroup = visualProofreadingIssueGroup(editor, issue);
+  const deferred =
+    issue.source === "hunspell" &&
+    issue.suggestionsDeferred === true &&
+    issue.suggestions.length === 0;
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    suggestions: VisualProofreadingIssue["suggestions"];
+  } | null>(null);
+  useEffect(() => {
+    if (!deferred) return;
+    let live = true;
+    void suggestSpelling(issue.word, currentDictionaryLocale()).then(
+      (found) => {
+        if (live) setLoaded({ id: issue.id, suggestions: found });
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [deferred, issue.id, issue.word]);
+  const findingSuggestions = deferred && loaded?.id !== issue.id;
+  const offered =
+    deferred && loaded?.id === issue.id
+      ? loaded.suggestions
+      : issue.suggestions;
   const suggestions = [
     ...new Map(
-      issue.suggestions.map((suggestion) => [
+      offered.map((suggestion) => [
         `${suggestion.kind}:${suggestion.text}`,
         suggestion,
       ]),
@@ -412,6 +438,15 @@ function VisualProofreadingPopover({
             </Button>
           </div>
         </div>
+      )}
+
+      {findingSuggestions && (
+        <p
+          className="mt-2 px-2 text-xs text-muted-foreground"
+          aria-live="polite"
+        >
+          {t(($) => $.editor.visual.findingSuggestions)}
+        </p>
       )}
 
       {suggestions.length > 0 && (

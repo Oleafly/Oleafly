@@ -551,6 +551,7 @@
     "previousFinding": "この生ブロック内の前の指摘",
     "nextFinding": "この生ブロック内の次の指摘",
     "suggestedFixes": "修正候補",
+    "findingSuggestions": "候補を検索中…",
     "suggestionRemove": "削除",
     "suggestionInsert": "挿入",
     "suggestionInsertText": "「{{text}}」を挿入",
@@ -606,6 +607,7 @@
       "suggestionReplace": "「{{text}}」",
       "didYouMean": "もしかして {{suggestion}} ですか？",
       "notInDictionary": "辞書にありません: {{word}}",
+      "findingSuggestions": "候補を検索中…",
       "possibleMisspelling": "スペルの誤りの可能性: 「{{word}}」",
       "repeatedWord": "単語の繰り返し: 「{{word}}」",
       "possibleIssue": "スペルまたは文法の問題の可能性: 「{{word}}」"

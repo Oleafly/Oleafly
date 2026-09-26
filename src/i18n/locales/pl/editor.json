@@ -566,6 +566,7 @@
     "previousFinding": "Poprzednia uwaga w tym bloku źródłowym",
     "nextFinding": "Następna uwaga w tym bloku źródłowym",
     "suggestedFixes": "Proponowane poprawki",
+    "findingSuggestions": "Szukanie sugestii…",
     "suggestionRemove": "Usuń",
     "suggestionInsert": "Wstaw",
     "suggestionInsertText": "Wstaw „{{text}}”",
@@ -624,6 +625,7 @@
       "suggestionReplace": "„{{text}}”",
       "didYouMean": "Czy chodziło o {{suggestion}}?",
       "notInDictionary": "Brak w słowniku: {{word}}",
+      "findingSuggestions": "Szukanie sugestii…",
       "possibleMisspelling": "Możliwy błąd pisowni: \"{{word}}\"",
       "repeatedWord": "Powtórzone słowo: „{{word}}”",
       "possibleIssue": "Możliwy błąd pisowni lub gramatyki: „{{word}}”"

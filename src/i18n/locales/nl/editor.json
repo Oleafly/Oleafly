@@ -556,6 +556,7 @@
     "previousFinding": "Vorige bevinding in dit ruwe blok",
     "nextFinding": "Volgende bevinding in dit ruwe blok",
     "suggestedFixes": "Voorgestelde oplossingen",
+    "findingSuggestions": "Suggesties zoeken…",
     "suggestionRemove": "Verwijderen",
     "suggestionInsert": "Invoegen",
     "suggestionInsertText": "“{{text}}” invoegen",
@@ -612,6 +613,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Bedoelde je {{suggestion}}?",
       "notInDictionary": "Staat niet in het woordenboek: {{word}}",
+      "findingSuggestions": "Suggesties zoeken…",
       "possibleMisspelling": "Mogelijke spelfout: \"{{word}}\"",
       "repeatedWord": "Herhaald woord: “{{word}}”",
       "possibleIssue": "Mogelijk spelling- of grammaticaprobleem: “{{word}}”"

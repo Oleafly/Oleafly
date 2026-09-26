@@ -556,6 +556,7 @@
     "previousFinding": "Previous finding in this raw block",
     "nextFinding": "Next finding in this raw block",
     "suggestedFixes": "Suggested fixes",
+    "findingSuggestions": "Looking for suggestions…",
     "suggestionRemove": "Remove",
     "suggestionInsert": "Insert",
     "suggestionInsertText": "Insert “{{text}}”",
@@ -612,6 +613,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Did you mean {{suggestion}}?",
       "notInDictionary": "Not in dictionary: {{word}}",
+      "findingSuggestions": "Looking for suggestions…",
       "possibleMisspelling": "Possible misspelling: \"{{word}}\"",
       "repeatedWord": "Repeated word: “{{word}}”",
       "possibleIssue": "Possible spelling or grammar issue: “{{word}}”"

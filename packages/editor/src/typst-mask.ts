@@ -1,3 +1,5 @@
+import { spellingWordRanges, type SpellingWord } from "./spelling-words";
+
 export interface TypstWordRange {
   from: number;
   to: number;
@@ -528,21 +530,8 @@ export function typstToProse(text: string): {
 
 export function typstSpellcheckRanges(
   text: string,
-): TypstWordRange[] {
-  const masked = maskTypstToProse(text);
-  const ranges: TypstWordRange[] = [];
-  for (const match of masked.matchAll(/\p{L}[\p{L}'’]*/gu)) {
-    if (match.index === undefined || match[0].length < 2) {
-      continue;
-    }
-    ranges.push({
-      from: match.index,
-      to: match.index + match[0].length,
-      word: text.slice(
-        match.index,
-        match.index + match[0].length,
-      ),
-    });
-  }
-  return ranges;
+): SpellingWord[] {
+  return spellingWordRanges(maskTypstToProse(text), text).filter(
+    (range) => range.word.length >= 2,
+  );
 }

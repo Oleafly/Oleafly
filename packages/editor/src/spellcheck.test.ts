@@ -1060,3 +1060,71 @@ describe("proofreading actions by kind", () => {
     expect(diagnosticCardSource(editor, 5)).toBeNull();
   });
 });
+
+describe("deferred Hunspell suggestions", () => {
+  afterEach(() => setProofreadingActionHost(null));
+
+  it("asks the host for suggestions when a finding arrives without them", async () => {
+    stubActionHost();
+    const text = "Crease pattern na listu papiru.";
+    const at = text.indexOf("papiru");
+    const suggest = vi.fn(async () => [{ text: "papíru", kind: 0 }]);
+    const editor = await mountLinted(
+      text,
+      [
+        {
+          from: at,
+          to: at + "papiru".length,
+          message: "Possible misspelling",
+          kind: "Spelling",
+          source: "hunspell",
+          word: "papiru",
+          suggestions: [],
+          suggestionsDeferred: true,
+          rule: null,
+        },
+      ],
+      { suggest },
+    );
+
+    const dom = cardAt(editor, at + 1);
+    expect(dom.textContent).toContain("Looking for suggestions…");
+    await vi.waitFor(() =>
+      expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+        "Did you mean papíru?",
+      ),
+    );
+    expect(suggest).toHaveBeenCalledWith("papiru");
+    dom
+      .querySelector(".cm-proofread-suggestion")
+      ?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(editor.state.doc.toString()).toBe("Crease pattern na listu papíru.");
+  });
+
+  it("does not ask when the worker said there is nothing to find", async () => {
+    stubActionHost();
+    const text = "An qwertzuiopz here.";
+    const at = text.indexOf("qwertzuiopz");
+    const suggest = vi.fn(async () => []);
+    const editor = await mountLinted(
+      text,
+      [
+        {
+          from: at,
+          to: at + "qwertzuiopz".length,
+          message: "Possible misspelling",
+          kind: "Spelling",
+          source: "hunspell",
+          word: "qwertzuiopz",
+          suggestions: [],
+          rule: null,
+        },
+      ],
+      { suggest },
+    );
+
+    const dom = cardAt(editor, at + 1);
+    expect(dom.textContent).not.toContain("Looking for suggestions…");
+    expect(suggest).not.toHaveBeenCalled();
+  });
+});

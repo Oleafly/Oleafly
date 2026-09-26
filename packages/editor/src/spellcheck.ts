@@ -85,6 +85,7 @@ export interface SpellHost {
   ): ProofreadingResult["diagnostics"];
   cancelProofreading?(surface: "source", path?: string): void;
   getSpellchecker?(): Promise<{ spell(word: string): boolean }>;
+  suggest?(word: string): Promise<GrammarSuggestion[]>;
   isSessionIgnored(word: string): boolean;
   isWordIgnored(projectId: string | null, word: string): boolean;
   ignoreWordForProject(projectId: string, word: string): void;
@@ -573,10 +574,16 @@ function proofreadingDiagnostic(
     message?: string;
     path?: string;
     suppressionKey?: string;
+    suggestionsDeferred?: boolean;
   } = {},
 ): Diagnostic {
   const suggestionList = suggestionEntries(h, suggestions);
   const spelling = isSpellingDiagnosticKind(meta.kind);
+  const suggest = h.suggest;
+  const loadSuggestions =
+    spelling && meta.suggestionsDeferred && suggest && suggestionList.length === 0
+      ? () => suggest(word).then((loaded) => suggestionEntries(h, loaded))
+      : undefined;
   const actions = actionHost;
   const suppressionKey = meta.suppressionKey ?? "";
   const dismissList = (host: NonNullable<typeof actions>) =>
@@ -597,6 +604,7 @@ function proofreadingDiagnostic(
     {
       word,
       suggestions: suggestionList,
+      ...(loadSuggestions ? { loadSuggestions } : {}),
       ignores: ignoreList,
       kind: meta.kind,
       rule: meta.rule ?? null,
@@ -629,6 +637,7 @@ function presentedProofreadingDiagnostics(
     );
     if (to <= from) continue;
     const word = diagnostic.word || text.slice(from, to);
+    const exact = from === diagnostic.from && to === diagnostic.to;
     let key = "";
     if (isSpellingDiagnosticKind(diagnostic.kind)) {
       if (
@@ -652,9 +661,7 @@ function presentedProofreadingDiagnostics(
         h,
         projectId,
         word,
-        from === diagnostic.from && to === diagnostic.to
-          ? diagnostic.suggestions
-          : [],
+        exact ? diagnostic.suggestions : [],
         {
           from,
           to,
@@ -667,6 +674,7 @@ function presentedProofreadingDiagnostics(
           message: diagnostic.message,
           path,
           suppressionKey: key,
+          suggestionsDeferred: exact && diagnostic.suggestionsDeferred === true,
         },
       ),
     );

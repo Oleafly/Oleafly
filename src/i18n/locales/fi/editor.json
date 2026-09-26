@@ -556,6 +556,7 @@
     "previousFinding": "Edellinen huomio tässä raakalohkossa",
     "nextFinding": "Seuraava huomio tässä raakalohkossa",
     "suggestedFixes": "Ehdotetut korjaukset",
+    "findingSuggestions": "Etsitään ehdotuksia…",
     "suggestionRemove": "Poista",
     "suggestionInsert": "Lisää",
     "suggestionInsertText": "Lisää ”{{text}}”",
@@ -612,6 +613,7 @@
       "suggestionReplace": "”{{text}}”",
       "didYouMean": "Tarkoititko {{suggestion}}?",
       "notInDictionary": "Ei sanakirjassa: {{word}}",
+      "findingSuggestions": "Etsitään ehdotuksia…",
       "possibleMisspelling": "Mahdollinen kirjoitusvirhe: \"{{word}}\"",
       "repeatedWord": "Toistuva sana: ”{{word}}”",
       "possibleIssue": "Mahdollinen oikeinkirjoitus- tai kielioppivirhe: ”{{word}}”"

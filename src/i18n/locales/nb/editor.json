@@ -556,6 +556,7 @@
     "previousFinding": "Forrige funn i denne råblokken",
     "nextFinding": "Neste funn i denne råblokken",
     "suggestedFixes": "Foreslåtte rettelser",
+    "findingSuggestions": "Ser etter forslag…",
     "suggestionRemove": "Fjern",
     "suggestionInsert": "Sett inn",
     "suggestionInsertText": "Sett inn «{{text}}»",
@@ -612,6 +613,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Mente du {{suggestion}}?",
       "notInDictionary": "Ikke i ordlisten: {{word}}",
+      "findingSuggestions": "Ser etter forslag…",
       "possibleMisspelling": "Mulig skrivefeil: \"{{word}}\"",
       "repeatedWord": "Gjentatt ord: «{{word}}»",
       "possibleIssue": "Mulig stave- eller grammatikkfeil: «{{word}}»"

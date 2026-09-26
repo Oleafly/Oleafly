@@ -551,6 +551,7 @@
     "previousFinding": "此原始块中的上一个问题",
     "nextFinding": "此原始块中的下一个问题",
     "suggestedFixes": "建议的修改",
+    "findingSuggestions": "正在查找建议…",
     "suggestionRemove": "删除",
     "suggestionInsert": "插入",
     "suggestionInsertText": "插入“{{text}}”",
@@ -606,6 +607,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "你是想输入 {{suggestion}} 吗？",
       "notInDictionary": "词典中没有该词：{{word}}",
+      "findingSuggestions": "正在查找建议…",
       "possibleMisspelling": "可能拼写错误：“{{word}}”",
       "repeatedWord": "重复单词：“{{word}}”",
       "possibleIssue": "可能的拼写或语法问题：“{{word}}”"

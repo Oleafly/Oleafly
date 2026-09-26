@@ -556,6 +556,7 @@
     "previousFinding": "Vorheriger Fund in diesem Rohblock",
     "nextFinding": "Nächster Fund in diesem Rohblock",
     "suggestedFixes": "Vorgeschlagene Korrekturen",
+    "findingSuggestions": "Vorschläge werden gesucht…",
     "suggestionRemove": "Entfernen",
     "suggestionInsert": "Einfügen",
     "suggestionInsertText": "„{{text}}“ einfügen",
@@ -612,6 +613,7 @@
       "suggestionReplace": "„{{text}}“",
       "didYouMean": "Meinten Sie {{suggestion}}?",
       "notInDictionary": "Nicht im Wörterbuch: {{word}}",
+      "findingSuggestions": "Vorschläge werden gesucht…",
       "possibleMisspelling": "Mögliche Falschschreibung: „{{word}}“",
       "repeatedWord": "Wiederholtes Wort: „{{word}}“",
       "possibleIssue": "Mögliches Rechtschreib- oder Grammatikproblem: „{{word}}“"

@@ -3,6 +3,7 @@ import { isSpellingDiagnosticKind } from "./proofreading";
 import {
   ViewPlugin,
   hoverTooltip,
+  repositionTooltips,
   type EditorView,
   type Tooltip,
   type ViewUpdate,
@@ -93,11 +94,17 @@ function appendEmphasized(
   );
 }
 
+export interface ProofreadingCardSuggestion {
+  label: string;
+  action: Action;
+}
+
 export interface ProofreadingCard {
   /** The flagged word or phrase, shown in the header. */
   word: string;
   /** Replacements, best first. */
-  suggestions: readonly { label: string; action: Action }[];
+  suggestions: readonly ProofreadingCardSuggestion[];
+  loadSuggestions?: () => Promise<readonly ProofreadingCardSuggestion[]>;
   ignores: readonly ProofreadingCardAction[];
   /** Shown instead of "Did you mean…" when there is no spelling suggestion. */
   message?: string;
@@ -166,6 +173,71 @@ function button(label: string, className: string, onClick: () => void) {
   return element;
 }
 
+function fillHeaderText(
+  headerText: HTMLElement,
+  card: ProofreadingCard,
+  suggestions: readonly ProofreadingCardSuggestion[],
+): void {
+  headerText.replaceChildren();
+  headerText.classList.remove("is-message");
+  const spelling = isSpellingDiagnosticKind(card.kind);
+  if (spelling && card.word && suggestions.length > 0) {
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.didYouMean", { suggestion: SLOT }),
+      suggestions[0].label,
+    );
+  } else if (!spelling || card.message) {
+    headerText.classList.add("is-message");
+    headerText.textContent = card.message ?? "";
+  } else {
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.notInDictionary", { word: SLOT }),
+      card.word,
+    );
+  }
+}
+
+function fillSuggestionList(
+  list: HTMLElement,
+  view: EditorView,
+  card: ProofreadingCard,
+  suggestions: readonly ProofreadingCardSuggestion[],
+  from: number,
+  to: number,
+): void {
+  list.replaceChildren();
+  list.removeAttribute("aria-busy");
+  suggestions.forEach((suggestion, index) => {
+    const row = button(
+      suggestion.label,
+      index === 0 && card.word
+        ? "cm-proofread-suggestion cm-proofread-suggestion-top"
+        : "cm-proofread-suggestion",
+      () => suggestion.action.apply(view, from, to),
+    );
+    list.append(row);
+  });
+}
+
+const loadedSuggestions = new WeakMap<
+  ProofreadingCard,
+  Promise<readonly ProofreadingCardSuggestion[]>
+>();
+
+function suggestionsFor(
+  card: ProofreadingCard,
+): Promise<readonly ProofreadingCardSuggestion[]> | null {
+  if (!card.loadSuggestions || card.suggestions.length > 0) return null;
+  let pending = loadedSuggestions.get(card);
+  if (!pending) {
+    pending = card.loadSuggestions().catch(() => []);
+    loadedSuggestions.set(card, pending);
+  }
+  return pending;
+}
+
 function renderCard(
   view: EditorView,
   card: ProofreadingCard,
@@ -185,22 +257,7 @@ function renderCard(
   const headerText = document.createElement("span");
   headerText.className = "cm-proofread-header-text";
   const spelling = isSpellingDiagnosticKind(card.kind);
-  if (spelling && card.word && card.suggestions.length > 0) {
-    appendEmphasized(
-      headerText,
-      editorMessage("spellcheck.didYouMean", { suggestion: SLOT }),
-      card.suggestions[0].label,
-    );
-  } else if (!spelling || card.message) {
-    headerText.classList.add("is-message");
-    headerText.textContent = card.message ?? "";
-  } else {
-    appendEmphasized(
-      headerText,
-      editorMessage("spellcheck.notInDictionary", { word: SLOT }),
-      card.word,
-    );
-  }
+  fillHeaderText(headerText, card, card.suggestions);
   header.append(dot, headerText);
   root.append(header);
 
@@ -211,19 +268,26 @@ function renderCard(
     root.append(rule);
   }
 
-  if (card.suggestions.length > 0) {
+  const pending = spelling ? suggestionsFor(card) : null;
+  if (card.suggestions.length > 0 || pending) {
     const list = document.createElement("div");
     list.className = "cm-proofread-suggestions";
-    card.suggestions.forEach((suggestion, index) => {
-      const row = button(
-        suggestion.label,
-        index === 0 && card.word
-          ? "cm-proofread-suggestion cm-proofread-suggestion-top"
-          : "cm-proofread-suggestion",
-        () => suggestion.action.apply(view, from, to),
-      );
-      list.append(row);
-    });
+    if (pending) {
+      list.setAttribute("aria-busy", "true");
+      list.setAttribute("aria-live", "polite");
+      const status = document.createElement("div");
+      status.className = "cm-proofread-suggestions-pending";
+      status.textContent = editorMessage("spellcheck.findingSuggestions");
+      list.append(status);
+      void pending.then((suggestions) => {
+        fillHeaderText(headerText, card, suggestions);
+        if (suggestions.length === 0) list.remove();
+        else fillSuggestionList(list, view, card, suggestions, from, to);
+        if (root.isConnected) repositionTooltips(view);
+      });
+    } else {
+      fillSuggestionList(list, view, card, card.suggestions, from, to);
+    }
     root.append(list);
   }
 

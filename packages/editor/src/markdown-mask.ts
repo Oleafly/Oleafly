@@ -1,4 +1,5 @@
 import { scanMathExpressions } from "./math-source";
+import { spellingWordRanges, type SpellingWord } from "./spelling-words";
 
 export interface MarkdownRange {
   from: number;
@@ -258,11 +259,6 @@ export function markdownToProse(text: string): { prose: string; map: number[] } 
   return { prose, map };
 }
 
-export function markdownSpellcheckRanges(text: string): MarkdownRange[] {
-  const masked = maskMarkdown(text);
-  const ranges: MarkdownRange[] = [];
-  for (const match of masked.matchAll(/[A-Za-z][A-Za-z']*/g)) {
-    ranges.push({ from: match.index!, to: match.index! + match[0].length, word: match[0] });
-  }
-  return ranges;
+export function markdownSpellcheckRanges(text: string): SpellingWord[] {
+  return spellingWordRanges(maskMarkdown(text), text);
 }

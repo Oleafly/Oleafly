@@ -566,6 +566,7 @@
     "previousFinding": "Попереднє зауваження в цьому сирому блоці",
     "nextFinding": "Наступне зауваження в цьому сирому блоці",
     "suggestedFixes": "Пропоновані виправлення",
+    "findingSuggestions": "Шукаємо варіанти…",
     "suggestionRemove": "Вилучити",
     "suggestionInsert": "Вставити",
     "suggestionInsertText": "Вставити «{{text}}»",
@@ -624,6 +625,7 @@
       "suggestionReplace": "«{{text}}»",
       "didYouMean": "Можливо, ви мали на увазі {{suggestion}}?",
       "notInDictionary": "Немає у словнику: {{word}}",
+      "findingSuggestions": "Шукаємо варіанти…",
       "possibleMisspelling": "Можлива помилка в слові: «{{word}}»",
       "repeatedWord": "Повторене слово: «{{word}}»",
       "possibleIssue": "Можлива помилка орфографії чи граматики: «{{word}}»"

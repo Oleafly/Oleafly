@@ -551,6 +551,7 @@
     "previousFinding": "這個原始區塊中的上一項檢查結果",
     "nextFinding": "這個原始區塊中的下一項檢查結果",
     "suggestedFixes": "建議的修正",
+    "findingSuggestions": "正在尋找建議…",
     "suggestionRemove": "刪除",
     "suggestionInsert": "插入",
     "suggestionInsertText": "插入「{{text}}」",
@@ -606,6 +607,7 @@
       "suggestionReplace": "「{{text}}」",
       "didYouMean": "你是不是要輸入 {{suggestion}}？",
       "notInDictionary": "字典中沒有這個字詞：{{word}}",
+      "findingSuggestions": "正在尋找建議…",
       "possibleMisspelling": "可能拼錯：「{{word}}」",
       "repeatedWord": "重複的字詞：「{{word}}」",
       "possibleIssue": "可能的拼字或文法問題：「{{word}}」"

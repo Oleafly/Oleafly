@@ -551,6 +551,7 @@
     "previousFinding": "이 원본 블록의 이전 결과",
     "nextFinding": "이 원본 블록의 다음 결과",
     "suggestedFixes": "제안된 수정",
+    "findingSuggestions": "추천 항목을 찾는 중…",
     "suggestionRemove": "삭제",
     "suggestionInsert": "삽입",
     "suggestionInsertText": "“{{text}}” 삽입",
@@ -606,6 +607,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "{{suggestion}}을(를) 말씀하신 것인가요?",
       "notInDictionary": "사전에 없음: {{word}}",
+      "findingSuggestions": "추천 항목을 찾는 중…",
       "possibleMisspelling": "맞춤법 오류 가능성: \"{{word}}\"",
       "repeatedWord": "반복된 단어: “{{word}}”",
       "possibleIssue": "맞춤법 또는 문법 문제 가능성: “{{word}}”"

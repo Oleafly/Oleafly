@@ -561,6 +561,7 @@
     "previousFinding": "Observation précédente dans ce bloc brut",
     "nextFinding": "Observation suivante dans ce bloc brut",
     "suggestedFixes": "Corrections proposées",
+    "findingSuggestions": "Recherche de suggestions…",
     "suggestionRemove": "Supprimer",
     "suggestionInsert": "Insérer",
     "suggestionInsertText": "Insérer « {{text}} »",
@@ -618,6 +619,7 @@
       "suggestionReplace": "« {{text}} »",
       "didYouMean": "Vouliez-vous dire {{suggestion}} ?",
       "notInDictionary": "Absent du dictionnaire : {{word}}",
+      "findingSuggestions": "Recherche de suggestions…",
       "possibleMisspelling": "Faute d'orthographe possible : \"{{word}}\"",
       "repeatedWord": "Mot répété : « {{word}} »",
       "possibleIssue": "Problème d'orthographe ou de grammaire possible : « {{word}} »"

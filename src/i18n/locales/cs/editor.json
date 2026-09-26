@@ -566,6 +566,7 @@
     "previousFinding": "Předchozí nález v tomto nezpracovaném bloku",
     "nextFinding": "Další nález v tomto nezpracovaném bloku",
     "suggestedFixes": "Navržené opravy",
+    "findingSuggestions": "Hledají se návrhy…",
     "suggestionRemove": "Odstranit",
     "suggestionInsert": "Vložit",
     "suggestionInsertText": "Vložit „{{text}}“",
@@ -624,6 +625,7 @@
       "suggestionReplace": "„{{text}}“",
       "didYouMean": "Měli jste na mysli {{suggestion}}?",
       "notInDictionary": "Není ve slovníku: {{word}}",
+      "findingSuggestions": "Hledají se návrhy…",
       "possibleMisspelling": "Možný překlep: „{{word}}“",
       "repeatedWord": "Opakované slovo: „{{word}}“",
       "possibleIssue": "Možná chyba v pravopisu nebo gramatice: „{{word}}“"

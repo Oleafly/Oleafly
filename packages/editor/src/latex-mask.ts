@@ -9,6 +9,8 @@
 // `latex-mask.test.ts`.
 // ---------------------------------------------------------------------------
 
+import { spellingWordRanges, type SpellingWord } from "./spelling-words";
+
 export interface Range {
   from: number;
   to: number;
@@ -549,15 +551,6 @@ export function maskToProse(text: string): { prose: string; map: number[] } {
   return { prose, map };
 }
 
-export function spellcheckRanges(text: string): Range[] {
-  const masked = maskLatex(text);
-  const out: Range[] = [];
-  const re = /[A-Za-z][A-Za-z']*/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(masked))) {
-    const from = m.index;
-    const to = from + m[0].length;
-    out.push({ from, to, word: text.slice(from, to) });
-  }
-  return out;
+export function spellcheckRanges(text: string): SpellingWord[] {
+  return spellingWordRanges(maskLatex(text), text);
 }

@@ -53,6 +53,7 @@ import {
   cancelProofreading,
   getRetainedProofreadingResult,
   proofreadDocument,
+  suggestSpelling,
 } from "@/lib/proofreading/client";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
@@ -154,6 +155,7 @@ setSpellHost({
       surface: "source",
     }),
   presentDiagnostics: proofreadingPresentationDiagnostics,
+  suggest: (word) => suggestSpelling(word, currentDictionaryLocale()),
   cancelProofreading,
   isSessionIgnored: isSessionIgnoredWord,
   isWordIgnored,

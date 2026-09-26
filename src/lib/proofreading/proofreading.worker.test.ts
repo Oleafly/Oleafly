@@ -215,7 +215,7 @@ describe("proofreading worker outcomes", () => {
 
   it("rejects a well-formed locale that is not in the packaged dictionary manifest", async () => {
     const unsupportedLocale = request(31, "combined");
-    unsupportedLocale.preferences.dictionaryLocale = "zz_ZZ";
+    unsupportedLocale.preferences.dictionaryLocale = "en_ZZ";
     const response = await analyze(unsupportedLocale);
 
     expect(response.type).toBe("result");
@@ -225,8 +225,48 @@ describe("proofreading worker outcomes", () => {
     expect(response.diagnostics[0]?.kind).toBe("WordChoice");
     expect(response.activeDictionaryLocale).toBeUndefined();
     expect(response.message).toContain(
-      "the requested zz_ZZ spelling dictionary could not start",
+      "the requested en_ZZ spelling dictionary could not start",
     );
+  });
+
+  it("does not run the English grammar engine on a document checked in another language", async () => {
+    mocks.dictionaryAvailable = true;
+    mocks.spell.mockImplementation((word) => word !== "bety");
+    mocks.suggest.mockReturnValue(["beta"]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new Uint8Array([1]))),
+    );
+    const lintCalls = mocks.lintLanguage.mock.calls.length;
+    const combined = request(32, "combined");
+    combined.preferences.dictionaryLocale = "de_DE";
+    combined.text = "alpha bety";
+    const response = await analyze(combined);
+    mocks.dictionaryAvailable = false;
+    mocks.spell.mockClear();
+    mocks.suggest.mockClear();
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.status).toBe("ready");
+    expect(response.activeDictionaryLocale).toBe("de_DE");
+    expect(response.diagnostics.map((diagnostic) => diagnostic.source)).toEqual([
+      "hunspell",
+    ]);
+    expect(mocks.lintLanguage.mock.calls.length).toBe(lintCalls);
+  });
+
+  it("reports grammar-only checking as unsupported outside English", async () => {
+    const lintCalls = mocks.lintLanguage.mock.calls.length;
+    const grammar = request(33, "grammar");
+    grammar.preferences.dictionaryLocale = "cs_CZ";
+    const response = await analyze(grammar);
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.status).toBe("unsupported");
+    expect(response.diagnostics).toEqual([]);
+    expect(mocks.lintLanguage.mock.calls.length).toBe(lintCalls);
   });
 
   it("reports malformed engine findings as partial instead of silent success", async () => {

@@ -62,6 +62,7 @@ export interface ProofreadingDiagnostic {
   source: "harper" | "hunspell";
   word: string;
   suggestions: ProofreadingSuggestion[];
+  suggestionsDeferred?: boolean;
   rule: string | null;
 }
 
@@ -129,9 +130,27 @@ export interface ProofreadingDictionaryDelivery {
   dic: Uint8Array;
 }
 
+export interface ProofreadingSuggestRequest {
+  protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
+  type: "suggest";
+  requestId: number;
+  locale: string;
+  word: string;
+}
+
+export interface ProofreadingSuggestResult {
+  protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
+  type: "suggestions";
+  requestId: number;
+  locale: string;
+  word: string;
+  suggestions: ProofreadingSuggestion[];
+}
+
 export type ProofreadingWorkerRequest =
   | ProofreadingRequest
   | ProofreadingDictionaryDelivery
+  | ProofreadingSuggestRequest
   | {
       protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
       type: "dispose";
@@ -179,6 +198,39 @@ function validResponseIdentity(value: unknown): boolean {
     Number.isSafeInteger(identity.requestGeneration) &&
     identity.requestGeneration > 0 &&
     (identity.surface === "source" || identity.surface === "visual")
+  );
+}
+
+const DICTIONARY_LOCALE_SHAPE = /^[A-Za-z]{2,3}(?:_[A-Za-z]{2,4})?$/u;
+
+function validSuggestion(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const suggestion = value as Record<string, unknown>;
+  return (
+    typeof suggestion.text === "string" &&
+    suggestion.text.length <= 4_096 &&
+    (suggestion.kind === 0 || suggestion.kind === 1 || suggestion.kind === 2)
+  );
+}
+
+export function isProofreadingSuggestResult(
+  value: unknown,
+): value is ProofreadingSuggestResult {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.protocolVersion === PROOFREADING_PROTOCOL_VERSION &&
+    candidate.type === "suggestions" &&
+    typeof candidate.requestId === "number" &&
+    Number.isSafeInteger(candidate.requestId) &&
+    candidate.requestId > 0 &&
+    typeof candidate.locale === "string" &&
+    DICTIONARY_LOCALE_SHAPE.test(candidate.locale) &&
+    typeof candidate.word === "string" &&
+    candidate.word.length <= PROOFREADING_LIMITS.wordCharacters &&
+    Array.isArray(candidate.suggestions) &&
+    candidate.suggestions.length <= 8 &&
+    candidate.suggestions.every(validSuggestion)
   );
 }
 
@@ -235,7 +287,7 @@ export function isProofreadingWorkerResponse(
       (typeof message !== "string" || message.length > 2_048)) ||
     (activeDictionaryLocale !== undefined &&
       (typeof activeDictionaryLocale !== "string" ||
-        !/^[A-Za-z]{2,3}(?:_[A-Za-z]{2,4})?$/u.test(activeDictionaryLocale))) ||
+        !DICTIONARY_LOCALE_SHAPE.test(activeDictionaryLocale))) ||
     (truncated !== undefined && typeof truncated !== "boolean")
   ) {
     return false;
@@ -269,21 +321,13 @@ export function isProofreadingWorkerResponse(
       typeof word !== "string" ||
       word.length > PROOFREADING_LIMITS.grammarCharacters ||
       !Array.isArray(suggestions) ||
-      suggestions.length > 8
+      suggestions.length > 8 ||
+      (diagnostic.suggestionsDeferred !== undefined &&
+        typeof diagnostic.suggestionsDeferred !== "boolean")
     ) {
       return false;
     }
-    return suggestions.every((value) => {
-      if (!value || typeof value !== "object") return false;
-      const suggestion = value as Record<string, unknown>;
-      return (
-        typeof suggestion.text === "string" &&
-        suggestion.text.length <= 4_096 &&
-        (suggestion.kind === 0 ||
-          suggestion.kind === 1 ||
-          suggestion.kind === 2)
-      );
-    });
+    return suggestions.every(validSuggestion);
   });
 }
 

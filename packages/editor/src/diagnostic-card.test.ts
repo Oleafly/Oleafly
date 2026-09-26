@@ -401,3 +401,76 @@ describe("proofreading hover card by kind", () => {
     expect(dom.querySelector(".cm-proofread-rule")).toBeNull();
   });
 });
+
+describe("suggestions loaded when the card opens", () => {
+  function deferredDiagnostic(
+    loadSuggestions: () => Promise<{ label: string; action: ReturnType<typeof replaceAction> }[]>,
+  ): Diagnostic {
+    return attachProofreadingCard(
+      {
+        from: FROM,
+        to: TO,
+        severity: "warning",
+        message: "Possible misspelling",
+        actions: [],
+      },
+      { word: "unblinded", suggestions: [], loadSuggestions, ignores: [] },
+    );
+  }
+
+  it("shows a pending row, then the loaded suggestions", async () => {
+    let resolve!: (value: { label: string; action: ReturnType<typeof replaceAction> }[]) => void;
+    const load = vi.fn(
+      () =>
+        new Promise<{ label: string; action: ReturnType<typeof replaceAction> }[]>(
+          (done) => {
+            resolve = done;
+          },
+        ),
+    );
+    const editor = mount([deferredDiagnostic(load)]);
+
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Not in dictionary: unblinded",
+    );
+    const list = dom.querySelector(".cm-proofread-suggestions")!;
+    expect(list.getAttribute("aria-busy")).toBe("true");
+    expect(list.textContent).toBe("Looking for suggestions…");
+
+    resolve([{ label: "unbounded", action: replaceAction("unbounded") }]);
+    await vi.waitFor(() =>
+      expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+        "Did you mean unbounded?",
+      ),
+    );
+    expect(list.hasAttribute("aria-busy")).toBe(false);
+    const row = dom.querySelector<HTMLButtonElement>(".cm-proofread-suggestion")!;
+    row.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(editor.state.doc.toString()).toBe("labels were unbounded here");
+
+    card(editor, FROM);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the pending row when nothing is found", async () => {
+    const editor = mount([deferredDiagnostic(async () => [])]);
+    const dom = card(editor, FROM)!;
+    await vi.waitFor(() =>
+      expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull(),
+    );
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Not in dictionary: unblinded",
+    );
+  });
+
+  it("treats a failed load like an empty one", async () => {
+    const editor = mount([
+      deferredDiagnostic(() => Promise.reject(new Error("worker gone"))),
+    ]);
+    const dom = card(editor, FROM)!;
+    await vi.waitFor(() =>
+      expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull(),
+    );
+  });
+});

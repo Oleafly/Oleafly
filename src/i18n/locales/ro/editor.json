@@ -561,6 +561,7 @@
     "previousFinding": "Rezultatul anterior din acest bloc brut",
     "nextFinding": "Rezultatul următor din acest bloc brut",
     "suggestedFixes": "Corecturi sugerate",
+    "findingSuggestions": "Se caută sugestii…",
     "suggestionRemove": "Elimină",
     "suggestionInsert": "Inserează",
     "suggestionInsertText": "Inserează „{{text}}”",
@@ -618,6 +619,7 @@
       "suggestionReplace": "„{{text}}”",
       "didYouMean": "Ai vrut să scrii {{suggestion}}?",
       "notInDictionary": "Nu este în dicționar: {{word}}",
+      "findingSuggestions": "Se caută sugestii…",
       "possibleMisspelling": "Posibilă greșeală de scriere: „{{word}}”",
       "repeatedWord": "Cuvânt repetat: „{{word}}”",
       "possibleIssue": "Posibilă problemă de ortografie sau gramatică: „{{word}}”"

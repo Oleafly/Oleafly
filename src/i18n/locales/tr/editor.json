@@ -556,6 +556,7 @@
     "previousFinding": "Bu ham bloktaki önceki bulgu",
     "nextFinding": "Bu ham bloktaki sonraki bulgu",
     "suggestedFixes": "Önerilen düzeltmeler",
+    "findingSuggestions": "Öneriler aranıyor…",
     "suggestionRemove": "Kaldır",
     "suggestionInsert": "Ekle",
     "suggestionInsertText": "“{{text}}” ekle",
@@ -612,6 +613,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Şunu mu demek istediniz: {{suggestion}}?",
       "notInDictionary": "Sözlükte yok: {{word}}",
+      "findingSuggestions": "Öneriler aranıyor…",
       "possibleMisspelling": "Olası yazım hatası: \"{{word}}\"",
       "repeatedWord": "Yinelenen sözcük: “{{word}}”",
       "possibleIssue": "Olası yazım veya dil bilgisi sorunu: “{{word}}”"

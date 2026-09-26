@@ -556,6 +556,7 @@
     "previousFinding": "Föregående fynd i det här råblocket",
     "nextFinding": "Nästa fynd i det här råblocket",
     "suggestedFixes": "Föreslagna åtgärder",
+    "findingSuggestions": "Letar efter förslag…",
     "suggestionRemove": "Ta bort",
     "suggestionInsert": "Infoga",
     "suggestionInsertText": "Infoga ”{{text}}”",
@@ -612,6 +613,7 @@
       "suggestionReplace": "”{{text}}”",
       "didYouMean": "Menade du {{suggestion}}?",
       "notInDictionary": "Finns inte i ordlistan: {{word}}",
+      "findingSuggestions": "Letar efter förslag…",
       "possibleMisspelling": "Möjlig felstavning: \"{{word}}\"",
       "repeatedWord": "Upprepat ord: ”{{word}}”",
       "possibleIssue": "Möjligt stavnings- eller grammatikfel: ”{{word}}”"

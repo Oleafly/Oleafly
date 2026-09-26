@@ -561,6 +561,7 @@
     "previousFinding": "Segnalazione precedente in questo blocco grezzo",
     "nextFinding": "Segnalazione successiva in questo blocco grezzo",
     "suggestedFixes": "Correzioni suggerite",
+    "findingSuggestions": "Ricerca di suggerimenti…",
     "suggestionRemove": "Rimuovi",
     "suggestionInsert": "Inserisci",
     "suggestionInsertText": "Inserisci “{{text}}”",
@@ -618,6 +619,7 @@
       "suggestionReplace": "“{{text}}”",
       "didYouMean": "Intendevi {{suggestion}}?",
       "notInDictionary": "Non è nel dizionario: {{word}}",
+      "findingSuggestions": "Ricerca di suggerimenti…",
       "possibleMisspelling": "Possibile errore di ortografia: \"{{word}}\"",
       "repeatedWord": "Parola ripetuta: “{{word}}”",
       "possibleIssue": "Possibile problema di ortografia o grammatica: “{{word}}”"

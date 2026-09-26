@@ -1,10 +1,13 @@
 import { i18n } from "@/i18n";
 import {
+  PROOFREADING_LIMITS,
   PROOFREADING_PROTOCOL_VERSION,
+  isProofreadingSuggestResult,
   isProofreadingWorkerResponse,
   sameProofreadingIdentity,
   type ProofreadingInput,
   type ProofreadingResult,
+  type ProofreadingSuggestion,
   type ProofreadingSurface,
   type ProofreadingWorkerRequest,
 } from "@oleafly/editor";
@@ -92,7 +95,14 @@ export class ProofreadingWorkerError extends Error {
   }
 }
 
+interface PendingSuggestion {
+  resolve: (suggestions: ProofreadingSuggestion[]) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 const MAX_DELIVERED_DICTIONARIES = 2;
+const SUGGEST_TIMEOUT_MS = 20_000;
+const MAX_REMEMBERED_SUGGESTIONS = 500;
 const MIN_REQUEST_TIMEOUT_MS = 25_000;
 const MAX_REQUEST_TIMEOUT_MS = 120_000;
 
@@ -140,6 +150,102 @@ class ProofreadingWorkerClient {
     RetainedProofreading
   >();
   private delivered: string[] = [];
+  private readonly pendingSuggestions = new Map<number, PendingSuggestion>();
+  private readonly suggestions = new Map<
+    string,
+    Promise<ProofreadingSuggestion[]>
+  >();
+
+  suggest(
+    word: string,
+    locale: string,
+  ): Promise<ProofreadingSuggestion[]> {
+    const safeLocale = effectiveDictionaryLocale({ project: locale });
+    if (
+      word.length === 0 ||
+      word.length > PROOFREADING_LIMITS.wordCharacters
+    ) {
+      return Promise.resolve([]);
+    }
+    const key = `${safeLocale}\0${word}`;
+    const remembered = this.suggestions.get(key);
+    if (remembered) {
+      this.suggestions.delete(key);
+      this.suggestions.set(key, remembered);
+      return remembered;
+    }
+    const promise = this.requestSuggestions(word, safeLocale);
+    this.suggestions.set(key, promise);
+    while (this.suggestions.size > MAX_REMEMBERED_SUGGESTIONS) {
+      const oldest = this.suggestions.keys().next();
+      if (oldest.done) break;
+      this.suggestions.delete(oldest.value);
+    }
+    void promise.then((result) => {
+      if (result.length === 0 && this.suggestions.get(key) === promise) {
+        this.suggestions.delete(key);
+      }
+    });
+    return promise;
+  }
+
+  private requestSuggestions(
+    word: string,
+    locale: string,
+  ): Promise<ProofreadingSuggestion[]> {
+    let worker: WorkerLike;
+    try {
+      worker = this.ensureWorker();
+    } catch {
+      return Promise.resolve([]);
+    }
+    const requestId = ++this.requestId;
+    return new Promise((resolve) => {
+      const timeout = setTimeout(
+        () => this.settleSuggestions(requestId, []),
+        SUGGEST_TIMEOUT_MS,
+      );
+      this.pendingSuggestions.set(requestId, { resolve, timeout });
+      const post = () => {
+        if (!this.pendingSuggestions.has(requestId)) return;
+        try {
+          worker.postMessage({
+            protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+            type: "suggest",
+            requestId,
+            locale,
+            word,
+          });
+        } catch {
+          this.settleSuggestions(requestId, []);
+        }
+      };
+      if (!this.needsDictionaryDelivery(locale)) {
+        post();
+        return;
+      }
+      void this.deliverDictionary(worker, locale)
+        .then(post)
+        .catch(() => this.settleSuggestions(requestId, []));
+    });
+  }
+
+  private settleSuggestions(
+    requestId: number,
+    suggestions: ProofreadingSuggestion[],
+  ): void {
+    const pending = this.pendingSuggestions.get(requestId);
+    if (!pending) return;
+    clearTimeout(pending.timeout);
+    this.pendingSuggestions.delete(requestId);
+    pending.resolve(suggestions);
+  }
+
+  private abandonSuggestions(): void {
+    for (const requestId of [...this.pendingSuggestions.keys()]) {
+      this.settleSuggestions(requestId, []);
+    }
+  }
 
   proofread(
     input: ProofreadingDocumentInput,
@@ -340,6 +446,7 @@ class ProofreadingWorkerClient {
     }
     this.worker?.terminate();
     this.worker = null;
+    this.abandonSuggestions();
     const restartError = new ProofreadingWorkerError(
       i18n.t(($) => $.core.proofreading.restarted),
       "worker_restarted",
@@ -371,6 +478,8 @@ class ProofreadingWorkerClient {
       this.worker.terminate();
       this.worker = null;
     }
+    this.abandonSuggestions();
+    this.suggestions.clear();
     const error = new ProofreadingWorkerError(
       i18n.t(($) => $.core.proofreading.disposed),
       "disposed",
@@ -414,6 +523,10 @@ class ProofreadingWorkerClient {
   }
 
   private handleMessage(event: MessageEvent<unknown>) {
+    if (isProofreadingSuggestResult(event.data)) {
+      this.settleSuggestions(event.data.requestId, event.data.suggestions);
+      return;
+    }
     if (!isProofreadingWorkerResponse(event.data)) {
       this.failWorker(
         new ProofreadingWorkerError(
@@ -548,6 +661,7 @@ class ProofreadingWorkerClient {
   private failWorker(error: ProofreadingWorkerError) {
     this.worker?.terminate();
     this.worker = null;
+    this.abandonSuggestions();
     const pending = [...this.pending.values()];
     for (const request of pending) {
       useProofreadingStore
@@ -568,6 +682,13 @@ export function proofreadDocument(
   input: ProofreadingDocumentInput,
 ): Promise<ProofreadingResult> {
   return client.proofread(input);
+}
+
+export function suggestSpelling(
+  word: string,
+  locale: string,
+): Promise<ProofreadingSuggestion[]> {
+  return client.suggest(word, locale);
 }
 
 export function getRetainedProofreadingResult(input: {
