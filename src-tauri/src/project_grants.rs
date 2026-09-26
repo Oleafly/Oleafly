@@ -2,7 +2,7 @@ use std::path::Path;
 
 pub(crate) fn reset_project_grants(data_root: &Path, project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
-    crate::trust::revoke_project(project_id).map_err(String::from)?;
+    crate::trust::revoke_project(project_id)?;
     crate::approvals::revoke_project_grants(data_root, project_id)?;
     crate::project::revoke_shell_escape_trust(project_id)?;
     crate::research_workspace::roots::forget_project_strict(project_id)

@@ -55,13 +55,14 @@ export function FolderUnavailableBanner() {
 
   return (
     <div
-      role="status"
       data-testid="folder-unavailable-banner"
       className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
     >
       <FolderX aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="font-medium">{title}</span>
-      <span className="min-w-0 flex-1">{body}</span>
+      <output className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-medium">{title}</span>
+        <span className="min-w-0 flex-1">{body}</span>
+      </output>
       <span className="flex shrink-0 items-center gap-1">
         {availability === "replaced" && (
           <button

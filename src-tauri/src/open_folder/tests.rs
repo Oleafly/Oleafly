@@ -253,7 +253,7 @@ fn a_symlinked_folder_is_inspected_at_its_target_and_a_dangling_link_is_not_foun
     let fixture = Fixture::new();
     let known = fixture.known();
     let target = fixture.folder("work/paper");
-    let link = fixture.temp.path().join("work/link");
+    let link = fixture.temp.path().join("work").join("link");
     std::os::unix::fs::symlink(&target, &link).unwrap();
     assert_eq!(
         inspected(inspect_folder_with(&link, &known)).canonical,
@@ -302,19 +302,35 @@ fn a_path_that_is_not_unicode_is_refused() {
 }
 
 #[cfg(windows)]
+fn make_junction(link: &Path, target: &Path) {
+    let plain = |path: &Path| {
+        let text = path.to_string_lossy().replace('/', "\\");
+        text.strip_prefix(r"\\?\")
+            .map(str::to_owned)
+            .unwrap_or(text)
+    };
+    let output = std::process::Command::new("cmd")
+        .args(["/C", "mklink", "/J"])
+        .arg(plain(link))
+        .arg(plain(target))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "mklink /J failed: {}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[cfg(windows)]
 #[test]
 fn a_junction_is_inspected_at_the_folder_it_points_to() {
     let fixture = Fixture::new();
     let known = fixture.known();
     let target = fixture.folder("work/paper");
-    let link = fixture.temp.path().join("work/link");
-    let status = std::process::Command::new("cmd")
-        .args(["/C", "mklink", "/J"])
-        .arg(&link)
-        .arg(&target)
-        .status()
-        .unwrap();
-    assert!(status.success());
+    let link = fixture.temp.path().join("work").join("link");
+    make_junction(&link, &target);
     assert_eq!(
         inspected(inspect_folder_with(&link, &known)).canonical,
         target
@@ -558,14 +574,8 @@ fn case_variants_are_different_folders_on_case_sensitive_volumes() {
 fn a_junction_and_its_target_are_one_project() {
     let fixture = Fixture::new();
     let target = fixture.folder("work/paper");
-    let link = fixture.temp.path().join("work/link");
-    let status = std::process::Command::new("cmd")
-        .args(["/C", "mklink", "/J"])
-        .arg(&link)
-        .arg(&target)
-        .status()
-        .unwrap();
-    assert!(status.success());
+    let link = fixture.temp.path().join("work").join("link");
+    make_junction(&link, &target);
     assert_eq!(
         register_or_resolve_folder(&link).unwrap().project_id,
         register_or_resolve_folder(&target).unwrap().project_id
