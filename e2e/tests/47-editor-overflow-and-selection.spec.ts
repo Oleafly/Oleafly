@@ -1,5 +1,12 @@
 import { test, expect } from "../fixtures";
-import { caretIn, clickToolbarControl, openProject, pressGlobal, selectWord } from "../helpers";
+import {
+  caretIn,
+  clickToolbarControl,
+  closeAssistant,
+  openProject,
+  pressGlobal,
+  selectWord,
+} from "../helpers";
 
 test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -64,6 +71,7 @@ test("forward SyncTeX switches to split view and locates the PDF position", asyn
       useSettingsStore.getState().setViewMode("split"),
     )`,
   );
+  await closeAssistant(tauriPage);
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
