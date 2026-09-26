@@ -1,4 +1,5 @@
 export type {
+  CheckpointCaptureNotice,
   CheckpointFileSummary,
   CheckpointIntegrity,
   CheckpointStoreInspection,

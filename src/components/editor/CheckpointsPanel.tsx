@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
+import { decodeAppError } from "@/lib/app-error";
 import {
   checkpointDelete,
   checkpointEngineLabel,
@@ -42,6 +43,7 @@ import {
   checkpointRevealStore,
   checkpointSetLabel,
   checkpointStats,
+  type CheckpointCaptureNotice,
   type CheckpointFileSummary,
   type CheckpointStoreInspection,
   type CheckpointStoreStats,
@@ -133,6 +135,27 @@ function safeArchiveName(name: string): string {
   let end = collapsed.length;
   while (end > start && collapsed[end - 1] === ".") end -= 1;
   return collapsed.slice(start, end) || "project";
+}
+
+function captureNoticeText(notice: CheckpointCaptureNotice | undefined): string | null {
+  if (!notice) return null;
+  if (notice.paused) {
+    return i18n.t(($) => $.editor.checkpoints.capture.paused, {
+      files: formatNumber(notice.paused.file_limit),
+      size: formatBytes(notice.paused.byte_limit),
+    });
+  }
+  const { links, unsupported_names, large, cloud, other } = notice.skipped;
+  const count = links + unsupported_names + large + cloud + other;
+  if (count === 0) return null;
+  return i18n.t(($) => $.editor.checkpoints.capture.skipped, {
+    count,
+    formattedCount: formatNumber(count),
+  });
+}
+
+function checkpointFileName(file: CheckpointFileSummary): string {
+  return file.folder_settings ? i18n.t(($) => $.editor.checkpoints.files.folderSettings) : file.path;
 }
 
 function unstoredSentence(count: number): string {
@@ -286,7 +309,7 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
     <ul className="list-none space-y-1 p-0">
       {state.files.map((file) => (
         <li key={file.path} className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="min-w-0 break-all font-mono">{file.path}</span>
+          <span className="min-w-0 break-all font-mono">{checkpointFileName(file)}</span>
           <span className="text-muted-foreground">{formatBytes(file.bytes)}</span>
           {file.stored ? null : (
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
@@ -356,8 +379,8 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="truncate font-mono text-xs" title={file.path}>
-                {file.path}
+              <span className="truncate font-mono text-xs" title={checkpointFileName(file)}>
+                {checkpointFileName(file)}
               </span>
               {file.stored ? null : (
                 <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
@@ -928,6 +951,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   if (!open) return null;
 
   const visibleStats = renderIdentityChanged ? null : stats;
+  const captureNotice = captureNoticeText(visibleStats?.capture);
   const visibleInspection = renderIdentityChanged ? null : inspection;
   const visibleLoading = Boolean(projectId) && (renderIdentityChanged || loading);
   const checkpointCount = visibleStats?.checkpoint_count ?? visibleCheckpoints.length;
@@ -1043,7 +1067,11 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       closeVersioning();
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("restore checkpoint", error, t(($) => $.editor.checkpoints.toast.restoreFailed));
+      notifyError(
+        "restore checkpoint",
+        error,
+        decodeAppError(error) ? undefined : t(($) => $.editor.checkpoints.toast.restoreFailed),
+      );
     } finally {
       if (isCurrentAction(action)) {
         setBusyAction(null);
@@ -1179,7 +1207,11 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       if (advancedOpen) loadInspection(action.projectId, action.session);
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("import checkpoints", error, t(($) => $.editor.checkpoints.toast.importFailed));
+      notifyError(
+        "import checkpoints",
+        error,
+        decodeAppError(error) ? undefined : t(($) => $.editor.checkpoints.toast.importFailed),
+      );
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1656,6 +1688,14 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
           {t(($) => $.editor.checkpoints.panel.sourceOnly)}
         </span>
       </div>
+      {captureNotice ? (
+        <p
+          data-testid="checkpoint-capture-notice"
+          className="shrink-0 px-4 pb-3 text-xs text-muted-foreground"
+        >
+          {captureNotice}
+        </p>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {renderTimeline()}

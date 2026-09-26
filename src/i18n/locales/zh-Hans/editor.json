@@ -421,6 +421,10 @@
       "sourceSize": "源文件大小",
       "reclaimable": "可回收"
     },
+    "capture": {
+      "paused": "此文件夹太大，检查点已暂停。一个检查点最多可容纳 {{files}} 个文件或 {{size}}。",
+      "skipped_other": "此文件夹中有 {{formattedCount}} 个文件不在检查点中。Oleafly 会跳过链接、超大文件、仅存于云端的文件，以及并非所有系统都支持的文件名。"
+    },
     "catalog": {
       "formatVersion": "格式版本",
       "lineage": "归属",
@@ -453,7 +457,8 @@
       "showFor": "显示 {{version}} 的文件",
       "hideFor": "隐藏 {{version}} 的文件",
       "show": "显示文件",
-      "hide": "隐藏文件"
+      "hide": "隐藏文件",
+      "folderSettings": "此文件夹的 Oleafly 设置"
     },
     "entry": {
       "labelInput": "检查点标签",

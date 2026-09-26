@@ -85,6 +85,13 @@ impl ProjectLocation {
         }
     }
 
+    pub(crate) fn sidecar_manifest_path(&self) -> Option<PathBuf> {
+        match self.kind {
+            ProjectKind::Library => None,
+            ProjectKind::Linked => Some(self.state_dir.join(MANIFEST_FILE)),
+        }
+    }
+
     pub(crate) fn ensure_linked_state(&self, target: &Path) -> Result<PathBuf, String> {
         let relative = target
             .strip_prefix(&self.state_dir)
@@ -548,6 +555,29 @@ mod tests {
         let location = locate(&record.id).unwrap();
         assert_eq!(location.root, folder);
         assert_eq!(location.compile_dir, folder.join("paper"));
+    }
+
+    #[test]
+    fn only_linked_locations_have_a_sidecar_manifest() {
+        let fixture = Fixture::new();
+        crate::paths::create_project_dir("paper").unwrap();
+        assert_eq!(locate("paper").unwrap().sidecar_manifest_path(), None);
+        let folder = fixture.folder("thesis");
+        let record = register_folder_for_test(&folder);
+        let sidecar = fixture.state(&record.id).join(MANIFEST_FILE);
+        assert_eq!(
+            locate(&record.id).unwrap().sidecar_manifest_path(),
+            Some(sidecar.clone())
+        );
+        std::fs::write(
+            folder.join(MANIFEST_FILE),
+            br#"{"name":"Thesis","main_doc":"main.tex"}"#,
+        )
+        .unwrap();
+        let routed = crate::project_manifest::route_project(&record.id).unwrap();
+        assert_eq!(routed.location().manifest, ManifestSource::Split);
+        assert_eq!(routed.location().manifest_path(), sidecar);
+        assert_eq!(routed.location().sidecar_manifest_path(), Some(sidecar));
     }
 
     #[test]

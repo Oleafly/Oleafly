@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Tato složka je v Oleafly otevřená jako samostatný projekt. Propojte ji raději jen pro čtení."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Tato historie záchytných bodů pochází z projektu ve vaší knihovně Oleafly, takže ji nelze použít se složkou otevřenou na svém místě.",
+    "folder_history_for_library": "Tato historie záchytných bodů pochází ze složky otevřené na svém místě, takže ji nelze použít s projektem ve vaší knihovně Oleafly.",
+    "restore_path_blocked": "Oleafly nemůže obnovit {{path}}, protože v cestě je odkaz nebo něco jiného, co není soubor. Přesuňte to a zkuste to znovu."
   }
 }

@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "이 폴더는 Oleafly에서 별도 프로젝트로 열려 있습니다. 대신 읽기 전용으로 연결하세요."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "이 체크포인트 기록은 Oleafly 라이브러리의 프로젝트에서 온 것이라 원래 위치에서 연 폴더에는 사용할 수 없습니다.",
+    "folder_history_for_library": "이 체크포인트 기록은 원래 위치에서 연 폴더에서 온 것이라 Oleafly 라이브러리의 프로젝트에는 사용할 수 없습니다.",
+    "restore_path_blocked": "{{path}} 위치에 링크 등 파일이 아닌 항목이 있어 Oleafly가 복원할 수 없습니다. 해당 항목을 옮긴 뒤 다시 시도하세요."
   }
 }

@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Acest folder este deschis în Oleafly ca proiect separat. Asociază-l în schimb doar pentru citire."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Acest istoric de puncte de control provine dintr-un proiect din biblioteca ta Oleafly, așa că nu poate fi folosit cu un folder deschis în locația sa.",
+    "folder_history_for_library": "Acest istoric de puncte de control provine dintr-un folder deschis în locația sa, așa că nu poate fi folosit cu un proiect din biblioteca ta Oleafly.",
+    "restore_path_blocked": "Oleafly nu poate restabili {{path}}, deoarece în locul lui se află un link sau altceva care nu este un fișier. Mută-l și încearcă din nou."
   }
 }

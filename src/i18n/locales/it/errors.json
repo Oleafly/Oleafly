@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Questa cartella è aperta in Oleafly come progetto a sé. Collegala invece in sola lettura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Questa cronologia dei checkpoint proviene da un progetto della tua libreria Oleafly, quindi non può essere usata con una cartella aperta nella sua posizione.",
+    "folder_history_for_library": "Questa cronologia dei checkpoint proviene da una cartella aperta nella sua posizione, quindi non può essere usata con un progetto della tua libreria Oleafly.",
+    "restore_path_blocked": "Oleafly non può ripristinare {{path}} perché al suo posto c'è un collegamento o qualcos'altro che non è un file. Spostalo e riprova."
   }
 }

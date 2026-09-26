@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Ce dossier est ouvert dans Oleafly comme projet à part entière. Liez-le plutôt en lecture seule."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Cet historique de points de contrôle provient d'un projet de votre bibliothèque Oleafly, il ne peut donc pas être utilisé avec un dossier ouvert sur place.",
+    "folder_history_for_library": "Cet historique de points de contrôle provient d'un dossier ouvert sur place, il ne peut donc pas être utilisé avec un projet de votre bibliothèque Oleafly.",
+    "restore_path_blocked": "Oleafly ne peut pas restaurer {{path}}, car un lien ou un autre élément qui n'est pas un fichier se trouve à cet endroit. Déplacez-le, puis réessayez."
   }
 }

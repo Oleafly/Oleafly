@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "此文件夹已在 Oleafly 中作为独立项目打开。请改为以只读方式链接。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "此检查点历史来自你的 Oleafly 库中的项目，因此不能用于在原位置打开的文件夹。",
+    "folder_history_for_library": "此检查点历史来自在原位置打开的文件夹，因此不能用于你的 Oleafly 库中的项目。",
+    "restore_path_blocked": "{{path}} 所在位置有链接或其他非文件项目，Oleafly 无法恢复它。请先移走该项目再重试。"
   }
 }

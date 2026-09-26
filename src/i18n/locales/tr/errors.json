@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Bu klasör Oleafly'de ayrı bir proje olarak açık. Bunun yerine salt okunur olarak bağlayın."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Bu kontrol noktası geçmişi Oleafly kitaplığınızdaki bir projeye ait olduğundan bulunduğu yerde açılan bir klasörle kullanılamaz.",
+    "folder_history_for_library": "Bu kontrol noktası geçmişi bulunduğu yerde açılan bir klasöre ait olduğundan Oleafly kitaplığınızdaki bir projeyle kullanılamaz.",
+    "restore_path_blocked": "Oleafly {{path}} öğesini geri yükleyemiyor, çünkü orada bir bağlantı veya dosya olmayan başka bir şey var. Onu taşıyıp yeniden deneyin."
   }
 }

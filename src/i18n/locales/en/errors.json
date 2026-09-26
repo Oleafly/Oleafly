@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "This folder is open in Oleafly as its own project. Link it as read-only instead."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "This checkpoint history comes from a project in your Oleafly library, so it can't be used with a folder you opened in place.",
+    "folder_history_for_library": "This checkpoint history comes from a folder you opened in place, so it can't be used with a project in your Oleafly library.",
+    "restore_path_blocked": "Oleafly can't restore {{path}} because a link or something else that isn't a file is in the way. Move it and try again."
   }
 }

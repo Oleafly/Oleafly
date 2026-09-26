@@ -421,6 +421,10 @@
       "sourceSize": "ソースの合計サイズ",
       "reclaimable": "解放できる容量"
     },
+    "capture": {
+      "paused": "このフォルダは大きすぎるため、チェックポイントを一時停止しています。1 つのチェックポイントに保存できるのは最大 {{files}} 件のファイルまたは {{size}} です。",
+      "skipped_other": "このフォルダの {{formattedCount}} 件のファイルはチェックポイントに含まれていません。Oleafly はリンク、非常に大きなファイル、クラウドにしかないファイル、一部のシステムで使えない名前のファイルを除外します。"
+    },
     "catalog": {
       "formatVersion": "フォーマットのバージョン",
       "lineage": "系統 ID",
@@ -453,7 +457,8 @@
       "showFor": "{{version}} のファイルを表示",
       "hideFor": "{{version}} のファイルを隠す",
       "show": "ファイルを表示",
-      "hide": "ファイルを隠す"
+      "hide": "ファイルを隠す",
+      "folderSettings": "このフォルダの Oleafly 設定"
     },
     "entry": {
       "labelInput": "チェックポイントのラベル",

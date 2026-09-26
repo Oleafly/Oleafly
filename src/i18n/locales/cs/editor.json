@@ -436,6 +436,13 @@
       "sourceSize": "Velikost zdroje",
       "reclaimable": "Uvolnitelné"
     },
+    "capture": {
+      "paused": "Záchytné body jsou pozastavené, protože tato složka je příliš velká. Záchytný bod pojme nejvýše {{files}} souborů nebo {{size}}.",
+      "skipped_one": "{{formattedCount}} soubor v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_few": "{{formattedCount}} soubory v této složce nejsou v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_many": "{{formattedCount}} souboru v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_other": "{{formattedCount}} souborů v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech."
+    },
     "catalog": {
       "formatVersion": "Verze formátu",
       "lineage": "Původ",
@@ -468,7 +475,8 @@
       "showFor": "Zobrazit soubory pro {{version}}",
       "hideFor": "Skrýt soubory pro {{version}}",
       "show": "Zobrazit soubory",
-      "hide": "Skrýt soubory"
+      "hide": "Skrýt soubory",
+      "folderSettings": "Nastavení Oleafly pro tuto složku"
     },
     "entry": {
       "labelInput": "Popisek záchytného bodu",

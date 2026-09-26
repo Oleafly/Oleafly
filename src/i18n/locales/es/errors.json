@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Esta carpeta está abierta en Oleafly como un proyecto independiente. Enlázala en modo de solo lectura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Este historial de puntos de control viene de un proyecto de tu biblioteca de Oleafly, así que no se puede usar con una carpeta abierta en su ubicación.",
+    "folder_history_for_library": "Este historial de puntos de control viene de una carpeta abierta en su ubicación, así que no se puede usar con un proyecto de tu biblioteca de Oleafly.",
+    "restore_path_blocked": "Oleafly no puede restaurar {{path}} porque hay un enlace u otra cosa que no es un archivo en su lugar. Muévelo e inténtalo de nuevo."
   }
 }

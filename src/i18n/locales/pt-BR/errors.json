@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Esta pasta está aberta no Oleafly como um projeto próprio. Vincule-a como somente leitura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Este histórico de pontos de verificação vem de um projeto da sua biblioteca do Oleafly, então não pode ser usado com uma pasta aberta no próprio local.",
+    "folder_history_for_library": "Este histórico de pontos de verificação vem de uma pasta aberta no próprio local, então não pode ser usado com um projeto da sua biblioteca do Oleafly.",
+    "restore_path_blocked": "O Oleafly não pode restaurar {{path}} porque há um link ou outra coisa que não é um arquivo no lugar. Mova-o e tente novamente."
   }
 }

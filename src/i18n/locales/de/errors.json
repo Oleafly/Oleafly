@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Dieser Ordner ist in Oleafly als eigenes Projekt geöffnet. Verknüpfen Sie ihn stattdessen schreibgeschützt."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Dieser Checkpoint-Verlauf stammt aus einem Projekt in Ihrer Oleafly-Bibliothek und kann daher nicht mit einem direkt an seinem Speicherort geöffneten Ordner verwendet werden.",
+    "folder_history_for_library": "Dieser Checkpoint-Verlauf stammt aus einem direkt an seinem Speicherort geöffneten Ordner und kann daher nicht mit einem Projekt in Ihrer Oleafly-Bibliothek verwendet werden.",
+    "restore_path_blocked": "Oleafly kann {{path}} nicht wiederherstellen, weil dort ein Link oder etwas anderes liegt, das keine Datei ist. Verschieben Sie es und versuchen Sie es erneut."
   }
 }

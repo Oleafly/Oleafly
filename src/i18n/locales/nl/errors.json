@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Deze map is in Oleafly als eigen project geopend. Koppel de map in plaats daarvan als alleen-lezen."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Deze checkpointgeschiedenis komt uit een project in je Oleafly-bibliotheek en kan daarom niet worden gebruikt met een map die op zijn eigen locatie is geopend.",
+    "folder_history_for_library": "Deze checkpointgeschiedenis komt uit een map die op zijn eigen locatie is geopend en kan daarom niet worden gebruikt met een project in je Oleafly-bibliotheek.",
+    "restore_path_blocked": "Oleafly kan {{path}} niet terugzetten, omdat er een link of iets anders dat geen bestand is in de weg staat. Verplaats het en probeer het opnieuw."
   }
 }

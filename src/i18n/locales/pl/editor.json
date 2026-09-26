@@ -436,6 +436,13 @@
       "sourceSize": "Rozmiar źródeł",
       "reclaimable": "Do odzyskania"
     },
+    "capture": {
+      "paused": "Punkty kontrolne są wstrzymane, ponieważ ten folder jest zbyt duży. Punkt kontrolny może zawierać najwyżej {{files}} plików lub {{size}}.",
+      "skipped_one": "{{formattedCount}} plik w tym folderze nie trafił do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_few": "{{formattedCount}} pliki w tym folderze nie trafiły do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_many": "{{formattedCount}} plików w tym folderze nie trafiło do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_other": "{{formattedCount}} pliku w tym folderze nie trafiło do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie."
+    },
     "catalog": {
       "formatVersion": "Wersja formatu",
       "lineage": "Pochodzenie",
@@ -468,7 +475,8 @@
       "showFor": "Pokaż pliki dla {{version}}",
       "hideFor": "Ukryj pliki dla {{version}}",
       "show": "Pokaż pliki",
-      "hide": "Ukryj pliki"
+      "hide": "Ukryj pliki",
+      "folderSettings": "Ustawienia Oleafly dla tego folderu"
     },
     "entry": {
       "labelInput": "Etykieta punktu kontrolnego",

@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Denne mappe er åbnet i Oleafly som et selvstændigt projekt. Tilknyt den i stedet som skrivebeskyttet."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Denne kontrolpunkthistorik stammer fra et projekt i dit Oleafly-bibliotek, så den kan ikke bruges med en mappe, du har åbnet, hvor den ligger.",
+    "folder_history_for_library": "Denne kontrolpunkthistorik stammer fra en mappe, du har åbnet, hvor den ligger, så den kan ikke bruges med et projekt i dit Oleafly-bibliotek.",
+    "restore_path_blocked": "Oleafly kan ikke gendanne {{path}}, fordi et link eller noget andet, der ikke er en fil, er i vejen. Flyt det, og prøv igen."
   }
 }

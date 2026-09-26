@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Ten folder jest otwarty w Oleafly jako osobny projekt. Zamiast tego powiąż go tylko do odczytu."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Ta historia punktów kontrolnych pochodzi z projektu w Twojej bibliotece Oleafly, więc nie można jej użyć z folderem otwartym w jego lokalizacji.",
+    "folder_history_for_library": "Ta historia punktów kontrolnych pochodzi z folderu otwartego w jego lokalizacji, więc nie można jej użyć z projektem w Twojej bibliotece Oleafly.",
+    "restore_path_blocked": "Oleafly nie może przywrócić {{path}}, ponieważ w tym miejscu jest link lub coś innego, co nie jest plikiem. Przenieś to i spróbuj ponownie."
   }
 }

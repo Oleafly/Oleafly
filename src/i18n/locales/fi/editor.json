@@ -426,6 +426,11 @@
       "sourceSize": "Lähdekoodin koko",
       "reclaimable": "Vapautettavissa"
     },
+    "capture": {
+      "paused": "Tarkistuspisteet on keskeytetty, koska tämä kansio on liian suuri. Tarkistuspisteeseen mahtuu enintään {{files}} tiedostoa tai {{size}}.",
+      "skipped_one": "{{formattedCount}} tiedosto tässä kansiossa ei ole tarkistuspisteissä. Oleafly jättää pois linkit, hyvin suuret tiedostot, vain pilvessä olevat tiedostot ja nimet, jotka eivät toimi kaikissa järjestelmissä.",
+      "skipped_other": "{{formattedCount}} tiedostoa tässä kansiossa ei ole tarkistuspisteissä. Oleafly jättää pois linkit, hyvin suuret tiedostot, vain pilvessä olevat tiedostot ja nimet, jotka eivät toimi kaikissa järjestelmissä."
+    },
     "catalog": {
       "formatVersion": "Muodon versio",
       "lineage": "Sukulinja",
@@ -458,7 +463,8 @@
       "showFor": "Näytä version {{version}} tiedostot",
       "hideFor": "Piilota version {{version}} tiedostot",
       "show": "Näytä tiedostot",
-      "hide": "Piilota tiedostot"
+      "hide": "Piilota tiedostot",
+      "folderSettings": "Oleaflyn asetukset tälle kansiolle"
     },
     "entry": {
       "labelInput": "Tarkistuspisteen nimi",

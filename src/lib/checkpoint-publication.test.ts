@@ -126,6 +126,29 @@ describe("checkpoint publication events", () => {
     expect(mocks.getConfig).not.toHaveBeenCalled();
   });
 
+  it("refreshes the panel when a folder's checkpoints pause, without a toast", async () => {
+    applyCheckpointPublicationEvent(started());
+
+    applyCheckpointPublicationEvent(finished({ status: "paused", files: 6200, bytes: 700_000_000 }));
+    await flush();
+
+    const settings = useSettingsStore.getState();
+    expect(settings.checkpointPublishingProjectId).toBeNull();
+    expect(settings.checkpointsRevision).toBe(1);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.getConfig).not.toHaveBeenCalled();
+  });
+
+  it("leaves another project's panel alone when its checkpoints pause", async () => {
+    applyCheckpointPublicationEvent(
+      finished({ status: "paused", files: 6200, bytes: 700_000_000 }, "other-project"),
+    );
+    await flush();
+
+    expect(useSettingsStore.getState().checkpointsRevision).toBe(0);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+
   it("reports full or locked storage as one sticky error for the project in translated copy", async () => {
     applyCheckpointPublicationEvent(failed());
     await flush();

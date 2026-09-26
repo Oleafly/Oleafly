@@ -107,6 +107,7 @@ export type CheckpointPublicationOutcome =
     | { status: "unchanged" }
     | { status: "failed" }
     | { status: "published"; snapshot_root: string; created: boolean }
+    | { status: "paused"; files: number; bytes: number }
 
     | {
         status: "published_durability_uncertain";
@@ -284,11 +285,27 @@ export interface CheckpointSummary {
     logical_bytes: number;
     label: string | null;
 }
+export interface CheckpointCaptureNotice {
+    readonly paused: {
+        files: number;
+        bytes: number;
+        file_limit: number;
+        byte_limit: number;
+    } | null;
+    readonly skipped: {
+        links: number;
+        unsupported_names: number;
+        large: number;
+        cloud: number;
+        other: number;
+    };
+}
 export interface CheckpointStoreStats {
     checkpoint_count: number;
     stored_pack_bytes: number;
     logical_bytes: number;
     reclaimable_bytes: number;
+    capture?: CheckpointCaptureNotice;
 }
 export interface CheckpointIntegrity {
     checked_checkpoints: number;
@@ -301,6 +318,7 @@ export interface CheckpointFileSummary {
     bytes: number;
     content_hash: string;
     stored: boolean;
+    folder_settings?: boolean;
 }
 export interface CheckpointStoreTableCounts {
     checkpoints: number;

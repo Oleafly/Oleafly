@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "このフォルダは Oleafly で独立したプロジェクトとして開かれています。代わりに読み取り専用でリンクしてください。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "このチェックポイント履歴は Oleafly ライブラリ内のプロジェクトのものなので、元の場所で開いたフォルダでは使えません。",
+    "folder_history_for_library": "このチェックポイント履歴は元の場所で開いたフォルダのものなので、Oleafly ライブラリ内のプロジェクトでは使えません。",
+    "restore_path_blocked": "{{path}} の場所にリンクなどファイル以外のものがあるため、Oleafly は復元できません。それを移動してからもう一度お試しください。"
   }
 }

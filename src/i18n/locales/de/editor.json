@@ -426,6 +426,11 @@
       "sourceSize": "Größe der Quelldateien",
       "reclaimable": "Freigebbar"
     },
+    "capture": {
+      "paused": "Checkpoints sind pausiert, weil dieser Ordner zu groß ist. Ein Checkpoint kann höchstens {{files}} Dateien oder {{size}} enthalten.",
+      "skipped_one": "{{formattedCount}} Datei in diesem Ordner ist nicht in den Checkpoints. Oleafly lässt Links, sehr große Dateien, reine Cloud-Dateien und Namen aus, die nicht auf jedem System funktionieren.",
+      "skipped_other": "{{formattedCount}} Dateien in diesem Ordner sind nicht in den Checkpoints. Oleafly lässt Links, sehr große Dateien, reine Cloud-Dateien und Namen aus, die nicht auf jedem System funktionieren."
+    },
     "catalog": {
       "formatVersion": "Formatversion",
       "lineage": "Herkunft",
@@ -458,7 +463,8 @@
       "showFor": "Dateien für {{version}} anzeigen",
       "hideFor": "Dateien für {{version}} ausblenden",
       "show": "Dateien anzeigen",
-      "hide": "Dateien ausblenden"
+      "hide": "Dateien ausblenden",
+      "folderSettings": "Oleafly-Einstellungen für diesen Ordner"
     },
     "entry": {
       "labelInput": "Bezeichnung des Checkpoints",

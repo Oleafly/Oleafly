@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "Tämä kansio on avattu Oleaflyssa omana projektinaan. Linkitä se sen sijaan vain luettavaksi."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Tämä tarkistuspistehistoria on peräisin Oleafly-kirjastosi projektista, joten sitä ei voi käyttää sijainnissaan avatun kansion kanssa.",
+    "folder_history_for_library": "Tämä tarkistuspistehistoria on peräisin sijainnissaan avatusta kansiosta, joten sitä ei voi käyttää Oleafly-kirjastosi projektin kanssa.",
+    "restore_path_blocked": "Oleafly ei voi palauttaa kohdetta {{path}}, koska sen paikalla on linkki tai jokin muu, joka ei ole tiedosto. Siirrä se pois ja yritä uudelleen."
   }
 }

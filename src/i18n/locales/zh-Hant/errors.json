@@ -87,5 +87,10 @@
   },
   "research": {
     "linked_project_folder": "此資料夾已在 Oleafly 中作為獨立專案開啟。請改為以唯讀方式連結。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "此檢查點記錄來自你 Oleafly 專案庫中的專案，因此無法用於在原位置開啟的資料夾。",
+    "folder_history_for_library": "此檢查點記錄來自在原位置開啟的資料夾，因此無法用於你 Oleafly 專案庫中的專案。",
+    "restore_path_blocked": "{{path}} 所在位置有連結或其他非檔案的項目，Oleafly 無法還原。請先移走該項目再重試。"
   }
 }

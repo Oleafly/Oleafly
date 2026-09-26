@@ -426,6 +426,11 @@
       "sourceSize": "Source size",
       "reclaimable": "Reclaimable"
     },
+    "capture": {
+      "paused": "Checkpoints are paused because this folder is too big. A checkpoint can hold at most {{files}} files or {{size}}.",
+      "skipped_one": "{{formattedCount}} file in this folder isn't in checkpoints. Oleafly leaves out links, very large files, cloud-only files and names that don't work on every system.",
+      "skipped_other": "{{formattedCount}} files in this folder aren't in checkpoints. Oleafly leaves out links, very large files, cloud-only files and names that don't work on every system."
+    },
     "catalog": {
       "formatVersion": "Format version",
       "lineage": "Lineage",
@@ -458,7 +463,8 @@
       "showFor": "Show files for {{version}}",
       "hideFor": "Hide files for {{version}}",
       "show": "Show files",
-      "hide": "Hide files"
+      "hide": "Hide files",
+      "folderSettings": "Oleafly settings for this folder"
     },
     "entry": {
       "labelInput": "Checkpoint label",

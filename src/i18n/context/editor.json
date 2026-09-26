@@ -76,6 +76,14 @@
     "maintenance": {
       "reset": "Deletes every checkpoint for the project",
       "keepLatest": "Deletes every checkpoint except the newest one"
+    },
+    "capture": {
+      "paused": "Checkpoints panel line for a folder opened in place whose files exceed the checkpoint budget; files is a formatted file count and size a formatted byte size",
+      "skipped_one": "Checkpoints panel line counting files a folder checkpoint left out (links, files over 25 MB, cloud placeholders, names that are not portable)",
+      "skipped_other": "Checkpoints panel line counting files a folder checkpoint left out (links, files over 25 MB, cloud placeholders, names that are not portable)"
+    },
+    "files": {
+      "folderSettings": "Shown in a checkpoint's file list instead of the internal path that stores this device's settings for a folder opened in place"
     }
   },
   "table": {
