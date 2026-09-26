@@ -897,8 +897,21 @@ function misspelledRange(
   return !sessionSpelledCorrectly(session, range.word);
 }
 
-function throwIfSuperseded(request: ProofreadingRequest): void {
-  if (!identityIsLatest(request.identity)) {
+function supersededByDifferentAnalysis(
+  request: ProofreadingRequest,
+  key: string,
+): boolean {
+  if (identityIsLatest(request.identity)) return false;
+  const newest = queuedRequests.get(lane(request.identity));
+  return (
+    !newest ||
+    validateRequest(newest) !== null ||
+    analysisKeys(newest).key !== key
+  );
+}
+
+function throwIfSuperseded(request: ProofreadingRequest, key: string): void {
+  if (supersededByDifferentAnalysis(request, key)) {
     throw new ProofreadingCancelledError();
   }
 }
@@ -935,8 +948,9 @@ function spellingDiagnostic(
 
 async function spellingDiagnostics(
   request: ProofreadingRequest,
-  ignored: ReadonlySet<string>,
+  keys: AnalyzeKeys,
 ): Promise<ProofreadingDiagnostic[]> {
+  const { ignored } = keys;
   const locale = activeDictionaryLocaleFor(request);
   const safeLocale = normalizeDictionaryLocaleId(locale);
   const loaded = spellcheckerFor(safeLocale);
@@ -951,7 +965,7 @@ async function spellingDiagnostics(
   for (const range of spellingRanges(request)) {
     if (performance.now() >= nextCancellationCheck) {
       await yieldToMessages();
-      throwIfSuperseded(request);
+      throwIfSuperseded(request, keys.key);
       if (spellcheckers.get(safeLocale) !== session.loaded) {
         session.loaded = spellcheckerFor(safeLocale);
         session.spellchecker = await session.loaded;
@@ -1088,6 +1102,29 @@ type AnalyzeKeys = {
   readonly suppressed: ReadonlySet<string>;
 };
 
+const analysisKeysByRequest = new WeakMap<ProofreadingRequest, AnalyzeKeys>();
+
+function analysisKeys(request: ProofreadingRequest): AnalyzeKeys {
+  const known = analysisKeysByRequest.get(request);
+  if (known) return known;
+  const normalizedIgnored = [
+    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
+  ].sort((a, b) => Number(a > b) - Number(a < b));
+  const ignoredKey = normalizedIgnored.join("\0");
+  const suppressed = new Set(request.suppressions ?? []);
+  const suppressedKey = [...suppressed]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join("\0");
+  const keys: AnalyzeKeys = {
+    key: cacheKey(request, ignoredKey, suppressedKey),
+    ignoredKey,
+    ignored: new Set(normalizedIgnored),
+    suppressed,
+  };
+  analysisKeysByRequest.set(request, keys);
+  return keys;
+}
+
 function activeDictionaryLocaleFor(request: ProofreadingRequest): string {
   return request.preferences.dictionaryLocale?.replace("-", "_") ?? "en_US";
 }
@@ -1135,7 +1172,7 @@ async function analyzeSpellingMode(
 ): Promise<ProofreadingResult | ProofreadingError> {
   try {
     const diagnostics = guardProofreadingDiagnostics(
-      await spellingDiagnostics(request, keys.ignored),
+      await spellingDiagnostics(request, keys),
       request.text,
     );
     writeCache(keys.key, request.text, keys.ignoredKey, diagnostics);
@@ -1186,7 +1223,7 @@ async function analyzeCombinedMode(
 ): Promise<ProofreadingResult | ProofreadingError> {
   const [grammarResult, spellingResult] = await Promise.allSettled([
     grammarDiagnostics(request, keys.ignored, keys.suppressed),
-    spellingDiagnostics(request, keys.ignored),
+    spellingDiagnostics(request, keys),
   ]);
   if (
     grammarResult.status === "rejected" &&
@@ -1258,16 +1295,8 @@ async function analyze(
     });
   }
 
-  const normalizedIgnored = [
-    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
-  ].sort((a, b) => Number(a > b) - Number(a < b));
-  const ignoredKey = normalizedIgnored.join("\0");
-  const suppressed = new Set(request.suppressions ?? []);
-  const suppressedKey = [...suppressed]
-    .sort((a, b) => Number(a > b) - Number(a < b))
-    .join("\0");
-  const key = cacheKey(request, ignoredKey, suppressedKey);
-  const cached = readCache(key, request.text, ignoredKey);
+  const keys = analysisKeys(request);
+  const cached = readCache(keys.key, request.text, keys.ignoredKey);
   if (cached) {
     return resultResponse(request, "ready", cached, {
       ...(request.mode !== "grammar"
@@ -1276,12 +1305,6 @@ async function analyze(
     });
   }
 
-  const keys: AnalyzeKeys = {
-    key,
-    ignoredKey,
-    ignored: new Set(normalizedIgnored),
-    suppressed,
-  };
   if (!grammarSupported(request)) {
     if (request.mode === "grammar") {
       return resultResponse(request, "unsupported", [], {

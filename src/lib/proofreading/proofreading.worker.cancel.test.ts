@@ -8,13 +8,17 @@ import {
 const mocks = vi.hoisted(() => ({
   postMessage: vi.fn(),
   suggested: [] as string[],
+  spelled: [] as string[],
 }));
 
 vi.mock("hunspell-asm", () => ({
   loadModule: async () => ({
     mountBuffer: (_bytes: Uint8Array, name?: string) => `/${name}`,
     create: () => ({
-      spell: (word: string) => word === "ok",
+      spell: (word: string) => {
+        mocks.spelled.push(word);
+        return word === "ok";
+      },
       suggest: (word: string) => {
         mocks.suggested.push(word);
         const started = Date.now();
@@ -59,6 +63,13 @@ function request(
       dictionaryLocale: "cs_CZ",
     },
   };
+}
+
+function letters(index: number): string {
+  return (
+    String.fromCharCode(97 + (index % 26)) +
+    String.fromCharCode(97 + Math.floor(index / 26))
+  );
 }
 
 function postedIds(): number[] {
@@ -114,5 +125,41 @@ describe("cancelling abandoned proofreading", () => {
     await vi.waitFor(() => expect(postedIds()).toContain(3));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(postedIds()).not.toContain(4);
+  });
+
+  it("finishes a running analysis when the newer request has the same text", async () => {
+    mocks.postMessage.mockClear();
+    mocks.spelled.length = 0;
+    const words = Array.from(
+      { length: 60 },
+      (_, index) => `znovu${letters(index)}`,
+    ).join(" ");
+    send(request(5, "e.tex", words));
+    send(request(6, "e.tex", words));
+
+    await vi.waitFor(() => expect(postedIds()).toContain(6), {
+      timeout: 5_000,
+    });
+    expect(postedIds()).not.toContain(5);
+    expect(mocks.spelled.filter((word) => word === "znovuaa")).toHaveLength(1);
+  });
+
+  it("still abandons a running analysis once the text changes", async () => {
+    mocks.postMessage.mockClear();
+    mocks.spelled.length = 0;
+    const words = Array.from(
+      { length: 60 },
+      (_, index) => `zmena${letters(index)}`,
+    ).join(" ");
+    send(request(7, "f.tex", words));
+    send(request(8, "f.tex", `${words} ok`));
+
+    await vi.waitFor(() => expect(postedIds()).toContain(8), {
+      timeout: 5_000,
+    });
+    expect(postedIds()).not.toContain(7);
+    expect(
+      mocks.spelled.filter((word) => word.startsWith("zmena")).length,
+    ).toBeLessThan(120);
   });
 });
