@@ -36,16 +36,16 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.1"
 unicode-normalization = "0.1"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 portable-pty = "0.9"
 base64 = "0.23"
 window-vibrancy = "0.8"
 cap-fs-ext = "=4.0.3"
 cap-std = "=4.0.3"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "7", default-features = false, features = ["deflate"] }
 # Extracting the Linux pandoc tarball on-demand (macOS/Windows ship a zip).
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
@@ -59,7 +59,7 @@ sha2 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"
-argon2 = "0.5"
+argon2 = "0.6"
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
 zeroize = "=1.9.0"
@@ -69,14 +69,14 @@ same-file = "1"
 tempfile = { workspace = true }
 biblatex = "0.12.0"
 icu_properties = "2.2"
-statrs = "0.18.0"
+statrs = "0.19.1"
 rapidfuzz = "0.5.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "=2.11.1"
+security-framework = "=3.7.0"
 
 [target.'cfg(windows)'.dependencies]
-webview2-com = "0.38"
+webview2-com = "0.39"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
