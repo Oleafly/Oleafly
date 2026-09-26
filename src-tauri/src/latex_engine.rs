@@ -1877,6 +1877,7 @@ async fn prepare_tagged_compile(
     project_id: String,
     main_doc: String,
 ) -> Result<TaggedCompilePlan, String> {
+    crate::trust::require_trusted(&project_id, crate::trust::Capability::SystemTex)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let lualatex = find_engine()
         .await
@@ -2016,6 +2017,18 @@ mod release_archive_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tagged_pdf_builds_need_a_trusted_folder() {
+        let _restricted = crate::trust::testing::restrict("restricted-tagged");
+        let error = tauri::async_runtime::block_on(prepare_tagged_compile(
+            "restricted-tagged".into(),
+            "main.tex".into(),
+        ))
+        .err()
+        .unwrap();
+        assert!(error.contains("\"code\":\"trust.system_tex\""), "{error}");
+    }
 
     fn test_manifest_digest(entries: &[(&str, &str, u64, Option<&str>)]) -> &'static str {
         use sha2::Digest as _;

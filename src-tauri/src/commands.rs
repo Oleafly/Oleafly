@@ -102,7 +102,8 @@ fn project_engine_sync(
     project_id: String,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let meta = crate::project::read_meta(&project_id)?;
+    let meta =
+        crate::trust::restrict_compile_meta(&project_id, crate::project::read_meta(&project_id)?)?;
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     descriptor.tex_flavor = meta.tex_flavor;
     descriptor.allow_shell_escape = meta.allow_shell_escape;
@@ -646,6 +647,29 @@ fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("invalid base64: {e}"))
 }
 
+fn isolated_compile_setup(
+    project_id: &str,
+) -> Result<
+    (
+        std::path::PathBuf,
+        crate::project::ProjectMeta,
+        &'static dyn crate::document_engine::DocumentEngine,
+    ),
+    String,
+> {
+    let project_dir = paths::project_dir(project_id)?;
+    let meta =
+        crate::trust::restrict_compile_meta(project_id, crate::project::read_meta(project_id)?)?;
+    let engine = crate::document_engine::engine_for(&meta.engine, &meta.main_doc)?;
+    if !engine.capabilities().supports_isolated_compile {
+        return Err(format!(
+            "engine `{}` does not support isolated compilation",
+            engine.id().as_str()
+        ));
+    }
+    Ok((project_dir, meta, engine))
+}
+
 /// Compile a standalone figure document in isolation, so figure iteration is
 /// fast and never touches the main preview PDF. The `source` is a full
 /// `\documentclass{standalone}` document; it is written to
@@ -672,15 +696,7 @@ pub async fn compile_isolated(
         "figure: {project_id} lock after {}ms",
         req_at.elapsed().as_millis()
     );
-    let project_dir = paths::project_dir(&project_id)?;
-    let meta = crate::project::read_meta(&project_id)?;
-    let engine = crate::document_engine::engine_for(&meta.engine, &meta.main_doc)?;
-    if !engine.capabilities().supports_isolated_compile {
-        return Err(format!(
-            "engine `{}` does not support isolated compilation",
-            engine.id().as_str()
-        ));
-    }
+    let (project_dir, meta, engine) = isolated_compile_setup(&project_id)?;
     let fig_dir = paths::figure_build_dir(&project_id)?;
     let entry_path = fig_dir.join("_figure.tex");
     tokio::fs::write(&entry_path, source)
@@ -864,6 +880,57 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restricted_projects_report_the_bundled_engine() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("restricted-engine").unwrap();
+        std::fs::write(project.join("main.tex"), "\\documentclass{article}\n").unwrap();
+        crate::project::write_meta(
+            "restricted-engine",
+            &crate::project::ProjectMeta {
+                name: "Restricted".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex_flavor: Some("lualatex".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            super::project_engine_sync("restricted-engine".into())
+                .unwrap()
+                .id,
+            "latexmk"
+        );
+        let (_, meta, engine) = super::isolated_compile_setup("restricted-engine").unwrap();
+        assert_eq!(
+            (engine.id().as_str(), meta.tex_flavor.as_deref()),
+            ("latexmk", Some("lualatex"))
+        );
+        let _restricted = crate::trust::testing::restrict("restricted-engine");
+        let (_, meta, engine) = super::isolated_compile_setup("restricted-engine").unwrap();
+        assert_eq!(
+            (
+                engine.id().as_str(),
+                meta.tex_flavor.as_deref(),
+                meta.allow_shell_escape
+            ),
+            ("latex", None, false)
+        );
+        let descriptor = super::project_engine_sync("restricted-engine".into()).unwrap();
+        assert_eq!(
+            (
+                descriptor.id.as_str(),
+                descriptor.tex_flavor,
+                descriptor.allow_shell_escape
+            ),
+            ("latex", None, false)
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     #[test]
     fn clearing_a_linked_build_empties_only_central_state() {

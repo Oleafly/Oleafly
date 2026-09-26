@@ -34,6 +34,37 @@ describe("app errors", () => {
     expect(decodeAppError(`${APP_ERROR_PREFIX}not json`)).toBeNull();
   });
 
+  it("names the capability a restricted folder is missing, in every locale", async () => {
+    const codes = [
+      "trust.git",
+      "trust.repository",
+      "trust.terminal",
+      "trust.agents",
+      "trust.mcp",
+      "trust.research_tasks",
+      "trust.run_command",
+      "trust.full_access",
+      "trust.system_tex",
+      "trust.shell_escape",
+      "trust.broad_folder",
+      "trust.declined",
+      "trust.unavailable",
+    ];
+    const fallback = describeError(encoded({ code: "trust.nope", params: {}, detail: null }));
+    for (const locale of ["en", "zh-Hans", "de", "ja"] as const) {
+      await applyLocale(locale);
+      for (const code of codes) {
+        const message = describeError(encoded({ code, params: { name: "thesis" }, detail: null }));
+        expect(message, `${locale} ${code}`).not.toBe(fallback);
+        expect(message, `${locale} ${code}`).not.toMatch(/errors:|\{\{/);
+      }
+    }
+    await applyLocale("en");
+    expect(
+      describeError(encoded({ code: "trust.repository", params: { name: "papers" }, detail: null })),
+    ).toBe("Trust the papers repository to use Source Control here.");
+  });
+
   it("follows the active locale", async () => {
     await applyLocale("zh-Hans");
     const message = describeError(encoded({ code: "project.name_empty", params: {}, detail: null }));

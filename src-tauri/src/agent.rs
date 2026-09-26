@@ -706,12 +706,16 @@ pub async fn agent_run(
         let allowed_tools: std::collections::HashSet<_> =
             request.tools.iter().map(|tool| tool.name.clone()).collect();
         let app_for_exec_cancel = app.clone();
-        let base_tool = composite_tool_runner(
-            app.clone(),
-            run_id,
-            generation,
-            on_event.clone(),
+        let base_tool = restricted_tool_runner(
             pinned_project.clone(),
+            native_restricted_confirm(app.clone()),
+            composite_tool_runner(
+                app.clone(),
+                run_id,
+                generation,
+                on_event.clone(),
+                pinned_project.clone(),
+            ),
         );
         // Pre-classify every call: project denials short-circuit before any
         // webview round trip; read-class tools may run concurrently under the
@@ -1146,6 +1150,60 @@ async fn await_tool_result(
 
 fn tool_error(message: &str) -> ToolOutput {
     ToolOutput::text(serde_json::json!({ "error": message }).to_string())
+}
+
+type RestrictedConfirm = std::sync::Arc<
+    dyn Fn(
+            crate::trust::AiConfirm,
+        )
+            -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send>>
+        + Send
+        + Sync,
+>;
+
+const RESTRICTED_DECLINED: &str =
+    "The user declined this step. Oleafly limits this folder until the user trusts it.";
+
+fn native_restricted_confirm(app: tauri::AppHandle) -> RestrictedConfirm {
+    std::sync::Arc::new(move |request| {
+        let app = app.clone();
+        Box::pin(async move { crate::trust::confirm_ai_tool(app, request).await })
+    })
+}
+
+fn restricted_tool_runner(
+    project_id: Option<String>,
+    confirm: RestrictedConfirm,
+    inner: oleafly_agent::ToolRunner,
+) -> oleafly_agent::ToolRunner {
+    std::sync::Arc::new(move |call| {
+        let inner = inner.clone();
+        let confirm = confirm.clone();
+        let project_id = project_id.clone();
+        Box::pin(async move {
+            let Some(project_id) = project_id else {
+                return inner(call).await;
+            };
+            let trusted =
+                tokio::task::spawn_blocking(move || crate::trust::is_trusted(&project_id))
+                    .await
+                    .unwrap_or(false);
+            if trusted {
+                return inner(call).await;
+            }
+            let arguments =
+                serde_json::from_str(&call.arguments).unwrap_or(serde_json::Value::Null);
+            match crate::trust::ai_tool_gate(&call.name, &arguments) {
+                crate::trust::AiToolGate::Allow => inner(call).await,
+                crate::trust::AiToolGate::Forbid(message) => tool_error(message),
+                crate::trust::AiToolGate::Confirm(request) => match confirm(request).await {
+                    Ok(true) => inner(call).await,
+                    Ok(false) => tool_error(RESTRICTED_DECLINED),
+                    Err(error) => tool_error(&error),
+                },
+            }
+        })
+    })
 }
 
 fn allowlisted_tool_runner(

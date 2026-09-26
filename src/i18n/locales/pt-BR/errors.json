@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "O acesso total não foi ativado."
+  },
+  "trust": {
+    "git": "Confie nesta pasta para usar o controle de versão.",
+    "repository": "Confie no repositório {{name}} para usar o controle de versão aqui.",
+    "terminal": "Abra o terminal você mesmo para usá-lo nesta pasta.",
+    "agents": "Confie nesta pasta para usar agentes externos.",
+    "mcp": "Confie nesta pasta antes que clientes MCP possam usá-la.",
+    "research_tasks": "Confie nesta pasta para executar tarefas de pesquisa.",
+    "run_command": "Confie nesta pasta para permitir que o assistente execute comandos.",
+    "full_access": "Confie nesta pasta antes de ativar o acesso total.",
+    "system_tex": "Confie nesta pasta para compilar com latexmk.",
+    "shell_escape": "Confie nesta pasta antes de permitir shell escape.",
+    "broad_folder": "O Oleafly não pode confiar em toda a pasta {{name}}. Escolha uma pasta menor.",
+    "declined": "A pasta não foi marcada como confiável.",
+    "unavailable": "O Oleafly não conseguiu verificar se esta pasta é confiável."
   }
 }

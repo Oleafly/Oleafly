@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
+  },
+  "trust": {
+    "git": "Luota tähän kansioon, jotta voit käyttää versionhallintaa.",
+    "repository": "Luota repositorioon {{name}}, jotta voit käyttää versionhallintaa täällä.",
+    "terminal": "Avaa pääte itse, jotta voit käyttää sitä tässä kansiossa.",
+    "agents": "Luota tähän kansioon, jotta voit käyttää ulkoisia agentteja.",
+    "mcp": "Luota tähän kansioon, ennen kuin MCP-asiakkaat voivat käyttää sitä.",
+    "research_tasks": "Luota tähän kansioon, jotta voit suorittaa tutkimustehtäviä.",
+    "run_command": "Luota tähän kansioon, jotta avustaja voi suorittaa komentoja.",
+    "full_access": "Luota tähän kansioon, ennen kuin otat täyden käyttöoikeuden käyttöön.",
+    "system_tex": "Luota tähän kansioon, jotta voit kääntää latexmk:lla.",
+    "shell_escape": "Luota tähän kansioon, ennen kuin sallit shell escape -toiminnon.",
+    "broad_folder": "Oleafly ei voi luottaa koko kansioon {{name}}. Valitse pienempi kansio.",
+    "declined": "Kansioon ei luotettu.",
+    "unavailable": "Oleafly ei voinut tarkistaa, onko tähän kansioon luotettu."
   }
 }

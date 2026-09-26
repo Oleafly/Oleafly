@@ -681,6 +681,17 @@ describe("SourceControl", () => {
     expect(await screen.findByText("main.tex")).toBeInTheDocument();
   });
 
+  it("explains a refused snapshot instead of printing the error envelope", async () => {
+    mocks.gitWorkspaceSnapshot.mockRejectedValue(
+      '@oleafly/error:{"code":"trust.git","params":{},"detail":null}',
+    );
+    render(<SourceControl />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Trust this folder to use Source Control.");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+  });
+
   it("opens and unstages all staged paths", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);

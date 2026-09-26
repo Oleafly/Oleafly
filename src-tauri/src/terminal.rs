@@ -434,19 +434,38 @@ fn default_shell() -> CommandBuilder {
     }
 }
 
+fn project_shell(project_id: &str, root: &Path, autostart: bool) -> Result<CommandBuilder, String> {
+    let mut shell = default_shell();
+    let Some(hardening) = crate::trust::git_restriction(project_id, root)? else {
+        return Ok(shell);
+    };
+    if autostart {
+        return Err(crate::app_error::AppError::new(
+            crate::trust::Capability::TerminalAutostart.error_code(),
+        )
+        .into());
+    }
+    for (key, value) in hardening {
+        shell.env(key, value);
+    }
+    Ok(shell)
+}
+
 #[tauri::command]
 pub async fn term_open<R: Runtime>(
     webview: Webview<R>,
     project_id: String,
     cols: u16,
     rows: u16,
+    autostart: Option<bool>,
     channel: Channel<TerminalEvent>,
 ) -> Result<String, String> {
     let owner = webview_command_owner(&webview, &project_id)?;
     let cwd = crate::paths::project_dir(&project_id)?;
     let ticket = terminal_open_ticket(owner);
     tauri::async_runtime::spawn_blocking(move || {
-        open_terminal_with_ticket(&cwd, ticket, cols, rows, channel, default_shell())
+        let shell = project_shell(&project_id, &cwd, autostart.unwrap_or(false))?;
+        open_terminal_with_ticket(&cwd, ticket, cols, rows, channel, shell)
     })
     .await
     .map_err(|e| format!("failed to start shell: {e}"))?
@@ -1629,5 +1648,90 @@ mod tests {
 
         let plugin = lifecycle_plugin::<tauri::test::MockRuntime>();
         assert_eq!(plugin.name(), "terminal-lifecycle");
+    }
+
+    #[test]
+    fn restricted_projects_refuse_background_shells_and_harden_user_shells() {
+        let temp = tempfile::tempdir().unwrap();
+        let _restricted = crate::trust::testing::restrict("restricted-terminal-project");
+        let refused = super::project_shell("restricted-terminal-project", temp.path(), true)
+            .err()
+            .unwrap();
+        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
+        let shell =
+            super::project_shell("restricted-terminal-project", temp.path(), false).unwrap();
+        let start = std::env::var("GIT_CONFIG_COUNT")
+            .ok()
+            .and_then(|count| count.parse::<usize>().ok())
+            .unwrap_or(0);
+        assert_eq!(
+            shell
+                .get_env(format!("GIT_CONFIG_KEY_{start}"))
+                .and_then(|value| value.to_str()),
+            Some("core.fsmonitor")
+        );
+    }
+
+    #[test]
+    fn a_trusted_folder_in_an_untrusted_repository_gets_the_restricted_shell() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let repo = fixture.folders.path().join("repo");
+        std::fs::create_dir_all(repo.join(".git")).unwrap();
+        std::fs::write(repo.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
+        let (id, paper) = fixture.link("repo/paper");
+        fixture.trust(&id, crate::trust::TrustScope::Folder);
+        let refused = super::project_shell(&id, &paper, true).err().unwrap();
+        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
+        let start = std::env::var("GIT_CONFIG_COUNT")
+            .ok()
+            .and_then(|count| count.parse::<usize>().ok())
+            .unwrap_or(0);
+        let hardened = super::project_shell(&id, &paper, false).unwrap();
+        assert_eq!(
+            hardened
+                .get_env(format!("GIT_CONFIG_KEY_{start}"))
+                .and_then(|value| value.to_str()),
+            Some("core.fsmonitor")
+        );
+        fixture.trust(&id, crate::trust::TrustScope::Repository);
+        let plain = super::project_shell(&id, &paper, true).unwrap();
+        assert!(plain.get_env(format!("GIT_CONFIG_KEY_{start}")).is_none());
+    }
+
+    #[test]
+    fn term_open_refuses_a_background_shell_for_a_restricted_project() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        crate::paths::create_project_dir("restricted-term-open").unwrap();
+        let _restricted = crate::trust::testing::restrict("restricted-term-open");
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let refused = tauri::async_runtime::block_on(term_open(
+            main.as_ref().clone(),
+            "restricted-term-open".into(),
+            80,
+            24,
+            Some(true),
+            Channel::new(|_| Ok(())),
+        ))
+        .unwrap_err();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
+    }
+
+    #[test]
+    fn trusted_projects_keep_the_plain_shell() {
+        let temp = tempfile::tempdir().unwrap();
+        let shell = super::project_shell("trusted-terminal-project", temp.path(), true).unwrap();
+        let start = std::env::var("GIT_CONFIG_COUNT")
+            .ok()
+            .and_then(|count| count.parse::<usize>().ok())
+            .unwrap_or(0);
+        assert!(shell.get_env(format!("GIT_CONFIG_KEY_{start}")).is_none());
     }
 }

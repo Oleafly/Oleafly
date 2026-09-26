@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Úplný přístup nebyl povolen."
+  },
+  "trust": {
+    "git": "Chcete-li používat správu verzí, této složce důvěřujte.",
+    "repository": "Chcete-li zde používat správu verzí, důvěřujte repozitáři {{name}}.",
+    "terminal": "Chcete-li terminál v této složce používat, otevřete ho sami.",
+    "agents": "Chcete-li používat externí agenty, této složce důvěřujte.",
+    "mcp": "Než ji budou moci používat klienti MCP, této složce důvěřujte.",
+    "research_tasks": "Chcete-li spouštět výzkumné úlohy, této složce důvěřujte.",
+    "run_command": "Aby asistent mohl spouštět příkazy, této složce důvěřujte.",
+    "full_access": "Než zapnete úplný přístup, této složce důvěřujte.",
+    "system_tex": "Chcete-li kompilovat pomocí latexmk, této složce důvěřujte.",
+    "shell_escape": "Než povolíte shell escape, této složce důvěřujte.",
+    "broad_folder": "Oleafly nemůže důvěřovat celé složce {{name}}. Vyberte menší složku.",
+    "declined": "Složce nebyla udělena důvěra.",
+    "unavailable": "Oleafly nemohl ověřit, zda je tato složka důvěryhodná."
   }
 }

@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Accesul complet nu a fost activat."
+  },
+  "trust": {
+    "git": "Ai încredere în acest folder pentru a folosi controlul versiunilor.",
+    "repository": "Ai încredere în depozitul {{name}} pentru a folosi aici controlul versiunilor.",
+    "terminal": "Deschide tu terminalul pentru a-l folosi în acest folder.",
+    "agents": "Ai încredere în acest folder pentru a folosi agenți externi.",
+    "mcp": "Ai încredere în acest folder înainte ca clienții MCP să-l poată folosi.",
+    "research_tasks": "Ai încredere în acest folder pentru a rula sarcini de cercetare.",
+    "run_command": "Ai încredere în acest folder pentru a-i permite asistentului să ruleze comenzi.",
+    "full_access": "Ai încredere în acest folder înainte de a activa accesul complet.",
+    "system_tex": "Ai încredere în acest folder pentru a compila cu latexmk.",
+    "shell_escape": "Ai încredere în acest folder înainte de a permite shell escape.",
+    "broad_folder": "Oleafly nu poate avea încredere în tot folderul {{name}}. Alege un folder mai mic.",
+    "declined": "Folderul nu a fost marcat ca de încredere.",
+    "unavailable": "Oleafly nu a putut verifica dacă acest folder este de încredere."
   }
 }

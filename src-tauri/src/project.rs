@@ -594,7 +594,7 @@ const MAIN_DOCUMENT_CHANGED: &str =
     "The main document changed. Refresh the project and compile again.";
 
 pub(crate) fn read_compile_meta(project_id: &str, main_doc: &str) -> Result<ProjectMeta, String> {
-    let meta = read_meta(project_id)?;
+    let meta = crate::trust::restrict_compile_meta(project_id, read_meta(project_id)?)?;
     if meta.main_doc != main_doc && !is_tex_root_override(project_id, &meta, main_doc) {
         return Err(MAIN_DOCUMENT_CHANGED.into());
     }
@@ -2825,6 +2825,9 @@ fn set_project_engine_unlocked(
     if engine.is_empty() {
         return Err("engine name cannot be empty".into());
     }
+    if engine.eq_ignore_ascii_case("latexmk") {
+        crate::trust::require_trusted(project_id, crate::trust::Capability::SystemTex)?;
+    }
     let flavor = validate_tex_flavor(&engine, flavor)?;
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
@@ -2912,6 +2915,9 @@ fn set_project_shell_escape_unlocked(
     project_id: &str,
     allow_shell_escape: bool,
 ) -> Result<ProjectMeta, String> {
+    if allow_shell_escape {
+        crate::trust::require_trusted(project_id, crate::trust::Capability::ShellEscape)?;
+    }
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
         if allow_shell_escape && meta.engine != "latexmk" {
@@ -3135,7 +3141,7 @@ fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<Stri
     Ok(selected)
 }
 
-fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
+pub(crate) fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
     engine_for_main_document(&default_engine(), main_doc)
 }
 
@@ -4522,7 +4528,13 @@ fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
     if !git_auto_init_enabled() {
         return Ok(false);
     }
-    let dir = paths::project_dir(project_id)?;
+    let location = crate::project_location::locate(project_id)?;
+    if location.kind == crate::project_location::ProjectKind::Linked
+        || !crate::trust::is_trusted(project_id)
+    {
+        return Ok(false);
+    }
+    let dir = location.root;
     if dir.join(".git").exists() {
         return Ok(false);
     }
@@ -7347,6 +7359,78 @@ mod tests {
             );
         }
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn restricted_projects_compile_only_with_the_bundled_toolchain() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("restricted-compile");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "restricted-compile";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        std::fs::write(
+            project_dir.join("main.tex"),
+            "% !TeX program = lualatex\n\\documentclass{article}\n",
+        )
+        .unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Restricted".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex_flavor: Some("lualatex".into()),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        super::set_project_shell_escape_unlocked(project_id, true).unwrap();
+        let trusted = super::read_compile_meta(project_id, "main.tex").unwrap();
+        assert_eq!(trusted.engine, "latexmk");
+        assert!(trusted.allow_shell_escape);
+        let restricted = crate::trust::testing::restrict(project_id);
+        let meta = super::read_compile_meta(project_id, "main.tex").unwrap();
+        assert_eq!(meta.engine, "xetex");
+        assert_eq!(meta.tex_flavor, None);
+        assert!(!meta.allow_shell_escape);
+        super::ensure_compile_meta_unchanged(project_id, "main.tex", &meta).unwrap();
+        let engine = super::set_project_engine_unlocked(project_id, "latexmk", Some("lualatex"))
+            .err()
+            .unwrap();
+        assert!(engine.contains("\"code\":\"trust.system_tex\""), "{engine}");
+        let shell = super::set_project_shell_escape_unlocked(project_id, true)
+            .err()
+            .unwrap();
+        assert!(shell.contains("\"code\":\"trust.shell_escape\""), "{shell}");
+        assert!(super::set_project_shell_escape_unlocked(project_id, false).is_ok());
+        drop(restricted);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn linked_and_restricted_projects_are_never_given_a_repository() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("git-auto-init-linked");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        write_git_auto_init(true);
+        let folders = tempfile::tempdir().unwrap();
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        assert!(!super::initialize_git_for_project(&linked.id).unwrap());
+        assert!(!folder.join(".git").exists());
+        let library = super::create_project("Restricted copy".into()).unwrap();
+        std::fs::remove_dir_all(git_dir_of(&library)).unwrap();
+        let restricted = crate::trust::testing::restrict(&library);
+        assert!(!super::initialize_git_for_project(&library).unwrap());
+        assert!(!git_dir_of(&library).exists());
+        drop(restricted);
+        assert!(super::initialize_git_for_project(&library).unwrap());
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
     }

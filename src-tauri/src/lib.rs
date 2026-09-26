@@ -90,6 +90,7 @@ mod templates;
 mod terminal;
 mod tex_distro;
 mod tinytex_archive;
+mod trust;
 mod worktree_lock;
 
 use state::AppState;
@@ -424,6 +425,9 @@ pub fn run() {
             approvals::approvals_write_raw,
             approvals::approvals_mode_get,
             approvals::approvals_mode_set,
+            trust::project_trust_state,
+            trust::trust_folder,
+            trust::revoke_folder_trust,
             skills::skills_list,
             skills::skills_add,
             skills::skills_create,

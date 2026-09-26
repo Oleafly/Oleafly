@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Kies een spreadsheet om te importeren",
       "filter": "Spreadsheets"
+    },
+    "trustFolder": {
+      "title": "Deze map vertrouwen?",
+      "message": "Oleafly schakelt Git, de terminal, agents en LaTeX-tools in voor {{name}}. Vertrouw alleen mappen waarvan je de inhoud kent.",
+      "messageParent": "Oleafly vertrouwt {{name}} en elke map daarin, ook mappen die je later opent.",
+      "messageRepository": "Oleafly voert Git uit in {{name}} met de eigen instellingen en hooks van de repository.",
+      "confirm": "Vertrouwen"
+    },
+    "restrictedWrite": {
+      "title": "Deze wijziging toestaan?",
+      "message": "De assistent wil {{path}} wijzigen. Zulke bestanden kunnen programma's uitvoeren, en deze map wordt nog niet vertrouwd.",
+      "confirm": "Toestaan"
+    },
+    "restrictedNetwork": {
+      "title": "Dit verzoek toestaan?",
+      "message": "De assistent wil {{tool}} gebruiken, dat tekst naar een onlinedienst stuurt. Deze map wordt nog niet vertrouwd.",
+      "confirm": "Toestaan"
     }
   },
   "errors": {

@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "L'accesso completo non è stato abilitato."
+  },
+  "trust": {
+    "git": "Considera affidabile questa cartella per usare il controllo del codice.",
+    "repository": "Considera affidabile il repository {{name}} per usare qui il controllo del codice.",
+    "terminal": "Apri tu il terminale per usarlo in questa cartella.",
+    "agents": "Considera affidabile questa cartella per usare agenti esterni.",
+    "mcp": "Considera affidabile questa cartella prima che i client MCP possano usarla.",
+    "research_tasks": "Considera affidabile questa cartella per eseguire attività di ricerca.",
+    "run_command": "Considera affidabile questa cartella per consentire all'assistente di eseguire comandi.",
+    "full_access": "Considera affidabile questa cartella prima di attivare l'accesso completo.",
+    "system_tex": "Considera affidabile questa cartella per compilare con latexmk.",
+    "shell_escape": "Considera affidabile questa cartella prima di consentire lo shell escape.",
+    "broad_folder": "Oleafly non può considerare affidabile tutta la cartella {{name}}. Scegli una cartella più piccola.",
+    "declined": "La cartella non è stata considerata affidabile.",
+    "unavailable": "Oleafly non è riuscito a verificare se questa cartella è affidabile."
   }
 }

@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Tam erişim etkinleştirilmedi."
+  },
+  "trust": {
+    "git": "Kaynak Denetimi'ni kullanmak için bu klasöre güvenin.",
+    "repository": "Burada Kaynak Denetimi'ni kullanmak için {{name}} deposuna güvenin.",
+    "terminal": "Bu klasörde kullanmak için terminali kendiniz açın.",
+    "agents": "Dış ajanları kullanmak için bu klasöre güvenin.",
+    "mcp": "MCP istemcileri kullanabilmeden önce bu klasöre güvenin.",
+    "research_tasks": "Araştırma görevlerini çalıştırmak için bu klasöre güvenin.",
+    "run_command": "Asistanın komut çalıştırabilmesi için bu klasöre güvenin.",
+    "full_access": "Tam erişimi açmadan önce bu klasöre güvenin.",
+    "system_tex": "latexmk ile derlemek için bu klasöre güvenin.",
+    "shell_escape": "shell escape özelliğine izin vermeden önce bu klasöre güvenin.",
+    "broad_folder": "Oleafly {{name}} klasörünün tamamına güvenemez. Daha küçük bir klasör seçin.",
+    "declined": "Klasöre güvenilmedi.",
+    "unavailable": "Oleafly bu klasöre güvenilip güvenilmediğini denetleyemedi."
   }
 }

@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "选择要导入的电子表格",
       "filter": "电子表格"
+    },
+    "trustFolder": {
+      "title": "信任此文件夹？",
+      "message": "Oleafly 将为 {{name}} 开启 Git、终端、代理和 LaTeX 工具。请只信任你了解其内容的文件夹。",
+      "messageParent": "Oleafly 将信任 {{name}} 及其中的所有文件夹，包括你之后打开的文件夹。",
+      "messageRepository": "Oleafly 将在 {{name}} 中使用仓库自己的设置和钩子运行 Git。",
+      "confirm": "信任"
+    },
+    "restrictedWrite": {
+      "title": "允许此更改？",
+      "message": "助手想要更改 {{path}}。这类文件可以运行程序，而此文件夹尚未受信任。",
+      "confirm": "允许"
+    },
+    "restrictedNetwork": {
+      "title": "允许此请求？",
+      "message": "助手想要使用 {{tool}}，它会把文本发送到在线服务。此文件夹尚未受信任。",
+      "confirm": "允许"
     }
   },
   "errors": {

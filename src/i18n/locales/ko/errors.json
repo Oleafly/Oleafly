@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "전체 접근 권한이 활성화되지 않았습니다."
+  },
+  "trust": {
+    "git": "소스 관리를 사용하려면 이 폴더를 신뢰하세요.",
+    "repository": "여기에서 소스 관리를 사용하려면 {{name}} 저장소를 신뢰하세요.",
+    "terminal": "이 폴더에서 터미널을 사용하려면 직접 터미널을 여세요.",
+    "agents": "외부 에이전트를 사용하려면 이 폴더를 신뢰하세요.",
+    "mcp": "MCP 클라이언트가 이 폴더를 사용하려면 먼저 폴더를 신뢰하세요.",
+    "research_tasks": "연구 작업을 실행하려면 이 폴더를 신뢰하세요.",
+    "run_command": "어시스턴트가 명령을 실행하게 하려면 이 폴더를 신뢰하세요.",
+    "full_access": "전체 접근 권한을 켜기 전에 이 폴더를 신뢰하세요.",
+    "system_tex": "latexmk로 컴파일하려면 이 폴더를 신뢰하세요.",
+    "shell_escape": "shell escape를 허용하기 전에 이 폴더를 신뢰하세요.",
+    "broad_folder": "Oleafly는 {{name}} 전체를 신뢰할 수 없습니다. 더 작은 폴더를 선택하세요.",
+    "declined": "폴더를 신뢰하지 않았습니다.",
+    "unavailable": "Oleafly가 이 폴더를 신뢰하는지 확인하지 못했습니다."
   }
 }

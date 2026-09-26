@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Full access was not enabled."
+  },
+  "trust": {
+    "git": "Trust this folder to use Source Control.",
+    "repository": "Trust the {{name}} repository to use Source Control here.",
+    "terminal": "Open the terminal yourself to use it in this folder.",
+    "agents": "Trust this folder to use external agents.",
+    "mcp": "Trust this folder before MCP clients can use it.",
+    "research_tasks": "Trust this folder to run research tasks.",
+    "run_command": "Trust this folder to let the assistant run commands.",
+    "full_access": "Trust this folder before turning on full access.",
+    "system_tex": "Trust this folder to compile with latexmk.",
+    "shell_escape": "Trust this folder before allowing shell escape.",
+    "broad_folder": "Oleafly can't trust all of {{name}}. Choose a smaller folder.",
+    "declined": "The folder wasn't trusted.",
+    "unavailable": "Oleafly couldn't check whether this folder is trusted."
   }
 }

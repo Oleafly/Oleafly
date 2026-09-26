@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Vyberte tabulku k importu",
       "filter": "Tabulkové soubory"
+    },
+    "trustFolder": {
+      "title": "Důvěřovat této složce?",
+      "message": "Oleafly pro {{name}} zapne Git, terminál, agenty a nástroje LaTeXu. Důvěřujte jen složkám, jejichž obsah znáte.",
+      "messageParent": "Oleafly bude důvěřovat složce {{name}} a všem složkám v ní, včetně těch, které otevřete později.",
+      "messageRepository": "Oleafly bude v {{name}} spouštět Git s vlastním nastavením a hooky repozitáře.",
+      "confirm": "Důvěřovat"
+    },
+    "restrictedWrite": {
+      "title": "Povolit tuto změnu?",
+      "message": "Asistent chce změnit {{path}}. Soubory tohoto typu mohou spouštět programy a této složce zatím nedůvěřujete.",
+      "confirm": "Povolit"
+    },
+    "restrictedNetwork": {
+      "title": "Povolit tento požadavek?",
+      "message": "Asistent chce použít {{tool}}, který odesílá text online službě. Této složce zatím nedůvěřujete.",
+      "confirm": "Povolit"
     }
   },
   "errors": {

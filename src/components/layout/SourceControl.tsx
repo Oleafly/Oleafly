@@ -202,7 +202,7 @@ export function SourceControl() {
         request === refreshRequest.current &&
         useFilesStore.getState().projectId === projectId
       )
-        setNotice({ ok: false, text: String(error) });
+        setNotice({ ok: false, text: describeError(error) });
     }
   }, [projectId]);
   const refresh = useCallback(async () => {
@@ -344,7 +344,7 @@ export function SourceControl() {
       await openFile(path);
       clearActiveDiff();
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const openChange = (change: GitFileChange) =>
@@ -477,7 +477,7 @@ export function SourceControl() {
         text: t(($) => $.shell.sourceControl.linkCopied),
       });
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const unlinkRemote = () =>
@@ -530,7 +530,7 @@ export function SourceControl() {
         1500,
       );
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const restoreGraphCommit = async () => {

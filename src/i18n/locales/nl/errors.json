@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Volledige toegang is niet ingeschakeld."
+  },
+  "trust": {
+    "git": "Vertrouw deze map om versiebeheer te gebruiken.",
+    "repository": "Vertrouw de repository {{name}} om hier versiebeheer te gebruiken.",
+    "terminal": "Open de terminal zelf om hem in deze map te gebruiken.",
+    "agents": "Vertrouw deze map om externe agents te gebruiken.",
+    "mcp": "Vertrouw deze map voordat MCP-clients hem kunnen gebruiken.",
+    "research_tasks": "Vertrouw deze map om onderzoekstaken uit te voeren.",
+    "run_command": "Vertrouw deze map om de assistent opdrachten te laten uitvoeren.",
+    "full_access": "Vertrouw deze map voordat je volledige toegang inschakelt.",
+    "system_tex": "Vertrouw deze map om met latexmk te compileren.",
+    "shell_escape": "Vertrouw deze map voordat je shell escape toestaat.",
+    "broad_folder": "Oleafly kan niet heel {{name}} vertrouwen. Kies een kleinere map.",
+    "declined": "De map is niet vertrouwd.",
+    "unavailable": "Oleafly kon niet controleren of deze map wordt vertrouwd."
   }
 }

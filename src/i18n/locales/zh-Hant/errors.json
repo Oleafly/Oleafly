@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "未啟用完整存取權。"
+  },
+  "trust": {
+    "git": "信任這個資料夾後才能使用原始檔控制。",
+    "repository": "信任儲存庫 {{name}} 後才能在這裡使用原始檔控制。",
+    "terminal": "請自行開啟終端機，才能在這個資料夾中使用它。",
+    "agents": "信任這個資料夾後才能使用外部代理程式。",
+    "mcp": "信任這個資料夾後，MCP 用戶端才能使用它。",
+    "research_tasks": "信任這個資料夾後才能執行研究任務。",
+    "run_command": "信任這個資料夾後，助理才能執行指令。",
+    "full_access": "開啟完整存取權前，請先信任這個資料夾。",
+    "system_tex": "信任這個資料夾後才能使用 latexmk 編譯。",
+    "shell_escape": "允許 shell escape 前，請先信任這個資料夾。",
+    "broad_folder": "Oleafly 無法信任整個 {{name}}。請選擇較小的資料夾。",
+    "declined": "未信任該資料夾。",
+    "unavailable": "Oleafly 無法檢查這個資料夾是否受信任。"
   }
 }

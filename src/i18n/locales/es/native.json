@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Elige una hoja de cálculo para importar",
       "filter": "Hojas de cálculo"
+    },
+    "trustFolder": {
+      "title": "¿Confiar en esta carpeta?",
+      "message": "Oleafly activará Git, el terminal, los agentes y las herramientas de LaTeX para {{name}}. Confía solo en carpetas cuyo contenido conozcas.",
+      "messageParent": "Oleafly confiará en {{name}} y en todas las carpetas que contiene, incluidas las que abras más adelante.",
+      "messageRepository": "Oleafly ejecutará Git en {{name}} con la configuración y los hooks propios del repositorio.",
+      "confirm": "Confiar"
+    },
+    "restrictedWrite": {
+      "title": "¿Permitir este cambio?",
+      "message": "El asistente quiere cambiar {{path}}. Los archivos de este tipo pueden ejecutar programas y esta carpeta aún no es de confianza.",
+      "confirm": "Permitir"
+    },
+    "restrictedNetwork": {
+      "title": "¿Permitir esta petición?",
+      "message": "El asistente quiere usar {{tool}}, que envía texto a un servicio en línea. Esta carpeta aún no es de confianza.",
+      "confirm": "Permitir"
     }
   },
   "errors": {

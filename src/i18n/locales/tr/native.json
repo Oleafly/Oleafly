@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "İçe aktarılacak bir elektronik tablo seçin",
       "filter": "Elektronik tablolar"
+    },
+    "trustFolder": {
+      "title": "Bu klasöre güvenilsin mi?",
+      "message": "Oleafly, {{name}} için Git'i, terminali, ajanları ve LaTeX araçlarını açacak. Yalnızca içeriğini bildiğiniz klasörlere güvenin.",
+      "messageParent": "Oleafly, {{name}} klasörüne ve içindeki her klasöre, daha sonra açtıklarınız dahil, güvenecek.",
+      "messageRepository": "Oleafly, {{name}} içinde Git'i deponun kendi ayarları ve kancalarıyla çalıştıracak.",
+      "confirm": "Güven"
+    },
+    "restrictedWrite": {
+      "title": "Bu değişikliğe izin verilsin mi?",
+      "message": "Asistan {{path}} dosyasını değiştirmek istiyor. Bu tür dosyalar program çalıştırabilir ve bu klasöre henüz güvenilmiyor.",
+      "confirm": "İzin ver"
+    },
+    "restrictedNetwork": {
+      "title": "Bu isteğe izin verilsin mi?",
+      "message": "Asistan, metni çevrim içi bir hizmete gönderen {{tool}} aracını kullanmak istiyor. Bu klasöre henüz güvenilmiyor.",
+      "confirm": "İzin ver"
     }
   },
   "errors": {

@@ -58,7 +58,17 @@ fn local_bounds(args: &[&str]) -> OutputBounds {
 }
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
-    paths::project_dir(project_id)
+    let root = paths::project_dir(project_id)?;
+    crate::trust::require_git(project_id, &root)?;
+    Ok(root)
+}
+
+pub(crate) fn null_device() -> &'static str {
+    if cfg!(windows) {
+        "NUL"
+    } else {
+        "/dev/null"
+    }
 }
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
@@ -1409,7 +1419,7 @@ fn diff_at(root: &PathBuf, path: Option<&str>, staged: bool) -> Result<String, S
                 Err(_) => false,
             };
             if !is_tracked {
-                let devnull = if cfg!(windows) { "NUL" } else { "/dev/null" };
+                let devnull = null_device();
                 let out = run_git_read_only(
                     root,
                     &[
@@ -4781,5 +4791,47 @@ mod tests {
             super::origin_url(&root).unwrap().as_deref(),
             Some("https://github.com/owner/paper.git")
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn restricted_projects_never_spawn_git() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("restricted-git");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "restricted-git-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "base\n");
+        ok_or_err(run_git(&project, &["init", "--quiet"]).unwrap()).unwrap();
+        let sentinel = data.join("fsmonitor-ran");
+        let hook = format!("touch '{}'; false", sentinel.display());
+        ok_or_err(run_git(&project, &["config", "core.fsmonitor", &hook]).unwrap()).unwrap();
+        let restricted = crate::trust::testing::restrict(project_id);
+        for result in [
+            super::git_workspace_snapshot(project_id.into())
+                .await
+                .map(|_| ()),
+            super::git_status(project_id.into()).await.map(|_| ()),
+            super::git_log(project_id.into()).await.map(|_| ()),
+            super::git_is_initialized(project_id.into())
+                .await
+                .map(|_| ()),
+            super::git_commit(project_id.into(), "x".into())
+                .await
+                .map(|_| ()),
+        ] {
+            let error = result.unwrap_err();
+            assert!(error.contains("\"code\":\"trust.git\""), "{error}");
+        }
+        assert!(!sentinel.exists());
+        drop(restricted);
+        let _ = run_git(&project, &["status", "--porcelain"]);
+        assert!(
+            sentinel.exists(),
+            "positive control: spawning git runs the hostile fsmonitor"
+        );
+        let _ = std::fs::remove_dir_all(&data);
     }
 }

@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Scegli un foglio di calcolo da importare",
       "filter": "Fogli di calcolo"
+    },
+    "trustFolder": {
+      "title": "Considerare affidabile questa cartella?",
+      "message": "Oleafly attiverà Git, il terminale, gli agenti e gli strumenti LaTeX per {{name}}. Considera affidabili solo le cartelle di cui conosci il contenuto.",
+      "messageParent": "Oleafly considererà affidabile {{name}} e ogni cartella al suo interno, comprese quelle che aprirai in seguito.",
+      "messageRepository": "Oleafly eseguirà Git in {{name}} con le impostazioni e gli hook del repository stesso.",
+      "confirm": "Considera affidabile"
+    },
+    "restrictedWrite": {
+      "title": "Consentire questa modifica?",
+      "message": "L'assistente vuole modificare {{path}}. File di questo tipo possono eseguire programmi e questa cartella non è ancora affidabile.",
+      "confirm": "Consenti"
+    },
+    "restrictedNetwork": {
+      "title": "Consentire questa richiesta?",
+      "message": "L'assistente vuole usare {{tool}}, che invia testo a un servizio online. Questa cartella non è ancora affidabile.",
+      "confirm": "Consenti"
     }
   },
   "errors": {

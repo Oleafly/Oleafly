@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
+  },
+  "trust": {
+    "git": "Vertrauen Sie diesem Ordner, um die Versionsverwaltung zu nutzen.",
+    "repository": "Vertrauen Sie dem Repository {{name}}, um hier die Versionsverwaltung zu nutzen.",
+    "terminal": "Öffnen Sie das Terminal selbst, um es in diesem Ordner zu nutzen.",
+    "agents": "Vertrauen Sie diesem Ordner, um externe Agenten zu nutzen.",
+    "mcp": "Vertrauen Sie diesem Ordner, bevor MCP-Clients ihn nutzen können.",
+    "research_tasks": "Vertrauen Sie diesem Ordner, um Forschungsaufgaben auszuführen.",
+    "run_command": "Vertrauen Sie diesem Ordner, damit der Assistent Befehle ausführen darf.",
+    "full_access": "Vertrauen Sie diesem Ordner, bevor Sie den Vollzugriff aktivieren.",
+    "system_tex": "Vertrauen Sie diesem Ordner, um mit latexmk zu kompilieren.",
+    "shell_escape": "Vertrauen Sie diesem Ordner, bevor Sie shell escape erlauben.",
+    "broad_folder": "Oleafly kann nicht dem ganzen Ordner {{name}} vertrauen. Wählen Sie einen kleineren Ordner.",
+    "declined": "Dem Ordner wurde nicht vertraut.",
+    "unavailable": "Oleafly konnte nicht prüfen, ob diesem Ordner vertraut wird."
   }
 }

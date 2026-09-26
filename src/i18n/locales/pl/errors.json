@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Pełny dostęp nie został włączony."
+  },
+  "trust": {
+    "git": "Zaufaj temu folderowi, aby korzystać z kontroli wersji.",
+    "repository": "Zaufaj repozytorium {{name}}, aby korzystać tu z kontroli wersji.",
+    "terminal": "Otwórz terminal samodzielnie, aby używać go w tym folderze.",
+    "agents": "Zaufaj temu folderowi, aby korzystać z agentów zewnętrznych.",
+    "mcp": "Zaufaj temu folderowi, zanim klienci MCP będą mogli z niego korzystać.",
+    "research_tasks": "Zaufaj temu folderowi, aby uruchamiać zadania badawcze.",
+    "run_command": "Zaufaj temu folderowi, aby asystent mógł uruchamiać polecenia.",
+    "full_access": "Zaufaj temu folderowi, zanim włączysz pełny dostęp.",
+    "system_tex": "Zaufaj temu folderowi, aby kompilować za pomocą latexmk.",
+    "shell_escape": "Zaufaj temu folderowi, zanim zezwolisz na shell escape.",
+    "broad_folder": "Oleafly nie może zaufać całemu folderowi {{name}}. Wybierz mniejszy folder.",
+    "declined": "Folder nie został uznany za zaufany.",
+    "unavailable": "Oleafly nie mógł sprawdzić, czy ten folder jest zaufany."
   }
 }

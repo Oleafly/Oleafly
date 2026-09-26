@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Escolha uma planilha para importar",
       "filter": "Planilhas"
+    },
+    "trustFolder": {
+      "title": "Confiar nesta pasta?",
+      "message": "O Oleafly vai ativar o Git, o terminal, os agentes e as ferramentas de LaTeX para {{name}}. Só confie em pastas cujo conteúdo você conhece.",
+      "messageParent": "O Oleafly vai confiar em {{name}} e em todas as pastas dentro dela, incluindo as que você abrir depois.",
+      "messageRepository": "O Oleafly vai executar o Git em {{name}} com as configurações e os hooks do próprio repositório.",
+      "confirm": "Confiar"
+    },
+    "restrictedWrite": {
+      "title": "Permitir esta alteração?",
+      "message": "O assistente quer alterar {{path}}. Arquivos assim podem executar programas, e esta pasta ainda não é confiável.",
+      "confirm": "Permitir"
+    },
+    "restrictedNetwork": {
+      "title": "Permitir esta solicitação?",
+      "message": "O assistente quer usar {{tool}}, que envia texto para um serviço online. Esta pasta ainda não é confiável.",
+      "confirm": "Permitir"
     }
   },
   "errors": {

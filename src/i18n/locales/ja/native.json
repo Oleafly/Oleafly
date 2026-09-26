@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "読み込むスプレッドシートを選択",
       "filter": "スプレッドシート"
+    },
+    "trustFolder": {
+      "title": "このフォルダを信頼しますか？",
+      "message": "Oleafly は {{name}} で Git、ターミナル、エージェント、LaTeX ツールをオンにします。中身を把握しているフォルダだけを信頼してください。",
+      "messageParent": "Oleafly は {{name}} と、その中のすべてのフォルダ（あとで開くものを含む）を信頼します。",
+      "messageRepository": "Oleafly は {{name}} で、リポジトリ独自の設定とフックを使って Git を実行します。",
+      "confirm": "信頼する"
+    },
+    "restrictedWrite": {
+      "title": "この変更を許可しますか？",
+      "message": "アシスタントが {{path}} を変更しようとしています。この種類のファイルはプログラムを実行できます。また、このフォルダはまだ信頼されていません。",
+      "confirm": "許可"
+    },
+    "restrictedNetwork": {
+      "title": "このリクエストを許可しますか？",
+      "message": "アシスタントが {{tool}} を使おうとしています。このツールはテキストをオンラインサービスに送信します。このフォルダはまだ信頼されていません。",
+      "confirm": "許可"
     }
   },
   "errors": {

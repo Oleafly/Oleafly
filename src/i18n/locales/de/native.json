@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Tabelle zum Importieren auswählen",
       "filter": "Tabellen"
+    },
+    "trustFolder": {
+      "title": "Diesem Ordner vertrauen?",
+      "message": "Oleafly aktiviert Git, das Terminal, Agenten und LaTeX-Werkzeuge für {{name}}. Vertrauen Sie nur Ordnern, deren Inhalt Sie kennen.",
+      "messageParent": "Oleafly vertraut {{name}} und jedem Ordner darin, auch solchen, die Sie später öffnen.",
+      "messageRepository": "Oleafly führt Git in {{name}} mit den eigenen Einstellungen und Hooks des Repositorys aus.",
+      "confirm": "Vertrauen"
+    },
+    "restrictedWrite": {
+      "title": "Diese Änderung erlauben?",
+      "message": "Der Assistent möchte {{path}} ändern. Solche Dateien können Programme ausführen, und diesem Ordner wird noch nicht vertraut.",
+      "confirm": "Erlauben"
+    },
+    "restrictedNetwork": {
+      "title": "Diese Anfrage erlauben?",
+      "message": "Der Assistent möchte {{tool}} verwenden, das Text an einen Onlinedienst sendet. Diesem Ordner wird noch nicht vertraut.",
+      "confirm": "Erlauben"
     }
   },
   "errors": {

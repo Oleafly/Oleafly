@@ -1331,6 +1331,20 @@ export const approvalsModeGet = (projectId: string) =>
 export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
   invoke<void>("approvals_mode_set", { projectId, mode });
 
+export type ProjectTrust = {
+  trusted: boolean;
+  source: "library" | "folder" | "parent_folder" | null;
+  parent: string | null;
+  repository: { name: string; trusted: boolean } | null;
+};
+export type TrustScope = "folder" | "parent" | "repository";
+export const projectTrustState = (projectId: string) =>
+  invoke<ProjectTrust>("project_trust_state", { projectId });
+export const trustFolder = (projectId: string, scope: TrustScope) =>
+  invoke<ProjectTrust>("trust_folder", { projectId, scope });
+export const revokeFolderTrust = (projectId: string) =>
+  invoke<ProjectTrust>("revoke_folder_trust", { projectId });
+
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);

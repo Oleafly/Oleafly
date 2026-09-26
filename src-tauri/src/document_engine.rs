@@ -3182,6 +3182,15 @@ pub fn existing_compiled_pdf_path(
 mod tests {
     use super::*;
 
+    #[test]
+    fn tex_program_magic_never_names_an_arbitrary_program() {
+        assert_eq!(detect_tex_program_magic("% !TeX program = /bin/sh\n"), None);
+        assert_eq!(
+            detect_tex_program_magic("% !TeX program = lualatex --shell-escape\n"),
+            None
+        );
+    }
+
     fn joined(dir: &str, name: &str) -> String {
         Path::new(dir).join(name).to_string_lossy().into_owned()
     }

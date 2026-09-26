@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Fuld adgang blev ikke aktiveret."
+  },
+  "trust": {
+    "git": "Stol på denne mappe for at bruge versionsstyring.",
+    "repository": "Stol på repositoriet {{name}} for at bruge versionsstyring her.",
+    "terminal": "Åbn selv terminalen for at bruge den i denne mappe.",
+    "agents": "Stol på denne mappe for at bruge eksterne agenter.",
+    "mcp": "Stol på denne mappe, før MCP-klienter kan bruge den.",
+    "research_tasks": "Stol på denne mappe for at køre forskningsopgaver.",
+    "run_command": "Stol på denne mappe for at lade assistenten køre kommandoer.",
+    "full_access": "Stol på denne mappe, før du slår fuld adgang til.",
+    "system_tex": "Stol på denne mappe for at kompilere med latexmk.",
+    "shell_escape": "Stol på denne mappe, før du tillader shell escape.",
+    "broad_folder": "Oleafly kan ikke stole på hele {{name}}. Vælg en mindre mappe.",
+    "declined": "Mappen blev ikke betroet.",
+    "unavailable": "Oleafly kunne ikke kontrollere, om denne mappe er betroet."
   }
 }

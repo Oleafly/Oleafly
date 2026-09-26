@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Choisir un tableur à importer",
       "filter": "Tableurs"
+    },
+    "trustFolder": {
+      "title": "Faire confiance à ce dossier ?",
+      "message": "Oleafly activera Git, le terminal, les agents et les outils LaTeX pour {{name}}. Ne faites confiance qu'aux dossiers dont vous connaissez le contenu.",
+      "messageParent": "Oleafly fera confiance à {{name}} et à tous les dossiers qu'il contient, y compris ceux que vous ouvrirez plus tard.",
+      "messageRepository": "Oleafly exécutera Git dans {{name}} avec les réglages et les hooks propres au dépôt.",
+      "confirm": "Faire confiance"
+    },
+    "restrictedWrite": {
+      "title": "Autoriser cette modification ?",
+      "message": "L'assistant veut modifier {{path}}. Ce type de fichier peut lancer des programmes, et ce dossier n'est pas encore approuvé.",
+      "confirm": "Autoriser"
+    },
+    "restrictedNetwork": {
+      "title": "Autoriser cette requête ?",
+      "message": "L'assistant veut utiliser {{tool}}, qui envoie du texte à un service en ligne. Ce dossier n'est pas encore approuvé.",
+      "confirm": "Autoriser"
     }
   },
   "errors": {

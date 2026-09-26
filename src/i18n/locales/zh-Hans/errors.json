@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "未启用完全访问权限。"
+  },
+  "trust": {
+    "git": "信任此文件夹后才能使用源代码管理。",
+    "repository": "信任仓库 {{name}} 后才能在这里使用源代码管理。",
+    "terminal": "请自行打开终端，才能在此文件夹中使用它。",
+    "agents": "信任此文件夹后才能使用外部代理。",
+    "mcp": "信任此文件夹后，MCP 客户端才能使用它。",
+    "research_tasks": "信任此文件夹后才能运行研究任务。",
+    "run_command": "信任此文件夹后，助手才能运行命令。",
+    "full_access": "开启完全访问权限前，请先信任此文件夹。",
+    "system_tex": "信任此文件夹后才能使用 latexmk 编译。",
+    "shell_escape": "允许 shell escape 前，请先信任此文件夹。",
+    "broad_folder": "Oleafly 无法信任整个 {{name}}。请选择一个更小的文件夹。",
+    "declined": "未信任该文件夹。",
+    "unavailable": "Oleafly 无法检查此文件夹是否受信任。"
   }
 }

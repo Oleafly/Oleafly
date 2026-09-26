@@ -348,6 +348,10 @@ impl AcpRuntime {
         mcp_servers: Vec<Value>,
         generation: Option<u64>,
     ) -> Result<SessionSnapshot, String> {
+        crate::trust::require_trusted(
+            &options.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if options.allowed_paths.is_some() && options.task_id.is_none() {
             return Err("An isolated ACP session needs a research task ID.".into());
         }
@@ -423,6 +427,10 @@ impl AcpRuntime {
             return Err("This ACP session is already connected.".into());
         }
         let mut record = self.store.get(id)?;
+        crate::trust::require_trusted(
+            &record.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if record.task_id.is_some() {
             return Err("Resume isolated work through its research task.".into());
         }
@@ -523,6 +531,11 @@ impl AcpRuntime {
             command
         };
         command.current_dir(&record.project_path);
+        if let Some(hardening) =
+            crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
+        {
+            command.envs(hardening);
+        }
         let id = record.id.clone();
         let bytes = self.store.byte_count(&id)?;
         let (connection, incoming) = Connection::spawn(command).await?;
@@ -811,6 +824,10 @@ impl AcpRuntime {
             .try_lock()
             .map_err(|_| "This ACP agent is already working on a turn.")?;
         let record = self.copy_record(&session)?;
+        crate::trust::require_trusted(
+            &record.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if record.status != SessionStatus::Ready {
             return Err("Connect and sign in to this agent before sending a message.".into());
         }

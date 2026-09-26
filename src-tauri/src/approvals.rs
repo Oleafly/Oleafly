@@ -248,6 +248,13 @@ pub fn full_access_needs_confirmation(current: ApprovalMode, requested: Approval
     requested == ApprovalMode::FullAccess && current != ApprovalMode::FullAccess
 }
 
+fn ensure_mode_allowed(project_id: &str, mode: ApprovalMode) -> Result<(), String> {
+    if mode == ApprovalMode::FullAccess {
+        crate::trust::require_trusted(project_id, crate::trust::Capability::FullAccess)?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn approvals_mode_set(
     app: tauri::AppHandle,
@@ -255,6 +262,7 @@ pub async fn approvals_mode_set(
     mode: ApprovalMode,
 ) -> Result<(), String> {
     crate::paths::validate_project_id(&project_id)?;
+    ensure_mode_allowed(&project_id, mode)?;
     let root = crate::paths::oleafly_root()?;
     if full_access_needs_confirmation(try_mode_for(&root, &project_id)?, mode)
         && !confirm_full_access(app).await?
@@ -285,6 +293,23 @@ async fn confirm_full_access(app: tauri::AppHandle) -> Result<bool, String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn full_access_needs_a_trusted_folder() {
+        let _restricted = crate::trust::testing::restrict("restricted-approvals");
+        let refused =
+            super::ensure_mode_allowed("restricted-approvals", super::ApprovalMode::FullAccess)
+                .unwrap_err();
+        assert!(
+            refused.contains("\"code\":\"trust.full_access\""),
+            "{refused}"
+        );
+        assert!(super::ensure_mode_allowed(
+            "restricted-approvals",
+            super::ApprovalMode::ApproveForMe
+        )
+        .is_ok());
+    }
+
     #[test]
     fn raw_edits_round_trip_and_keep_comments() {
         let root =

@@ -2,11 +2,12 @@ use super::{
     acquire_request_slot, allowlisted_tool_runner, approval_classifier, await_tool_result,
     begin_request, cancel_all_requests, cancel_for_update, cancel_request, drop_pending_tools,
     endpoint_override_allowed, finish_request, lock_or_recover, native_agent_tool,
-    native_dispatch_allowed, pause_for_update, provider_config, resume_after_failed_update,
-    run_registered, sanitized_run_config, tool_error, tool_key, tool_pipeline, tool_reply_id,
-    tool_risk, unwrap_mcp_text, Abortable, AgentState, AppConfig, CompletionRequest, Duration,
-    PendingTool, ProviderConfig, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
-    MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS, MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
+    native_dispatch_allowed, pause_for_update, provider_config, restricted_tool_runner,
+    resume_after_failed_update, run_registered, sanitized_run_config, tool_error, tool_key,
+    tool_pipeline, tool_reply_id, tool_risk, unwrap_mcp_text, Abortable, AgentState, AppConfig,
+    CompletionRequest, Duration, PendingTool, ProviderConfig, RestrictedConfirm, RunConfig,
+    ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS, MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS,
+    MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
 };
 
 fn config_with(provider: &str, keys: &[(&str, &str)]) -> AppConfig {
@@ -878,4 +879,80 @@ async fn failed_update_preserves_the_renderer_session_after_cancelling_active_re
             .await
             .is_err()
     );
+}
+
+#[tokio::test]
+async fn restricted_folders_confirm_executable_config_writes_and_network_tools() {
+    let _restricted = crate::trust::testing::restrict("restricted-agent-project");
+    let executed = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let executed_by_runner = executed.clone();
+    let inner: oleafly_agent::ToolRunner = std::sync::Arc::new(move |call| {
+        let executed = executed_by_runner.clone();
+        Box::pin(async move {
+            executed.lock().unwrap().push(call.name.clone());
+            oleafly_agent::ToolOutput::text("executed")
+        })
+    });
+    let asked = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let asked_by_confirm = asked.clone();
+    let confirm: RestrictedConfirm = std::sync::Arc::new(move |request| {
+        asked_by_confirm.lock().unwrap().push(request);
+        Box::pin(async { Ok(false) })
+    });
+    let runner = restricted_tool_runner(Some("restricted-agent-project".into()), confirm, inner);
+    let call = |name: &str, arguments: serde_json::Value| oleafly_agent::ToolCall {
+        id: "call".into(),
+        name: name.into(),
+        arguments: arguments.to_string(),
+        ..Default::default()
+    };
+    let document = runner(call(
+        "write_file",
+        serde_json::json!({"path": "chapters/intro.tex"}),
+    ))
+    .await;
+    let hook = runner(call(
+        "write_file",
+        serde_json::json!({"path": ".husky/pre-commit"}),
+    ))
+    .await;
+    let search = runner(call("literature_search", serde_json::json!({"query": "x"}))).await;
+    let command = runner(call("run_command", serde_json::json!({"command": "ls"}))).await;
+    assert_eq!(document.output, "executed");
+    assert!(hook.output.contains("declined"), "{}", hook.output);
+    assert!(search.output.contains("declined"), "{}", search.output);
+    assert!(command.output.contains("trusts it"), "{}", command.output);
+    assert_eq!(*executed.lock().unwrap(), vec!["write_file".to_string()]);
+    assert_eq!(
+        *asked.lock().unwrap(),
+        vec![
+            crate::trust::AiConfirm::Write(".husky/pre-commit".into()),
+            crate::trust::AiConfirm::Network("literature_search".into()),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn trusted_projects_run_tools_without_the_restricted_prompt() {
+    let executed = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let executed_by_runner = executed.clone();
+    let inner: oleafly_agent::ToolRunner = std::sync::Arc::new(move |call| {
+        let executed = executed_by_runner.clone();
+        Box::pin(async move {
+            executed.lock().unwrap().push(call.name.clone());
+            oleafly_agent::ToolOutput::text("executed")
+        })
+    });
+    let confirm: RestrictedConfirm =
+        std::sync::Arc::new(|_| Box::pin(async { Err("no prompt expected".to_string()) }));
+    let runner = restricted_tool_runner(None, confirm, inner);
+    let output = runner(oleafly_agent::ToolCall {
+        id: "call".into(),
+        name: "run_command".into(),
+        arguments: serde_json::json!({"command": "ls"}).to_string(),
+        ..Default::default()
+    })
+    .await;
+    assert_eq!(output.output, "executed");
+    assert_eq!(*executed.lock().unwrap(), vec!["run_command".to_string()]);
 }

@@ -41,6 +41,23 @@
     "tableImport": {
       "title": "Wybierz arkusz kalkulacyjny do zaimportowania",
       "filter": "Arkusze kalkulacyjne"
+    },
+    "trustFolder": {
+      "title": "Zaufać temu folderowi?",
+      "message": "Oleafly włączy Git, terminal, agentów i narzędzia LaTeX dla {{name}}. Ufaj tylko folderom, których zawartość znasz.",
+      "messageParent": "Oleafly zaufa folderowi {{name}} i każdemu folderowi w nim, także tym, które otworzysz później.",
+      "messageRepository": "Oleafly będzie uruchamiać Git w {{name}} z własnymi ustawieniami i hookami repozytorium.",
+      "confirm": "Zaufaj"
+    },
+    "restrictedWrite": {
+      "title": "Zezwolić na tę zmianę?",
+      "message": "Asystent chce zmienić {{path}}. Pliki tego typu mogą uruchamiać programy, a ten folder nie jest jeszcze zaufany.",
+      "confirm": "Zezwól"
+    },
+    "restrictedNetwork": {
+      "title": "Zezwolić na to żądanie?",
+      "message": "Asystent chce użyć narzędzia {{tool}}, które wysyła tekst do usługi online. Ten folder nie jest jeszcze zaufany.",
+      "confirm": "Zezwól"
     }
   },
   "errors": {

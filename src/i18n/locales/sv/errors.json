@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "Fullständig åtkomst aktiverades inte."
+  },
+  "trust": {
+    "git": "Lita på den här mappen för att använda versionshantering.",
+    "repository": "Lita på repositoriet {{name}} för att använda versionshantering här.",
+    "terminal": "Öppna terminalen själv för att använda den i den här mappen.",
+    "agents": "Lita på den här mappen för att använda externa agenter.",
+    "mcp": "Lita på den här mappen innan MCP-klienter kan använda den.",
+    "research_tasks": "Lita på den här mappen för att köra forskningsuppgifter.",
+    "run_command": "Lita på den här mappen för att låta assistenten köra kommandon.",
+    "full_access": "Lita på den här mappen innan du slår på fullständig åtkomst.",
+    "system_tex": "Lita på den här mappen för att kompilera med latexmk.",
+    "shell_escape": "Lita på den här mappen innan du tillåter shell escape.",
+    "broad_folder": "Oleafly kan inte lita på hela {{name}}. Välj en mindre mapp.",
+    "declined": "Mappen markerades inte som betrodd.",
+    "unavailable": "Oleafly kunde inte kontrollera om den här mappen är betrodd."
   }
 }

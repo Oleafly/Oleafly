@@ -39,5 +39,20 @@
   },
   "approvals": {
     "full_access_declined": "No se activó el acceso completo."
+  },
+  "trust": {
+    "git": "Confía en esta carpeta para usar el control de versiones.",
+    "repository": "Confía en el repositorio {{name}} para usar aquí el control de versiones.",
+    "terminal": "Abre tú el terminal para usarlo en esta carpeta.",
+    "agents": "Confía en esta carpeta para usar agentes externos.",
+    "mcp": "Confía en esta carpeta antes de que los clientes MCP puedan usarla.",
+    "research_tasks": "Confía en esta carpeta para ejecutar tareas de investigación.",
+    "run_command": "Confía en esta carpeta para que el asistente pueda ejecutar comandos.",
+    "full_access": "Confía en esta carpeta antes de activar el acceso completo.",
+    "system_tex": "Confía en esta carpeta para compilar con latexmk.",
+    "shell_escape": "Confía en esta carpeta antes de permitir shell escape.",
+    "broad_folder": "Oleafly no puede confiar en toda la carpeta {{name}}. Elige una carpeta más pequeña.",
+    "declined": "No se confió en la carpeta.",
+    "unavailable": "Oleafly no pudo comprobar si esta carpeta es de confianza."
   }
 }

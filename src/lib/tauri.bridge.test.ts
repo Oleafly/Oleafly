@@ -55,7 +55,10 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
+  projectTrustState,
   renameFile,
+  revokeFolderTrust,
+  trustFolder,
   validateCompileFingerprint,
 } from "./tauri";
 
@@ -503,6 +506,26 @@ describe("remote bridge", () => {
       projectId: "project",
       url: "https://github.com/owner/paper.git",
       replace: true,
+    });
+  });
+});
+
+describe("folder trust bridge", () => {
+  it("names the project and scope for each trust command", async () => {
+    const trust = { trusted: false, source: null, parent: "papers", repository: null };
+    mocks.invoke.mockResolvedValue(trust);
+    await expect(projectTrustState("linked-1")).resolves.toEqual(trust);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("project_trust_state", {
+      projectId: "linked-1",
+    });
+    await trustFolder("linked-1", "parent");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("trust_folder", {
+      projectId: "linked-1",
+      scope: "parent",
+    });
+    await revokeFolderTrust("linked-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("revoke_folder_trust", {
+      projectId: "linked-1",
     });
   });
 });
