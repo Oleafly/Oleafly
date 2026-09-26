@@ -175,6 +175,27 @@ async function editorText(page: TauriPage): Promise<string> {
   );
 }
 
+interface ProofreadingSettings {
+  spellcheck: boolean;
+  harper: boolean;
+  dictionaryLocale: string;
+}
+
+let savedSettings: ProofreadingSettings | null = null;
+
+test.beforeEach(async ({ tauriPage }) => {
+  savedSettings = await tauriPage.evaluate<ProofreadingSettings>(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+      const state = useSettingsStore.getState();
+      return {
+        spellcheck: state.spellcheck,
+        harper: state.harper,
+        dictionaryLocale: state.dictionaryLocale,
+      };
+    })`,
+  );
+});
+
 test.afterEach(async ({ tauriPage }) => {
   await tauriPage
     .evaluate(
@@ -186,6 +207,17 @@ test.afterEach(async ({ tauriPage }) => {
       })()`,
     )
     .catch(() => undefined);
+  if (!savedSettings) return;
+  const saved = savedSettings;
+  savedSettings = null;
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+      const state = useSettingsStore.getState();
+      if (state.spellcheck !== ${JSON.stringify(saved.spellcheck)}) state.toggleSpellcheck();
+      state.setHarper(${JSON.stringify(saved.harper)});
+      state.setDictionaryLocale(${JSON.stringify(saved.dictionaryLocale)});
+    })`,
+  );
 });
 
 test("German spell checking keeps umlauts and ß inside words and skips English grammar", async ({
