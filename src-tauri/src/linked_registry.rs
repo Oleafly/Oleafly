@@ -1066,7 +1066,12 @@ mod tests {
         };
 
         assert!(attempt(PathBuf::from("thesis")).is_err());
-        assert!(attempt(folder.join("..").join("thesis")).is_err());
+        let mut dotted = folder.clone().into_os_string();
+        for part in ["..", "thesis"] {
+            dotted.push(std::path::MAIN_SEPARATOR_STR);
+            dotted.push(part);
+        }
+        assert!(attempt(PathBuf::from(dotted)).is_err());
         assert!(attempt(folder.join("missing")).is_err());
         let file = folder.join("main.tex");
         std::fs::write(&file, "x").unwrap();
