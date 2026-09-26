@@ -6,7 +6,11 @@
     "name_conflict": "{{name}} adlı bir proje zaten var.",
     "folder_unavailable": "Yeni bir proje klasörü ayrılamadı.",
     "not_found": "Bu proje artık kitaplığınızda değil.",
-    "not_recyclable": "Bu proje Geri Dönüşüm Kutusu'na taşınamaz."
+    "not_recyclable": "Bu proje Geri Dönüşüm Kutusu'na taşınamaz.",
+    "linked_missing": "Oleafly {{folder}} klasörünü bulamıyor. Taşınmış ya da silinmiş olabilir veya bağlı olmayan bir sürücüde olabilir.",
+    "linked_replaced": "{{folder}} klasörü, Oleafly'nin daha önce açtığı klasör değil. Devam etmek için klasörü yeniden açın.",
+    "linked_permission_denied": "Oleafly'nin {{folder}} klasörünü açma izni yok.",
+    "linked_invalid": "Oleafly'nin bu klasöre bağlantısı bozuk. Klasörü Oleafly'den kaldırın, ardından yeniden açın."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

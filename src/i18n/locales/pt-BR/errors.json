@@ -6,7 +6,11 @@
     "name_conflict": "Já existe um projeto chamado {{name}}.",
     "folder_unavailable": "Não foi possível reservar uma nova pasta de projeto.",
     "not_found": "Este projeto não está mais na sua biblioteca.",
-    "not_recyclable": "Não é possível mover este projeto para a Lixeira."
+    "not_recyclable": "Não é possível mover este projeto para a Lixeira.",
+    "linked_missing": "O Oleafly não encontra a pasta {{folder}}. Ela pode ter sido movida ou excluída, ou está em uma unidade que não está conectada.",
+    "linked_replaced": "A pasta {{folder}} não é a mesma que o Oleafly abriu antes. Abra-a novamente para continuar.",
+    "linked_permission_denied": "O Oleafly não tem permissão para abrir a pasta {{folder}}.",
+    "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

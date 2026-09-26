@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::io;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FsIdentity {
@@ -90,6 +90,26 @@ pub(crate) fn identify_directory(path: &Path) -> io::Result<DirectoryIdentity> {
     })
 }
 
+#[cfg(unix)]
+pub(crate) fn quick_matches(recorded: &FsIdentity, metadata: &std::fs::Metadata) -> Option<bool> {
+    use std::os::unix::fs::MetadataExt as _;
+    if recorded.weak {
+        return None;
+    }
+    if format!("{:x}", metadata.ino()) != recorded.file {
+        return Some(false);
+    }
+    match (recorded.birth_ns, birth_ns(metadata)) {
+        (Some(left), Some(right)) if left != right => Some(false),
+        _ => Some(true),
+    }
+}
+
+#[cfg(not(unix))]
+pub(crate) fn quick_matches(_recorded: &FsIdentity, _metadata: &std::fs::Metadata) -> Option<bool> {
+    None
+}
+
 fn birth_ns(metadata: &std::fs::Metadata) -> Option<i64> {
     let created = metadata.created().ok()?;
     let since_epoch = created.duration_since(std::time::UNIX_EPOCH).ok()?;
@@ -98,6 +118,7 @@ fn birth_ns(metadata: &std::fs::Metadata) -> Option<i64> {
         .filter(|nanos| *nanos > 0)
 }
 
+#[cfg(test)]
 pub(crate) fn same_path(left: &Path, right: &Path, case: CaseSensitivity) -> bool {
     let mut left = left.components();
     let mut right = right.components();
@@ -110,6 +131,7 @@ pub(crate) fn same_path(left: &Path, right: &Path, case: CaseSensitivity) -> boo
     }
 }
 
+#[cfg(test)]
 pub(crate) fn path_is_within(path: &Path, ancestor: &Path, case: CaseSensitivity) -> bool {
     let mut path = path.components();
     ancestor.components().all(|expected| {
@@ -118,7 +140,12 @@ pub(crate) fn path_is_within(path: &Path, ancestor: &Path, case: CaseSensitivity
     })
 }
 
-fn same_component(left: Component<'_>, right: Component<'_>, case: CaseSensitivity) -> bool {
+#[cfg(test)]
+fn same_component(
+    left: std::path::Component<'_>,
+    right: std::path::Component<'_>,
+    case: CaseSensitivity,
+) -> bool {
     let (left, right) = (left.as_os_str(), right.as_os_str());
     if left == right {
         return true;
@@ -467,7 +494,7 @@ fn windows_file_system(handle: std::os::windows::io::RawHandle) -> Option<String
 #[cfg(windows)]
 fn windows_is_remote(path: &Path) -> bool {
     use std::os::windows::ffi::OsStrExt as _;
-    use std::path::Prefix;
+    use std::path::{Component, Prefix};
     use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetVolumePathNameW};
     const DRIVE_REMOTE: u32 = 4;
     if let Some(Component::Prefix(prefix)) = path.components().next() {
@@ -715,6 +742,30 @@ mod tests {
             IdentityMatch::Different
         };
         assert_eq!(compare(&recorded.identity, &observed.identity), expected);
+    }
+
+    #[test]
+    fn plain_metadata_tells_a_recreated_directory_apart_where_the_platform_allows() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("thesis");
+        std::fs::create_dir(&path).unwrap();
+        let recorded = identify_directory(&path).unwrap().identity;
+        let same = std::fs::symlink_metadata(&path).unwrap();
+
+        std::fs::rename(&path, directory.path().join("thesis-old")).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        let recreated = std::fs::symlink_metadata(&path).unwrap();
+
+        if cfg!(unix) && !recorded.weak {
+            assert_eq!(quick_matches(&recorded, &same), Some(true));
+            assert_eq!(quick_matches(&recorded, &recreated), Some(false));
+        } else {
+            assert_eq!(quick_matches(&recorded, &same), None);
+            assert_eq!(quick_matches(&recorded, &recreated), None);
+        }
+        let mut weak = recorded;
+        weak.weak = true;
+        assert_eq!(quick_matches(&weak, &recreated), None);
     }
 
     #[test]

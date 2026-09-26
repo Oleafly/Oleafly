@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::paths;
+use crate::project_location::{ProjectKind, ProjectLocation};
 use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
@@ -526,7 +527,7 @@ pub struct ProjectInfo {
 }
 
 fn meta_path(project_id: &str) -> Result<PathBuf, String> {
-    Ok(paths::project_dir(project_id)?.join("project.json"))
+    Ok(crate::project_location::locate(project_id)?.manifest_path())
 }
 
 pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
@@ -1851,13 +1852,13 @@ pub(crate) fn rename_file_blocking(
     let strategy = conflict_strategy.unwrap_or_default();
     let (result, generation) = admission.run_with_change_status(|| {
         with_project_metadata_lock_held(&project_id, || {
-            let root = paths::project_dir(&project_id)?;
+            let location = crate::project_location::locate(&project_id)?;
             let meta = read_meta(&project_id)?;
             let src = resolve(&project_id, &from)?;
             let dst = resolve(&project_id, &to)?;
             let result = rename_path_and_update_meta(
                 Some(&project_id),
-                &root,
+                &location,
                 &src,
                 &dst,
                 &destination_rel,
@@ -1940,15 +1941,16 @@ fn remap_main_document(main_doc: &str, from: &str, to: &str) -> Option<String> {
 
 fn rename_path_and_update_meta(
     project_id: Option<&str>,
-    root: &Path,
+    location: &ProjectLocation,
     src: &Path,
     requested_dst: &Path,
     requested_rel: &str,
     strategy: FileConflictStrategy,
     mut meta: ProjectMeta,
 ) -> Result<RenameFileResult, String> {
+    let root = location.root.as_path();
     let source_rel = rel_slash(root, src);
-    let transaction = stage_rename_path(root, src, requested_dst, requested_rel, strategy)?;
+    let transaction = stage_rename_path(location, src, requested_dst, requested_rel, strategy)?;
     let actual_destination = match &transaction.result {
         RenameFileResult::Renamed { path, .. } => path.clone(),
         RenameFileResult::Conflict { .. } => return Ok(transaction.commit()),
@@ -1995,7 +1997,7 @@ fn rename_path_and_update_meta(
     }
     meta.engine = selected_engine;
     meta.main_doc = main_doc;
-    if let Err(error) = write_meta_at(&root.join("project.json"), &meta) {
+    if let Err(error) = write_meta_at(&location.manifest_path(), &meta) {
         let rollback = transaction.rollback();
         return Err(match rollback {
             Ok(()) => format!("failed to update the main document after the move. The move was rolled back: {error}"),
@@ -2009,22 +2011,23 @@ fn rename_path_and_update_meta(
 
 #[cfg(test)]
 fn rename_path_in_project(
-    root: &Path,
+    location: &ProjectLocation,
     src: &Path,
     requested_dst: &Path,
     requested_rel: &str,
     strategy: FileConflictStrategy,
 ) -> Result<RenameFileResult, String> {
-    Ok(stage_rename_path(root, src, requested_dst, requested_rel, strategy)?.commit())
+    Ok(stage_rename_path(location, src, requested_dst, requested_rel, strategy)?.commit())
 }
 
 fn stage_rename_path(
-    root: &Path,
+    location: &ProjectLocation,
     src: &Path,
     requested_dst: &Path,
     requested_rel: &str,
     strategy: FileConflictStrategy,
 ) -> Result<MoveTransaction, String> {
+    let root = location.root.as_path();
     if src == root || requested_dst == root {
         return Err("refusing to move the project root".into());
     }
@@ -2084,7 +2087,7 @@ fn stage_rename_path(
             unique_destination(requested_dst, source_meta.is_dir())?
         }
         (Some(existing), FileConflictStrategy::Replace) => {
-            let rollback = stage_replace_path(root, src, &existing, requested_dst)?;
+            let rollback = stage_replace_path(location, src, &existing, requested_dst)?;
             return Ok(MoveTransaction {
                 result: RenameFileResult::Renamed {
                     path: requested_rel.to_string(),
@@ -2258,13 +2261,19 @@ fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
 }
 
 fn stage_replace_path(
-    root: &Path,
+    location: &ProjectLocation,
     src: &Path,
     existing: &Path,
     dst: &Path,
 ) -> Result<MoveRollback, String> {
-    let backup_root = root.join(".oleafly").join("move-backups");
-    ensure_private_directory(root, &backup_root)?;
+    let backup_root = match location.kind {
+        ProjectKind::Library => {
+            let backup_root = location.move_backups_dir();
+            ensure_private_directory(&location.root, &backup_root)?;
+            backup_root
+        }
+        ProjectKind::Linked => location.ensure_linked_state(&location.move_backups_dir())?,
+    };
     let backup = unique_temporary_path(&backup_root, "replaced")?;
     rename_exclusive(existing, &backup)
         .map_err(|e| format!("could not stage the existing destination: {e}"))?;
@@ -4691,7 +4700,8 @@ fn try_reserve_project_directory(
         .transpose()?;
     if coordinate_worktree
         && (crate::storage::recycled_project_identity_reserved_lock_held(project_id)?
-            || paths::existing_checkpoint_store_dir(project_id)?.is_some())
+            || paths::existing_checkpoint_store_dir(project_id)?.is_some()
+            || crate::linked_registry::id_reserved(project_id)?)
     {
         return Ok(None);
     }
@@ -6143,9 +6153,9 @@ pub async fn import_paths_into_project(
     tauri::async_runtime::spawn_blocking(move || -> Result<ImportPathsResult, String> {
         let (paths, generation) = admission.run(|| {
             let dest_parent = resolve(&project_id, &dest_dir)?;
-            let project_root = paths::project_dir(&project_id)?;
+            let location = crate::project_location::locate(&project_id)?;
             let sources: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
-            import_paths_transactional(&project_root, &dest_parent, &sources)
+            import_paths_transactional(&location, &dest_parent, &sources)
         })?;
         Ok(ImportPathsResult { paths, generation })
     })
@@ -6218,17 +6228,17 @@ fn unique_import_dest(
 }
 
 fn import_paths_transactional(
-    project_root: &Path,
+    location: &ProjectLocation,
     dest_parent: &Path,
     sources: &[PathBuf],
 ) -> Result<Vec<String>, String> {
-    import_paths_transactional_with(project_root, dest_parent, sources, &mut |from, to| {
+    import_paths_transactional_with(location, dest_parent, sources, &mut |from, to| {
         rename_exclusive(from, to)
     })
 }
 
 fn import_paths_transactional_with<F>(
-    project_root: &Path,
+    location: &ProjectLocation,
     dest_parent: &Path,
     sources: &[PathBuf],
     publish: &mut F,
@@ -6236,6 +6246,7 @@ fn import_paths_transactional_with<F>(
 where
     F: FnMut(&Path, &Path) -> std::io::Result<()>,
 {
+    let project_root = location.root.as_path();
     let destination_meta = std::fs::symlink_metadata(dest_parent)
         .map_err(|e| format!("cannot read the import destination: {e}"))?;
     if !destination_meta.is_dir() || destination_meta.file_type().is_symlink() {
@@ -6290,10 +6301,18 @@ where
         return Ok(Vec::new());
     }
 
-    let staging_root = project_root.join(".oleafly").join("import-staging");
-    ensure_private_directory(project_root, &staging_root)?;
-    let staging = unique_temporary_path(&staging_root, "batch")?;
-    std::fs::create_dir(&staging).map_err(|e| format!("cannot stage the import: {e}"))?;
+    let staging = match location.kind {
+        ProjectKind::Library => {
+            let staging_root = project_root
+                .join(crate::project_location::LIBRARY_STATE_DIR)
+                .join("import-staging");
+            ensure_private_directory(project_root, &staging_root)?;
+            let staging = unique_temporary_path(&staging_root, "batch")?;
+            std::fs::create_dir(&staging).map_err(|e| format!("cannot stage the import: {e}"))?;
+            staging
+        }
+        ProjectKind::Linked => create_unique_temporary_directory(project_root, ".oleafly-import")?,
+    };
 
     let mut staged = Vec::with_capacity(plans.len());
     for (index, (source, is_dir, destination)) in plans.iter().enumerate() {
@@ -6455,12 +6474,315 @@ mod tests {
     use std::path::Path;
     use std::sync::Arc;
 
+    fn library(root: &Path) -> crate::project_location::ProjectLocation {
+        crate::project_location::ProjectLocation::library_at("paper", root.to_path_buf())
+    }
+
     fn test_dir(label: &str) -> std::path::PathBuf {
         tempfile::Builder::new()
             .prefix(&format!("oleafly-{label}-"))
             .tempdir()
             .unwrap()
             .keep()
+    }
+
+    #[test]
+    fn a_library_workflow_leaves_the_pinned_on_disk_layout() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let data = directory.path().canonicalize().unwrap();
+        let root = crate::paths::create_project_dir("pinned").unwrap();
+        std::fs::write(root.join("main.tex"), "\\documentclass{article}").unwrap();
+        write_meta_at(
+            &root.join("project.json"),
+            &ProjectMeta {
+                name: "Pinned".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        crate::paths::build_dir("pinned").unwrap();
+        crate::paths::figure_build_dir("pinned").unwrap();
+        super::write_build_metadata("pinned", 1, "xetex", Some("out"), 3);
+        std::fs::write(root.join("draft.tex"), "draft").unwrap();
+        std::fs::write(root.join("paper.tex"), "paper").unwrap();
+        rename_path_in_project(
+            &library(&root),
+            &root.join("draft.tex"),
+            &root.join("paper.tex"),
+            "paper.tex",
+            FileConflictStrategy::Replace,
+        )
+        .unwrap();
+        let sources = test_dir("pinned-import-sources");
+        std::fs::write(sources.join("figure.png"), b"png").unwrap();
+        import_paths_transactional(&library(&root), &root, &[sources.join("figure.png")]).unwrap();
+        assert!(!crate::worktree_lock::pending_restore_marker_exists("pinned").unwrap());
+
+        assert_eq!(
+            crate::paths::relative_tree_for_test(&data),
+            [
+                "project-worktree-locks",
+                "project-worktree-locks/pinned.lock",
+                "projects",
+                "projects/pinned",
+                "projects/pinned/.oleafly",
+                "projects/pinned/.oleafly/build",
+                "projects/pinned/.oleafly/builds",
+                "projects/pinned/.oleafly/builds/build-0000000001.json",
+                "projects/pinned/.oleafly/figbuild",
+                "projects/pinned/.oleafly/import-staging",
+                "projects/pinned/.oleafly/move-backups",
+                "projects/pinned/figure.png",
+                "projects/pinned/main.tex",
+                "projects/pinned/paper.tex",
+                "projects/pinned/project.json",
+            ]
+        );
+        std::fs::remove_dir_all(sources).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_metadata_lives_in_the_sidecar_and_a_folder_project_json_is_never_rewritten() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("workspace");
+        std::fs::create_dir(&folder).unwrap();
+        let foreign: &[u8] = br#"{"name":"nx-app","targets":{"build":{}}}"#;
+        std::fs::write(folder.join("project.json"), foreign).unwrap();
+        std::fs::write(folder.join("draft.tex"), "\\documentclass{article}").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+
+        let mut meta = read_meta(&record.id).unwrap();
+        assert_eq!(meta.name, record.id);
+        meta.main_doc = "draft.tex".into();
+        meta.color = "#224466".into();
+        super::write_meta(&record.id, &meta).unwrap();
+        assert_eq!(read_meta(&record.id).unwrap().color, "#224466");
+
+        let result = super::rename_path_and_update_meta(
+            Some(&record.id),
+            &location,
+            &location.root.join("draft.tex"),
+            &location.root.join("final.tex"),
+            "final.tex",
+            FileConflictStrategy::Error,
+            meta,
+        )
+        .unwrap();
+        assert!(
+            matches!(result, RenameFileResult::Renamed { ref path, .. } if path == "final.tex")
+        );
+        assert_eq!(read_meta(&record.id).unwrap().main_doc, "final.tex");
+        assert_eq!(std::fs::read(folder.join("project.json")).unwrap(), foreign);
+        assert!(location.manifest_path().is_file());
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn replacing_a_file_in_a_linked_folder_keeps_the_backup_out_of_the_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("draft.tex"), "new draft").unwrap();
+        std::fs::write(folder.join("paper.tex"), "published").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+
+        let result = rename_path_in_project(
+            &location,
+            &location.root.join("draft.tex"),
+            &location.root.join("paper.tex"),
+            "paper.tex",
+            FileConflictStrategy::Replace,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            RenameFileResult::Renamed {
+                path: "paper.tex".into(),
+                generation: 0
+            }
+        );
+        assert_eq!(
+            std::fs::read_to_string(location.root.join("paper.tex")).unwrap(),
+            "new draft"
+        );
+        let mut names: Vec<String> = std::fs::read_dir(&location.root)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["paper.tex"]);
+        assert_eq!(
+            std::fs::read_dir(location.move_backups_dir())
+                .unwrap()
+                .count(),
+            0
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_substituted_linked_backup_directory_refuses_the_replace() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let outside = folders.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(folder.join("draft.tex"), "new draft").unwrap();
+        std::fs::write(folder.join("paper.tex"), "published").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        std::os::unix::fs::symlink(&outside, location.state_dir.join("state")).unwrap();
+
+        assert!(rename_path_in_project(
+            &location,
+            &location.root.join("draft.tex"),
+            &location.root.join("paper.tex"),
+            "paper.tex",
+            FileConflictStrategy::Replace,
+        )
+        .is_err());
+        assert_eq!(
+            std::fs::read_to_string(folder.join("paper.tex")).unwrap(),
+            "published"
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("draft.tex")).unwrap(),
+            "new draft"
+        );
+        assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn importing_into_a_linked_folder_stages_transiently_inside_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        let sources = test_dir("linked-import-sources");
+        std::fs::write(sources.join("a.txt"), "a").unwrap();
+
+        let imported =
+            import_paths_transactional(&location, &location.root, &[sources.join("a.txt")])
+                .unwrap();
+
+        assert_eq!(imported, ["a.txt"]);
+        let names: Vec<String> = std::fs::read_dir(&location.root)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["a.txt"]);
+        assert!(!location.state_dir.join("import-staging").exists());
+        std::fs::remove_dir_all(sources).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_failed_linked_import_leaves_no_staging_behind() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        let sources = test_dir("linked-import-failure");
+        std::fs::write(sources.join("first.txt"), "first").unwrap();
+        std::fs::write(sources.join("second.txt"), "second").unwrap();
+        let mut published = 0;
+
+        let error = import_paths_transactional_with(
+            &location,
+            &location.root,
+            &[sources.join("first.txt"), sources.join("second.txt")],
+            &mut |from, to| {
+                published += 1;
+                if published == 2 {
+                    return Err(std::io::Error::other("injected publish failure"));
+                }
+                rename_exclusive(from, to)
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.contains("rolled back"), "{error}");
+        assert_eq!(std::fs::read_dir(&location.root).unwrap().count(), 0);
+        std::fs::remove_dir_all(sources).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_build_records_are_written_to_central_state() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        super::write_build_metadata(&record.id, 3, "xetex", None, 1);
+        let state = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id);
+        assert!(state.join("builds").join("build-0000000003.json").is_file());
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn library_reservation_skips_an_identity_held_by_the_folder_registry() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        std::fs::create_dir_all(directory.path().join("linked").join("shared-project")).unwrap();
+        assert!(
+            try_reserve_project_directory(&projects, "shared-project", true)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!projects.join("shared-project").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn library_identities_never_use_the_linked_prefix() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        for _ in 0..64 {
+            let reservation = super::reserve_unique_project_directory(&projects, true).unwrap();
+            assert!(!reservation
+                .project_id()
+                .starts_with(crate::linked_registry::LINKED_ID_PREFIX));
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]
@@ -7746,8 +8068,8 @@ mod tests {
         std::fs::write(&valid, "valid").unwrap();
         let missing = sources.join("missing.txt");
 
-        let error =
-            import_paths_transactional(&project, &destination, &[valid, missing]).unwrap_err();
+        let error = import_paths_transactional(&library(&project), &destination, &[valid, missing])
+            .unwrap_err();
 
         assert!(error.contains("cannot read"));
         assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 0);
@@ -7769,8 +8091,8 @@ mod tests {
         std::fs::create_dir(&folder).unwrap();
         std::os::unix::fs::symlink(&safe, folder.join("link.txt")).unwrap();
 
-        let error =
-            import_paths_transactional(&project, &destination, &[safe, folder]).unwrap_err();
+        let error = import_paths_transactional(&library(&project), &destination, &[safe, folder])
+            .unwrap_err();
 
         assert!(error.contains("symlink"));
         assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 0);
@@ -7792,7 +8114,7 @@ mod tests {
         let mut publishes = 0;
 
         let error = import_paths_transactional_with(
-            &project,
+            &library(&project),
             &destination,
             &[first, second],
             &mut |from, to| {
@@ -7828,7 +8150,7 @@ mod tests {
         std::fs::write(&second, "second").unwrap();
 
         let imported =
-            import_paths_transactional(&project, &destination, &[first, second]).unwrap();
+            import_paths_transactional(&library(&project), &destination, &[first, second]).unwrap();
 
         assert_eq!(imported, ["imports/Paper.tex", "imports/paper (2).tex"]);
         assert_eq!(
@@ -8182,9 +8504,14 @@ mod tests {
         std::fs::write(&src, "new draft").unwrap();
         std::fs::write(&dst, "published").unwrap();
 
-        let result =
-            rename_path_in_project(&root, &src, &dst, "paper.tex", FileConflictStrategy::Error)
-                .unwrap();
+        let result = rename_path_in_project(
+            &library(&root),
+            &src,
+            &dst,
+            "paper.tex",
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
 
         assert_eq!(
             result,
@@ -8214,7 +8541,7 @@ mod tests {
 
         let result = super::rename_path_and_update_meta(
             None,
-            &root,
+            &library(&root),
             &src,
             &dst,
             "final.tex",
@@ -8253,7 +8580,7 @@ mod tests {
 
         let result = super::rename_path_and_update_meta(
             None,
-            &root,
+            &library(&root),
             &src,
             &requested,
             "renamed",
@@ -8289,7 +8616,7 @@ mod tests {
 
         super::rename_path_and_update_meta(
             None,
-            &root,
+            &library(&root),
             &src,
             &dst,
             "paper.tex",
@@ -8321,7 +8648,7 @@ mod tests {
 
         let error = super::rename_path_and_update_meta(
             None,
-            &root,
+            &library(&root),
             &src,
             &dst,
             "final.tex",
@@ -8366,7 +8693,7 @@ mod tests {
         std::fs::write(&dst, "published").unwrap();
 
         let result = rename_path_in_project(
-            &root,
+            &library(&root),
             &src,
             &dst,
             "paper.tex",
@@ -8399,7 +8726,7 @@ mod tests {
         std::fs::write(&dst, "published").unwrap();
 
         let result = rename_path_in_project(
-            &root,
+            &library(&root),
             &src,
             &dst,
             "paper.tex",
@@ -8433,7 +8760,7 @@ mod tests {
         std::fs::write(&existing, "published").unwrap();
 
         let result = rename_path_in_project(
-            &root,
+            &library(&root),
             &src,
             &requested,
             "target/paper.tex",
@@ -8454,9 +8781,14 @@ mod tests {
         let dst = root.join("paper.tex");
         std::fs::write(&src, "paper").unwrap();
 
-        let result =
-            rename_path_in_project(&root, &src, &dst, "paper.tex", FileConflictStrategy::Error)
-                .unwrap();
+        let result = rename_path_in_project(
+            &library(&root),
+            &src,
+            &dst,
+            "paper.tex",
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
 
         assert_eq!(
             result,
@@ -8478,7 +8810,7 @@ mod tests {
         let dst = src.join("archive");
 
         let error = rename_path_in_project(
-            &root,
+            &library(&root),
             &src,
             &dst,
             "chapters/archive",

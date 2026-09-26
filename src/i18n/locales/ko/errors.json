@@ -6,7 +6,11 @@
     "name_conflict": "{{name}} 이름의 프로젝트가 이미 있습니다.",
     "folder_unavailable": "새 프로젝트 폴더를 확보하지 못했습니다.",
     "not_found": "이 프로젝트는 더 이상 라이브러리에 없습니다.",
-    "not_recyclable": "이 프로젝트는 휴지통으로 이동할 수 없습니다."
+    "not_recyclable": "이 프로젝트는 휴지통으로 이동할 수 없습니다.",
+    "linked_missing": "Oleafly에서 {{folder}} 폴더를 찾을 수 없습니다. 이동되었거나 삭제되었을 수 있고, 연결되지 않은 드라이브에 있을 수도 있습니다.",
+    "linked_replaced": "{{folder}} 폴더는 이전에 Oleafly에서 열었던 폴더가 아닙니다. 계속하려면 다시 여세요.",
+    "linked_permission_denied": "Oleafly에 {{folder}} 폴더를 열 권한이 없습니다.",
+    "linked_invalid": "이 폴더에 대한 Oleafly의 연결이 손상되었습니다. Oleafly에서 제거한 다음 폴더를 다시 여세요."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

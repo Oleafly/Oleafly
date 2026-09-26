@@ -6,7 +6,11 @@
     "name_conflict": "A project named {{name}} already exists.",
     "folder_unavailable": "Could not reserve a new project folder.",
     "not_found": "This project is no longer in your library.",
-    "not_recyclable": "This project can't be moved to the Recycle Bin."
+    "not_recyclable": "This project can't be moved to the Recycle Bin.",
+    "linked_missing": "Oleafly can't find the folder {{folder}}. It might have been moved or deleted, or it's on a drive that isn't connected.",
+    "linked_replaced": "The folder {{folder}} isn't the one Oleafly opened before. Open it again to continue.",
+    "linked_permission_denied": "Oleafly doesn't have permission to open the folder {{folder}}.",
+    "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

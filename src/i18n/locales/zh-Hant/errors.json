@@ -6,7 +6,11 @@
     "name_conflict": "已有名為 {{name}} 的專案。",
     "folder_unavailable": "無法保留新的專案資料夾。",
     "not_found": "此專案已不在你的專案庫中。",
-    "not_recyclable": "無法將此專案移至資源回收筒。"
+    "not_recyclable": "無法將此專案移至資源回收筒。",
+    "linked_missing": "Oleafly 找不到資料夾 {{folder}}。它可能已被移動或刪除，或位於未連接的磁碟機上。",
+    "linked_replaced": "資料夾 {{folder}} 已不是 Oleafly 先前開啟的那個資料夾。請重新開啟以繼續。",
+    "linked_permission_denied": "Oleafly 沒有開啟資料夾 {{folder}} 的權限。",
+    "linked_invalid": "Oleafly 中此資料夾的連結已損毀。請將它從 Oleafly 移除，然後重新開啟該資料夾。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

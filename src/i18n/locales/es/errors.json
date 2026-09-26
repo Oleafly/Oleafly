@@ -6,7 +6,11 @@
     "name_conflict": "Ya existe un proyecto con el nombre {{name}}.",
     "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto.",
     "not_found": "Este proyecto ya no está en tu biblioteca.",
-    "not_recyclable": "Este proyecto no se puede mover a la papelera."
+    "not_recyclable": "Este proyecto no se puede mover a la papelera.",
+    "linked_missing": "Oleafly no encuentra la carpeta {{folder}}. Puede que se haya movido o eliminado, o que esté en una unidad que no está conectada.",
+    "linked_replaced": "La carpeta {{folder}} no es la que Oleafly abrió antes. Vuelve a abrirla para continuar.",
+    "linked_permission_denied": "Oleafly no tiene permiso para abrir la carpeta {{folder}}.",
+    "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

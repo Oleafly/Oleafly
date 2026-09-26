@@ -6,7 +6,11 @@
     "name_conflict": "Ein Projekt mit dem Namen {{name}} gibt es bereits.",
     "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden.",
     "not_found": "Dieses Projekt ist nicht mehr in Ihrer Bibliothek.",
-    "not_recyclable": "Dieses Projekt kann nicht in den Papierkorb verschoben werden."
+    "not_recyclable": "Dieses Projekt kann nicht in den Papierkorb verschoben werden.",
+    "linked_missing": "Oleafly kann den Ordner {{folder}} nicht finden. Er wurde möglicherweise verschoben oder gelöscht, oder er liegt auf einem Laufwerk, das nicht angeschlossen ist.",
+    "linked_replaced": "Der Ordner {{folder}} ist nicht der Ordner, den Oleafly zuvor geöffnet hat. Öffnen Sie ihn erneut, um fortzufahren.",
+    "linked_permission_denied": "Oleafly hat keine Berechtigung, den Ordner {{folder}} zu öffnen.",
+    "linked_invalid": "Die Verknüpfung von Oleafly mit diesem Ordner ist beschädigt. Entfernen Sie ihn aus Oleafly und öffnen Sie den Ordner dann erneut."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

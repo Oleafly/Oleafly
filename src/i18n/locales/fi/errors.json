@@ -6,7 +6,11 @@
     "name_conflict": "Projekti nimeltä {{name}} on jo olemassa.",
     "folder_unavailable": "Uutta projektikansiota ei voitu varata.",
     "not_found": "Tämä projekti ei ole enää kirjastossa.",
-    "not_recyclable": "Tätä projektia ei voi siirtää roskakoriin."
+    "not_recyclable": "Tätä projektia ei voi siirtää roskakoriin.",
+    "linked_missing": "Oleafly ei löydä kansiota {{folder}}. Se on ehkä siirretty tai poistettu, tai se on asemalla, jota ei ole liitetty.",
+    "linked_replaced": "Kansio {{folder}} ei ole sama, jonka Oleafly avasi aiemmin. Jatka avaamalla se uudelleen.",
+    "linked_permission_denied": "Oleaflylla ei ole oikeutta avata kansiota {{folder}}.",
+    "linked_invalid": "Oleaflyn linkki tähän kansioon on vioittunut. Poista se Oleaflysta ja avaa kansio sitten uudelleen."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

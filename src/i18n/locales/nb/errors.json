@@ -6,7 +6,11 @@
     "name_conflict": "Det finnes allerede et prosjekt som heter {{name}}.",
     "folder_unavailable": "Kunne ikke reservere en ny prosjektmappe.",
     "not_found": "Prosjektet er ikke lenger i biblioteket ditt.",
-    "not_recyclable": "Prosjektet kan ikke flyttes til papirkurven."
+    "not_recyclable": "Prosjektet kan ikke flyttes til papirkurven.",
+    "linked_missing": "Oleafly finner ikke mappen {{folder}}. Den kan ha blitt flyttet eller slettet, eller den ligger på en stasjon som ikke er koblet til.",
+    "linked_replaced": "Mappen {{folder}} er ikke den Oleafly åpnet tidligere. Åpne den på nytt for å fortsette.",
+    "linked_permission_denied": "Oleafly har ikke tillatelse til å åpne mappen {{folder}}.",
+    "linked_invalid": "Oleaflys kobling til denne mappen er skadet. Fjern den fra Oleafly, og åpne deretter mappen på nytt."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."

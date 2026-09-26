@@ -6,7 +6,11 @@
     "name_conflict": "Există deja un proiect numit {{name}}.",
     "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect.",
     "not_found": "Acest proiect nu mai este în biblioteca ta.",
-    "not_recyclable": "Acest proiect nu poate fi mutat în Coșul de reciclare."
+    "not_recyclable": "Acest proiect nu poate fi mutat în Coșul de reciclare.",
+    "linked_missing": "Oleafly nu găsește folderul {{folder}}. Poate a fost mutat sau șters ori se află pe o unitate care nu este conectată.",
+    "linked_replaced": "Folderul {{folder}} nu este cel pe care Oleafly l-a deschis anterior. Deschide-l din nou pentru a continua.",
+    "linked_permission_denied": "Oleafly nu are permisiunea de a deschide folderul {{folder}}.",
+    "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

@@ -229,7 +229,15 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
 pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
-        let project_dir = paths::project_dir(&project_id)?;
+        let location = crate::project_location::locate(&project_id)?;
+        if location.kind == crate::project_location::ProjectKind::Linked {
+            if let Some(build) = paths::existing_state_subdirectory(&location, "build")? {
+                std::fs::remove_dir_all(&build)
+                    .map_err(|error| format!("failed to clear build directory: {error}"))?;
+            }
+            return paths::state_subdirectory(&location, "build").map(|_| ());
+        }
+        let project_dir = location.root;
         oleafly_core::Workspace::clean_build_directory(&project_dir)
             .map_err(|error| format!("failed to clear build directory: {error}"))?;
         oleafly_core::Workspace::ensure_build_directory(&project_dir)
@@ -422,7 +430,7 @@ pub async fn compile_project(
                 else {
                     return;
                 };
-                let Ok(root) = paths::project_dir(&fp_project) else {
+                let Ok(Some(root)) = compile_fingerprint_root(&fp_project) else {
                     return;
                 };
                 let compiled_at_ms = std::time::SystemTime::now()
@@ -496,7 +504,9 @@ pub async fn validate_compile_fingerprint(
 ) -> Result<Option<ValidatedCompileFingerprint>, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let root = paths::project_dir(&project_id)?;
+    let Some(root) = compile_fingerprint_root(&project_id)? else {
+        return Ok(None);
+    };
     let validated = tauri::async_runtime::spawn_blocking(move || {
         crate::compile_fingerprint::validated_with_log(&root, &main_doc, &meta.engine)
     })
@@ -508,6 +518,11 @@ pub async fn validate_compile_fingerprint(
             .fetch_max(record.output_revision, std::sync::atomic::Ordering::SeqCst);
         ValidatedCompileFingerprint::from_record(log, record)
     }))
+}
+
+fn compile_fingerprint_root(project_id: &str) -> Result<Option<std::path::PathBuf>, String> {
+    let location = crate::project_location::locate(project_id)?;
+    Ok((location.kind == crate::project_location::ProjectKind::Library).then_some(location.root))
 }
 
 fn desktop_workspace(
@@ -825,6 +840,77 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clearing_a_linked_build_empties_only_central_state() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let build = crate::paths::build_dir(&record.id).unwrap();
+        std::fs::write(build.join("_oleafly_entry.aux"), b"aux").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir(record.id.clone())).unwrap();
+
+        assert!(build.is_dir());
+        assert_eq!(std::fs::read_dir(&build).unwrap().count(), 0);
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn clearing_a_library_build_keeps_the_in_project_layout() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let root = crate::paths::create_project_dir("paper").unwrap();
+        let build = crate::paths::build_dir("paper").unwrap();
+        std::fs::write(build.join("_oleafly_entry.aux"), b"aux").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir("paper".into())).unwrap();
+
+        assert_eq!(build, root.join(".oleafly").join("build"));
+        assert!(build.is_dir());
+        assert_eq!(std::fs::read_dir(&build).unwrap().count(), 0);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn compile_fingerprints_are_never_read_from_a_linked_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), b"\\documentclass{article}").unwrap();
+        crate::compile_fingerprint::persist_after_compile(
+            &folder,
+            "main.tex",
+            "latex",
+            "pdf-v1:1:aa",
+            1,
+            1,
+            "log",
+        )
+        .unwrap();
+        assert!(
+            crate::compile_fingerprint::validated_with_log(&folder, "main.tex", "latex").is_some()
+        );
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let root = crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(compile_fingerprint_root(&record.id).unwrap(), None);
+        assert_eq!(compile_fingerprint_root("paper").unwrap(), Some(root));
+        assert_eq!(
+            compile_fingerprint_root("missing").unwrap_err(),
+            "project does not exist: missing"
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     #[test]
     fn decode_b64_roundtrip_and_rejects_garbage() {

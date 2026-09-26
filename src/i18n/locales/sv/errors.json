@@ -6,7 +6,11 @@
     "name_conflict": "Det finns redan ett projekt som heter {{name}}.",
     "folder_unavailable": "Det gick inte att reservera en ny projektmapp.",
     "not_found": "Projektet finns inte längre i ditt bibliotek.",
-    "not_recyclable": "Projektet kan inte flyttas till papperskorgen."
+    "not_recyclable": "Projektet kan inte flyttas till papperskorgen.",
+    "linked_missing": "Oleafly hittar inte mappen {{folder}}. Den kan ha flyttats eller tagits bort, eller så ligger den på en enhet som inte är ansluten.",
+    "linked_replaced": "Mappen {{folder}} är inte den som Oleafly öppnade tidigare. Öppna den igen för att fortsätta.",
+    "linked_permission_denied": "Oleafly har inte behörighet att öppna mappen {{folder}}.",
+    "linked_invalid": "Oleaflys länk till den här mappen är skadad. Ta bort den från Oleafly och öppna sedan mappen igen."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} är inte tillgängligt."

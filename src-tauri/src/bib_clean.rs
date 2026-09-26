@@ -1004,7 +1004,32 @@ fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, String> {
     })
 }
 
-fn apply_plan(mut plan: CleanPlan, expected: &str) -> Result<CleanOutcome, String> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum BackupLocation {
+    InProject,
+    External(PathBuf),
+}
+
+fn backup_location(project_id: &str) -> Result<BackupLocation, String> {
+    let location = crate::project_location::locate(project_id)?;
+    Ok(match location.kind {
+        crate::project_location::ProjectKind::Library => BackupLocation::InProject,
+        crate::project_location::ProjectKind::Linked => {
+            BackupLocation::External(crate::paths::state_subdirectory(&location, "backups")?)
+        }
+    })
+}
+
+#[cfg(test)]
+fn apply_plan(plan: CleanPlan, expected: &str) -> Result<CleanOutcome, String> {
+    apply_plan_to(plan, expected, &BackupLocation::InProject)
+}
+
+fn apply_plan_to(
+    mut plan: CleanPlan,
+    expected: &str,
+    backups: &BackupLocation,
+) -> Result<CleanOutcome, String> {
     if plan.outcome.preview_token != expected {
         return Err(
             "The project changed after the preview. Preview the changes again before applying."
@@ -1019,11 +1044,17 @@ fn apply_plan(mut plan: CleanPlan, expected: &str) -> Result<CleanOutcome, Strin
         }
     }
     if !plan.changes.is_empty() {
-        let relative = format!(
-            ".oleafly/backups/reference-clean-{:032x}",
-            rand::random::<u128>()
-        );
-        let backup = crate::sandbox::resolve_within(&plan.root, &relative)?;
+        let name = format!("reference-clean-{:032x}", rand::random::<u128>());
+        let (backup, reported) = match backups {
+            BackupLocation::InProject => {
+                let relative = format!(".oleafly/backups/{name}");
+                (
+                    crate::sandbox::resolve_within(&plan.root, &relative)?,
+                    Some(relative),
+                )
+            }
+            BackupLocation::External(directory) => (directory.join(&name), None),
+        };
         for change in &plan.changes {
             let destination = backup.join(
                 change
@@ -1034,7 +1065,7 @@ fn apply_plan(mut plan: CleanPlan, expected: &str) -> Result<CleanOutcome, Strin
             std::fs::create_dir_all(destination.parent().unwrap()).map_err(|e| e.to_string())?;
             crate::sandbox::atomic_write(&destination, change.original.as_bytes())?;
         }
-        plan.outcome.backup_path = Some(relative);
+        plan.outcome.backup_path = reported;
     }
     // Stage every replacement before touching any destination. Keep originals
     // for rollback if publishing a later file fails.
@@ -1092,14 +1123,16 @@ pub async fn clean_bibtex_library(
         .map_err(|e| e.to_string())?;
     }
     let token = preview_token.ok_or("Preview the changes before applying them.")?;
+    let backup_project_id = project_id.clone();
     let mutation = crate::project::mutate_project_worktree(
         &state,
         project_id.clone(),
         expected_generation,
         move |root| {
+            let backups = backup_location(&backup_project_id)?;
             let plan = plan_project(root, &bib_path)?;
             let changed = !plan.changes.is_empty();
-            Ok((apply_plan(plan, &token)?, changed))
+            Ok((apply_plan_to(plan, &token, &backups)?, changed))
         },
     )
     .await?;
@@ -1284,6 +1317,11 @@ mod tests {
         let token = plan.outcome.preview_token.clone();
         let outcome = apply_plan(plan, &token).unwrap();
         assert!(outcome.applied);
+        assert!(outcome
+            .backup_path
+            .as_deref()
+            .unwrap()
+            .starts_with(".oleafly/backups/reference-clean-"));
         assert_eq!(
             std::fs::read_to_string(root.join("assets/chapter.tex")).unwrap(),
             "\\cite{smith2020safe}"
@@ -1294,6 +1332,62 @@ mod tests {
             original
         );
     }
+    #[test]
+    fn external_backups_keep_originals_outside_the_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let original = article("old", "");
+        std::fs::write(root.join("refs.bib"), &original).unwrap();
+        std::fs::write(root.join("main.tex"), "\\cite{old}").unwrap();
+        let plan = plan_project(root, "refs.bib").unwrap();
+        let token = plan.outcome.preview_token.clone();
+
+        let outcome = apply_plan_to(
+            plan,
+            &token,
+            &BackupLocation::External(state.path().join("backups")),
+        )
+        .unwrap();
+
+        assert!(outcome.applied);
+        assert_eq!(outcome.backup_path, None);
+        assert!(!root.join(".oleafly").exists());
+        let backups: Vec<_> = std::fs::read_dir(state.path().join("backups"))
+            .unwrap()
+            .flatten()
+            .collect();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(
+            std::fs::read_to_string(backups[0].path().join("refs.bib")).unwrap(),
+            original
+        );
+    }
+
+    #[test]
+    fn linked_reference_backups_go_to_central_state() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let project = crate::paths::create_project_dir("paper").unwrap();
+
+        let linked = backup_location(&record.id).unwrap();
+        let state = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id);
+        assert_eq!(linked, BackupLocation::External(state.join("backups")));
+        assert!(state.join("backups").is_dir());
+        assert_eq!(backup_location("paper").unwrap(), BackupLocation::InProject);
+        assert!(!folder.join(".oleafly").exists());
+        assert!(!project.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     #[test]
     fn stale_preview_rejects_before_writing() {
         let dir = tempfile::tempdir().unwrap();

@@ -6,7 +6,11 @@
     "name_conflict": "Esiste già un progetto di nome {{name}}.",
     "folder_unavailable": "Impossibile riservare una nuova cartella di progetto.",
     "not_found": "Questo progetto non è più nella tua libreria.",
-    "not_recyclable": "Questo progetto non può essere spostato nel cestino."
+    "not_recyclable": "Questo progetto non può essere spostato nel cestino.",
+    "linked_missing": "Oleafly non trova la cartella {{folder}}. Potrebbe essere stata spostata o eliminata, oppure si trova su un'unità non collegata.",
+    "linked_replaced": "La cartella {{folder}} non è quella che Oleafly ha aperto in precedenza. Riaprila per continuare.",
+    "linked_permission_denied": "Oleafly non ha l'autorizzazione per aprire la cartella {{folder}}.",
+    "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

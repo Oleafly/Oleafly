@@ -6,7 +6,11 @@
     "name_conflict": "Projekt o nazwie {{name}} już istnieje.",
     "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu.",
     "not_found": "Tego projektu nie ma już w bibliotece.",
-    "not_recyclable": "Tego projektu nie można przenieść do Kosza."
+    "not_recyclable": "Tego projektu nie można przenieść do Kosza.",
+    "linked_missing": "Oleafly nie może znaleźć folderu {{folder}}. Mógł zostać przeniesiony lub usunięty albo znajduje się na dysku, który nie jest podłączony.",
+    "linked_replaced": "Folder {{folder}} nie jest tym, który Oleafly otworzył wcześniej. Otwórz go ponownie, aby kontynuować.",
+    "linked_permission_denied": "Oleafly nie ma uprawnień do otwarcia folderu {{folder}}.",
+    "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

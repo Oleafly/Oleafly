@@ -6,7 +6,11 @@
     "name_conflict": "Un projet nommé {{name}} existe déjà.",
     "folder_unavailable": "Impossible de réserver un nouveau dossier de projet.",
     "not_found": "Ce projet n'est plus dans votre bibliothèque.",
-    "not_recyclable": "Ce projet ne peut pas être déplacé vers la corbeille."
+    "not_recyclable": "Ce projet ne peut pas être déplacé vers la corbeille.",
+    "linked_missing": "Oleafly ne trouve pas le dossier {{folder}}. Il a peut-être été déplacé ou supprimé, ou il se trouve sur un disque qui n'est pas connecté.",
+    "linked_replaced": "Le dossier {{folder}} n'est pas celui qu'Oleafly a ouvert auparavant. Ouvrez-le à nouveau pour continuer.",
+    "linked_permission_denied": "Oleafly n'a pas l'autorisation d'ouvrir le dossier {{folder}}.",
+    "linked_invalid": "Le lien d'Oleafly vers ce dossier est endommagé. Retirez-le d'Oleafly, puis ouvrez à nouveau le dossier."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

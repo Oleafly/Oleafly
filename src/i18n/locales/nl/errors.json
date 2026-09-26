@@ -6,7 +6,11 @@
     "name_conflict": "Er bestaat al een project met de naam {{name}}.",
     "folder_unavailable": "Kon geen nieuwe projectmap reserveren.",
     "not_found": "Dit project staat niet meer in je bibliotheek.",
-    "not_recyclable": "Dit project kan niet naar de Prullenbak worden verplaatst."
+    "not_recyclable": "Dit project kan niet naar de Prullenbak worden verplaatst.",
+    "linked_missing": "Oleafly kan de map {{folder}} niet vinden. Misschien is die verplaatst of verwijderd, of staat die op een schijf die niet is aangesloten.",
+    "linked_replaced": "De map {{folder}} is niet de map die Oleafly eerder opende. Open hem opnieuw om verder te gaan.",
+    "linked_permission_denied": "Oleafly heeft geen toestemming om de map {{folder}} te openen.",
+    "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

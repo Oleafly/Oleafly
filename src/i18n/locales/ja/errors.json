@@ -6,7 +6,11 @@
     "name_conflict": "{{name}} という名前のプロジェクトはすでに存在します。",
     "folder_unavailable": "新しいプロジェクトフォルダを確保できませんでした。",
     "not_found": "このプロジェクトはライブラリにもうありません。",
-    "not_recyclable": "このプロジェクトはごみ箱に移動できません。"
+    "not_recyclable": "このプロジェクトはごみ箱に移動できません。",
+    "linked_missing": "Oleafly でフォルダ {{folder}} が見つかりません。移動または削除されたか、接続されていないドライブ上にある可能性があります。",
+    "linked_replaced": "フォルダ {{folder}} は、以前 Oleafly で開いたフォルダではありません。続けるには、もう一度開いてください。",
+    "linked_permission_denied": "Oleafly にはフォルダ {{folder}} を開く権限がありません。",
+    "linked_invalid": "このフォルダへの Oleafly のリンクが破損しています。Oleafly から削除してから、フォルダをもう一度開いてください。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

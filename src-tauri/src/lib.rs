@@ -36,7 +36,6 @@ mod deadlines;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
-#[allow(dead_code)]
 mod fs_identity;
 mod fsperm;
 mod git;
@@ -46,6 +45,7 @@ mod initial_state;
 mod language_service;
 mod latex_engine;
 mod library_db;
+mod linked_registry;
 mod literature;
 // Two-bucket logging; emit sites land with per-sidecar adoption.
 #[allow(dead_code)]
@@ -57,6 +57,7 @@ mod paths;
 mod proc;
 mod process_identity;
 mod project;
+mod project_location;
 mod project_sources;
 mod protocol;
 mod quit_gate;
