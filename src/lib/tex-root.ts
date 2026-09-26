@@ -21,8 +21,8 @@ export interface TexMagicComments {
 export type TexMagicCommentRule = "shared" | "library";
 
 const MAGIC_COMMENT_RULES: Record<TexMagicCommentRule, { pattern: RegExp; maxLines: number }> = {
-  shared: { pattern: /^\s*%\s*!?\s*TeX\s+(root|program)\s*=\s*(.*?)\s*$/i, maxLines: 50 },
-  library: { pattern: /^%\s*!\s*TEX\s+(root|program)\s*=\s*(.+?)\s*$/i, maxLines: 10 },
+  shared: { pattern: /^\s*%\s*(?:!\s*)?TeX\s+(root|program)\s*=/i, maxLines: 50 },
+  library: { pattern: /^%\s*!\s*TEX\s+(root|program)\s*=/i, maxLines: 10 },
 };
 
 export function parseTexMagicComments(
@@ -35,11 +35,13 @@ export function parseTexMagicComments(
   for (let line = 0; line < maxLines && start <= text.length; line++) {
     let end = text.indexOf("\n", start);
     if (end < 0) end = text.length;
-    const match = pattern.exec(text.slice(start, end));
-    if (match?.[2]) {
+    const line = text.slice(start, end);
+    const match = pattern.exec(line);
+    const value = match ? line.slice(match[0].length).trim() : "";
+    if (match && value) {
       const key = match[1].toLowerCase() as keyof TexMagicComments;
       // First occurrence of each key wins.
-      result[key] ??= match[2];
+      result[key] ??= value;
     }
     start = end + 1;
   }

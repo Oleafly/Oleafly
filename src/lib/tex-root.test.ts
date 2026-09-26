@@ -32,6 +32,19 @@ describe("parseTexMagicComments", () => {
     });
   });
 
+  it("reads CRLF files and trims the value under both rules", () => {
+    expect(
+      parseTexMagicComments("% !TEX root = main.tex \r\n\\section{A}\r\n"),
+    ).toEqual({ root: "main.tex", program: null });
+    expect(
+      parseTexMagicComments("% !TEX program =  lualatex\t\r\n", "library"),
+    ).toEqual({ root: null, program: "lualatex" });
+    expect(parseTexMagicComments("% !TEX root =   \r\n", "library")).toEqual({
+      root: null,
+      program: null,
+    });
+  });
+
   it("only scans the first 50 lines", () => {
     const filler = Array.from({ length: 50 }, (_, i) => `line ${i}`);
     const text = [...filler, "% !TEX root = late.tex"].join("\n");

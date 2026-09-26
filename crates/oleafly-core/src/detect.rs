@@ -20,6 +20,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::ffi::OsStr;
 use std::io::Read;
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::time::{Duration, Instant};
@@ -579,60 +580,15 @@ impl Scan {
                 };
             for entry in children {
                 entries += 1;
-                if entries > limits.max_entries || interrupted(options, started) {
+                if entries > limits.max_entries
+                    || interrupted(options, started)
+                    || scan
+                        .visit(&entry, &prefix, depth, options, &mut queue)
+                        .is_break()
+                {
                     scan.truncated = true;
                     break 'walk;
                 }
-                let Ok(file_type) = entry.file_type() else {
-                    continue;
-                };
-                if file_type.is_symlink() {
-                    continue;
-                }
-                let name = entry.file_name();
-                let Some(name) = name.to_str() else {
-                    continue;
-                };
-                let relative = if prefix.is_empty() {
-                    name.to_owned()
-                } else {
-                    format!("{prefix}/{name}")
-                };
-                if file_type.is_dir() {
-                    if depth < limits.max_depth
-                        && !is_skipped_scan_directory(OsStr::new(name))
-                        && oleafly_manifest_in(&entry.path(), options).is_none()
-                    {
-                        queue.push_back((entry.path(), relative, depth + 1));
-                    }
-                    continue;
-                }
-                let Some(family) = SourceFamily::of(name) else {
-                    continue;
-                };
-                if !file_type.is_file() {
-                    continue;
-                }
-                if scan.sources.len() >= limits.max_sources {
-                    scan.truncated = true;
-                    break 'walk;
-                }
-                let path = entry.path();
-                let placeholder = entry
-                    .metadata()
-                    .is_ok_and(|metadata| (options.placeholder)(&path, &metadata));
-                let facts = if placeholder {
-                    Facts::default()
-                } else {
-                    read_facts(&path, &relative, family)
-                };
-                scan.push(Source {
-                    path: relative,
-                    family,
-                    depth,
-                    placeholder,
-                    facts,
-                });
             }
             if cut {
                 scan.truncated = true;
@@ -640,6 +596,67 @@ impl Scan {
             }
         }
         Ok(scan)
+    }
+
+    fn visit(
+        &mut self,
+        entry: &std::fs::DirEntry,
+        prefix: &str,
+        depth: usize,
+        options: &DetectOptions<'_>,
+        queue: &mut VecDeque<(PathBuf, String, usize)>,
+    ) -> ControlFlow<()> {
+        let limits = options.limits;
+        let Ok(file_type) = entry.file_type() else {
+            return ControlFlow::Continue(());
+        };
+        if file_type.is_symlink() {
+            return ControlFlow::Continue(());
+        }
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            return ControlFlow::Continue(());
+        };
+        let relative = if prefix.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{prefix}/{name}")
+        };
+        if file_type.is_dir() {
+            if depth < limits.max_depth
+                && !is_skipped_scan_directory(OsStr::new(name))
+                && oleafly_manifest_in(&entry.path(), options).is_none()
+            {
+                queue.push_back((entry.path(), relative, depth + 1));
+            }
+            return ControlFlow::Continue(());
+        }
+        let Some(family) = SourceFamily::of(name) else {
+            return ControlFlow::Continue(());
+        };
+        if !file_type.is_file() {
+            return ControlFlow::Continue(());
+        }
+        if self.sources.len() >= limits.max_sources {
+            return ControlFlow::Break(());
+        }
+        let path = entry.path();
+        let placeholder = entry
+            .metadata()
+            .is_ok_and(|metadata| (options.placeholder)(&path, &metadata));
+        let facts = if placeholder {
+            Facts::default()
+        } else {
+            read_facts(&path, &relative, family)
+        };
+        self.push(Source {
+            path: relative,
+            family,
+            depth,
+            placeholder,
+            facts,
+        });
+        ControlFlow::Continue(())
     }
 
     fn push(&mut self, source: Source) {

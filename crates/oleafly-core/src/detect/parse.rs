@@ -253,10 +253,7 @@ pub(super) fn clean_title(text: &str) -> String {
             '{' | '}' | '~' => words.push(' '),
             '\\' => {
                 let mut command = false;
-                while characters
-                    .peek()
-                    .is_some_and(|next| next.is_ascii_alphabetic())
-                {
+                while characters.peek().is_some_and(char::is_ascii_alphabetic) {
                     characters.next();
                     command = true;
                 }
@@ -295,62 +292,68 @@ pub(super) fn latex_references(masked: &str) -> LatexReferences {
                 .take_while(u8::is_ascii_alphabetic)
                 .count();
         cursor = name_end.max(start);
-        match &masked[start..name_end] {
-            name @ ("input" | "include" | "subfile" | "InputIfFileExists") => {
-                if let Some((argument, end)) = braced_argument(masked, name_end) {
-                    found.inputs.push(argument.to_owned());
-                    cursor = end;
-                } else if name == "input" {
-                    if let Some(argument) = bare_argument(&masked[name_end..]) {
-                        found.inputs.push(argument.to_owned());
-                    }
-                }
-            }
-            "import" | "subimport" | "inputfrom" | "subinputfrom" | "includefrom"
-            | "subincludefrom" => {
-                if let Some((directory, end)) = braced_argument(masked, name_end) {
-                    if let Some((file, end)) = braced_argument(masked, end) {
-                        found
-                            .inputs
-                            .push(format!("{}/{file}", directory.trim_end_matches('/')));
-                        cursor = end;
-                    }
-                }
-            }
-            "includegraphics" => {
-                if let Some((argument, end)) = braced_argument(masked, name_end) {
-                    found.graphics.push(argument.to_owned());
-                    cursor = end;
-                }
-            }
-            "bibliography" => {
-                if let Some((argument, end)) = braced_argument(masked, name_end) {
-                    found.bibliographies.extend(
-                        argument
-                            .split(',')
-                            .map(str::trim)
-                            .filter(|name| !name.is_empty())
-                            .map(|name| {
-                                if has_extension(name) {
-                                    name.to_owned()
-                                } else {
-                                    format!("{name}.bib")
-                                }
-                            }),
-                    );
-                    cursor = end;
-                }
-            }
-            "addbibresource" => {
-                if let Some((argument, end)) = braced_argument(masked, name_end) {
-                    found.bibliographies.push(argument.to_owned());
-                    cursor = end;
-                }
-            }
-            _ => {}
+        if let Some(end) = found.record(&masked[start..name_end], masked, name_end) {
+            cursor = end;
         }
     }
     found
+}
+
+impl LatexReferences {
+    fn record(&mut self, name: &str, masked: &str, name_end: usize) -> Option<usize> {
+        match name {
+            "input" | "include" | "subfile" | "InputIfFileExists" => {
+                if let Some((argument, end)) = braced_argument(masked, name_end) {
+                    self.inputs.push(argument.to_owned());
+                    return Some(end);
+                }
+                if name == "input" {
+                    if let Some(argument) = bare_argument(&masked[name_end..]) {
+                        self.inputs.push(argument.to_owned());
+                    }
+                }
+                None
+            }
+            "import" | "subimport" | "inputfrom" | "subinputfrom" | "includefrom"
+            | "subincludefrom" => {
+                let (directory, end) = braced_argument(masked, name_end)?;
+                let (file, end) = braced_argument(masked, end)?;
+                self.inputs
+                    .push(format!("{}/{file}", directory.trim_end_matches('/')));
+                Some(end)
+            }
+            "includegraphics" => {
+                let (argument, end) = braced_argument(masked, name_end)?;
+                self.graphics.push(argument.to_owned());
+                Some(end)
+            }
+            "bibliography" => {
+                let (argument, end) = braced_argument(masked, name_end)?;
+                self.bibliographies.extend(
+                    argument
+                        .split(',')
+                        .map(str::trim)
+                        .filter(|name| !name.is_empty())
+                        .map(bibliography_file),
+                );
+                Some(end)
+            }
+            "addbibresource" => {
+                let (argument, end) = braced_argument(masked, name_end)?;
+                self.bibliographies.push(argument.to_owned());
+                Some(end)
+            }
+            _ => None,
+        }
+    }
+}
+
+fn bibliography_file(name: &str) -> String {
+    if has_extension(name) {
+        name.to_owned()
+    } else {
+        format!("{name}.bib")
+    }
 }
 
 fn braced_argument(text: &str, from: usize) -> Option<(&str, usize)> {
