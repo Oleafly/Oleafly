@@ -1383,7 +1383,7 @@ test("worker startup failure, partial analysis, retry, and recovery remain usabl
           showRegionalism: true,
           showWordChoice: true,
           dialect: "american",
-          dictionaryLocale: "zz_ZZ",
+          dictionaryLocale: "en_ZZ",
         },
       });
       return useProofreadingStore.getState().visual;
@@ -1391,7 +1391,7 @@ test("worker startup failure, partial analysis, retry, and recovery remain usabl
   );
   expect(partial.phase).toBe("partial");
   expect(partial.message).toContain(
-    "the requested zz_ZZ spelling dictionary could not start",
+    "the requested en_ZZ spelling dictionary could not start",
   );
   expect(providers(partial)).toEqual(new Set(["harper"]));
 
