@@ -85,7 +85,7 @@ function diskSnapshotOf(raw: string): DiskSnapshot {
 }
 
 function diskBytes(content: string, crlf: boolean): string {
-  return crlf ? content.replace(/\n/gu, "\r\n") : content;
+  return crlf ? content.replaceAll("\n", "\r\n") : content;
 }
 
 async function readDiskText(

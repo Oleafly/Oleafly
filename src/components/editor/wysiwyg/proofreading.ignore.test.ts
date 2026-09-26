@@ -95,7 +95,7 @@ describe("ignoring a Visual proofreading word", () => {
   });
 
   it("stays open when the dictionary refuses the word", async () => {
-    const issue = await paintedIssue("Das Wort wo‮rd bleibt.", "wo‮rd");
+    const issue = await paintedIssue("Das Wort wo\u202Erd bleibt.", "wo\u202Erd");
     expect(ignoreVisualProofreadingIssue(editor as Editor, issue, "project")).toBe(false);
     expect(ignoreVisualProofreadingIssue(editor as Editor, issue, "global")).toBe(false);
     expect(useDictionary.getState().global).toEqual([]);

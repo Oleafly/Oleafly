@@ -97,15 +97,15 @@ export function mapSpellingWords(
 }
 
 export function spellingLookupForms(word: string): string[] {
-  const normalized = word.normalize("NFC").replace(/\u00AD/gu, "");
+  const normalized = word.normalize("NFC").replaceAll(/\u00AD/gu, "");
   const ascii = normalized
-    .replace(/[’ʼ׳]/gu, "'")
-    .replace(/״/gu, '"');
+    .replaceAll(/[’ʼ׳]/gu, "'")
+    .replaceAll(/״/gu, '"');
   return ascii === normalized ? [normalized] : [normalized, ascii];
 }
 
 export function restoreApostrophes(original: string, suggestion: string): string {
   const typographic = /[’ʼ]/u.exec(original)?.[0];
   if (!typographic || original.includes("'")) return suggestion;
-  return suggestion.replace(/'/gu, typographic);
+  return suggestion.replaceAll(/'/gu, typographic);
 }

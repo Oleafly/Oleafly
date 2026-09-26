@@ -1987,7 +1987,7 @@ function markdownTextWithoutHtmlTags(title: string): string {
 
 function markdownHeadingText(title: string): string {
   return markdownTextWithoutHtmlTags(title)
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/gu, "$1")
+    .replace(/!?\[([^\][]*)\]\([^)]*\)/gu, "$1")
     .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, "")
     .replace(/[`*~[\]]/gu, "");
 }
@@ -1997,8 +1997,7 @@ function markdownSlug(title: string): string {
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s_.-]/gu, "")
     .trim()
-    .split(/\s+/u)
-    .join("-")
+    .replaceAll(/\s+/gu, "-")
     .replace(/^\P{L}+/u, "");
   return identifier || "section";
 }

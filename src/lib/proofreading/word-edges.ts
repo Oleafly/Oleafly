@@ -14,7 +14,7 @@ function trimEdges(text: string, start: RegExp, end: RegExp): string {
 }
 
 export function withoutSoftHyphens(text: string): string {
-  return text.replace(SOFT_HYPHENS, "");
+  return text.replaceAll(SOFT_HYPHENS, "");
 }
 
 export function trimToWordCharacters(text: string): string {

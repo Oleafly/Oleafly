@@ -28,7 +28,7 @@ const HEADING_ATTRIBUTES = [
     "gmu",
   ),
 ];
-const FENCED_DIV = /^[ \t]*:{3,}.*$/gmu;
+const FENCED_DIV = /^[ \t]*:::.*$/gmu;
 
 function blank(chars: string[], from: number, to: number) {
   for (let i = from; i < to; i++) if (chars[i] !== "\n") chars[i] = " ";

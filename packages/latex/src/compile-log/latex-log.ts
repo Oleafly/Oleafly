@@ -37,7 +37,16 @@ const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
 const engineOutputMarker = "[Oleafly] Engine output:";
 const tectonicSummaryLine = /^(?:error|warning): .+:\d+: /;
 const errorHelpLine = /^(?:See the .+ for explanation\.|Type {2}H <return> {2}for immediate help\.?)$/;
-const bareRelativePath = /^"?([\p{N}_-]*[\p{L}_][^\s"()[\]/:]*\/[^\s"()[\]]*[^\s"()[\]./])/u;
+const bareRelativePath = /^"?([\p{N}-]*[\p{L}_][^\s"()[\]/:]*\/[^\s"()[\]]*)/u;
+
+function bareRelativePathAt(rest: string): string | null {
+  const match = bareRelativePath.exec(rest);
+  if (!match) return null;
+  let path = match[1];
+  while (path.endsWith(".") || path.endsWith("/")) path = path.slice(0, -1);
+  const slash = path.indexOf("/");
+  return slash >= 0 && path.length > slash + 1 ? path : null;
+}
 const wrappedReference =
   /^LaTeX: (Reference|Citation) `(.*?)' on page \d+ undefined on input line (\d+)\.$/s;
 const trailingInputLine = /on input line (\d+)\.?$/;
@@ -565,13 +574,13 @@ function parseLaTeXFileStack(line: string, fileStack: string[], nested: number):
     if (paren === "(") {
       const pathResult = /^"?((?:(?:[a-zA-Z]:|\.|\/)?(?:\/|\\\\?))[^"()[\]]*)/.exec(rest);
       const mikTeXPathResult = /^"?([^"()[\]]*\.[a-z]{3,})/.exec(rest);
-      const bareResult = bareRelativePath.exec(rest);
+      const bareResult = bareRelativePathAt(rest);
       if (pathResult) {
         fileStack.push(pathResult[1].trim());
       } else if (mikTeXPathResult) {
         fileStack.push(`./${mikTeXPathResult[1].trim()}`);
       } else if (bareResult) {
-        fileStack.push(`./${bareResult[1]}`);
+        fileStack.push(`./${bareResult}`);
       } else {
         nested += 1;
       }

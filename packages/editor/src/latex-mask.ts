@@ -592,7 +592,7 @@ function collectLatexRegions(
       ).exec(inner);
       if (letters) return { base: letters[1], end };
       const dotless =
-        /^[ \t]*\\([ij])(?![a-zA-Z@])[ \t]*(?:\{\})?[ \t]*$/u.exec(inner);
+        /^[ \t]*\\([ij])(?![a-zA-Z@])[ \t]*(?:\{\}[ \t]*)?$/u.exec(inner);
       return dotless ? { base: dotless[1], end } : null;
     }
     if (

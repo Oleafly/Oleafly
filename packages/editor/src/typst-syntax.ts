@@ -1,7 +1,7 @@
 const IDENTIFIER_START = /[\p{L}\p{Nl}_]/u;
-const IDENTIFIER_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}\u200C\u200D-]/u;
+const IDENTIFIER_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}-]|\u200C|\u200D/u;
 const LABEL_START = /[\p{L}\p{M}\p{N}\p{Pc}]/u;
-const LABEL_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}\u200C\u200D.:-]/u;
+const LABEL_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}.:-]|\u200C|\u200D/u;
 const AUTOLINK_CHARACTER = /[0-9A-Za-z!#$%&*+,\-./:;=?@_~']/;
 const AUTOLINK_TRAILING_PUNCTUATION = "!,.:;?'";
 

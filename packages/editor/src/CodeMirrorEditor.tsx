@@ -196,23 +196,24 @@ function clampedSelection(selection: EditorSelection, length: number): EditorSel
   );
 }
 
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
+function startsWithHighSurrogate(text: string, index: number): boolean {
+  const code = text.codePointAt(index) ?? 0;
+  return code > 0xffff || (code >= 0xd800 && code <= 0xdbff);
 }
 
 export function minimalReplacement(before: string, after: string) {
   const limit = Math.min(before.length, after.length);
   let prefix = 0;
-  while (prefix < limit && before.charCodeAt(prefix) === after.charCodeAt(prefix)) prefix++;
-  if (prefix > 0 && isHighSurrogate(before.charCodeAt(prefix - 1))) prefix--;
+  while (prefix < limit && before[prefix] === after[prefix]) prefix++;
+  if (prefix > 0 && startsWithHighSurrogate(before, prefix - 1)) prefix--;
   let suffix = 0;
   while (
     suffix < limit - prefix &&
-    before.charCodeAt(before.length - 1 - suffix) === after.charCodeAt(after.length - 1 - suffix)
+    before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
   ) {
     suffix++;
   }
-  if (suffix > 0 && isHighSurrogate(before.charCodeAt(before.length - suffix - 1))) suffix--;
+  if (suffix > 0 && startsWithHighSurrogate(before, before.length - suffix - 1)) suffix--;
   return {
     from: prefix,
     to: before.length - suffix,

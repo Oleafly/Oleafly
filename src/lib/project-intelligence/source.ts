@@ -187,36 +187,39 @@ export function maskLatexComments(text: string): string {
 export function maskTypstComments(text: string): string {
   const chars = text.split("");
   let blockDepth = 0;
-  for (let index = 0; index < chars.length; index++) {
+  let index = 0;
+  while (index < chars.length) {
     if (blockDepth > 0) {
       if (text.startsWith("/*", index)) {
         chars[index] = " ";
         chars[index + 1] = " ";
         blockDepth++;
-        index++;
+        index += 2;
       } else if (text.startsWith("*/", index)) {
         chars[index] = " ";
         chars[index + 1] = " ";
         blockDepth--;
+        index += 2;
+      } else {
+        if (chars[index] !== "\n") chars[index] = " ";
         index++;
-      } else if (chars[index] !== "\n") {
-        chars[index] = " ";
       }
       continue;
     }
     const link = typstAutolinkEnd(text, index);
     if (link !== null) {
-      index = link - 1;
+      index = Math.max(link, index + 1);
     } else if (text.startsWith("//", index)) {
       while (index < chars.length && chars[index] !== "\n") {
         chars[index] = " ";
         index++;
       }
-      index--;
     } else if (text.startsWith("/*", index)) {
       chars[index] = " ";
       chars[index + 1] = " ";
       blockDepth = 1;
+      index += 2;
+    } else {
       index++;
     }
   }
