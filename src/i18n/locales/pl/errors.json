@@ -25,6 +25,10 @@
     "repositories_unavailable": "Nie udało się wczytać repozytoriów.",
     "create_repo_failed": "Nie udało się utworzyć repozytorium ({{status}})."
   },
+  "git": {
+    "remote_exists": "Ten projekt jest już powiązany z {{remote}}.",
+    "nested_repository": "Ten projekt znajduje się w innym repozytorium Git, więc Oleafly nie utworzy tu osobnego repozytorium."
+  },
   "approvals": {
     "full_access_declined": "Pełny dostęp nie został włączony."
   }

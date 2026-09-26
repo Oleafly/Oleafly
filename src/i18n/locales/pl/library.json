@@ -385,7 +385,9 @@
     "nameRequired": "Wpisz nazwę repozytorium.",
     "published": "Opublikowano w {{repository}}.",
     "linked": "Powiązano i wypchnięto do {{remote}}.",
-    "pushNeedsPull": "Powiązano z {{remote}}, ale wypchnięcie wymaga najpierw pobrania zmian: {{detail}}"
+    "pushNeedsPull": "Powiązano z {{remote}}, ale wypchnięcie wymaga najpierw pobrania zmian: {{detail}}",
+    "replaceRemotePrompt": "Ten projekt jest powiązany z {{remote}}. Zastąpić to powiązanie?",
+    "replaceRemote": "Zastąp powiązanie"
   },
   "deadlines": {
     "title": "Terminy konferencji",

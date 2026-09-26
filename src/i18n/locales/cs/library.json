@@ -385,7 +385,9 @@
     "nameRequired": "Zadejte název repozitáře.",
     "published": "Publikováno do {{repository}}.",
     "linked": "Propojeno a odesláno do {{remote}}.",
-    "pushNeedsPull": "Propojeno s {{remote}}, ale odeslání vyžaduje nejdřív stažení: {{detail}}"
+    "pushNeedsPull": "Propojeno s {{remote}}, ale odeslání vyžaduje nejdřív stažení: {{detail}}",
+    "replaceRemotePrompt": "Tento projekt je propojen s {{remote}}. Nahradit toto propojení?",
+    "replaceRemote": "Nahradit propojení"
   },
   "deadlines": {
     "title": "Termíny konferencí",

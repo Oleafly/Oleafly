@@ -25,6 +25,10 @@
     "repositories_unavailable": "无法加载仓库。",
     "create_repo_failed": "无法创建仓库（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "此项目已关联到 {{remote}}。",
+    "nested_repository": "此项目位于另一个 Git 仓库中，因此 Oleafly 不会在这里另建仓库。"
+  },
   "approvals": {
     "full_access_declined": "未启用完全访问权限。"
   }

@@ -371,7 +371,9 @@
     "nameRequired": "Anna repositorion nimi.",
     "published": "Julkaistiin kohteeseen {{repository}}.",
     "linked": "Linkitettiin ja työnnettiin kohteeseen {{remote}}.",
-    "pushNeedsPull": "Linkitettiin kohteeseen {{remote}}, mutta työntö vaatii ensin noudon: {{detail}}"
+    "pushNeedsPull": "Linkitettiin kohteeseen {{remote}}, mutta työntö vaatii ensin noudon: {{detail}}",
+    "replaceRemotePrompt": "Tämä projekti on linkitetty kohteeseen {{remote}}. Korvataanko linkki?",
+    "replaceRemote": "Korvaa linkki"
   },
   "deadlines": {
     "title": "Konferenssien määräajat",

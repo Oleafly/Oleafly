@@ -364,7 +364,9 @@
     "nameRequired": "請輸入儲存庫名稱。",
     "published": "已發布到 {{repository}}。",
     "linked": "已連結並推送到 {{remote}}。",
-    "pushNeedsPull": "已連結到 {{remote}}，但推送前需要先拉取：{{detail}}"
+    "pushNeedsPull": "已連結到 {{remote}}，但推送前需要先拉取：{{detail}}",
+    "replaceRemotePrompt": "此專案目前連結的是 {{remote}}。要取代這個連結嗎？",
+    "replaceRemote": "取代連結"
   },
   "deadlines": {
     "title": "研討會截止日期",

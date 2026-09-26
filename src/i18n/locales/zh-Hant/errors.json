@@ -25,6 +25,10 @@
     "repositories_unavailable": "無法載入儲存庫。",
     "create_repo_failed": "無法建立儲存庫（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "此專案已連結到 {{remote}}。",
+    "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。"
+  },
   "approvals": {
     "full_access_declined": "未啟用完整存取權。"
   }

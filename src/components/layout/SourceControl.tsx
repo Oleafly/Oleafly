@@ -66,6 +66,7 @@ import {
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
 } from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
+import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 
@@ -265,7 +266,7 @@ export function SourceControl() {
         }
         return result;
       } catch (error) {
-        if (current(action)) setNotice({ ok: false, text: String(error) });
+        if (current(action)) setNotice({ ok: false, text: describeError(error) });
         return undefined;
       } finally {
         if (activeMutation.current === action) {
@@ -771,6 +772,17 @@ export function SourceControl() {
           >
             {t(($) => $.shell.sourceControl.publish)}
           </Button>
+          {notice ? (
+            <p
+              role={notice.ok ? undefined : "alert"}
+              className={cn(
+                "text-[11px]",
+                notice.ok ? "text-muted-foreground" : "text-destructive",
+              )}
+            >
+              {notice.text}
+            </p>
+          ) : null}
         </div>
         <PublishToGitHubDialog
           open={publishOpen}
@@ -1229,6 +1241,7 @@ export function SourceControl() {
         onClose={() => setPublishOpen(false)}
         projectId={projectId}
         projectName={projectName}
+        currentRemote={remote}
         onPublished={() => {
           void refresh();
         }}

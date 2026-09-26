@@ -25,6 +25,10 @@
     "repositories_unavailable": "Kunne ikke laste inn repositoriene.",
     "create_repo_failed": "Kunne ikke opprette repositoriet ({{status}})."
   },
+  "git": {
+    "remote_exists": "Dette prosjektet er allerede koblet til {{remote}}.",
+    "nested_repository": "Dette prosjektet ligger i et annet Git-repositorium, så Oleafly oppretter ikke et eget repositorium her."
+  },
   "approvals": {
     "full_access_declined": "Full tilgang ble ikke slått på."
   }

@@ -25,6 +25,10 @@
     "repositories_unavailable": "저장소를 불러오지 못했습니다.",
     "create_repo_failed": "저장소를 만들지 못했습니다({{status}})."
   },
+  "git": {
+    "remote_exists": "이 프로젝트는 이미 {{remote}}에 연결되어 있습니다.",
+    "nested_repository": "이 프로젝트는 다른 Git 저장소 안에 있으므로 Oleafly가 여기에 별도의 저장소를 만들지 않습니다."
+  },
   "approvals": {
     "full_access_declined": "전체 접근 권한이 활성화되지 않았습니다."
   }

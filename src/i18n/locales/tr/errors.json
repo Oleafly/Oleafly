@@ -25,6 +25,10 @@
     "repositories_unavailable": "Depolar yüklenemedi.",
     "create_repo_failed": "Depo oluşturulamadı ({{status}})."
   },
+  "git": {
+    "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
+    "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz."
+  },
   "approvals": {
     "full_access_declined": "Tam erişim etkinleştirilmedi."
   }

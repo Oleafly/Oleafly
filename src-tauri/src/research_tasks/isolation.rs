@@ -372,17 +372,15 @@ fn run_git(
     let mut stderr = tempfile::tempfile()
         .map_err(|error| format!("could not create a Git error file: {error}"))?;
     let mut command = tokio::process::Command::new("git");
+    for variable in crate::git::GIT_REPOSITORY_ENV {
+        command.env_remove(variable);
+    }
     command
         .arg("-c")
         .arg(format!("core.hooksPath={}", git_null_device()))
         .arg("-C")
         .arg(project)
         .args(arguments)
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .env_remove("GIT_COMMON_DIR")
-        .env_remove("GIT_PREFIX")
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout.try_clone().map_err(|error| {
             format!("could not capture Git output: {error}")
@@ -950,15 +948,12 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(&victim, "do not touch").unwrap();
         let run = |arguments: &[&str]| {
-            let output = Command::new("git")
+            let mut command = Command::new("git");
+            crate::git::clear_inherited_git_env(&mut command);
+            let output = command
                 .arg("-C")
                 .arg(&project)
                 .args(arguments)
-                .env_remove("GIT_DIR")
-                .env_remove("GIT_WORK_TREE")
-                .env_remove("GIT_INDEX_FILE")
-                .env_remove("GIT_COMMON_DIR")
-                .env_remove("GIT_PREFIX")
                 .output()
                 .unwrap();
             assert!(
@@ -1002,15 +997,12 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(project.join("main.tex"), "manuscript").unwrap();
         let run = |arguments: &[&str]| {
-            let output = Command::new("git")
+            let mut command = Command::new("git");
+            crate::git::clear_inherited_git_env(&mut command);
+            let output = command
                 .arg("-C")
                 .arg(&project)
                 .args(arguments)
-                .env_remove("GIT_DIR")
-                .env_remove("GIT_WORK_TREE")
-                .env_remove("GIT_INDEX_FILE")
-                .env_remove("GIT_COMMON_DIR")
-                .env_remove("GIT_PREFIX")
                 .output()
                 .unwrap();
             assert!(

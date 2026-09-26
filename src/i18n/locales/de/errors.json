@@ -25,6 +25,10 @@
     "repositories_unavailable": "Die Repositorys konnten nicht geladen werden.",
     "create_repo_failed": "Das Repository konnte nicht erstellt werden ({{status}})."
   },
+  "git": {
+    "remote_exists": "Dieses Projekt ist bereits mit {{remote}} verknüpft.",
+    "nested_repository": "Dieses Projekt liegt in einem anderen Git-Repository, daher legt Oleafly hier kein eigenes an."
+  },
   "approvals": {
     "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
   }

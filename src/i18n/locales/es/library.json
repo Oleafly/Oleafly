@@ -378,7 +378,9 @@
     "nameRequired": "Escribe un nombre de repositorio.",
     "published": "Publicado en {{repository}}.",
     "linked": "Enlazado y subido a {{remote}}.",
-    "pushNeedsPull": "Se enlazó con {{remote}}, pero antes de subir hay que descargar los cambios: {{detail}}"
+    "pushNeedsPull": "Se enlazó con {{remote}}, pero antes de subir hay que descargar los cambios: {{detail}}",
+    "replaceRemotePrompt": "Este proyecto está enlazado con {{remote}}. ¿Quieres reemplazar ese enlace?",
+    "replaceRemote": "Reemplazar enlace"
   },
   "deadlines": {
     "title": "Fechas límite de congresos",

@@ -25,6 +25,10 @@
     "repositories_unavailable": "Impossible de charger les dépôts.",
     "create_repo_failed": "Impossible de créer le dépôt ({{status}})."
   },
+  "git": {
+    "remote_exists": "Ce projet est déjà lié à {{remote}}.",
+    "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n’y crée pas de dépôt distinct."
+  },
   "approvals": {
     "full_access_declined": "L'accès complet n'a pas été activé."
   }

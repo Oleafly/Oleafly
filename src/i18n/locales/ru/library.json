@@ -385,7 +385,9 @@
     "nameRequired": "Введите имя репозитория.",
     "published": "Опубликовано в {{repository}}.",
     "linked": "Связано и отправлено в {{remote}}.",
-    "pushNeedsPull": "Связано с {{remote}}, но перед отправкой нужно получить изменения: {{detail}}"
+    "pushNeedsPull": "Связано с {{remote}}, но перед отправкой нужно получить изменения: {{detail}}",
+    "replaceRemotePrompt": "Этот проект связан с {{remote}}. Заменить эту связь?",
+    "replaceRemote": "Заменить связь"
   },
   "deadlines": {
     "title": "Дедлайны конференций",

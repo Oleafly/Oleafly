@@ -877,6 +877,7 @@ export interface BackendPort {
   gitIsInitialized: (projectId: string) => Promise<boolean>;
   gitInitialize: (projectId: string) => Promise<string>;
   gitPreparePublish: (projectId: string, message: string) => Promise<boolean>;
+  gitPublishPreflight: (projectId: string) => Promise<void>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   exportPdf: (projectId: string, dest: string) => Promise<void>;
@@ -978,7 +979,7 @@ export interface BackendPort {
   ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
-  gitSetRemote: (projectId: string, url: string) => Promise<void>;
+  gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
   gitRemoteCredentialsNeedCleanup: (projectId: string) => Promise<boolean>;

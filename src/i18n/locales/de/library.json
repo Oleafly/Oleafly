@@ -371,7 +371,9 @@
     "nameRequired": "Geben Sie einen Namen für das Repository ein.",
     "published": "Auf {{repository}} veröffentlicht.",
     "linked": "Mit {{remote}} verknüpft und gepusht.",
-    "pushNeedsPull": "Mit {{remote}} verknüpft, vor dem Push ist aber ein Pull nötig: {{detail}}"
+    "pushNeedsPull": "Mit {{remote}} verknüpft, vor dem Push ist aber ein Pull nötig: {{detail}}",
+    "replaceRemotePrompt": "Dieses Projekt ist mit {{remote}} verknüpft. Diese Verknüpfung ersetzen?",
+    "replaceRemote": "Verknüpfung ersetzen"
   },
   "deadlines": {
     "title": "Konferenzfristen",

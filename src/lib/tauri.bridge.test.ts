@@ -33,7 +33,9 @@ import {
   gitInitialize,
   gitIsInitialized,
   gitPreparePublish,
+  gitPublishPreflight,
   gitResolveConflict,
+  gitSetRemote,
   gitStagePaths,
   gitStashPop,
   gitStashPush,
@@ -274,6 +276,11 @@ describe("explicit Git setup bridge", () => {
       projectId: "project",
       message: "Initial commit",
     });
+
+    await gitPublishPreflight("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_publish_preflight", {
+      projectId: "project",
+    });
   });
 });
 
@@ -478,6 +485,24 @@ describe("MCP server management bridge", () => {
       arguments: { path: "paper.tex" },
       runId: "run-1",
       approvalToken: "approval-1",
+    });
+  });
+});
+
+describe("remote bridge", () => {
+  it("sends an explicit replace decision with the remote", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+    await gitSetRemote("project", "https://github.com/owner/paper.git");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_set_remote", {
+      projectId: "project",
+      url: "https://github.com/owner/paper.git",
+      replace: false,
+    });
+    await gitSetRemote("project", "https://github.com/owner/paper.git", { replace: true });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_set_remote", {
+      projectId: "project",
+      url: "https://github.com/owner/paper.git",
+      replace: true,
     });
   });
 });

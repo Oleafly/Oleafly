@@ -25,6 +25,10 @@
     "repositories_unavailable": "リポジトリを読み込めませんでした。",
     "create_repo_failed": "リポジトリを作成できませんでした（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
+    "nested_repository": "このプロジェクトは別の Git リポジトリの中にあるため、Oleafly はここに別のリポジトリを作成しません。"
+  },
   "approvals": {
     "full_access_declined": "フルアクセスは有効になりませんでした。"
   }

@@ -816,6 +816,21 @@ describe("SourceControl", () => {
     );
   });
 
+  it("explains why Source Control did not start inside another repository", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    mocks.gitInitialize.mockRejectedValue(
+      '@oleafly/error:{"code":"git.nested_repository","params":{}}',
+    );
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("inside another Git repository");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+  });
+
   it("keeps remote-only actions disabled when no remote is configured", async () => {
     const user = userEvent.setup();
     mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
@@ -1094,6 +1109,16 @@ describe("SourceControl", () => {
       expect(mocks.publishDialog).toHaveBeenLastCalledWith(
         expect.objectContaining({ open: false, projectId: "project-2" }),
       ),
+    );
+  });
+
+  it("tells the publish dialog which repository the project already pushes to", async () => {
+    render(<SourceControl />);
+
+    await screen.findByText("library.bib");
+
+    expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentRemote: "https://github.com/oleafly/research.git" }),
     );
   });
 

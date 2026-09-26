@@ -25,6 +25,10 @@
     "repositories_unavailable": "Repozitáře se nepodařilo načíst.",
     "create_repo_failed": "Repozitář se nepodařilo vytvořit ({{status}})."
   },
+  "git": {
+    "remote_exists": "Tento projekt je už propojen s {{remote}}.",
+    "nested_repository": "Tento projekt je uvnitř jiného repozitáře Git, proto v něm Oleafly nevytvoří samostatný repozitář."
+  },
   "approvals": {
     "full_access_declined": "Úplný přístup nebyl povolen."
   }

@@ -785,6 +785,9 @@ export const gitInitialize = (projectId: string) =>
 export const gitPreparePublish = (projectId: string, message: string) =>
   invoke<boolean>("git_prepare_publish", { projectId, message });
 
+export const gitPublishPreflight = (projectId: string) =>
+  invoke<void>("git_publish_preflight", { projectId });
+
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
 
@@ -1152,8 +1155,8 @@ export const discordCommunityStats = () =>
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
 
-export const gitSetRemote = (projectId: string, url: string) =>
-  invoke<void>("git_set_remote", { projectId, url });
+export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
+  invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
 export const gitRemoveRemote = (projectId: string) =>
   invoke<void>("git_remove_remote", { projectId });
 export const gitGetRemote = (projectId: string) =>

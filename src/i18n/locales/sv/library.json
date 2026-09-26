@@ -371,7 +371,9 @@
     "nameRequired": "Ange ett namn på repositoriet.",
     "published": "Publicerat till {{repository}}.",
     "linked": "Länkat och pushat till {{remote}}.",
-    "pushNeedsPull": "Länkat till {{remote}}, men push kräver en pull först: {{detail}}"
+    "pushNeedsPull": "Länkat till {{remote}}, men push kräver en pull först: {{detail}}",
+    "replaceRemotePrompt": "Projektet är länkat till {{remote}}. Vill du ersätta länken?",
+    "replaceRemote": "Ersätt länk"
   },
   "deadlines": {
     "title": "Konferensdeadlines",

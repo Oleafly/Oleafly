@@ -378,7 +378,9 @@
     "nameRequired": "Digite um nome de repositório.",
     "published": "Publicado em {{repository}}.",
     "linked": "Vinculado e enviado para {{remote}}.",
-    "pushNeedsPull": "Vinculado a {{remote}}, mas o envio precisa de um pull antes: {{detail}}"
+    "pushNeedsPull": "Vinculado a {{remote}}, mas o envio precisa de um pull antes: {{detail}}",
+    "replaceRemotePrompt": "Este projeto está vinculado a {{remote}}. Substituir esse vínculo?",
+    "replaceRemote": "Substituir vínculo"
   },
   "deadlines": {
     "title": "Prazos de conferências",

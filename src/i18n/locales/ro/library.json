@@ -378,7 +378,9 @@
     "nameRequired": "Introdu un nume de depozit.",
     "published": "Publicat în {{repository}}.",
     "linked": "Legat de {{remote}} și trimis.",
-    "pushNeedsPull": "Legat de {{remote}}, dar trimiterea are nevoie întâi de o aducere: {{detail}}"
+    "pushNeedsPull": "Legat de {{remote}}, dar trimiterea are nevoie întâi de o aducere: {{detail}}",
+    "replaceRemotePrompt": "Acest proiect este legat de {{remote}}. Înlocuiești această legătură?",
+    "replaceRemote": "Înlocuiește legătura"
   },
   "deadlines": {
     "title": "Termene limită pentru conferințe",

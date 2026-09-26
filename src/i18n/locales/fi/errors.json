@@ -25,6 +25,10 @@
     "repositories_unavailable": "Repositorioita ei voitu ladata.",
     "create_repo_failed": "Repositoriota ei voitu luoda ({{status}})."
   },
+  "git": {
+    "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
+    "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota."
+  },
   "approvals": {
     "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
   }

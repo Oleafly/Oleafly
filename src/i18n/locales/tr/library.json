@@ -371,7 +371,9 @@
     "nameRequired": "Bir depo adı girin.",
     "published": "{{repository}} deposunda yayımlandı.",
     "linked": "{{remote}} bağlandı ve gönderildi.",
-    "pushNeedsPull": "{{remote}} bağlandı, ancak gönderimden önce bir çekme gerekiyor: {{detail}}"
+    "pushNeedsPull": "{{remote}} bağlandı, ancak gönderimden önce bir çekme gerekiyor: {{detail}}",
+    "replaceRemotePrompt": "Bu proje {{remote}} ile bağlantılı. Bu bağlantı değiştirilsin mi?",
+    "replaceRemote": "Bağlantıyı değiştir"
   },
   "deadlines": {
     "title": "Konferans son tarihleri",

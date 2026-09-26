@@ -25,6 +25,10 @@
     "repositories_unavailable": "Det gick inte att läsa in repositorierna.",
     "create_repo_failed": "Det gick inte att skapa repositoriet ({{status}})."
   },
+  "git": {
+    "remote_exists": "Projektet är redan länkat till {{remote}}.",
+    "nested_repository": "Projektet ligger i ett annat Git-repositorium, så Oleafly skapar inget separat repositorium här."
+  },
   "approvals": {
     "full_access_declined": "Fullständig åtkomst aktiverades inte."
   }

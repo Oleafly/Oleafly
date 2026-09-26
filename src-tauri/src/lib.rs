@@ -630,6 +630,7 @@ pub fn run() {
             git::git_is_initialized,
             git::git_initialize,
             git::git_prepare_publish,
+            git::git_publish_preflight,
             git::git_log,
             git::git_restore,
             git::git_set_remote,
