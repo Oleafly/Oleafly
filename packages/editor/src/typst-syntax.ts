@@ -45,7 +45,9 @@ export function typstIdentifierEnd(text: string, from: number): number {
 }
 
 export function trimTypstReference(name: string): string {
-  return name.replace(/[.:]+$/u, "");
+  let end = name.length;
+  while (end > 0 && (name[end - 1] === "." || name[end - 1] === ":")) end -= 1;
+  return name.slice(0, end);
 }
 
 export function typstReferenceEnd(text: string, from: number): number {

@@ -95,7 +95,7 @@ export function bibKeysFromSources(sources: Iterable<string>): string[] {
   const out: string[] = [];
   for (const content of sources) {
     const re =
-      /@(\w+)\s*(?:\{\s*([^,\s}]+)\s*[,}]|\(\s*([^,\s)]+)\s*[,)])/g;
+      /@(\w+)\s*(?:\{\s*([^,\s}{@]+)\s*[,}]|\(\s*([^,\s)(@]+)\s*[,)])/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(content))) {
       if (!BIBTEX_DIRECTIVES.has(m[1].toLowerCase())) out.push(m[2] ?? m[3]);

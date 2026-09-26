@@ -1201,4 +1201,10 @@ describe("bibKeysFromSources", () => {
       "paren",
     ]);
   });
+
+  it("scans unterminated entries in linear time", () => {
+    expect(bibKeysFromSources(["@0{{".repeat(25_000)])).toEqual([]);
+    expect(bibKeysFromSources(["@0(!".repeat(25_000)])).toEqual([]);
+    expect(bibKeysFromSources(["@misc{half @misc{whole, x}"])).toEqual(["whole"]);
+  });
 });
