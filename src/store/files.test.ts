@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   copyFile: vi.fn(),
   renameFile: vi.fn(),
   renameProjectCmd: vi.fn(),
+  projectManifestHome: vi.fn(),
+  saveProjectSettingsToFolder: vi.fn(),
   projectTexStatus: vi.fn(),
   tlmgrInstall: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
@@ -62,6 +64,8 @@ vi.mock("@/lib/tauri", () => ({
   copyFile: mocks.copyFile,
   renameFile: mocks.renameFile,
   renameProjectCmd: mocks.renameProjectCmd,
+  projectManifestHome: mocks.projectManifestHome,
+  saveProjectSettingsToFolder: mocks.saveProjectSettingsToFolder,
   projectTexStatus: mocks.projectTexStatus,
   tlmgrInstall: mocks.tlmgrInstall,
   listProjects: vi.fn(async () => []),
@@ -95,6 +99,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import type { ProjectMeta, ProjectStateChanged } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
 import { engineHintDismissed } from "@/store/engine-picker";
@@ -119,6 +124,7 @@ beforeEach(async () => {
   await useFilesStore.getState().closeProject();
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.projectMutationGeneration.mockResolvedValue(3);
+  mocks.projectManifestHome.mockResolvedValue("library");
   mocks.writeFileContent.mockResolvedValue({ path: "references.bib", generation: 9 });
   mocks.listFiles.mockResolvedValue(WITH_BIB);
   mocks.readFileContent.mockResolvedValue("");
@@ -1857,5 +1863,115 @@ describe("engine setting failures", () => {
       engineError: null,
     });
     expectNoToasts();
+  });
+});
+
+describe("project.json in an opened folder", () => {
+  it("follows where the open project keeps its settings", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockResolvedValue("device_foreign");
+    await useFilesStore.getState().openProject("linked-0123");
+    expect(mocks.projectManifestHome).toHaveBeenCalledWith("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("device_foreign");
+    useFilesStore.setState({ files: { "project.json": { content: "{}", dirty: true } } });
+    expect(collectOpenBuffersForCopy("linked-0123").map((file) => file.path)).toEqual([
+      "project.json",
+    ]);
+
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().refreshManifestHome();
+    expect(collectOpenBuffersForCopy("linked-0123")).toEqual([]);
+  });
+
+  it("keeps project.json read-only when the settings location cannot be read", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockRejectedValue(new Error("folder unavailable"));
+    await useFilesStore.getState().openProject("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("library");
+  });
+
+  it("follows project.json being created, deleted or imported at the folder root", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.createFile.mockResolvedValue({ path: "project.json", generation: 8 });
+    mocks.projectManifestHome.mockResolvedValue("device_foreign");
+    await useFilesStore.getState().createFile("project.json", false);
+    expect(useFilesStore.getState().manifestHome).toBe("device_foreign");
+
+    useFilesStore.setState({ files: {}, openTabs: [], activePath: null });
+    mocks.deleteFile.mockResolvedValue({ generation: 9 });
+    mocks.projectManifestHome.mockResolvedValue("device");
+    await useFilesStore.getState().deleteEntry("project.json");
+    expect(useFilesStore.getState().manifestHome).toBe("device");
+
+    mocks.importPathsIntoProject.mockResolvedValue({ paths: ["project.json"], generation: 10 });
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().importPaths("", ["/elsewhere/project.json"]);
+    expect(useFilesStore.getState().manifestHome).toBe("folder");
+
+    mocks.projectManifestHome.mockClear();
+    mocks.createFile.mockResolvedValue({ path: "notes/project.json", generation: 11 });
+    await useFilesStore.getState().createFile("notes/project.json", false);
+    expect(mocks.projectManifestHome).not.toHaveBeenCalled();
+  });
+
+  it("takes the settings a hand-written project.json declares and where they now live", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "linked-0123",
+      revision: Date.now() + 100,
+      reason: "project-settings-file-changed",
+      filesChanged: false,
+      mutationGeneration: 12,
+      project: { ...META, name: "Thesis", main_doc: "paper.tex" },
+      engine: LATEX_ENGINE,
+    } as ProjectStateChanged);
+    await settle();
+    expect(useFilesStore.getState()).toMatchObject({
+      projectName: "Thesis",
+      mainDoc: "paper.tex",
+      engine: LATEX_ENGINE,
+      manifestHome: "folder",
+    });
+  });
+
+  it("saves project settings to the folder once and reports it once", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.saveProjectSettingsToFolder.mockResolvedValue(META);
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.saveProjectSettingsToFolder).toHaveBeenCalledWith("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("folder");
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a refused save once and claims nothing", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(new Error("exists"));
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenCalledTimes(1);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed save in the app's language when the backend gives no reason code", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    const failure = "failed to read project.json: Permission denied (os error 13)";
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(failure);
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      "save project settings to folder",
+      failure,
+      enErrors.project.settings_write_failed,
+    );
+
+    const refused = `@oleafly/error:${JSON.stringify({ code: "project.settings_file_exists", params: {} })}`;
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(refused);
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenLastCalledWith(
+      "save project settings to folder",
+      refused,
+      undefined,
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });

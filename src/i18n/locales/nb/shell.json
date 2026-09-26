@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompiler på nytt"
     },
+    "saveSettingsToFolder": {
+      "keywords": "lagre prosjektinnstillinger mappe project.json dele hoveddokument",
+      "label": "Lagre prosjektinnstillingene i denne mappen",
+      "saved": "Prosjektinnstillingene er lagret i project.json i denne mappen."
+    },
     "section": {
       "label": "Seksjon"
     },

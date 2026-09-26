@@ -23,7 +23,10 @@
     "copy_too_large": "Otevřené soubory jsou příliš velké na uložení kopie.",
     "copy_failed": "Oleafly tam kopii nemohl uložit. Vyberte složku, do které můžete zapisovat.",
     "folder_picker_failed": "Oleafly nemohl otevřít výběr složky. Zkuste to znovu.",
-    "import_no_main": "Tento import neobsahuje žádný dokument LaTeX, Typst ani Markdown ke kompilaci."
+    "import_no_main": "Tento import neobsahuje žádný dokument LaTeX, Typst ani Markdown ke kompilaci.",
+    "settings_file_exists": "Tato složka už obsahuje soubor project.json, proto ho Oleafly ponechal beze změny.",
+    "settings_need_main": "Nejprve vyberte hlavní dokument a pak uložte nastavení projektu do této složky.",
+    "settings_write_failed": "Oleafly nemohl uložit nastavení projektu do této složky."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

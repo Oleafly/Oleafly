@@ -23,7 +23,10 @@
     "copy_too_large": "De öppna filerna är för stora för att sparas som en kopia.",
     "copy_failed": "Oleafly kunde inte spara kopian där. Välj en mapp som du kan skriva till.",
     "folder_picker_failed": "Oleafly kunde inte öppna mappväljaren. Försök igen.",
-    "import_no_main": "Importen innehåller inget LaTeX-, Typst- eller Markdown-dokument att kompilera."
+    "import_no_main": "Importen innehåller inget LaTeX-, Typst- eller Markdown-dokument att kompilera.",
+    "settings_file_exists": "Mappen har redan en project.json, så Oleafly lät den vara som den var.",
+    "settings_need_main": "Välj först ett huvuddokument och spara sedan projektinställningarna i den här mappen.",
+    "settings_write_failed": "Oleafly kunde inte spara projektinställningarna i den här mappen."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} är inte tillgängligt."

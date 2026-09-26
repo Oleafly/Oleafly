@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Käännä uudelleen"
     },
+    "saveSettingsToFolder": {
+      "keywords": "tallenna projektin asetukset kansio project.json jaa päädokumentti",
+      "label": "Tallenna projektin asetukset tähän kansioon",
+      "saved": "Projektin asetukset tallennettiin tämän kansion project.json-tiedostoon."
+    },
     "section": {
       "label": "Luku"
     },

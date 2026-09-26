@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,

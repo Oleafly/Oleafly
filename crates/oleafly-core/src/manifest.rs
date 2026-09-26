@@ -424,6 +424,53 @@ mod tests {
     }
 
     #[test]
+    fn engine_names_resolve_without_a_main_document() {
+        assert_eq!(Engine::named(" Tectonic "), Some(Engine::Tectonic));
+        assert_eq!(Engine::named(""), Some(Engine::Tectonic));
+        assert_eq!(Engine::named("LATEXMK"), Some(Engine::Latexmk));
+        assert_eq!(Engine::named("typ"), Some(Engine::Typst));
+        assert_eq!(Engine::named("pandoc"), Some(Engine::Markdown));
+        assert_eq!(Engine::named("pdflatex"), None);
+    }
+
+    #[test]
+    fn oleafly_manifests_are_told_apart_from_other_tools_project_files() {
+        let oleafly = [
+            serde_json::json!({"name": "Paper", "main_doc": "main.tex", "engine": "xetex"}),
+            serde_json::json!({"main_doc": "paper/thesis.ltx"}),
+            serde_json::json!({"main_doc": "slides.typ", "engine": "typst"}),
+            serde_json::json!({"main_doc": "notes.MD", "engine": "pandoc"}),
+            serde_json::json!({"main_doc": "main.tex", "engine": "typst"}),
+        ];
+        for value in &oleafly {
+            assert!(is_oleafly_manifest(value), "{value}");
+        }
+        let foreign = [
+            serde_json::json!({
+                "name": "web",
+                "$schema": "../../node_modules/nx/schemas/project-schema.json",
+                "sourceRoot": "apps/web/src",
+                "projectType": "application",
+                "targets": {"build": {"executor": "@nx/vite:build"}}
+            }),
+            serde_json::json!({
+                "version": "1.0.0-*",
+                "dependencies": {"NETStandard.Library": "1.6.0"},
+                "frameworks": {"netstandard1.6": {}}
+            }),
+            serde_json::json!({"main_doc": "main.pdf"}),
+            serde_json::json!({"main_doc": 7}),
+            serde_json::json!({"main_doc": "main.tex", "engine": "pdflatex-custom"}),
+            serde_json::json!({"main_doc": "main.tex", "engine": null}),
+            serde_json::json!(["main.tex"]),
+            serde_json::json!("main.tex"),
+        ];
+        for value in &foreign {
+            assert!(!is_oleafly_manifest(value), "{value}");
+        }
+    }
+
+    #[test]
     fn missing_checkpoint_policy_defaults_to_engine_dependencies() {
         let manifest: ProjectManifest =
             serde_json::from_str(r#"{"name":"Legacy","main_doc":"main.tex","engine":"xetex"}"#)

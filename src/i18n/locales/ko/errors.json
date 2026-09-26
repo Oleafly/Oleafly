@@ -23,7 +23,10 @@
     "copy_too_large": "열린 파일이 너무 커서 사본으로 저장할 수 없습니다.",
     "copy_failed": "Oleafly가 그 위치에 사본을 저장하지 못했습니다. 쓰기 권한이 있는 폴더를 선택하세요.",
     "folder_picker_failed": "Oleafly가 폴더 선택 창을 열지 못했습니다. 다시 시도하세요.",
-    "import_no_main": "가져온 항목에 컴파일할 LaTeX, Typst 또는 Markdown 문서가 없습니다."
+    "import_no_main": "가져온 항목에 컴파일할 LaTeX, Typst 또는 Markdown 문서가 없습니다.",
+    "settings_file_exists": "이 폴더에 이미 project.json이 있어서 Oleafly가 그대로 두었습니다.",
+    "settings_need_main": "먼저 주 문서를 선택한 다음 프로젝트 설정을 이 폴더에 저장하세요.",
+    "settings_write_failed": "Oleafly가 프로젝트 설정을 이 폴더에 저장하지 못했습니다."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

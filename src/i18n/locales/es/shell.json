@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompilar"
     },
+    "saveSettingsToFolder": {
+      "keywords": "guardar configuración proyecto carpeta project.json compartir documento principal",
+      "label": "Guardar la configuración del proyecto en esta carpeta",
+      "saved": "La configuración del proyecto se guardó en project.json en esta carpeta."
+    },
     "section": {
       "label": "Sección"
     },

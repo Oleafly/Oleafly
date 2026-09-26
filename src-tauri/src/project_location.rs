@@ -17,6 +17,7 @@ pub(crate) enum ProjectKind {
 pub(crate) enum ManifestSource {
     InFolder,
     Sidecar,
+    Split,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +81,7 @@ impl ProjectLocation {
     pub(crate) fn manifest_path(&self) -> PathBuf {
         match self.manifest {
             ManifestSource::InFolder => self.root.join(MANIFEST_FILE),
-            ManifestSource::Sidecar => self.state_dir.join(MANIFEST_FILE),
+            ManifestSource::Sidecar | ManifestSource::Split => self.state_dir.join(MANIFEST_FILE),
         }
     }
 

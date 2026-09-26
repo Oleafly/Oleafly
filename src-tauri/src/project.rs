@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::paths;
 use crate::project_location::{ProjectKind, ProjectLocation};
+use crate::project_manifest::Route;
 use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
@@ -134,9 +135,7 @@ pub(crate) fn publish_project_state_changed<R: tauri::Runtime>(
 ) -> Result<ProjectStateChanged, String> {
     use tauri::Emitter as _;
 
-    let mut engine = crate::document_engine::descriptor_for(&project.engine, &project.main_doc)?;
-    engine.tex_flavor = project.tex_flavor.clone();
-    engine.allow_shell_escape = project.allow_shell_escape;
+    let engine = project_state_engine(project_id, &project)?;
     let revision = state
         .project_state_revision
         .fetch_add(1, Ordering::SeqCst)
@@ -152,6 +151,77 @@ pub(crate) fn publish_project_state_changed<R: tauri::Runtime>(
     };
     let _ = app.emit("project-state-changed", &payload);
     Ok(payload)
+}
+
+pub(crate) fn project_state_engine(
+    project_id: &str,
+    project: &ProjectMeta,
+) -> Result<crate::document_engine::EngineDescriptor, String> {
+    let effective = crate::trust::restrict_compile_meta(project_id, project.clone())
+        .unwrap_or_else(|_| untrusted_view(project));
+    let mut engine =
+        crate::document_engine::descriptor_for(&effective.engine, &effective.main_doc)?;
+    engine.tex_flavor = effective.tex_flavor;
+    engine.allow_shell_escape = effective.allow_shell_escape;
+    Ok(engine)
+}
+
+struct SettingsWatch {
+    project_id: String,
+    before: Option<serde_json::Value>,
+}
+
+impl SettingsWatch {
+    fn start(project_id: &str, touches_manifest: bool) -> Option<Self> {
+        let watched = touches_manifest
+            && crate::project_location::kind_of(project_id)
+                .is_ok_and(|kind| kind == ProjectKind::Linked);
+        watched.then(|| Self {
+            project_id: project_id.to_owned(),
+            before: read_meta(project_id)
+                .ok()
+                .and_then(|meta| serde_json::to_value(meta).ok()),
+        })
+    }
+
+    fn publish<R: tauri::Runtime>(
+        self,
+        app: &tauri::AppHandle<R>,
+        state: &crate::state::AppState,
+        generation: u64,
+    ) {
+        let Ok(meta) = read_meta(&self.project_id) else {
+            return;
+        };
+        if serde_json::to_value(&meta).ok() == self.before {
+            return;
+        }
+        let _ = publish_project_state_changed(
+            app,
+            state,
+            &self.project_id,
+            meta,
+            "project-settings-file-changed",
+            false,
+            Some(generation),
+        );
+    }
+}
+
+fn is_root_manifest(path: &str) -> bool {
+    normalize_mutation_path(path, false).is_ok_and(|normalized| {
+        normalized.eq_ignore_ascii_case(crate::project_location::MANIFEST_FILE)
+    })
+}
+
+fn untrusted_view(project: &ProjectMeta) -> ProjectMeta {
+    let mut restricted = project.clone();
+    if let Ok(engine) = engine_for_untrusted_project(&restricted.main_doc) {
+        restricted.engine = engine;
+    }
+    restricted.tex_flavor = None;
+    restricted.allow_shell_escape = false;
+    restricted
 }
 
 const SHELL_ESCAPE_TRUST_VERSION: u8 = 1;
@@ -527,35 +597,87 @@ pub struct ProjectInfo {
     pub location: crate::project_availability::ProjectLocationInfo,
 }
 
-fn meta_path(project_id: &str) -> Result<PathBuf, String> {
-    Ok(crate::project_location::locate(project_id)?.manifest_path())
+pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
+    let route = crate::project_manifest::route_project(project_id)?;
+    read_routed_meta(project_id, &route)
 }
 
-pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
-    let p = meta_path(project_id)?;
-    if !p.exists() {
-        return Ok(ProjectMeta {
-            dictionary_locale: None,
-            name: project_id.to_string(),
-            main_doc: default_main_doc(),
-            engine: default_engine(),
-            color: String::new(),
-            kind: String::new(),
-            exports: Vec::new(),
-            hidden: false,
-            forked_from: None,
-            tex: None,
-            tex_flavor: None,
-            allow_shell_escape: false,
-            checkpoints: oleafly_core::CheckpointPolicy::default(),
-            extra: HashMap::new(),
-        });
+fn folder_name(location: &ProjectLocation) -> Option<String> {
+    location
+        .root
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+}
+
+fn missing_project_meta(project_id: &str, location: &ProjectLocation) -> ProjectMeta {
+    let name = match location.kind {
+        ProjectKind::Library => project_id.to_string(),
+        ProjectKind::Linked => folder_name(location).unwrap_or_else(|| project_id.to_string()),
+    };
+    ProjectMeta {
+        dictionary_locale: None,
+        name,
+        main_doc: default_main_doc(),
+        engine: default_engine(),
+        color: String::new(),
+        kind: String::new(),
+        exports: Vec::new(),
+        hidden: false,
+        forked_from: None,
+        tex: None,
+        tex_flavor: None,
+        allow_shell_escape: false,
+        checkpoints: oleafly_core::CheckpointPolicy::default(),
+        extra: HashMap::new(),
     }
-    let bytes = std::fs::read(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
-    let mut meta = parse_project_meta(&bytes)?;
+}
+
+fn read_routed_meta(project_id: &str, route: &Route) -> Result<ProjectMeta, String> {
+    let location = route.location();
+    let path = location.manifest_path();
+    let mut meta = if path.exists() {
+        let bytes =
+            std::fs::read(&path).map_err(|e| format!("failed to read project.json: {e}"))?;
+        parse_project_meta(&bytes)?
+    } else {
+        missing_project_meta(project_id, location)
+    };
+    if let Route::Split { location, folder } = route {
+        merge_folder_fields(location, &mut meta, folder);
+    }
+    if location.kind == ProjectKind::Linked && meta.name.trim().is_empty() {
+        meta.name = folder_name(location).unwrap_or_else(|| project_id.to_string());
+    }
     meta.allow_shell_escape =
         meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
     Ok(meta)
+}
+
+fn merge_folder_fields(
+    location: &ProjectLocation,
+    meta: &mut ProjectMeta,
+    folder: &crate::project_manifest::FolderFields,
+) {
+    if let Some(name) = &folder.name {
+        meta.name.clone_from(name);
+    }
+    let usable = |main: &str| {
+        crate::sandbox::resolve_within(&location.root, main).is_ok_and(|path| path.is_file())
+    };
+    let declared = crate::sandbox::resolve_within(&location.root, &folder.main_doc).is_ok();
+    if usable(&folder.main_doc) || (declared && !usable(&meta.main_doc)) {
+        meta.main_doc.clone_from(&folder.main_doc);
+    }
+    meta.engine = folder
+        .engine
+        .clone()
+        .filter(|engine| crate::document_engine::engine_for(engine, &meta.main_doc).is_ok())
+        .or_else(|| engine_for_untrusted_project(&meta.main_doc).ok())
+        .unwrap_or_else(default_engine);
+    meta.tex_flavor = validate_tex_flavor(&meta.engine, folder.tex_flavor.as_deref())
+        .ok()
+        .flatten();
+    meta.dictionary_locale.clone_from(&folder.dictionary_locale);
 }
 
 /// Decode and normalize portable project metadata exactly as `read_meta`
@@ -585,9 +707,129 @@ fn normalize_loaded_tex_flavor(meta: &mut ProjectMeta) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum MetaWrite<'a> {
+    Explicit(&'a [&'a str]),
+    Device,
+}
+
+const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
+const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor"];
+
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
-    let p = meta_path(project_id)?;
-    write_meta_at_if_changed(&p, meta).map(|_| ())
+    write_chosen_meta(project_id, meta, &[])
+}
+
+fn write_chosen_meta(project_id: &str, meta: &ProjectMeta, chosen: &[&str]) -> Result<(), String> {
+    let route = crate::project_manifest::route_project(project_id)?;
+    write_routed_meta(project_id, &route, meta, MetaWrite::Explicit(chosen))
+}
+
+pub(crate) fn write_device_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
+    let route = crate::project_manifest::route_project(project_id)?;
+    write_routed_meta(project_id, &route, meta, MetaWrite::Device)
+}
+
+fn write_routed_meta(
+    project_id: &str,
+    route: &Route,
+    meta: &ProjectMeta,
+    intent: MetaWrite<'_>,
+) -> Result<(), String> {
+    if let (Route::Split { location, folder }, MetaWrite::Explicit(chosen)) = (route, intent) {
+        let effective = read_routed_meta(project_id, route)?;
+        let changes = shared_field_changes(&effective, folder, meta, chosen);
+        if !changes.is_empty() {
+            crate::project_manifest::write_folder_fields(&location.root, &changes)?;
+        }
+    }
+    write_meta_at_if_changed(&route.location().manifest_path(), meta).map(|_| ())
+}
+
+fn shared_field_changes(
+    effective: &ProjectMeta,
+    declared: &crate::project_manifest::FolderFields,
+    next: &ProjectMeta,
+    chosen: &[&str],
+) -> Vec<crate::project_manifest::FieldChange> {
+    use crate::project_manifest::FieldChange;
+    let engine_name =
+        |engine: &str| oleafly_core::Engine::named(engine).map(oleafly_core::Engine::manifest_name);
+    let differs = |key: &str, from_effective: bool, from_declared: bool| {
+        from_effective || (from_declared && chosen.contains(&key))
+    };
+    let text = |key: &'static str, changed: bool, after: &str| {
+        changed.then(|| FieldChange::Set(key, after.to_owned()))
+    };
+    let optional = |key: &'static str, changed: bool, after: &Option<String>| {
+        changed.then(|| {
+            after.clone().map_or(FieldChange::Remove(key), |value| {
+                FieldChange::Set(key, value)
+            })
+        })
+    };
+    let declared_flavor = declared
+        .tex_flavor
+        .as_deref()
+        .filter(|flavor| *flavor != "auto");
+    [
+        text("name", effective.name != next.name, &next.name),
+        text(
+            "main_doc",
+            differs(
+                "main_doc",
+                effective.main_doc != next.main_doc,
+                declared.main_doc != next.main_doc,
+            ),
+            &next.main_doc,
+        ),
+        text(
+            "engine",
+            differs(
+                "engine",
+                effective.engine != next.engine,
+                engine_name(declared.engine.as_deref().unwrap_or_default())
+                    != engine_name(&next.engine),
+            ),
+            &next.engine,
+        ),
+        optional(
+            "tex_flavor",
+            differs(
+                "tex_flavor",
+                effective.tex_flavor != next.tex_flavor,
+                declared_flavor != next.tex_flavor.as_deref(),
+            ),
+            &next.tex_flavor,
+        ),
+        optional(
+            "dictionary_locale",
+            effective.dictionary_locale != next.dictionary_locale,
+            &next.dictionary_locale,
+        ),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+fn refresh_linked_mirror(project_id: &str) -> Result<bool, String> {
+    if !matches!(
+        crate::project_manifest::route_project(project_id)?,
+        Route::Split { .. }
+    ) {
+        return Ok(false);
+    }
+    let Some(_worktree) = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(project_id)?
+    else {
+        return Ok(false);
+    };
+    with_project_metadata_lock_held(project_id, || {
+        let route = crate::project_manifest::route_project(project_id)?;
+        let meta = read_routed_meta(project_id, &route)?;
+        write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
+        Ok(true)
+    })
 }
 
 const MAIN_DOCUMENT_CHANGED: &str =
@@ -1081,7 +1323,10 @@ fn path_is_within(path: &str, root: &str) -> bool {
             .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
-fn mutation_relative_path(path: &str, allow_root: bool) -> Result<String, String> {
+const MANAGED_METADATA_CHANGE: &str =
+    "project.json is managed by Oleafly and cannot be changed as a project file";
+
+fn normalize_mutation_path(path: &str, allow_root: bool) -> Result<String, String> {
     let path_value = Path::new(path);
     if path.contains('\\')
         || path_value.is_absolute()
@@ -1102,10 +1347,15 @@ fn mutation_relative_path(path: &str, allow_root: bool) -> Result<String, String
     if !allow_root && normalized.is_empty() {
         return Err("a project file path must not be empty".into());
     }
-    if reserved_project_metadata_path(&normalized) {
-        return Err(
-            "project.json is managed by Oleafly and cannot be changed as a project file".into(),
-        );
+    Ok(normalized)
+}
+
+fn refuse_internal_mutation_path(
+    normalized: String,
+    manifest_managed: bool,
+) -> Result<String, String> {
+    if manifest_managed {
+        return Err(MANAGED_METADATA_CHANGE.into());
     }
     if reserved_project_internal_path(&normalized) {
         return Err(
@@ -1116,8 +1366,14 @@ fn mutation_relative_path(path: &str, allow_root: bool) -> Result<String, String
     Ok(normalized)
 }
 
-fn reserved_project_metadata_path(path: &str) -> bool {
-    path.eq_ignore_ascii_case("project.json")
+fn mutation_relative_path(
+    project_id: &str,
+    path: &str,
+    allow_root: bool,
+) -> Result<String, String> {
+    let normalized = normalize_mutation_path(path, allow_root)?;
+    let managed = crate::project_manifest::project_root_file_is_managed(project_id, &normalized)?;
+    refuse_internal_mutation_path(normalized, managed)
 }
 
 fn reserved_project_internal_path(path: &str) -> bool {
@@ -1632,14 +1888,38 @@ where
 }
 
 #[tauri::command]
-pub async fn write_file(
+pub async fn write_file<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     path: String,
     content: String,
     expected_generation: Option<u64>,
     expected_hash: Option<String>,
 ) -> Result<FileMutationResult, String> {
-    let relative = mutation_relative_path(&path, false)?;
+    let watch = SettingsWatch::start(&project_id, is_root_manifest(&path));
+    let result = write_project_file(
+        project_id,
+        path,
+        content,
+        expected_generation,
+        expected_hash,
+    )
+    .await?;
+    if let Some(watch) = watch {
+        watch.publish(&app, &state, result.generation);
+    }
+    Ok(result)
+}
+
+async fn write_project_file(
+    project_id: String,
+    path: String,
+    content: String,
+    expected_generation: Option<u64>,
+    expected_hash: Option<String>,
+) -> Result<FileMutationResult, String> {
+    let relative = mutation_relative_path(&project_id, &path, false)?;
     let admission = admit_mutation(
         &project_id,
         vec![MutationScope::file(relative)],
@@ -1691,7 +1971,7 @@ pub(crate) fn admit_project_file_write(
     path: String,
     expected_generation: Option<u64>,
 ) -> Result<ProjectFileWrite, String> {
-    let relative = mutation_relative_path(&path, false)?;
+    let relative = mutation_relative_path(&project_id, &path, false)?;
     let admission = admit_mutation(
         &project_id,
         vec![MutationScope::file(relative)],
@@ -1727,7 +2007,7 @@ pub fn create_file(
     conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
 ) -> Result<CreateFileResult, String> {
-    let relative = mutation_relative_path(&path, false)?;
+    let relative = mutation_relative_path(&project_id, &path, false)?;
     // KeepBoth may divert to a sibling name, so the admission scope covers the
     // whole parent rather than the single requested path.
     let scope = MutationScope::subtree(mutation_parent_path(&relative));
@@ -1747,7 +2027,7 @@ pub fn delete_file(
     path: String,
     expected_generation: Option<u64>,
 ) -> Result<FileMutationResult, String> {
-    let deleted_rel = mutation_relative_path(&path, true)?;
+    let deleted_rel = mutation_relative_path(&project_id, &path, true)?;
     if deleted_rel.is_empty() {
         return Err("refusing to delete project root".into());
     }
@@ -1842,8 +2122,8 @@ pub(crate) fn rename_file_blocking(
     conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
 ) -> Result<RenameFileResult, String> {
-    let source_rel = mutation_relative_path(&from, false)?;
-    let destination_rel = mutation_relative_path(&to, false)?;
+    let source_rel = mutation_relative_path(&project_id, &from, false)?;
+    let destination_rel = mutation_relative_path(&project_id, &to, false)?;
     let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
     let admission = admit_mutation(
         &project_id,
@@ -1998,7 +2278,16 @@ fn rename_path_and_update_meta(
     }
     meta.engine = selected_engine;
     meta.main_doc = main_doc;
-    if let Err(error) = write_meta_at(&location.manifest_path(), &meta) {
+    let written = match crate::project_manifest::route(location.clone()) {
+        Route::Library(_) => write_meta_at(&location.manifest_path(), &meta),
+        route => write_routed_meta(
+            &location.id,
+            &route,
+            &meta,
+            MetaWrite::Explicit(MAIN_DOCUMENT_FIELDS),
+        ),
+    };
+    if let Err(error) = written {
         let rollback = transaction.rollback();
         return Err(match rollback {
             Ok(()) => format!("failed to update the main document after the move. The move was rolled back: {error}"),
@@ -2445,8 +2734,8 @@ pub async fn copy_file(
     to: String,
     expected_generation: Option<u64>,
 ) -> Result<CopyFileResult, String> {
-    let source_rel = mutation_relative_path(&from, false)?;
-    let destination_rel = mutation_relative_path(&to, false)?;
+    let source_rel = mutation_relative_path(&project_id, &from, false)?;
+    let destination_rel = mutation_relative_path(&project_id, &to, false)?;
     let source_scope = MutationScope::subtree(source_rel);
     let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
     let admission = admit_mutation_with_commit(
@@ -2521,7 +2810,7 @@ pub async fn save_file_base64(
     data: String,
     expected_generation: Option<u64>,
 ) -> Result<FileMutationResult, String> {
-    let relative = mutation_relative_path(&path, false)?;
+    let relative = mutation_relative_path(&project_id, &path, false)?;
     let admission = admit_mutation(
         &project_id,
         vec![MutationScope::file(relative)],
@@ -2785,7 +3074,7 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
             meta.allow_shell_escape = false;
         }
         meta.engine = selected_engine;
-        write_meta(&project_id, &meta)?;
+        write_chosen_meta(&project_id, &meta, MAIN_DOCUMENT_FIELDS)?;
         Ok(meta)
     })
 }
@@ -2838,7 +3127,7 @@ fn set_project_engine_unlocked(
             revoke_shell_escape_trust(project_id)?;
             meta.allow_shell_escape = false;
         }
-        write_meta(project_id, &meta)?;
+        write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
         Ok(meta)
     })
 }
@@ -3198,7 +3487,7 @@ fn reconcile_external_worktree_meta(
     if meta.engine != "latexmk" {
         meta.tex_flavor = None;
     }
-    write_meta(project_id, &meta)?;
+    write_device_meta(project_id, &meta)?;
     read_meta(project_id)
 }
 
@@ -3264,6 +3553,81 @@ fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMe
 }
 
 #[tauri::command]
+pub async fn project_manifest_home(
+    project_id: String,
+) -> Result<crate::project_manifest::ManifestHome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::project_manifest::route_project(&project_id).map(|route| route.home())
+    })
+    .await
+    .map_err(|error| format!("project settings lookup failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn save_project_settings_to_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<ProjectMeta, String> {
+    let owned = project_id.clone();
+    let (meta, generation) = tauri::async_runtime::spawn_blocking(move || {
+        save_project_settings_to_folder_blocking(&owned)
+    })
+    .await
+    .map_err(|error| format!("project settings task failed: {error}"))??;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "project-settings-saved",
+        true,
+        Some(generation),
+    );
+    Ok(meta)
+}
+
+fn save_project_settings_to_folder_blocking(
+    project_id: &str,
+) -> Result<(ProjectMeta, u64), String> {
+    let admission = admit_mutation(
+        project_id,
+        vec![MutationScope::file(
+            crate::project_location::MANIFEST_FILE.to_string(),
+        )],
+        None,
+    )?;
+    admission.run(|| {
+        with_project_metadata_lock_held(project_id, || {
+            let route = crate::project_manifest::route_project(project_id)?;
+            let Route::Sidecar {
+                location,
+                foreign: false,
+            } = &route
+            else {
+                return Err(crate::app_error::AppError::new("project.settings_file_exists").into());
+            };
+            let meta = read_routed_meta(project_id, &route)?;
+            if !project_main_file_is_usable(project_id, &meta.main_doc) {
+                return Err(crate::app_error::AppError::new("project.settings_need_main").into());
+            }
+            crate::project_manifest::create_folder_manifest(
+                &location.root,
+                &crate::project_manifest::FolderSettings {
+                    name: &meta.name,
+                    main_doc: &meta.main_doc,
+                    engine: &meta.engine,
+                    tex_flavor: meta.tex_flavor.as_deref(),
+                    dictionary_locale: meta.dictionary_locale.as_deref(),
+                },
+            )?;
+            write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
+            read_meta(project_id)
+        })
+    })
+}
+
+#[tauri::command]
 pub async fn get_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     state: tauri::State<'_, crate::state::AppState>,
@@ -3287,9 +3651,12 @@ async fn open_project<R: tauri::Runtime>(
     .map_err(|error| format!("project open task failed: {error}"))??;
     if !recovery_pending {
         let read_project_id = project_id.clone();
-        let project = tauri::async_runtime::spawn_blocking(move || read_meta(&read_project_id))
-            .await
-            .map_err(|error| format!("project open task failed: {error}"))??;
+        let project = tauri::async_runtime::spawn_blocking(move || {
+            let _ = refresh_linked_mirror(&read_project_id);
+            read_meta(&read_project_id)
+        })
+        .await
+        .map_err(|error| format!("project open task failed: {error}"))??;
         return Ok((project, schedule_git_initialization(project_id)));
     }
     let admission = admit_restore_recovery_mutation(
@@ -6206,7 +6573,31 @@ fn copy_dir_recursive(src: &Path, dst: &Path, depth: usize) -> Result<(), String
 }
 
 #[tauri::command]
-pub async fn import_paths_into_project(
+pub async fn import_paths_into_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    dest_dir: String,
+    source_paths: Vec<String>,
+    expected_generation: Option<u64>,
+) -> Result<ImportPathsResult, String> {
+    let into_root = normalize_mutation_path(&dest_dir, true).is_ok_and(|dir| dir.is_empty());
+    let brings_manifest = source_paths.iter().any(|source| {
+        Path::new(source)
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .is_some_and(is_root_manifest)
+    });
+    let watch = SettingsWatch::start(&project_id, into_root && brings_manifest);
+    let result =
+        import_project_paths(project_id, dest_dir, source_paths, expected_generation).await?;
+    if let Some(watch) = watch {
+        watch.publish(&app, &state, result.generation);
+    }
+    Ok(result)
+}
+
+async fn import_project_paths(
     project_id: String,
     dest_dir: String,
     source_paths: Vec<String>,
@@ -6219,7 +6610,7 @@ pub async fn import_paths_into_project(
             generation,
         });
     }
-    let destination_rel = mutation_relative_path(&dest_dir, true)?;
+    let destination_rel = mutation_relative_path(&project_id, &dest_dir, true)?;
     let destination_scope = MutationScope::subtree(destination_rel);
     let conflict_scopes = vec![MutationScope::subtree(String::new())];
     let admission = admit_mutation_with_commit(
@@ -6361,7 +6752,7 @@ where
             .ok_or_else(|| format!("invalid source path: {}", source.display()))?;
         let destination = unique_import_dest(dest_parent, name, &mut reserved)?;
         let destination_rel = rel_slash(project_root, &destination);
-        if reserved_project_metadata_path(&destination_rel) {
+        if crate::project_manifest::location_root_file_is_managed(location, &destination_rel) {
             return Err(
                 "project.json is managed by Oleafly and cannot be imported as a project file"
                     .into(),
@@ -6638,7 +7029,7 @@ mod tests {
         let location = crate::project_location::locate(&record.id).unwrap();
 
         let mut meta = read_meta(&record.id).unwrap();
-        assert_eq!(meta.name, record.id);
+        assert_eq!(meta.name, "workspace");
         meta.main_doc = "draft.tex".into();
         meta.color = "#224466".into();
         super::write_meta(&record.id, &meta).unwrap();
@@ -6662,6 +7053,678 @@ mod tests {
         assert!(location.manifest_path().is_file());
         assert!(!folder.join(".oleafly").exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn an_oleafly_manifest_in_a_linked_folder_supplies_the_shared_settings_only() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::create_dir(folder.join("chapters")).unwrap();
+        std::fs::write(
+            folder.join("chapters").join("thesis.tex"),
+            "\\documentclass{book}",
+        )
+        .unwrap();
+        let manifest = "{\n  \"name\": \"Doctoral thesis\",\n  \"main_doc\": \"chapters/thesis.tex\",\n  \"engine\": \"LaTeXmk\",\n  \"tex_flavor\": \"lualatex\",\n  \"dictionary_locale\": \"de-DE\",\n  \"allow_shell_escape\": true,\n  \"color\": \"#ff0000\",\n  \"hidden\": true,\n  \"exports\": [{\"date\": 1.0, \"filename\": \"x.pdf\", \"path\": \"/elsewhere/x.pdf\"}]\n}\n";
+        std::fs::write(folder.join("project.json"), manifest).unwrap();
+
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(
+            (
+                meta.name.as_str(),
+                meta.main_doc.as_str(),
+                meta.engine.as_str(),
+                meta.tex_flavor.as_deref(),
+                meta.dictionary_locale.as_deref()
+            ),
+            (
+                "Doctoral thesis",
+                "chapters/thesis.tex",
+                "latexmk",
+                Some("lualatex"),
+                Some("de-DE")
+            )
+        );
+        assert!(!meta.allow_shell_escape);
+        assert!(meta.color.is_empty() && !meta.hidden && meta.exports.is_empty());
+
+        let compile = super::read_compile_meta(&project_id, "chapters/thesis.tex").unwrap();
+        assert_eq!(
+            (
+                compile.engine.as_str(),
+                compile.tex_flavor.as_deref(),
+                compile.allow_shell_escape
+            ),
+            ("xetex", None, false)
+        );
+        let descriptor = super::project_state_engine(&project_id, &meta).unwrap();
+        assert_eq!(
+            (descriptor.id.as_str(), descriptor.tex_flavor.as_deref()),
+            ("latex", None)
+        );
+
+        fixture.trust(&project_id, crate::trust::TrustScope::Folder);
+        let descriptor =
+            super::project_state_engine(&project_id, &read_meta(&project_id).unwrap()).unwrap();
+        assert_eq!(
+            (
+                descriptor.id.as_str(),
+                descriptor.tex_flavor.as_deref(),
+                descriptor.allow_shell_escape
+            ),
+            ("latexmk", Some("lualatex"), false)
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            manifest
+        );
+        assert!(!crate::project_location::locate(&project_id)
+            .unwrap()
+            .manifest_path()
+            .exists());
+    }
+
+    #[test]
+    fn a_folder_manifest_main_that_is_missing_falls_back_to_this_devices_choice() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::write(folder.join("draft.tex"), "\\documentclass{article}").unwrap();
+        super::write_meta(
+            &project_id,
+            &ProjectMeta {
+                name: "thesis".into(),
+                main_doc: "draft.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(
+            folder.join("project.json"),
+            "{\"main_doc\":\"final.tex\",\"engine\":\"typst\"}",
+        )
+        .unwrap();
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(
+            (meta.main_doc.as_str(), meta.engine.as_str()),
+            ("draft.tex", "xetex")
+        );
+        std::fs::write(folder.join("final.tex"), "\\documentclass{article}").unwrap();
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(
+            (
+                meta.main_doc.as_str(),
+                meta.engine.as_str(),
+                meta.name.as_str()
+            ),
+            ("final.tex", "xetex", "thesis")
+        );
+        std::fs::remove_file(folder.join("draft.tex")).unwrap();
+        std::fs::remove_file(folder.join("final.tex")).unwrap();
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "final.tex");
+    }
+
+    #[test]
+    fn an_explicit_choice_reaches_the_folder_manifest_even_when_it_matches_a_fallback() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::write(folder.join("draft.tex"), "\\documentclass{article}").unwrap();
+        super::write_meta(
+            &project_id,
+            &ProjectMeta {
+                name: "thesis".into(),
+                main_doc: "draft.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let manifest = folder.join("project.json");
+        let read = || std::fs::read_to_string(&manifest).unwrap();
+
+        std::fs::write(&manifest, "{\n  \"main_doc\": \"final.tex\"\n}\n").unwrap();
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "draft.tex");
+        set_main_doc_unlocked(project_id.clone(), "draft.tex".into()).unwrap();
+        assert_eq!(read(), "{\n  \"main_doc\": \"draft.tex\"\n}\n");
+
+        std::fs::write(
+            &manifest,
+            "{\n  \"main_doc\": \"draft.tex\",\n  \"engine\": \"typst\",\n  \"tex_flavor\": \"xelatex\"\n}\n",
+        )
+        .unwrap();
+        assert_eq!(read_meta(&project_id).unwrap().engine, "xetex");
+        super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
+        assert_eq!(
+            read(),
+            "{\n  \"main_doc\": \"draft.tex\",\n  \"engine\": \"xetex\"\n}\n"
+        );
+        assert!(oleafly_core::Workspace::open(&folder)
+            .unwrap()
+            .manifest()
+            .engine()
+            .is_ok());
+
+        std::fs::write(
+            &manifest,
+            "{\n  \"main_doc\": \"final.tex\",\n  \"engine\": \"typst\"\n}\n",
+        )
+        .unwrap();
+        set_main_doc_unlocked(project_id.clone(), "draft.tex".into()).unwrap();
+        assert_eq!(
+            read(),
+            "{\n  \"main_doc\": \"draft.tex\",\n  \"engine\": \"xetex\"\n}\n"
+        );
+
+        let settled = "{\n  \"main_doc\": \"draft.tex\"\n}\n";
+        std::fs::write(&manifest, settled).unwrap();
+        let modified = std::fs::metadata(&manifest).unwrap().modified().unwrap();
+        set_main_doc_unlocked(project_id.clone(), "draft.tex".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
+        assert_eq!(read(), settled);
+        assert_eq!(
+            std::fs::metadata(&manifest).unwrap().modified().unwrap(),
+            modified
+        );
+    }
+
+    #[test]
+    fn a_foreign_project_json_in_a_linked_folder_is_never_adopted_or_rewritten() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("workspace");
+        std::fs::write(
+            folder.join("project.json"),
+            crate::project_manifest::NX_PROJECT_JSON,
+        )
+        .unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(folder.join("paper.tex"), "\\documentclass{article}").unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+
+        assert_eq!(read_meta(&project_id).unwrap().name, "workspace");
+        set_main_doc_unlocked(project_id.clone(), "paper.tex".into()).unwrap();
+        super::rename_project_blocking(project_id.clone(), "Renamed".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
+        tauri::async_runtime::block_on(super::set_project_color(
+            project_id.clone(),
+            "#224466".into(),
+        ))
+        .unwrap();
+        super::record_pdf_export(project_id.clone(), "/exports/paper.pdf".into()).unwrap();
+        let previous = read_meta(&project_id).unwrap();
+        super::reconcile_external_worktree_meta(&project_id, &previous).unwrap();
+
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(
+            (
+                meta.name.as_str(),
+                meta.main_doc.as_str(),
+                meta.color.as_str(),
+                meta.exports.len()
+            ),
+            ("Renamed", "paper.tex", "#224466", 1)
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            crate::project_manifest::NX_PROJECT_JSON
+        );
+    }
+
+    #[test]
+    fn explicit_changes_to_shared_settings_rewrite_only_those_values_in_the_folder_manifest() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        oleafly_core::Workspace::init(
+            &folder,
+            oleafly_core::InitOptions {
+                name: Some("Thesis".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(folder.join("paper.tex"), "\\documentclass{article}").unwrap();
+        let original = std::fs::read_to_string(folder.join("project.json")).unwrap();
+
+        set_main_doc_unlocked(project_id.clone(), "paper.tex".into()).unwrap();
+        let after = std::fs::read_to_string(folder.join("project.json")).unwrap();
+        assert_eq!(
+            after,
+            original.replace("\"main_doc\": \"main.tex\"", "\"main_doc\": \"paper.tex\"")
+        );
+        super::rename_project_blocking(project_id.clone(), "Thesis draft".into()).unwrap();
+        let renamed = std::fs::read_to_string(folder.join("project.json")).unwrap();
+        assert_eq!(
+            renamed,
+            after.replace("\"name\": \"Thesis\"", "\"name\": \"Thesis draft\"")
+        );
+
+        let modified = std::fs::metadata(folder.join("project.json"))
+            .unwrap()
+            .modified()
+            .unwrap();
+        set_main_doc_unlocked(project_id.clone(), "paper.tex".into()).unwrap();
+        super::rename_project_blocking(project_id.clone(), "Thesis draft".into()).unwrap();
+        tauri::async_runtime::block_on(super::set_project_color(
+            project_id.clone(),
+            "#224466".into(),
+        ))
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            renamed
+        );
+        assert_eq!(
+            std::fs::metadata(folder.join("project.json"))
+                .unwrap()
+                .modified()
+                .unwrap(),
+            modified
+        );
+        let mut names: Vec<String> = std::fs::read_dir(&folder)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["main.tex", "paper.tex", "project.json"]);
+        assert_eq!(
+            oleafly_core::Workspace::open(&folder)
+                .unwrap()
+                .manifest()
+                .main_doc,
+            "paper.tex"
+        );
+    }
+
+    #[test]
+    fn a_trusted_engine_change_writes_the_folder_manifest_and_clearing_the_flavor_removes_it() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        oleafly_core::Workspace::init(&folder, oleafly_core::InitOptions::default()).unwrap();
+        let manifest = || -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(folder.join("project.json")).unwrap())
+                .unwrap()
+        };
+        assert!(
+            super::set_project_engine_unlocked(&project_id, "latexmk", Some("xelatex")).is_err()
+        );
+        assert_eq!(manifest()["engine"], "xetex");
+        fixture.trust(&project_id, crate::trust::TrustScope::Folder);
+        super::set_project_engine_unlocked(&project_id, "latexmk", Some("xelatex")).unwrap();
+        assert_eq!(
+            (
+                manifest()["engine"].as_str(),
+                manifest()["tex_flavor"].as_str()
+            ),
+            (Some("latexmk"), Some("xelatex"))
+        );
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        assert!(manifest().get("tex_flavor").is_none());
+        assert_eq!(read_meta(&project_id).unwrap().tex_flavor, None);
+        assert!(oleafly_core::Workspace::open(&folder).is_ok());
+    }
+
+    #[test]
+    fn the_folder_manifest_wins_after_a_teammate_edit_and_reconcile_never_writes_it() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        oleafly_core::Workspace::init(
+            &folder,
+            oleafly_core::InitOptions {
+                name: Some("Thesis".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(folder.join("paper.tex"), "\\documentclass{article}").unwrap();
+        tauri::async_runtime::block_on(super::set_project_color(
+            project_id.clone(),
+            "#224466".into(),
+        ))
+        .unwrap();
+        let pulled = std::fs::read_to_string(folder.join("project.json"))
+            .unwrap()
+            .replace("\"main_doc\": \"main.tex\"", "\"main_doc\": \"paper.tex\"");
+        std::fs::write(folder.join("project.json"), &pulled).unwrap();
+
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "paper.tex");
+        assert_eq!(
+            super::linked_listing_meta(&project_id).unwrap().main_doc,
+            "main.tex"
+        );
+        assert!(super::refresh_linked_mirror(&project_id).unwrap());
+        assert_eq!(
+            super::linked_listing_meta(&project_id).unwrap().main_doc,
+            "paper.tex"
+        );
+        assert_eq!(read_meta(&project_id).unwrap().color, "#224466");
+
+        let previous = read_meta(&project_id).unwrap();
+        std::fs::remove_file(folder.join("paper.tex")).unwrap();
+        let reconciled = super::reconcile_external_worktree_meta(&project_id, &previous).unwrap();
+        assert_eq!(reconciled.main_doc, "main.tex");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            pulled
+        );
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "main.tex");
+    }
+
+    #[test]
+    fn moving_the_main_document_of_a_linked_folder_updates_its_own_manifest() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        oleafly_core::Workspace::init(&folder, oleafly_core::InitOptions::default()).unwrap();
+        let location = crate::project_location::locate(&project_id).unwrap();
+        let meta = read_meta(&project_id).unwrap();
+        super::rename_path_and_update_meta(
+            Some(&project_id),
+            &location,
+            &folder.join("main.tex"),
+            &folder.join("thesis.tex"),
+            "thesis.tex",
+            FileConflictStrategy::Error,
+            meta,
+        )
+        .unwrap();
+        assert_eq!(
+            oleafly_core::Workspace::open(&folder)
+                .unwrap()
+                .manifest()
+                .main_doc,
+            "thesis.tex"
+        );
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "thesis.tex");
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_linked_folders_own_project_json_is_editable_but_an_oleafly_manifest_is_not() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (foreign_id, foreign) = fixture.link("workspace");
+        std::fs::write(foreign.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(
+            foreign.join("project.json"),
+            crate::project_manifest::NX_PROJECT_JSON,
+        )
+        .unwrap();
+        super::write_project_file(
+            foreign_id.clone(),
+            "project.json".into(),
+            "{\"name\":\"web\"}\n".into(),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(foreign.join("project.json")).unwrap(),
+            "{\"name\":\"web\"}\n"
+        );
+        super::rename_file_blocking(
+            foreign_id.clone(),
+            "project.json".into(),
+            "project.nx.json".into(),
+            None,
+            None,
+        )
+        .unwrap();
+        super::create_file(foreign_id.clone(), "project.json".into(), false, None, None).unwrap();
+        super::delete_file(foreign_id.clone(), "project.json".into(), None).unwrap();
+        assert!(!foreign.join("project.json").exists());
+
+        let (managed_id, managed) = fixture.link("thesis");
+        oleafly_core::Workspace::init(&managed, oleafly_core::InitOptions::default()).unwrap();
+        let error = super::write_project_file(
+            managed_id.clone(),
+            "project.json".into(),
+            "{}".into(),
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert!(error.contains("managed by Oleafly"), "{error}");
+        assert!(
+            super::delete_file(managed_id.clone(), "PROJECT.JSON".into(), None)
+                .unwrap_err()
+                .contains("managed by Oleafly")
+        );
+        assert!(super::write_project_file(
+            managed_id,
+            ".git/config".into(),
+            "x".into(),
+            None,
+            None
+        )
+        .await
+        .unwrap_err()
+        .contains("managed internally"));
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_manifest_saved_or_imported_into_a_linked_folder_publishes_the_settings_it_declares()
+    {
+        use tauri::{Listener as _, Manager as _};
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(folder.join("paper.tex"), "\\documentclass{article}").unwrap();
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let published = Arc::new(std::sync::Mutex::new(Vec::<serde_json::Value>::new()));
+        let sink = Arc::clone(&published);
+        app.listen("project-state-changed", move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+        let write = |path: &str, content: &str| {
+            super::write_file(
+                app.handle().clone(),
+                app.state(),
+                project_id.clone(),
+                path.into(),
+                content.into(),
+                None,
+                None,
+            )
+        };
+        let summary = |event: &serde_json::Value| {
+            (
+                event["projectId"].as_str().map(str::to_owned),
+                event["project"]["name"].as_str().map(str::to_owned),
+                event["project"]["main_doc"].as_str().map(str::to_owned),
+                event["engine"]["id"].as_str().map(str::to_owned),
+                event["filesChanged"].as_bool(),
+                event["mutationGeneration"].as_u64(),
+            )
+        };
+
+        write("project.json", "{\"main_doc\": \"paper\"}")
+            .await
+            .unwrap();
+        write("notes/project.json", "{\"main_doc\": \"paper.tex\"}")
+            .await
+            .unwrap();
+        assert!(published.lock().unwrap().is_empty());
+        let saved = write(
+            "project.json",
+            "{\"name\": \"Thesis\", \"main_doc\": \"paper.tex\"}",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            published
+                .lock()
+                .unwrap()
+                .iter()
+                .map(summary)
+                .collect::<Vec<_>>(),
+            [(
+                Some(project_id.clone()),
+                Some("Thesis".to_owned()),
+                Some("paper.tex".to_owned()),
+                Some("latex".to_owned()),
+                Some(false),
+                Some(saved.generation)
+            )]
+        );
+
+        let (imported_id, imported) = fixture.link("imported");
+        std::fs::write(imported.join("paper.tex"), "\\documentclass{article}").unwrap();
+        let sources = test_dir("import-folder-manifest");
+        std::fs::write(
+            sources.join("project.json"),
+            "{\"name\": \"Imported\", \"main_doc\": \"paper.tex\"}",
+        )
+        .unwrap();
+        let result = super::import_paths_into_project(
+            app.handle().clone(),
+            app.state(),
+            imported_id.clone(),
+            String::new(),
+            vec![sources.join("project.json").to_string_lossy().into_owned()],
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.paths, ["project.json"]);
+        assert_eq!(
+            published
+                .lock()
+                .unwrap()
+                .iter()
+                .skip(1)
+                .map(summary)
+                .collect::<Vec<_>>(),
+            [(
+                Some(imported_id),
+                Some("Imported".to_owned()),
+                Some("paper.tex".to_owned()),
+                Some("latex".to_owned()),
+                Some(false),
+                Some(result.generation)
+            )]
+        );
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[test]
+    fn importing_a_project_json_follows_whose_file_it_would_be() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (plain_id, plain) = fixture.link("plain");
+        let (managed_id, managed) = fixture.link("managed");
+        oleafly_core::Workspace::init(&managed, oleafly_core::InitOptions::default()).unwrap();
+        let sources = test_dir("import-project-json");
+        std::fs::write(
+            sources.join("project.json"),
+            crate::project_manifest::NX_PROJECT_JSON,
+        )
+        .unwrap();
+
+        let plain_location = crate::project_location::locate(&plain_id).unwrap();
+        assert_eq!(
+            import_paths_transactional(&plain_location, &plain, &[sources.join("project.json")])
+                .unwrap(),
+            ["project.json"]
+        );
+        assert_eq!(
+            crate::project_manifest::route_project(&plain_id)
+                .unwrap()
+                .home(),
+            crate::project_manifest::ManifestHome::DeviceForeign
+        );
+        let managed_location = crate::project_location::locate(&managed_id).unwrap();
+        let before = std::fs::read(managed.join("project.json")).unwrap();
+        assert_eq!(
+            import_paths_transactional(
+                &managed_location,
+                &managed,
+                &[sources.join("project.json")]
+            )
+            .unwrap(),
+            ["project (2).json"]
+        );
+        assert_eq!(std::fs::read(managed.join("project.json")).unwrap(), before);
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[test]
+    fn saving_project_settings_writes_a_manifest_only_when_the_name_is_free() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        assert!(super::save_project_settings_to_folder_blocking(&project_id)
+            .map(|_| ())
+            .unwrap_err()
+            .contains("project.settings_need_main"));
+        std::fs::write(folder.join("thesis.tex"), "\\documentclass{book}").unwrap();
+        set_main_doc_unlocked(project_id.clone(), "thesis.tex".into()).unwrap();
+        tauri::async_runtime::block_on(super::set_project_color(
+            project_id.clone(),
+            "#224466".into(),
+        ))
+        .unwrap();
+        let mut expected: Vec<String> = crate::linked_registry::folder_snapshot_for_test(&folder)
+            .into_iter()
+            .map(|(path, ..)| path)
+            .collect();
+        expected.push("project.json".into());
+        expected.sort();
+
+        let (meta, _) = super::save_project_settings_to_folder_blocking(&project_id).unwrap();
+        assert_eq!(meta.main_doc, "thesis.tex");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            "{\n  \"name\": \"thesis\",\n  \"main_doc\": \"thesis.tex\",\n  \"engine\": \"xetex\"\n}\n"
+        );
+        let after: Vec<String> = crate::linked_registry::folder_snapshot_for_test(&folder)
+            .into_iter()
+            .map(|(path, ..)| path)
+            .collect();
+        assert_eq!(after, expected);
+        assert_eq!(
+            tauri::async_runtime::block_on(super::project_manifest_home(project_id.clone()))
+                .unwrap(),
+            crate::project_manifest::ManifestHome::Folder
+        );
+        assert_eq!(
+            oleafly_core::Workspace::open(&folder)
+                .unwrap()
+                .manifest()
+                .main_doc,
+            "thesis.tex"
+        );
+        assert_eq!(read_meta(&project_id).unwrap().color, "#224466");
+
+        let saved = std::fs::read(folder.join("project.json")).unwrap();
+        assert!(super::save_project_settings_to_folder_blocking(&project_id)
+            .map(|_| ())
+            .unwrap_err()
+            .contains("project.settings_file_exists"));
+        assert_eq!(std::fs::read(folder.join("project.json")).unwrap(), saved);
+
+        let (foreign_id, foreign) = fixture.link("workspace");
+        std::fs::write(foreign.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(
+            foreign.join("project.json"),
+            crate::project_manifest::NX_PROJECT_JSON,
+        )
+        .unwrap();
+        assert!(super::save_project_settings_to_folder_blocking(&foreign_id)
+            .map(|_| ())
+            .unwrap_err()
+            .contains("project.settings_file_exists"));
+        assert_eq!(
+            std::fs::read_to_string(foreign.join("project.json")).unwrap(),
+            crate::project_manifest::NX_PROJECT_JSON
+        );
     }
 
     #[test]
@@ -7439,18 +8502,18 @@ mod tests {
     #[test]
     fn mutation_paths_use_one_portable_normalized_wire_format() {
         assert_eq!(
-            super::mutation_relative_path("chapters/./one.tex", false).unwrap(),
+            super::normalize_mutation_path("chapters/./one.tex", false).unwrap(),
             "chapters/one.tex"
         );
-        assert!(super::mutation_relative_path("../outside.tex", false).is_err());
-        assert!(super::mutation_relative_path("..\\outside.tex", false).is_err());
-        assert!(super::mutation_relative_path("chapters\\one.tex", false).is_err());
-        assert!(super::mutation_relative_path("", false).is_err());
-        assert_eq!(super::mutation_relative_path("./", true).unwrap(), "");
-        assert!(super::mutation_relative_path("project.json", false).is_err());
-        assert!(super::mutation_relative_path("PROJECT.JSON", false).is_err());
+        assert!(super::normalize_mutation_path("../outside.tex", false).is_err());
+        assert!(super::normalize_mutation_path("..\\outside.tex", false).is_err());
+        assert!(super::normalize_mutation_path("chapters\\one.tex", false).is_err());
+        assert!(super::normalize_mutation_path("", false).is_err());
+        assert_eq!(super::normalize_mutation_path("./", true).unwrap(), "");
+        assert!(super::refuse_internal_mutation_path("project.json".into(), true).is_err());
+        assert!(super::refuse_internal_mutation_path(".git/config".into(), false).is_err());
         assert_eq!(
-            super::mutation_relative_path("notes/project.json", false).unwrap(),
+            super::refuse_internal_mutation_path("notes/project.json".into(), false).unwrap(),
             "notes/project.json"
         );
     }
@@ -8057,7 +9120,7 @@ mod tests {
             .unwrap_err();
         assert!(queued_error.contains("mutation conflict"));
 
-        let late_error = super::write_file(
+        let late_error = super::write_project_file(
             project_id.clone(),
             "main.tex".into(),
             "late".into(),
@@ -8333,7 +9396,7 @@ mod tests {
         assert_eq!(copied.path, "draft copy.tex");
         assert!(copied.generation > baseline);
 
-        let imported = super::import_paths_into_project(
+        let imported = super::import_project_paths(
             project_id.clone(),
             String::new(),
             vec![external.to_string_lossy().into_owned()],
@@ -10397,7 +11460,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let project_id = super::create_project("Reserved Metadata".into()).unwrap();
 
-        let write_error = super::write_file(
+        let write_error = super::write_project_file(
             project_id.clone(),
             "project.json".into(),
             "{}".into(),
@@ -10443,7 +11506,7 @@ mod tests {
         .contains("managed by Oleafly"));
 
         for internal in [".oleafly/build/marker", ".GIT/config"] {
-            assert!(super::write_file(
+            assert!(super::write_project_file(
                 project_id.clone(),
                 internal.into(),
                 "untrusted".into(),

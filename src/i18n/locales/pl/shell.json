@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompiluj ponownie"
     },
+    "saveSettingsToFolder": {
+      "keywords": "zapisz ustawienia projektu folder project.json udostępnij dokument główny",
+      "label": "Zapisz ustawienia projektu w tym folderze",
+      "saved": "Ustawienia projektu zapisano w pliku project.json w tym folderze."
+    },
     "section": {
       "label": "Sekcja"
     },

@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Recompile"
     },
+    "saveSettingsToFolder": {
+      "keywords": "save project settings folder project.json share main document engine",
+      "label": "Save project settings to this folder",
+      "saved": "Saved project settings to project.json in this folder."
+    },
     "section": {
       "label": "Section"
     },

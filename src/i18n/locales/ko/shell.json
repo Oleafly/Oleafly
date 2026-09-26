@@ -168,6 +168,11 @@
     "recompile": {
       "label": "다시 컴파일"
     },
+    "saveSettingsToFolder": {
+      "keywords": "프로젝트 설정 저장 폴더 project.json 공유 주 문서",
+      "label": "프로젝트 설정을 이 폴더에 저장",
+      "saved": "프로젝트 설정을 이 폴더의 project.json에 저장했습니다."
+    },
     "section": {
       "label": "절"
     },

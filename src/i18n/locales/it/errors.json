@@ -23,7 +23,10 @@
     "copy_too_large": "I file aperti sono troppo grandi per essere salvati come copia.",
     "copy_failed": "Oleafly non è riuscito a salvare la copia lì. Scegli una cartella in cui puoi scrivere.",
     "folder_picker_failed": "Oleafly non è riuscito ad aprire il selettore di cartelle. Riprova.",
-    "import_no_main": "Questa importazione non contiene documenti LaTeX, Typst o Markdown da compilare."
+    "import_no_main": "Questa importazione non contiene documenti LaTeX, Typst o Markdown da compilare.",
+    "settings_file_exists": "Questa cartella contiene già un project.json, quindi Oleafly l'ha lasciato com'era.",
+    "settings_need_main": "Scegli prima un documento principale, poi salva le impostazioni del progetto in questa cartella.",
+    "settings_write_failed": "Oleafly non è riuscito a salvare le impostazioni del progetto in questa cartella."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

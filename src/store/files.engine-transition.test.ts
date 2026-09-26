@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   createProjectFromTemplate: mocks.createProjectFromTemplate,
   importOverleafProjectCmd: mocks.importOverleafProjectCmd,

@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompilează"
     },
+    "saveSettingsToFolder": {
+      "keywords": "salvează setări proiect folder project.json partajează document principal",
+      "label": "Salvează setările proiectului în acest folder",
+      "saved": "Setările proiectului au fost salvate în project.json din acest folder."
+    },
     "section": {
       "label": "Secțiune"
     },

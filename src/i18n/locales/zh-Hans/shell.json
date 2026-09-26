@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新编译"
     },
+    "saveSettingsToFolder": {
+      "keywords": "保存 项目设置 文件夹 project.json 共享 主文档",
+      "label": "将项目设置保存到此文件夹",
+      "saved": "项目设置已保存到此文件夹的 project.json 中。"
+    },
     "section": {
       "label": "章节"
     },

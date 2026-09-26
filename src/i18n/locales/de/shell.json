@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Neu kompilieren"
     },
+    "saveSettingsToFolder": {
+      "keywords": "projekteinstellungen speichern ordner project.json teilen hauptdokument",
+      "label": "Projekteinstellungen in diesem Ordner speichern",
+      "saved": "Die Projekteinstellungen wurden in project.json in diesem Ordner gespeichert."
+    },
     "section": {
       "label": "Abschnitt"
     },

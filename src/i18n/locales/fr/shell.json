@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompiler"
     },
+    "saveSettingsToFolder": {
+      "keywords": "enregistrer paramètres projet dossier project.json partager document principal",
+      "label": "Enregistrer les paramètres du projet dans ce dossier",
+      "saved": "Les paramètres du projet ont été enregistrés dans le fichier project.json de ce dossier."
+    },
     "section": {
       "label": "Section"
     },

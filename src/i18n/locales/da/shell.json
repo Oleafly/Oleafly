@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompiler igen"
     },
+    "saveSettingsToFolder": {
+      "keywords": "gem projektindstillinger mappe project.json del hoveddokument",
+      "label": "Gem projektindstillinger i denne mappe",
+      "saved": "Projektindstillingerne er gemt i project.json i denne mappe."
+    },
     "section": {
       "label": "Afsnit"
     },

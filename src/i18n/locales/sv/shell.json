@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompilera om"
     },
+    "saveSettingsToFolder": {
+      "keywords": "spara projektinställningar mapp project.json dela huvuddokument",
+      "label": "Spara projektinställningarna i den här mappen",
+      "saved": "Projektinställningarna har sparats i project.json i den här mappen."
+    },
     "section": {
       "label": "Avsnitt"
     },

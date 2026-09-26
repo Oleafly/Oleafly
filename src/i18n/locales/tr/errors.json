@@ -23,7 +23,10 @@
     "copy_too_large": "Açık dosyalar kopya olarak kaydedilemeyecek kadar büyük.",
     "copy_failed": "Oleafly kopyayı oraya kaydedemedi. Yazma izniniz olan bir klasör seçin.",
     "folder_picker_failed": "Oleafly klasör seçiciyi açamadı. Tekrar deneyin.",
-    "import_no_main": "İçe aktarılan dosyalarda derlenecek LaTeX, Typst veya Markdown belgesi yok."
+    "import_no_main": "İçe aktarılan dosyalarda derlenecek LaTeX, Typst veya Markdown belgesi yok.",
+    "settings_file_exists": "Bu klasörde zaten bir project.json var, bu yüzden Oleafly ona dokunmadı.",
+    "settings_need_main": "Önce bir ana belge seçin, ardından proje ayarlarını bu klasöre kaydedin.",
+    "settings_write_failed": "Oleafly proje ayarlarını bu klasöre kaydedemedi."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

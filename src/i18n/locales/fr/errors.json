@@ -23,7 +23,10 @@
     "copy_too_large": "Les fichiers ouverts sont trop volumineux pour être enregistrés en copie.",
     "copy_failed": "Oleafly n'a pas pu enregistrer la copie à cet endroit. Choisissez un dossier dans lequel vous pouvez écrire.",
     "folder_picker_failed": "Oleafly n'a pas pu ouvrir le sélecteur de dossier. Réessayez.",
-    "import_no_main": "Cette importation ne contient aucun document LaTeX, Typst ou Markdown à compiler."
+    "import_no_main": "Cette importation ne contient aucun document LaTeX, Typst ou Markdown à compiler.",
+    "settings_file_exists": "Ce dossier contient déjà un fichier project.json, Oleafly l'a donc laissé tel quel.",
+    "settings_need_main": "Choisissez d'abord un document principal, puis enregistrez les paramètres du projet dans ce dossier.",
+    "settings_write_failed": "Oleafly n'a pas pu enregistrer les paramètres du projet dans ce dossier."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

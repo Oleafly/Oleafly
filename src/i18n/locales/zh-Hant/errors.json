@@ -23,7 +23,10 @@
     "copy_too_large": "開啟的檔案太大，無法另存為副本。",
     "copy_failed": "Oleafly 無法將副本儲存到該位置。請選擇一個你有寫入權限的資料夾。",
     "folder_picker_failed": "Oleafly 無法開啟資料夾選擇器。請再試一次。",
-    "import_no_main": "匯入的內容中沒有可編譯的 LaTeX、Typst 或 Markdown 文件。"
+    "import_no_main": "匯入的內容中沒有可編譯的 LaTeX、Typst 或 Markdown 文件。",
+    "settings_file_exists": "此資料夾中已有 project.json，Oleafly 未對其做任何變更。",
+    "settings_need_main": "請先選擇主要文件，再將專案設定儲存到此資料夾。",
+    "settings_write_failed": "Oleafly 無法將專案設定儲存到此資料夾。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

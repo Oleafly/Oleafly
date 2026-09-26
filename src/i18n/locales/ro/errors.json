@@ -23,7 +23,10 @@
     "copy_too_large": "Fișierele deschise sunt prea mari pentru a fi salvate ca o copie.",
     "copy_failed": "Oleafly nu a putut salva copia acolo. Alege un folder în care poți scrie.",
     "folder_picker_failed": "Oleafly nu a putut deschide selectorul de foldere. Încearcă din nou.",
-    "import_no_main": "Acest import nu conține niciun document LaTeX, Typst sau Markdown de compilat."
+    "import_no_main": "Acest import nu conține niciun document LaTeX, Typst sau Markdown de compilat.",
+    "settings_file_exists": "Acest folder are deja un project.json, așa că Oleafly l-a lăsat neschimbat.",
+    "settings_need_main": "Alege mai întâi un document principal, apoi salvează setările proiectului în acest folder.",
+    "settings_write_failed": "Oleafly nu a putut salva setările proiectului în acest folder."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

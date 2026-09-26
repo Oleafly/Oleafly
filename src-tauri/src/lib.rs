@@ -65,6 +65,7 @@ mod project;
 mod project_availability;
 mod project_grants;
 mod project_location;
+mod project_manifest;
 mod project_rebind;
 mod project_sources;
 mod protocol;
@@ -613,6 +614,8 @@ pub fn run() {
             project::rename_project,
             project::open_devtools,
             project::get_project,
+            project::project_manifest_home,
+            project::save_project_settings_to_folder,
             project::list_projects,
             project_availability::probe_project_availability,
             project_rebind::locate_project_folder,

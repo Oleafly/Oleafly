@@ -23,6 +23,8 @@ import {
   projectTexStatus,
   recordProjectTexSpec,
   renameProjectCmd,
+  projectManifestHome,
+  saveProjectSettingsToFolder,
   setMainDocCmd,
   setProjectEngineCmd,
   setProjectShellEscapeCmd,
@@ -30,6 +32,7 @@ import {
   type FileConflictStrategy,
   type FileEntry,
   type GitPullResult,
+  type ManifestHome,
   type ProjectInfo,
   type ProjectMeta,
   type ProjectStateChanged,
@@ -41,6 +44,7 @@ import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
@@ -376,6 +380,7 @@ interface FilesStore {
   // project (hides doc-only tools like Insert diagram).
   projectKind: string;
   projectDictionaryLocale: string | null;
+  manifestHome: ManifestHome;
   mainDoc: string;
   engine: DocumentEngineDescriptor;
   engineLoaded: boolean;
@@ -410,6 +415,8 @@ interface FilesStore {
   createTypstProject: (name: string) => Promise<void>;
   createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
+  refreshManifestHome: () => Promise<void>;
+  saveSettingsToFolder: () => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (expectedProjectId: string, oid: string) => Promise<void>;
   pullFromGit: (expectedProjectId: string) => Promise<GitPullResult>;
@@ -588,6 +595,19 @@ async function refreshMutationGeneration(projectId: string): Promise<number> {
   return rememberMutationGeneration(projectId, generation);
 }
 
+function touchesRootManifest(paths: readonly string[]): boolean {
+  return paths.some((path) => path.toLowerCase() === "project.json");
+}
+
+async function loadManifestHome(projectId: string): Promise<ManifestHome> {
+  try {
+    return (await projectManifestHome(projectId)) ?? "library";
+  } catch (error) {
+    void logError("load project settings location", error);
+    return "library";
+  }
+}
+
 function enqueueWrite(
   projectId: string,
   path: string,
@@ -613,6 +633,7 @@ function enqueueWrite(
         : await writeFileContent(projectId, path, bytes, expectedGeneration, expectedHash);
       diskSnapshots.set(key, { hash: diskHash(bytes), crlf });
       settleDiskConflict(key);
+      if (touchesRootManifest([path])) void useFilesStore.getState().refreshManifestHome();
       return rememberMutationGeneration(
         projectId,
         Number.isSafeInteger(result?.generation) ? result.generation : expectedGeneration,
@@ -1032,7 +1053,11 @@ async function loadOpenedProject(
   set: FilesSet,
   get: FilesGet,
 ): Promise<void> {
-  const [meta, generation] = await Promise.all([getProject(id), projectMutationGeneration(id)]);
+  const [meta, generation, manifestHome] = await Promise.all([
+    getProject(id),
+    projectMutationGeneration(id),
+    loadManifestHome(id),
+  ]);
   if (superseded()) return;
   rememberMutationGeneration(id, generation);
   const activation = mcpSetActiveProject(id).catch(() => {});
@@ -1045,6 +1070,7 @@ async function loadOpenedProject(
     projectName: meta.name,
     projectKind: meta.kind ?? "",
     projectDictionaryLocale: meta.dictionary_locale ?? null,
+    manifestHome,
     mainDoc: meta.main_doc,
     tree,
     ...engine.state,
@@ -1379,6 +1405,7 @@ const EMPTY_PROJECT_STATE = {
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  manifestHome: "library",
   mainDoc: "main.tex",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
@@ -1397,6 +1424,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  manifestHome: "library",
   mainDoc: "main.tex",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
@@ -1519,6 +1547,30 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshProjects();
   },
 
+  refreshManifestHome: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const manifestHome = await loadManifestHome(projectId);
+    if (get().projectId === projectId) set({ manifestHome });
+  },
+
+  saveSettingsToFolder: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    try {
+      await saveProjectSettingsToFolder(projectId);
+    } catch (error) {
+      notifyError(
+        "save project settings to folder",
+        error,
+        decodeAppError(error) ? undefined : i18n.t(($) => $.errors.project.settings_write_failed),
+      );
+      return;
+    }
+    await get().refreshManifestHome();
+    toast.success(i18n.t(($) => $.shell.commands.saveSettingsToFolder.saved));
+  },
+
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
     await get().refreshProjects();
@@ -1624,7 +1676,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   setContent: (path, content, opts) => {
-    if (isManagedProjectPath(path)) return;
+    if (isManagedProjectPath(path, get().manifestHome)) return;
     set((s) => ({
       files: {
         ...s.files,
@@ -1714,6 +1766,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       rememberMutationGeneration(projectId, result.generation);
     }
     await get().refreshTree();
+    if (touchesRootManifest([result.path])) await get().refreshManifestHome();
     if (get().projectId !== projectId) return;
     // keep_both may have diverted to a sibling name; open what was created.
     if (!isDir) await get().openFile(result.path);
@@ -1745,6 +1798,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
       forgetDiskStateUnder(projectId, isDeletedPath);
       await get().refreshTree();
+      if (touchesRootManifest([path])) await get().refreshManifestHome();
       await reopenMainDocAfterDelete(get, projectId, isDeletedPath);
     } finally {
       if (!deleted) restoreDiscardedSaves(get, projectId, discardedPending);
@@ -1850,6 +1904,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       if (get().projectId === projectId) await get().refreshTree();
+      if (result?.path && touchesRootManifest([result.path])) await get().refreshManifestHome();
     } catch (e) {
       notifyError("copy file", e, i18n.t(($) => $.core.project.copyFailed, { path }));
     }
@@ -1888,6 +1943,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       if (get().projectId === projectId) await get().refreshTree();
+      if (touchesRootManifest(result?.paths ?? [])) await get().refreshManifestHome();
     } catch (e) {
       notifyError("import files", e, i18n.t(($) => $.core.project.importFailed));
     }
@@ -2252,6 +2308,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const metadata = projectMetadataState(event);
     if (!event.filesChanged) {
       if (projectRevisionIsCurrent(projectId, revision, get)) set(metadata);
+      if (get().manifestHome !== "library") await get().refreshManifestHome();
       return true;
     }
     fileReloadRevision++;
@@ -2263,12 +2320,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
       );
       const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
+      const manifestHome = await loadManifestHome(projectId);
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const removedDirty: string[] = [];
       const adopted: string[] = [];
       set((state) => {
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
-        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted);
+        return {
+          ...reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted),
+          manifestHome,
+        };
       });
       rememberAdoptedSnapshots(projectId, adopted, reloaded.snapshots);
       restoreRemovedDirtyFiles(removedDirty, get);
@@ -2460,7 +2521,7 @@ export function collectOpenBuffersForCopy(projectId: string): { path: string; co
   const state = useFilesStore.getState();
   if (state.projectId !== projectId) return [];
   return Object.entries(state.files)
-    .filter(([path]) => !isManagedProjectPath(path))
+    .filter(([path]) => !isManagedProjectPath(path, state.manifestHome))
     .map(([path, file]) => {
       const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
       return { path, content: crlf ? crlfBytes(file.content) : file.content };

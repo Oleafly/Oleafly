@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompilovat znovu"
     },
+    "saveSettingsToFolder": {
+      "keywords": "uložit nastavení projektu složka project.json sdílet hlavní dokument",
+      "label": "Uložit nastavení projektu do této složky",
+      "saved": "Nastavení projektu bylo uloženo do souboru project.json v této složce."
+    },
     "section": {
       "label": "Sekce"
     },

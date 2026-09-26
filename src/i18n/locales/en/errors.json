@@ -23,7 +23,10 @@
     "copy_too_large": "The open files are too large to save as a copy.",
     "copy_failed": "Oleafly couldn't save the copy there. Choose a folder you can write to.",
     "folder_picker_failed": "Oleafly couldn't open the folder picker. Try again.",
-    "import_no_main": "This import has no LaTeX, Typst or Markdown document to compile."
+    "import_no_main": "This import has no LaTeX, Typst or Markdown document to compile.",
+    "settings_file_exists": "This folder already has a project.json, so Oleafly left it as it is.",
+    "settings_need_main": "Choose a main document first, then save the project settings to this folder.",
+    "settings_write_failed": "Oleafly couldn't save the project settings to this folder."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

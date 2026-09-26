@@ -168,6 +168,11 @@
     "recompile": {
       "label": "再コンパイル"
     },
+    "saveSettingsToFolder": {
+      "keywords": "プロジェクト 設定 保存 フォルダ project.json 共有 メイン文書",
+      "label": "プロジェクト設定をこのフォルダに保存",
+      "saved": "プロジェクト設定をこのフォルダの project.json に保存しました。"
+    },
     "section": {
       "label": "節"
     },

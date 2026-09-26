@@ -76,6 +76,7 @@ import type {
   ImportPathsResult,
   InitialState,
   LibraryStorageSummary,
+  ManifestHome,
   McpConnectionInfo,
   McpAgentServer,
   McpManagedServer,
@@ -561,6 +562,12 @@ export const openDevtools = () => invoke<void>("open_devtools");
 
 export const getProject = (projectId: string) =>
   invoke<ProjectMeta>("get_project", { projectId });
+
+export const projectManifestHome = (projectId: string) =>
+  invoke<ManifestHome>("project_manifest_home", { projectId });
+
+export const saveProjectSettingsToFolder = (projectId: string) =>
+  invoke<ProjectMeta>("save_project_settings_to_folder", { projectId });
 
 export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 

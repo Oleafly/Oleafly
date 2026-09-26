@@ -23,7 +23,10 @@
     "copy_too_large": "Os arquivos abertos são grandes demais para salvar como cópia.",
     "copy_failed": "O Oleafly não conseguiu salvar a cópia nesse local. Escolha uma pasta em que você possa gravar.",
     "folder_picker_failed": "O Oleafly não conseguiu abrir o seletor de pastas. Tente novamente.",
-    "import_no_main": "Esta importação não tem nenhum documento LaTeX, Typst ou Markdown para compilar."
+    "import_no_main": "Esta importação não tem nenhum documento LaTeX, Typst ou Markdown para compilar.",
+    "settings_file_exists": "Esta pasta já tem um project.json, então o Oleafly o deixou como estava.",
+    "settings_need_main": "Escolha primeiro um documento principal e depois salve as configurações do projeto nesta pasta.",
+    "settings_write_failed": "O Oleafly não conseguiu salvar as configurações do projeto nesta pasta."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

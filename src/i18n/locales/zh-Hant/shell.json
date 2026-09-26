@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新編譯"
     },
+    "saveSettingsToFolder": {
+      "keywords": "儲存 專案設定 資料夾 project.json 共用 主要文件",
+      "label": "將專案設定儲存到此資料夾",
+      "saved": "專案設定已儲存到此資料夾的 project.json 中。"
+    },
     "section": {
       "label": "章節"
     },

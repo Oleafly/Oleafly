@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Opnieuw compileren"
     },
+    "saveSettingsToFolder": {
+      "keywords": "projectinstellingen opslaan map project.json delen hoofddocument",
+      "label": "Projectinstellingen in deze map opslaan",
+      "saved": "De projectinstellingen zijn opgeslagen in project.json in deze map."
+    },
     "section": {
       "label": "Sectie"
     },

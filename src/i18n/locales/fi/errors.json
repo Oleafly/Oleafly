@@ -23,7 +23,10 @@
     "copy_too_large": "Avoimet tiedostot ovat liian suuria tallennettaviksi kopiona.",
     "copy_failed": "Oleafly ei voinut tallentaa kopiota sinne. Valitse kansio, johon voit kirjoittaa.",
     "folder_picker_failed": "Oleafly ei voinut avata kansion valintaa. Yritä uudelleen.",
-    "import_no_main": "Tuonnissa ei ole LaTeX-, Typst- tai Markdown-dokumenttia käännettäväksi."
+    "import_no_main": "Tuonnissa ei ole LaTeX-, Typst- tai Markdown-dokumenttia käännettäväksi.",
+    "settings_file_exists": "Tässä kansiossa on jo project.json, joten Oleafly jätti sen ennalleen.",
+    "settings_need_main": "Valitse ensin päädokumentti ja tallenna sitten projektin asetukset tähän kansioon.",
+    "settings_write_failed": "Oleafly ei voinut tallentaa projektin asetuksia tähän kansioon."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

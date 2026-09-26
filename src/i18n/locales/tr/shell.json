@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Yeniden derle"
     },
+    "saveSettingsToFolder": {
+      "keywords": "proje ayarları kaydet klasör project.json paylaş ana belge",
+      "label": "Proje ayarlarını bu klasöre kaydet",
+      "saved": "Proje ayarları bu klasördeki project.json dosyasına kaydedildi."
+    },
     "section": {
       "label": "Alt bölüm"
     },

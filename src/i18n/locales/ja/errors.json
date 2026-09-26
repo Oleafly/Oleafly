@@ -23,7 +23,10 @@
     "copy_too_large": "開いているファイルが大きすぎるため、コピーとして保存できません。",
     "copy_failed": "Oleafly はそこにコピーを保存できませんでした。書き込みできるフォルダを選択してください。",
     "folder_picker_failed": "Oleafly はフォルダの選択画面を開けませんでした。もう一度お試しください。",
-    "import_no_main": "読み込んだ内容に、コンパイルできる LaTeX、Typst、Markdown の文書がありません。"
+    "import_no_main": "読み込んだ内容に、コンパイルできる LaTeX、Typst、Markdown の文書がありません。",
+    "settings_file_exists": "このフォルダにはすでに project.json があるため、Oleafly は変更していません。",
+    "settings_need_main": "先にメイン文書を選択してから、プロジェクト設定をこのフォルダに保存してください。",
+    "settings_write_failed": "Oleafly はプロジェクト設定をこのフォルダに保存できませんでした。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

@@ -340,6 +340,7 @@ export type ProjectAvailability = "unknown" | "ok" | "missing" | "offline" | "re
 export type ProjectLocationInfo =
     | { kind: "library" }
     | { kind: "linked"; display_path: string; availability: ProjectAvailability };
+export type ManifestHome = "library" | "folder" | "device" | "device_foreign";
 export interface ProjectAvailabilityReport {
     project_id: string;
     availability: ProjectAvailability;
@@ -843,6 +844,8 @@ export interface BackendPort {
   renameProjectCmd: (projectId: string, name: string) => Promise<ProjectMeta>;
   openDevtools: () => Promise<void>;
   getProject: (projectId: string) => Promise<ProjectMeta>;
+  projectManifestHome: (projectId: string) => Promise<ManifestHome>;
+  saveProjectSettingsToFolder: (projectId: string) => Promise<ProjectMeta>;
   listProjects: () => Promise<ProjectInfo[]>;
   probeProjectAvailability: (projectIds: string[]) => Promise<ProjectAvailabilityReport[]>;
   createProject: (name: string) => Promise<string>;
