@@ -641,3 +641,23 @@ describe("email addresses", () => {
     expect(maskLatexForProse(source)).not.toMatch(/ř |пример|почта/u);
   });
 });
+
+describe("babel option scanning", () => {
+  it("stays linear on unterminated option lists", () => {
+    const source = "\\usepackage[\\".repeat(25_000);
+    expect(spellcheckRanges(source).length).toBeGreaterThanOrEqual(0);
+    expect(maskLatex(source)).toHaveLength(source.length);
+  });
+
+  it("reads German shorthands when the class options load German", () => {
+    const words = spellcheckRanges(
+      String.raw`\documentclass[a4paper,ngerman]{article}
+\usepackage{babel}
+\begin{document}
+Die Stra"se.
+\end{document}`,
+    ).map((range) => range.word);
+    expect(words).toContain("Straße");
+  });
+});
+

@@ -178,7 +178,7 @@ const GERMAN_SHORTHANDS = new Map<string, string>([
   ["=", "-"],
   ["~", "-"],
 ]);
-const BABEL_OPTION_LIST = /\\(?:usepackage|documentclass)\s*\[([^\]]*)\]/gu;
+const BABEL_OPTION_LIST = /\\(?:usepackage|documentclass)\s*\[([^\]\\]*)\]/gu;
 const GERMAN_BABEL_OPTION = /\bn?(?:german|austrian|swissgerman)\b/u;
 const GERMAN_BABEL_PACKAGE = /\\usepackage\s*\{\s*n?german\s*\}/gu;
 
