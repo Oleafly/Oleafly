@@ -58,18 +58,27 @@ fn local_bounds(args: &[&str]) -> OutputBounds {
 }
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
-    paths::project_dir(project_id)
+    let root = paths::project_dir(project_id)?;
+    crate::trust::require_git(project_id, &root)?;
+    Ok(root)
+}
+
+pub(crate) fn null_device() -> &'static str {
+    if cfg!(windows) {
+        "NUL"
+    } else {
+        "/dev/null"
+    }
 }
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
     run_git_with_optional_locks(root, args, true)
 }
 
-/// Run an observational Git command without letting Git refresh the index or
-/// take optional repository locks. Background UI refreshes must not mutate a
-/// user's repository merely by looking at it.
 fn run_git_read_only(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    run_git_with_optional_locks(root, args, false)
+    let mut hardened: Vec<&str> = vec!["-c", "core.fsmonitor=false"];
+    hardened.extend_from_slice(args);
+    run_git_with_optional_locks(root, &hardened, false)
 }
 
 fn run_git_with_optional_locks(
@@ -98,6 +107,30 @@ const GIT_IDENTITY_ENV: [&str; 6] = [
     "GIT_COMMITTER_DATE",
 ];
 
+pub(crate) const GIT_REPOSITORY_ENV: [&str; 15] = [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+];
+
+pub(crate) fn clear_inherited_git_env(command: &mut Command) {
+    for variable in GIT_REPOSITORY_ENV.into_iter().chain(GIT_IDENTITY_ENV) {
+        command.env_remove(variable);
+    }
+}
+
 fn run_configured_git_bounded(
     root: &PathBuf,
     args: &[&str],
@@ -106,26 +139,9 @@ fn run_configured_git_bounded(
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
-    command
-        .no_console()
-        .args(args)
-        .current_dir(root)
-        // A caller invoked from inside a git hook (e.g. this crate's own
-        // pre-commit test run) inherits GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE
-        // from the hook's git process. Without clearing them, every `git`
-        // subprocess spawned here targets the hook's repository instead of
-        // `root`, regardless of `current_dir` - which let a test's throwaway
-        // repo operations land on the real repository during `cargo test`.
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
-    // `git commit` also exports its author and committer identity to hooks.
-    // Do not let an outer repository's identity override the project-local
-    // configuration when Oleafly runs Git from a hook or test harness.
-    for variable in GIT_IDENTITY_ENV {
-        command.env_remove(variable);
-    }
+    command.no_console().args(args).current_dir(root);
+    clear_inherited_git_env(&mut command);
+    command.env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
     crate::proc::output_contained_with_bounds(command, bounds)
         .map_err(|e| format!("failed to run git: {e}"))
@@ -148,12 +164,10 @@ fn ensure_repository_with(
     if project_dir.join(".git").exists() {
         return Ok(false);
     }
-    let root = project_dir.to_path_buf();
-    let enclosing =
-        run_configured_git(&root, &["rev-parse", "--show-toplevel"], false, &configure)?;
-    if enclosing.status.success() {
+    if enclosing_repository(project_dir).is_some() {
         return Ok(false);
     }
+    let root = project_dir.to_path_buf();
     let branch = default_branch(&root);
     ok_or_err(run_configured_git(
         &root,
@@ -252,6 +266,52 @@ fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
         writeln!(file, ".oleafly/").map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn is_repository_marker(candidate: &Path) -> bool {
+    match std::fs::metadata(candidate) {
+        Ok(metadata) if metadata.is_dir() => candidate.join("HEAD").is_file(),
+        Ok(metadata) if metadata.is_file() => {
+            let mut prefix = [0u8; 7];
+            std::fs::File::open(candidate)
+                .and_then(|mut file| std::io::Read::read_exact(&mut file, &mut prefix))
+                .is_ok()
+                && &prefix == b"gitdir:"
+        }
+        _ => false,
+    }
+}
+
+fn enclosing_repository_below_home(start: &Path, home: Option<&Path>) -> Option<PathBuf> {
+    let start = std::fs::canonicalize(start).unwrap_or_else(|_| start.to_path_buf());
+    let home = home.map(|home| std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf()));
+    start
+        .ancestors()
+        .skip(1)
+        .filter(|ancestor| {
+            !home
+                .as_deref()
+                .is_some_and(|home| home.starts_with(ancestor))
+        })
+        .find(|ancestor| is_repository_marker(&ancestor.join(".git")))
+        .map(Path::to_path_buf)
+}
+
+pub(crate) fn enclosing_repository(start: &Path) -> Option<PathBuf> {
+    enclosing_repository_below_home(start, paths::home_dir().ok().as_deref())
+}
+
+fn refuse_nested_repository(root: &Path) -> Result<(), String> {
+    match enclosing_repository(root) {
+        Some(_) => Err(crate::app_error::AppError::new("git.nested_repository").into()),
+        None => Ok(()),
+    }
+}
+
+fn initialize_new_repo(root: &PathBuf) -> Result<(), String> {
+    refuse_nested_repository(root)?;
+    let branch = default_branch(root);
+    initialize_repo(root, &branch)
 }
 
 fn existing_repo(project_id: &str) -> Result<PathBuf, String> {
@@ -374,8 +434,7 @@ fn git_initialize_sync(project_id: String) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = project_root(&project_id)?;
     if !root.join(".git").exists() {
-        let branch = default_branch(&root);
-        initialize_repo(&root, &branch)?;
+        initialize_new_repo(&root)?;
     }
     current_branch(&root)
 }
@@ -389,14 +448,28 @@ pub async fn git_prepare_publish(project_id: String, message: String) -> Result<
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
         let root = project_root(&project_id)?;
         if !root.join(".git").exists() {
-            let branch = default_branch(&root);
-            initialize_repo(&root, &branch)?;
+            initialize_new_repo(&root)?;
         }
         stage_all(&root)?;
         commit_index(&root, &message)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_publish_preflight(project_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || git_publish_preflight_sync(&project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_publish_preflight_sync(project_id: &str) -> Result<(), String> {
+    let root = project_root(project_id)?;
+    if root.join(".git").exists() {
+        return Ok(());
+    }
+    refuse_nested_repository(&root)
 }
 
 #[tauri::command]
@@ -420,6 +493,7 @@ fn git_log_at(root: &PathBuf) -> Result<Vec<GitCommit>, String> {
         root,
         &[
             "log",
+            "--no-show-signature",
             "-n",
             "100",
             "-z",
@@ -643,51 +717,35 @@ fn is_allowed_remote_url(url: &str) -> bool {
     u.contains('@') && u.contains(':')
 }
 
-/// Run a git command that may need GitHub auth, supplying the token via an
-/// inline credential helper that reads it from the child process's environment.
-///
-/// The token is passed in `OLEAFLY_GH_TOKEN` (env), NOT embedded in the remote
-/// URL or any argument - so it never shows up in `ps`/argv and never lands in a
-/// tracking ref or the reflog. The helper only runs for HTTPS remotes; SSH
-/// remotes fall through to the user's SSH keys.
+const GITHUB_TOKEN_CONFIG: [&str; 6] = [
+    "-c",
+    "credential.https://github.com.helper=",
+    "-c",
+    "credential.https://github.com.helper=!f() { test \"$1\" = get && printf 'username=x-access-token\\npassword=%s\\n' \"$OLEAFLY_GH_TOKEN\"; }; f",
+    "-c",
+    "credential.https://github.com.useHttpPath=false",
+];
+
+fn github_authed_args<'a>(args: &[&'a str]) -> Vec<&'a str> {
+    let mut full: Vec<&'a str> = GITHUB_TOKEN_CONFIG.to_vec();
+    full.extend_from_slice(args);
+    full
+}
+
 fn run_git_authed(
     root: &PathBuf,
     token: &str,
     args: &[&str],
 ) -> Result<std::process::Output, String> {
-    // `!f() { ... }; f` is git's inline shell-helper form. It prints credentials
-    // only for a `get` request, reading the secret from the environment.
-    let helper = "credential.helper=!f() { test \"$1\" = get && \
-        printf 'username=x-access-token\\npassword=%s\\n' \"$OLEAFLY_GH_TOKEN\"; }; f";
-    // `credential.helper` is multi-valued: helpers from the machine's config
-    // (macOS keychain, a global `~/.gitconfig` helper, etc.) run BEFORE a helper
-    // added with `-c`. A stale or different-account github.com credential cached
-    // there would then win over our token and fail auth - which GitHub reports
-    // as a misleading "Repository not found" (404). Reset the list with an empty
-    // value FIRST so only our env-backed helper is consulted.
-    let mut full: Vec<&str> = vec![
-        "-c",
-        "credential.helper=",
-        "-c",
-        helper,
-        "-c",
-        "credential.useHttpPath=false",
-    ];
-    full.extend_from_slice(args);
-    let mut command = Command::new("git");
-    command
-        .no_console()
-        .args(&full)
-        .current_dir(root)
-        .env("OLEAFLY_GH_TOKEN", token)
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE");
-    for variable in GIT_IDENTITY_ENV {
-        command.env_remove(variable);
-    }
-    crate::proc::output_contained_with_bounds(command, remote_bounds())
-        .map_err(|e| format!("failed to run git: {e}"))
+    run_configured_git_bounded(
+        root,
+        &github_authed_args(args),
+        true,
+        remote_bounds(),
+        |command| {
+            command.env("OLEAFLY_GH_TOKEN", token);
+        },
+    )
 }
 
 /// Attach the authenticated repository history to content imported through the
@@ -704,7 +762,9 @@ pub(crate) fn attach_imported_repository_history_lock_held(
     if !is_allowed_remote_url(remote_url) {
         return Err("GitHub returned an unsupported repository URL.".into());
     }
-    let root = project_root(project_id)?;
+    let root = crate::project_location::LibraryProjectDir::resolve(project_id)?
+        .path()
+        .to_path_buf();
     attach_imported_repository_history_at(&root, remote_url, default_branch, |root, refspec| {
         ok_or_err(run_git_authed(
             root,
@@ -726,6 +786,7 @@ where
     if root.join(".git").exists() {
         return Err("The imported project already has repository history.".into());
     }
+    refuse_nested_repository(root)?;
 
     let local_ref = format!("refs/heads/{default_branch}");
     let remote_ref = format!("refs/remotes/origin/{default_branch}");
@@ -769,25 +830,37 @@ where
 }
 
 #[tauri::command]
-pub async fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || git_set_remote_sync(project_id, url))
-        .await
-        .map_err(|error| error.to_string())?
+pub async fn git_set_remote(
+    project_id: String,
+    url: String,
+    replace: Option<bool>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_set_remote_sync(project_id, url, replace.unwrap_or(false))
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
-fn git_set_remote_sync(project_id: String, url: String) -> Result<(), String> {
+fn git_set_remote_sync(project_id: String, url: String, replace: bool) -> Result<(), String> {
     if !is_allowed_remote_url(&url) {
         return Err(format!("unsupported remote URL: {url}"));
     }
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let root = existing_repo(&project_id)?;
-    let check = run_git(&root, &["remote", "get-url", "origin"])?;
-    if check.status.success() {
-        ok_or_err(run_git(&root, &["remote", "set-url", "origin", &url])?)?;
-    } else {
-        ok_or_err(run_git(&root, &["remote", "add", "origin", &url])?)?;
+    set_origin(&root, &url, replace)
+}
+
+fn set_origin(root: &PathBuf, url: &str, replace: bool) -> Result<(), String> {
+    match origin_url(root)? {
+        None => ok_or_err(run_git(root, &["remote", "add", "origin", url])?),
+        Some(existing) if replace || sanitize_url(&existing) == sanitize_url(url) => {
+            ok_or_err(run_git(root, &["remote", "set-url", "origin", url])?)
+        }
+        Some(existing) => Err(crate::app_error::AppError::new("git.remote_exists")
+            .param("remote", sanitize_url(&existing))
+            .into()),
     }
-    Ok(())
 }
 
 /// Remove the `origin` remote (unlink a project from GitHub).
@@ -1323,51 +1396,78 @@ pub async fn git_diff(
         let Some(root) = initialized_repo(&project_id)? else {
             return Ok(String::new());
         };
-
-        // Untracked files aren't shown by `git diff` (returns empty). Detect an
-        // untracked path and synthesize a full-file addition diff via --no-index so
-        // the viewer shows the whole file as additions (all green).
-        if let Some(p) = &path {
-            if !staged {
-                let is_tracked = match run_git_read_only(
-                    &root,
-                    &[
-                        "--literal-pathspecs",
-                        "ls-files",
-                        "--error-unmatch",
-                        "--",
-                        p.as_str(),
-                    ],
-                ) {
-                    Ok(o) => o.status.success(),
-                    Err(_) => false,
-                };
-                if !is_tracked {
-                    let devnull = if cfg!(windows) { "NUL" } else { "/dev/null" };
-                    let out = run_git_read_only(
-                        &root,
-                        &["diff", "--no-index", "--", devnull, p.as_str()],
-                    )?;
-                    return Ok(String::from_utf8_lossy(&out.stdout).to_string());
-                }
-            }
-        }
-
-        let out = match (staged, &path) {
-            (false, None) => run_git_read_only(&root, &["diff"]),
-            (true, None) => run_git_read_only(&root, &["diff", "--cached"]),
-            (false, Some(p)) => {
-                run_git_read_only(&root, &["--literal-pathspecs", "diff", "--", p.as_str()])
-            }
-            (true, Some(p)) => run_git_read_only(
-                &root,
-                &["--literal-pathspecs", "diff", "--cached", "--", p.as_str()],
-            ),
-        }?;
-        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+        diff_at(&root, path.as_deref(), staged)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn diff_at(root: &PathBuf, path: Option<&str>, staged: bool) -> Result<String, String> {
+    if let Some(p) = path {
+        if !staged {
+            let is_tracked = match run_git_read_only(
+                root,
+                &[
+                    "--literal-pathspecs",
+                    "ls-files",
+                    "--error-unmatch",
+                    "--",
+                    p,
+                ],
+            ) {
+                Ok(o) => o.status.success(),
+                Err(_) => false,
+            };
+            if !is_tracked {
+                let devnull = null_device();
+                let out = run_git_read_only(
+                    root,
+                    &[
+                        "diff",
+                        "--no-index",
+                        "--no-ext-diff",
+                        "--no-textconv",
+                        "--",
+                        devnull,
+                        p,
+                    ],
+                )?;
+                return Ok(String::from_utf8_lossy(&out.stdout).to_string());
+            }
+        }
+    }
+
+    let out = match (staged, path) {
+        (false, None) => run_git_read_only(root, &["diff", "--no-ext-diff", "--no-textconv"]),
+        (true, None) => run_git_read_only(
+            root,
+            &["diff", "--cached", "--no-ext-diff", "--no-textconv"],
+        ),
+        (false, Some(p)) => run_git_read_only(
+            root,
+            &[
+                "--literal-pathspecs",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--",
+                p,
+            ],
+        ),
+        (true, Some(p)) => run_git_read_only(
+            root,
+            &[
+                "--literal-pathspecs",
+                "diff",
+                "--cached",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--",
+                p,
+            ],
+        ),
+    }?;
+    Ok(String::from_utf8_lossy(&out.stdout).to_string())
 }
 
 #[tauri::command]
@@ -2297,15 +2397,15 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 #[cfg(test)]
 mod tests {
     use super::{
-        attach_imported_repository_history_at, clean_remote_credentials, commit_index,
-        conflicts_at, current_branch, discard_paths_at, ensure_repository, ensure_repository_with,
-        git_log_at, initialize_repo, is_allowed_remote_url, local_bounds, merge_in_progress,
-        ok_or_err, out_to_string, parse_status_porcelain, parse_status_porcelain_bytes,
-        remote_credentials_need_cleanup, resolve_conflict_side, restore_worktree,
-        run_configured_git, run_git, run_git_read_only, sanitize_url, show, stage, stage_all,
-        stage_paths, stash_pop_at, stash_push_at, unmerged_index_stages, unstage, unstage_all,
-        unstage_paths, validate_branch_name, validate_git_oid, validate_repo_relative_path,
-        Command,
+        attach_imported_repository_history_at, attach_imported_repository_history_lock_held,
+        clean_remote_credentials, commit_index, conflicts_at, current_branch, discard_paths_at,
+        ensure_repository, ensure_repository_with, git_log_at, initialize_repo,
+        is_allowed_remote_url, local_bounds, merge_in_progress, ok_or_err, out_to_string,
+        parse_status_porcelain, parse_status_porcelain_bytes, remote_credentials_need_cleanup,
+        resolve_conflict_side, restore_worktree, run_configured_git, run_git, run_git_read_only,
+        sanitize_url, show, stage, stage_all, stage_paths, stash_pop_at, stash_push_at,
+        unmerged_index_stages, unstage, unstage_all, unstage_paths, validate_branch_name,
+        validate_git_oid, validate_repo_relative_path, Command,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -2313,6 +2413,30 @@ mod tests {
     use std::time::Duration;
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    #[test]
+    fn imported_history_is_never_attached_to_a_linked_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+
+        let error = attach_imported_repository_history_lock_held(
+            &linked.id,
+            "https://github.com/octo/paper.git",
+            "main",
+            "token",
+        )
+        .unwrap_err();
+
+        assert!(error.contains("project.linked_not_recyclable"), "{error}");
+        assert!(!folder.join(".git").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     #[test]
     fn a_failed_transfer_reports_where_it_stopped_not_every_percentage() {
@@ -2352,6 +2476,7 @@ mod tests {
             vec!["--literal-pathspecs", "add", "--", "main.tex"],
             vec!["-c", "core.editor=true", "merge", "--continue"],
             vec!["-C", "project", "status", "--porcelain"],
+            vec!["-c", "core.fsmonitor=false", "status", "--porcelain=v1"],
         ] {
             assert_eq!(local_bounds(&args).total_for_test(), long, "{args:?}");
         }
@@ -2365,6 +2490,14 @@ mod tests {
             vec!["remote", "get-url", "origin"],
             vec!["ls-files", "--cached"],
             vec!["-c", "core.quotepath=false", "log", "-1"],
+            vec![
+                "-c",
+                "core.fsmonitor=false",
+                "diff",
+                "--cached",
+                "--no-ext-diff",
+                "--no-textconv",
+            ],
         ] {
             assert_eq!(local_bounds(&args).total_for_test(), short, "{args:?}");
         }
@@ -2977,13 +3110,13 @@ mod tests {
             .unwrap_err()
             .contains("No remote"));
         assert!(
-            super::git_set_remote(project_id.into(), "file:///tmp/not-allowed".into())
+            super::git_set_remote(project_id.into(), "file:///tmp/not-allowed".into(), None)
                 .await
                 .is_err()
         );
         let first_remote = "https://github.com/Oleafly/command-one.git";
         let second_remote = "https://github.com/Oleafly/command-two.git";
-        super::git_set_remote(project_id.into(), first_remote.into())
+        super::git_set_remote(project_id.into(), first_remote.into(), None)
             .await
             .unwrap();
         assert_eq!(
@@ -2993,7 +3126,18 @@ mod tests {
                 .as_deref(),
             Some(first_remote)
         );
-        super::git_set_remote(project_id.into(), second_remote.into())
+        let refused = super::git_set_remote(project_id.into(), second_remote.into(), None)
+            .await
+            .unwrap_err();
+        assert!(refused.contains("git.remote_exists"), "{refused}");
+        assert_eq!(
+            super::git_get_remote(project_id.into())
+                .await
+                .unwrap()
+                .as_deref(),
+            Some(first_remote)
+        );
+        super::git_set_remote(project_id.into(), second_remote.into(), Some(true))
             .await
             .unwrap();
         assert_eq!(
@@ -4175,5 +4319,519 @@ mod tests {
             String::from_utf8_lossy(&remote.stdout).trim(),
             "ssh://git@github.com/u/repo.git"
         );
+    }
+
+    #[test]
+    fn the_github_token_helper_is_configured_only_for_github_com() {
+        let root = temp_repo();
+        let helper_for = |url: &str| {
+            let output = super::run_git_authed(
+                &root,
+                "gh-test-token",
+                &["config", "--get-urlmatch", "credential.helper", url],
+            )
+            .unwrap();
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        };
+        assert!(helper_for("https://github.com/owner/paper.git").contains("OLEAFLY_GH_TOKEN"));
+        for url in [
+            "https://gitlab.com/owner/paper.git",
+            "https://github.com.example.org/owner/paper.git",
+            "https://api.github.com/owner/paper.git",
+        ] {
+            assert!(
+                !helper_for(url).contains("OLEAFLY_GH_TOKEN"),
+                "{url} would receive the GitHub token"
+            );
+        }
+    }
+
+    #[test]
+    fn github_com_gets_only_the_token_and_other_hosts_keep_their_own_helper() {
+        use std::io::Write as _;
+        let root = temp_repo();
+        let home = temp_dir("credential-home");
+        let global = home.join("gitconfig");
+        let global_path = global.to_string_lossy().into_owned();
+        ok_or_err(
+            run_git(
+                &root,
+                &[
+                    "config",
+                    "--file",
+                    &global_path,
+                    "credential.helper",
+                    "!f() { test \"$1\" = get && printf 'username=own-user\\npassword=own-secret\\n'; }; f",
+                ],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let fill = |host: &str| -> String {
+            let mut command = Command::new("git");
+            super::clear_inherited_git_env(&mut command);
+            let mut child = command
+                .args(super::github_authed_args(&["credential", "fill"]))
+                .current_dir(&root)
+                .env("HOME", &home)
+                .env("XDG_CONFIG_HOME", &home)
+                .env("GIT_CONFIG_GLOBAL", &global)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_TERMINAL_PROMPT", "0")
+                .env("OLEAFLY_GH_TOKEN", "gh-test-token")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(
+                    format!("protocol=https\nhost={host}\npath=owner/paper.git\n\n").as_bytes(),
+                )
+                .unwrap();
+            String::from_utf8_lossy(&child.wait_with_output().unwrap().stdout).into_owned()
+        };
+        let github = fill("github.com");
+        assert!(github.contains("password=gh-test-token"), "{github}");
+        assert!(!github.contains("own-secret"), "{github}");
+        let gitlab = fill("gitlab.com");
+        assert!(gitlab.contains("password=own-secret"), "{gitlab}");
+        assert!(!gitlab.contains("gh-test-token"), "{gitlab}");
+    }
+
+    #[test]
+    fn an_existing_origin_is_replaced_only_after_confirmation() {
+        let root = temp_repo();
+        ok_or_err(
+            run_git(
+                &root,
+                &[
+                    "remote",
+                    "add",
+                    "origin",
+                    "https://lab-user:lab-secret@gitlab.com/lab/paper.git",
+                ],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let refused =
+            super::set_origin(&root, "https://github.com/owner/paper.git", false).unwrap_err();
+        let envelope: serde_json::Value =
+            serde_json::from_str(refused.strip_prefix(crate::app_error::PREFIX).unwrap()).unwrap();
+        assert_eq!(envelope["code"], "git.remote_exists");
+        assert_eq!(
+            envelope["params"]["remote"],
+            "https://gitlab.com/lab/paper.git"
+        );
+        assert!(!refused.contains("lab-secret"));
+        assert_eq!(
+            super::origin_url(&root).unwrap().as_deref(),
+            Some("https://lab-user:lab-secret@gitlab.com/lab/paper.git")
+        );
+
+        super::set_origin(&root, "https://gitlab.com/lab/paper.git", false).unwrap();
+        assert_eq!(
+            super::origin_url(&root).unwrap().as_deref(),
+            Some("https://gitlab.com/lab/paper.git")
+        );
+
+        super::set_origin(&root, "https://github.com/owner/paper.git", true).unwrap();
+        assert_eq!(
+            super::origin_url(&root).unwrap().as_deref(),
+            Some("https://github.com/owner/paper.git")
+        );
+    }
+
+    #[test]
+    fn an_enclosing_repository_is_found_from_the_filesystem_alone() {
+        let parent = temp_repo();
+        let project = parent.join("papers").join("thesis");
+        std::fs::create_dir_all(&project).unwrap();
+        assert_eq!(
+            super::enclosing_repository_below_home(&project, None),
+            Some(parent.canonicalize().unwrap())
+        );
+        let linked = temp_dir("enclosing-gitfile");
+        std::fs::write(linked.join(".git"), "gitdir: /elsewhere/.git/worktrees/w\n").unwrap();
+        let chapter = linked.join("chapter");
+        std::fs::create_dir_all(&chapter).unwrap();
+        assert!(super::enclosing_repository_below_home(&chapter, None).is_some());
+    }
+
+    #[test]
+    fn a_repository_at_home_or_above_home_does_not_enclose_a_project() {
+        let home = temp_repo();
+        let project = home.join(".oleafly").join("projects").join("p1");
+        std::fs::create_dir_all(&project).unwrap();
+        assert_eq!(
+            super::enclosing_repository_below_home(&project, Some(&home)),
+            None
+        );
+        let deeper_home = home.join("user");
+        let shared = home.join("shared").join("paper");
+        std::fs::create_dir_all(&deeper_home).unwrap();
+        std::fs::create_dir_all(&shared).unwrap();
+        assert_eq!(
+            super::enclosing_repository_below_home(&shared, Some(&deeper_home)),
+            None
+        );
+        let work = home.join("work");
+        std::fs::create_dir_all(work.join("paper")).unwrap();
+        ok_or_err(run_git(&work, &["init", "--quiet"]).unwrap()).unwrap();
+        assert!(super::enclosing_repository_below_home(&work.join("paper"), Some(&home)).is_some());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn explicit_initialization_refuses_to_nest_inside_another_repository() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_repo();
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "nested-command-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "nested\n");
+
+        let initialized = super::git_initialize(project_id.into()).await.unwrap_err();
+        let published = super::git_prepare_publish(project_id.into(), "Initial commit".into())
+            .await
+            .unwrap_err();
+
+        for error in [initialized, published] {
+            let envelope: serde_json::Value =
+                serde_json::from_str(error.strip_prefix(crate::app_error::PREFIX).unwrap())
+                    .unwrap();
+            assert_eq!(envelope["code"], "git.nested_repository");
+        }
+        assert!(!project.join(".git").exists());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn the_publish_preflight_refuses_a_project_inside_another_repository() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_repo();
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "nested-preflight-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "nested\n");
+
+        let refused = super::git_publish_preflight(project_id.into())
+            .await
+            .unwrap_err();
+        let envelope: serde_json::Value =
+            serde_json::from_str(refused.strip_prefix(crate::app_error::PREFIX).unwrap()).unwrap();
+        assert_eq!(envelope["code"], "git.nested_repository");
+        assert!(!project.join(".git").exists());
+
+        ok_or_err(run_git(&project, &["init", "--quiet"]).unwrap()).unwrap();
+        super::git_publish_preflight(project_id.into())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn the_publish_preflight_accepts_a_standalone_project_without_touching_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("publish-preflight");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "standalone-preflight-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "standalone\n");
+
+        super::git_publish_preflight(project_id.into())
+            .await
+            .unwrap();
+        assert!(!project.join(".git").exists());
+    }
+
+    #[test]
+    fn imported_history_is_not_attached_inside_another_repository() {
+        let parent = temp_repo();
+        let root = parent.join("projects").join("imported");
+        std::fs::create_dir_all(&root).unwrap();
+        write(&root, "main.tex", "imported\n");
+        let mut fetched = false;
+        let error = attach_imported_repository_history_at(
+            &root,
+            "https://github.com/owner/paper.git",
+            "main",
+            |_, _| {
+                fetched = true;
+                Ok(())
+            },
+        )
+        .unwrap_err();
+        assert!(error.contains("git.nested_repository"), "{error}");
+        assert!(!fetched);
+        assert!(!root.join(".git").exists());
+    }
+
+    #[cfg(unix)]
+    fn sentinel_program(dir: &Path, name: &str, sentinel: &Path, tail: &str) -> String {
+        use std::os::unix::fs::PermissionsExt;
+        let program = dir.join(name);
+        std::fs::write(
+            &program,
+            format!("#!/bin/sh\necho ran >> '{}'\n{tail}\n", sentinel.display()),
+        )
+        .unwrap();
+        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+        program.to_string_lossy().into_owned()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn background_reads_never_run_the_repository_fsmonitor_hook() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "initial").unwrap());
+        let tools = temp_dir("fsmonitor-hook");
+        let sentinel = tools.join("fsmonitor-ran");
+        let hook = sentinel_program(&tools, "fsmonitor.sh", &sentinel, "exit 1");
+        ok_or_err(run_git(&root, &["config", "core.fsmonitor", &hook]).unwrap()).unwrap();
+        write(&root, "main.tex", "second\n");
+
+        ok_or_err(run_git(&root, &["status", "--porcelain"]).unwrap()).unwrap();
+        assert!(
+            sentinel.exists(),
+            "the fixture hook must run for an explicit status"
+        );
+        std::fs::remove_file(&sentinel).unwrap();
+
+        super::status_at(&root).unwrap();
+        ok_or_err(
+            run_git_read_only(
+                &root,
+                &[
+                    "--literal-pathspecs",
+                    "ls-files",
+                    "--error-unmatch",
+                    "--",
+                    "main.tex",
+                ],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        super::diff_at(&root, None, true).unwrap();
+        super::diff_at(&root, Some("main.tex"), false).unwrap();
+        assert!(
+            !sentinel.exists(),
+            "a background read ran the repository's fsmonitor hook"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_diff_viewer_never_runs_external_diff_or_textconv_programs() {
+        let root = temp_repo();
+        write(&root, ".gitattributes", "*.tex diff=sentinel\n");
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "initial").unwrap());
+        write(&root, "main.tex", "second\n");
+        stage_paths(&root, &["main.tex".to_string()]).unwrap();
+        write(&root, "main.tex", "third\n");
+        write(&root, "appendix.tex", "appendix\n");
+        let tools = temp_dir("diff-programs");
+        let sentinel = tools.join("diff-program-ran");
+        let textconv = sentinel_program(&tools, "textconv.sh", &sentinel, "cat \"$1\"");
+        let driver = sentinel_program(&tools, "driver.sh", &sentinel, "exit 0");
+        let external = sentinel_program(&tools, "external.sh", &sentinel, "exit 0");
+        ok_or_err(run_git(&root, &["config", "diff.sentinel.textconv", &textconv]).unwrap())
+            .unwrap();
+        ok_or_err(run_git(&root, &["config", "diff.sentinel.command", &driver]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["config", "diff.external", &external]).unwrap()).unwrap();
+
+        let staged_all = super::diff_at(&root, None, true).unwrap();
+        let staged_file = super::diff_at(&root, Some("main.tex"), true).unwrap();
+        let working_all = super::diff_at(&root, None, false).unwrap();
+        let working_file = super::diff_at(&root, Some("main.tex"), false).unwrap();
+        let untracked = super::diff_at(&root, Some("appendix.tex"), false).unwrap();
+
+        assert!(
+            !sentinel.exists(),
+            "the diff viewer ran a repository diff program"
+        );
+        assert!(staged_all.contains("+second"));
+        assert!(staged_file.contains("+second"));
+        assert!(working_all.contains("+third"));
+        assert!(working_file.contains("+third"));
+        assert!(untracked.contains("+appendix"));
+
+        ok_or_err(run_git(&root, &["diff"]).unwrap()).unwrap();
+        assert!(
+            sentinel.exists(),
+            "the fixture diff programs must run for a plain diff"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_commit_graph_never_runs_the_signature_program() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "initial").unwrap());
+        let tools = temp_dir("signature-program");
+        let sentinel = tools.join("gpg-ran");
+        let gpg = sentinel_program(&tools, "gpg.sh", &sentinel, "exit 1");
+        let rev = |spec: &str| {
+            String::from_utf8_lossy(&run_git(&root, &["rev-parse", spec]).unwrap().stdout)
+                .trim()
+                .to_string()
+        };
+        let (tree, parent) = (rev("HEAD^{tree}"), rev("HEAD"));
+        let object = tools.join("signed-commit");
+        std::fs::write(
+            &object,
+            format!(
+                "tree {tree}\nparent {parent}\nauthor t <t@t> 1700000000 +0000\ncommitter t <t@t> 1700000000 +0000\n\
+                 gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEE\n -----END PGP SIGNATURE-----\n\nSigned on GitHub\n"
+            ),
+        )
+        .unwrap();
+        let object_path = object.to_string_lossy().into_owned();
+        let signed = run_git(&root, &["hash-object", "-t", "commit", "-w", &object_path]).unwrap();
+        let signed = String::from_utf8_lossy(&signed.stdout).trim().to_string();
+        ok_or_err(run_git(&root, &["update-ref", "HEAD", &signed]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["config", "log.showSignature", "true"]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["config", "gpg.program", &gpg]).unwrap()).unwrap();
+
+        ok_or_err(run_git(&root, &["log", "-n", "1"]).unwrap()).unwrap();
+        assert!(
+            sentinel.exists(),
+            "the fixture signature program must run for a plain log"
+        );
+        std::fs::remove_file(&sentinel).unwrap();
+
+        assert_eq!(git_log_at(&root).unwrap()[0].message, "Signed on GitHub");
+        assert!(
+            !sentinel.exists(),
+            "the background commit graph ran gpg.program"
+        );
+    }
+
+    #[test]
+    fn every_variable_git_treats_as_repository_local_is_cleared() {
+        let listed = run_git(
+            &temp_dir("local-env-vars"),
+            &["rev-parse", "--local-env-vars"],
+        )
+        .unwrap();
+        assert!(listed.status.success());
+        for variable in String::from_utf8_lossy(&listed.stdout).lines() {
+            assert!(
+                super::GIT_REPOSITORY_ENV.contains(&variable),
+                "{variable} is not cleared before Oleafly runs Git"
+            );
+        }
+    }
+
+    #[test]
+    fn git_targets_the_project_even_from_inside_another_repositorys_hook() {
+        let outer = temp_repo();
+        let project = temp_repo();
+        let outer_git = outer.join(".git");
+        let mut command = Command::new("git");
+        command
+            .current_dir(&project)
+            .args(["rev-parse", "--show-toplevel"])
+            .env("GIT_DIR", &outer_git)
+            .env("GIT_WORK_TREE", &outer)
+            .env("GIT_INDEX_FILE", outer_git.join("index"))
+            .env("GIT_COMMON_DIR", &outer_git)
+            .env("GIT_OBJECT_DIRECTORY", outer_git.join("objects"));
+        super::clear_inherited_git_env(&mut command);
+        let output = command.output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            PathBuf::from(String::from_utf8_lossy(&output.stdout).trim())
+                .canonicalize()
+                .unwrap(),
+            project.canonicalize().unwrap()
+        );
+
+        let mut config = Command::new("git");
+        config
+            .current_dir(&project)
+            .args(["config", "--get", "oleafly.marker"])
+            .env("GIT_CONFIG_PARAMETERS", "'oleafly.marker'='outer'")
+            .env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", "oleafly.marker")
+            .env("GIT_CONFIG_VALUE_0", "outer");
+        super::clear_inherited_git_env(&mut config);
+        let output = config.output().unwrap();
+        assert!(
+            output.stdout.is_empty(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    #[test]
+    fn a_repository_without_origin_is_linked_without_confirmation() {
+        let root = temp_repo();
+        super::set_origin(&root, "https://github.com/owner/paper.git", false).unwrap();
+        assert_eq!(
+            super::origin_url(&root).unwrap().as_deref(),
+            Some("https://github.com/owner/paper.git")
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn restricted_projects_never_spawn_git() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("restricted-git");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "restricted-git-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "base\n");
+        ok_or_err(run_git(&project, &["init", "--quiet"]).unwrap()).unwrap();
+        let sentinel = data.join("fsmonitor-ran");
+        let hook = format!("touch '{}'; false", sentinel.display());
+        ok_or_err(run_git(&project, &["config", "core.fsmonitor", &hook]).unwrap()).unwrap();
+        let restricted = crate::trust::testing::restrict(project_id);
+        for result in [
+            super::git_workspace_snapshot(project_id.into())
+                .await
+                .map(|_| ()),
+            super::git_status(project_id.into()).await.map(|_| ()),
+            super::git_log(project_id.into()).await.map(|_| ()),
+            super::git_is_initialized(project_id.into())
+                .await
+                .map(|_| ()),
+            super::git_commit(project_id.into(), "x".into())
+                .await
+                .map(|_| ()),
+        ] {
+            let error = result.unwrap_err();
+            assert!(error.contains("\"code\":\"trust.git\""), "{error}");
+        }
+        assert!(!sentinel.exists());
+        drop(restricted);
+        let _ = run_git(&project, &["status", "--porcelain"]);
+        assert!(
+            sentinel.exists(),
+            "positive control: spawning git runs the hostile fsmonitor"
+        );
+        let _ = std::fs::remove_dir_all(&data);
     }
 }

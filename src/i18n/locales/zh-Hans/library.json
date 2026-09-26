@@ -364,7 +364,9 @@
     "nameRequired": "请输入仓库名称。",
     "published": "已发布到 {{repository}}",
     "linked": "已关联并推送到 {{remote}}。",
-    "pushNeedsPull": "已关联 {{remote}}，但推送前需要先拉取：{{detail}}。"
+    "pushNeedsPull": "已关联 {{remote}}，但推送前需要先拉取：{{detail}}。",
+    "replaceRemotePrompt": "此项目当前关联的是 {{remote}}。要替换这个关联吗？",
+    "replaceRemote": "替换关联"
   },
   "deadlines": {
     "title": "会议截止日期",

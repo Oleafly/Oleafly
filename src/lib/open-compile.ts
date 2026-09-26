@@ -1,3 +1,5 @@
+import type { MainDecision } from "@/lib/tauri";
+
 export function shouldCompileOnOpen(
   projectId: string | null,
   hasFiles: boolean,
@@ -38,4 +40,12 @@ export function openCompileHydrated(
     analysisProjectId === projectId &&
     analysisProjectRevision > 0
   );
+}
+
+export function automaticCompileAllowed(decision: MainDecision): boolean {
+  return decision === "auto";
+}
+
+export function agentCompileAllowed(decision: MainDecision): boolean {
+  return decision !== "no_main";
 }

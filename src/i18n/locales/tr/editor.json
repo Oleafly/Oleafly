@@ -426,6 +426,11 @@
       "sourceSize": "Kaynak boyutu",
       "reclaimable": "Geri kazanılabilir"
     },
+    "capture": {
+      "paused": "Bu klasör çok büyük olduğu için kontrol noktaları duraklatıldı. Bir kontrol noktası en fazla {{files}} dosya veya {{size}} tutabilir.",
+      "skipped_one": "Bu klasördeki {{formattedCount}} dosya kontrol noktalarında yok. Oleafly bağlantıları, çok büyük dosyaları, yalnızca bulutta olan dosyaları ve her sistemde çalışmayan adları dışarıda bırakır.",
+      "skipped_other": "Bu klasördeki {{formattedCount}} dosya kontrol noktalarında yok. Oleafly bağlantıları, çok büyük dosyaları, yalnızca bulutta olan dosyaları ve her sistemde çalışmayan adları dışarıda bırakır."
+    },
     "catalog": {
       "formatVersion": "Biçim sürümü",
       "lineage": "Soy kimliği",
@@ -458,7 +463,8 @@
       "showFor": "{{version}} için dosyaları göster",
       "hideFor": "{{version}} için dosyaları gizle",
       "show": "Dosyaları göster",
-      "hide": "Dosyaları gizle"
+      "hide": "Dosyaları gizle",
+      "folderSettings": "Bu klasör için Oleafly ayarları"
     },
     "entry": {
       "labelInput": "Kontrol noktası etiketi",

@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const readFileContentMock = vi.hoisted(() =>
   vi.fn<(projectId: string, path: string) => Promise<string>>(() =>
-    Promise.reject(new Error("no aux configured")),
+    Promise.reject(new Error("the project sandbox must not serve build output")),
   ),
+);
+const readBuildArtifactMock = vi.hoisted(() =>
+  vi.fn<(projectId: string, name: string) => Promise<string | null>>(async () => null),
 );
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   readFileContent: readFileContentMock,
+  readBuildArtifact: readBuildArtifactMock,
 }));
 
 import {
@@ -22,16 +26,10 @@ import { createCompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 
-const ENTRY_PATH = ".oleafly/build/_oleafly_entry.aux";
+const ENTRY_AUX = "_oleafly_entry.aux";
 
-/** Routes mocked reads by build-relative path; unknown paths reject. */
 function serveAuxFiles(files: Record<string, string>): void {
-  readFileContentMock.mockImplementation((_projectId, path) => {
-    const content = files[path];
-    return content === undefined
-      ? Promise.reject(new Error(`missing ${path}`))
-      : Promise.resolve(content);
-  });
+  readBuildArtifactMock.mockImplementation(async (_projectId, name) => files[name] ?? null);
 }
 
 function seedFilesStore(projectId: string | null, mainDoc: string): void {
@@ -48,8 +46,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearAuxNumbers();
   readFileContentMock.mockImplementation(() =>
-    Promise.reject(new Error("no aux configured")),
+    Promise.reject(new Error("the project sandbox must not serve build output")),
   );
+  readBuildArtifactMock.mockImplementation(async () => null);
   seedFilesStore(null, "main.tex");
 });
 
@@ -108,43 +107,43 @@ describe("parseAuxLabels", () => {
 
 describe("refreshAuxNumbers", () => {
   it("reads the entry aux and caches its labels", async () => {
-    serveAuxFiles({ [ENTRY_PATH]: "\\newlabel{sec:intro}{{1}{2}}\n" });
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{sec:intro}{{1}{2}}\n" });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
-    expect(readFileContentMock).toHaveBeenCalledWith("p1", ENTRY_PATH);
+    expect(readBuildArtifactMock).toHaveBeenCalledWith("p1", ENTRY_AUX);
     expect(auxNumberFor("sec:intro")).toEqual({ number: "1", page: "2" });
   });
 
   it("is a no-op when the cached output identity matches", async () => {
-    serveAuxFiles({ [ENTRY_PATH]: "\\newlabel{a}{{1}{1}}\n" });
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{a}{{1}{1}}\n" });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
-    expect(readFileContentMock).toHaveBeenCalledTimes(1);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
     await refreshAuxNumbers("p1", "main.tex", "out-1");
-    expect(readFileContentMock).toHaveBeenCalledTimes(1);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
     // A new output id re-reads.
     await refreshAuxNumbers("p1", "main.tex", "out-2");
-    expect(readFileContentMock).toHaveBeenCalledTimes(2);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(2);
   });
 
   it("follows \\@input references cycle-safely and merges labels", async () => {
     serveAuxFiles({
-      [ENTRY_PATH]:
+      [ENTRY_AUX]:
         "\\newlabel{root}{{1}{1}}\n\\@input{chapters/ch1.aux}\n\\@input{_oleafly_entry.aux}\n",
-      ".oleafly/build/chapters/ch1.aux":
+      "chapters/ch1.aux":
         "\\newlabel{ch1:label}{{2.1}{14}}\n\\@input{chapters/ch1.aux}\n",
     });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
     // Entry + child exactly once each despite both cycles.
-    expect(readFileContentMock).toHaveBeenCalledTimes(2);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(2);
     expect(auxNumberFor("root")).toEqual({ number: "1", page: "1" });
     expect(auxNumberFor("ch1:label")).toEqual({ number: "2.1", page: "14" });
   });
 
   it("survives a missing child aux and keeps the readable labels", async () => {
     serveAuxFiles({
-      [ENTRY_PATH]: "\\newlabel{root}{{1}{1}}\n\\@input{missing.aux}\n",
+      [ENTRY_AUX]: "\\newlabel{root}{{1}{1}}\n\\@input{missing.aux}\n",
     });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
@@ -152,7 +151,7 @@ describe("refreshAuxNumbers", () => {
   });
 
   it("keeps the old cache silently when the entry aux is unreadable", async () => {
-    serveAuxFiles({ [ENTRY_PATH]: "\\newlabel{keep}{{1}{1}}\n" });
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{keep}{{1}{1}}\n" });
     seedFilesStore("p1", "main.tex");
     await refreshAuxNumbers("p1", "main.tex", "out-1");
     expect(auxNumberFor("keep")).toEqual({ number: "1", page: "1" });
@@ -161,11 +160,36 @@ describe("refreshAuxNumbers", () => {
     await refreshAuxNumbers("p1", "main.tex", "out-2");
     expect(auxNumberFor("keep")).toEqual({ number: "1", page: "1" });
   });
+
+  it("reads a linked folder's aux chain from its build output, not its files", async () => {
+    const projectId = "linked-0123456789abcdef0123456789abcdef";
+    serveAuxFiles({
+      [ENTRY_AUX]: "\\newlabel{root}{{1}{1}}\n\\@input{chapters/ch1.aux}\n",
+      "chapters/ch1.aux": "\\newlabel{ch1}{{2.1}{14}}\n",
+    });
+    seedFilesStore(projectId, "main.tex");
+    await refreshAuxNumbers(projectId, "main.tex", "out-1");
+    expect(readBuildArtifactMock.mock.calls).toEqual([
+      [projectId, ENTRY_AUX],
+      [projectId, "chapters/ch1.aux"],
+    ]);
+    expect(readFileContentMock).not.toHaveBeenCalled();
+    expect(auxNumberFor("ch1")).toEqual({ number: "2.1", page: "14" });
+  });
+
+  it("keeps the old cache silently when the build output read is refused", async () => {
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{keep}{{1}{1}}\n" });
+    seedFilesStore("p1", "main.tex");
+    await refreshAuxNumbers("p1", "main.tex", "out-1");
+    readBuildArtifactMock.mockRejectedValue(new Error("not a readable build artifact"));
+    await refreshAuxNumbers("p1", "main.tex", "out-2");
+    expect(auxNumberFor("keep")).toEqual({ number: "1", page: "1" });
+  });
 });
 
 describe("auxNumberFor identity guards", () => {
   beforeEach(async () => {
-    serveAuxFiles({ [ENTRY_PATH]: "\\newlabel{sec:x}{{3}{9}}\n" });
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{sec:x}{{3}{9}}\n" });
     await refreshAuxNumbers("p1", "main.tex", "out-1");
   });
 
@@ -195,7 +219,7 @@ describe("auxNumberFor identity guards", () => {
 
 describe("installAuxNumbers", () => {
   it("refreshes on a new successful compile checkpoint, idempotently", async () => {
-    serveAuxFiles({ [ENTRY_PATH]: "\\newlabel{fig:one}{{1}{5}}\n" });
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{fig:one}{{1}{5}}\n" });
     seedFilesStore("p1", "main.tex");
     installAuxNumbers();
     installAuxNumbers(); // second install must not double-subscribe
@@ -217,11 +241,11 @@ describe("installAuxNumbers", () => {
     await vi.waitFor(() =>
       expect(auxNumberFor("fig:one")).toEqual({ number: "1", page: "5" }),
     );
-    expect(readFileContentMock).toHaveBeenCalledTimes(1);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
 
     // Unrelated store updates with the same checkpoint do not re-read.
     useCompileStore.setState({ log: "noise" });
     await Promise.resolve();
-    expect(readFileContentMock).toHaveBeenCalledTimes(1);
+    expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
   });
 });

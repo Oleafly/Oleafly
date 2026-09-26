@@ -371,7 +371,9 @@
     "nameRequired": "Vul een repositorynaam in.",
     "published": "Gepubliceerd naar {{repository}}.",
     "linked": "Gekoppeld aan {{remote}} en gepusht.",
-    "pushNeedsPull": "Gekoppeld aan {{remote}}, maar pushen vereist eerst een pull: {{detail}}"
+    "pushNeedsPull": "Gekoppeld aan {{remote}}, maar pushen vereist eerst een pull: {{detail}}",
+    "replaceRemotePrompt": "Dit project is gekoppeld aan {{remote}}. Die koppeling vervangen?",
+    "replaceRemote": "Koppeling vervangen"
   },
   "deadlines": {
     "title": "Conferentiedeadlines",

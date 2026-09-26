@@ -894,6 +894,20 @@ fn optional_toml_string_map(
         .transpose()
 }
 
+fn import_project_root(
+    source: &SourceTool,
+    active: Option<&str>,
+) -> Result<Option<std::path::PathBuf>, String> {
+    if !matches!(source, SourceTool::ClaudeCode | SourceTool::Cursor) {
+        return Ok(None);
+    }
+    let Some(project_id) = active else {
+        return Ok(None);
+    };
+    let root = crate::paths::project_dir(project_id)?;
+    Ok(crate::trust::is_trusted(project_id).then_some(root))
+}
+
 #[tauri::command]
 pub async fn mcp_import_source<R: tauri::Runtime>(
     webview: tauri::Webview<R>,
@@ -903,17 +917,8 @@ pub async fn mcp_import_source<R: tauri::Runtime>(
     super::client::validate_command_webview(webview.label(), webview.window().label())?;
     let source = SourceTool::parse(&source_tool)?;
     let home = crate::paths::home_dir()?;
-    let project_root = if matches!(source, SourceTool::ClaudeCode | SourceTool::Cursor) {
-        state
-            .active_project
-            .lock()
-            .await
-            .as_deref()
-            .map(crate::paths::project_dir)
-            .transpose()?
-    } else {
-        None
-    };
+    let active = state.active_project.lock().await.clone();
+    let project_root = import_project_root(&source, active.as_deref())?;
     tauri::async_runtime::spawn_blocking(move || {
         import_source_at(&source_tool, &home, project_root.as_deref(), &|name| {
             std::env::var(name).ok()
@@ -1661,5 +1666,28 @@ env_vars = ["CODEX_FORWARDED", { name = "CODEX_HEADER", source = "local" }, { na
         let error = import_source_at("cursor", home.path(), None, &fixture_env).unwrap_err();
 
         assert_eq!(error, "Cursor MCP source is not valid UTF-8.");
+    }
+
+    #[test]
+    fn restricted_projects_do_not_contribute_project_mcp_servers() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("restricted-mcp-import").unwrap();
+        std::fs::write(project.join(".mcp.json"), r#"{"mcpServers":{}}"#).unwrap();
+        assert_eq!(
+            import_project_root(&SourceTool::ClaudeCode, Some("restricted-mcp-import")).unwrap(),
+            Some(project.clone())
+        );
+        assert_eq!(
+            import_project_root(&SourceTool::Codex, Some("restricted-mcp-import")).unwrap(),
+            None
+        );
+        let _restricted = crate::trust::testing::restrict("restricted-mcp-import");
+        assert_eq!(
+            import_project_root(&SourceTool::ClaudeCode, Some("restricted-mcp-import")).unwrap(),
+            None
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

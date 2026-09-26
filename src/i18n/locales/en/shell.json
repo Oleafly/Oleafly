@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Recompile"
     },
+    "saveSettingsToFolder": {
+      "keywords": "save project settings folder project.json share main document engine",
+      "label": "Save project settings to this folder",
+      "saved": "Saved project settings to project.json in this folder."
+    },
     "section": {
       "label": "Section"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "% !TEX root in {{file}} points to a missing file ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root in {{file}} points to {{target}}, which isn't a LaTeX file",
     "texRootOverride": "root: {{path}} (set by % !TEX root in {{file}})"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "terminal dock"
     },
     "title": "Something went wrong"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "This folder isn't available.",
+      "body": "Reconnect the drive or find the folder. Your open files stay here, and Oleafly won't save or compile until the folder is back."
+    },
+    "replaced": {
+      "title": "This folder was replaced.",
+      "body": "A different folder is in its place now. Oleafly stopped saving so it won't overwrite anything there."
+    },
+    "permissionDenied": {
+      "title": "Oleafly can't open this folder.",
+      "body": "Check the folder's permissions and try again. Your open files stay here."
+    },
+    "locate": "Locate…",
+    "useThisFolder": "Use this folder",
+    "saveCopy": "Save a copy…",
+    "tryAgain": "Try again",
+    "savedCopy": "Saved your open files to {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Calculating storage usage…",
         "desktopOnly": "Storage details are available in the desktop app.",
         "error": "Storage details could not be calculated.",
+        "linkedFolders_one": "{{size}} of build output and settings for {{count}} opened folder",
+        "linkedFolders_other": "{{size}} of build output and settings for {{count}} opened folders",
         "refresh": "Refresh storage usage",
         "stats": {
           "appData": "App data",

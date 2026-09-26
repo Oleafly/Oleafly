@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompiler"
     },
+    "saveSettingsToFolder": {
+      "keywords": "enregistrer paramètres projet dossier project.json partager document principal",
+      "label": "Enregistrer les paramètres du projet dans ce dossier",
+      "saved": "Les paramètres du projet ont été enregistrés dans le fichier project.json de ce dossier."
+    },
     "section": {
       "label": "Section"
     },
@@ -261,6 +266,7 @@
     "texRootBroken": "Le % !TEX root de {{file}} pointe vers un fichier absent ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "racine : {{name}}",
+    "texRootNotTex": "Le % !TEX root de {{file}} pointe vers {{target}}, qui n'est pas un fichier LaTeX",
     "texRootOverride": "racine : {{path}} (définie par % !TEX root dans {{file}})"
   },
   "datePicker": {
@@ -362,6 +368,25 @@
       "terminalDock": "Le dock du terminal"
     },
     "title": "Une erreur est survenue"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Ce dossier n'est pas disponible.",
+      "body": "Reconnectez le disque ou retrouvez le dossier. Vos fichiers ouverts restent ici, et Oleafly n'enregistre ni ne compile tant que le dossier n'est pas revenu."
+    },
+    "replaced": {
+      "title": "Ce dossier a été remplacé.",
+      "body": "Un autre dossier se trouve désormais à sa place. Oleafly a cessé d'enregistrer pour ne rien y écraser."
+    },
+    "permissionDenied": {
+      "title": "Oleafly ne peut pas ouvrir ce dossier.",
+      "body": "Vérifiez les autorisations du dossier, puis réessayez. Vos fichiers ouverts restent ici."
+    },
+    "locate": "Localiser…",
+    "useThisFolder": "Utiliser ce dossier",
+    "saveCopy": "Enregistrer une copie…",
+    "tryAgain": "Réessayer",
+    "savedCopy": "Vos fichiers ouverts ont été enregistrés dans {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub : {{login}}",
@@ -553,6 +578,9 @@
         "calculating": "Calcul de l'espace utilisé…",
         "desktopOnly": "Les détails de stockage sont disponibles dans l'application de bureau.",
         "error": "Les détails de stockage n'ont pas pu être calculés.",
+        "linkedFolders_one": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossier ouvert",
+        "linkedFolders_many": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
+        "linkedFolders_other": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
         "refresh": "Actualiser l'espace utilisé",
         "stats": {
           "appData": "Données de l'application",

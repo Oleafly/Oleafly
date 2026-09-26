@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentCompileAllowed,
+  automaticCompileAllowed,
   openCompileHydrated,
   resetOpenCompileMarker,
   shouldCompileOnOpen,
@@ -38,5 +40,21 @@ describe("openCompileHydrated", () => {
 
   it("holds for a layout with no editor, whatever file the tree left active", () => {
     expect(openCompileHydrated(false, "project", "project", 1)).toBe(true);
+  });
+});
+
+describe("automaticCompileAllowed", () => {
+  it("allows automatic compiles only once a main document is decided", () => {
+    expect(automaticCompileAllowed("auto")).toBe(true);
+    expect(automaticCompileAllowed("ask")).toBe(false);
+    expect(automaticCompileAllowed("no_main")).toBe(false);
+  });
+});
+
+describe("agentCompileAllowed", () => {
+  it("lets the agent compile unless the folder has no main document", () => {
+    expect(agentCompileAllowed("auto")).toBe(true);
+    expect(agentCompileAllowed("ask")).toBe(true);
+    expect(agentCompileAllowed("no_main")).toBe(false);
   });
 });

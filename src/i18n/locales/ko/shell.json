@@ -168,6 +168,11 @@
     "recompile": {
       "label": "다시 컴파일"
     },
+    "saveSettingsToFolder": {
+      "keywords": "프로젝트 설정 저장 폴더 project.json 공유 주 문서",
+      "label": "프로젝트 설정을 이 폴더에 저장",
+      "saved": "프로젝트 설정을 이 폴더의 project.json에 저장했습니다."
+    },
     "section": {
       "label": "절"
     },
@@ -259,6 +264,7 @@
     "texRootBroken": "{{file}}의 % !TEX root가 없는 파일을 가리킵니다({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}}의 % !TEX root가 LaTeX 파일이 아닌 {{target}}을(를) 가리킵니다",
     "texRootOverride": "root: {{path}}({{file}}의 % !TEX root로 지정됨)"
   },
   "datePicker": {
@@ -358,6 +364,25 @@
       "terminalDock": "터미널 독"
     },
     "title": "문제가 발생했습니다"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "이 폴더를 사용할 수 없습니다.",
+      "body": "드라이브를 다시 연결하거나 폴더를 찾으세요. 열린 파일은 여기에 그대로 있으며, 폴더가 돌아올 때까지 Oleafly는 저장하거나 컴파일하지 않습니다."
+    },
+    "replaced": {
+      "title": "이 폴더가 교체되었습니다.",
+      "body": "그 자리에 이제 다른 폴더가 있습니다. 아무것도 덮어쓰지 않도록 Oleafly가 저장을 멈췄습니다."
+    },
+    "permissionDenied": {
+      "title": "Oleafly에서 이 폴더를 열 수 없습니다.",
+      "body": "폴더 권한을 확인한 뒤 다시 시도하세요. 열린 파일은 여기에 그대로 있습니다."
+    },
+    "locate": "위치 찾기…",
+    "useThisFolder": "이 폴더 사용",
+    "saveCopy": "사본 저장…",
+    "tryAgain": "다시 시도",
+    "savedCopy": "열린 파일을 {{folder}}에 저장했습니다."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -531,6 +556,7 @@
         "calculating": "저장 공간 사용량을 계산하는 중…",
         "desktopOnly": "저장 공간 정보는 데스크톱 앱에서 볼 수 있습니다.",
         "error": "저장 공간 정보를 계산하지 못했습니다.",
+        "linkedFolders_other": "연 폴더 {{count}}개의 빌드 출력과 설정에 {{size}}",
         "refresh": "저장 공간 사용량 새로 고침",
         "stats": {
           "appData": "앱 데이터",

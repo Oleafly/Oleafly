@@ -426,6 +426,11 @@
       "sourceSize": "Grootte van de broncode",
       "reclaimable": "Terug te winnen"
     },
+    "capture": {
+      "paused": "Checkpoints zijn gepauzeerd omdat deze map te groot is. Een checkpoint kan maximaal {{files}} bestanden of {{size}} bevatten.",
+      "skipped_one": "{{formattedCount}} bestand in deze map zit niet in de checkpoints. Oleafly laat links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken weg.",
+      "skipped_other": "{{formattedCount}} bestanden in deze map zitten niet in de checkpoints. Oleafly laat links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken weg."
+    },
     "catalog": {
       "formatVersion": "Formaatversie",
       "lineage": "Herkomst",
@@ -458,7 +463,8 @@
       "showFor": "Bestanden voor {{version}} tonen",
       "hideFor": "Bestanden voor {{version}} verbergen",
       "show": "Bestanden tonen",
-      "hide": "Bestanden verbergen"
+      "hide": "Bestanden verbergen",
+      "folderSettings": "Oleafly-instellingen voor deze map"
     },
     "entry": {
       "labelInput": "Checkpointlabel",

@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "選擇要匯入的試算表",
       "filter": "試算表"
+    },
+    "trustFolder": {
+      "title": "信任這個資料夾？",
+      "message": "Oleafly 將為 {{name}} 開啟 Git、終端機、代理程式與 LaTeX 工具。請只信任你了解其內容的資料夾。",
+      "messageParent": "Oleafly 將信任 {{name}} 及其中的所有資料夾，包括你之後開啟的資料夾。",
+      "messageRepository": "Oleafly 將在 {{name}} 中以儲存庫本身的設定與掛鉤執行 Git。",
+      "confirm": "信任"
+    },
+    "restrictedWrite": {
+      "title": "允許這項變更？",
+      "message": "助理想要變更 {{path}}。這類檔案可以執行程式，而這個資料夾尚未受信任。",
+      "confirm": "允許"
+    },
+    "restrictedNetwork": {
+      "title": "允許這項請求？",
+      "message": "助理想要使用 {{tool}}，它會將文字傳送到線上服務。這個資料夾尚未受信任。",
+      "confirm": "允許"
+    },
+    "locateFolder": {
+      "title": "尋找專案資料夾"
+    },
+    "rebindFolder": {
+      "title": "要使用其他資料夾嗎？",
+      "message": "{{name}} 不是 Oleafly 先前用於此專案的資料夾。如果使用它，Oleafly 會把未儲存的變更儲存到其中，並關閉此專案的終端機和代理程式工作階段，其中正在執行的內容都會停止。Oleafly 也將不再信任該資料夾，關閉完整存取權，重設助理的核准，並取消連結研究資料夾。聊天與歷史記錄會保留。",
+      "confirm": "使用此資料夾"
+    },
+    "saveCopy": {
+      "title": "選擇副本的儲存位置",
+      "folderSuffix": "副本"
     }
   },
   "errors": {

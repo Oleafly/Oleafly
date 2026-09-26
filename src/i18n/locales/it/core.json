@@ -591,5 +591,9 @@
   "checkpoint": {
     "storageUnavailable": "Impossibile salvare un checkpoint. Il disco è pieno o non è possibile scrivere nella cartella dei checkpoint. Libera spazio o controlla i permessi della cartella, poi compila di nuovo.",
     "incompleteCapture": "Impossibile salvare gli ultimi checkpoint perché non è stato possibile leggere alcuni file del progetto. Controlla i loro permessi, poi compila di nuovo."
+  },
+  "folderUnavailable": {
+    "compile": "La compilazione è in pausa finché la cartella del progetto non torna disponibile.",
+    "saveReason": "la cartella del progetto non è disponibile"
   }
 }

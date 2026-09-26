@@ -134,7 +134,8 @@ export function Editor() {
   }), []);
   const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
-  const managedFile = !!activePath && isManagedProjectPath(activePath);
+  const manifestHome = useFilesStore((s) => s.manifestHome);
+  const managedFile = !!activePath && isManagedProjectPath(activePath, manifestHome);
   const setActive = useFilesStore((s) => s.setActive);
   const closeTab = useFilesStore((s) => s.closeTab);
   const diffs = useDiffStore((s) => s.diffs);

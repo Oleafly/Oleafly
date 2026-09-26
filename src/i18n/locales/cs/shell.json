@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompilovat znovu"
     },
+    "saveSettingsToFolder": {
+      "keywords": "uložit nastavení projektu složka project.json sdílet hlavní dokument",
+      "label": "Uložit nastavení projektu do této složky",
+      "saved": "Nastavení projektu bylo uloženo do souboru project.json v této složce."
+    },
     "section": {
       "label": "Sekce"
     },
@@ -262,6 +267,7 @@
     "texRootBroken": "% !TEX root v {{file}} odkazuje na chybějící soubor ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "kořen: {{name}}",
+    "texRootNotTex": "% !TEX root v {{file}} odkazuje na {{target}}, což není soubor LaTeX",
     "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})"
   },
   "datePicker": {
@@ -364,6 +370,25 @@
       "terminalDock": "Dok terminálu"
     },
     "title": "Něco se pokazilo"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Tato složka není dostupná.",
+      "body": "Znovu připojte disk nebo složku najděte. Otevřené soubory tu zůstávají a Oleafly nebude ukládat ani kompilovat, dokud se složka nevrátí."
+    },
+    "replaced": {
+      "title": "Tato složka byla nahrazena.",
+      "body": "Na jejím místě je teď jiná složka. Oleafly přestal ukládat, aby tam nic nepřepsal."
+    },
+    "permissionDenied": {
+      "title": "Oleafly tuto složku nemůže otevřít.",
+      "body": "Zkontrolujte oprávnění složky a zkuste to znovu. Otevřené soubory tu zůstávají."
+    },
+    "locate": "Najít…",
+    "useThisFolder": "Použít tuto složku",
+    "saveCopy": "Uložit kopii…",
+    "tryAgain": "Zkusit znovu",
+    "savedCopy": "Otevřené soubory byly uloženy do {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -564,6 +589,10 @@
         "calculating": "Počítá se využití úložiště…",
         "desktopOnly": "Podrobnosti o úložišti jsou k dispozici v desktopové aplikaci.",
         "error": "Podrobnosti o úložišti se nepodařilo spočítat.",
+        "linkedFolders_one": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřenou složku",
+        "linkedFolders_few": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_many": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_other": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřených složek",
         "refresh": "Obnovit využití úložiště",
         "stats": {
           "appData": "Data aplikace",

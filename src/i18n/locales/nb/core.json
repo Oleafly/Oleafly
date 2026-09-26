@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Kunne ikke lagre et sjekkpunkt. Disken er full, eller det går ikke å skrive til sjekkpunktmappen. Frigjør plass eller sjekk mappetillatelsene, og kompiler deretter på nytt.",
     "incompleteCapture": "Kunne ikke lagre de siste sjekkpunktene fordi noen prosjektfiler ikke kunne leses. Sjekk tillatelsene deres, og kompiler deretter på nytt."
+  },
+  "folderUnavailable": {
+    "compile": "Kompilering er satt på pause til prosjektmappen er tilbake.",
+    "saveReason": "prosjektmappen er ikke tilgjengelig"
   }
 }

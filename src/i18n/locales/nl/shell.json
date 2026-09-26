@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Opnieuw compileren"
     },
+    "saveSettingsToFolder": {
+      "keywords": "projectinstellingen opslaan map project.json delen hoofddocument",
+      "label": "Projectinstellingen in deze map opslaan",
+      "saved": "De projectinstellingen zijn opgeslagen in project.json in deze map."
+    },
     "section": {
       "label": "Sectie"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "% !TEX root in {{file}} wijst naar een ontbrekend bestand ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root in {{file}} wijst naar {{target}}, dat geen LaTeX-bestand is",
     "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "het terminaldock"
     },
     "title": "Er is iets misgegaan"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Deze map is niet beschikbaar.",
+      "body": "Sluit het station opnieuw aan of zoek de map. Je geopende bestanden blijven hier, en Oleafly slaat niets op en compileert niet totdat de map terug is."
+    },
+    "replaced": {
+      "title": "Deze map is vervangen.",
+      "body": "Er staat nu een andere map op die plek. Oleafly is gestopt met opslaan, zodat daar niets wordt overschreven."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan deze map niet openen.",
+      "body": "Controleer de machtigingen van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
+    },
+    "locate": "Zoeken…",
+    "useThisFolder": "Deze map gebruiken",
+    "saveCopy": "Kopie opslaan…",
+    "tryAgain": "Opnieuw proberen",
+    "savedCopy": "Je geopende bestanden zijn opgeslagen in {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Opslaggebruik berekenen…",
         "desktopOnly": "Opslagdetails zijn beschikbaar in de desktop-app.",
         "error": "De opslagdetails konden niet worden berekend.",
+        "linkedFolders_one": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende map",
+        "linkedFolders_other": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende mappen",
         "refresh": "Opslaggebruik vernieuwen",
         "stats": {
           "appData": "App-gegevens",

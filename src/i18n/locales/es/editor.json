@@ -431,6 +431,12 @@
       "sourceSize": "Tamaño del código",
       "reclaimable": "Recuperable"
     },
+    "capture": {
+      "paused": "Los puntos de control están en pausa porque esta carpeta es demasiado grande. Un punto de control puede guardar como máximo {{files}} archivos o {{size}}.",
+      "skipped_one": "{{formattedCount}} archivo de esta carpeta no está en los puntos de control. Oleafly omite enlaces, archivos muy grandes, archivos que solo están en la nube y nombres que no funcionan en todos los sistemas.",
+      "skipped_many": "{{formattedCount}} archivos de esta carpeta no están en los puntos de control. Oleafly omite enlaces, archivos muy grandes, archivos que solo están en la nube y nombres que no funcionan en todos los sistemas.",
+      "skipped_other": "{{formattedCount}} archivos de esta carpeta no están en los puntos de control. Oleafly omite enlaces, archivos muy grandes, archivos que solo están en la nube y nombres que no funcionan en todos los sistemas."
+    },
     "catalog": {
       "formatVersion": "Versión del formato",
       "lineage": "Linaje",
@@ -463,7 +469,8 @@
       "showFor": "Mostrar los archivos de {{version}}",
       "hideFor": "Ocultar los archivos de {{version}}",
       "show": "Mostrar los archivos",
-      "hide": "Ocultar los archivos"
+      "hide": "Ocultar los archivos",
+      "folderSettings": "Ajustes de Oleafly para esta carpeta"
     },
     "entry": {
       "labelInput": "Etiqueta del punto de control",

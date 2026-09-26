@@ -1,7 +1,8 @@
-use crate::tree::{slash_path, walk_source_tree};
-use crate::{Engine, Error, ErrorKind, ProjectManifest, Result};
+use crate::{
+    compile_dir_for, detect_main_document, is_oleafly_manifest, Decision, DetectOptions, Detection,
+    Engine, Error, ErrorKind, ProjectManifest, Result,
+};
 use serde::Serialize;
-use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
@@ -12,10 +13,19 @@ const INTERNAL_DIR: &str = ".oleafly";
 const BUILD_DIR: &str = "build";
 static WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum BuildLocation {
+    #[default]
+    InTree,
+    External(PathBuf),
+}
+
 #[derive(Clone, Debug)]
 pub struct Workspace {
     root: PathBuf,
     manifest: ProjectManifest,
+    compile_dir: Option<String>,
+    build: BuildLocation,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -68,30 +78,138 @@ impl Workspace {
                 ),
             ));
         }
-        let content = std::fs::read_to_string(&manifest_path).map_err(|error| {
+        let content = std::fs::read(&manifest_path).map_err(|error| {
             Error::new(
                 ErrorKind::Io,
                 format!("failed to read {}: {error}", manifest_path.display()),
             )
         })?;
-        let manifest: ProjectManifest = serde_json::from_str(&content).map_err(|error| {
+        let invalid = |error: serde_json::Error| {
             Error::new(
                 ErrorKind::InvalidManifest,
                 format!("invalid {}: {error}", manifest_path.display()),
             )
-        })?;
+        };
+        let foreign = || {
+            Error::new(
+                ErrorKind::NotInitialized,
+                format!(
+                    "{} belongs to another tool and is not an Oleafly project file",
+                    manifest_path.display()
+                ),
+            )
+        };
+        let value: serde_json::Value = match serde_json::from_slice(&content) {
+            Ok(value) => value,
+            Err(_) if !names_a_main_document(&content) => return Err(foreign()),
+            Err(error) => return Err(invalid(error)),
+        };
+        if !is_oleafly_manifest(&value) {
+            return Err(foreign());
+        }
+        let manifest: ProjectManifest = serde_json::from_value(value).map_err(invalid)?;
+        Self::assemble(root, manifest, BuildLocation::InTree)
+    }
+
+    pub fn from_manifest(path: impl AsRef<Path>, manifest: ProjectManifest) -> Result<Self> {
+        Self::from_manifest_with_build(path, manifest, BuildLocation::InTree)
+    }
+
+    pub fn from_manifest_with_build(
+        path: impl AsRef<Path>,
+        manifest: ProjectManifest,
+        build: BuildLocation,
+    ) -> Result<Self> {
+        let root = canonical_directory(path.as_ref())?;
+        let build = match build {
+            BuildLocation::InTree => BuildLocation::InTree,
+            BuildLocation::External(directory) => {
+                BuildLocation::External(external_build_directory(&root, &directory)?)
+            }
+        };
+        Self::assemble(root, manifest, build)
+    }
+
+    fn assemble(root: PathBuf, manifest: ProjectManifest, build: BuildLocation) -> Result<Self> {
         manifest.validate()?;
-        let workspace = Self { root, manifest };
+        let compile_dir = match manifest.compile_dir.as_deref() {
+            Some(relative) => compile_directory_within(&root, relative)?,
+            None => None,
+        };
+        if let Some(directory) = &compile_dir {
+            let main = normalize_relative(&manifest.main_doc)?;
+            if !Path::new(&main).starts_with(directory) {
+                return Err(Error::new(
+                    ErrorKind::InvalidManifest,
+                    format!(
+                        "main_doc `{main}` is outside compile_dir `{directory}`. Move the file into that folder, or change or remove compile_dir in project.json"
+                    ),
+                ));
+            }
+        }
+        let workspace = Self {
+            root,
+            manifest,
+            compile_dir,
+            build,
+        };
         workspace.resolve(&workspace.manifest.main_doc)?;
         Ok(workspace)
     }
 
-    pub fn from_manifest(path: impl AsRef<Path>, manifest: ProjectManifest) -> Result<Self> {
+    pub fn detected(path: impl AsRef<Path>, saved_main: Option<&str>) -> Result<Self> {
         let root = canonical_directory(path.as_ref())?;
-        manifest.validate()?;
-        let workspace = Self { root, manifest };
-        workspace.resolve(&workspace.manifest.main_doc)?;
-        Ok(workspace)
+        let detection = detect_main_document(
+            &root,
+            &DetectOptions {
+                saved_main,
+                ..DetectOptions::default()
+            },
+        )?;
+        let main_document = match (detection.decision, detection.main.as_deref()) {
+            (Decision::Auto, Some(main)) => main.to_owned(),
+            (Decision::Ask, _) => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "several files could be the main document ({}). Run `oleafly init --main <FILE>` to choose one",
+                        candidate_list(&detection)
+                    ),
+                ))
+            }
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::NotInitialized,
+                    format!(
+                        "no main document was found in {}. Run `oleafly init` to create one",
+                        root.display()
+                    ),
+                ))
+            }
+        };
+        let engine = Engine::infer(&main_document)?;
+        Self::assemble(
+            root.clone(),
+            ProjectManifest {
+                name: folder_name(&root),
+                compile_dir: compile_dir_for(&root, &main_document),
+                main_doc: main_document,
+                engine: engine.manifest_name().to_string(),
+                ..ProjectManifest::default()
+            },
+            BuildLocation::InTree,
+        )
+    }
+
+    pub fn compile_directory(&self) -> PathBuf {
+        match &self.compile_dir {
+            Some(relative) => self.root.join(relative),
+            None => self.root.clone(),
+        }
+    }
+
+    pub fn build_location(&self) -> &BuildLocation {
+        &self.build
     }
 
     pub fn init(path: impl AsRef<Path>, options: InitOptions) -> Result<Self> {
@@ -114,7 +232,7 @@ impl Workspace {
         }
         let discovered = match options.main_document {
             Some(value) => Some(normalize_relative(&value)?),
-            None => discover_main_document(&root)?,
+            None => initial_main_document(&root)?,
         };
         let (main_document, engine) = match discovered {
             Some(main_document) => {
@@ -149,19 +267,14 @@ impl Workspace {
                 format!("main document is not a file: {}", main_path.display()),
             ));
         }
-        let default_name = root
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str)
-            .filter(|value| !value.is_empty())
-            .unwrap_or("Oleafly project")
-            .to_string();
         let manifest = ProjectManifest {
-            name: options.name.unwrap_or(default_name),
+            name: options.name.unwrap_or_else(|| folder_name(&root)),
+            compile_dir: compile_dir_for(&root, &main_document),
             main_doc: main_document,
             engine: engine.manifest_name().to_string(),
             ..ProjectManifest::default()
         };
-        manifest.validate()?;
+        Self::assemble(root.clone(), manifest.clone(), BuildLocation::InTree)?;
         write_json_new(&manifest_path, &manifest)?;
         Self::open(root)
     }
@@ -200,15 +313,35 @@ impl Workspace {
     }
 
     pub fn build_dir(&self) -> Result<PathBuf> {
-        secure_build_directory(&self.root, true)
+        match &self.build {
+            BuildLocation::InTree => secure_build_directory(&self.root, true),
+            BuildLocation::External(directory) => external_build_directory(&self.root, directory),
+        }
     }
 
     pub fn build_dir_path(&self) -> PathBuf {
-        self.root.join(INTERNAL_DIR).join(BUILD_DIR)
+        match &self.build {
+            BuildLocation::InTree => self.root.join(INTERNAL_DIR).join(BUILD_DIR),
+            BuildLocation::External(directory) => directory.clone(),
+        }
+    }
+
+    pub fn build_directory_path(path: impl AsRef<Path>) -> Result<PathBuf> {
+        Ok(canonical_directory(path.as_ref())?
+            .join(INTERNAL_DIR)
+            .join(BUILD_DIR))
     }
 
     pub fn clean(&self) -> Result<bool> {
-        Self::clean_build_directory(&self.root)
+        match &self.build {
+            BuildLocation::InTree => Self::clean_build_directory(&self.root),
+            BuildLocation::External(directory) => {
+                let directory = external_build_directory(&self.root, directory)?;
+                std::fs::remove_dir_all(&directory)?;
+                std::fs::create_dir(&directory)?;
+                Ok(true)
+            }
+        }
     }
 
     pub fn clean_build_directory(path: impl AsRef<Path>) -> Result<bool> {
@@ -260,7 +393,13 @@ impl Workspace {
                 message: error.to_string(),
             }),
         }
-        match validate_build_location(&self.root) {
+        let build_check = match &self.build {
+            BuildLocation::InTree => validate_build_location(&self.root),
+            BuildLocation::External(directory) => {
+                validate_existing_directory(directory, "build path")
+            }
+        };
+        match build_check {
             Ok(()) => checks.push(DoctorCheck {
                 name: "build_directory".to_string(),
                 status: DoctorStatus::Pass,
@@ -374,6 +513,28 @@ fn secure_build_directory(root: &Path, create: bool) -> Result<PathBuf> {
     Ok(canonical_build)
 }
 
+fn external_build_directory(root: &Path, directory: &Path) -> Result<PathBuf> {
+    if !directory.is_absolute() {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!(
+                "external build directory must be absolute: {}",
+                directory.display()
+            ),
+        ));
+    }
+    ensure_real_directory(directory, false, "external build")?;
+    let canonical = directory.canonicalize()?;
+    let canonical_root = root.canonicalize()?;
+    if canonical.starts_with(&canonical_root) || canonical_root.starts_with(&canonical) {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            "external build directory overlaps the workspace",
+        ));
+    }
+    Ok(canonical)
+}
+
 fn validate_build_location(root: &Path) -> Result<()> {
     let internal = root.join(INTERNAL_DIR);
     validate_existing_directory(&internal, "project data path")?;
@@ -409,7 +570,7 @@ fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
 }
 
 fn metadata_is_real_directory(metadata: &std::fs::Metadata) -> bool {
-    metadata.is_dir() && !metadata.file_type().is_symlink() && !metadata_is_reparse_point(metadata)
+    metadata.is_dir() && !metadata.file_type().is_symlink()
 }
 
 fn unsafe_directory(label: &str, path: &Path) -> Error {
@@ -419,43 +580,65 @@ fn unsafe_directory(label: &str, path: &Path) -> Error {
     )
 }
 
-#[cfg(windows)]
-fn metadata_is_reparse_point(metadata: &std::fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    metadata.file_attributes() & 0x400 != 0
+fn names_a_main_document(content: &[u8]) -> bool {
+    const KEY: &[u8] = b"\"main_doc\"";
+    content.windows(KEY.len()).any(|window| window == KEY)
 }
 
-#[cfg(not(windows))]
-fn metadata_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
-    false
-}
-
-fn discover_main_document(root: &Path) -> Result<Option<String>> {
-    for preferred in ["main.tex", "main.typ", "main.md"] {
-        if root.join(preferred).is_file() {
-            return Ok(Some(preferred.to_string()));
-        }
-    }
-    let mut found = BTreeSet::new();
-    discover_sources(root, &mut found)?;
-    match found.len() {
-        0 => Ok(None),
-        1 => Ok(found.into_iter().next()),
-        _ => Err(Error::new(
-            ErrorKind::InvalidInput,
-            "multiple possible main documents found. Pass --main",
+fn compile_directory_within(root: &Path, relative: &str) -> Result<Option<String>> {
+    let normalized = normalize_relative(relative)?;
+    let path = resolve_within(root, &normalized)?;
+    match std::fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata_is_real_directory(&metadata) => Ok(Some(normalized)),
+        Ok(_) => Err(unsafe_directory("compile directory", &path)),
+        Err(error) => Err(Error::new(
+            ErrorKind::InvalidManifest,
+            format!("compile directory {}: {error}", path.display()),
         )),
     }
 }
 
-fn discover_sources(root: &Path, found: &mut BTreeSet<String>) -> Result<()> {
-    walk_source_tree(root, "source discovery", &mut |relative, _| {
-        let value = slash_path(relative);
-        if Engine::infer(&value).is_ok() {
-            found.insert(value);
-        }
-        Ok(())
-    })
+fn initial_main_document(root: &Path) -> Result<Option<String>> {
+    let detection = detect_main_document(root, &DetectOptions::default())?;
+    match (detection.decision, detection.candidates.as_slice()) {
+        (Decision::Auto, _) => Ok(detection.main),
+        (Decision::Ask, [only]) if !detection.truncated => Ok(Some(only.path.clone())),
+        (Decision::Ask, _) => Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!(
+                "multiple possible main documents found ({}). Pass --main",
+                candidate_list(&detection)
+            ),
+        )),
+        (Decision::NoMain, _) if detection.truncated => Err(Error::new(
+            ErrorKind::InvalidInput,
+            "the folder is too large to search for a main document. Pass --main",
+        )),
+        (Decision::NoMain, _) => Ok(None),
+    }
+}
+
+fn candidate_list(detection: &Detection) -> String {
+    const SHOWN: usize = 5;
+    let names = detection
+        .candidates
+        .iter()
+        .take(SHOWN)
+        .map(|candidate| candidate.path.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    match detection.candidates.len().saturating_sub(SHOWN) {
+        0 => names,
+        more => format!("{names} and {more} more"),
+    }
+}
+
+fn folder_name(root: &Path) -> String {
+    root.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Oleafly project")
+        .to_string()
 }
 
 fn starter_document(engine: Engine) -> &'static [u8] {
@@ -544,13 +727,243 @@ mod tests {
         }
     }
 
+    const ARTICLE: &str = "\\documentclass{article}\n\\begin{document}\n\\end{document}\n";
+
     #[test]
     fn init_refuses_ambiguous_source_discovery() {
         let directory = TempDir::new().unwrap();
-        std::fs::write(directory.path().join("paper.tex"), "").unwrap();
-        std::fs::write(directory.path().join("notes.md"), "").unwrap();
+        std::fs::write(directory.path().join("paper.tex"), ARTICLE).unwrap();
+        std::fs::write(directory.path().join("notes.tex"), ARTICLE).unwrap();
         let error = Workspace::init(directory.path(), InitOptions::default()).unwrap_err();
         assert!(error.to_string().contains("multiple possible"));
+        assert!(error.to_string().contains("paper.tex, notes.tex"));
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
+    }
+
+    #[test]
+    fn init_picks_the_document_next_to_a_readme() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("thesis.tex"), ARTICLE).unwrap();
+        std::fs::write(directory.path().join("README.md"), "# Thesis\n").unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        assert_eq!(workspace.manifest().main_doc, "thesis.tex");
+        assert!(!directory.path().join("main.tex").exists());
+    }
+
+    #[test]
+    fn a_folder_without_a_manifest_builds_its_detected_document() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir_all(directory.path().join("paper/sections")).unwrap();
+        std::fs::write(
+            directory.path().join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("paper/sections/intro.tex"), "Intro.").unwrap();
+        std::fs::write(directory.path().join("README.md"), "# Repo\n").unwrap();
+
+        let workspace = Workspace::detected(directory.path(), None).unwrap();
+        assert_eq!(workspace.manifest().main_doc, "paper/main.tex");
+        assert_eq!(workspace.manifest().engine().unwrap(), Engine::Tectonic);
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(
+            prepared.compile_directory(),
+            directory.path().canonicalize().unwrap().join("paper")
+        );
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
+
+        std::fs::write(directory.path().join("notes.md"), "Notes.").unwrap();
+        std::fs::write(directory.path().join("other.tex"), ARTICLE).unwrap();
+        let error = Workspace::detected(directory.path(), None).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidInput);
+        assert!(error.message().contains("paper/main.tex"));
+        let saved = Workspace::detected(directory.path(), Some("other.tex")).unwrap();
+        assert_eq!(saved.manifest().main_doc, "other.tex");
+        assert_eq!(saved.compile_directory(), saved.root());
+
+        let empty = TempDir::new().unwrap();
+        assert_eq!(
+            Workspace::detected(empty.path(), None).unwrap_err().kind(),
+            ErrorKind::NotInitialized
+        );
+    }
+
+    #[test]
+    fn a_foreign_project_json_is_not_an_oleafly_project() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join(MANIFEST_NAME),
+            r#"{"name":"web","targets":{"build":{}}}"#,
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("paper.tex"), ARTICLE).unwrap();
+        assert_eq!(
+            Workspace::open(directory.path()).unwrap_err().kind(),
+            ErrorKind::NotInitialized
+        );
+        let workspace = Workspace::detected(directory.path(), None).unwrap();
+        assert_eq!(workspace.manifest().main_doc, "paper.tex");
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join(MANIFEST_NAME)).unwrap(),
+            r#"{"name":"web","targets":{"build":{}}}"#
+        );
+
+        for foreign in [
+            "// generated by nx\n{\"name\":\"web\",\"targets\":{}}\n",
+            "{\"name\":\"web\",\"targets\":{},}",
+            "not json",
+            "",
+        ] {
+            std::fs::write(directory.path().join(MANIFEST_NAME), foreign).unwrap();
+            assert_eq!(
+                Workspace::open(directory.path()).unwrap_err().kind(),
+                ErrorKind::NotInitialized,
+                "{foreign}"
+            );
+        }
+        for broken in [
+            "{\"main_doc\":\"paper.tex\",}",
+            "// mine\n{\"name\":\"P\",\"main_doc\":\"paper.tex\"}",
+        ] {
+            std::fs::write(directory.path().join(MANIFEST_NAME), broken).unwrap();
+            assert_eq!(
+                Workspace::open(directory.path()).unwrap_err().kind(),
+                ErrorKind::InvalidManifest,
+                "{broken}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_compile_directory_must_be_a_real_folder_inside_the_project() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir(directory.path().join("paper")).unwrap();
+        std::fs::write(directory.path().join("paper/main.tex"), ARTICLE).unwrap();
+        std::fs::write(directory.path().join("notes.txt"), "x").unwrap();
+        let manifest = |compile_dir: Option<&str>| ProjectManifest {
+            main_doc: "paper/main.tex".into(),
+            compile_dir: compile_dir.map(str::to_owned),
+            ..ProjectManifest::default()
+        };
+        for (invalid, kind) in [
+            ("../outside", ErrorKind::UnsafePath),
+            ("missing", ErrorKind::InvalidManifest),
+            ("notes.txt", ErrorKind::UnsafePath),
+            ("paper\\sub", ErrorKind::UnsafePath),
+        ] {
+            let error =
+                Workspace::from_manifest(directory.path(), manifest(Some(invalid))).unwrap_err();
+            assert_eq!(error.kind(), kind, "{invalid}");
+        }
+        let nested = Workspace::from_manifest(directory.path(), manifest(Some("./paper"))).unwrap();
+        assert_eq!(nested.compile_directory(), nested.root().join("paper"));
+        let flat = Workspace::from_manifest(directory.path(), manifest(None)).unwrap();
+        assert_eq!(flat.compile_directory(), flat.root());
+
+        std::fs::write(directory.path().join("main.tex"), ARTICLE).unwrap();
+        std::fs::create_dir(directory.path().join("paper/sub")).unwrap();
+        for (main_doc, compile_dir) in [("main.tex", "paper"), ("paper/main.tex", "paper/sub")] {
+            let error = Workspace::from_manifest(
+                directory.path(),
+                ProjectManifest {
+                    main_doc: main_doc.into(),
+                    compile_dir: Some(compile_dir.into()),
+                    ..ProjectManifest::default()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::InvalidManifest, "{main_doc}");
+            assert!(error.message().contains("compile_dir"), "{error}");
+            assert!(error.message().contains(main_doc), "{error}");
+        }
+    }
+
+    #[test]
+    fn init_records_a_nested_compile_directory_in_the_manifest() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir_all(directory.path().join("paper/sections")).unwrap();
+        std::fs::write(
+            directory.path().join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("paper/sections/intro.tex"), "Intro.").unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        assert_eq!(workspace.manifest().compile_dir.as_deref(), Some("paper"));
+        let stored: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.path().join(MANIFEST_NAME)).unwrap())
+                .unwrap();
+        assert_eq!(stored["compile_dir"], "paper");
+        let reopened = Workspace::open(directory.path()).unwrap();
+        assert_eq!(reopened.compile_directory(), reopened.root().join("paper"));
+
+        let flat = TempDir::new().unwrap();
+        Workspace::init(flat.path(), InitOptions::default()).unwrap();
+        let stored = std::fs::read_to_string(flat.path().join(MANIFEST_NAME)).unwrap();
+        assert!(!stored.contains("compile_dir"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_is_refused_as_a_compile_directory() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir(directory.path().join("real")).unwrap();
+        std::fs::write(directory.path().join("real/main.tex"), ARTICLE).unwrap();
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(directory.path().join("paper"))
+            .arg(directory.path().join("real"))
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let error = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "paper/main.tex".into(),
+                compile_dir: Some("paper".into()),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath, "{error}");
+        let real = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "real/main.tex".into(),
+                compile_dir: Some("real".into()),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(real.compile_directory(), real.root().join("real"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn init_writes_no_manifest_when_the_compile_directory_is_refused() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir_all(directory.path().join("real/sections")).unwrap();
+        std::fs::write(
+            directory.path().join("real/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("real/sections/intro.tex"), "Intro.").unwrap();
+        std::os::unix::fs::symlink(
+            directory.path().join("real"),
+            directory.path().join("paper"),
+        )
+        .unwrap();
+        let error = Workspace::init(
+            directory.path(),
+            InitOptions {
+                main_document: Some("paper/main.tex".into()),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath, "{error}");
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
     }
 
     #[test]
@@ -640,7 +1053,11 @@ mod tests {
             ErrorKind::NotInitialized
         );
 
-        std::fs::write(directory.path().join(MANIFEST_NAME), "not json").unwrap();
+        std::fs::write(
+            directory.path().join(MANIFEST_NAME),
+            "{\"main_doc\": \"main.tex\"",
+        )
+        .unwrap();
         assert_eq!(
             Workspace::open(directory.path()).unwrap_err().kind(),
             ErrorKind::InvalidManifest
@@ -864,5 +1281,120 @@ mod tests {
         .unwrap();
         let error = workspace.build_dir().unwrap_err();
         assert_eq!(error.kind(), ErrorKind::UnsafePath);
+    }
+
+    #[test]
+    fn external_build_directories_are_used_without_touching_the_workspace() {
+        let directory = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join("main.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
+        let workspace = Workspace::from_manifest_with_build(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectManifest::default()
+            },
+            BuildLocation::External(external.path().to_path_buf()),
+        )
+        .unwrap();
+        let expected = external.path().canonicalize().unwrap();
+        assert_eq!(
+            workspace.build_location(),
+            &BuildLocation::External(expected.clone())
+        );
+        assert_eq!(workspace.build_dir().unwrap(), expected);
+        assert_eq!(workspace.build_dir_path(), expected);
+        assert_eq!(workspace.info().unwrap().build_directory, expected);
+        assert!(workspace.doctor().ok);
+        assert!(!directory.path().join(INTERNAL_DIR).exists());
+        assert_eq!(
+            Workspace::from_manifest(directory.path(), workspace.manifest().clone())
+                .unwrap()
+                .build_location(),
+            &BuildLocation::InTree
+        );
+    }
+
+    #[test]
+    fn external_build_directories_must_be_real_and_outside_the_workspace() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join("main.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
+        std::fs::create_dir(directory.path().join("inside")).unwrap();
+        let attempt = |build: PathBuf| {
+            Workspace::from_manifest_with_build(
+                directory.path(),
+                ProjectManifest {
+                    main_doc: "main.tex".into(),
+                    ..ProjectManifest::default()
+                },
+                BuildLocation::External(build),
+            )
+            .unwrap_err()
+            .kind()
+        };
+        assert_eq!(
+            attempt(directory.path().join("inside")),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(directory.path().to_path_buf()),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(directory.path().parent().unwrap().to_path_buf()),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(PathBuf::from("relative/build")),
+            ErrorKind::UnsafePath
+        );
+        let gone = TempDir::new().unwrap().path().to_path_buf();
+        assert_eq!(attempt(gone), ErrorKind::Io);
+        #[cfg(unix)]
+        {
+            let outside = TempDir::new().unwrap();
+            let holder = TempDir::new().unwrap();
+            let link = holder.path().join("build");
+            std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+            assert_eq!(attempt(link), ErrorKind::UnsafePath);
+        }
+        assert!(!directory.path().join(INTERNAL_DIR).exists());
+    }
+
+    #[test]
+    fn cleaning_an_external_build_never_touches_an_in_tree_build() {
+        let directory = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.tex"), "x").unwrap();
+        std::fs::create_dir_all(directory.path().join(INTERNAL_DIR).join(BUILD_DIR)).unwrap();
+        let cli_pdf = directory
+            .path()
+            .join(INTERNAL_DIR)
+            .join(BUILD_DIR)
+            .join("cli.pdf");
+        std::fs::write(&cli_pdf, "cli").unwrap();
+        std::fs::write(external.path().join("stale.aux"), "stale").unwrap();
+        let workspace = Workspace::from_manifest_with_build(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "main.tex".into(),
+                ..ProjectManifest::default()
+            },
+            BuildLocation::External(external.path().to_path_buf()),
+        )
+        .unwrap();
+        assert!(workspace.clean().unwrap());
+        assert_eq!(std::fs::read(&cli_pdf).unwrap(), b"cli");
+        assert!(external.path().is_dir());
+        assert_eq!(std::fs::read_dir(external.path()).unwrap().count(), 0);
     }
 }

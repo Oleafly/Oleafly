@@ -58,7 +58,13 @@ pub(crate) fn prepare(
     task: &ResearchTask,
     cancel: &CancellationToken,
 ) -> Result<TaskIsolation, String> {
-    let project_root = crate::paths::project_dir(&task.project_id)?;
+    crate::trust::require_trusted(&task.project_id, crate::trust::Capability::ResearchTasks)?;
+    let location = crate::project_location::locate(&task.project_id)?;
+    let source = match location.kind {
+        crate::project_location::ProjectKind::Library => IsolationSource::Repository,
+        crate::project_location::ProjectKind::Linked => IsolationSource::Snapshot,
+    };
+    let project_root = location.root;
     let lock_deadline = Instant::now() + PREPARATION_LOCK_TIMEOUT;
     let _worktree = loop {
         if cancel.is_cancelled() {
@@ -83,12 +89,19 @@ pub(crate) fn prepare(
         .join("workspaces")
         .join(&task.id)
         .join(task.execution_generation.to_string());
-    prepare_at(&project_root, &generation_root, cancel)
+    prepare_at(&project_root, &generation_root, source, cancel)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IsolationSource {
+    Repository,
+    Snapshot,
 }
 
 fn prepare_at(
     project_root: &Path,
     generation_root: &Path,
+    source: IsolationSource,
     cancel: &CancellationToken,
 ) -> Result<TaskIsolation, String> {
     validate_real_root(project_root, "project")?;
@@ -115,7 +128,10 @@ fn prepare_at(
         fs::create_dir(&baseline_root)
             .map_err(|error| format!("could not create the task baseline: {error}"))?;
         copy_manifest(project_root, &baseline_root, &baseline, cancel)?;
-        let git = exact_git_root(project_root, cancel)?;
+        let git = match source {
+            IsolationSource::Repository => exact_git_root(project_root, cancel)?,
+            IsolationSource::Snapshot => None,
+        };
         let (kind, revision) = if let Some(head) = git {
             create_git_worktree(project_root, generation_root, &head, cancel)?;
             scrub_checkout(generation_root, &baseline, cancel)?;
@@ -146,7 +162,8 @@ fn prepare_at(
         })
     })();
     if prepared.is_err() {
-        cleanup_incomplete_workspace(project_root, generation_root, &baseline_root);
+        let repository = (source == IsolationSource::Repository).then_some(project_root);
+        cleanup_incomplete_workspace(repository, generation_root, &baseline_root);
     }
     prepared
 }
@@ -372,17 +389,15 @@ fn run_git(
     let mut stderr = tempfile::tempfile()
         .map_err(|error| format!("could not create a Git error file: {error}"))?;
     let mut command = tokio::process::Command::new("git");
+    for variable in crate::git::GIT_REPOSITORY_ENV {
+        command.env_remove(variable);
+    }
     command
         .arg("-c")
-        .arg(format!("core.hooksPath={}", git_null_device()))
+        .arg(format!("core.hooksPath={}", crate::git::null_device()))
         .arg("-C")
         .arg(project)
         .args(arguments)
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .env_remove("GIT_COMMON_DIR")
-        .env_remove("GIT_PREFIX")
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout.try_clone().map_err(|error| {
             format!("could not capture Git output: {error}")
@@ -494,8 +509,8 @@ pub(crate) fn purge_task_workspaces(project: Option<&Path>, task_root: &Path) {
     remove_created_path(task_root);
 }
 
-fn cleanup_incomplete_workspace(project: &Path, workspace: &Path, baseline: &Path) {
-    if workspace.exists() {
+fn cleanup_incomplete_workspace(project: Option<&Path>, workspace: &Path, baseline: &Path) {
+    if let Some(project) = project.filter(|_| workspace.exists()) {
         let arguments = [
             "worktree".to_string(),
             "remove".to_string(),
@@ -517,14 +532,6 @@ fn remove_created_path(path: &Path) {
             let _ = fs::remove_file(path);
         }
         Err(_) => {}
-    }
-}
-
-fn git_null_device() -> &'static str {
-    if cfg!(windows) {
-        "NUL"
-    } else {
-        "/dev/null"
     }
 }
 
@@ -846,7 +853,13 @@ mod tests {
         fs::write(project.join(".Private/notes.md"), "private research").unwrap();
         let destination = temp.path().join("managed").join("task").join("1");
 
-        let isolation = prepare_at(&project, &destination, &CancellationToken::new()).unwrap();
+        let isolation = prepare_at(
+            &project,
+            &destination,
+            IsolationSource::Repository,
+            &CancellationToken::new(),
+        )
+        .unwrap();
 
         assert_eq!(isolation.kind, TaskIsolationKind::StagedProject);
         assert_eq!(
@@ -874,7 +887,13 @@ mod tests {
         fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
         let destination = temp.path().join("managed/task/1");
 
-        prepare_at(&project, &destination, &CancellationToken::new()).unwrap();
+        prepare_at(
+            &project,
+            &destination,
+            IsolationSource::Repository,
+            &CancellationToken::new(),
+        )
+        .unwrap();
 
         assert_ne!(
             fs::metadata(destination.join("analysis.sh"))
@@ -904,6 +923,7 @@ mod tests {
         let error = prepare_at(
             &project,
             &temp.path().join("managed/task/1"),
+            IsolationSource::Repository,
             &CancellationToken::new(),
         )
         .unwrap_err();
@@ -920,7 +940,13 @@ mod tests {
         let cancel = CancellationToken::new();
         cancel.cancel();
 
-        let error = prepare_at(&project, &temp.path().join("managed/task/1"), &cancel).unwrap_err();
+        let error = prepare_at(
+            &project,
+            &temp.path().join("managed/task/1"),
+            IsolationSource::Repository,
+            &cancel,
+        )
+        .unwrap_err();
 
         assert!(error.contains("cancelled"));
         assert!(!temp.path().join("managed/task/1").exists());
@@ -933,7 +959,13 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(project.join("main.tex"), "manuscript").unwrap();
         let destination = temp.path().join("managed/task/1");
-        let isolation = prepare_at(&project, &destination, &CancellationToken::new()).unwrap();
+        let isolation = prepare_at(
+            &project,
+            &destination,
+            IsolationSource::Repository,
+            &CancellationToken::new(),
+        )
+        .unwrap();
         fs::write(destination.join("surprise.tex"), "unexpected").unwrap();
 
         let error = collect_review_changes(&isolation, &CancellationToken::new()).unwrap_err();
@@ -950,15 +982,12 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(&victim, "do not touch").unwrap();
         let run = |arguments: &[&str]| {
-            let output = Command::new("git")
+            let mut command = Command::new("git");
+            crate::git::clear_inherited_git_env(&mut command);
+            let output = command
                 .arg("-C")
                 .arg(&project)
                 .args(arguments)
-                .env_remove("GIT_DIR")
-                .env_remove("GIT_WORK_TREE")
-                .env_remove("GIT_INDEX_FILE")
-                .env_remove("GIT_COMMON_DIR")
-                .env_remove("GIT_PREFIX")
                 .output()
                 .unwrap();
             assert!(
@@ -983,7 +1012,13 @@ mod tests {
         fs::write(project.join("main.tex"), "dirty manuscript").unwrap();
 
         let destination = temp.path().join("managed/task/1");
-        let isolation = prepare_at(&project, &destination, &CancellationToken::new()).unwrap();
+        let isolation = prepare_at(
+            &project,
+            &destination,
+            IsolationSource::Repository,
+            &CancellationToken::new(),
+        )
+        .unwrap();
 
         assert_eq!(isolation.kind, TaskIsolationKind::GitWorktree);
         assert_eq!(fs::read_to_string(&victim).unwrap(), "do not touch");
@@ -1002,15 +1037,12 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(project.join("main.tex"), "manuscript").unwrap();
         let run = |arguments: &[&str]| {
-            let output = Command::new("git")
+            let mut command = Command::new("git");
+            crate::git::clear_inherited_git_env(&mut command);
+            let output = command
                 .arg("-C")
                 .arg(&project)
                 .args(arguments)
-                .env_remove("GIT_DIR")
-                .env_remove("GIT_WORK_TREE")
-                .env_remove("GIT_INDEX_FILE")
-                .env_remove("GIT_COMMON_DIR")
-                .env_remove("GIT_PREFIX")
                 .output()
                 .unwrap();
             assert!(
@@ -1030,7 +1062,13 @@ mod tests {
         let first = task_root.join("1");
         let second = task_root.join("2");
         for generation in [&first, &second] {
-            let isolation = prepare_at(&project, generation, &CancellationToken::new()).unwrap();
+            let isolation = prepare_at(
+                &project,
+                generation,
+                IsolationSource::Repository,
+                &CancellationToken::new(),
+            )
+            .unwrap();
             assert_eq!(isolation.kind, TaskIsolationKind::GitWorktree);
         }
         let registrations = project.join(".git/worktrees");
@@ -1060,8 +1098,13 @@ mod tests {
         fs::write(project.join("main.tex"), "manuscript").unwrap();
         let store_root = temp.path().join("store");
         let task_root = task_workspace_root(&store_root, "task-two");
-        let isolation =
-            prepare_at(&project, &task_root.join("1"), &CancellationToken::new()).unwrap();
+        let isolation = prepare_at(
+            &project,
+            &task_root.join("1"),
+            IsolationSource::Repository,
+            &CancellationToken::new(),
+        )
+        .unwrap();
         assert_eq!(isolation.kind, TaskIsolationKind::StagedProject);
         fs::remove_dir_all(&project).unwrap();
 

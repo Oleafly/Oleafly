@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompiler igen"
     },
+    "saveSettingsToFolder": {
+      "keywords": "gem projektindstillinger mappe project.json del hoveddokument",
+      "label": "Gem projektindstillinger i denne mappe",
+      "saved": "Projektindstillingerne er gemt i project.json i denne mappe."
+    },
     "section": {
       "label": "Afsnit"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "% !TEX root i {{file}} peger på en fil, der mangler ({{target}})",
     "texRootLabel": "TEX-rod",
     "texRootName": "rod: {{name}}",
+    "texRootNotTex": "% !TEX root i {{file}} peger på {{target}}, som ikke er en LaTeX-fil",
     "texRootOverride": "rod: {{path}} (sat af % !TEX root i {{file}})"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "terminaldokken"
     },
     "title": "Noget gik galt"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Denne mappe er ikke tilgængelig.",
+      "body": "Tilslut drevet igen, eller find mappen. Dine åbne filer bliver her, og Oleafly gemmer eller kompilerer ikke, før mappen er tilbage."
+    },
+    "replaced": {
+      "title": "Denne mappe er blevet erstattet.",
+      "body": "Der ligger nu en anden mappe på dens plads. Oleafly er holdt op med at gemme, så intet derinde bliver overskrevet."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan ikke åbne denne mappe.",
+      "body": "Tjek mappens tilladelser, og prøv igen. Dine åbne filer bliver her."
+    },
+    "locate": "Find…",
+    "useThisFolder": "Brug denne mappe",
+    "saveCopy": "Gem en kopi…",
+    "tryAgain": "Prøv igen",
+    "savedCopy": "Dine åbne filer blev gemt i {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Beregner lagerforbrug…",
         "desktopOnly": "Oplysninger om lagerplads findes i skrivebordsappen.",
         "error": "Oplysningerne om lagerplads kunne ikke beregnes.",
+        "linkedFolders_one": "{{size}} byggeoutput og indstillinger for {{count}} åbnet mappe",
+        "linkedFolders_other": "{{size}} byggeoutput og indstillinger for {{count}} åbnede mapper",
         "refresh": "Opdater lagerforbruget",
         "stats": {
           "appData": "Appdata",

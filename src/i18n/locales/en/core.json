@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Couldn't save a checkpoint. The disk is full or the checkpoint folder can't be written to. Free some space or check the folder permissions, then compile again.",
     "incompleteCapture": "Couldn't save the last few checkpoints because some project files could not be read. Check their permissions, then compile again."
+  },
+  "folderUnavailable": {
+    "compile": "Compiling is paused until the project folder is back.",
+    "saveReason": "the project folder isn't available"
   }
 }

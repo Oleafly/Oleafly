@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "De projectnaam mag niet leeg zijn.",
     "name_conflict": "Er bestaat al een project met de naam {{name}}.",
-    "folder_unavailable": "Kon geen nieuwe projectmap reserveren."
+    "folder_unavailable": "Kon geen nieuwe projectmap reserveren.",
+    "not_found": "Dit project staat niet meer in je bibliotheek.",
+    "not_recyclable": "Dit project kan niet naar de Prullenbak worden verplaatst.",
+    "linked_missing": "Oleafly kan de map {{folder}} niet vinden. Misschien is die verplaatst of verwijderd, of staat die op een schijf die niet is aangesloten.",
+    "linked_replaced": "De map {{folder}} is niet de map die Oleafly eerder opende. Open hem opnieuw om verder te gaan.",
+    "linked_permission_denied": "Oleafly heeft geen toestemming om de map {{folder}} te openen.",
+    "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw.",
+    "linked_not_recyclable": "Deze map is op zijn eigen locatie geopend en kan daarom niet naar de Prullenbak worden verplaatst. Je bestanden zijn niet gewijzigd.",
+    "linked_not_duplicable": "Deze map is op zijn eigen locatie geopend, dus Oleafly kan hem niet dupliceren.",
+    "folder_not_a_folder": "Oleafly kan die locatie niet gebruiken. Kies een map.",
+    "folder_in_app_data": "Oleafly bewaart eigen gegevens in die map. Kies een andere map.",
+    "folder_too_broad": "{{name}} is te breed om als één project te openen. Kies de map die alleen dit project bevat.",
+    "folder_already_linked": "Die map overlapt met een ander project in Oleafly. Kies een andere map.",
+    "not_linked": "Zoeken werkt alleen voor mappen die op hun eigen plek zijn geopend.",
+    "copy_destination_refused": "Kies een map buiten het project en buiten de gegevensmap van Oleafly.",
+    "copy_nothing_open": "Er zijn geen bestanden geopend, dus er valt niets op te slaan.",
+    "copy_too_large": "De geopende bestanden zijn te groot om als kopie op te slaan.",
+    "copy_failed": "Oleafly kon de kopie daar niet opslaan. Kies een map waarin je kunt schrijven.",
+    "folder_picker_failed": "Oleafly kon de mapkiezer niet openen. Probeer het opnieuw.",
+    "import_no_main": "Deze import bevat geen LaTeX-, Typst- of Markdown-document om te compileren.",
+    "settings_file_exists": "Deze map heeft al een project.json, dus Oleafly heeft die ongewijzigd gelaten.",
+    "settings_need_main": "Kies eerst een hoofddocument en sla daarna de projectinstellingen in deze map op.",
+    "settings_write_failed": "Oleafly kon de projectinstellingen niet in deze map opslaan."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",
-    "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit."
+    "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit.",
+    "latexmk_build_path": "latexmk kan de buildmap van Oleafly op deze computer niet gebruiken, omdat het pad tekens bevat die latexmk niet accepteert. Zet dit project om naar Tectonic om het te compileren.",
+    "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer."
   },
   "github": {
     "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Kon de repository's niet laden.",
     "create_repo_failed": "Kon de repository niet aanmaken ({{status}})."
   },
+  "git": {
+    "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
+    "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan."
+  },
   "approvals": {
     "full_access_declined": "Volledige toegang is niet ingeschakeld."
+  },
+  "trust": {
+    "git": "Vertrouw deze map om versiebeheer te gebruiken.",
+    "repository": "Vertrouw de repository {{name}} om hier versiebeheer te gebruiken.",
+    "terminal": "Open de terminal zelf om hem in deze map te gebruiken.",
+    "agents": "Vertrouw deze map om externe agents te gebruiken.",
+    "mcp": "Vertrouw deze map voordat MCP-clients hem kunnen gebruiken.",
+    "research_tasks": "Vertrouw deze map om onderzoekstaken uit te voeren.",
+    "run_command": "Vertrouw deze map om de assistent opdrachten te laten uitvoeren.",
+    "full_access": "Vertrouw deze map voordat je volledige toegang inschakelt.",
+    "system_tex": "Vertrouw deze map om met latexmk te compileren.",
+    "shell_escape": "Vertrouw deze map voordat je shell escape toestaat.",
+    "broad_folder": "Oleafly kan niet heel {{name}} vertrouwen. Kies een kleinere map.",
+    "declined": "De map is niet vertrouwd.",
+    "unavailable": "Oleafly kon niet controleren of deze map wordt vertrouwd."
+  },
+  "open_folder": {
+    "not_absolute": "Gebruik het volledige pad naar de map.",
+    "not_found": "Oleafly kan deze map niet vinden.",
+    "permission_denied": "Oleafly heeft geen toestemming om deze map te openen.",
+    "not_a_folder": "Kies een map, geen bestand.",
+    "unsupported_folder": "Oleafly kan dit soort map niet openen.",
+    "path_not_unicode": "Het pad van deze map bevat tekens die Oleafly niet kan lezen. Geef de map een andere naam en probeer het opnieuw.",
+    "too_broad": "{{name}} bevat te veel om als één project te openen. Kies een map daarbinnen.",
+    "protected": "Oleafly kan geen mappen binnen {{name}} openen.",
+    "app_data": "Deze map hoort bij de appgegevens van Oleafly. Kies een map daarbuiten.",
+    "contains_project": "Deze map bevat {{name}}, dat al als eigen project in Oleafly is geopend.",
+    "research_folder": "{{project}} kan via zijn gekoppelde mappen al bestanden in deze map bewerken. Ontkoppel de map daar eerst.",
+    "failed": "Oleafly kon deze map niet openen."
+  },
+  "research": {
+    "linked_project_folder": "Deze map is in Oleafly als eigen project geopend. Koppel de map in plaats daarvan als alleen-lezen."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Deze checkpointgeschiedenis komt uit een project in je Oleafly-bibliotheek en kan daarom niet worden gebruikt met een map die op zijn eigen locatie is geopend.",
+    "folder_history_for_library": "Deze checkpointgeschiedenis komt uit een map die op zijn eigen locatie is geopend en kan daarom niet worden gebruikt met een project in je Oleafly-bibliotheek.",
+    "restore_path_blocked": "Oleafly kan {{path}} niet terugzetten, omdat er een link of iets anders dat geen bestand is in de weg staat. Verplaats het en probeer het opnieuw."
   }
 }

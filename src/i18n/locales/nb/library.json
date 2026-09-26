@@ -371,7 +371,9 @@
     "nameRequired": "Skriv inn et navn på repositoriet.",
     "published": "Publisert til {{repository}}.",
     "linked": "Koblet til og pushet til {{remote}}.",
-    "pushNeedsPull": "Koblet til {{remote}}, men push krever en pull først: {{detail}}"
+    "pushNeedsPull": "Koblet til {{remote}}, men push krever en pull først: {{detail}}",
+    "replaceRemotePrompt": "Dette prosjektet er koblet til {{remote}}. Vil du erstatte koblingen?",
+    "replaceRemote": "Erstatt kobling"
   },
   "deadlines": {
     "title": "Konferansefrister",

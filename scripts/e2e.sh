@@ -366,6 +366,7 @@ start_app() {
   if [[ -n "$APP_BINARY" ]]; then
     OLEAFLY_DATA_DIR="$DATA_DIR" \
       OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
+      OLEAFLY_E2E_LAUNCH_LOCALSTORAGE='{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1"}' \
       "$APP_BINARY" >>"$LOG" 2>&1 &
   else
     OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json >>"$LOG" 2>&1 &

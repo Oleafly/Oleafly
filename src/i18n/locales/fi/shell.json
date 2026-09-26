@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Käännä uudelleen"
     },
+    "saveSettingsToFolder": {
+      "keywords": "tallenna projektin asetukset kansio project.json jaa päädokumentti",
+      "label": "Tallenna projektin asetukset tähän kansioon",
+      "saved": "Projektin asetukset tallennettiin tämän kansion project.json-tiedostoon."
+    },
     "section": {
       "label": "Luku"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "% !TEX root tiedostossa {{file}} osoittaa puuttuvaan tiedostoon ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "juuri: {{name}}",
+    "texRootNotTex": "% !TEX root tiedostossa {{file}} osoittaa kohteeseen {{target}}, joka ei ole LaTeX-tiedosto",
     "texRootOverride": "juuri: {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "päätetelakka"
     },
     "title": "Jokin meni vikaan"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Tämä kansio ei ole käytettävissä.",
+      "body": "Liitä asema uudelleen tai etsi kansio. Avoimet tiedostosi pysyvät täällä, eikä Oleafly tallenna tai käännä ennen kuin kansio on taas saatavilla."
+    },
+    "replaced": {
+      "title": "Tämä kansio on korvattu.",
+      "body": "Sen paikalla on nyt toinen kansio. Oleafly lopetti tallentamisen, jotta mitään siellä ei korvattaisi."
+    },
+    "permissionDenied": {
+      "title": "Oleafly ei voi avata tätä kansiota.",
+      "body": "Tarkista kansion käyttöoikeudet ja yritä uudelleen. Avoimet tiedostosi pysyvät täällä."
+    },
+    "locate": "Paikanna…",
+    "useThisFolder": "Käytä tätä kansiota",
+    "saveCopy": "Tallenna kopio…",
+    "tryAgain": "Yritä uudelleen",
+    "savedCopy": "Avoimet tiedostosi tallennettiin kansioon {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Lasketaan tallennustilan käyttöä…",
         "desktopOnly": "Tallennustilan tiedot ovat saatavilla työpöytäsovelluksessa.",
         "error": "Tallennustilan tietoja ei voitu laskea.",
+        "linkedFolders_one": "{{size}} käännöstulosteita ja asetuksia {{count}} avatulle kansiolle",
+        "linkedFolders_other": "{{size}} käännöstulosteita ja asetuksia {{count}} avatulle kansiolle",
         "refresh": "Päivitä tallennustilan käyttö",
         "stats": {
           "appData": "Sovellustiedot",

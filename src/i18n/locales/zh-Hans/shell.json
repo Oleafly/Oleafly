@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新编译"
     },
+    "saveSettingsToFolder": {
+      "keywords": "保存 项目设置 文件夹 project.json 共享 主文档",
+      "label": "将项目设置保存到此文件夹",
+      "saved": "项目设置已保存到此文件夹的 project.json 中。"
+    },
     "section": {
       "label": "章节"
     },
@@ -259,6 +264,7 @@
     "texRootBroken": "{{file}} 中的 % !TEX root 指向一个不存在的文件（{{target}}）。",
     "texRootLabel": "TEX 根文件",
     "texRootName": "根文件：{{name}}",
+    "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 文件。",
     "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。"
   },
   "datePicker": {
@@ -358,6 +364,25 @@
       "terminalDock": "终端停靠区"
     },
     "title": "出错了"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此文件夹不可用。",
+      "body": "请重新连接驱动器或找到该文件夹。打开的文件会保留在这里，在文件夹恢复之前，Oleafly 不会保存或编译。"
+    },
+    "replaced": {
+      "title": "此文件夹已被替换。",
+      "body": "原位置现在是另一个文件夹。Oleafly 已停止保存，以免覆盖其中的内容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 无法打开此文件夹。",
+      "body": "请检查文件夹的权限，然后重试。打开的文件会保留在这里。"
+    },
+    "locate": "定位…",
+    "useThisFolder": "使用此文件夹",
+    "saveCopy": "保存副本…",
+    "tryAgain": "重试",
+    "savedCopy": "已将打开的文件保存到 {{folder}}。"
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
@@ -531,6 +556,7 @@
         "calculating": "正在计算存储用量…",
         "desktopOnly": "存储详情仅可在桌面应用中查看。",
         "error": "无法计算存储详情。",
+        "linkedFolders_other": "{{count}} 个已打开文件夹的构建输出和设置共占用 {{size}}。",
         "refresh": "刷新存储用量",
         "stats": {
           "appData": "应用数据",

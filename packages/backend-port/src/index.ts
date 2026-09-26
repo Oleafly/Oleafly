@@ -107,6 +107,7 @@ export type CheckpointPublicationOutcome =
     | { status: "unchanged" }
     | { status: "failed" }
     | { status: "published"; snapshot_root: string; created: boolean }
+    | { status: "paused"; files: number; bytes: number }
 
     | {
         status: "published_durability_uncertain";
@@ -284,11 +285,27 @@ export interface CheckpointSummary {
     logical_bytes: number;
     label: string | null;
 }
+export interface CheckpointCaptureNotice {
+    readonly paused: {
+        files: number;
+        bytes: number;
+        file_limit: number;
+        byte_limit: number;
+    } | null;
+    readonly skipped: {
+        links: number;
+        unsupported_names: number;
+        large: number;
+        cloud: number;
+        other: number;
+    };
+}
 export interface CheckpointStoreStats {
     checkpoint_count: number;
     stored_pack_bytes: number;
     logical_bytes: number;
     reclaimable_bytes: number;
+    capture?: CheckpointCaptureNotice;
 }
 export interface CheckpointIntegrity {
     checked_checkpoints: number;
@@ -301,6 +318,7 @@ export interface CheckpointFileSummary {
     bytes: number;
     content_hash: string;
     stored: boolean;
+    folder_settings?: boolean;
 }
 export interface CheckpointStoreTableCounts {
     checkpoints: number;
@@ -336,6 +354,16 @@ export interface TexStatus {
     missing_packages: string[];
     can_install_missing: boolean;
 }
+export type ProjectAvailability = "unknown" | "ok" | "missing" | "offline" | "replaced" | "permission_denied";
+export type ProjectLocationInfo =
+    | { kind: "library" }
+    | { kind: "linked"; display_path: string; availability: ProjectAvailability };
+export type ManifestHome = "library" | "folder" | "device" | "device_foreign";
+export type MainDecision = "auto" | "ask" | "no_main";
+export interface ProjectAvailabilityReport {
+    project_id: string;
+    availability: ProjectAvailability;
+}
 export interface ProjectInfo {
     id: string;
     name: string;
@@ -354,6 +382,7 @@ export interface ProjectInfo {
     }[];
     forked_from: string | null;
     recovery_pending: boolean;
+    location?: ProjectLocationInfo;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -372,6 +401,8 @@ export interface LibraryStorageSummary {
     image_count: number;
     pdf_count: number;
     unreadable_entries: number;
+    linked_folders_bytes: number;
+    linked_folder_count: number;
 }
 export interface RecycledProjectInfo {
     id: string;
@@ -771,6 +802,7 @@ export interface BackendPort {
   focusCurrentWindow: () => Promise<void>;
   getProjectEngine: (projectId: string) => Promise<DocumentEngineDescriptor>;
   readCompiledPdf: (projectId: string) => Promise<ArrayBuffer>;
+  readBuildArtifact: (projectId: string, name: string) => Promise<string | null>;
   validateCompileFingerprint: (
     projectId: string,
     mainDoc: string,
@@ -832,7 +864,10 @@ export interface BackendPort {
   renameProjectCmd: (projectId: string, name: string) => Promise<ProjectMeta>;
   openDevtools: () => Promise<void>;
   getProject: (projectId: string) => Promise<ProjectMeta>;
+  projectManifestHome: (projectId: string) => Promise<ManifestHome>;
+  saveProjectSettingsToFolder: (projectId: string) => Promise<ProjectMeta>;
   listProjects: () => Promise<ProjectInfo[]>;
+  probeProjectAvailability: (projectIds: string[]) => Promise<ProjectAvailabilityReport[]>;
   createProject: (name: string) => Promise<string>;
   createProjectFromPdfConversion: (name: string, tex: string, figures: {
     name: string;
@@ -877,10 +912,12 @@ export interface BackendPort {
   gitIsInitialized: (projectId: string) => Promise<boolean>;
   gitInitialize: (projectId: string) => Promise<string>;
   gitPreparePublish: (projectId: string, message: string) => Promise<boolean>;
+  gitPublishPreflight: (projectId: string) => Promise<void>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   exportPdf: (projectId: string, dest: string) => Promise<void>;
   revealInDir: (path: string) => Promise<void>;
+  revealProject: (projectId: string, path?: string | null) => Promise<void>;
   exportDocument: (projectId: string, mainDoc: string, format: string, dest: string) => Promise<void>;
   hasPandoc: () => Promise<boolean>;
   downloadPandoc: () => Promise<string>;
@@ -978,7 +1015,7 @@ export interface BackendPort {
   ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
-  gitSetRemote: (projectId: string, url: string) => Promise<void>;
+  gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
   gitRemoteCredentialsNeedCleanup: (projectId: string) => Promise<boolean>;

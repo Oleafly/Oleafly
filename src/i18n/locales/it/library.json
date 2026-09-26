@@ -378,7 +378,9 @@
     "nameRequired": "Inserisci il nome di un repository.",
     "published": "Pubblicato su {{repository}}.",
     "linked": "Collegato a {{remote}} e push eseguito.",
-    "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}"
+    "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}",
+    "replaceRemotePrompt": "Questo progetto è collegato a {{remote}}. Sostituire il collegamento?",
+    "replaceRemote": "Sostituisci collegamento"
   },
   "deadlines": {
     "title": "Scadenze delle conferenze",

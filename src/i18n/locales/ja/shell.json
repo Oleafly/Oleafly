@@ -168,6 +168,11 @@
     "recompile": {
       "label": "再コンパイル"
     },
+    "saveSettingsToFolder": {
+      "keywords": "プロジェクト 設定 保存 フォルダ project.json 共有 メイン文書",
+      "label": "プロジェクト設定をこのフォルダに保存",
+      "saved": "プロジェクト設定をこのフォルダの project.json に保存しました。"
+    },
     "section": {
       "label": "節"
     },
@@ -259,6 +264,7 @@
     "texRootBroken": "{{file}} の % !TEX root が存在しないファイル（{{target}}）を指しています",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}} の % !TEX root が、LaTeX ファイルではない {{target}} を指しています",
     "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）"
   },
   "datePicker": {
@@ -358,6 +364,25 @@
       "terminalDock": "ターミナルドック"
     },
     "title": "問題が発生しました"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "このフォルダは使用できません。",
+      "body": "ドライブを接続し直すか、フォルダを探してください。開いているファイルはここに残ります。フォルダが戻るまで Oleafly は保存もコンパイルも行いません。"
+    },
+    "replaced": {
+      "title": "このフォルダは置き換えられました。",
+      "body": "元の場所に別のフォルダがあります。そこにあるものを上書きしないよう、Oleafly は保存を停止しました。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly はこのフォルダを開けません。",
+      "body": "フォルダのアクセス権を確認して、もう一度お試しください。開いているファイルはここに残ります。"
+    },
+    "locate": "場所を指定…",
+    "useThisFolder": "このフォルダを使用",
+    "saveCopy": "コピーを保存…",
+    "tryAgain": "再試行",
+    "savedCopy": "開いているファイルを {{folder}} に保存しました。"
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -531,6 +556,7 @@
         "calculating": "使用容量を計算中…",
         "desktopOnly": "保存領域の詳細はデスクトップアプリで確認できます。",
         "error": "保存領域の詳細を計算できませんでした。",
+        "linkedFolders_other": "開いたフォルダ {{count}} 件のビルド出力と設定で {{size}}",
         "refresh": "使用容量を更新",
         "stats": {
           "appData": "アプリのデータ",

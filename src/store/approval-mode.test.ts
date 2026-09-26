@@ -170,4 +170,31 @@ describe("approval mode store", () => {
     await expect(ready).resolves.toBe("ask-for-approval");
     expect(mocks.getMode).toHaveBeenCalledTimes(2);
   });
+
+  it("forgets a project's cached mode so the next read comes from disk", async () => {
+    mocks.getMode.mockResolvedValueOnce("full-access").mockResolvedValueOnce("approve-for-me");
+    await useApprovalModeStore.getState().load("project-forget");
+    useApprovalModeStore.getState().forget("project-forget");
+    expect(useApprovalModeStore.getState().modes).toEqual({});
+    expect(useApprovalModeStore.getState().persisted).toEqual({});
+    await expect(useApprovalModeStore.getState().load("project-forget")).resolves.toBe(
+      "approve-for-me",
+    );
+    expect(mocks.getMode).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a load that finishes after the project was forgotten", async () => {
+    let resolve: (mode: ApprovalMode) => void = () => {};
+    mocks.getMode.mockReturnValueOnce(
+      new Promise<ApprovalMode>((done) => {
+        resolve = done;
+      }),
+    );
+    const pending = useApprovalModeStore.getState().load("project-late");
+    useApprovalModeStore.getState().forget("project-late");
+    resolve("full-access");
+    await pending;
+    expect(useApprovalModeStore.getState().loaded).toEqual({});
+    expect(useApprovalModeStore.getState().modes).toEqual({});
+  });
 });

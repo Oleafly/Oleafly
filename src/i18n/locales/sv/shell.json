@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompilera om"
     },
+    "saveSettingsToFolder": {
+      "keywords": "spara projektinställningar mapp project.json dela huvuddokument",
+      "label": "Spara projektinställningarna i den här mappen",
+      "saved": "Projektinställningarna har sparats i project.json i den här mappen."
+    },
     "section": {
       "label": "Avsnitt"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "% !TEX root i {{file}} pekar på en fil som saknas ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "rot: {{name}}",
+    "texRootNotTex": "% !TEX root i {{file}} pekar på {{target}}, som inte är en LaTeX-fil",
     "texRootOverride": "rot: {{path}} (angiven av % !TEX root i {{file}})"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "terminaldockan"
     },
     "title": "Något gick fel"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Den här mappen är inte tillgänglig.",
+      "body": "Anslut enheten igen eller hitta mappen. Dina öppna filer ligger kvar här, och Oleafly sparar eller kompilerar inte förrän mappen är tillbaka."
+    },
+    "replaced": {
+      "title": "Den här mappen har ersatts.",
+      "body": "En annan mapp ligger nu på dess plats. Oleafly slutade spara så att inget där skrivs över."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan inte öppna den här mappen.",
+      "body": "Kontrollera mappens behörigheter och försök igen. Dina öppna filer ligger kvar här."
+    },
+    "locate": "Hitta…",
+    "useThisFolder": "Använd den här mappen",
+    "saveCopy": "Spara en kopia…",
+    "tryAgain": "Försök igen",
+    "savedCopy": "Dina öppna filer sparades i {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Beräknar lagringsanvändning…",
         "desktopOnly": "Lagringsdetaljer finns i skrivbordsappen.",
         "error": "Lagringsdetaljerna kunde inte beräknas.",
+        "linkedFolders_one": "{{size}} byggutdata och inställningar för {{count}} öppnad mapp",
+        "linkedFolders_other": "{{size}} byggutdata och inställningar för {{count}} öppnade mappar",
         "refresh": "Uppdatera lagringsanvändningen",
         "stats": {
           "appData": "Appdata",

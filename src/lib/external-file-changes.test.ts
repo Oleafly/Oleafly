@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
@@ -79,6 +80,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import { useFilesStore } from "@/store/files";
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   applyExternalFileChange,
   flushOpenFilesToDisk,
@@ -236,6 +238,16 @@ describe("open files and programs outside the editor", () => {
   it("ignores a project that is not open", () => {
     refreshOpenFilesFromDisk("other");
     expect(mocks.readFileContent).not.toHaveBeenCalled();
+  });
+
+  it("reads nothing while the folder is unavailable", async () => {
+    useProjectAvailabilityStore.getState().reset("project");
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    refreshOpenFilesFromDisk("project");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    useProjectAvailabilityStore.getState().reset(null);
   });
 
   it("writes unsaved edits to disk before another program runs", async () => {

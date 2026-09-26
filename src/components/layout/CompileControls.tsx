@@ -48,7 +48,7 @@ function TexRootIndicator() {
   const { t } = useTranslation(["shell"]);
   // Flattened so the shallow comparison only re-renders when the effective
   // root, its provenance, or the broken-target details really change.
-  const [mainDoc, overriddenBy, brokenIn, brokenTarget] = useFilesStore(
+  const [mainDoc, overriddenBy, brokenIn, brokenTarget, brokenReason] = useFilesStore(
     useShallow(() => {
       const effective = resolveEffectiveMainDoc();
       return [
@@ -56,17 +56,20 @@ function TexRootIndicator() {
         effective.overriddenBy,
         effective.brokenRoot?.declaredIn ?? null,
         effective.brokenRoot?.target ?? null,
+        effective.brokenRoot?.reason ?? null,
       ] as const;
     }),
   );
 
   if (brokenIn !== null) {
+    const details = { file: brokenIn, target: brokenTarget };
     return (
       <Tooltip
-        label={t(($) => $.shell.compile.texRootBroken, {
-          file: brokenIn,
-          target: brokenTarget,
-        })}
+        label={
+          brokenReason === "not_tex"
+            ? t(($) => $.shell.compile.texRootNotTex, details)
+            : t(($) => $.shell.compile.texRootBroken, details)
+        }
       >
         <span
           data-testid="tex-root-broken"

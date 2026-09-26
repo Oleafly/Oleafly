@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Choose a spreadsheet to import",
       "filter": "Spreadsheets"
+    },
+    "trustFolder": {
+      "title": "Trust this folder?",
+      "message": "Oleafly will turn on Git, the terminal, agents and LaTeX tools for {{name}}. Only trust folders whose contents you know.",
+      "messageParent": "Oleafly will trust {{name}} and every folder inside it, including ones you open later.",
+      "messageRepository": "Oleafly will run Git in {{name}} with the repository's own settings and hooks.",
+      "confirm": "Trust"
+    },
+    "restrictedWrite": {
+      "title": "Allow this change?",
+      "message": "The assistant wants to change {{path}}. Files like this can run programs, and this folder isn't trusted yet.",
+      "confirm": "Allow"
+    },
+    "restrictedNetwork": {
+      "title": "Allow this request?",
+      "message": "The assistant wants to use {{tool}}, which sends text to an online service. This folder isn't trusted yet.",
+      "confirm": "Allow"
+    },
+    "locateFolder": {
+      "title": "Find the project folder"
+    },
+    "rebindFolder": {
+      "title": "Use a different folder?",
+      "message": "{{name}} isn't the folder Oleafly had for this project. If you use it, Oleafly saves your unsaved changes there and closes this project's terminals and agent sessions. Anything running in them ends. Oleafly also stops trusting the folder, turns off Full Access, resets the assistant's approvals and unlinks research folders. Chats and history are kept.",
+      "confirm": "Use this folder"
+    },
+    "saveCopy": {
+      "title": "Choose where to save a copy",
+      "folderSuffix": "copy"
     }
   },
   "errors": {

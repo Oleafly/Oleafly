@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "專案名稱不可為空白。",
     "name_conflict": "已有名為 {{name}} 的專案。",
-    "folder_unavailable": "無法保留新的專案資料夾。"
+    "folder_unavailable": "無法保留新的專案資料夾。",
+    "not_found": "此專案已不在你的專案庫中。",
+    "not_recyclable": "無法將此專案移至資源回收筒。",
+    "linked_missing": "Oleafly 找不到資料夾 {{folder}}。它可能已被移動或刪除，或位於未連接的磁碟機上。",
+    "linked_replaced": "資料夾 {{folder}} 已不是 Oleafly 先前開啟的那個資料夾。請重新開啟以繼續。",
+    "linked_permission_denied": "Oleafly 沒有開啟資料夾 {{folder}} 的權限。",
+    "linked_invalid": "Oleafly 中此資料夾的連結已損毀。請將它從 Oleafly 移除，然後重新開啟該資料夾。",
+    "linked_not_recyclable": "此資料夾是在原位置開啟的，無法移至資源回收筒。你的檔案沒有任何變更。",
+    "linked_not_duplicable": "此資料夾是在原位置開啟的，Oleafly 無法複製它。",
+    "folder_not_a_folder": "Oleafly 無法使用該位置。請選擇一個資料夾。",
+    "folder_in_app_data": "Oleafly 在該資料夾中儲存自己的資料。請選擇其他資料夾。",
+    "folder_too_broad": "{{name}} 範圍太大，無法作為一個專案開啟。請選擇只包含此專案的資料夾。",
+    "folder_already_linked": "該資料夾與 Oleafly 中的另一個專案重疊。請選擇其他資料夾。",
+    "not_linked": "只有就地開啟的資料夾才能重新定位。",
+    "copy_destination_refused": "請選擇專案與 Oleafly 資料夾以外的資料夾。",
+    "copy_nothing_open": "沒有開啟的檔案，因此沒有可儲存的內容。",
+    "copy_too_large": "開啟的檔案太大，無法另存為副本。",
+    "copy_failed": "Oleafly 無法將副本儲存到該位置。請選擇一個你有寫入權限的資料夾。",
+    "folder_picker_failed": "Oleafly 無法開啟資料夾選擇器。請再試一次。",
+    "import_no_main": "匯入的內容中沒有可編譯的 LaTeX、Typst 或 Markdown 文件。",
+    "settings_file_exists": "此資料夾中已有 project.json，Oleafly 未對其做任何變更。",
+    "settings_need_main": "請先選擇主要文件，再將專案設定儲存到此資料夾。",
+    "settings_write_failed": "Oleafly 無法將專案設定儲存到此資料夾。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",
-    "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。"
+    "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。",
+    "latexmk_build_path": "Oleafly 在這台電腦上的建置資料夾路徑含有 latexmk 不接受的字元，因此 latexmk 無法使用它。請將此專案切換為 Tectonic 來編譯。",
+    "latexmk_network_folder": "latexmk 無法編譯網路共用上的資料夾。請將此專案切換為 Tectonic，或將資料夾複製到這台電腦。"
   },
   "github": {
     "sign_in_expired": "登入碼已過期。請再試一次。",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "無法載入儲存庫。",
     "create_repo_failed": "無法建立儲存庫（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "此專案已連結到 {{remote}}。",
+    "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。"
+  },
   "approvals": {
     "full_access_declined": "未啟用完整存取權。"
+  },
+  "trust": {
+    "git": "信任這個資料夾後才能使用原始檔控制。",
+    "repository": "信任儲存庫 {{name}} 後才能在這裡使用原始檔控制。",
+    "terminal": "請自行開啟終端機，才能在這個資料夾中使用它。",
+    "agents": "信任這個資料夾後才能使用外部代理程式。",
+    "mcp": "信任這個資料夾後，MCP 用戶端才能使用它。",
+    "research_tasks": "信任這個資料夾後才能執行研究任務。",
+    "run_command": "信任這個資料夾後，助理才能執行指令。",
+    "full_access": "開啟完整存取權前，請先信任這個資料夾。",
+    "system_tex": "信任這個資料夾後才能使用 latexmk 編譯。",
+    "shell_escape": "允許 shell escape 前，請先信任這個資料夾。",
+    "broad_folder": "Oleafly 無法信任整個 {{name}}。請選擇較小的資料夾。",
+    "declined": "未信任該資料夾。",
+    "unavailable": "Oleafly 無法檢查這個資料夾是否受信任。"
+  },
+  "open_folder": {
+    "not_absolute": "請使用資料夾的完整路徑。",
+    "not_found": "Oleafly 找不到此資料夾。",
+    "permission_denied": "Oleafly 沒有開啟此資料夾的權限。",
+    "not_a_folder": "請選擇資料夾，而不是檔案。",
+    "unsupported_folder": "Oleafly 無法開啟這類資料夾。",
+    "path_not_unicode": "此資料夾的路徑包含 Oleafly 無法讀取的字元。請重新命名資料夾後再試一次。",
+    "too_broad": "{{name}} 包含的內容太多，無法作為單一專案開啟。請選擇其中的資料夾。",
+    "protected": "Oleafly 無法開啟 {{name}} 中的資料夾。",
+    "app_data": "此資料夾屬於 Oleafly 的應用程式資料。請選擇其外部的資料夾。",
+    "contains_project": "此資料夾包含 {{name}}，它已在 Oleafly 中作為獨立專案開啟。",
+    "research_folder": "{{project}} 已可透過其已連結資料夾編輯此資料夾中的檔案。請先在該處取消連結。",
+    "failed": "Oleafly 無法開啟此資料夾。"
+  },
+  "research": {
+    "linked_project_folder": "此資料夾已在 Oleafly 中作為獨立專案開啟。請改為以唯讀方式連結。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "此檢查點記錄來自你 Oleafly 專案庫中的專案，因此無法用於在原位置開啟的資料夾。",
+    "folder_history_for_library": "此檢查點記錄來自在原位置開啟的資料夾，因此無法用於你 Oleafly 專案庫中的專案。",
+    "restore_path_blocked": "{{path}} 所在位置有連結或其他非檔案的項目，Oleafly 無法還原。請先移走該項目再重試。"
   }
 }

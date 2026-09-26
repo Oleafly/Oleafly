@@ -130,6 +130,10 @@ export function applyCheckpointPublicationEvent(payload: unknown): void {
     if (isActiveProject) settings.bumpCheckpointsRevision();
     return;
   }
+  if (status === "paused") {
+    if (isActiveProject) settings.bumpCheckpointsRevision();
+    return;
+  }
   if (payload.outcome.status !== "skipped" || !isActiveProject) return;
   void notifySkipped(payload.project_id, payload.outcome);
 }

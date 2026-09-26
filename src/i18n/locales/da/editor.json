@@ -426,6 +426,11 @@
       "sourceSize": "Kildernes størrelse",
       "reclaimable": "Kan frigøres"
     },
+    "capture": {
+      "paused": "Kontrolpunkter er sat på pause, fordi mappen er for stor. Et kontrolpunkt kan højst rumme {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i denne mappe er ikke med i kontrolpunkterne. Oleafly udelader links, meget store filer, filer, der kun ligger i skyen, og navne, der ikke virker på alle systemer.",
+      "skipped_other": "{{formattedCount}} filer i denne mappe er ikke med i kontrolpunkterne. Oleafly udelader links, meget store filer, filer, der kun ligger i skyen, og navne, der ikke virker på alle systemer."
+    },
     "catalog": {
       "formatVersion": "Formatversion",
       "lineage": "Slægtskab",
@@ -458,7 +463,8 @@
       "showFor": "Vis filer for {{version}}",
       "hideFor": "Skjul filer for {{version}}",
       "show": "Vis filer",
-      "hide": "Skjul filer"
+      "hide": "Skjul filer",
+      "folderSettings": "Oleafly-indstillinger for denne mappe"
     },
     "entry": {
       "labelInput": "Navn på kontrolpunktet",

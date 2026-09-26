@@ -58,6 +58,7 @@ import { FileIcon } from "@/components/files/fileIcon";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
+import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { SidebarSection } from "@/components/layout/SidebarSection";
@@ -66,6 +67,7 @@ import {
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
 } from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
+import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 
@@ -181,7 +183,12 @@ export function SourceControl() {
     [],
   );
   const refreshOnce = useCallback(async () => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    if (
+      !projectId ||
+      useFilesStore.getState().projectId !== projectId ||
+      !projectFolderAvailable(projectId)
+    )
+      return;
     const request = ++refreshRequest.current;
     try {
       const [next, needsCredentialCleanup] = await Promise.all([
@@ -197,11 +204,12 @@ export function SourceControl() {
       setCredentialCleanupRequired(next.initialized && needsCredentialCleanup);
       void useGitStatusStore.getState().refresh(projectId);
     } catch (error) {
+      if (reportLocationError(projectId, error)) return;
       if (
         request === refreshRequest.current &&
         useFilesStore.getState().projectId === projectId
       )
-        setNotice({ ok: false, text: String(error) });
+        setNotice({ ok: false, text: describeError(error) });
     }
   }, [projectId]);
   const refresh = useCallback(async () => {
@@ -265,7 +273,7 @@ export function SourceControl() {
         }
         return result;
       } catch (error) {
-        if (current(action)) setNotice({ ok: false, text: String(error) });
+        if (current(action)) setNotice({ ok: false, text: describeError(error) });
         return undefined;
       } finally {
         if (activeMutation.current === action) {
@@ -343,7 +351,7 @@ export function SourceControl() {
       await openFile(path);
       clearActiveDiff();
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const openChange = (change: GitFileChange) =>
@@ -476,7 +484,7 @@ export function SourceControl() {
         text: t(($) => $.shell.sourceControl.linkCopied),
       });
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const unlinkRemote = () =>
@@ -529,7 +537,7 @@ export function SourceControl() {
         1500,
       );
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const restoreGraphCommit = async () => {
@@ -771,6 +779,17 @@ export function SourceControl() {
           >
             {t(($) => $.shell.sourceControl.publish)}
           </Button>
+          {notice ? (
+            <p
+              role={notice.ok ? undefined : "alert"}
+              className={cn(
+                "text-[11px]",
+                notice.ok ? "text-muted-foreground" : "text-destructive",
+              )}
+            >
+              {notice.text}
+            </p>
+          ) : null}
         </div>
         <PublishToGitHubDialog
           open={publishOpen}
@@ -1229,6 +1248,7 @@ export function SourceControl() {
         onClose={() => setPublishOpen(false)}
         projectId={projectId}
         projectName={projectName}
+        currentRemote={remote}
         onPublished={() => {
           void refresh();
         }}

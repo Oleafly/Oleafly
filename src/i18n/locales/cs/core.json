@@ -607,5 +607,9 @@
   "checkpoint": {
     "storageUnavailable": "Záchytný bod se nepodařilo uložit. Disk je plný nebo do složky záchytných bodů nelze zapisovat. Uvolněte místo nebo zkontrolujte oprávnění složky a pak znovu spusťte kompilaci.",
     "incompleteCapture": "Posledních několik záchytných bodů se nepodařilo uložit, protože některé soubory projektu nešlo přečíst. Zkontrolujte jejich oprávnění a pak znovu spusťte kompilaci."
+  },
+  "folderUnavailable": {
+    "compile": "Kompilace je pozastavena, dokud se složka projektu nevrátí.",
+    "saveReason": "složka projektu není dostupná"
   }
 }

@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   createProjectFromTemplate: mocks.createProjectFromTemplate,
   importOverleafProjectCmd: mocks.importOverleafProjectCmd,
@@ -1809,4 +1810,35 @@ it("removes stale clean buffers after an applied file cannot be reloaded", async
   expect(mocks.logError).toHaveBeenCalledWith("reload project after external change", expect.any(Error));
   expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
   expect(mocks.notifyError).not.toHaveBeenCalled();
+});
+
+describe("main document detection state", () => {
+  it("starts every opened project with automatic compiles allowed", async () => {
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    useFilesStore.setState({ mainDecision: "no_main" });
+    await useFilesStore.getState().openProject("project");
+    expect(useFilesStore.getState()).toMatchObject({ projectId: "project", mainDecision: "auto" });
+  });
+
+  it("forgets the detection state when the project closes", async () => {
+    useFilesStore.setState({ projectId: "project", mainDecision: "ask" });
+    await useFilesStore.getState().closeProject();
+    expect(useFilesStore.getState()).toMatchObject({ projectId: null, mainDecision: "auto" });
+  });
+
+  it("allows automatic compiles again once a main document is set", async () => {
+    useFilesStore.setState({ projectId: "project", engine: LATEX_ENGINE, engineLoaded: true, mainDecision: "ask" });
+    mocks.setMainDocCmd.mockResolvedValue({ main_doc: "paper/main.tex", engine: "xetex" });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    await useFilesStore.getState().setMainDoc("paper/main.tex");
+    expect(useFilesStore.getState()).toMatchObject({ mainDoc: "paper/main.tex", mainDecision: "auto" });
+  });
+
+  it("keeps the detection state when the main document cannot be set", async () => {
+    useFilesStore.setState({ projectId: "project", engine: LATEX_ENGINE, engineLoaded: true, mainDecision: "no_main" });
+    mocks.setMainDocCmd.mockRejectedValue(new Error("refused"));
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    await expect(useFilesStore.getState().setMainDoc("figure.png")).rejects.toThrow("refused");
+    expect(useFilesStore.getState().mainDecision).toBe("no_main");
+  });
 });

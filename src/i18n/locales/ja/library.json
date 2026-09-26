@@ -364,7 +364,9 @@
     "nameRequired": "リポジトリ名を入力してください。",
     "published": "{{repository}} に公開しました。",
     "linked": "{{remote}} にリンクしてプッシュしました。",
-    "pushNeedsPull": "{{remote}} にリンクしましたが、プッシュの前にプルが必要です: {{detail}}"
+    "pushNeedsPull": "{{remote}} にリンクしましたが、プッシュの前にプルが必要です: {{detail}}",
+    "replaceRemotePrompt": "このプロジェクトは {{remote}} にリンクされています。このリンクを置き換えますか？",
+    "replaceRemote": "リンクを置き換える"
   },
   "deadlines": {
     "title": "国際会議の締め切り",

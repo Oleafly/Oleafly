@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   copyFile: vi.fn(),
   renameFile: vi.fn(),
   renameProjectCmd: vi.fn(),
+  projectManifestHome: vi.fn(),
+  saveProjectSettingsToFolder: vi.fn(),
   projectTexStatus: vi.fn(),
   tlmgrInstall: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
@@ -62,6 +64,8 @@ vi.mock("@/lib/tauri", () => ({
   copyFile: mocks.copyFile,
   renameFile: mocks.renameFile,
   renameProjectCmd: mocks.renameProjectCmd,
+  projectManifestHome: mocks.projectManifestHome,
+  saveProjectSettingsToFolder: mocks.saveProjectSettingsToFolder,
   projectTexStatus: mocks.projectTexStatus,
   tlmgrInstall: mocks.tlmgrInstall,
   listProjects: vi.fn(async () => []),
@@ -95,10 +99,12 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import type { ProjectMeta, ProjectStateChanged } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
 import { engineHintDismissed } from "@/store/engine-picker";
 import {
+  collectOpenBuffersForCopy,
   engineErrorMessage,
   projectCompatibilityFindings,
   reportFileSaveFailure,
@@ -106,6 +112,7 @@ import {
   texDistributionGapNotice,
   useFilesStore,
 } from "./files";
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 
 const MAIN_ONLY = [{ path: "main.tex", is_dir: false }];
 const WITH_BIB = [
@@ -117,6 +124,7 @@ beforeEach(async () => {
   await useFilesStore.getState().closeProject();
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.projectMutationGeneration.mockResolvedValue(3);
+  mocks.projectManifestHome.mockResolvedValue("library");
   mocks.writeFileContent.mockResolvedValue({ path: "references.bib", generation: 9 });
   mocks.listFiles.mockResolvedValue(WITH_BIB);
   mocks.readFileContent.mockResolvedValue("");
@@ -1412,6 +1420,122 @@ describe("external write over a queued save", () => {
 });
 
 
+describe("a project folder that goes away", () => {
+  const AUTOSAVE_MS = 1_500;
+  const missing = `@oleafly/error:${JSON.stringify({
+    code: "project.linked_missing",
+    params: { folder: "thesis" },
+    detail: null,
+  })}`;
+
+  beforeEach(() => {
+    useFilesStore.setState({
+      projectId: "linked-a",
+      files: { "main.tex": { content: "start\n", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    useProjectAvailabilityStore.getState().reset("linked-a");
+  });
+
+  afterEach(async () => {
+    useFilesStore.setState({ files: {}, saveBlocked: null });
+    await useFilesStore.getState().closeProject();
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("stops autosaving without a toast, keeps the edit, and saves it once the folder is back", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(missing);
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() =>
+        expect(useProjectAvailabilityStore.getState().availability).toBe("missing"),
+      );
+      expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+
+      useFilesStore.getState().setContent("main.tex", "typed more\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 4);
+      expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
+      expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+        content: "typed more\n",
+        dirty: true,
+      });
+
+      mocks.writeFileContent.mockResolvedValue({ path: "main.tex", generation: 9 });
+      useProjectAvailabilityStore.getState().report("linked-a", "ok");
+      useFilesStore.getState().resumeAutosave("linked-a");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false));
+      expect(mocks.writeFileContent).toHaveBeenLastCalledWith(
+        "linked-a",
+        "main.tex",
+        "typed more\n",
+        expect.any(Number),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a save the user asked for quiet when the folder is gone", () => {
+    reportFileSaveFailure("editor save", "linked-a", "main.tex", missing, true);
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("blocks closing with unsaved edits without writing to the missing folder", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "typed\n", dirty: true } } });
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    await useFilesStore.getState().closeProject();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectId).toBe("linked-a");
+    expect(useFilesStore.getState().saveBlocked).toEqual({
+      action: "close",
+      targetProjectId: null,
+      failures: [{ path: "main.tex", reason: enCore.folderUnavailable.saveReason }],
+    });
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "typed\n",
+      dirty: true,
+    });
+  });
+
+  it("refreshes nothing while the folder is gone and reports a folder that vanishes during a refresh", async () => {
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    await useFilesStore.getState().refreshTree();
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+
+    useProjectAvailabilityStore.getState().report("linked-a", "ok");
+    mocks.listFiles.mockRejectedValueOnce(missing);
+    await expect(useFilesStore.getState().refreshTree()).resolves.toBeUndefined();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+  });
+
+  it("copies every open text buffer with its line endings and skips managed files", async () => {
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    useFilesStore.setState({ files: {} });
+    mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\nthree\n");
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "refs.bib": { content: "@misc{a}\n", dirty: false },
+        ".oleafly/build/main.log": { content: "log", dirty: false },
+      },
+    }));
+    expect(collectOpenBuffersForCopy("linked-a")).toEqual([
+      { path: "main.tex", content: "one\r\ntwo\r\nthree\r\n" },
+      { path: "refs.bib", content: "@misc{a}\n" },
+    ]);
+    expect(collectOpenBuffersForCopy("other")).toEqual([]);
+  });
+});
+
 describe("autosave failures", () => {
   const AUTOSAVE_MS = 1_500;
   let projectRun = 0;
@@ -1739,5 +1863,115 @@ describe("engine setting failures", () => {
       engineError: null,
     });
     expectNoToasts();
+  });
+});
+
+describe("project.json in an opened folder", () => {
+  it("follows where the open project keeps its settings", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockResolvedValue("device_foreign");
+    await useFilesStore.getState().openProject("linked-0123");
+    expect(mocks.projectManifestHome).toHaveBeenCalledWith("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("device_foreign");
+    useFilesStore.setState({ files: { "project.json": { content: "{}", dirty: true } } });
+    expect(collectOpenBuffersForCopy("linked-0123").map((file) => file.path)).toEqual([
+      "project.json",
+    ]);
+
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().refreshManifestHome();
+    expect(collectOpenBuffersForCopy("linked-0123")).toEqual([]);
+  });
+
+  it("keeps project.json read-only when the settings location cannot be read", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockRejectedValue(new Error("folder unavailable"));
+    await useFilesStore.getState().openProject("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("library");
+  });
+
+  it("follows project.json being created, deleted or imported at the folder root", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.createFile.mockResolvedValue({ path: "project.json", generation: 8 });
+    mocks.projectManifestHome.mockResolvedValue("device_foreign");
+    await useFilesStore.getState().createFile("project.json", false);
+    expect(useFilesStore.getState().manifestHome).toBe("device_foreign");
+
+    useFilesStore.setState({ files: {}, openTabs: [], activePath: null });
+    mocks.deleteFile.mockResolvedValue({ generation: 9 });
+    mocks.projectManifestHome.mockResolvedValue("device");
+    await useFilesStore.getState().deleteEntry("project.json");
+    expect(useFilesStore.getState().manifestHome).toBe("device");
+
+    mocks.importPathsIntoProject.mockResolvedValue({ paths: ["project.json"], generation: 10 });
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().importPaths("", ["/elsewhere/project.json"]);
+    expect(useFilesStore.getState().manifestHome).toBe("folder");
+
+    mocks.projectManifestHome.mockClear();
+    mocks.createFile.mockResolvedValue({ path: "notes/project.json", generation: 11 });
+    await useFilesStore.getState().createFile("notes/project.json", false);
+    expect(mocks.projectManifestHome).not.toHaveBeenCalled();
+  });
+
+  it("takes the settings a hand-written project.json declares and where they now live", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "linked-0123",
+      revision: Date.now() + 100,
+      reason: "project-settings-file-changed",
+      filesChanged: false,
+      mutationGeneration: 12,
+      project: { ...META, name: "Thesis", main_doc: "paper.tex" },
+      engine: LATEX_ENGINE,
+    } as ProjectStateChanged);
+    await settle();
+    expect(useFilesStore.getState()).toMatchObject({
+      projectName: "Thesis",
+      mainDoc: "paper.tex",
+      engine: LATEX_ENGINE,
+      manifestHome: "folder",
+    });
+  });
+
+  it("saves project settings to the folder once and reports it once", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.saveProjectSettingsToFolder.mockResolvedValue(META);
+    mocks.projectManifestHome.mockResolvedValue("folder");
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.saveProjectSettingsToFolder).toHaveBeenCalledWith("linked-0123");
+    expect(useFilesStore.getState().manifestHome).toBe("folder");
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a refused save once and claims nothing", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(new Error("exists"));
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenCalledTimes(1);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed save in the app's language when the backend gives no reason code", async () => {
+    useFilesStore.setState({ projectId: "linked-0123", manifestHome: "device" });
+    const failure = "failed to read project.json: Permission denied (os error 13)";
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(failure);
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      "save project settings to folder",
+      failure,
+      enErrors.project.settings_write_failed,
+    );
+
+    const refused = `@oleafly/error:${JSON.stringify({ code: "project.settings_file_exists", params: {} })}`;
+    mocks.saveProjectSettingsToFolder.mockRejectedValue(refused);
+    await useFilesStore.getState().saveSettingsToFolder();
+    expect(mocks.notifyError).toHaveBeenLastCalledWith(
+      "save project settings to folder",
+      refused,
+      undefined,
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });

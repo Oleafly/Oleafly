@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
     projectId: "project" as string | null,
     activePath: "main.tex" as string | null,
     mainDoc: "main.tex",
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     engine: null as unknown,
     engineLoaded: true,
     engineError: null as string | null,
@@ -126,8 +127,11 @@ vi.mock("@/lib/cross-window", () => ({
 }));
 
 import { importCompatFinding } from "@oleafly/latex";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   acceptCompileOffer,
+  clearFolderPause,
   installerNotices,
   isCompileCheckpointCurrent,
   saveActiveForCompile,
@@ -210,6 +214,7 @@ beforeEach(() => {
   mocks.files.projectId = "project";
   mocks.files.activePath = "main.tex";
   mocks.files.mainDoc = "main.tex";
+  mocks.files.mainDecision = "auto";
   mocks.files.engine = LATEX_ENGINE;
   mocks.files.engineLoaded = true;
   mocks.files.engineError = null;
@@ -976,6 +981,33 @@ describe("compile options", () => {
     );
   });
 
+  it("sends the active file's % !TEX root target to the compiler", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    mocks.files.activePath = "chapters/ch1.tex";
+    mocks.files.tree = [
+      { path: "chapters/ch1.tex", is_dir: false },
+      { path: "main.tex", is_dir: false },
+      { path: "thesis.tex", is_dir: false },
+    ];
+    mocks.files.files = {
+      ...mocks.files.files,
+      "chapters/ch1.tex": {
+        content: "% !TEX root = ../thesis.tex\n\\chapter{One}\n",
+        dirty: false,
+      },
+    };
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).toHaveBeenCalledWith(
+      "project",
+      "thesis.tex",
+      false,
+      false,
+      false,
+    );
+  });
+
   it("refuses to compile a main document the syntax check rejects", async () => {
     mocks.readFileContent.mockResolvedValue(
       "\\begin{document}\nunclosed\n",
@@ -1517,5 +1549,183 @@ describe("bundled-engine compile failures", () => {
         ),
       ).toBe(true),
     );
+  });
+});
+
+describe("a project folder that is not available", () => {
+  const missing = `@oleafly/error:${JSON.stringify({
+    code: "project.linked_missing",
+    params: { folder: "thesis" },
+    detail: null,
+  })}`;
+
+  beforeEach(() => {
+    useProjectAvailabilityStore.getState().reset("project");
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+  });
+
+  afterEach(() => {
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("pauses compiling without calling the compiler or raising a toast", async () => {
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("clears the paused notice once the folder is back and leaves other states alone", async () => {
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    await useCompileStore.getState().recompile();
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", failureReason: null });
+
+    useCompileStore.setState({ status: "unavailable", failureReason: "Pandoc is missing." });
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: "Pandoc is missing.",
+    });
+  });
+
+  it("pauses instead of failing when the folder goes away during a compile, and clears once it is back", async () => {
+    mocks.compileProject.mockRejectedValue(missing);
+    await useCompileStore.getState().recompile();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(useCompileStore.getState().log).not.toContain("@oleafly/error");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+
+    useProjectAvailabilityStore.getState().report("project", "ok");
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", failureReason: null });
+  });
+
+  it("still reports other compiler failures as errors with readable text", async () => {
+    mocks.compileProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`,
+    );
+    await useCompileStore.getState().recompile();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("ok");
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.failureReason ?? "").not.toContain("@oleafly/error");
+  });
+});
+
+describe("automatic compiles and main document detection", () => {
+  const compileResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  beforeEach(() => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+  });
+
+  it.each(["ask", "no_main"] as const)(
+    "skips an automatic compile while detection says %s, without a toast",
+    async (decision) => {
+      mocks.files.mainDecision = decision;
+      await useCompileStore.getState().recompile({ origin: "automatic" });
+      expect(mocks.compileProject).not.toHaveBeenCalled();
+      expect(mocks.saveActive).not.toHaveBeenCalled();
+      expect(useCompileStore.getState()).toMatchObject({
+        status: "idle",
+        failureReason: null,
+        lastAttemptIdentity: null,
+      });
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(mocks.errorUnique).not.toHaveBeenCalled();
+      expect(mocks.infoUnique).not.toHaveBeenCalled();
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still compiles on request, and automatically once a main is decided", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "ask";
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    mocks.files.mainDecision = "auto";
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.compileProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("compiles an agent's request while the main is undecided, without a toast", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "ask";
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("refuses an agent's compile when the folder has no main document", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "no_main";
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("idle");
+  });
+
+  it("runs an agent's request that waited behind a running compile while the main is undecided", async () => {
+    mocks.files.mainDecision = "ask";
+    const first = deferred<typeof compileResult>();
+    mocks.compileProject.mockReturnValueOnce(first.promise).mockResolvedValue(compileResult);
+    const running = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(1));
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    first.resolve(compileResult);
+    await running;
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("still drops a background request that waited behind a running compile while the main is undecided", async () => {
+    mocks.files.mainDecision = "ask";
+    const first = deferred<typeof compileResult>();
+    mocks.compileProject.mockReturnValueOnce(first.promise).mockResolvedValue(compileResult);
+    const running = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(1));
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    first.resolve(compileResult);
+    await running;
+    await new Promise((done) => setTimeout(done, 0));
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    expect(useCompileStore.getState().status).not.toBe("compiling");
+  });
+
+  it("keeps an automatic compile that folder trust refuses out of toasts", async () => {
+    mocks.compileProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "trust.system_tex", params: {}, detail: null })}`,
+    );
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.failureReason ?? "").not.toContain("@oleafly/error");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });

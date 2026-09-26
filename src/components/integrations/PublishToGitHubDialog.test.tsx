@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGithubStore } from "@/store/github";
@@ -27,6 +27,7 @@ const createdRepo = {
 
 const mocks = vi.hoisted(() => ({
   gitPreparePublish: vi.fn(),
+  gitPublishPreflight: vi.fn(),
   gitPush: vi.fn(),
   gitSetRemote: vi.fn(),
   githubCreateRepo: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@/lib/tauri", () => ({
   gitPreparePublish: mocks.gitPreparePublish,
+  gitPublishPreflight: mocks.gitPublishPreflight,
   gitPush: mocks.gitPush,
   gitSetRemote: mocks.gitSetRemote,
 }));
@@ -50,6 +52,7 @@ vi.mock("@/lib/github", async (importOriginal) => ({
 
 beforeEach(() => {
   mocks.gitPreparePublish.mockReset().mockResolvedValue(true);
+  mocks.gitPublishPreflight.mockReset().mockResolvedValue(undefined);
   mocks.gitPush.mockReset().mockResolvedValue("Pushed");
   mocks.gitSetRemote.mockReset().mockResolvedValue(undefined);
   mocks.githubCreateRepo.mockReset().mockResolvedValue(createdRepo);
@@ -300,6 +303,31 @@ describe("PublishToGitHubDialog", () => {
     expect(onPublished).not.toHaveBeenCalled();
   });
 
+  it("creates no GitHub repository for a project inside another repository", async () => {
+    const user = userEvent.setup();
+    mocks.gitPublishPreflight.mockRejectedValue(
+      '@oleafly/error:{"code":"git.nested_repository","params":{}}',
+    );
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/inside another Git repository/)).toBeInTheDocument();
+    expect(mocks.gitPublishPreflight).toHaveBeenCalledWith("project-1");
+    expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+    expect(mocks.gitSetRemote).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Create and push" })).toBeEnabled();
+  });
+
   it("reports a repository that GitHub refused to create", async () => {
     const user = userEvent.setup();
     mocks.githubCreateRepo.mockRejectedValue(new Error("name already exists"));
@@ -317,6 +345,112 @@ describe("PublishToGitHubDialog", () => {
 
     expect(await screen.findByText(/name already exists/)).toBeInTheDocument();
     expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+  });
+
+  it("asks before replacing the repository the project already pushes to", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        currentRemote="https://github.com/prajwal/old-notes.git"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(screen.getByText(/linked to https:\/\/github\.com\/prajwal\/old-notes\.git/)).toBeInTheDocument();
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+    expect(mocks.gitSetRemote).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Replace link" }));
+
+    await waitFor(() =>
+      expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url, {
+        replace: true,
+      }),
+    );
+    expect(mocks.gitPush).toHaveBeenCalledWith("project-1");
+  });
+
+  it("creates no GitHub repository until the user confirms replacing the current link", async () => {
+    const user = userEvent.setup();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        currentRemote="https://github.com/prajwal/old-notes.git"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+    expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("button", { name: "Replace link" })).toBeNull();
+    expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+    expect(mocks.gitSetRemote).not.toHaveBeenCalled();
+  });
+
+  it("relinks the same repository without asking", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        currentRemote={createdRepo.clone_url}
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    await waitFor(() =>
+      expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url),
+    );
+    expect(screen.queryByRole("button", { name: "Replace link" })).toBeNull();
+  });
+
+  it("shows the translated refusal instead of the raw backend envelope", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitSetRemote.mockRejectedValue(
+      '@oleafly/error:{"code":"git.remote_exists","params":{"remote":"https://gitlab.com/lab/paper.git"}}',
+    );
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(
+      await screen.findByText(/already linked to https:\/\/gitlab\.com\/lab\/paper\.git/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/@oleafly\/error/)).toBeNull();
+    expect(mocks.gitPush).not.toHaveBeenCalled();
   });
 
   it("keeps the empty list and logs when the repository read fails", async () => {

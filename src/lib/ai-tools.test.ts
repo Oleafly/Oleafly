@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   },
   filesState: {
     projectId: "proj" as string | null,
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     files: {} as Record<string, { content: string; dirty: boolean }>,
     applyExternalWrite: vi.fn(() => true),
     applyExternalDelete: vi.fn(() => true),
@@ -67,7 +68,9 @@ beforeEach(() => {
     timed_out: false,
   });
   mocks.filesState.projectId = "proj";
+  mocks.filesState.mainDecision = "auto";
   mocks.filesState.files = {};
+  mocks.compileState.recompile.mockReset();
 });
 
 describe("ai-tools: destructive edits require approval (U1)", () => {
@@ -485,5 +488,33 @@ describe("ai-tools: Typst project map", () => {
       inputGraph: [{ from: "main.typ", to: "chapter.typ" }],
       ambiguousTypstAtUses: ["main", "source"],
     });
+  });
+});
+
+describe("ai-tools: compile and main document detection", () => {
+  it.each(["auto", "ask"] as const)(
+    "runs the agent's compile while detection says %s",
+    async (decision) => {
+      mocks.filesState.mainDecision = decision;
+      mocks.compileState.recompile.mockResolvedValue({
+        ok: true,
+        errors: [],
+        has_pdf: true,
+        log: "Output written on main.pdf.",
+      });
+      const tools = createOleaflyTools({ confirm: async () => true });
+      const res = await tools.compile.execute({});
+      expect(mocks.compileState.recompile).toHaveBeenCalledWith({ origin: "agent" });
+      expect(res).toMatchObject({ success: true, has_pdf: true });
+    },
+  );
+
+  it("tells the agent why it cannot compile a folder with no main document", async () => {
+    mocks.filesState.mainDecision = "no_main";
+    const tools = createOleaflyTools({ confirm: async () => true });
+    const res = await tools.compile.execute({});
+    expect(mocks.compileState.recompile).not.toHaveBeenCalled();
+    expect(res).toEqual({ error: expect.stringContaining("no main document") });
+    expect(res).toEqual({ error: expect.stringContaining("Set as main") });
   });
 });

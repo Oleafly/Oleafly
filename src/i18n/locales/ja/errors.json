@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "プロジェクト名は空にできません。",
     "name_conflict": "{{name}} という名前のプロジェクトはすでに存在します。",
-    "folder_unavailable": "新しいプロジェクトフォルダを確保できませんでした。"
+    "folder_unavailable": "新しいプロジェクトフォルダを確保できませんでした。",
+    "not_found": "このプロジェクトはライブラリにもうありません。",
+    "not_recyclable": "このプロジェクトはごみ箱に移動できません。",
+    "linked_missing": "Oleafly でフォルダ {{folder}} が見つかりません。移動または削除されたか、接続されていないドライブ上にある可能性があります。",
+    "linked_replaced": "フォルダ {{folder}} は、以前 Oleafly で開いたフォルダではありません。続けるには、もう一度開いてください。",
+    "linked_permission_denied": "Oleafly にはフォルダ {{folder}} を開く権限がありません。",
+    "linked_invalid": "このフォルダへの Oleafly のリンクが破損しています。Oleafly から削除してから、フォルダをもう一度開いてください。",
+    "linked_not_recyclable": "このフォルダは元の場所で開かれているため、ごみ箱に移動できません。ファイルは変更されていません。",
+    "linked_not_duplicable": "このフォルダは元の場所で開かれているため、Oleafly では複製できません。",
+    "folder_not_a_folder": "その場所は Oleafly で使用できません。フォルダを選択してください。",
+    "folder_in_app_data": "そのフォルダには Oleafly 自身のデータがあります。別のフォルダを選択してください。",
+    "folder_too_broad": "{{name}} は範囲が広すぎるため、1 つのプロジェクトとして開けません。このプロジェクトだけが入ったフォルダを選択してください。",
+    "folder_already_linked": "そのフォルダは Oleafly の別のプロジェクトと重なっています。別のフォルダを選択してください。",
+    "not_linked": "場所の指定は、その場で開いたフォルダでのみ使用できます。",
+    "copy_destination_refused": "プロジェクトと Oleafly のデータフォルダの外にあるフォルダを選択してください。",
+    "copy_nothing_open": "開いているファイルがないため、保存するものはありません。",
+    "copy_too_large": "開いているファイルが大きすぎるため、コピーとして保存できません。",
+    "copy_failed": "Oleafly はそこにコピーを保存できませんでした。書き込みできるフォルダを選択してください。",
+    "folder_picker_failed": "Oleafly はフォルダの選択画面を開けませんでした。もう一度お試しください。",
+    "import_no_main": "読み込んだ内容に、コンパイルできる LaTeX、Typst、Markdown の文書がありません。",
+    "settings_file_exists": "このフォルダにはすでに project.json があるため、Oleafly は変更していません。",
+    "settings_need_main": "先にメイン文書を選択してから、プロジェクト設定をこのフォルダに保存してください。",
+    "settings_write_failed": "Oleafly はプロジェクト設定をこのフォルダに保存できませんでした。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX にこのホストで動作する {{name}} のバイナリがありません。",
-    "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。"
+    "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。",
+    "latexmk_build_path": "このコンピューターでは Oleafly のビルドフォルダーのパスに latexmk が受け付けない文字が含まれているため、latexmk はこのフォルダーを使用できません。コンパイルするには、このプロジェクトを Tectonic に切り替えてください。",
+    "latexmk_network_folder": "latexmk はネットワーク共有上のフォルダーをコンパイルできません。このプロジェクトを Tectonic に切り替えるか、フォルダーをこのコンピューターにコピーしてください。"
   },
   "github": {
     "sign_in_expired": "サインインコードの有効期限が切れました。もう一度お試しください。",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "リポジトリを読み込めませんでした。",
     "create_repo_failed": "リポジトリを作成できませんでした（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
+    "nested_repository": "このプロジェクトは別の Git リポジトリの中にあるため、Oleafly はここに別のリポジトリを作成しません。"
+  },
   "approvals": {
     "full_access_declined": "フルアクセスは有効になりませんでした。"
+  },
+  "trust": {
+    "git": "ソース管理を使うには、このフォルダを信頼してください。",
+    "repository": "ここでソース管理を使うには、リポジトリ {{name}} を信頼してください。",
+    "terminal": "このフォルダでターミナルを使うには、ご自身でターミナルを開いてください。",
+    "agents": "外部エージェントを使うには、このフォルダを信頼してください。",
+    "mcp": "MCP クライアントがこのフォルダを使えるようにするには、先に信頼してください。",
+    "research_tasks": "調査タスクを実行するには、このフォルダを信頼してください。",
+    "run_command": "アシスタントにコマンドを実行させるには、このフォルダを信頼してください。",
+    "full_access": "フルアクセスをオンにする前に、このフォルダを信頼してください。",
+    "system_tex": "latexmk でコンパイルするには、このフォルダを信頼してください。",
+    "shell_escape": "shell escape を許可する前に、このフォルダを信頼してください。",
+    "broad_folder": "Oleafly は {{name}} 全体を信頼できません。もっと小さいフォルダを選んでください。",
+    "declined": "フォルダは信頼されませんでした。",
+    "unavailable": "Oleafly はこのフォルダが信頼されているかどうかを確認できませんでした。"
+  },
+  "open_folder": {
+    "not_absolute": "フォルダのフルパスを指定してください。",
+    "not_found": "Oleafly でこのフォルダが見つかりません。",
+    "permission_denied": "Oleafly にはこのフォルダを開く権限がありません。",
+    "not_a_folder": "ファイルではなくフォルダを選んでください。",
+    "unsupported_folder": "Oleafly ではこの種類のフォルダを開けません。",
+    "path_not_unicode": "このフォルダのパスには Oleafly が読み取れない文字が含まれています。フォルダ名を変更してからもう一度お試しください。",
+    "too_broad": "{{name}} は 1 つのプロジェクトとして開くには大きすぎます。その中のフォルダを選んでください。",
+    "protected": "Oleafly では {{name}} の中のフォルダを開けません。",
+    "app_data": "このフォルダは Oleafly のアプリデータの一部です。その外にあるフォルダを選んでください。",
+    "contains_project": "このフォルダには {{name}} が含まれており、すでに Oleafly で独立したプロジェクトとして開かれています。",
+    "research_folder": "{{project}} はリンクしたフォルダを通じて、このフォルダ内のファイルをすでに編集できます。先にそちらでリンクを解除してください。",
+    "failed": "Oleafly でこのフォルダを開けませんでした。"
+  },
+  "research": {
+    "linked_project_folder": "このフォルダは Oleafly で独立したプロジェクトとして開かれています。代わりに読み取り専用でリンクしてください。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "このチェックポイント履歴は Oleafly ライブラリ内のプロジェクトのものなので、元の場所で開いたフォルダでは使えません。",
+    "folder_history_for_library": "このチェックポイント履歴は元の場所で開いたフォルダのものなので、Oleafly ライブラリ内のプロジェクトでは使えません。",
+    "restore_path_blocked": "{{path}} の場所にリンクなどファイル以外のものがあるため、Oleafly は復元できません。それを移動してからもう一度お試しください。"
   }
 }

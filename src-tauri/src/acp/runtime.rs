@@ -348,6 +348,10 @@ impl AcpRuntime {
         mcp_servers: Vec<Value>,
         generation: Option<u64>,
     ) -> Result<SessionSnapshot, String> {
+        crate::trust::require_trusted(
+            &options.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if options.allowed_paths.is_some() && options.task_id.is_none() {
             return Err("An isolated ACP session needs a research task ID.".into());
         }
@@ -423,6 +427,10 @@ impl AcpRuntime {
             return Err("This ACP session is already connected.".into());
         }
         let mut record = self.store.get(id)?;
+        crate::trust::require_trusted(
+            &record.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if record.task_id.is_some() {
             return Err("Resume isolated work through its research task.".into());
         }
@@ -523,6 +531,11 @@ impl AcpRuntime {
             command
         };
         command.current_dir(&record.project_path);
+        if let Some(hardening) =
+            crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
+        {
+            command.envs(hardening);
+        }
         let id = record.id.clone();
         let bytes = self.store.byte_count(&id)?;
         let (connection, incoming) = Connection::spawn(command).await?;
@@ -811,6 +824,10 @@ impl AcpRuntime {
             .try_lock()
             .map_err(|_| "This ACP agent is already working on a turn.")?;
         let record = self.copy_record(&session)?;
+        crate::trust::require_trusted(
+            &record.project_id,
+            crate::trust::Capability::ExternalAgents,
+        )?;
         if record.status != SessionStatus::Ready {
             return Err("Connect and sign in to this agent before sending a message.".into());
         }
@@ -1080,6 +1097,39 @@ impl AcpRuntime {
         for id in ids {
             let _ = self.close(&id).await;
         }
+    }
+
+    pub async fn close_project_sessions(self: &Arc<Self>, project_id: &str) -> usize {
+        let ids: Vec<_> = {
+            let sessions = self.live.lock().await;
+            sessions
+                .iter()
+                .filter(|(_, session)| {
+                    self.copy_record(session).is_ok_and(|record| {
+                        record.project_id == project_id && record.task_id.is_none()
+                    })
+                })
+                .map(|(id, _)| id.clone())
+                .collect()
+        };
+        let mut closed = 0;
+        for id in ids {
+            if self.close(&id).await.is_ok() {
+                closed += 1;
+            }
+        }
+        closed
+    }
+
+    pub fn rebind_project_paths(
+        &self,
+        project_id: &str,
+        root: &Path,
+        fresh_agent_sessions: bool,
+    ) -> Result<usize, String> {
+        let root = canonical_root(root)?;
+        self.store
+            .rebind_project_path(project_id, &root.to_string_lossy(), fresh_agent_sessions)
     }
 
     pub async fn shutdown_all(self: &Arc<Self>) {

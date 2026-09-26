@@ -8,6 +8,7 @@ import {
   Crosshair,
   Download,
   Eraser,
+  FileJson,
   FolderPlus,
   Image as ImageIcon,
   Italic,
@@ -115,6 +116,7 @@ const ENGLISH_KEYWORDS = {
   closeEnvironment: "close end environment begin latex",
   surroundEnvironment: "surround wrap environment begin end latex",
   appearance: "theme appearance mode",
+  saveSettingsToFolder: "save project settings folder project.json share main document engine",
 } as const;
 
 const EDITOR_COMMAND_KEYWORDS = {
@@ -298,6 +300,17 @@ export function registerPaletteCommands() {
     icon: () => <FolderPlus className="size-4" />,
     order: 100,
     run: openNewProject,
+  });
+  palette({
+    id: "palette.save-settings-to-folder",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.saveSettingsToFolder.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.saveSettingsToFolder.keywords)} ${ENGLISH_KEYWORDS.saveSettingsToFolder}`,
+    icon: () => <FileJson className="size-4" />,
+    order: 120,
+    when: (ctx) => !!ctx.projectId && useFilesStore.getState().manifestHome === "device",
+    run: () => void useFilesStore.getState().saveSettingsToFolder(),
   });
 
   palette({

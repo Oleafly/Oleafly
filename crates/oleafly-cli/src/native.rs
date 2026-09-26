@@ -192,7 +192,7 @@ impl NativeCompiler {
         let (mut log, exit_code) = run_command(
             &command.executable,
             &command.arguments,
-            build.project_root(),
+            &command.working_directory,
             self.timeout,
             &self.log,
         )
@@ -311,10 +311,16 @@ impl NativeCompiler {
                 )
             }
         };
+        let working_directory = match build.engine() {
+            Engine::Latexmk => build.compile_directory(),
+            Engine::Tectonic | Engine::Typst | Engine::Markdown => build.project_root(),
+        }
+        .to_path_buf();
         Ok(BuildCommand {
             executable,
             arguments,
             produced_output,
+            working_directory,
             _compiler_alias: compiler_alias,
         })
     }
@@ -324,6 +330,7 @@ struct BuildCommand {
     executable: PathBuf,
     arguments: Vec<OsString>,
     produced_output: PathBuf,
+    working_directory: PathBuf,
     _compiler_alias: Option<CompilerAlias>,
 }
 
@@ -617,13 +624,11 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
             )),
         },
     )?;
-    let output = build
-        .build_directory()
-        .strip_prefix(build.project_root())
-        .map_err(|_| Error::new(ErrorKind::UnsafePath, "build directory escaped the project"))?;
+    let output = relative_to(build.compile_directory(), build.build_directory())
+        .ok_or_else(|| Error::new(ErrorKind::UnsafePath, "build directory escaped the project"))?;
     let input = build
         .source_path()
-        .strip_prefix(build.project_root())
+        .strip_prefix(build.compile_directory())
         .map_err(|_| Error::new(ErrorKind::UnsafePath, "main document escaped the project"))?;
     let mut arguments: Vec<OsString> = vec![
         "-norc".into(),
@@ -631,7 +636,7 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
         flavor.into(),
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
-        format!("-outdir=./{}", slash_path(output)).into(),
+        format!("-outdir={}", dotted(&output)).into(),
         format!("-jobname={OUTPUT_STEM}").into(),
     ];
     if options.halt_on_error {
@@ -644,6 +649,36 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
     }
     arguments.push(format!("./{}", slash_path(input)).into());
     Ok(arguments)
+}
+
+fn relative_to(base: &Path, target: &Path) -> Option<PathBuf> {
+    let base: Vec<_> = base.components().collect();
+    let target: Vec<_> = target.components().collect();
+    let shared = base
+        .iter()
+        .zip(&target)
+        .take_while(|(left, right)| left == right)
+        .count();
+    if shared == 0 {
+        return None;
+    }
+    let mut relative = PathBuf::new();
+    for _ in shared..base.len() {
+        relative.push("..");
+    }
+    for component in &target[shared..] {
+        relative.push(component);
+    }
+    Some(relative)
+}
+
+fn dotted(path: &Path) -> String {
+    let path = slash_path(path);
+    if path.starts_with("..") {
+        path
+    } else {
+        format!("./{path}")
+    }
 }
 
 fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
@@ -1647,5 +1682,66 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.kind(), ErrorKind::Build);
         assert!(error.to_string().contains("timed out"));
+    }
+
+    #[test]
+    fn latexmk_runs_in_the_compile_directory_and_writes_to_the_build_directory() {
+        let tools_directory = TempDir::new().unwrap();
+        let latexmk = tools_directory.path().join(executable_name("latexmk"));
+        std::fs::write(&latexmk, "tool").unwrap();
+        let compiler = NativeCompiler::new(BuildTools {
+            latexmk: Some(latexmk),
+            ..BuildTools::default()
+        });
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir(directory.path().join("paper")).unwrap();
+        std::fs::write(directory.path().join("paper/main.tex"), "document").unwrap();
+        let manifest = ProjectManifest {
+            main_doc: "paper/main.tex".into(),
+            engine: "latexmk".into(),
+            tex_flavor: Some("pdflatex".into()),
+            ..ProjectManifest::default()
+        };
+        let root = Workspace::from_manifest(directory.path(), manifest.clone()).unwrap();
+        let root_command = compiler
+            .command(&root.prepare_build().unwrap(), BuildOptions::default())
+            .unwrap();
+        let root_arguments = arguments(&root_command);
+        assert!(root_arguments.contains(&"-outdir=./.oleafly/build".to_string()));
+        assert_eq!(root_arguments.last().unwrap(), "./paper/main.tex");
+        assert_eq!(root_command.working_directory, root.root());
+
+        let nested = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                compile_dir: Some("paper".into()),
+                ..manifest
+            },
+        )
+        .unwrap();
+        let nested_command = compiler
+            .command(&nested.prepare_build().unwrap(), BuildOptions::default())
+            .unwrap();
+        let nested_arguments = arguments(&nested_command);
+        assert!(nested_arguments.contains(&"-outdir=../.oleafly/build".to_string()));
+        assert_eq!(nested_arguments.last().unwrap(), "./main.tex");
+        assert_eq!(
+            nested_command.working_directory,
+            nested.root().join("paper")
+        );
+    }
+
+    #[test]
+    fn relative_paths_climb_out_of_the_compile_directory() {
+        assert_eq!(
+            relative_to(Path::new("/p/paper/sub"), Path::new("/p/.oleafly/build")),
+            Some(PathBuf::from("../../.oleafly/build"))
+        );
+        assert_eq!(
+            relative_to(Path::new("/p"), Path::new("/p/.oleafly/build")),
+            Some(PathBuf::from(".oleafly/build"))
+        );
+        assert_eq!(dotted(Path::new(".oleafly/build")), "./.oleafly/build");
+        assert_eq!(dotted(Path::new("../.oleafly/build")), "../.oleafly/build");
     }
 }

@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新編譯"
     },
+    "saveSettingsToFolder": {
+      "keywords": "儲存 專案設定 資料夾 project.json 共用 主要文件",
+      "label": "將專案設定儲存到此資料夾",
+      "saved": "專案設定已儲存到此資料夾的 project.json 中。"
+    },
     "section": {
       "label": "章節"
     },
@@ -259,6 +264,7 @@
     "texRootBroken": "{{file}} 中的 % !TEX root 指向不存在的檔案（{{target}}）",
     "texRootLabel": "TEX 根檔案",
     "texRootName": "根檔案：{{name}}",
+    "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 檔案",
     "texRootOverride": "根檔案：{{path}}（由 {{file}} 中的 % !TEX root 設定）"
   },
   "datePicker": {
@@ -358,6 +364,25 @@
       "terminalDock": "終端機停駐區"
     },
     "title": "發生錯誤"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此資料夾無法使用。",
+      "body": "請重新連接磁碟機或找到該資料夾。開啟的檔案會保留在這裡，在資料夾恢復之前，Oleafly 不會儲存或編譯。"
+    },
+    "replaced": {
+      "title": "此資料夾已被取代。",
+      "body": "原位置現在是另一個資料夾。Oleafly 已停止儲存，以免覆寫其中的內容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 無法開啟此資料夾。",
+      "body": "請檢查資料夾的權限，然後再試一次。開啟的檔案會保留在這裡。"
+    },
+    "locate": "定位…",
+    "useThisFolder": "使用此資料夾",
+    "saveCopy": "儲存副本…",
+    "tryAgain": "重試",
+    "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
@@ -531,6 +556,7 @@
         "calculating": "正在計算儲存空間用量…",
         "desktopOnly": "儲存空間詳情只能在桌面應用程式中查看。",
         "error": "無法計算儲存空間詳情。",
+        "linkedFolders_other": "{{count}} 個已開啟資料夾的建置輸出與設定共 {{size}}",
         "refresh": "重新整理儲存空間用量",
         "stats": {
           "appData": "應用程式資料",

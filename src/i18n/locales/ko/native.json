@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "가져올 스프레드시트 선택",
       "filter": "스프레드시트"
+    },
+    "trustFolder": {
+      "title": "이 폴더를 신뢰할까요?",
+      "message": "Oleafly가 {{name}}에서 Git, 터미널, 에이전트와 LaTeX 도구를 켭니다. 내용을 알고 있는 폴더만 신뢰하세요.",
+      "messageParent": "Oleafly가 {{name}}과 그 안의 모든 폴더를 신뢰합니다. 나중에 여는 폴더도 포함됩니다.",
+      "messageRepository": "Oleafly가 {{name}}에서 저장소 자체의 설정과 훅으로 Git을 실행합니다.",
+      "confirm": "신뢰"
+    },
+    "restrictedWrite": {
+      "title": "이 변경을 허용할까요?",
+      "message": "어시스턴트가 {{path}}을(를) 변경하려고 합니다. 이런 파일은 프로그램을 실행할 수 있으며, 이 폴더는 아직 신뢰되지 않았습니다.",
+      "confirm": "허용"
+    },
+    "restrictedNetwork": {
+      "title": "이 요청을 허용할까요?",
+      "message": "어시스턴트가 텍스트를 온라인 서비스로 보내는 {{tool}}을(를) 사용하려고 합니다. 이 폴더는 아직 신뢰되지 않았습니다.",
+      "confirm": "허용"
+    },
+    "locateFolder": {
+      "title": "프로젝트 폴더 찾기"
+    },
+    "rebindFolder": {
+      "title": "다른 폴더를 사용할까요?",
+      "message": "{{name}}은(는) Oleafly가 이 프로젝트에 사용하던 폴더가 아닙니다. 이 폴더를 사용하면 Oleafly가 저장하지 않은 변경 사항을 이 폴더에 저장하고 이 프로젝트의 터미널과 에이전트 세션을 닫습니다. 그 안에서 실행 중인 작업은 모두 종료됩니다. 또한 Oleafly가 폴더 신뢰를 해제하고, 전체 접근 권한을 끄고, 어시스턴트 승인을 초기화하고, 연구 폴더 연결을 해제합니다. 채팅과 기록은 유지됩니다.",
+      "confirm": "이 폴더 사용"
+    },
+    "saveCopy": {
+      "title": "사본을 저장할 위치 선택",
+      "folderSuffix": "사본"
     }
   },
   "errors": {

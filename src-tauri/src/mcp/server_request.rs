@@ -221,6 +221,20 @@ fn json_rpc_error(id: Value, message: &str) -> Response {
     (StatusCode::OK, Json(rpc_error(id, -32000, message))).into_response()
 }
 
+pub(super) fn linked_exposure_refusal(
+    exposure: crate::trust::McpExposure,
+    name: &str,
+) -> Option<&'static str> {
+    match exposure {
+        crate::trust::McpExposure::Full => None,
+        crate::trust::McpExposure::ReadOnly => crate::mcp::native::is_mutating(name)
+            .then_some("Oleafly shares folders opened in place with MCP clients as read-only."),
+        crate::trust::McpExposure::Closed => {
+            Some("This folder is not trusted in Oleafly, so MCP clients cannot use it.")
+        }
+    }
+}
+
 fn json_tool_error(id: Value, message: &str) -> Response {
     (StatusCode::OK, Json(rpc_tool_error(id, message))).into_response()
 }
@@ -298,6 +312,34 @@ async fn dispatch_authenticated(
     Ok(dispatch(message, &tools, INSTRUCTIONS))
 }
 
+pub(super) async fn forward_route(
+    state: &McpState,
+    renderer_session: u64,
+    name: &str,
+    config: Option<(String, bool)>,
+) -> Result<ToolRoute, &'static str> {
+    let (policy, read_only) = effective_policy(config);
+    if tool_disabled_by_read_only(read_only, name) {
+        return Err("tool disabled by read-only mode");
+    }
+    if crate::mcp::native::needs_project(name) {
+        if let Some(project) = state.active_project.lock().await.clone() {
+            let exposure =
+                tokio::task::spawn_blocking(move || crate::trust::mcp_exposure(&project))
+                    .await
+                    .unwrap_or(crate::trust::McpExposure::Closed);
+            if let Some(message) = linked_exposure_refusal(exposure, name) {
+                return Err(message);
+            }
+        }
+    }
+    Ok(tool_route(
+        name,
+        &policy,
+        renderer_session_is_fresh(state, renderer_session),
+    ))
+}
+
 async fn handle_forward_call(
     app: &AppHandle,
     state: &McpState,
@@ -313,12 +355,11 @@ async fn handle_forward_call(
     .await
     .ok()
     .and_then(|read| read.ok());
-    let (policy, read_only) = effective_policy(config);
-    if tool_disabled_by_read_only(read_only, &name) {
-        return json_tool_error(id, "tool disabled by read-only mode");
-    }
-    let renderer_is_fresh = renderer_session_is_fresh(state, renderer_session);
-    match tool_route(&name, &policy, renderer_is_fresh) {
+    let route = match forward_route(state, renderer_session, &name, config).await {
+        Ok(route) => route,
+        Err(message) => return json_tool_error(id, message),
+    };
+    match route {
         ToolRoute::Native => run_native_call(app, state, epoch, id, name, arguments).await,
         ToolRoute::Renderer => {
             forward_to_renderer(app, state, epoch, renderer_session, id, name, arguments).await

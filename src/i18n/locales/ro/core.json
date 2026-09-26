@@ -591,5 +591,9 @@
   "checkpoint": {
     "storageUnavailable": "Un punct de control nu a putut fi salvat. Discul este plin sau în folderul punctelor de control nu se poate scrie. Eliberează spațiu sau verifică permisiunile folderului, apoi compilează din nou.",
     "incompleteCapture": "Ultimele puncte de control nu au putut fi salvate, deoarece unele fișiere ale proiectului nu au putut fi citite. Verifică-le permisiunile, apoi compilează din nou."
+  },
+  "folderUnavailable": {
+    "compile": "Compilarea este în pauză până revine folderul proiectului.",
+    "saveReason": "folderul proiectului nu este disponibil"
   }
 }

@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Projektnavnet må ikke være tomt.",
     "name_conflict": "Der findes allerede et projekt, der hedder {{name}}.",
-    "folder_unavailable": "Kunne ikke reservere en ny projektmappe."
+    "folder_unavailable": "Kunne ikke reservere en ny projektmappe.",
+    "not_found": "Projektet er ikke længere i dit bibliotek.",
+    "not_recyclable": "Projektet kan ikke flyttes til papirkurven.",
+    "linked_missing": "Oleafly kan ikke finde mappen {{folder}}. Den kan være flyttet eller slettet, eller den ligger på et drev, der ikke er tilsluttet.",
+    "linked_replaced": "Mappen {{folder}} er ikke den, Oleafly åbnede før. Åbn den igen for at fortsætte.",
+    "linked_permission_denied": "Oleafly har ikke tilladelse til at åbne mappen {{folder}}.",
+    "linked_invalid": "Oleaflys link til denne mappe er beskadiget. Fjern den fra Oleafly, og åbn derefter mappen igen.",
+    "linked_not_recyclable": "Mappen blev åbnet, hvor den ligger, så den kan ikke flyttes til papirkurven. Dine filer er uændrede.",
+    "linked_not_duplicable": "Mappen blev åbnet, hvor den ligger, så Oleafly kan ikke duplikere den.",
+    "folder_not_a_folder": "Oleafly kan ikke bruge den placering. Vælg en mappe.",
+    "folder_in_app_data": "Oleafly gemmer sine egne data i den mappe. Vælg en anden.",
+    "folder_too_broad": "{{name}} er for bred til at blive åbnet som ét projekt. Vælg den mappe, der kun indeholder dette projekt.",
+    "folder_already_linked": "Den mappe overlapper et andet projekt i Oleafly. Vælg en anden mappe.",
+    "not_linked": "Find virker kun for mapper, der er åbnet på deres egen placering.",
+    "copy_destination_refused": "Vælg en mappe uden for projektet og uden for Oleaflys datamappe.",
+    "copy_nothing_open": "Ingen filer er åbne, så der er intet at gemme.",
+    "copy_too_large": "De åbne filer er for store til at blive gemt som en kopi.",
+    "copy_failed": "Oleafly kunne ikke gemme kopien der. Vælg en mappe, du kan skrive til.",
+    "folder_picker_failed": "Oleafly kunne ikke åbne mappevælgeren. Prøv igen.",
+    "import_no_main": "Importen indeholder ikke et LaTeX-, Typst- eller Markdown-dokument, der kan kompileres.",
+    "settings_file_exists": "Mappen har allerede en project.json, så Oleafly har ladet den være.",
+    "settings_need_main": "Vælg først et hoveddokument, og gem derefter projektindstillingerne i denne mappe.",
+    "settings_write_failed": "Oleafly kunne ikke gemme projektindstillingerne i denne mappe."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
-    "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv."
+    "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv.",
+    "latexmk_build_path": "latexmk kan ikke bruge Oleaflys build-mappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
+    "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer."
   },
   "github": {
     "sign_in_expired": "Loginkoden er udløbet. Prøv igen.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Kunne ikke indlæse repositories.",
     "create_repo_failed": "Kunne ikke oprette repositoryet ({{status}})."
   },
+  "git": {
+    "remote_exists": "Projektet er allerede tilknyttet {{remote}}.",
+    "nested_repository": "Projektet ligger i et andet Git-repository, så Oleafly opretter ikke et separat repository her."
+  },
   "approvals": {
     "full_access_declined": "Fuld adgang blev ikke aktiveret."
+  },
+  "trust": {
+    "git": "Stol på denne mappe for at bruge versionsstyring.",
+    "repository": "Stol på repositoriet {{name}} for at bruge versionsstyring her.",
+    "terminal": "Åbn selv terminalen for at bruge den i denne mappe.",
+    "agents": "Stol på denne mappe for at bruge eksterne agenter.",
+    "mcp": "Stol på denne mappe, før MCP-klienter kan bruge den.",
+    "research_tasks": "Stol på denne mappe for at køre forskningsopgaver.",
+    "run_command": "Stol på denne mappe for at lade assistenten køre kommandoer.",
+    "full_access": "Stol på denne mappe, før du slår fuld adgang til.",
+    "system_tex": "Stol på denne mappe for at kompilere med latexmk.",
+    "shell_escape": "Stol på denne mappe, før du tillader shell escape.",
+    "broad_folder": "Oleafly kan ikke stole på hele {{name}}. Vælg en mindre mappe.",
+    "declined": "Mappen blev ikke betroet.",
+    "unavailable": "Oleafly kunne ikke kontrollere, om denne mappe er betroet."
+  },
+  "open_folder": {
+    "not_absolute": "Brug den fulde sti til mappen.",
+    "not_found": "Oleafly kan ikke finde denne mappe.",
+    "permission_denied": "Oleafly har ikke tilladelse til at åbne denne mappe.",
+    "not_a_folder": "Vælg en mappe, ikke en fil.",
+    "unsupported_folder": "Oleafly kan ikke åbne denne type mappe.",
+    "path_not_unicode": "Stien til denne mappe indeholder tegn, som Oleafly ikke kan læse. Omdøb mappen, og prøv igen.",
+    "too_broad": "{{name}} indeholder for meget til at blive åbnet som ét projekt. Vælg en mappe inde i den.",
+    "protected": "Oleafly kan ikke åbne mapper inde i {{name}}.",
+    "app_data": "Denne mappe er en del af Oleaflys appdata. Vælg en mappe uden for den.",
+    "contains_project": "Denne mappe indeholder {{name}}, som allerede er åbnet i Oleafly som et selvstændigt projekt.",
+    "research_folder": "{{project}} kan allerede redigere filer i denne mappe via sine tilknyttede mapper. Fjern tilknytningen der først.",
+    "failed": "Oleafly kunne ikke åbne denne mappe."
+  },
+  "research": {
+    "linked_project_folder": "Denne mappe er åbnet i Oleafly som et selvstændigt projekt. Tilknyt den i stedet som skrivebeskyttet."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Denne kontrolpunkthistorik stammer fra et projekt i dit Oleafly-bibliotek, så den kan ikke bruges med en mappe, du har åbnet, hvor den ligger.",
+    "folder_history_for_library": "Denne kontrolpunkthistorik stammer fra en mappe, du har åbnet, hvor den ligger, så den kan ikke bruges med et projekt i dit Oleafly-bibliotek.",
+    "restore_path_blocked": "Oleafly kan ikke gendanne {{path}}, fordi et link eller noget andet, der ikke er en fil, er i vejen. Flyt det, og prøv igen."
   }
 }

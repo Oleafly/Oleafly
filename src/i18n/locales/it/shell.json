@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Ricompila"
     },
+    "saveSettingsToFolder": {
+      "keywords": "salva impostazioni progetto cartella project.json condividi documento principale",
+      "label": "Salva le impostazioni del progetto in questa cartella",
+      "saved": "Impostazioni del progetto salvate in project.json in questa cartella."
+    },
     "section": {
       "label": "Sezione"
     },
@@ -261,6 +266,7 @@
     "texRootBroken": "% !TEX root in {{file}} punta a un file inesistente ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root in {{file}} punta a {{target}}, che non è un file LaTeX",
     "texRootOverride": "root: {{path}} (impostato da % !TEX root in {{file}})"
   },
   "datePicker": {
@@ -362,6 +368,25 @@
       "terminalDock": "Il pannello del terminale"
     },
     "title": "Si è verificato un problema"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Questa cartella non è disponibile.",
+      "body": "Ricollega l'unità o trova la cartella. I file aperti restano qui e Oleafly non salverà né compilerà finché la cartella non torna disponibile."
+    },
+    "replaced": {
+      "title": "Questa cartella è stata sostituita.",
+      "body": "Al suo posto ora c'è un'altra cartella. Oleafly ha smesso di salvare per non sovrascrivere nulla."
+    },
+    "permissionDenied": {
+      "title": "Oleafly non riesce ad aprire questa cartella.",
+      "body": "Controlla i permessi della cartella e riprova. I file aperti restano qui."
+    },
+    "locate": "Individua…",
+    "useThisFolder": "Usa questa cartella",
+    "saveCopy": "Salva una copia…",
+    "tryAgain": "Riprova",
+    "savedCopy": "I file aperti sono stati salvati in {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -553,6 +578,9 @@
         "calculating": "Calcolo dello spazio occupato…",
         "desktopOnly": "I dettagli sull'archiviazione sono disponibili nell'app desktop.",
         "error": "Non è stato possibile calcolare i dettagli sull'archiviazione.",
+        "linkedFolders_one": "{{size}} di output di compilazione e impostazioni per {{count}} cartella aperta",
+        "linkedFolders_many": "{{size}} di output di compilazione e impostazioni per {{count}} cartelle aperte",
+        "linkedFolders_other": "{{size}} di output di compilazione e impostazioni per {{count}} cartelle aperte",
         "refresh": "Aggiorna lo spazio occupato",
         "stats": {
           "appData": "Dati dell'app",

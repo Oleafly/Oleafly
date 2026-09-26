@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Proje adı boş olamaz.",
     "name_conflict": "{{name}} adlı bir proje zaten var.",
-    "folder_unavailable": "Yeni bir proje klasörü ayrılamadı."
+    "folder_unavailable": "Yeni bir proje klasörü ayrılamadı.",
+    "not_found": "Bu proje artık kitaplığınızda değil.",
+    "not_recyclable": "Bu proje Geri Dönüşüm Kutusu'na taşınamaz.",
+    "linked_missing": "Oleafly {{folder}} klasörünü bulamıyor. Taşınmış ya da silinmiş olabilir veya bağlı olmayan bir sürücüde olabilir.",
+    "linked_replaced": "{{folder}} klasörü, Oleafly'nin daha önce açtığı klasör değil. Devam etmek için klasörü yeniden açın.",
+    "linked_permission_denied": "Oleafly'nin {{folder}} klasörünü açma izni yok.",
+    "linked_invalid": "Oleafly'nin bu klasöre bağlantısı bozuk. Klasörü Oleafly'den kaldırın, ardından yeniden açın.",
+    "linked_not_recyclable": "Bu klasör bulunduğu yerde açıldığı için Geri Dönüşüm Kutusu'na taşınamaz. Dosyalarınız değiştirilmedi.",
+    "linked_not_duplicable": "Bu klasör bulunduğu yerde açıldığı için Oleafly onu çoğaltamaz.",
+    "folder_not_a_folder": "Oleafly bu konumu kullanamıyor. Bir klasör seçin.",
+    "folder_in_app_data": "Oleafly kendi verilerini bu klasörde tutuyor. Başka bir klasör seçin.",
+    "folder_too_broad": "{{name}} tek bir proje olarak açılamayacak kadar geniş. Yalnızca bu projeyi içeren klasörü seçin.",
+    "folder_already_linked": "Bu klasör Oleafly'daki başka bir projeyle çakışıyor. Başka bir klasör seçin.",
+    "not_linked": "Bul yalnızca yerinde açılan klasörlerde çalışır.",
+    "copy_destination_refused": "Projenin ve Oleafly veri klasörünün dışında bir klasör seçin.",
+    "copy_nothing_open": "Açık dosya yok, bu yüzden kaydedilecek bir şey yok.",
+    "copy_too_large": "Açık dosyalar kopya olarak kaydedilemeyecek kadar büyük.",
+    "copy_failed": "Oleafly kopyayı oraya kaydedemedi. Yazma izniniz olan bir klasör seçin.",
+    "folder_picker_failed": "Oleafly klasör seçiciyi açamadı. Tekrar deneyin.",
+    "import_no_main": "İçe aktarılan dosyalarda derlenecek LaTeX, Typst veya Markdown belgesi yok.",
+    "settings_file_exists": "Bu klasörde zaten bir project.json var, bu yüzden Oleafly ona dokunmadı.",
+    "settings_need_main": "Önce bir ana belge seçin, ardından proje ayarlarını bu klasöre kaydedin.",
+    "settings_write_failed": "Oleafly proje ayarlarını bu klasöre kaydedemedi."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX bu sistemle uyumlu bir {{name}} ikili dosyası içermiyor.",
-    "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın."
+    "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın.",
+    "latexmk_build_path": "latexmk bu bilgisayarda Oleafly'nin derleme klasörünü kullanamıyor, çünkü klasörün yolunda latexmk'nin kabul etmediği karakterler var. Derlemek için bu projeyi Tectonic'e geçirin.",
+    "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın."
   },
   "github": {
     "sign_in_expired": "Oturum açma kodunun süresi doldu. Yeniden deneyin.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Depolar yüklenemedi.",
     "create_repo_failed": "Depo oluşturulamadı ({{status}})."
   },
+  "git": {
+    "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
+    "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz."
+  },
   "approvals": {
     "full_access_declined": "Tam erişim etkinleştirilmedi."
+  },
+  "trust": {
+    "git": "Kaynak Denetimi'ni kullanmak için bu klasöre güvenin.",
+    "repository": "Burada Kaynak Denetimi'ni kullanmak için {{name}} deposuna güvenin.",
+    "terminal": "Bu klasörde kullanmak için terminali kendiniz açın.",
+    "agents": "Dış ajanları kullanmak için bu klasöre güvenin.",
+    "mcp": "MCP istemcileri kullanabilmeden önce bu klasöre güvenin.",
+    "research_tasks": "Araştırma görevlerini çalıştırmak için bu klasöre güvenin.",
+    "run_command": "Asistanın komut çalıştırabilmesi için bu klasöre güvenin.",
+    "full_access": "Tam erişimi açmadan önce bu klasöre güvenin.",
+    "system_tex": "latexmk ile derlemek için bu klasöre güvenin.",
+    "shell_escape": "shell escape özelliğine izin vermeden önce bu klasöre güvenin.",
+    "broad_folder": "Oleafly {{name}} klasörünün tamamına güvenemez. Daha küçük bir klasör seçin.",
+    "declined": "Klasöre güvenilmedi.",
+    "unavailable": "Oleafly bu klasöre güvenilip güvenilmediğini denetleyemedi."
+  },
+  "open_folder": {
+    "not_absolute": "Klasörün tam yolunu kullanın.",
+    "not_found": "Oleafly bu klasörü bulamıyor.",
+    "permission_denied": "Oleafly'nin bu klasörü açma izni yok.",
+    "not_a_folder": "Dosya değil, bir klasör seçin.",
+    "unsupported_folder": "Oleafly bu tür bir klasörü açamaz.",
+    "path_not_unicode": "Bu klasörün yolunda Oleafly'nin okuyamadığı karakterler var. Klasörü yeniden adlandırıp tekrar deneyin.",
+    "too_broad": "{{name}} tek bir proje olarak açılamayacak kadar çok şey içeriyor. İçinden bir klasör seçin.",
+    "protected": "Oleafly {{name}} içindeki klasörleri açamaz.",
+    "app_data": "Bu klasör Oleafly'nin uygulama verilerinin bir parçası. Bunun dışında bir klasör seçin.",
+    "contains_project": "Bu klasör, Oleafly'de zaten ayrı bir proje olarak açık olan {{name}} öğesini içeriyor.",
+    "research_folder": "{{project}}, bağlı klasörleri aracılığıyla bu klasördeki dosyaları zaten düzenleyebiliyor. Önce oradaki bağlantıyı kaldırın.",
+    "failed": "Oleafly bu klasörü açamadı."
+  },
+  "research": {
+    "linked_project_folder": "Bu klasör Oleafly'de ayrı bir proje olarak açık. Bunun yerine salt okunur olarak bağlayın."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Bu kontrol noktası geçmişi Oleafly kitaplığınızdaki bir projeye ait olduğundan bulunduğu yerde açılan bir klasörle kullanılamaz.",
+    "folder_history_for_library": "Bu kontrol noktası geçmişi bulunduğu yerde açılan bir klasöre ait olduğundan Oleafly kitaplığınızdaki bir projeyle kullanılamaz.",
+    "restore_path_blocked": "Oleafly {{path}} öğesini geri yükleyemiyor, çünkü orada bir bağlantı veya dosya olmayan başka bir şey var. Onu taşıyıp yeniden deneyin."
   }
 }

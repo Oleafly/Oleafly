@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Choisir un tableur à importer",
       "filter": "Tableurs"
+    },
+    "trustFolder": {
+      "title": "Faire confiance à ce dossier ?",
+      "message": "Oleafly activera Git, le terminal, les agents et les outils LaTeX pour {{name}}. Ne faites confiance qu'aux dossiers dont vous connaissez le contenu.",
+      "messageParent": "Oleafly fera confiance à {{name}} et à tous les dossiers qu'il contient, y compris ceux que vous ouvrirez plus tard.",
+      "messageRepository": "Oleafly exécutera Git dans {{name}} avec les réglages et les hooks propres au dépôt.",
+      "confirm": "Faire confiance"
+    },
+    "restrictedWrite": {
+      "title": "Autoriser cette modification ?",
+      "message": "L'assistant veut modifier {{path}}. Ce type de fichier peut lancer des programmes, et ce dossier n'est pas encore approuvé.",
+      "confirm": "Autoriser"
+    },
+    "restrictedNetwork": {
+      "title": "Autoriser cette requête ?",
+      "message": "L'assistant veut utiliser {{tool}}, qui envoie du texte à un service en ligne. Ce dossier n'est pas encore approuvé.",
+      "confirm": "Autoriser"
+    },
+    "locateFolder": {
+      "title": "Trouver le dossier du projet"
+    },
+    "rebindFolder": {
+      "title": "Utiliser un autre dossier ?",
+      "message": "{{name}} n'est pas le dossier qu'Oleafly avait pour ce projet. Si vous l'utilisez, Oleafly y enregistre vos modifications non enregistrées et ferme les terminaux et les sessions d'agents de ce projet. Tout ce qui s'y exécute s'arrête. Oleafly cesse aussi de faire confiance au dossier, désactive l'accès complet, réinitialise les autorisations de l'assistant et dissocie les dossiers de recherche. Les conversations et l'historique sont conservés.",
+      "confirm": "Utiliser ce dossier"
+    },
+    "saveCopy": {
+      "title": "Choisissez où enregistrer une copie",
+      "folderSuffix": "copie"
     }
   },
   "errors": {

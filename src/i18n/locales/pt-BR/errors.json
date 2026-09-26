@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "O nome do projeto não pode ficar vazio.",
     "name_conflict": "Já existe um projeto chamado {{name}}.",
-    "folder_unavailable": "Não foi possível reservar uma nova pasta de projeto."
+    "folder_unavailable": "Não foi possível reservar uma nova pasta de projeto.",
+    "not_found": "Este projeto não está mais na sua biblioteca.",
+    "not_recyclable": "Não é possível mover este projeto para a Lixeira.",
+    "linked_missing": "O Oleafly não encontra a pasta {{folder}}. Ela pode ter sido movida ou excluída, ou está em uma unidade que não está conectada.",
+    "linked_replaced": "A pasta {{folder}} não é a mesma que o Oleafly abriu antes. Abra-a novamente para continuar.",
+    "linked_permission_denied": "O Oleafly não tem permissão para abrir a pasta {{folder}}.",
+    "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente.",
+    "linked_not_recyclable": "Esta pasta foi aberta no próprio local, então não pode ser movida para a Lixeira. Seus arquivos não foram alterados.",
+    "linked_not_duplicable": "Esta pasta foi aberta no próprio local, então o Oleafly não pode duplicá-la.",
+    "folder_not_a_folder": "O Oleafly não pode usar esse local. Escolha uma pasta.",
+    "folder_in_app_data": "O Oleafly guarda os próprios dados nessa pasta. Escolha outra.",
+    "folder_too_broad": "{{name}} é abrangente demais para abrir como um único projeto. Escolha a pasta que contém só este projeto.",
+    "folder_already_linked": "Essa pasta se sobrepõe a outro projeto no Oleafly. Escolha outra pasta.",
+    "not_linked": "Localizar só funciona com pastas abertas no próprio local.",
+    "copy_destination_refused": "Escolha uma pasta fora do projeto e fora da pasta de dados do Oleafly.",
+    "copy_nothing_open": "Nenhum arquivo está aberto, então não há nada para salvar.",
+    "copy_too_large": "Os arquivos abertos são grandes demais para salvar como cópia.",
+    "copy_failed": "O Oleafly não conseguiu salvar a cópia nesse local. Escolha uma pasta em que você possa gravar.",
+    "folder_picker_failed": "O Oleafly não conseguiu abrir o seletor de pastas. Tente novamente.",
+    "import_no_main": "Esta importação não tem nenhum documento LaTeX, Typst ou Markdown para compilar.",
+    "settings_file_exists": "Esta pasta já tem um project.json, então o Oleafly o deixou como estava.",
+    "settings_need_main": "Escolha primeiro um documento principal e depois salve as configurações do projeto nesta pasta.",
+    "settings_write_failed": "O Oleafly não conseguiu salvar as configurações do projeto nesta pasta."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "O TinyTeX não tem um binário {{name}} compatível com este sistema.",
-    "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo."
+    "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo.",
+    "latexmk_build_path": "O latexmk não consegue usar a pasta de compilação do Oleafly neste computador porque o caminho dela contém caracteres que o latexmk não aceita. Mude este projeto para o Tectonic para compilá-lo.",
+    "latexmk_network_folder": "O latexmk não consegue compilar uma pasta em um compartilhamento de rede. Mude este projeto para o Tectonic ou copie a pasta para este computador."
   },
   "github": {
     "sign_in_expired": "O código de login expirou. Tente de novo.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Não foi possível carregar os repositórios.",
     "create_repo_failed": "Não foi possível criar o repositório ({{status}})."
   },
+  "git": {
+    "remote_exists": "Este projeto já está vinculado a {{remote}}.",
+    "nested_repository": "Este projeto está dentro de outro repositório Git, então o Oleafly não vai criar um repositório separado aqui."
+  },
   "approvals": {
     "full_access_declined": "O acesso total não foi ativado."
+  },
+  "trust": {
+    "git": "Confie nesta pasta para usar o controle de versão.",
+    "repository": "Confie no repositório {{name}} para usar o controle de versão aqui.",
+    "terminal": "Abra o terminal você mesmo para usá-lo nesta pasta.",
+    "agents": "Confie nesta pasta para usar agentes externos.",
+    "mcp": "Confie nesta pasta antes que clientes MCP possam usá-la.",
+    "research_tasks": "Confie nesta pasta para executar tarefas de pesquisa.",
+    "run_command": "Confie nesta pasta para permitir que o assistente execute comandos.",
+    "full_access": "Confie nesta pasta antes de ativar o acesso total.",
+    "system_tex": "Confie nesta pasta para compilar com latexmk.",
+    "shell_escape": "Confie nesta pasta antes de permitir shell escape.",
+    "broad_folder": "O Oleafly não pode confiar em toda a pasta {{name}}. Escolha uma pasta menor.",
+    "declined": "A pasta não foi marcada como confiável.",
+    "unavailable": "O Oleafly não conseguiu verificar se esta pasta é confiável."
+  },
+  "open_folder": {
+    "not_absolute": "Use o caminho completo da pasta.",
+    "not_found": "O Oleafly não encontra esta pasta.",
+    "permission_denied": "O Oleafly não tem permissão para abrir esta pasta.",
+    "not_a_folder": "Escolha uma pasta, não um arquivo.",
+    "unsupported_folder": "O Oleafly não consegue abrir este tipo de pasta.",
+    "path_not_unicode": "O caminho desta pasta contém caracteres que o Oleafly não consegue ler. Renomeie a pasta e tente novamente.",
+    "too_broad": "{{name}} contém coisas demais para ser aberta como um único projeto. Escolha uma pasta dentro dela.",
+    "protected": "O Oleafly não pode abrir pastas dentro de {{name}}.",
+    "app_data": "Esta pasta faz parte dos dados do aplicativo Oleafly. Escolha uma pasta fora dela.",
+    "contains_project": "Esta pasta contém {{name}}, que já está aberta no Oleafly como um projeto próprio.",
+    "research_folder": "{{project}} já pode editar arquivos desta pasta pelas suas pastas vinculadas. Primeiro desvincule a pasta lá.",
+    "failed": "O Oleafly não conseguiu abrir esta pasta."
+  },
+  "research": {
+    "linked_project_folder": "Esta pasta está aberta no Oleafly como um projeto próprio. Vincule-a como somente leitura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Este histórico de pontos de verificação vem de um projeto da sua biblioteca do Oleafly, então não pode ser usado com uma pasta aberta no próprio local.",
+    "folder_history_for_library": "Este histórico de pontos de verificação vem de uma pasta aberta no próprio local, então não pode ser usado com um projeto da sua biblioteca do Oleafly.",
+    "restore_path_blocked": "O Oleafly não pode restaurar {{path}} porque há um link ou outra coisa que não é um arquivo no lugar. Mova-o e tente novamente."
   }
 }

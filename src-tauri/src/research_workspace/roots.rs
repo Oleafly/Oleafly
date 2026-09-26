@@ -236,6 +236,100 @@ fn validate_root_separation(project_id: &str, candidate: &Path) -> Result<(), St
     Ok(())
 }
 
+fn validate_linked_separation(
+    project_id: &str,
+    candidate: &Path,
+    access: ResearchRootAccess,
+) -> Result<(), String> {
+    if access != ResearchRootAccess::ReadWrite {
+        return Ok(());
+    }
+    let case = crate::fs_identity::identify_directory(candidate)
+        .map(|observed| observed.case)
+        .unwrap_or(crate::fs_identity::CaseSensitivity::Unknown);
+    let open_elsewhere = crate::linked_registry::list()?
+        .iter()
+        .any(|entry| match entry {
+            crate::linked_registry::LinkEntry::Record(record) => {
+                record.id != project_id
+                    && record.is_current()
+                    && crate::fs_identity::paths_overlap(
+                        candidate,
+                        Path::new(&record.canonical_path),
+                        case,
+                    )
+            }
+            crate::linked_registry::LinkEntry::Corrupt { .. } => false,
+        });
+    if open_elsewhere {
+        return Err(crate::app_error::AppError::new("research.linked_project_folder").into());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct WritableRootOverlap {
+    pub(crate) project_id: String,
+    pub(crate) root_id: String,
+}
+
+#[cfg(test)]
+pub(crate) fn writable_roots_overlapping(
+    candidate: &Path,
+    case: crate::fs_identity::CaseSensitivity,
+) -> Result<Vec<WritableRootOverlap>, String> {
+    let store = crate::paths::oleafly_root()?.join("research-workspaces");
+    match std::fs::symlink_metadata(&store) {
+        Ok(_) => ensure_real_directory(&store, "research workspace directory")?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => {
+            return Err(format!(
+                "could not inspect research workspace directory: {error}"
+            ))
+        }
+    }
+    let entries = std::fs::read_dir(&store)
+        .map_err(|error| format!("could not list research workspaces: {error}"))?;
+    let mut overlaps = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
+            continue;
+        }
+        let Some(project_id) = path.file_stem().and_then(std::ffi::OsStr::to_str) else {
+            continue;
+        };
+        if crate::paths::project_dir(project_id).is_err() {
+            continue;
+        }
+        let Ok(workspace) = read_workspace_from(&path, project_id) else {
+            continue;
+        };
+        overlaps.extend(
+            workspace
+                .roots
+                .into_iter()
+                .filter(|root| root.access == ResearchRootAccess::ReadWrite)
+                .filter(|root| {
+                    crate::fs_identity::paths_overlap(
+                        candidate,
+                        Path::new(&root.canonical_path),
+                        case,
+                    )
+                })
+                .map(|root| WritableRootOverlap {
+                    project_id: project_id.to_string(),
+                    root_id: root.id,
+                }),
+        );
+    }
+    overlaps.sort_by(|left, right| {
+        (&left.project_id, &left.root_id).cmp(&(&right.project_id, &right.root_id))
+    });
+    Ok(overlaps)
+}
+
 fn new_root_id() -> String {
     format!("root-{:032x}", rand::random::<u128>())
 }
@@ -257,6 +351,7 @@ pub fn add_root(request: AddResearchRootRequest) -> Result<ResearchWorkspace, St
     let label = validate_label(&request.label)?;
     let canonical = canonical_root(&request.path)?;
     validate_root_separation(&request.project_id, &canonical)?;
+    validate_linked_separation(&request.project_id, &canonical, request.access)?;
     if workspace.roots.iter().any(|root| {
         Path::new(&root.canonical_path) == canonical
             || root.label.eq_ignore_ascii_case(label.as_str())
@@ -300,6 +395,7 @@ pub fn update_root(request: UpdateResearchRootRequest) -> Result<ResearchWorkspa
     if directory_identity(&canonical)? != root.identity {
         return Err("The linked folder was replaced. Unlink it, then add the new folder.".into());
     }
+    validate_linked_separation(&request.project_id, &canonical, request.access)?;
     root.label = label;
     root.role = request.role;
     root.access = request.access;
@@ -393,6 +489,9 @@ pub(crate) fn resolve_root_path(
         return Err("The linked folder was replaced. Unlink it, then add the new folder.".into());
     }
     validate_root_separation(project_id, &canonical)?;
+    if operation == ResearchRootOperation::Write {
+        validate_linked_separation(project_id, &canonical, ResearchRootAccess::ReadWrite)?;
+    }
     let relative = validate_relative_path(relative_path, operation == ResearchRootOperation::Read)?;
     let mut current = canonical.clone();
     let components: Vec<_> = relative.components().collect();
@@ -696,20 +795,31 @@ pub fn read_root_file(
 }
 
 pub fn forget_project(project_id: &str) {
-    if crate::paths::validate_project_id(project_id).is_err() {
-        return;
-    }
-    let Ok(root) = workspace_store_root() else {
-        return;
-    };
+    let _ = forget_project_strict(project_id);
+}
+
+pub(crate) fn forget_project_strict(project_id: &str) -> Result<(), String> {
+    crate::paths::validate_project_id(project_id)?;
+    let _guard = mutation_lock()
+        .lock()
+        .map_err(|_| "research workspace lock is unavailable".to_string())?;
+    let root = workspace_store_root()?;
     let path = root.join(format!("{project_id}.json"));
     if path.parent() != Some(root.as_path()) {
-        return;
+        return Err("research workspace metadata escapes its folder".into());
     }
-    if let Ok(metadata) = std::fs::symlink_metadata(&path) {
-        if metadata.is_file() && !metadata.file_type().is_symlink() {
-            let _ = std::fs::remove_file(&path);
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not inspect research workspace: {error}")),
+        Ok(metadata)
+            if metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && !is_reparse_point(&metadata) =>
+        {
+            std::fs::remove_file(&path)
+                .map_err(|error| format!("could not unlink research folders: {error}"))
         }
+        Ok(_) => Err("research workspace metadata must be a regular file".into()),
     }
 }
 

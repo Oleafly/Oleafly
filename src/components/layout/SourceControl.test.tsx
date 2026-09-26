@@ -681,6 +681,17 @@ describe("SourceControl", () => {
     expect(await screen.findByText("main.tex")).toBeInTheDocument();
   });
 
+  it("explains a refused snapshot instead of printing the error envelope", async () => {
+    mocks.gitWorkspaceSnapshot.mockRejectedValue(
+      '@oleafly/error:{"code":"trust.git","params":{},"detail":null}',
+    );
+    render(<SourceControl />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Trust this folder to use Source Control.");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+  });
+
   it("opens and unstages all staged paths", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);
@@ -814,6 +825,21 @@ describe("SourceControl", () => {
     await waitFor(() =>
       expect(mocks.gitInitialize).toHaveBeenCalledWith("project-1"),
     );
+  });
+
+  it("explains why Source Control did not start inside another repository", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    mocks.gitInitialize.mockRejectedValue(
+      '@oleafly/error:{"code":"git.nested_repository","params":{}}',
+    );
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("inside another Git repository");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
   });
 
   it("keeps remote-only actions disabled when no remote is configured", async () => {
@@ -1094,6 +1120,16 @@ describe("SourceControl", () => {
       expect(mocks.publishDialog).toHaveBeenLastCalledWith(
         expect.objectContaining({ open: false, projectId: "project-2" }),
       ),
+    );
+  });
+
+  it("tells the publish dialog which repository the project already pushes to", async () => {
+    render(<SourceControl />);
+
+    await screen.findByText("library.bib");
+
+    expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentRemote: "https://github.com/oleafly/research.git" }),
     );
   });
 

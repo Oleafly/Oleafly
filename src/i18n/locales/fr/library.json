@@ -378,7 +378,9 @@
     "nameRequired": "Saisissez un nom de dépôt.",
     "published": "Publié sur {{repository}}.",
     "linked": "Lié et poussé vers {{remote}}.",
-    "pushNeedsPull": "Lié à {{remote}}, mais le push exige d'abord un pull : {{detail}}"
+    "pushNeedsPull": "Lié à {{remote}}, mais le push exige d'abord un pull : {{detail}}",
+    "replaceRemotePrompt": "Ce projet est lié à {{remote}}. Remplacer ce lien ?",
+    "replaceRemote": "Remplacer le lien"
   },
   "deadlines": {
     "title": "Échéances de conférences",

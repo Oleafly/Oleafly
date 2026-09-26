@@ -234,10 +234,10 @@ const HOST: EditorHost = {
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
   saveActive: saveActiveFromKeymap,
   isEditLocked: () => {
-    const { projectId, activePath } = useFilesStore.getState();
+    const { projectId, activePath, manifestHome } = useFilesStore.getState();
     return (
       isEditorMutationLocked(projectId) ||
-      (!!activePath && isManagedProjectPath(activePath))
+      (!!activePath && isManagedProjectPath(activePath, manifestHome))
     );
   },
   registerMutationOwner: (owner) => registerEditorMutationOwner({

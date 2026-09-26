@@ -426,6 +426,11 @@
       "sourceSize": "Kildestørrelse",
       "reclaimable": "Kan frigjøres"
     },
+    "capture": {
+      "paused": "Sjekkpunkter er satt på pause fordi mappen er for stor. Et sjekkpunkt kan inneholde høyst {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i denne mappen er ikke med i sjekkpunktene. Oleafly utelater lenker, svært store filer, filer som bare ligger i skyen, og navn som ikke fungerer på alle systemer.",
+      "skipped_other": "{{formattedCount}} filer i denne mappen er ikke med i sjekkpunktene. Oleafly utelater lenker, svært store filer, filer som bare ligger i skyen, og navn som ikke fungerer på alle systemer."
+    },
     "catalog": {
       "formatVersion": "Formatversjon",
       "lineage": "Slektslinje",
@@ -458,7 +463,8 @@
       "showFor": "Vis filene for {{version}}",
       "hideFor": "Skjul filene for {{version}}",
       "show": "Vis filene",
-      "hide": "Skjul filene"
+      "hide": "Skjul filene",
+      "folderSettings": "Oleafly-innstillinger for denne mappen"
     },
     "entry": {
       "labelInput": "Sjekkpunktetikett",

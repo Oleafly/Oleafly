@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Välj ett kalkylblad att importera",
       "filter": "Kalkylblad"
+    },
+    "trustFolder": {
+      "title": "Lita på den här mappen?",
+      "message": "Oleafly slår på Git, terminalen, agenter och LaTeX-verktyg för {{name}}. Lita bara på mappar vars innehåll du känner till.",
+      "messageParent": "Oleafly litar på {{name}} och alla mappar i den, även de du öppnar senare.",
+      "messageRepository": "Oleafly kör Git i {{name}} med repositoriets egna inställningar och hooks.",
+      "confirm": "Lita på"
+    },
+    "restrictedWrite": {
+      "title": "Tillåta den här ändringen?",
+      "message": "Assistenten vill ändra {{path}}. Sådana filer kan köra program, och den här mappen är inte betrodd än.",
+      "confirm": "Tillåt"
+    },
+    "restrictedNetwork": {
+      "title": "Tillåta den här begäran?",
+      "message": "Assistenten vill använda {{tool}}, som skickar text till en onlinetjänst. Den här mappen är inte betrodd än.",
+      "confirm": "Tillåt"
+    },
+    "locateFolder": {
+      "title": "Hitta projektmappen"
+    },
+    "rebindFolder": {
+      "title": "Vill du använda en annan mapp?",
+      "message": "{{name}} är inte mappen som Oleafly hade för det här projektet. Om du använder den sparar Oleafly dina osparade ändringar i den och stänger projektets terminaler och agentsessioner. Allt som körs i dem avbryts. Oleafly slutar också att lita på mappen, stänger av fullständig åtkomst, återställer assistentens godkännanden och kopplar bort forskningsmappar. Chattar och historik finns kvar.",
+      "confirm": "Använd den här mappen"
+    },
+    "saveCopy": {
+      "title": "Välj var kopian ska sparas",
+      "folderSuffix": "kopia"
     }
   },
   "errors": {

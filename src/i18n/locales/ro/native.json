@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Alege o foaie de calcul de importat",
       "filter": "Foi de calcul"
+    },
+    "trustFolder": {
+      "title": "Ai încredere în acest folder?",
+      "message": "Oleafly va activa Git, terminalul, agenții și instrumentele LaTeX pentru {{name}}. Ai încredere doar în folderele al căror conținut îl cunoști.",
+      "messageParent": "Oleafly va avea încredere în {{name}} și în fiecare folder din el, inclusiv în cele pe care le deschizi mai târziu.",
+      "messageRepository": "Oleafly va rula Git în {{name}} cu setările și hook-urile proprii ale depozitului.",
+      "confirm": "Am încredere"
+    },
+    "restrictedWrite": {
+      "title": "Permiți această modificare?",
+      "message": "Asistentul vrea să modifice {{path}}. Fișierele de acest tip pot rula programe, iar acest folder nu este încă de încredere.",
+      "confirm": "Permite"
+    },
+    "restrictedNetwork": {
+      "title": "Permiți această cerere?",
+      "message": "Asistentul vrea să folosească {{tool}}, care trimite text către un serviciu online. Acest folder nu este încă de încredere.",
+      "confirm": "Permite"
+    },
+    "locateFolder": {
+      "title": "Găsește folderul proiectului"
+    },
+    "rebindFolder": {
+      "title": "Folosești alt folder?",
+      "message": "{{name}} nu este folderul pe care Oleafly îl avea pentru acest proiect. Dacă îl folosești, Oleafly salvează în el modificările nesalvate și închide terminalele și sesiunile de agent ale acestui proiect. Tot ce rulează în ele se oprește. De asemenea, Oleafly nu mai are încredere în folder, dezactivează accesul complet, resetează aprobările asistentului și dezleagă folderele de cercetare. Conversațiile și istoricul se păstrează.",
+      "confirm": "Folosește acest folder"
+    },
+    "saveCopy": {
+      "title": "Alege unde să salvezi o copie",
+      "folderSuffix": "copie"
     }
   },
   "errors": {

@@ -34,6 +34,10 @@ pub enum CheckpointPublicationOutcome {
         created: bool,
     },
     Failed,
+    Paused {
+        files: u64,
+        bytes: u64,
+    },
     Skipped {
         reason: CheckpointSkipReason,
         message: String,
@@ -397,6 +401,9 @@ async fn publish_once<R: tauri::Runtime>(
         }) => {
             format!("published {snapshot_root} after {elapsed_ms} ms with uncertain durability")
         }
+        Ok(CheckpointPublicationOutcome::Paused { files, bytes }) => {
+            format!("paused at {files} files and {bytes} bytes after {elapsed_ms} ms")
+        }
         Ok(_) => format!("unchanged after {elapsed_ms} ms"),
     };
     let outcome = result.unwrap_or_else(outcome_from_failure);
@@ -616,6 +623,9 @@ async fn attempt_publication(
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<CheckpointPublicationOutcome, AdapterFailure> {
     let _cancel_scope = CheckpointCancelScope::new(cancel);
+    if publication_is_linked(&request.project_id).await? {
+        return attempt_linked_publication(request, cancel).await;
+    }
     let project_id = request.project_id.as_str();
     let project_root = request.project_root.as_path();
     let operation = crate::checkpoints::checkpoint_operation_lock(project_id)
@@ -627,27 +637,52 @@ async fn attempt_publication(
     };
     trace_lane(project_id, "sources differ from the newest checkpoint");
     let inputs = walk.capture_inputs().map_err(AdapterFailure::incomplete)?;
-    let completed_at_unix_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
-        .unwrap_or(0);
+    let completed_at_unix_ms = completed_at_now();
     ensure_checkpoint_not_cancelled(cancel)?;
     let publication = open_publication_store(project_id).await?;
     trace_lane(project_id, "store opened");
+    let seal_project_root = project_root.to_path_buf();
+    seal_and_publish(
+        request,
+        publication,
+        completed_at_unix_ms,
+        cancel,
+        move |store, cancel| stage_with_one_rewalk(store, &seal_project_root, &inputs, cancel),
+    )
+    .await
+}
+
+fn completed_at_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
+        .unwrap_or(0)
+}
+
+async fn seal_and_publish<F>(
+    request: &PublicationRequest,
+    publication: oleafly_history::PublicationStore,
+    completed_at_unix_ms: i64,
+    cancel: Option<&crate::state::CompileCancel>,
+    stage: F,
+) -> Result<CheckpointPublicationOutcome, AdapterFailure>
+where
+    F: FnOnce(
+            &oleafly_history::Store,
+            Option<&crate::state::CompileCancel>,
+        ) -> Result<Candidate, AdapterFailure>
+        + Send
+        + 'static,
+{
+    let project_id = request.project_id.as_str();
     let seal_store = publication.store().clone();
     let seal_project_id = project_id.to_owned();
-    let seal_project_root = project_root.to_path_buf();
     let seal_cancel = cancel.cloned();
     let candidate = match tokio::task::spawn_blocking(move || {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&seal_project_id)
             .map_err(AdapterFailure::silent)?;
         ensure_checkpoint_not_cancelled(seal_cancel.as_ref())?;
-        let candidate = stage_with_one_rewalk(
-            &seal_store,
-            &seal_project_root,
-            &inputs,
-            seal_cancel.as_ref(),
-        )?;
+        let candidate = stage(&seal_store, seal_cancel.as_ref())?;
         if let Err(error) = ensure_checkpoint_not_cancelled(seal_cancel.as_ref()) {
             drop(candidate);
             return Err(error);
@@ -699,6 +734,170 @@ async fn attempt_publication(
             "checkpoint storage task failed: {error}"
         ))),
     }
+}
+
+async fn publication_is_linked(project_id: &str) -> Result<bool, AdapterFailure> {
+    let project_id = project_id.to_owned();
+    tokio::task::spawn_blocking(move || crate::project_location::kind_of(&project_id))
+        .await
+        .map_err(|error| {
+            AdapterFailure::silent(format!("checkpoint storage task failed: {error}"))
+        })?
+        .map(|kind| kind == crate::project_location::ProjectKind::Linked)
+        .map_err(AdapterFailure::silent)
+}
+
+enum LinkedPreparation {
+    Unchanged,
+    Paused(crate::checkpoint_capture::CapturePause),
+    Changed {
+        location: crate::project_location::ProjectLocation,
+        policy: crate::checkpoint_capture::LinkedCapturePolicy,
+        inputs: Vec<oleafly_history::CaptureInput>,
+    },
+}
+
+fn linked_capture_policy(
+    request: &PublicationRequest,
+    root: &Path,
+) -> crate::checkpoint_capture::LinkedCapturePolicy {
+    let mut forced = std::collections::BTreeSet::from([request.main_document.clone()]);
+    if request.engine_name == "latexmk" {
+        if let Ok(Some(build)) = crate::paths::existing_build_dir(&request.project_id) {
+            let recorder = build.join(format!("{}.fls", crate::paths::ENTRY_STEM));
+            forced.extend(crate::checkpoint_capture::recorded_inputs_in(
+                &recorder, root,
+            ));
+        }
+    }
+    crate::checkpoint_capture::LinkedCapturePolicy::new(forced)
+}
+
+fn capture_linked_folder(
+    location: &crate::project_location::ProjectLocation,
+    policy: &crate::checkpoint_capture::LinkedCapturePolicy,
+) -> Result<crate::checkpoint_capture::LinkedCapture, AdapterFailure> {
+    crate::checkpoint_capture::walk_linked_folder(
+        &location.root,
+        location.sidecar_manifest_path().as_deref(),
+        policy,
+    )
+    .map_err(AdapterFailure::silent)
+}
+
+fn prepare_linked_publication(
+    request: &PublicationRequest,
+) -> Result<LinkedPreparation, AdapterFailure> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&request.project_id)
+        .map_err(AdapterFailure::silent)?;
+    let location = crate::project_location::locate(&request.project_id)
+        .map_err(|error| AdapterFailure::silent(String::from(error)))?;
+    if location.kind != crate::project_location::ProjectKind::Linked {
+        return Err(AdapterFailure::silent(
+            "the project is no longer a folder opened in place",
+        ));
+    }
+    let policy = linked_capture_policy(request, &location.root);
+    let capture = capture_linked_folder(&location, &policy)?;
+    crate::checkpoint_capture::record_capture_notice(&location, &capture.notice);
+    if let Some(pause) = capture.notice.paused.clone() {
+        return Ok(LinkedPreparation::Paused(pause));
+    }
+    if newest_checkpoint_matches(&request.project_id, &capture.walk) {
+        return Ok(LinkedPreparation::Unchanged);
+    }
+    let inputs = capture.capture_inputs().map_err(AdapterFailure::silent)?;
+    Ok(LinkedPreparation::Changed {
+        location,
+        policy,
+        inputs,
+    })
+}
+
+fn stage_linked_inputs(
+    store: &oleafly_history::Store,
+    root: &Path,
+    inputs: &[oleafly_history::CaptureInput],
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<Candidate, oleafly_history::HistoryError> {
+    match cancel {
+        Some(cancel) => store.stage_detached_candidate_controlled(root, inputs, cancel),
+        None => store.stage_detached_candidate(root, inputs),
+    }
+}
+
+fn stage_linked_with_one_rewalk(
+    store: &oleafly_history::Store,
+    location: &crate::project_location::ProjectLocation,
+    policy: &crate::checkpoint_capture::LinkedCapturePolicy,
+    inputs: &[oleafly_history::CaptureInput],
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<Candidate, AdapterFailure> {
+    match stage_linked_inputs(store, &location.root, inputs, cancel) {
+        Ok(candidate) => Ok(candidate),
+        Err(error) if is_missing_file(&error) => {
+            ensure_checkpoint_not_cancelled(cancel)?;
+            let capture = capture_linked_folder(location, policy)?;
+            if capture.notice.paused.is_some() {
+                return Err(AdapterFailure::silent(
+                    "the folder grew past the history limit while it was saved",
+                ));
+            }
+            let remaining = capture.capture_inputs().map_err(AdapterFailure::silent)?;
+            stage_linked_inputs(store, &location.root, &remaining, cancel)
+                .map_err(|error| history_failure("inputs could not be sealed", error))
+        }
+        Err(error) => Err(history_failure("inputs could not be sealed", error)),
+    }
+}
+
+async fn attempt_linked_publication(
+    request: &PublicationRequest,
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<CheckpointPublicationOutcome, AdapterFailure> {
+    let project_id = request.project_id.as_str();
+    let operation = crate::checkpoints::checkpoint_operation_lock(project_id)
+        .map_err(AdapterFailure::silent)?;
+    let _operation = acquire_operation_lock_cancellable(operation, cancel).await?;
+    trace_lane(project_id, "operation lock acquired");
+    let prepare_request = request.clone();
+    let preparation =
+        tokio::task::spawn_blocking(move || prepare_linked_publication(&prepare_request))
+            .await
+            .unwrap_or_else(|error| {
+                Err(AdapterFailure::silent(format!(
+                    "the project files could not be inspected: {error}"
+                )))
+            })?;
+    let (location, policy, inputs) = match preparation {
+        LinkedPreparation::Unchanged => return Ok(CheckpointPublicationOutcome::Unchanged),
+        LinkedPreparation::Paused(pause) => {
+            return Ok(CheckpointPublicationOutcome::Paused {
+                files: pause.files,
+                bytes: pause.bytes,
+            })
+        }
+        LinkedPreparation::Changed {
+            location,
+            policy,
+            inputs,
+        } => (location, policy, inputs),
+    };
+    trace_lane(project_id, "folder files differ from the newest checkpoint");
+    let completed_at_unix_ms = completed_at_now();
+    ensure_checkpoint_not_cancelled(cancel)?;
+    let publication = open_publication_store(project_id).await?;
+    trace_lane(project_id, "store opened");
+    seal_and_publish(
+        request,
+        publication,
+        completed_at_unix_ms,
+        cancel,
+        move |store, cancel| {
+            stage_linked_with_one_rewalk(store, &location, &policy, &inputs, cancel)
+        },
+    )
+    .await
 }
 
 #[cfg(test)]
@@ -1460,6 +1659,225 @@ mod tests {
         );
 
         drop(store);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    fn linked_folder(folders: &std::path::Path) -> (String, std::path::PathBuf) {
+        let folder = folders.join("thesis");
+        fs::create_dir(&folder).unwrap();
+        (
+            crate::linked_registry::register_folder_for_test(&folder).id,
+            folder,
+        )
+    }
+
+    #[test]
+    fn a_linked_folder_publishes_its_sidecar_and_keeps_a_foreign_project_json_as_content() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        fs::write(
+            folder.join("project.json"),
+            br#"{"name":"nx-app","targets":{"build":{}}}"#,
+        )
+        .unwrap();
+        fs::write(folder.join("main.tex"), b"\\documentclass{article}").unwrap();
+        fs::create_dir(folder.join("node_modules")).unwrap();
+        fs::write(folder.join("node_modules/pkg.js"), b"module").unwrap();
+        let mut meta = crate::project::read_meta(&id).unwrap();
+        meta.main_doc = "main.tex".into();
+        crate::project::write_meta(&id, &meta).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+
+        let outcome = publish_checkpoint(&runtime, &id, &folder, "latex", "main.tex");
+
+        assert!(
+            matches!(
+                outcome,
+                CheckpointPublicationOutcome::Published { created: true, .. }
+            ),
+            "{outcome:?}"
+        );
+        assert_eq!(
+            newest_checkpoint_paths(&id),
+            vec![
+                oleafly_history::DETACHED_MANIFEST_PATH,
+                "main.tex",
+                "project.json"
+            ]
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        assert_eq!(
+            publish_checkpoint(&runtime, &id, &folder, "latex", "main.tex"),
+            CheckpointPublicationOutcome::Unchanged
+        );
+        assert!(crate::checkpoint_capture::read_capture_notice(&id).is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_publication_reads_the_folder_locate_resolves_not_the_request_path() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        fs::write(folder.join("main.typ"), b"= Title").unwrap();
+
+        let outcome = publish_checkpoint(
+            &runtime,
+            &id,
+            &folders.path().join("not-the-folder"),
+            "typst",
+            "main.typ",
+        );
+
+        assert!(
+            matches!(outcome, CheckpointPublicationOutcome::Published { .. }),
+            "{outcome:?}"
+        );
+        assert_eq!(newest_checkpoint_paths(&id), vec!["main.typ"]);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_latexmk_recorder_and_the_main_document_override_the_folder_skip_list() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        let root = folder.canonicalize().unwrap();
+        fs::create_dir_all(folder.join("out")).unwrap();
+        fs::write(folder.join("out/main.tex"), b"\\documentclass{article}").unwrap();
+        fs::create_dir_all(folder.join("build")).unwrap();
+        fs::write(folder.join("build/figure.pdf"), b"%PDF").unwrap();
+        fs::write(folder.join("build/unused.pdf"), b"%PDF").unwrap();
+        let recorder = crate::paths::build_dir(&id)
+            .unwrap()
+            .join(format!("{}.fls", crate::paths::ENTRY_STEM));
+        fs::write(
+            &recorder,
+            format!(
+                "PWD {}\nINPUT out/main.tex\nINPUT build/figure.pdf\n",
+                root.display()
+            ),
+        )
+        .unwrap();
+
+        let outcome = publish_checkpoint(&runtime, &id, &folder, "latex", "out/main.tex");
+        assert!(
+            matches!(outcome, CheckpointPublicationOutcome::Published { .. }),
+            "{outcome:?}"
+        );
+        assert_eq!(newest_checkpoint_paths(&id), vec!["out/main.tex"]);
+
+        let outcome = publish_checkpoint(&runtime, &id, &folder, "latexmk", "out/main.tex");
+        assert!(
+            matches!(outcome, CheckpointPublicationOutcome::Published { .. }),
+            "{outcome:?}"
+        );
+        assert_eq!(
+            newest_checkpoint_paths(&id),
+            vec!["build/figure.pdf", "out/main.tex"]
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_folder_past_the_budget_pauses_quietly_and_records_one_notice() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        fs::write(folder.join("main.tex"), b"source").unwrap();
+        for index in 0..21 {
+            fs::File::create(folder.join(format!("scan-{index:02}.pdf")))
+                .unwrap()
+                .set_len(crate::checkpoint_capture::LINKED_LARGE_FILE_BYTES)
+                .unwrap();
+        }
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+
+        let outcome = publish_checkpoint(&runtime, &id, &folder, "latex", "main.tex");
+
+        let CheckpointPublicationOutcome::Paused { files, bytes } = outcome else {
+            panic!("{outcome:?}")
+        };
+        assert_eq!(files, 22);
+        assert!(bytes > crate::checkpoint_capture::LINKED_BYTE_LIMIT);
+        assert!(crate::paths::existing_checkpoint_store_dir(&id)
+            .unwrap()
+            .is_none());
+        assert_eq!(
+            crate::checkpoint_capture::read_capture_notice(&id)
+                .unwrap()
+                .paused
+                .unwrap()
+                .files,
+            22
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        for index in 0..21 {
+            fs::remove_file(folder.join(format!("scan-{index:02}.pdf"))).unwrap();
+        }
+        assert!(matches!(
+            publish_checkpoint(&runtime, &id, &folder, "latex", "main.tex"),
+            CheckpointPublicationOutcome::Published { .. }
+        ));
+        assert!(crate::checkpoint_capture::read_capture_notice(&id).is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_paused_outcome_serializes_its_counts() {
+        assert_eq!(
+            serde_json::to_value(CheckpointPublicationOutcome::Paused { files: 6, bytes: 7 })
+                .unwrap(),
+            serde_json::json!({"status": "paused", "files": 6, "bytes": 7})
+        );
+    }
+
+    #[test]
+    fn a_linked_capture_failure_stays_silent() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        fs::write(folder.join("main.tex"), b"source").unwrap();
+        let sidecar = crate::project_location::locate(&id)
+            .unwrap()
+            .sidecar_manifest_path()
+            .unwrap();
+        fs::create_dir(&sidecar).unwrap();
+
+        let failure = runtime
+            .block_on(super::attempt_publication(
+                &publication_request(&id, &folder, "latex", "main.tex"),
+                None,
+            ))
+            .unwrap_err();
+
+        assert_eq!(failure.reason, None, "{}", failure.detail);
+        assert_eq!(
+            outcome_from_failure(failure),
+            CheckpointPublicationOutcome::Failed
+        );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

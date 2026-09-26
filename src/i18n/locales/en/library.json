@@ -371,7 +371,9 @@
     "nameRequired": "Enter a repository name.",
     "published": "Published to {{repository}}.",
     "linked": "Linked and pushed to {{remote}}.",
-    "pushNeedsPull": "Linked to {{remote}}, but push needs a pull first: {{detail}}"
+    "pushNeedsPull": "Linked to {{remote}}, but push needs a pull first: {{detail}}",
+    "replaceRemotePrompt": "This project is linked to {{remote}}. Replace that link?",
+    "replaceRemote": "Replace link"
   },
   "deadlines": {
     "title": "Conference Deadlines",

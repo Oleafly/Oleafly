@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Compilar de novo"
     },
+    "saveSettingsToFolder": {
+      "keywords": "salvar configurações projeto pasta project.json compartilhar documento principal",
+      "label": "Salvar as configurações do projeto nesta pasta",
+      "saved": "As configurações do projeto foram salvas em project.json nesta pasta."
+    },
     "section": {
       "label": "Seção"
     },
@@ -261,6 +266,7 @@
     "texRootBroken": "O % !TEX root em {{file}} aponta para um arquivo inexistente ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "raiz: {{name}}",
+    "texRootNotTex": "O % !TEX root em {{file}} aponta para {{target}}, que não é um arquivo LaTeX",
     "texRootOverride": "raiz: {{path}} (definida por % !TEX root em {{file}})"
   },
   "datePicker": {
@@ -362,6 +368,25 @@
       "terminalDock": "painel de terminal"
     },
     "title": "Algo deu errado"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Esta pasta não está disponível.",
+      "body": "Reconecte a unidade ou encontre a pasta. Seus arquivos abertos continuam aqui, e o Oleafly não vai salvar nem compilar até a pasta voltar."
+    },
+    "replaced": {
+      "title": "Esta pasta foi substituída.",
+      "body": "Agora há outra pasta no lugar dela. O Oleafly parou de salvar para não sobrescrever nada lá."
+    },
+    "permissionDenied": {
+      "title": "O Oleafly não consegue abrir esta pasta.",
+      "body": "Verifique as permissões da pasta e tente de novo. Seus arquivos abertos continuam aqui."
+    },
+    "locate": "Localizar…",
+    "useThisFolder": "Usar esta pasta",
+    "saveCopy": "Salvar uma cópia…",
+    "tryAgain": "Tentar de novo",
+    "savedCopy": "Seus arquivos abertos foram salvos em {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -553,6 +578,9 @@
         "calculating": "Calculando o uso de armazenamento…",
         "desktopOnly": "Os detalhes de armazenamento estão disponíveis no aplicativo para desktop.",
         "error": "Não foi possível calcular os detalhes de armazenamento.",
+        "linkedFolders_one": "{{size}} de saída de compilação e configurações para {{count}} pasta aberta",
+        "linkedFolders_many": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
+        "linkedFolders_other": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
         "refresh": "Atualizar o uso de armazenamento",
         "stats": {
           "appData": "Dados do aplicativo",

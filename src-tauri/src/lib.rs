@@ -17,6 +17,8 @@ mod bib_clean;
 mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
+mod buffer_copy;
+mod build_hygiene;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
@@ -36,14 +38,17 @@ mod deadlines;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
+mod fs_identity;
 mod fsperm;
 mod git;
 mod github;
 mod i18n;
 mod initial_state;
+mod known_folders;
 mod language_service;
 mod latex_engine;
 mod library_db;
+mod linked_registry;
 mod literature;
 // Two-bucket logging; emit sites land with per-sidecar adoption.
 #[allow(dead_code)]
@@ -51,9 +56,17 @@ mod logsafe;
 mod mcp;
 mod menu;
 mod ollama;
+#[cfg(test)]
+mod open_folder;
 mod paths;
 mod proc;
+mod process_identity;
 mod project;
+mod project_availability;
+mod project_grants;
+mod project_location;
+mod project_manifest;
+mod project_rebind;
 mod project_sources;
 mod protocol;
 mod quit_gate;
@@ -70,6 +83,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod single_instance;
 mod skills;
 mod skills_catalog;
 mod skills_pack;
@@ -84,6 +98,7 @@ mod templates;
 mod terminal;
 mod tex_distro;
 mod tinytex_archive;
+mod trust;
 mod worktree_lock;
 
 use state::AppState;
@@ -129,6 +144,13 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    {
+        use tauri::Emitter;
+        let handle = app.handle().clone();
+        project_availability::install_sink(Box::new(move |event| {
+            let _ = handle.emit("project-availability", event);
+        }));
+    }
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
     agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
     agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
@@ -214,6 +236,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
+    tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
 
     // Start the MCP server on boot when the user has enabled it. Failure to
     // bind must not prevent the app from starting; Settings shows the state.
@@ -235,13 +258,40 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[cfg(feature = "e2e-testing")]
+fn e2e_localstorage_seed(var: &str) -> Option<serde_json::Value> {
+    let seed = std::env::var(var).ok()?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&seed).unwrap_or_else(|_| panic!("{var} must be valid JSON"));
+    assert!(parsed.is_object(), "{var} must be a JSON object");
+    Some(parsed)
+}
+
+#[cfg(feature = "e2e-testing")]
+fn e2e_boot_seed_script(
+    every_load: &serde_json::Value,
+    once_per_launch: &serde_json::Value,
+    launch: &str,
+) -> String {
+    let launch = serde_json::Value::String(launch.to_owned());
+    format!(
+        "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const apply = (seed) => {{ for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }}; apply({every_load}); if (localStorage.getItem(\"oleafly.e2e.launch\") !== {launch}) {{ apply({once_per_launch}); localStorage.setItem(\"oleafly.e2e.launch\", {launch}); }} }})();"
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if research_mcp::stdio_bridge_requested() {
         std::process::exit(research_mcp::serve_stdio_bridge());
     }
     i18n::startup();
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    if single_instance::enabled_for_this_launch() {
+        builder = builder
+            .manage(single_instance::ForwardedLaunches::default())
+            .plugin(single_instance::plugin());
+    }
+    builder = builder
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
@@ -281,15 +331,21 @@ pub fn run() {
         // runs instead. The env var holds a JSON object of key -> string
         // (null removes the key); it is validated here so a malformed value
         // fails the launch instead of silently skipping the seed.
-        if let Ok(seed) = std::env::var("OLEAFLY_E2E_BOOT_LOCALSTORAGE") {
-            let parsed: serde_json::Value = serde_json::from_str(&seed)
-                .expect("OLEAFLY_E2E_BOOT_LOCALSTORAGE must be valid JSON");
-            assert!(
-                parsed.is_object(),
-                "OLEAFLY_E2E_BOOT_LOCALSTORAGE must be a JSON object"
+        let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
+        let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
+        if every_load.is_some() || once_per_launch.is_some() {
+            let empty = serde_json::Value::Object(serde_json::Map::new());
+            let launch = format!(
+                "{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| elapsed.as_nanos())
             );
-            let script = format!(
-                "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const seed = {parsed}; for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }})();"
+            let script = e2e_boot_seed_script(
+                every_load.as_ref().unwrap_or(&empty),
+                once_per_launch.as_ref().unwrap_or(&empty),
+                &launch,
             );
             builder = builder.plugin(
                 tauri::plugin::Builder::<tauri::Wry, ()>::new("oleafly-e2e-boot-seed")
@@ -412,6 +468,9 @@ pub fn run() {
             approvals::approvals_write_raw,
             approvals::approvals_mode_get,
             approvals::approvals_mode_set,
+            trust::project_trust_state,
+            trust::trust_folder,
+            trust::revoke_folder_trust,
             skills::skills_list,
             skills::skills_add,
             skills::skills_create,
@@ -471,6 +530,7 @@ pub fn run() {
             commands::cancel_compile,
             commands::clear_build_dir,
             commands::read_compiled_pdf,
+            commands::read_build_artifact,
             commands::validate_compile_fingerprint,
             commands::compile_isolated,
             commands::read_isolated_pdf,
@@ -555,7 +615,13 @@ pub fn run() {
             project::rename_project,
             project::open_devtools,
             project::get_project,
+            project::project_manifest_home,
+            project::save_project_settings_to_folder,
             project::list_projects,
+            project_availability::probe_project_availability,
+            project_rebind::locate_project_folder,
+            project_rebind::adopt_replaced_folder,
+            buffer_copy::save_open_buffers_copy,
             project::create_project,
             project::create_project_from_pdf_conversion,
             project::create_project_from_ad_hoc,
@@ -598,6 +664,7 @@ pub fn run() {
             project::clear_build_cache,
             project::recycle_project,
             commands::reveal_in_dir,
+            commands::reveal_project,
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,
@@ -630,6 +697,7 @@ pub fn run() {
             git::git_is_initialized,
             git::git_initialize,
             git::git_prepare_publish,
+            git::git_publish_preflight,
             git::git_log,
             git::git_restore,
             git::git_set_remote,

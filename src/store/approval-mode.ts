@@ -12,6 +12,7 @@ interface ApprovalModeState {
   load(projectId: string | null): Promise<ApprovalMode>;
   setMode(projectId: string | null, mode: ApprovalMode): Promise<void>;
   ready(projectId: string | null): Promise<ApprovalMode>;
+  forget(projectId: string): void;
 }
 
 const loads = new Map<string, Promise<ApprovalMode>>();
@@ -25,6 +26,12 @@ export function approvalModeForProject(
   return (projectId && modes[projectId]) || DEFAULT_APPROVAL_MODE;
 }
 
+function withoutKey<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
 export const useApprovalModeStore = create<ApprovalModeState>((set, get) => ({
   modes: {},
   loaded: {},
@@ -36,9 +43,10 @@ export const useApprovalModeStore = create<ApprovalModeState>((set, get) => ({
     }
     const existing = loads.get(projectId);
     if (existing) return existing;
+    const revision = revisions.get(projectId) ?? 0;
     const request = approvalsModeGet(projectId)
       .then((mode) => {
-        if (!get().loaded[projectId]) {
+        if (!get().loaded[projectId] && (revisions.get(projectId) ?? 0) === revision) {
           set((state) => ({
             modes: { ...state.modes, [projectId]: mode },
             loaded: { ...state.loaded, [projectId]: true },
@@ -83,6 +91,15 @@ export const useApprovalModeStore = create<ApprovalModeState>((set, get) => ({
     } finally {
       if (writes.get(projectId) === write) writes.delete(projectId);
     }
+  },
+  forget(projectId) {
+    loads.delete(projectId);
+    revisions.set(projectId, (revisions.get(projectId) ?? 0) + 1);
+    set((state) => ({
+      modes: withoutKey(state.modes, projectId),
+      loaded: withoutKey(state.loaded, projectId),
+      persisted: withoutKey(state.persisted, projectId),
+    }));
   },
   async ready(projectId) {
     if (!projectId) return DEFAULT_APPROVAL_MODE;

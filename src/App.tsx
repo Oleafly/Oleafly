@@ -30,6 +30,8 @@ import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type The
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
+import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
+import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
   editorUndo,
@@ -68,6 +70,7 @@ import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import {
+  automaticCompileAllowed,
   openCompileHydrated,
   resetOpenCompileMarker,
   shouldCompileOnOpen,
@@ -265,6 +268,7 @@ function AppContent() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
+  const mainDecision = useFilesStore((state) => state.mainDecision);
   const mainDocumentLoaded = useFilesStore(
     (state) => state.files[state.mainDoc] !== undefined,
   );
@@ -761,6 +765,7 @@ function AppContent() {
     }
     if (
       openCompileInFlightRef.current !== null ||
+      !automaticCompileAllowed(mainDecision) ||
       !shouldCompileOnOpen(
         projectId,
         tree.length > 0,
@@ -839,6 +844,7 @@ function AppContent() {
     compileCheckpoint,
     compileStatus,
     engineLoaded,
+    mainDecision,
     mainDocument,
     mainDocumentLoaded,
     openCompileEpoch,
@@ -901,6 +907,7 @@ function AppContent() {
               (see globals.css). */}
           <TopToolbar />
         <BackendProtocolBanner />
+        <FolderUnavailableBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}
@@ -1194,6 +1201,7 @@ export default function App() {
         <LanguageServiceRuntimeBoundary />
       </ErrorBoundary>
       <AutoCompileKeeper />
+      <ProjectAvailabilityKeeper />
       <AppContent />
     </>
   );

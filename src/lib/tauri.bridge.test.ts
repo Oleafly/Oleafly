@@ -33,7 +33,9 @@ import {
   gitInitialize,
   gitIsInitialized,
   gitPreparePublish,
+  gitPublishPreflight,
   gitResolveConflict,
+  gitSetRemote,
   gitStagePaths,
   gitStashPop,
   gitStashPush,
@@ -53,7 +55,10 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
+  projectTrustState,
   renameFile,
+  revokeFolderTrust,
+  trustFolder,
   validateCompileFingerprint,
 } from "./tauri";
 
@@ -274,6 +279,11 @@ describe("explicit Git setup bridge", () => {
       projectId: "project",
       message: "Initial commit",
     });
+
+    await gitPublishPreflight("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_publish_preflight", {
+      projectId: "project",
+    });
   });
 });
 
@@ -478,6 +488,44 @@ describe("MCP server management bridge", () => {
       arguments: { path: "paper.tex" },
       runId: "run-1",
       approvalToken: "approval-1",
+    });
+  });
+});
+
+describe("remote bridge", () => {
+  it("sends an explicit replace decision with the remote", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+    await gitSetRemote("project", "https://github.com/owner/paper.git");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_set_remote", {
+      projectId: "project",
+      url: "https://github.com/owner/paper.git",
+      replace: false,
+    });
+    await gitSetRemote("project", "https://github.com/owner/paper.git", { replace: true });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_set_remote", {
+      projectId: "project",
+      url: "https://github.com/owner/paper.git",
+      replace: true,
+    });
+  });
+});
+
+describe("folder trust bridge", () => {
+  it("names the project and scope for each trust command", async () => {
+    const trust = { trusted: false, source: null, parent: "papers", repository: null };
+    mocks.invoke.mockResolvedValue(trust);
+    await expect(projectTrustState("linked-1")).resolves.toEqual(trust);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("project_trust_state", {
+      projectId: "linked-1",
+    });
+    await trustFolder("linked-1", "parent");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("trust_folder", {
+      projectId: "linked-1",
+      scope: "parent",
+    });
+    await revokeFolderTrust("linked-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("revoke_folder_trust", {
+      projectId: "linked-1",
     });
   });
 });

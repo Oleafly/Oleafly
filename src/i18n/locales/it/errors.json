@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Il nome del progetto non può essere vuoto.",
     "name_conflict": "Esiste già un progetto di nome {{name}}.",
-    "folder_unavailable": "Impossibile riservare una nuova cartella di progetto."
+    "folder_unavailable": "Impossibile riservare una nuova cartella di progetto.",
+    "not_found": "Questo progetto non è più nella tua libreria.",
+    "not_recyclable": "Questo progetto non può essere spostato nel cestino.",
+    "linked_missing": "Oleafly non trova la cartella {{folder}}. Potrebbe essere stata spostata o eliminata, oppure si trova su un'unità non collegata.",
+    "linked_replaced": "La cartella {{folder}} non è quella che Oleafly ha aperto in precedenza. Riaprila per continuare.",
+    "linked_permission_denied": "Oleafly non ha l'autorizzazione per aprire la cartella {{folder}}.",
+    "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella.",
+    "linked_not_recyclable": "Questa cartella è stata aperta nella sua posizione, quindi non può essere spostata nel cestino. I tuoi file non sono stati modificati.",
+    "linked_not_duplicable": "Questa cartella è stata aperta nella sua posizione, quindi Oleafly non può duplicarla.",
+    "folder_not_a_folder": "Oleafly non può usare quella posizione. Scegli una cartella.",
+    "folder_in_app_data": "Oleafly conserva i propri dati in quella cartella. Scegline un'altra.",
+    "folder_too_broad": "{{name}} è troppo ampia per essere aperta come un unico progetto. Scegli la cartella che contiene solo questo progetto.",
+    "folder_already_linked": "Quella cartella si sovrappone a un altro progetto in Oleafly. Scegli un'altra cartella.",
+    "not_linked": "Individua funziona solo con le cartelle aperte nella loro posizione.",
+    "copy_destination_refused": "Scegli una cartella fuori dal progetto e fuori dalla cartella dati di Oleafly.",
+    "copy_nothing_open": "Non ci sono file aperti, quindi non c'è nulla da salvare.",
+    "copy_too_large": "I file aperti sono troppo grandi per essere salvati come copia.",
+    "copy_failed": "Oleafly non è riuscito a salvare la copia lì. Scegli una cartella in cui puoi scrivere.",
+    "folder_picker_failed": "Oleafly non è riuscito ad aprire il selettore di cartelle. Riprova.",
+    "import_no_main": "Questa importazione non contiene documenti LaTeX, Typst o Markdown da compilare.",
+    "settings_file_exists": "Questa cartella contiene già un project.json, quindi Oleafly l'ha lasciato com'era.",
+    "settings_need_main": "Scegli prima un documento principale, poi salva le impostazioni del progetto in questa cartella.",
+    "settings_write_failed": "Oleafly non è riuscito a salvare le impostazioni del progetto in questa cartella."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX non ha un binario {{name}} compatibile con questo sistema.",
-    "package_operation_timeout": "L'operazione sui pacchetti ha superato il limite di {{span}} ed è stata interrotta, così puoi compilare di nuovo. Probabilmente il mirror TeX Live è occupato. Riprova più tardi oppure esegui tlmgr manualmente."
+    "package_operation_timeout": "L'operazione sui pacchetti ha superato il limite di {{span}} ed è stata interrotta, così puoi compilare di nuovo. Probabilmente il mirror TeX Live è occupato. Riprova più tardi oppure esegui tlmgr manualmente.",
+    "latexmk_build_path": "latexmk non può usare la cartella di compilazione di Oleafly su questo computer perché il suo percorso contiene caratteri che latexmk non accetta. Passa questo progetto a Tectonic per compilarlo.",
+    "latexmk_network_folder": "latexmk non può compilare una cartella su una condivisione di rete. Passa questo progetto a Tectonic oppure copia la cartella su questo computer."
   },
   "github": {
     "sign_in_expired": "Il codice di accesso è scaduto. Riprova.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Impossibile caricare i repository.",
     "create_repo_failed": "Impossibile creare il repository ({{status}})."
   },
+  "git": {
+    "remote_exists": "Questo progetto è già collegato a {{remote}}.",
+    "nested_repository": "Questo progetto si trova dentro un altro repository Git, quindi Oleafly non ne crea uno separato qui."
+  },
   "approvals": {
     "full_access_declined": "L'accesso completo non è stato abilitato."
+  },
+  "trust": {
+    "git": "Considera affidabile questa cartella per usare il controllo del codice.",
+    "repository": "Considera affidabile il repository {{name}} per usare qui il controllo del codice.",
+    "terminal": "Apri tu il terminale per usarlo in questa cartella.",
+    "agents": "Considera affidabile questa cartella per usare agenti esterni.",
+    "mcp": "Considera affidabile questa cartella prima che i client MCP possano usarla.",
+    "research_tasks": "Considera affidabile questa cartella per eseguire attività di ricerca.",
+    "run_command": "Considera affidabile questa cartella per consentire all'assistente di eseguire comandi.",
+    "full_access": "Considera affidabile questa cartella prima di attivare l'accesso completo.",
+    "system_tex": "Considera affidabile questa cartella per compilare con latexmk.",
+    "shell_escape": "Considera affidabile questa cartella prima di consentire lo shell escape.",
+    "broad_folder": "Oleafly non può considerare affidabile tutta la cartella {{name}}. Scegli una cartella più piccola.",
+    "declined": "La cartella non è stata considerata affidabile.",
+    "unavailable": "Oleafly non è riuscito a verificare se questa cartella è affidabile."
+  },
+  "open_folder": {
+    "not_absolute": "Usa il percorso completo della cartella.",
+    "not_found": "Oleafly non trova questa cartella.",
+    "permission_denied": "Oleafly non ha l'autorizzazione per aprire questa cartella.",
+    "not_a_folder": "Scegli una cartella, non un file.",
+    "unsupported_folder": "Oleafly non può aprire questo tipo di cartella.",
+    "path_not_unicode": "Il percorso di questa cartella contiene caratteri che Oleafly non riesce a leggere. Rinomina la cartella e riprova.",
+    "too_broad": "{{name}} contiene troppo per essere aperta come un unico progetto. Scegli una cartella al suo interno.",
+    "protected": "Oleafly non può aprire le cartelle dentro {{name}}.",
+    "app_data": "Questa cartella fa parte dei dati dell'app di Oleafly. Scegli una cartella al di fuori.",
+    "contains_project": "Questa cartella contiene {{name}}, già aperta in Oleafly come progetto a sé.",
+    "research_folder": "{{project}} può già modificare i file di questa cartella tramite le sue cartelle collegate. Prima rimuovi il collegamento lì.",
+    "failed": "Oleafly non è riuscito ad aprire questa cartella."
+  },
+  "research": {
+    "linked_project_folder": "Questa cartella è aperta in Oleafly come progetto a sé. Collegala invece in sola lettura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Questa cronologia dei checkpoint proviene da un progetto della tua libreria Oleafly, quindi non può essere usata con una cartella aperta nella sua posizione.",
+    "folder_history_for_library": "Questa cronologia dei checkpoint proviene da una cartella aperta nella sua posizione, quindi non può essere usata con un progetto della tua libreria Oleafly.",
+    "restore_path_blocked": "Oleafly non può ripristinare {{path}} perché al suo posto c'è un collegamento o qualcos'altro che non è un file. Spostalo e riprova."
   }
 }

@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "El nombre del proyecto no puede estar vacío.",
     "name_conflict": "Ya existe un proyecto con el nombre {{name}}.",
-    "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto."
+    "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto.",
+    "not_found": "Este proyecto ya no está en tu biblioteca.",
+    "not_recyclable": "Este proyecto no se puede mover a la papelera.",
+    "linked_missing": "Oleafly no encuentra la carpeta {{folder}}. Puede que se haya movido o eliminado, o que esté en una unidad que no está conectada.",
+    "linked_replaced": "La carpeta {{folder}} no es la que Oleafly abrió antes. Vuelve a abrirla para continuar.",
+    "linked_permission_denied": "Oleafly no tiene permiso para abrir la carpeta {{folder}}.",
+    "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta.",
+    "linked_not_recyclable": "Esta carpeta se abrió en su ubicación, así que no se puede mover a la papelera. Tus archivos no se han modificado.",
+    "linked_not_duplicable": "Esta carpeta se abrió en su ubicación, así que Oleafly no puede duplicarla.",
+    "folder_not_a_folder": "Oleafly no puede usar esa ubicación. Elige una carpeta.",
+    "folder_in_app_data": "Oleafly guarda sus propios datos en esa carpeta. Elige otra.",
+    "folder_too_broad": "{{name}} es demasiado amplia para abrirla como un solo proyecto. Elige la carpeta que contiene solo este proyecto.",
+    "folder_already_linked": "Esa carpeta se superpone con otro proyecto de Oleafly. Elige otra carpeta.",
+    "not_linked": "Localizar solo funciona con carpetas abiertas en su ubicación.",
+    "copy_destination_refused": "Elige una carpeta fuera del proyecto y fuera de la carpeta de datos de Oleafly.",
+    "copy_nothing_open": "No hay archivos abiertos, así que no hay nada que guardar.",
+    "copy_too_large": "Los archivos abiertos son demasiado grandes para guardarlos como copia.",
+    "copy_failed": "Oleafly no pudo guardar la copia ahí. Elige una carpeta en la que puedas escribir.",
+    "folder_picker_failed": "Oleafly no pudo abrir el selector de carpetas. Inténtalo de nuevo.",
+    "import_no_main": "Esta importación no contiene ningún documento LaTeX, Typst o Markdown para compilar.",
+    "settings_file_exists": "Esta carpeta ya tiene un project.json, así que Oleafly lo dejó como estaba.",
+    "settings_need_main": "Elige primero un documento principal y luego guarda la configuración del proyecto en esta carpeta.",
+    "settings_write_failed": "Oleafly no pudo guardar la configuración del proyecto en esta carpeta."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
-    "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta."
+    "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta.",
+    "latexmk_build_path": "latexmk no puede usar la carpeta de compilación de Oleafly en este equipo porque su ruta contiene caracteres que latexmk no acepta. Cambia este proyecto a Tectonic para compilarlo.",
+    "latexmk_network_folder": "latexmk no puede compilar una carpeta en una unidad de red compartida. Cambia este proyecto a Tectonic o copia la carpeta a este equipo."
   },
   "github": {
     "sign_in_expired": "El código de inicio de sesión caducó. Inténtalo de nuevo.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "No se pudieron cargar los repositorios.",
     "create_repo_failed": "No se pudo crear el repositorio ({{status}})."
   },
+  "git": {
+    "remote_exists": "Este proyecto ya está enlazado con {{remote}}.",
+    "nested_repository": "Este proyecto está dentro de otro repositorio Git, así que Oleafly no creará uno aparte aquí."
+  },
   "approvals": {
     "full_access_declined": "No se activó el acceso completo."
+  },
+  "trust": {
+    "git": "Confía en esta carpeta para usar el control de versiones.",
+    "repository": "Confía en el repositorio {{name}} para usar aquí el control de versiones.",
+    "terminal": "Abre tú el terminal para usarlo en esta carpeta.",
+    "agents": "Confía en esta carpeta para usar agentes externos.",
+    "mcp": "Confía en esta carpeta antes de que los clientes MCP puedan usarla.",
+    "research_tasks": "Confía en esta carpeta para ejecutar tareas de investigación.",
+    "run_command": "Confía en esta carpeta para que el asistente pueda ejecutar comandos.",
+    "full_access": "Confía en esta carpeta antes de activar el acceso completo.",
+    "system_tex": "Confía en esta carpeta para compilar con latexmk.",
+    "shell_escape": "Confía en esta carpeta antes de permitir shell escape.",
+    "broad_folder": "Oleafly no puede confiar en toda la carpeta {{name}}. Elige una carpeta más pequeña.",
+    "declined": "No se confió en la carpeta.",
+    "unavailable": "Oleafly no pudo comprobar si esta carpeta es de confianza."
+  },
+  "open_folder": {
+    "not_absolute": "Usa la ruta completa de la carpeta.",
+    "not_found": "Oleafly no encuentra esta carpeta.",
+    "permission_denied": "Oleafly no tiene permiso para abrir esta carpeta.",
+    "not_a_folder": "Elige una carpeta, no un archivo.",
+    "unsupported_folder": "Oleafly no puede abrir este tipo de carpeta.",
+    "path_not_unicode": "La ruta de esta carpeta contiene caracteres que Oleafly no puede leer. Cambia el nombre de la carpeta e inténtalo de nuevo.",
+    "too_broad": "{{name}} contiene demasiado para abrirse como un solo proyecto. Elige una carpeta dentro de ella.",
+    "protected": "Oleafly no puede abrir carpetas dentro de {{name}}.",
+    "app_data": "Esta carpeta forma parte de los datos de la aplicación de Oleafly. Elige una carpeta fuera de ella.",
+    "contains_project": "Esta carpeta contiene {{name}}, que ya está abierta en Oleafly como un proyecto independiente.",
+    "research_folder": "{{project}} ya puede editar archivos de esta carpeta a través de sus carpetas enlazadas. Primero quita el enlace allí.",
+    "failed": "Oleafly no pudo abrir esta carpeta."
+  },
+  "research": {
+    "linked_project_folder": "Esta carpeta está abierta en Oleafly como un proyecto independiente. Enlázala en modo de solo lectura."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Este historial de puntos de control viene de un proyecto de tu biblioteca de Oleafly, así que no se puede usar con una carpeta abierta en su ubicación.",
+    "folder_history_for_library": "Este historial de puntos de control viene de una carpeta abierta en su ubicación, así que no se puede usar con un proyecto de tu biblioteca de Oleafly.",
+    "restore_path_blocked": "Oleafly no puede restaurar {{path}} porque hay un enlace u otra cosa que no es un archivo en su lugar. Muévelo e inténtalo de nuevo."
   }
 }

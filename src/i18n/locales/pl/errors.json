@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Nazwa projektu nie może być pusta.",
     "name_conflict": "Projekt o nazwie {{name}} już istnieje.",
-    "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu."
+    "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu.",
+    "not_found": "Tego projektu nie ma już w bibliotece.",
+    "not_recyclable": "Tego projektu nie można przenieść do Kosza.",
+    "linked_missing": "Oleafly nie może znaleźć folderu {{folder}}. Mógł zostać przeniesiony lub usunięty albo znajduje się na dysku, który nie jest podłączony.",
+    "linked_replaced": "Folder {{folder}} nie jest tym, który Oleafly otworzył wcześniej. Otwórz go ponownie, aby kontynuować.",
+    "linked_permission_denied": "Oleafly nie ma uprawnień do otwarcia folderu {{folder}}.",
+    "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie.",
+    "linked_not_recyclable": "Ten folder otwarto w jego lokalizacji, więc nie można go przenieść do Kosza. Twoje pliki pozostały bez zmian.",
+    "linked_not_duplicable": "Ten folder otwarto w jego lokalizacji, więc Oleafly nie może go zduplikować.",
+    "folder_not_a_folder": "Oleafly nie może użyć tej lokalizacji. Wybierz folder.",
+    "folder_in_app_data": "Oleafly przechowuje w tym folderze własne dane. Wybierz inny.",
+    "folder_too_broad": "{{name}} obejmuje zbyt wiele, aby otworzyć go jako jeden projekt. Wybierz folder, który zawiera tylko ten projekt.",
+    "folder_already_linked": "Ten folder nakłada się na inny projekt w Oleafly. Wybierz inny folder.",
+    "not_linked": "Lokalizowanie działa tylko dla folderów otwartych w ich miejscu.",
+    "copy_destination_refused": "Wybierz folder poza projektem i poza folderem danych Oleafly.",
+    "copy_nothing_open": "Żadne pliki nie są otwarte, więc nie ma czego zapisać.",
+    "copy_too_large": "Otwarte pliki są zbyt duże, aby zapisać je jako kopię.",
+    "copy_failed": "Oleafly nie mógł zapisać tam kopii. Wybierz folder, w którym możesz zapisywać.",
+    "folder_picker_failed": "Oleafly nie mógł otworzyć okna wyboru folderu. Spróbuj ponownie.",
+    "import_no_main": "Ten import nie zawiera dokumentu LaTeX, Typst ani Markdown do skompilowania.",
+    "settings_file_exists": "Ten folder ma już plik project.json, więc Oleafly zostawił go bez zmian.",
+    "settings_need_main": "Najpierw wybierz dokument główny, a potem zapisz ustawienia projektu w tym folderze.",
+    "settings_write_failed": "Oleafly nie mógł zapisać ustawień projektu w tym folderze."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nie ma pliku wykonywalnego {{name}} zgodnego z tym systemem.",
-    "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie."
+    "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie.",
+    "latexmk_build_path": "latexmk nie może użyć folderu kompilacji Oleafly na tym komputerze, ponieważ jego ścieżka zawiera znaki, których latexmk nie akceptuje. Przełącz ten projekt na Tectonic, aby go skompilować.",
+    "latexmk_network_folder": "latexmk nie może skompilować folderu w udziale sieciowym. Przełącz ten projekt na Tectonic albo skopiuj folder na ten komputer."
   },
   "github": {
     "sign_in_expired": "Kod logowania wygasł. Spróbuj ponownie.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Nie udało się wczytać repozytoriów.",
     "create_repo_failed": "Nie udało się utworzyć repozytorium ({{status}})."
   },
+  "git": {
+    "remote_exists": "Ten projekt jest już powiązany z {{remote}}.",
+    "nested_repository": "Ten projekt znajduje się w innym repozytorium Git, więc Oleafly nie utworzy tu osobnego repozytorium."
+  },
   "approvals": {
     "full_access_declined": "Pełny dostęp nie został włączony."
+  },
+  "trust": {
+    "git": "Zaufaj temu folderowi, aby korzystać z kontroli wersji.",
+    "repository": "Zaufaj repozytorium {{name}}, aby korzystać tu z kontroli wersji.",
+    "terminal": "Otwórz terminal samodzielnie, aby używać go w tym folderze.",
+    "agents": "Zaufaj temu folderowi, aby korzystać z agentów zewnętrznych.",
+    "mcp": "Zaufaj temu folderowi, zanim klienci MCP będą mogli z niego korzystać.",
+    "research_tasks": "Zaufaj temu folderowi, aby uruchamiać zadania badawcze.",
+    "run_command": "Zaufaj temu folderowi, aby asystent mógł uruchamiać polecenia.",
+    "full_access": "Zaufaj temu folderowi, zanim włączysz pełny dostęp.",
+    "system_tex": "Zaufaj temu folderowi, aby kompilować za pomocą latexmk.",
+    "shell_escape": "Zaufaj temu folderowi, zanim zezwolisz na shell escape.",
+    "broad_folder": "Oleafly nie może zaufać całemu folderowi {{name}}. Wybierz mniejszy folder.",
+    "declined": "Folder nie został uznany za zaufany.",
+    "unavailable": "Oleafly nie mógł sprawdzić, czy ten folder jest zaufany."
+  },
+  "open_folder": {
+    "not_absolute": "Podaj pełną ścieżkę do folderu.",
+    "not_found": "Oleafly nie może znaleźć tego folderu.",
+    "permission_denied": "Oleafly nie ma uprawnień do otwarcia tego folderu.",
+    "not_a_folder": "Wybierz folder, a nie plik.",
+    "unsupported_folder": "Oleafly nie może otworzyć tego typu folderu.",
+    "path_not_unicode": "Ścieżka tego folderu zawiera znaki, których Oleafly nie potrafi odczytać. Zmień nazwę folderu i spróbuj ponownie.",
+    "too_broad": "Folder {{name}} zawiera za dużo, aby otworzyć go jako jeden projekt. Wybierz folder w jego wnętrzu.",
+    "protected": "Oleafly nie może otwierać folderów w {{name}}.",
+    "app_data": "Ten folder należy do danych aplikacji Oleafly. Wybierz folder poza nim.",
+    "contains_project": "Ten folder zawiera {{name}}, który jest już otwarty w Oleafly jako osobny projekt.",
+    "research_folder": "Projekt {{project}} może już edytować pliki w tym folderze przez swoje powiązane foldery. Najpierw usuń tam powiązanie.",
+    "failed": "Oleafly nie udało się otworzyć tego folderu."
+  },
+  "research": {
+    "linked_project_folder": "Ten folder jest otwarty w Oleafly jako osobny projekt. Zamiast tego powiąż go tylko do odczytu."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Ta historia punktów kontrolnych pochodzi z projektu w Twojej bibliotece Oleafly, więc nie można jej użyć z folderem otwartym w jego lokalizacji.",
+    "folder_history_for_library": "Ta historia punktów kontrolnych pochodzi z folderu otwartego w jego lokalizacji, więc nie można jej użyć z projektem w Twojej bibliotece Oleafly.",
+    "restore_path_blocked": "Oleafly nie może przywrócić {{path}}, ponieważ w tym miejscu jest link lub coś innego, co nie jest plikiem. Przenieś to i spróbuj ponownie."
   }
 }

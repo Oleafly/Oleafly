@@ -33,7 +33,7 @@ beforeAll(async () => {
   pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(
     resolve("pdfjs-dist/legacy/build/pdf.worker.mjs"),
   ).href;
-});
+}, 60_000);
 
 async function tableAcrossTwoPages(): Promise<Uint8Array> {
   const document = await PDFDocument.create({ updateMetadata: false });

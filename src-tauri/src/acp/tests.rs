@@ -575,6 +575,112 @@ fn archive_escape_and_symlinks_are_rejected() {
 }
 
 #[test]
+fn rebinding_project_paths_skips_task_sessions_and_other_projects() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Store::open(temp.path()).unwrap();
+    let record = |project: &str, task: Option<&str>| SessionRecord {
+        id: new_id(),
+        project_id: project.into(),
+        project_path: "/old/place".into(),
+        agent_id: "a".into(),
+        agent_version: None,
+        native_session_id: Some("native".into()),
+        parent_session_id: None,
+        task_id: task.map(Into::into),
+        title: "Test".into(),
+        status: SessionStatus::Disconnected,
+        created_at: 1,
+        updated_at: 1,
+        turn_id: None,
+        capabilities: Capabilities::default(),
+        controls: SessionControls::default(),
+        auth_methods: Vec::new(),
+        error: None,
+        last_sequence: 0,
+    };
+    let own = record("p", None);
+    let task = record("p", Some("task"));
+    let other = record("q", None);
+    for session in [&own, &task, &other] {
+        store.save(session).unwrap();
+    }
+
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", false).unwrap(),
+        1
+    );
+    assert_eq!(store.get(&own.id).unwrap().project_path, "/new/place");
+    assert_eq!(
+        store.get(&own.id).unwrap().native_session_id.as_deref(),
+        Some("native")
+    );
+    assert_eq!(store.get(&task.id).unwrap().project_path, "/old/place");
+    assert_eq!(store.get(&other.id).unwrap().project_path, "/old/place");
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", false).unwrap(),
+        0
+    );
+
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", true).unwrap(),
+        1
+    );
+    assert!(store.get(&own.id).unwrap().native_session_id.is_none());
+    assert_eq!(store.get(&own.id).unwrap().updated_at, 1);
+    assert_eq!(
+        store.get(&task.id).unwrap().native_session_id.as_deref(),
+        Some("native")
+    );
+}
+
+#[tokio::test]
+async fn rebinding_a_project_closes_its_live_sessions_and_moves_their_resume_path() {
+    let (temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let id = snapshot.session.id;
+    let native = runtime.record(&id).unwrap().native_session_id;
+    assert!(native.is_some());
+    let moved = temp.path().join("moved");
+    std::fs::create_dir(&moved).unwrap();
+
+    assert_eq!(runtime.close_project_sessions("other-project").await, 0);
+    assert_eq!(runtime.close_project_sessions("test-project").await, 1);
+    assert_eq!(
+        runtime.record(&id).unwrap().status,
+        SessionStatus::Disconnected
+    );
+    assert_eq!(
+        runtime
+            .rebind_project_paths("test-project", &moved, false)
+            .unwrap(),
+        1
+    );
+    let record = runtime.record(&id).unwrap();
+    assert_eq!(
+        Path::new(&record.project_path),
+        moved.canonicalize().unwrap()
+    );
+    assert_eq!(record.native_session_id, native);
+
+    let reopened = runtime
+        .reconnect(&id, Some("fixture-window".into()))
+        .await
+        .unwrap();
+    assert_eq!(reopened.session.status, SessionStatus::Ready);
+    runtime.close(&id).await.unwrap();
+
+    assert_eq!(
+        runtime
+            .rebind_project_paths("test-project", &moved, true)
+            .unwrap(),
+        1
+    );
+    assert!(runtime.record(&id).unwrap().native_session_id.is_none());
+    assert!(runtime
+        .rebind_project_paths("test-project", &temp.path().join("gone"), true)
+        .is_err());
+}
+
+#[test]
 fn reopening_storage_recovers_running_status_without_erasing_events() {
     let temp = tempfile::tempdir().unwrap();
     let store = Store::open(temp.path()).unwrap();
@@ -1293,4 +1399,145 @@ async fn an_agent_with_http_mcp_still_receives_the_http_tool_server() {
     assert_eq!(received[0]["type"], "http");
     assert_eq!(received[0]["url"], "http://127.0.0.1:1/mcp");
     runtime.close(&started.session.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn restricted_folders_never_start_or_resume_external_agents() {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let saved = SessionRecord {
+        id: new_id(),
+        project_id: "acp-restricted-project".into(),
+        project_path: project.to_string_lossy().into_owned(),
+        agent_id: "fixture-agent".into(),
+        agent_version: None,
+        native_session_id: None,
+        parent_session_id: None,
+        task_id: None,
+        title: "Saved".into(),
+        status: SessionStatus::Disconnected,
+        created_at: 1,
+        updated_at: 1,
+        turn_id: None,
+        capabilities: Capabilities::default(),
+        controls: SessionControls::default(),
+        auth_methods: Vec::new(),
+        error: None,
+        last_sequence: 0,
+    };
+    Store::open(&temp.path().join("acp"))
+        .unwrap()
+        .save(&saved)
+        .unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    let _restricted = crate::trust::testing::restrict("acp-restricted-project");
+    let error = runtime
+        .start(StartSession {
+            project_id: "acp-restricted-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            owner: Some("fixture-window".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap_err();
+    assert!(error.contains("\"code\":\"trust.agents\""), "{error}");
+    let resumed = runtime
+        .reconnect(&saved.id, Some("fixture-window".into()))
+        .await
+        .unwrap_err();
+    assert!(resumed.contains("\"code\":\"trust.agents\""), "{resumed}");
+    assert_eq!(runtime.list("acp-restricted-project").unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn a_folder_restricted_after_the_agent_started_gets_no_more_prompts() {
+    let (_temp, runtime, mut options) = pending_runtime(vec!["".into()]);
+    options.project_id = "acp-prompt-restricted-project".into();
+    let started = runtime.start(options).await.unwrap();
+    let restricted = crate::trust::testing::restrict("acp-prompt-restricted-project");
+    let refused = runtime
+        .prompt(&started.session.id, "Hello".into(), Vec::new())
+        .await
+        .unwrap_err();
+    drop(restricted);
+    runtime.close(&started.session.id).await.unwrap();
+    assert!(refused.contains("\"code\":\"trust.agents\""), "{refused}");
+}
+
+#[tokio::test]
+async fn an_agent_bridge_is_never_started_for_a_restricted_folder() {
+    let _restricted = crate::trust::testing::restrict("acp-bridge-restricted-project");
+    let started = std::sync::atomic::AtomicBool::new(false);
+    let refused = super::admit_agent_bridge("acp-bridge-restricted-project", async {
+        started.store(true, std::sync::atomic::Ordering::SeqCst);
+        Ok(())
+    })
+    .await
+    .unwrap_err();
+    assert!(refused.contains("\"code\":\"trust.agents\""), "{refused}");
+    assert!(!started.load(std::sync::atomic::Ordering::SeqCst));
+    assert_eq!(
+        super::admit_agent_bridge("acp-bridge-trusted-project", async { Ok(7) })
+            .await
+            .unwrap(),
+        7
+    );
+}
+
+#[test]
+fn an_agent_in_a_trusted_folder_of_an_untrusted_repository_runs_git_restricted() {
+    let fixture = crate::trust::testing::LinkedFixture::new();
+    let temp = fixture_temp();
+    std::fs::create_dir_all(temp.path().join(".git")).unwrap();
+    std::fs::write(temp.path().join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let id = crate::linked_registry::register_folder_for_test(&project).id;
+    fixture.trust(&id, crate::trust::TrustScope::Folder);
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec!["".into(), "--record-git-env".into()],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+    let recorded = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            let started = runtime
+                .start(StartSession {
+                    project_id: id.clone(),
+                    project_path: project.clone(),
+                    agent_id: "fixture-agent".into(),
+                    owner: Some("fixture-window".into()),
+                    ..StartSession::default()
+                })
+                .await
+                .unwrap();
+            let recorded: Value = serde_json::from_str(
+                &std::fs::read_to_string(temp.path().join("git-env.json")).unwrap(),
+            )
+            .unwrap();
+            runtime.close(&started.session.id).await.unwrap();
+            recorded
+        });
+    let start = std::env::var("GIT_CONFIG_COUNT")
+        .ok()
+        .and_then(|count| count.parse::<usize>().ok())
+        .unwrap_or(0);
+    assert_eq!(
+        recorded[format!("GIT_CONFIG_KEY_{start}")],
+        json!("core.fsmonitor")
+    );
+    assert_eq!(
+        recorded[format!("GIT_CONFIG_VALUE_{start}")],
+        json!("false")
+    );
 }

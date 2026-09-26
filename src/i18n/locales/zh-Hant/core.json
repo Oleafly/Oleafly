@@ -559,5 +559,9 @@
   "checkpoint": {
     "storageUnavailable": "無法儲存檢查點。磁碟已滿，或檢查點資料夾無法寫入。請釋放一些空間或檢查資料夾權限，然後重新編譯。",
     "incompleteCapture": "由於部分專案檔案無法讀取，最近的幾個檢查點未能儲存。請檢查這些檔案的權限，然後重新編譯。"
+  },
+  "folderUnavailable": {
+    "compile": "編譯已暫停，直到專案資料夾恢復。",
+    "saveReason": "專案資料夾無法使用"
   }
 }

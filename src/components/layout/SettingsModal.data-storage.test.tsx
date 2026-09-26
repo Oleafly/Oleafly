@@ -63,6 +63,8 @@ const storageSummary = {
   image_count: 1,
   pdf_count: 1,
   unreadable_entries: 0,
+  linked_folders_bytes: 0,
+  linked_folder_count: 0,
 };
 
 const recycledProject = {
@@ -225,5 +227,73 @@ describe("Settings Data Storage recycle bin", () => {
     await waitFor(() => {
       expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
     });
+  });
+
+  it("skips a project that already left the library when moving every project", async () => {
+    const notFound = `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`;
+    const [active] = useFilesStore.getState().projects;
+    useFilesStore.setState({
+      projects: [{ ...active, id: "gone-paper", name: "Gone paper" }, active],
+    });
+    mocks.recycleProject.mockImplementation((projectId: string) =>
+      projectId === "gone-paper" ? Promise.reject(notFound) : Promise.resolve(undefined),
+    );
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Danger zone" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all projects" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
+    });
+    expect(mocks.refreshProjects).toHaveBeenCalled();
+  });
+
+  it("counts and moves only library projects when moving every project", async () => {
+    const [active] = useFilesStore.getState().projects;
+    useFilesStore.setState({
+      projects: [
+        {
+          ...active,
+          id: "linked-0123456789abcdef0123456789abcdef",
+          name: "Thesis",
+          location: { kind: "linked", display_path: "~/Desktop/thesis", availability: "unknown" },
+        },
+        active,
+      ],
+    });
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Danger zone" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Delete all 1 project?");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all projects" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
+    });
+    expect(mocks.recycleProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows what Oleafly keeps for folders opened in place", async () => {
+    mocks.libraryStorageSummary.mockResolvedValue({
+      ...storageSummary,
+      linked_folder_count: 2,
+      linked_folders_bytes: 2048,
+    });
+    render(<SettingsModal />);
+    expect(await screen.findByText(/for 2 opened folders/)).toBeInTheDocument();
+  });
+
+  it("says nothing about opened folders when there are none", async () => {
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Recycle Bin" });
+    await screen.findByText(/across the Oleafly data folder/);
+    expect(screen.queryByText(/opened folder/)).not.toBeInTheDocument();
   });
 });

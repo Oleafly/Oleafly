@@ -102,7 +102,8 @@ fn project_engine_sync(
     project_id: String,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let meta = crate::project::read_meta(&project_id)?;
+    let meta =
+        crate::trust::restrict_compile_meta(&project_id, crate::project::read_meta(&project_id)?)?;
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     descriptor.tex_flavor = meta.tex_flavor;
     descriptor.allow_shell_escape = meta.allow_shell_escape;
@@ -171,6 +172,30 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
     reveal_canonical_path(&canonical)
 }
 
+pub(crate) fn revealable_project_path(
+    project_id: &str,
+    path: Option<&str>,
+) -> Result<std::path::PathBuf, String> {
+    let target = match path.filter(|path| !path.is_empty()) {
+        Some(relative) => crate::sandbox::resolve(project_id, relative)?,
+        None => paths::project_dir(project_id)?,
+    };
+    target
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve path: {error}"))
+}
+
+#[tauri::command]
+pub async fn reveal_project(project_id: String, path: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let target = revealable_project_path(&project_id, path.as_deref())?;
+        reveal_canonical_path(&target)
+    })
+    .await
+    .map_err(|error| format!("failed to reveal the project: {error}"))?
+}
+
 pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), String> {
     let path = canonical.to_string_lossy().to_string();
     #[cfg(target_os = "macos")]
@@ -229,7 +254,15 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
 pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
-        let project_dir = paths::project_dir(&project_id)?;
+        let location = crate::project_location::locate(&project_id)?;
+        if location.kind == crate::project_location::ProjectKind::Linked {
+            if let Some(build) = paths::existing_state_subdirectory(&location, "build")? {
+                std::fs::remove_dir_all(&build)
+                    .map_err(|error| format!("failed to clear build directory: {error}"))?;
+            }
+            return paths::state_subdirectory(&location, "build").map(|_| ());
+        }
+        let project_dir = location.root;
         oleafly_core::Workspace::clean_build_directory(&project_dir)
             .map_err(|error| format!("failed to clear build directory: {error}"))?;
         oleafly_core::Workspace::ensure_build_directory(&project_dir)
@@ -261,6 +294,7 @@ pub async fn compile_project(
         latex_flavor: None,
         allow_shell_escape: false,
         source_date_epoch: Some(source_date_epoch),
+        external_build: false,
     };
     let ticket = state
         .compile_ticket
@@ -276,6 +310,7 @@ pub async fn compile_project(
     let req_at = std::time::Instant::now();
 
     let _guard = state.compile_lock.lock().await;
+    let _build = crate::build_hygiene::BuildInUse::claim(&project_id);
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
 
     #[cfg(debug_assertions)]
@@ -306,9 +341,9 @@ pub async fn compile_project(
     }
     let cancel_scope = crate::document_engine::CompileCancelScope::new(Some(&state.compile_cancel));
 
-    let project_dir = paths::project_dir(&project_id)?;
+    let location = crate::project_location::locate(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let workspace = desktop_workspace(&project_dir, &meta)?;
+    let workspace = desktop_workspace(&location, &meta, &main_doc)?;
     let prepared = workspace
         .prepare_build()
         .map_err(|error| error.to_string())?;
@@ -320,6 +355,7 @@ pub async fn compile_project(
             .as_deref()
             .and_then(crate::document_engine::LatexmkFlavor::parse),
         allow_shell_escape: meta.allow_shell_escape,
+        external_build: location.kind == crate::project_location::ProjectKind::Linked,
         ..options
     };
     let engine = crate::document_engine::engine_for(prepared.engine().manifest_name(), &main_doc)?;
@@ -333,7 +369,16 @@ pub async fn compile_project(
         options,
     )
     .await?;
-    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)?;
+    let prepared_spec = match location.compile_search_dir(&main_doc) {
+        Some(compile_dir) => crate::document_engine::place_in_compile_directory(
+            engine.id(),
+            prepared_spec,
+            &project_dir,
+            &compile_dir,
+        )?,
+        None => prepared_spec,
+    };
+    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)?;
     drop(worktree);
 
     let mut result = crate::document_engine::compile(CompileRequest {
@@ -353,8 +398,7 @@ pub async fn compile_project(
     // `document_engine::compile` has now fingerprinted the output, but do not
     // publish that identity or allocate a revision until the persisted
     // project/main selection is revalidated under the same compile lock.
-    if let Err(error) =
-        crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)
+    if let Err(error) = crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)
     {
         result.ok = false;
         result.has_pdf = false;
@@ -423,7 +467,7 @@ pub async fn compile_project(
                 else {
                     return;
                 };
-                let Ok(root) = paths::project_dir(&fp_project) else {
+                let Ok(Some(root)) = compile_fingerprint_root(&fp_project) else {
                     return;
                 };
                 let compiled_at_ms = std::time::SystemTime::now()
@@ -446,7 +490,7 @@ pub async fn compile_project(
             &project_id,
             &project_dir,
             &meta.engine,
-            &main_doc,
+            &meta.main_doc,
         );
     }
     #[cfg(debug_assertions)]
@@ -497,7 +541,9 @@ pub async fn validate_compile_fingerprint(
 ) -> Result<Option<ValidatedCompileFingerprint>, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let root = paths::project_dir(&project_id)?;
+    let Some(root) = compile_fingerprint_root(&project_id)? else {
+        return Ok(None);
+    };
     let validated = tauri::async_runtime::spawn_blocking(move || {
         crate::compile_fingerprint::validated_with_log(&root, &main_doc, &meta.engine)
     })
@@ -511,22 +557,32 @@ pub async fn validate_compile_fingerprint(
     }))
 }
 
+fn compile_fingerprint_root(project_id: &str) -> Result<Option<std::path::PathBuf>, String> {
+    let location = crate::project_location::locate(project_id)?;
+    Ok((location.kind == crate::project_location::ProjectKind::Library).then_some(location.root))
+}
+
 fn desktop_workspace(
-    project_dir: &std::path::Path,
+    location: &crate::project_location::ProjectLocation,
     meta: &crate::project::ProjectMeta,
+    main_doc: &str,
 ) -> Result<oleafly_core::Workspace, String> {
-    oleafly_core::Workspace::from_manifest(
-        project_dir,
-        oleafly_core::ProjectManifest {
-            name: meta.name.clone(),
-            main_doc: meta.main_doc.clone(),
-            engine: meta.engine.clone(),
-            tex_flavor: meta.tex_flavor.clone(),
-            checkpoints: meta.checkpoints.clone(),
-            ..oleafly_core::ProjectManifest::default()
-        },
-    )
-    .map_err(|error| error.to_string())
+    let manifest = oleafly_core::ProjectManifest {
+        name: meta.name.clone(),
+        main_doc: main_doc.to_owned(),
+        engine: meta.engine.clone(),
+        tex_flavor: meta.tex_flavor.clone(),
+        checkpoints: meta.checkpoints.clone(),
+        ..oleafly_core::ProjectManifest::default()
+    };
+    let build = match location.kind {
+        crate::project_location::ProjectKind::Library => oleafly_core::BuildLocation::InTree,
+        crate::project_location::ProjectKind::Linked => {
+            oleafly_core::BuildLocation::External(paths::state_subdirectory(location, "build")?)
+        }
+    };
+    oleafly_core::Workspace::from_manifest_with_build(&location.root, manifest, build)
+        .map_err(|error| error.to_string())
 }
 
 /// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
@@ -582,7 +638,7 @@ fn write_export_bytes(dest: &str, bytes: &[u8]) -> Result<(), String> {
     transaction.commit()
 }
 
-async fn allow_reveal_export(dest: &str, state: &AppState) {
+pub(crate) async fn allow_reveal_export(dest: &str, state: &AppState) {
     // Permit a subsequent "Reveal in Finder/Explorer" for this export path.
     if let Ok(canon) = std::path::Path::new(dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
@@ -605,6 +661,79 @@ fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
     STANDARD
         .decode(data_base64.as_bytes())
         .map_err(|e| format!("invalid base64: {e}"))
+}
+
+fn isolated_compile_setup(
+    project_id: &str,
+) -> Result<
+    (
+        crate::project_location::ProjectLocation,
+        crate::project::ProjectMeta,
+        &'static dyn crate::document_engine::DocumentEngine,
+    ),
+    String,
+> {
+    let location = crate::project_location::locate(project_id)?;
+    let meta =
+        crate::trust::restrict_compile_meta(project_id, crate::project::read_meta(project_id)?)?;
+    let engine = crate::document_engine::engine_for(&meta.engine, &meta.main_doc)?;
+    if !engine.capabilities().supports_isolated_compile {
+        return Err(format!(
+            "engine `{}` does not support isolated compilation",
+            engine.id().as_str()
+        ));
+    }
+    Ok((location, meta, engine))
+}
+
+fn figure_scratch(
+    location: &crate::project_location::ProjectLocation,
+    engine: &dyn crate::document_engine::DocumentEngine,
+) -> Result<Option<tempfile::TempDir>, String> {
+    if location.kind != crate::project_location::ProjectKind::Linked
+        || engine.id() != crate::document_engine::DocumentEngineId::Latexmk
+    {
+        return Ok(None);
+    }
+    let base = std::env::temp_dir()
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve the temporary folder: {error}"))?;
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("oleafly-figure-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        builder.permissions(std::fs::Permissions::from_mode(0o700));
+    }
+    builder
+        .tempdir_in(base)
+        .map(Some)
+        .map_err(|error| format!("failed to prepare the figure build: {error}"))
+}
+
+fn publish_figure_outputs(
+    scratch: &std::path::Path,
+    figure_dir: &std::path::Path,
+) -> Result<(), String> {
+    for name in ["_figure.pdf", "_figure.log", "_figure.synctex.gz"] {
+        let target = figure_dir.join(name);
+        match std::fs::read(scratch.join(name)) {
+            Ok(bytes) => crate::sandbox::atomic_write(&target, &bytes)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                match std::fs::remove_file(&target) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => {
+                        return Err(format!(
+                            "failed to clear the previous figure output: {error}"
+                        ))
+                    }
+                }
+            }
+            Err(error) => return Err(format!("failed to read the figure output: {error}")),
+        }
+    }
+    Ok(())
 }
 
 /// Compile a standalone figure document in isolation, so figure iteration is
@@ -633,16 +762,12 @@ pub async fn compile_isolated(
         "figure: {project_id} lock after {}ms",
         req_at.elapsed().as_millis()
     );
-    let project_dir = paths::project_dir(&project_id)?;
-    let meta = crate::project::read_meta(&project_id)?;
-    let engine = crate::document_engine::engine_for(&meta.engine, &meta.main_doc)?;
-    if !engine.capabilities().supports_isolated_compile {
-        return Err(format!(
-            "engine `{}` does not support isolated compilation",
-            engine.id().as_str()
-        ));
-    }
-    let fig_dir = paths::figure_build_dir(&project_id)?;
+    let (location, meta, engine) = isolated_compile_setup(&project_id)?;
+    let figure_dir = paths::figure_build_dir(&project_id)?;
+    let scratch = figure_scratch(&location, engine)?;
+    let fig_dir = scratch
+        .as_ref()
+        .map_or_else(|| figure_dir.clone(), |dir| dir.path().to_path_buf());
     let entry_path = fig_dir.join("_figure.tex");
     tokio::fs::write(&entry_path, source)
         .await
@@ -651,7 +776,7 @@ pub async fn compile_isolated(
         app: &app,
         engine,
         out_dir: &fig_dir,
-        project_dir: &project_dir,
+        project_dir: &location.root,
         target: CompileTarget::Isolated {
             source_path: &entry_path,
             output_stem: "_figure",
@@ -663,12 +788,18 @@ pub async fn compile_isolated(
                 .tex_flavor
                 .as_deref()
                 .and_then(crate::document_engine::LatexmkFlavor::parse),
+            external_build: location.kind == crate::project_location::ProjectKind::Linked,
             ..Default::default()
         },
         cancel: None,
         prepared_spec: None,
     })
     .await;
+    if let Some(scratch) = scratch {
+        let published = publish_figure_outputs(scratch.path(), &figure_dir);
+        drop(scratch);
+        published?;
+    }
     #[cfg(debug_assertions)]
     if let Ok(r) = &result {
         eprintln!(
@@ -684,7 +815,8 @@ pub async fn compile_isolated(
 pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let dir = paths::figure_build_dir(&project_id)?;
+        let dir = paths::existing_figure_build_dir(&project_id)?
+            .ok_or_else(|| "no figure PDF: no figure has been compiled".to_string())?;
         std::fs::read(dir.join("_figure.pdf")).map_err(|e| format!("no figure PDF: {e}"))
     })
     .await
@@ -808,8 +940,12 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let meta = crate::project::read_meta(&project_id)?;
-        let pdf =
-            crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
+        let pdf = crate::document_engine::existing_compiled_pdf_path(
+            &project_id,
+            &meta.engine,
+            &meta.main_doc,
+        )?
+        .ok_or_else(|| "no compiled PDF: this project has not been compiled".to_string())?;
         std::fs::read(&pdf).map_err(|e| format!("no compiled PDF: {e}"))
     })
     .await
@@ -817,9 +953,252 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
     Ok(Response::new(bytes))
 }
 
+const MAX_BUILD_ARTIFACT_BYTES: u64 = 1024 * 1024;
+const BUILD_ARTIFACT_EXTENSIONS: &[&str] = &["aux"];
+
+fn readable_build_artifact(name: &str) -> bool {
+    std::path::Path::new(name)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|extension| BUILD_ARTIFACT_EXTENSIONS.contains(&extension))
+}
+
+fn read_build_artifact_blocking(project_id: &str, name: &str) -> Result<Option<String>, String> {
+    use std::io::Read as _;
+
+    if !readable_build_artifact(name) {
+        return Err(format!("not a readable build artifact: {name}"));
+    }
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let Some(build) = paths::existing_build_dir(project_id)? else {
+        return Ok(None);
+    };
+    let path = crate::sandbox::resolve_within(&build, name)?;
+    let metadata = match std::fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("cannot inspect {name}: {error}")),
+    };
+    if metadata.file_type().is_symlink() || metadata_is_reparse_point(&metadata) {
+        return Err(format!("cannot read {name}: not a regular build artifact"));
+    }
+    if !metadata.is_file() {
+        return Ok(None);
+    }
+    let file = open_regular_nofollow(&path).map_err(|e| format!("cannot read {name}: {e}"))?;
+    let opened = file
+        .metadata()
+        .map_err(|e| format!("cannot inspect opened {name}: {e}"))?;
+    if !opened.is_file() || metadata_is_reparse_point(&opened) {
+        return Err(format!("cannot read {name}: not a regular build artifact"));
+    }
+    let mut bytes = Vec::new();
+    file.take(MAX_BUILD_ARTIFACT_BYTES)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("cannot read {name}: {e}"))?;
+    Ok(Some(String::from_utf8_lossy(&bytes).into_owned()))
+}
+
+#[tauri::command]
+pub async fn read_build_artifact(
+    project_id: String,
+    name: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || read_build_artifact_blocking(&project_id, &name))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restricted_projects_report_the_bundled_engine() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("restricted-engine").unwrap();
+        std::fs::write(project.join("main.tex"), "\\documentclass{article}\n").unwrap();
+        crate::project::write_meta(
+            "restricted-engine",
+            &crate::project::ProjectMeta {
+                name: "Restricted".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex_flavor: Some("lualatex".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            super::project_engine_sync("restricted-engine".into())
+                .unwrap()
+                .id,
+            "latexmk"
+        );
+        let (_, meta, engine) = super::isolated_compile_setup("restricted-engine").unwrap();
+        assert_eq!(
+            (engine.id().as_str(), meta.tex_flavor.as_deref()),
+            ("latexmk", Some("lualatex"))
+        );
+        let _restricted = crate::trust::testing::restrict("restricted-engine");
+        let (_, meta, engine) = super::isolated_compile_setup("restricted-engine").unwrap();
+        assert_eq!(
+            (
+                engine.id().as_str(),
+                meta.tex_flavor.as_deref(),
+                meta.allow_shell_escape
+            ),
+            ("latex", None, false)
+        );
+        let descriptor = super::project_engine_sync("restricted-engine".into()).unwrap();
+        assert_eq!(
+            (
+                descriptor.id.as_str(),
+                descriptor.tex_flavor,
+                descriptor.allow_shell_escape
+            ),
+            ("latex", None, false)
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn clearing_a_linked_build_empties_only_central_state() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let build = crate::paths::build_dir(&record.id).unwrap();
+        std::fs::write(build.join("_oleafly_entry.aux"), b"aux").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir(record.id.clone())).unwrap();
+
+        assert!(build.is_dir());
+        assert_eq!(
+            std::fs::read_dir(&build)
+                .unwrap()
+                .flatten()
+                .map(|entry| entry.file_name())
+                .collect::<Vec<_>>(),
+            [std::ffi::OsString::from("CACHEDIR.TAG")]
+        );
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn clearing_a_linked_build_never_touches_a_build_folder_inside_the_user_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join(".oleafly").join("build")).unwrap();
+        let cli_pdf = folder.join(".oleafly").join("build").join("main.pdf");
+        std::fs::write(&cli_pdf, b"%PDF cli").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let central = crate::paths::build_dir(&linked.id).unwrap();
+        std::fs::write(central.join("stale.aux"), b"stale").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir(linked.id.clone())).unwrap();
+
+        assert_eq!(std::fs::read(&cli_pdf).unwrap(), b"%PDF cli");
+        assert!(central.is_dir());
+        assert!(!central.join("stale.aux").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn project_reveal_targets_resolve_inside_the_project_only() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join("chapters")).unwrap();
+        std::fs::write(folder.join("chapters").join("intro.tex"), b"x").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let library = crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(
+            revealable_project_path(&linked.id, None).unwrap(),
+            folder.canonicalize().unwrap()
+        );
+        assert_eq!(
+            revealable_project_path(&linked.id, Some("chapters/intro.tex")).unwrap(),
+            folder
+                .join("chapters")
+                .join("intro.tex")
+                .canonicalize()
+                .unwrap()
+        );
+        assert_eq!(revealable_project_path("paper", Some("")).unwrap(), library);
+        for escape in ["../data", "/etc", "chapters/../../data"] {
+            assert!(
+                revealable_project_path(&linked.id, Some(escape)).is_err(),
+                "{escape}"
+            );
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn clearing_a_library_build_keeps_the_in_project_layout() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let root = crate::paths::create_project_dir("paper").unwrap();
+        let build = crate::paths::build_dir("paper").unwrap();
+        std::fs::write(build.join("_oleafly_entry.aux"), b"aux").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir("paper".into())).unwrap();
+
+        assert_eq!(build, root.join(".oleafly").join("build"));
+        assert!(build.is_dir());
+        assert_eq!(std::fs::read_dir(&build).unwrap().count(), 0);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn compile_fingerprints_are_never_read_from_a_linked_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), b"\\documentclass{article}").unwrap();
+        crate::compile_fingerprint::persist_after_compile(
+            &folder,
+            "main.tex",
+            "latex",
+            "pdf-v1:1:aa",
+            1,
+            1,
+            "log",
+        )
+        .unwrap();
+        assert!(
+            crate::compile_fingerprint::validated_with_log(&folder, "main.tex", "latex").is_some()
+        );
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let root = crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(compile_fingerprint_root(&record.id).unwrap(), None);
+        assert_eq!(compile_fingerprint_root("paper").unwrap(), Some(root));
+        assert_eq!(
+            compile_fingerprint_root("missing").unwrap_err(),
+            "project does not exist: missing"
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     #[test]
     fn decode_b64_roundtrip_and_rejects_garbage() {
@@ -890,7 +1269,15 @@ mod tests {
             checkpoints,
             ..crate::project::ProjectMeta::default()
         };
-        let workspace = desktop_workspace(directory.path(), &meta).unwrap();
+        let workspace = desktop_workspace(
+            &crate::project_location::ProjectLocation::library_at(
+                "paper",
+                directory.path().to_path_buf(),
+            ),
+            &meta,
+            &meta.main_doc,
+        )
+        .unwrap();
         let prepared = workspace.prepare_build().unwrap();
         assert_eq!(prepared.engine(), oleafly_core::Engine::Typst);
         assert_eq!(prepared.main_document(), "paper.typ");
@@ -900,6 +1287,128 @@ mod tests {
             workspace.manifest().checkpoints.extra["legacy_always_include"],
             serde_json::json!(["research/notes"])
         );
+    }
+
+    #[test]
+    fn desktop_build_adapter_prepares_the_requested_tex_root() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("thesis.tex"),
+            "\\documentclass{report}",
+        )
+        .unwrap();
+        let meta = crate::project::ProjectMeta {
+            name: "Thesis".into(),
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..crate::project::ProjectMeta::default()
+        };
+        let workspace = desktop_workspace(
+            &crate::project_location::ProjectLocation::library_at(
+                "paper",
+                directory.path().to_path_buf(),
+            ),
+            &meta,
+            "thesis.tex",
+        )
+        .unwrap();
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(prepared.engine(), oleafly_core::Engine::Tectonic);
+        assert_eq!(prepared.main_document(), "thesis.tex");
+        assert!(prepared.source_path().ends_with("thesis.tex"));
+    }
+
+    #[test]
+    fn desktop_build_adapter_builds_linked_folders_in_central_state() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("Bob's Thèse, v2");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        let meta = crate::project::ProjectMeta {
+            name: "Thesis".into(),
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..crate::project::ProjectMeta::default()
+        };
+        let workspace = desktop_workspace(&location, &meta, "main.tex").unwrap();
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(
+            prepared.build_directory(),
+            crate::paths::build_dir(&record.id).unwrap()
+        );
+        assert_eq!(prepared.project_root(), location.root);
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_latexmk_figures_build_in_a_private_scratch_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let linked = crate::project_location::locate(&record.id).unwrap();
+        let library = crate::project_location::ProjectLocation::library_at(
+            "paper",
+            crate::paths::create_project_dir("paper").unwrap(),
+        );
+        let latexmk = crate::document_engine::engine_for("latexmk", "main.tex").unwrap();
+        let tectonic = crate::document_engine::engine_for("xetex", "main.tex").unwrap();
+        assert!(figure_scratch(&library, latexmk).unwrap().is_none());
+        assert!(figure_scratch(&linked, tectonic).unwrap().is_none());
+        let scratch = figure_scratch(&linked, latexmk).unwrap().unwrap();
+        let path = scratch.path().to_path_buf();
+        assert!(path.is_absolute());
+        assert!(path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("oleafly-figure-"));
+        assert!(!path.starts_with(&linked.root));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                0o700
+            );
+        }
+        drop(scratch);
+        assert!(!path.exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn figure_outputs_from_a_scratch_folder_replace_the_previous_figure() {
+        let scratch = tempfile::tempdir().unwrap();
+        let figures = tempfile::tempdir().unwrap();
+        std::fs::write(scratch.path().join("_figure.pdf"), b"%PDF new").unwrap();
+        std::fs::write(scratch.path().join("_figure.log"), b"log").unwrap();
+        std::fs::write(figures.path().join("_figure.pdf"), b"%PDF old").unwrap();
+        std::fs::write(figures.path().join("_figure.synctex.gz"), b"stale").unwrap();
+        publish_figure_outputs(scratch.path(), figures.path()).unwrap();
+        assert_eq!(
+            std::fs::read(figures.path().join("_figure.pdf")).unwrap(),
+            b"%PDF new"
+        );
+        assert_eq!(
+            std::fs::read(figures.path().join("_figure.log")).unwrap(),
+            b"log"
+        );
+        assert!(!figures.path().join("_figure.synctex.gz").exists());
     }
 
     #[test]
@@ -937,5 +1446,272 @@ mod tests {
 
         assert!(!orx_on_path(Some(&path)));
         assert!(!orx_on_path(None));
+    }
+
+    #[test]
+    fn reading_outputs_of_an_uncompiled_project_creates_no_build_directories() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = crate::paths::create_project_dir("uncompiled").unwrap();
+
+        let pdf = tauri::async_runtime::block_on(read_compiled_pdf("uncompiled".into()));
+        let figure = tauri::async_runtime::block_on(read_isolated_pdf("uncompiled".into()));
+
+        assert!(matches!(pdf, Err(error) if error.contains("no compiled PDF")));
+        assert!(matches!(figure, Err(error) if error.contains("no figure PDF")));
+        assert!(!project.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn build_artifacts_come_from_the_linked_projects_central_build_folder() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (linked, folder) = fixture.link("thesis");
+        std::fs::create_dir_all(folder.join(".oleafly").join("build")).unwrap();
+        std::fs::write(
+            folder
+                .join(".oleafly")
+                .join("build")
+                .join("_oleafly_entry.aux"),
+            b"\\newlabel{cli}{{9}{9}}\n",
+        )
+        .unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+        assert_eq!(
+            read_build_artifact_blocking(&linked, "_oleafly_entry.aux").unwrap(),
+            None
+        );
+        let central = crate::paths::build_dir(&linked).unwrap();
+        std::fs::create_dir(central.join("chapters")).unwrap();
+        std::fs::write(
+            central.join("_oleafly_entry.aux"),
+            b"\\newlabel{a}{{1}{1}}\n\\@input{chapters/ch1.aux}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            central.join("chapters").join("ch1.aux"),
+            b"\\newlabel{b}{{2}{2}}\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            read_build_artifact_blocking(&linked, "_oleafly_entry.aux")
+                .unwrap()
+                .as_deref(),
+            Some("\\newlabel{a}{{1}{1}}\n\\@input{chapters/ch1.aux}\n")
+        );
+        assert_eq!(
+            read_build_artifact_blocking(&linked, "chapters/ch1.aux")
+                .unwrap()
+                .as_deref(),
+            Some("\\newlabel{b}{{2}{2}}\n")
+        );
+        assert_eq!(
+            read_build_artifact_blocking(&linked, "chapters/missing.aux").unwrap(),
+            None
+        );
+        assert_eq!(
+            tauri::async_runtime::block_on(read_build_artifact(
+                linked.clone(),
+                "chapters/ch1.aux".into()
+            ))
+            .unwrap()
+            .as_deref(),
+            Some("\\newlabel{b}{{2}{2}}\n")
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+    }
+
+    #[test]
+    fn library_build_artifacts_stay_in_the_project_and_a_read_creates_nothing() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let root = crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(
+            read_build_artifact_blocking("paper", "_oleafly_entry.aux").unwrap(),
+            None
+        );
+        assert!(!root.join(".oleafly").exists());
+
+        let build = crate::paths::build_dir("paper").unwrap();
+        assert_eq!(build, root.join(".oleafly").join("build"));
+        std::fs::write(build.join("_oleafly_entry.aux"), b"\\newlabel{a}{{1}{1}}\n").unwrap();
+        std::fs::create_dir(build.join("folder.aux")).unwrap();
+        assert_eq!(
+            read_build_artifact_blocking("paper", "_oleafly_entry.aux")
+                .unwrap()
+                .as_deref(),
+            Some("\\newlabel{a}{{1}{1}}\n")
+        );
+        assert_eq!(
+            read_build_artifact_blocking("paper", "folder.aux").unwrap(),
+            None
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn build_artifact_reads_refuse_other_files_and_escapes() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let root = crate::paths::create_project_dir("paper").unwrap();
+        std::fs::write(root.join("secret.aux"), b"outside").unwrap();
+        let build = crate::paths::build_dir("paper").unwrap();
+        std::fs::write(build.join("_oleafly_entry.log"), b"log").unwrap();
+        std::fs::write(build.join("_oleafly_entry.synctex.gz"), b"sync").unwrap();
+        std::fs::write(build.join("fingerprint.json"), b"{}").unwrap();
+        std::fs::write(build.join("inside.aux"), b"inside").unwrap();
+        for name in [
+            "",
+            ".aux",
+            "aux",
+            "_oleafly_entry.log",
+            "_oleafly_entry.synctex.gz",
+            "fingerprint.json",
+            "_oleafly_entry.pdf",
+            "../../project.json",
+            "../../secret.aux",
+            "../build/inside.aux",
+            "/etc/hosts.aux",
+            "chapters\\ch1.aux",
+        ] {
+            assert!(
+                read_build_artifact_blocking("paper", name).is_err(),
+                "{name:?}"
+            );
+        }
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("secret.aux"), build.join("escape.aux")).unwrap();
+            std::os::unix::fs::symlink(build.join("inside.aux"), build.join("alias.aux")).unwrap();
+            std::os::unix::fs::symlink(&root, build.join("outside")).unwrap();
+            for name in ["escape.aux", "alias.aux", "outside/secret.aux"] {
+                assert!(
+                    read_build_artifact_blocking("paper", name).is_err(),
+                    "{name:?}"
+                );
+            }
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn build_artifact_reads_are_lossy_and_capped() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        crate::paths::create_project_dir("paper").unwrap();
+        let build = crate::paths::build_dir("paper").unwrap();
+        std::fs::write(build.join("latin.aux"), b"\\newlabel{caf\xe9}{{1}{1}}\n").unwrap();
+        let mut large = b"\\newlabel{early}{{1}{1}}\n".to_vec();
+        large.resize(MAX_BUILD_ARTIFACT_BYTES as usize + 64, b'%');
+        std::fs::write(build.join("large.aux"), &large).unwrap();
+
+        let latin = read_build_artifact_blocking("paper", "latin.aux")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            latin.replace(char::REPLACEMENT_CHARACTER, "?"),
+            "\\newlabel{caf?}{{1}{1}}\n"
+        );
+        let capped = read_build_artifact_blocking("paper", "large.aux")
+            .unwrap()
+            .unwrap();
+        assert_eq!(capped.len() as u64, MAX_BUILD_ARTIFACT_BYTES);
+        assert!(capped.starts_with("\\newlabel{early}"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn an_untrusted_linked_folder_compiles_with_the_bundled_engine_until_trusted() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (linked, folder) = fixture.link("thesis");
+        std::fs::write(
+            folder.join("main.tex"),
+            "% !TeX program = lualatex\n\\documentclass{article}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            folder.join("project.json"),
+            br#"{"main_doc":"main.tex","engine":"latexmk","tex_flavor":"lualatex"}"#,
+        )
+        .unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+
+        let meta = crate::project::read_compile_meta(&linked, "main.tex").unwrap();
+        assert_eq!(
+            (
+                meta.engine.as_str(),
+                meta.tex_flavor.as_deref(),
+                meta.allow_shell_escape
+            ),
+            ("xetex", None, false)
+        );
+        assert_eq!(project_engine_sync(linked.clone()).unwrap().id, "latex");
+        let location = crate::project_location::locate(&linked).unwrap();
+        let prepared = desktop_workspace(&location, &meta, "main.tex")
+            .unwrap()
+            .prepare_build()
+            .unwrap();
+        assert_eq!(prepared.engine().manifest_name(), "xetex");
+        assert_eq!(
+            prepared.build_directory(),
+            crate::paths::build_dir(&linked).unwrap()
+        );
+        assert!(!prepared.build_directory().starts_with(&folder));
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+
+        fixture.trust(&linked, crate::trust::TrustScope::Folder);
+        let trusted = crate::project::read_compile_meta(&linked, "main.tex").unwrap();
+        assert_eq!(
+            (trusted.engine.as_str(), trusted.tex_flavor.as_deref()),
+            ("latexmk", Some("lualatex"))
+        );
+        assert_eq!(project_engine_sync(linked.clone()).unwrap().id, "latexmk");
+    }
+
+    #[test]
+    fn untrusted_linked_folders_only_reach_tectonic_typst_or_pandoc() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        for (name, main, source, engine) in [
+            ("tex", "main.tex", "\\documentclass{article}\n", "latex"),
+            ("typst", "main.typ", "= Title\n", "typst"),
+            ("markdown", "notes.md", "# Notes\n", "markdown"),
+        ] {
+            let (linked, folder) = fixture.link(name);
+            std::fs::write(folder.join(main), source).unwrap();
+            std::fs::write(
+                folder.join("project.json"),
+                format!(r#"{{"main_doc":"{main}","engine":"latexmk","tex_flavor":"lualatex"}}"#),
+            )
+            .unwrap();
+            let descriptor = project_engine_sync(linked.clone()).unwrap();
+            assert_eq!(
+                (
+                    descriptor.id.as_str(),
+                    descriptor.tex_flavor,
+                    descriptor.allow_shell_escape
+                ),
+                (engine, None, false),
+                "{main}"
+            );
+            let meta = crate::project::read_compile_meta(&linked, main).unwrap();
+            let compiler = crate::document_engine::engine_for(&meta.engine, main).unwrap();
+            assert_eq!(
+                (compiler.id().as_str(), meta.tex_flavor.as_deref()),
+                (engine, None),
+                "{main}"
+            );
+        }
     }
 }

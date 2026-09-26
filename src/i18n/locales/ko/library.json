@@ -364,7 +364,9 @@
     "nameRequired": "저장소 이름을 입력하세요.",
     "published": "{{repository}}에 게시했습니다.",
     "linked": "{{remote}}에 연결하고 푸시했습니다.",
-    "pushNeedsPull": "{{remote}}에 연결했지만 푸시하려면 먼저 풀해야 합니다: {{detail}}"
+    "pushNeedsPull": "{{remote}}에 연결했지만 푸시하려면 먼저 풀해야 합니다: {{detail}}",
+    "replaceRemotePrompt": "이 프로젝트는 {{remote}}에 연결되어 있습니다. 이 연결을 바꿀까요?",
+    "replaceRemote": "연결 바꾸기"
   },
   "deadlines": {
     "title": "학회 마감일",

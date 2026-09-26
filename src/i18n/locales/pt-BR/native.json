@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Escolha uma planilha para importar",
       "filter": "Planilhas"
+    },
+    "trustFolder": {
+      "title": "Confiar nesta pasta?",
+      "message": "O Oleafly vai ativar o Git, o terminal, os agentes e as ferramentas de LaTeX para {{name}}. Só confie em pastas cujo conteúdo você conhece.",
+      "messageParent": "O Oleafly vai confiar em {{name}} e em todas as pastas dentro dela, incluindo as que você abrir depois.",
+      "messageRepository": "O Oleafly vai executar o Git em {{name}} com as configurações e os hooks do próprio repositório.",
+      "confirm": "Confiar"
+    },
+    "restrictedWrite": {
+      "title": "Permitir esta alteração?",
+      "message": "O assistente quer alterar {{path}}. Arquivos assim podem executar programas, e esta pasta ainda não é confiável.",
+      "confirm": "Permitir"
+    },
+    "restrictedNetwork": {
+      "title": "Permitir esta solicitação?",
+      "message": "O assistente quer usar {{tool}}, que envia texto para um serviço online. Esta pasta ainda não é confiável.",
+      "confirm": "Permitir"
+    },
+    "locateFolder": {
+      "title": "Encontrar a pasta do projeto"
+    },
+    "rebindFolder": {
+      "title": "Usar outra pasta?",
+      "message": "{{name}} não é a pasta que o Oleafly tinha para este projeto. Se você usá-la, o Oleafly salva nela suas alterações não salvas e fecha os terminais e as sessões de agentes deste projeto. Tudo o que estiver em execução neles será encerrado. O Oleafly também deixa de confiar na pasta, desativa o acesso total, redefine as aprovações do assistente e desvincula as pastas de pesquisa. Os chats e o histórico são mantidos.",
+      "confirm": "Usar esta pasta"
+    },
+    "saveCopy": {
+      "title": "Escolha onde salvar uma cópia",
+      "folderSuffix": "cópia"
     }
   },
   "errors": {

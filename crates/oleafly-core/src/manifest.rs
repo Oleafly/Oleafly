@@ -13,19 +13,23 @@ pub enum Engine {
 }
 
 impl Engine {
+    pub fn named(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "" | "latex" | "tex" | "tectonic" | "xetex" | "luatex" => Some(Self::Tectonic),
+            "latexmk" => Some(Self::Latexmk),
+            "typst" | "typ" => Some(Self::Typst),
+            "markdown" | "md" | "pandoc" => Some(Self::Markdown),
+            _ => None,
+        }
+    }
+
     pub fn from_manifest(value: &str, main_document: &str) -> Result<Self> {
-        let engine = match value.trim().to_ascii_lowercase().as_str() {
-            "" | "latex" | "tex" | "tectonic" | "xetex" | "luatex" => Self::Tectonic,
-            "latexmk" => Self::Latexmk,
-            "typst" | "typ" => Self::Typst,
-            "markdown" | "md" | "pandoc" => Self::Markdown,
-            _ => {
-                return Err(Error::new(
-                    ErrorKind::InvalidManifest,
-                    format!("unsupported document engine `{value}`"),
-                ))
-            }
-        };
+        let engine = Self::named(value).ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidManifest,
+                format!("unsupported document engine `{value}`"),
+            )
+        })?;
         if !engine.accepts(main_document) {
             return Err(Error::new(
                 ErrorKind::InvalidManifest,
@@ -261,6 +265,8 @@ pub struct ProjectManifest {
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dictionary_locale: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compile_dir: Option<String>,
     #[serde(default)]
     pub color: String,
     #[serde(default)]
@@ -286,6 +292,7 @@ impl Default for ProjectManifest {
             tex: None,
             tex_flavor: None,
             dictionary_locale: None,
+            compile_dir: None,
             color: String::new(),
             kind: String::new(),
             exports: Vec::new(),
@@ -295,6 +302,32 @@ impl Default for ProjectManifest {
             extra: HashMap::new(),
         }
     }
+}
+
+pub const MAX_MANIFEST_BYTES: u64 = 4 * 1024 * 1024;
+
+pub fn sniff_oleafly_manifest(bytes: &[u8]) -> Option<ProjectManifest> {
+    let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+    if !is_oleafly_manifest(&value) {
+        return None;
+    }
+    serde_json::from_value(value).ok()
+}
+
+pub fn is_oleafly_manifest(value: &serde_json::Value) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    let main_document = object
+        .get("main_doc")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|main| Engine::infer(main).is_ok());
+    let engine = match object.get("engine") {
+        None => true,
+        Some(serde_json::Value::String(name)) => Engine::named(name).is_some(),
+        Some(_) => false,
+    };
+    main_document && engine
 }
 
 impl ProjectManifest {
@@ -359,6 +392,82 @@ mod tests {
     fn engine_and_extension_must_agree() {
         let error = Engine::from_manifest("typst", "main.tex").unwrap_err();
         assert_eq!(error.kind(), ErrorKind::InvalidManifest);
+    }
+
+    #[test]
+    fn only_oleafly_manifests_are_sniffed_as_ours() {
+        for ours in [
+            r#"{"main_doc":"main.tex"}"#,
+            r##"{"name":"Thesis","main_doc":"thesis/main.tex","engine":"xetex","color":"#123456"}"##,
+            r#"{"main_doc":"paper.typ","engine":"typst"}"#,
+            r#"{"main_doc":"notes.md","engine":"pandoc"}"#,
+            r#"{"main_doc":"main.tex","engine":"LaTeXmk","tex_flavor":"xelatex"}"#,
+        ] {
+            assert!(sniff_oleafly_manifest(ours.as_bytes()).is_some(), "{ours}");
+        }
+        for foreign in [
+            r#"{"name":"web","$schema":"node_modules/nx/schemas/project-schema.json","targets":{}}"#,
+            r#"{"main_doc":"main.py"}"#,
+            r#"{"main_doc":42}"#,
+            r#"{"main_doc":"main.tex","engine":"make"}"#,
+            r#"{"main_doc":"main.tex","engine":["xetex"]}"#,
+            r#"{"main_doc":"notes.md","engine":null}"#,
+            r#"{"main_doc":"main.tex","hidden":"yes"}"#,
+            r#"["main.tex"]"#,
+            "not json",
+        ] {
+            assert!(
+                sniff_oleafly_manifest(foreign.as_bytes()).is_none(),
+                "{foreign}"
+            );
+        }
+    }
+
+    #[test]
+    fn engine_names_resolve_without_a_main_document() {
+        assert_eq!(Engine::named(" Tectonic "), Some(Engine::Tectonic));
+        assert_eq!(Engine::named(""), Some(Engine::Tectonic));
+        assert_eq!(Engine::named("LATEXMK"), Some(Engine::Latexmk));
+        assert_eq!(Engine::named("typ"), Some(Engine::Typst));
+        assert_eq!(Engine::named("pandoc"), Some(Engine::Markdown));
+        assert_eq!(Engine::named("pdflatex"), None);
+    }
+
+    #[test]
+    fn oleafly_manifests_are_told_apart_from_other_tools_project_files() {
+        let oleafly = [
+            serde_json::json!({"name": "Paper", "main_doc": "main.tex", "engine": "xetex"}),
+            serde_json::json!({"main_doc": "paper/thesis.ltx"}),
+            serde_json::json!({"main_doc": "slides.typ", "engine": "typst"}),
+            serde_json::json!({"main_doc": "notes.MD", "engine": "pandoc"}),
+            serde_json::json!({"main_doc": "main.tex", "engine": "typst"}),
+        ];
+        for value in &oleafly {
+            assert!(is_oleafly_manifest(value), "{value}");
+        }
+        let foreign = [
+            serde_json::json!({
+                "name": "web",
+                "$schema": "../../node_modules/nx/schemas/project-schema.json",
+                "sourceRoot": "apps/web/src",
+                "projectType": "application",
+                "targets": {"build": {"executor": "@nx/vite:build"}}
+            }),
+            serde_json::json!({
+                "version": "1.0.0-*",
+                "dependencies": {"NETStandard.Library": "1.6.0"},
+                "frameworks": {"netstandard1.6": {}}
+            }),
+            serde_json::json!({"main_doc": "main.pdf"}),
+            serde_json::json!({"main_doc": 7}),
+            serde_json::json!({"main_doc": "main.tex", "engine": "pdflatex-custom"}),
+            serde_json::json!({"main_doc": "main.tex", "engine": null}),
+            serde_json::json!(["main.tex"]),
+            serde_json::json!("main.tex"),
+        ];
+        for value in &foreign {
+            assert!(!is_oleafly_manifest(value), "{value}");
+        }
     }
 
     #[test]

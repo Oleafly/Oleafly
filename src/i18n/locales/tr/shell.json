@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Yeniden derle"
     },
+    "saveSettingsToFolder": {
+      "keywords": "proje ayarları kaydet klasör project.json paylaş ana belge",
+      "label": "Proje ayarlarını bu klasöre kaydet",
+      "saved": "Proje ayarları bu klasördeki project.json dosyasına kaydedildi."
+    },
     "section": {
       "label": "Alt bölüm"
     },
@@ -260,6 +265,7 @@
     "texRootBroken": "{{file}} içindeki % !TEX root eksik bir dosyayı gösteriyor ({{target}})",
     "texRootLabel": "TEX kökü",
     "texRootName": "kök: {{name}}",
+    "texRootNotTex": "{{file}} içindeki % !TEX root, LaTeX dosyası olmayan {{target}} dosyasını gösteriyor",
     "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)"
   },
   "datePicker": {
@@ -360,6 +366,25 @@
       "terminalDock": "terminal yuvası"
     },
     "title": "Bir sorun oluştu"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Bu klasör kullanılamıyor.",
+      "body": "Sürücüyü yeniden bağlayın veya klasörü bulun. Açık dosyalarınız burada kalır ve klasör geri gelene kadar Oleafly kaydetmez ya da derlemez."
+    },
+    "replaced": {
+      "title": "Bu klasör değiştirildi.",
+      "body": "Artık onun yerinde farklı bir klasör var. Oleafly oradaki hiçbir şeyin üzerine yazmamak için kaydetmeyi durdurdu."
+    },
+    "permissionDenied": {
+      "title": "Oleafly bu klasörü açamıyor.",
+      "body": "Klasörün izinlerini kontrol edip yeniden deneyin. Açık dosyalarınız burada kalır."
+    },
+    "locate": "Bul…",
+    "useThisFolder": "Bu klasörü kullan",
+    "saveCopy": "Kopya kaydet…",
+    "tryAgain": "Yeniden deneyin",
+    "savedCopy": "Açık dosyalarınız {{folder}} konumuna kaydedildi."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -542,6 +567,8 @@
         "calculating": "Depolama kullanımı hesaplanıyor…",
         "desktopOnly": "Depolama ayrıntıları masaüstü uygulamasında görülebilir.",
         "error": "Depolama ayrıntıları hesaplanamadı.",
+        "linkedFolders_one": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
+        "linkedFolders_other": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
         "refresh": "Depolama kullanımını yenile",
         "stats": {
           "appData": "Uygulama verileri",

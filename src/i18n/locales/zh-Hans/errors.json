@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "项目名称不能为空。",
     "name_conflict": "已存在名为 {{name}} 的项目。",
-    "folder_unavailable": "无法预留新的项目文件夹。"
+    "folder_unavailable": "无法预留新的项目文件夹。",
+    "not_found": "此项目已不在你的库中。",
+    "not_recyclable": "无法将此项目移入回收站。",
+    "linked_missing": "Oleafly 找不到文件夹 {{folder}}。它可能已被移动或删除，或者位于未连接的驱动器上。",
+    "linked_replaced": "文件夹 {{folder}} 已不是 Oleafly 之前打开的那个文件夹。请重新打开它以继续。",
+    "linked_permission_denied": "Oleafly 没有打开文件夹 {{folder}} 的权限。",
+    "linked_invalid": "Oleafly 中此文件夹的链接已损坏。请将其从 Oleafly 中移除，然后重新打开该文件夹。",
+    "linked_not_recyclable": "此文件夹是在原位置打开的，无法移入回收站。你的文件没有任何改动。",
+    "linked_not_duplicable": "此文件夹是在原位置打开的，Oleafly 无法复制它。",
+    "folder_not_a_folder": "Oleafly 无法使用该位置。请选择一个文件夹。",
+    "folder_in_app_data": "Oleafly 在该文件夹中保存自己的数据。请选择其他文件夹。",
+    "folder_too_broad": "{{name}} 范围太大，无法作为一个项目打开。请选择只包含此项目的文件夹。",
+    "folder_already_linked": "该文件夹与 Oleafly 中的另一个项目重叠。请选择其他文件夹。",
+    "not_linked": "只有就地打开的文件夹才能重新定位。",
+    "copy_destination_refused": "请选择项目和 Oleafly 数据文件夹之外的文件夹。",
+    "copy_nothing_open": "没有打开的文件，因此没有可保存的内容。",
+    "copy_too_large": "打开的文件太大，无法另存为副本。",
+    "copy_failed": "Oleafly 无法将副本保存到该位置。请选择一个你有写入权限的文件夹。",
+    "folder_picker_failed": "Oleafly 无法打开文件夹选择器。请重试。",
+    "import_no_main": "导入的内容中没有可编译的 LaTeX、Typst 或 Markdown 文档。",
+    "settings_file_exists": "此文件夹中已有 project.json，Oleafly 未对其做任何更改。",
+    "settings_need_main": "请先选择主文档，再将项目设置保存到此文件夹。",
+    "settings_write_failed": "Oleafly 无法将项目设置保存到此文件夹。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
-    "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。"
+    "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。",
+    "latexmk_build_path": "Oleafly 在这台电脑上的构建文件夹路径包含 latexmk 不接受的字符，因此 latexmk 无法使用它。请将此项目切换到 Tectonic 进行编译。",
+    "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。"
   },
   "github": {
     "sign_in_expired": "登录代码已过期，请重试。",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "无法加载仓库。",
     "create_repo_failed": "无法创建仓库（{{status}}）。"
   },
+  "git": {
+    "remote_exists": "此项目已关联到 {{remote}}。",
+    "nested_repository": "此项目位于另一个 Git 仓库中，因此 Oleafly 不会在这里另建仓库。"
+  },
   "approvals": {
     "full_access_declined": "未启用完全访问权限。"
+  },
+  "trust": {
+    "git": "信任此文件夹后才能使用源代码管理。",
+    "repository": "信任仓库 {{name}} 后才能在这里使用源代码管理。",
+    "terminal": "请自行打开终端，才能在此文件夹中使用它。",
+    "agents": "信任此文件夹后才能使用外部代理。",
+    "mcp": "信任此文件夹后，MCP 客户端才能使用它。",
+    "research_tasks": "信任此文件夹后才能运行研究任务。",
+    "run_command": "信任此文件夹后，助手才能运行命令。",
+    "full_access": "开启完全访问权限前，请先信任此文件夹。",
+    "system_tex": "信任此文件夹后才能使用 latexmk 编译。",
+    "shell_escape": "允许 shell escape 前，请先信任此文件夹。",
+    "broad_folder": "Oleafly 无法信任整个 {{name}}。请选择一个更小的文件夹。",
+    "declined": "未信任该文件夹。",
+    "unavailable": "Oleafly 无法检查此文件夹是否受信任。"
+  },
+  "open_folder": {
+    "not_absolute": "请使用文件夹的完整路径。",
+    "not_found": "Oleafly 找不到此文件夹。",
+    "permission_denied": "Oleafly 没有打开此文件夹的权限。",
+    "not_a_folder": "请选择文件夹，而不是文件。",
+    "unsupported_folder": "Oleafly 无法打开此类文件夹。",
+    "path_not_unicode": "此文件夹的路径包含 Oleafly 无法读取的字符。请重命名文件夹后重试。",
+    "too_broad": "{{name}} 包含的内容太多，无法作为一个项目打开。请选择其中的某个文件夹。",
+    "protected": "Oleafly 无法打开 {{name}} 中的文件夹。",
+    "app_data": "此文件夹属于 Oleafly 的应用数据。请选择其外部的文件夹。",
+    "contains_project": "此文件夹包含 {{name}}，它已在 Oleafly 中作为独立项目打开。",
+    "research_folder": "{{project}} 已可通过其已链接文件夹编辑此文件夹中的文件。请先在那里取消链接。",
+    "failed": "Oleafly 无法打开此文件夹。"
+  },
+  "research": {
+    "linked_project_folder": "此文件夹已在 Oleafly 中作为独立项目打开。请改为以只读方式链接。"
+  },
+  "checkpoint": {
+    "library_history_for_folder": "此检查点历史来自你的 Oleafly 库中的项目，因此不能用于在原位置打开的文件夹。",
+    "folder_history_for_library": "此检查点历史来自在原位置打开的文件夹，因此不能用于你的 Oleafly 库中的项目。",
+    "restore_path_blocked": "{{path}} 所在位置有链接或其他非文件项目，Oleafly 无法恢复它。请先移走该项目再重试。"
   }
 }

@@ -5,6 +5,7 @@ use reqwest::{redirect, Client, Url};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use std::ffi::{OsStr, OsString};
 use std::fs::{File, Metadata, OpenOptions};
 use std::io::{Cursor, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -15,6 +16,9 @@ use std::time::Duration;
 const MANIFEST_JSON: &str = include_str!("../../../scripts/language-servers/manifest.json");
 const MANIFEST_SCHEMA_VERSION: u32 = 1;
 const INSTALL_DIRECTORY: &str = "language-servers";
+const TOOL_SHIM_DIRECTORY: &str = "shims";
+#[cfg(unix)]
+const LATEXMK_SHIM_SCRIPT: &[u8] = b"#!/bin/sh\nexit 0\n";
 const MAX_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_BINARY_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_ARCHIVE_MEMBERS: usize = 256;
@@ -91,6 +95,8 @@ struct ValidatedManifest {
 pub(super) struct ServerLaunch {
     pub(super) executable: PathBuf,
     pub(super) args: Vec<String>,
+    pub(super) search_path: Option<OsString>,
+    pub(super) working_directory: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -145,8 +151,23 @@ pub(super) fn resolve_for_launch(
     kind: LanguageServiceKind,
     resource: Option<&BundledResourcePaths>,
 ) -> Result<ServerLaunch, LanguageServiceError> {
-    let profile = profile(kind)?;
-    let executable = match kind {
+    resolve_profile_for_launch(
+        app_local_data,
+        state,
+        profile(kind)?,
+        resource,
+        std::env::var_os("PATH").as_deref(),
+    )
+}
+
+fn resolve_profile_for_launch(
+    app_local_data: &Path,
+    state: &InstallerState,
+    profile: ServerProfile,
+    resource: Option<&BundledResourcePaths>,
+    inherited: Option<&OsStr>,
+) -> Result<ServerLaunch, LanguageServiceError> {
+    let executable = match profile.kind {
         LanguageServiceKind::TexLab => resolve_texlab(app_local_data, &profile)?,
         LanguageServiceKind::Tinymist => ensure_tinymist_from_resource(
             app_local_data,
@@ -158,7 +179,21 @@ pub(super) fn resolve_for_launch(
     Ok(ServerLaunch {
         executable,
         args: profile.args,
+        search_path: launch_search_path(app_local_data, profile.kind, inherited)?,
+        working_directory: ensure_tool_shims(app_local_data)?,
     })
+}
+
+fn launch_search_path(
+    app_local_data: &Path,
+    kind: LanguageServiceKind,
+    inherited: Option<&OsStr>,
+) -> Result<Option<OsString>, LanguageServiceError> {
+    if kind != LanguageServiceKind::TexLab {
+        return Ok(None);
+    }
+    let shims = ensure_tool_shims(app_local_data)?;
+    tool_search_path(&shims, inherited).map(Some)
 }
 
 pub(super) async fn install_texlab(
@@ -1019,6 +1054,70 @@ fn install_binary_path(app_local_data: &Path, profile: &ServerProfile) -> PathBu
             &profile.binary_base_name,
             cfg!(windows),
         ))
+}
+
+fn tool_search_path(
+    shims: &Path,
+    inherited: Option<&OsStr>,
+) -> Result<OsString, LanguageServiceError> {
+    let inherited: Vec<PathBuf> = inherited
+        .map(|value| {
+            std::env::split_paths(value)
+                .filter(|entry| entry.is_absolute())
+                .collect()
+        })
+        .unwrap_or_default();
+    std::env::join_paths(std::iter::once(shims.to_path_buf()).chain(inherited)).map_err(|_| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::SidecarUnavailable,
+            "the language-server tool shim directory cannot be placed on PATH",
+        )
+    })
+}
+
+fn ensure_tool_shims(app_local_data: &Path) -> Result<PathBuf, LanguageServiceError> {
+    ensure_trusted_base(app_local_data)?;
+    let base = std::fs::canonicalize(app_local_data).map_err(install_io_error)?;
+    let language_servers = ensure_secure_child_directory(&base, INSTALL_DIRECTORY)?;
+    let shims = ensure_secure_child_directory(&language_servers, TOOL_SHIM_DIRECTORY)?;
+    install_latexmk_shim(&shims)?;
+    Ok(shims)
+}
+
+#[cfg(unix)]
+fn install_latexmk_shim(shims: &Path) -> Result<(), LanguageServiceError> {
+    use std::os::unix::fs::PermissionsExt;
+    let destination = shims.join("latexmk");
+    if let Ok(metadata) = std::fs::symlink_metadata(&destination) {
+        if metadata.is_file()
+            && metadata.permissions().mode() & 0o777 == 0o700
+            && std::fs::read(&destination).is_ok_and(|bytes| bytes == LATEXMK_SHIM_SCRIPT)
+        {
+            return Ok(());
+        }
+    }
+    if !is_replaceable_regular_file(&destination)? {
+        return Err(LanguageServiceError::new(
+            LanguageServiceErrorCode::InstallFailed,
+            "the latexmk tool shim is not a replaceable regular file",
+        ));
+    }
+    let (temporary_path, mut temporary) = create_staging_file(shims, "shim")?;
+    let mut cleanup = StagedPath::new(temporary_path.clone());
+    temporary
+        .write_all(LATEXMK_SHIM_SCRIPT)
+        .map_err(install_io_error)?;
+    temporary.sync_all().map_err(install_io_error)?;
+    drop(temporary);
+    make_executable(&temporary_path)?;
+    replace_file_atomically(&temporary_path, &destination).map_err(install_io_error)?;
+    cleanup.committed = true;
+    sync_directory(shims)
+}
+
+#[cfg(windows)]
+fn install_latexmk_shim(shims: &Path) -> Result<(), LanguageServiceError> {
+    ensure_secure_child_directory(shims, "latexmk.exe").map(|_| ())
 }
 
 fn resolve_texlab(
@@ -2015,5 +2114,335 @@ mod tests {
             LanguageServiceErrorCode::IntegrityFailure
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn tool_search_path_puts_the_shim_first_and_drops_relative_entries() {
+        let root = std::env::temp_dir();
+        let shims = root.join("oleafly-shims");
+        let first = root.join("tex-first");
+        let second = root.join("tex-second");
+        let inherited = std::env::join_paths([
+            first.clone(),
+            PathBuf::new(),
+            PathBuf::from("."),
+            PathBuf::from("bin"),
+            second.clone(),
+        ])
+        .unwrap();
+        let joined = tool_search_path(&shims, Some(inherited.as_os_str())).unwrap();
+        assert_eq!(
+            std::env::split_paths(&joined).collect::<Vec<_>>(),
+            vec![shims.clone(), first, second]
+        );
+        let alone = tool_search_path(&shims, None).unwrap();
+        assert_eq!(
+            std::env::split_paths(&alone).collect::<Vec<_>>(),
+            vec![shims]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tool_search_path_refuses_a_shim_directory_containing_the_separator() {
+        let shims = std::env::temp_dir().join("oleafly:shims");
+        assert_eq!(
+            tool_search_path(&shims, None).unwrap_err().code,
+            LanguageServiceErrorCode::SidecarUnavailable
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_shim_is_a_private_noop_script_and_is_repaired() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let app_data = temp_dir("shim");
+        let shims = ensure_tool_shims(&app_data).unwrap();
+        assert_eq!(
+            shims,
+            app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY)
+        );
+        let shim = shims.join("latexmk");
+        assert_eq!(std::fs::read(&shim).unwrap(), LATEXMK_SHIM_SCRIPT);
+        assert_eq!(
+            std::fs::symlink_metadata(&shim)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+
+        let project = temp_dir("shim-project");
+        let sentinel = project.join("sentinel");
+        std::fs::write(
+            project.join(".latexmkrc"),
+            format!("system(\"touch {}\");\n", sentinel.display()),
+        )
+        .unwrap();
+        let output = std::process::Command::new("/bin/sh")
+            .arg(&shim)
+            .arg("--version")
+            .current_dir(&project)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!sentinel.exists());
+
+        std::fs::write(&shim, b"#!/bin/sh\ntouch tampered\n").unwrap();
+        assert_eq!(ensure_tool_shims(&app_data).unwrap(), shims);
+        assert_eq!(std::fs::read(&shim).unwrap(), LATEXMK_SHIM_SCRIPT);
+
+        std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755)).unwrap();
+        ensure_tool_shims(&app_data).unwrap();
+        assert_eq!(
+            std::fs::symlink_metadata(&shim)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+
+        std::fs::remove_file(&shim).unwrap();
+        symlink(&project, &shim).unwrap();
+        assert_eq!(
+            ensure_tool_shims(&app_data).unwrap_err().code,
+            LanguageServiceErrorCode::InstallFailed
+        );
+
+        std::fs::remove_dir_all(project).unwrap();
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_latexmk_shim_directory_shadows_a_real_latexmk_on_path() {
+        let app_data = temp_dir("shim-windows");
+        let real = temp_dir("shim-real-latexmk");
+        let system_root = std::env::var_os("SystemRoot").expect("SystemRoot is set on Windows");
+        std::fs::copy(
+            Path::new(&system_root).join("System32").join("whoami.exe"),
+            real.join("latexmk.exe"),
+        )
+        .unwrap();
+        assert!(std::process::Command::new("latexmk")
+            .env("PATH", &real)
+            .output()
+            .is_ok());
+
+        let shims = ensure_tool_shims(&app_data).unwrap();
+        assert!(std::fs::symlink_metadata(shims.join("latexmk.exe"))
+            .unwrap()
+            .is_dir());
+        let search_path = tool_search_path(&shims, Some(real.as_os_str())).unwrap();
+        assert!(std::process::Command::new("latexmk")
+            .arg("--version")
+            .env("PATH", &search_path)
+            .output()
+            .is_err());
+
+        std::fs::remove_dir_all(real).unwrap();
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[test]
+    fn only_texlab_launches_get_the_tool_shim_search_path() {
+        let app_data = temp_dir("launch-path");
+        let inherited = std::env::temp_dir();
+        assert!(launch_search_path(
+            &app_data,
+            LanguageServiceKind::Tinymist,
+            Some(inherited.as_os_str())
+        )
+        .unwrap()
+        .is_none());
+        assert!(!app_data
+            .join(INSTALL_DIRECTORY)
+            .join(TOOL_SHIM_DIRECTORY)
+            .exists());
+
+        let search_path = launch_search_path(
+            &app_data,
+            LanguageServiceKind::TexLab,
+            Some(inherited.as_os_str()),
+        )
+        .unwrap()
+        .expect("texlab launches get a search path");
+        assert_eq!(
+            std::env::split_paths(&search_path).collect::<Vec<_>>(),
+            vec![
+                app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY),
+                inherited
+            ]
+        );
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn texlab_launch_spawns_with_latexmk_resolving_to_the_shim() {
+        use std::os::unix::fs::PermissionsExt;
+        use tokio::io::AsyncReadExt;
+        let app_data = temp_dir("launch-shim");
+        let real = temp_dir("launch-real-latexmk");
+        std::fs::write(real.join("latexmk"), b"#!/bin/sh\nexit 0\n").unwrap();
+        std::fs::set_permissions(real.join("latexmk"), std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+        let binary = b"#!/bin/sh\npwd -P\ncommand -v latexmk\n";
+        let archive = zip_fixture("texlab", binary);
+        let profile = ServerProfile {
+            kind: LanguageServiceKind::TexLab,
+            version: "4.5.6".into(),
+            binary_base_name: "texlab".into(),
+            args: vec!["run".into()],
+            target_triple: current_target_triple().unwrap().into(),
+            target: target_for("zip", "texlab", &archive, binary),
+        };
+        publish_binary_atomically(&app_data, &profile, binary).unwrap();
+        let launch = resolve_profile_for_launch(
+            &app_data,
+            &InstallerState::default(),
+            profile,
+            None,
+            Some(real.as_os_str()),
+        )
+        .unwrap();
+
+        let crate::language_service::SpawnedSession {
+            mut child,
+            stdin,
+            mut stdout,
+            stderr,
+            containment,
+            ..
+        } = crate::language_service::spawn_sidecar(&launch).unwrap();
+        drop(stdin);
+        drop(stderr);
+        let mut output = Vec::new();
+        stdout.read_to_end(&mut output).await.unwrap();
+        child.wait().await.unwrap();
+        drop(containment);
+        let shims = app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY);
+        assert_eq!(
+            String::from_utf8(output)
+                .unwrap()
+                .lines()
+                .collect::<Vec<_>>(),
+            vec![
+                shims.to_str().unwrap(),
+                shims.join("latexmk").to_str().unwrap()
+            ]
+        );
+
+        std::fs::remove_dir_all(real).unwrap();
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    #[ignore = "needs the pinned texlab in src-tauri/binaries and latexmk with Perl on PATH"]
+    async fn pinned_texlab_never_runs_a_project_latexmkrc_behind_the_shim() {
+        async fn latexmkrc_ran(launch: &ServerLaunch) -> bool {
+            use tokio::io::AsyncWriteExt;
+            let project = temp_dir("sentinel-project");
+            let sentinel = project.join("sentinel");
+            std::fs::write(
+                project.join(".latexmkrc"),
+                format!("system(\"touch {}\");\n", sentinel.display()),
+            )
+            .unwrap();
+            let text = "\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n";
+            std::fs::write(project.join("main.tex"), text).unwrap();
+            let root = Url::from_directory_path(&project).unwrap();
+            let main = Url::from_file_path(project.join("main.tex")).unwrap();
+            let crate::language_service::SpawnedSession {
+                mut child,
+                mut stdin,
+                mut stdout,
+                mut stderr,
+                containment,
+                ..
+            } = crate::language_service::spawn_sidecar(launch).unwrap();
+            tokio::spawn(async move { tokio::io::copy(&mut stdout, &mut tokio::io::sink()).await });
+            tokio::spawn(async move { tokio::io::copy(&mut stderr, &mut tokio::io::sink()).await });
+            for message in [
+                serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                    "processId": null, "rootUri": root.as_str(), "capabilities": {},
+                    "workspaceFolders": [{"uri": root.as_str(), "name": "sentinel"}]}}),
+                serde_json::json!({"jsonrpc": "2.0", "method": "initialized", "params": {}}),
+                serde_json::json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {
+                    "textDocument": {"uri": main.as_str(), "languageId": "latex", "version": 1, "text": text}}}),
+            ] {
+                stdin
+                    .write_all(
+                        &crate::language_service::encode_json_rpc(&message)
+                            .unwrap()
+                            .0,
+                    )
+                    .await
+                    .unwrap();
+            }
+            stdin.flush().await.unwrap();
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            let _ = child.start_kill();
+            let _ = child.wait().await;
+            drop(containment);
+            let executed = sentinel.exists();
+            std::fs::remove_dir_all(project).unwrap();
+            executed
+        }
+
+        let profile = profile(LanguageServiceKind::TexLab).unwrap();
+        let pinned = std::fs::canonicalize(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("binaries")
+                .join(&profile.target.output_filename),
+        )
+        .expect("pinned texlab in src-tauri/binaries");
+        let app_data = temp_dir("sentinel-app-data");
+        publish_binary_atomically(&app_data, &profile, &std::fs::read(pinned).unwrap()).unwrap();
+        let shimmed = resolve_for_launch(
+            &app_data,
+            &InstallerState::default(),
+            LanguageServiceKind::TexLab,
+            None,
+        )
+        .unwrap();
+        assert_eq!(shimmed.executable, install_binary_path(&app_data, &profile));
+        assert!(shimmed.search_path.is_some());
+        let unshimmed = ServerLaunch {
+            executable: shimmed.executable.clone(),
+            args: shimmed.args.clone(),
+            search_path: None,
+            working_directory: shimmed.working_directory.clone(),
+        };
+        assert!(latexmkrc_ran(&unshimmed).await);
+        assert!(!latexmkrc_ran(&shimmed).await);
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[test]
+    fn every_language_server_launches_from_the_oleafly_shim_directory() {
+        let resource_root = temp_dir("cwd-resource");
+        let app_data = temp_dir("cwd-app-data");
+        let (profile, resource) =
+            resource_fixture(&resource_root, "1.2.3", b"fixture-language-server");
+        let launch = resolve_profile_for_launch(
+            &app_data,
+            &InstallerState::default(),
+            profile,
+            Some(&resource),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            launch.working_directory,
+            app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY)
+        );
+        assert!(launch.search_path.is_none());
+        std::fs::remove_dir_all(resource_root).unwrap();
+        std::fs::remove_dir_all(app_data).unwrap();
     }
 }

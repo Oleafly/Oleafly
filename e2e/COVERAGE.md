@@ -227,8 +227,10 @@ their subject is Playwright's own Chromium/WebKit, which the Windows dev-mode
 lane still exercises on every push. It is the only dev-mode lane left now that
 Linux runs packaged too, so packaging Windows would end that coverage and has
 to replace it first. localStorage seeding happens
-before boot (OLEAFLY_E2E_BOOT_LOCALSTORAGE) instead of via dev-server reloads,
-and dev-server module imports resolve through src/lib/e2e-import-registry.ts.
+before boot instead of via dev-server reloads. OLEAFLY_E2E_BOOT_LOCALSTORAGE
+applies on every page load. OLEAFLY_E2E_LAUNCH_LOCALSTORAGE applies once per
+launch, so a preference a spec changes survives an in-app reload. Dev-server
+module imports resolve through src/lib/e2e-import-registry.ts.
 
 One platform exception: 62-large-document-interaction is skipped on Linux.
 Opening its project always compiles it, and on the two-core CI runner that

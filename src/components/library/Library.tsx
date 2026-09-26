@@ -79,6 +79,7 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
+import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import {
@@ -445,10 +446,18 @@ export function Library() {
     try {
       await recycleProject(target.id);
     } catch (error) {
+      const typed = decodeAppError(error);
+      if (typed?.code === PROJECT_NOT_FOUND) {
+        await refreshProjects().catch((refreshError: unknown) => {
+          void logError("refresh projects after delete", refreshError);
+        });
+      }
       notifyError(
         "delete project",
         error,
-        t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
+        typed
+          ? undefined
+          : t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
       );
       return;
     }
@@ -540,7 +549,11 @@ export function Library() {
       await refreshProjects();
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
-      notifyError("fork project", e, t(($) => $.library.projects.forkDialog.failed));
+      notifyError(
+        "fork project",
+        e,
+        decodeAppError(e) ? undefined : t(($) => $.library.projects.forkDialog.failed),
+      );
     } finally {
       forkBusyRef.current = false;
       setForkBusy(false);

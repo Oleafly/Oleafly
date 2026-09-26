@@ -431,6 +431,12 @@
       "sourceSize": "Tamanho do código-fonte",
       "reclaimable": "Recuperável"
     },
+    "capture": {
+      "paused": "Os pontos de verificação estão pausados porque esta pasta é grande demais. Um ponto de verificação pode guardar no máximo {{files}} arquivos ou {{size}}.",
+      "skipped_one": "{{formattedCount}} arquivo desta pasta não está nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas.",
+      "skipped_many": "{{formattedCount}} arquivos desta pasta não estão nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas.",
+      "skipped_other": "{{formattedCount}} arquivos desta pasta não estão nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas."
+    },
     "catalog": {
       "formatVersion": "Versão do formato",
       "lineage": "Linhagem",
@@ -463,7 +469,8 @@
       "showFor": "Mostrar os arquivos de {{version}}",
       "hideFor": "Ocultar os arquivos de {{version}}",
       "show": "Mostrar arquivos",
-      "hide": "Ocultar arquivos"
+      "hide": "Ocultar arquivos",
+      "folderSettings": "Configurações do Oleafly para esta pasta"
     },
     "entry": {
       "labelInput": "Rótulo do ponto de verificação",

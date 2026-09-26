@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Der Projektname darf nicht leer sein.",
     "name_conflict": "Ein Projekt mit dem Namen {{name}} gibt es bereits.",
-    "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden."
+    "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden.",
+    "not_found": "Dieses Projekt ist nicht mehr in Ihrer Bibliothek.",
+    "not_recyclable": "Dieses Projekt kann nicht in den Papierkorb verschoben werden.",
+    "linked_missing": "Oleafly kann den Ordner {{folder}} nicht finden. Er wurde möglicherweise verschoben oder gelöscht, oder er liegt auf einem Laufwerk, das nicht angeschlossen ist.",
+    "linked_replaced": "Der Ordner {{folder}} ist nicht der Ordner, den Oleafly zuvor geöffnet hat. Öffnen Sie ihn erneut, um fortzufahren.",
+    "linked_permission_denied": "Oleafly hat keine Berechtigung, den Ordner {{folder}} zu öffnen.",
+    "linked_invalid": "Die Verknüpfung von Oleafly mit diesem Ordner ist beschädigt. Entfernen Sie ihn aus Oleafly und öffnen Sie den Ordner dann erneut.",
+    "linked_not_recyclable": "Dieser Ordner wurde direkt an seinem Speicherort geöffnet und kann daher nicht in den Papierkorb verschoben werden. Ihre Dateien bleiben unverändert.",
+    "linked_not_duplicable": "Dieser Ordner wurde direkt an seinem Speicherort geöffnet, daher kann Oleafly ihn nicht duplizieren.",
+    "folder_not_a_folder": "Oleafly kann diesen Speicherort nicht verwenden. Wählen Sie einen Ordner.",
+    "folder_in_app_data": "Oleafly speichert in diesem Ordner eigene Daten. Wählen Sie einen anderen Ordner.",
+    "folder_too_broad": "{{name}} ist zu umfassend, um als ein Projekt geöffnet zu werden. Wählen Sie den Ordner, der nur dieses Projekt enthält.",
+    "folder_already_linked": "Dieser Ordner überschneidet sich mit einem anderen Projekt in Oleafly. Wählen Sie einen anderen Ordner.",
+    "not_linked": "Suchen funktioniert nur für Ordner, die direkt an ihrem Speicherort geöffnet wurden.",
+    "copy_destination_refused": "Wählen Sie einen Ordner außerhalb des Projekts und außerhalb des Datenordners von Oleafly.",
+    "copy_nothing_open": "Es sind keine Dateien geöffnet, daher gibt es nichts zu speichern.",
+    "copy_too_large": "Die geöffneten Dateien sind zu groß, um sie als Kopie zu speichern.",
+    "copy_failed": "Oleafly konnte die Kopie dort nicht speichern. Wählen Sie einen Ordner, in den Sie schreiben können.",
+    "folder_picker_failed": "Oleafly konnte die Ordnerauswahl nicht öffnen. Versuchen Sie es erneut.",
+    "import_no_main": "Dieser Import enthält kein LaTeX-, Typst- oder Markdown-Dokument zum Kompilieren.",
+    "settings_file_exists": "Dieser Ordner enthält bereits eine project.json. Oleafly hat sie unverändert gelassen.",
+    "settings_need_main": "Wählen Sie zuerst ein Hauptdokument und speichern Sie dann die Projekteinstellungen in diesem Ordner.",
+    "settings_write_failed": "Oleafly konnte die Projekteinstellungen nicht in diesem Ordner speichern."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX enthält keine zum System passende {{name}}-Binärdatei.",
-    "package_operation_timeout": "Der Paketvorgang hat sein Limit von {{span}} überschritten und wurde beendet, damit Sie wieder kompilieren können. Vermutlich ist der TeX Live Mirror gerade ausgelastet. Versuchen Sie es später erneut oder führen Sie tlmgr selbst aus."
+    "package_operation_timeout": "Der Paketvorgang hat sein Limit von {{span}} überschritten und wurde beendet, damit Sie wieder kompilieren können. Vermutlich ist der TeX Live Mirror gerade ausgelastet. Versuchen Sie es später erneut oder führen Sie tlmgr selbst aus.",
+    "latexmk_build_path": "latexmk kann den Build-Ordner von Oleafly auf diesem Computer nicht verwenden, weil sein Pfad Zeichen enthält, die latexmk nicht akzeptiert. Stellen Sie dieses Projekt auf Tectonic um, um es zu kompilieren.",
+    "latexmk_network_folder": "latexmk kann keinen Ordner auf einer Netzwerkfreigabe kompilieren. Stellen Sie dieses Projekt auf Tectonic um oder kopieren Sie den Ordner auf diesen Computer."
   },
   "github": {
     "sign_in_expired": "Der Anmeldecode ist abgelaufen. Versuchen Sie es erneut.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Die Repositorys konnten nicht geladen werden.",
     "create_repo_failed": "Das Repository konnte nicht erstellt werden ({{status}})."
   },
+  "git": {
+    "remote_exists": "Dieses Projekt ist bereits mit {{remote}} verknüpft.",
+    "nested_repository": "Dieses Projekt liegt in einem anderen Git-Repository, daher legt Oleafly hier kein eigenes an."
+  },
   "approvals": {
     "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
+  },
+  "trust": {
+    "git": "Vertrauen Sie diesem Ordner, um die Versionsverwaltung zu nutzen.",
+    "repository": "Vertrauen Sie dem Repository {{name}}, um hier die Versionsverwaltung zu nutzen.",
+    "terminal": "Öffnen Sie das Terminal selbst, um es in diesem Ordner zu nutzen.",
+    "agents": "Vertrauen Sie diesem Ordner, um externe Agenten zu nutzen.",
+    "mcp": "Vertrauen Sie diesem Ordner, bevor MCP-Clients ihn nutzen können.",
+    "research_tasks": "Vertrauen Sie diesem Ordner, um Forschungsaufgaben auszuführen.",
+    "run_command": "Vertrauen Sie diesem Ordner, damit der Assistent Befehle ausführen darf.",
+    "full_access": "Vertrauen Sie diesem Ordner, bevor Sie den Vollzugriff aktivieren.",
+    "system_tex": "Vertrauen Sie diesem Ordner, um mit latexmk zu kompilieren.",
+    "shell_escape": "Vertrauen Sie diesem Ordner, bevor Sie shell escape erlauben.",
+    "broad_folder": "Oleafly kann nicht dem ganzen Ordner {{name}} vertrauen. Wählen Sie einen kleineren Ordner.",
+    "declined": "Dem Ordner wurde nicht vertraut.",
+    "unavailable": "Oleafly konnte nicht prüfen, ob diesem Ordner vertraut wird."
+  },
+  "open_folder": {
+    "not_absolute": "Geben Sie den vollständigen Pfad zum Ordner an.",
+    "not_found": "Oleafly kann diesen Ordner nicht finden.",
+    "permission_denied": "Oleafly hat keine Berechtigung, diesen Ordner zu öffnen.",
+    "not_a_folder": "Wählen Sie einen Ordner, keine Datei.",
+    "unsupported_folder": "Oleafly kann diese Art von Ordner nicht öffnen.",
+    "path_not_unicode": "Der Pfad dieses Ordners enthält Zeichen, die Oleafly nicht lesen kann. Benennen Sie den Ordner um und versuchen Sie es erneut.",
+    "too_broad": "{{name}} enthält zu viel, um als ein Projekt geöffnet zu werden. Wählen Sie einen Ordner darin.",
+    "protected": "Oleafly kann keine Ordner in {{name}} öffnen.",
+    "app_data": "Dieser Ordner gehört zu den App-Daten von Oleafly. Wählen Sie einen Ordner außerhalb davon.",
+    "contains_project": "Dieser Ordner enthält {{name}}, das in Oleafly bereits als eigenes Projekt geöffnet ist.",
+    "research_folder": "{{project}} kann über seine verknüpften Ordner bereits Dateien in diesem Ordner bearbeiten. Heben Sie die Verknüpfung zuerst dort auf.",
+    "failed": "Oleafly konnte diesen Ordner nicht öffnen."
+  },
+  "research": {
+    "linked_project_folder": "Dieser Ordner ist in Oleafly als eigenes Projekt geöffnet. Verknüpfen Sie ihn stattdessen schreibgeschützt."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Dieser Checkpoint-Verlauf stammt aus einem Projekt in Ihrer Oleafly-Bibliothek und kann daher nicht mit einem direkt an seinem Speicherort geöffneten Ordner verwendet werden.",
+    "folder_history_for_library": "Dieser Checkpoint-Verlauf stammt aus einem direkt an seinem Speicherort geöffneten Ordner und kann daher nicht mit einem Projekt in Ihrer Oleafly-Bibliothek verwendet werden.",
+    "restore_path_blocked": "Oleafly kann {{path}} nicht wiederherstellen, weil dort ein Link oder etwas anderes liegt, das keine Datei ist. Verschieben Sie es und versuchen Sie es erneut."
   }
 }

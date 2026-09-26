@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Projektin nimi ei voi olla tyhjä.",
     "name_conflict": "Projekti nimeltä {{name}} on jo olemassa.",
-    "folder_unavailable": "Uutta projektikansiota ei voitu varata."
+    "folder_unavailable": "Uutta projektikansiota ei voitu varata.",
+    "not_found": "Tämä projekti ei ole enää kirjastossa.",
+    "not_recyclable": "Tätä projektia ei voi siirtää roskakoriin.",
+    "linked_missing": "Oleafly ei löydä kansiota {{folder}}. Se on ehkä siirretty tai poistettu, tai se on asemalla, jota ei ole liitetty.",
+    "linked_replaced": "Kansio {{folder}} ei ole sama, jonka Oleafly avasi aiemmin. Jatka avaamalla se uudelleen.",
+    "linked_permission_denied": "Oleaflylla ei ole oikeutta avata kansiota {{folder}}.",
+    "linked_invalid": "Oleaflyn linkki tähän kansioon on vioittunut. Poista se Oleaflysta ja avaa kansio sitten uudelleen.",
+    "linked_not_recyclable": "Tämä kansio avattiin sijainnissaan, joten sitä ei voi siirtää roskakoriin. Tiedostojasi ei ole muutettu.",
+    "linked_not_duplicable": "Tämä kansio avattiin sijainnissaan, joten Oleafly ei voi monistaa sitä.",
+    "folder_not_a_folder": "Oleafly ei voi käyttää tätä sijaintia. Valitse kansio.",
+    "folder_in_app_data": "Oleafly säilyttää omia tietojaan tässä kansiossa. Valitse jokin toinen.",
+    "folder_too_broad": "{{name}} on liian laaja avattavaksi yhtenä projektina. Valitse kansio, jossa on vain tämä projekti.",
+    "folder_already_linked": "Tämä kansio menee päällekkäin toisen Oleafly-projektin kanssa. Valitse toinen kansio.",
+    "not_linked": "Paikantaminen toimii vain paikallaan avatuille kansioille.",
+    "copy_destination_refused": "Valitse kansio projektin ja Oleaflyn datakansion ulkopuolelta.",
+    "copy_nothing_open": "Avoimia tiedostoja ei ole, joten tallennettavaa ei ole.",
+    "copy_too_large": "Avoimet tiedostot ovat liian suuria tallennettaviksi kopiona.",
+    "copy_failed": "Oleafly ei voinut tallentaa kopiota sinne. Valitse kansio, johon voit kirjoittaa.",
+    "folder_picker_failed": "Oleafly ei voinut avata kansion valintaa. Yritä uudelleen.",
+    "import_no_main": "Tuonnissa ei ole LaTeX-, Typst- tai Markdown-dokumenttia käännettäväksi.",
+    "settings_file_exists": "Tässä kansiossa on jo project.json, joten Oleafly jätti sen ennalleen.",
+    "settings_need_main": "Valitse ensin päädokumentti ja tallenna sitten projektin asetukset tähän kansioon.",
+    "settings_write_failed": "Oleafly ei voinut tallentaa projektin asetuksia tähän kansioon."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX ei sisällä tälle järjestelmälle sopivaa {{name}}-ohjelmaa.",
-    "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse."
+    "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse.",
+    "latexmk_build_path": "latexmk ei voi käyttää Oleaflyn käännöskansiota tällä tietokoneella, koska sen polussa on merkkejä, joita latexmk ei hyväksy. Vaihda projektin kääntäjäksi Tectonic, niin voit kääntää sen.",
+    "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle."
   },
   "github": {
     "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Repositorioita ei voitu ladata.",
     "create_repo_failed": "Repositoriota ei voitu luoda ({{status}})."
   },
+  "git": {
+    "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
+    "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota."
+  },
   "approvals": {
     "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
+  },
+  "trust": {
+    "git": "Luota tähän kansioon, jotta voit käyttää versionhallintaa.",
+    "repository": "Luota repositorioon {{name}}, jotta voit käyttää versionhallintaa täällä.",
+    "terminal": "Avaa pääte itse, jotta voit käyttää sitä tässä kansiossa.",
+    "agents": "Luota tähän kansioon, jotta voit käyttää ulkoisia agentteja.",
+    "mcp": "Luota tähän kansioon, ennen kuin MCP-asiakkaat voivat käyttää sitä.",
+    "research_tasks": "Luota tähän kansioon, jotta voit suorittaa tutkimustehtäviä.",
+    "run_command": "Luota tähän kansioon, jotta avustaja voi suorittaa komentoja.",
+    "full_access": "Luota tähän kansioon, ennen kuin otat täyden käyttöoikeuden käyttöön.",
+    "system_tex": "Luota tähän kansioon, jotta voit kääntää latexmk:lla.",
+    "shell_escape": "Luota tähän kansioon, ennen kuin sallit shell escape -toiminnon.",
+    "broad_folder": "Oleafly ei voi luottaa koko kansioon {{name}}. Valitse pienempi kansio.",
+    "declined": "Kansioon ei luotettu.",
+    "unavailable": "Oleafly ei voinut tarkistaa, onko tähän kansioon luotettu."
+  },
+  "open_folder": {
+    "not_absolute": "Käytä kansion koko polkua.",
+    "not_found": "Oleafly ei löydä tätä kansiota.",
+    "permission_denied": "Oleaflylla ei ole oikeutta avata tätä kansiota.",
+    "not_a_folder": "Valitse kansio, ei tiedostoa.",
+    "unsupported_folder": "Oleafly ei voi avata tämäntyyppistä kansiota.",
+    "path_not_unicode": "Tämän kansion polussa on merkkejä, joita Oleafly ei pysty lukemaan. Nimeä kansio uudelleen ja yritä sitten uudestaan.",
+    "too_broad": "{{name}} sisältää liikaa avattavaksi yhtenä projektina. Valitse kansio sen sisältä.",
+    "protected": "Oleafly ei voi avata kansioita, jotka ovat kohteessa {{name}}.",
+    "app_data": "Tämä kansio kuuluu Oleaflyn sovellustietoihin. Valitse kansio sen ulkopuolelta.",
+    "contains_project": "Tämä kansio sisältää kohteen {{name}}, joka on jo avattu Oleaflyssa omana projektinaan.",
+    "research_folder": "{{project}} voi jo muokata tämän kansion tiedostoja linkitettyjen kansioidensa kautta. Poista linkitys sieltä ensin.",
+    "failed": "Oleafly ei voinut avata tätä kansiota."
+  },
+  "research": {
+    "linked_project_folder": "Tämä kansio on avattu Oleaflyssa omana projektinaan. Linkitä se sen sijaan vain luettavaksi."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Tämä tarkistuspistehistoria on peräisin Oleafly-kirjastosi projektista, joten sitä ei voi käyttää sijainnissaan avatun kansion kanssa.",
+    "folder_history_for_library": "Tämä tarkistuspistehistoria on peräisin sijainnissaan avatusta kansiosta, joten sitä ei voi käyttää Oleafly-kirjastosi projektin kanssa.",
+    "restore_path_blocked": "Oleafly ei voi palauttaa kohdetta {{path}}, koska sen paikalla on linkki tai jokin muu, joka ei ole tiedosto. Siirrä se pois ja yritä uudelleen."
   }
 }

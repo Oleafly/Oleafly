@@ -426,6 +426,11 @@
       "sourceSize": "Källkodens storlek",
       "reclaimable": "Går att frigöra"
     },
+    "capture": {
+      "paused": "Kontrollpunkter är pausade eftersom den här mappen är för stor. En kontrollpunkt kan rymma högst {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i den här mappen finns inte i kontrollpunkterna. Oleafly utelämnar länkar, mycket stora filer, filer som bara finns i molnet och namn som inte fungerar i alla system.",
+      "skipped_other": "{{formattedCount}} filer i den här mappen finns inte i kontrollpunkterna. Oleafly utelämnar länkar, mycket stora filer, filer som bara finns i molnet och namn som inte fungerar i alla system."
+    },
     "catalog": {
       "formatVersion": "Formatversion",
       "lineage": "Härkomst",
@@ -458,7 +463,8 @@
       "showFor": "Visa filer för {{version}}",
       "hideFor": "Dölj filer för {{version}}",
       "show": "Visa filer",
-      "hide": "Dölj filer"
+      "hide": "Dölj filer",
+      "folderSettings": "Oleafly-inställningar för den här mappen"
     },
     "entry": {
       "labelInput": "Etikett för kontrollpunkten",

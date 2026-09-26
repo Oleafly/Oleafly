@@ -1,4 +1,5 @@
 import { reportFileSaveFailure, SaveFlushError, useFilesStore } from "@/store/files";
+import { projectFolderAvailable } from "@/store/project-availability";
 
 export type ExternalFileChange =
   | { kind: "write"; path: string; content: string }
@@ -30,7 +31,7 @@ export function applyExternalFileChange(
 
 export function refreshOpenFilesFromDisk(projectId: string | null): void {
   const files = useFilesStore.getState();
-  if (!projectId || files.projectId !== projectId) return;
+  if (!projectId || files.projectId !== projectId || !projectFolderAvailable(projectId)) return;
   applyExternalFileChange({ projectId, paths: Object.keys(files.files) }, "");
 }
 

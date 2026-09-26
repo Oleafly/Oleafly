@@ -76,6 +76,7 @@ import type {
   ImportPathsResult,
   InitialState,
   LibraryStorageSummary,
+  ManifestHome,
   McpConnectionInfo,
   McpAgentServer,
   McpManagedServer,
@@ -87,6 +88,8 @@ import type {
   PackInfo,
   Persona,
   Prerequisite,
+  ProjectAvailability,
+  ProjectAvailabilityReport,
   ProjectInfo,
   ProjectMeta,
   ProjectSourcesRequest,
@@ -185,6 +188,9 @@ export const getProjectEngine = (projectId: string) =>
 
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
+
+export const readBuildArtifact = (projectId: string, name: string) =>
+  invoke<string | null>("read_build_artifact", { projectId, name });
 
 
 /** Null means the persisted record is missing or stale: compile normally. */
@@ -560,7 +566,16 @@ export const openDevtools = () => invoke<void>("open_devtools");
 export const getProject = (projectId: string) =>
   invoke<ProjectMeta>("get_project", { projectId });
 
+export const projectManifestHome = (projectId: string) =>
+  invoke<ManifestHome>("project_manifest_home", { projectId });
+
+export const saveProjectSettingsToFolder = (projectId: string) =>
+  invoke<ProjectMeta>("save_project_settings_to_folder", { projectId });
+
 export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
+
+export const probeProjectAvailability = (projectIds: string[]) =>
+  invoke<ProjectAvailabilityReport[]>("probe_project_availability", { projectIds });
 
 export const libraryStorageSummary = () =>
   invoke<LibraryStorageSummary>("library_storage_summary");
@@ -785,6 +800,9 @@ export const gitInitialize = (projectId: string) =>
 export const gitPreparePublish = (projectId: string, message: string) =>
   invoke<boolean>("git_prepare_publish", { projectId, message });
 
+export const gitPublishPreflight = (projectId: string) =>
+  invoke<void>("git_publish_preflight", { projectId });
+
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
 
@@ -796,6 +814,32 @@ export const exportPdf = (projectId: string, dest: string) =>
 
 export const revealInDir = (path: string) =>
   invoke<void>("reveal_in_dir", { path });
+
+export const revealProject = (projectId: string, path?: string | null) =>
+  invoke<void>("reveal_project", { projectId, path: path ?? null });
+
+export interface ProjectAvailabilityEvent {
+  projectId: string;
+  availability: ProjectAvailability;
+  locationGeneration: number;
+  relocated: boolean;
+  grantsReset: boolean;
+}
+export type LocateFolderOutcome = "cancelled" | "declined" | "rebound";
+export interface BufferCopyFile {
+  path: string;
+  content: string;
+}
+export interface SavedBufferCopy {
+  folder: string;
+  written: number;
+}
+export const locateProjectFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("locate_project_folder", { projectId });
+export const adoptReplacedFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("adopt_replaced_folder", { projectId });
+export const saveOpenBuffersCopy = (projectId: string, name: string, files: BufferCopyFile[]) =>
+  invoke<SavedBufferCopy | null>("save_open_buffers_copy", { projectId, name, files });
 
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });
@@ -1152,8 +1196,8 @@ export const discordCommunityStats = () =>
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
 
-export const gitSetRemote = (projectId: string, url: string) =>
-  invoke<void>("git_set_remote", { projectId, url });
+export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
+  invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
 export const gitRemoveRemote = (projectId: string) =>
   invoke<void>("git_remove_remote", { projectId });
 export const gitGetRemote = (projectId: string) =>
@@ -1320,6 +1364,20 @@ export const approvalsModeGet = (projectId: string) =>
   invoke<ApprovalMode>("approvals_mode_get", { projectId });
 export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
   invoke<void>("approvals_mode_set", { projectId, mode });
+
+export type ProjectTrust = {
+  trusted: boolean;
+  source: "library" | "folder" | "parent_folder" | null;
+  parent: string | null;
+  repository: { name: string; trusted: boolean } | null;
+};
+export type TrustScope = "folder" | "parent" | "repository";
+export const projectTrustState = (projectId: string) =>
+  invoke<ProjectTrust>("project_trust_state", { projectId });
+export const trustFolder = (projectId: string, scope: TrustScope) =>
+  invoke<ProjectTrust>("trust_folder", { projectId, scope });
+export const revokeFolderTrust = (projectId: string) =>
+  invoke<ProjectTrust>("revoke_folder_trust", { projectId });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

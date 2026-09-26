@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Název projektu nesmí být prázdný.",
     "name_conflict": "Projekt s názvem {{name}} už existuje.",
-    "folder_unavailable": "Nepodařilo se vyhradit novou složku projektu."
+    "folder_unavailable": "Nepodařilo se vyhradit novou složku projektu.",
+    "not_found": "Tento projekt už ve vaší knihovně není.",
+    "not_recyclable": "Tento projekt nelze přesunout do koše.",
+    "linked_missing": "Oleafly nemůže najít složku {{folder}}. Mohla být přesunuta nebo smazána, nebo je na disku, který není připojený.",
+    "linked_replaced": "Složka {{folder}} není ta, kterou Oleafly otevřel dříve. Chcete-li pokračovat, otevřete ji znovu.",
+    "linked_permission_denied": "Oleafly nemá oprávnění otevřít složku {{folder}}.",
+    "linked_invalid": "Odkaz Oleafly na tuto složku je poškozený. Odeberte ji z Oleafly a potom složku otevřete znovu.",
+    "linked_not_recyclable": "Tato složka byla otevřena na svém místě, proto ji nelze přesunout do koše. Vaše soubory zůstaly beze změny.",
+    "linked_not_duplicable": "Tato složka byla otevřena na svém místě, proto ji Oleafly nemůže duplikovat.",
+    "folder_not_a_folder": "Oleafly toto umístění nemůže použít. Vyberte složku.",
+    "folder_in_app_data": "Oleafly v této složce uchovává vlastní data. Vyberte jinou.",
+    "folder_too_broad": "Složka {{name}} je příliš rozsáhlá, aby šla otevřít jako jeden projekt. Vyberte složku, která obsahuje jen tento projekt.",
+    "folder_already_linked": "Tato složka se překrývá s jiným projektem v Oleafly. Vyberte jinou složku.",
+    "not_linked": "Vyhledání funguje jen u složek otevřených na jejich místě.",
+    "copy_destination_refused": "Vyberte složku mimo projekt a mimo datovou složku Oleafly.",
+    "copy_nothing_open": "Nejsou otevřené žádné soubory, takže není co uložit.",
+    "copy_too_large": "Otevřené soubory jsou příliš velké na uložení kopie.",
+    "copy_failed": "Oleafly tam kopii nemohl uložit. Vyberte složku, do které můžete zapisovat.",
+    "folder_picker_failed": "Oleafly nemohl otevřít výběr složky. Zkuste to znovu.",
+    "import_no_main": "Tento import neobsahuje žádný dokument LaTeX, Typst ani Markdown ke kompilaci.",
+    "settings_file_exists": "Tato složka už obsahuje soubor project.json, proto ho Oleafly ponechal beze změny.",
+    "settings_need_main": "Nejprve vyberte hlavní dokument a pak uložte nastavení projektu do této složky.",
+    "settings_write_failed": "Oleafly nemohl uložit nastavení projektu do této složky."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nemá binární soubor {{name}} kompatibilní s tímto systémem.",
-    "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami."
+    "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami.",
+    "latexmk_build_path": "latexmk nemůže na tomto počítači použít složku sestavení Oleafly, protože její cesta obsahuje znaky, které latexmk nepřijímá. Chcete-li projekt zkompilovat, přepněte ho na Tectonic.",
+    "latexmk_network_folder": "latexmk nemůže kompilovat složku ve sdíleném síťovém umístění. Přepněte tento projekt na Tectonic, nebo složku zkopírujte do tohoto počítače."
   },
   "github": {
     "sign_in_expired": "Přihlašovací kód vypršel. Zkuste to znovu.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Repozitáře se nepodařilo načíst.",
     "create_repo_failed": "Repozitář se nepodařilo vytvořit ({{status}})."
   },
+  "git": {
+    "remote_exists": "Tento projekt je už propojen s {{remote}}.",
+    "nested_repository": "Tento projekt je uvnitř jiného repozitáře Git, proto v něm Oleafly nevytvoří samostatný repozitář."
+  },
   "approvals": {
     "full_access_declined": "Úplný přístup nebyl povolen."
+  },
+  "trust": {
+    "git": "Chcete-li používat správu verzí, této složce důvěřujte.",
+    "repository": "Chcete-li zde používat správu verzí, důvěřujte repozitáři {{name}}.",
+    "terminal": "Chcete-li terminál v této složce používat, otevřete ho sami.",
+    "agents": "Chcete-li používat externí agenty, této složce důvěřujte.",
+    "mcp": "Než ji budou moci používat klienti MCP, této složce důvěřujte.",
+    "research_tasks": "Chcete-li spouštět výzkumné úlohy, této složce důvěřujte.",
+    "run_command": "Aby asistent mohl spouštět příkazy, této složce důvěřujte.",
+    "full_access": "Než zapnete úplný přístup, této složce důvěřujte.",
+    "system_tex": "Chcete-li kompilovat pomocí latexmk, této složce důvěřujte.",
+    "shell_escape": "Než povolíte shell escape, této složce důvěřujte.",
+    "broad_folder": "Oleafly nemůže důvěřovat celé složce {{name}}. Vyberte menší složku.",
+    "declined": "Složce nebyla udělena důvěra.",
+    "unavailable": "Oleafly nemohl ověřit, zda je tato složka důvěryhodná."
+  },
+  "open_folder": {
+    "not_absolute": "Zadejte úplnou cestu ke složce.",
+    "not_found": "Oleafly tuto složku nemůže najít.",
+    "permission_denied": "Oleafly nemá oprávnění otevřít tuto složku.",
+    "not_a_folder": "Vyberte složku, ne soubor.",
+    "unsupported_folder": "Oleafly nemůže otevřít tento typ složky.",
+    "path_not_unicode": "Cesta k této složce obsahuje znaky, které Oleafly neumí přečíst. Složku přejmenujte a zkuste to znovu.",
+    "too_broad": "Složka {{name}} obsahuje příliš mnoho, než aby se dala otevřít jako jeden projekt. Vyberte složku uvnitř.",
+    "protected": "Oleafly nemůže otevírat složky uvnitř {{name}}.",
+    "app_data": "Tato složka patří k datům aplikace Oleafly. Vyberte složku mimo ni.",
+    "contains_project": "Tato složka obsahuje {{name}}, která je už v Oleafly otevřená jako samostatný projekt.",
+    "research_folder": "Projekt {{project}} už může upravovat soubory v této složce přes své propojené složky. Nejdřív tam propojení zrušte.",
+    "failed": "Oleafly tuto složku nemohl otevřít."
+  },
+  "research": {
+    "linked_project_folder": "Tato složka je v Oleafly otevřená jako samostatný projekt. Propojte ji raději jen pro čtení."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Tato historie záchytných bodů pochází z projektu ve vaší knihovně Oleafly, takže ji nelze použít se složkou otevřenou na svém místě.",
+    "folder_history_for_library": "Tato historie záchytných bodů pochází ze složky otevřené na svém místě, takže ji nelze použít s projektem ve vaší knihovně Oleafly.",
+    "restore_path_blocked": "Oleafly nemůže obnovit {{path}}, protože v cestě je odkaz nebo něco jiného, co není soubor. Přesuňte to a zkuste to znovu."
   }
 }

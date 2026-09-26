@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompiluj ponownie"
     },
+    "saveSettingsToFolder": {
+      "keywords": "zapisz ustawienia projektu folder project.json udostępnij dokument główny",
+      "label": "Zapisz ustawienia projektu w tym folderze",
+      "saved": "Ustawienia projektu zapisano w pliku project.json w tym folderze."
+    },
     "section": {
       "label": "Sekcja"
     },
@@ -262,6 +267,7 @@
     "texRootBroken": "% !TEX root w pliku {{file}} wskazuje na brakujący plik ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root w pliku {{file}} wskazuje na {{target}}, który nie jest plikiem LaTeX",
     "texRootOverride": "root: {{path}} (ustawione przez % !TEX root w {{file}})"
   },
   "datePicker": {
@@ -364,6 +370,25 @@
       "terminalDock": "dok terminala"
     },
     "title": "Coś poszło nie tak"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Ten folder jest niedostępny.",
+      "body": "Podłącz ponownie dysk lub znajdź folder. Otwarte pliki zostają tutaj, a Oleafly nie będzie zapisywać ani kompilować, dopóki folder nie wróci."
+    },
+    "replaced": {
+      "title": "Ten folder został zastąpiony.",
+      "body": "W jego miejscu jest teraz inny folder. Oleafly przestał zapisywać, aby niczego tam nie nadpisać."
+    },
+    "permissionDenied": {
+      "title": "Oleafly nie może otworzyć tego folderu.",
+      "body": "Sprawdź uprawnienia folderu i spróbuj ponownie. Otwarte pliki zostają tutaj."
+    },
+    "locate": "Zlokalizuj…",
+    "useThisFolder": "Użyj tego folderu",
+    "saveCopy": "Zapisz kopię…",
+    "tryAgain": "Spróbuj ponownie",
+    "savedCopy": "Otwarte pliki zapisano w {{folder}}."
   },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
@@ -564,6 +589,10 @@
         "calculating": "Obliczanie zajętości miejsca…",
         "desktopOnly": "Szczegóły przechowywania są dostępne w aplikacji desktopowej.",
         "error": "Nie udało się obliczyć szczegółów przechowywania.",
+        "linkedFolders_one": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
+        "linkedFolders_few": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_many": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_other": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
         "refresh": "Odśwież zajętość miejsca",
         "stats": {
           "appData": "Dane aplikacji",

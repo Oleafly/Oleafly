@@ -41,6 +41,35 @@
     "tableImport": {
       "title": "Velg et regneark å importere",
       "filter": "Regneark"
+    },
+    "trustFolder": {
+      "title": "Stole på denne mappen?",
+      "message": "Oleafly slår på Git, terminalen, agenter og LaTeX-verktøy for {{name}}. Stol bare på mapper der du kjenner innholdet.",
+      "messageParent": "Oleafly stoler på {{name}} og alle mappene i den, også de du åpner senere.",
+      "messageRepository": "Oleafly kjører Git i {{name}} med repositoriets egne innstillinger og hooks.",
+      "confirm": "Stol på"
+    },
+    "restrictedWrite": {
+      "title": "Tillate denne endringen?",
+      "message": "Assistenten vil endre {{path}}. Filer som dette kan kjøre programmer, og denne mappen er ikke klarert ennå.",
+      "confirm": "Tillat"
+    },
+    "restrictedNetwork": {
+      "title": "Tillate denne forespørselen?",
+      "message": "Assistenten vil bruke {{tool}}, som sender tekst til en nettjeneste. Denne mappen er ikke klarert ennå.",
+      "confirm": "Tillat"
+    },
+    "locateFolder": {
+      "title": "Finn prosjektmappen"
+    },
+    "rebindFolder": {
+      "title": "Vil du bruke en annen mappe?",
+      "message": "{{name}} er ikke mappen Oleafly hadde for dette prosjektet. Hvis du bruker den, lagrer Oleafly de ulagrede endringene dine i den og lukker prosjektets terminaler og agentøkter. Alt som kjører i dem, stoppes. Oleafly slutter også å stole på mappen, slår av full tilgang, tilbakestiller assistentens godkjenninger og kobler fra forskningsmapper. Chatter og historikk beholdes.",
+      "confirm": "Bruk denne mappen"
+    },
+    "saveCopy": {
+      "title": "Velg hvor kopien skal lagres",
+      "folderSuffix": "kopi"
     }
   },
   "errors": {

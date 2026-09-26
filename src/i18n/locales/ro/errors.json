@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Numele proiectului nu poate fi gol.",
     "name_conflict": "Există deja un proiect numit {{name}}.",
-    "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect."
+    "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect.",
+    "not_found": "Acest proiect nu mai este în biblioteca ta.",
+    "not_recyclable": "Acest proiect nu poate fi mutat în Coșul de reciclare.",
+    "linked_missing": "Oleafly nu găsește folderul {{folder}}. Poate a fost mutat sau șters ori se află pe o unitate care nu este conectată.",
+    "linked_replaced": "Folderul {{folder}} nu este cel pe care Oleafly l-a deschis anterior. Deschide-l din nou pentru a continua.",
+    "linked_permission_denied": "Oleafly nu are permisiunea de a deschide folderul {{folder}}.",
+    "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul.",
+    "linked_not_recyclable": "Acest folder a fost deschis în locația sa, așa că nu poate fi mutat în Coșul de reciclare. Fișierele tale nu au fost modificate.",
+    "linked_not_duplicable": "Acest folder a fost deschis în locația sa, așa că Oleafly nu îl poate duplica.",
+    "folder_not_a_folder": "Oleafly nu poate folosi această locație. Alege un folder.",
+    "folder_in_app_data": "Oleafly își păstrează propriile date în acel folder. Alege altul.",
+    "folder_too_broad": "{{name}} este prea cuprinzător pentru a fi deschis ca un singur proiect. Alege folderul care conține doar acest proiect.",
+    "folder_already_linked": "Acel folder se suprapune cu alt proiect din Oleafly. Alege alt folder.",
+    "not_linked": "Localizarea funcționează doar pentru folderele deschise pe loc.",
+    "copy_destination_refused": "Alege un folder din afara proiectului și din afara folderului de date Oleafly.",
+    "copy_nothing_open": "Nu este deschis niciun fișier, deci nu ai ce salva.",
+    "copy_too_large": "Fișierele deschise sunt prea mari pentru a fi salvate ca o copie.",
+    "copy_failed": "Oleafly nu a putut salva copia acolo. Alege un folder în care poți scrie.",
+    "folder_picker_failed": "Oleafly nu a putut deschide selectorul de foldere. Încearcă din nou.",
+    "import_no_main": "Acest import nu conține niciun document LaTeX, Typst sau Markdown de compilat.",
+    "settings_file_exists": "Acest folder are deja un project.json, așa că Oleafly l-a lăsat neschimbat.",
+    "settings_need_main": "Alege mai întâi un document principal, apoi salvează setările proiectului în acest folder.",
+    "settings_write_failed": "Oleafly nu a putut salva setările proiectului în acest folder."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nu are un binar {{name}} compatibil cu acest sistem.",
-    "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr."
+    "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr.",
+    "latexmk_build_path": "latexmk nu poate folosi folderul de compilare Oleafly pe acest computer, deoarece calea lui conține caractere pe care latexmk nu le acceptă. Comută acest proiect pe Tectonic ca să-l poți compila.",
+    "latexmk_network_folder": "latexmk nu poate compila un folder aflat pe o partajare de rețea. Comută acest proiect pe Tectonic sau copiază folderul pe acest computer."
   },
   "github": {
     "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Depozitele nu au putut fi încărcate.",
     "create_repo_failed": "Depozitul nu a putut fi creat ({{status}})."
   },
+  "git": {
+    "remote_exists": "Acest proiect este deja legat de {{remote}}.",
+    "nested_repository": "Acest proiect se află într-un alt depozit Git, așa că Oleafly nu creează aici un depozit separat."
+  },
   "approvals": {
     "full_access_declined": "Accesul complet nu a fost activat."
+  },
+  "trust": {
+    "git": "Ai încredere în acest folder pentru a folosi controlul versiunilor.",
+    "repository": "Ai încredere în depozitul {{name}} pentru a folosi aici controlul versiunilor.",
+    "terminal": "Deschide tu terminalul pentru a-l folosi în acest folder.",
+    "agents": "Ai încredere în acest folder pentru a folosi agenți externi.",
+    "mcp": "Ai încredere în acest folder înainte ca clienții MCP să-l poată folosi.",
+    "research_tasks": "Ai încredere în acest folder pentru a rula sarcini de cercetare.",
+    "run_command": "Ai încredere în acest folder pentru a-i permite asistentului să ruleze comenzi.",
+    "full_access": "Ai încredere în acest folder înainte de a activa accesul complet.",
+    "system_tex": "Ai încredere în acest folder pentru a compila cu latexmk.",
+    "shell_escape": "Ai încredere în acest folder înainte de a permite shell escape.",
+    "broad_folder": "Oleafly nu poate avea încredere în tot folderul {{name}}. Alege un folder mai mic.",
+    "declined": "Folderul nu a fost marcat ca de încredere.",
+    "unavailable": "Oleafly nu a putut verifica dacă acest folder este de încredere."
+  },
+  "open_folder": {
+    "not_absolute": "Folosește calea completă către folder.",
+    "not_found": "Oleafly nu găsește acest folder.",
+    "permission_denied": "Oleafly nu are permisiunea de a deschide acest folder.",
+    "not_a_folder": "Alege un folder, nu un fișier.",
+    "unsupported_folder": "Oleafly nu poate deschide acest tip de folder.",
+    "path_not_unicode": "Calea acestui folder conține caractere pe care Oleafly nu le poate citi. Redenumește folderul și încearcă din nou.",
+    "too_broad": "{{name}} conține prea mult pentru a fi deschis ca un singur proiect. Alege un folder din interiorul lui.",
+    "protected": "Oleafly nu poate deschide foldere din {{name}}.",
+    "app_data": "Acest folder face parte din datele aplicației Oleafly. Alege un folder din afara lui.",
+    "contains_project": "Acest folder conține {{name}}, care este deja deschis în Oleafly ca proiect separat.",
+    "research_folder": "{{project}} poate deja edita fișiere din acest folder prin folderele sale asociate. Mai întâi elimină asocierea de acolo.",
+    "failed": "Oleafly nu a putut deschide acest folder."
+  },
+  "research": {
+    "linked_project_folder": "Acest folder este deschis în Oleafly ca proiect separat. Asociază-l în schimb doar pentru citire."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "Acest istoric de puncte de control provine dintr-un proiect din biblioteca ta Oleafly, așa că nu poate fi folosit cu un folder deschis în locația sa.",
+    "folder_history_for_library": "Acest istoric de puncte de control provine dintr-un folder deschis în locația sa, așa că nu poate fi folosit cu un proiect din biblioteca ta Oleafly.",
+    "restore_path_blocked": "Oleafly nu poate restabili {{path}}, deoarece în locul lui se află un link sau altceva care nu este un fișier. Mută-l și încearcă din nou."
   }
 }

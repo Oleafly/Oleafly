@@ -77,6 +77,8 @@ pub struct LibraryStorageSummary {
     pub image_count: u64,
     pub pdf_count: u64,
     pub unreadable_entries: u64,
+    pub linked_folders_bytes: u64,
+    pub linked_folder_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -110,6 +112,7 @@ enum FileClass {
     Git,
     Build,
     RecycleBin,
+    LinkedFolders,
     AppData,
 }
 
@@ -134,6 +137,9 @@ fn is_project_build_file(relative: &Path) -> bool {
 fn classify_file(relative: &Path, in_projects: bool) -> FileClass {
     if relative.starts_with("recycle-bin") {
         return FileClass::RecycleBin;
+    }
+    if relative.starts_with("linked") {
+        return FileClass::LinkedFolders;
     }
     if !in_projects {
         return FileClass::AppData;
@@ -196,6 +202,22 @@ fn count_recycled_projects(recycle_root: &Path) -> u64 {
             entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false)
                 && entry.path().join(RECYCLE_MANIFEST).is_file()
                 && entry.path().join(RECYCLED_PROJECT_DIRECTORY).is_dir()
+        })
+        .count() as u64
+}
+
+fn count_linked_folders(linked_root: &Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(linked_root) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .filter(|entry| {
+            entry.file_type().is_ok_and(|kind| kind.is_dir())
+                && entry
+                    .path()
+                    .join(crate::linked_registry::LINK_FILE)
+                    .is_file()
         })
         .count() as u64
 }
@@ -271,6 +293,10 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
                 FileClass::RecycleBin => {
                     summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
                 }
+                FileClass::LinkedFolders => {
+                    summary.linked_folders_bytes =
+                        summary.linked_folders_bytes.saturating_add(bytes)
+                }
                 FileClass::AppData => {
                     summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes)
                 }
@@ -278,6 +304,7 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
         }
     }
     summary.recycled_project_count = count_recycled_projects(&root.join("recycle-bin"));
+    summary.linked_folder_count = count_linked_folders(&root.join("linked"));
     summary
 }
 
@@ -742,6 +769,9 @@ fn recycled_project_dir(entry: &Path) -> Result<PathBuf, String> {
 
 fn active_project_identity_exists(project_id: &str) -> Result<bool, String> {
     crate::paths::validate_project_id(project_id)?;
+    if crate::linked_registry::id_reserved(project_id)? {
+        return Ok(true);
+    }
     let projects_root = crate::paths::projects_root()?
         .canonicalize()
         .map_err(|error| format!("failed to resolve projects root: {error}"))?;
@@ -757,6 +787,9 @@ fn active_project_identity_exists(project_id: &str) -> Result<bool, String> {
 
 fn valid_active_project_owner_exists(project_id: &str) -> Result<bool, String> {
     crate::paths::validate_project_id(project_id)?;
+    if crate::linked_registry::id_reserved(project_id)? {
+        return Ok(true);
+    }
     let projects_root = crate::paths::projects_root()?
         .canonicalize()
         .map_err(|error| format!("failed to resolve projects root: {error}"))?;
@@ -1132,11 +1165,11 @@ fn directory_size(root: &Path) -> u64 {
 }
 
 pub(crate) fn recycle_project_directory(
-    project_id: &str,
+    project: &crate::project_location::LibraryProjectDir,
     name: &str,
-    project_directory: &Path,
 ) -> Result<String, String> {
-    crate::paths::validate_project_id(project_id)?;
+    let project_id = project.id();
+    let project_directory = &project.revalidate()?;
     let recycle_root = crate::paths::recycle_bin_root()?;
     let deleted_at = timestamp_seconds();
     let timestamp = timestamp_millis();
@@ -1302,7 +1335,7 @@ fn restore_recycled_project_sync(recycle_id: &str) -> Result<String, String> {
         .canonicalize()
         .map_err(|error| format!("failed to resolve projects root: {error}"))?;
     let destination = projects_root.join(&manifest.project_id);
-    if destination.exists() {
+    if destination.exists() || crate::linked_registry::id_reserved(&manifest.project_id)? {
         return Err(format!(
             "a project with id {} already exists; rename or remove it before restoring",
             manifest.project_id
@@ -1377,11 +1410,14 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
         project_id: manifest.project_id.clone(),
         recycle_id: recycle_id.to_string(),
     };
+    let linked_member = crate::linked_registry::id_reserved(&manifest.project_id)?;
     // The durable job is published before the recoverable worktree disappears.
     // A crash or later Store::destroy failure therefore remains retryable.
     let cleanup_path = write_cleanup_job(&cleanup)?;
     remove_cleanup_target_if_present(&cleanup)?;
-    crate::research_workspace::roots::forget_project(&manifest.project_id);
+    if !linked_member {
+        crate::research_workspace::roots::forget_project(&manifest.project_id);
+    }
     complete_cleanup_job_locked(&cleanup_path, &cleanup).map_err(|error| {
         format!("the project was deleted, but its Checkpoints cleanup failed: {error}")
     })
@@ -1472,9 +1508,31 @@ mod tests {
                 + summary.git_bytes
                 + summary.build_bytes
                 + summary.recycle_bin_bytes
-                + summary.app_data_bytes,
+                + summary.app_data_bytes
+                + summary.linked_folders_bytes,
             summary.total_bytes
         );
+    }
+
+    #[test]
+    fn storage_scan_reports_oleafly_data_for_opened_folders_separately() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let state = root.join("linked/linked-0123456789abcdef0123456789abcdef");
+        std::fs::create_dir_all(state.join("build")).unwrap();
+        std::fs::create_dir_all(root.join("linked/linked-ffffffffffffffffffffffffffffffff"))
+            .unwrap();
+        std::fs::write(state.join("link.json"), b"{}").unwrap();
+        std::fs::write(state.join("project.json"), b"{}").unwrap();
+        std::fs::write(state.join("build/_oleafly_entry.pdf"), b"pdf!").unwrap();
+        std::fs::write(root.join(".linked-registry.lock"), b"").unwrap();
+        let summary = scan_storage(root);
+        assert_eq!(summary.linked_folder_count, 1);
+        assert_eq!(summary.linked_folders_bytes, 8);
+        assert_eq!(summary.pdf_count, 0);
+        assert_eq!(summary.build_bytes, 0);
+        assert_eq!(summary.app_data_bytes, 0);
+        assert_eq!(summary.total_bytes, 8);
     }
 
     #[test]
@@ -1490,7 +1548,11 @@ mod tests {
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
 
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         assert!(!project.exists());
         assert!(checkpoint_store.exists());
         let listed = list_recycled_projects_sync().unwrap();
@@ -1508,11 +1570,161 @@ mod tests {
         assert!(checkpoint_store.exists());
         assert!(list_recycled_projects_sync().unwrap().is_empty());
 
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         permanently_delete_recycled_project_sync(&recycle_id).unwrap();
         assert!(list_recycled_projects_sync().unwrap().is_empty());
         assert!(!checkpoint_store.exists());
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn recycled_entries_that_share_a_linked_id_never_touch_the_linked_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), b"keep").unwrap();
+        let references = directory.path().join("references");
+        std::fs::create_dir(&references).unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        crate::research_workspace::roots::add_root(
+            crate::research_workspace::AddResearchRootRequest {
+                project_id: linked.id.clone(),
+                path: references.to_string_lossy().into_owned(),
+                label: "References".into(),
+                role: crate::research_workspace::ResearchRootRole::References,
+                access: crate::research_workspace::ResearchRootAccess::ReadOnly,
+            },
+        )
+        .unwrap();
+        let checkpoint_store = crate::paths::checkpoint_store_dir(&linked.id).unwrap();
+        oleafly_history::Store::open(&checkpoint_store).unwrap();
+        let recycle_id = format!("1-0-{}", linked.id);
+        let entry = crate::paths::recycle_bin_root().unwrap().join(&recycle_id);
+        std::fs::create_dir_all(entry.join(RECYCLED_PROJECT_DIRECTORY)).unwrap();
+        std::fs::write(
+            entry.join(RECYCLE_MANIFEST),
+            serde_json::to_vec(&RecycleManifest {
+                project_id: linked.id.clone(),
+                name: "Copy".into(),
+                deleted_at: 1,
+            })
+            .unwrap(),
+        )
+        .unwrap();
+
+        let error = restore_recycled_project_sync(&recycle_id).unwrap_err();
+        assert!(error.contains("already exists"), "{error}");
+        assert!(!crate::paths::projects_root()
+            .unwrap()
+            .join(&linked.id)
+            .exists());
+
+        permanently_delete_recycled_project_sync(&recycle_id).unwrap();
+        assert!(!entry.exists());
+        assert!(checkpoint_store.exists());
+        assert_eq!(
+            crate::research_workspace::roots::get_workspace(&linked.id)
+                .unwrap()
+                .roots
+                .len(),
+            1
+        );
+        assert!(folder.join("main.tex").is_file());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn permanent_deletion_checks_the_folder_registry_before_deleting_anything() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project = crate::paths::projects_root().unwrap().join("paper");
+        std::fs::create_dir(&project).unwrap();
+        std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
+        let references = directory.path().join("references");
+        std::fs::create_dir(&references).unwrap();
+        crate::research_workspace::roots::add_root(
+            crate::research_workspace::AddResearchRootRequest {
+                project_id: "paper".into(),
+                path: references.to_string_lossy().into_owned(),
+                label: "References".into(),
+                role: crate::research_workspace::ResearchRootRole::References,
+                access: crate::research_workspace::ResearchRootAccess::ReadOnly,
+            },
+        )
+        .unwrap();
+        let workspace = data
+            .canonicalize()
+            .unwrap()
+            .join("research-workspaces")
+            .join("paper.json");
+        assert!(workspace.is_file());
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap();
+        let entry = recycle_entry_dir(&recycle_id).unwrap();
+        let linked = data.join("linked");
+        std::fs::create_dir(&linked).unwrap();
+        std::fs::set_permissions(&linked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let refused = permanently_delete_recycled_project_sync(&recycle_id);
+        let entry_kept = entry.exists();
+        let jobs_after_refusal = pending_cleanup_jobs().unwrap().len();
+        std::fs::set_permissions(&linked, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let error = refused.unwrap_err();
+        assert!(error.contains("folder registry"), "{error}");
+        assert!(entry_kept);
+        assert_eq!(jobs_after_refusal, 0);
+        assert!(workspace.is_file());
+
+        permanently_delete_recycled_project_sync(&recycle_id).unwrap();
+        assert!(!entry.exists());
+        assert!(!workspace.exists());
+        assert!(pending_cleanup_jobs().unwrap().is_empty());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn recycling_revalidates_the_library_directory_before_moving_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project = crate::paths::projects_root().unwrap().join("paper");
+        std::fs::create_dir(&project).unwrap();
+        let library = crate::project_location::LibraryProjectDir::resolve("paper").unwrap();
+        let outside = directory.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("main.tex"), b"keep").unwrap();
+        std::fs::remove_dir(&project).unwrap();
+        std::os::unix::fs::symlink(&outside, &project).unwrap();
+
+        let error = recycle_project_directory(&library, "Paper").unwrap_err();
+
+        assert!(
+            error.contains("\"code\":\"project.not_recyclable\""),
+            "{error}"
+        );
+        assert!(outside.join("main.tex").is_file());
+        assert!(list_recycled_projects_sync().unwrap().is_empty());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
@@ -1527,7 +1739,11 @@ mod tests {
             std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
 
             inject_directory_sync_failure(failed_sync);
-            let error = recycle_project_directory("paper", "Paper", &project).unwrap_err();
+            let error = recycle_project_directory(
+                &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+                "Paper",
+            )
+            .unwrap_err();
 
             assert!(error.contains("injected storage directory sync failure"));
             assert!(
@@ -1548,7 +1764,11 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
 
         inject_recycle_crash(RecycleCrashPoint::Manifest);
-        let error = recycle_project_directory("paper", "Paper", &project).unwrap_err();
+        let error = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap_err();
 
         assert!(error.contains("injected recycle crash"));
         assert!(project.exists());
@@ -1569,8 +1789,16 @@ mod tests {
         oleafly_history::Store::open(&store_path).unwrap();
 
         inject_recycle_crash(RecycleCrashPoint::Manifest);
-        recycle_project_directory("paper", "Paper", &project).unwrap_err();
-        let recycle_id = recycle_project_directory("paper", "Paper", &project).unwrap();
+        recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap_err();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap();
         permanently_delete_recycled_project_sync(&recycle_id).unwrap();
 
         assert!(!store_path.exists());
@@ -1597,7 +1825,11 @@ mod tests {
         std::fs::write(project.join("main.tex"), b"source").unwrap();
 
         inject_recycle_crash(RecycleCrashPoint::RecycleMove);
-        let error = recycle_project_directory("paper", "Paper", &project).unwrap_err();
+        let error = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap_err();
 
         assert!(error.contains("injected recycle crash"));
         assert!(!project.exists());
@@ -1618,7 +1850,11 @@ mod tests {
             std::fs::create_dir(&project).unwrap();
             std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
             std::fs::write(project.join("main.tex"), b"source").unwrap();
-            let recycle_id = recycle_project_directory("paper", "Paper", &project).unwrap();
+            let recycle_id = recycle_project_directory(
+                &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+                "Paper",
+            )
+            .unwrap();
             let recycled = recycle_entry_dir(&recycle_id)
                 .unwrap()
                 .join(RECYCLED_PROJECT_DIRECTORY);
@@ -1651,7 +1887,11 @@ mod tests {
         std::fs::create_dir(&project).unwrap();
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
         std::fs::write(project.join("main.tex"), b"source").unwrap();
-        let recycle_id = recycle_project_directory("paper", "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve("paper").unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let entry = recycle_entry_dir(&recycle_id).unwrap();
 
         inject_recycle_crash(RecycleCrashPoint::RestoreMove);
@@ -1674,7 +1914,11 @@ mod tests {
         let project_id = "reserved-project";
         let project = crate::paths::projects_root().unwrap().join(project_id);
         std::fs::create_dir(&project).unwrap();
-        recycle_project_directory(project_id, "Reserved", &project).unwrap();
+        recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Reserved",
+        )
+        .unwrap();
 
         let corrupt_entry = crate::paths::recycle_bin_root()
             .unwrap()
@@ -1707,7 +1951,11 @@ mod tests {
         let recycled_id = "recycled-project";
         let project = crate::paths::projects_root().unwrap().join(recycled_id);
         std::fs::create_dir(&project).unwrap();
-        let recycle_entry = recycle_project_directory(recycled_id, "Recycled", &project).unwrap();
+        let recycle_entry = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(recycled_id).unwrap(),
+            "Recycled",
+        )
+        .unwrap();
         assert!(recycled_project_identity_reserved_lock_held(recycled_id).unwrap());
         assert!(recycle_entry_dir(&recycle_entry).unwrap().exists());
 
@@ -1738,7 +1986,11 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"Old"}"#).unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Old", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Old",
+        )
+        .unwrap();
         assert!(recycled_project_ids().unwrap().contains(project_id));
 
         std::fs::create_dir(&project).unwrap();
@@ -1770,7 +2022,11 @@ mod tests {
         std::fs::create_dir(&outside).unwrap();
         symlink(&outside, checkpoints.join(project_id)).unwrap();
 
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let error = permanently_delete_recycled_project_sync(&recycle_id).unwrap_err();
         assert!(error.contains("Checkpoints cleanup failed"));
         assert!(!project.exists());
@@ -1807,7 +2063,11 @@ mod tests {
         std::fs::create_dir(&outside).unwrap();
         let linked_store = checkpoints.join(project_id);
         symlink(&outside, &linked_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         permanently_delete_recycled_project_sync(&recycle_id).unwrap_err();
 
         let queue = directory.path().join(CHECKPOINT_CLEANUP_DIRECTORY);
@@ -1844,7 +2104,11 @@ mod tests {
         let blocked = checkpoint_store.join("blocked.fifo");
         let blocked_c = std::ffi::CString::new(blocked.as_os_str().as_bytes()).unwrap();
         assert_eq!(unsafe { libc::mkfifo(blocked_c.as_ptr(), 0o600) }, 0);
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
 
         permanently_delete_recycled_project_sync(&recycle_id).unwrap_err();
         assert!(!checkpoint_store.exists());
@@ -1883,7 +2147,11 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let job = PendingCheckpointCleanup {
             version: CHECKPOINT_CLEANUP_VERSION,
             project_id: project_id.to_string(),
@@ -1911,7 +2179,11 @@ mod tests {
         std::fs::write(project.join("main.tex"), b"source").unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let job = PendingCheckpointCleanup {
             version: CHECKPOINT_CLEANUP_VERSION,
             project_id: project_id.to_string(),
@@ -1940,7 +2212,11 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let job = PendingCheckpointCleanup {
             version: CHECKPOINT_CLEANUP_VERSION,
             project_id: project_id.to_string(),
@@ -1969,7 +2245,11 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let job = PendingCheckpointCleanup {
             version: CHECKPOINT_CLEANUP_VERSION,
             project_id: project_id.to_string(),
@@ -2006,11 +2286,19 @@ mod tests {
         std::fs::write(project.join("project.json"), br#"{"name":"First"}"#).unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
-        let first = recycle_project_directory(project_id, "First", &project).unwrap();
+        let first = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "First",
+        )
+        .unwrap();
 
         std::fs::create_dir(&project).unwrap();
         std::fs::write(project.join("project.json"), br#"{"name":"Second"}"#).unwrap();
-        let second = recycle_project_directory(project_id, "Second", &project).unwrap();
+        let second = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Second",
+        )
+        .unwrap();
 
         permanently_delete_recycled_project_sync(&first).unwrap();
 
@@ -2032,7 +2320,11 @@ mod tests {
         let project = crate::paths::projects_root().unwrap().join(project_id);
         std::fs::create_dir(&project).unwrap();
         std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
-        let recycle_id = recycle_project_directory(project_id, "Paper", &project).unwrap();
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
         let entry = recycle_entry_dir(&recycle_id).unwrap();
         let recycled = recycled_project_dir(&entry).unwrap();
         let internal = recycled.join(".oleafly");

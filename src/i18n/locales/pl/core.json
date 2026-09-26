@@ -607,5 +607,9 @@
   "checkpoint": {
     "storageUnavailable": "Nie udało się zapisać punktu kontrolnego. Dysk jest pełny albo nie można zapisywać w folderze punktów kontrolnych. Zwolnij miejsce lub sprawdź uprawnienia folderu, a potem skompiluj ponownie.",
     "incompleteCapture": "Nie udało się zapisać kilku ostatnich punktów kontrolnych, bo nie można było odczytać części plików projektu. Sprawdź ich uprawnienia, a potem skompiluj ponownie."
+  },
+  "folderUnavailable": {
+    "compile": "Kompilowanie jest wstrzymane, dopóki folder projektu nie wróci.",
+    "saveReason": "folder projektu jest niedostępny"
   }
 }

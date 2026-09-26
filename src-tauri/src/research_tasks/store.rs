@@ -11,6 +11,7 @@ use super::model::{
     TaskResultMetadata, TaskReviewResult, TaskRuntimeEvent, TaskTranscriptEvent,
     TaskTranscriptPage,
 };
+use crate::process_identity::{ProcessIdentity, ProcessProbe};
 
 const MAX_TASKS_PER_PROJECT: usize = 500;
 pub(super) const MAX_EVENTS_PER_RUN: u64 = 5_000;
@@ -19,6 +20,8 @@ const TEXT_EVENT_KINDS: [&str; 2] = ["text", "reasoning"];
 #[derive(Clone)]
 pub(crate) struct TaskStore {
     root: PathBuf,
+    owner: ProcessIdentity,
+    probe: fn(u32) -> ProcessProbe,
 }
 
 #[derive(Debug, Clone)]
@@ -57,13 +60,32 @@ struct StoredTask {
 impl TaskStore {
     pub(crate) fn new(root: PathBuf) -> Result<Self, String> {
         ensure_real_directory(&root)?;
-        let store = Self { root };
+        let store = Self {
+            root,
+            owner: crate::process_identity::current(),
+            probe: crate::process_identity::probe,
+        };
         store.open()?;
         Ok(store)
     }
 
     pub(crate) fn root(&self) -> &Path {
         &self.root
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_owner(&self, id: &str, owner: Option<ProcessIdentity>) -> Result<(), String> {
+        self.open()?
+            .execute(
+                "UPDATE research_tasks SET owner_pid = ?2, owner_started = ?3 WHERE id = ?1",
+                params![
+                    id,
+                    owner.map(|owner| i64::from(owner.pid)),
+                    owner.and_then(owner_started_column)
+                ],
+            )
+            .map(|_| ())
+            .map_err(store_error)
     }
 
     #[cfg(test)]
@@ -85,7 +107,7 @@ impl TaskStore {
         ensure_real_directory(&self.root)?;
         let database = self.root.join("tasks.sqlite3");
         reject_symlink(&database)?;
-        let connection = Connection::open(&database)
+        let mut connection = Connection::open(&database)
             .map_err(|error| format!("could not open the research task store: {error}"))?;
         reject_symlink(&database)?;
         connection
@@ -145,6 +167,7 @@ impl TaskStore {
                  );",
             )
             .map_err(|error| format!("could not initialize the research task store: {error}"))?;
+        migrate_owner_columns(&mut connection)?;
         Ok(connection)
     }
 
@@ -336,9 +359,15 @@ impl TaskStore {
                    result_json = NULL, review_json = NULL,
                    apply_state = NULL, apply_selection_json = NULL,
                    apply_expected_generation = NULL, started_at = ?3,
-                   finished_at = NULL, updated_at = ?3
+                   finished_at = NULL, updated_at = ?3, owner_pid = ?4, owner_started = ?5
                  WHERE id = ?1 AND status = 'queued' AND start_requested = 1",
-                params![id, session_id, now],
+                params![
+                    id,
+                    session_id,
+                    now,
+                    i64::from(self.owner.pid),
+                    owner_started_column(self.owner)
+                ],
             )
             .map_err(store_error)?;
         if updated != 1 {
@@ -697,18 +726,61 @@ impl TaskStore {
         )
     }
 
-    fn recover_stopped(&self, reason: &str) -> Result<Vec<ResearchTask>, String> {
-        let connection = self.open()?;
-        connection
+    pub(crate) fn disown_current(&self) -> Result<usize, String> {
+        self.open()?
             .execute(
-                "UPDATE research_tasks SET status = 'failed', start_requested = 0,
-                   cancel_requested = 0,
-                   error = ?2,
-                   updated_at = ?1, finished_at = ?1
-                 WHERE status = 'running'",
-                params![now_ms(), reason],
+                "UPDATE research_tasks SET owner_pid = NULL, owner_started = NULL
+                 WHERE owner_pid = ?1 AND (status = 'running' OR apply_state = 'applying')",
+                [i64::from(self.owner.pid)],
             )
+            .map_err(store_error)
+    }
+
+    fn owned_by_live_process(&self, pid: Option<i64>, started: Option<i64>) -> bool {
+        crate::process_identity::owner_is_live(
+            owner_from_columns(pid, started),
+            self.owner,
+            self.probe,
+        )
+    }
+
+    fn recover_stopped(&self, reason: &str) -> Result<Vec<ResearchTask>, String> {
+        let mut connection = self.open()?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(store_error)?;
+        let running = transaction
+            .prepare(
+                "SELECT id, owner_pid, owner_started FROM research_tasks WHERE status = 'running'",
+            )
+            .and_then(|mut statement| {
+                statement
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, Option<i64>>(1)?,
+                            row.get::<_, Option<i64>>(2)?,
+                        ))
+                    })?
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .map_err(store_error)?;
+        let now = now_ms();
+        for (id, owner_pid, owner_started) in running {
+            if self.owned_by_live_process(owner_pid, owner_started) {
+                continue;
+            }
+            transaction
+                .execute(
+                    "UPDATE research_tasks SET status = 'failed', start_requested = 0,
+                       cancel_requested = 0, error = ?3,
+                       updated_at = ?2, finished_at = ?2
+                     WHERE id = ?1 AND status = 'running'",
+                    params![id, now, reason],
+                )
+                .map_err(store_error)?;
+        }
+        transaction.commit().map_err(store_error)?;
         let project_ids = connection
             .prepare("SELECT DISTINCT project_id FROM research_tasks")
             .and_then(|mut statement| {
@@ -787,7 +859,7 @@ impl TaskStore {
             .execute(
                 "UPDATE research_tasks SET apply_state = 'applying',
                    apply_selection_json = ?3, apply_expected_generation = ?4,
-                   updated_at = ?5
+                   updated_at = ?5, owner_pid = ?6, owner_started = ?7
                  WHERE id = ?1 AND execution_generation = ?2
                    AND status = 'awaiting_review' AND apply_state IS NULL",
                 params![
@@ -795,7 +867,9 @@ impl TaskStore {
                     execution_generation as i64,
                     encode_json(selected_paths)?,
                     expected_project_generation as i64,
-                    now_ms()
+                    now_ms(),
+                    i64::from(self.owner.pid),
+                    owner_started_column(self.owner)
                 ],
             )
             .map_err(store_error)?;
@@ -873,30 +947,36 @@ impl TaskStore {
         let connection = self.open()?;
         let mut statement = connection
             .prepare(
-                "SELECT id, project_id, apply_selection_json
+                "SELECT id, project_id, apply_selection_json, owner_pid, owner_started
                  FROM research_tasks
                  WHERE status = 'awaiting_review' AND apply_state = 'applying'",
             )
             .map_err(store_error)?;
-        let pending = statement
+        let rows = statement
             .query_map([], |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
+                    row.get::<_, Option<i64>>(3)?,
+                    row.get::<_, Option<i64>>(4)?,
                 ))
             })
             .map_err(store_error)?
-            .map(|row| {
-                let (task_id, project_id, paths) = row.map_err(store_error)?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(store_error)?;
+        rows.into_iter()
+            .filter(|(_, _, _, owner_pid, owner_started)| {
+                !self.owned_by_live_process(*owner_pid, *owner_started)
+            })
+            .map(|(task_id, project_id, paths, _, _)| {
                 Ok(PendingApply {
                     task_id,
                     project_id,
                     selected_paths: decode_json(&paths, "pending review selection")?,
                 })
             })
-            .collect::<Result<Vec<_>, String>>()?;
-        Ok(pending)
+            .collect()
     }
 }
 
@@ -1188,6 +1268,47 @@ fn store_error(error: rusqlite::Error) -> String {
     format!("research task store failed: {error}")
 }
 
+const OWNER_SCHEMA_VERSION: i64 = 1;
+
+fn migrate_owner_columns(connection: &mut Connection) -> Result<(), String> {
+    if schema_version(connection)? >= OWNER_SCHEMA_VERSION {
+        return Ok(());
+    }
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(store_error)?;
+    if schema_version(&transaction)? < OWNER_SCHEMA_VERSION {
+        transaction
+            .execute_batch(
+                "ALTER TABLE research_tasks ADD COLUMN owner_pid INTEGER;
+                 ALTER TABLE research_tasks ADD COLUMN owner_started INTEGER;
+                 PRAGMA user_version = 1;",
+            )
+            .map_err(|error| format!("could not upgrade the research task store: {error}"))?;
+    }
+    transaction.commit().map_err(store_error)
+}
+
+fn schema_version(connection: &Connection) -> Result<i64, String> {
+    connection
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .map_err(store_error)
+}
+
+fn owner_started_column(owner: ProcessIdentity) -> Option<i64> {
+    owner
+        .started
+        .and_then(|started| i64::try_from(started).ok())
+}
+
+fn owner_from_columns(pid: Option<i64>, started: Option<i64>) -> Option<ProcessIdentity> {
+    let pid = u32::try_from(pid?).ok()?;
+    Some(ProcessIdentity {
+        pid,
+        started: started.and_then(|value| u64::try_from(value).ok()),
+    })
+}
+
 fn ensure_real_directory(path: &Path) -> Result<(), String> {
     match std::fs::symlink_metadata(path) {
         Ok(metadata) => {
@@ -1247,6 +1368,200 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let store = TaskStore::new(temp.path().join("tasks")).unwrap();
         (temp, store)
+    }
+
+    fn claimed(store: &TaskStore, title: &str) -> ResearchTask {
+        let task = store.create(draft("paper", title)).unwrap();
+        store.request_start(&task.id).unwrap();
+        store.claim_next().unwrap().unwrap()
+    }
+
+    fn owner_columns(store: &TaskStore, id: &str) -> (Option<i64>, Option<i64>) {
+        store
+            .open()
+            .unwrap()
+            .query_row(
+                "SELECT owner_pid, owner_started FROM research_tasks WHERE id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn a_claim_records_this_process_as_the_run_owner() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Owned run");
+        let current = crate::process_identity::current();
+        assert_eq!(
+            owner_columns(&store, &running.id),
+            (
+                Some(i64::from(current.pid)),
+                current
+                    .started
+                    .and_then(|started| i64::try_from(started).ok())
+            )
+        );
+    }
+
+    #[test]
+    fn beginning_an_apply_records_this_process_as_the_apply_owner() {
+        let (_temp, store) = store();
+        let reviewed = reviewable_task(&store);
+        store.set_owner(&reviewed.id, None).unwrap();
+        store
+            .begin_apply(
+                &reviewed.id,
+                reviewed.execution_generation,
+                1,
+                &["main.tex".into()],
+            )
+            .unwrap();
+        assert_eq!(
+            owner_columns(&store, &reviewed.id).0,
+            Some(i64::from(std::process::id()))
+        );
+    }
+
+    const FOREIGN: ProcessIdentity = ProcessIdentity {
+        pid: u32::MAX - 1,
+        started: Some(11),
+    };
+
+    #[test]
+    fn recovery_leaves_a_run_owned_by_another_live_process_running() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Foreign run");
+        store.set_owner(&running.id, Some(FOREIGN)).unwrap();
+        let store = TaskStore {
+            probe: |_| ProcessProbe::Running { started: Some(11) },
+            ..store
+        };
+        store.recover_interrupted().unwrap();
+        assert_eq!(
+            store.require(&running.id).unwrap().status,
+            ResearchTaskStatus::Running
+        );
+    }
+
+    #[test]
+    fn recovery_fails_a_run_whose_owner_has_exited() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Crashed run");
+        store.set_owner(&running.id, Some(FOREIGN)).unwrap();
+        let store = TaskStore {
+            probe: |_| ProcessProbe::Gone,
+            ..store
+        };
+        store.recover_interrupted().unwrap();
+        let recovered = store.require(&running.id).unwrap();
+        assert_eq!(recovered.status, ResearchTaskStatus::Failed);
+        assert!(recovered.error.unwrap().contains("closed before"));
+    }
+
+    #[test]
+    fn recovery_fails_a_run_whose_pid_now_belongs_to_another_process() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Reused pid");
+        store.set_owner(&running.id, Some(FOREIGN)).unwrap();
+        let store = TaskStore {
+            probe: |_| ProcessProbe::Running { started: Some(12) },
+            ..store
+        };
+        store.recover_interrupted().unwrap();
+        assert_eq!(
+            store.require(&running.id).unwrap().status,
+            ResearchTaskStatus::Failed
+        );
+    }
+
+    #[test]
+    fn recovery_fails_a_run_recorded_before_owners_existed() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Unowned run");
+        store.set_owner(&running.id, None).unwrap();
+        let store = TaskStore {
+            probe: |_| ProcessProbe::Running { started: Some(11) },
+            ..store
+        };
+        store.recover_interrupted().unwrap();
+        assert_eq!(
+            store.require(&running.id).unwrap().status,
+            ResearchTaskStatus::Failed
+        );
+    }
+
+    #[test]
+    fn an_apply_owned_by_another_live_process_is_not_pending_here() {
+        let (_temp, store) = store();
+        let reviewed = reviewable_task(&store);
+        store
+            .begin_apply(
+                &reviewed.id,
+                reviewed.execution_generation,
+                1,
+                &["main.tex".into()],
+            )
+            .unwrap();
+        store.set_owner(&reviewed.id, Some(FOREIGN)).unwrap();
+        let live = TaskStore {
+            probe: |_| ProcessProbe::Running { started: Some(11) },
+            ..store.clone()
+        };
+        assert!(live.pending_applies().unwrap().is_empty());
+        let exited = TaskStore {
+            probe: |_| ProcessProbe::Gone,
+            ..store
+        };
+        assert_eq!(exited.pending_applies().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn disowning_hands_this_process_runs_and_applies_to_the_next_launch() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Run at exit");
+        let reviewed = reviewable_task(&store);
+        store
+            .begin_apply(
+                &reviewed.id,
+                reviewed.execution_generation,
+                1,
+                &["main.tex".into()],
+            )
+            .unwrap();
+        let foreign = claimed(&store, "Other instance");
+        store.set_owner(&foreign.id, Some(FOREIGN)).unwrap();
+
+        assert_eq!(store.disown_current().unwrap(), 2);
+        assert_eq!(owner_columns(&store, &running.id), (None, None));
+        assert_eq!(owner_columns(&store, &reviewed.id), (None, None));
+        assert_eq!(
+            owner_columns(&store, &foreign.id),
+            (Some(i64::from(u32::MAX - 1)), Some(11))
+        );
+        assert_eq!(
+            store.require(&running.id).unwrap().status,
+            ResearchTaskStatus::Running
+        );
+    }
+
+    #[test]
+    fn a_store_created_before_owners_gains_the_columns_and_keeps_its_rows() {
+        let (_temp, store) = store();
+        let running = claimed(&store, "Legacy run");
+        Connection::open(store.root().join("tasks.sqlite3"))
+            .unwrap()
+            .execute_batch(
+                "ALTER TABLE research_tasks DROP COLUMN owner_pid;
+                 ALTER TABLE research_tasks DROP COLUMN owner_started;
+                 PRAGMA user_version = 0;",
+            )
+            .unwrap();
+        assert_eq!(owner_columns(&store, &running.id), (None, None));
+        assert_eq!(
+            store.require(&running.id).unwrap().status,
+            ResearchTaskStatus::Running
+        );
     }
 
     fn reviewable_task(store: &TaskStore) -> ResearchTask {

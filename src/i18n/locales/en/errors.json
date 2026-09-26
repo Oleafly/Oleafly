@@ -4,7 +4,29 @@
   "project": {
     "name_empty": "Project name cannot be empty.",
     "name_conflict": "A project named {{name}} already exists.",
-    "folder_unavailable": "Could not reserve a new project folder."
+    "folder_unavailable": "Could not reserve a new project folder.",
+    "not_found": "This project is no longer in your library.",
+    "not_recyclable": "This project can't be moved to the Recycle Bin.",
+    "linked_missing": "Oleafly can't find the folder {{folder}}. It might have been moved or deleted, or it's on a drive that isn't connected.",
+    "linked_replaced": "The folder {{folder}} isn't the one Oleafly opened before. Open it again to continue.",
+    "linked_permission_denied": "Oleafly doesn't have permission to open the folder {{folder}}.",
+    "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again.",
+    "linked_not_recyclable": "This folder was opened in place, so it can't be moved to the Recycle Bin. Your files are untouched.",
+    "linked_not_duplicable": "This folder was opened in place, so Oleafly can't duplicate it.",
+    "folder_not_a_folder": "Oleafly can't use that location. Choose a folder.",
+    "folder_in_app_data": "Oleafly keeps its own data in that folder. Choose a different one.",
+    "folder_too_broad": "{{name}} is too broad to open as one project. Choose the folder that holds just this project.",
+    "folder_already_linked": "That folder overlaps another project in Oleafly. Choose a different folder.",
+    "not_linked": "Locate works only for folders opened in place.",
+    "copy_destination_refused": "Choose a folder outside the project and outside Oleafly's data folder.",
+    "copy_nothing_open": "No files are open, so there's nothing to save.",
+    "copy_too_large": "The open files are too large to save as a copy.",
+    "copy_failed": "Oleafly couldn't save the copy there. Choose a folder you can write to.",
+    "folder_picker_failed": "Oleafly couldn't open the folder picker. Try again.",
+    "import_no_main": "This import has no LaTeX, Typst or Markdown document to compile.",
+    "settings_file_exists": "This folder already has a project.json, so Oleafly left it as it is.",
+    "settings_need_main": "Choose a main document first, then save the project settings to this folder.",
+    "settings_write_failed": "Oleafly couldn't save the project settings to this folder."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."
@@ -16,7 +38,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX has no host-compatible {{name}} binary.",
-    "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself."
+    "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself.",
+    "latexmk_build_path": "latexmk can't use Oleafly's build folder on this computer because its path contains characters latexmk doesn't accept. Switch this project to Tectonic to compile it.",
+    "latexmk_network_folder": "latexmk can't compile a folder on a network share. Switch this project to Tectonic, or copy the folder to this computer."
   },
   "github": {
     "sign_in_expired": "The sign-in code expired. Try again.",
@@ -25,7 +49,48 @@
     "repositories_unavailable": "Could not load repositories.",
     "create_repo_failed": "Could not create the repository ({{status}})."
   },
+  "git": {
+    "remote_exists": "This project is already linked to {{remote}}.",
+    "nested_repository": "This project is inside another Git repository, so Oleafly won't create a separate one here."
+  },
   "approvals": {
     "full_access_declined": "Full access was not enabled."
+  },
+  "trust": {
+    "git": "Trust this folder to use Source Control.",
+    "repository": "Trust the {{name}} repository to use Source Control here.",
+    "terminal": "Open the terminal yourself to use it in this folder.",
+    "agents": "Trust this folder to use external agents.",
+    "mcp": "Trust this folder before MCP clients can use it.",
+    "research_tasks": "Trust this folder to run research tasks.",
+    "run_command": "Trust this folder to let the assistant run commands.",
+    "full_access": "Trust this folder before turning on full access.",
+    "system_tex": "Trust this folder to compile with latexmk.",
+    "shell_escape": "Trust this folder before allowing shell escape.",
+    "broad_folder": "Oleafly can't trust all of {{name}}. Choose a smaller folder.",
+    "declined": "The folder wasn't trusted.",
+    "unavailable": "Oleafly couldn't check whether this folder is trusted."
+  },
+  "open_folder": {
+    "not_absolute": "Use the full path to the folder.",
+    "not_found": "Oleafly can't find this folder.",
+    "permission_denied": "Oleafly doesn't have permission to open this folder.",
+    "not_a_folder": "Choose a folder, not a file.",
+    "unsupported_folder": "Oleafly can't open this type of folder.",
+    "path_not_unicode": "This folder's path contains characters Oleafly can't read. Rename the folder and try again.",
+    "too_broad": "{{name}} holds too much to open as one project. Choose a folder inside it.",
+    "protected": "Oleafly can't open folders inside {{name}}.",
+    "app_data": "This folder is part of Oleafly's app data. Choose a folder outside it.",
+    "contains_project": "This folder contains {{name}}, which is already open in Oleafly as its own project.",
+    "research_folder": "{{project}} can already edit files in this folder through its linked folders. Unlink it there first.",
+    "failed": "Oleafly couldn't open this folder."
+  },
+  "research": {
+    "linked_project_folder": "This folder is open in Oleafly as its own project. Link it as read-only instead."
+  },
+  "checkpoint": {
+    "library_history_for_folder": "This checkpoint history comes from a project in your Oleafly library, so it can't be used with a folder you opened in place.",
+    "folder_history_for_library": "This checkpoint history comes from a folder you opened in place, so it can't be used with a project in your Oleafly library.",
+    "restore_path_blocked": "Oleafly can't restore {{path}} because a link or something else that isn't a file is in the way. Move it and try again."
   }
 }
