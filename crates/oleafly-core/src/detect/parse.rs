@@ -193,6 +193,19 @@ pub(super) fn has_begin_document(masked: &str) -> bool {
     })
 }
 
+pub(super) fn has_plain_tex_end(masked: &str) -> bool {
+    masked.match_indices("\\bye").any(|(at, _)| {
+        let backslashes = masked[..at]
+            .bytes()
+            .rev()
+            .take_while(|&byte| byte == b'\\')
+            .count();
+        backslashes.is_multiple_of(2)
+            && !masked[at + "\\bye".len()..]
+                .starts_with(|character: char| character.is_ascii_alphabetic())
+    })
+}
+
 pub(super) fn has_bibliography(masked: &str) -> bool {
     [
         "\\bibliography{",

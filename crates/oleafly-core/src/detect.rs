@@ -9,27 +9,29 @@ use crate::{
 use crate::{Error, ErrorKind, Result};
 use parse::{
     arxiv_toplevel_sources, document_class, has_begin_document, has_bibliography, has_extension,
-    latex_references, latex_title, latexmk_default_files, markdown_references, markdown_title,
-    mask_latex_comments, mask_typst_comments, normalize_project_path, parent_of, resolve_in,
-    resolve_project_path, typst_library_like, typst_references, typst_template_entrypoint,
-    typst_title,
+    has_plain_tex_end, latex_references, latex_title, latexmk_default_files, markdown_references,
+    markdown_title, mask_latex_comments, mask_typst_comments, normalize_project_path, parent_of,
+    resolve_in, resolve_project_path, typst_library_like, typst_references,
+    typst_template_entrypoint, typst_title,
 };
 pub use parse::{tex_magic_comments, TexMagicComments};
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::ffi::OsStr;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::time::{Duration, Instant};
+use unicode_normalization::UnicodeNormalization;
 
 pub const DETECT_MAX_DEPTH: usize = 6;
 pub const DETECT_MAX_ENTRIES: usize = 20_000;
 pub const DETECT_MAX_SOURCES: usize = 3_000;
 pub const DETECT_DEADLINE: Duration = Duration::from_millis(1_500);
 const HEAD_BYTES: u64 = 64 * 1024;
+const TAIL_BYTES: u64 = 4 * 1024;
 const UTF8_BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 const MANIFEST_FILE: &str = "project.json";
 const SOURCE_SUFFIXES: [&str; 6] = [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"];
@@ -229,14 +231,16 @@ pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<
     if let Some(saved) = options
         .saved_main
         .and_then(|saved| existing_source(&root, saved, None))
+        .map(|saved| disk_spelling(&root, None, saved))
     {
         return Ok(settled(&root, saved, DetectionSource::SavedChoice, options));
     }
     if let Some(main) = manifest_main(&root, options) {
         return Ok(settled(&root, main, DetectionSource::Manifest, options));
     }
-    let scan = Scan::run(&root, options)?;
+    let mut scan = Scan::run(&root, options)?;
     let graph = Graph::build(&scan);
+    scan.complete_split_documents(&graph);
     let root_name = root
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -406,6 +410,20 @@ fn read_head(path: &Path) -> Option<String> {
     Some(String::from_utf8_lossy(text).into_owned())
 }
 
+fn read_tail(path: &Path) -> Option<String> {
+    let mut file = std::fs::File::open(path).ok()?;
+    let length = file.metadata().ok()?.len();
+    if length <= HEAD_BYTES {
+        return None;
+    }
+    file.seek(SeekFrom::Start(length - TAIL_BYTES)).ok()?;
+    let mut bytes = Vec::new();
+    file.take(TAIL_BYTES).read_to_end(&mut bytes).ok()?;
+    let text = String::from_utf8_lossy(&bytes);
+    text.split_once('\n')
+        .map(|(_, whole_lines)| whole_lines.to_owned())
+}
+
 fn read_resident(path: &Path, limit: u64, options: &DetectOptions<'_>) -> Option<Vec<u8>> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > limit || (options.placeholder)(path, &metadata) {
@@ -432,7 +450,7 @@ fn oleafly_manifest_in(directory: &Path, options: &DetectOptions<'_>) -> Option<
 
 fn manifest_main(root: &Path, options: &DetectOptions<'_>) -> Option<String> {
     let manifest = oleafly_manifest_in(root, options)?;
-    existing_source(root, &manifest.main_doc, None)
+    existing_source(root, &manifest.main_doc, None).map(|main| disk_spelling(root, None, main))
 }
 
 fn existing_source(root: &Path, relative: &str, family: Option<SourceFamily>) -> Option<String> {
@@ -449,6 +467,51 @@ fn existing_source(root: &Path, relative: &str, family: Option<SourceFamily>) ->
     Some(normalized)
 }
 
+fn disk_spelling(root: &Path, scan: Option<&Scan>, path: String) -> String {
+    if scan.is_some_and(|scan| scan.index.contains_key(&path)) {
+        return path;
+    }
+    spelled_on_disk(root, &path).unwrap_or(path)
+}
+
+fn spelled_on_disk(root: &Path, relative: &str) -> Option<String> {
+    let mut directory = root.to_path_buf();
+    let mut parts = Vec::new();
+    for part in relative.split('/') {
+        let name = name_on_disk(&directory, part)?;
+        directory.push(&name);
+        parts.push(name);
+    }
+    Some(parts.join("/"))
+}
+
+fn name_on_disk(directory: &Path, wanted: &str) -> Option<String> {
+    let names: Vec<String> = std::fs::read_dir(directory)
+        .ok()?
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect();
+    if names.iter().any(|name| name == wanted) {
+        return Some(wanted.to_owned());
+    }
+    [composed_name, folded_name].into_iter().find_map(|key| {
+        let wanted = key(wanted);
+        let mut matches = names.iter().filter(|name| key(name) == wanted);
+        match (matches.next(), matches.next()) {
+            (Some(only), None) => Some(only.clone()),
+            _ => None,
+        }
+    })
+}
+
+fn composed_name(name: &str) -> String {
+    name.nfc().collect()
+}
+
+fn folded_name(name: &str) -> String {
+    composed_name(name).to_lowercase()
+}
+
 #[derive(Clone, Debug, Default)]
 struct Facts {
     class: Option<String>,
@@ -457,6 +520,7 @@ struct Facts {
     title: Option<String>,
     bibliography: bool,
     poster_package: bool,
+    plain_tex: bool,
     library_like: bool,
     has_content: bool,
     references: Vec<String>,
@@ -483,6 +547,10 @@ fn read_facts(file: &Path, relative: &str, family: SourceFamily) -> Facts {
                 Some((option, class)) => (option, Some(class)),
                 None => (None, None),
             };
+            let plain_tex = class.is_none()
+                && (has_plain_tex_end(&masked)
+                    || read_tail(file)
+                        .is_some_and(|tail| has_plain_tex_end(&mask_latex_comments(&tail))));
             Facts {
                 class,
                 class_option,
@@ -490,6 +558,7 @@ fn read_facts(file: &Path, relative: &str, family: SourceFamily) -> Facts {
                 title: latex_title(&masked),
                 bibliography: has_bibliography(&masked),
                 poster_package: masked.contains("beamerposter"),
+                plain_tex,
                 library_like: false,
                 has_content: !masked.trim().is_empty(),
                 references: latex_references(&masked).inputs,
@@ -700,6 +769,65 @@ impl Scan {
             .or_else(|| resolve_in("", trimmed).and_then(|path| self.lookup_source(&path)))
     }
 
+    fn complete_split_documents(&mut self, graph: &Graph) {
+        let completed: Vec<(usize, Facts)> = (0..self.sources.len())
+            .filter_map(|index| {
+                self.split_document_facts(graph, index)
+                    .map(|facts| (index, facts))
+            })
+            .collect();
+        for (index, facts) in completed {
+            self.sources[index].facts = facts;
+        }
+    }
+
+    fn split_document_facts(&self, graph: &Graph, index: usize) -> Option<Facts> {
+        let source = &self.sources[index];
+        if source.family != SourceFamily::Latex || source.placeholder || graph.referenced[index] {
+            return None;
+        }
+        let mut facts = source.facts.clone();
+        if facts
+            .class
+            .as_deref()
+            .is_some_and(|class| !inheritable_class(class) || facts.begin_document)
+        {
+            return None;
+        }
+        let mut seen = vec![false; self.sources.len()];
+        seen[index] = true;
+        let mut queue = VecDeque::from([index]);
+        while let Some(current) = queue.pop_front() {
+            for &target in &graph.edges[current] {
+                let included = &self.sources[target];
+                let inherited = &included.facts;
+                if seen[target]
+                    || included.family != SourceFamily::Latex
+                    || included.placeholder
+                    || inherited
+                        .class
+                        .as_deref()
+                        .is_some_and(|class| !inheritable_class(class))
+                {
+                    continue;
+                }
+                seen[target] = true;
+                queue.push_back(target);
+                if facts.class.is_none() && inherited.class.is_some() {
+                    facts.class.clone_from(&inherited.class);
+                    facts.class_option.clone_from(&inherited.class_option);
+                }
+                if facts.title.is_none() {
+                    facts.title.clone_from(&inherited.title);
+                }
+                facts.begin_document |= inherited.begin_document;
+                facts.bibliography |= inherited.bibliography;
+                facts.poster_package |= inherited.poster_package;
+            }
+        }
+        (facts.class.is_some() && facts.begin_document).then_some(facts)
+    }
+
     fn ranked(&self, graph: &Graph, root_name: &str) -> Vec<Ranked> {
         let mut ranked: Vec<Ranked> = self
             .sources
@@ -755,7 +883,9 @@ fn interrupted(options: &DetectOptions<'_>, started: Instant) -> bool {
 
 struct Graph {
     included: Vec<bool>,
+    referenced: Vec<bool>,
     outgoing: Vec<usize>,
+    edges: Vec<Vec<usize>>,
 }
 
 impl Graph {
@@ -778,8 +908,10 @@ impl Graph {
             .collect();
         let component = components(&edges);
         let mut included = vec![false; edges.len()];
+        let mut referenced = vec![false; edges.len()];
         for (from, targets) in edges.iter().enumerate() {
             for &to in targets {
+                referenced[to] = true;
                 if component[from] != component[to] {
                     included[to] = true;
                 }
@@ -788,6 +920,8 @@ impl Graph {
         Self {
             outgoing: edges.iter().map(Vec::len).collect(),
             included,
+            referenced,
+            edges,
         }
     }
 }
@@ -846,6 +980,10 @@ fn components(edges: &[Vec<usize>]) -> Vec<usize> {
     component
 }
 
+fn inheritable_class(class: &str) -> bool {
+    !class.eq_ignore_ascii_case("subfiles") && !class.eq_ignore_ascii_case("standalone")
+}
+
 fn tier_of(source: &Source, included: bool) -> Option<Tier> {
     if included {
         return None;
@@ -856,7 +994,9 @@ fn tier_of(source: &Source, included: bool) -> Option<Tier> {
     let facts = &source.facts;
     match source.family {
         SourceFamily::Latex => {
-            let class = facts.class.as_deref()?;
+            let Some(class) = facts.class.as_deref() else {
+                return facts.plain_tex.then_some(Tier::W);
+            };
             if class.eq_ignore_ascii_case("subfiles") {
                 return None;
             }
@@ -1109,7 +1249,7 @@ struct Declaration {
 fn declarations(root: &Path, scan: &Scan, options: &DetectOptions<'_>) -> Vec<Declaration> {
     let mut found: Vec<Declaration> = Vec::new();
     let mut add = |path: Option<String>, source: DetectionSource| {
-        let Some(path) = path else {
+        let Some(path) = path.map(|path| disk_spelling(root, Some(scan), path)) else {
             return;
         };
         match found.iter_mut().find(|declared| declared.path == path) {

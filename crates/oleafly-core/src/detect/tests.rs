@@ -665,6 +665,57 @@ fn a_latexmkrc_default_file_is_honoured_without_running_perl() {
 }
 
 #[test]
+fn declared_mains_use_the_spelling_on_disk() {
+    let texroot = tree(&[
+        ("Thesis.tex", ARTICLE),
+        ("appendix.tex", "% !TEX root = thesis.tex\n\\section{A}\n"),
+        ("intro.tex", "% !TEX root = Thesis.tex\n\\section{I}\n"),
+    ]);
+    let folds_case = texroot.path().join("THESIS.TEX").is_file();
+    let detection = detect(&texroot);
+    assert_eq!(
+        detection.main.as_deref(),
+        Some("Thesis.tex"),
+        "{detection:#?}"
+    );
+    assert_eq!(paths(&detection), ["Thesis.tex"]);
+
+    let latexmkrc = tree(&[
+        (".latexmkrc", "@default_files = ('paper.tex');\n"),
+        ("Paper.tex", ARTICLE),
+        ("reply.tex", ARTICLE),
+    ]);
+    let detection = detect(&latexmkrc);
+    if folds_case {
+        auto(&detection, "Paper.tex", DetectionSource::Latexmkrc);
+    } else {
+        assert_eq!(detection.decision, Decision::Ask);
+    }
+
+    let manifest = tree(&[
+        ("Paper.tex", ARTICLE),
+        ("reply.tex", ARTICLE),
+        (
+            "project.json",
+            r#"{"name":"P","main_doc":"paper.tex","engine":"xetex"}"#,
+        ),
+    ]);
+    let saved = detect_with(
+        &manifest,
+        DetectOptions {
+            saved_main: Some("PAPER.TEX"),
+            ..DetectOptions::default()
+        },
+    );
+    if folds_case {
+        auto(&saved, "Paper.tex", DetectionSource::SavedChoice);
+        auto(&detect(&manifest), "Paper.tex", DetectionSource::Manifest);
+    } else {
+        assert_eq!(saved.decision, Decision::Ask);
+    }
+}
+
+#[test]
 fn conflicting_root_comments_ask_with_the_most_voted_first() {
     let directory = tree(&[
         ("thesis.tex", ARTICLE),
@@ -873,6 +924,207 @@ fn placeholders_are_listed_but_never_read_or_opened() {
         "paper.tex",
         DetectionSource::Scan,
     );
+}
+
+#[test]
+fn a_document_split_across_its_includes_is_still_a_document() {
+    let preamble_class = tree(&[
+        (
+            "main.tex",
+            "\\input{preamble}\n\\begin{document}\nText.\n\\end{document}\n",
+        ),
+        (
+            "preamble.tex",
+            "\\documentclass{article}\n\\usepackage{amsmath}\n",
+        ),
+    ]);
+    let detection = detect(&preamble_class);
+    auto(&detection, "main.tex", DetectionSource::RootMain);
+    assert_eq!(paths(&detection), ["main.tex"]);
+    let main = candidate(&detection, "main.tex");
+    assert_eq!(
+        (main.tier, main.kind, main.class.as_deref()),
+        (Tier::S, DocumentKind::Document, Some("article"))
+    );
+
+    for (other, content) in [
+        ("TODO.md", "# Todo\n\n- tables\n"),
+        ("sketch.typ", "= Sketch\n"),
+        ("supplement.tex", ARTICLE),
+    ] {
+        let directory = tree(&[
+            (
+                "main.tex",
+                "\\documentclass{article}\n\\input{preamble}\n\\input{body}\n",
+            ),
+            ("preamble.tex", "\\usepackage{amsmath}\n"),
+            ("body.tex", "\\begin{document}\nText.\n\\end{document}\n"),
+            (other, content),
+        ]);
+        let detection = detect(&directory);
+        auto(&detection, "main.tex", DetectionSource::RootMain);
+        assert_eq!(candidate(&detection, "main.tex").tier, Tier::S, "{other}");
+        assert!(!paths(&detection).contains(&"body.tex"), "{other}");
+    }
+
+    let wrapped_figure = tree(&[
+        ("figures.tex", "\\input{plot}\n"),
+        (
+            "plot.tex",
+            "\\documentclass{standalone}\n\\begin{document}\nx\n\\end{document}\n",
+        ),
+    ]);
+    assert_eq!(detect(&wrapped_figure).decision, Decision::NoMain);
+
+    let chapters = tree(&[
+        (
+            "book.tex",
+            "\\input{front}\n\\begin{document}\n\\subfile{one}\n\\end{document}\n",
+        ),
+        ("front.tex", "\\newcommand{\\x}{y}\n"),
+        (
+            "one.tex",
+            "\\documentclass{subfiles}\n\\begin{document}\nOne.\n\\end{document}\n",
+        ),
+    ]);
+    assert_eq!(detect(&chapters).decision, Decision::NoMain);
+}
+
+#[test]
+fn a_main_whose_class_and_begin_both_come_from_includes_is_a_document() {
+    let header_layout = [
+        ("main.tex", "\\input{header}\nText.\n\\end{document}\n"),
+        (
+            "header.tex",
+            "\\documentclass{article}\n\\begin{document}\n",
+        ),
+    ];
+    let setup_layout = [
+        ("main.tex", "\\input{setup}\n\\input{body}\n"),
+        ("setup.tex", "\\documentclass{article}\n"),
+        ("body.tex", "\\begin{document}\nText.\n\\end{document}\n"),
+    ];
+    for (layout, extra) in [
+        (&header_layout[..], None),
+        (
+            &header_layout[..],
+            Some(("TODO.md", "# Todo\n\n- tables\n")),
+        ),
+        (&header_layout[..], Some(("sketch.typ", "= Sketch\n"))),
+        (&setup_layout[..], None),
+        (&setup_layout[..], Some(("supplement.tex", ARTICLE))),
+    ] {
+        let mut files = layout.to_vec();
+        files.extend(extra);
+        let directory = tree(&files);
+        let detection = detect(&directory);
+        auto(&detection, "main.tex", DetectionSource::RootMain);
+        assert_eq!(detection.best(), Some("main.tex"), "{files:?}");
+        let main = candidate(&detection, "main.tex");
+        assert_eq!(
+            (main.tier, main.kind, main.class.as_deref()),
+            (Tier::S, DocumentKind::Document, Some("article")),
+            "{files:?}"
+        );
+        for included in ["header.tex", "setup.tex", "body.tex"] {
+            assert!(!paths(&detection).contains(&included), "{files:?}");
+        }
+    }
+
+    let wrapper = tree(&[
+        ("notes.tex", "\\input{header}\nText.\n\\end{document}\n"),
+        ("header.tex", "\\documentclass{report}\n\\begin{document}\n"),
+    ]);
+    let detection = detect(&wrapper);
+    auto(&detection, "notes.tex", DetectionSource::Scan);
+    assert_eq!(candidate(&detection, "notes.tex").kind, DocumentKind::Book);
+
+    let subfile_body = tree(&[
+        ("draft.tex", "\\documentclass{article}\n\\subfile{one}\n"),
+        (
+            "one.tex",
+            "\\documentclass{subfiles}\n\\begin{document}\nOne.\n\\end{document}\n",
+        ),
+    ]);
+    assert_eq!(candidate(&detect(&subfile_body), "draft.tex").tier, Tier::W);
+}
+
+#[test]
+fn a_plain_tex_document_is_a_weak_main() {
+    let plain = "\\input harvmac\n\\Title{Plain}\n\\bye\n";
+    let single = tree(&[("paper.tex", plain)]);
+    let detection = detect(&single);
+    auto(&detection, "paper.tex", DetectionSource::Scan);
+    assert_eq!(
+        candidate(&detection, "paper.tex").reasons,
+        [Reason::TopLevel, Reason::NoBeginDocument]
+    );
+
+    let split = tree(&[
+        ("defs.tex", "\\def\\version{2}\n"),
+        (
+            "paper.tex",
+            "\\input harvmac\n\\input defs\n\\Title{Plain}\n\\bye\n",
+        ),
+    ]);
+    let detection = detect(&split);
+    auto(&detection, "paper.tex", DetectionSource::Scan);
+    assert_eq!(paths(&detection), ["paper.tex"]);
+
+    let long_body = format!(
+        "\\input harvmac\n{}\\bye\n",
+        "Plain text keeps going.\n".repeat(4_000)
+    );
+    assert!(long_body.len() as u64 > HEAD_BYTES);
+    let long = tree(&[("long.tex", &long_body)]);
+    auto(&detect(&long), "long.tex", DetectionSource::Scan);
+
+    for fragment in [
+        "\\section{Only}\n% \\bye\n",
+        "Line one\\\\bye\n",
+        "\\byebye\n",
+        "\\def\\x{1}\n",
+    ] {
+        let directory = tree(&[("fragment.tex", fragment)]);
+        assert_eq!(
+            detect(&directory).decision,
+            Decision::NoMain,
+            "{fragment:?}"
+        );
+    }
+
+    let latex_wins = tree(&[("paper.tex", plain), ("main.tex", ARTICLE)]);
+    auto(&detect(&latex_wins), "main.tex", DetectionSource::RootMain);
+}
+
+#[test]
+fn declared_mains_use_the_composed_or_decomposed_spelling_on_disk() {
+    let decomposed = "The\u{300}se.tex";
+    let composed = "Th\u{e8}se.tex";
+    let directory = tree(&[
+        (decomposed, ARTICLE),
+        (
+            "appendix.tex",
+            "% !TEX root = Th\u{e8}se.tex\n\\section{A}\n",
+        ),
+        ("intro.tex", "% !TEX root = Th\u{e8}se.tex\n\\section{I}\n"),
+    ]);
+    let normalization_insensitive = directory.path().join(composed).is_file();
+    let detection = detect(&directory);
+    if normalization_insensitive {
+        auto(&detection, decomposed, DetectionSource::TexRoot);
+        assert_eq!(paths(&detection), [decomposed]);
+        let saved = detect_with(
+            &directory,
+            DetectOptions {
+                saved_main: Some(composed),
+                ..DetectOptions::default()
+            },
+        );
+        auto(&saved, decomposed, DetectionSource::SavedChoice);
+    } else {
+        auto(&detection, decomposed, DetectionSource::Scan);
+    }
 }
 
 #[test]

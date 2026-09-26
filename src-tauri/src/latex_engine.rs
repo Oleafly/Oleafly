@@ -1862,9 +1862,24 @@ struct TaggedCompilePlan {
     main_doc: String,
     meta: crate::project::ProjectMeta,
     lualatex: PathBuf,
-    project_dir: PathBuf,
+    working_dir: PathBuf,
     pdf: PathBuf,
     args: Vec<String>,
+}
+
+fn tagged_entry(
+    location: &crate::project_location::ProjectLocation,
+    main_doc: &str,
+) -> (PathBuf, String) {
+    location
+        .compile_search_dir(main_doc)
+        .and_then(|directory| {
+            let relative = directory.strip_prefix(&location.root).ok()?;
+            let entry = Path::new(main_doc).strip_prefix(relative).ok()?;
+            let entry = entry.to_string_lossy().replace('\\', "/");
+            Some((directory, entry))
+        })
+        .unwrap_or_else(|| (location.root.clone(), main_doc.to_owned()))
 }
 
 struct TaggedCompileExecution {
@@ -1883,7 +1898,7 @@ async fn prepare_tagged_compile(
         .await
         .lualatex
         .ok_or_else(|| "No LuaLaTeX engine available. Install TinyTeX first.".to_string())?;
-    let project_dir = paths::project_dir(&project_id)?;
+    let location = crate::project_location::locate(&project_id)?;
     let build_dir = paths::build_dir(&project_id)?;
     let tex_path = crate::project::resolve_in_project(&project_id, &main_doc)?;
     if !tex_path.exists() {
@@ -1894,13 +1909,14 @@ async fn prepare_tagged_compile(
         .map_err(|error| error.to_string())?;
     let pdf = build_dir.join(format!("{}.pdf", paths::ENTRY_STEM));
     remove_stale_tagged_pdf(&pdf)?;
-    let args = tagged_lualatex_args(&build_dir.to_string_lossy(), &main_doc);
+    let (working_dir, entry) = tagged_entry(&location, &main_doc);
+    let args = tagged_lualatex_args(&build_dir.to_string_lossy(), &entry);
     Ok(TaggedCompilePlan {
         project_id,
         main_doc,
         meta,
         lualatex: PathBuf::from(lualatex),
-        project_dir,
+        working_dir,
         pdf,
         args,
     })
@@ -1928,7 +1944,7 @@ async fn run_tagged_compile(
         let (pass_log, exit_code) = crate::document_engine::run_supervised_external_cancellable(
             &plan.lualatex,
             &plan.args,
-            &plan.project_dir,
+            &plan.working_dir,
             cancel,
         )
         .await
@@ -2338,6 +2354,78 @@ mod tests {
         .unwrap();
         assert!(validate_install_marker(&root, &asset).is_err());
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn tagged_builds_of_a_nested_main_run_from_its_folder() {
+        let folder = tempfile::tempdir().unwrap();
+        let root = folder.path().canonicalize().unwrap();
+        std::fs::create_dir_all(root.join("paper/sections")).unwrap();
+        std::fs::write(
+            root.join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("paper/sections/intro.tex"), "Intro.").unwrap();
+        std::fs::write(root.join("top.tex"), "\\documentclass{article}\n").unwrap();
+        let linked = crate::project_location::ProjectLocation {
+            id: format!("{}{:032x}", crate::linked_registry::LINKED_ID_PREFIX, 9),
+            kind: crate::project_location::ProjectKind::Linked,
+            root: root.clone(),
+            state_dir: root.join("unused-state"),
+            manifest: crate::project_location::ManifestSource::Sidecar,
+            compile_dir: root.clone(),
+        };
+        assert_eq!(
+            tagged_entry(&linked, "paper/main.tex"),
+            (root.join("paper"), "main.tex".to_string())
+        );
+        assert_eq!(
+            tagged_entry(&linked, "top.tex"),
+            (root.clone(), "top.tex".to_string())
+        );
+        let library = crate::project_location::ProjectLocation::library_at("paper", root.clone());
+        assert_eq!(
+            tagged_entry(&library, "paper/main.tex"),
+            (root.clone(), "paper/main.tex".to_string())
+        );
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_tagged_lualatex_builds_a_nested_main_from_its_folder() {
+        let Some(lualatex) = crate::tex_distro::find_tex_tool("lualatex") else {
+            return;
+        };
+        let scratch = tempfile::tempdir().unwrap();
+        let base = scratch.path().canonicalize().unwrap();
+        let root = base.join("repo");
+        let out = base.join("state").join("build");
+        std::fs::create_dir_all(root.join("paper/sections")).unwrap();
+        std::fs::create_dir_all(&out).unwrap();
+        std::fs::write(
+            root.join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("paper/sections/intro.tex"), "Intro.").unwrap();
+        let linked = crate::project_location::ProjectLocation {
+            id: format!("{}{:032x}", crate::linked_registry::LINKED_ID_PREFIX, 9),
+            kind: crate::project_location::ProjectKind::Linked,
+            root: root.clone(),
+            state_dir: base.join("state"),
+            manifest: crate::project_location::ManifestSource::Sidecar,
+            compile_dir: root.clone(),
+        };
+        let (working_dir, entry) = tagged_entry(&linked, "paper/main.tex");
+        let args = tagged_lualatex_args(&out.to_string_lossy(), &entry);
+        let (log, code) =
+            crate::document_engine::run_supervised_external(&lualatex, &args, &working_dir)
+                .await
+                .unwrap();
+        assert_eq!(code, Some(0), "{log}");
+        assert!(out.join(format!("{}.pdf", paths::ENTRY_STEM)).is_file());
     }
 
     #[test]

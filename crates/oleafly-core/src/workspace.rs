@@ -274,7 +274,7 @@ impl Workspace {
             engine: engine.manifest_name().to_string(),
             ..ProjectManifest::default()
         };
-        manifest.validate()?;
+        Self::assemble(root.clone(), manifest.clone(), BuildLocation::InTree)?;
         write_json_new(&manifest_path, &manifest)?;
         Self::open(root)
     }
@@ -570,7 +570,7 @@ fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
 }
 
 fn metadata_is_real_directory(metadata: &std::fs::Metadata) -> bool {
-    metadata.is_dir() && !metadata.file_type().is_symlink() && !metadata_is_reparse_point(metadata)
+    metadata.is_dir() && !metadata.file_type().is_symlink()
 }
 
 fn unsafe_directory(label: &str, path: &Path) -> Error {
@@ -578,17 +578,6 @@ fn unsafe_directory(label: &str, path: &Path) -> Error {
         ErrorKind::UnsafePath,
         format!("{label} is not a real directory: {}", path.display()),
     )
-}
-
-#[cfg(windows)]
-fn metadata_is_reparse_point(metadata: &std::fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    metadata.file_attributes() & 0x400 != 0
-}
-
-#[cfg(not(windows))]
-fn metadata_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
-    false
 }
 
 fn names_a_main_document(content: &[u8]) -> bool {
@@ -912,6 +901,69 @@ mod tests {
         Workspace::init(flat.path(), InitOptions::default()).unwrap();
         let stored = std::fs::read_to_string(flat.path().join(MANIFEST_NAME)).unwrap();
         assert!(!stored.contains("compile_dir"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_is_refused_as_a_compile_directory() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir(directory.path().join("real")).unwrap();
+        std::fs::write(directory.path().join("real/main.tex"), ARTICLE).unwrap();
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(directory.path().join("paper"))
+            .arg(directory.path().join("real"))
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let error = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "paper/main.tex".into(),
+                compile_dir: Some("paper".into()),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath, "{error}");
+        let real = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "real/main.tex".into(),
+                compile_dir: Some("real".into()),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(real.compile_directory(), real.root().join("real"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn init_writes_no_manifest_when_the_compile_directory_is_refused() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir_all(directory.path().join("real/sections")).unwrap();
+        std::fs::write(
+            directory.path().join("real/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("real/sections/intro.tex"), "Intro.").unwrap();
+        std::os::unix::fs::symlink(
+            directory.path().join("real"),
+            directory.path().join("paper"),
+        )
+        .unwrap();
+        let error = Workspace::init(
+            directory.path(),
+            InitOptions {
+                main_document: Some("paper/main.tex".into()),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath, "{error}");
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
     }
 
     #[test]

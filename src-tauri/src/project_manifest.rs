@@ -29,6 +29,7 @@ pub(crate) struct FolderFields {
     pub(crate) engine: Option<String>,
     pub(crate) tex_flavor: Option<String>,
     pub(crate) dictionary_locale: Option<String>,
+    pub(crate) compile_dir: Option<String>,
 }
 
 impl FolderFields {
@@ -44,6 +45,10 @@ impl FolderFields {
             tex_flavor: trimmed(object, "tex_flavor"),
             dictionary_locale: trimmed(object, "dictionary_locale")
                 .filter(|locale| locale_token(locale)),
+            compile_dir: object
+                .get("compile_dir")
+                .and_then(Value::as_str)
+                .and_then(folder_directory),
         })
     }
 }
@@ -55,6 +60,17 @@ fn trimmed(object: &Map<String, Value>, key: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_owned)
+}
+
+fn folder_directory(value: &str) -> Option<String> {
+    if value.contains('\\') || Path::new(value).is_absolute() {
+        return None;
+    }
+    let parts: Vec<&str> = value
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect();
+    (!parts.is_empty() && !parts.contains(&"..")).then(|| parts.join("/"))
 }
 
 fn locale_token(value: &str) -> bool {
@@ -389,6 +405,8 @@ pub(crate) struct FolderSettings<'a> {
     pub(crate) tex_flavor: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) dictionary_locale: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) compile_dir: Option<&'a str>,
 }
 
 fn settings_write_failed(detail: impl ToString) -> String {
@@ -498,6 +516,7 @@ mod tests {
                 engine: Some("xetex".into()),
                 tex_flavor: Some("xelatex".into()),
                 dictionary_locale: None,
+                compile_dir: None,
             })
         );
     }
@@ -676,6 +695,7 @@ mod tests {
             engine: "xetex",
             tex_flavor: None,
             dictionary_locale: Some("en-GB"),
+            compile_dir: None,
         };
         create_folder_manifest(folder.path(), &settings).unwrap();
         assert_eq!(
@@ -714,6 +734,7 @@ mod tests {
                 engine: "xetex",
                 tex_flavor: None,
                 dictionary_locale: None,
+                compile_dir: None,
             },
         );
         std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();

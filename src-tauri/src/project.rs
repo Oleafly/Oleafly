@@ -738,12 +738,105 @@ fn write_routed_meta(
 ) -> Result<(), String> {
     if let (Route::Split { location, folder }, MetaWrite::Explicit(chosen)) = (route, intent) {
         let effective = read_routed_meta(project_id, route)?;
-        let changes = shared_field_changes(&effective, folder, meta, chosen);
+        let mut changes = shared_field_changes(&effective, folder, meta, chosen);
+        if changes.iter().any(|change| {
+            matches!(
+                change,
+                crate::project_manifest::FieldChange::Set("main_doc", _)
+            )
+        }) {
+            changes.extend(compile_dir_change(
+                &location.root,
+                folder.compile_dir.as_deref(),
+                &folder.main_doc,
+                &meta.main_doc,
+            ));
+        }
         if !changes.is_empty() {
             crate::project_manifest::write_folder_fields(&location.root, &changes)?;
         }
     }
-    write_meta_at_if_changed(&route.location().manifest_path(), meta).map(|_| ())
+    let path = route.location().manifest_path();
+    match route {
+        Route::Library(location) => {
+            write_meta_at_if_changed(&path, &library_meta_to_write(&location.root, &path, meta))
+        }
+        _ => write_meta_at_if_changed(&path, meta),
+    }
+    .map(|_| ())
+}
+
+fn library_meta_to_write<'a>(
+    root: &Path,
+    manifest: &Path,
+    meta: &'a ProjectMeta,
+) -> std::borrow::Cow<'a, ProjectMeta> {
+    use crate::project_manifest::FieldChange;
+    use std::borrow::Cow;
+    let Some(declared) = meta
+        .extra
+        .get("compile_dir")
+        .and_then(serde_json::Value::as_str)
+    else {
+        return Cow::Borrowed(meta);
+    };
+    let Some(stored_main) = std::fs::read(manifest)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<ProjectMeta>(&bytes).ok())
+        .map(|stored| stored.main_doc)
+        .filter(|stored| *stored != meta.main_doc)
+    else {
+        return Cow::Borrowed(meta);
+    };
+    let Some(change) = compile_dir_change(root, Some(declared), &stored_main, &meta.main_doc)
+    else {
+        return Cow::Borrowed(meta);
+    };
+    let mut next = meta.clone();
+    match change {
+        FieldChange::Set(key, directory) => {
+            next.extra.insert(key.to_owned(), directory.into());
+        }
+        FieldChange::Remove(key) => {
+            next.extra.remove(key);
+        }
+    }
+    Cow::Owned(next)
+}
+
+fn compile_dir_change(
+    root: &Path,
+    declared_dir: Option<&str>,
+    declared_main: &str,
+    main_doc: &str,
+) -> Option<crate::project_manifest::FieldChange> {
+    use crate::project_manifest::FieldChange;
+    let real = |directory: &str| {
+        std::fs::symlink_metadata(root.join(directory)).is_ok_and(|metadata| metadata.is_dir())
+    };
+    let holds_main =
+        |directory: &str| Path::new(main_doc).starts_with(directory) && real(directory);
+    if let Some(directory) = declared_dir {
+        if holds_main(directory) {
+            return None;
+        }
+        let moved = (!real(directory))
+            .then(|| declared_main.strip_prefix(directory)?.strip_prefix('/'))
+            .flatten()
+            .and_then(|inside| main_doc.strip_suffix(inside)?.strip_suffix('/'))
+            .filter(|moved| holds_main(moved));
+        if let Some(moved) = moved {
+            return Some(FieldChange::Set("compile_dir", moved.to_owned()));
+        }
+    }
+    Some(
+        match oleafly_core::compile_dir_for(root, main_doc)
+            .filter(|directory| holds_main(directory))
+        {
+            Some(directory) => FieldChange::Set("compile_dir", directory),
+            None => FieldChange::Remove("compile_dir"),
+        },
+    )
 }
 
 fn shared_field_changes(
@@ -2279,7 +2372,13 @@ fn rename_path_and_update_meta(
     meta.engine = selected_engine;
     meta.main_doc = main_doc;
     let written = match crate::project_manifest::route(location.clone()) {
-        Route::Library(_) => write_meta_at(&location.manifest_path(), &meta),
+        Route::Library(_) => {
+            let manifest = location.manifest_path();
+            write_meta_at(
+                &manifest,
+                &library_meta_to_write(&location.root, &manifest, &meta),
+            )
+        }
         route => write_routed_meta(
             &location.id,
             &route,
@@ -3611,6 +3710,7 @@ fn save_project_settings_to_folder_blocking(
             if !project_main_file_is_usable(project_id, &meta.main_doc) {
                 return Err(crate::app_error::AppError::new("project.settings_need_main").into());
             }
+            let compile_dir = location.compile_search_relative(&meta.main_doc);
             crate::project_manifest::create_folder_manifest(
                 &location.root,
                 &crate::project_manifest::FolderSettings {
@@ -3619,6 +3719,7 @@ fn save_project_settings_to_folder_blocking(
                     engine: &meta.engine,
                     tex_flavor: meta.tex_flavor.as_deref(),
                     dictionary_locale: meta.dictionary_locale.as_deref(),
+                    compile_dir: compile_dir.as_deref(),
                 },
             )?;
             write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
@@ -4483,7 +4584,7 @@ pub async fn import_overleaf_project(name: Option<String>, path: String) -> Resu
 }
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, path, |_| Ok(()))
+    import_overleaf_project_blocking_with(name, path, |_| None, |_| Ok(()))
 }
 
 /// Import an already-unpacked directory tree as a new project (shared by the
@@ -4491,13 +4592,15 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
 pub(crate) fn import_project_directory_blocking(
     name: Option<String>,
     dir: &str,
+    fallback_main: fn(&Path) -> Option<String>,
 ) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, dir, |_| Ok(()))
+    import_overleaf_project_blocking_with(name, dir, fallback_main, |_| Ok(()))
 }
 
 fn import_overleaf_project_blocking_with(
     name: Option<String>,
     path: &str,
+    fallback_main: fn(&Path) -> Option<String>,
     finalize: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<String, String> {
     let source = PathBuf::from(path);
@@ -4530,7 +4633,10 @@ fn import_overleaf_project_blocking_with(
                 meta
             }
             _ => {
-                let main_doc = infer_main_document(&dir)?;
+                let main_doc = match infer_main_document(&dir) {
+                    Ok(main_doc) => main_doc,
+                    Err(error) => fallback_main(&dir).ok_or(error)?,
+                };
                 let engine =
                     engine_for_untrusted_project(&main_doc).unwrap_or_else(|_| default_engine());
                 ProjectMeta {
@@ -4567,8 +4673,12 @@ pub(crate) fn import_project_zip_bytes_with(
     let archive = unique_temporary_path(&root, ".oleafly-repository-import")?;
     atomic_write(&archive, bytes)
         .map_err(|error| format!("could not stage the repository archive: {error}"))?;
-    let result =
-        import_overleaf_project_blocking_with(Some(name), &archive.to_string_lossy(), finalize);
+    let result = import_overleaf_project_blocking_with(
+        Some(name),
+        &archive.to_string_lossy(),
+        |_| None,
+        finalize,
+    );
     let _ = std::fs::remove_file(archive);
     result
 }
@@ -7336,6 +7446,193 @@ mod tests {
                 .manifest()
                 .main_doc,
             "paper.tex"
+        );
+    }
+
+    fn write_nested_paper(folder: &Path) {
+        std::fs::create_dir_all(folder.join("paper/sections")).unwrap();
+        std::fs::write(
+            folder.join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(folder.join("paper/sections/intro.tex"), "Intro.").unwrap();
+    }
+
+    #[test]
+    fn main_document_changes_keep_the_folder_compile_dir_usable_by_the_cli() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("repo");
+        write_nested_paper(&folder);
+        std::fs::write(
+            folder.join("top.tex"),
+            "\\documentclass{article}\n\\begin{document}\nTop.\n\\end{document}\n",
+        )
+        .unwrap();
+        oleafly_core::Workspace::init(
+            &folder,
+            oleafly_core::InitOptions {
+                main_document: Some("paper/main.tex".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let manifest = || -> serde_json::Value {
+            serde_json::from_str(&std::fs::read_to_string(folder.join("project.json")).unwrap())
+                .unwrap()
+        };
+        let declared = || {
+            let value = manifest();
+            (
+                value["main_doc"].as_str().map(str::to_owned),
+                value
+                    .get("compile_dir")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_owned),
+            )
+        };
+        let cli_opens = || {
+            oleafly_core::Workspace::open(&folder)
+                .map(|workspace| workspace.compile_directory())
+                .map_err(|error| error.to_string())
+        };
+        assert_eq!(
+            declared(),
+            (Some("paper/main.tex".into()), Some("paper".into()))
+        );
+
+        super::rename_file_blocking(
+            project_id.clone(),
+            "paper".into(),
+            "thesis".into(),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            declared(),
+            (Some("thesis/main.tex".into()), Some("thesis".into()))
+        );
+        assert_eq!(cli_opens(), Ok(folder.join("thesis")));
+
+        set_main_doc_unlocked(project_id.clone(), "top.tex".into()).unwrap();
+        assert_eq!(declared(), (Some("top.tex".into()), None));
+        assert_eq!(cli_opens(), Ok(folder.clone()));
+
+        set_main_doc_unlocked(project_id.clone(), "thesis/main.tex".into()).unwrap();
+        assert_eq!(
+            declared(),
+            (Some("thesis/main.tex".into()), Some("thesis".into()))
+        );
+        assert_eq!(cli_opens(), Ok(folder.join("thesis")));
+
+        std::fs::write(
+            folder.join("thesis/appendix.tex"),
+            "\\documentclass{article}\n\\begin{document}\nA.\n\\end{document}\n",
+        )
+        .unwrap();
+        set_main_doc_unlocked(project_id.clone(), "thesis/appendix.tex".into()).unwrap();
+        assert_eq!(
+            declared(),
+            (Some("thesis/appendix.tex".into()), Some("thesis".into()))
+        );
+        assert_eq!(cli_opens(), Ok(folder.join("thesis")));
+    }
+
+    #[test]
+    fn saving_project_settings_records_the_compile_dir_of_a_nested_main() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("repo");
+        write_nested_paper(&folder);
+        set_main_doc_unlocked(project_id.clone(), "paper/main.tex".into()).unwrap();
+        super::save_project_settings_to_folder_blocking(&project_id).unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(folder.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(saved["main_doc"], "paper/main.tex");
+        assert_eq!(saved["compile_dir"], "paper");
+        assert_eq!(
+            oleafly_core::Workspace::open(&folder)
+                .unwrap()
+                .compile_directory(),
+            folder.join("paper")
+        );
+    }
+
+    #[test]
+    fn a_library_main_document_change_keeps_an_imported_compile_dir_usable_by_the_cli() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("library-compile-dir");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let source = data.join("repository");
+        write_nested_paper(&source);
+        std::fs::write(
+            source.join("top.tex"),
+            "\\documentclass{article}\n\\begin{document}\nTop.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            source.join("project.json"),
+            r#"{"name":"Repository","main_doc":"paper/main.tex","engine":"latexmk","compile_dir":"paper"}"#,
+        )
+        .unwrap();
+        let project_id =
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy()).unwrap();
+        let project = crate::paths::project_dir(&project_id)
+            .unwrap()
+            .canonicalize()
+            .unwrap();
+        let declared = || {
+            let value: serde_json::Value = serde_json::from_str(
+                &std::fs::read_to_string(project.join("project.json")).unwrap(),
+            )
+            .unwrap();
+            (
+                value["main_doc"].as_str().map(str::to_owned),
+                value
+                    .get("compile_dir")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_owned),
+            )
+        };
+        let cli_opens = || {
+            oleafly_core::Workspace::open(&project)
+                .map(|workspace| workspace.compile_directory())
+                .map_err(|error| error.to_string())
+        };
+        let outcome = (|| {
+            let mut steps = vec![(declared(), cli_opens())];
+            super::rename_file_blocking(
+                project_id.clone(),
+                "paper".into(),
+                "thesis".into(),
+                None,
+                None,
+            )?;
+            steps.push((declared(), cli_opens()));
+            set_main_doc_unlocked(project_id.clone(), "top.tex".into())?;
+            steps.push((declared(), cli_opens()));
+            set_main_doc_unlocked(project_id.clone(), "thesis/main.tex".into())?;
+            steps.push((declared(), cli_opens()));
+            Ok::<_, String>(steps)
+        })();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        let steps = outcome.unwrap();
+        std::fs::remove_dir_all(&data).unwrap();
+        assert_eq!(
+            steps,
+            [
+                (
+                    (Some("paper/main.tex".into()), Some("paper".into())),
+                    Ok(project.join("paper"))
+                ),
+                (
+                    (Some("thesis/main.tex".into()), Some("thesis".into())),
+                    Ok(project.join("thesis"))
+                ),
+                ((Some("top.tex".into()), None), Ok(project.clone())),
+                ((Some("thesis/main.tex".into()), None), Ok(project.clone())),
+            ]
         );
     }
 
@@ -12010,6 +12307,91 @@ mod tests {
         std::fs::write(dir.join("fragment.tex"), "\\section{Only}\n").unwrap();
         let error = infer_main_document(&dir).unwrap_err();
         assert!(error.contains("project.import_no_main"), "{error}");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_keeps_a_main_whose_class_and_begin_both_live_in_an_input() {
+        let dir = test_dir("infer-main-header-input");
+        std::fs::write(
+            dir.join("main.tex"),
+            "\\input{header}\nText.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("header.tex"),
+            "\\documentclass{article}\n\\begin{document}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("TODO.md"), "# Todo\n\n- tables\n").unwrap();
+        std::fs::write(dir.join("sketch.typ"), "= Sketch\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "main.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn folder_import_accepts_a_main_built_from_its_inputs_and_a_plain_tex_paper() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("import-split-and-plain");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let split = data.join("split-source");
+        std::fs::create_dir_all(&split).unwrap();
+        std::fs::write(split.join("main.tex"), "\\input{setup}\n\\input{body}\n").unwrap();
+        std::fs::write(split.join("setup.tex"), "\\documentclass{article}\n").unwrap();
+        std::fs::write(
+            split.join("body.tex"),
+            "\\begin{document}\nText.\n\\end{document}\n",
+        )
+        .unwrap();
+        let plain = data.join("plain-source");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(
+            plain.join("paper.tex"),
+            "\\input harvmac\n\\Title{Plain}\n\\bye\n",
+        )
+        .unwrap();
+        let mains = [split, plain].map(|source| {
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy())
+                .and_then(|project_id| read_meta(&project_id).map(|meta| meta.main_doc))
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(&data).unwrap();
+        assert_eq!(
+            mains,
+            [Ok("main.tex".to_string()), Ok("paper.tex".to_string())]
+        );
+    }
+
+    #[test]
+    fn infer_main_document_keeps_a_main_whose_class_or_body_lives_in_an_input() {
+        let dir = test_dir("infer-main-split-document");
+        std::fs::write(
+            dir.join("main.tex"),
+            "\\input{setup}\n\\begin{document}\nText.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("setup.tex"), "\\documentclass{article}\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "main.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+
+        let dir = test_dir("infer-main-split-body");
+        std::fs::write(
+            dir.join("main.tex"),
+            "\\documentclass{article}\n\\input{content}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("content.tex"),
+            "\\begin{document}\nText.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("TODO.md"), "# Todo\n\n- figures\n").unwrap();
+        std::fs::write(
+            dir.join("supplement.tex"),
+            "\\documentclass{article}\n\\begin{document}\nS.\n\\end{document}\n",
+        )
+        .unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "main.tex");
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -97,13 +97,21 @@ impl ProjectLocation {
         if self.kind != ProjectKind::Linked {
             return None;
         }
+        let declared = match crate::project_manifest::inspect_folder_manifest(&self.root) {
+            crate::project_manifest::FolderManifest::Oleafly(folder) => folder
+                .compile_dir
+                .filter(|directory| Path::new(main_doc).starts_with(directory)),
+            _ => None,
+        };
         let recorded = self
             .compile_dir
             .strip_prefix(&self.root)
             .ok()
             .map(|relative| relative.to_string_lossy().replace('\\', "/"))
             .filter(|relative| !relative.is_empty());
-        let relative = recorded.or_else(|| oleafly_core::compile_dir_for(&self.root, main_doc))?;
+        let relative = declared
+            .or(recorded)
+            .or_else(|| oleafly_core::compile_dir_for(&self.root, main_doc))?;
         let directory = relative
             .split('/')
             .filter(|part| !part.is_empty())
@@ -111,6 +119,12 @@ impl ProjectLocation {
         let canonical = directory.canonicalize().ok()?;
         (canonical == directory && canonical.is_dir() && canonical != self.root)
             .then_some(canonical)
+    }
+
+    pub(crate) fn compile_search_relative(&self, main_doc: &str) -> Option<String> {
+        let directory = self.compile_search_dir(main_doc)?;
+        let relative = directory.strip_prefix(&self.root).ok()?;
+        Some(relative.to_string_lossy().replace('\\', "/"))
     }
 }
 
@@ -576,6 +590,52 @@ mod tests {
         std::fs::write(library.join("paper/sections/intro.tex"), "Intro.").unwrap();
         assert_eq!(
             locate("library")
+                .unwrap()
+                .compile_search_dir("paper/main.tex"),
+            None
+        );
+    }
+
+    #[test]
+    fn a_compile_dir_declared_in_the_folder_manifest_is_searched() {
+        let fixture = Fixture::new();
+        let folder = fixture.folder("repo");
+        std::fs::create_dir_all(folder.join("paper/sections")).unwrap();
+        std::fs::create_dir_all(folder.join("shared")).unwrap();
+        std::fs::write(
+            folder.join("paper/main.tex"),
+            "\\documentclass{article}\n\\input{shared/macros}\n\\input{shared/more}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(folder.join("paper/sections/intro.tex"), "Intro.").unwrap();
+        std::fs::write(folder.join("shared/macros.tex"), "").unwrap();
+        std::fs::write(folder.join("shared/more.tex"), "").unwrap();
+        std::fs::write(folder.join("top.tex"), "\\documentclass{article}\n").unwrap();
+        let record = register_folder_for_test(&folder);
+        assert_eq!(
+            locate(&record.id)
+                .unwrap()
+                .compile_search_dir("paper/main.tex"),
+            None
+        );
+        std::fs::write(
+            folder.join(MANIFEST_FILE),
+            "{\"main_doc\":\"paper/main.tex\",\"compile_dir\":\"paper\"}",
+        )
+        .unwrap();
+        let location = locate(&record.id).unwrap();
+        assert_eq!(
+            location.compile_search_dir("paper/main.tex"),
+            Some(folder.join("paper"))
+        );
+        assert_eq!(location.compile_search_dir("top.tex"), None);
+        std::fs::write(
+            folder.join(MANIFEST_FILE),
+            "{\"main_doc\":\"paper/main.tex\",\"compile_dir\":\"../outside\"}",
+        )
+        .unwrap();
+        assert_eq!(
+            locate(&record.id)
                 .unwrap()
                 .compile_search_dir("paper/main.tex"),
             None

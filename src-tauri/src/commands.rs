@@ -370,14 +370,13 @@ pub async fn compile_project(
     )
     .await?;
     let prepared_spec = match location.compile_search_dir(&main_doc) {
-        Some(compile_dir) if engine.id() == crate::document_engine::DocumentEngineId::Latex => {
-            crate::document_engine::search_compile_directory_first(
-                prepared_spec,
-                &project_dir,
-                &compile_dir,
-            )
-        }
-        _ => prepared_spec,
+        Some(compile_dir) => crate::document_engine::place_in_compile_directory(
+            engine.id(),
+            prepared_spec,
+            &project_dir,
+            &compile_dir,
+        )?,
+        None => prepared_spec,
     };
     crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)?;
     drop(worktree);

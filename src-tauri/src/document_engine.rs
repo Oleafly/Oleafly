@@ -1788,7 +1788,7 @@ async fn finish_compile(
     if let Some(main_document) =
         image_check_main_document(request.engine.id(), request.target, ok, stopped)
     {
-        explain_image_failures(&spec.working_dir, main_document, &mut log, &mut errors).await;
+        explain_image_failures(request.project_dir, main_document, &mut log, &mut errors).await;
     }
     let root_file = match request.target {
         CompileTarget::Main { main_document } => Some(main_document.to_string()),
@@ -1798,6 +1798,7 @@ async fn finish_compile(
         request.engine.id(),
         log,
         root_file,
+        request.project_dir.to_owned(),
         spec.working_dir.clone(),
         errors,
     )
@@ -1883,6 +1884,7 @@ async fn parse_log_diagnostics(
     log: String,
     root_file: Option<String>,
     project_dir: PathBuf,
+    log_dir: PathBuf,
     mut errors: Vec<CompileError>,
 ) -> Result<ParsedCompileLog, String> {
     let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
@@ -1894,6 +1896,13 @@ async fn parse_log_diagnostics(
             Some(root) => oleafly_core::parse_latex_log(&log, Some(root)),
             None => Vec::new(),
         };
+        rebase_log_files(
+            &project_dir,
+            &log_dir,
+            root_file.as_deref(),
+            &mut errors,
+            &mut diagnostics,
+        );
         resolve_extensionless_inputs(&project_dir, &mut errors, &mut diagnostics);
         (log, diagnostics, errors)
     })
@@ -1911,6 +1920,42 @@ fn with_tex_extension(project_dir: &Path, file: &str) -> Option<String> {
         .join(format!("{relative}.tex"))
         .is_file()
         .then(|| format!("{file}.tex"))
+}
+
+fn rebase_log_files(
+    project_dir: &Path,
+    log_dir: &Path,
+    root_file: Option<&str>,
+    errors: &mut [CompileError],
+    diagnostics: &mut [oleafly_core::LogDiagnostic],
+) {
+    let Some(base) = log_dir
+        .strip_prefix(project_dir)
+        .ok()
+        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+        .filter(|base| !base.is_empty())
+    else {
+        return;
+    };
+    let rebase = |file: &mut Option<String>| {
+        let Some(name) = file.as_deref() else {
+            return;
+        };
+        if Some(name) == root_file || Path::new(name).is_absolute() {
+            return;
+        }
+        let mut relative = name;
+        while let Some(rest) = relative.strip_prefix("./") {
+            relative = rest;
+        }
+        *file = Some(format!("{base}/{relative}"));
+    };
+    for error in errors.iter_mut() {
+        rebase(&mut error.file);
+    }
+    for diagnostic in diagnostics.iter_mut() {
+        rebase(&mut diagnostic.file);
+    }
 }
 
 fn resolve_extensionless_inputs(
@@ -2987,6 +3032,49 @@ fn tectonic_args(
     args
 }
 
+pub(crate) fn place_in_compile_directory(
+    engine: DocumentEngineId,
+    spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> Result<EngineCompileSpec, String> {
+    match engine {
+        DocumentEngineId::Latex => Ok(search_compile_directory_first(
+            spec,
+            project_dir,
+            compile_dir,
+        )),
+        DocumentEngineId::Latexmk => {
+            run_latexmk_from_compile_directory(spec, project_dir, compile_dir)
+        }
+        _ => Ok(spec),
+    }
+}
+
+fn run_latexmk_from_compile_directory(
+    mut spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> Result<EngineCompileSpec, String> {
+    let EngineInput::Direct(input) = &spec.input else {
+        return Ok(spec);
+    };
+    let Ok(entry) = input.strip_prefix(compile_dir) else {
+        return Ok(spec);
+    };
+    if !compile_dir.starts_with(project_dir) || spec.artifacts.output_dir.starts_with(project_dir) {
+        return Ok(spec);
+    }
+    let from_root = latexmk_path_arg(project_dir, input, None, "input")?;
+    let from_compile_dir = latexmk_relative_path_arg(entry)?;
+    let Some(last) = spec.args.last_mut().filter(|last| **last == from_root) else {
+        return Ok(spec);
+    };
+    *last = from_compile_dir;
+    spec.working_dir = compile_dir.to_owned();
+    Ok(spec)
+}
+
 pub(crate) fn search_compile_directory_first(
     mut spec: EngineCompileSpec,
     project_dir: &Path,
@@ -3652,6 +3740,61 @@ mod tests {
             diagnostics[0].file.as_deref(),
             Some("./kapitoly/\u{fa}vod.tex")
         );
+    }
+
+    #[test]
+    fn log_files_of_a_nested_latexmk_run_are_named_from_the_project_root() {
+        let project = latexmk_test_home().join("repo");
+        let error = |file: &str| CompileError {
+            line: Some(3),
+            file: Some(file.to_string()),
+            message: "Undefined control sequence.".into(),
+            kind: "error".into(),
+            explanation: None,
+        };
+        let absolute = latexmk_test_home().join("texmf").join("article.cls");
+        let absolute = absolute.to_string_lossy().into_owned();
+        let mut errors = vec![
+            error("./sections/intro.tex"),
+            error("main.tex"),
+            error("paper/main.tex"),
+            error(&absolute),
+        ];
+        let mut diagnostics = oleafly_core::parse_latex_log(
+            "(./main.tex (./sections/intro.tex\n! Undefined control sequence.\nl.3 \\bad\n\n))",
+            Some("paper/main.tex"),
+        );
+        rebase_log_files(
+            &project,
+            &project.join("paper"),
+            Some("paper/main.tex"),
+            &mut errors,
+            &mut diagnostics,
+        );
+        let files: Vec<_> = errors.iter().map(|error| error.file.as_deref()).collect();
+        assert_eq!(
+            files,
+            [
+                Some("paper/sections/intro.tex"),
+                Some("paper/main.tex"),
+                Some("paper/main.tex"),
+                Some(absolute.as_str()),
+            ]
+        );
+        assert_eq!(
+            diagnostics[0].file.as_deref(),
+            Some("paper/sections/intro.tex")
+        );
+
+        let mut untouched = vec![error("./sections/intro.tex")];
+        rebase_log_files(
+            &project,
+            &project,
+            Some("main.tex"),
+            &mut untouched,
+            &mut [],
+        );
+        assert_eq!(untouched[0].file.as_deref(), Some("./sections/intro.tex"));
     }
 
     #[test]
@@ -5305,6 +5448,105 @@ mod tests {
         }
     }
 
+    fn latexmk_spec_for_test(
+        project: &Path,
+        build: &Path,
+        main_document: &str,
+    ) -> EngineCompileSpec {
+        let input = project.join(main_document);
+        let (args, environment) = latexmk_invocation(
+            project,
+            build,
+            &input,
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        )
+        .unwrap();
+        EngineCompileSpec {
+            executable: EngineExecutable::ExternalPath(PathBuf::from("latexmk")),
+            args,
+            input: EngineInput::Direct(input),
+            artifacts: LATEX_ENGINE.artifacts(build, CompileTarget::Main { main_document }),
+            working_dir: project.to_owned(),
+            environment,
+        }
+    }
+
+    #[test]
+    fn a_nested_compile_directory_becomes_the_latexmk_working_directory() {
+        let home = latexmk_test_home();
+        let project = home.join("repo");
+        let paper = project.join("paper");
+        let build = home
+            .join(".oleafly")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let absolute = build.to_str().unwrap().replace('\\', "/");
+        let spec = latexmk_spec_for_test(&project, &build, "paper/main.tex");
+        assert_eq!(spec.args.last().unwrap(), "./paper/main.tex");
+        let placed =
+            place_in_compile_directory(DocumentEngineId::Latexmk, spec.clone(), &project, &paper)
+                .unwrap();
+        assert_eq!(placed.working_dir, paper);
+        assert_eq!(placed.args.last().unwrap(), "./main.tex");
+        assert!(placed.args.contains(&format!("-outdir={absolute}")));
+        assert_eq!(placed.args.len(), spec.args.len());
+        assert_eq!(placed.environment, spec.environment);
+
+        let outside = latexmk_spec_for_test(&project, &build, "top.tex");
+        let kept = place_in_compile_directory(
+            DocumentEngineId::Latexmk,
+            outside.clone(),
+            &project,
+            &paper,
+        )
+        .unwrap();
+        assert_eq!(
+            (kept.working_dir, kept.args),
+            (outside.working_dir, outside.args)
+        );
+
+        let in_tree = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &in_tree,
+            &paper.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        let library = EngineCompileSpec {
+            args,
+            environment,
+            artifacts: LATEX_ENGINE.artifacts(
+                &in_tree,
+                CompileTarget::Main {
+                    main_document: "paper/main.tex",
+                },
+            ),
+            ..spec
+        };
+        let kept = place_in_compile_directory(
+            DocumentEngineId::Latexmk,
+            library.clone(),
+            &project,
+            &paper,
+        )
+        .unwrap();
+        assert_eq!(
+            (kept.working_dir, kept.args),
+            (library.working_dir, library.args)
+        );
+    }
+
     #[test]
     fn latexmk_absolute_paths_refuse_what_latexmk_would_hand_to_a_shell() {
         for safe in [
@@ -5383,6 +5625,90 @@ mod tests {
             "\\documentclass{article}\n\\usepackage{makeidx}\n\\makeindex\n\\begin{document}\nHello \\cite{knuth}\\index{hello}.\n\\input{sections/intro}\n\\include{chapters/one}\n\\bibliographystyle{plain}\n\\bibliography{refs}\n\\printindex\n\\end{document}\n"
         };
         std::fs::write(project.join("main.tex"), main).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_builds_a_nested_main_from_its_own_folder() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let biber_works = crate::tex_distro::find_tex_tool("biber").is_some_and(|biber| {
+            std::process::Command::new(biber)
+                .arg("--version")
+                .output()
+                .is_ok_and(|output| output.status.success())
+        });
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let base = scratch.path().canonicalize().unwrap();
+        let project = base.join("folders").join("Bob's repo");
+        let paper = project.join("paper");
+        let out = base.join(".oleafly/linked/linked-0123456789abcdef0123456789abcdef/build");
+        for (flavor, biber) in [
+            (LatexmkFlavor::Pdflatex, false),
+            (LatexmkFlavor::Xelatex, false),
+            (LatexmkFlavor::Lualatex, false),
+            (LatexmkFlavor::Pdflatex, true),
+        ] {
+            if biber && !biber_works {
+                continue;
+            }
+            let _ = std::fs::remove_dir_all(&project);
+            let _ = std::fs::remove_dir_all(&out);
+            write_real_tex_fixture(&paper, biber);
+            std::fs::create_dir_all(&out).unwrap();
+            let before = crate::linked_registry::folder_snapshot_for_test(&project);
+            let spec = LATEXMK_ENGINE
+                .compile_spec(
+                    &out,
+                    &project,
+                    CompileTarget::Main {
+                        main_document: "paper/main.tex",
+                    },
+                    CompileOptions {
+                        latex_flavor: Some(flavor),
+                        external_build: true,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+            let spec =
+                place_in_compile_directory(DocumentEngineId::Latexmk, spec, &project, &paper)
+                    .unwrap();
+            let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+                unreachable!()
+            };
+            let (log, code) = run_supervised_process_with_environment(
+                latexmk,
+                &spec.args,
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &spec.environment,
+            )
+            .await
+            .unwrap();
+            let case = format!("{flavor:?} biber={biber}");
+            assert_eq!(code, Some(0), "{case}\n{log}");
+            assert!(out.join("_oleafly_entry.pdf").is_file(), "{case}");
+            assert!(
+                std::fs::read_to_string(out.join("_oleafly_entry.bbl"))
+                    .unwrap()
+                    .contains("Knuth"),
+                "{case}"
+            );
+            assert!(out.join("chapters").join("one.aux").is_file(), "{case}");
+            assert_eq!(
+                crate::linked_registry::folder_snapshot_for_test(&project),
+                before,
+                "{case}"
+            );
+        }
     }
 
     #[cfg(unix)]
@@ -5702,6 +6028,7 @@ mod tests {
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
                 PathBuf::new(),
+                PathBuf::new(),
                 Vec::new(),
             )
             .await
@@ -5718,6 +6045,7 @@ mod tests {
             DIAGNOSTIC_LOG.to_string(),
             None,
             PathBuf::new(),
+            PathBuf::new(),
             Vec::new(),
         )
         .await
@@ -5733,6 +6061,7 @@ mod tests {
                 engine,
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
+                PathBuf::new(),
                 PathBuf::new(),
                 Vec::new(),
             )
@@ -5762,6 +6091,7 @@ mod tests {
             DocumentEngineId::Latex,
             String::new(),
             Some("main.tex".to_string()),
+            PathBuf::new(),
             PathBuf::new(),
             Vec::new(),
         )
