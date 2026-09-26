@@ -551,6 +551,7 @@
         "calculating": "正在計算儲存空間用量…",
         "desktopOnly": "儲存空間詳情只能在桌面應用程式中查看。",
         "error": "無法計算儲存空間詳情。",
+        "linkedFolders_other": "{{count}} 個已開啟資料夾的建置輸出與設定共 {{size}}",
         "refresh": "重新整理儲存空間用量",
         "stats": {
           "appData": "應用程式資料",

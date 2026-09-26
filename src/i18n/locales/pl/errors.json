@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nie ma pliku wykonywalnego {{name}} zgodnego z tym systemem.",
-    "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie."
+    "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie.",
+    "latexmk_build_path": "latexmk nie może użyć folderu kompilacji Oleafly na tym komputerze, ponieważ jego ścieżka zawiera znaki, których latexmk nie akceptuje. Przełącz ten projekt na Tectonic, aby go skompilować.",
+    "latexmk_network_folder": "latexmk nie może skompilować folderu w udziale sieciowym. Przełącz ten projekt na Tectonic albo skopiuj folder na ten komputer."
   },
   "github": {
     "sign_in_expired": "Kod logowania wygasł. Spróbuj ponownie.",

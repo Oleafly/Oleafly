@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",
-    "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit."
+    "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit.",
+    "latexmk_build_path": "latexmk kan de buildmap van Oleafly op deze computer niet gebruiken, omdat het pad tekens bevat die latexmk niet accepteert. Zet dit project om naar Tectonic om het te compileren.",
+    "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer."
   },
   "github": {
     "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",

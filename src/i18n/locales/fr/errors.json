@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX ne fournit pas de binaire {{name}} compatible avec cet hôte.",
-    "package_operation_timeout": "L'opération sur les paquets a dépassé sa limite de {{span}} et a été interrompue, vous pouvez donc compiler à nouveau. Le miroir TeX Live est sans doute occupé. Réessayez plus tard ou lancez tlmgr vous-même."
+    "package_operation_timeout": "L'opération sur les paquets a dépassé sa limite de {{span}} et a été interrompue, vous pouvez donc compiler à nouveau. Le miroir TeX Live est sans doute occupé. Réessayez plus tard ou lancez tlmgr vous-même.",
+    "latexmk_build_path": "latexmk ne peut pas utiliser le dossier de compilation d'Oleafly sur cet ordinateur, car son chemin contient des caractères que latexmk n'accepte pas. Passez ce projet à Tectonic pour le compiler.",
+    "latexmk_network_folder": "latexmk ne peut pas compiler un dossier situé sur un partage réseau. Passez ce projet à Tectonic, ou copiez le dossier sur cet ordinateur."
   },
   "github": {
     "sign_in_expired": "Le code de connexion a expiré. Réessayez.",

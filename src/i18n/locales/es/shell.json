@@ -573,6 +573,9 @@
         "calculating": "Calculando el uso de almacenamiento…",
         "desktopOnly": "Los detalles de almacenamiento están disponibles en la aplicación de escritorio.",
         "error": "No se pudieron calcular los detalles de almacenamiento.",
+        "linkedFolders_one": "{{size}} de resultados de compilación y ajustes para {{count}} carpeta abierta",
+        "linkedFolders_many": "{{size}} de resultados de compilación y ajustes para {{count}} carpetas abiertas",
+        "linkedFolders_other": "{{size}} de resultados de compilación y ajustes para {{count}} carpetas abiertas",
         "refresh": "Actualizar el uso de almacenamiento",
         "stats": {
           "appData": "Datos de la aplicación",

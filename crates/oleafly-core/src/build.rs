@@ -72,4 +72,27 @@ mod tests {
         assert!(prepared.build_directory().ends_with(".oleafly/build"));
         assert_eq!(prepared.compile_directory(), prepared.project_root());
     }
+
+    #[test]
+    fn prepare_uses_an_external_build_directory() {
+        let directory = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.typ"), "= Paper").unwrap();
+        let workspace = Workspace::from_manifest_with_build(
+            directory.path(),
+            crate::ProjectManifest {
+                main_doc: "main.typ".into(),
+                engine: "typst".into(),
+                ..crate::ProjectManifest::default()
+            },
+            crate::BuildLocation::External(external.path().to_path_buf()),
+        )
+        .unwrap();
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(
+            prepared.build_directory(),
+            external.path().canonicalize().unwrap()
+        );
+        assert!(!directory.path().join(".oleafly").exists());
+    }
 }

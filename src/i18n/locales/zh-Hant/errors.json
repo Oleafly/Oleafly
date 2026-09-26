@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",
-    "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。"
+    "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。",
+    "latexmk_build_path": "Oleafly 在這台電腦上的建置資料夾路徑含有 latexmk 不接受的字元，因此 latexmk 無法使用它。請將此專案切換為 Tectonic 來編譯。",
+    "latexmk_network_folder": "latexmk 無法編譯網路共用上的資料夾。請將此專案切換為 Tectonic，或將資料夾複製到這台電腦。"
   },
   "github": {
     "sign_in_expired": "登入碼已過期。請再試一次。",

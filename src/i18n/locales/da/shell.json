@@ -562,6 +562,8 @@
         "calculating": "Beregner lagerforbrug…",
         "desktopOnly": "Oplysninger om lagerplads findes i skrivebordsappen.",
         "error": "Oplysningerne om lagerplads kunne ikke beregnes.",
+        "linkedFolders_one": "{{size}} byggeoutput og indstillinger for {{count}} åbnet mappe",
+        "linkedFolders_other": "{{size}} byggeoutput og indstillinger for {{count}} åbnede mapper",
         "refresh": "Opdater lagerforbruget",
         "stats": {
           "appData": "Appdata",

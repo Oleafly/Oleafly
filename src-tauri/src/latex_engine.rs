@@ -2000,6 +2000,7 @@ pub async fn compile_tagged(
     main_doc: String,
 ) -> Result<TaggedCompileResult, String> {
     let _guard = state.compile_lock.lock().await;
+    let _build = crate::build_hygiene::BuildInUse::claim(&project_id);
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let cancel_guard = TaggedCancelGuard::new(&state.compile_cancel);
     let plan = prepare_tagged_compile(project_id, main_doc).await?;

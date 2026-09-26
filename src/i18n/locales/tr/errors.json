@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX bu sistemle uyumlu bir {{name}} ikili dosyası içermiyor.",
-    "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın."
+    "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın.",
+    "latexmk_build_path": "latexmk bu bilgisayarda Oleafly'nin derleme klasörünü kullanamıyor, çünkü klasörün yolunda latexmk'nin kabul etmediği karakterler var. Derlemek için bu projeyi Tectonic'e geçirin.",
+    "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın."
   },
   "github": {
     "sign_in_expired": "Oturum açma kodunun süresi doldu. Yeniden deneyin.",

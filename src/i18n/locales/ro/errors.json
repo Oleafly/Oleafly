@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nu are un binar {{name}} compatibil cu acest sistem.",
-    "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr."
+    "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr.",
+    "latexmk_build_path": "latexmk nu poate folosi folderul de compilare Oleafly pe acest computer, deoarece calea lui conține caractere pe care latexmk nu le acceptă. Comută acest proiect pe Tectonic ca să-l poți compila.",
+    "latexmk_network_folder": "latexmk nu poate compila un folder aflat pe o partajare de rețea. Comută acest proiect pe Tectonic sau copiază folderul pe acest computer."
   },
   "github": {
     "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",

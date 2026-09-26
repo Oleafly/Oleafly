@@ -562,6 +562,8 @@
         "calculating": "Depolama kullanımı hesaplanıyor…",
         "desktopOnly": "Depolama ayrıntıları masaüstü uygulamasında görülebilir.",
         "error": "Depolama ayrıntıları hesaplanamadı.",
+        "linkedFolders_one": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
+        "linkedFolders_other": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
         "refresh": "Depolama kullanımını yenile",
         "stats": {
           "appData": "Uygulama verileri",

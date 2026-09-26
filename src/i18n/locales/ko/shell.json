@@ -551,6 +551,7 @@
         "calculating": "저장 공간 사용량을 계산하는 중…",
         "desktopOnly": "저장 공간 정보는 데스크톱 앱에서 볼 수 있습니다.",
         "error": "저장 공간 정보를 계산하지 못했습니다.",
+        "linkedFolders_other": "연 폴더 {{count}}개의 빌드 출력과 설정에 {{size}}",
         "refresh": "저장 공간 사용량 새로 고침",
         "stats": {
           "appData": "앱 데이터",

@@ -775,6 +775,14 @@ export function SettingsModal() {
         </Tooltip>
       </div>
       {renderStorageSummary()}
+      {storageSummary && storageSummary.linked_folder_count > 0 ? (
+        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+          {t(($) => $.shell.settings.data.storage.linkedFolders, {
+            count: storageSummary.linked_folder_count,
+            size: formatBytes(storageSummary.linked_folders_bytes),
+          })}
+        </p>
+      ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
         <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
           {t(($) => $.shell.settings.data.storage.unreadable, {

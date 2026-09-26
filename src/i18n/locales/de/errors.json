@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX enthält keine zum System passende {{name}}-Binärdatei.",
-    "package_operation_timeout": "Der Paketvorgang hat sein Limit von {{span}} überschritten und wurde beendet, damit Sie wieder kompilieren können. Vermutlich ist der TeX Live Mirror gerade ausgelastet. Versuchen Sie es später erneut oder führen Sie tlmgr selbst aus."
+    "package_operation_timeout": "Der Paketvorgang hat sein Limit von {{span}} überschritten und wurde beendet, damit Sie wieder kompilieren können. Vermutlich ist der TeX Live Mirror gerade ausgelastet. Versuchen Sie es später erneut oder führen Sie tlmgr selbst aus.",
+    "latexmk_build_path": "latexmk kann den Build-Ordner von Oleafly auf diesem Computer nicht verwenden, weil sein Pfad Zeichen enthält, die latexmk nicht akzeptiert. Stellen Sie dieses Projekt auf Tectonic um, um es zu kompilieren.",
+    "latexmk_network_folder": "latexmk kann keinen Ordner auf einer Netzwerkfreigabe kompilieren. Stellen Sie dieses Projekt auf Tectonic um oder kopieren Sie den Ordner auf diesen Computer."
   },
   "github": {
     "sign_in_expired": "Der Anmeldecode ist abgelaufen. Versuchen Sie es erneut.",

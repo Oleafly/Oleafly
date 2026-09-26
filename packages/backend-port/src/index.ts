@@ -381,6 +381,8 @@ export interface LibraryStorageSummary {
     image_count: number;
     pdf_count: number;
     unreadable_entries: number;
+    linked_folders_bytes: number;
+    linked_folder_count: number;
 }
 export interface RecycledProjectInfo {
     id: string;

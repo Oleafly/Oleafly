@@ -562,6 +562,8 @@
         "calculating": "Speicherbelegung wird berechnet…",
         "desktopOnly": "Angaben zum Speicher gibt es in der Desktop-App.",
         "error": "Die Angaben zum Speicher konnten nicht berechnet werden.",
+        "linkedFolders_one": "{{size}} Build-Ausgabe und Einstellungen für {{count}} geöffneten Ordner",
+        "linkedFolders_other": "{{size}} Build-Ausgabe und Einstellungen für {{count}} geöffnete Ordner",
         "refresh": "Speicherbelegung aktualisieren",
         "stats": {
           "appData": "App-Daten",

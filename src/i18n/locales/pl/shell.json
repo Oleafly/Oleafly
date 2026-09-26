@@ -584,6 +584,10 @@
         "calculating": "Obliczanie zajętości miejsca…",
         "desktopOnly": "Szczegóły przechowywania są dostępne w aplikacji desktopowej.",
         "error": "Nie udało się obliczyć szczegółów przechowywania.",
+        "linkedFolders_one": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
+        "linkedFolders_few": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_many": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_other": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
         "refresh": "Odśwież zajętość miejsca",
         "stats": {
           "appData": "Dane aplikacji",

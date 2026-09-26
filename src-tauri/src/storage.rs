@@ -77,6 +77,8 @@ pub struct LibraryStorageSummary {
     pub image_count: u64,
     pub pdf_count: u64,
     pub unreadable_entries: u64,
+    pub linked_folders_bytes: u64,
+    pub linked_folder_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -110,6 +112,7 @@ enum FileClass {
     Git,
     Build,
     RecycleBin,
+    LinkedFolders,
     AppData,
 }
 
@@ -134,6 +137,9 @@ fn is_project_build_file(relative: &Path) -> bool {
 fn classify_file(relative: &Path, in_projects: bool) -> FileClass {
     if relative.starts_with("recycle-bin") {
         return FileClass::RecycleBin;
+    }
+    if relative.starts_with("linked") {
+        return FileClass::LinkedFolders;
     }
     if !in_projects {
         return FileClass::AppData;
@@ -196,6 +202,22 @@ fn count_recycled_projects(recycle_root: &Path) -> u64 {
             entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false)
                 && entry.path().join(RECYCLE_MANIFEST).is_file()
                 && entry.path().join(RECYCLED_PROJECT_DIRECTORY).is_dir()
+        })
+        .count() as u64
+}
+
+fn count_linked_folders(linked_root: &Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(linked_root) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .filter(|entry| {
+            entry.file_type().is_ok_and(|kind| kind.is_dir())
+                && entry
+                    .path()
+                    .join(crate::linked_registry::LINK_FILE)
+                    .is_file()
         })
         .count() as u64
 }
@@ -271,6 +293,10 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
                 FileClass::RecycleBin => {
                     summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
                 }
+                FileClass::LinkedFolders => {
+                    summary.linked_folders_bytes =
+                        summary.linked_folders_bytes.saturating_add(bytes)
+                }
                 FileClass::AppData => {
                     summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes)
                 }
@@ -278,6 +304,7 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
         }
     }
     summary.recycled_project_count = count_recycled_projects(&root.join("recycle-bin"));
+    summary.linked_folder_count = count_linked_folders(&root.join("linked"));
     summary
 }
 
@@ -1481,9 +1508,31 @@ mod tests {
                 + summary.git_bytes
                 + summary.build_bytes
                 + summary.recycle_bin_bytes
-                + summary.app_data_bytes,
+                + summary.app_data_bytes
+                + summary.linked_folders_bytes,
             summary.total_bytes
         );
+    }
+
+    #[test]
+    fn storage_scan_reports_oleafly_data_for_opened_folders_separately() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let state = root.join("linked/linked-0123456789abcdef0123456789abcdef");
+        std::fs::create_dir_all(state.join("build")).unwrap();
+        std::fs::create_dir_all(root.join("linked/linked-ffffffffffffffffffffffffffffffff"))
+            .unwrap();
+        std::fs::write(state.join("link.json"), b"{}").unwrap();
+        std::fs::write(state.join("project.json"), b"{}").unwrap();
+        std::fs::write(state.join("build/_oleafly_entry.pdf"), b"pdf!").unwrap();
+        std::fs::write(root.join(".linked-registry.lock"), b"").unwrap();
+        let summary = scan_storage(root);
+        assert_eq!(summary.linked_folder_count, 1);
+        assert_eq!(summary.linked_folders_bytes, 8);
+        assert_eq!(summary.pdf_count, 0);
+        assert_eq!(summary.build_bytes, 0);
+        assert_eq!(summary.app_data_bytes, 0);
+        assert_eq!(summary.total_bytes, 8);
     }
 
     #[test]

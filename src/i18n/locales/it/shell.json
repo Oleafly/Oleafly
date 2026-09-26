@@ -573,6 +573,9 @@
         "calculating": "Calcolo dello spazio occupato…",
         "desktopOnly": "I dettagli sull'archiviazione sono disponibili nell'app desktop.",
         "error": "Non è stato possibile calcolare i dettagli sull'archiviazione.",
+        "linkedFolders_one": "{{size}} di output di compilazione e impostazioni per {{count}} cartella aperta",
+        "linkedFolders_many": "{{size}} di output di compilazione e impostazioni per {{count}} cartelle aperte",
+        "linkedFolders_other": "{{size}} di output di compilazione e impostazioni per {{count}} cartelle aperte",
         "refresh": "Aggiorna lo spazio occupato",
         "stats": {
           "appData": "Dati dell'app",

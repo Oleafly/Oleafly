@@ -573,6 +573,9 @@
         "calculating": "Se calculează spațiul folosit…",
         "desktopOnly": "Detaliile despre stocare sunt disponibile în aplicația desktop.",
         "error": "Detaliile despre stocare nu au putut fi calculate.",
+        "linkedFolders_one": "{{size}} de rezultate de compilare și setări pentru {{count}} folder deschis",
+        "linkedFolders_few": "{{size}} de rezultate de compilare și setări pentru {{count}} foldere deschise",
+        "linkedFolders_other": "{{size}} de rezultate de compilare și setări pentru {{count}} de foldere deschise",
         "refresh": "Reîmprospătează spațiul folosit",
         "stats": {
           "appData": "Datele aplicației",

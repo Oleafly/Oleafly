@@ -584,6 +584,10 @@
         "calculating": "Počítá se využití úložiště…",
         "desktopOnly": "Podrobnosti o úložišti jsou k dispozici v desktopové aplikaci.",
         "error": "Podrobnosti o úložišti se nepodařilo spočítat.",
+        "linkedFolders_one": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřenou složku",
+        "linkedFolders_few": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_many": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_other": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřených složek",
         "refresh": "Obnovit využití úložiště",
         "stats": {
           "appData": "Data aplikace",

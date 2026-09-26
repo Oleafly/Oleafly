@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX ei sisällä tälle järjestelmälle sopivaa {{name}}-ohjelmaa.",
-    "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse."
+    "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse.",
+    "latexmk_build_path": "latexmk ei voi käyttää Oleaflyn käännöskansiota tällä tietokoneella, koska sen polussa on merkkejä, joita latexmk ei hyväksy. Vaihda projektin kääntäjäksi Tectonic, niin voit kääntää sen.",
+    "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle."
   },
   "github": {
     "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",

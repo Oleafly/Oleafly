@@ -551,6 +551,7 @@
         "calculating": "正在计算存储用量…",
         "desktopOnly": "存储详情仅可在桌面应用中查看。",
         "error": "无法计算存储详情。",
+        "linkedFolders_other": "{{count}} 个已打开文件夹的构建输出和设置共占用 {{size}}。",
         "refresh": "刷新存储用量",
         "stats": {
           "appData": "应用数据",

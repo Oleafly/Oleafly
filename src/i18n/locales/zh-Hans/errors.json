@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
-    "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。"
+    "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。",
+    "latexmk_build_path": "Oleafly 在这台电脑上的构建文件夹路径包含 latexmk 不接受的字符，因此 latexmk 无法使用它。请将此项目切换到 Tectonic 进行编译。",
+    "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。"
   },
   "github": {
     "sign_in_expired": "登录代码已过期，请重试。",

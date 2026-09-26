@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil som passer denne maskinen.",
-    "package_operation_timeout": "Pakkeoperasjonen brukte mer enn {{span}} og ble stoppet, slik at du kan kompilere igjen. TeX Live-speilet er trolig opptatt. Prøv igjen senere, eller kjør tlmgr selv."
+    "package_operation_timeout": "Pakkeoperasjonen brukte mer enn {{span}} og ble stoppet, slik at du kan kompilere igjen. TeX Live-speilet er trolig opptatt. Prøv igjen senere, eller kjør tlmgr selv.",
+    "latexmk_build_path": "latexmk kan ikke bruke byggemappen til Oleafly på denne datamaskinen, fordi stien inneholder tegn som latexmk ikke godtar. Bytt dette prosjektet til Tectonic for å kompilere det.",
+    "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på en nettverksdeling. Bytt dette prosjektet til Tectonic, eller kopier mappen til denne datamaskinen."
   },
   "github": {
     "sign_in_expired": "Innloggingskoden utløp. Prøv igjen.",

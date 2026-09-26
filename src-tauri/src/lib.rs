@@ -18,6 +18,7 @@ mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
 mod buffer_copy;
+mod build_hygiene;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
@@ -234,6 +235,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
+    tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
 
     // Start the MCP server on boot when the user has enabled it. Failure to
     // bind must not prevent the app from starting; Settings shows the state.

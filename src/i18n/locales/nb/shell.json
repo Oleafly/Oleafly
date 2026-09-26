@@ -562,6 +562,8 @@
         "calculating": "Regner ut lagringsbruken…",
         "desktopOnly": "Lagringsdetaljer er tilgjengelige i skrivebordsappen.",
         "error": "Lagringsdetaljene kunne ikke regnes ut.",
+        "linkedFolders_one": "{{size}} byggeresultater og innstillinger for {{count}} åpnet mappe",
+        "linkedFolders_other": "{{size}} byggeresultater og innstillinger for {{count}} åpnede mapper",
         "refresh": "Oppdater lagringsbruken",
         "stats": {
           "appData": "Appdata",

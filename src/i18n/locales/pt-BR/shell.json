@@ -573,6 +573,9 @@
         "calculating": "Calculando o uso de armazenamento…",
         "desktopOnly": "Os detalhes de armazenamento estão disponíveis no aplicativo para desktop.",
         "error": "Não foi possível calcular os detalhes de armazenamento.",
+        "linkedFolders_one": "{{size}} de saída de compilação e configurações para {{count}} pasta aberta",
+        "linkedFolders_many": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
+        "linkedFolders_other": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
         "refresh": "Atualizar o uso de armazenamento",
         "stats": {
           "appData": "Dados do aplicativo",

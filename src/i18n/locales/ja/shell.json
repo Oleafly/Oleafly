@@ -551,6 +551,7 @@
         "calculating": "使用容量を計算中…",
         "desktopOnly": "保存領域の詳細はデスクトップアプリで確認できます。",
         "error": "保存領域の詳細を計算できませんでした。",
+        "linkedFolders_other": "開いたフォルダ {{count}} 件のビルド出力と設定で {{size}}",
         "refresh": "使用容量を更新",
         "stats": {
           "appData": "アプリのデータ",

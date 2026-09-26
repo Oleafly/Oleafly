@@ -143,6 +143,11 @@ impl EngineEnvironment {
             .unwrap_or_default();
         Self { variables }
     }
+
+    fn with_variable(mut self, name: &str, value: String) -> Self {
+        self.variables.push((name.to_owned(), value));
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -511,18 +516,31 @@ fn pythontex_tool_for_latexmk(latexmk: &Path) -> Option<PathBuf> {
     candidate.is_file().then_some(candidate)
 }
 
-fn pythontex_job_arg(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<String, String> {
-    let relative = out_dir
-        .strip_prefix(project_dir)
-        .map_err(|_| "PythonTeX output must stay inside the project directory".to_string())?;
-    Ok(relative.join(stem).to_string_lossy().into_owned())
+fn pythontex_job_arg(
+    project_dir: &Path,
+    out_dir: &Path,
+    stem: &str,
+    owned_output: bool,
+) -> Result<String, String> {
+    if let Ok(relative) = out_dir.strip_prefix(project_dir) {
+        return Ok(relative.join(stem).to_string_lossy().into_owned());
+    }
+    if owned_output {
+        return Ok(out_dir.join(stem).to_string_lossy().into_owned());
+    }
+    Err("PythonTeX output must stay inside the project directory".to_string())
 }
 
-fn pythontex_args(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<Vec<String>, String> {
+fn pythontex_args(
+    project_dir: &Path,
+    out_dir: &Path,
+    stem: &str,
+    owned_output: bool,
+) -> Result<Vec<String>, String> {
     Ok(vec![
         "--error-exit-code".into(),
         "true".into(),
-        pythontex_job_arg(project_dir, out_dir, stem)?,
+        pythontex_job_arg(project_dir, out_dir, stem, owned_output)?,
     ])
 }
 
@@ -566,6 +584,59 @@ fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     Ok(format!("./{value}"))
 }
 
+fn latexmk_absolute_path_text(path: &Path, windows: bool) -> Option<String> {
+    path.to_str()?;
+    let plain = crate::project_availability::without_verbatim_prefix(path);
+    let text = plain.to_str()?;
+    let text = if windows {
+        text.replace('\\', "/")
+    } else {
+        text.to_owned()
+    };
+    let rooted = if windows {
+        let bytes = text.as_bytes();
+        bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/'
+    } else {
+        text.starts_with('/')
+    };
+    let shell_safe = !text.chars().any(|character| {
+        character.is_control()
+            || matches!(character, '"' | '`' | '$' | '\\')
+            || (windows && matches!(character, '%' | '!'))
+    });
+    (rooted && shell_safe && !text.split('/').any(|part| part == "..")).then_some(text)
+}
+
+fn latexmk_absolute_path_arg(path: &Path) -> Result<String, String> {
+    latexmk_absolute_path_text(path, cfg!(windows))
+        .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
+}
+
+fn windows_network_path(path: &Path) -> bool {
+    crate::project_availability::without_verbatim_prefix(path)
+        .to_string_lossy()
+        .starts_with(r"\\")
+}
+
+fn latexmk_path_arg(
+    project_dir: &Path,
+    path: &Path,
+    owned: Option<&Path>,
+    role: &str,
+) -> Result<String, String> {
+    if let Ok(relative) = path.strip_prefix(project_dir) {
+        return latexmk_relative_path_arg(relative);
+    }
+    match owned {
+        Some(owned) if path.starts_with(owned) && !owned.starts_with(project_dir) => {
+            latexmk_absolute_path_arg(path)
+        }
+        _ => Err(format!(
+            "latexmk {role} must stay inside the project directory"
+        )),
+    }
+}
+
 fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
     match (allow, distribution_kind) {
         (true, _) => "-shell-escape",
@@ -574,6 +645,7 @@ fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
     }
 }
 
+#[cfg(test)]
 fn latexmk_args(
     out_dir: &Path,
     entry: &Path,
@@ -583,6 +655,25 @@ fn latexmk_args(
     distribution_kind: &str,
 ) -> Result<Vec<String>, String> {
     let out_dir = latexmk_relative_path_arg(out_dir)?;
+    let entry = latexmk_relative_path_arg(entry)?;
+    Ok(latexmk_args_from(
+        out_dir,
+        entry,
+        stem,
+        flavor,
+        options,
+        distribution_kind,
+    ))
+}
+
+fn latexmk_args_from(
+    out_dir: String,
+    entry: String,
+    stem: &str,
+    flavor: LatexmkFlavor,
+    options: CompileOptions,
+    distribution_kind: &str,
+) -> Vec<String> {
     let mut args: Vec<String> = vec![
         "-norc".into(),
         shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
@@ -604,8 +695,33 @@ fn latexmk_args(
     }
     // `options.fast` is intentionally ignored: deciding how many passes to run
     // is latexmk's whole job, and `-outdir` reuse already makes warm runs fast.
-    args.push(latexmk_relative_path_arg(entry)?);
-    Ok(args)
+    args.push(entry);
+    args
+}
+
+fn latexmk_invocation(
+    project_dir: &Path,
+    out_dir: &Path,
+    input_path: &Path,
+    stem: &str,
+    flavor: LatexmkFlavor,
+    options: CompileOptions,
+    distribution_kind: &str,
+) -> Result<(Vec<String>, EngineEnvironment), String> {
+    let owned = options.external_build.then_some(out_dir);
+    if owned.is_some() && cfg!(windows) && windows_network_path(project_dir) {
+        return Err(crate::app_error::AppError::new("tex.latexmk_network_folder").into());
+    }
+    let entry_arg = latexmk_path_arg(project_dir, input_path, owned, "input")?;
+    let out_arg = latexmk_path_arg(project_dir, out_dir, owned, "output")?;
+    let environment = if out_dir.starts_with(project_dir) {
+        EngineEnvironment::inherited(options.source_date_epoch)
+    } else {
+        EngineEnvironment::inherited(options.source_date_epoch)
+            .with_variable("TEXMFOUTPUT", out_arg.clone())
+    };
+    let args = latexmk_args_from(out_arg, entry_arg, stem, flavor, options, distribution_kind);
+    Ok((args, environment))
 }
 
 impl DocumentEngine for LatexmkEngine {
@@ -689,21 +805,16 @@ impl DocumentEngine for LatexmkEngine {
         };
         let source_head = read_source_head(&input_path);
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
-        let entry_path = input_path
-            .strip_prefix(project_dir)
-            .map_err(|_| "latexmk input must stay inside the project directory".to_string())?;
-        let relative_out_dir = out_dir
-            .strip_prefix(project_dir)
-            .map_err(|_| "latexmk output must stay inside the project directory".to_string())?;
-        let artifacts = self.artifacts(out_dir, target);
-        let mut args = latexmk_args(
-            relative_out_dir,
-            entry_path,
+        let (mut args, environment) = latexmk_invocation(
+            project_dir,
+            out_dir,
+            &input_path,
             stem,
             flavor,
             options,
             &crate::tex_distro::distribution_kind_for_tool(&latexmk),
         )?;
+        let artifacts = self.artifacts(out_dir, target);
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
         // while replaying the previous run's error. Force one full rebuild
@@ -718,7 +829,7 @@ impl DocumentEngine for LatexmkEngine {
             input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: EngineEnvironment::inherited(options.source_date_epoch),
+            environment,
         })
     }
 
@@ -1213,6 +1324,7 @@ pub struct CompileOptions {
     pub latex_flavor: Option<LatexmkFlavor>,
     pub allow_shell_escape: bool,
     pub source_date_epoch: Option<u64>,
+    pub external_build: bool,
 }
 
 pub struct CompileRequest<'a> {
@@ -1365,7 +1477,12 @@ async fn run_pythontex_recovery(
     pythontex: &Path,
 ) -> Result<(String, Option<String>), String> {
     let stem = crate::paths::ENTRY_STEM;
-    let helper_args = pythontex_args(&spec.working_dir, &spec.artifacts.output_dir, stem)?;
+    let helper_args = pythontex_args(
+        &spec.working_dir,
+        &spec.artifacts.output_dir,
+        stem,
+        request.options.external_build,
+    )?;
     let mut notes = format!(
         "\n[Oleafly] Running PythonTeX ({}) on {stem}...\n",
         pythontex.display()
@@ -4987,6 +5104,478 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_writes_an_owned_external_build_directory_by_absolute_path() {
+        let project = Path::new("/Users/ada/Bob's Thèse v2");
+        let out =
+            Path::new("/Users/ada/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build");
+        let owned = Some(out);
+        assert_eq!(
+            latexmk_path_arg(project, &project.join("main.tex"), owned, "input").unwrap(),
+            "./main.tex"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, out, owned, "output").unwrap(),
+            out.to_str().unwrap()
+        );
+        let figure = out.join("_figure.tex");
+        assert_eq!(
+            latexmk_path_arg(project, &figure, owned, "input").unwrap(),
+            figure.to_str().unwrap()
+        );
+        assert_eq!(
+            latexmk_path_arg(project, out, None, "output").unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, Path::new("/elsewhere/build"), owned, "output").unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, Path::new("/elsewhere/main.tex"), owned, "input")
+                .unwrap_err(),
+            "latexmk input must stay inside the project directory"
+        );
+        let args = latexmk_args_from(
+            out.to_str().unwrap().to_owned(),
+            "./main.tex".into(),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        );
+        assert!(args.contains(&format!("-outdir={}", out.display())));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+    }
+
+    fn latexmk_test_home() -> PathBuf {
+        if cfg!(windows) {
+            PathBuf::from(r"C:\Users\ada")
+        } else {
+            PathBuf::from("/Users/ada")
+        }
+    }
+
+    #[test]
+    fn latexmk_library_builds_keep_relative_paths_and_the_inherited_environment() {
+        let project = latexmk_test_home()
+            .join("Oleafly")
+            .join("projects")
+            .join("paper");
+        let options = CompileOptions {
+            source_date_epoch: Some(1_700_000_000),
+            ..Default::default()
+        };
+        let build = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &build,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            options,
+            "texlive",
+        )
+        .unwrap();
+        assert_eq!(
+            args,
+            latexmk_args(
+                Path::new(".oleafly/build"),
+                Path::new("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                options,
+                "texlive",
+            )
+            .unwrap()
+        );
+        assert!(args.contains(&"-outdir=./.oleafly/build".to_string()));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+        assert_eq!(
+            environment.variables,
+            vec![("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string())]
+        );
+
+        let figures = project.join(".oleafly").join("figbuild");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &figures,
+            &figures.join("_figure.tex"),
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&"-outdir=./.oleafly/figbuild".to_string()));
+        assert_eq!(args.last().unwrap(), "./.oleafly/figbuild/_figure.tex");
+        assert!(environment.variables.is_empty());
+    }
+
+    #[test]
+    fn latexmk_linked_builds_name_the_owned_directory_in_outdir_and_texmfoutput() {
+        let home = latexmk_test_home();
+        let project = home.join("Bob's Thèse v2");
+        let build = home
+            .join(".oleafly")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let absolute = build.to_str().unwrap().replace('\\', "/");
+        let options = CompileOptions {
+            external_build: true,
+            source_date_epoch: Some(1_700_000_000),
+            ..Default::default()
+        };
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &build,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            options,
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&format!("-outdir={absolute}")));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+        assert_eq!(
+            environment.variables,
+            vec![
+                ("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string()),
+                ("TEXMFOUTPUT".to_string(), absolute.clone()),
+            ]
+        );
+
+        let scratch = home.join("tmp").join("oleafly-figure-abc123");
+        let scratch_text = scratch.to_str().unwrap().replace('\\', "/");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &scratch,
+            &scratch.join("_figure.tex"),
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&format!("-outdir={scratch_text}")));
+        assert_eq!(args.last().unwrap(), &format!("{scratch_text}/_figure.tex"));
+        assert_eq!(
+            environment.variables,
+            vec![("TEXMFOUTPUT".to_string(), scratch_text)]
+        );
+
+        assert_eq!(
+            latexmk_invocation(
+                &project,
+                &build,
+                &project.join("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                CompileOptions::default(),
+                "texlive",
+            )
+            .unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        if cfg!(windows) {
+            let share = PathBuf::from(r"\\server\share\thesis");
+            let refusal = latexmk_invocation(
+                &share,
+                &build,
+                &share.join("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                options,
+                "texlive",
+            )
+            .unwrap_err();
+            assert!(
+                refusal.contains("\"code\":\"tex.latexmk_network_folder\""),
+                "{refusal}"
+            );
+        }
+    }
+
+    #[test]
+    fn latexmk_absolute_paths_refuse_what_latexmk_would_hand_to_a_shell() {
+        for safe in [
+            "/Users/ada/.oleafly/linked/linked-x/build",
+            "/Users/O'Brien/Jürgen Müller/論文/a#b%c~d&e{f}^g;h(i)[j],k:l!m",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(safe), false).as_deref(),
+                Some(safe)
+            );
+        }
+        for unsafe_path in [
+            "/Users/a\"b/build",
+            "/Users/a`b/build",
+            "/Users/a$b/build",
+            "/Users/a\\b/build",
+            "/Users/a\nb/build",
+            "relative/build",
+            "/Users/ada/../build",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(unsafe_path), false),
+                None,
+                "{unsafe_path:?}"
+            );
+        }
+        assert_eq!(
+            latexmk_absolute_path_text(
+                Path::new(r"\\?\C:\Users\ada\.oleafly\linked\x\build"),
+                true
+            )
+            .as_deref(),
+            Some("C:/Users/ada/.oleafly/linked/x/build")
+        );
+        for refused in [
+            r"\\?\UNC\server\share\build",
+            r"\\server\share\build",
+            r"C:\Users\100%\build",
+            r"C:\Users\a!b\build",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(refused), true),
+                None,
+                "{refused}"
+            );
+        }
+        assert!(windows_network_path(Path::new(
+            r"\\?\UNC\server\share\thesis"
+        )));
+        assert!(windows_network_path(Path::new(r"\\server\share\thesis")));
+        assert!(!windows_network_path(Path::new(r"\\?\C:\thesis")));
+    }
+
+    fn write_real_tex_fixture(project: &Path, biber: bool) {
+        std::fs::create_dir_all(project.join("sections")).unwrap();
+        std::fs::create_dir_all(project.join("chapters")).unwrap();
+        std::fs::write(
+            project.join("refs.bib"),
+            "@book{knuth,\n  author = {Donald E. Knuth},\n  title = {The TeXbook},\n  publisher = {Addison-Wesley},\n  year = {1984}\n}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.join("sections").join("intro.tex"),
+            "Intro text.\\index{section}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.join("chapters").join("one.tex"),
+            "Chapter one \\cite{knuth}.\\index{chapter}\n",
+        )
+        .unwrap();
+        let main = if biber {
+            "\\documentclass{article}\n\\usepackage[backend=biber]{biblatex}\n\\addbibresource{refs.bib}\n\\usepackage{imakeidx}\n\\makeindex\n\\begin{document}\nHello \\cite{knuth}\\index{hello}.\n\\input{sections/intro}\n\\include{chapters/one}\n\\printbibliography\n\\printindex\n\\end{document}\n"
+        } else {
+            "\\documentclass{article}\n\\usepackage{makeidx}\n\\makeindex\n\\begin{document}\nHello \\cite{knuth}\\index{hello}.\n\\input{sections/intro}\n\\include{chapters/one}\n\\bibliographystyle{plain}\n\\bibliography{refs}\n\\printindex\n\\end{document}\n"
+        };
+        std::fs::write(project.join("main.tex"), main).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_builds_linked_folders_in_an_owned_external_directory() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let biber_works = crate::tex_distro::find_tex_tool("biber").is_some_and(|biber| {
+            std::process::Command::new(biber)
+                .arg("--version")
+                .output()
+                .is_ok_and(|output| output.status.success())
+        });
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let base = scratch.path().canonicalize().unwrap();
+        let cases = [
+            (
+                "Bob's Thèse v2",
+                ".oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+            (
+                "論文 #1 50% ~draft & notes",
+                "Home Dir/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+            (
+                "thesis",
+                "O'Brien Jürgen/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+        ];
+        for (folder, build) in cases {
+            for flavor in [
+                LatexmkFlavor::Pdflatex,
+                LatexmkFlavor::Xelatex,
+                LatexmkFlavor::Lualatex,
+            ] {
+                for biber in [false, true] {
+                    if biber && !biber_works {
+                        continue;
+                    }
+                    let project = base.join("folders").join(folder);
+                    let out = base.join(build);
+                    let _ = std::fs::remove_dir_all(&project);
+                    let _ = std::fs::remove_dir_all(&out);
+                    write_real_tex_fixture(&project, biber);
+                    std::fs::create_dir_all(&out).unwrap();
+                    let before = crate::linked_registry::folder_snapshot_for_test(&project);
+                    let spec = LATEXMK_ENGINE
+                        .compile_spec(
+                            &out,
+                            &project,
+                            CompileTarget::Main {
+                                main_document: "main.tex",
+                            },
+                            CompileOptions {
+                                latex_flavor: Some(flavor),
+                                external_build: true,
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
+                    assert!(spec
+                        .environment
+                        .variables
+                        .iter()
+                        .any(|(name, value)| name == "TEXMFOUTPUT" && Path::new(value) == out));
+                    let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+                        unreachable!()
+                    };
+                    let (log, code) = run_supervised_process_with_environment(
+                        latexmk,
+                        &spec.args,
+                        &spec.working_dir,
+                        None,
+                        COMPILE_TIMEOUT,
+                        None,
+                        &spec.environment,
+                    )
+                    .await
+                    .unwrap();
+                    let case = format!("{folder} -> {build} {flavor:?} biber={biber}");
+                    assert_eq!(code, Some(0), "{case}\n{log}");
+                    assert!(out.join("_oleafly_entry.pdf").is_file(), "{case}");
+                    assert!(
+                        std::fs::read_to_string(out.join("_oleafly_entry.bbl"))
+                            .unwrap()
+                            .contains("Knuth"),
+                        "{case}"
+                    );
+                    assert!(
+                        std::fs::read_to_string(out.join("_oleafly_entry.ind"))
+                            .unwrap()
+                            .contains("hello"),
+                        "{case}"
+                    );
+                    assert!(out.join("chapters").join("one.aux").is_file(), "{case}");
+                    assert!(
+                        !std::fs::read_to_string(out.join("_oleafly_entry.log"))
+                            .unwrap()
+                            .contains("undefined"),
+                        "{case}"
+                    );
+                    assert_eq!(
+                        crate::linked_registry::folder_snapshot_for_test(&project),
+                        before,
+                        "{case}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_compiles_a_linked_figure_from_a_private_scratch_folder() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let folders = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let project = folders
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("Bob's Thèse v2");
+        write_real_tex_fixture(&project, false);
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-figure-")
+            .tempdir_in(std::env::temp_dir().canonicalize().unwrap())
+            .unwrap();
+        let source = scratch.path().join("_figure.tex");
+        std::fs::write(
+            &source,
+            "\\documentclass{standalone}\n\\begin{document}\nFigure \\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        let spec = LATEXMK_ENGINE
+            .compile_spec(
+                scratch.path(),
+                &project,
+                CompileTarget::Isolated {
+                    source_path: &source,
+                    output_stem: "_figure",
+                },
+                CompileOptions {
+                    external_build: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+            unreachable!()
+        };
+        let (log, code) = run_supervised_process_with_environment(
+            latexmk,
+            &spec.args,
+            &spec.working_dir,
+            None,
+            COMPILE_TIMEOUT,
+            None,
+            &spec.environment,
+        )
+        .await
+        .unwrap();
+        assert_eq!(code, Some(0), "{log}");
+        assert!(scratch.path().join("_figure.pdf").is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+    }
+
+    #[test]
+    fn latexmk_refusals_have_english_messages() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        for key in ["latexmk_build_path", "latexmk_network_folder"] {
+            assert!(
+                catalog["tex"][key]
+                    .as_str()
+                    .is_some_and(|text| !text.is_empty()),
+                "{key}"
+            );
+        }
+    }
+
     #[test]
     fn pythontex_helper_is_exactly_scoped_to_a_current_project_job() {
         let root = std::env::temp_dir().join(format!(
@@ -5016,7 +5605,7 @@ mod tests {
             &code
         ));
 
-        let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM).unwrap();
+        let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM, false).unwrap();
         assert_eq!(&args[..2], ["--error-exit-code", "true"]);
         assert_eq!(
             Path::new(&args[2]),
@@ -5024,7 +5613,11 @@ mod tests {
                 .join("build")
                 .join(crate::paths::ENTRY_STEM)
         );
-        assert!(pythontex_args(&project, &root.join("outside"), "job").is_err());
+        assert!(pythontex_args(&project, &root.join("outside"), "job", false).is_err());
+        assert_eq!(
+            pythontex_args(&project, &root.join("outside"), "job", true).unwrap()[2],
+            root.join("outside").join("job").to_string_lossy()
+        );
 
         let latexmk = bin.join(crate::tex_distro::exe("latexmk"));
         let pythontex = bin.join(crate::tex_distro::exe("pythontex"));
@@ -5367,6 +5960,7 @@ mod tests {
                 latex_flavor: None,
                 allow_shell_escape: false,
                 source_date_epoch: None,
+                external_build: false,
             },
         );
         let before = crate::biber_toolchain::bbl_stamp(&build, stem);

@@ -88,6 +88,8 @@ const storageSummary = {
   image_count: 1,
   pdf_count: 1,
   unreadable_entries: 0,
+  linked_folders_bytes: 0,
+  linked_folder_count: 0,
 };
 
 const recycled = {

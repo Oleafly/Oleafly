@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX has no host-compatible {{name}} binary.",
-    "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself."
+    "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself.",
+    "latexmk_build_path": "latexmk can't use Oleafly's build folder on this computer because its path contains characters latexmk doesn't accept. Switch this project to Tectonic to compile it.",
+    "latexmk_network_folder": "latexmk can't compile a folder on a network share. Switch this project to Tectonic, or copy the folder to this computer."
   },
   "github": {
     "sign_in_expired": "The sign-in code expired. Try again.",

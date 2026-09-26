@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
-    "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv."
+    "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv.",
+    "latexmk_build_path": "latexmk kan ikke bruge Oleaflys build-mappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
+    "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer."
   },
   "github": {
     "sign_in_expired": "Loginkoden er udløbet. Prøv igen.",

@@ -13,11 +13,19 @@ const INTERNAL_DIR: &str = ".oleafly";
 const BUILD_DIR: &str = "build";
 static WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum BuildLocation {
+    #[default]
+    InTree,
+    External(PathBuf),
+}
+
 #[derive(Clone, Debug)]
 pub struct Workspace {
     root: PathBuf,
     manifest: ProjectManifest,
     compile_dir: Option<String>,
+    build: BuildLocation,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -100,14 +108,29 @@ impl Workspace {
             return Err(foreign());
         }
         let manifest: ProjectManifest = serde_json::from_value(value).map_err(invalid)?;
-        Self::assemble(root, manifest)
+        Self::assemble(root, manifest, BuildLocation::InTree)
     }
 
     pub fn from_manifest(path: impl AsRef<Path>, manifest: ProjectManifest) -> Result<Self> {
-        Self::assemble(canonical_directory(path.as_ref())?, manifest)
+        Self::from_manifest_with_build(path, manifest, BuildLocation::InTree)
     }
 
-    fn assemble(root: PathBuf, manifest: ProjectManifest) -> Result<Self> {
+    pub fn from_manifest_with_build(
+        path: impl AsRef<Path>,
+        manifest: ProjectManifest,
+        build: BuildLocation,
+    ) -> Result<Self> {
+        let root = canonical_directory(path.as_ref())?;
+        let build = match build {
+            BuildLocation::InTree => BuildLocation::InTree,
+            BuildLocation::External(directory) => {
+                BuildLocation::External(external_build_directory(&root, &directory)?)
+            }
+        };
+        Self::assemble(root, manifest, build)
+    }
+
+    fn assemble(root: PathBuf, manifest: ProjectManifest, build: BuildLocation) -> Result<Self> {
         manifest.validate()?;
         let compile_dir = match manifest.compile_dir.as_deref() {
             Some(relative) => compile_directory_within(&root, relative)?,
@@ -128,6 +151,7 @@ impl Workspace {
             root,
             manifest,
             compile_dir,
+            build,
         };
         workspace.resolve(&workspace.manifest.main_doc)?;
         Ok(workspace)
@@ -173,6 +197,7 @@ impl Workspace {
                 engine: engine.manifest_name().to_string(),
                 ..ProjectManifest::default()
             },
+            BuildLocation::InTree,
         )
     }
 
@@ -181,6 +206,10 @@ impl Workspace {
             Some(relative) => self.root.join(relative),
             None => self.root.clone(),
         }
+    }
+
+    pub fn build_location(&self) -> &BuildLocation {
+        &self.build
     }
 
     pub fn init(path: impl AsRef<Path>, options: InitOptions) -> Result<Self> {
@@ -284,11 +313,17 @@ impl Workspace {
     }
 
     pub fn build_dir(&self) -> Result<PathBuf> {
-        secure_build_directory(&self.root, true)
+        match &self.build {
+            BuildLocation::InTree => secure_build_directory(&self.root, true),
+            BuildLocation::External(directory) => external_build_directory(&self.root, directory),
+        }
     }
 
     pub fn build_dir_path(&self) -> PathBuf {
-        self.root.join(INTERNAL_DIR).join(BUILD_DIR)
+        match &self.build {
+            BuildLocation::InTree => self.root.join(INTERNAL_DIR).join(BUILD_DIR),
+            BuildLocation::External(directory) => directory.clone(),
+        }
     }
 
     pub fn build_directory_path(path: impl AsRef<Path>) -> Result<PathBuf> {
@@ -298,7 +333,15 @@ impl Workspace {
     }
 
     pub fn clean(&self) -> Result<bool> {
-        Self::clean_build_directory(&self.root)
+        match &self.build {
+            BuildLocation::InTree => Self::clean_build_directory(&self.root),
+            BuildLocation::External(directory) => {
+                let directory = external_build_directory(&self.root, directory)?;
+                std::fs::remove_dir_all(&directory)?;
+                std::fs::create_dir(&directory)?;
+                Ok(true)
+            }
+        }
     }
 
     pub fn clean_build_directory(path: impl AsRef<Path>) -> Result<bool> {
@@ -350,7 +393,13 @@ impl Workspace {
                 message: error.to_string(),
             }),
         }
-        match validate_build_location(&self.root) {
+        let build_check = match &self.build {
+            BuildLocation::InTree => validate_build_location(&self.root),
+            BuildLocation::External(directory) => {
+                validate_existing_directory(directory, "build path")
+            }
+        };
+        match build_check {
             Ok(()) => checks.push(DoctorCheck {
                 name: "build_directory".to_string(),
                 status: DoctorStatus::Pass,
@@ -462,6 +511,28 @@ fn secure_build_directory(root: &Path, create: bool) -> Result<PathBuf> {
         ));
     }
     Ok(canonical_build)
+}
+
+fn external_build_directory(root: &Path, directory: &Path) -> Result<PathBuf> {
+    if !directory.is_absolute() {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!(
+                "external build directory must be absolute: {}",
+                directory.display()
+            ),
+        ));
+    }
+    ensure_real_directory(directory, false, "external build")?;
+    let canonical = directory.canonicalize()?;
+    let canonical_root = root.canonicalize()?;
+    if canonical.starts_with(&canonical_root) || canonical_root.starts_with(&canonical) {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            "external build directory overlaps the workspace",
+        ));
+    }
+    Ok(canonical)
 }
 
 fn validate_build_location(root: &Path) -> Result<()> {
@@ -1158,5 +1229,120 @@ mod tests {
         .unwrap();
         let error = workspace.build_dir().unwrap_err();
         assert_eq!(error.kind(), ErrorKind::UnsafePath);
+    }
+
+    #[test]
+    fn external_build_directories_are_used_without_touching_the_workspace() {
+        let directory = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join("main.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
+        let workspace = Workspace::from_manifest_with_build(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectManifest::default()
+            },
+            BuildLocation::External(external.path().to_path_buf()),
+        )
+        .unwrap();
+        let expected = external.path().canonicalize().unwrap();
+        assert_eq!(
+            workspace.build_location(),
+            &BuildLocation::External(expected.clone())
+        );
+        assert_eq!(workspace.build_dir().unwrap(), expected);
+        assert_eq!(workspace.build_dir_path(), expected);
+        assert_eq!(workspace.info().unwrap().build_directory, expected);
+        assert!(workspace.doctor().ok);
+        assert!(!directory.path().join(INTERNAL_DIR).exists());
+        assert_eq!(
+            Workspace::from_manifest(directory.path(), workspace.manifest().clone())
+                .unwrap()
+                .build_location(),
+            &BuildLocation::InTree
+        );
+    }
+
+    #[test]
+    fn external_build_directories_must_be_real_and_outside_the_workspace() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join("main.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
+        std::fs::create_dir(directory.path().join("inside")).unwrap();
+        let attempt = |build: PathBuf| {
+            Workspace::from_manifest_with_build(
+                directory.path(),
+                ProjectManifest {
+                    main_doc: "main.tex".into(),
+                    ..ProjectManifest::default()
+                },
+                BuildLocation::External(build),
+            )
+            .unwrap_err()
+            .kind()
+        };
+        assert_eq!(
+            attempt(directory.path().join("inside")),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(directory.path().to_path_buf()),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(directory.path().parent().unwrap().to_path_buf()),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(
+            attempt(PathBuf::from("relative/build")),
+            ErrorKind::UnsafePath
+        );
+        let gone = TempDir::new().unwrap().path().to_path_buf();
+        assert_eq!(attempt(gone), ErrorKind::Io);
+        #[cfg(unix)]
+        {
+            let outside = TempDir::new().unwrap();
+            let holder = TempDir::new().unwrap();
+            let link = holder.path().join("build");
+            std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+            assert_eq!(attempt(link), ErrorKind::UnsafePath);
+        }
+        assert!(!directory.path().join(INTERNAL_DIR).exists());
+    }
+
+    #[test]
+    fn cleaning_an_external_build_never_touches_an_in_tree_build() {
+        let directory = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.tex"), "x").unwrap();
+        std::fs::create_dir_all(directory.path().join(INTERNAL_DIR).join(BUILD_DIR)).unwrap();
+        let cli_pdf = directory
+            .path()
+            .join(INTERNAL_DIR)
+            .join(BUILD_DIR)
+            .join("cli.pdf");
+        std::fs::write(&cli_pdf, "cli").unwrap();
+        std::fs::write(external.path().join("stale.aux"), "stale").unwrap();
+        let workspace = Workspace::from_manifest_with_build(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "main.tex".into(),
+                ..ProjectManifest::default()
+            },
+            BuildLocation::External(external.path().to_path_buf()),
+        )
+        .unwrap();
+        assert!(workspace.clean().unwrap());
+        assert_eq!(std::fs::read(&cli_pdf).unwrap(), b"cli");
+        assert!(external.path().is_dir());
+        assert_eq!(std::fs::read_dir(external.path()).unwrap().count(), 0);
     }
 }

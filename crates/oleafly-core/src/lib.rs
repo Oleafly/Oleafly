@@ -35,4 +35,6 @@ pub use tree::{
     MAX_DISCOVERY_DEPTH,
 };
 pub use utf8_stream::{rejoin_split_utf8_lines, Utf8StreamDecoder};
-pub use workspace::{DoctorCheck, DoctorReport, DoctorStatus, InitOptions, ProjectInfo, Workspace};
+pub use workspace::{
+    BuildLocation, DoctorCheck, DoctorReport, DoctorStatus, InitOptions, ProjectInfo, Workspace,
+};

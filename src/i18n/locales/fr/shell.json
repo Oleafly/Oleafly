@@ -573,6 +573,9 @@
         "calculating": "Calcul de l'espace utilisé…",
         "desktopOnly": "Les détails de stockage sont disponibles dans l'application de bureau.",
         "error": "Les détails de stockage n'ont pas pu être calculés.",
+        "linkedFolders_one": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossier ouvert",
+        "linkedFolders_many": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
+        "linkedFolders_other": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
         "refresh": "Actualiser l'espace utilisé",
         "stats": {
           "appData": "Données de l'application",

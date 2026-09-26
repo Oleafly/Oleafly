@@ -562,6 +562,8 @@
         "calculating": "Lasketaan tallennustilan käyttöä…",
         "desktopOnly": "Tallennustilan tiedot ovat saatavilla työpöytäsovelluksessa.",
         "error": "Tallennustilan tietoja ei voitu laskea.",
+        "linkedFolders_one": "{{size}} käännöstulosteita ja asetuksia {{count}} avatulle kansiolle",
+        "linkedFolders_other": "{{size}} käännöstulosteita ja asetuksia {{count}} avatulle kansiolle",
         "refresh": "Päivitä tallennustilan käyttö",
         "stats": {
           "appData": "Sovellustiedot",

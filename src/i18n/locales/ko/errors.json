@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX에 이 호스트와 호환되는 {{name}} 실행 파일이 없습니다.",
-    "package_operation_timeout": "패키지 작업이 {{span}} 제한을 넘겨 중단되었으므로 다시 컴파일할 수 있습니다. TeX Live 미러가 혼잡한 것으로 보입니다. 나중에 다시 시도하거나 tlmgr을 직접 실행하세요."
+    "package_operation_timeout": "패키지 작업이 {{span}} 제한을 넘겨 중단되었으므로 다시 컴파일할 수 있습니다. TeX Live 미러가 혼잡한 것으로 보입니다. 나중에 다시 시도하거나 tlmgr을 직접 실행하세요.",
+    "latexmk_build_path": "이 컴퓨터에서는 Oleafly 빌드 폴더 경로에 latexmk가 허용하지 않는 문자가 있어 latexmk가 이 폴더를 사용할 수 없습니다. 컴파일하려면 이 프로젝트를 Tectonic으로 전환하세요.",
+    "latexmk_network_folder": "latexmk는 네트워크 공유에 있는 폴더를 컴파일할 수 없습니다. 이 프로젝트를 Tectonic으로 전환하거나 폴더를 이 컴퓨터로 복사하세요."
   },
   "github": {
     "sign_in_expired": "로그인 코드가 만료되었습니다. 다시 시도하세요.",

@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX nemá binární soubor {{name}} kompatibilní s tímto systémem.",
-    "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami."
+    "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami.",
+    "latexmk_build_path": "latexmk nemůže na tomto počítači použít složku sestavení Oleafly, protože její cesta obsahuje znaky, které latexmk nepřijímá. Chcete-li projekt zkompilovat, přepněte ho na Tectonic.",
+    "latexmk_network_folder": "latexmk nemůže kompilovat složku ve sdíleném síťovém umístění. Přepněte tento projekt na Tectonic, nebo složku zkopírujte do tohoto počítače."
   },
   "github": {
     "sign_in_expired": "Přihlašovací kód vypršel. Zkuste to znovu.",

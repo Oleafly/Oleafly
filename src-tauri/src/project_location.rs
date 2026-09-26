@@ -1111,4 +1111,27 @@ mod tests {
             started.elapsed() / rounds
         );
     }
+
+    #[test]
+    fn linked_caches_are_tagged_and_library_builds_are_not() {
+        let fixture = Fixture::new();
+        let record = register_folder_for_test(&fixture.folder("thesis"));
+        assert!(crate::paths::build_dir(&record.id)
+            .unwrap()
+            .join("CACHEDIR.TAG")
+            .is_file());
+        assert!(crate::paths::figure_build_dir(&record.id)
+            .unwrap()
+            .join("CACHEDIR.TAG")
+            .is_file());
+        assert!(!crate::paths::builds_metadata_dir(&record.id)
+            .unwrap()
+            .join("CACHEDIR.TAG")
+            .exists());
+        crate::paths::create_project_dir("paper").unwrap();
+        assert!(!crate::paths::build_dir("paper")
+            .unwrap()
+            .join("CACHEDIR.TAG")
+            .exists());
+    }
 }

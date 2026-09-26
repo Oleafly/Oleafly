@@ -501,8 +501,14 @@ pub(crate) fn state_subdirectory(
 ) -> Result<PathBuf, String> {
     match location.kind {
         ProjectKind::Library => secure_build_subdirectory_in(&location.root, name),
-        ProjectKind::Linked => linked_state_directory(&location.state_dir, Path::new(name), true)?
-            .ok_or_else(|| "linked project data is missing".to_string()),
+        ProjectKind::Linked => {
+            let directory = linked_state_directory(&location.state_dir, Path::new(name), true)?
+                .ok_or_else(|| "linked project data is missing".to_string())?;
+            if crate::build_hygiene::LINKED_CACHE_DIRECTORIES.contains(&name) {
+                crate::build_hygiene::mark_cache_directory_best_effort(&directory);
+            }
+            Ok(directory)
+        }
     }
 }
 

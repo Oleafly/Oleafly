@@ -562,6 +562,8 @@
         "calculating": "Opslaggebruik berekenen…",
         "desktopOnly": "Opslagdetails zijn beschikbaar in de desktop-app.",
         "error": "De opslagdetails konden niet worden berekend.",
+        "linkedFolders_one": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende map",
+        "linkedFolders_other": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende mappen",
         "refresh": "Opslaggebruik vernieuwen",
         "stats": {
           "appData": "App-gegevens",

@@ -63,6 +63,8 @@ const storageSummary = {
   image_count: 1,
   pdf_count: 1,
   unreadable_entries: 0,
+  linked_folders_bytes: 0,
+  linked_folder_count: 0,
 };
 
 const recycledProject = {
@@ -276,5 +278,22 @@ describe("Settings Data Storage recycle bin", () => {
       expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
     });
     expect(mocks.recycleProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows what Oleafly keeps for folders opened in place", async () => {
+    mocks.libraryStorageSummary.mockResolvedValue({
+      ...storageSummary,
+      linked_folder_count: 2,
+      linked_folders_bytes: 2048,
+    });
+    render(<SettingsModal />);
+    expect(await screen.findByText(/for 2 opened folders/)).toBeInTheDocument();
+  });
+
+  it("says nothing about opened folders when there are none", async () => {
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Recycle Bin" });
+    await screen.findByText(/across the Oleafly data folder/);
+    expect(screen.queryByText(/opened folder/)).not.toBeInTheDocument();
   });
 });

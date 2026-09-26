@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX non ha un binario {{name}} compatibile con questo sistema.",
-    "package_operation_timeout": "L'operazione sui pacchetti ha superato il limite di {{span}} ed è stata interrotta, così puoi compilare di nuovo. Probabilmente il mirror TeX Live è occupato. Riprova più tardi oppure esegui tlmgr manualmente."
+    "package_operation_timeout": "L'operazione sui pacchetti ha superato il limite di {{span}} ed è stata interrotta, così puoi compilare di nuovo. Probabilmente il mirror TeX Live è occupato. Riprova più tardi oppure esegui tlmgr manualmente.",
+    "latexmk_build_path": "latexmk non può usare la cartella di compilazione di Oleafly su questo computer perché il suo percorso contiene caratteri che latexmk non accetta. Passa questo progetto a Tectonic per compilarlo.",
+    "latexmk_network_folder": "latexmk non può compilare una cartella su una condivisione di rete. Passa questo progetto a Tectonic oppure copia la cartella su questo computer."
   },
   "github": {
     "sign_in_expired": "Il codice di accesso è scaduto. Riprova.",

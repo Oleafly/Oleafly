@@ -562,6 +562,8 @@
         "calculating": "Calculating storage usage…",
         "desktopOnly": "Storage details are available in the desktop app.",
         "error": "Storage details could not be calculated.",
+        "linkedFolders_one": "{{size}} of build output and settings for {{count}} opened folder",
+        "linkedFolders_other": "{{size}} of build output and settings for {{count}} opened folders",
         "refresh": "Refresh storage usage",
         "stats": {
           "appData": "App data",

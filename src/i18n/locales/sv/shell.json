@@ -562,6 +562,8 @@
         "calculating": "Beräknar lagringsanvändning…",
         "desktopOnly": "Lagringsdetaljer finns i skrivbordsappen.",
         "error": "Lagringsdetaljerna kunde inte beräknas.",
+        "linkedFolders_one": "{{size}} byggutdata och inställningar för {{count}} öppnad mapp",
+        "linkedFolders_other": "{{size}} byggutdata och inställningar för {{count}} öppnade mappar",
         "refresh": "Uppdatera lagringsanvändningen",
         "stats": {
           "appData": "Appdata",

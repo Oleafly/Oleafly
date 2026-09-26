@@ -35,7 +35,9 @@
   },
   "tex": {
     "no_host_binary": "TinyTeX にこのホストで動作する {{name}} のバイナリがありません。",
-    "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。"
+    "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。",
+    "latexmk_build_path": "このコンピューターでは Oleafly のビルドフォルダーのパスに latexmk が受け付けない文字が含まれているため、latexmk はこのフォルダーを使用できません。コンパイルするには、このプロジェクトを Tectonic に切り替えてください。",
+    "latexmk_network_folder": "latexmk はネットワーク共有上のフォルダーをコンパイルできません。このプロジェクトを Tectonic に切り替えるか、フォルダーをこのコンピューターにコピーしてください。"
   },
   "github": {
     "sign_in_expired": "サインインコードの有効期限が切れました。もう一度お試しください。",
