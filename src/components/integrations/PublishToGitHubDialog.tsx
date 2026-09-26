@@ -41,8 +41,12 @@ type PublishActionToken = {
   request: number;
 };
 
-function linkRemote(projectId: string, url: string, replace: boolean) {
-  return replace ? gitSetRemote(projectId, url, { replace: true }) : gitSetRemote(projectId, url);
+function linkRemote(projectId: string, url: string) {
+  return gitSetRemote(projectId, url);
+}
+
+function replaceRemote(projectId: string, url: string) {
+  return gitSetRemote(projectId, url, { replace: true });
 }
 
 export function PublishToGitHubDialog({
@@ -211,7 +215,7 @@ export function PublishToGitHubDialog({
       // clean since auth is handled by gitPush's credential helper, not a
       // token embedded in .git/config.
       await gitPreparePublish(action.projectId, "Initial commit");
-      await linkRemote(action.projectId, repo.clone_url, replace);
+      await (replace ? replaceRemote : linkRemote)(action.projectId, repo.clone_url);
       await gitPush(action.projectId);
       if (!isCurrentAction(action)) return;
       note(action, true, t(($) => $.library.github.published, { repository: repo.full_name }));
@@ -238,7 +242,7 @@ export function PublishToGitHubDialog({
     setBusy(true);
     try {
       await gitPreparePublish(action.projectId, "Initial commit");
-      await linkRemote(action.projectId, remoteUrl, replace);
+      await (replace ? replaceRemote : linkRemote)(action.projectId, remoteUrl);
       // An existing remote may already contain commits. Let the push report
       // when its history must be pulled and reconciled first.
       try {
