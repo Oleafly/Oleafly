@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly nu găsește folderul {{folder}}. Poate a fost mutat sau șters ori se află pe o unitate care nu este conectată.",
     "linked_replaced": "Folderul {{folder}} nu este cel pe care Oleafly l-a deschis anterior. Deschide-l din nou pentru a continua.",
     "linked_permission_denied": "Oleafly nu are permisiunea de a deschide folderul {{folder}}.",
-    "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul."
+    "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul.",
+    "linked_not_recyclable": "Acest folder a fost deschis în locația sa, așa că nu poate fi mutat în Coșul de reciclare. Fișierele tale nu au fost modificate.",
+    "linked_not_duplicable": "Acest folder a fost deschis în locația sa, așa că Oleafly nu îl poate duplica."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

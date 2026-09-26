@@ -336,6 +336,14 @@ export interface TexStatus {
     missing_packages: string[];
     can_install_missing: boolean;
 }
+export type ProjectAvailability = "unknown" | "ok" | "missing" | "offline" | "replaced" | "permission_denied";
+export type ProjectLocationInfo =
+    | { kind: "library" }
+    | { kind: "linked"; display_path: string; availability: ProjectAvailability };
+export interface ProjectAvailabilityReport {
+    project_id: string;
+    availability: ProjectAvailability;
+}
 export interface ProjectInfo {
     id: string;
     name: string;
@@ -354,6 +362,7 @@ export interface ProjectInfo {
     }[];
     forked_from: string | null;
     recovery_pending: boolean;
+    location?: ProjectLocationInfo;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -833,6 +842,7 @@ export interface BackendPort {
   openDevtools: () => Promise<void>;
   getProject: (projectId: string) => Promise<ProjectMeta>;
   listProjects: () => Promise<ProjectInfo[]>;
+  probeProjectAvailability: (projectIds: string[]) => Promise<ProjectAvailabilityReport[]>;
   createProject: (name: string) => Promise<string>;
   createProjectFromPdfConversion: (name: string, tex: string, figures: {
     name: string;
@@ -882,6 +892,7 @@ export interface BackendPort {
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   exportPdf: (projectId: string, dest: string) => Promise<void>;
   revealInDir: (path: string) => Promise<void>;
+  revealProject: (projectId: string, path?: string | null) => Promise<void>;
   exportDocument: (projectId: string, mainDoc: string, format: string, dest: string) => Promise<void>;
   hasPandoc: () => Promise<boolean>;
   downloadPandoc: () => Promise<string>;

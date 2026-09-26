@@ -1153,6 +1153,15 @@ fn resolve_project_workspace(project_id: &str) -> Result<PathBuf, LanguageServic
             "invalid project id",
         )
     })?;
+    let kind = crate::project_location::kind_of(project_id).map_err(|_| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::InvalidWorkspace,
+            "project folder link is damaged",
+        )
+    })?;
+    if kind == crate::project_location::ProjectKind::Linked {
+        return resolve_linked_workspace(project_id);
+    }
     let projects_root = paths::projects_root()
         .and_then(|root| {
             root.canonicalize()
@@ -1231,6 +1240,30 @@ fn resolve_project_workspace(project_id: &str) -> Result<PathBuf, LanguageServic
         )
     })?;
     Ok(resolved)
+}
+
+fn resolve_linked_workspace(project_id: &str) -> Result<PathBuf, LanguageServiceError> {
+    use crate::project_location::{LocateError, ProjectKind};
+    let invalid = |message: &str| {
+        LanguageServiceError::new(LanguageServiceErrorCode::InvalidWorkspace, message)
+    };
+    let location = crate::project_location::locate(project_id).map_err(|error| {
+        invalid(match error {
+            LocateError::NotFound(_) => "project is unknown",
+            LocateError::Unavailable { .. } => "project folder is unavailable",
+            LocateError::Replaced { .. } => "project folder was replaced",
+            LocateError::PermissionDenied { .. } => "project folder cannot be read",
+            LocateError::Invalid(_) => "project folder link is damaged",
+        })
+    })?;
+    if location.kind != ProjectKind::Linked {
+        return Err(invalid(
+            "resolved project workspace changed during validation",
+        ));
+    }
+    crate::project::read_meta(project_id)
+        .map_err(|_| invalid("project metadata is invalid or unreadable"))?;
+    Ok(location.root)
 }
 
 fn spawn_sidecar(
@@ -2458,6 +2491,33 @@ mod tests {
             let error = encode_json_rpc(&invalid).unwrap_err();
             assert_eq!(error.code, LanguageServiceErrorCode::InvalidMessage);
         }
+    }
+
+    #[test]
+    fn project_workspace_resolution_accepts_a_linked_folder_without_project_json() {
+        let _env_guard = paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        fs::write(folder.join("main.tex"), b"\\documentclass{article}").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+
+        assert_eq!(
+            resolve_project_workspace(&linked.id).unwrap(),
+            fs::canonicalize(&folder).unwrap()
+        );
+        assert!(!folder.join("project.json").exists());
+        assert!(!folder.join(".oleafly").exists());
+
+        fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(
+            resolve_project_workspace(&linked.id).unwrap_err().code,
+            LanguageServiceErrorCode::InvalidWorkspace
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]

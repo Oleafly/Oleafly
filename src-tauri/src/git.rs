@@ -752,7 +752,9 @@ pub(crate) fn attach_imported_repository_history_lock_held(
     if !is_allowed_remote_url(remote_url) {
         return Err("GitHub returned an unsupported repository URL.".into());
     }
-    let root = project_root(project_id)?;
+    let root = crate::project_location::LibraryProjectDir::resolve(project_id)?
+        .path()
+        .to_path_buf();
     attach_imported_repository_history_at(&root, remote_url, default_branch, |root, refspec| {
         ok_or_err(run_git_authed(
             root,
@@ -2385,15 +2387,15 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 #[cfg(test)]
 mod tests {
     use super::{
-        attach_imported_repository_history_at, clean_remote_credentials, commit_index,
-        conflicts_at, current_branch, discard_paths_at, ensure_repository, ensure_repository_with,
-        git_log_at, initialize_repo, is_allowed_remote_url, local_bounds, merge_in_progress,
-        ok_or_err, out_to_string, parse_status_porcelain, parse_status_porcelain_bytes,
-        remote_credentials_need_cleanup, resolve_conflict_side, restore_worktree,
-        run_configured_git, run_git, run_git_read_only, sanitize_url, show, stage, stage_all,
-        stage_paths, stash_pop_at, stash_push_at, unmerged_index_stages, unstage, unstage_all,
-        unstage_paths, validate_branch_name, validate_git_oid, validate_repo_relative_path,
-        Command,
+        attach_imported_repository_history_at, attach_imported_repository_history_lock_held,
+        clean_remote_credentials, commit_index, conflicts_at, current_branch, discard_paths_at,
+        ensure_repository, ensure_repository_with, git_log_at, initialize_repo,
+        is_allowed_remote_url, local_bounds, merge_in_progress, ok_or_err, out_to_string,
+        parse_status_porcelain, parse_status_porcelain_bytes, remote_credentials_need_cleanup,
+        resolve_conflict_side, restore_worktree, run_configured_git, run_git, run_git_read_only,
+        sanitize_url, show, stage, stage_all, stage_paths, stash_pop_at, stash_push_at,
+        unmerged_index_stages, unstage, unstage_all, unstage_paths, validate_branch_name,
+        validate_git_oid, validate_repo_relative_path, Command,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -2401,6 +2403,30 @@ mod tests {
     use std::time::Duration;
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    #[test]
+    fn imported_history_is_never_attached_to_a_linked_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+
+        let error = attach_imported_repository_history_lock_held(
+            &linked.id,
+            "https://github.com/octo/paper.git",
+            "main",
+            "token",
+        )
+        .unwrap_err();
+
+        assert!(error.contains("project.linked_not_recyclable"), "{error}");
+        assert!(!folder.join(".git").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     #[test]
     fn a_failed_transfer_reports_where_it_stopped_not_every_percentage() {

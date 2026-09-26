@@ -549,7 +549,11 @@ export function Library() {
       await refreshProjects();
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
-      notifyError("fork project", e, t(($) => $.library.projects.forkDialog.failed));
+      notifyError(
+        "fork project",
+        e,
+        decodeAppError(e) ? undefined : t(($) => $.library.projects.forkDialog.failed),
+      );
     } finally {
       forkBusyRef.current = false;
       setForkBusy(false);

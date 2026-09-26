@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly kan ikke finde mappen {{folder}}. Den kan være flyttet eller slettet, eller den ligger på et drev, der ikke er tilsluttet.",
     "linked_replaced": "Mappen {{folder}} er ikke den, Oleafly åbnede før. Åbn den igen for at fortsætte.",
     "linked_permission_denied": "Oleafly har ikke tilladelse til at åbne mappen {{folder}}.",
-    "linked_invalid": "Oleaflys link til denne mappe er beskadiget. Fjern den fra Oleafly, og åbn derefter mappen igen."
+    "linked_invalid": "Oleaflys link til denne mappe er beskadiget. Fjern den fra Oleafly, og åbn derefter mappen igen.",
+    "linked_not_recyclable": "Mappen blev åbnet, hvor den ligger, så den kan ikke flyttes til papirkurven. Dine filer er uændrede.",
+    "linked_not_duplicable": "Mappen blev åbnet, hvor den ligger, så Oleafly kan ikke duplikere den."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."

@@ -249,4 +249,32 @@ describe("Settings Data Storage recycle bin", () => {
     });
     expect(mocks.refreshProjects).toHaveBeenCalled();
   });
+
+  it("counts and moves only library projects when moving every project", async () => {
+    const [active] = useFilesStore.getState().projects;
+    useFilesStore.setState({
+      projects: [
+        {
+          ...active,
+          id: "linked-0123456789abcdef0123456789abcdef",
+          name: "Thesis",
+          location: { kind: "linked", display_path: "~/Desktop/thesis", availability: "unknown" },
+        },
+        active,
+      ],
+    });
+    render(<SettingsModal />);
+    await screen.findByRole("heading", { name: "Danger zone" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Delete all 1 project?");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all projects" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
+    });
+    expect(mocks.recycleProject).toHaveBeenCalledTimes(1);
+  });
 });

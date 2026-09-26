@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly no encuentra la carpeta {{folder}}. Puede que se haya movido o eliminado, o que esté en una unidad que no está conectada.",
     "linked_replaced": "La carpeta {{folder}} no es la que Oleafly abrió antes. Vuelve a abrirla para continuar.",
     "linked_permission_denied": "Oleafly no tiene permiso para abrir la carpeta {{folder}}.",
-    "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta."
+    "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta.",
+    "linked_not_recyclable": "Esta carpeta se abrió en su ubicación, así que no se puede mover a la papelera. Tus archivos no se han modificado.",
+    "linked_not_duplicable": "Esta carpeta se abrió en su ubicación, así que Oleafly no puede duplicarla."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

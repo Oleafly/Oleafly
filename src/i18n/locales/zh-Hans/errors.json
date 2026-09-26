@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly 找不到文件夹 {{folder}}。它可能已被移动或删除，或者位于未连接的驱动器上。",
     "linked_replaced": "文件夹 {{folder}} 已不是 Oleafly 之前打开的那个文件夹。请重新打开它以继续。",
     "linked_permission_denied": "Oleafly 没有打开文件夹 {{folder}} 的权限。",
-    "linked_invalid": "Oleafly 中此文件夹的链接已损坏。请将其从 Oleafly 中移除，然后重新打开该文件夹。"
+    "linked_invalid": "Oleafly 中此文件夹的链接已损坏。请将其从 Oleafly 中移除，然后重新打开该文件夹。",
+    "linked_not_recyclable": "此文件夹是在原位置打开的，无法移入回收站。你的文件没有任何改动。",
+    "linked_not_duplicable": "此文件夹是在原位置打开的，Oleafly 无法复制它。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

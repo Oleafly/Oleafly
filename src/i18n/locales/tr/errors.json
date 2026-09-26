@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly {{folder}} klasörünü bulamıyor. Taşınmış ya da silinmiş olabilir veya bağlı olmayan bir sürücüde olabilir.",
     "linked_replaced": "{{folder}} klasörü, Oleafly'nin daha önce açtığı klasör değil. Devam etmek için klasörü yeniden açın.",
     "linked_permission_denied": "Oleafly'nin {{folder}} klasörünü açma izni yok.",
-    "linked_invalid": "Oleafly'nin bu klasöre bağlantısı bozuk. Klasörü Oleafly'den kaldırın, ardından yeniden açın."
+    "linked_invalid": "Oleafly'nin bu klasöre bağlantısı bozuk. Klasörü Oleafly'den kaldırın, ardından yeniden açın.",
+    "linked_not_recyclable": "Bu klasör bulunduğu yerde açıldığı için Geri Dönüşüm Kutusu'na taşınamaz. Dosyalarınız değiştirilmedi.",
+    "linked_not_duplicable": "Bu klasör bulunduğu yerde açıldığı için Oleafly onu çoğaltamaz."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

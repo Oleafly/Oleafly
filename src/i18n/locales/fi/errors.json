@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly ei löydä kansiota {{folder}}. Se on ehkä siirretty tai poistettu, tai se on asemalla, jota ei ole liitetty.",
     "linked_replaced": "Kansio {{folder}} ei ole sama, jonka Oleafly avasi aiemmin. Jatka avaamalla se uudelleen.",
     "linked_permission_denied": "Oleaflylla ei ole oikeutta avata kansiota {{folder}}.",
-    "linked_invalid": "Oleaflyn linkki tähän kansioon on vioittunut. Poista se Oleaflysta ja avaa kansio sitten uudelleen."
+    "linked_invalid": "Oleaflyn linkki tähän kansioon on vioittunut. Poista se Oleaflysta ja avaa kansio sitten uudelleen.",
+    "linked_not_recyclable": "Tämä kansio avattiin sijainnissaan, joten sitä ei voi siirtää roskakoriin. Tiedostojasi ei ole muutettu.",
+    "linked_not_duplicable": "Tämä kansio avattiin sijainnissaan, joten Oleafly ei voi monistaa sitä."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

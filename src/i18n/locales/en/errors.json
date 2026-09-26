@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly can't find the folder {{folder}}. It might have been moved or deleted, or it's on a drive that isn't connected.",
     "linked_replaced": "The folder {{folder}} isn't the one Oleafly opened before. Open it again to continue.",
     "linked_permission_denied": "Oleafly doesn't have permission to open the folder {{folder}}.",
-    "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again."
+    "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again.",
+    "linked_not_recyclable": "This folder was opened in place, so it can't be moved to the Recycle Bin. Your files are untouched.",
+    "linked_not_duplicable": "This folder was opened in place, so Oleafly can't duplicate it."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

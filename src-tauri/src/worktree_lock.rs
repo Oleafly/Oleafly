@@ -424,6 +424,45 @@ mod tests {
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
+    #[test]
+    fn a_linked_project_reads_its_restore_marker_from_central_state_only() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir_all(folder.join(".oleafly")).unwrap();
+        fs::write(
+            folder.join(".oleafly").join(super::RESTORE_PENDING_FILE),
+            b"",
+        )
+        .unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+
+        assert!(!super::pending_restore_marker_exists(&record.id).unwrap());
+        drop(ProjectWorktreeLock::shared(&record.id).unwrap());
+
+        let recovery = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id)
+            .join("state");
+        fs::create_dir(&recovery).unwrap();
+        fs::write(recovery.join(super::RESTORE_PENDING_FILE), b"").unwrap();
+        fs::remove_dir_all(&folder).unwrap();
+
+        assert!(super::pending_restore_marker_exists(&record.id).unwrap());
+        assert!(ProjectWorktreeLock::shared(&record.id)
+            .unwrap_err()
+            .contains("recovery is pending"));
+        let recovery_lock =
+            ProjectWorktreeLock::exclusive_for_restore_recovery(&record.id).unwrap();
+        fs::remove_file(recovery.join(super::RESTORE_PENDING_FILE)).unwrap();
+        drop(recovery_lock);
+        drop(ProjectWorktreeLock::shared(&record.id).unwrap());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_linked_restore_marker_directory_must_be_real() {

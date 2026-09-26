@@ -168,6 +168,14 @@ pub(crate) fn linked_state_dir(project_id: &str) -> Result<Option<PathBuf>, Stri
     }
 }
 
+pub(crate) fn kind_of(project_id: &str) -> Result<ProjectKind, String> {
+    Ok(if linked_state_dir(project_id)?.is_some() {
+        ProjectKind::Linked
+    } else {
+        ProjectKind::Library
+    })
+}
+
 fn library_claims(project_id: &str) -> bool {
     !matches!(crate::paths::library_project_root(project_id), Ok(None))
 }
@@ -242,6 +250,110 @@ fn linked_location(record: LinkRecord, state_dir: PathBuf) -> Result<ProjectLoca
         manifest: ManifestSource::Sidecar,
         compile_dir,
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum LibraryDirError {
+    Linked,
+    NotFound,
+    NotLibrary,
+    Io(String),
+}
+
+impl LibraryDirError {
+    pub(crate) fn into_message(self, linked_code: &'static str) -> String {
+        match self {
+            Self::Linked => AppError::new(linked_code).into(),
+            Self::NotFound => AppError::new("project.not_found").into(),
+            Self::NotLibrary => AppError::new("project.not_recyclable").into(),
+            Self::Io(message) => message,
+        }
+    }
+}
+
+impl From<LibraryDirError> for String {
+    fn from(error: LibraryDirError) -> Self {
+        error.into_message("project.linked_not_recyclable")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LibraryProjectDir {
+    id: String,
+    path: PathBuf,
+}
+
+impl LibraryProjectDir {
+    pub(crate) fn resolve(project_id: &str) -> Result<Self, LibraryDirError> {
+        crate::paths::validate_project_id(project_id).map_err(LibraryDirError::Io)?;
+        if linked_registry::id_reserved(project_id).map_err(LibraryDirError::Io)? {
+            return Err(LibraryDirError::Linked);
+        }
+        let projects = crate::paths::projects_root()
+            .and_then(|root| {
+                root.canonicalize()
+                    .map_err(|error| format!("failed to resolve projects root: {error}"))
+            })
+            .map_err(LibraryDirError::Io)?;
+        let candidate = projects.join(project_id);
+        let metadata = match std::fs::symlink_metadata(&candidate) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Err(LibraryDirError::NotFound)
+            }
+            Err(error) => {
+                return Err(LibraryDirError::Io(format!(
+                    "failed to inspect project before deletion: {error}"
+                )))
+            }
+        };
+        if !metadata.is_dir()
+            || metadata.file_type().is_symlink()
+            || crate::paths::is_reparse_point(&metadata)
+        {
+            return Err(LibraryDirError::NotLibrary);
+        }
+        let path = candidate.canonicalize().map_err(|error| {
+            LibraryDirError::Io(format!(
+                "failed to resolve project before deletion: {error}"
+            ))
+        })?;
+        let named_for_project = path
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .is_some_and(|name| name.eq_ignore_ascii_case(project_id));
+        if path.parent() != Some(projects.as_path()) || !named_for_project {
+            return Err(LibraryDirError::NotLibrary);
+        }
+        Ok(Self {
+            id: project_id.to_string(),
+            path,
+        })
+    }
+
+    pub(crate) fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) fn revalidate(&self) -> Result<PathBuf, String> {
+        let current = Self::resolve(&self.id)?;
+        if current.path != self.path {
+            return Err(LibraryDirError::NotLibrary.into());
+        }
+        Ok(current.path)
+    }
+}
+
+pub(crate) fn refuse_linked(project_id: &str, code: &'static str) -> Result<(), String> {
+    crate::paths::validate_project_id(project_id)?;
+    if linked_registry::id_reserved(project_id)? {
+        return Err(AppError::new(code).into());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -805,6 +917,81 @@ mod tests {
             crate::paths::existing_build_dir("missing").unwrap_err(),
             "project does not exist: missing"
         );
+    }
+
+    #[test]
+    fn library_project_dir_is_only_built_for_real_library_directories() {
+        let fixture = Fixture::new();
+        let projects = crate::paths::projects_root().unwrap();
+        std::fs::create_dir(projects.join("paper")).unwrap();
+        std::fs::write(projects.join("notes"), b"not a directory").unwrap();
+        let folder = fixture.folder("thesis");
+        std::fs::write(folder.join("main.tex"), b"keep").unwrap();
+        let linked = register_folder_for_test(&folder);
+        std::fs::create_dir(projects.join(&linked.id)).unwrap();
+
+        let library = LibraryProjectDir::resolve("paper").unwrap();
+        assert_eq!(library.id(), "paper");
+        assert_eq!(
+            library.path(),
+            projects.join("paper").canonicalize().unwrap()
+        );
+        assert_eq!(
+            LibraryProjectDir::resolve(&linked.id).unwrap_err(),
+            LibraryDirError::Linked
+        );
+        assert_eq!(
+            LibraryProjectDir::resolve("missing").unwrap_err(),
+            LibraryDirError::NotFound
+        );
+        assert_eq!(
+            LibraryProjectDir::resolve("notes").unwrap_err(),
+            LibraryDirError::NotLibrary
+        );
+        assert!(matches!(
+            LibraryProjectDir::resolve("../paper").unwrap_err(),
+            LibraryDirError::Io(_)
+        ));
+
+        let message: String = LibraryDirError::Linked.into();
+        assert!(
+            message.contains("\"code\":\"project.linked_not_recyclable\""),
+            "{message}"
+        );
+        assert!(LibraryDirError::Linked
+            .into_message("project.linked_not_duplicable")
+            .contains("\"code\":\"project.linked_not_duplicable\""));
+        assert!(refuse_linked(&linked.id, "project.linked_not_duplicable")
+            .unwrap_err()
+            .contains("\"code\":\"project.linked_not_duplicable\""));
+        refuse_linked("paper", "project.linked_not_duplicable").unwrap();
+
+        update(&linked.id, |next| {
+            next.removed_at = Some(1);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            LibraryProjectDir::resolve(&linked.id).unwrap_err(),
+            LibraryDirError::Linked
+        );
+        assert!(folder.join("main.tex").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn library_project_dir_refuses_a_symlinked_library_entry() {
+        let fixture = Fixture::new();
+        let projects = crate::paths::projects_root().unwrap();
+        let outside = fixture.folder("outside");
+        std::fs::write(outside.join("main.tex"), b"keep").unwrap();
+        std::os::unix::fs::symlink(&outside, projects.join("paper")).unwrap();
+
+        assert_eq!(
+            LibraryProjectDir::resolve("paper").unwrap_err(),
+            LibraryDirError::NotLibrary
+        );
+        assert!(outside.join("main.tex").is_file());
     }
 
     #[test]

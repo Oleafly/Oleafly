@@ -57,6 +57,7 @@ mod paths;
 mod proc;
 mod process_identity;
 mod project;
+mod project_availability;
 mod project_location;
 mod project_sources;
 mod protocol;
@@ -567,6 +568,7 @@ pub fn run() {
             project::open_devtools,
             project::get_project,
             project::list_projects,
+            project_availability::probe_project_availability,
             project::create_project,
             project::create_project_from_pdf_conversion,
             project::create_project_from_ad_hoc,
@@ -609,6 +611,7 @@ pub fn run() {
             project::clear_build_cache,
             project::recycle_project,
             commands::reveal_in_dir,
+            commands::reveal_project,
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,

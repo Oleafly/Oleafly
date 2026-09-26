@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly nie może znaleźć folderu {{folder}}. Mógł zostać przeniesiony lub usunięty albo znajduje się na dysku, który nie jest podłączony.",
     "linked_replaced": "Folder {{folder}} nie jest tym, który Oleafly otworzył wcześniej. Otwórz go ponownie, aby kontynuować.",
     "linked_permission_denied": "Oleafly nie ma uprawnień do otwarcia folderu {{folder}}.",
-    "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie."
+    "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie.",
+    "linked_not_recyclable": "Ten folder otwarto w jego lokalizacji, więc nie można go przenieść do Kosza. Twoje pliki pozostały bez zmian.",
+    "linked_not_duplicable": "Ten folder otwarto w jego lokalizacji, więc Oleafly nie może go zduplikować."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

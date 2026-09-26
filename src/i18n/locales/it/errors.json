@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly non trova la cartella {{folder}}. Potrebbe essere stata spostata o eliminata, oppure si trova su un'unità non collegata.",
     "linked_replaced": "La cartella {{folder}} non è quella che Oleafly ha aperto in precedenza. Riaprila per continuare.",
     "linked_permission_denied": "Oleafly non ha l'autorizzazione per aprire la cartella {{folder}}.",
-    "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella."
+    "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella.",
+    "linked_not_recyclable": "Questa cartella è stata aperta nella sua posizione, quindi non può essere spostata nel cestino. I tuoi file non sono stati modificati.",
+    "linked_not_duplicable": "Questa cartella è stata aperta nella sua posizione, quindi Oleafly non può duplicarla."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

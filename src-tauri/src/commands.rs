@@ -171,6 +171,30 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
     reveal_canonical_path(&canonical)
 }
 
+pub(crate) fn revealable_project_path(
+    project_id: &str,
+    path: Option<&str>,
+) -> Result<std::path::PathBuf, String> {
+    let target = match path.filter(|path| !path.is_empty()) {
+        Some(relative) => crate::sandbox::resolve(project_id, relative)?,
+        None => paths::project_dir(project_id)?,
+    };
+    target
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve path: {error}"))
+}
+
+#[tauri::command]
+pub async fn reveal_project(project_id: String, path: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let target = revealable_project_path(&project_id, path.as_deref())?;
+        reveal_canonical_path(&target)
+    })
+    .await
+    .map_err(|error| format!("failed to reveal the project: {error}"))?
+}
+
 pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), String> {
     let path = canonical.to_string_lossy().to_string();
     #[cfg(target_os = "macos")]
@@ -858,6 +882,64 @@ mod tests {
         assert!(build.is_dir());
         assert_eq!(std::fs::read_dir(&build).unwrap().count(), 0);
         assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn clearing_a_linked_build_never_touches_a_build_folder_inside_the_user_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join(".oleafly").join("build")).unwrap();
+        let cli_pdf = folder.join(".oleafly").join("build").join("main.pdf");
+        std::fs::write(&cli_pdf, b"%PDF cli").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let central = crate::paths::build_dir(&linked.id).unwrap();
+        std::fs::write(central.join("stale.aux"), b"stale").unwrap();
+
+        tauri::async_runtime::block_on(clear_build_dir(linked.id.clone())).unwrap();
+
+        assert_eq!(std::fs::read(&cli_pdf).unwrap(), b"%PDF cli");
+        assert!(central.is_dir());
+        assert!(!central.join("stale.aux").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn project_reveal_targets_resolve_inside_the_project_only() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join("chapters")).unwrap();
+        std::fs::write(folder.join("chapters").join("intro.tex"), b"x").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let library = crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(
+            revealable_project_path(&linked.id, None).unwrap(),
+            folder.canonicalize().unwrap()
+        );
+        assert_eq!(
+            revealable_project_path(&linked.id, Some("chapters/intro.tex")).unwrap(),
+            folder
+                .join("chapters")
+                .join("intro.tex")
+                .canonicalize()
+                .unwrap()
+        );
+        assert_eq!(revealable_project_path("paper", Some("")).unwrap(), library);
+        for escape in ["../data", "/etc", "chapters/../../data"] {
+            assert!(
+                revealable_project_path(&linked.id, Some(escape)).is_err(),
+                "{escape}"
+            );
+        }
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

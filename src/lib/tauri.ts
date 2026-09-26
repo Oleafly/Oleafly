@@ -87,6 +87,7 @@ import type {
   PackInfo,
   Persona,
   Prerequisite,
+  ProjectAvailabilityReport,
   ProjectInfo,
   ProjectMeta,
   ProjectSourcesRequest,
@@ -562,6 +563,9 @@ export const getProject = (projectId: string) =>
 
 export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 
+export const probeProjectAvailability = (projectIds: string[]) =>
+  invoke<ProjectAvailabilityReport[]>("probe_project_availability", { projectIds });
+
 export const libraryStorageSummary = () =>
   invoke<LibraryStorageSummary>("library_storage_summary");
 
@@ -799,6 +803,9 @@ export const exportPdf = (projectId: string, dest: string) =>
 
 export const revealInDir = (path: string) =>
   invoke<void>("reveal_in_dir", { path });
+
+export const revealProject = (projectId: string, path?: string | null) =>
+  invoke<void>("reveal_project", { projectId, path: path ?? null });
 
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });

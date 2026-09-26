@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly でフォルダ {{folder}} が見つかりません。移動または削除されたか、接続されていないドライブ上にある可能性があります。",
     "linked_replaced": "フォルダ {{folder}} は、以前 Oleafly で開いたフォルダではありません。続けるには、もう一度開いてください。",
     "linked_permission_denied": "Oleafly にはフォルダ {{folder}} を開く権限がありません。",
-    "linked_invalid": "このフォルダへの Oleafly のリンクが破損しています。Oleafly から削除してから、フォルダをもう一度開いてください。"
+    "linked_invalid": "このフォルダへの Oleafly のリンクが破損しています。Oleafly から削除してから、フォルダをもう一度開いてください。",
+    "linked_not_recyclable": "このフォルダは元の場所で開かれているため、ごみ箱に移動できません。ファイルは変更されていません。",
+    "linked_not_duplicable": "このフォルダは元の場所で開かれているため、Oleafly では複製できません。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

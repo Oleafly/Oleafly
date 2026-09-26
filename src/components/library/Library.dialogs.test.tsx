@@ -389,6 +389,26 @@ describe("Library project dialogs", () => {
       }),
     );
     await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(notifyError.mock.calls[0]?.[2]).toBe(enLibrary.projects.forkDialog.failed);
+  });
+
+  it("explains why the backend refused a fork", async () => {
+    duplicateProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.linked_not_duplicable", params: {}, detail: null })}`,
+    );
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.projects.fork }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: enLibrary.projects.forkDialog.confirm,
+      }),
+    );
+    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(notifyError.mock.calls[0]?.[0]).toBe("fork project");
+    expect(notifyError.mock.calls[0]?.[2]).toBeUndefined();
   });
 
   it("forks once while a fork is running, whatever keys and clicks arrive", async () => {

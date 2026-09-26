@@ -62,6 +62,7 @@ import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
 import { cn, isMac } from "@/lib/utils";
 import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -368,7 +369,11 @@ export function TopToolbar() {
       setForkName("");
       void openProject(newId);
     } catch (e) {
-      notifyError("fork project", e, i18n.t(($) => $.shell.toolbar.forkFailed));
+      notifyError(
+        "fork project",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.shell.toolbar.forkFailed),
+      );
     } finally {
       setForkBusy(false);
     }

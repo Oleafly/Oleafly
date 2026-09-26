@@ -10,7 +10,9 @@
     "linked_missing": "O Oleafly não encontra a pasta {{folder}}. Ela pode ter sido movida ou excluída, ou está em uma unidade que não está conectada.",
     "linked_replaced": "A pasta {{folder}} não é a mesma que o Oleafly abriu antes. Abra-a novamente para continuar.",
     "linked_permission_denied": "O Oleafly não tem permissão para abrir a pasta {{folder}}.",
-    "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente."
+    "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente.",
+    "linked_not_recyclable": "Esta pasta foi aberta no próprio local, então não pode ser movida para a Lixeira. Seus arquivos não foram alterados.",
+    "linked_not_duplicable": "Esta pasta foi aberta no próprio local, então o Oleafly não pode duplicá-la."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

@@ -524,6 +524,7 @@ pub struct ProjectInfo {
     /// True only for the ID-only placeholder returned while a crashed
     /// Checkpoint restore must be recovered before project metadata is read.
     pub recovery_pending: bool,
+    pub location: crate::project_availability::ProjectLocationInfo,
 }
 
 fn meta_path(project_id: &str) -> Result<PathBuf, String> {
@@ -3431,7 +3432,10 @@ fn log_project_enumeration_skip(project_id: &str, error: &str) {
     let _ = append_app_log(message);
 }
 
-fn recovery_pending_project_info(project_id: String) -> ProjectInfo {
+fn recovery_pending_project_info(
+    project_id: String,
+    location: crate::project_availability::ProjectLocationInfo,
+) -> ProjectInfo {
     ProjectInfo {
         name: project_id.clone(),
         main_doc: String::new(),
@@ -3444,11 +3448,178 @@ fn recovery_pending_project_info(project_id: String) -> ProjectInfo {
         exports: Vec::new(),
         forked_from: None,
         recovery_pending: true,
+        location,
         id: project_id,
     }
 }
 
 const PROJECT_ENUMERATION_LOCK_BUDGET: std::time::Duration = std::time::Duration::from_millis(750);
+
+fn project_export_infos(exports: &[ExportRecord]) -> Vec<ProjectExportInfo> {
+    exports
+        .iter()
+        .map(|export| ProjectExportInfo {
+            date: export.date,
+            filename: export.filename.clone(),
+            path: export.path.clone(),
+            format: Path::new(&export.filename)
+                .extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .unwrap_or_default()
+                .to_ascii_lowercase(),
+        })
+        .collect()
+}
+
+enum EnumerationAdmission {
+    Readable(crate::worktree_lock::ProjectWorktreeLock),
+    RecoveryPending,
+    Skip,
+}
+
+fn admit_enumeration(project_id: &str) -> EnumerationAdmission {
+    let error = match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
+        project_id,
+        PROJECT_ENUMERATION_LOCK_BUDGET,
+    ) {
+        Ok(lock) => return EnumerationAdmission::Readable(lock),
+        Err(error) => error,
+    };
+    match crate::worktree_lock::pending_restore_marker_exists(project_id) {
+        Ok(true) => EnumerationAdmission::RecoveryPending,
+        Ok(false) => match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
+            project_id,
+            PROJECT_ENUMERATION_LOCK_BUDGET,
+        ) {
+            Ok(lock) => EnumerationAdmission::Readable(lock),
+            Err(retry_error) => {
+                log_project_enumeration_skip(
+                    project_id,
+                    &format!("{error}; retry failed: {retry_error}"),
+                );
+                EnumerationAdmission::Skip
+            }
+        },
+        Err(marker_error) => {
+            log_project_enumeration_skip(
+                project_id,
+                &format!("{error}; could not inspect recovery marker: {marker_error}"),
+            );
+            EnumerationAdmission::Skip
+        }
+    }
+}
+
+fn linked_listing_meta(project_id: &str) -> Option<ProjectMeta> {
+    let state_dir = crate::project_location::linked_state_dir(project_id).ok()??;
+    let path = state_dir.join(crate::project_location::MANIFEST_FILE);
+    let metadata = std::fs::symlink_metadata(&path).ok()?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || paths::is_reparse_point(&metadata)
+    {
+        return None;
+    }
+    parse_project_meta(&std::fs::read(&path).ok()?).ok()
+}
+
+fn linked_display_name(
+    record: &crate::linked_registry::LinkRecord,
+    meta: Option<&ProjectMeta>,
+) -> String {
+    record
+        .display_name
+        .clone()
+        .filter(|name| !name.trim().is_empty())
+        .or_else(|| {
+            meta.map(|meta| meta.name.clone())
+                .filter(|name| !name.is_empty())
+        })
+        .or_else(|| {
+            Path::new(&record.canonical_path)
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+        })
+        .unwrap_or_else(|| record.id.clone())
+}
+
+fn linked_project_info(
+    record: &crate::linked_registry::LinkRecord,
+    home: Option<&Path>,
+) -> Option<ProjectInfo> {
+    use crate::project_availability::{
+        abbreviated_display_path, ProjectAvailability, ProjectLocationInfo,
+    };
+    let location = ProjectLocationInfo::Linked {
+        display_path: abbreviated_display_path(Path::new(&record.canonical_path), home),
+        availability: ProjectAvailability::Unknown,
+    };
+    let _worktree = match admit_enumeration(&record.id) {
+        EnumerationAdmission::Readable(lock) => lock,
+        EnumerationAdmission::RecoveryPending => {
+            return Some(recovery_pending_project_info(record.id.clone(), location))
+        }
+        EnumerationAdmission::Skip => return None,
+    };
+    let meta = linked_listing_meta(&record.id);
+    let engine = meta
+        .as_ref()
+        .map(|meta| meta.engine.clone())
+        .filter(|engine| !engine.is_empty())
+        .unwrap_or_else(default_engine);
+    let main_doc = meta
+        .as_ref()
+        .map(|meta| meta.main_doc.clone())
+        .unwrap_or_default();
+    let has_preview = !main_doc.is_empty()
+        && crate::document_engine::existing_compiled_pdf_path(&record.id, &engine, &main_doc)
+            .ok()
+            .flatten()
+            .is_some_and(|path| path.is_file());
+    Some(ProjectInfo {
+        id: record.id.clone(),
+        name: linked_display_name(record, meta.as_ref()),
+        main_doc,
+        engine,
+        kind: meta
+            .as_ref()
+            .map(|meta| meta.kind.clone())
+            .filter(|kind| !kind.is_empty())
+            .unwrap_or_else(|| "document".to_string()),
+        created_at: record.created_at as f64 / 1000.0,
+        updated_at: record.last_opened_at as f64 / 1000.0,
+        color: meta
+            .as_ref()
+            .map(|meta| meta.color.clone())
+            .unwrap_or_default(),
+        has_preview,
+        exports: meta
+            .as_ref()
+            .map(|meta| project_export_infos(&meta.exports))
+            .unwrap_or_default(),
+        forked_from: None,
+        recovery_pending: false,
+        location,
+    })
+}
+
+fn linked_listing_entries() -> Vec<crate::linked_registry::LinkEntry> {
+    crate::linked_registry::list().unwrap_or_else(|error| {
+        log_project_enumeration_skip("linked registry", &error);
+        Vec::new()
+    })
+}
+
+fn claimed_by_linked_registry(entries: &[crate::linked_registry::LinkEntry]) -> HashSet<String> {
+    entries
+        .iter()
+        .filter(|entry| match entry {
+            crate::linked_registry::LinkEntry::Record(record) => record.is_active(),
+            crate::linked_registry::LinkEntry::Corrupt { .. } => true,
+        })
+        .map(|entry| entry.id().to_string())
+        .collect()
+}
 
 #[tauri::command]
 pub async fn list_projects() -> Result<Vec<ProjectInfo>, String> {
@@ -3459,6 +3630,8 @@ pub async fn list_projects() -> Result<Vec<ProjectInfo>, String> {
 
 pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
     let root = paths::projects_root()?;
+    let linked = linked_listing_entries();
+    let linked_ids = claimed_by_linked_registry(&linked);
     let mut out = Vec::new();
     let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
     for entry in entries.flatten() {
@@ -3475,48 +3648,19 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             }
             continue;
         }
-        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
-            &id,
-            PROJECT_ENUMERATION_LOCK_BUDGET,
-        ) {
-            Ok(lock) => lock,
-            Err(error) => {
-                // Do not read possibly half-restored metadata. Keep the
-                // project discoverable through an ID-only placeholder so
-                // opening it can enter the dedicated recovery admission.
-                match crate::worktree_lock::pending_restore_marker_exists(&id) {
-                    Ok(true) => {
-                        out.push(recovery_pending_project_info(id));
-                        continue;
-                    }
-                    Ok(false) => {
-                        // Recovery may have completed between the rejected
-                        // admission and the marker check. Retry once so a
-                        // freshly recovered project does not disappear for
-                        // the rest of this library refresh.
-                        match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
-                            &id,
-                            PROJECT_ENUMERATION_LOCK_BUDGET,
-                        ) {
-                            Ok(lock) => lock,
-                            Err(retry_error) => {
-                                log_project_enumeration_skip(
-                                    &id,
-                                    &format!("{error}; retry failed: {retry_error}"),
-                                );
-                                continue;
-                            }
-                        }
-                    }
-                    Err(marker_error) => {
-                        log_project_enumeration_skip(
-                            &id,
-                            &format!("{error}; could not inspect recovery marker: {marker_error}"),
-                        );
-                        continue;
-                    }
-                }
+        if linked_ids.contains(&id) {
+            continue;
+        }
+        let _worktree = match admit_enumeration(&id) {
+            EnumerationAdmission::Readable(lock) => lock,
+            EnumerationAdmission::RecoveryPending => {
+                out.push(recovery_pending_project_info(
+                    id,
+                    crate::project_availability::ProjectLocationInfo::Library,
+                ));
+                continue;
             }
+            EnumerationAdmission::Skip => continue,
         };
         let meta = match project_meta_for_enumeration_lock_held(&id, &entry.path()) {
             Ok(meta) => meta,
@@ -3546,20 +3690,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 .ok()
                 .flatten()
                 .is_some_and(|path| path.is_file());
-        let exports = meta
-            .exports
-            .iter()
-            .map(|export| ProjectExportInfo {
-                date: export.date,
-                filename: export.filename.clone(),
-                path: export.path.clone(),
-                format: Path::new(&export.filename)
-                    .extension()
-                    .and_then(std::ffi::OsStr::to_str)
-                    .unwrap_or_default()
-                    .to_ascii_lowercase(),
-            })
-            .collect();
+        let exports = project_export_infos(&meta.exports);
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -3583,9 +3714,24 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             exports,
             forked_from: meta.forked_from,
             recovery_pending: false,
+            location: crate::project_availability::ProjectLocationInfo::Library,
             id,
             updated_at,
         });
+    }
+    let home = crate::project_availability::display_home();
+    for entry in &linked {
+        match entry {
+            crate::linked_registry::LinkEntry::Record(record) if record.is_active() => {
+                if let Some(info) = linked_project_info(record, home.as_deref()) {
+                    out.push(info);
+                }
+            }
+            crate::linked_registry::LinkEntry::Record(_) => {}
+            crate::linked_registry::LinkEntry::Corrupt { id, error } => {
+                log_project_enumeration_skip(id, error);
+            }
+        }
     }
     out.sort_by(|a, b| {
         b.updated_at
@@ -5597,6 +5743,8 @@ pub(crate) const MCP_SEARCH_ENTRY_SCAN_LIMIT: usize = 5_000;
 pub(crate) const MCP_SEARCH_FILE_SCAN_LIMIT: usize = 2_000;
 const MCP_SEARCH_FILE_BYTE_LIMIT: usize = 2 * 1024 * 1024;
 const MCP_SEARCH_TOTAL_BYTE_LIMIT: usize = 32 * 1024 * 1024;
+const LINKED_SEARCH_ENTRY_LIMIT: usize = 20_000;
+const LINKED_SEARCH_FILE_LIMIT: usize = 3_000;
 
 pub(crate) struct BoundedSearch {
     pub hits: Vec<SearchHit>,
@@ -5853,6 +6001,8 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
         }
         let q_lower = q.to_lowercase();
         let root = paths::projects_root()?;
+        let linked = linked_listing_entries();
+        let linked_ids = claimed_by_linked_registry(&linked);
         let mut hits: Vec<SearchHit> = Vec::new();
         let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
         for entry in entries.flatten() {
@@ -5864,6 +6014,9 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
             }
             let project_id = entry.file_name().to_string_lossy().into_owned();
             if paths::validate_project_id(&project_id).is_err() {
+                continue;
+            }
+            if linked_ids.contains(&project_id) {
                 continue;
             }
             let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&project_id) {
@@ -5896,10 +6049,82 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
                 0,
             );
         }
+        search_linked_folders(&linked, &q_lower, &mut hits);
         Ok(hits)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn search_linked_folders(
+    linked: &[crate::linked_registry::LinkEntry],
+    q_lower: &str,
+    hits: &mut Vec<SearchHit>,
+) {
+    let records: Vec<&crate::linked_registry::LinkRecord> = linked
+        .iter()
+        .filter_map(|entry| match entry {
+            crate::linked_registry::LinkEntry::Record(record) if record.is_active() => Some(record),
+            _ => None,
+        })
+        .collect();
+    if records.is_empty() || hits.len() >= SEARCH_LIMIT {
+        return;
+    }
+    let available: HashSet<String> = crate::project_availability::probe_linked_projects(
+        records.iter().map(|record| record.id.clone()).collect(),
+        crate::project_availability::LINKED_PROBE_BUDGET,
+    )
+    .into_iter()
+    .filter(|report| report.availability == crate::project_availability::ProjectAvailability::Ok)
+    .map(|report| report.project_id)
+    .collect();
+    for record in records
+        .into_iter()
+        .filter(|record| available.contains(&record.id))
+    {
+        if hits.len() >= SEARCH_LIMIT {
+            break;
+        }
+        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&record.id) {
+            Ok(lock) => lock,
+            Err(error) => {
+                log_project_enumeration_skip(&record.id, &error);
+                continue;
+            }
+        };
+        let Ok(root) = paths::project_dir(&record.id) else {
+            continue;
+        };
+        let project_name = linked_display_name(record, linked_listing_meta(&record.id).as_ref());
+        let never_cancelled = AtomicBool::new(false);
+        let mut found = BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        bounded_search_walk(
+            &record.id,
+            &project_name,
+            &root,
+            &root,
+            q_lower,
+            &mut found,
+            SearchLimits {
+                max_results: SEARCH_LIMIT - hits.len(),
+                max_entries: LINKED_SEARCH_ENTRY_LIMIT,
+                max_files: LINKED_SEARCH_FILE_LIMIT,
+                max_file_bytes: MCP_SEARCH_FILE_BYTE_LIMIT,
+                max_total_bytes: MCP_SEARCH_TOTAL_BYTE_LIMIT,
+                deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
+            },
+            &never_cancelled,
+            0,
+        );
+        hits.extend(found.hits);
+    }
 }
 
 /// Search a SINGLE project's text files for `query`. Used by the AI assistant so
@@ -6067,6 +6292,7 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
 #[tauri::command]
 pub async fn duplicate_project(project_id: String, new_name: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        crate::project_location::refuse_linked(&project_id, "project.linked_not_duplicable")?;
         let root = paths::projects_root()?;
         let reservation = reserve_unique_project_directory(&root, true)?;
         // Reserve the new identity before pinning the source so two concurrent
@@ -6412,6 +6638,7 @@ async fn recycle_project_synchronized(
     project_id: String,
 ) -> Result<(), String> {
     paths::validate_project_id(&project_id)?;
+    crate::project_location::refuse_linked(&project_id, "project.linked_not_recyclable")?;
     let projects = paths::projects_root()?
         .canonicalize()
         .map_err(|error| format!("failed to resolve projects root: {error}"))?;
@@ -6434,12 +6661,12 @@ async fn recycle_project_synchronized(
                     revoke_shell_escape_trust(&project_id)?;
                     return Err(crate::app_error::AppError::new("project.not_found").into());
                 }
-                let verified = paths::project_dir(&project_id)?;
+                let verified = crate::project_location::LibraryProjectDir::resolve(&project_id)?;
                 let project_name = read_meta(&project_id)
                     .map(|meta| meta.name)
                     .unwrap_or_else(|_| project_id.clone());
                 revoke_shell_escape_trust(&project_id)?;
-                crate::storage::recycle_project_directory(&project_id, &project_name, &verified)?;
+                crate::storage::recycle_project_directory(&verified, &project_name)?;
                 Ok(((), true))
             })
         })?;
@@ -6932,7 +7159,11 @@ mod tests {
         let recycled_worker = std::thread::spawn(move || {
             try_reserve_project_directory(&worker_projects, recycled_id, true)
         });
-        crate::storage::recycle_project_directory(recycled_id, "Owner", &active).unwrap();
+        crate::storage::recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(recycled_id).unwrap(),
+            "Owner",
+        )
+        .unwrap();
         drop(recycled_lock);
         assert!(recycled_worker.join().unwrap().unwrap().is_none());
         assert!(!projects.join(recycled_id).exists());
@@ -7624,6 +7855,183 @@ mod tests {
         assert!(!folder.exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn folder_listing(root: &Path) -> Vec<(String, u64)> {
+        let mut entries = Vec::new();
+        let mut pending = vec![root.to_path_buf()];
+        while let Some(directory) = pending.pop() {
+            for entry in std::fs::read_dir(&directory).unwrap() {
+                let path = entry.unwrap().path();
+                let metadata = std::fs::symlink_metadata(&path).unwrap();
+                if metadata.is_dir() {
+                    pending.push(path.clone());
+                }
+                entries.push((
+                    rel_slash(root, &path),
+                    if metadata.is_file() {
+                        metadata.len()
+                    } else {
+                        0
+                    },
+                ));
+            }
+        }
+        entries.sort();
+        entries
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn recycling_a_linked_folder_is_refused_and_leaves_it_and_its_trust_untouched() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("recycle-linked");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = test_dir("recycle-linked-folder");
+        std::fs::write(folder.join("main.tex"), "keep").unwrap();
+        std::fs::create_dir(folder.join("figures")).unwrap();
+        std::fs::write(folder.join("figures").join("plot.pdf"), b"%PDF").unwrap();
+        let before = folder_listing(&folder);
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let trust_path = super::shell_escape_trust_path(&linked.id).unwrap();
+        std::fs::write(&trust_path, b"{}").unwrap();
+        let state = crate::state::AppState::default();
+
+        let error = super::recycle_project_synchronized(&state, linked.id.clone())
+            .await
+            .unwrap_err();
+
+        assert!(
+            error.contains("\"code\":\"project.linked_not_recyclable\""),
+            "{error}"
+        );
+        assert_eq!(folder_listing(&folder), before);
+        assert!(trust_path.exists());
+        assert!(!data.join("recycle-bin").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn duplicating_a_linked_folder_is_refused_without_reserving_a_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("duplicate-linked");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = test_dir("duplicate-linked-folder");
+        std::fs::write(folder.join("main.tex"), "keep").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+
+        let error = duplicate_project(linked.id.clone(), "Copy".into())
+            .await
+            .unwrap_err();
+
+        assert!(
+            error.contains("\"code\":\"project.linked_not_duplicable\""),
+            "{error}"
+        );
+        assert!(std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .next()
+            .is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn linked_folders_join_the_listing_from_the_registry_without_touching_them() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("listing-linked");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let library_dir = crate::paths::projects_root().unwrap().join("paper");
+        std::fs::create_dir(&library_dir).unwrap();
+        write_meta_at(
+            &library_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Paper".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let folder = test_dir("listing-linked-folder");
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+        let copied = crate::paths::projects_root().unwrap().join(&linked.id);
+        std::fs::create_dir(&copied).unwrap();
+        write_meta_at(
+            &copied.join("project.json"),
+            &ProjectMeta {
+                name: "Hand copy".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let removed_folder = test_dir("listing-linked-removed");
+        let removed = crate::linked_registry::register_folder_for_test(&removed_folder);
+        crate::linked_registry::update(&removed.id, |next| {
+            next.removed_at = Some(1);
+            Ok(())
+        })
+        .unwrap();
+        std::fs::remove_dir_all(&folder).unwrap();
+
+        let listed = super::list_projects_blocking().unwrap();
+
+        let library =
+            serde_json::to_value(listed.iter().find(|project| project.id == "paper").unwrap())
+                .unwrap();
+        assert_eq!(
+            library["location"],
+            serde_json::json!({ "kind": "library" })
+        );
+        let entries: Vec<_> = listed
+            .iter()
+            .filter(|project| project.id == linked.id)
+            .collect();
+        assert_eq!(entries.len(), 1);
+        let entry = serde_json::to_value(entries[0]).unwrap();
+        let basename = folder.file_name().unwrap().to_str().unwrap();
+        assert_eq!(entry["name"], basename);
+        assert_eq!(entry["location"]["kind"], "linked");
+        assert_eq!(entry["location"]["availability"], "unknown");
+        assert!(entry["location"]["display_path"]
+            .as_str()
+            .unwrap()
+            .ends_with(basename));
+        assert!(!entries[0].has_preview);
+        assert!(listed.iter().all(|project| project.id != removed.id));
+        assert!(!folder.exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(removed_folder).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn global_search_covers_available_linked_folders_and_skips_missing_ones() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("search-linked");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let present = test_dir("search-linked-present");
+        std::fs::write(present.join("chapter.tex"), "the needle is here").unwrap();
+        let gone = test_dir("search-linked-gone");
+        std::fs::write(gone.join("chapter.tex"), "another needle").unwrap();
+        let present_link = crate::linked_registry::register_folder_for_test(&present);
+        let gone_link = crate::linked_registry::register_folder_for_test(&gone);
+        std::fs::remove_dir_all(&gone).unwrap();
+
+        let hits = search_docs("needle".into()).await.unwrap();
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].project_id, present_link.id);
+        assert_eq!(hits[0].path, "chapter.tex");
+        assert!(hits.iter().all(|hit| hit.project_id != gone_link.id));
+        assert!(!present.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(present).unwrap();
     }
 
     #[allow(clippy::await_holding_lock)]

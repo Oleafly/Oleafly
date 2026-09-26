@@ -74,6 +74,27 @@ describe("DeveloperSettings project actions", () => {
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
+  it("leaves folders opened in place out of the development reset", async () => {
+    mocks.listProjects.mockResolvedValue([
+      { id: "a" },
+      {
+        id: "linked-0123456789abcdef0123456789abcdef",
+        location: { kind: "linked", display_path: "~/thesis", availability: "unknown" },
+      },
+    ]);
+    render(<DeveloperSettings />);
+    await screen.findByText(SANDBOX);
+    confirmClearProjects();
+
+    await waitFor(() =>
+      expect(mocks.success).toHaveBeenCalledWith(
+        i18n.t(($) => $.core.developer.projectsRecycled, { count: 1 }),
+      ),
+    );
+    expect(mocks.recycleProject).toHaveBeenCalledTimes(1);
+    expect(mocks.recycleProject).toHaveBeenCalledWith("a");
+  });
+
   it("adds no error of its own when the open project could not close", async () => {
     useFilesStore.setState({ projectId: "open-paper" });
     render(<DeveloperSettings />);

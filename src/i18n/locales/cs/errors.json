@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly nemůže najít složku {{folder}}. Mohla být přesunuta nebo smazána, nebo je na disku, který není připojený.",
     "linked_replaced": "Složka {{folder}} není ta, kterou Oleafly otevřel dříve. Chcete-li pokračovat, otevřete ji znovu.",
     "linked_permission_denied": "Oleafly nemá oprávnění otevřít složku {{folder}}.",
-    "linked_invalid": "Odkaz Oleafly na tuto složku je poškozený. Odeberte ji z Oleafly a potom složku otevřete znovu."
+    "linked_invalid": "Odkaz Oleafly na tuto složku je poškozený. Odeberte ji z Oleafly a potom složku otevřete znovu.",
+    "linked_not_recyclable": "Tato složka byla otevřena na svém místě, proto ji nelze přesunout do koše. Vaše soubory zůstaly beze změny.",
+    "linked_not_duplicable": "Tato složka byla otevřena na svém místě, proto ji Oleafly nemůže duplikovat."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

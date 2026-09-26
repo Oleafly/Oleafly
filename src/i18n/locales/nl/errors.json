@@ -10,7 +10,9 @@
     "linked_missing": "Oleafly kan de map {{folder}} niet vinden. Misschien is die verplaatst of verwijderd, of staat die op een schijf die niet is aangesloten.",
     "linked_replaced": "De map {{folder}} is niet de map die Oleafly eerder opende. Open hem opnieuw om verder te gaan.",
     "linked_permission_denied": "Oleafly heeft geen toestemming om de map {{folder}} te openen.",
-    "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw."
+    "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw.",
+    "linked_not_recyclable": "Deze map is op zijn eigen locatie geopend en kan daarom niet naar de Prullenbak worden verplaatst. Je bestanden zijn niet gewijzigd.",
+    "linked_not_duplicable": "Deze map is op zijn eigen locatie geopend, dus Oleafly kan hem niet dupliceren."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

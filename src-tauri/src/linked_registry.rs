@@ -390,10 +390,50 @@ pub(crate) fn id_reserved(project_id: &str) -> Result<bool, String> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum LinkEntry {
+    Record(LinkRecord),
+    Corrupt { id: String, error: String },
+}
+
+impl LinkEntry {
+    pub(crate) fn id(&self) -> &str {
+        match self {
+            Self::Record(record) => &record.id,
+            Self::Corrupt { id, .. } => id,
+        }
+    }
+}
+
+pub(crate) fn list() -> Result<Vec<LinkEntry>, String> {
+    let data_root = crate::paths::oleafly_root()?;
+    let registry = load_registry();
+    if let Some(failure) = &registry.failure {
+        return Err(failure.clone());
+    }
+    let mut entries: Vec<LinkEntry> = registry
+        .entries
+        .iter()
+        .map(|(project_id, cached)| match cached {
+            Cached::Record { record, .. } => LinkEntry::Record(record.as_ref().clone()),
+            Cached::Corrupt { error, .. } => LinkEntry::Corrupt {
+                id: project_id.clone(),
+                error: error.clone(),
+            },
+        })
+        .collect();
+    entries.sort_by(|left, right| left.id().cmp(right.id()));
+    registries()
+        .write()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(data_root, registry);
+    Ok(entries)
+}
+
 #[cfg(test)]
 pub(crate) use management::{
-    folder_snapshot_for_test, get, list, register, register_folder_for_test, update, LinkEntry,
-    NewLink, Registration,
+    folder_snapshot_for_test, get, register, register_folder_for_test, update, NewLink,
+    Registration,
 };
 
 #[cfg(test)]
@@ -401,21 +441,6 @@ mod management {
     use super::*;
     use oleafly_core::locking::{lock_file, lock_mutex, STORAGE_LOCK_TIMEOUT};
     use std::sync::{Mutex, MutexGuard};
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub(crate) enum LinkEntry {
-        Record(LinkRecord),
-        Corrupt { id: String, error: String },
-    }
-
-    impl LinkEntry {
-        pub(crate) fn id(&self) -> &str {
-            match self {
-                Self::Record(record) => &record.id,
-                Self::Corrupt { id, .. } => id,
-            }
-        }
-    }
 
     pub(super) fn new_linked_id() -> String {
         format!("{LINKED_ID_PREFIX}{:032x}", rand::random::<u128>())
@@ -440,31 +465,6 @@ mod management {
             return Ok(None);
         };
         read_record(&linked_root.join(project_id), project_id)
-    }
-
-    pub(crate) fn list() -> Result<Vec<LinkEntry>, String> {
-        let data_root = crate::paths::oleafly_root()?;
-        let registry = load_registry();
-        if let Some(failure) = &registry.failure {
-            return Err(failure.clone());
-        }
-        let mut entries: Vec<LinkEntry> = registry
-            .entries
-            .iter()
-            .map(|(project_id, cached)| match cached {
-                Cached::Record { record, .. } => LinkEntry::Record(record.as_ref().clone()),
-                Cached::Corrupt { error, .. } => LinkEntry::Corrupt {
-                    id: project_id.clone(),
-                    error: error.clone(),
-                },
-            })
-            .collect();
-        entries.sort_by(|left, right| left.id().cmp(right.id()));
-        registries()
-            .write()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(data_root, registry);
-        Ok(entries)
     }
 
     pub(crate) struct NewLink {
@@ -1135,7 +1135,11 @@ mod tests {
         let active = projects.join(id(3));
         std::fs::create_dir(&active).unwrap();
         std::fs::write(active.join("project.json"), br#"{"name":"Owner"}"#).unwrap();
-        crate::storage::recycle_project_directory(&id(3), "Owner", &active).unwrap();
+        crate::storage::recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(&id(3)).unwrap(),
+            "Owner",
+        )
+        .unwrap();
         assert!(try_reserve_linked_id(&linked, &id(3)).unwrap().is_none());
 
         std::fs::create_dir(linked.join(id(4))).unwrap();
