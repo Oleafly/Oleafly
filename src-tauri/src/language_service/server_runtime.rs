@@ -96,6 +96,7 @@ pub(super) struct ServerLaunch {
     pub(super) executable: PathBuf,
     pub(super) args: Vec<String>,
     pub(super) search_path: Option<OsString>,
+    pub(super) working_directory: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -179,6 +180,7 @@ fn resolve_profile_for_launch(
         executable,
         args: profile.args,
         search_path: launch_search_path(app_local_data, profile.kind, inherited)?,
+        working_directory: ensure_tool_shims(app_local_data)?,
     })
 }
 
@@ -2288,7 +2290,7 @@ mod tests {
         std::fs::write(real.join("latexmk"), b"#!/bin/sh\nexit 0\n").unwrap();
         std::fs::set_permissions(real.join("latexmk"), std::fs::Permissions::from_mode(0o755))
             .unwrap();
-        let binary = b"#!/bin/sh\ncommand -v latexmk\n";
+        let binary = b"#!/bin/sh\npwd -P\ncommand -v latexmk\n";
         let archive = zip_fixture("texlab", binary);
         let profile = ServerProfile {
             kind: LanguageServiceKind::TexLab,
@@ -2308,7 +2310,6 @@ mod tests {
         )
         .unwrap();
 
-        let project = temp_dir("launch-project");
         let crate::language_service::SpawnedSession {
             mut child,
             stdin,
@@ -2316,24 +2317,25 @@ mod tests {
             stderr,
             containment,
             ..
-        } = crate::language_service::spawn_sidecar(&launch, &project).unwrap();
+        } = crate::language_service::spawn_sidecar(&launch).unwrap();
         drop(stdin);
         drop(stderr);
         let mut output = Vec::new();
         stdout.read_to_end(&mut output).await.unwrap();
         child.wait().await.unwrap();
         drop(containment);
+        let shims = app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY);
         assert_eq!(
-            String::from_utf8(output).unwrap().trim_end(),
-            app_data
-                .join(INSTALL_DIRECTORY)
-                .join(TOOL_SHIM_DIRECTORY)
-                .join("latexmk")
-                .to_str()
+            String::from_utf8(output)
                 .unwrap()
+                .lines()
+                .collect::<Vec<_>>(),
+            vec![
+                shims.to_str().unwrap(),
+                shims.join("latexmk").to_str().unwrap()
+            ]
         );
 
-        std::fs::remove_dir_all(project).unwrap();
         std::fs::remove_dir_all(real).unwrap();
         std::fs::remove_dir_all(app_data).unwrap();
     }
@@ -2362,7 +2364,7 @@ mod tests {
                 mut stderr,
                 containment,
                 ..
-            } = crate::language_service::spawn_sidecar(launch, &project).unwrap();
+            } = crate::language_service::spawn_sidecar(launch).unwrap();
             tokio::spawn(async move { tokio::io::copy(&mut stdout, &mut tokio::io::sink()).await });
             tokio::spawn(async move { tokio::io::copy(&mut stderr, &mut tokio::io::sink()).await });
             for message in [
@@ -2414,9 +2416,33 @@ mod tests {
             executable: shimmed.executable.clone(),
             args: shimmed.args.clone(),
             search_path: None,
+            working_directory: shimmed.working_directory.clone(),
         };
         assert!(latexmkrc_ran(&unshimmed).await);
         assert!(!latexmkrc_ran(&shimmed).await);
+        std::fs::remove_dir_all(app_data).unwrap();
+    }
+
+    #[test]
+    fn every_language_server_launches_from_the_oleafly_shim_directory() {
+        let resource_root = temp_dir("cwd-resource");
+        let app_data = temp_dir("cwd-app-data");
+        let (profile, resource) =
+            resource_fixture(&resource_root, "1.2.3", b"fixture-language-server");
+        let launch = resolve_profile_for_launch(
+            &app_data,
+            &InstallerState::default(),
+            profile,
+            Some(&resource),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            launch.working_directory,
+            app_data.join(INSTALL_DIRECTORY).join(TOOL_SHIM_DIRECTORY)
+        );
+        assert!(launch.search_path.is_none());
+        std::fs::remove_dir_all(resource_root).unwrap();
         std::fs::remove_dir_all(app_data).unwrap();
     }
 }

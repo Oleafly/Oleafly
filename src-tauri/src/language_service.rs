@@ -703,7 +703,7 @@ pub async fn language_service_start(
         kind: request.kind,
         generation: registry.generation,
     };
-    let spawned = spawn_sidecar(&launch, &workspace_root)?;
+    let spawned = spawn_sidecar(&launch)?;
     let (outbound, outbound_rx) = mpsc::channel(OUTBOUND_QUEUE_DEPTH);
     let (stop, stop_rx) = watch::channel(false);
     let (status, _) = watch::channel(LanguageServiceStatus::Running);
@@ -1235,13 +1235,12 @@ fn resolve_project_workspace(project_id: &str) -> Result<PathBuf, LanguageServic
 
 fn spawn_sidecar(
     launch: &server_runtime::ServerLaunch,
-    workspace_root: &Path,
 ) -> Result<SpawnedSession, LanguageServiceError> {
     let mut command = tokio::process::Command::new(&launch.executable);
     command
         .no_console()
         .args(&launch.args)
-        .current_dir(workspace_root)
+        .current_dir(&launch.working_directory)
         .kill_on_drop(true)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -2686,8 +2685,9 @@ mod tests {
             executable: executable.clone(),
             args: Vec::new(),
             search_path: None,
+            working_directory: PathBuf::from("."),
         };
-        let error = match spawn_sidecar(&launch, Path::new(".")) {
+        let error = match spawn_sidecar(&launch) {
             Ok(_) => panic!("nonexistent executable unexpectedly spawned"),
             Err(error) => error,
         };
@@ -2703,9 +2703,9 @@ mod tests {
             executable: PathBuf::from("cmd.exe"),
             args: vec!["/D".into(), "/S".into(), "/C".into(), "exit 0".into()],
             search_path: None,
+            working_directory: PathBuf::from("."),
         };
-        let spawned =
-            spawn_sidecar(&launch, Path::new(".")).expect("spawn contained language server");
+        let spawned = spawn_sidecar(&launch).expect("spawn contained language server");
         let SpawnedSession {
             mut child,
             stdin,
@@ -2756,8 +2756,9 @@ mod tests {
                 "sleep 30 </dev/null >/dev/null 2>/dev/null & printf '%s' \"$!\"".into(),
             ],
             search_path: None,
+            working_directory: PathBuf::from("."),
         };
-        let spawned = spawn_sidecar(&launch, Path::new(".")).expect("spawn shell leader");
+        let spawned = spawn_sidecar(&launch).expect("spawn shell leader");
         let SpawnedSession {
             mut child,
             stdin,
