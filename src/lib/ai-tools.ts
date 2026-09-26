@@ -28,6 +28,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { useCompileStore } from "@/store/compile";
+import { agentCompileAllowed } from "@/lib/open-compile";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useAgentTodoStore } from "@/store/agent-todos";
@@ -341,7 +342,14 @@ const HOST: AiToolsHost = {
     await files.refreshTree();
   },
   refreshOpenFiles: refreshOpenFilesFromDisk,
-  recompile: () => useCompileStore.getState().recompile({ origin: "automatic" }),
+  recompile: async () => {
+    if (!agentCompileAllowed(useFilesStore.getState().mainDecision)) {
+      throw new Error(
+        "This folder has no main document yet, so compiling is off. Ask the user to pick a file and choose Set as main, then compile again.",
+      );
+    }
+    return useCompileStore.getState().recompile({ origin: "agent" });
+  },
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
   extractPdfText: async (bytes) => {

@@ -189,6 +189,9 @@ export const getProjectEngine = (projectId: string) =>
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
+export const readBuildArtifact = (projectId: string, name: string) =>
+  invoke<string | null>("read_build_artifact", { projectId, name });
+
 
 /** Null means the persisted record is missing or stale: compile normally. */
 export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>

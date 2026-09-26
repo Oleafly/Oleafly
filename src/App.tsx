@@ -70,6 +70,7 @@ import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import {
+  automaticCompileAllowed,
   openCompileHydrated,
   resetOpenCompileMarker,
   shouldCompileOnOpen,
@@ -267,6 +268,7 @@ function AppContent() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
+  const mainDecision = useFilesStore((state) => state.mainDecision);
   const mainDocumentLoaded = useFilesStore(
     (state) => state.files[state.mainDoc] !== undefined,
   );
@@ -763,6 +765,7 @@ function AppContent() {
     }
     if (
       openCompileInFlightRef.current !== null ||
+      !automaticCompileAllowed(mainDecision) ||
       !shouldCompileOnOpen(
         projectId,
         tree.length > 0,
@@ -841,6 +844,7 @@ function AppContent() {
     compileCheckpoint,
     compileStatus,
     engineLoaded,
+    mainDecision,
     mainDocument,
     mainDocumentLoaded,
     openCompileEpoch,

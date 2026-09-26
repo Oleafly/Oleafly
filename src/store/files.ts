@@ -32,6 +32,7 @@ import {
   type FileConflictStrategy,
   type FileEntry,
   type GitPullResult,
+  type MainDecision,
   type ManifestHome,
   type ProjectInfo,
   type ProjectMeta,
@@ -382,6 +383,7 @@ interface FilesStore {
   projectDictionaryLocale: string | null;
   manifestHome: ManifestHome;
   mainDoc: string;
+  mainDecision: MainDecision;
   engine: DocumentEngineDescriptor;
   engineLoaded: boolean;
   engineError: EngineErrorCode | null;
@@ -1407,6 +1409,7 @@ const EMPTY_PROJECT_STATE = {
   projectDictionaryLocale: null,
   manifestHome: "library",
   mainDoc: "main.tex",
+  mainDecision: "auto",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
   engineError: null,
@@ -1426,6 +1429,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectDictionaryLocale: null,
   manifestHome: "library",
   mainDoc: "main.tex",
+  mainDecision: "auto",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
   engineError: null,
@@ -2377,7 +2381,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       // its source identity immediately while capabilities remain fail-closed;
       // otherwise an old compile could still match `mainDoc` during the engine
       // descriptor request and repopulate the cleared preview.
-      set({ mainDoc: meta.main_doc });
+      set({ mainDoc: meta.main_doc, mainDecision: "auto" });
       const engine = await fetchProjectEngineQuietly(projectId, current);
       if (!current()) return;
       set({ mainDoc: meta.main_doc, engine, engineLoaded: true, engineError: null });

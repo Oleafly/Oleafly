@@ -10,6 +10,7 @@ import {
   type CompileError,
   type CompileResult,
   type LogDiagnostic,
+  type MainDecision,
 } from "@/lib/tauri";
 import {
   engineErrorMessage,
@@ -36,6 +37,7 @@ import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
 
 import { compileOfflineForEngine } from "@/lib/document-engine";
+import { agentCompileAllowed, automaticCompileAllowed } from "@/lib/open-compile";
 import { ensurePandoc } from "@/features/pandoc";
 import {
   canApplyLocalCompileOutcome,
@@ -70,9 +72,15 @@ function clearQueuedRerun(): void {
   rerunOrigin = "automatic";
 }
 
+const COMPILE_ORIGIN_RANK: Readonly<Record<CompileOrigin, number>> = {
+  automatic: 0,
+  agent: 1,
+  explicit: 2,
+};
+
 function queueRerun(origin: CompileOrigin): void {
   rerunQueued = true;
-  if (origin === "explicit") rerunOrigin = "explicit";
+  if (COMPILE_ORIGIN_RANK[origin] > COMPILE_ORIGIN_RANK[rerunOrigin]) rerunOrigin = origin;
 }
 
 let activeCompileIntent: number | null = null;
@@ -396,7 +404,7 @@ async function mainDocumentSyntaxErrors(
     }));
 }
 
-export type CompileOrigin = "explicit" | "automatic";
+export type CompileOrigin = "explicit" | "agent" | "automatic";
 
 export interface RecompileOptions {
   readonly fromScratch?: boolean;
@@ -784,6 +792,18 @@ function setCompileUnavailable(ctx: CompileGateContext, failureReason: string): 
   });
 }
 
+function mainDecisionAllows(origin: CompileOrigin, decision: MainDecision): boolean {
+  if (origin === "explicit") return true;
+  if (origin === "agent") return agentCompileAllowed(decision);
+  return automaticCompileAllowed(decision);
+}
+
+function mainDecisionGate(ctx: CompileGateContext): boolean {
+  if (mainDecisionAllows(ctx.origin, ctx.files.mainDecision)) return true;
+  ctx.abortIntent();
+  return false;
+}
+
 function folderAvailableGate(ctx: CompileGateContext): boolean {
   if (projectFolderAvailable(ctx.capturedProjectId)) return true;
   setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
@@ -924,6 +944,7 @@ async function runCompileGates(
   ctx: CompileGateContext,
   options: RecompileOptions | undefined,
 ): Promise<string | null> {
+  if (!mainDecisionGate(ctx)) return null;
   if (!folderAvailableGate(ctx)) return null;
   if (!engineLoadedGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;

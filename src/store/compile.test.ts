@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
     projectId: "project" as string | null,
     activePath: "main.tex" as string | null,
     mainDoc: "main.tex",
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     engine: null as unknown,
     engineLoaded: true,
     engineError: null as string | null,
@@ -213,6 +214,7 @@ beforeEach(() => {
   mocks.files.projectId = "project";
   mocks.files.activePath = "main.tex";
   mocks.files.mainDoc = "main.tex";
+  mocks.files.mainDecision = "auto";
   mocks.files.engine = LATEX_ENGINE;
   mocks.files.engineLoaded = true;
   mocks.files.engineError = null;
@@ -1620,5 +1622,110 @@ describe("a project folder that is not available", () => {
     const state = useCompileStore.getState();
     expect(state.status).toBe("error");
     expect(state.failureReason ?? "").not.toContain("@oleafly/error");
+  });
+});
+
+describe("automatic compiles and main document detection", () => {
+  const compileResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  beforeEach(() => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+  });
+
+  it.each(["ask", "no_main"] as const)(
+    "skips an automatic compile while detection says %s, without a toast",
+    async (decision) => {
+      mocks.files.mainDecision = decision;
+      await useCompileStore.getState().recompile({ origin: "automatic" });
+      expect(mocks.compileProject).not.toHaveBeenCalled();
+      expect(mocks.saveActive).not.toHaveBeenCalled();
+      expect(useCompileStore.getState()).toMatchObject({
+        status: "idle",
+        failureReason: null,
+        lastAttemptIdentity: null,
+      });
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(mocks.errorUnique).not.toHaveBeenCalled();
+      expect(mocks.infoUnique).not.toHaveBeenCalled();
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still compiles on request, and automatically once a main is decided", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "ask";
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    mocks.files.mainDecision = "auto";
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.compileProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("compiles an agent's request while the main is undecided, without a toast", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "ask";
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("refuses an agent's compile when the folder has no main document", async () => {
+    mocks.compileProject.mockResolvedValue(compileResult);
+    mocks.files.mainDecision = "no_main";
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().status).toBe("idle");
+  });
+
+  it("runs an agent's request that waited behind a running compile while the main is undecided", async () => {
+    mocks.files.mainDecision = "ask";
+    const first = deferred<typeof compileResult>();
+    mocks.compileProject.mockReturnValueOnce(first.promise).mockResolvedValue(compileResult);
+    const running = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(1));
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    first.resolve(compileResult);
+    await running;
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("still drops a background request that waited behind a running compile while the main is undecided", async () => {
+    mocks.files.mainDecision = "ask";
+    const first = deferred<typeof compileResult>();
+    mocks.compileProject.mockReturnValueOnce(first.promise).mockResolvedValue(compileResult);
+    const running = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(1));
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    first.resolve(compileResult);
+    await running;
+    await new Promise((done) => setTimeout(done, 0));
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    expect(useCompileStore.getState().status).not.toBe("compiling");
+  });
+
+  it("keeps an automatic compile that folder trust refuses out of toasts", async () => {
+    mocks.compileProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "trust.system_tex", params: {}, detail: null })}`,
+    );
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.failureReason ?? "").not.toContain("@oleafly/error");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });

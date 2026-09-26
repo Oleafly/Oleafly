@@ -530,6 +530,7 @@ pub fn run() {
             commands::cancel_compile,
             commands::clear_build_dir,
             commands::read_compiled_pdf,
+            commands::read_build_artifact,
             commands::validate_compile_fingerprint,
             commands::compile_isolated,
             commands::read_isolated_pdf,

@@ -10,6 +10,7 @@ const appState = vi.hoisted(() => {
     engineLoaded: false,
     loading: false,
     mainDoc: "main.tex",
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     activePath: "main.tex" as string | null,
     files: { "main.tex": { content: "", dirty: false } } as Record<
       string,
@@ -59,6 +60,13 @@ const codeMirrorMocks = vi.hoisted(() => ({
   findFromDOM: vi.fn<(dom: HTMLElement) => unknown>(() => null),
   redo: vi.fn(() => true),
   undo: vi.fn(() => true),
+}));
+
+const openCompileMocks = vi.hoisted(() => ({
+  automaticCompileAllowed: vi.fn((decision: string) => decision === "auto"),
+  openCompileHydrated: vi.fn(() => false),
+  resetOpenCompileMarker: vi.fn(() => null),
+  shouldCompileOnOpen: vi.fn(() => false),
 }));
 vi.mock("@codemirror/view", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@codemirror/view")>();
@@ -290,11 +298,7 @@ vi.mock("@/lib/agent-item-effects", () => ({
     return () => appState.computerUseListeners.delete(listener);
   },
 }));
-vi.mock("@/lib/open-compile", () => ({
-  openCompileHydrated: () => false,
-  resetOpenCompileMarker: () => null,
-  shouldCompileOnOpen: () => false,
-}));
+vi.mock("@/lib/open-compile", () => openCompileMocks);
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
 vi.mock("@/lib/updater", () => ({
   checkForUpdatesOnStartup: vi.fn(async () => {}),
@@ -355,6 +359,9 @@ describe("project dock layout", () => {
     appState.computerUseListeners.clear();
     appState.menuListeners.clear();
     appState.tauri = false;
+    appState.files.mainDecision = "auto";
+    appState.compile.recompile.mockClear();
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValue(false);
     editorControllerMocks.editorRedo.mockClear();
     editorControllerMocks.editorUndo.mockClear();
     editorControllerMocks.editorVimRedo.mockClear();
@@ -848,5 +855,31 @@ describe("project dock layout", () => {
     expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorUndo).toHaveBeenCalledOnce();
     expect(editorControllerMocks.editorRedo).toHaveBeenCalledOnce();
+  });
+
+  it("holds the on-open compile until the folder's main document is decided", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+
+    appState.files.mainDecision = "ask";
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValueOnce(true).mockReturnValue(false);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+
+    appState.files.mainDecision = "auto";
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValueOnce(true).mockReturnValue(false);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
   });
 });

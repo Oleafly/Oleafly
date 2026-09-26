@@ -341,6 +341,7 @@ export type ProjectLocationInfo =
     | { kind: "library" }
     | { kind: "linked"; display_path: string; availability: ProjectAvailability };
 export type ManifestHome = "library" | "folder" | "device" | "device_foreign";
+export type MainDecision = "auto" | "ask" | "no_main";
 export interface ProjectAvailabilityReport {
     project_id: string;
     availability: ProjectAvailability;
@@ -783,6 +784,7 @@ export interface BackendPort {
   focusCurrentWindow: () => Promise<void>;
   getProjectEngine: (projectId: string) => Promise<DocumentEngineDescriptor>;
   readCompiledPdf: (projectId: string) => Promise<ArrayBuffer>;
+  readBuildArtifact: (projectId: string, name: string) => Promise<string | null>;
   validateCompileFingerprint: (
     projectId: string,
     mainDoc: string,
