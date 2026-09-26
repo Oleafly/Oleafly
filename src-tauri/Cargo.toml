@@ -34,6 +34,7 @@ sys-locale = "0.3"
 # process plugin provides `relaunch()` to restart into the new version.
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2.4.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
@@ -101,3 +102,9 @@ e2e-testing = ["dep:tauri-plugin-playwright"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
+
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_System_LibraryLoader",
+  "Win32_UI_WindowsAndMessaging",
+] }

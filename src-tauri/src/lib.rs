@@ -53,6 +53,7 @@ mod menu;
 mod ollama;
 mod paths;
 mod proc;
+mod process_identity;
 mod project;
 mod project_sources;
 mod protocol;
@@ -70,6 +71,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod single_instance;
 mod skills;
 mod skills_catalog;
 mod skills_pack;
@@ -241,7 +243,13 @@ pub fn run() {
         std::process::exit(research_mcp::serve_stdio_bridge());
     }
     i18n::startup();
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    if single_instance::enabled_for_this_launch() {
+        builder = builder
+            .manage(single_instance::ForwardedLaunches::default())
+            .plugin(single_instance::plugin());
+    }
+    builder = builder
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);

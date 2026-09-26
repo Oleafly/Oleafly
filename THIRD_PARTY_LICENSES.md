@@ -57,7 +57,7 @@ at the pinned tag.
 | Crate | License |
 |---|---|
 | tauri, tauri-build | Apache-2.0 OR MIT |
-| tauri-plugin-shell / -dialog / -updater / -process | Apache-2.0 OR MIT |
+| tauri-plugin-shell / -dialog / -updater / -process / -single-instance | Apache-2.0 OR MIT |
 | serde, serde_json | MIT OR Apache-2.0 |
 | reqwest | MIT OR Apache-2.0 |
 | base64 | MIT OR Apache-2.0 |

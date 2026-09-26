@@ -129,6 +129,12 @@ impl ResearchTaskState {
         *lock(&self.inner.app) = Some(app);
     }
 
+    pub fn disown_on_exit(&self) {
+        if let Ok(store) = self.store() {
+            let _ = store.disown_current();
+        }
+    }
+
     pub async fn recover(&self, app_state: &crate::state::AppState) -> Result<(), String> {
         let store = self.store()?;
         let mut failures = Vec::new();
