@@ -31,6 +31,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
+import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
+import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
+import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
@@ -912,6 +915,7 @@ function AppContent() {
           <TopToolbar />
         <BackendProtocolBanner />
         <FolderUnavailableBanner />
+        <OpenedFolderBanners />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}
@@ -1119,6 +1123,7 @@ function AppContent() {
         <AssistantOutputsBridge />
         <ExternalToolApprovals />
         <EnginePickerModal />
+        <MainDocumentPicker />
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
@@ -1207,6 +1212,7 @@ export default function App() {
       </ErrorBoundary>
       <AutoCompileKeeper />
       <ProjectAvailabilityKeeper />
+      <OpenFolderKeeper />
       <AppContent />
     </>
   );

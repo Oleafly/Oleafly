@@ -45,6 +45,9 @@ import { useFilesStore } from "@/store/files";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
+import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
+import { ALL_MAIN_EXTENSIONS, mainDocumentMissing } from "@/lib/main-document";
+import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError } from "@/lib/tauri";
@@ -145,7 +148,7 @@ interface TreeCtx {
   onOpen: (p: string) => void;
   onDelete: (p: string) => void;
   onSetMain: (p: string) => void;
-  mainExtensions: string[];
+  mainExtensions: readonly string[];
   onCopy: (p: string, isDir: boolean) => void;
   onImport: (destDir: string, mode: "file" | "dir") => void;
   renamePath: string | null;
@@ -191,7 +194,9 @@ export function FileTree({
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
-  const mainExtensions = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
+  const noMainDocument = useFilesStore(mainDocumentMissing);
+  let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
+  if (noMainDocument) mainExtensions = ALL_MAIN_EXTENSIONS;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
@@ -616,7 +621,8 @@ export function FileTree({
       );
     },
     onSetMain: (path) => {
-      void setMainDoc(path).catch(() => {
+      const change = noMainDocument ? chooseMainDocument(path) : setMainDoc(path);
+      void change.catch(() => {
         if (useFilesStore.getState().mainDoc === path) return;
         toast.error(i18n.t(($) => $.workspace.files.setMainFailed, { path }));
       });
@@ -736,6 +742,7 @@ export function FileTree({
         contentClassName="flex min-h-0 flex-1 flex-col pb-0"
         actions={sourceActions}
       >
+        {noMainDocument && <NoMainDocumentHint />}
         {/* The whole list is a drop target for moving entries back to the root. */}
         <ContextMenu>
         <ContextMenuTrigger asChild>

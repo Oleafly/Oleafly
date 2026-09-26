@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalPane } from "./TerminalPane";
 
@@ -271,6 +271,24 @@ describe("TerminalPane", () => {
         projectId: "project-1",
       });
     });
+  });
+
+  it("reports a started session once, and nothing when the shell cannot start", async () => {
+    const onStarted = vi.fn();
+    const view = render(<TerminalPane projectId="project-1" visible onStarted={onStarted} />);
+    await waitFor(() => expect(onStarted).toHaveBeenCalledTimes(1));
+    view.unmount();
+
+    const failed = vi.fn();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? Promise.reject(new Error("no shell")) : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible onStarted={failed} />);
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything()),
+    );
+    await act(async () => {});
+    expect(failed).not.toHaveBeenCalled();
   });
 
   it("focuses xterm after opening, connecting, becoming visible, and being clicked", async () => {

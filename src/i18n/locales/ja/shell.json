@@ -447,6 +447,81 @@
     "tryCommand": "コマンドを試す",
     "unknownCommand": "不明なコマンドです。/ を入力すると使えるコマンドが表示されます。"
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly でどの文書をコンパイルしますか？",
+      "askDescription": "このフォルダには複数の文書があります。メインの文書を選んでください。あとで変更できます。",
+      "changeTitle": "メイン文書を選ぶ",
+      "changeDescription": "選んだ文書を Oleafly がコンパイルし、このフォルダ用に記憶します。",
+      "listLabel": "このフォルダ内の文書",
+      "open": "開く",
+      "browse": "ファイルを見るだけ",
+      "bestMatch": "最適な候補",
+      "current": "現在",
+      "loading": "文書を探しています…",
+      "empty": "Oleafly はここで文書を見つけられませんでした。ファイルツリーでファイルを右クリックし、「メイン文書に設定」を選んでください。",
+      "failed": "Oleafly はこのフォルダを読み取れませんでした。",
+      "truncated": "このフォルダは大きいため、Oleafly は途中で検索を止めました。一覧に表示されない文書があるかもしれません。",
+      "openFailed": "{{path}} をメイン文書にできませんでした。"
+    },
+    "kind": {
+      "document": "文書",
+      "book": "書籍",
+      "presentation": "プレゼンテーション",
+      "poster": "ポスター",
+      "standalone": "単体の図",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "その他"
+    },
+    "reason": {
+      "declared": "メインファイルとして指定",
+      "top_level": "最上位フォルダにある",
+      "named_main": "名前が main",
+      "named_after_folder": "フォルダ名と同じ名前",
+      "includes_files": "他のファイルを読み込む",
+      "has_bibliography": "参考文献がある",
+      "no_begin_document": "\\begin{document} がない",
+      "standalone_figure": "単体の図",
+      "placeholder": "未ダウンロード"
+    },
+    "main": {
+      "label": "メイン: {{path}}",
+      "change": "変更",
+      "changeLabel": "メイン文書を変更",
+      "others": "ほかの文書",
+      "switchFailed": "{{path}} に切り替えられませんでした。"
+    },
+    "noMain": "メイン文書はまだありません。ファイルを選び、「メイン文書に設定」を選んでください。",
+    "trust": {
+      "banner": "Oleafly はこのフォルダで一部の機能を制限しました。信頼すると、Git、ターミナル、エージェント、shell escape が使えるようになります。",
+      "trustFolder": "このフォルダを信頼",
+      "trustParent": "親フォルダを信頼…",
+      "trustRepository": "リポジトリを信頼",
+      "hide": "隠す",
+      "terminal": "フォルダを信頼するまで、このターミナルでは Git フックとリポジトリの設定が無効です。",
+      "terminalReopen": "このターミナルはフォルダを信頼する前に起動しました。Git フックを有効にするには、開き直してください。",
+      "reopenTerminal": "ターミナルを開き直す",
+      "failed": "このフォルダを信頼できませんでした。"
+    },
+    "readOnly": {
+      "banner": "このフォルダは読み取り専用です。コンパイルはできますが、編集内容は保存できません。",
+      "copy": "ライブラリにコピー",
+      "copied": "Oleafly がこのフォルダをライブラリにコピーしました。現在はコピーを編集しています。",
+      "copyFailed": "このフォルダをライブラリにコピーできませんでした。"
+    },
+    "sync": {
+      "syncsWith": "{{service}} と同期中",
+      "cloudStorage": "クラウドサービスと同期中",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google ドライブ",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "このプロジェクトのファイル全体を検索します。",
     "noResults": "結果がありません。",

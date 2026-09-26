@@ -14,9 +14,9 @@ pub use compile_log::{
     parse_latex_log, LogCategory, LogDiagnostic, LogSeverity, MAX_COMPILE_LOG_BYTES,
 };
 pub use detect::{
-    compile_dir_for, detect_main_document, tex_magic_comments, Candidate, Decision, DetectLimits,
-    DetectOptions, Detection, DetectionSource, DocumentKind, Reason, SourceFamily,
-    TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES,
+    compile_dir_for, detect_documents, detect_main_document, tex_magic_comments, Candidate,
+    Decision, DetectLimits, DetectOptions, Detection, DetectionSource, DocumentKind, Reason,
+    SourceFamily, TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES,
     DETECT_MAX_SOURCES,
 };
 pub use error::{Error, ErrorKind, Result};

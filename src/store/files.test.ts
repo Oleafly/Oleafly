@@ -1880,6 +1880,57 @@ describe("engine setting failures", () => {
   });
 });
 
+describe("refreshEngine", () => {
+  it("picks up the engine a newly trusted folder may now use, without reopening", async () => {
+    primeOpen(LATEX_ENGINE);
+    await useFilesStore.getState().openProject("linked-0123");
+    mocks.getProjectEngine.mockResolvedValue(LATEXMK_ENGINE);
+    await useFilesStore.getState().refreshEngine();
+    expect(useFilesStore.getState()).toMatchObject({
+      engine: LATEXMK_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+    expectNoToasts();
+  });
+
+  it("does nothing without an open project", async () => {
+    await useFilesStore.getState().closeProject();
+    mocks.getProjectEngine.mockClear();
+    await useFilesStore.getState().refreshEngine();
+    expect(mocks.getProjectEngine).not.toHaveBeenCalled();
+  });
+});
+
+describe("an opened folder without its main document", () => {
+  it("opens on the file tree without trying to open the missing main", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectManifestHome.mockResolvedValue("device");
+    mocks.listFiles.mockResolvedValue([
+      { path: "notes", is_dir: true },
+      { path: "notes/draft.md", is_dir: false },
+    ]);
+    await useFilesStore.getState().openProject("linked-0123");
+    await settle();
+    expect(mocks.readFileContent).not.toHaveBeenCalledWith("linked-0123", "main.tex");
+    expect(useFilesStore.getState()).toMatchObject({
+      projectId: "linked-0123",
+      activePath: null,
+      openTabs: [],
+      loading: false,
+    });
+    expectNoToasts();
+  });
+
+  it("still opens a library project's main document as before", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.listFiles.mockResolvedValue([]);
+    await useFilesStore.getState().openProject("paper");
+    await settle();
+    expect(mocks.readFileContent).toHaveBeenCalledWith("paper", "main.tex");
+  });
+});
+
 describe("project.json in an opened folder", () => {
   it("opens a folder without a main document on its file tree and stays quiet", async () => {
     primeOpen(LATEX_ENGINE);

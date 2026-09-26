@@ -38,7 +38,7 @@
     "newFolderTitle": "新建文件夹（在所选文件夹中）",
     "renameAriaLabel": "重命名文件",
     "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
-    "setMain": "已将此文件设为主文档。",
+    "setMain": "设为主文档",
     "title": "资源管理器",
     "treeAriaLabel": "资源管理器文件树",
     "setMainFailed": "无法将“{{path}}”设为主文档。"

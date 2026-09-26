@@ -30,6 +30,8 @@ import {
   type TerminalTab,
 } from "@/store/terminals";
 import { TerminalPane } from "./TerminalPane";
+import { RestrictedTerminalBadge } from "@/components/open-folder/TrustRequiredNotice";
+import { useFolderAccessStore } from "@/store/folder-access";
 
 let mountedDocks = 0;
 
@@ -298,6 +300,7 @@ export function TerminalDock({
   const ready = storeProjectId === projectId;
   const empty = tabs.length === 0;
   const atLimit = tabs.length >= TERMINAL_LIMIT;
+  const [sessions, setSessions] = useState<Readonly<Record<string, number>>>({});
 
   useLayoutEffect(() => {
     mountedDocks += 1;
@@ -320,6 +323,12 @@ export function TerminalDock({
     const state = useTerminalsStore.getState();
     if (!state.tabs.some((tab) => tab.id !== id)) setTerminalOpen(false);
     state.closeTerminal(id);
+    useFolderAccessStore.getState().forgetTerminal(id);
+  };
+
+  const reopenTab = (id: string) => {
+    useFolderAccessStore.getState().forgetTerminal(id);
+    setSessions((current) => ({ ...current, [id]: (current[id] ?? 0) + 1 }));
   };
 
   return (
@@ -363,12 +372,21 @@ export function TerminalDock({
             <Plus className="size-4" aria-hidden />
           </button>
         </Tooltip>
+        <span className="ml-auto flex items-center gap-0.5">
+          <RestrictedTerminalBadge
+            projectId={projectId}
+            terminalId={ready ? activeId : null}
+            onReopen={() => {
+              if (activeId) reopenTab(activeId);
+            }}
+          />
+        </span>
         <Tooltip label={t(($) => $.workspace.terminal.settings)} side="bottom">
           <button
             type="button"
             aria-label={t(($) => $.workspace.terminal.settings)}
             onClick={openTerminalSettings}
-            className={cn(stripButtonClass, "ml-auto mr-0.5")}
+            className={cn(stripButtonClass, "mr-0.5")}
           >
             <Settings2 className="size-4" aria-hidden />
           </button>
@@ -381,13 +399,16 @@ export function TerminalDock({
         {ready &&
           tabs.map((tab) => (
             <TerminalPane
-              key={tab.id}
+              key={`${tab.id}:${sessions[tab.id] ?? 0}`}
               projectId={projectId}
               projectName={projectName}
               visible={visible && tab.id === activeId}
               active={tab.id === activeId}
               autoStart={tab.autoStart}
               onExit={() => closeTab(tab.id)}
+              onStarted={() =>
+                useFolderAccessStore.getState().noteTerminalStarted(projectId, tab.id)
+              }
             />
           ))}
       </div>

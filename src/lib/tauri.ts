@@ -36,6 +36,7 @@ export const mcpRegistrySearch = (request: McpRegistrySearchRequest) =>
   invoke<McpRegistrySearchResult>("mcp_registry_search", { request });
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { SkillEntry } from "@/lib/skills";
+import type { FolderDetection } from "@/lib/folder-detection";
 
 import type {
   AheadBehind,
@@ -1404,6 +1405,24 @@ export const trustFolder = (projectId: string, scope: TrustScope) =>
   invoke<ProjectTrust>("trust_folder", { projectId, scope });
 export const revokeFolderTrust = (projectId: string) =>
   invoke<ProjectTrust>("revoke_folder_trust", { projectId });
+
+export type SyncService =
+  | "icloud_drive"
+  | "one_drive"
+  | "dropbox"
+  | "google_drive"
+  | "box"
+  | "cloud_storage";
+export type FolderStatus = {
+  read_only: boolean;
+  synced_with: SyncService | null;
+};
+export const projectFolderStatus = (projectId: string) =>
+  invoke<FolderStatus | null>("project_folder_status", { projectId });
+export const projectDocumentCandidates = (projectId: string) =>
+  invoke<FolderDetection>("project_document_candidates", { projectId });
+export const copyLinkedIntoLibrary = (projectId: string) =>
+  invoke<string>("copy_linked_into_library", { projectId });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

@@ -59,6 +59,7 @@ import {
   agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, session,
 } from "./tests/ui-fixtures";
 import { AcpWorkspaceAssistant } from "./AcpWorkspaceAssistant";
+import { useFolderAccessStore } from "@/store/folder-access";
 
 function render(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -122,6 +123,21 @@ function permission(overrides: Partial<AcpPermission> = {}): AcpPermission {
 }
 
 describe("ACP assistant acceptance", () => {
+  it("says external agents need a trusted folder before the user picks one", async () => {
+    useFolderAccessStore.getState().reset("paper");
+    useFolderAccessStore.setState({
+      loaded: true,
+      trust: { trusted: false, source: null, parent: null, repository: null },
+    });
+    snapshots = {};
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const notice = await ui.findByTestId("trust-required-notice");
+    expect(notice).toHaveTextContent("Trust this folder to use external agents.");
+    expect(within(notice).getByRole("button", { name: "Trust this folder" })).toBeInTheDocument();
+    useFolderAccessStore.getState().reset(null);
+  });
+
   it("reopens persisted messages, loads older activity, and retains unknown usage without inventing token totals", async () => {
     history.saved = [
       event(1, "user_message", { text: "Compare the source methods" }),

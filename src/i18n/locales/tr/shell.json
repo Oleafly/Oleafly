@@ -449,6 +449,81 @@
     "tryCommand": "Bir komut deneyin",
     "unknownCommand": "Bilinmeyen komut. Kullanılabilir komutları görmek için / yazın."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly hangi belgeyi derlesin?",
+      "askDescription": "Bu klasörde birden fazla belge var. Ana belgeyi seçin. Daha sonra değiştirebilirsiniz.",
+      "changeTitle": "Ana belgeyi seçin",
+      "changeDescription": "Oleafly seçtiğiniz belgeyi derler ve bu klasör için hatırlar.",
+      "listLabel": "Bu klasördeki belgeler",
+      "open": "Aç",
+      "browse": "Yalnızca dosyalara göz at",
+      "bestMatch": "En iyi eşleşme",
+      "current": "Geçerli",
+      "loading": "Belgeler aranıyor…",
+      "empty": "Oleafly burada belge bulamadı. Dosya ağacında bir dosyaya sağ tıklayıp Ana belge olarak ayarla seçeneğini seçin.",
+      "failed": "Oleafly bu klasörü okuyamadı.",
+      "truncated": "Bu klasör büyük olduğu için Oleafly aramayı erken bıraktı. Bazı belgeler listede olmayabilir.",
+      "openFailed": "{{path}} ana belge yapılamadı."
+    },
+    "kind": {
+      "document": "Belge",
+      "book": "Kitap",
+      "presentation": "Sunum",
+      "poster": "Poster",
+      "standalone": "Bağımsız şekil",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Diğer"
+    },
+    "reason": {
+      "declared": "Ana dosya olarak işaretli",
+      "top_level": "En üst klasörde",
+      "named_main": "Adı main",
+      "named_after_folder": "Klasörüyle aynı adı taşıyor",
+      "includes_files": "Başka dosyaları içeriyor",
+      "has_bibliography": "Kaynakçası var",
+      "no_begin_document": "\\begin{document} yok",
+      "standalone_figure": "Bağımsız şekil",
+      "placeholder": "Henüz indirilmedi"
+    },
+    "main": {
+      "label": "Ana belge: {{path}}",
+      "change": "Değiştir",
+      "changeLabel": "Ana belgeyi değiştir",
+      "others": "Diğer belgeler",
+      "switchFailed": "{{path}} belgesine geçilemedi."
+    },
+    "noMain": "Henüz ana belge yok. Bir dosya seçip Ana belge olarak ayarla seçeneğini seçin.",
+    "trust": {
+      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar ve shell escape özelliklerini açmak için klasöre güvenin.",
+      "trustFolder": "Bu klasöre güven",
+      "trustParent": "Üst klasöre güven…",
+      "trustRepository": "Depoya güven",
+      "hide": "Gizle",
+      "terminal": "Klasöre güvenene kadar bu terminalde Git kancaları ve depo ayarları kapalı.",
+      "terminalReopen": "Bu terminal, klasöre güvenmeden önce başlatıldı. Git kancalarını açmak için terminali yeniden açın.",
+      "reopenTerminal": "Terminali yeniden aç",
+      "failed": "Bu klasöre güvenilemedi."
+    },
+    "readOnly": {
+      "banner": "Bu klasör salt okunur. Derleyebilirsiniz ama düzenlemeler kaydedilemez.",
+      "copy": "Kitaplığa kopyala",
+      "copied": "Oleafly bu klasörü kitaplığınıza kopyaladı. Şu anda kopyayı düzenliyorsunuz.",
+      "copyFailed": "Bu klasör kitaplığınıza kopyalanamadı."
+    },
+    "sync": {
+      "syncsWith": "{{service}} ile eşitleniyor",
+      "cloudStorage": "Bir bulut hizmetiyle eşitleniyor",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Bu projenin dosyalarında arayın.",
     "noResults": "Sonuç yok.",

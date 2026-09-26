@@ -447,6 +447,81 @@
     "tryCommand": "명령을 써 보세요",
     "unknownCommand": "알 수 없는 명령입니다. /를 입력하면 쓸 수 있는 명령을 볼 수 있습니다."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly가 어떤 문서를 컴파일할까요?",
+      "askDescription": "이 폴더에는 문서가 여러 개 있습니다. 주 문서를 고르세요. 나중에 바꿀 수 있습니다.",
+      "changeTitle": "주 문서 고르기",
+      "changeDescription": "Oleafly는 고른 문서를 컴파일하고 이 폴더에 대해 기억합니다.",
+      "listLabel": "이 폴더의 문서",
+      "open": "열기",
+      "browse": "파일만 둘러보기",
+      "bestMatch": "가장 적합",
+      "current": "현재",
+      "loading": "문서를 찾는 중…",
+      "empty": "Oleafly가 여기서 문서를 찾지 못했습니다. 파일 트리에서 파일을 마우스 오른쪽 버튼으로 클릭하고 주 문서로 지정을 고르세요.",
+      "failed": "Oleafly가 이 폴더를 읽지 못했습니다.",
+      "truncated": "폴더가 커서 Oleafly가 일찍 검색을 멈췄습니다. 목록에 없는 문서가 있을 수 있습니다.",
+      "openFailed": "{{path}}을(를) 주 문서로 지정하지 못했습니다."
+    },
+    "kind": {
+      "document": "문서",
+      "book": "책",
+      "presentation": "프레젠테이션",
+      "poster": "포스터",
+      "standalone": "독립 그림",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "기타"
+    },
+    "reason": {
+      "declared": "주 파일로 지정됨",
+      "top_level": "최상위 폴더에 있음",
+      "named_main": "이름이 main",
+      "named_after_folder": "폴더 이름과 같음",
+      "includes_files": "다른 파일을 포함",
+      "has_bibliography": "참고문헌 있음",
+      "no_begin_document": "\\begin{document} 없음",
+      "standalone_figure": "독립 그림",
+      "placeholder": "아직 다운로드되지 않음"
+    },
+    "main": {
+      "label": "주 문서: {{path}}",
+      "change": "변경",
+      "changeLabel": "주 문서 변경",
+      "others": "다른 문서",
+      "switchFailed": "{{path}}(으)로 전환하지 못했습니다."
+    },
+    "noMain": "아직 주 문서가 없습니다. 파일을 고르고 주 문서로 지정을 선택하세요.",
+    "trust": {
+      "banner": "Oleafly가 이 폴더에서 일부 기능을 제한했습니다. 폴더를 신뢰하면 Git, 터미널, 에이전트, shell escape가 켜집니다.",
+      "trustFolder": "이 폴더 신뢰",
+      "trustParent": "상위 폴더 신뢰…",
+      "trustRepository": "저장소 신뢰",
+      "hide": "숨기기",
+      "terminal": "폴더를 신뢰하기 전까지 이 터미널에서는 Git 훅과 저장소 설정이 꺼져 있습니다.",
+      "terminalReopen": "이 터미널은 폴더를 신뢰하기 전에 시작되었습니다. Git 훅을 켜려면 터미널을 다시 여세요.",
+      "reopenTerminal": "터미널 다시 열기",
+      "failed": "이 폴더를 신뢰하지 못했습니다."
+    },
+    "readOnly": {
+      "banner": "이 폴더는 읽기 전용입니다. 컴파일은 할 수 있지만 변경 내용은 저장할 수 없습니다.",
+      "copy": "라이브러리로 복사",
+      "copied": "Oleafly가 이 폴더를 라이브러리로 복사했습니다. 지금은 사본을 편집하고 있습니다.",
+      "copyFailed": "이 폴더를 라이브러리로 복사하지 못했습니다."
+    },
+    "sync": {
+      "syncsWith": "{{service}}와(과) 동기화됨",
+      "cloudStorage": "클라우드 서비스와 동기화됨",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google 드라이브",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "이 프로젝트의 파일 전체에서 검색합니다.",
     "noResults": "결과가 없습니다.",

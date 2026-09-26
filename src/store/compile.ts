@@ -58,6 +58,7 @@ import {
   useIndexStore,
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { mainDocumentMissing } from "@/lib/main-document";
 
 // Bumped on every recompile so a compile that finishes after the project was
 // switched (or a newer compile started) can detect it is stale and not overwrite
@@ -811,6 +812,13 @@ function folderAvailableGate(ctx: CompileGateContext): boolean {
   return false;
 }
 
+function mainDocumentGate(ctx: CompileGateContext): boolean {
+  if (!mainDocumentMissing(ctx.files)) return true;
+  setCompileUnavailable(ctx, i18n.t(($) => $.shell.openedFolder.noMain));
+  ctx.abortIntent();
+  return false;
+}
+
 function compileIdentityGate(ctx: CompileGateContext): boolean {
   if (ctx.matchesProjectAndMain() && !ctx.checkpointAdvanced()) return true;
   ctx.abortIntent();
@@ -946,6 +954,7 @@ async function runCompileGates(
 ): Promise<string | null> {
   if (!mainDecisionGate(ctx)) return null;
   if (!folderAvailableGate(ctx)) return null;
+  if (!mainDocumentGate(ctx)) return null;
   if (!engineLoadedGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
   if (!(await systemTexPrerequisiteGate(ctx))) return null;

@@ -447,6 +447,81 @@
     "tryCommand": "试试命令",
     "unknownCommand": "未知命令。输入 / 查看可用命令。"
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly 应该编译哪个文档？",
+      "askDescription": "此文件夹中有多个文档。请选择主文档，之后可以更改。",
+      "changeTitle": "选择主文档",
+      "changeDescription": "Oleafly 会编译你选择的文档，并为此文件夹记住它。",
+      "listLabel": "此文件夹中的文档",
+      "open": "打开",
+      "browse": "仅浏览文件",
+      "bestMatch": "最佳匹配",
+      "current": "当前",
+      "loading": "正在查找文档…",
+      "empty": "Oleafly 在这里没有找到文档。请在文件树中右键点击一个文件，然后选择“设为主文档”。",
+      "failed": "Oleafly 无法读取此文件夹。",
+      "truncated": "此文件夹较大，Oleafly 提前停止了查找。部分文档可能没有列出。",
+      "openFailed": "无法将 {{path}} 设为主文档。"
+    },
+    "kind": {
+      "document": "文档",
+      "book": "书籍",
+      "presentation": "演示文稿",
+      "poster": "海报",
+      "standalone": "独立图形",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "其他"
+    },
+    "reason": {
+      "declared": "已标记为主文件",
+      "top_level": "位于顶层文件夹",
+      "named_main": "名为 main",
+      "named_after_folder": "与所在文件夹同名",
+      "includes_files": "包含其他文件",
+      "has_bibliography": "带有参考文献",
+      "no_begin_document": "没有 \\begin{document}",
+      "standalone_figure": "独立图形",
+      "placeholder": "尚未下载"
+    },
+    "main": {
+      "label": "主文档：{{path}}",
+      "change": "更改",
+      "changeLabel": "更改主文档",
+      "others": "其他文档",
+      "switchFailed": "无法切换到 {{path}}。"
+    },
+    "noMain": "还没有主文档。请选择一个文件，然后选择“设为主文档”。",
+    "trust": {
+      "banner": "Oleafly 限制了此文件夹中的部分功能。信任它即可开启 Git、终端、代理和 shell escape。",
+      "trustFolder": "信任此文件夹",
+      "trustParent": "信任上级文件夹…",
+      "trustRepository": "信任此仓库",
+      "hide": "隐藏",
+      "terminal": "在你信任此文件夹之前，此终端中的 Git 钩子和仓库设置处于关闭状态。",
+      "terminalReopen": "此终端在你信任文件夹之前启动。重新打开它即可启用 Git 钩子。",
+      "reopenTerminal": "重新打开终端",
+      "failed": "无法信任此文件夹。"
+    },
+    "readOnly": {
+      "banner": "此文件夹为只读。你可以编译，但无法保存修改。",
+      "copy": "复制到项目库",
+      "copied": "Oleafly 已将此文件夹复制到你的项目库。你现在编辑的是副本。",
+      "copyFailed": "无法将此文件夹复制到你的项目库。"
+    },
+    "sync": {
+      "syncsWith": "与 {{service}} 同步",
+      "cloudStorage": "与云服务同步",
+      "services": {
+        "icloud_drive": "iCloud 云盘",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google 云端硬盘",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "在本项目的所有文件中搜索。",
     "noResults": "无结果。",

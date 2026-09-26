@@ -486,6 +486,32 @@ fn a_monorepo_with_foreign_project_files_is_scanned_through() {
 }
 
 #[test]
+fn a_document_listing_scans_past_a_saved_choice_and_a_manifest() {
+    let directory = tree(&[
+        ("main.tex", ARTICLE),
+        ("notes/draft.tex", ARTICLE),
+        (
+            "project.json",
+            r#"{"name":"P","main_doc":"notes/draft.tex","engine":"xetex"}"#,
+        ),
+    ]);
+    let listed = detect_documents(
+        directory.path(),
+        &DetectOptions {
+            saved_main: Some("notes/draft.tex"),
+            ..DetectOptions::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(listed.source, DetectionSource::RootMain);
+    assert_eq!(listed.main.as_deref(), Some("main.tex"));
+    assert_eq!(paths(&listed), ["main.tex", "notes/draft.tex"]);
+    assert!(
+        detect_documents(&directory.path().join("missing"), &DetectOptions::default()).is_err()
+    );
+}
+
+#[test]
 fn a_saved_choice_and_an_oleafly_manifest_win_before_any_scan() {
     let directory = tree(&[
         ("main.tex", ARTICLE),

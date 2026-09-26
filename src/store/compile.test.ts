@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => ({
     engineLoaded: true,
     engineError: null as string | null,
     loading: false,
+    manifestHome: "library",
     tree: [{ path: "main.tex", is_dir: false }],
     files: {
       "main.tex": {
@@ -128,6 +129,7 @@ vi.mock("@/lib/cross-window", () => ({
 
 import { importCompatFinding } from "@oleafly/latex";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   acceptCompileOffer,
@@ -220,6 +222,7 @@ beforeEach(() => {
   mocks.files.engineError = null;
   mocks.files.loading = false;
   mocks.files.tree = [{ path: "main.tex", is_dir: false }];
+  mocks.files.manifestHome = "library";
   mocks.files.files = {
     "main.tex": {
       content: "\\documentclass{article}\n",
@@ -1549,6 +1552,42 @@ describe("bundled-engine compile failures", () => {
         ),
       ).toBe(true),
     );
+  });
+});
+
+describe("an opened folder without a main document", () => {
+  beforeEach(() => {
+    mocks.files.manifestHome = "device";
+    mocks.files.mainDoc = "main.tex";
+    mocks.files.activePath = null;
+    mocks.files.tree = [{ path: "notes/draft.md", is_dir: false }];
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+  });
+
+  it("does not compile and says how to pick a main document", async () => {
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enShell.openedFolder.noMain,
+    });
+    expect(useCompileStore.getState().lastAttemptIdentity?.projectId).toBe("project");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("compiles again once the folder has a main document", async () => {
+    mocks.files.tree = [{ path: "main.tex", is_dir: false }];
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("compiles a folder whose saved main differs from the file on disk only in case", async () => {
+    mocks.files.tree = [{ path: "Main.tex", is_dir: false }];
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
   });
 });
 

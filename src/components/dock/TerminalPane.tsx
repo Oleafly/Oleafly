@@ -79,6 +79,7 @@ export interface TerminalPaneProps {
   active?: boolean;
   autoStart?: boolean;
   onExit?: () => void;
+  onStarted?: () => void;
 }
 
 const MAX_HIDDEN_OUTPUT_CHARS = 256_000;
@@ -108,6 +109,7 @@ export function TerminalPane({
   active = true,
   autoStart = false,
   onExit,
+  onStarted,
 }: Readonly<TerminalPaneProps>) {
   const { t } = useTranslation(["workspace"]);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -127,6 +129,8 @@ export function TerminalPane({
   visibleRef.current = visible;
   autoStartRef.current = autoStart;
   onExitRef.current = onExit;
+  const onStartedRef = useRef(onStarted);
+  onStartedRef.current = onStarted;
   const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
   const [backgroundRefusedFor, setBackgroundRefusedFor] = useState<string | null>(null);
   const backgroundStartRefused = backgroundRefusedFor === projectId;
@@ -320,6 +324,7 @@ export function TerminalPane({
         resizerRef.current = resizer;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
+        onStartedRef.current?.();
         if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
           resizer.request(terminal.cols, terminal.rows);
         }

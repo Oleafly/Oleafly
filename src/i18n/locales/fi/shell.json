@@ -449,6 +449,81 @@
     "tryCommand": "Kokeile komentoa",
     "unknownCommand": "Tuntematon komento. Kirjoita / nähdäksesi käytettävissä olevat komennot."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Minkä dokumentin Oleafly kääntää?",
+      "askDescription": "Tässä kansiossa on useampi dokumentti. Valitse päädokumentti. Voit vaihtaa sen myöhemmin.",
+      "changeTitle": "Valitse päädokumentti",
+      "changeDescription": "Oleafly kääntää valitsemasi dokumentin ja muistaa sen tälle kansiolle.",
+      "listLabel": "Tämän kansion dokumentit",
+      "open": "Avaa",
+      "browse": "Selaa vain tiedostoja",
+      "bestMatch": "Paras osuma",
+      "current": "Nykyinen",
+      "loading": "Etsitään dokumentteja…",
+      "empty": "Oleafly ei löytänyt täältä dokumentteja. Napsauta tiedostoa tiedostopuussa hiiren oikealla painikkeella ja valitse Aseta päädokumentiksi.",
+      "failed": "Oleafly ei voinut lukea tätä kansiota.",
+      "truncated": "Kansio on suuri, joten Oleafly lopetti etsimisen aikaisin. Kaikki dokumentit eivät ehkä näy luettelossa.",
+      "openFailed": "Tiedostoa {{path}} ei voitu asettaa päädokumentiksi."
+    },
+    "kind": {
+      "document": "Dokumentti",
+      "book": "Kirja",
+      "presentation": "Esitys",
+      "poster": "Juliste",
+      "standalone": "Erillinen kuva",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Muu"
+    },
+    "reason": {
+      "declared": "Merkitty päätiedostoksi",
+      "top_level": "Ylimmässä kansiossa",
+      "named_main": "Nimeltään main",
+      "named_after_folder": "Nimetty kansionsa mukaan",
+      "includes_files": "Sisältää muita tiedostoja",
+      "has_bibliography": "Sisältää lähdeluettelon",
+      "no_begin_document": "Ei \\begin{document} -komentoa",
+      "standalone_figure": "Erillinen kuva",
+      "placeholder": "Ei vielä ladattu"
+    },
+    "main": {
+      "label": "Päädokumentti: {{path}}",
+      "change": "Vaihda",
+      "changeLabel": "Vaihda päädokumentti",
+      "others": "Muut dokumentit",
+      "switchFailed": "Vaihto tiedostoon {{path}} epäonnistui."
+    },
+    "noMain": "Päädokumenttia ei ole vielä. Valitse tiedosto ja sitten Aseta päädokumentiksi.",
+    "trust": {
+      "banner": "Oleafly rajoitti joitakin toimintoja tässä kansiossa. Luota kansioon, niin Git, pääte, agentit ja shell escape otetaan käyttöön.",
+      "trustFolder": "Luota tähän kansioon",
+      "trustParent": "Luota yläkansioon…",
+      "trustRepository": "Luota repositorioon",
+      "hide": "Piilota",
+      "terminal": "Git-koukut ja repositorion asetukset ovat pois päältä tässä päätteessä, kunnes luotat kansioon.",
+      "terminalReopen": "Tämä pääte käynnistyi ennen kuin luotit kansioon. Avaa se uudelleen, niin Git-koukut tulevat käyttöön.",
+      "reopenTerminal": "Avaa pääte uudelleen",
+      "failed": "Kansioon luottaminen epäonnistui."
+    },
+    "readOnly": {
+      "banner": "Tämä kansio on vain luku -tilassa. Voit kääntää, mutta muutoksia ei voi tallentaa.",
+      "copy": "Kopioi kirjastoon",
+      "copied": "Oleafly kopioi kansion kirjastoosi. Muokkaat nyt kopiota.",
+      "copyFailed": "Kansion kopioiminen kirjastoon epäonnistui."
+    },
+    "sync": {
+      "syncsWith": "Synkronoidaan palveluun {{service}}",
+      "cloudStorage": "Synkronoidaan pilvipalveluun",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Hae tämän projektin tiedostoista.",
     "noResults": "Ei tuloksia.",

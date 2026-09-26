@@ -215,7 +215,7 @@ fn cloud_placeholder_entry(_path: &Path, metadata: &std::fs::Metadata) -> bool {
     is_cloud_placeholder(metadata)
 }
 
-pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+fn inspected_root(root: &Path) -> Result<PathBuf> {
     let root = root.canonicalize().map_err(|error| {
         Error::new(
             ErrorKind::InvalidInput,
@@ -228,6 +228,11 @@ pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<
             format!("workspace is not a directory: {}", root.display()),
         ));
     }
+    Ok(root)
+}
+
+pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+    let root = inspected_root(root)?;
     if let Some(saved) = options
         .saved_main
         .and_then(|saved| existing_source(&root, saved, None))
@@ -238,6 +243,15 @@ pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<
     if let Some(main) = manifest_main(&root, options) {
         return Ok(settled(&root, main, DetectionSource::Manifest, options));
     }
+    scan_folder(&root, options)
+}
+
+pub fn detect_documents(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+    scan_folder(&inspected_root(root)?, options)
+}
+
+fn scan_folder(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
+    let root = root.to_path_buf();
     let mut scan = Scan::run(&root, options)?;
     let graph = Graph::build(&scan);
     scan.complete_split_documents(&graph);

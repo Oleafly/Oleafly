@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   setAutoCompile: vi.fn(), setCompileMode: vi.fn(), setCheckSyntaxBeforeCompile: vi.fn(), setStopOnFirstError: vi.fn(),
   setEngine: vi.fn(async () => {}), refreshTree: vi.fn(async () => {}),
   off: vi.fn(),
+  files: {} as Record<string, unknown>,
+  filesChanged: ((_next: unknown, _previous: unknown) => {}) as (next: unknown, previous: unknown) => void,
   logError: vi.fn(async () => {}),
   errorUnique: vi.fn(),
   notifyError: vi.fn(),
@@ -27,8 +29,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async (name, handler) => { mocks.handlers.set(name, handler); return mocks.off; }),
 }));
 vi.mock("@/store/files", () => ({ engineSwitchToastKey: (projectId: string) => `engine-switch:${projectId}`, useFilesStore: {
-  getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, refreshTree: mocks.refreshTree }),
-  subscribe: () => mocks.unsubscribeFiles,
+  getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, refreshTree: mocks.refreshTree, ...mocks.files }),
+  subscribe: (listener: (next: unknown, previous: unknown) => void) => { mocks.filesChanged = listener; return mocks.unsubscribeFiles; },
 } }));
 vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: mocks.detachedProject }), subscribe: (listener: () => void) => { mocks.detachedChanged = listener; return mocks.unsubscribeDetached; } } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: {
@@ -40,9 +42,17 @@ vi.mock("@/store/compile", () => ({ useCompileStore: {
   subscribe: () => mocks.unsubscribe,
 } }));
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { useFolderAccessStore } from "@/store/folder-access";
 import { startPreviewWorkspaceBridge } from "./preview-workspace";
 
-beforeEach(() => { vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {}; });
+const untrusted = { trusted: false, source: null, parent: null, repository: null };
+const trusted = { trusted: true, source: "folder", parent: null, repository: null };
+
+beforeEach(() => {
+  vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {};
+  mocks.files = {}; mocks.filesChanged = () => {};
+  useFolderAccessStore.getState().reset(null);
+});
 
 describe("detached compile commands", () => {
   it("uses the main compile action and ignores commands for a previous project", async () => {
@@ -67,8 +77,52 @@ describe("detached compile commands", () => {
       projectId: "current", status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
       compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
       engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex",
+      noMainDocument: false, systemTexLocked: false,
     });
     cleanup();
+  });
+
+  it("tells the detached window that the folder has no main document and is not trusted yet", async () => {
+    mocks.files = { manifestHome: "folder", tree: [{ path: "notes/draft.md", is_dir: false }] };
+    useFolderAccessStore.getState().reset("current");
+    useFolderAccessStore.setState({ loaded: true, trust: untrusted as never });
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+    expect(mocks.emitTo).toHaveBeenCalledWith("preview", "preview:workspace", expect.objectContaining({
+      noMainDocument: true, systemTexLocked: true,
+    }));
+    cleanup();
+  });
+
+  it("republishes when trust or the main document changes, and trusts the folder for the detached window", async () => {
+    vi.useFakeTimers();
+    useFolderAccessStore.getState().reset("current");
+    useFolderAccessStore.setState({ loaded: true, trust: untrusted as never });
+    const cleanup = await startPreviewWorkspaceBridge();
+    try {
+      useFolderAccessStore.setState({ trust: trusted as never });
+      await vi.runAllTimersAsync();
+      expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.objectContaining({ systemTexLocked: false }));
+
+      mocks.emitTo.mockClear();
+      const before = { projectId: "current", manifestHome: "folder", mainDoc: "main.tex", tree: [] };
+      mocks.files = { manifestHome: "folder", tree: [{ path: "main.tex", is_dir: false }] };
+      mocks.filesChanged({ ...before, tree: [{ path: "main.tex", is_dir: false }] }, before);
+      await vi.runAllTimersAsync();
+      expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.objectContaining({ noMainDocument: false }));
+
+      const grant = vi.fn(async () => true);
+      useFolderAccessStore.setState({ grant });
+      mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "trust-folder" } });
+      await vi.waitFor(() => expect(grant).toHaveBeenCalledWith("folder"));
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+    mocks.emitTo.mockClear();
+    useFolderAccessStore.setState({ trust: untrusted as never });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(mocks.emitTo).not.toHaveBeenCalled();
   });
   it("publishes controls if the preview asks before the window-created event", async () => {
     vi.useFakeTimers();

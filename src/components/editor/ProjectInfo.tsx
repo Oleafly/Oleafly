@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Info } from "lucide-react";
+import { Cloud, Info } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import type { ProofreadingDiagnostic, ProofreadingSurface } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ import { notifyError } from "@/lib/toast";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
+import { useFolderAccessStore } from "@/store/folder-access";
+import type { SyncService } from "@/lib/tauri";
 import {
   useProofreadingStore,
   type ProofreadingPhase,
@@ -414,6 +416,35 @@ function ProjectSpellLanguage() {
   );
 }
 
+function FolderSyncNote() {
+  const { t } = useTranslation(["shell"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const service = useFolderAccessStore((state) =>
+    state.projectId === projectId ? (state.status?.synced_with ?? null) : null,
+  );
+  if (!service) return null;
+  const names: Record<Exclude<SyncService, "cloud_storage">, string> = {
+    icloud_drive: t(($) => $.shell.openedFolder.sync.services.icloud_drive),
+    one_drive: t(($) => $.shell.openedFolder.sync.services.one_drive),
+    dropbox: t(($) => $.shell.openedFolder.sync.services.dropbox),
+    google_drive: t(($) => $.shell.openedFolder.sync.services.google_drive),
+    box: t(($) => $.shell.openedFolder.sync.services.box),
+  };
+  const line =
+    service === "cloud_storage"
+      ? t(($) => $.shell.openedFolder.sync.cloudStorage)
+      : t(($) => $.shell.openedFolder.sync.syncsWith, { service: names[service] });
+  return (
+    <p
+      data-testid="project-sync-note"
+      className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+    >
+      <Cloud aria-hidden className="size-3 shrink-0" />
+      <span className="truncate">{line}</span>
+    </p>
+  );
+}
+
 export function ProjectInfoContent({
   snapshot,
   surface,
@@ -441,6 +472,7 @@ export function ProjectInfoContent({
     <>
       <p className="text-sm font-semibold text-foreground">{t(($) => $.editor.projectInfo.heading)}</p>
       <p className="mt-0.5 truncate text-xs text-muted-foreground">{rootSummary}</p>
+      <FolderSyncNote />
 
       {snapshot ? (
         <>

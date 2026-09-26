@@ -451,6 +451,81 @@
     "tryCommand": "Essayez une commande",
     "unknownCommand": "Commande inconnue. Tapez / pour voir les commandes disponibles."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Quel document Oleafly doit-il compiler ?",
+      "askDescription": "Ce dossier contient plusieurs documents. Choisissez le document principal. Vous pourrez le changer plus tard.",
+      "changeTitle": "Choisir le document principal",
+      "changeDescription": "Oleafly compile le document que vous choisissez et le retient pour ce dossier.",
+      "listLabel": "Documents de ce dossier",
+      "open": "Ouvrir",
+      "browse": "Parcourir les fichiers",
+      "bestMatch": "Meilleur choix",
+      "current": "Actuel",
+      "loading": "Recherche de documents…",
+      "empty": "Oleafly n'a trouvé aucun document ici. Faites un clic droit sur un fichier dans l'arborescence et choisissez Définir comme document principal.",
+      "failed": "Oleafly n'a pas pu lire ce dossier.",
+      "truncated": "Ce dossier est volumineux, Oleafly a donc arrêté de chercher plus tôt. Certains documents peuvent manquer dans la liste.",
+      "openFailed": "Impossible de définir {{path}} comme document principal."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Livre",
+      "presentation": "Présentation",
+      "poster": "Poster",
+      "standalone": "Figure autonome",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Autre"
+    },
+    "reason": {
+      "declared": "Désigné comme fichier principal",
+      "top_level": "Dans le dossier racine",
+      "named_main": "Nommé main",
+      "named_after_folder": "Porte le nom de son dossier",
+      "includes_files": "Inclut d'autres fichiers",
+      "has_bibliography": "Contient une bibliographie",
+      "no_begin_document": "Sans \\begin{document}",
+      "standalone_figure": "Figure autonome",
+      "placeholder": "Pas encore téléchargé"
+    },
+    "main": {
+      "label": "Principal : {{path}}",
+      "change": "Changer",
+      "changeLabel": "Changer le document principal",
+      "others": "Autres documents",
+      "switchFailed": "Impossible de passer à {{path}}."
+    },
+    "noMain": "Pas encore de document principal. Choisissez un fichier puis Définir comme document principal.",
+    "trust": {
+      "banner": "Oleafly a limité certaines fonctions dans ce dossier. Faites-lui confiance pour activer Git, le terminal, les agents et le shell escape.",
+      "trustFolder": "Faire confiance à ce dossier",
+      "trustParent": "Faire confiance au dossier parent…",
+      "trustRepository": "Faire confiance au dépôt",
+      "hide": "Masquer",
+      "terminal": "Les hooks Git et les réglages du dépôt sont désactivés dans ce terminal tant que vous ne faites pas confiance au dossier.",
+      "terminalReopen": "Ce terminal a démarré avant que vous fassiez confiance au dossier. Rouvrez-le pour activer les hooks Git.",
+      "reopenTerminal": "Rouvrir le terminal",
+      "failed": "Impossible de faire confiance à ce dossier."
+    },
+    "readOnly": {
+      "banner": "Ce dossier est en lecture seule. Vous pouvez compiler, mais les modifications ne peuvent pas être enregistrées.",
+      "copy": "Copier dans la bibliothèque",
+      "copied": "Oleafly a copié ce dossier dans votre bibliothèque. Vous modifiez maintenant la copie.",
+      "copyFailed": "Impossible de copier ce dossier dans votre bibliothèque."
+    },
+    "sync": {
+      "syncsWith": "Synchronisé avec {{service}}",
+      "cloudStorage": "Synchronisé avec un service cloud",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Recherchez dans les fichiers de ce projet.",
     "noResults": "Aucun résultat.",

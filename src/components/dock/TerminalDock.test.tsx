@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalDock, TERMINAL_SWATCHES } from "./TerminalDock";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { TERMINAL_LIMIT, useTerminalsStore } from "@/store/terminals";
+import { useFolderAccessStore } from "@/store/folder-access";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   panes: [] as Array<Record<string, unknown>>,
@@ -30,6 +33,7 @@ vi.mock("./TerminalPane", () => ({
     active?: boolean;
     autoStart?: boolean;
     onExit?: () => void;
+    onStarted?: () => void;
   }) => {
     mocks.panes.push(props);
     return (
@@ -413,5 +417,55 @@ describe("TerminalDock", () => {
 
     fireEvent.keyDown(tabs()[0], { key: "ContextMenu" });
     expect(await screen.findByTestId("dock-terminal-tab-menu")).toBeInTheDocument();
+  });
+});
+
+describe("TerminalDock in a folder that is not trusted yet", () => {
+  const trustLabels = enShell.openedFolder.trust;
+  const untrusted = { trusted: false, source: null, parent: null, repository: null };
+  const trusted = { trusted: true, source: "folder", parent: null, repository: null };
+
+  beforeEach(() => {
+    mocks.panes.length = 0;
+    useFolderAccessStore.getState().reset("linked-a");
+    useFolderAccessStore.setState({ loaded: true, trust: untrusted as never });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  function startActivePane() {
+    const pane = [...mocks.panes].reverse().find((props) => props.active === true) as
+      | { onStarted?: () => void }
+      | undefined;
+    act(() => pane?.onStarted?.());
+  }
+
+  it("marks the terminal as limited and names what is off", () => {
+    render(<DockHarness projectId="linked-a" />);
+    expect(screen.getByRole("button", { name: trustLabels.terminal })).toBeInTheDocument();
+    act(() => useFolderAccessStore.setState({ trust: trusted as never }));
+    expect(screen.queryByRole("button", { name: trustLabels.terminal })).not.toBeInTheDocument();
+  });
+
+  it("keeps asking to reopen a terminal that started limited, and reopens it", async () => {
+    render(<DockHarness projectId="linked-a" />);
+    startActivePane();
+    act(() => useFolderAccessStore.setState({ trust: trusted as never }));
+    const badge = screen.getByRole("button", { name: trustLabels.terminalReopen });
+    const opened = mocks.panes.length;
+    const user = userEvent.setup();
+    await user.click(badge);
+    await user.click(
+      within(await screen.findByRole("menu")).getByRole("menuitem", {
+        name: trustLabels.reopenTerminal,
+      }),
+    );
+    expect(screen.queryByRole("button", { name: trustLabels.terminalReopen })).not.toBeInTheDocument();
+    expect(mocks.panes.length).toBeGreaterThan(opened);
+    expect(tabs()).toHaveLength(1);
+    startActivePane();
+    expect(screen.queryByTestId("terminal-restricted")).not.toBeInTheDocument();
   });
 });

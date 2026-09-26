@@ -38,6 +38,7 @@ mod deadlines;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
+mod folder_status;
 mod fs_identity;
 mod fsperm;
 mod git;
@@ -483,6 +484,8 @@ pub fn run() {
             trust::project_trust_state,
             trust::trust_folder,
             trust::revoke_folder_trust,
+            folder_status::project_folder_status,
+            folder_status::project_document_candidates,
             skills::skills_list,
             skills::skills_add,
             skills::skills_create,

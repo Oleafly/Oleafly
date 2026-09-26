@@ -449,6 +449,81 @@
     "tryCommand": "Probeer een opdracht",
     "unknownCommand": "Onbekende opdracht. Typ / om de beschikbare opdrachten te zien."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Welk document moet Oleafly compileren?",
+      "askDescription": "Deze map bevat meer dan één document. Kies het hoofddocument. Je kunt het later wijzigen.",
+      "changeTitle": "Kies het hoofddocument",
+      "changeDescription": "Oleafly compileert het document dat je kiest en onthoudt het voor deze map.",
+      "listLabel": "Documenten in deze map",
+      "open": "Openen",
+      "browse": "Alleen bestanden bekijken",
+      "bestMatch": "Beste keuze",
+      "current": "Huidig",
+      "loading": "Documenten zoeken…",
+      "empty": "Oleafly heeft hier geen documenten gevonden. Klik met de rechtermuisknop op een bestand in de bestandsboom en kies Instellen als hoofddocument.",
+      "failed": "Oleafly kon deze map niet lezen.",
+      "truncated": "Deze map is groot, dus Oleafly is eerder gestopt met zoeken. Sommige documenten staan misschien niet in de lijst.",
+      "openFailed": "Kan {{path}} niet instellen als hoofddocument."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Boek",
+      "presentation": "Presentatie",
+      "poster": "Poster",
+      "standalone": "Losse figuur",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Overig"
+    },
+    "reason": {
+      "declared": "Aangewezen als hoofdbestand",
+      "top_level": "In de bovenste map",
+      "named_main": "Heet main",
+      "named_after_folder": "Vernoemd naar de map",
+      "includes_files": "Voegt andere bestanden in",
+      "has_bibliography": "Heeft een bibliografie",
+      "no_begin_document": "Geen \\begin{document}",
+      "standalone_figure": "Losse figuur",
+      "placeholder": "Nog niet gedownload"
+    },
+    "main": {
+      "label": "Hoofddocument: {{path}}",
+      "change": "Wijzigen",
+      "changeLabel": "Hoofddocument wijzigen",
+      "others": "Andere documenten",
+      "switchFailed": "Kan niet overschakelen naar {{path}}."
+    },
+    "noMain": "Nog geen hoofddocument. Kies een bestand en daarna Instellen als hoofddocument.",
+    "trust": {
+      "banner": "Oleafly heeft sommige functies in deze map beperkt. Vertrouw de map om Git, de terminal, agents en shell escape aan te zetten.",
+      "trustFolder": "Deze map vertrouwen",
+      "trustParent": "De bovenliggende map vertrouwen…",
+      "trustRepository": "De repository vertrouwen",
+      "hide": "Verbergen",
+      "terminal": "Git-hooks en repository-instellingen staan in deze terminal uit totdat je de map vertrouwt.",
+      "terminalReopen": "Deze terminal is gestart voordat je de map vertrouwde. Open hem opnieuw om Git-hooks aan te zetten.",
+      "reopenTerminal": "Terminal opnieuw openen",
+      "failed": "Kan deze map niet vertrouwen."
+    },
+    "readOnly": {
+      "banner": "Deze map is alleen-lezen. Je kunt compileren, maar wijzigingen kunnen niet worden opgeslagen.",
+      "copy": "Kopiëren naar bibliotheek",
+      "copied": "Oleafly heeft deze map naar je bibliotheek gekopieerd. Je bewerkt nu de kopie.",
+      "copyFailed": "Kan deze map niet naar je bibliotheek kopiëren."
+    },
+    "sync": {
+      "syncsWith": "Synchroniseert met {{service}}",
+      "cloudStorage": "Synchroniseert met een clouddienst",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Doorzoek de bestanden van dit project.",
     "noResults": "Geen resultaten.",

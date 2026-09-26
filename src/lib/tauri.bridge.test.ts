@@ -55,6 +55,9 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
+  copyLinkedIntoLibrary,
+  projectDocumentCandidates,
+  projectFolderStatus,
   projectTrustState,
   renameFile,
   revokeFolderTrust,
@@ -525,6 +528,28 @@ describe("folder trust bridge", () => {
     });
     await revokeFolderTrust("linked-1");
     expect(mocks.invoke).toHaveBeenLastCalledWith("revoke_folder_trust", {
+      projectId: "linked-1",
+    });
+  });
+});
+
+describe("opened folder bridge", () => {
+  it("asks about the open project's folder by id only", async () => {
+    mocks.invoke.mockResolvedValue({ read_only: true, synced_with: "icloud_drive" });
+    await expect(projectFolderStatus("linked-1")).resolves.toEqual({
+      read_only: true,
+      synced_with: "icloud_drive",
+    });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("project_folder_status", {
+      projectId: "linked-1",
+    });
+    await projectDocumentCandidates("linked-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("project_document_candidates", {
+      projectId: "linked-1",
+    });
+    mocks.invoke.mockResolvedValue("paper-copy");
+    await expect(copyLinkedIntoLibrary("linked-1")).resolves.toBe("paper-copy");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("copy_linked_into_library", {
       projectId: "linked-1",
     });
   });

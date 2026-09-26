@@ -449,6 +449,81 @@
     "tryCommand": "Prøv en kommando",
     "unknownCommand": "Ukjent kommando. Skriv / for å se hvilke kommandoer som finnes."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Hvilket dokument skal Oleafly kompilere?",
+      "askDescription": "Denne mappen har mer enn ett dokument. Velg hoveddokumentet. Du kan endre det senere.",
+      "changeTitle": "Velg hoveddokument",
+      "changeDescription": "Oleafly kompilerer dokumentet du velger, og husker det for denne mappen.",
+      "listLabel": "Dokumenter i denne mappen",
+      "open": "Åpne",
+      "browse": "Bare bla i filene",
+      "bestMatch": "Beste treff",
+      "current": "Nåværende",
+      "loading": "Leter etter dokumenter…",
+      "empty": "Oleafly fant ingen dokumenter her. Høyreklikk på en fil i filtreet og velg Bruk som hoveddokument.",
+      "failed": "Oleafly kunne ikke lese denne mappen.",
+      "truncated": "Mappen er stor, så Oleafly sluttet å lete tidlig. Noen dokumenter er kanskje ikke med i listen.",
+      "openFailed": "Kunne ikke gjøre {{path}} til hoveddokument."
+    },
+    "kind": {
+      "document": "Dokument",
+      "book": "Bok",
+      "presentation": "Presentasjon",
+      "poster": "Plakat",
+      "standalone": "Frittstående figur",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Annet"
+    },
+    "reason": {
+      "declared": "Merket som hovedfil",
+      "top_level": "I den øverste mappen",
+      "named_main": "Heter main",
+      "named_after_folder": "Oppkalt etter mappen sin",
+      "includes_files": "Tar med andre filer",
+      "has_bibliography": "Har litteraturliste",
+      "no_begin_document": "Mangler \\begin{document}",
+      "standalone_figure": "Frittstående figur",
+      "placeholder": "Ikke lastet ned ennå"
+    },
+    "main": {
+      "label": "Hoveddokument: {{path}}",
+      "change": "Endre",
+      "changeLabel": "Endre hoveddokument",
+      "others": "Andre dokumenter",
+      "switchFailed": "Kunne ikke bytte til {{path}}."
+    },
+    "noMain": "Ingen hoveddokument ennå. Velg en fil og deretter Bruk som hoveddokument.",
+    "trust": {
+      "banner": "Oleafly har begrenset noen funksjoner i denne mappen. Stol på den for å slå på Git, terminal, agenter og shell escape.",
+      "trustFolder": "Stol på denne mappen",
+      "trustParent": "Stol på den overordnede mappen…",
+      "trustRepository": "Stol på repositoriet",
+      "hide": "Skjul",
+      "terminal": "Git-hooks og repositoryinnstillinger er slått av i denne terminalen til du stoler på mappen.",
+      "terminalReopen": "Denne terminalen startet før du stolte på mappen. Åpne den på nytt for å slå på Git-hooks.",
+      "reopenTerminal": "Åpne terminalen på nytt",
+      "failed": "Kunne ikke stole på denne mappen."
+    },
+    "readOnly": {
+      "banner": "Denne mappen er skrivebeskyttet. Du kan kompilere, men endringer kan ikke lagres.",
+      "copy": "Kopier til biblioteket",
+      "copied": "Oleafly kopierte mappen til biblioteket ditt. Du redigerer nå kopien.",
+      "copyFailed": "Kunne ikke kopiere mappen til biblioteket ditt."
+    },
+    "sync": {
+      "syncsWith": "Synkroniseres med {{service}}",
+      "cloudStorage": "Synkroniseres med en skytjeneste",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Disk",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Søk på tvers av filene i dette prosjektet.",
     "noResults": "Ingen treff.",

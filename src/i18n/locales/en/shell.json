@@ -449,6 +449,81 @@
     "tryCommand": "Try a command",
     "unknownCommand": "Unknown command. Type / to view available commands."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Which document should Oleafly compile?",
+      "askDescription": "This folder has more than one document. Pick the main one. You can change it later.",
+      "changeTitle": "Choose the main document",
+      "changeDescription": "Oleafly compiles the document you pick and remembers it for this folder.",
+      "listLabel": "Documents in this folder",
+      "open": "Open",
+      "browse": "Just browse files",
+      "bestMatch": "Best match",
+      "current": "Current",
+      "loading": "Looking for documents…",
+      "empty": "Oleafly didn't find any documents here. Right-click a file in the file tree and choose Set as main document.",
+      "failed": "Oleafly couldn't read this folder.",
+      "truncated": "This folder is large, so Oleafly stopped looking early. Some documents may not be listed.",
+      "openFailed": "Couldn't make {{path}} the main document."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Book",
+      "presentation": "Presentation",
+      "poster": "Poster",
+      "standalone": "Standalone figure",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Other"
+    },
+    "reason": {
+      "declared": "Marked as the main file",
+      "top_level": "In the top folder",
+      "named_main": "Named main",
+      "named_after_folder": "Named after its folder",
+      "includes_files": "Includes other files",
+      "has_bibliography": "Has a bibliography",
+      "no_begin_document": "Has no \\begin{document}",
+      "standalone_figure": "Standalone figure",
+      "placeholder": "Not downloaded yet"
+    },
+    "main": {
+      "label": "Main: {{path}}",
+      "change": "Change",
+      "changeLabel": "Change the main document",
+      "others": "Other documents",
+      "switchFailed": "Couldn't switch to {{path}}."
+    },
+    "noMain": "No main document yet. Pick a file and choose Set as main document.",
+    "trust": {
+      "banner": "Oleafly limited some features in this folder. Trust it to turn on Git, terminal, agents and shell escape.",
+      "trustFolder": "Trust this folder",
+      "trustParent": "Trust the parent folder…",
+      "trustRepository": "Trust the repository",
+      "hide": "Hide",
+      "terminal": "Git hooks and repository settings are off in this terminal until you trust the folder.",
+      "terminalReopen": "This terminal started before you trusted the folder. Reopen it to turn on Git hooks.",
+      "reopenTerminal": "Reopen terminal",
+      "failed": "Couldn't trust this folder."
+    },
+    "readOnly": {
+      "banner": "This folder is read-only. You can compile, but edits can't be saved.",
+      "copy": "Copy into library",
+      "copied": "Oleafly copied this folder into your library. You're editing the copy now.",
+      "copyFailed": "Couldn't copy this folder into your library."
+    },
+    "sync": {
+      "syncsWith": "Syncs with {{service}}",
+      "cloudStorage": "Syncs with a cloud service",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Search across this project's files.",
     "noResults": "No results.",

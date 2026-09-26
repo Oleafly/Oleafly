@@ -451,6 +451,81 @@
     "tryCommand": "Încearcă o comandă",
     "unknownCommand": "Comandă necunoscută. Scrie / ca să vezi comenzile disponibile."
   },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Ce document să compileze Oleafly?",
+      "askDescription": "Acest folder are mai multe documente. Alege documentul principal. Îl poți schimba mai târziu.",
+      "changeTitle": "Alege documentul principal",
+      "changeDescription": "Oleafly compilează documentul ales și îl reține pentru acest folder.",
+      "listLabel": "Documentele din acest folder",
+      "open": "Deschide",
+      "browse": "Doar răsfoiește fișierele",
+      "bestMatch": "Cea mai bună potrivire",
+      "current": "Actual",
+      "loading": "Se caută documente…",
+      "empty": "Oleafly nu a găsit niciun document aici. Dă clic dreapta pe un fișier din arborele de fișiere și alege Setează ca document principal.",
+      "failed": "Oleafly nu a putut citi acest folder.",
+      "truncated": "Acest folder este mare, așa că Oleafly s-a oprit din căutat mai devreme. Unele documente s-ar putea să lipsească din listă.",
+      "openFailed": "{{path}} nu a putut fi setat ca document principal."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Carte",
+      "presentation": "Prezentare",
+      "poster": "Poster",
+      "standalone": "Figură de sine stătătoare",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Altceva"
+    },
+    "reason": {
+      "declared": "Marcat ca fișier principal",
+      "top_level": "În folderul de sus",
+      "named_main": "Se numește main",
+      "named_after_folder": "Poartă numele folderului",
+      "includes_files": "Include alte fișiere",
+      "has_bibliography": "Are bibliografie",
+      "no_begin_document": "Fără \\begin{document}",
+      "standalone_figure": "Figură de sine stătătoare",
+      "placeholder": "Încă nedescărcat"
+    },
+    "main": {
+      "label": "Principal: {{path}}",
+      "change": "Schimbă",
+      "changeLabel": "Schimbă documentul principal",
+      "others": "Alte documente",
+      "switchFailed": "Nu s-a putut trece la {{path}}."
+    },
+    "noMain": "Încă nu există un document principal. Alege un fișier și selectează Setează ca document principal.",
+    "trust": {
+      "banner": "Oleafly a limitat unele funcții în acest folder. Ai încredere în el ca să pornești Git, terminalul, agenții și shell escape.",
+      "trustFolder": "Am încredere în acest folder",
+      "trustParent": "Am încredere în folderul părinte…",
+      "trustRepository": "Am încredere în depozit",
+      "hide": "Ascunde",
+      "terminal": "Hook-urile Git și setările depozitului sunt oprite în acest terminal până când ai încredere în folder.",
+      "terminalReopen": "Acest terminal a pornit înainte să ai încredere în folder. Redeschide-l ca să activezi hook-urile Git.",
+      "reopenTerminal": "Redeschide terminalul",
+      "failed": "Folderul nu a putut fi marcat ca de încredere."
+    },
+    "readOnly": {
+      "banner": "Acest folder este doar în citire. Poți compila, dar modificările nu pot fi salvate.",
+      "copy": "Copiază în bibliotecă",
+      "copied": "Oleafly a copiat acest folder în biblioteca ta. Acum editezi copia.",
+      "copyFailed": "Folderul nu a putut fi copiat în biblioteca ta."
+    },
+    "sync": {
+      "syncsWith": "Se sincronizează cu {{service}}",
+      "cloudStorage": "Se sincronizează cu un serviciu cloud",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
   "projectSearch": {
     "hint": "Caută în fișierele acestui proiect.",
     "noResults": "Niciun rezultat.",

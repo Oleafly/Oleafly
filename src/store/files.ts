@@ -59,6 +59,7 @@ import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { isManagedProjectPath } from "@/lib/project-paths";
+import { mainDocumentMissing } from "@/lib/main-document";
 import {
   projectFolderAvailable,
   reportLocationError,
@@ -457,6 +458,7 @@ interface FilesStore {
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
   setEngine: (engine: string, flavor?: TexFlavor | null) => Promise<void>;
+  refreshEngine: () => Promise<void>;
   setShellEscape: (allow: boolean) => Promise<void>;
 }
 
@@ -1094,9 +1096,9 @@ async function loadOpenedProject(
   });
   if (engine.failure !== null) void logError("load document engine", engine.failure);
   await preloadBibliographies(id, tree, superseded, set);
-  const mainDoc = meta.main_doc || "main.tex";
-  if (manifestHome === "library" || tree.some((entry) => !entry.is_dir && entry.path === mainDoc)) {
-    await get().openFile(mainDoc);
+  const mainDocument = meta.main_doc || "main.tex";
+  if (!mainDocumentMissing({ projectId: id, manifestHome, tree, mainDoc: mainDocument })) {
+    await get().openFile(mainDocument);
   }
   if (superseded()) return;
   await activation;
@@ -2456,6 +2458,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       void logError("set compile engine", error);
       throw error;
     }
+  },
+
+  refreshEngine: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const seq = ++mainDocSeq;
+    await reloadUnchangedEngine(
+      projectId,
+      () => seq === mainDocSeq && get().projectId === projectId,
+      set,
+    );
   },
 
   setShellEscape: async (allow) => {

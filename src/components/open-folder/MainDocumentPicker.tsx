@@ -1,0 +1,325 @@
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileIcon } from "@/components/files/fileIcon";
+import type { DetectionCandidate } from "@/lib/folder-detection";
+import { candidateReasonLine, documentKindLabel, sameDocumentPath } from "@/lib/main-document";
+import { logError } from "@/lib/log";
+import { notifyError } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import { useFilesStore } from "@/store/files";
+import { chooseMainDocument, useMainDocumentStore } from "@/store/main-document";
+import { useOpenFolderStore } from "@/store/open-folder";
+
+type PickerMode = "ask" | "change";
+
+const EMPTY: DetectionCandidate[] = [];
+
+function CandidateRow({
+  id,
+  candidate,
+  selected,
+  badge,
+  onSelect,
+  onOpen,
+}: Readonly<{
+  id: string;
+  candidate: DetectionCandidate;
+  selected: boolean;
+  badge: string | null;
+  onSelect: () => void;
+  onOpen: () => void;
+}>) {
+  const reason = candidateReasonLine(candidate);
+  return (
+    <button
+      id={id}
+      type="button"
+      role="option"
+      aria-selected={selected}
+      tabIndex={-1}
+      data-path={candidate.path}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onSelect}
+      onDoubleClick={onOpen}
+      className={cn(
+        "flex w-full cursor-pointer items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors",
+        selected
+          ? "border-primary/40 bg-primary/10"
+          : "border-transparent hover:bg-accent",
+      )}
+    >
+      <FileIcon name={candidate.path} className="mt-0.5 size-4 shrink-0" />
+      <span className="block min-w-0 flex-1 space-y-0.5">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate font-mono text-xs text-foreground">
+            {candidate.path}
+          </span>
+          {badge ? (
+            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+              {badge}
+            </span>
+          ) : null}
+          <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {documentKindLabel(candidate.kind)}
+          </span>
+        </span>
+        {candidate.title ? (
+          <span className="block truncate text-xs text-foreground/80">{candidate.title}</span>
+        ) : null}
+        {reason ? (
+          <span className="block truncate text-[11px] text-muted-foreground">{reason}</span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+export function MainDocumentPicker() {
+  const { t } = useTranslation(["common", "shell"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const projectLoading = useFilesStore((state) => state.loading);
+  const mainDoc = useFilesStore((state) => state.mainDoc);
+  const opened = useOpenFolderStore((state) => state.opened);
+  const dismiss = useOpenFolderStore((state) => state.dismiss);
+  const changing = useMainDocumentStore((state) => state.changing && state.projectId === projectId);
+  const stored = useMainDocumentStore((state) =>
+    state.projectId === projectId ? state.detection : null,
+  );
+  const status = useMainDocumentStore((state) => state.status);
+  const closeChange = useMainDocumentStore((state) => state.closeChange);
+  const asking =
+    opened?.detection.decision === "ask" && opened.project_id === projectId && !projectLoading;
+  let mode: PickerMode | null = null;
+  if (asking) mode = "ask";
+  else if (changing) mode = "change";
+  const detection = mode === "ask" ? opened?.detection ?? null : stored;
+  const candidates = detection?.candidates ?? EMPTY;
+  const preferred =
+    mode === "ask"
+      ? (detection?.main ?? candidates[0]?.path ?? null)
+      : (candidates.find((candidate) => sameDocumentPath(candidate.path, mainDoc))?.path ??
+        candidates[0]?.path ??
+        null);
+  const selectionKey = `${projectId ?? ""}:${mode ?? ""}:${preferred ?? ""}`;
+  const [choice, setChoice] = useState<{ key: string; path: string | null }>({
+    key: "",
+    path: null,
+  });
+  const kept =
+    choice.key === selectionKey && candidates.some((candidate) => candidate.path === choice.path);
+  const selected = kept ? choice.path : preferred;
+  const setSelected = (path: string | null) => setChoice({ key: selectionKey, path });
+  const [pendingIn, setPendingIn] = useState<string | null>(null);
+  const busy = pendingIn !== null && pendingIn === projectId;
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const focusListWhenShown = useRef(false);
+  const attachList = (node: HTMLDivElement | null) => {
+    listRef.current = node;
+    if (node && focusListWhenShown.current) {
+      focusListWhenShown.current = false;
+      node.focus({ preventScroll: true });
+    }
+  };
+  const baseId = useId();
+  const optionId = (index: number) => `${baseId}-option-${index}`;
+  const selectedIndex = candidates.findIndex((candidate) => candidate.path === selected);
+  const selectedOptionId = selectedIndex >= 0 ? optionId(selectedIndex) : null;
+
+  useEffect(() => {
+    if (!selectedOptionId) return;
+    const row = document.getElementById(selectedOptionId);
+    if (typeof row?.scrollIntoView === "function") row.scrollIntoView({ block: "nearest" });
+  }, [selectedOptionId]);
+
+  const close = () => {
+    if (busy) return;
+    if (mode === "ask") dismiss();
+    else closeChange();
+  };
+
+  const open = async (path: string | null) => {
+    if (!path || busy || !mode || !projectId) return;
+    if (mode === "change" && sameDocumentPath(path, mainDoc)) {
+      closeChange();
+      return;
+    }
+    const current = mode;
+    const startedIn = projectId;
+    setPendingIn(startedIn);
+    try {
+      const chosen = await chooseMainDocument(path);
+      if (!chosen) return;
+      if (current === "ask") {
+        if (useOpenFolderStore.getState().opened?.project_id === startedIn) dismiss();
+      } else if (useMainDocumentStore.getState().projectId === startedIn) {
+        closeChange();
+      }
+    } catch (error) {
+      if (useFilesStore.getState().projectId !== startedIn) {
+        void logError("choose the main document", error);
+        return;
+      }
+      notifyError(
+        "choose the main document",
+        error,
+        t(($) => $.shell.openedFolder.picker.openFailed, { path }),
+      );
+    } finally {
+      setPendingIn((pending) => (pending === startedIn ? null : pending));
+    }
+  };
+
+  const onListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (candidates.length === 0) return;
+    const last = candidates.length - 1;
+    const from = selectedIndex < 0 ? 0 : selectedIndex;
+    let next: number | null = null;
+    if (event.key === "ArrowDown") next = Math.min(last, selectedIndex < 0 ? 0 : from + 1);
+    else if (event.key === "ArrowUp") next = Math.max(0, from - 1);
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    else if (event.key === "Enter") {
+      event.preventDefault();
+      void open(selected);
+      return;
+    }
+    if (next === null) return;
+    event.preventDefault();
+    setSelected(candidates[next]?.path ?? null);
+  };
+
+  const badgeFor = (candidate: DetectionCandidate): string | null => {
+    if (mode === "ask" && candidate.path === preferred) {
+      return t(($) => $.shell.openedFolder.picker.bestMatch);
+    }
+    if (mode === "change" && sameDocumentPath(candidate.path, mainDoc)) {
+      return t(($) => $.shell.openedFolder.picker.current);
+    }
+    return null;
+  };
+
+  const renderBody = () => {
+    if (mode === "change" && (status === "idle" || status === "loading") && !stored) {
+      return (
+        <output className="flex items-center justify-center gap-2 py-10 text-xs text-muted-foreground">
+          <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+          {t(($) => $.shell.openedFolder.picker.loading)}
+        </output>
+      );
+    }
+    if (mode === "change" && status === "failed" && !stored) {
+      return (
+        <p role="alert" className="py-8 text-center text-xs text-muted-foreground">
+          {t(($) => $.shell.openedFolder.picker.failed)}
+        </p>
+      );
+    }
+    if (candidates.length === 0) {
+      return (
+        <p className="px-4 py-8 text-center text-xs leading-relaxed text-muted-foreground">
+          {t(($) => $.shell.openedFolder.picker.empty)}
+        </p>
+      );
+    }
+    return (
+      <div
+        ref={attachList}
+        role="listbox"
+        tabIndex={0}
+        aria-label={t(($) => $.shell.openedFolder.picker.listLabel)}
+        aria-activedescendant={selectedOptionId ?? undefined}
+        onKeyDown={onListKeyDown}
+        data-testid="main-document-candidates"
+        className="max-h-[min(50vh,24rem)] space-y-0.5 overflow-y-auto rounded-lg border border-border p-1 transition-colors focus-visible:border-primary/50"
+      >
+        {candidates.map((candidate, index) => (
+          <CandidateRow
+            key={candidate.path}
+            id={optionId(index)}
+            candidate={candidate}
+            selected={candidate.path === selected}
+            badge={badgeFor(candidate)}
+            onSelect={() => setSelected(candidate.path)}
+            onOpen={() => {
+              setSelected(candidate.path);
+              void open(candidate.path);
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <Dialog
+      open={mode !== null}
+      onOpenChange={(next) => {
+        if (!next) close();
+      }}
+    >
+      <DialogContent
+        data-testid="main-document-picker"
+        className="top-[12vh] max-w-xl translate-y-0 gap-3 p-5 data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 data-[state=open]:slide-in-from-top-2"
+        closeDisabled={busy}
+        onOpenAutoFocus={(event) => {
+          if (!listRef.current) {
+            focusListWhenShown.current = true;
+            return;
+          }
+          event.preventDefault();
+          listRef.current.focus({ preventScroll: true });
+        }}
+        onPointerDownCapture={() => {
+          focusListWhenShown.current = false;
+        }}
+        onKeyDownCapture={() => {
+          focusListWhenShown.current = false;
+        }}
+      >
+        <DialogHeader className="pr-6">
+          <DialogTitle className="text-sm">
+            {mode === "change"
+              ? t(($) => $.shell.openedFolder.picker.changeTitle)
+              : t(($) => $.shell.openedFolder.picker.askTitle)}
+          </DialogTitle>
+          <DialogDescription className="text-xs leading-relaxed">
+            {mode === "change"
+              ? t(($) => $.shell.openedFolder.picker.changeDescription)
+              : t(($) => $.shell.openedFolder.picker.askDescription)}
+          </DialogDescription>
+        </DialogHeader>
+        {renderBody()}
+        {detection?.truncated ? (
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t(($) => $.shell.openedFolder.picker.truncated)}
+          </p>
+        ) : null}
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={close} disabled={busy}>
+            {mode === "change"
+              ? t(($) => $.common.actions.cancel)
+              : t(($) => $.shell.openedFolder.picker.browse)}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => void open(selected)}
+            disabled={busy || selected === null || selectedIndex < 0}
+          >
+            {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" /> : null}
+            {t(($) => $.shell.openedFolder.picker.open)}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

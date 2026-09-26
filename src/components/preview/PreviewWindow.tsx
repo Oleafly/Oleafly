@@ -1304,6 +1304,9 @@ export function PreviewWindow({
           setCheckSyntaxBeforeCompile={(value) => { void command({ action: "syntax-check", value }); }}
           stopOnFirstError={workspace?.stopOnFirstError ?? false}
           setStopOnFirstError={(value) => { void command({ action: "stop-on-error", value }); }}
+          blockedReason={workspace?.noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
+          systemTexLocked={workspace?.systemTexLocked ?? false}
+          onTrustForSystemTex={() => { void command({ action: "trust-folder" }); }}
         />
         <Button size="sm" variant="ghost" className="ml-auto" data-testid="preview-reattach"
           onClick={() => void getCurrentWindow().close()}>{t(($) => $.ai.shell.dockBack)}</Button>

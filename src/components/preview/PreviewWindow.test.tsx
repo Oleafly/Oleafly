@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -90,6 +90,10 @@ import {
   type PreviewWindowState,
 } from "@/lib/preview-window";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { emitTo } from "@tauri-apps/api/event";
+import userEvent from "@testing-library/user-event";
 import { PreviewWindow } from "./PreviewWindow";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
@@ -193,6 +197,36 @@ describe("detached preview download", () => {
   });
 });
 
+describe("detached compile controls in an opened folder", () => {
+  const workspace: PreviewWorkspaceSnapshot = {
+    projectId: "alpha", engine: LATEX_ENGINE, engineLoaded: true, mainDoc: "main.tex",
+    status: "idle", log: "", errors: [], diagnostics: null, compileTimeMs: null,
+    compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+    noMainDocument: true, systemTexLocked: true,
+  };
+
+  it("holds Compile without a main document and keeps system TeX behind trust", async () => {
+    mocks.native = true;
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: workspace }));
+    const button = screen.getByTestId("compile-button");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(button);
+    expect(emitTo).not.toHaveBeenCalledWith("main", "preview:command", expect.objectContaining({ action: "compile" }));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByTestId("compiler-lualatex")).toHaveAttribute("aria-disabled", "true");
+    await user.click(within(menu).getByText(enErrors.trust.system_tex));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "trust-folder" });
+
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: { ...workspace, noMainDocument: false, systemTexLocked: false } }));
+    expect(screen.getByTestId("compile-button")).not.toHaveAttribute("aria-disabled");
+  });
+});
+
 describe("detached preview request identity", () => {
   it("loads a restored PDF from the ready snapshot without a live compile event", async () => {
     mocks.native = true;
@@ -202,6 +236,7 @@ describe("detached preview request identity", () => {
       projectId: "alpha", engine: LATEX_ENGINE, engineLoaded: true, mainDoc: "main.tex",
       status: "success", log: "Saved compile output", errors: [], diagnostics: null, compileTimeMs: 120,
       compileRevision: 1, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+      noMainDocument: false, systemTexLocked: false,
       previewState: successState("beta", 1, 1),
     };
     act(() => mocks.listeners.get("preview:workspace")?.({ payload: snapshot }));

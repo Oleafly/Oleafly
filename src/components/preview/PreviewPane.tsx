@@ -54,6 +54,7 @@ import {
 } from "@/store/compile";
 import { CompileOfferButton } from "./CompileOfferButton";
 import { useFilesStore } from "@/store/files";
+import { mainDocumentMissing } from "@/lib/main-document";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
@@ -583,7 +584,7 @@ export function checkpointIdentity(
 const PREVIEW_DOWNLOAD_TOAST_KEY = "preview-download";
 
 export function PreviewPane() {
-  const { t } = useTranslation(["common", "preview"]);
+  const { t } = useTranslation(["common", "preview", "shell"]);
   const status = useCompileStore((s) => s.status);
   const phase = useCompileStore((s) => s.phase);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
@@ -605,6 +606,7 @@ export function PreviewPane() {
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const projectLoading = useFilesStore((s) => s.loading);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const noMainDocument = useFilesStore(mainDocumentMissing);
   const projectRevision = useProjectAnalysisStore((state) =>
     state.snapshot.identity.projectId === projectId
       ? state.snapshot.identity.projectRevision
@@ -1612,19 +1614,23 @@ export function PreviewPane() {
       </div>
     ) : (
       <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
-        {status === "error" || status === "unavailable" ? (
+        {noMainDocument || status === "error" || status === "unavailable" ? (
           <div className="space-y-3 text-center text-muted-foreground">
             <FileText className="mx-auto size-10 opacity-30" />
-            <p className="max-w-xs text-sm" role="alert">
-              {compileFailureReason ??
-                (status === "unavailable"
-                  ? t(($) => $.preview.empty.compileUnavailable)
-                  : t(($) => $.preview.empty.compileFailed))}
+            <p className="max-w-xs text-sm" role={noMainDocument ? undefined : "alert"}>
+              {noMainDocument
+                ? t(($) => $.shell.openedFolder.noMain)
+                : (compileFailureReason ??
+                  (status === "unavailable"
+                    ? t(($) => $.preview.empty.compileUnavailable)
+                    : t(($) => $.preview.empty.compileFailed)))}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button size="sm" onClick={() => void recompile()}>
-                {t(($) => $.preview.actions.retryCompile)}
-              </Button>
+              {noMainDocument ? null : (
+                <Button size="sm" onClick={() => void recompile()}>
+                  {t(($) => $.preview.actions.retryCompile)}
+                </Button>
+              )}
               <CompileOfferButton placement="preview" />
             </div>
           </div>

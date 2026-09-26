@@ -241,6 +241,9 @@ vi.mock("@/components/ai/ExternalToolApprovals", () => ({
 }));
 vi.mock("@/components/layout/AboutModal", () => ({ AboutModal: () => null }));
 vi.mock("@/components/layout/EnginePickerModal", () => ({ EnginePickerModal: () => null }));
+vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
+vi.mock("@/components/open-folder/OpenedFolderBanners", () => ({ OpenedFolderBanners: () => null }));
+vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/TinytexGuards", () => ({ TinytexGuards: () => null }));
 vi.mock("@/components/layout/QuitGuard", () => ({ QuitGuard: () => null }));
 vi.mock("@/components/layout/OpenFolderGuards", () => ({
