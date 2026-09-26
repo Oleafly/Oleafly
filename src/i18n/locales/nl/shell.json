@@ -361,6 +361,25 @@
     },
     "title": "Er is iets misgegaan"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Deze map is niet beschikbaar.",
+      "body": "Sluit het station opnieuw aan of zoek de map. Je geopende bestanden blijven hier, en Oleafly slaat niets op en compileert niet totdat de map terug is."
+    },
+    "replaced": {
+      "title": "Deze map is vervangen.",
+      "body": "Er staat nu een andere map op die plek. Oleafly is gestopt met opslaan, zodat daar niets wordt overschreven."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan deze map niet openen.",
+      "body": "Controleer de machtigingen van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
+    },
+    "locate": "Zoeken…",
+    "useThisFolder": "Deze map gebruiken",
+    "saveCopy": "Kopie opslaan…",
+    "tryAgain": "Opnieuw proberen",
+    "savedCopy": "Je geopende bestanden zijn opgeslagen in {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-acties",

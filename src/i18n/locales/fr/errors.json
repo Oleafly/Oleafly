@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly n'a pas l'autorisation d'ouvrir le dossier {{folder}}.",
     "linked_invalid": "Le lien d'Oleafly vers ce dossier est endommagé. Retirez-le d'Oleafly, puis ouvrez à nouveau le dossier.",
     "linked_not_recyclable": "Ce dossier a été ouvert sur place, il ne peut donc pas être déplacé vers la corbeille. Vos fichiers restent intacts.",
-    "linked_not_duplicable": "Ce dossier a été ouvert sur place, Oleafly ne peut donc pas le dupliquer."
+    "linked_not_duplicable": "Ce dossier a été ouvert sur place, Oleafly ne peut donc pas le dupliquer.",
+    "folder_not_a_folder": "Oleafly ne peut pas utiliser cet emplacement. Choisissez un dossier.",
+    "folder_in_app_data": "Oleafly conserve ses propres données dans ce dossier. Choisissez-en un autre.",
+    "folder_too_broad": "{{name}} est trop vaste pour être ouvert comme un seul projet. Choisissez le dossier qui contient uniquement ce projet.",
+    "folder_already_linked": "Ce dossier chevauche un autre projet dans Oleafly. Choisissez un autre dossier.",
+    "not_linked": "Localiser ne fonctionne que pour les dossiers ouverts sur place.",
+    "copy_destination_refused": "Choisissez un dossier situé hors du projet et hors du dossier de données d'Oleafly.",
+    "copy_nothing_open": "Aucun fichier n'est ouvert, il n'y a donc rien à enregistrer.",
+    "copy_too_large": "Les fichiers ouverts sont trop volumineux pour être enregistrés en copie.",
+    "copy_failed": "Oleafly n'a pas pu enregistrer la copie à cet endroit. Choisissez un dossier dans lequel vous pouvez écrire.",
+    "folder_picker_failed": "Oleafly n'a pas pu ouvrir le sélecteur de dossier. Réessayez."
   },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."

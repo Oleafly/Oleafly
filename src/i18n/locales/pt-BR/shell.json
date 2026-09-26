@@ -363,6 +363,25 @@
     },
     "title": "Algo deu errado"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Esta pasta não está disponível.",
+      "body": "Reconecte a unidade ou encontre a pasta. Seus arquivos abertos continuam aqui, e o Oleafly não vai salvar nem compilar até a pasta voltar."
+    },
+    "replaced": {
+      "title": "Esta pasta foi substituída.",
+      "body": "Agora há outra pasta no lugar dela. O Oleafly parou de salvar para não sobrescrever nada lá."
+    },
+    "permissionDenied": {
+      "title": "O Oleafly não consegue abrir esta pasta.",
+      "body": "Verifique as permissões da pasta e tente de novo. Seus arquivos abertos continuam aqui."
+    },
+    "locate": "Localizar…",
+    "useThisFolder": "Usar esta pasta",
+    "saveCopy": "Salvar uma cópia…",
+    "tryAgain": "Tentar de novo",
+    "savedCopy": "Seus arquivos abertos foram salvos em {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Ações do GitHub",

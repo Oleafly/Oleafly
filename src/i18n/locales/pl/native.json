@@ -58,6 +58,18 @@
       "title": "Zezwolić na to żądanie?",
       "message": "Asystent chce użyć narzędzia {{tool}}, które wysyła tekst do usługi online. Ten folder nie jest jeszcze zaufany.",
       "confirm": "Zezwól"
+    },
+    "locateFolder": {
+      "title": "Znajdź folder projektu"
+    },
+    "rebindFolder": {
+      "title": "Użyć innego folderu?",
+      "message": "{{name}} to nie jest folder, który Oleafly miał dla tego projektu. Jeśli go użyjesz, Oleafly zapisze w nim niezapisane zmiany i zamknie terminale oraz sesje agentów tego projektu. Wszystko, co w nich działa, zostanie zatrzymane. Oleafly przestanie też ufać folderowi, wyłączy pełny dostęp, zresetuje zgody asystenta i odłączy foldery badawcze. Czaty i historia zostaną zachowane.",
+      "confirm": "Użyj tego folderu"
+    },
+    "saveCopy": {
+      "title": "Wybierz, gdzie zapisać kopię",
+      "folderSuffix": "kopia"
     }
   },
   "errors": {

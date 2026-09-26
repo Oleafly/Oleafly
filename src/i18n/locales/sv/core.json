@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Det gick inte att spara en kontrollpunkt. Disken är full eller så går det inte att skriva till mappen för kontrollpunkter. Frigör utrymme eller kontrollera mappens behörigheter och kompilera sedan igen.",
     "incompleteCapture": "Det gick inte att spara de senaste kontrollpunkterna eftersom vissa projektfiler inte kunde läsas. Kontrollera deras behörigheter och kompilera sedan igen."
+  },
+  "folderUnavailable": {
+    "compile": "Kompileringen är pausad tills projektmappen är tillbaka.",
+    "saveReason": "projektmappen är inte tillgänglig"
   }
 }

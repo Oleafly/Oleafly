@@ -58,6 +58,18 @@
       "title": "Tillåta den här begäran?",
       "message": "Assistenten vill använda {{tool}}, som skickar text till en onlinetjänst. Den här mappen är inte betrodd än.",
       "confirm": "Tillåt"
+    },
+    "locateFolder": {
+      "title": "Hitta projektmappen"
+    },
+    "rebindFolder": {
+      "title": "Vill du använda en annan mapp?",
+      "message": "{{name}} är inte mappen som Oleafly hade för det här projektet. Om du använder den sparar Oleafly dina osparade ändringar i den och stänger projektets terminaler och agentsessioner. Allt som körs i dem avbryts. Oleafly slutar också att lita på mappen, stänger av fullständig åtkomst, återställer assistentens godkännanden och kopplar bort forskningsmappar. Chattar och historik finns kvar.",
+      "confirm": "Använd den här mappen"
+    },
+    "saveCopy": {
+      "title": "Välj var kopian ska sparas",
+      "folderSuffix": "kopia"
     }
   },
   "errors": {

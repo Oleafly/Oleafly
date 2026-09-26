@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly nu are permisiunea de a deschide folderul {{folder}}.",
     "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul.",
     "linked_not_recyclable": "Acest folder a fost deschis în locația sa, așa că nu poate fi mutat în Coșul de reciclare. Fișierele tale nu au fost modificate.",
-    "linked_not_duplicable": "Acest folder a fost deschis în locația sa, așa că Oleafly nu îl poate duplica."
+    "linked_not_duplicable": "Acest folder a fost deschis în locația sa, așa că Oleafly nu îl poate duplica.",
+    "folder_not_a_folder": "Oleafly nu poate folosi această locație. Alege un folder.",
+    "folder_in_app_data": "Oleafly își păstrează propriile date în acel folder. Alege altul.",
+    "folder_too_broad": "{{name}} este prea cuprinzător pentru a fi deschis ca un singur proiect. Alege folderul care conține doar acest proiect.",
+    "folder_already_linked": "Acel folder se suprapune cu alt proiect din Oleafly. Alege alt folder.",
+    "not_linked": "Localizarea funcționează doar pentru folderele deschise pe loc.",
+    "copy_destination_refused": "Alege un folder din afara proiectului și din afara folderului de date Oleafly.",
+    "copy_nothing_open": "Nu este deschis niciun fișier, deci nu ai ce salva.",
+    "copy_too_large": "Fișierele deschise sunt prea mari pentru a fi salvate ca o copie.",
+    "copy_failed": "Oleafly nu a putut salva copia acolo. Alege un folder în care poți scrie.",
+    "folder_picker_failed": "Oleafly nu a putut deschide selectorul de foldere. Încearcă din nou."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleaflylla ei ole oikeutta avata kansiota {{folder}}.",
     "linked_invalid": "Oleaflyn linkki tähän kansioon on vioittunut. Poista se Oleaflysta ja avaa kansio sitten uudelleen.",
     "linked_not_recyclable": "Tämä kansio avattiin sijainnissaan, joten sitä ei voi siirtää roskakoriin. Tiedostojasi ei ole muutettu.",
-    "linked_not_duplicable": "Tämä kansio avattiin sijainnissaan, joten Oleafly ei voi monistaa sitä."
+    "linked_not_duplicable": "Tämä kansio avattiin sijainnissaan, joten Oleafly ei voi monistaa sitä.",
+    "folder_not_a_folder": "Oleafly ei voi käyttää tätä sijaintia. Valitse kansio.",
+    "folder_in_app_data": "Oleafly säilyttää omia tietojaan tässä kansiossa. Valitse jokin toinen.",
+    "folder_too_broad": "{{name}} on liian laaja avattavaksi yhtenä projektina. Valitse kansio, jossa on vain tämä projekti.",
+    "folder_already_linked": "Tämä kansio menee päällekkäin toisen Oleafly-projektin kanssa. Valitse toinen kansio.",
+    "not_linked": "Paikantaminen toimii vain paikallaan avatuille kansioille.",
+    "copy_destination_refused": "Valitse kansio projektin ja Oleaflyn datakansion ulkopuolelta.",
+    "copy_nothing_open": "Avoimia tiedostoja ei ole, joten tallennettavaa ei ole.",
+    "copy_too_large": "Avoimet tiedostot ovat liian suuria tallennettaviksi kopiona.",
+    "copy_failed": "Oleafly ei voinut tallentaa kopiota sinne. Valitse kansio, johon voit kirjoittaa.",
+    "folder_picker_failed": "Oleafly ei voinut avata kansion valintaa. Yritä uudelleen."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

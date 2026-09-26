@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly nie ma uprawnień do otwarcia folderu {{folder}}.",
     "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie.",
     "linked_not_recyclable": "Ten folder otwarto w jego lokalizacji, więc nie można go przenieść do Kosza. Twoje pliki pozostały bez zmian.",
-    "linked_not_duplicable": "Ten folder otwarto w jego lokalizacji, więc Oleafly nie może go zduplikować."
+    "linked_not_duplicable": "Ten folder otwarto w jego lokalizacji, więc Oleafly nie może go zduplikować.",
+    "folder_not_a_folder": "Oleafly nie może użyć tej lokalizacji. Wybierz folder.",
+    "folder_in_app_data": "Oleafly przechowuje w tym folderze własne dane. Wybierz inny.",
+    "folder_too_broad": "{{name}} obejmuje zbyt wiele, aby otworzyć go jako jeden projekt. Wybierz folder, który zawiera tylko ten projekt.",
+    "folder_already_linked": "Ten folder nakłada się na inny projekt w Oleafly. Wybierz inny folder.",
+    "not_linked": "Lokalizowanie działa tylko dla folderów otwartych w ich miejscu.",
+    "copy_destination_refused": "Wybierz folder poza projektem i poza folderem danych Oleafly.",
+    "copy_nothing_open": "Żadne pliki nie są otwarte, więc nie ma czego zapisać.",
+    "copy_too_large": "Otwarte pliki są zbyt duże, aby zapisać je jako kopię.",
+    "copy_failed": "Oleafly nie mógł zapisać tam kopii. Wybierz folder, w którym możesz zapisywać.",
+    "folder_picker_failed": "Oleafly nie mógł otworzyć okna wyboru folderu. Spróbuj ponownie."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

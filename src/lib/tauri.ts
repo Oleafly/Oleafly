@@ -87,6 +87,7 @@ import type {
   PackInfo,
   Persona,
   Prerequisite,
+  ProjectAvailability,
   ProjectAvailabilityReport,
   ProjectInfo,
   ProjectMeta,
@@ -806,6 +807,29 @@ export const revealInDir = (path: string) =>
 
 export const revealProject = (projectId: string, path?: string | null) =>
   invoke<void>("reveal_project", { projectId, path: path ?? null });
+
+export interface ProjectAvailabilityEvent {
+  projectId: string;
+  availability: ProjectAvailability;
+  locationGeneration: number;
+  relocated: boolean;
+  grantsReset: boolean;
+}
+export type LocateFolderOutcome = "cancelled" | "declined" | "rebound";
+export interface BufferCopyFile {
+  path: string;
+  content: string;
+}
+export interface SavedBufferCopy {
+  folder: string;
+  written: number;
+}
+export const locateProjectFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("locate_project_folder", { projectId });
+export const adoptReplacedFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("adopt_replaced_folder", { projectId });
+export const saveOpenBuffersCopy = (projectId: string, name: string, files: BufferCopyFile[]) =>
+  invoke<SavedBufferCopy | null>("save_open_buffers_copy", { projectId, name, files });
 
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });

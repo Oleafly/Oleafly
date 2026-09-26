@@ -12,7 +12,17 @@
     "linked_permission_denied": "O Oleafly não tem permissão para abrir a pasta {{folder}}.",
     "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente.",
     "linked_not_recyclable": "Esta pasta foi aberta no próprio local, então não pode ser movida para a Lixeira. Seus arquivos não foram alterados.",
-    "linked_not_duplicable": "Esta pasta foi aberta no próprio local, então o Oleafly não pode duplicá-la."
+    "linked_not_duplicable": "Esta pasta foi aberta no próprio local, então o Oleafly não pode duplicá-la.",
+    "folder_not_a_folder": "O Oleafly não pode usar esse local. Escolha uma pasta.",
+    "folder_in_app_data": "O Oleafly guarda os próprios dados nessa pasta. Escolha outra.",
+    "folder_too_broad": "{{name}} é abrangente demais para abrir como um único projeto. Escolha a pasta que contém só este projeto.",
+    "folder_already_linked": "Essa pasta se sobrepõe a outro projeto no Oleafly. Escolha outra pasta.",
+    "not_linked": "Localizar só funciona com pastas abertas no próprio local.",
+    "copy_destination_refused": "Escolha uma pasta fora do projeto e fora da pasta de dados do Oleafly.",
+    "copy_nothing_open": "Nenhum arquivo está aberto, então não há nada para salvar.",
+    "copy_too_large": "Os arquivos abertos são grandes demais para salvar como cópia.",
+    "copy_failed": "O Oleafly não conseguiu salvar a cópia nesse local. Escolha uma pasta em que você possa gravar.",
+    "folder_picker_failed": "O Oleafly não conseguiu abrir o seletor de pastas. Tente novamente."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

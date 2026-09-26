@@ -30,7 +30,8 @@ import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
-import { describeError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
+import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
 
@@ -701,6 +702,15 @@ export async function saveActiveForCompile(
   }
 }
 
+export function clearFolderPause(): void {
+  const paused = i18n.t(($) => $.core.folderUnavailable.compile);
+  useCompileStore.setState((state) =>
+    state.status === "unavailable" && state.failureReason === paused
+      ? { status: "idle", phase: "idle", failureReason: null }
+      : state,
+  );
+}
+
 export function reportCompileSaveFailure(
   scope: string,
   files: ReturnType<typeof useFilesStore.getState>,
@@ -774,6 +784,13 @@ function setCompileUnavailable(ctx: CompileGateContext, failureReason: string): 
   });
 }
 
+function folderAvailableGate(ctx: CompileGateContext): boolean {
+  if (projectFolderAvailable(ctx.capturedProjectId)) return true;
+  setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
+  ctx.abortIntent();
+  return false;
+}
+
 function compileIdentityGate(ctx: CompileGateContext): boolean {
   if (ctx.matchesProjectAndMain() && !ctx.checkpointAdvanced()) return true;
   ctx.abortIntent();
@@ -835,6 +852,11 @@ async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> 
   try {
     await saveActiveForCompile(ctx.files);
   } catch (e) {
+    if (ctx.capturedProjectId && reportLocationError(ctx.capturedProjectId, e)) {
+      setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
+      ctx.abortIntent();
+      return false;
+    }
     ctx.set({
       status: "error",
       phase: "idle",
@@ -902,6 +924,7 @@ async function runCompileGates(
   ctx: CompileGateContext,
   options: RecompileOptions | undefined,
 ): Promise<string | null> {
+  if (!folderAvailableGate(ctx)) return null;
   if (!engineLoadedGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
   if (!(await systemTexPrerequisiteGate(ctx))) return null;
@@ -1190,7 +1213,29 @@ async function applyCompileResult(
   return result;
 }
 
+function pauseCompileForMissingFolder(ctx: CompileApplyContext, e: unknown): void {
+  const paused = i18n.t(($) => $.core.folderUnavailable.compile);
+  ctx.set((state) =>
+    ctx.identityStale() ||
+    hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+      ? state
+      : { status: "unavailable", phase: "idle", failureReason: paused },
+  );
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: "unavailable",
+        checkpoint: null,
+        message: paused,
+      }),
+    )
+    .catch(() => {});
+  void import("@/lib/log").then(({ logError }) => logError("compile", e));
+}
+
 function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
+  const message = decodeAppError(e) ? describeError(e) : String(e);
   ctx.set((state) => {
     if (
       ctx.identityStale() ||
@@ -1201,8 +1246,8 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
     return {
       status: "error",
       phase: "idle",
-      log: `${ctx.offlineNoticePrefix}Compile failed: ${String(e)}`,
-      failureReason: `Compile failed: ${String(e)}`,
+      log: `${ctx.offlineNoticePrefix}Compile failed: ${message}`,
+      failureReason: `Compile failed: ${message}`,
     };
   });
   void import("@/lib/preview-window")
@@ -1211,7 +1256,7 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
         identity: ctx.requestIdentity,
         status: "error",
         checkpoint: null,
-        message: `Compile failed: ${String(e)}`,
+        message: `Compile failed: ${message}`,
       }),
     )
     .catch(() => {});
@@ -1525,7 +1570,8 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       }
       return await applyCompileResult(applyContext, result);
     } catch (e) {
-      handleCompileException(applyContext, e);
+      if (reportLocationError(projectId, e)) pauseCompileForMissingFolder(applyContext, e);
+      else handleCompileException(applyContext, e);
       return undefined;
     } finally {
       logPump.dispose();

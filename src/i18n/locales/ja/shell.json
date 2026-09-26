@@ -359,6 +359,25 @@
     },
     "title": "問題が発生しました"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "このフォルダは使用できません。",
+      "body": "ドライブを接続し直すか、フォルダを探してください。開いているファイルはここに残ります。フォルダが戻るまで Oleafly は保存もコンパイルも行いません。"
+    },
+    "replaced": {
+      "title": "このフォルダは置き換えられました。",
+      "body": "元の場所に別のフォルダがあります。そこにあるものを上書きしないよう、Oleafly は保存を停止しました。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly はこのフォルダを開けません。",
+      "body": "フォルダのアクセス権を確認して、もう一度お試しください。開いているファイルはここに残ります。"
+    },
+    "locate": "場所を指定…",
+    "useThisFolder": "このフォルダを使用",
+    "saveCopy": "コピーを保存…",
+    "tryAgain": "再試行",
+    "savedCopy": "開いているファイルを {{folder}} に保存しました。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub の操作",

@@ -1,9 +1,10 @@
 use crate::fs_identity::{FsIdentity, VolumeKind};
+use oleafly_core::locking::{lock_file, lock_mutex, STORAGE_LOCK_TIMEOUT};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{OnceLock, PoisonError, RwLock};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError, RwLock};
 use std::time::SystemTime;
 
 pub(crate) const LINK_FILE: &str = "link.json";
@@ -458,31 +459,193 @@ pub(crate) fn list() -> Result<Vec<LinkEntry>, String> {
     Ok(entries)
 }
 
+fn write_record(directory: &Path, record: &LinkRecord) -> Result<(), String> {
+    let mut record = record.clone();
+    record.weak_identity = record.identity.weak;
+    let bytes = serde_json::to_vec_pretty(&record)
+        .map_err(|error| format!("could not encode folder link: {error}"))?;
+    let path = directory.join(LINK_FILE);
+    crate::sandbox::atomic_write(&path, &bytes)?;
+    crate::fsperm::harden_file(&path);
+    Ok(())
+}
+
+const REGISTRY_LOCK_FILE: &str = ".linked-registry.lock";
+
+fn write_mutex() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct RegistryWriteLock {
+    _file: std::fs::File,
+    _guard: MutexGuard<'static, ()>,
+}
+
+fn lock_registry_writes() -> Result<RegistryWriteLock, String> {
+    let guard = lock_mutex(write_mutex(), STORAGE_LOCK_TIMEOUT)
+        .map_err(|error| format!("failed to lock the folder registry: {error}"))?;
+    let root = crate::paths::oleafly_root()?;
+    std::fs::create_dir_all(&root)
+        .map_err(|error| format!("failed to create the Oleafly data directory: {error}"))?;
+    let path = root.join(REGISTRY_LOCK_FILE);
+    if std::fs::symlink_metadata(&path)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return Err("the folder registry lock cannot be a symbolic link".to_string());
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let file = options
+        .open(&path)
+        .map_err(|error| format!("failed to open the folder registry lock: {error}"))?;
+    crate::fsperm::harden_file(&path);
+    lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
+        .map_err(|error| format!("failed to lock the folder registry: {error}"))?;
+    Ok(RegistryWriteLock {
+        _file: file,
+        _guard: guard,
+    })
+}
+
+fn registrable_path(path: &Path) -> Result<String, String> {
+    if !path.is_absolute() {
+        return Err("a linked folder path must be absolute".to_string());
+    }
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("could not resolve the linked folder: {error}"))?;
+    if canonical != path {
+        return Err("a linked folder path must be canonical".to_string());
+    }
+    let metadata = std::fs::symlink_metadata(&canonical)
+        .map_err(|error| format!("could not inspect the linked folder: {error}"))?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err("a linked folder must be a real directory".to_string());
+    }
+    if crate::paths::overlaps_app_data(&canonical)? {
+        return Err("a folder that holds Oleafly's app data cannot be linked".to_string());
+    }
+    canonical
+        .to_str()
+        .map(str::to_owned)
+        .ok_or_else(|| "a linked folder path must be valid Unicode".to_string())
+}
+
+pub(crate) fn update<F>(project_id: &str, change: F) -> Result<LinkRecord, String>
+where
+    F: FnOnce(&mut LinkRecord) -> Result<(), String>,
+{
+    let _lock = lock_registry_writes()?;
+    apply_update(project_id, change)
+}
+
+fn apply_update<F>(project_id: &str, change: F) -> Result<LinkRecord, String>
+where
+    F: FnOnce(&mut LinkRecord) -> Result<(), String>,
+{
+    let missing = || format!("project does not exist: {project_id}");
+    if !is_linked_id(project_id) {
+        return Err(missing());
+    }
+    let linked_root = crate::paths::existing_linked_root()?.ok_or_else(missing)?;
+    let directory = linked_root.join(project_id);
+    let current = read_record(&directory, project_id)?.ok_or_else(missing)?;
+    let mut next = current.clone();
+    change(&mut next)?;
+    next.weak_identity = next.identity.weak;
+    if next.id != current.id
+        || next.version != current.version
+        || next.created_at != current.created_at
+    {
+        return Err("a folder link cannot change its identity".into());
+    }
+    if next.canonical_path != current.canonical_path {
+        next.canonical_path = registrable_path(Path::new(&next.canonical_path))?;
+    }
+    validate_record(&next, project_id)?;
+    if next != current {
+        write_record(&directory, &next)?;
+    }
+    let data_root = crate::paths::oleafly_root()?;
+    note_disk_read();
+    store_entry(
+        &data_root,
+        &linked_root,
+        project_id,
+        read_cached(&directory, project_id),
+    );
+    Ok(next)
+}
+
+fn overlaps(left: &Path, right: &Path) -> bool {
+    left.starts_with(right) || right.starts_with(left)
+}
+
+pub(crate) fn overlapping_link(project_id: &str, canonical: &Path) -> Result<bool, String> {
+    let Some(linked_root) = crate::paths::existing_linked_root()? else {
+        return Ok(false);
+    };
+    let listing = std::fs::read_dir(&linked_root)
+        .map_err(|error| format!("could not read the folder registry: {error}"))?;
+    for entry in listing.flatten() {
+        let Some(other) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if other == project_id || !is_linked_id(&other) {
+            continue;
+        }
+        if let Ok(Some(record)) = read_record(&linked_root.join(&other), &other) {
+            if record.is_active() && overlaps(Path::new(&record.canonical_path), canonical) {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+pub(crate) fn rebind(
+    project_id: &str,
+    canonical: &Path,
+    identity: &FsIdentity,
+    volume_kind: VolumeKind,
+) -> Result<LinkRecord, String> {
+    let canonical_path = canonical
+        .to_str()
+        .ok_or_else(|| "a linked folder path must be valid Unicode".to_string())?
+        .to_owned();
+    update(project_id, |record| {
+        if !record.is_active() {
+            return Err(format!("project does not exist: {project_id}"));
+        }
+        if overlapping_link(project_id, canonical)? {
+            return Err(crate::app_error::AppError::new("project.folder_already_linked").into());
+        }
+        record.canonical_path = canonical_path;
+        record.identity = identity.clone();
+        record.volume_kind = volume_kind;
+        Ok(())
+    })
+}
+
 #[cfg(test)]
 pub(crate) use management::{
-    folder_snapshot_for_test, get, register, register_folder_for_test, transaction, update,
-    NewLink, Registration, Transaction,
+    folder_snapshot_for_test, get, register, register_folder_for_test, transaction, NewLink,
+    Registration, Transaction,
 };
 
 #[cfg(test)]
 mod management {
     use super::*;
-    use oleafly_core::locking::{lock_file, lock_mutex, STORAGE_LOCK_TIMEOUT};
-    use std::sync::{Mutex, MutexGuard};
 
     pub(super) fn new_linked_id() -> String {
         format!("{LINKED_ID_PREFIX}{:032x}", rand::random::<u128>())
-    }
-
-    pub(super) fn write_record(directory: &Path, record: &LinkRecord) -> Result<(), String> {
-        let mut record = record.clone();
-        record.weak_identity = record.identity.weak;
-        let bytes = serde_json::to_vec_pretty(&record)
-            .map_err(|error| format!("could not encode folder link: {error}"))?;
-        let path = directory.join(LINK_FILE);
-        crate::sandbox::atomic_write(&path, &bytes)?;
-        crate::fsperm::harden_file(&path);
-        Ok(())
     }
 
     pub(crate) fn get(project_id: &str) -> Result<Option<LinkRecord>, String> {
@@ -516,7 +679,6 @@ mod management {
         }
     }
 
-    pub(super) const REGISTRY_LOCK_FILE: &str = ".linked-registry.lock";
     const RESERVATION_ATTEMPTS: usize = 32;
 
     fn now_ms() -> u64 {
@@ -524,72 +686,6 @@ mod management {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|value| u64::try_from(value.as_millis()).unwrap_or(u64::MAX))
             .unwrap_or_default()
-    }
-
-    fn write_mutex() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
-
-    struct RegistryWriteLock {
-        _file: std::fs::File,
-        _guard: MutexGuard<'static, ()>,
-    }
-
-    fn lock_registry_writes() -> Result<RegistryWriteLock, String> {
-        let guard = lock_mutex(write_mutex(), STORAGE_LOCK_TIMEOUT)
-            .map_err(|error| format!("failed to lock the folder registry: {error}"))?;
-        let root = crate::paths::oleafly_root()?;
-        std::fs::create_dir_all(&root)
-            .map_err(|error| format!("failed to create the Oleafly data directory: {error}"))?;
-        let path = root.join(REGISTRY_LOCK_FILE);
-        if std::fs::symlink_metadata(&path)
-            .map(|metadata| metadata.file_type().is_symlink())
-            .unwrap_or(false)
-        {
-            return Err("the folder registry lock cannot be a symbolic link".to_string());
-        }
-        let mut options = std::fs::OpenOptions::new();
-        options.read(true).write(true).create(true).truncate(false);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let file = options
-            .open(&path)
-            .map_err(|error| format!("failed to open the folder registry lock: {error}"))?;
-        crate::fsperm::harden_file(&path);
-        lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
-            .map_err(|error| format!("failed to lock the folder registry: {error}"))?;
-        Ok(RegistryWriteLock {
-            _file: file,
-            _guard: guard,
-        })
-    }
-
-    fn registrable_path(path: &Path) -> Result<String, String> {
-        if !path.is_absolute() {
-            return Err("a linked folder path must be absolute".to_string());
-        }
-        let canonical = path
-            .canonicalize()
-            .map_err(|error| format!("could not resolve the linked folder: {error}"))?;
-        if canonical != path {
-            return Err("a linked folder path must be canonical".to_string());
-        }
-        let metadata = std::fs::symlink_metadata(&canonical)
-            .map_err(|error| format!("could not inspect the linked folder: {error}"))?;
-        if !metadata.is_dir() || metadata.file_type().is_symlink() {
-            return Err("a linked folder must be a real directory".to_string());
-        }
-        if crate::paths::overlaps_app_data(&canonical)? {
-            return Err("a folder that holds Oleafly's app data cannot be linked".to_string());
-        }
-        canonical
-            .to_str()
-            .map(str::to_owned)
-            .ok_or_else(|| "a linked folder path must be valid Unicode".to_string())
     }
 
     fn same_folder(record: &LinkRecord, canonical_path: &str, identity: &FsIdentity) -> bool {
@@ -765,37 +861,7 @@ mod management {
         where
             F: FnOnce(&mut LinkRecord) -> Result<(), String>,
         {
-            let missing = || format!("project does not exist: {project_id}");
-            if !is_linked_id(project_id) {
-                return Err(missing());
-            }
-            let linked_root = crate::paths::existing_linked_root()?.ok_or_else(missing)?;
-            let directory = linked_root.join(project_id);
-            let current = read_record(&directory, project_id)?.ok_or_else(missing)?;
-            let mut next = current.clone();
-            change(&mut next)?;
-            next.weak_identity = next.identity.weak;
-            if next.id != current.id
-                || next.version != current.version
-                || next.created_at != current.created_at
-            {
-                return Err("a folder link cannot change its identity".into());
-            }
-            if next.canonical_path != current.canonical_path {
-                next.canonical_path = registrable_path(Path::new(&next.canonical_path))?;
-            }
-            validate_record(&next, project_id)?;
-            if next != current {
-                write_record(&directory, &next)?;
-            }
-            let data_root = crate::paths::oleafly_root()?;
-            note_disk_read();
-            store_entry(
-                &data_root,
-                &linked_root,
-                project_id,
-                read_cached(&directory, project_id),
-            );
+            let next = apply_update(project_id, change)?;
             match self.records.iter_mut().find(|record| record.id == next.id) {
                 Some(slot) => *slot = next.clone(),
                 None => self.records.push(next.clone()),
@@ -832,13 +898,6 @@ mod management {
             }
             txn.create(link, None).map(Registration::Created)
         })
-    }
-
-    pub(crate) fn update<F>(project_id: &str, change: F) -> Result<LinkRecord, String>
-    where
-        F: FnOnce(&mut LinkRecord) -> Result<(), String>,
-    {
-        transaction(|txn| txn.update(project_id, change))
     }
 
     pub(crate) fn register_folder_for_test(folder: &Path) -> LinkRecord {
@@ -879,9 +938,7 @@ mod management {
 
 #[cfg(test)]
 mod tests {
-    use super::management::{
-        new_linked_id, try_reserve_linked_id, write_record, REGISTRY_LOCK_FILE,
-    };
+    use super::management::{new_linked_id, try_reserve_linked_id};
     use super::*;
 
     fn record_for(folder: &Path, id: &str) -> LinkRecord {

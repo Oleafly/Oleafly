@@ -363,6 +363,25 @@
     },
     "title": "Si è verificato un problema"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Questa cartella non è disponibile.",
+      "body": "Ricollega l'unità o trova la cartella. I file aperti restano qui e Oleafly non salverà né compilerà finché la cartella non torna disponibile."
+    },
+    "replaced": {
+      "title": "Questa cartella è stata sostituita.",
+      "body": "Al suo posto ora c'è un'altra cartella. Oleafly ha smesso di salvare per non sovrascrivere nulla."
+    },
+    "permissionDenied": {
+      "title": "Oleafly non riesce ad aprire questa cartella.",
+      "body": "Controlla i permessi della cartella e riprova. I file aperti restano qui."
+    },
+    "locate": "Individua…",
+    "useThisFolder": "Usa questa cartella",
+    "saveCopy": "Salva una copia…",
+    "tryAgain": "Riprova",
+    "savedCopy": "I file aperti sono stati salvati in {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Azioni GitHub",

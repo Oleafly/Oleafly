@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly heeft geen toestemming om de map {{folder}} te openen.",
     "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw.",
     "linked_not_recyclable": "Deze map is op zijn eigen locatie geopend en kan daarom niet naar de Prullenbak worden verplaatst. Je bestanden zijn niet gewijzigd.",
-    "linked_not_duplicable": "Deze map is op zijn eigen locatie geopend, dus Oleafly kan hem niet dupliceren."
+    "linked_not_duplicable": "Deze map is op zijn eigen locatie geopend, dus Oleafly kan hem niet dupliceren.",
+    "folder_not_a_folder": "Oleafly kan die locatie niet gebruiken. Kies een map.",
+    "folder_in_app_data": "Oleafly bewaart eigen gegevens in die map. Kies een andere map.",
+    "folder_too_broad": "{{name}} is te breed om als één project te openen. Kies de map die alleen dit project bevat.",
+    "folder_already_linked": "Die map overlapt met een ander project in Oleafly. Kies een andere map.",
+    "not_linked": "Zoeken werkt alleen voor mappen die op hun eigen plek zijn geopend.",
+    "copy_destination_refused": "Kies een map buiten het project en buiten de gegevensmap van Oleafly.",
+    "copy_nothing_open": "Er zijn geen bestanden geopend, dus er valt niets op te slaan.",
+    "copy_too_large": "De geopende bestanden zijn te groot om als kopie op te slaan.",
+    "copy_failed": "Oleafly kon de kopie daar niet opslaan. Kies een map waarin je kunt schrijven.",
+    "folder_picker_failed": "Oleafly kon de mapkiezer niet openen. Probeer het opnieuw."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

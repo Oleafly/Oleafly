@@ -359,6 +359,25 @@
     },
     "title": "發生錯誤"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此資料夾無法使用。",
+      "body": "請重新連接磁碟機或找到該資料夾。開啟的檔案會保留在這裡，在資料夾恢復之前，Oleafly 不會儲存或編譯。"
+    },
+    "replaced": {
+      "title": "此資料夾已被取代。",
+      "body": "原位置現在是另一個資料夾。Oleafly 已停止儲存，以免覆寫其中的內容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 無法開啟此資料夾。",
+      "body": "請檢查資料夾的權限，然後再試一次。開啟的檔案會保留在這裡。"
+    },
+    "locate": "定位…",
+    "useThisFolder": "使用此資料夾",
+    "saveCopy": "儲存副本…",
+    "tryAgain": "重試",
+    "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
     "actions": "GitHub 操作",

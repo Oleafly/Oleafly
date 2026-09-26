@@ -361,6 +361,25 @@
     },
     "title": "Noe gikk galt"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Denne mappen er ikke tilgjengelig.",
+      "body": "Koble til stasjonen igjen eller finn mappen. De åpne filene dine blir her, og Oleafly lagrer eller kompilerer ikke før mappen er tilbake."
+    },
+    "replaced": {
+      "title": "Denne mappen er erstattet.",
+      "body": "En annen mappe ligger nå på plassen dens. Oleafly sluttet å lagre så ingenting der blir overskrevet."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan ikke åpne denne mappen.",
+      "body": "Sjekk tillatelsene til mappen og prøv igjen. De åpne filene dine blir her."
+    },
+    "locate": "Finn…",
+    "useThisFolder": "Bruk denne mappen",
+    "saveCopy": "Lagre en kopi…",
+    "tryAgain": "Prøv igjen",
+    "savedCopy": "De åpne filene dine ble lagret i {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-handlinger",

@@ -1099,6 +1099,39 @@ impl AcpRuntime {
         }
     }
 
+    pub async fn close_project_sessions(self: &Arc<Self>, project_id: &str) -> usize {
+        let ids: Vec<_> = {
+            let sessions = self.live.lock().await;
+            sessions
+                .iter()
+                .filter(|(_, session)| {
+                    self.copy_record(session).is_ok_and(|record| {
+                        record.project_id == project_id && record.task_id.is_none()
+                    })
+                })
+                .map(|(id, _)| id.clone())
+                .collect()
+        };
+        let mut closed = 0;
+        for id in ids {
+            if self.close(&id).await.is_ok() {
+                closed += 1;
+            }
+        }
+        closed
+    }
+
+    pub fn rebind_project_paths(
+        &self,
+        project_id: &str,
+        root: &Path,
+        fresh_agent_sessions: bool,
+    ) -> Result<usize, String> {
+        let root = canonical_root(root)?;
+        self.store
+            .rebind_project_path(project_id, &root.to_string_lossy(), fresh_agent_sessions)
+    }
+
     pub async fn shutdown_all(self: &Arc<Self>) {
         if let Ok(mut state) = self.startup.lock() {
             state.stopping = true;

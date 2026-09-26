@@ -126,8 +126,9 @@ pub(crate) fn private_state_dir(kind: ProjectKind, state_dir: &Path) -> PathBuf 
 
 pub(crate) fn locate(project_id: &str) -> Result<ProjectLocation, LocateError> {
     crate::paths::validate_project_id(project_id).map_err(LocateError::Invalid)?;
+    let generation = crate::project_availability::location_generation(project_id);
     let registry_failure = match linked_registry::cached_membership(project_id) {
-        Ok(Membership::Active(member)) => return linked_location(member.record, member.state_dir),
+        Ok(Membership::Active(member)) => return observed(project_id, generation, member),
         Ok(Membership::Corrupt(detail)) => return Err(corrupt_link(detail)),
         Ok(Membership::Absent) => None,
         Err(error) => Some(error),
@@ -141,12 +142,22 @@ pub(crate) fn locate(project_id: &str) -> Result<ProjectLocation, LocateError> {
         return Err(corrupt_link(error));
     }
     match linked_registry::refreshed_membership(project_id).map_err(LocateError::Invalid)? {
-        Membership::Active(member) => linked_location(member.record, member.state_dir),
+        Membership::Active(member) => observed(project_id, generation, member),
         Membership::Corrupt(detail) => Err(corrupt_link(detail)),
         Membership::Absent => Err(LocateError::NotFound(format!(
             "project does not exist: {project_id}"
         ))),
     }
+}
+
+fn observed(
+    project_id: &str,
+    generation: u64,
+    member: Box<linked_registry::Member>,
+) -> Result<ProjectLocation, LocateError> {
+    let result = linked_location(member.record, member.state_dir);
+    crate::project_availability::observe_location(project_id, generation, &result);
+    result
 }
 
 pub(crate) fn linked_state_dir(project_id: &str) -> Result<Option<PathBuf>, String> {

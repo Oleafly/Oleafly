@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Bir kontrol noktası kaydedilemedi. Disk dolu ya da kontrol noktası klasörüne yazılamıyor. Yer açın veya klasör izinlerini denetleyin, ardından yeniden derleyin.",
     "incompleteCapture": "Bazı proje dosyaları okunamadığı için son kontrol noktaları kaydedilemedi. Dosyaların izinlerini denetleyin, ardından yeniden derleyin."
+  },
+  "folderUnavailable": {
+    "compile": "Proje klasörü geri gelene kadar derleme duraklatıldı.",
+    "saveReason": "proje klasörü kullanılamıyor"
   }
 }

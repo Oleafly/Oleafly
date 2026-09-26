@@ -6,6 +6,7 @@ import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { buildIndex } from "@/lib/index/build";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   LANGUAGE_SERVICE_DISPOSE_DIAGNOSTIC,
   LanguageServiceKeeper,
@@ -24,9 +25,62 @@ afterEach(() => {
     activePath: null,
   });
   useIndexStore.getState().reset();
+  useProjectAvailabilityStore.getState().reset(null);
 });
 
 describe("LanguageServiceKeeper", () => {
+  it("stops while the folder is unavailable and restarts after a relocation", async () => {
+    useFilesStore.setState({
+      projectId: "linked-a",
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      tree: [{ path: "main.tex", is_dir: false }],
+      files: {},
+    });
+    useProjectAvailabilityStore.getState().reset("linked-a");
+    const controller: LanguageServiceKeeperController = {
+      update: vi.fn(),
+      dispose: vi.fn(async () => {}),
+    };
+    render(<LanguageServiceKeeper controller={controller} />);
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ projectId: "linked-a" }),
+      ),
+    );
+    act(() => {
+      useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    });
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ projectId: null }),
+      ),
+    );
+    act(() => {
+      useProjectAvailabilityStore.getState().report("linked-a", "ok");
+    });
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ projectId: "linked-a" }),
+      ),
+    );
+    vi.mocked(controller.update).mockClear();
+    act(() => {
+      useProjectAvailabilityStore.getState().apply({
+        projectId: "linked-a",
+        availability: "ok",
+        locationGeneration: 1,
+        relocated: true,
+        grantsReset: false,
+      });
+    });
+    await waitFor(() => expect(controller.update).toHaveBeenCalledTimes(2));
+    expect(
+      vi.mocked(controller.update).mock.calls.map(([snapshot]) => snapshot.projectId),
+    ).toEqual([null, "linked-a"]);
+  });
+
   it("publishes Files/Index snapshots and disposes after unmount", async () => {
     useFilesStore.setState({
       projectId: "project-a",

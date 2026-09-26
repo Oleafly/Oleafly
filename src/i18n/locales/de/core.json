@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Ein Checkpoint konnte nicht gespeichert werden. Der Datenträger ist voll oder der Checkpoint-Ordner ist nicht beschreibbar. Geben Sie Speicherplatz frei oder prüfen Sie die Ordnerberechtigungen und kompilieren Sie dann erneut.",
     "incompleteCapture": "Die letzten Checkpoints konnten nicht gespeichert werden, weil einige Projektdateien nicht lesbar waren. Prüfen Sie deren Berechtigungen und kompilieren Sie dann erneut."
+  },
+  "folderUnavailable": {
+    "compile": "Das Kompilieren ist pausiert, bis der Projektordner wieder verfügbar ist.",
+    "saveReason": "der Projektordner ist nicht verfügbar"
   }
 }

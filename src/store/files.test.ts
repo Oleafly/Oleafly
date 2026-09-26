@@ -99,6 +99,7 @@ import type { ProjectMeta, ProjectStateChanged } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
 import { engineHintDismissed } from "@/store/engine-picker";
 import {
+  collectOpenBuffersForCopy,
   engineErrorMessage,
   projectCompatibilityFindings,
   reportFileSaveFailure,
@@ -106,6 +107,7 @@ import {
   texDistributionGapNotice,
   useFilesStore,
 } from "./files";
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 
 const MAIN_ONLY = [{ path: "main.tex", is_dir: false }];
 const WITH_BIB = [
@@ -1411,6 +1413,122 @@ describe("external write over a queued save", () => {
   });
 });
 
+
+describe("a project folder that goes away", () => {
+  const AUTOSAVE_MS = 1_500;
+  const missing = `@oleafly/error:${JSON.stringify({
+    code: "project.linked_missing",
+    params: { folder: "thesis" },
+    detail: null,
+  })}`;
+
+  beforeEach(() => {
+    useFilesStore.setState({
+      projectId: "linked-a",
+      files: { "main.tex": { content: "start\n", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    useProjectAvailabilityStore.getState().reset("linked-a");
+  });
+
+  afterEach(async () => {
+    useFilesStore.setState({ files: {}, saveBlocked: null });
+    await useFilesStore.getState().closeProject();
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("stops autosaving without a toast, keeps the edit, and saves it once the folder is back", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.writeFileContent.mockRejectedValue(missing);
+      useFilesStore.getState().setContent("main.tex", "typed\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() =>
+        expect(useProjectAvailabilityStore.getState().availability).toBe("missing"),
+      );
+      expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+
+      useFilesStore.getState().setContent("main.tex", "typed more\n");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 4);
+      expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
+      expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+        content: "typed more\n",
+        dirty: true,
+      });
+
+      mocks.writeFileContent.mockResolvedValue({ path: "main.tex", generation: 9 });
+      useProjectAvailabilityStore.getState().report("linked-a", "ok");
+      useFilesStore.getState().resumeAutosave("linked-a");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+      await vi.waitFor(() => expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false));
+      expect(mocks.writeFileContent).toHaveBeenLastCalledWith(
+        "linked-a",
+        "main.tex",
+        "typed more\n",
+        expect.any(Number),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a save the user asked for quiet when the folder is gone", () => {
+    reportFileSaveFailure("editor save", "linked-a", "main.tex", missing, true);
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("blocks closing with unsaved edits without writing to the missing folder", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "typed\n", dirty: true } } });
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    await useFilesStore.getState().closeProject();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectId).toBe("linked-a");
+    expect(useFilesStore.getState().saveBlocked).toEqual({
+      action: "close",
+      targetProjectId: null,
+      failures: [{ path: "main.tex", reason: enCore.folderUnavailable.saveReason }],
+    });
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "typed\n",
+      dirty: true,
+    });
+  });
+
+  it("refreshes nothing while the folder is gone and reports a folder that vanishes during a refresh", async () => {
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    await useFilesStore.getState().refreshTree();
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+
+    useProjectAvailabilityStore.getState().report("linked-a", "ok");
+    mocks.listFiles.mockRejectedValueOnce(missing);
+    await expect(useFilesStore.getState().refreshTree()).resolves.toBeUndefined();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+  });
+
+  it("copies every open text buffer with its line endings and skips managed files", async () => {
+    useProjectAvailabilityStore.getState().report("linked-a", "missing");
+    useFilesStore.setState({ files: {} });
+    mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\nthree\n");
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "refs.bib": { content: "@misc{a}\n", dirty: false },
+        ".oleafly/build/main.log": { content: "log", dirty: false },
+      },
+    }));
+    expect(collectOpenBuffersForCopy("linked-a")).toEqual([
+      { path: "main.tex", content: "one\r\ntwo\r\nthree\r\n" },
+      { path: "refs.bib", content: "@misc{a}\n" },
+    ]);
+    expect(collectOpenBuffersForCopy("other")).toEqual([]);
+  });
+});
 
 describe("autosave failures", () => {
   const AUTOSAVE_MS = 1_500;

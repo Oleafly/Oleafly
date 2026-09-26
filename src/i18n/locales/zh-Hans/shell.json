@@ -359,6 +359,25 @@
     },
     "title": "出错了"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此文件夹不可用。",
+      "body": "请重新连接驱动器或找到该文件夹。打开的文件会保留在这里，在文件夹恢复之前，Oleafly 不会保存或编译。"
+    },
+    "replaced": {
+      "title": "此文件夹已被替换。",
+      "body": "原位置现在是另一个文件夹。Oleafly 已停止保存，以免覆盖其中的内容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 无法打开此文件夹。",
+      "body": "请检查文件夹的权限，然后重试。打开的文件会保留在这里。"
+    },
+    "locate": "定位…",
+    "useThisFolder": "使用此文件夹",
+    "saveCopy": "保存副本…",
+    "tryAgain": "重试",
+    "savedCopy": "已将打开的文件保存到 {{folder}}。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
     "actions": "GitHub 操作",

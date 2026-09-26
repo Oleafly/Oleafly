@@ -591,5 +591,9 @@
   "checkpoint": {
     "storageUnavailable": "Não foi possível salvar um ponto de verificação. O disco está cheio ou não é possível gravar na pasta de pontos de verificação. Libere espaço ou confira as permissões da pasta e compile de novo.",
     "incompleteCapture": "Não foi possível salvar os últimos pontos de verificação porque alguns arquivos do projeto não puderam ser lidos. Confira as permissões deles e compile de novo."
+  },
+  "folderUnavailable": {
+    "compile": "A compilação está pausada até a pasta do projeto voltar.",
+    "saveReason": "a pasta do projeto não está disponível"
   }
 }

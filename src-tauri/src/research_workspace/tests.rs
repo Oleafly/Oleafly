@@ -479,6 +479,48 @@ fn forgetting_a_project_removes_only_its_linked_folder_metadata() {
 }
 
 #[test]
+fn strict_forget_unlinks_every_root_and_refuses_a_symlinked_record() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let project_id = crate::project::create_project("Linked roots".into()).unwrap();
+    roots::add_root(AddResearchRootRequest {
+        project_id: project_id.clone(),
+        path: outside.path().to_string_lossy().into_owned(),
+        label: "Data".into(),
+        role: ResearchRootRole::Data,
+        access: ResearchRootAccess::ReadWrite,
+    })
+    .unwrap();
+    assert_eq!(roots::get_workspace(&project_id).unwrap().roots.len(), 1);
+
+    roots::forget_project_strict(&project_id).unwrap();
+    assert!(roots::get_workspace(&project_id).unwrap().roots.is_empty());
+    roots::forget_project_strict(&project_id).unwrap();
+
+    #[cfg(unix)]
+    {
+        let record = data
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("research-workspaces")
+            .join(format!("{project_id}.json"));
+        std::os::unix::fs::symlink(outside.path(), &record).unwrap();
+        assert!(roots::forget_project_strict(&project_id).is_err());
+        assert!(outside.path().exists());
+    }
+    assert!(roots::forget_project_strict("../escape").is_err());
+
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
 fn all_starters_have_distinct_section_sets_and_shared_workflow_files() {
     let mut mains = HashSet::new();
     for starter in [

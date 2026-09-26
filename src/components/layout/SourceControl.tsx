@@ -58,6 +58,7 @@ import { FileIcon } from "@/components/files/fileIcon";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
+import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { SidebarSection } from "@/components/layout/SidebarSection";
@@ -182,7 +183,12 @@ export function SourceControl() {
     [],
   );
   const refreshOnce = useCallback(async () => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    if (
+      !projectId ||
+      useFilesStore.getState().projectId !== projectId ||
+      !projectFolderAvailable(projectId)
+    )
+      return;
     const request = ++refreshRequest.current;
     try {
       const [next, needsCredentialCleanup] = await Promise.all([
@@ -198,6 +204,7 @@ export function SourceControl() {
       setCredentialCleanupRequired(next.initialized && needsCredentialCleanup);
       void useGitStatusStore.getState().refresh(projectId);
     } catch (error) {
+      if (reportLocationError(projectId, error)) return;
       if (
         request === refreshRequest.current &&
         useFilesStore.getState().projectId === projectId

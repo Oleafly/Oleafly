@@ -58,6 +58,18 @@
       "title": "Diese Anfrage erlauben?",
       "message": "Der Assistent möchte {{tool}} verwenden, das Text an einen Onlinedienst sendet. Diesem Ordner wird noch nicht vertraut.",
       "confirm": "Erlauben"
+    },
+    "locateFolder": {
+      "title": "Projektordner suchen"
+    },
+    "rebindFolder": {
+      "title": "Einen anderen Ordner verwenden?",
+      "message": "{{name}} ist nicht der Ordner, den Oleafly für dieses Projekt hatte. Wenn Sie ihn verwenden, speichert Oleafly Ihre ungespeicherten Änderungen darin und schließt die Terminals und Agent-Sitzungen dieses Projekts. Alles, was darin läuft, wird beendet. Außerdem vertraut Oleafly dem Ordner nicht mehr, schaltet den Vollzugriff aus, setzt die Freigaben des Assistenten zurück und entfernt verknüpfte Forschungsordner. Chats und Verlauf bleiben erhalten.",
+      "confirm": "Diesen Ordner verwenden"
+    },
+    "saveCopy": {
+      "title": "Speicherort für die Kopie wählen",
+      "folderSuffix": "Kopie"
     }
   },
   "errors": {

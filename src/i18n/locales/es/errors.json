@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly no tiene permiso para abrir la carpeta {{folder}}.",
     "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta.",
     "linked_not_recyclable": "Esta carpeta se abrió en su ubicación, así que no se puede mover a la papelera. Tus archivos no se han modificado.",
-    "linked_not_duplicable": "Esta carpeta se abrió en su ubicación, así que Oleafly no puede duplicarla."
+    "linked_not_duplicable": "Esta carpeta se abrió en su ubicación, así que Oleafly no puede duplicarla.",
+    "folder_not_a_folder": "Oleafly no puede usar esa ubicación. Elige una carpeta.",
+    "folder_in_app_data": "Oleafly guarda sus propios datos en esa carpeta. Elige otra.",
+    "folder_too_broad": "{{name}} es demasiado amplia para abrirla como un solo proyecto. Elige la carpeta que contiene solo este proyecto.",
+    "folder_already_linked": "Esa carpeta se superpone con otro proyecto de Oleafly. Elige otra carpeta.",
+    "not_linked": "Localizar solo funciona con carpetas abiertas en su ubicación.",
+    "copy_destination_refused": "Elige una carpeta fuera del proyecto y fuera de la carpeta de datos de Oleafly.",
+    "copy_nothing_open": "No hay archivos abiertos, así que no hay nada que guardar.",
+    "copy_too_large": "Los archivos abiertos son demasiado grandes para guardarlos como copia.",
+    "copy_failed": "Oleafly no pudo guardar la copia ahí. Elige una carpeta en la que puedas escribir.",
+    "folder_picker_failed": "Oleafly no pudo abrir el selector de carpetas. Inténtalo de nuevo."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

@@ -58,6 +58,18 @@
       "title": "Povolit tento požadavek?",
       "message": "Asistent chce použít {{tool}}, který odesílá text online službě. Této složce zatím nedůvěřujete.",
       "confirm": "Povolit"
+    },
+    "locateFolder": {
+      "title": "Najít složku projektu"
+    },
+    "rebindFolder": {
+      "title": "Použít jinou složku?",
+      "message": "{{name}} není složka, kterou Oleafly pro tento projekt měl. Pokud ji použijete, Oleafly do ní uloží vaše neuložené změny a zavře terminály a relace agentů tohoto projektu. Vše, co v nich běží, se ukončí. Oleafly také přestane složce důvěřovat, vypne úplný přístup, obnoví schválení asistenta a odpojí výzkumné složky. Chaty a historie zůstanou zachovány.",
+      "confirm": "Použít tuto složku"
+    },
+    "saveCopy": {
+      "title": "Vyberte, kam uložit kopii",
+      "folderSuffix": "kopie"
     }
   },
   "errors": {

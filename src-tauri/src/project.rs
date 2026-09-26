@@ -256,7 +256,7 @@ fn trust_record_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
     let expected_identity = shell_escape_project_identity(project_id)?;
     let path = shell_escape_trust_path(project_id)?;
     let metadata = match std::fs::symlink_metadata(&path) {
@@ -281,7 +281,7 @@ fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
         && record.project_identity == expected_identity)
 }
 
-fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
+pub(crate) fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
     let record = ShellEscapeTrustRecord {
         version: SHELL_ESCAPE_TRUST_VERSION,
         project_id: project_id.to_string(),
@@ -316,7 +316,7 @@ fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn revoke_shell_escape_trust(project_id: &str) -> Result<(), String> {
+pub(crate) fn revoke_shell_escape_trust(project_id: &str) -> Result<(), String> {
     let path = shell_escape_trust_path(project_id)?;
     match std::fs::symlink_metadata(&path) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),

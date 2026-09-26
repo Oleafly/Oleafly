@@ -361,6 +361,25 @@
     },
     "title": "Etwas ist schiefgelaufen"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Dieser Ordner ist nicht verfügbar.",
+      "body": "Schließen Sie das Laufwerk wieder an oder suchen Sie den Ordner. Ihre geöffneten Dateien bleiben hier, und Oleafly speichert und kompiliert erst wieder, wenn der Ordner zurück ist."
+    },
+    "replaced": {
+      "title": "Dieser Ordner wurde ersetzt.",
+      "body": "An seiner Stelle liegt jetzt ein anderer Ordner. Oleafly speichert nicht mehr, damit dort nichts überschrieben wird."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kann diesen Ordner nicht öffnen.",
+      "body": "Prüfen Sie die Berechtigungen des Ordners und versuchen Sie es erneut. Ihre geöffneten Dateien bleiben hier."
+    },
+    "locate": "Suchen…",
+    "useThisFolder": "Diesen Ordner verwenden",
+    "saveCopy": "Kopie speichern…",
+    "tryAgain": "Erneut versuchen",
+    "savedCopy": "Ihre geöffneten Dateien wurden in {{folder}} gespeichert."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-Aktionen",

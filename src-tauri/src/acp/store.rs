@@ -49,6 +49,55 @@ impl Store {
         Ok(())
     }
 
+    pub fn rebind_project_path(
+        &self,
+        project: &str,
+        path: &str,
+        fresh_agent_sessions: bool,
+    ) -> Result<usize, String> {
+        let mut db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let tx = db.transaction().map_err(|e| e.to_string())?;
+        let records = {
+            let mut statement = tx
+                .prepare("SELECT record FROM sessions WHERE project_id=?1")
+                .map_err(|e| e.to_string())?;
+            let rows = statement
+                .query_map([project], |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?;
+            rows.collect::<Result<Vec<_>, _>>()
+                .map_err(|e| e.to_string())?
+        };
+        let mut changed = 0;
+        for raw in records {
+            let mut session: SessionRecord =
+                serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+            if session.task_id.is_some() {
+                continue;
+            }
+            let native = if fresh_agent_sessions {
+                None
+            } else {
+                session.native_session_id.clone()
+            };
+            if session.project_path == path && session.native_session_id == native {
+                continue;
+            }
+            session.project_path = path.to_string();
+            session.native_session_id = native;
+            tx.execute(
+                "UPDATE sessions SET record=?1 WHERE id=?2",
+                params![
+                    serde_json::to_string(&session).map_err(|e| e.to_string())?,
+                    session.id
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+            changed += 1;
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(changed)
+    }
+
     pub fn append(&self, session: &SessionRecord, event: &AcpEvent) -> Result<(), String> {
         let mut db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
         let tx = db.transaction().map_err(|e| e.to_string())?;

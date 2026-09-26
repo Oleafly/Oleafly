@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -33,6 +33,130 @@ pub enum ProjectLocationInfo {
 pub struct ProjectAvailabilityReport {
     pub project_id: String,
     pub availability: ProjectAvailability,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AvailabilityEvent {
+    pub project_id: String,
+    pub availability: ProjectAvailability,
+    pub location_generation: u64,
+    pub relocated: bool,
+    pub grants_reset: bool,
+}
+
+pub type AvailabilitySink = Box<dyn Fn(AvailabilityEvent) + Send + Sync>;
+
+#[derive(Default)]
+struct AvailabilityTracker {
+    states: Mutex<HashMap<String, (ProjectAvailability, u64)>>,
+}
+
+impl AvailabilityTracker {
+    fn generation(&self, project_id: &str) -> u64 {
+        self.states
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(project_id)
+            .map_or(0, |&(_, generation)| generation)
+    }
+
+    fn observe(
+        &self,
+        project_id: &str,
+        seen_generation: u64,
+        availability: ProjectAvailability,
+    ) -> Option<AvailabilityEvent> {
+        let mut states = self.states.lock().unwrap_or_else(PoisonError::into_inner);
+        let (previous, generation) = match states.get(project_id) {
+            Some(&(previous, generation)) => (previous, generation),
+            None if availability == ProjectAvailability::Ok => return None,
+            None => (ProjectAvailability::Ok, 0),
+        };
+        if generation != seen_generation || previous == availability {
+            return None;
+        }
+        states.insert(project_id.to_string(), (availability, generation));
+        Some(AvailabilityEvent {
+            project_id: project_id.to_string(),
+            availability,
+            location_generation: generation,
+            relocated: false,
+            grants_reset: false,
+        })
+    }
+
+    fn relocated(&self, project_id: &str, grants_reset: bool) -> AvailabilityEvent {
+        let mut states = self.states.lock().unwrap_or_else(PoisonError::into_inner);
+        let generation = states
+            .get(project_id)
+            .map_or(0, |&(_, generation)| generation)
+            .wrapping_add(1);
+        states.insert(
+            project_id.to_string(),
+            (ProjectAvailability::Ok, generation),
+        );
+        AvailabilityEvent {
+            project_id: project_id.to_string(),
+            availability: ProjectAvailability::Ok,
+            location_generation: generation,
+            relocated: true,
+            grants_reset,
+        }
+    }
+}
+
+fn tracker() -> &'static AvailabilityTracker {
+    static TRACKER: OnceLock<AvailabilityTracker> = OnceLock::new();
+    TRACKER.get_or_init(AvailabilityTracker::default)
+}
+
+fn sink() -> &'static OnceLock<AvailabilitySink> {
+    static SINK: OnceLock<AvailabilitySink> = OnceLock::new();
+    &SINK
+}
+
+fn emit(event: AvailabilityEvent) {
+    if let Some(sink) = sink().get() {
+        sink(event);
+    }
+}
+
+pub(crate) fn install_sink(installed: AvailabilitySink) {
+    let _ = sink().set(installed);
+}
+
+fn session_availability(
+    result: &Result<crate::project_location::ProjectLocation, crate::project_location::LocateError>,
+) -> Option<ProjectAvailability> {
+    use crate::project_location::LocateError;
+    match result {
+        Ok(_) => Some(ProjectAvailability::Ok),
+        Err(LocateError::Unavailable { .. }) => Some(ProjectAvailability::Missing),
+        Err(LocateError::Replaced { .. }) => Some(ProjectAvailability::Replaced),
+        Err(LocateError::PermissionDenied { .. }) => Some(ProjectAvailability::PermissionDenied),
+        Err(LocateError::NotFound(_) | LocateError::Invalid(_)) => None,
+    }
+}
+
+pub(crate) fn location_generation(project_id: &str) -> u64 {
+    tracker().generation(project_id)
+}
+
+pub(crate) fn observe_location(
+    project_id: &str,
+    seen_generation: u64,
+    result: &Result<crate::project_location::ProjectLocation, crate::project_location::LocateError>,
+) {
+    if let Some(event) = session_availability(result)
+        .and_then(|state| tracker().observe(project_id, seen_generation, state))
+    {
+        emit(event);
+    }
+}
+
+pub(crate) fn relocated(project_id: &str, grants_reset: bool) {
+    emit(tracker().relocated(project_id, grants_reset));
 }
 
 type Probe = Arc<dyn Fn(&str) -> ProjectAvailability + Send + Sync>;
@@ -134,13 +258,11 @@ fn probe_all(
     started
         .into_iter()
         .map(|(project_id, receiver)| ProjectAvailabilityReport {
-            availability: receiver
-                .and_then(|receiver| {
-                    receiver
-                        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                        .ok()
-                })
-                .unwrap_or(ProjectAvailability::Offline),
+            availability: receiver.map_or(ProjectAvailability::Unknown, |receiver| {
+                receiver
+                    .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+                    .unwrap_or(ProjectAvailability::Offline)
+            }),
             project_id,
         })
         .collect()
@@ -244,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn a_hung_probe_reports_offline_within_the_budget_and_is_not_restarted() {
+    fn a_hung_probe_reports_offline_and_a_second_ask_meanwhile_is_not_a_verdict() {
         let started = Instant::now();
         let slow: Probe = Arc::new(|_| {
             std::thread::sleep(Duration::from_secs(2));
@@ -258,7 +380,7 @@ mod tests {
         );
         let second = probe_all(vec![id.clone()], Duration::from_secs(5), slow);
         assert_eq!(first[0].availability, ProjectAvailability::Offline);
-        assert_eq!(second[0].availability, ProjectAvailability::Offline);
+        assert_eq!(second[0].availability, ProjectAvailability::Unknown);
         assert!(started.elapsed() < Duration::from_secs(1));
     }
 
@@ -298,6 +420,186 @@ mod tests {
             ]
         );
         assert!(probe_blocking(vec!["../x".into()], Duration::from_secs(1)).is_err());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    fn recorded() -> &'static Mutex<Vec<AvailabilityEvent>> {
+        static RECORDED: OnceLock<Mutex<Vec<AvailabilityEvent>>> = OnceLock::new();
+        RECORDED.get_or_init(Default::default)
+    }
+
+    fn record_events() {
+        install_sink(Box::new(|event| {
+            recorded()
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(event);
+        }));
+    }
+
+    fn events_for(project_id: &str) -> Vec<AvailabilityEvent> {
+        recorded()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .filter(|event| event.project_id == project_id)
+            .cloned()
+            .collect()
+    }
+
+    fn seen(
+        tracker: &AvailabilityTracker,
+        project_id: &str,
+        availability: ProjectAvailability,
+    ) -> Option<AvailabilityEvent> {
+        tracker.observe(project_id, tracker.generation(project_id), availability)
+    }
+
+    #[test]
+    fn only_changes_in_availability_are_reported() {
+        let tracker = AvailabilityTracker::default();
+        assert_eq!(seen(&tracker, "linked-a", ProjectAvailability::Ok), None);
+        assert_eq!(
+            seen(&tracker, "linked-a", ProjectAvailability::Missing),
+            Some(AvailabilityEvent {
+                project_id: "linked-a".into(),
+                availability: ProjectAvailability::Missing,
+                location_generation: 0,
+                relocated: false,
+                grants_reset: false,
+            })
+        );
+        assert_eq!(
+            seen(&tracker, "linked-a", ProjectAvailability::Missing),
+            None
+        );
+        assert_eq!(
+            seen(&tracker, "linked-a", ProjectAvailability::Ok)
+                .unwrap()
+                .availability,
+            ProjectAvailability::Ok
+        );
+        assert_eq!(
+            seen(&tracker, "linked-b", ProjectAvailability::Replaced)
+                .unwrap()
+                .project_id,
+            "linked-b"
+        );
+    }
+
+    #[test]
+    fn relocation_bumps_the_generation_and_reports_the_folder_back() {
+        let tracker = AvailabilityTracker::default();
+        seen(&tracker, "linked-a", ProjectAvailability::Missing);
+        let moved = tracker.relocated("linked-a", false);
+        assert_eq!(
+            (
+                moved.availability,
+                moved.location_generation,
+                moved.relocated,
+                moved.grants_reset
+            ),
+            (ProjectAvailability::Ok, 1, true, false)
+        );
+        let replaced = tracker.relocated("linked-a", true);
+        assert_eq!(
+            (replaced.location_generation, replaced.grants_reset),
+            (2, true)
+        );
+        assert_eq!(seen(&tracker, "linked-a", ProjectAvailability::Ok), None);
+        assert_eq!(
+            seen(&tracker, "linked-a", ProjectAvailability::PermissionDenied)
+                .unwrap()
+                .location_generation,
+            2
+        );
+    }
+
+    #[test]
+    fn a_check_that_began_before_a_relocation_cannot_report_the_old_folder() {
+        let tracker = AvailabilityTracker::default();
+        tracker.observe("linked-a", 0, ProjectAvailability::Missing);
+        let began = tracker.generation("linked-a");
+        tracker.relocated("linked-a", false);
+        assert_eq!(
+            tracker.observe("linked-a", began, ProjectAvailability::Missing),
+            None
+        );
+        let now = tracker.generation("linked-a");
+        assert_eq!(
+            tracker
+                .observe("linked-a", now, ProjectAvailability::Missing)
+                .map(|event| (event.availability, event.location_generation)),
+            Some((ProjectAvailability::Missing, 1))
+        );
+    }
+
+    #[test]
+    fn events_match_the_webview_contract() {
+        let value = serde_json::to_value(AvailabilityEvent {
+            project_id: "linked-a".into(),
+            availability: ProjectAvailability::PermissionDenied,
+            location_generation: 3,
+            relocated: true,
+            grants_reset: true,
+        })
+        .unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "projectId": "linked-a",
+                "availability": "permission_denied",
+                "locationGeneration": 3,
+                "relocated": true,
+                "grantsReset": true
+            })
+        );
+    }
+
+    #[test]
+    fn locating_a_linked_folder_reports_each_change_once_and_ignores_library_projects() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        record_events();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        let away = directory.path().join("elsewhere");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let library = crate::paths::create_project_dir("paper").unwrap();
+
+        crate::project_location::locate(&record.id).unwrap();
+        crate::project_location::locate(&record.id).unwrap();
+        std::fs::rename(&folder, &away).unwrap();
+        assert!(crate::project_location::locate(&record.id).is_err());
+        assert!(crate::project_location::locate(&record.id).is_err());
+        std::fs::rename(&away, &folder).unwrap();
+        crate::project_location::locate(&record.id).unwrap();
+        std::fs::remove_dir(&library).unwrap();
+        assert!(crate::project_location::locate("paper").is_err());
+
+        assert_eq!(
+            events_for(&record.id)
+                .iter()
+                .map(|event| event.availability)
+                .collect::<Vec<_>>(),
+            vec![ProjectAvailability::Missing, ProjectAvailability::Ok]
+        );
+        assert!(events_for("paper").is_empty());
+
+        relocated(&record.id, true);
+        assert_eq!(
+            events_for(&record.id).last(),
+            Some(&AvailabilityEvent {
+                project_id: record.id.clone(),
+                availability: ProjectAvailability::Ok,
+                location_generation: 1,
+                relocated: true,
+                grants_reset: true,
+            })
+        );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

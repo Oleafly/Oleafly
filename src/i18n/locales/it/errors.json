@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly non ha l'autorizzazione per aprire la cartella {{folder}}.",
     "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella.",
     "linked_not_recyclable": "Questa cartella è stata aperta nella sua posizione, quindi non può essere spostata nel cestino. I tuoi file non sono stati modificati.",
-    "linked_not_duplicable": "Questa cartella è stata aperta nella sua posizione, quindi Oleafly non può duplicarla."
+    "linked_not_duplicable": "Questa cartella è stata aperta nella sua posizione, quindi Oleafly non può duplicarla.",
+    "folder_not_a_folder": "Oleafly non può usare quella posizione. Scegli una cartella.",
+    "folder_in_app_data": "Oleafly conserva i propri dati in quella cartella. Scegline un'altra.",
+    "folder_too_broad": "{{name}} è troppo ampia per essere aperta come un unico progetto. Scegli la cartella che contiene solo questo progetto.",
+    "folder_already_linked": "Quella cartella si sovrappone a un altro progetto in Oleafly. Scegli un'altra cartella.",
+    "not_linked": "Individua funziona solo con le cartelle aperte nella loro posizione.",
+    "copy_destination_refused": "Scegli una cartella fuori dal progetto e fuori dalla cartella dati di Oleafly.",
+    "copy_nothing_open": "Non ci sono file aperti, quindi non c'è nulla da salvare.",
+    "copy_too_large": "I file aperti sono troppo grandi per essere salvati come copia.",
+    "copy_failed": "Oleafly non è riuscito a salvare la copia lì. Scegli una cartella in cui puoi scrivere.",
+    "folder_picker_failed": "Oleafly non è riuscito ad aprire il selettore di cartelle. Riprova."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

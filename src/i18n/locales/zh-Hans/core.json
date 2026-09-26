@@ -559,5 +559,9 @@
   "checkpoint": {
     "storageUnavailable": "无法保存检查点。磁盘已满，或检查点文件夹无法写入。请释放一些空间或检查文件夹权限，然后重新编译。",
     "incompleteCapture": "由于部分项目文件无法读取，最近的几个检查点未能保存。请检查这些文件的权限，然后重新编译。"
+  },
+  "folderUnavailable": {
+    "compile": "编译已暂停，直到项目文件夹恢复。",
+    "saveReason": "项目文件夹不可用"
   }
 }

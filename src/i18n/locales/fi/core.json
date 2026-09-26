@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Tarkistuspistettä ei voitu tallentaa. Levy on täynnä tai tarkistuspisteiden kansioon ei voi kirjoittaa. Vapauta tilaa tai tarkista kansion käyttöoikeudet ja käännä sitten uudelleen.",
     "incompleteCapture": "Viimeisimpiä tarkistuspisteitä ei voitu tallentaa, koska joitakin projektin tiedostoja ei voitu lukea. Tarkista niiden käyttöoikeudet ja käännä sitten uudelleen."
+  },
+  "folderUnavailable": {
+    "compile": "Kääntäminen on keskeytetty, kunnes projektikansio on taas saatavilla.",
+    "saveReason": "projektikansio ei ole käytettävissä"
   }
 }

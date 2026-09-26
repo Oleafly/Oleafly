@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly har ikke tillatelse til å åpne mappen {{folder}}.",
     "linked_invalid": "Oleaflys kobling til denne mappen er skadet. Fjern den fra Oleafly, og åpne deretter mappen på nytt.",
     "linked_not_recyclable": "Mappen ble åpnet der den ligger, så den kan ikke flyttes til papirkurven. Filene dine er uendret.",
-    "linked_not_duplicable": "Mappen ble åpnet der den ligger, så Oleafly kan ikke duplisere den."
+    "linked_not_duplicable": "Mappen ble åpnet der den ligger, så Oleafly kan ikke duplisere den.",
+    "folder_not_a_folder": "Oleafly kan ikke bruke den plasseringen. Velg en mappe.",
+    "folder_in_app_data": "Oleafly lagrer egne data i den mappen. Velg en annen.",
+    "folder_too_broad": "{{name}} er for omfattende til å åpnes som ett prosjekt. Velg mappen som bare inneholder dette prosjektet.",
+    "folder_already_linked": "Den mappen overlapper et annet prosjekt i Oleafly. Velg en annen mappe.",
+    "not_linked": "Finn virker bare for mapper som er åpnet der de ligger.",
+    "copy_destination_refused": "Velg en mappe utenfor prosjektet og utenfor datamappen til Oleafly.",
+    "copy_nothing_open": "Ingen filer er åpne, så det er ingenting å lagre.",
+    "copy_too_large": "De åpne filene er for store til å lagres som en kopi.",
+    "copy_failed": "Oleafly kunne ikke lagre kopien der. Velg en mappe du kan skrive til.",
+    "folder_picker_failed": "Oleafly kunne ikke åpne mappevelgeren. Prøv igjen."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."

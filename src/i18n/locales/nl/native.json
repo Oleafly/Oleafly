@@ -58,6 +58,18 @@
       "title": "Dit verzoek toestaan?",
       "message": "De assistent wil {{tool}} gebruiken, dat tekst naar een onlinedienst stuurt. Deze map wordt nog niet vertrouwd.",
       "confirm": "Toestaan"
+    },
+    "locateFolder": {
+      "title": "Projectmap zoeken"
+    },
+    "rebindFolder": {
+      "title": "Een andere map gebruiken?",
+      "message": "{{name}} is niet de map die Oleafly voor dit project had. Als je deze gebruikt, slaat Oleafly je niet-opgeslagen wijzigingen erin op en sluit het de terminals en agentsessies van dit project. Alles wat daarin draait, stopt. Daarnaast vertrouwt Oleafly de map niet meer, zet het volledige toegang uit, worden de goedkeuringen van de assistent teruggezet en worden onderzoeksmappen ontkoppeld. Chats en geschiedenis blijven bewaard.",
+      "confirm": "Deze map gebruiken"
+    },
+    "saveCopy": {
+      "title": "Kies waar je een kopie wilt opslaan",
+      "folderSuffix": "kopie"
     }
   },
   "errors": {

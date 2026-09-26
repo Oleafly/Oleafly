@@ -622,7 +622,7 @@ fn write_export_bytes(dest: &str, bytes: &[u8]) -> Result<(), String> {
     transaction.commit()
 }
 
-async fn allow_reveal_export(dest: &str, state: &AppState) {
+pub(crate) async fn allow_reveal_export(dest: &str, state: &AppState) {
     // Permit a subsequent "Reveal in Finder/Explorer" for this export path.
     if let Ok(canon) = std::path::Path::new(dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;

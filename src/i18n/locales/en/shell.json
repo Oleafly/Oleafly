@@ -361,6 +361,25 @@
     },
     "title": "Something went wrong"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "This folder isn't available.",
+      "body": "Reconnect the drive or find the folder. Your open files stay here, and Oleafly won't save or compile until the folder is back."
+    },
+    "replaced": {
+      "title": "This folder was replaced.",
+      "body": "A different folder is in its place now. Oleafly stopped saving so it won't overwrite anything there."
+    },
+    "permissionDenied": {
+      "title": "Oleafly can't open this folder.",
+      "body": "Check the folder's permissions and try again. Your open files stay here."
+    },
+    "locate": "Locate…",
+    "useThisFolder": "Use this folder",
+    "saveCopy": "Save a copy…",
+    "tryAgain": "Try again",
+    "savedCopy": "Saved your open files to {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub actions",

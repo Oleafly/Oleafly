@@ -575,5 +575,9 @@
   "checkpoint": {
     "storageUnavailable": "Kon geen checkpoint opslaan. De schijf is vol of er kan niet in de checkpointmap worden geschreven. Maak ruimte vrij of controleer de maprechten en compileer daarna opnieuw.",
     "incompleteCapture": "Kon de laatste checkpoints niet opslaan omdat sommige projectbestanden niet gelezen konden worden. Controleer hun rechten en compileer daarna opnieuw."
+  },
+  "folderUnavailable": {
+    "compile": "Compileren is gepauzeerd totdat de projectmap terug is.",
+    "saveReason": "de projectmap is niet beschikbaar"
   }
 }

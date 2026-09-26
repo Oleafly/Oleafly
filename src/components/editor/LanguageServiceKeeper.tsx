@@ -7,6 +7,10 @@ import { registerLanguageServiceLifecycleActions } from "@/lib/analysis/language
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import {
+  projectFolderAvailable,
+  useProjectAvailabilityStore,
+} from "@/store/project-availability";
 
 export interface LanguageServiceKeeperController {
   update(snapshot: LanguageServiceProjectSnapshot): void;
@@ -39,7 +43,7 @@ function currentProjectSnapshot(): LanguageServiceProjectSnapshot {
   const files = useFilesStore.getState();
   const index = useIndexStore.getState();
   return {
-    projectId: files.projectId,
+    projectId: projectFolderAvailable(files.projectId) ? files.projectId : null,
     // Language tooling follows the source format, not the compiler: a latexmk
     // project ("latexmk" id, "latex" source_format) still wants texlab.
     engineId: files.engine.source_format,
@@ -104,8 +108,15 @@ export function LanguageServiceKeeper({
           })
         : () => {};
     let lastPublished: LanguageServiceProjectSnapshot | null = null;
+    let relocations = useProjectAvailabilityStore.getState().relocations;
     const publish = () => {
       const next = currentProjectSnapshot();
+      const current = useProjectAvailabilityStore.getState().relocations;
+      if (current !== relocations) {
+        relocations = current;
+        if (next.projectId) keeper.update({ ...next, projectId: null });
+        lastPublished = null;
+      }
       if (lastPublished && sameSnapshotInputs(lastPublished, next)) {
         return;
       }
@@ -114,10 +125,12 @@ export function LanguageServiceKeeper({
     };
     const unsubscribeFiles = useFilesStore.subscribe(publish);
     const unsubscribeIndex = useIndexStore.subscribe(publish);
+    const unsubscribeAvailability = useProjectAvailabilityStore.subscribe(publish);
     publish();
     return () => {
       unsubscribeFiles();
       unsubscribeIndex();
+      unsubscribeAvailability();
       unregisterActions();
       // React StrictMode immediately replays mount effects in development.
       // Deferring disposal by one microtask lets that replay retain the same

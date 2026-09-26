@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly에 {{folder}} 폴더를 열 권한이 없습니다.",
     "linked_invalid": "이 폴더에 대한 Oleafly의 연결이 손상되었습니다. Oleafly에서 제거한 다음 폴더를 다시 여세요.",
     "linked_not_recyclable": "이 폴더는 원래 위치에서 열었기 때문에 휴지통으로 이동할 수 없습니다. 파일은 변경되지 않았습니다.",
-    "linked_not_duplicable": "이 폴더는 원래 위치에서 열었기 때문에 Oleafly에서 복제할 수 없습니다."
+    "linked_not_duplicable": "이 폴더는 원래 위치에서 열었기 때문에 Oleafly에서 복제할 수 없습니다.",
+    "folder_not_a_folder": "Oleafly에서 해당 위치를 사용할 수 없습니다. 폴더를 선택하세요.",
+    "folder_in_app_data": "해당 폴더에는 Oleafly의 자체 데이터가 있습니다. 다른 폴더를 선택하세요.",
+    "folder_too_broad": "{{name}}은(는) 범위가 너무 넓어 하나의 프로젝트로 열 수 없습니다. 이 프로젝트만 들어 있는 폴더를 선택하세요.",
+    "folder_already_linked": "해당 폴더가 Oleafly의 다른 프로젝트와 겹칩니다. 다른 폴더를 선택하세요.",
+    "not_linked": "위치 찾기는 원래 위치에서 연 폴더에서만 사용할 수 있습니다.",
+    "copy_destination_refused": "프로젝트와 Oleafly 데이터 폴더 밖에 있는 폴더를 선택하세요.",
+    "copy_nothing_open": "열린 파일이 없어 저장할 내용이 없습니다.",
+    "copy_too_large": "열린 파일이 너무 커서 사본으로 저장할 수 없습니다.",
+    "copy_failed": "Oleafly가 그 위치에 사본을 저장하지 못했습니다. 쓰기 권한이 있는 폴더를 선택하세요.",
+    "folder_picker_failed": "Oleafly가 폴더 선택 창을 열지 못했습니다. 다시 시도하세요."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."

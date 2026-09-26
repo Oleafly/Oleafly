@@ -58,6 +58,18 @@
       "title": "Permiți această cerere?",
       "message": "Asistentul vrea să folosească {{tool}}, care trimite text către un serviciu online. Acest folder nu este încă de încredere.",
       "confirm": "Permite"
+    },
+    "locateFolder": {
+      "title": "Găsește folderul proiectului"
+    },
+    "rebindFolder": {
+      "title": "Folosești alt folder?",
+      "message": "{{name}} nu este folderul pe care Oleafly îl avea pentru acest proiect. Dacă îl folosești, Oleafly salvează în el modificările nesalvate și închide terminalele și sesiunile de agent ale acestui proiect. Tot ce rulează în ele se oprește. De asemenea, Oleafly nu mai are încredere în folder, dezactivează accesul complet, resetează aprobările asistentului și dezleagă folderele de cercetare. Conversațiile și istoricul se păstrează.",
+      "confirm": "Folosește acest folder"
+    },
+    "saveCopy": {
+      "title": "Alege unde să salvezi o copie",
+      "folderSuffix": "copie"
     }
   },
   "errors": {

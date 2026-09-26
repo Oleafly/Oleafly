@@ -361,6 +361,25 @@
     },
     "title": "Jokin meni vikaan"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Tämä kansio ei ole käytettävissä.",
+      "body": "Liitä asema uudelleen tai etsi kansio. Avoimet tiedostosi pysyvät täällä, eikä Oleafly tallenna tai käännä ennen kuin kansio on taas saatavilla."
+    },
+    "replaced": {
+      "title": "Tämä kansio on korvattu.",
+      "body": "Sen paikalla on nyt toinen kansio. Oleafly lopetti tallentamisen, jotta mitään siellä ei korvattaisi."
+    },
+    "permissionDenied": {
+      "title": "Oleafly ei voi avata tätä kansiota.",
+      "body": "Tarkista kansion käyttöoikeudet ja yritä uudelleen. Avoimet tiedostosi pysyvät täällä."
+    },
+    "locate": "Paikanna…",
+    "useThisFolder": "Käytä tätä kansiota",
+    "saveCopy": "Tallenna kopio…",
+    "tryAgain": "Yritä uudelleen",
+    "savedCopy": "Avoimet tiedostosi tallennettiin kansioon {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-toiminnot",

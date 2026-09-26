@@ -363,6 +363,25 @@
     },
     "title": "A apărut o problemă"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Acest folder nu este disponibil.",
+      "body": "Reconectează unitatea sau găsește folderul. Fișierele deschise rămân aici, iar Oleafly nu salvează și nu compilează până nu revine folderul."
+    },
+    "replaced": {
+      "title": "Acest folder a fost înlocuit.",
+      "body": "În locul lui se află acum alt folder. Oleafly a oprit salvarea ca să nu suprascrie nimic acolo."
+    },
+    "permissionDenied": {
+      "title": "Oleafly nu poate deschide acest folder.",
+      "body": "Verifică permisiunile folderului și încearcă din nou. Fișierele deschise rămân aici."
+    },
+    "locate": "Localizează…",
+    "useThisFolder": "Folosește acest folder",
+    "saveCopy": "Salvează o copie…",
+    "tryAgain": "Încearcă din nou",
+    "savedCopy": "Fișierele deschise au fost salvate în {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Acțiuni GitHub",

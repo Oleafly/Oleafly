@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly 沒有開啟資料夾 {{folder}} 的權限。",
     "linked_invalid": "Oleafly 中此資料夾的連結已損毀。請將它從 Oleafly 移除，然後重新開啟該資料夾。",
     "linked_not_recyclable": "此資料夾是在原位置開啟的，無法移至資源回收筒。你的檔案沒有任何變更。",
-    "linked_not_duplicable": "此資料夾是在原位置開啟的，Oleafly 無法複製它。"
+    "linked_not_duplicable": "此資料夾是在原位置開啟的，Oleafly 無法複製它。",
+    "folder_not_a_folder": "Oleafly 無法使用該位置。請選擇一個資料夾。",
+    "folder_in_app_data": "Oleafly 在該資料夾中儲存自己的資料。請選擇其他資料夾。",
+    "folder_too_broad": "{{name}} 範圍太大，無法作為一個專案開啟。請選擇只包含此專案的資料夾。",
+    "folder_already_linked": "該資料夾與 Oleafly 中的另一個專案重疊。請選擇其他資料夾。",
+    "not_linked": "只有就地開啟的資料夾才能重新定位。",
+    "copy_destination_refused": "請選擇專案與 Oleafly 資料夾以外的資料夾。",
+    "copy_nothing_open": "沒有開啟的檔案，因此沒有可儲存的內容。",
+    "copy_too_large": "開啟的檔案太大，無法另存為副本。",
+    "copy_failed": "Oleafly 無法將副本儲存到該位置。請選擇一個你有寫入權限的資料夾。",
+    "folder_picker_failed": "Oleafly 無法開啟資料夾選擇器。請再試一次。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

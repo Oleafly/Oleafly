@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly doesn't have permission to open the folder {{folder}}.",
     "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again.",
     "linked_not_recyclable": "This folder was opened in place, so it can't be moved to the Recycle Bin. Your files are untouched.",
-    "linked_not_duplicable": "This folder was opened in place, so Oleafly can't duplicate it."
+    "linked_not_duplicable": "This folder was opened in place, so Oleafly can't duplicate it.",
+    "folder_not_a_folder": "Oleafly can't use that location. Choose a folder.",
+    "folder_in_app_data": "Oleafly keeps its own data in that folder. Choose a different one.",
+    "folder_too_broad": "{{name}} is too broad to open as one project. Choose the folder that holds just this project.",
+    "folder_already_linked": "That folder overlaps another project in Oleafly. Choose a different folder.",
+    "not_linked": "Locate works only for folders opened in place.",
+    "copy_destination_refused": "Choose a folder outside the project and outside Oleafly's data folder.",
+    "copy_nothing_open": "No files are open, so there's nothing to save.",
+    "copy_too_large": "The open files are too large to save as a copy.",
+    "copy_failed": "Oleafly couldn't save the copy there. Choose a folder you can write to.",
+    "folder_picker_failed": "Oleafly couldn't open the folder picker. Try again."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

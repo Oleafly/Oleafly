@@ -795,20 +795,31 @@ pub fn read_root_file(
 }
 
 pub fn forget_project(project_id: &str) {
-    if crate::paths::validate_project_id(project_id).is_err() {
-        return;
-    }
-    let Ok(root) = workspace_store_root() else {
-        return;
-    };
+    let _ = forget_project_strict(project_id);
+}
+
+pub(crate) fn forget_project_strict(project_id: &str) -> Result<(), String> {
+    crate::paths::validate_project_id(project_id)?;
+    let _guard = mutation_lock()
+        .lock()
+        .map_err(|_| "research workspace lock is unavailable".to_string())?;
+    let root = workspace_store_root()?;
     let path = root.join(format!("{project_id}.json"));
     if path.parent() != Some(root.as_path()) {
-        return;
+        return Err("research workspace metadata escapes its folder".into());
     }
-    if let Ok(metadata) = std::fs::symlink_metadata(&path) {
-        if metadata.is_file() && !metadata.file_type().is_symlink() {
-            let _ = std::fs::remove_file(&path);
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not inspect research workspace: {error}")),
+        Ok(metadata)
+            if metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && !is_reparse_point(&metadata) =>
+        {
+            std::fs::remove_file(&path)
+                .map_err(|error| format!("could not unlink research folders: {error}"))
         }
+        Ok(_) => Err("research workspace metadata must be a regular file".into()),
     }
 }
 

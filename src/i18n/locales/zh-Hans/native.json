@@ -58,6 +58,18 @@
       "title": "允许此请求？",
       "message": "助手想要使用 {{tool}}，它会把文本发送到在线服务。此文件夹尚未受信任。",
       "confirm": "允许"
+    },
+    "locateFolder": {
+      "title": "查找项目文件夹"
+    },
+    "rebindFolder": {
+      "title": "使用其他文件夹？",
+      "message": "{{name}} 不是 Oleafly 之前用于此项目的文件夹。如果使用它，Oleafly 会把未保存的更改保存到其中，并关闭此项目的终端和代理会话，其中正在运行的内容都会停止。Oleafly 还将不再信任该文件夹，关闭完全访问权限，重置助手的批准，并取消关联研究文件夹。聊天和历史记录会保留。",
+      "confirm": "使用此文件夹"
+    },
+    "saveCopy": {
+      "title": "选择副本的保存位置",
+      "folderSuffix": "副本"
     }
   },
   "errors": {

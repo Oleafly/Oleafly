@@ -365,6 +365,25 @@
     },
     "title": "Něco se pokazilo"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Tato složka není dostupná.",
+      "body": "Znovu připojte disk nebo složku najděte. Otevřené soubory tu zůstávají a Oleafly nebude ukládat ani kompilovat, dokud se složka nevrátí."
+    },
+    "replaced": {
+      "title": "Tato složka byla nahrazena.",
+      "body": "Na jejím místě je teď jiná složka. Oleafly přestal ukládat, aby tam nic nepřepsal."
+    },
+    "permissionDenied": {
+      "title": "Oleafly tuto složku nemůže otevřít.",
+      "body": "Zkontrolujte oprávnění složky a zkuste to znovu. Otevřené soubory tu zůstávají."
+    },
+    "locate": "Najít…",
+    "useThisFolder": "Použít tuto složku",
+    "saveCopy": "Uložit kopii…",
+    "tryAgain": "Zkusit znovu",
+    "savedCopy": "Otevřené soubory byly uloženy do {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Akce GitHub",

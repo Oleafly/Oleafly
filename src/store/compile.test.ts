@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
@@ -126,8 +126,11 @@ vi.mock("@/lib/cross-window", () => ({
 }));
 
 import { importCompatFinding } from "@oleafly/latex";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   acceptCompileOffer,
+  clearFolderPause,
   installerNotices,
   isCompileCheckpointCurrent,
   saveActiveForCompile,
@@ -1544,5 +1547,78 @@ describe("bundled-engine compile failures", () => {
         ),
       ).toBe(true),
     );
+  });
+});
+
+describe("a project folder that is not available", () => {
+  const missing = `@oleafly/error:${JSON.stringify({
+    code: "project.linked_missing",
+    params: { folder: "thesis" },
+    detail: null,
+  })}`;
+
+  beforeEach(() => {
+    useProjectAvailabilityStore.getState().reset("project");
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+  });
+
+  afterEach(() => {
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("pauses compiling without calling the compiler or raising a toast", async () => {
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("clears the paused notice once the folder is back and leaves other states alone", async () => {
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    await useCompileStore.getState().recompile();
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", failureReason: null });
+
+    useCompileStore.setState({ status: "unavailable", failureReason: "Pandoc is missing." });
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: "Pandoc is missing.",
+    });
+  });
+
+  it("pauses instead of failing when the folder goes away during a compile, and clears once it is back", async () => {
+    mocks.compileProject.mockRejectedValue(missing);
+    await useCompileStore.getState().recompile();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(useCompileStore.getState().log).not.toContain("@oleafly/error");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+
+    useProjectAvailabilityStore.getState().report("project", "ok");
+    clearFolderPause();
+    expect(useCompileStore.getState()).toMatchObject({ status: "idle", failureReason: null });
+  });
+
+  it("still reports other compiler failures as errors with readable text", async () => {
+    mocks.compileProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`,
+    );
+    await useCompileStore.getState().recompile();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("ok");
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.failureReason ?? "").not.toContain("@oleafly/error");
   });
 });

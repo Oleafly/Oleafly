@@ -575,6 +575,112 @@ fn archive_escape_and_symlinks_are_rejected() {
 }
 
 #[test]
+fn rebinding_project_paths_skips_task_sessions_and_other_projects() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Store::open(temp.path()).unwrap();
+    let record = |project: &str, task: Option<&str>| SessionRecord {
+        id: new_id(),
+        project_id: project.into(),
+        project_path: "/old/place".into(),
+        agent_id: "a".into(),
+        agent_version: None,
+        native_session_id: Some("native".into()),
+        parent_session_id: None,
+        task_id: task.map(Into::into),
+        title: "Test".into(),
+        status: SessionStatus::Disconnected,
+        created_at: 1,
+        updated_at: 1,
+        turn_id: None,
+        capabilities: Capabilities::default(),
+        controls: SessionControls::default(),
+        auth_methods: Vec::new(),
+        error: None,
+        last_sequence: 0,
+    };
+    let own = record("p", None);
+    let task = record("p", Some("task"));
+    let other = record("q", None);
+    for session in [&own, &task, &other] {
+        store.save(session).unwrap();
+    }
+
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", false).unwrap(),
+        1
+    );
+    assert_eq!(store.get(&own.id).unwrap().project_path, "/new/place");
+    assert_eq!(
+        store.get(&own.id).unwrap().native_session_id.as_deref(),
+        Some("native")
+    );
+    assert_eq!(store.get(&task.id).unwrap().project_path, "/old/place");
+    assert_eq!(store.get(&other.id).unwrap().project_path, "/old/place");
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", false).unwrap(),
+        0
+    );
+
+    assert_eq!(
+        store.rebind_project_path("p", "/new/place", true).unwrap(),
+        1
+    );
+    assert!(store.get(&own.id).unwrap().native_session_id.is_none());
+    assert_eq!(store.get(&own.id).unwrap().updated_at, 1);
+    assert_eq!(
+        store.get(&task.id).unwrap().native_session_id.as_deref(),
+        Some("native")
+    );
+}
+
+#[tokio::test]
+async fn rebinding_a_project_closes_its_live_sessions_and_moves_their_resume_path() {
+    let (temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let id = snapshot.session.id;
+    let native = runtime.record(&id).unwrap().native_session_id;
+    assert!(native.is_some());
+    let moved = temp.path().join("moved");
+    std::fs::create_dir(&moved).unwrap();
+
+    assert_eq!(runtime.close_project_sessions("other-project").await, 0);
+    assert_eq!(runtime.close_project_sessions("test-project").await, 1);
+    assert_eq!(
+        runtime.record(&id).unwrap().status,
+        SessionStatus::Disconnected
+    );
+    assert_eq!(
+        runtime
+            .rebind_project_paths("test-project", &moved, false)
+            .unwrap(),
+        1
+    );
+    let record = runtime.record(&id).unwrap();
+    assert_eq!(
+        Path::new(&record.project_path),
+        moved.canonicalize().unwrap()
+    );
+    assert_eq!(record.native_session_id, native);
+
+    let reopened = runtime
+        .reconnect(&id, Some("fixture-window".into()))
+        .await
+        .unwrap();
+    assert_eq!(reopened.session.status, SessionStatus::Ready);
+    runtime.close(&id).await.unwrap();
+
+    assert_eq!(
+        runtime
+            .rebind_project_paths("test-project", &moved, true)
+            .unwrap(),
+        1
+    );
+    assert!(runtime.record(&id).unwrap().native_session_id.is_none());
+    assert!(runtime
+        .rebind_project_paths("test-project", &temp.path().join("gone"), true)
+        .is_err());
+}
+
+#[test]
 fn reopening_storage_recovers_running_status_without_erasing_events() {
     let temp = tempfile::tempdir().unwrap();
     let store = Store::open(temp.path()).unwrap();

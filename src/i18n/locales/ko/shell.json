@@ -359,6 +359,25 @@
     },
     "title": "문제가 발생했습니다"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "이 폴더를 사용할 수 없습니다.",
+      "body": "드라이브를 다시 연결하거나 폴더를 찾으세요. 열린 파일은 여기에 그대로 있으며, 폴더가 돌아올 때까지 Oleafly는 저장하거나 컴파일하지 않습니다."
+    },
+    "replaced": {
+      "title": "이 폴더가 교체되었습니다.",
+      "body": "그 자리에 이제 다른 폴더가 있습니다. 아무것도 덮어쓰지 않도록 Oleafly가 저장을 멈췄습니다."
+    },
+    "permissionDenied": {
+      "title": "Oleafly에서 이 폴더를 열 수 없습니다.",
+      "body": "폴더 권한을 확인한 뒤 다시 시도하세요. 열린 파일은 여기에 그대로 있습니다."
+    },
+    "locate": "위치 찾기…",
+    "useThisFolder": "이 폴더 사용",
+    "saveCopy": "사본 저장…",
+    "tryAgain": "다시 시도",
+    "savedCopy": "열린 파일을 {{folder}}에 저장했습니다."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub 작업",

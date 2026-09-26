@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly nemá oprávnění otevřít složku {{folder}}.",
     "linked_invalid": "Odkaz Oleafly na tuto složku je poškozený. Odeberte ji z Oleafly a potom složku otevřete znovu.",
     "linked_not_recyclable": "Tato složka byla otevřena na svém místě, proto ji nelze přesunout do koše. Vaše soubory zůstaly beze změny.",
-    "linked_not_duplicable": "Tato složka byla otevřena na svém místě, proto ji Oleafly nemůže duplikovat."
+    "linked_not_duplicable": "Tato složka byla otevřena na svém místě, proto ji Oleafly nemůže duplikovat.",
+    "folder_not_a_folder": "Oleafly toto umístění nemůže použít. Vyberte složku.",
+    "folder_in_app_data": "Oleafly v této složce uchovává vlastní data. Vyberte jinou.",
+    "folder_too_broad": "Složka {{name}} je příliš rozsáhlá, aby šla otevřít jako jeden projekt. Vyberte složku, která obsahuje jen tento projekt.",
+    "folder_already_linked": "Tato složka se překrývá s jiným projektem v Oleafly. Vyberte jinou složku.",
+    "not_linked": "Vyhledání funguje jen u složek otevřených na jejich místě.",
+    "copy_destination_refused": "Vyberte složku mimo projekt a mimo datovou složku Oleafly.",
+    "copy_nothing_open": "Nejsou otevřené žádné soubory, takže není co uložit.",
+    "copy_too_large": "Otevřené soubory jsou příliš velké na uložení kopie.",
+    "copy_failed": "Oleafly tam kopii nemohl uložit. Vyberte složku, do které můžete zapisovat.",
+    "folder_picker_failed": "Oleafly nemohl otevřít výběr složky. Zkuste to znovu."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

@@ -58,6 +58,18 @@
       "title": "Sallitaanko tämä pyyntö?",
       "message": "Avustaja haluaa käyttää työkalua {{tool}}, joka lähettää tekstiä verkkopalveluun. Tähän kansioon ei vielä luoteta.",
       "confirm": "Salli"
+    },
+    "locateFolder": {
+      "title": "Etsi projektikansio"
+    },
+    "rebindFolder": {
+      "title": "Käytetäänkö toista kansiota?",
+      "message": "{{name}} ei ole kansio, joka Oleaflylla oli tälle projektille. Jos käytät sitä, Oleafly tallentaa tallentamattomat muutoksesi siihen ja sulkee tämän projektin päätteet ja agenttien istunnot. Kaikki niissä käynnissä oleva pysähtyy. Lisäksi Oleafly lakkaa luottamasta kansioon, poistaa täyden käyttöoikeuden käytöstä, nollaa avustajan hyväksynnät ja irrottaa tutkimuskansiot. Keskustelut ja historia säilyvät.",
+      "confirm": "Käytä tätä kansiota"
+    },
+    "saveCopy": {
+      "title": "Valitse, minne kopio tallennetaan",
+      "folderSuffix": "kopio"
     }
   },
   "errors": {

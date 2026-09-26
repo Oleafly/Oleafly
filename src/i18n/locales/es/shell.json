@@ -363,6 +363,25 @@
     },
     "title": "Algo salió mal"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Esta carpeta no está disponible.",
+      "body": "Vuelve a conectar la unidad o busca la carpeta. Tus archivos abiertos siguen aquí, y Oleafly no guardará ni compilará hasta que la carpeta vuelva."
+    },
+    "replaced": {
+      "title": "Esta carpeta se ha reemplazado.",
+      "body": "Ahora hay otra carpeta en su lugar. Oleafly dejó de guardar para no sobrescribir nada allí."
+    },
+    "permissionDenied": {
+      "title": "Oleafly no puede abrir esta carpeta.",
+      "body": "Revisa los permisos de la carpeta y vuelve a intentarlo. Tus archivos abiertos siguen aquí."
+    },
+    "locate": "Localizar…",
+    "useThisFolder": "Usar esta carpeta",
+    "saveCopy": "Guardar una copia…",
+    "tryAgain": "Volver a intentarlo",
+    "savedCopy": "Tus archivos abiertos se guardaron en {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Acciones de GitHub",

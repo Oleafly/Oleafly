@@ -58,6 +58,18 @@
       "title": "Bu isteğe izin verilsin mi?",
       "message": "Asistan, metni çevrim içi bir hizmete gönderen {{tool}} aracını kullanmak istiyor. Bu klasöre henüz güvenilmiyor.",
       "confirm": "İzin ver"
+    },
+    "locateFolder": {
+      "title": "Proje klasörünü bul"
+    },
+    "rebindFolder": {
+      "title": "Farklı bir klasör kullanılsın mı?",
+      "message": "{{name}}, Oleafly'ın bu proje için kullandığı klasör değil. Bunu kullanırsanız Oleafly kaydedilmemiş değişikliklerinizi bu klasöre kaydeder ve bu projenin terminallerini ve ajan oturumlarını kapatır. Bunlarda çalışan her şey durur. Oleafly ayrıca klasöre güvenmeyi bırakır, tam erişimi kapatır, asistan onaylarını sıfırlar ve araştırma klasörlerinin bağlantısını kaldırır. Sohbetler ve geçmiş korunur.",
+      "confirm": "Bu klasörü kullan"
+    },
+    "saveCopy": {
+      "title": "Kopyanın kaydedileceği yeri seçin",
+      "folderSuffix": "kopya"
     }
   },
   "errors": {

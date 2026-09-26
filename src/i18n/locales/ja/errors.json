@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly にはフォルダ {{folder}} を開く権限がありません。",
     "linked_invalid": "このフォルダへの Oleafly のリンクが破損しています。Oleafly から削除してから、フォルダをもう一度開いてください。",
     "linked_not_recyclable": "このフォルダは元の場所で開かれているため、ごみ箱に移動できません。ファイルは変更されていません。",
-    "linked_not_duplicable": "このフォルダは元の場所で開かれているため、Oleafly では複製できません。"
+    "linked_not_duplicable": "このフォルダは元の場所で開かれているため、Oleafly では複製できません。",
+    "folder_not_a_folder": "その場所は Oleafly で使用できません。フォルダを選択してください。",
+    "folder_in_app_data": "そのフォルダには Oleafly 自身のデータがあります。別のフォルダを選択してください。",
+    "folder_too_broad": "{{name}} は範囲が広すぎるため、1 つのプロジェクトとして開けません。このプロジェクトだけが入ったフォルダを選択してください。",
+    "folder_already_linked": "そのフォルダは Oleafly の別のプロジェクトと重なっています。別のフォルダを選択してください。",
+    "not_linked": "場所の指定は、その場で開いたフォルダでのみ使用できます。",
+    "copy_destination_refused": "プロジェクトと Oleafly のデータフォルダの外にあるフォルダを選択してください。",
+    "copy_nothing_open": "開いているファイルがないため、保存するものはありません。",
+    "copy_too_large": "開いているファイルが大きすぎるため、コピーとして保存できません。",
+    "copy_failed": "Oleafly はそこにコピーを保存できませんでした。書き込みできるフォルダを選択してください。",
+    "folder_picker_failed": "Oleafly はフォルダの選択画面を開けませんでした。もう一度お試しください。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

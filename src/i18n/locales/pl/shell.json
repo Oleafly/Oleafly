@@ -365,6 +365,25 @@
     },
     "title": "Coś poszło nie tak"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Ten folder jest niedostępny.",
+      "body": "Podłącz ponownie dysk lub znajdź folder. Otwarte pliki zostają tutaj, a Oleafly nie będzie zapisywać ani kompilować, dopóki folder nie wróci."
+    },
+    "replaced": {
+      "title": "Ten folder został zastąpiony.",
+      "body": "W jego miejscu jest teraz inny folder. Oleafly przestał zapisywać, aby niczego tam nie nadpisać."
+    },
+    "permissionDenied": {
+      "title": "Oleafly nie może otworzyć tego folderu.",
+      "body": "Sprawdź uprawnienia folderu i spróbuj ponownie. Otwarte pliki zostają tutaj."
+    },
+    "locate": "Zlokalizuj…",
+    "useThisFolder": "Użyj tego folderu",
+    "saveCopy": "Zapisz kopię…",
+    "tryAgain": "Spróbuj ponownie",
+    "savedCopy": "Otwarte pliki zapisano w {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Działania GitHub",

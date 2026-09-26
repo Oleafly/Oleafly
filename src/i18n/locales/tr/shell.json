@@ -361,6 +361,25 @@
     },
     "title": "Bir sorun oluştu"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Bu klasör kullanılamıyor.",
+      "body": "Sürücüyü yeniden bağlayın veya klasörü bulun. Açık dosyalarınız burada kalır ve klasör geri gelene kadar Oleafly kaydetmez ya da derlemez."
+    },
+    "replaced": {
+      "title": "Bu klasör değiştirildi.",
+      "body": "Artık onun yerinde farklı bir klasör var. Oleafly oradaki hiçbir şeyin üzerine yazmamak için kaydetmeyi durdurdu."
+    },
+    "permissionDenied": {
+      "title": "Oleafly bu klasörü açamıyor.",
+      "body": "Klasörün izinlerini kontrol edip yeniden deneyin. Açık dosyalarınız burada kalır."
+    },
+    "locate": "Bul…",
+    "useThisFolder": "Bu klasörü kullan",
+    "saveCopy": "Kopya kaydet…",
+    "tryAgain": "Yeniden deneyin",
+    "savedCopy": "Açık dosyalarınız {{folder}} konumuna kaydedildi."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub eylemleri",

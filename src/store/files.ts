@@ -55,6 +55,11 @@ import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { isManagedProjectPath } from "@/lib/project-paths";
 import {
+  projectFolderAvailable,
+  reportLocationError,
+  useProjectAvailabilityStore,
+} from "@/store/project-availability";
+import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
@@ -250,6 +255,7 @@ export function reportFileSaveFailure(
   explicit = false,
 ): void {
   void logError(scope, error);
+  if (reportLocationError(projectId, error)) return;
   if (isMutationConflict(error)) return;
   if (useFilesStore.getState().projectId !== projectId) return;
   if (isDiskConflict(error)) {
@@ -410,6 +416,7 @@ interface FilesStore {
   discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
   refreshTree: () => Promise<void>;
+  resumeAutosave: (projectId: string) => void;
   openFile: (path: string) => Promise<void>;
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
@@ -639,10 +646,11 @@ async function drainProjectWrites(projectId: string, assertCurrent: () => void =
 
 function scheduleAutosave(get: () => FilesStore) {
   stopAutosaveTimer();
-  if (pendingSaves.size === 0) return;
+  if (pendingSaves.size === 0 || !projectFolderAvailable(get().projectId)) return;
   autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
     const projectId = get().projectId;
+    if (!projectFolderAvailable(projectId)) return;
     const paths = [...pendingSaves];
     for (const path of paths) pendingSaves.delete(path);
     for (const path of paths) {
@@ -690,6 +698,14 @@ function requeueDirtyPaths(projectId: string, get: () => FilesStore): void {
 
 async function flushDirtyBuffers(projectId: string, get: () => FilesStore, assertCurrent: () => void = () => {}): Promise<void> {
   stopAutosaveTimer();
+  if (!projectFolderAvailable(projectId)) {
+    const reason = i18n.t(($) => $.core.folderUnavailable.saveReason);
+    const failures = Object.entries(get().files)
+      .filter(([, file]) => file.dirty)
+      .map(([path]) => ({ path, reason }));
+    if (failures.length > 0) throw new SaveFlushError(failures);
+    return;
+  }
 
   // A save can finish while the user is still editing. Loop until the current
   // project has no dirty snapshots left, then the caller may safely reset it.
@@ -993,6 +1009,7 @@ function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesS
   cancelProofreading("visual");
   resetMutationGeneration(id);
   useSettingsStore.getState().closeDocks();
+  useProjectAvailabilityStore.getState().reset(id);
   set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
   const revision = lastProjectStateRevision;
   let reopenQueued = false;
@@ -1442,6 +1459,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();
+    useProjectAvailabilityStore.getState().reset(null);
     set(EMPTY_PROJECT_STATE);
   }),
 
@@ -1517,9 +1535,21 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   refreshTree: async () => {
     const { projectId } = get();
-    if (!projectId) return;
-    const tree = await listFiles(projectId);
+    if (!projectId || !projectFolderAvailable(projectId)) return;
+    let tree: Awaited<ReturnType<typeof listFiles>>;
+    try {
+      tree = await listFiles(projectId);
+    } catch (error) {
+      if (reportLocationError(projectId, error)) return;
+      throw error;
+    }
     if (get().projectId === projectId) set({ tree });
+  },
+
+  resumeAutosave: (projectId) => {
+    if (get().projectId !== projectId || !projectFolderAvailable(projectId)) return;
+    requeueDirtyPaths(projectId, get);
+    scheduleAutosave(get);
   },
 
   openFile: async (path) => {
@@ -2426,6 +2456,17 @@ export async function runWithEditorMutationLease<T>(
   }
 }
 
+export function collectOpenBuffersForCopy(projectId: string): { path: string; content: string }[] {
+  const state = useFilesStore.getState();
+  if (state.projectId !== projectId) return [];
+  return Object.entries(state.files)
+    .filter(([path]) => !isManagedProjectPath(path))
+    .map(([path, file]) => {
+      const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
+      return { path, content: crlf ? crlfBytes(file.content) : file.content };
+    });
+}
+
 export function useActiveContent(): string {
   return useFilesStore((s) =>
     s.activePath ? s.files[s.activePath]?.content ?? "" : ""
@@ -2437,6 +2478,7 @@ export function useActiveContent(): string {
 function flushPendingSaves() {
   stopAutosaveTimer();
   const state = useFilesStore.getState();
+  if (!projectFolderAvailable(state.projectId)) return;
   const paths = Object.entries(state.files)
     .filter(([, file]) => file.dirty)
     .map(([path]) => path);

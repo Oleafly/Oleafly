@@ -591,5 +591,9 @@
   "checkpoint": {
     "storageUnavailable": "No se pudo guardar un punto de control. El disco está lleno o no se puede escribir en la carpeta de puntos de control. Libera espacio o revisa los permisos de la carpeta y vuelve a compilar.",
     "incompleteCapture": "No se pudieron guardar los últimos puntos de control porque no se pudieron leer algunos archivos del proyecto. Revisa sus permisos y vuelve a compilar."
+  },
+  "folderUnavailable": {
+    "compile": "La compilación está en pausa hasta que vuelva la carpeta del proyecto.",
+    "saveReason": "la carpeta del proyecto no está disponible"
   }
 }

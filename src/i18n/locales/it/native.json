@@ -58,6 +58,18 @@
       "title": "Consentire questa richiesta?",
       "message": "L'assistente vuole usare {{tool}}, che invia testo a un servizio online. Questa cartella non è ancora affidabile.",
       "confirm": "Consenti"
+    },
+    "locateFolder": {
+      "title": "Trova la cartella del progetto"
+    },
+    "rebindFolder": {
+      "title": "Usare un'altra cartella?",
+      "message": "{{name}} non è la cartella che Oleafly aveva per questo progetto. Se la usi, Oleafly vi salva le modifiche non salvate e chiude i terminali e le sessioni degli agenti di questo progetto. Tutto ciò che è in esecuzione al loro interno si interrompe. Oleafly inoltre smette di considerarla affidabile, disattiva l'accesso completo, reimposta le approvazioni dell'assistente e scollega le cartelle di ricerca. Chat e cronologia vengono conservate.",
+      "confirm": "Usa questa cartella"
+    },
+    "saveCopy": {
+      "title": "Scegli dove salvare una copia",
+      "folderSuffix": "copia"
     }
   },
   "errors": {

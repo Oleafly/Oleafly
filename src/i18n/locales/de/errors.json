@@ -12,7 +12,17 @@
     "linked_permission_denied": "Oleafly hat keine Berechtigung, den Ordner {{folder}} zu öffnen.",
     "linked_invalid": "Die Verknüpfung von Oleafly mit diesem Ordner ist beschädigt. Entfernen Sie ihn aus Oleafly und öffnen Sie den Ordner dann erneut.",
     "linked_not_recyclable": "Dieser Ordner wurde direkt an seinem Speicherort geöffnet und kann daher nicht in den Papierkorb verschoben werden. Ihre Dateien bleiben unverändert.",
-    "linked_not_duplicable": "Dieser Ordner wurde direkt an seinem Speicherort geöffnet, daher kann Oleafly ihn nicht duplizieren."
+    "linked_not_duplicable": "Dieser Ordner wurde direkt an seinem Speicherort geöffnet, daher kann Oleafly ihn nicht duplizieren.",
+    "folder_not_a_folder": "Oleafly kann diesen Speicherort nicht verwenden. Wählen Sie einen Ordner.",
+    "folder_in_app_data": "Oleafly speichert in diesem Ordner eigene Daten. Wählen Sie einen anderen Ordner.",
+    "folder_too_broad": "{{name}} ist zu umfassend, um als ein Projekt geöffnet zu werden. Wählen Sie den Ordner, der nur dieses Projekt enthält.",
+    "folder_already_linked": "Dieser Ordner überschneidet sich mit einem anderen Projekt in Oleafly. Wählen Sie einen anderen Ordner.",
+    "not_linked": "Suchen funktioniert nur für Ordner, die direkt an ihrem Speicherort geöffnet wurden.",
+    "copy_destination_refused": "Wählen Sie einen Ordner außerhalb des Projekts und außerhalb des Datenordners von Oleafly.",
+    "copy_nothing_open": "Es sind keine Dateien geöffnet, daher gibt es nichts zu speichern.",
+    "copy_too_large": "Die geöffneten Dateien sind zu groß, um sie als Kopie zu speichern.",
+    "copy_failed": "Oleafly konnte die Kopie dort nicht speichern. Wählen Sie einen Ordner, in den Sie schreiben können.",
+    "folder_picker_failed": "Oleafly konnte die Ordnerauswahl nicht öffnen. Versuchen Sie es erneut."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

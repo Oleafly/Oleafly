@@ -269,6 +269,18 @@ impl<T> SessionRegistry<T> {
             .collect()
     }
 
+    fn drain_project(&mut self, project_id: &str) -> Vec<T> {
+        let ids: Vec<String> = self
+            .sessions
+            .iter()
+            .filter(|(_, record)| record.owner.project_id == project_id)
+            .map(|(id, _)| id.clone())
+            .collect();
+        ids.iter()
+            .filter_map(|id| self.remove_unchecked(id))
+            .collect()
+    }
+
     fn drain_all(&mut self) -> Vec<T> {
         for generation in self.window_generations.values_mut() {
             *generation = generation.wrapping_add(1);
@@ -299,6 +311,17 @@ pub(crate) fn kill_window_sessions(window_label: &str) {
         sessions
             .as_mut()
             .map(|registry| registry.drain_window(window_label))
+            .unwrap_or_default()
+    };
+    stop_sessions_in_background(drained);
+}
+
+pub(crate) fn kill_project_sessions(project_id: &str) {
+    let drained = {
+        let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+        sessions
+            .as_mut()
+            .map(|registry| registry.drain_project(project_id))
             .unwrap_or_default()
     };
     stop_sessions_in_background(drained);
@@ -997,6 +1020,21 @@ mod tests {
         assert!(registry.remove_unchecked(&other_main).is_none());
         assert_eq!(registry.remove_unchecked(&preview_id), Some(3));
         assert!(registry.drain_all().is_empty());
+    }
+
+    #[test]
+    fn drain_project_removes_only_that_projects_sessions() {
+        let mut registry = SessionRegistry::<u32>::default();
+        let alpha_main = registry.insert(SessionOwner::new("main", "alpha"), 1);
+        let alpha_preview = registry.insert(SessionOwner::new("preview", "alpha"), 2);
+        let beta = registry.insert(SessionOwner::new("main", "beta"), 3);
+        let mut drained = registry.drain_project("alpha");
+        drained.sort_unstable();
+        assert_eq!(drained, vec![1, 2]);
+        assert!(registry.remove_unchecked(&alpha_main).is_none());
+        assert!(registry.remove_unchecked(&alpha_preview).is_none());
+        assert_eq!(registry.remove_unchecked(&beta), Some(3));
+        assert!(registry.drain_project("alpha").is_empty());
     }
     #[cfg(unix)]
     use crate::proc::NoConsole as _;

@@ -591,5 +591,9 @@
   "checkpoint": {
     "storageUnavailable": "Impossible d'enregistrer un point de contrôle. Le disque est plein ou le dossier des points de contrôle n'est pas accessible en écriture. Libérez de l'espace ou vérifiez les autorisations du dossier, puis compilez à nouveau.",
     "incompleteCapture": "Impossible d'enregistrer les derniers points de contrôle, car certains fichiers du projet n'ont pas pu être lus. Vérifiez leurs autorisations, puis compilez à nouveau."
+  },
+  "folderUnavailable": {
+    "compile": "La compilation est en pause jusqu'au retour du dossier du projet.",
+    "saveReason": "le dossier du projet n'est pas disponible"
   }
 }

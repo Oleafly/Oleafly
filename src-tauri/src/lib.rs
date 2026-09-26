@@ -17,6 +17,7 @@ mod bib_clean;
 mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
+mod buffer_copy;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
@@ -61,7 +62,9 @@ mod proc;
 mod process_identity;
 mod project;
 mod project_availability;
+mod project_grants;
 mod project_location;
+mod project_rebind;
 mod project_sources;
 mod protocol;
 mod quit_gate;
@@ -139,6 +142,13 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    {
+        use tauri::Emitter;
+        let handle = app.handle().clone();
+        project_availability::install_sink(Box::new(move |event| {
+            let _ = handle.emit("project-availability", event);
+        }));
+    }
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
     agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
     agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
@@ -576,6 +586,9 @@ pub fn run() {
             project::get_project,
             project::list_projects,
             project_availability::probe_project_availability,
+            project_rebind::locate_project_folder,
+            project_rebind::adopt_replaced_folder,
+            buffer_copy::save_open_buffers_copy,
             project::create_project,
             project::create_project_from_pdf_conversion,
             project::create_project_from_ad_hoc,

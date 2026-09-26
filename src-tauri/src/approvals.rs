@@ -177,6 +177,26 @@ pub fn set_decision(
     write_file(root, &approvals)
 }
 
+pub fn revoke_project_grants(root: &Path, project_id: &str) -> Result<bool, String> {
+    let _guard = APPROVALS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "approval settings write lock is unavailable".to_string())?;
+    let mut approvals = read_file(root)?;
+    let mut changed = approvals.modes.remove(project_id).is_some();
+    if let Some(project) = approvals.decisions.get_mut(project_id) {
+        let before = project.len();
+        project.retain(|_, decision| *decision == ToolDecision::Deny);
+        changed |= project.len() != before;
+        if project.is_empty() {
+            approvals.decisions.remove(project_id);
+        }
+    }
+    if changed {
+        write_file(root, &approvals)?;
+    }
+    Ok(changed)
+}
+
 pub fn read_raw(root: &Path) -> Result<String, String> {
     match std::fs::read_to_string(approvals_path(root)) {
         Ok(raw) => Ok(raw),
@@ -542,6 +562,57 @@ write_file = "allow"
                 );
             }
         }
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn revoking_grants_drops_full_access_and_allows_but_keeps_denials_and_other_projects() {
+        let root = temp_root("revoke-grants");
+        set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
+        set_decision(&root, "proj", "write_file", Some(ToolDecision::Allow)).unwrap();
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        set_mode(&root, "other", ApprovalMode::FullAccess).unwrap();
+        set_decision(&root, "other", "write_file", Some(ToolDecision::Allow)).unwrap();
+
+        assert!(revoke_project_grants(&root, "proj").unwrap());
+
+        assert_eq!(
+            policy_for(&root, "proj", "write_file").unwrap(),
+            (ApprovalMode::Custom, None)
+        );
+        assert_eq!(
+            policy_for(&root, "proj", "run_command").unwrap(),
+            (ApprovalMode::Custom, Some(ToolDecision::Deny))
+        );
+        assert_eq!(mode_for(&root, "other"), ApprovalMode::FullAccess);
+        assert_eq!(
+            decision_for(&root, "other", "write_file"),
+            Some(ToolDecision::Allow)
+        );
+        assert!(!revoke_project_grants(&root, "proj").unwrap());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn revoking_grants_without_denials_returns_the_project_to_the_default_mode() {
+        let root = temp_root("revoke-default");
+        set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
+        set_decision(&root, "proj", "write_file", Some(ToolDecision::Allow)).unwrap();
+        assert!(revoke_project_grants(&root, "proj").unwrap());
+        assert_eq!(mode_for(&root, "proj"), ApprovalMode::ApproveForMe);
+        assert!(decisions_for(&root, "proj").is_empty());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn revoking_grants_fails_closed_on_a_malformed_file() {
+        let root = temp_root("revoke-malformed");
+        std::fs::write(approvals_path(&root), "[proj\nwrite_file = allow").unwrap();
+        assert!(revoke_project_grants(&root, "proj").is_err());
+        assert_eq!(
+            std::fs::read_to_string(approvals_path(&root)).unwrap(),
+            "[proj\nwrite_file = allow"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 }
