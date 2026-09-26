@@ -186,6 +186,9 @@ function Start-App([string]$label) {
       "oleafly:compile:mode" = "normal"
       "oleafly.appFontSize" = "16"
       "oleafly.appFont" = ""
+      "oleafly.dictionary.locale" = "en_US"
+      "oleafly.spellcheck" = "1"
+      "oleafly.harper" = "1"
       "oleafly.assistant-runtime.v1" = '{"state":{"runtime":"built-in"},"version":0}'
     }
     if ($script:checkpointHints -notmatch "00-tours") {

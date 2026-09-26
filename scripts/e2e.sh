@@ -321,7 +321,7 @@ boot_seed_for() {
     *97-locale-zh-hans*) locale="zh-Hans" ;;
     *) ;;
   esac
-  local flags='"oleafly.locale":"'"$locale"'","oleafly.shortcuts":null,"oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
+  local flags='"oleafly.locale":"'"$locale"'","oleafly.shortcuts":null,"oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
   case "$spec" in
     *00-tours*) printf '{%s}' "$flags" ;;
     *) printf '{%s,"oleafly.tours":"{\\"state\\":{\\"schemaVersion\\":1,\\"enabled\\":false,\\"tours\\":{}},\\"version\\":1}"}' "$flags" ;;
