@@ -15,6 +15,7 @@ import {
   insertListEnvironment,
   insertTemplate,
   revealEditorRange,
+  selectWordNearLine,
   setEditorView,
 } from "./controller";
 
@@ -252,5 +253,49 @@ describe("centering inside the source editor", () => {
 
     expect(handled).toBe(false);
     expect(current.scrollDOM.scrollTop).toBe(0);
+  });
+});
+
+describe("selecting the word clicked in the PDF", () => {
+  function mount(doc: string) {
+    view = new EditorView({ state: EditorState.create({ doc }), parent: document.body });
+    setEditorView(view);
+    return view;
+  }
+
+  function selected(editor: EditorView) {
+    const { from, to } = editor.state.selection.main;
+    return [editor.state.sliceDoc(from, to), from - editor.state.doc.line(2).from];
+  }
+
+  it("selects the whole Devanagari word instead of a prefix of an earlier word", () => {
+    const editor = mount("\\section{परिचय}\nनमस्कार और नमस्ते दुनिया\n");
+    expect(selectWordNearLine(2, "नमस्ते")).toBe(true);
+    expect(selected(editor)).toEqual(["नमस्ते", 11]);
+  });
+
+  it("prefers a standalone occurrence over one followed by a combining mark", () => {
+    const editor = mount("x\nकिन्तु न हिन्दी\n");
+    expect(selectWordNearLine(2, "न")).toBe(true);
+    expect(selected(editor)).toEqual(["न", 7]);
+  });
+
+  it("finds an NFC word in NFD source text and selects the source characters", () => {
+    const editor = mount("x\nun cafe\u0301 noir\n");
+    expect(selectWordNearLine(2, "caf\u00e9")).toBe(true);
+    expect(selected(editor)).toEqual(["cafe\u0301", 3]);
+  });
+
+  it("maps a match back into a long NFD line", () => {
+    const filler = "e\u0301 ".repeat(20_000);
+    const editor = mount(`x\n${filler}Zürich cafe\u0301\n`.replace("ü", "u\u0308"));
+    expect(selectWordNearLine(2, "caf\u00e9")).toBe(true);
+    expect(selected(editor)).toEqual(["cafe\u0301", filler.length + 8]);
+  });
+
+  it("treats a neighbouring astral letter as part of the word", () => {
+    const editor = mount("x\n𠮷野家 野家\n");
+    expect(selectWordNearLine(2, "野家")).toBe(true);
+    expect(selected(editor)).toEqual(["野家", 5]);
   });
 });

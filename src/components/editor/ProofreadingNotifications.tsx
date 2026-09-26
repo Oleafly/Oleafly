@@ -49,6 +49,7 @@ export function ProofreadingNotifications({
   useSilentRetry({
     failing:
       relevant &&
+      status.retryable !== false &&
       (status.phase === "unavailable" || status.phase === "error"),
     recovered:
       relevant && (status.phase === "ready" || status.phase === "partial"),

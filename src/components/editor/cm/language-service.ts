@@ -556,7 +556,7 @@ function shouldRequestCompletion(
     context.pos,
   );
   if (/\.typ$/i.test(path)) {
-    return /[#@<][\p{L}\p{N}_:.-]*$/u.test(before);
+    return /[#@<][\p{L}\p{M}\p{N}_:.-]*$/u.test(before);
   }
   return (
     /\\[\p{L}@]*$/u.test(before) ||
@@ -584,7 +584,7 @@ export const languageServiceCompletion: CompletionSource = async (
     return null;
   }
   const token = context.matchBefore(
-    /[\\#<]?[\p{L}\p{N}_:./@-]*$/u,
+    /[\\#<]?[\p{L}\p{M}\p{N}_:./@-]*$/u,
   );
   const fallbackFrom = token?.from ?? context.pos;
   const positions = new TextPositionIndex(text);

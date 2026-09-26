@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",
     "spellLanguageHint": "Applies to this project only. Download more languages in Settings.",
-    "spellLanguageFailed": "Couldn't change the spell-check language."
+    "spellLanguageFailed": "Couldn't change the spell-check language.",
+    "notChecked": "Not checked",
+    "dictionaryMissing": "{{name}} is not downloaded, so spelling is not checked. Download it in Settings or pick another language.",
+    "grammarEnglishOnly": "Grammar checking only works for English documents.",
+    "spellLanguageNotDownloaded": "{{name}} (not downloaded)"
   },
   "table": {
     "trigger": "Insert table",
@@ -567,7 +571,10 @@
     "keyboardHint": "Use Tab or the arrow keys to move between actions. Press Escape to close.",
     "endOfDocument": "End of document",
     "hidePreamble": "Hide document preamble",
-    "showPreamble": "Show document preamble"
+    "showPreamble": "Show document preamble",
+    "findingLabel": "{{message}}. Open proofreading suggestions.",
+    "rawBlockFindings_one": "{{count}} proofreading finding in this raw block. {{message}}. Open suggestions.",
+    "rawBlockFindings_other": "{{count}} proofreading findings in this raw block. {{message}}. Open suggestions."
   },
   "package": {
     "search": {

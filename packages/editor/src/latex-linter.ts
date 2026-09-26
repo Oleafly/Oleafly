@@ -37,7 +37,7 @@ const VERBATIM_ENVIRONMENTS = new Set([
 ]);
 
 const commandCharacter = (char: string | undefined): boolean =>
-  Boolean(char && /[A-Za-z@]/.test(char));
+  Boolean(char && /[\p{L}\p{M}@]/u.test(char));
 
 const whitespace = (char: string | undefined): boolean =>
   char === " " ||
@@ -154,7 +154,7 @@ function balancedBraceEnd(text: string, start: number): number | null {
 }
 
 function validDefinedCommand(value: string): boolean {
-  return /^\\(?:[A-Za-z@]+|.)$/u.test(value.trim());
+  return /^\\(?:[\p{L}\p{M}@]+|.)$/u.test(value.trim());
 }
 
 interface DefinitionGroup {

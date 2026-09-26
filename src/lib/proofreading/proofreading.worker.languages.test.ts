@@ -42,6 +42,7 @@ async function spell(
   locale: string,
   text: string,
   format: ProofreadingRequest["format"] = "latex",
+  ignoredWords: string[] = [],
 ): Promise<ProofreadingResult> {
   const id = ++nextId;
   const request: ProofreadingRequest = {
@@ -58,7 +59,7 @@ async function spell(
     format,
     mode: "spelling",
     text,
-    ignoredWords: [],
+    ignoredWords,
     suppressions: [],
     preferences: {
       showRegionalism: true,
@@ -121,6 +122,19 @@ Die Größe der Straße überrascht die Bürger. Übungen für Schüler sind sch
     expect(flagged(result).every((word) => word.length > 2)).toBe(true);
   }, 30_000);
 
+  it("matches ignored words by their whole spelling", async () => {
+    const hindi = "\u0939\u093F\u0902\u0926\u0940";
+    const otherHindi = "\u0939\u093F\u0902\u0926\u0942";
+    const persian = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645\u0645";
+    const result = await spell(
+      "de_DE",
+      `${hindi} ${otherHindi} ${persian} Bür\u00ADgr Grösx`,
+      "latex",
+      [hindi, persian, "Bürgr"],
+    );
+    expect(flagged(result)).toEqual([otherHindi, "Grösx"]);
+  }, 30_000);
+
   it("accepts French elisions with either apostrophe", async () => {
     const result = await spell(
       "fr_FR",
@@ -164,5 +178,42 @@ Die Größe der Straße überrascht die Bürger. Übungen für Schüler sind sch
       "The students' results were ``well-known'' and don’t surprise anyone.",
     );
     expect(flagged(result)).toEqual([]);
+  }, 30_000);
+
+  it("reads LaTeX accent macros as whole words", async () => {
+    deliver("de_DE");
+    deliver("fr_FR");
+    const german = await spell(
+      "de_DE",
+      String.raw`Schr\"odinger und M\"uller sind gr\"o\ss er als Stra\ss e.`,
+    );
+    expect(flagged(german)).toEqual([]);
+    const french = await spell(
+      "fr_FR",
+      String.raw`Le caf\'e na\"\i f et l'\'el\`eve.`,
+    );
+    expect(flagged(french)).toEqual([]);
+  }, 30_000);
+
+  it("flags a misspelled accented word over its whole source span", async () => {
+    deliver("de_DE");
+    const text = String.raw`Der M\"ullr kommt.`;
+    const result = await spell("de_DE", text);
+    expect(result.diagnostics).toHaveLength(1);
+    const [diagnostic] = result.diagnostics;
+    expect(diagnostic.word).toBe("Müllr");
+    expect(text.slice(diagnostic.from, diagnostic.to)).toBe(String.raw`M\"ullr`);
+  }, 30_000);
+
+  it("masks e-mail addresses with non-ASCII domains in every format", async () => {
+    deliver("de_DE");
+    for (const format of ["plaintext", "latex", "markdown", "typst"] as const) {
+      const result = await spell(
+        "de_DE",
+        "Schreiben Sie an jan@firma.рф heute.",
+        format,
+      );
+      expect(flagged(result), format).toEqual([]);
+    }
   }, 30_000);
 });

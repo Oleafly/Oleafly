@@ -1,4 +1,4 @@
-import { trimToWordCharacters } from "./word-edges";
+import { trimToWordCharacters, withoutSoftHyphens } from "./word-edges";
 import type {
   LocalLinter,
   Lint,
@@ -13,6 +13,7 @@ import {
   guardProofreadingDiagnostics,
   type ProofreadingDialect,
   type ProofreadingDiagnostic,
+  type ProofreadingCancelRequest,
   type ProofreadingDictionaryDelivery,
   type ProofreadingError,
   type ProofreadingIdentity,
@@ -25,6 +26,7 @@ import {
   type ProofreadingWorkerResponse,
 } from "../../../packages/editor/src/proofreading";
 import {
+  EMAIL_ADDRESS_PATTERN,
   mapSpellingWords,
   restoreApostrophes,
   spellingLookupForms,
@@ -49,6 +51,7 @@ import {
 } from "./ignored";
 import { harperDialectFor } from "./dialects";
 import {
+  DictionaryLoadError,
   loadHunspellDictionary,
   normalizeDictionaryLocaleId,
   type DictionaryPayload,
@@ -93,6 +96,7 @@ let grammarLintConfigKey: string | null = null;
 const MAX_SPELLCHECKERS = 2;
 const SUGGESTION_BUDGET_MS = 1_500;
 const MAX_CACHED_SUGGESTIONS = 4_000;
+const CANCELLATION_CHECK_MS = 50;
 const spellcheckers = new Map<string, Promise<Hunspell>>();
 const suggestionCache = new Map<string, ProofreadingSuggestion[]>();
 const deliveredDictionaries = new Map<string, DictionaryPayload>();
@@ -106,11 +110,15 @@ function lane(identity: ProofreadingIdentity): string {
 }
 
 function normalizeWord(word: string): string {
-  return word.normalize("NFKC").trim().toLocaleLowerCase("en-US");
+  return withoutSoftHyphens(word.normalize("NFKC"))
+    .trim()
+    .toLocaleLowerCase("en-US");
 }
 
 function isIgnoredToken(word: string, ignored: ReadonlySet<string>): boolean {
-  const normalized = normalizeWord(trimToWordCharacters(word));
+  const normalized = normalizeWord(
+    trimToWordCharacters(withoutSoftHyphens(word.normalize("NFKC"))),
+  );
   if (!normalized) return true;
   return ignored.has(normalized) || isSessionIgnoredWord(word);
 }
@@ -119,6 +127,32 @@ function identityIsLatest(identity: ProofreadingIdentity): boolean {
   return (
     latestGeneration.get(lane(identity)) === identity.requestGeneration
   );
+}
+
+class ProofreadingCancelledError extends Error {
+  constructor() {
+    super("Proofreading was cancelled.");
+    this.name = "ProofreadingCancelledError";
+  }
+}
+
+function yieldToMessages(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function cancelLanes(surface: unknown, path: unknown) {
+  if (surface !== "source" && surface !== "visual") return;
+  if (path !== undefined && typeof path !== "string") return;
+  const matches = (requestLane: string) => {
+    const [laneSurface, , lanePath] = requestLane.split("\0");
+    return laneSurface === surface && (path === undefined || lanePath === path);
+  };
+  for (const requestLane of [...queuedRequests.keys()]) {
+    if (matches(requestLane)) queuedRequests.delete(requestLane);
+  }
+  for (const requestLane of [...latestGeneration.keys()]) {
+    if (matches(requestLane)) latestGeneration.delete(requestLane);
+  }
 }
 
 function errorResponse(
@@ -275,7 +309,7 @@ function plaintextToProse(text: string): {
   const characters = text.split("");
   const patterns = [
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+    EMAIL_ADDRESS_PATTERN,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -507,7 +541,10 @@ function rememberDeliveredDictionary(
 }
 
 async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
-  const safeLocale = normalizeDictionaryLocaleId(locale);
+  return spellcheckerFor(normalizeDictionaryLocaleId(locale));
+}
+
+function spellcheckerFor(safeLocale: string): Promise<Hunspell> {
   const cached = spellcheckers.get(safeLocale);
   if (cached) {
     spellcheckers.delete(safeLocale);
@@ -831,7 +868,9 @@ async function spellingDiagnostics(
   ignored: ReadonlySet<string>,
 ): Promise<ProofreadingDiagnostic[]> {
   const locale = activeDictionaryLocaleFor(request);
-  const spellchecker = await getSpellchecker(locale);
+  const safeLocale = normalizeDictionaryLocaleId(locale);
+  let loaded = spellcheckerFor(safeLocale);
+  let spellchecker = await loaded;
   const diagnostics: ProofreadingDiagnostic[] = [];
   const correctness = new Map<string, boolean>();
   const isCorrect = (word: string) => {
@@ -843,7 +882,20 @@ async function spellingDiagnostics(
     return correct;
   };
   const deadline = performance.now() + SUGGESTION_BUDGET_MS;
+  let nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
   for (const range of spellingRanges(request)) {
+    if (performance.now() >= nextCancellationCheck) {
+      await yieldToMessages();
+      if (!identityIsLatest(request.identity)) {
+        throw new ProofreadingCancelledError();
+      }
+      if (spellcheckers.get(safeLocale) !== loaded) {
+        loaded = spellcheckerFor(safeLocale);
+        spellchecker = await loaded;
+        correctness.clear();
+      }
+      nextCancellationCheck = performance.now() + CANCELLATION_CHECK_MS;
+    }
     if (!spellableToken(range.word, ignored)) continue;
     if (
       range.compound &&
@@ -1052,7 +1104,10 @@ async function analyzeSpellingMode(
         : `The requested ${
             request.preferences.dictionaryLocale ?? "en_US"
           } spelling dictionary could not start.`,
-      true,
+      !(
+        error instanceof DictionaryLoadError &&
+        error.reason === "not_installed"
+      ),
     );
   }
 }
@@ -1265,6 +1320,11 @@ workerScope.addEventListener("message", (event) => {
         dic: delivery.dic,
       });
     }
+    return;
+  }
+  if (message.type === "cancel") {
+    const cancel = message as ProofreadingCancelRequest;
+    cancelLanes(cancel.surface, cancel.path);
     return;
   }
   if (message.type === "suggest") {

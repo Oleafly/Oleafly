@@ -585,7 +585,8 @@
       },
       "harper": {
         "description": "LaTeX と Markdown のソース編集とビジュアル編集、および Typst のソース編集で、英語の文法と文体をチェックし、ワンクリックで修正できます。",
-        "label": "文法と文体（Harper）"
+        "label": "文法と文体（Harper）",
+        "englishOnly": "文法チェックは英語でのみ機能します。スペル辞書が {{name}} の間は一時停止しています。"
       },
       "offline": {
         "description": "--only-cached でコンパイルし、ネットワーク経由でパッケージを取得しません。",

@@ -129,6 +129,7 @@
   },
   "dictionary": {
     "full": "사전이 가득 차서 그 단어는 이 문서에서만 숨깁니다. 저장하려면 설정에서 단어를 하나 제거하세요.",
+    "unsupportedCharacters": "이 단어에는 사전에 저장할 수 없는 문자가 있습니다.",
     "wordTooLong": "단어로 저장하기에는 너무 길어서 이 문서에서만 숨깁니다. 단어는 최대 {{max}}자까지 가능합니다."
   },
   "documentScan": {
@@ -360,7 +361,11 @@
     "updatedOn": "{{date}} 업데이트",
     "updatedToday": "오늘 업데이트",
     "updatedYesterday": "어제 업데이트",
-    "autosaveFailed": "변경 내용을 저장하지 못했습니다. 변경 내용은 편집기에 그대로 있습니다."
+    "autosaveFailed": "변경 내용을 저장하지 못했습니다. 변경 내용은 편집기에 그대로 있습니다.",
+    "changedOnDisk": "\"{{path}}\" 파일이 Oleafly 밖에서 변경되었습니다. 다시 불러오거나, 내 버전을 유지하려면 다시 저장하세요.",
+    "openFileEncoding": "\"{{path}}\" 파일은 UTF-8 텍스트 파일이 아니어서 열 수 없습니다. 텍스트 파일이라면 UTF-8로 저장한 뒤 다시 여세요.",
+    "openFileFailed": "\"{{path}}\" 파일을 열 수 없습니다. 자세한 내용은 앱 로그를 확인하세요.",
+    "reloadFromDisk": "다시 불러오기"
   },
   "projectDiagnostics": {
     "analysisFailed": "분석에 실패했습니다: {{message}}",

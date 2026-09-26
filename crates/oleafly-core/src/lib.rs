@@ -5,6 +5,7 @@ mod image_check;
 pub mod locking;
 mod manifest;
 mod tree;
+mod utf8_stream;
 mod workspace;
 
 pub use build::PreparedBuild;
@@ -24,4 +25,5 @@ pub use tree::{
     is_generated_directory, slash_path, walk_source_tree, GENERATED_DIRECTORIES,
     MAX_DISCOVERY_DEPTH,
 };
+pub use utf8_stream::{rejoin_split_utf8_lines, Utf8StreamDecoder};
 pub use workspace::{DoctorCheck, DoctorReport, DoctorStatus, InitOptions, ProjectInfo, Workspace};

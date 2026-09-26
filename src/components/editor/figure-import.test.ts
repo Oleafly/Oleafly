@@ -101,6 +101,19 @@ describe("naming", () => {
     expect(timestampedImageName(new Date(2026, 0, 2, 3, 4, 5), "svg")).toBe("pasted-image-20260102-030405.svg");
   });
 
+  it("transliterates accented names and stamps names in other scripts", () => {
+    expect(preferredImageName(file("údolí hora.png", "image/png"), NOW)).toBe("udoli-hora.png");
+    expect(preferredImageName(file("graf_výsledků.png", "image/png"), NOW)).toBe("graf_vysledku.png");
+    expect(preferredImageName(file("Straße.JPG", "image/jpeg"), NOW)).toBe("Strasse.JPG");
+    expect(preferredImageName(file("2024.png", "image/png"), NOW)).toBe("2024.png");
+    expect(preferredImageName(file("Classiﬁcation ﬂow.png", "image/png"), NOW)).toBe("Classification-flow.png");
+    for (const name of ["рисунок.png", "图1.png", "図.png", "صورة.png"]) {
+      expect(preferredImageName(file(name, "image/png"), NOW)).toBe("pasted-image-20260916-142530.png");
+    }
+    expect(suggestedFigureLabel("figures/řeka.png")).toBe("fig:reka");
+    expect(suggestedFigureLabel("figures/диаграмма.png")).toBe("fig:figure");
+  });
+
   it("makes paths unique against the tree, case-insensitively", () => {
     expect(uniqueProjectPath("figures/plot.png", TREE)).toBe("figures/plot-2.png");
     expect(uniqueProjectPath("figures/PLOT.png", [...TREE, { path: "figures/plot-2.png", is_dir: false }])).toBe(

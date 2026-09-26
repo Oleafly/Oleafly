@@ -211,7 +211,11 @@
     "spellLanguageAppSetting": "Použít nastavení aplikace",
     "spellLanguageAriaLabel": "Jazyk kontroly pravopisu pro tento projekt",
     "spellLanguageHint": "Platí jen pro tento projekt. Další jazyky stáhnete v Nastavení.",
-    "spellLanguageFailed": "Jazyk kontroly pravopisu se nepodařilo změnit."
+    "spellLanguageFailed": "Jazyk kontroly pravopisu se nepodařilo změnit.",
+    "notChecked": "Nezkontrolováno",
+    "dictionaryMissing": "Slovník „{{name}}“ není stažený, takže se pravopis nekontroluje. Stáhněte ho v Nastavení nebo zvolte jiný jazyk.",
+    "grammarEnglishOnly": "Kontrola gramatiky funguje jen pro anglické dokumenty.",
+    "spellLanguageNotDownloaded": "{{name}} (nestaženo)"
   },
   "table": {
     "trigger": "Vložit tabulku",
@@ -577,7 +581,12 @@
     "keyboardHint": "Mezi akcemi se pohybujte tabulátorem nebo šipkami. Zavřete klávesou Esc.",
     "endOfDocument": "Konec dokumentu",
     "hidePreamble": "Skrýt preambuli dokumentu",
-    "showPreamble": "Zobrazit preambuli dokumentu"
+    "showPreamble": "Zobrazit preambuli dokumentu",
+    "findingLabel": "{{message}}. Otevřít návrhy korektury.",
+    "rawBlockFindings_one": "{{count}} nález korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy.",
+    "rawBlockFindings_few": "{{count}} nálezy korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy.",
+    "rawBlockFindings_many": "{{count}} nálezu korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy.",
+    "rawBlockFindings_other": "{{count}} nálezů korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy."
   },
   "package": {
     "search": {

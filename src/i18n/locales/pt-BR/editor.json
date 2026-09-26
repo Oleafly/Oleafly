@@ -209,7 +209,11 @@
     "spellLanguageAppSetting": "Usar a configuração do aplicativo",
     "spellLanguageAriaLabel": "Idioma da verificação ortográfica deste projeto",
     "spellLanguageHint": "Vale só para este projeto. Baixe mais idiomas em Configurações.",
-    "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica."
+    "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica.",
+    "notChecked": "Não verificado",
+    "dictionaryMissing": "{{name}} não foi baixado, então a ortografia não é verificada. Baixe-o nas Configurações ou escolha outro idioma.",
+    "grammarEnglishOnly": "A verificação gramatical só funciona em documentos em inglês.",
+    "spellLanguageNotDownloaded": "{{name}} (não baixado)"
   },
   "table": {
     "trigger": "Inserir tabela",
@@ -572,7 +576,11 @@
     "keyboardHint": "Use Tab ou as setas para circular entre as ações. Pressione Esc para fechar.",
     "endOfDocument": "Fim do documento",
     "hidePreamble": "Ocultar o preâmbulo do documento",
-    "showPreamble": "Mostrar o preâmbulo do documento"
+    "showPreamble": "Mostrar o preâmbulo do documento",
+    "findingLabel": "{{message}}. Abrir sugestões de revisão.",
+    "rawBlockFindings_one": "{{count}} apontamento de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
+    "rawBlockFindings_many": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
+    "rawBlockFindings_other": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões."
   },
   "package": {
     "search": {

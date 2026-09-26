@@ -121,8 +121,16 @@ function isOfficeDocument(html: string): boolean {
   return /name=["']?ProgId["' ]/iu.test(html) || /urn:schemas-microsoft-com:office/iu.test(html);
 }
 
-function normalizeSpace(text: string): string {
+function collapseSpace(text: string): string {
   return text.replace(/\s+/gu, " ").trim();
+}
+
+function normalizeSpace(text: string): string {
+  return text
+    .replace(/\s+/gu, (run: string, offset: number, whole: string) =>
+      run === NO_BREAK_SPACE && offset > 0 && offset + run.length < whole.length ? "~" : " ",
+    )
+    .trim();
 }
 
 function paragraphsFrom(text: string): string[] {
@@ -147,8 +155,8 @@ function escapeUrl(url: string): string {
 }
 
 function inlineCode(element: Element): string {
-  const text = element.textContent ?? "";
-  if (/[\r\n]/u.test(text)) return String.raw`\texttt{${escapeLatexText(normalizeSpace(text))}}`;
+  const text = (element.textContent ?? "").replaceAll(NO_BREAK_SPACE, " ");
+  if (/[\r\n]/u.test(text)) return String.raw`\texttt{${escapeLatexText(collapseSpace(text))}}`;
   const delimiter = VERB_DELIMITERS.find((candidate) => !text.includes(candidate));
   return delimiter
     ? String.raw`\verb${delimiter}${text}${delimiter}`
@@ -212,7 +220,7 @@ function renderChildrenInline(element: Element, context: Context): string {
 
 function renderInline(node: Node, context: Context): string {
   if (node.nodeType === 3) {
-    return escapeLatexText((node.textContent ?? "").replaceAll(NO_BREAK_SPACE, " "));
+    return escapeLatexText(node.textContent ?? "");
   }
   if (!isElement(node)) return "";
   const tag = tagOf(node);

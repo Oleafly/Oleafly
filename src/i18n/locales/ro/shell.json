@@ -611,7 +611,8 @@
       },
       "harper": {
         "description": "Verifică gramatica și stilul englezesc în modurile Sursă și Vizual pentru LaTeX și Markdown, plus Sursă pentru Typst, cu corecturi dintr-un clic.",
-        "label": "Gramatică și stil (Harper)"
+        "label": "Gramatică și stil (Harper)",
+        "englishOnly": "Verificarea gramaticală funcționează doar pentru engleză. Este în pauză cât timp dicționarul ortografic este {{name}}."
       },
       "offline": {
         "description": "Compilează cu --only-cached și nu descărca niciodată pachete prin rețea.",

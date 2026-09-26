@@ -76,6 +76,15 @@ describe("lintLatexText: malformed command forms", () => {
     expect(lintLatexText(source)).toHaveLength(0);
   });
 
+  it("accepts XeTeX control sequences spelled with Unicode letters", () => {
+    const source = String.raw`\newcommand{\výsledek}{42}
+\newcommand\αβ{AB}
+\NewDocumentCommand{\příklad}{m}{#1}
+\renewcommand{\Ärger}[1]{#1}
+Výsledek je \výsledek{} a \αβ. Dvo\v{r}\'ak \c{c}.`;
+    expect(lintLatexText(source)).toEqual([]);
+  });
+
   it("reports a malformed command definition name and keeps scanning", () => {
     const diagnostics = lintLatexText(
       String.raw`\newcommand{widget}[1]{#1}

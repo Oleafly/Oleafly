@@ -1,3 +1,4 @@
+import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
 import type {
   ProjectIntelligenceEngine,
   SourceLocation,
@@ -203,7 +204,10 @@ export function maskTypstComments(text: string): string {
       }
       continue;
     }
-    if (text.startsWith("//", index)) {
+    const link = typstAutolinkEnd(text, index);
+    if (link !== null) {
+      index = link - 1;
+    } else if (text.startsWith("//", index)) {
       while (index < chars.length && chars[index] !== "\n") {
         chars[index] = " ";
         index++;

@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Käytä sovelluksen asetusta",
     "spellLanguageAriaLabel": "Tämän projektin oikoluvun kieli",
     "spellLanguageHint": "Koskee vain tätä projektia. Lataa lisää kieliä asetuksissa.",
-    "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa."
+    "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa.",
+    "notChecked": "Ei tarkistettu",
+    "dictionaryMissing": "{{name}} ei ole ladattu, joten oikeinkirjoitusta ei tarkisteta. Lataa se asetuksista tai valitse toinen kieli.",
+    "grammarEnglishOnly": "Kieliopin tarkistus toimii vain englanninkielisissä asiakirjoissa.",
+    "spellLanguageNotDownloaded": "{{name}} (ei ladattu)"
   },
   "table": {
     "trigger": "Lisää taulukko",
@@ -567,7 +571,10 @@
     "keyboardHint": "Siirry toimintojen välillä Tab-näppäimellä tai nuolinäppäimillä. Sulje painamalla Escape.",
     "endOfDocument": "Dokumentin loppu",
     "hidePreamble": "Piilota dokumentin esittelyosa",
-    "showPreamble": "Näytä dokumentin esittelyosa"
+    "showPreamble": "Näytä dokumentin esittelyosa",
+    "findingLabel": "{{message}}. Avaa oikolukuehdotukset.",
+    "rawBlockFindings_one": "{{count}} oikolukuhavainto tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
+    "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset."
   },
   "package": {
     "search": {

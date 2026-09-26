@@ -102,6 +102,25 @@ describe("generateCiteKey", () => {
     const fields = { author: "Jane Smith", year: "2020", title: "Vision" };
     expect(generateCiteKey(fields, new Set())).toBe("smith2020vision");
   });
+  it("decodes TeX accents and folds Latin diacritics", () => {
+    const key = (author: string, year: string, title: string) => generateCiteKey({ author, year, title }, new Set());
+    expect(key(String.raw`\v{C}apek, Karel`, "1920", "R.U.R. Rossumovi univerzální roboti")).toBe("capek1920rur");
+    expect(key("Čapek, Karel", "1936", "Válka s mloky")).toBe("capek1936valka");
+    expect(key(String.raw`Nov{\'a}k, Jan`, "2000", "Česká škola")).toBe("novak2000ceska");
+    expect(key(String.raw`\c{C}elik, Ali`, "2010", "Ölçüm")).toBe("celik2010olcum");
+    expect(key("Łukasiewicz, Jan", "1920", "Żółw")).toBe("lukasiewicz1920zolw");
+    expect(key("Müller, Jörg", "2019", String.raw`\"Uber die Stra\ss e`)).toBe("muller2019uber");
+  });
+  it("keeps keys ASCII for classic BibTeX and never returns a bare year", () => {
+    const key = (author: string, year: string, title: string) => generateCiteKey({ author, year, title }, new Set());
+    expect(key("Novák, Jan", "2020", "Česká škola")).toBe("novak2020ceska");
+    expect(key("Иванов, Иван", "2020", "Теория")).toBe("ref2020");
+    expect(key("王小明", "2020", "机器学习")).toBe("ref2020");
+    expect(key("शर्मा, राम", "2020", "सिद्धांत")).toBe("ref2020");
+    expect(key("Иванов, Иван", "2020", "Deep learning")).toBe("2020deep");
+    expect(key("", "2021", "")).toBe("ref2021");
+    expect(key("---", "2021", "a b")).toBe("ref2021");
+  });
   it("stays within [a-z] past 26 collisions (no invalid chars)", () => {
     const fields = { author: "Smith, Jane", year: "2021", title: "Deep nets" };
     const base = "smith2021deep";

@@ -52,6 +52,10 @@ function bindEditorEmacsKeys(): void {
   EmacsHandler.bindKey("C-k", { exec: killToVisualLineEnd, keepLastCommand: true });
   EmacsHandler.bindKey("C-s|C-r", { exec: searchFromMark, readOnly: true });
   EmacsHandler.bindKey("C-x C-s", { exec: saveFromEmacs, readOnly: true });
+  EmacsHandler.bindKey("C-x C-l", {
+    command: "changeCase",
+    args: { dir: -1, region: true },
+  });
 }
 
 export function emacsModeExtension(): Extension {

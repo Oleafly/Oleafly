@@ -124,47 +124,29 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     ),
 });
 
-function typedPrefix(
-  before: string,
-  pos: number,
-): { from: number; text: string } | null {
-  const start = typedPrefixStart(before);
-  const text = before.slice(start);
-  const minimum = typedPrefixMinimum(text);
-  if (minimum === null) return null;
-  if (text.length < minimum) return null;
-  return { from: pos - text.length, text };
-}
-
-function typedPrefixStart(before: string): number {
-  let start = before.length;
-  while (start > 0) {
-    if (!isIdentifierContinuation(before[start - 1])) break;
-    start--;
+function typedPrefix(before: string, length: number): string | null {
+  if (length <= 0 || length > before.length) return null;
+  const text = before.slice(before.length - length);
+  if (text.startsWith("\\")) {
+    return /^\\[A-Za-z@]+$/u.test(text) &&
+      text.length >= MIN_COMMAND_LETTERS + 1
+      ? text
+      : null;
   }
-  if (start > 0) {
-    if (before[start - 1] === "\\") start--;
+  if (before[before.length - length - 1] === "\\") {
+    return /^[A-Za-z@]+$/u.test(text) && text.length >= MIN_COMMAND_LETTERS
+      ? text
+      : null;
   }
-  if (before[start] === "@") start++;
-  return start;
+  if (!/^\p{L}/u.test(text) || /\s/u.test(text)) return null;
+  return text.length >= MIN_WORD_LETTERS ? text : null;
 }
 
-function typedPrefixMinimum(text: string): number | null {
-  if (!text) return null;
-  if (text.startsWith("\\")) return MIN_COMMAND_LETTERS + 1;
-  if (isAsciiLetter(text[0])) return MIN_WORD_LETTERS;
-  return null;
-}
-
-function isAsciiLetter(character: string): boolean {
-  return (character >= "A" && character <= "Z") ||
-    (character >= "a" && character <= "z");
-}
-
-function isIdentifierContinuation(character: string): boolean {
-  return isAsciiLetter(character) ||
-    (character >= "0" && character <= "9") ||
-    character === "@";
+function overlapLength(before: string, label: string): number {
+  for (let length = Math.min(before.length, label.length - 1); length > 0; length--) {
+    if (before.endsWith(label.slice(0, length))) return length;
+  }
+  return 0;
 }
 
 const WORD_END_PUNCTUATION = new Set(["}", "]", ")", ",", ".", ":", "$", "&"]);
@@ -178,9 +160,13 @@ function atWordEnd(view: EditorView, pos: number): boolean {
 }
 
 function previewLabel(option: Completion, prefix: string): string | null {
-  const label = typeof option.apply === "string" ? option.apply : option.label;
+  const label = optionText(option);
   if (label.length <= prefix.length || !label.startsWith(prefix)) return null;
   return label;
+}
+
+function optionText(option: Completion): string {
+  return typeof option.apply === "string" ? option.apply : option.label;
 }
 
 function bestOption(options: readonly Completion[], prefix: string): string | null {
@@ -229,14 +215,15 @@ function computeGhost(
   if (view.state.field(dismissedField, false) === pos) return null;
   if (!atWordEnd(view, pos)) return null;
   const before = boundedCompletionContext(view.state, pos);
-  const prefix = typedPrefix(before, pos);
-  if (!prefix) return null;
+  if (!before || /\s$/u.test(before)) return null;
 
   // Popup open: mirror the highlighted option so the two never disagree.
   if (completionStatus(view.state) === "active") {
     const selected = selectedCompletion(view.state);
-    const label = selected ? previewLabel(selected, prefix.text) : null;
-    return label ? { pos, text: label.slice(prefix.text.length) } : null;
+    if (!selected) return null;
+    const prefix = typedPrefix(before, overlapLength(before, optionText(selected)));
+    const label = prefix ? previewLabel(selected, prefix) : null;
+    return prefix && label ? { pos, text: label.slice(prefix.length) } : null;
   }
 
   if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
@@ -245,8 +232,10 @@ function computeGhost(
   for (const source of sources) {
     const result = syncResult(source, context);
     if (!result) continue;
-    const label = bestOption(result.options, prefix.text);
-    if (label) return { pos, text: label.slice(prefix.text.length) };
+    const prefix = typedPrefix(before, pos - result.from);
+    if (!prefix) continue;
+    const label = bestOption(result.options, prefix);
+    if (label) return { pos, text: label.slice(prefix.length) };
   }
   return null;
 }

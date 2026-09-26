@@ -135,6 +135,7 @@
   },
   "dictionary": {
     "full": "Słownik jest pełny, więc to słowo zostało zamiast tego ukryte w tym dokumencie. Usuń jedno w Ustawieniach, aby je zapisać.",
+    "unsupportedCharacters": "To słowo zawiera znaki, których słownik nie może zapisać.",
     "wordTooLong": "To jest za długie, aby zapisać je jako słowo, więc zostało ukryte w tym dokumencie. Słowo może mieć najwyżej {{max}} znaków."
   },
   "documentScan": {
@@ -387,7 +388,11 @@
     "updatedOn": "Zaktualizowano {{date}}",
     "updatedToday": "Zaktualizowano dzisiaj",
     "updatedYesterday": "Zaktualizowano wczoraj",
-    "autosaveFailed": "Nie udało się zapisać zmian. Nadal są w edytorze."
+    "autosaveFailed": "Nie udało się zapisać zmian. Nadal są w edytorze.",
+    "changedOnDisk": "Plik „{{path}}” został zmieniony poza Oleafly. Wczytaj go ponownie albo zapisz jeszcze raz, aby zachować swoją wersję.",
+    "openFileEncoding": "Nie można otworzyć pliku „{{path}}”, ponieważ nie jest to plik tekstowy UTF-8. Jeśli to tekst, zapisz go w UTF-8 i otwórz ponownie.",
+    "openFileFailed": "Nie można otworzyć pliku „{{path}}”. Szczegóły znajdziesz w dzienniku aplikacji.",
+    "reloadFromDisk": "Wczytaj ponownie"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analiza nie powiodła się: {{message}}",

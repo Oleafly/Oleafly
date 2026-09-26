@@ -129,6 +129,7 @@
   },
   "dictionary": {
     "full": "你的词典已满，该词已改为在此文档中隐藏。请在设置中删除一个词条，之后即可保存该词。",
+    "unsupportedCharacters": "该词包含词典无法保存的字符。",
     "wordTooLong": "该内容过长，无法作为词条保存，因此改为在此文档中隐藏。词条最长为 {{max}} 个字符。"
   },
   "documentScan": {
@@ -360,7 +361,11 @@
     "updatedOn": "更新于 {{date}}",
     "updatedToday": "今天更新",
     "updatedYesterday": "昨天更新",
-    "autosaveFailed": "无法保存你的更改。更改仍保留在编辑器中。"
+    "autosaveFailed": "无法保存你的更改。更改仍保留在编辑器中。",
+    "changedOnDisk": "“{{path}}”已在 Oleafly 之外被修改。请重新加载，或再次保存以保留你的版本。",
+    "openFileEncoding": "无法打开“{{path}}”，因为它不是 UTF-8 文本文件。如果是文本文件，请以 UTF-8 保存后重新打开。",
+    "openFileFailed": "无法打开“{{path}}”。详情请查看应用日志。",
+    "reloadFromDisk": "重新加载"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失败：{{message}}",

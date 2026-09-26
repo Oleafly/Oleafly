@@ -26,6 +26,13 @@ describe("completion lexical triggers", () => {
     ["bibtex", "@misc{m, title = {T}}\n\n  @bo"],
     ["bibtex", "@article{k,\n  au"],
     ["bibtex", "@article{k,\n  "],
+    ["typst", "\u0926\u0947\u0916\u0947\u0902 @\u092A\u0930\u093F"],
+    ["typst", "\u0E14\u0E39 @\u0E23\u0E39\u0E1B"],
+    ["typst", "Viz @kap:u\u0301v"],
+    ["typst", "#ref(<u\u0301vod"],
+    ["markdown", "[Viz](#u\u0301vod"],
+    ["markdown", "\u05E8\u05D0\u05D4 @\u05E9\u05B8\u05C1\u05DC"],
+    ["bibtex", "crossref = {\u092A\u0930\u093F"],
   ] as const)("recognizes a trigger in %s: %s", (syntax, source) => {
     expect(triggered(source, syntax)).toBe(true);
   });

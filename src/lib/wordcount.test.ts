@@ -112,7 +112,7 @@ describe("countWords heuristic fallback", () => {
       const boom = () => {
         throw new Error("mask exploded");
       };
-      return { maskLatex: boom, maskToProse: boom, spellcheckRanges: boom };
+      return { countedWordStarts: boom, maskLatex: boom, maskToProse: boom };
     });
     const { countWords: mockedCountWords } = await import("./wordcount");
 
@@ -129,7 +129,7 @@ describe("countWords heuristic fallback", () => {
       const boom = () => {
         throw new Error("mask exploded");
       };
-      return { maskLatex: boom, maskToProse: boom, spellcheckRanges: boom };
+      return { countedWordStarts: boom, maskLatex: boom, maskToProse: boom };
     });
     const { countWords: mockedCountWords } = await import("./wordcount");
 
@@ -137,5 +137,22 @@ describe("countWords heuristic fallback", () => {
     expect(mockedCountWords("alpha %note here\r\nbeta").words).toBe(2);
     expect(mockedCountWords("save 50\\% today %skipme\ndone").words).toBe(4);
     expect(mockedCountWords("alpha %note here\nbeta").lines).toBe(2);
+  });
+});
+
+describe("countWords across scripts", () => {
+  it.each([
+    ["Czech", "Na papíru je ještě příliš málo řádků.", 7],
+    ["German", "Die Straße ist schön und groß.", 6],
+    ["Russian", "Это простой тест.", 3],
+    ["Hebrew", "זהו מבחן פשוט של צה\"ל.", 5],
+    ["Persian", "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645 \u0627\u06CC\u0646", 2],
+    ["Hindi", "यह एक सरल परीक्षण है।", 5],
+    ["Korean", "이것은 간단한 테스트입니다.", 3],
+    ["Chinese", "这是一个简单的测试。", 9],
+    ["Japanese", "これは簡単なテストです。", 11],
+    ["Thai", "นี่คือการทดสอบ ง่ายๆ", 2],
+  ])("counts %s prose", (_script, text, words) => {
+    expect(countWords(text).words).toBe(words);
   });
 });

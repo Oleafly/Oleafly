@@ -1,3 +1,4 @@
+import { bibtexTextToUnicode } from "./bibtex-text";
 import type {
   BibliographyEntry,
   BibliographyEntryDetail,
@@ -12,14 +13,19 @@ function fieldValue(
   return fields.find((field) => field.name === name)?.value;
 }
 
+function displayText(value: string | undefined): string | undefined {
+  return value === undefined ? undefined : bibtexTextToUnicode(value) || undefined;
+}
+
 export function bibliographyEntrySummary(
   type: string,
   file: string,
   fields: readonly BibliographyField[],
 ): BibliographyEntrySummary {
-  const author =
-    fieldValue(fields, "author") ?? fieldValue(fields, "editor");
-  const title = fieldValue(fields, "title");
+  const author = displayText(
+    fieldValue(fields, "author") ?? fieldValue(fields, "editor"),
+  );
+  const title = displayText(fieldValue(fields, "title"));
   const year = fieldValue(fields, "year") ?? fieldValue(fields, "date");
   const display =
     [author, year, title].filter(Boolean).join(" · ") ||

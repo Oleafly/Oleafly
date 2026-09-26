@@ -13,9 +13,33 @@ import {
   normalizeDictionaryLocale,
   refreshDictionaryCatalog,
 } from "@/lib/proofreading/dictionary-catalog";
+import { forgetProofreadingDictionary } from "@/lib/proofreading/client";
 import { notifyError } from "@/lib/toast";
-import { removeDictionary } from "@/lib/tauri";
+import { removeDictionary, setProjectDictionaryLocaleCmd } from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+
+async function resetOpenProjectLocale(locale: string): Promise<boolean> {
+  const { projectId, projectDictionaryLocale } = useFilesStore.getState();
+  if (
+    !projectId ||
+    !projectDictionaryLocale ||
+    normalizeDictionaryLocale(projectDictionaryLocale) !== locale
+  ) {
+    return false;
+  }
+  try {
+    const meta = await setProjectDictionaryLocaleCmd(projectId, null);
+    if (useFilesStore.getState().projectId !== projectId) return false;
+    useFilesStore.setState({
+      projectDictionaryLocale: meta.dictionary_locale ?? null,
+    });
+    return true;
+  } catch (error) {
+    void logError("reset the project spelling language", error);
+    return false;
+  }
+}
 
 export function DictionaryDownloads() {
   const { t } = useTranslation(["common", "settings"]);
@@ -44,12 +68,26 @@ export function DictionaryDownloads() {
         setBusyId(null);
         return;
       }
+      const removed = normalizeDictionaryLocale(entry.id);
+      const restarted = forgetProofreadingDictionary(removed);
       const settings = useSettingsStore.getState();
-      if (
-        normalizeDictionaryLocale(settings.dictionaryLocale) ===
-        normalizeDictionaryLocale(entry.id)
-      ) {
+      let announced = false;
+      if (normalizeDictionaryLocale(settings.dictionaryLocale) === removed) {
         settings.setDictionaryLocale(DEFAULT_DICTIONARY_LOCALE);
+        announced = true;
+      }
+      if (await resetOpenProjectLocale(removed)) announced = true;
+      if (restarted && !announced) {
+        const current = useSettingsStore.getState();
+        window.dispatchEvent(
+          new CustomEvent("oleafly:proofreading-settings-changed", {
+            detail: {
+              setting: "dictionaryRemoved",
+              spellcheck: current.spellcheck,
+              harper: current.harper,
+            },
+          }),
+        );
       }
       try {
         setEntries(await refreshDictionaryCatalog());

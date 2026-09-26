@@ -1,6 +1,21 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseLatexLog } from "./latex-log";
 import { MAX_COMPILE_LOG_BYTES } from "./types";
+
+const GOLDEN_DIR = fileURLToPath(
+  new URL("../../../../crates/oleafly-core/tests/fixtures/compile-log/", import.meta.url),
+);
+
+function golden(name: string) {
+  const expected = JSON.parse(readFileSync(`${GOLDEN_DIR}${name}.expected.json`, "utf8")) as {
+    rootFile: string | null;
+    diagnostics: unknown[];
+  };
+  const log = readFileSync(`${GOLDEN_DIR}${name}.log`, "utf8");
+  return { expected, actual: parseLatexLog(log, expected.rootFile ?? undefined) };
+}
 
 describe("parseLatexLog", () => {
   it("parses a bang-style error with its l.<n> context excerpt", () => {
@@ -233,5 +248,182 @@ describe("parseLatexLog", () => {
     const errDiags = parseLatexLog(error, "/proj/main.tex");
     expect(errDiags).toHaveLength(1);
     expect(errDiags[0].file).toBe("/proj/main.tex");
+  });
+
+  it("matches the golden logs shared with the Rust parser", () => {
+    const names = readdirSync(GOLDEN_DIR)
+      .filter((name) => name.endsWith(".log"))
+      .map((name) => name.slice(0, -".log".length));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      const { expected, actual } = golden(name);
+      expect(actual, name).toEqual(expected.diagnostics);
+    }
+  });
+
+  it("attributes errors in Tectonic's extensionless \\input{kapitoly/úvod} to the child file", () => {
+    const errors = golden("tectonic-extensionless-input").actual.filter((d) => d.severity === "error");
+    expect(errors.map((d) => [d.file, d.line])).toEqual([
+      ["./kapitoly/úvod", 2],
+      ["./kapitoly/úvod", 2],
+    ]);
+  });
+
+  it("does not treat dates or words in parentheses as input files", () => {
+    const log = [
+      "(./main.tex",
+      "Package: foo 2021/01/01 (v1.0)",
+      "(2021/01/01) (Font) (see chapters/intro)",
+      "(chapters/intro",
+      "! Undefined control sequence.",
+      "l.3 \\bad",
+      "",
+      ")",
+      "! Undefined control sequence.",
+      "l.9 \\bad",
+      "",
+      "(01-uvod/text (2021-01/01)",
+      "! Undefined control sequence.",
+      "l.4 \\bad",
+      "",
+      ")",
+    ].join("\n");
+    expect(parseLatexLog(log).map((d) => [d.file, d.line])).toEqual([
+      ["./chapters/intro", 3],
+      ["./main.tex", 9],
+      ["./01-uvod/text", 4],
+    ]);
+  });
+
+  it("keeps the \\input file that pdfTeX opens right after a Font Info block", () => {
+    const diagnostics = golden("pdflatex-input-after-font-info").actual.filter(
+      (d) => d.severity !== "info",
+    );
+    expect(diagnostics.map((d) => [d.category, d.file, d.line])).toEqual([
+      ["undefined-reference", "./ch/one.tex", 1],
+      ["overfull-box", "./ch/one.tex", 2],
+    ]);
+  });
+
+  it("starts a new diagnostic for an error that follows an info line directly", () => {
+    const log = [
+      "(./main.tex",
+      "LaTeX Font Info:    ... okay on input line 3.",
+      "! Undefined control sequence.",
+      "l.4 \\bad",
+      "",
+      ")",
+    ].join("\n");
+    const errors = parseLatexLog(log).filter((d) => d.severity === "error");
+    expect(errors.map((d) => [d.file, d.line, d.message])).toEqual([
+      ["./main.tex", 4, "Undefined control sequence."],
+    ]);
+  });
+
+  it("recovers undefined references hard-wrapped at 79 columns", () => {
+    const refs = golden("tectonic-wrapped-references").actual.filter(
+      (d) => d.category === "undefined-reference",
+    );
+    expect(refs.map((d) => d.line)).toEqual([3, 4, 5, 6, 7, 8]);
+    expect(refs[4].message).toBe("Cannot find reference `fig:experimental-setup`.");
+    expect(refs[5].message).toBe("Cannot find reference `图表实验设置`.");
+  });
+
+  it("reads the line number of a wrapped citation and of a wrapped package warning", () => {
+    const log = [
+      "LaTeX Warning: Citation `knuth:the-art-of-computer-programming' on page 1 undefi",
+      "ned on input line 12.",
+      "",
+      "Package natbib Warning: Citation `a-very-long-key-for-natbib-citations' undefined",
+      " on input line 14.",
+      "",
+    ].join("\n");
+    expect(parseLatexLog(log).map((d) => [d.category, d.line, d.message])).toEqual([
+      ["undefined-citation", 12, "Cannot find citation `knuth:the-art-of-computer-programming`."],
+      [
+        "package-warning",
+        14,
+        "Package natbib: Citation `a-very-long-key-for-natbib-citations' undefined\n on input line 14.",
+      ],
+    ]);
+  });
+
+  it("reads the l.<n> line of '! LaTeX Error:' through its help block", () => {
+    const log = [
+      "(./main.tex",
+      "! LaTeX Error: \\begin{itemize} on input line 2 ended by \\end{enumerate}.",
+      "",
+      "See the LaTeX manual or LaTeX Companion for explanation.",
+      "Type  H <return>  for immediate help.",
+      " ...                                              ",
+      "                                                  ",
+      "l.4 \\end{enumerate}",
+      "                   ",
+      "Your command was ignored.",
+      "",
+      "! Package babel Error: Unknown option `xyz'.",
+      "",
+      "See the babel package documentation for explanation.",
+      "Type  H <return>  for immediate help.",
+      " ...                                              ",
+      "                                                  ",
+      "l.7 \\begin{document}",
+      "",
+      ")",
+    ].join("\n");
+    expect(parseLatexLog(log).map((d) => [d.file, d.line, d.message, d.errorContext])).toEqual([
+      [
+        "./main.tex",
+        4,
+        "\\begin{itemize} on input line 2 ended by \\end{enumerate}.",
+        "! LaTeX Error: \\begin{itemize} on input line 2 ended by \\end{enumerate}.\nl.4 \\end{enumerate}",
+      ],
+      [
+        "./main.tex",
+        7,
+        "Package babel: Unknown option `xyz'.",
+        "! Package babel Error: Unknown option `xyz'.\nl.7 \\begin{document}",
+      ],
+    ]);
+  });
+
+  it("stops waiting for an error's l.<n> line at the next ordinary log line", () => {
+    const log = [
+      "! Emergency stop.",
+      "<*> main.tex",
+      "",
+      "*** (job aborted, no legal \\end found)",
+      "",
+      "LaTeX Warning: Reference `x' on page 1 undefined on input line 5.",
+    ].join("\n");
+    expect(parseLatexLog(log).map((d) => [d.category, d.line])).toEqual([
+      ["error", null],
+      ["undefined-reference", 5],
+    ]);
+  });
+
+  it("ignores the engine output appended after a failed Tectonic compile", () => {
+    const diagnostics = golden("tectonic-engine-output-tail").actual;
+    expect(diagnostics.every((d) => !d.file?.startsWith("error: "))).toBe(true);
+    expect(
+      diagnostics.filter((d) => d.severity === "error").map((d) => [d.file, d.line, d.message]),
+    ).toEqual([
+      ["./kapitoly/úvod", 1, "Undefined control sequence."],
+      ["./kapitoly/úvod", 4, "\\begin{itemize} on input line 2 ended by \\end{enumerate}."],
+    ]);
+  });
+
+  it("skips Tectonic's error summary lines and keeps parsing Oleafly notes after the engine output", () => {
+    const log = [
+      "error: main.tex:6: Unable to load picture or PDF file 'figures/empty.png'",
+      "[Oleafly] Engine output:",
+      "! Undefined control sequence.",
+      "l.2 \\bad",
+      "",
+      "[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.",
+    ].join("\n");
+    expect(parseLatexLog(log).map((d) => [d.category, d.message])).toEqual([
+      ["biber", "Bibliography needs Biber (biblatex), but a usable .bbl was not produced."],
+    ]);
   });
 });

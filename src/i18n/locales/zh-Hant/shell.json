@@ -585,7 +585,8 @@
       },
       "harper": {
         "description": "在 LaTeX 與 Markdown 的原始碼與視覺化編輯，以及 Typst 原始碼中檢查英文文法與風格，並提供一鍵修正。",
-        "label": "文法與風格（Harper）"
+        "label": "文法與風格（Harper）",
+        "englishOnly": "文法檢查僅適用於英文。拼字字典為 {{name}} 時暫停。"
       },
       "offline": {
         "description": "使用 --only-cached 編譯，絕不透過網路取得套件。",

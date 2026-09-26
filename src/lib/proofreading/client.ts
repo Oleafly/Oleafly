@@ -15,9 +15,11 @@ import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { grammarSuppressionsFor } from "@/lib/dictionary";
 import { readDictionary } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import {
   effectiveDictionaryLocale,
   isBundledDictionary,
+  normalizeDictionaryLocale,
 } from "./dictionary-catalog";
 import "./actions";
 
@@ -150,6 +152,8 @@ class ProofreadingWorkerClient {
     RetainedProofreading
   >();
   private delivered: string[] = [];
+  private heldByWorker = new Set<string>();
+  private deliveries = new Map<string, Promise<void>>();
   private readonly pendingSuggestions = new Map<number, PendingSuggestion>();
   private readonly suggestions = new Map<
     string,
@@ -389,7 +393,23 @@ class ProofreadingWorkerClient {
     useProofreadingStore.getState().fail(request.identity, error.message, "error");
   }
 
-  private async deliverDictionary(
+  private deliverDictionary(
+    worker: WorkerLike,
+    locale: string,
+  ): Promise<void> {
+    const inFlight = this.deliveries.get(locale);
+    if (inFlight) return inFlight;
+    const deliveries = this.deliveries;
+    const delivery = this.readAndDeliverDictionary(worker, locale).finally(
+      () => {
+        if (deliveries.get(locale) === delivery) deliveries.delete(locale);
+      },
+    );
+    deliveries.set(locale, delivery);
+    return delivery;
+  }
+
+  private async readAndDeliverDictionary(
     worker: WorkerLike,
     locale: string,
   ): Promise<void> {
@@ -399,6 +419,7 @@ class ProofreadingWorkerClient {
     } catch (cause) {
       throw new DictionaryDeliveryError(locale, cause);
     }
+    if (this.worker !== worker) return;
     worker.postMessage({
       protocolVersion: PROOFREADING_PROTOCOL_VERSION,
       type: "dictionary",
@@ -406,13 +427,58 @@ class ProofreadingWorkerClient {
       aff: payload.aff,
       dic: payload.dic,
     });
+    this.heldByWorker.add(locale);
     this.delivered = [
       ...this.delivered.filter((entry) => entry !== locale),
       locale,
     ].slice(-MAX_DELIVERED_DICTIONARIES);
   }
 
+  forgetDictionary(locale: string): boolean {
+    const safeLocale = normalizeDictionaryLocale(locale);
+    for (const key of [...this.suggestions.keys()]) {
+      if (key.startsWith(`${safeLocale}\0`)) this.suggestions.delete(key);
+    }
+    if (
+      !this.heldByWorker.has(safeLocale) &&
+      !this.deliveries.has(safeLocale)
+    ) {
+      return false;
+    }
+    this.delivered = this.delivered.filter((entry) => entry !== safeLocale);
+    this.heldByWorker.delete(safeLocale);
+    this.worker?.terminate();
+    this.worker = null;
+    this.abandonSuggestions();
+    const restartError = new ProofreadingWorkerError(
+      i18n.t(($) => $.core.proofreading.restarted),
+      "worker_restarted",
+      true,
+    );
+    for (const pending of [...this.pending.values()]) {
+      this.rejectRequest(pending.request.requestId, restartError);
+      useProofreadingStore
+        .getState()
+        .clear(
+          pending.request.identity.surface,
+          pending.request.identity.path,
+        );
+    }
+    this.retained.clear();
+    return true;
+  }
+
   cancel(surface: ProofreadingSurface, path?: string) {
+    try {
+      this.worker?.postMessage({
+        protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+        type: "cancel",
+        surface,
+        ...(path ? { path } : {}),
+      });
+    } catch (error) {
+      void logError("cancel proofreading", error);
+    }
     for (const [requestId, pending] of this.pending) {
       if (
         pending.request.identity.surface === surface &&
@@ -496,6 +562,8 @@ class ProofreadingWorkerClient {
   private ensureWorker(): WorkerLike {
     if (this.worker) return this.worker;
     this.delivered = [];
+    this.heldByWorker = new Set();
+    this.deliveries = new Map();
     const worker = new Worker(
       new URL("./proofreading.worker.ts", import.meta.url),
       {
@@ -585,6 +653,7 @@ class ProofreadingWorkerClient {
           event.data.error.code === "initialization_failed"
             ? "unavailable"
             : "error",
+          event.data.error.retryable,
         );
       pending.reject(error);
       return;
@@ -711,4 +780,8 @@ export function cancelProofreading(
 
 export function retryProofreading(surface: ProofreadingSurface) {
   client.retry(surface);
+}
+
+export function forgetProofreadingDictionary(locale: string): boolean {
+  return client.forgetDictionary(locale);
 }

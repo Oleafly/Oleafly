@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
+use icu_properties::props::{GeneralCategory, GeneralCategoryGroup, Script};
+use icu_properties::CodePointMapData;
 use serde::{Deserialize, Serialize};
 
 use crate::project_sources::{read_project_sources_sync, ProjectSourcesRequest, SourceLimits};
@@ -35,7 +37,12 @@ const GREATER: u16 = b'>' as u16;
 const LESS: u16 = b'<' as u16;
 const BANG: u16 = b'!' as u16;
 const LATIN_SMALL_LONG_S: u16 = 0x017f;
-const KELVIN_SIGN: u16 = 0x212a;
+const EQUALS: u16 = b'=' as u16;
+const AMPERSAND: u16 = b'&' as u16;
+const CARET: u16 = b'^' as u16;
+const DOTLESS_I: u16 = b'i' as u16;
+const DOTLESS_J: u16 = b'j' as u16;
+const OPTION_SCAN_LIMIT: usize = 1000;
 
 const HEADING_CMDS: &[&str] = &[
     "part",
@@ -188,9 +195,111 @@ const OPAQUE_ARG_CMDS: &[&str] = &[
     "keywords",
     "institute",
     "affiliation",
+    "renewenvironment",
 ];
 
-const FIRST_ARG_OPAQUE_CMDS: &[&str] = &["textcolor", "colorbox", "fcolorbox", "hyperref", "href"];
+const REF_ARG_CMDS: &[&str] = &[
+    "cpageref",
+    "Cpageref",
+    "labelcref",
+    "labelcpageref",
+    "Vref",
+    "vpageref",
+    "Vpageref",
+    "namecref",
+    "nameCref",
+    "lcnamecref",
+    "namecrefs",
+    "nameCrefs",
+    "fref",
+    "Fref",
+    "sref",
+    "labelref",
+    "crefrange",
+    "Crefrange",
+    "cpagerefrange",
+    "Cpagerefrange",
+];
+
+const FIRST_ARG_OPAQUE_CMDS: &[&str] = &[
+    "textcolor",
+    "colorbox",
+    "fcolorbox",
+    "hyperref",
+    "href",
+    "bibitem",
+    "color",
+    "pagecolor",
+    "hyperlink",
+    "hypertarget",
+    "foreignlanguage",
+    "selectlanguage",
+    "setdefaultlanguage",
+    "setmainlanguage",
+    "setotherlanguage",
+    "setotherlanguages",
+    "babelprovide",
+    "includesvg",
+    "includepdf",
+    "includestandalone",
+    "subfile",
+    "externaldocument",
+    "import",
+    "subimport",
+    "inputfrom",
+    "subinputfrom",
+    "includefrom",
+    "subincludefrom",
+    "lstset",
+    "tikzset",
+    "pgfplotsset",
+    "tcbset",
+    "pgfkeys",
+    "pgfqkeys",
+    "setkeys",
+    "newgeometry",
+    "newcounter",
+    "setcounter",
+    "addtocounter",
+    "stepcounter",
+    "refstepcounter",
+    "addcontentsline",
+    "crefname",
+    "Crefname",
+    "newtheorem",
+    "newacronym",
+    "newglossaryentry",
+    "DeclareMathOperator",
+    "setmainfont",
+    "setsansfont",
+    "setmonofont",
+    "setmathfont",
+    "fontspec",
+    "newfontfamily",
+    "babelfont",
+    "fontsize",
+    "usefont",
+    "newlength",
+];
+
+const CONTROL_WORD_ARG_CMDS: &[&str] = &[
+    "newcommand",
+    "renewcommand",
+    "providecommand",
+    "setlength",
+    "addtolength",
+    "newlength",
+    "DeclareMathOperator",
+    "newfontfamily",
+];
+
+const ACCENT_MACROS: &[&str] = &[
+    "'", "`", "^", "\"", "~", "=", ".", "u", "v", "H", "c", "d", "b", "r", "k", "t",
+];
+
+const LETTER_MACROS: &[&str] = &[
+    "ss", "o", "O", "l", "L", "ae", "AE", "oe", "OE", "aa", "AA", "i", "j",
+];
 
 const VERBATIM_ENV_NAMES: &[&str] = &["verbatim*", "verbatim", "Verbatim", "lstlisting", "minted"];
 
@@ -299,26 +408,8 @@ fn is_ascii_letter(unit: u16) -> bool {
     matches!(unit, 0x41..=0x5a | 0x61..=0x7a)
 }
 
-fn is_ascii_digit(unit: u16) -> bool {
-    matches!(unit, 0x30..=0x39)
-}
-
 fn is_command_char(unit: u16) -> bool {
     is_ascii_letter(unit) || unit == AT
-}
-
-fn is_word_unit(unit: u16) -> bool {
-    is_ascii_letter(unit)
-        || is_ascii_digit(unit)
-        || unit == UNDERSCORE
-        || unit == LATIN_SMALL_LONG_S
-        || unit == KELVIN_SIGN
-}
-
-fn at_word_boundary(text: &[u16], at: usize) -> bool {
-    let before = at > 0 && is_word_unit(text[at - 1]);
-    let here = at < text.len() && is_word_unit(text[at]);
-    before != here
 }
 
 fn code_point_at(text: &[u16], at: usize) -> (u32, usize) {
@@ -335,12 +426,44 @@ fn code_point_at(text: &[u16], at: usize) -> (u32, usize) {
     (u32::from(first), 1)
 }
 
+fn general_category(code_point: u32) -> GeneralCategory {
+    CodePointMapData::<GeneralCategory>::new().get32(code_point)
+}
+
+fn ascii_byte(code_point: u32) -> Option<u8> {
+    u8::try_from(code_point).ok().filter(u8::is_ascii)
+}
+
 fn is_letter(code_point: u32) -> bool {
-    char::from_u32(code_point).is_some_and(|c| c.is_alphabetic() && !c.is_numeric())
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_alphabetic();
+    }
+    GeneralCategoryGroup::Letter.contains(general_category(code_point))
 }
 
 fn is_number(code_point: u32) -> bool {
-    char::from_u32(code_point).is_some_and(char::is_numeric)
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_digit();
+    }
+    GeneralCategoryGroup::Number.contains(general_category(code_point))
+}
+
+fn is_letter_or_mark(code_point: u32) -> bool {
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_alphabetic();
+    }
+    let category = general_category(code_point);
+    GeneralCategoryGroup::Letter.contains(category) || GeneralCategoryGroup::Mark.contains(category)
+}
+
+fn is_letter_mark_or_number(code_point: u32) -> bool {
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_alphanumeric();
+    }
+    let category = general_category(code_point);
+    GeneralCategoryGroup::Letter.contains(category)
+        || GeneralCategoryGroup::Mark.contains(category)
+        || GeneralCategoryGroup::Number.contains(category)
 }
 
 fn to_units(text: &str) -> Vec<u16> {
@@ -461,7 +584,8 @@ fn is_url_body(code_point: u32) -> bool {
     !matches!(code_point, 0x3c | 0x3e | 0x7b | 0x7d | 0x5c)
 }
 
-fn blank_urls(text: &[u16], chars: &mut [u16]) {
+fn url_spans(text: &[u16]) -> Vec<Span> {
+    let mut spans = Vec::new();
     let mut at = 0;
     while at < text.len() {
         if let Some(prefix) = url_prefix_length(text, at) {
@@ -474,73 +598,60 @@ fn blank_urls(text: &[u16], chars: &mut [u16]) {
                 end += width;
             }
             if end > at + prefix {
-                blank_run(chars, at, end);
+                spans.push(Span { from: at, to: end });
                 at = end;
                 continue;
             }
         }
         at += code_point_at(text, at).1;
     }
+    spans
 }
 
-fn is_local_part(code_point: u32) -> bool {
-    is_letter(code_point)
-        || is_number(code_point)
-        || matches!(code_point, 0x2e | 0x5f | 0x25 | 0x2b | 0x2d)
+fn is_email_local(code_point: u32) -> bool {
+    is_letter_mark_or_number(code_point) || matches!(code_point, 0x2e | 0x5f | 0x25 | 0x2b | 0x2d)
 }
 
-fn is_domain_part(code_point: u32) -> bool {
-    is_letter(code_point) || is_number(code_point) || matches!(code_point, 0x2e | 0x2d)
+fn is_email_domain(code_point: u32) -> bool {
+    is_letter_mark_or_number(code_point) || matches!(code_point, 0x2e | 0x2d)
 }
 
-fn email_match_end(text: &[u16], start: usize) -> Option<usize> {
-    if !at_word_boundary(text, start) {
-        return None;
-    }
-    let mut cursor = start;
-    while cursor < text.len() {
-        let (code_point, width) = code_point_at(text, cursor);
-        if !is_local_part(code_point) {
-            break;
-        }
-        cursor += width;
-    }
-    if cursor == start || text.get(cursor) != Some(&AT) {
-        return None;
-    }
-    let domain_start = cursor + 1;
-    let mut stops = Vec::new();
+fn email_domain_end(text: &[u16], domain_start: usize) -> Option<usize> {
+    let mut dots = Vec::new();
     let mut end = domain_start;
     while end < text.len() {
         let (code_point, width) = code_point_at(text, end);
-        if !is_domain_part(code_point) {
+        if !is_email_domain(code_point) {
             break;
         }
+        if code_point == u32::from(DOT) {
+            dots.push(end);
+        }
         end += width;
-        stops.push(end);
     }
-    for &dot in stops.iter().rev().skip(1) {
-        if text[dot] != DOT {
+    for &dot in dots.iter().rev() {
+        if dot == domain_start || dot + 1 >= text.len() {
             continue;
         }
-        let mut letter_end = dot + 1;
-        let mut ends = Vec::new();
-        while letter_end < text.len() {
-            let (code_point, width) = code_point_at(text, letter_end);
-            if !is_letter(code_point) {
+        let (first, width) = code_point_at(text, dot + 1);
+        if !is_letter(first) {
+            continue;
+        }
+        let run_start = dot + 1 + width;
+        let mut run_end = run_start;
+        while run_end < text.len() {
+            let (code_point, width) = code_point_at(text, run_end);
+            if !is_letter_or_mark(code_point) {
                 break;
             }
-            letter_end += width;
-            ends.push(letter_end);
+            run_end += width;
         }
-        for (index, &candidate) in ends.iter().enumerate().rev() {
-            if index < 1 {
-                break;
-            }
-            if at_word_boundary(text, candidate) {
-                return Some(candidate);
-            }
+        if run_end == run_start
+            || (run_end < text.len() && is_number(code_point_at(text, run_end).0))
+        {
+            continue;
         }
+        return Some(run_end);
     }
     None
 }
@@ -553,39 +664,33 @@ fn code_point_before(text: &[u16], end: usize) -> (u32, usize) {
     (u32::from(last), 1)
 }
 
-fn local_part_start(text: &[u16], at: usize) -> usize {
-    let mut start = at;
-    while start > 0 {
-        let (code_point, width) = code_point_before(text, start);
-        if !is_local_part(code_point) {
-            break;
+fn email_spans(text: &[u16]) -> Vec<Span> {
+    let mut spans = Vec::new();
+    let mut matched_to = 0;
+    let mut search = 0;
+    while let Some(at) = index_of_unit(text, AT, search) {
+        search = at + 1;
+        let mut start = at;
+        while start > 0 {
+            let (code_point, width) = code_point_before(text, start);
+            if !is_email_local(code_point) {
+                break;
+            }
+            start -= width;
         }
-        start -= width;
-    }
-    start
-}
-
-fn blank_emails(text: &[u16], chars: &mut [u16]) {
-    let mut scan_from = 0;
-    while let Some(at) = index_of_unit(text, AT, scan_from) {
-        let mut start = local_part_start(text, at);
-        let matched = loop {
-            if start >= at {
-                break None;
-            }
-            if at_word_boundary(text, start) {
-                break email_match_end(text, start);
-            }
-            start += code_point_at(text, start).1;
-        };
-        match matched {
-            Some(end) => {
-                blank_run(chars, start, end);
-                scan_from = end;
-            }
-            None => scan_from = at + 1,
+        if start == at || start < matched_to {
+            continue;
+        }
+        if let Some(end) = email_domain_end(text, at + 1) {
+            spans.push(Span {
+                from: start,
+                to: end,
+            });
+            matched_to = end;
+            search = end;
         }
     }
+    spans
 }
 
 fn skip_inline_space(chars: &[u16], mut k: usize) -> usize {
@@ -623,55 +728,15 @@ fn match_group(chars: &[u16], open: usize) -> usize {
     chars.len()
 }
 
-fn consume_args(chars: &mut [u16], mut k: usize) -> usize {
-    if chars.get(k) == Some(&STAR) {
-        blank_run(chars, k, k + 1);
-        k += 1;
+fn control_word_end(chars: &[u16], k: usize) -> usize {
+    if chars.get(k) != Some(&BACKSLASH) || !chars.get(k + 1).copied().is_some_and(is_command_char) {
+        return k;
     }
-    loop {
-        let s = skip_inline_space(chars, k);
-        if !matches!(chars.get(s), Some(&OPEN_BRACE) | Some(&OPEN_BRACKET)) {
-            return k;
-        }
-        let end = match_group(chars, s);
-        blank_run(chars, s, end);
-        k = end;
+    let mut end = k + 1;
+    while end < chars.len() && is_command_char(chars[end]) {
+        end += 1;
     }
-}
-
-fn consume_opaque_prefix(chars: &mut [u16], mut k: usize, name: &str) -> usize {
-    if chars.get(k) == Some(&STAR) {
-        blank_run(chars, k, k + 1);
-        k += 1;
-    }
-    if name == "hyperref" {
-        let start = skip_inline_space(chars, k);
-        if !matches!(chars.get(start), Some(&OPEN_BRACE) | Some(&OPEN_BRACKET)) {
-            return k;
-        }
-        let end = match_group(chars, start);
-        blank_run(chars, start, end);
-        return end;
-    }
-    let braces = if name == "fcolorbox" { 2 } else { 1 };
-    let mut consumed = 0;
-    loop {
-        let start = skip_inline_space(chars, k);
-        match chars.get(start) {
-            Some(&OPEN_BRACKET) => {
-                let end = match_group(chars, start);
-                blank_run(chars, start, end);
-                k = end;
-            }
-            Some(&OPEN_BRACE) if consumed < braces => {
-                let end = match_group(chars, start);
-                blank_run(chars, start, end);
-                consumed += 1;
-                k = end;
-            }
-            _ => return k,
-        }
-    }
+    end
 }
 
 fn find_env_end(text: &[u16], from: usize, env: &[u16]) -> usize {
@@ -718,8 +783,139 @@ fn find_env_end(text: &[u16], from: usize, env: &[u16]) -> usize {
 }
 
 fn is_cite_like(name: &str) -> bool {
-    let lower = name.to_ascii_lowercase();
-    lower.starts_with("cite") || lower.ends_with("cite") || lower.ends_with("cites")
+    let folded: String = name
+        .chars()
+        .map(|character| {
+            if character == '\u{17f}' {
+                's'
+            } else {
+                character.to_ascii_lowercase()
+            }
+        })
+        .collect();
+    folded.starts_with("cite") || folded.ends_with("cite") || folded.ends_with("cites")
+}
+
+fn is_setup_command(name: &str) -> bool {
+    name.len() > "setup".len() && name.ends_with("setup")
+}
+
+fn is_opaque_arg_command(name: &str) -> bool {
+    OPAQUE_ARG_CMDS.contains(&name) || REF_ARG_CMDS.contains(&name)
+}
+
+fn opaque_brace_prefix_count(name: &str) -> usize {
+    match name {
+        "usefont" => 4,
+        "fcolorbox"
+        | "import"
+        | "subimport"
+        | "inputfrom"
+        | "subinputfrom"
+        | "includefrom"
+        | "subincludefrom"
+        | "setkeys"
+        | "setcounter"
+        | "addtocounter"
+        | "addcontentsline"
+        | "newacronym"
+        | "newglossaryentry"
+        | "DeclareMathOperator"
+        | "newfontfamily"
+        | "babelfont"
+        | "fontsize" => 2,
+        _ => 1,
+    }
+}
+
+fn has_option_assignment(inner: &[u16]) -> bool {
+    let dollars = inner.iter().filter(|&&unit| unit == DOLLAR).count();
+    let unpaired = if dollars % 2 == 1 {
+        inner.iter().rposition(|&unit| unit == DOLLAR)
+    } else {
+        None
+    };
+    let mut in_math = false;
+    for (index, &unit) in inner.iter().enumerate() {
+        if unit == DOLLAR && Some(index) != unpaired {
+            in_math = !in_math;
+        } else if unit == EQUALS && !in_math {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_name_unit(unit: u16) -> bool {
+    unit == AT || is_letter_or_mark(u32::from(unit))
+}
+
+fn trim_inline_space(units: &[u16]) -> &[u16] {
+    let start = units
+        .iter()
+        .position(|&unit| unit != SPACE && unit != TAB)
+        .unwrap_or(units.len());
+    let end = units
+        .iter()
+        .rposition(|&unit| unit != SPACE && unit != TAB)
+        .map_or(start, |at| at + 1);
+    &units[start..end]
+}
+
+fn accent_letters(inner: &[u16], most: usize) -> bool {
+    let letters = trim_inline_space(inner);
+    let mut count = 0;
+    let mut at = 0;
+    while at < letters.len() {
+        let (code_point, width) = code_point_at(letters, at);
+        if !is_letter(code_point) {
+            return false;
+        }
+        count += 1;
+        at += width;
+    }
+    (1..=most).contains(&count)
+}
+
+fn dotless_accent_argument(inner: &[u16]) -> bool {
+    let start = skip_inline_space(inner, 0);
+    if inner.get(start) != Some(&BACKSLASH)
+        || !matches!(
+            inner.get(start + 1).copied(),
+            Some(DOTLESS_I) | Some(DOTLESS_J)
+        )
+    {
+        return false;
+    }
+    let mut rest = skip_inline_space(inner, start + 2);
+    if inner.get(rest) == Some(&OPEN_BRACE) && inner.get(rest + 1) == Some(&CLOSE_BRACE) {
+        rest = skip_inline_space(inner, rest + 2);
+    }
+    rest == inner.len()
+}
+
+fn argument_brace(text: &[u16], open: usize) -> bool {
+    if is_escaped(text, open) {
+        return true;
+    }
+    let mut k = open;
+    while k > 0 && is_js_space(text[k - 1]) {
+        k -= 1;
+    }
+    if k == 0 {
+        return false;
+    }
+    let previous = text[k - 1];
+    if previous == CLOSE_BRACKET || previous == CLOSE_BRACE {
+        return true;
+    }
+    if !is_command_char(previous) {
+        return is_escaped(text, k - 1);
+    }
+    while k > 0 && is_command_char(text[k - 1]) {
+        k -= 1;
+    }
+    k > 0 && text[k - 1] == BACKSLASH && !is_escaped(text, k - 1)
 }
 
 fn env_name(text: &[u16], open: usize, end: usize) -> &[u16] {
@@ -728,30 +924,6 @@ fn env_name(text: &[u16], open: usize, end: usize) -> &[u16] {
     } else {
         &[]
     }
-}
-
-fn mask_math_step(chars: &mut [u16], i: usize, math: &mut u8) -> usize {
-    let c = chars[i];
-    let next = chars.get(i + 1).copied();
-    if c == BACKSLASH && matches!(next, Some(CLOSE_PAREN) | Some(CLOSE_BRACKET)) {
-        blank_run(chars, i, i + 2);
-        *math = 0;
-        return i + 2;
-    }
-    if c == DOLLAR {
-        if *math == 2 && next == Some(DOLLAR) {
-            blank_run(chars, i, i + 2);
-            *math = 0;
-            return i + 2;
-        }
-        if *math == 1 {
-            blank_run(chars, i, i + 1);
-            *math = 0;
-            return i + 1;
-        }
-    }
-    blank_run(chars, i, i + 1);
-    i + 1
 }
 
 fn verbatim_span_end(chars: &[u16], n: usize, name: &str, j: usize) -> usize {
@@ -788,153 +960,464 @@ fn verbatim_span_end(chars: &[u16], n: usize, name: &str, j: usize) -> usize {
     k
 }
 
-fn mask_begin_command(text: &[u16], chars: &mut [u16], i: usize, j: usize) -> usize {
-    let s = skip_inline_space(chars, j);
-    if chars.get(s) != Some(&OPEN_BRACE) {
-        blank_run(chars, i, j);
-        return j;
-    }
-    let end = match_group(chars, s);
-    let mut env = env_name(text, s, end);
-    if env.last() == Some(&STAR) {
-        env = &env[..env.len() - 1];
-    }
-    let env_string = String::from_utf16_lossy(env);
-    if OPAQUE_ENVS.contains(&env_string.as_str()) {
-        let env_end = find_env_end(text, end, env);
-        blank_run(chars, i, env_end);
-        return env_end;
-    }
-    blank_run(chars, i, j);
-    consume_args(chars, j)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MathMode {
+    Dollar,
+    DoubleDollar,
+    Paren,
+    Bracket,
 }
 
-fn mask_command(text: &[u16], chars: &mut [u16], n: usize, i: usize, math: &mut u8) -> usize {
-    let next = chars.get(i + 1).copied();
-    if matches!(next, Some(OPEN_PAREN) | Some(OPEN_BRACKET)) {
-        blank_run(chars, i, i + 2);
-        *math = if next == Some(OPEN_PAREN) { 3 } else { 4 };
-        return i + 2;
+struct MaskRegion {
+    from: usize,
+    to: usize,
+    blanks: std::ops::Range<usize>,
+}
+
+struct LatexRegions<'a> {
+    text: &'a [u16],
+    chars: Vec<u16>,
+    regions: Vec<MaskRegion>,
+    blanks: Vec<Span>,
+}
+
+impl<'a> LatexRegions<'a> {
+    fn collect(text: &'a [u16]) -> Self {
+        let mut scan = LatexRegions {
+            text,
+            chars: text.to_vec(),
+            regions: Vec::new(),
+            blanks: Vec::new(),
+        };
+        let urls = url_spans(text);
+        let emails = email_spans(text);
+        for span in urls.into_iter().chain(emails) {
+            scan.push_full(span.from, span.to);
+            blank_run(&mut scan.chars, span.from, span.to);
+        }
+        let n = scan.chars.len();
+        let mut i = 0;
+        while i < n {
+            i = scan.step(i);
+        }
+        scan.regions.sort_by(|left, right| {
+            left.from
+                .cmp(&right.from)
+                .then_with(|| right.to.cmp(&left.to))
+        });
+        scan
     }
-    if next == Some(BACKSLASH) {
-        blank_run(chars, i, i + 2);
-        let mut k = skip_inline_space(chars, i + 2);
-        if chars.get(k) == Some(&OPEN_BRACKET) {
-            let end = match_group(chars, k);
-            blank_run(chars, k, end);
+
+    fn step(&mut self, i: usize) -> usize {
+        match self.chars[i] {
+            NEWLINE => i + 1,
+            PERCENT => {
+                let stop = self.end_of_line(i);
+                self.push_full(i, stop);
+                stop
+            }
+            BACKSLASH => self.backslash_region(i),
+            DOLLAR => {
+                let (mode, opener) = if self.chars.get(i + 1) == Some(&DOLLAR) {
+                    (MathMode::DoubleDollar, 2)
+                } else {
+                    (MathMode::Dollar, 1)
+                };
+                let stop = self.end_of_math(i + opener, mode);
+                self.push_full(i, stop);
+                stop
+            }
+            OPEN_BRACE | CLOSE_BRACE | OPEN_BRACKET | CLOSE_BRACKET | TILDE | AMPERSAND | HASH
+            | CARET | UNDERSCORE => {
+                self.push_full(i, i + 1);
+                i + 1
+            }
+            _ => i + 1,
+        }
+    }
+
+    fn push_region(&mut self, raw_from: usize, raw_to: usize, first: usize) {
+        let n = self.chars.len();
+        let from = raw_from.min(n);
+        let to = raw_to.min(n).max(from);
+        if to <= from {
+            self.blanks.truncate(first);
+            return;
+        }
+        let mut kept = first;
+        for index in first..self.blanks.len() {
+            let span = self.blanks[index];
+            let span_from = span.from.min(n);
+            let span_to = span.to.min(n).max(span_from);
+            if span_to > span_from {
+                self.blanks[kept] = Span {
+                    from: span_from,
+                    to: span_to,
+                };
+                kept += 1;
+            }
+        }
+        self.blanks.truncate(kept);
+        self.regions.push(MaskRegion {
+            from,
+            to,
+            blanks: first..kept,
+        });
+    }
+
+    fn push_full(&mut self, from: usize, to: usize) {
+        let first = self.blanks.len();
+        self.blanks.push(Span { from, to });
+        self.push_region(from, to, first);
+    }
+
+    fn blank(&mut self, from: usize, to: usize) {
+        self.blanks.push(Span { from, to });
+    }
+
+    fn end_of_line(&self, k: usize) -> usize {
+        index_of_unit(&self.chars, NEWLINE, k).unwrap_or(self.chars.len())
+    }
+
+    fn closed_option_end(&self, open: usize) -> Option<usize> {
+        let n = self.chars.len();
+        let limit = n.min(open + OPTION_SCAN_LIMIT);
+        let mut depth = 0i64;
+        let mut k = open;
+        while k < limit {
+            let unit = self.chars[k];
+            if unit == BACKSLASH {
+                k += 2;
+                continue;
+            }
+            if unit == OPEN_BRACKET {
+                depth += 1;
+            } else if unit == CLOSE_BRACKET {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(k + 1);
+                }
+            } else if unit == NEWLINE {
+                let mut next = k + 1;
+                while next < n && matches!(self.chars[next], SPACE | TAB | CARRIAGE_RETURN) {
+                    next += 1;
+                }
+                if self.chars.get(next) == Some(&NEWLINE) {
+                    return None;
+                }
+            }
+            k += 1;
+        }
+        None
+    }
+
+    fn end_of_args(&mut self, mut k: usize, control_word: bool) -> usize {
+        if self.chars.get(k) == Some(&STAR) {
+            self.blank(k, k + 1);
+            k += 1;
+        }
+        if control_word {
+            let start = skip_inline_space(&self.chars, k);
+            let end = control_word_end(&self.chars, start);
+            if end > start {
+                self.blank(start, end);
+                k = end;
+            }
+        }
+        loop {
+            let start = skip_inline_space(&self.chars, k);
+            if !matches!(
+                self.chars.get(start),
+                Some(&OPEN_BRACE) | Some(&OPEN_BRACKET)
+            ) {
+                return k;
+            }
+            let end = match_group(&self.chars, start);
+            self.blank(start, end);
             k = end;
         }
-        return k;
-    }
-    if !next.is_some_and(is_command_char) {
-        blank_run(chars, i, i + 2);
-        return i + 2;
-    }
-    let mut j = i + 1;
-    while j < n && is_command_char(chars[j]) {
-        j += 1;
-    }
-    let name = String::from_utf16_lossy(&text[i + 1..j]);
-
-    if matches!(name.as_str(), "verb" | "Verb" | "lstinline" | "mintinline") {
-        let k = verbatim_span_end(chars, n, &name, j);
-        blank_run(chars, i, k);
-        return k.max(j);
     }
 
-    if name == "begin" {
-        return mask_begin_command(text, chars, i, j);
-    }
-    if name == "end" {
-        blank_run(chars, i, j);
-        return consume_args(chars, j);
+    fn end_of_opaque_prefix(&mut self, mut k: usize, name: &str) -> usize {
+        if self.chars.get(k) == Some(&STAR) {
+            self.blank(k, k + 1);
+            k += 1;
+        }
+        if name == "hyperref" {
+            let start = skip_inline_space(&self.chars, k);
+            if !matches!(
+                self.chars.get(start),
+                Some(&OPEN_BRACE) | Some(&OPEN_BRACKET)
+            ) {
+                return k;
+            }
+            let end = match_group(&self.chars, start);
+            self.blank(start, end);
+            return end;
+        }
+        let braces = opaque_brace_prefix_count(name);
+        let control_word = CONTROL_WORD_ARG_CMDS.contains(&name);
+        let mut consumed = 0;
+        loop {
+            let start = skip_inline_space(&self.chars, k);
+            let word = if control_word && consumed < braces {
+                control_word_end(&self.chars, start)
+            } else {
+                start
+            };
+            if word > start {
+                self.blank(start, word);
+                consumed += 1;
+                k = word;
+                continue;
+            }
+            match self.chars.get(start) {
+                Some(&OPEN_BRACKET) => {
+                    let end = match_group(&self.chars, start);
+                    self.blank(start, end);
+                    k = end;
+                }
+                Some(&OPEN_BRACE) if consumed < braces => {
+                    let end = match_group(&self.chars, start);
+                    self.blank(start, end);
+                    consumed += 1;
+                    k = end;
+                }
+                _ => return k,
+            }
+        }
     }
 
-    blank_run(chars, i, j);
-    if OPAQUE_ARG_CMDS.contains(&name.as_str()) || is_cite_like(&name) {
-        return consume_args(chars, j);
+    fn math_close_at(&self, k: usize, mode: MathMode) -> Option<usize> {
+        let unit = self.chars[k];
+        let next = self.chars.get(k + 1).copied();
+        if unit == NEWLINE {
+            return (mode == MathMode::Dollar).then_some(k);
+        }
+        if unit == BACKSLASH && matches!(next, Some(CLOSE_PAREN) | Some(CLOSE_BRACKET)) {
+            return Some(k + 2);
+        }
+        if unit == DOLLAR {
+            if mode == MathMode::DoubleDollar && next == Some(DOLLAR) {
+                return Some(k + 2);
+            }
+            if mode == MathMode::Dollar {
+                return Some(k + 1);
+            }
+        }
+        None
     }
-    if FIRST_ARG_OPAQUE_CMDS.contains(&name.as_str()) {
-        return consume_opaque_prefix(chars, j, &name);
+
+    fn end_of_math(&self, start: usize, mode: MathMode) -> usize {
+        let n = self.chars.len();
+        let mut k = start;
+        while k < n {
+            if let Some(close) = self.math_close_at(k, mode) {
+                return close;
+            }
+            k = if self.chars[k] == PERCENT {
+                self.end_of_line(k)
+            } else {
+                k + 1
+            };
+        }
+        n
     }
-    j
+
+    fn begin_region(&mut self, start: usize, j: usize) -> usize {
+        let text = self.text;
+        let s = skip_inline_space(&self.chars, j);
+        if self.chars.get(s) != Some(&OPEN_BRACE) {
+            self.push_full(start, j);
+            return j;
+        }
+        let group_end = match_group(&self.chars, s);
+        let mut env = env_name(text, s, group_end);
+        if env.last() == Some(&STAR) {
+            env = &env[..env.len() - 1];
+        }
+        if OPAQUE_ENVS.contains(&String::from_utf16_lossy(env).as_str()) {
+            let env_end = find_env_end(text, group_end, env);
+            self.push_full(start, env_end);
+            return env_end;
+        }
+        let first = self.blanks.len();
+        self.blank(start, j);
+        let end = self.end_of_args(j, false);
+        self.push_region(start, end, first);
+        end
+    }
+
+    fn named_command_region(&mut self, start: usize, j: usize, name: &str) -> usize {
+        if matches!(name, "verb" | "Verb" | "lstinline" | "mintinline") {
+            let k = verbatim_span_end(&self.chars, self.chars.len(), name, j);
+            self.push_full(start, k);
+            return k.max(j);
+        }
+        if name == "begin" {
+            return self.begin_region(start, j);
+        }
+        let first = self.blanks.len();
+        self.blank(start, j);
+        if name == "end" {
+            let end = self.end_of_args(j, false);
+            self.push_region(start, end, first);
+            return end;
+        }
+        if is_opaque_arg_command(name) || is_cite_like(name) {
+            let end = self.end_of_args(j, CONTROL_WORD_ARG_CMDS.contains(&name));
+            self.push_region(start, end, first);
+            return end;
+        }
+        if FIRST_ARG_OPAQUE_CMDS.contains(&name) || is_setup_command(name) {
+            let end = self.end_of_opaque_prefix(j, name);
+            self.push_region(start, end, first);
+            return end;
+        }
+        let option = skip_inline_space(&self.chars, j);
+        if self.chars.get(option) == Some(&OPEN_BRACKET) {
+            if let Some(end) = self.closed_option_end(option) {
+                if has_option_assignment(&self.chars[option + 1..end - 1]) {
+                    self.blank(option, end);
+                    self.push_region(start, end, first);
+                    return end;
+                }
+            }
+        }
+        self.push_region(start, j, first);
+        j
+    }
+
+    fn letter_macro_end(&self, k: usize) -> usize {
+        if self.chars.get(k) == Some(&OPEN_BRACE) && self.chars.get(k + 1) == Some(&CLOSE_BRACE) {
+            k + 2
+        } else {
+            skip_inline_space(&self.chars, k)
+        }
+    }
+
+    fn accent_argument(&self, k: usize, control_word: bool, tie: bool) -> Option<usize> {
+        let at = if control_word {
+            skip_inline_space(&self.chars, k)
+        } else {
+            k
+        };
+        let unit = *self.chars.get(at)?;
+        if unit == OPEN_BRACE {
+            let end = match_group(&self.chars, at);
+            let inner = if end > at + 1 {
+                &self.chars[at + 1..end - 1]
+            } else {
+                &[]
+            };
+            let most = if tie { 2 } else { 1 };
+            return (accent_letters(inner, most) || dotless_accent_argument(inner)).then_some(end);
+        }
+        if unit == BACKSLASH
+            && control_word_end(&self.chars, at) == at + 2
+            && matches!(self.chars[at + 1], DOTLESS_I | DOTLESS_J)
+        {
+            return Some(self.letter_macro_end(at + 2));
+        }
+        is_letter(u32::from(unit)).then_some(at + 1)
+    }
+
+    fn add_construct(&mut self, from: usize, to: usize) -> usize {
+        let wrapped = from > 0
+            && self.chars[from - 1] == OPEN_BRACE
+            && self.chars.get(to) == Some(&CLOSE_BRACE)
+            && !argument_brace(self.text, from - 1);
+        let (start, end) = if wrapped {
+            (from - 1, to + 1)
+        } else {
+            (from, to)
+        };
+        self.push_full(start, end);
+        end
+    }
+
+    fn accent_construct(&mut self, start: usize, j: usize, name: &str) -> Option<usize> {
+        if LETTER_MACROS.contains(&name) {
+            let end = self.letter_macro_end(j);
+            return Some(self.add_construct(start, end));
+        }
+        if name == "-" || name == "/" {
+            return Some(self.add_construct(start, j));
+        }
+        if !ACCENT_MACROS.contains(&name) {
+            return None;
+        }
+        let control_word = name.bytes().any(|byte| byte.is_ascii_alphabetic());
+        let end = self.accent_argument(j, control_word, name == "t")?;
+        Some(self.add_construct(start, end))
+    }
+
+    fn backslash_region(&mut self, start: usize) -> usize {
+        let next = self.chars.get(start + 1).copied();
+        if matches!(next, Some(OPEN_PAREN) | Some(OPEN_BRACKET)) {
+            let mode = if next == Some(OPEN_PAREN) {
+                MathMode::Paren
+            } else {
+                MathMode::Bracket
+            };
+            let stop = self.end_of_math(start + 2, mode);
+            self.push_full(start, stop);
+            return stop;
+        }
+        if next == Some(BACKSLASH) {
+            let first = self.blanks.len();
+            self.blank(start, start + 2);
+            let mut k = skip_inline_space(&self.chars, start + 2);
+            if self.chars.get(k) == Some(&OPEN_BRACKET) {
+                let end = match_group(&self.chars, k);
+                self.blank(k, end);
+                k = end;
+            }
+            self.push_region(start, k, first);
+            return k;
+        }
+        if !next.is_some_and(is_name_unit) {
+            let mut buffer = [0u8; 4];
+            let symbol = match next.and_then(|unit| char::from_u32(u32::from(unit))) {
+                Some(character) => &*character.encode_utf8(&mut buffer),
+                None => "",
+            };
+            if let Some(end) = self.accent_construct(start, start + 2, symbol) {
+                return end;
+            }
+            self.push_full(start, start + 2);
+            return start + 2;
+        }
+        let n = self.chars.len();
+        let mut j = start + 1;
+        while j < n && is_name_unit(self.chars[j]) {
+            j += 1;
+        }
+        let name = String::from_utf16_lossy(&self.text[start + 1..j]);
+        match self.accent_construct(start, j, &name) {
+            Some(end) => end,
+            None => self.named_command_region(start, j, &name),
+        }
+    }
 }
 
 pub(crate) fn mask_latex(text: &[u16]) -> Vec<u16> {
-    let n = text.len();
-    let mut chars = text.to_vec();
-    blank_urls(text, &mut chars);
-    blank_emails(text, &mut chars);
-
-    let mut i = 0;
-    let mut in_comment = false;
-    let mut math = 0u8;
-    while i < n {
-        let c = chars[i];
-        let next = chars.get(i + 1).copied();
-
-        if c == NEWLINE {
-            in_comment = false;
-            if math == 1 {
-                math = 0;
+    let scan = LatexRegions::collect(text);
+    let mut out = text.to_vec();
+    let mut applied = 0;
+    for region in &scan.regions {
+        if region.to <= applied {
+            continue;
+        }
+        for span in &scan.blanks[region.blanks.clone()] {
+            let from = span.from.max(applied);
+            if span.to > from {
+                blank_run(&mut out, from, span.to);
             }
-            i += 1;
-            continue;
         }
-        if in_comment {
-            blank_run(&mut chars, i, i + 1);
-            i += 1;
-            continue;
-        }
-        if c == PERCENT {
-            in_comment = true;
-            blank_run(&mut chars, i, i + 1);
-            i += 1;
-            continue;
-        }
-
-        if math != 0 {
-            i = mask_math_step(&mut chars, i, &mut math);
-            continue;
-        }
-
-        if c == BACKSLASH {
-            i = mask_command(text, &mut chars, n, i, &mut math);
-            continue;
-        }
-
-        if c == DOLLAR {
-            if next == Some(DOLLAR) {
-                blank_run(&mut chars, i, i + 2);
-                math = 2;
-                i += 2;
-            } else {
-                blank_run(&mut chars, i, i + 1);
-                math = 1;
-                i += 1;
-            }
-            continue;
-        }
-
-        if matches!(
-            c,
-            OPEN_BRACE
-                | CLOSE_BRACE
-                | OPEN_BRACKET
-                | CLOSE_BRACKET
-                | TILDE
-                | 0x26
-                | HASH
-                | 0x5e
-                | UNDERSCORE
-        ) {
-            blank_run(&mut chars, i, i + 1);
-            i += 1;
-            continue;
-        }
-        i += 1;
+        applied = region.to;
     }
-    chars
+    out
 }
 
 fn is_trailing_punct(unit: u16) -> bool {
@@ -973,21 +1456,137 @@ fn prose_length(masked: &[u16]) -> u64 {
     count
 }
 
-fn word_starts(masked: &[u16]) -> Vec<usize> {
-    let mut starts = Vec::new();
-    let mut i = 0;
-    while i < masked.len() {
-        if is_ascii_letter(masked[i]) {
-            starts.push(i);
-            i += 1;
-            while i < masked.len() && (is_ascii_letter(masked[i]) || masked[i] == APOSTROPHE) {
-                i += 1;
-            }
-        } else {
-            i += 1;
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WordClass {
+    Letter,
+    Ideograph,
+    Clustered,
+    Mark,
+    Other,
+}
+
+const IDEOGRAPHIC_SCRIPTS: [Script; 3] = [Script::Han, Script::Hiragana, Script::Katakana];
+const CLUSTERED_SCRIPTS: [Script; 5] = [
+    Script::Thai,
+    Script::Lao,
+    Script::Khmer,
+    Script::Myanmar,
+    Script::Tibetan,
+];
+
+fn script_of(code_point: u32) -> Script {
+    CodePointMapData::<Script>::new().get32(code_point)
+}
+
+fn word_class(code_point: u32) -> WordClass {
+    if let Ok(unit) = u8::try_from(code_point) {
+        if unit.is_ascii() {
+            return if unit.is_ascii_alphabetic() {
+                WordClass::Letter
+            } else {
+                WordClass::Other
+            };
         }
     }
-    starts
+    let category = CodePointMapData::<GeneralCategory>::new().get32(code_point);
+    if GeneralCategoryGroup::Mark.contains(category) {
+        return WordClass::Mark;
+    }
+    if !GeneralCategoryGroup::Letter.contains(category) {
+        return WordClass::Other;
+    }
+    let script = script_of(code_point);
+    if IDEOGRAPHIC_SCRIPTS.contains(&script) {
+        WordClass::Ideograph
+    } else if CLUSTERED_SCRIPTS.contains(&script) {
+        WordClass::Clustered
+    } else {
+        WordClass::Letter
+    }
+}
+
+fn is_word_joiner(unit: u16) -> bool {
+    matches!(
+        unit,
+        APOSTROPHE | 0x2019 | 0x02bc | 0x05f3 | 0x05f4 | 0x00b7 | 0x00ad | 0x200c | 0x200d
+    )
+}
+
+fn run_end(masked: &[u16], mut at: usize) -> usize {
+    while at < masked.len() {
+        let (code_point, length) = code_point_at(masked, at);
+        if !matches!(word_class(code_point), WordClass::Letter | WordClass::Mark) {
+            break;
+        }
+        at += length;
+    }
+    at
+}
+
+fn joiner_end(masked: &[u16], at: usize) -> Option<usize> {
+    let &unit = masked.get(at)?;
+    if unit == QUOTE {
+        let next = at + 1;
+        return (next < masked.len() && script_of(code_point_at(masked, next).0) == Script::Hebrew)
+            .then_some(next);
+    }
+    let mut end = at;
+    while end < masked.len() && is_word_joiner(masked[end]) {
+        end += 1;
+    }
+    (end > at).then_some(end)
+}
+
+fn word_end(masked: &[u16], start: usize) -> usize {
+    let mut end = run_end(masked, start);
+    while let Some(next) = joiner_end(masked, end) {
+        if next >= masked.len() || word_class(code_point_at(masked, next).0) != WordClass::Letter {
+            break;
+        }
+        end = run_end(masked, next);
+    }
+    end
+}
+
+fn clustered_end(masked: &[u16], mut at: usize) -> usize {
+    while at < masked.len() {
+        let (code_point, length) = code_point_at(masked, at);
+        let class = word_class(code_point);
+        let joins = matches!(class, WordClass::Clustered)
+            || (class == WordClass::Mark && CLUSTERED_SCRIPTS.contains(&script_of(code_point)));
+        if !joins {
+            break;
+        }
+        at += length;
+    }
+    at
+}
+
+fn word_spans(masked: &[u16]) -> Vec<(usize, usize)> {
+    let mut spans = Vec::new();
+    let mut at = 0;
+    while at < masked.len() {
+        let (code_point, length) = code_point_at(masked, at);
+        let end = match word_class(code_point) {
+            WordClass::Letter => word_end(masked, at),
+            WordClass::Ideograph => at + length,
+            WordClass::Clustered => clustered_end(masked, at + length),
+            WordClass::Mark | WordClass::Other => {
+                at += length;
+                continue;
+            }
+        };
+        spans.push((at, end));
+        at = end;
+    }
+    spans
+}
+
+fn word_starts(masked: &[u16]) -> Vec<usize> {
+    word_spans(masked)
+        .into_iter()
+        .map(|(start, _)| start)
+        .collect()
 }
 
 fn non_blank_lines(masked: &[u16]) -> u64 {
@@ -2419,16 +3018,9 @@ mod tests {
     fn words(text: &str) -> Vec<String> {
         let units = to_units(text);
         let masked = mask_latex(&units);
-        word_starts(&masked)
+        word_spans(&masked)
             .into_iter()
-            .map(|from| {
-                let mut to = from + 1;
-                while to < masked.len() && (is_ascii_letter(masked[to]) || masked[to] == APOSTROPHE)
-                {
-                    to += 1;
-                }
-                String::from_utf16_lossy(&units[from..to])
-            })
+            .map(|(from, to)| String::from_utf16_lossy(&units[from..to]))
             .collect()
     }
 
@@ -2500,8 +3092,66 @@ mod tests {
         assert_eq!(to_units(text).len(), text.encode_utf16().count());
         let stats = document_stats_for_text(text);
         assert_eq!(stats.characters, 16);
-        assert_eq!(stats.words, 2);
+        assert_eq!(stats.words, 4);
         assert_eq!(stats.lines, 1);
+    }
+
+    #[test]
+    fn words_follow_the_unicode_spelling_tokenizer() {
+        assert_eq!(
+            words("Na pap\u{ed}ru \u{10d}esky, l\u{2019}homme don't well-known"),
+            vec![
+                "Na",
+                "pap\u{ed}ru",
+                "\u{10d}esky",
+                "l\u{2019}homme",
+                "don't",
+                "well",
+                "known"
+            ]
+        );
+        assert_eq!(
+            words("\u{939}\u{93f}\u{902}\u{926}\u{940} \u{92d}\u{93e}\u{937}\u{93e}"),
+            vec![
+                "\u{939}\u{93f}\u{902}\u{926}\u{940}",
+                "\u{92d}\u{93e}\u{937}\u{93e}"
+            ]
+        );
+        assert_eq!(
+            words("\u{645}\u{6cc}\u{200c}\u{62e}\u{648}\u{627}\u{647}\u{645} Silben\u{ad}trennung"),
+            vec![
+                "\u{645}\u{6cc}\u{200c}\u{62e}\u{648}\u{627}\u{647}\u{645}",
+                "Silben\u{ad}trennung"
+            ]
+        );
+        assert_eq!(
+            words("\u{5e6}\u{5d4}\"\u{5dc} \"quoted\""),
+            vec!["\u{5e6}\u{5d4}\"\u{5dc}", "quoted"]
+        );
+        assert_eq!(words("cafe\u{301} \u{301}x"), vec!["cafe\u{301}", "x"]);
+    }
+
+    #[test]
+    fn scripts_without_spaces_count_by_character_or_run() {
+        assert_eq!(
+            words("\u{8fd9}\u{662f}\u{6d4b}\u{8bd5}\u{3002}"),
+            vec!["\u{8fd9}", "\u{662f}", "\u{6d4b}", "\u{8bd5}"]
+        );
+        assert_eq!(
+            words("\u{30c6}\u{30b9}\u{30c8}\u{3067}\u{3059}"),
+            vec!["\u{30c6}", "\u{30b9}", "\u{30c8}", "\u{3067}", "\u{3059}"]
+        );
+        assert_eq!(
+            words("\u{e19}\u{e35}\u{e48}\u{e04}\u{e37}\u{e2d} \u{e07}\u{e48}\u{e32}\u{e22}"),
+            vec![
+                "\u{e19}\u{e35}\u{e48}\u{e04}\u{e37}\u{e2d}",
+                "\u{e07}\u{e48}\u{e32}\u{e22}"
+            ]
+        );
+        assert_eq!(
+            words("\u{c774}\u{ac83}\u{c740} \u{d14c}\u{c2a4}\u{d2b8}"),
+            vec!["\u{c774}\u{ac83}\u{c740}", "\u{d14c}\u{c2a4}\u{d2b8}"]
+        );
     }
 
     #[test]
@@ -2513,8 +3163,13 @@ mod tests {
         assert_eq!(words("HTTP\u{17f}://x.org tail"), vec!["tail"]);
         assert_eq!(
             words("nobody@example.\u{434}\u{43e}\u{43c} tail"),
-            vec!["nobody", "example", "tail"]
+            vec!["tail"]
         );
+        assert_eq!(
+            words("Napi\u{161}te na \u{43f}\u{440}\u{438}\u{43c}\u{435}\u{440}@\u{43f}\u{43e}\u{447}\u{442}\u{430}.\u{440}\u{444} nebo \u{159}editel@firma.cz dnes."),
+            vec!["Napi\u{161}te", "na", "nebo", "dnes"]
+        );
+        assert_eq!(words("x@y.co1 z"), vec!["x", "y", "co", "z"]);
         assert_eq!(words("dot.name@sub.example.co.uk"), Vec::<String>::new());
         assert_eq!(words("https:// nothing"), vec!["https", "nothing"]);
     }
@@ -2548,6 +3203,72 @@ mod tests {
         assert_eq!(
             words("\\begin{align*}\na &= b\n\\end{align*} after"),
             vec!["after"]
+        );
+    }
+
+    #[test]
+    fn command_arguments_follow_the_typescript_mask_rules() {
+        assert_eq!(
+            words("viz \\labelcref{obr:udoli} a \\cpageref{obr:hora} and \\Crefrange{a}{b}."),
+            vec!["viz", "a", "and"]
+        );
+        assert_eq!(
+            words("\\setcounter{secnumdepth}{3} Text \\usefont{T1}{cmr}{m}{n} more"),
+            vec!["Text", "more"]
+        );
+        assert_eq!(
+            words(
+                "\\addcontentsline{toc}{section}{\u{da}vod} \\foreignlanguage{english}{the crease}"
+            ),
+            vec!["\u{da}vod", "the", "crease"]
+        );
+        assert_eq!(
+            words("\\bibitem[Nov20]{novak} Kniha \\newtheorem{lemma}[theorem]{Lemma} \\hypertarget{sec}{Shown}"),
+            vec!["Kniha", "Lemma", "Shown"]
+        );
+        assert_eq!(
+            words("\\newcommand\\foo{bodyword} \\DeclareMathOperator*\\argmin{argmin} \\newfontfamily\\cyrfont{Times New Roman}[Script=Cyrillic] Text"),
+            vec!["Text"]
+        );
+        assert_eq!(
+            words("\\captionsetup{font=footnotesize} Body \\setup{kept} \\svgsetup{inkscapeexe={env X= y}} tail"),
+            vec!["Body", "kept", "tail"]
+        );
+        assert_eq!(
+            words("\\custommacro[width=3cm, keepaspectratio]{Visible prose} \\item[Label] tail \\mycmd[Label $a=b$] x"),
+            vec!["Visible", "prose", "Label", "tail", "Label", "x"]
+        );
+        assert_eq!(
+            words("Start \\section[Short = x\n\nLater prose with a = b"),
+            vec!["Start", "Short", "x", "Later", "prose", "with", "a", "b"]
+        );
+        let unclosed = format!("\\mycmd[a=b {}", "x ".repeat(600));
+        assert_eq!(words(&unclosed).len(), 602);
+        let near = format!("\\mycmd[a=b {}] after", "x ".repeat(497));
+        assert_eq!(words(&near), vec!["after"]);
+        let far = format!("\\mycmd[a=b {}] after", "x ".repeat(498));
+        assert_eq!(words(&far).len(), 501);
+        assert_eq!(
+            words("\\renewenvironment{abstract}{a}{b} after"),
+            vec!["after"]
+        );
+        assert_eq!(masked("\\label{a}\t{b} x"), "         \t    x");
+    }
+
+    #[test]
+    fn accent_macros_and_unicode_command_names_are_masked_like_typescript() {
+        assert_eq!(masked("Kate\\v{r}ina caf\\'e"), "Kate     ina caf   ");
+        assert_eq!(
+            words("gr\\\"o\\ss er {\\\"o}k p\\v{r}\\'{\\i}klad \\t{oo}x hyphen\\-ation Dvo\\v r\u{e1}k \\vr x"),
+            vec!["gr", "er", "k", "p", "klad", "x", "hyphen", "ation", "Dvo", "\u{e1}k", "x"]
+        );
+        assert_eq!(
+            words("\\emph{\\'e}tatt \\{\\'e} \\\\{\\'e} x{\\\"o}y"),
+            vec!["tatt", "x", "y"]
+        );
+        assert_eq!(
+            words("Text \\v\u{fd}sledek konec a \\\u{3b1}\u{3b2} d\u{e1}le"),
+            vec!["Text", "konec", "a", "d\u{e1}le"]
         );
     }
 
@@ -3126,10 +3847,7 @@ mod tests {
             stages[0].push(start.elapsed().as_secs_f64() * 1000.0);
             let start = Instant::now();
             for text in &units {
-                let mut chars = text.clone();
-                blank_urls(text, &mut chars);
-                blank_emails(text, &mut chars);
-                std::hint::black_box(chars);
+                std::hint::black_box((url_spans(text), email_spans(text)));
             }
             stages[1].push(start.elapsed().as_secs_f64() * 1000.0);
             let start = Instant::now();

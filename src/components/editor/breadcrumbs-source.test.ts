@@ -104,4 +104,12 @@ describe("readableTitle", () => {
     expect(readableTitle(String.raw`A \textbf{bold}   title`)).toBe("A bold title");
     expect(readableTitle("")).toBe("");
   });
+
+  it("decodes accent macros and keeps escaped characters", () => {
+    expect(readableTitle(String.raw`Úvod do \v{C}eštiny`)).toBe("Úvod do Češtiny");
+    expect(readableTitle(String.raw`Dvo\v{r}\'ak a Stra\ss e`)).toBe("Dvořák a Straße");
+    expect(readableTitle(String.raw`\"Uber die L\"osung`)).toBe("Über die Lösung");
+    expect(readableTitle(String.raw`Costs \& Benefits: 50\% off\,now`)).toBe("Costs & Benefits: 50% off now");
+    expect(readableTitle("\\vy\u0301sledek je")).toBe("je");
+  });
 });

@@ -1,6 +1,9 @@
 import { i18n } from "@/i18n";
 import { create } from "zustand";
-import { trimToWordCharacters } from "@/lib/proofreading/word-edges";
+import {
+  trimToWordCharacters,
+  withoutSoftHyphens,
+} from "@/lib/proofreading/word-edges";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { toast } from "@/lib/toast";
 import {
@@ -82,13 +85,19 @@ function announceProofreadingChange(): void {
 
 function reportDictionaryOutcome(
   outcome: DictionaryWriteOutcome,
+  word = "",
 ): DictionaryWriteOutcome {
-  if (outcome === "unsupported_word") {
+  if (
+    outcome === "unsupported_word" &&
+    word.length > DICTIONARY_LIMITS.wordCharacters
+  ) {
     notice(
       i18n.t(($) => $.core.dictionary.wordTooLong, {
         max: DICTIONARY_LIMITS.wordCharacters,
       }),
     );
+  } else if (outcome === "unsupported_word") {
+    notice(i18n.t(($) => $.core.dictionary.unsupportedCharacters));
   } else if (outcome === "limit_reached") {
     notice(i18n.t(($) => $.core.dictionary.full));
   }
@@ -96,14 +105,15 @@ function reportDictionaryOutcome(
 }
 
 export function normalizeDictionaryWord(word: string): string {
-  return word
-    .normalize("NFKC")
+  return withoutSoftHyphens(word.normalize("NFKC"))
     .trim()
     .replace(/\s+/gu, " ");
 }
 
 export function dictionaryWordFromSelection(word: string): string {
-  return normalizeDictionaryWord(trimToWordCharacters(word));
+  return normalizeDictionaryWord(
+    trimToWordCharacters(normalizeDictionaryWord(word)),
+  );
 }
 
 function dictionaryKey(word: string): string {
@@ -121,11 +131,13 @@ function dictionarySet(words: string[]): ReadonlySet<string> {
   return keys;
 }
 
+const WORD_JOINERS = /(?<=[\p{L}\p{M}])[\u200C\u200D]+(?=[\p{L}\p{M}])/gu;
+
 export function canStoreWord(word: string): boolean {
   return (
     word.length > 0 &&
     word.length <= DICTIONARY_LIMITS.wordCharacters &&
-    !/[\p{Cc}\p{Cf}]/u.test(word)
+    !/[\p{Cc}\p{Cf}]/u.test(word.replace(WORD_JOINERS, ""))
   );
 }
 
@@ -403,7 +415,7 @@ export function ignoreWordForProject(
   if (!projectId) return "no_project";
   const normalized = dictionaryWordFromSelection(word);
   if (!canStoreWord(normalized)) {
-    return reportDictionaryOutcome("unsupported_word");
+    return reportDictionaryOutcome("unsupported_word", normalized);
   }
   if (isWordIgnored(projectId, normalized)) return "duplicate";
   useDictionary.getState().ignore(projectId, normalized);
@@ -415,7 +427,7 @@ export function ignoreWordForProject(
 export function ignoreWordGlobally(word: string): DictionaryWriteOutcome {
   const normalized = dictionaryWordFromSelection(word);
   if (!canStoreWord(normalized)) {
-    return reportDictionaryOutcome("unsupported_word");
+    return reportDictionaryOutcome("unsupported_word", normalized);
   }
   if (isWordIgnored(null, normalized)) return "duplicate";
   useDictionary.getState().ignoreGlobal(normalized);

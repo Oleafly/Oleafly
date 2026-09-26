@@ -133,6 +133,7 @@
   },
   "dictionary": {
     "full": "Dicționarul tău este plin, așa că acel cuvânt este doar ascuns în documentul de față. Elimină unul din Setări ca să îl poți salva.",
+    "unsupportedCharacters": "Cuvântul conține caractere pe care dicționarul nu le poate salva.",
     "wordTooLong": "Este prea lung ca să fie salvat drept cuvânt, așa că este doar ascuns în documentul de față. Un cuvânt poate avea cel mult {{max}} de caractere."
   },
   "documentScan": {
@@ -378,7 +379,11 @@
     "updatedOn": "Actualizat la {{date}}",
     "updatedToday": "Actualizat astăzi",
     "updatedYesterday": "Actualizat ieri",
-    "autosaveFailed": "Modificările nu au putut fi salvate. Sunt încă în editor."
+    "autosaveFailed": "Modificările nu au putut fi salvate. Sunt încă în editor.",
+    "changedOnDisk": "„{{path}}” a fost modificat în afara Oleafly. Reîncarcă-l sau salvează din nou ca să păstrezi versiunea ta.",
+    "openFileEncoding": "„{{path}}” nu poate fi deschis deoarece nu este un fișier text UTF-8. Dacă este text, salvează-l în UTF-8, apoi deschide-l din nou.",
+    "openFileFailed": "„{{path}}” nu a putut fi deschis. Vezi jurnalul aplicației pentru detalii.",
+    "reloadFromDisk": "Reîncarcă"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analiza a eșuat: {{message}}",

@@ -30,7 +30,7 @@ const OPAQUE_ENVIRONMENTS = new Set([
 ]);
 
 const commandCharacter = (character: string | undefined): boolean =>
-  Boolean(character && /[A-Za-z@]/u.test(character));
+  Boolean(character && /[\p{L}\p{M}@]/u.test(character));
 
 const inlineWhitespace = (character: string | undefined): boolean =>
   character === " " || character === "\t";

@@ -26,6 +26,7 @@ import {
   type ConfirmFn,
 } from "@oleafly/ai-tools";
 import { useFilesStore } from "@/store/files";
+import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -339,6 +340,7 @@ const HOST: AiToolsHost = {
     if (files.projectId !== projectId) return;
     await files.refreshTree();
   },
+  refreshOpenFiles: refreshOpenFilesFromDisk,
   recompile: () => useCompileStore.getState().recompile({ origin: "automatic" }),
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,

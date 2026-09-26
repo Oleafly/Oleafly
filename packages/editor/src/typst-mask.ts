@@ -1,17 +1,20 @@
-import { spellingWordRanges, type SpellingWord } from "./spelling-words";
+import {
+  EMAIL_ADDRESS_PATTERN,
+  spellingWordRanges,
+  type SpellingWord,
+} from "./spelling-words";
+import {
+  isTypstIdentifierContinueAt,
+  typstAutolinkEnd,
+  typstIdentifierEnd,
+  typstReferenceEnd,
+} from "./typst-syntax";
 
 export interface TypstWordRange {
   from: number;
   to: number;
   word: string;
 }
-
-const isIdentifierStart = (char: string | undefined): boolean =>
-  Boolean(char && /[\p{L}_]/u.test(char));
-const isIdentifierContinue = (
-  char: string | undefined,
-): boolean =>
-  Boolean(char && /[\p{L}\p{N}_-]/u.test(char));
 
 function blank(
   characters: string[],
@@ -79,6 +82,8 @@ function closingMath(text: string, from: number): number {
 // or null when the cursor is on ordinary code.
 function opaqueSpanEnd(text: string, cursor: number): number | null {
   if (text[cursor] === "\\") return cursor + 2;
+  const link = typstAutolinkEnd(text, cursor);
+  if (link !== null) return link;
   if (text[cursor] === '"') return closingQuote(text, cursor + 1);
   if (text.startsWith("/*", cursor)) return closingBlockComment(text, cursor);
   if (text[cursor] === "`") return closingRawSpan(text, cursor);
@@ -95,14 +100,14 @@ function closingBalanced(
   let depth = 0;
   let cursor = from;
   while (cursor < text.length) {
-    if (text.startsWith("//", cursor)) {
-      const newline = text.indexOf("\n", cursor + 2);
-      cursor = newline < 0 ? text.length : newline;
-      continue;
-    }
     const opaque = opaqueSpanEnd(text, cursor);
     if (opaque !== null) {
       cursor = opaque;
+      continue;
+    }
+    if (text.startsWith("//", cursor)) {
+      const newline = text.indexOf("\n", cursor + 2);
+      cursor = newline < 0 ? text.length : newline;
       continue;
     }
     if (text[cursor] === open) depth += 1;
@@ -142,13 +147,13 @@ function statementEnd(text: string, from: number): number {
   const nesting: TypstNesting = { parentheses: 0, braces: 0, brackets: 0 };
   let cursor = from;
   while (cursor < text.length) {
-    if (text.startsWith("//", cursor)) {
-      return endOfLine(text, cursor);
-    }
     const opaque = opaqueSpanEnd(text, cursor);
     if (opaque !== null) {
       cursor = opaque;
       continue;
+    }
+    if (text.startsWith("//", cursor)) {
+      return endOfLine(text, cursor);
     }
     const balanced =
       nesting.parentheses === 0 &&
@@ -168,13 +173,13 @@ function contentBlockStart(text: string, from: number): number {
   let braces = 0;
   let cursor = from;
   while (cursor < text.length) {
-    if (text.startsWith("//", cursor) || text[cursor] === "\n") {
-      return -1;
-    }
     const opaque = opaqueSpanEnd(text, cursor);
     if (opaque !== null) {
       cursor = opaque;
       continue;
+    }
+    if (text.startsWith("//", cursor) || text[cursor] === "\n") {
+      return -1;
     }
     if (text[cursor] === "(") parentheses += 1;
     else if (text[cursor] === ")") parentheses = Math.max(0, parentheses - 1);
@@ -204,7 +209,7 @@ function maskIfElseBranches(
     while (/\s/u.test(text[cursor] ?? "")) cursor += 1;
     if (
       text.slice(cursor, cursor + 4) !== "else" ||
-      isIdentifierContinue(text[cursor + 4])
+      isTypstIdentifierContinueAt(text, cursor + 4)
     ) {
       return;
     }
@@ -213,7 +218,7 @@ function maskIfElseBranches(
     while (text[cursor] === " " || text[cursor] === "\t") cursor += 1;
     if (
       text.slice(cursor, cursor + 2) === "if" &&
-      !isIdentifierContinue(text[cursor + 2])
+      !isTypstIdentifierContinueAt(text, cursor + 2)
     ) {
       cursor += 2;
     }
@@ -226,14 +231,14 @@ function maskIfElseBranches(
   }
 }
 
-function maskRemoteTargets(characters: string[]): void {
+function maskRemoteTargets(characters: string[], source: string): void {
   const text = characters.join("");
-  const patterns = [
-    /(?:https?:\/\/|www\.)[^\s<>()[\]{}]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+  const patterns: [RegExp, string][] = [
+    [/(?:https?:\/\/|www\.)[^\s<>()[\]{}]+/giu, text],
+    [EMAIL_ADDRESS_PATTERN, source],
   ];
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
+  for (const [pattern, input] of patterns) {
+    for (const match of input.matchAll(pattern)) {
       if (match.index === undefined) continue;
       blank(
         characters,
@@ -298,15 +303,25 @@ function typstLabelEnd(text: string, cursor: number): number | null {
   return null;
 }
 
-function typstCitationEnd(text: string, cursor: number): number {
-  let end = cursor + 2;
-  while (
-    isIdentifierContinue(text[end]) ||
-    text[end] === ":" ||
-    text[end] === "."
-  ) {
-    end += 1;
+function typstEscapeEnd(
+  characters: string[],
+  text: string,
+  cursor: number,
+): number {
+  blank(characters, cursor, cursor + 1);
+  const codePoint = text.codePointAt(cursor + 1);
+  if (codePoint === undefined) return cursor + 1;
+  const escaped = String.fromCodePoint(codePoint);
+  if (text.startsWith("u{", cursor + 1)) {
+    let end = cursor + 3;
+    while (/[\dA-Fa-f]/u.test(text[end] ?? "")) end += 1;
+    if (text[end] === "}") end += 1;
+    blank(characters, cursor, end);
+    return end;
   }
+  if (escaped === "@" || /[\p{L}\p{N}\s]/u.test(escaped)) return cursor + 1;
+  const end = cursor + 1 + escaped.length;
+  blank(characters, cursor, end);
   return end;
 }
 
@@ -355,12 +370,13 @@ function typstCallChainEnd(
       at = end;
       continue;
     }
-    if (text[at] === "." && isIdentifierStart(text[at + 1])) {
-      const memberStart = at;
-      at += 2;
-      while (isIdentifierContinue(text[at])) at += 1;
-      blank(characters, memberStart, at);
-      continue;
+    if (text[at] === ".") {
+      const memberEnd = typstIdentifierEnd(text, at + 1);
+      if (memberEnd > at + 1) {
+        blank(characters, at, memberEnd);
+        at = memberEnd;
+        continue;
+      }
     }
     break;
   }
@@ -384,13 +400,12 @@ function typstHashExpressionEnd(
     blank(characters, expressionStart, end);
     return end;
   }
-  if (!isIdentifierStart(text[at])) {
+  const identifierStart = at;
+  at = typstIdentifierEnd(text, at);
+  if (at === identifierStart) {
     blank(characters, expressionStart, at);
     return at;
   }
-  const identifierStart = at;
-  at += 1;
-  while (isIdentifierContinue(text[at])) at += 1;
   const identifier = text.slice(identifierStart, at);
   blank(characters, expressionStart, at);
 
@@ -410,6 +425,12 @@ function maskTypstToken(
   text: string,
   cursor: number,
 ): number {
+  if (text[cursor] === "\\") return typstEscapeEnd(characters, text, cursor);
+  const link = typstAutolinkEnd(text, cursor);
+  if (link !== null) {
+    blank(characters, cursor, link);
+    return link;
+  }
   if (text.startsWith("//", cursor)) {
     const end = typstLineCommentEnd(text, cursor);
     blank(characters, cursor, end);
@@ -437,10 +458,12 @@ function maskTypstToken(
       return end;
     }
   }
-  if (text[cursor] === "@" && isIdentifierStart(text[cursor + 1])) {
-    const end = typstCitationEnd(text, cursor);
-    blank(characters, cursor, end);
-    return end;
+  if (text[cursor] === "@") {
+    const end = typstReferenceEnd(text, cursor + 1);
+    if (end > cursor + 1) {
+      blank(characters, cursor, end);
+      return end;
+    }
   }
   if (text[cursor] !== "#") return cursor + 1;
   return typstHashExpressionEnd(characters, text, cursor);
@@ -494,7 +517,7 @@ export function maskTypstToProse(text: string): string {
     cursor = maskTypstToken(characters, text, cursor);
   }
 
-  maskRemoteTargets(characters);
+  maskRemoteTargets(characters, text);
   // Markup punctuation is structural rather than prose. Preserve all source
   // offsets while removing heading/list markers, content brackets, and
   // emphasis delimiters that would otherwise create synthetic Harper lints.

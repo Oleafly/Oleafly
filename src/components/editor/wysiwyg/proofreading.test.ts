@@ -148,3 +148,22 @@ describe("Visual semantic raw-block proofreading", () => {
     editor.destroy();
   });
 });
+
+describe("Visual prose e-mail masking", () => {
+  it("masks addresses with non-ASCII local parts and domains", () => {
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: [StarterKit],
+      content:
+        "<p>Napište na пример@почта.рф nebo ředitel@firma.cz dnes.</p>",
+    });
+    const extraction = extractVisualProofreadingProse(
+      editor.state.doc,
+      "markdown",
+    );
+    expect(extraction.text).toContain("Napište na");
+    expect(extraction.text).toContain("dnes.");
+    expect(extraction.text).not.toMatch(/пример|почта|ř |firma/u);
+    editor.destroy();
+  });
+});

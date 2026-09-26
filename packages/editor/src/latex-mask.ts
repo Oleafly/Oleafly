@@ -9,7 +9,12 @@
 // `latex-mask.test.ts`.
 // ---------------------------------------------------------------------------
 
-import { spellingWordRanges, type SpellingWord } from "./spelling-words";
+import {
+  EMAIL_ADDRESS_PATTERN,
+  spellingWordSpans,
+  type SpellingWord,
+  type SpellingWordSpan,
+} from "./spelling-words";
 
 export interface Range {
   from: number;
@@ -26,6 +31,13 @@ const OPAQUE_ENVS = new Set([
   "verbatim", "Verbatim", "lstlisting", "minted", "alltt", "tikzpicture",
   "comment", "luacode", "pycode", "python", "asy", "filecontents",
 ]);
+
+const REF_ARG_CMDS = [
+  "cpageref", "Cpageref", "labelcref", "labelcpageref", "Vref", "vpageref",
+  "Vpageref", "namecref", "nameCref", "lcnamecref", "namecrefs", "nameCrefs",
+  "fref", "Fref", "sref", "labelref", "crefrange", "Crefrange",
+  "cpagerefrange", "Cpagerefrange",
+];
 
 // Commands whose arguments are identifiers, keys, paths, or URLs (never prose).
 // Every [optional] and {brace} argument that directly follows is blanked.
@@ -51,9 +63,12 @@ const OPAQUE_ARG_CMDS = new Set([
   // should not produce document-body spelling and grammar diagnostics.
   "title", "subtitle", "author", "date", "subject", "keywords",
   "institute", "affiliation",
+  "renewenvironment",
+  ...REF_ARG_CMDS,
 ]);
 
 const INLINE_ARG_CMDS = new Set([
+  ...REF_ARG_CMDS,
   "ref", "eqref", "pageref", "autoref", "cref", "Cref", "vref", "nameref",
   "cite", "citep", "citet", "citeauthor", "citeyear", "citealt",
   "url", "path", "email",
@@ -69,13 +84,102 @@ const CITE_LIKE = /(?:^cite|cites?$)/iu;
 // \textcolor{red}{text}, \hyperref[key]{text}, \href{url}{shown prose}.
 const FIRST_ARG_OPAQUE_CMDS = new Set([
   "textcolor", "colorbox", "fcolorbox", "hyperref", "href",
+  "bibitem", "color", "pagecolor", "hyperlink", "hypertarget",
+  "foreignlanguage", "selectlanguage", "setdefaultlanguage",
+  "setmainlanguage", "setotherlanguage", "setotherlanguages", "babelprovide",
+  "includesvg", "includepdf", "includestandalone", "subfile",
+  "externaldocument", "import", "subimport", "inputfrom", "subinputfrom",
+  "includefrom", "subincludefrom",
+  "lstset", "tikzset", "pgfplotsset", "tcbset", "pgfkeys", "pgfqkeys",
+  "setkeys", "newgeometry",
+  "newcounter", "setcounter", "addtocounter", "stepcounter",
+  "refstepcounter", "addcontentsline", "crefname", "Crefname",
+  "newtheorem", "newacronym", "newglossaryentry", "DeclareMathOperator",
+  "setmainfont", "setsansfont", "setmonofont", "setmathfont", "fontspec",
+  "newfontfamily", "babelfont", "fontsize", "usefont", "newlength",
 ]);
 const OPAQUE_BRACE_PREFIX_COUNTS = new Map<string, number>([
   ["textcolor", 1],
   ["colorbox", 1],
   ["fcolorbox", 2],
   ["href", 1],
+  ["import", 2],
+  ["subimport", 2],
+  ["inputfrom", 2],
+  ["subinputfrom", 2],
+  ["includefrom", 2],
+  ["subincludefrom", 2],
+  ["setkeys", 2],
+  ["setcounter", 2],
+  ["addtocounter", 2],
+  ["addcontentsline", 2],
+  ["newacronym", 2],
+  ["newglossaryentry", 2],
+  ["DeclareMathOperator", 2],
+  ["newfontfamily", 2],
+  ["babelfont", 2],
+  ["fontsize", 2],
+  ["usefont", 4],
 ]);
+const CONTROL_WORD_ARG_CMDS = new Set([
+  "newcommand", "renewcommand", "providecommand", "setlength", "addtolength",
+  "newlength", "DeclareMathOperator", "newfontfamily",
+]);
+const SETUP_CMD = /.setup$/u;
+const OPTION_SCAN_LIMIT = 1000;
+
+const ACCENT_MARKS = new Map<string, string>([
+  ["'", "\u0301"],
+  ["`", "\u0300"],
+  ["^", "\u0302"],
+  ['"', "\u0308"],
+  ["~", "\u0303"],
+  ["=", "\u0304"],
+  [".", "\u0307"],
+  ["u", "\u0306"],
+  ["v", "\u030C"],
+  ["H", "\u030B"],
+  ["c", "\u0327"],
+  ["d", "\u0323"],
+  ["b", "\u0331"],
+  ["r", "\u030A"],
+  ["k", "\u0328"],
+  ["t", "\u0361"],
+]);
+const LETTER_MACROS = new Map<string, string>([
+  ["ss", "ß"],
+  ["o", "ø"],
+  ["O", "Ø"],
+  ["l", "ł"],
+  ["L", "Ł"],
+  ["ae", "æ"],
+  ["AE", "Æ"],
+  ["oe", "œ"],
+  ["OE", "Œ"],
+  ["aa", "å"],
+  ["AA", "Å"],
+  ["i", "ı"],
+  ["j", "ȷ"],
+]);
+const GERMAN_SHORTHANDS = new Map<string, string>([
+  ["a", "ä"],
+  ["o", "ö"],
+  ["u", "ü"],
+  ["A", "Ä"],
+  ["O", "Ö"],
+  ["U", "Ü"],
+  ["s", "ß"],
+  ["z", "ß"],
+  ["S", "SS"],
+  ["Z", "SZ"],
+  ["-", ""],
+  ["|", ""],
+  ['"', ""],
+  ["=", "-"],
+  ["~", "-"],
+]);
+const GERMAN_BABEL =
+  /\\(?:usepackage|documentclass)\s*\[[^\]]*\b(?:n?german|n?austrian|n?swissgerman)\b[^\]]*\]|\\usepackage\s*\{\s*n?german\s*\}/gu;
 
 const LATEX_SPECIAL = new Set(["{", "}", "[", "]", "~", "&", "#", "^", "_"]);
 
@@ -114,10 +218,27 @@ function findEnvEnd(text: string, from: number, env: string): number {
   return text.length;
 }
 
-function collectLatexRegions(text: string): MaskRegion[] {
+interface LatexConstruct {
+  from: number;
+  to: number;
+  text: string;
+}
+
+interface LatexScan {
+  regions: MaskRegion[];
+  constructs: LatexConstruct[];
+}
+
+function collectLatexRegions(
+  text: string,
+  options: { preamble: boolean },
+): LatexScan {
   const regions: MaskRegion[] = [];
+  const constructs: LatexConstruct[] = [];
   const chars = text.split("");
   const n = chars.length;
+  let documentClassAt = -1;
+  let preambleEnd = -1;
 
   const blankSource = (a: number, b: number) => {
     for (let k = a; k < b; k++) if (chars[k] !== "\n") chars[k] = " ";
@@ -150,7 +271,7 @@ function collectLatexRegions(text: string): MaskRegion[] {
 
   for (const pattern of [
     /(?:https?:\/\/|www\.)[^\s<>{}\\]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+    EMAIL_ADDRESS_PATTERN,
   ]) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
@@ -179,16 +300,54 @@ function collectLatexRegions(text: string): MaskRegion[] {
     return n;
   };
 
+  const closedOptionEnd = (open: number): number => {
+    let depth = 0;
+    const limit = Math.min(n, open + OPTION_SCAN_LIMIT);
+    for (let k = open; k < limit; k++) {
+      const ch = chars[k];
+      if (ch === "\\") {
+        k++;
+      } else if (ch === "[") {
+        depth++;
+      } else if (ch === "]" && --depth === 0) {
+        return k + 1;
+      } else if (ch === "\n") {
+        let next = k + 1;
+        while (next < n && /[ \t\r]/u.test(chars[next])) next++;
+        if (chars[next] === "\n") return -1;
+      }
+    }
+    return -1;
+  };
+
   const skipInlineSpace = (k: number): number => {
     while (k < n && (chars[k] === " " || chars[k] === "\t")) k++;
     return k;
   };
 
-  const endOfArgs = (k: number): { end: number; spans: MaskSpan[] } => {
+  const controlWordEnd = (k: number): number => {
+    if (chars[k] !== "\\" || !/[a-zA-Z@]/.test(chars[k + 1] ?? "")) return k;
+    let end = k + 1;
+    while (end < n && /[a-zA-Z@]/.test(chars[end])) end++;
+    return end;
+  };
+
+  const endOfArgs = (
+    k: number,
+    controlWord = false,
+  ): { end: number; spans: MaskSpan[] } => {
     const spans: MaskSpan[] = [];
     if (chars[k] === "*") {
       spans.push({ from: k, to: k + 1 });
       k++;
+    }
+    if (controlWord) {
+      const s = skipInlineSpace(k);
+      const end = controlWordEnd(s);
+      if (end > s) {
+        spans.push({ from: s, to: end });
+        k = end;
+      }
     }
     for (;;) {
       const s = skipInlineSpace(k);
@@ -220,9 +379,18 @@ function collectLatexRegions(text: string): MaskRegion[] {
       return { end, spans };
     }
     const braces = OPAQUE_BRACE_PREFIX_COUNTS.get(name) ?? 1;
+    const controlWord = CONTROL_WORD_ARG_CMDS.has(name);
     let consumed = 0;
     for (;;) {
       const start = skipInlineSpace(k);
+      const word =
+        controlWord && consumed < braces ? controlWordEnd(start) : start;
+      if (word > start) {
+        spans.push({ from: start, to: word });
+        consumed++;
+        k = word;
+        continue;
+      }
       if (chars[start] === "[") {
         const end = matchGroup(start);
         spans.push({ from: start, to: end });
@@ -312,6 +480,9 @@ function collectLatexRegions(text: string): MaskRegion[] {
       push(start, envEnd, "block");
       return envEnd;
     }
+    if (env === "document" && documentClassAt >= 0 && preambleEnd < 0) {
+      preambleEnd = start;
+    }
     const args = endOfArgs(j);
     push(start, args.end, "block", [{ from: start, to: j }, ...args.spans]);
     return args.end;
@@ -333,9 +504,12 @@ function collectLatexRegions(text: string): MaskRegion[] {
       push(start, args.end, "block", [{ from: start, to: j }, ...args.spans]);
       return args.end;
     }
+    if (name === "documentclass" && documentClassAt < 0) {
+      documentClassAt = start;
+    }
     const opaqueArgs = OPAQUE_ARG_CMDS.has(name);
     if (opaqueArgs || CITE_LIKE.test(name)) {
-      const args = endOfArgs(j);
+      const args = endOfArgs(j, CONTROL_WORD_ARG_CMDS.has(name));
       const inline =
         INLINE_ARG_CMDS.has(name) ||
         (!opaqueArgs && CITE_LIKE.test(name));
@@ -345,7 +519,7 @@ function collectLatexRegions(text: string): MaskRegion[] {
       ]);
       return args.end;
     }
-    if (FIRST_ARG_OPAQUE_CMDS.has(name)) {
+    if (FIRST_ARG_OPAQUE_CMDS.has(name) || SETUP_CMD.test(name)) {
       const prefix = endOfOpaquePrefix(j, name);
       push(start, prefix.end, "block", [
         { from: start, to: j },
@@ -353,8 +527,102 @@ function collectLatexRegions(text: string): MaskRegion[] {
       ]);
       return prefix.end;
     }
+    const option = skipInlineSpace(j);
+    const end = chars[option] === "[" ? closedOptionEnd(option) : -1;
+    if (
+      end > option &&
+      chars
+        .slice(option + 1, end - 1)
+        .join("")
+        .replace(/\$[^$]*\$/gu, "")
+        .includes("=")
+    ) {
+      push(start, end, "block", [
+        { from: start, to: j },
+        { from: option, to: end },
+      ]);
+      return end;
+    }
     push(start, j, "block");
     return j;
+  };
+
+  const escapedAt = (k: number): boolean => {
+    let slashes = 0;
+    while (k - slashes > 0 && text[k - slashes - 1] === "\\") slashes++;
+    return slashes % 2 === 1;
+  };
+
+  const argumentBrace = (open: number): boolean => {
+    if (escapedAt(open)) return true;
+    let k = open - 1;
+    while (k >= 0 && /\s/u.test(text[k])) k--;
+    if (k < 0) return false;
+    if (text[k] === "]" || text[k] === "}") return true;
+    if (!/[a-zA-Z@]/u.test(text[k])) return escapedAt(k);
+    while (k >= 0 && /[a-zA-Z@]/u.test(text[k])) k--;
+    return k >= 0 && text[k] === "\\" && !escapedAt(k);
+  };
+
+  const addConstruct = (from: number, to: number, decoded: string): number => {
+    const wrapped =
+      chars[from - 1] === "{" && chars[to] === "}" && !argumentBrace(from - 1);
+    const start = wrapped ? from - 1 : from;
+    const end = wrapped ? to + 1 : to;
+    push(start, end, "block");
+    constructs.push({ from: start, to: end, text: decoded });
+    return end;
+  };
+
+  const letterMacroEnd = (k: number): number =>
+    chars[k] === "{" && chars[k + 1] === "}" ? k + 2 : skipInlineSpace(k);
+
+  const accentArgument = (
+    k: number,
+    controlWord: boolean,
+    tie: boolean,
+  ): { base: string; end: number } | null => {
+    const at = controlWord ? skipInlineSpace(k) : k;
+    const ch = chars[at] ?? "";
+    if (ch === "{") {
+      const end = matchGroup(at);
+      const inner = chars.slice(at + 1, end - 1).join("");
+      const letters = (
+        tie ? /^[ \t]*(\p{L}{1,2})[ \t]*$/u : /^[ \t]*(\p{L})[ \t]*$/u
+      ).exec(inner);
+      if (letters) return { base: letters[1], end };
+      const dotless =
+        /^[ \t]*\\([ij])(?![a-zA-Z@])[ \t]*(?:\{\})?[ \t]*$/u.exec(inner);
+      return dotless ? { base: dotless[1], end } : null;
+    }
+    if (
+      ch === "\\" &&
+      controlWordEnd(at) === at + 2 &&
+      /[ij]/.test(chars[at + 1])
+    ) {
+      return { base: chars[at + 1], end: letterMacroEnd(at + 2) };
+    }
+    return /\p{L}/u.test(ch) ? { base: ch, end: at + 1 } : null;
+  };
+
+  const accentConstruct = (
+    start: number,
+    j: number,
+    name: string,
+  ): number | null => {
+    const letter = LETTER_MACROS.get(name);
+    if (letter) return addConstruct(start, letterMacroEnd(j), letter);
+    if (name === "-" || name === "/") return addConstruct(start, j, "");
+    const mark = ACCENT_MARKS.get(name);
+    if (!mark) return null;
+    const argument = accentArgument(j, /[a-zA-Z]/.test(name), name === "t");
+    if (!argument) return null;
+    const { base, end } = argument;
+    return addConstruct(
+      start,
+      end,
+      `${base[0]}${mark}${base.slice(1)}`.normalize("NFC"),
+    );
   };
 
   const backslashRegion = (start: number, next: string): number => {
@@ -374,13 +642,18 @@ function collectLatexRegions(text: string): MaskRegion[] {
       push(start, k, "block", spans);
       return k;
     }
-    if (!/[a-zA-Z@]/.test(next)) {
+    if (!/[\p{L}\p{M}@]/u.test(next)) {
+      const construct = accentConstruct(start, start + 2, next);
+      if (construct !== null) return construct;
       push(start, start + 2, "block");
       return start + 2;
     }
     let j = start + 1;
-    while (j < n && /[a-zA-Z@]/.test(chars[j])) j++;
-    return namedCommandRegion(start, j, text.slice(start + 1, j));
+    while (j < n && /[\p{L}\p{M}@]/u.test(chars[j])) j++;
+    const name = text.slice(start + 1, j);
+    return (
+      accentConstruct(start, j, name) ?? namedCommandRegion(start, j, name)
+    );
   };
 
   const dollarRegion = (start: number, next: string): number => {
@@ -413,8 +686,15 @@ function collectLatexRegions(text: string): MaskRegion[] {
     }
   }
 
+  const maskedPreambleEnd = options.preamble ? preambleEnd : -1;
+  if (maskedPreambleEnd > 0) push(0, maskedPreambleEnd, "block");
   regions.sort((left, right) => left.from - right.from || right.to - left.to);
-  return regions;
+  return {
+    regions,
+    constructs: constructs.filter(
+      (construct) => construct.from >= maskedPreambleEnd,
+    ),
+  };
 }
 
 function blankInto(out: string[], from: number, to: number): void {
@@ -423,10 +703,10 @@ function blankInto(out: string[], from: number, to: number): void {
   }
 }
 
-export function maskLatex(text: string): string {
+function maskRegions(text: string, regions: readonly MaskRegion[]): string {
   const out = text.split("");
   let applied = 0;
-  for (const region of collectLatexRegions(text)) {
+  for (const region of regions) {
     if (region.to <= applied) continue;
     for (const span of region.blanks) {
       const from = Math.max(span.from, applied);
@@ -435,6 +715,112 @@ export function maskLatex(text: string): string {
     applied = region.to;
   }
   return out.join("");
+}
+
+export function maskLatex(text: string): string {
+  return maskRegions(
+    text,
+    collectLatexRegions(text, { preamble: false }).regions,
+  );
+}
+
+export interface DecodedLatexProse {
+  text: string;
+  decoded: boolean;
+  start(index: number): number;
+  end(index: number): number;
+}
+
+function uncommented(text: string, index: number): boolean {
+  const line = text.slice(text.lastIndexOf("\n", index) + 1, index);
+  return !/(?:^|[^\\])(?:\\\\)*%/u.test(line);
+}
+
+function germanShorthands(text: string, masked: string): LatexConstruct[] {
+  const active = [...text.matchAll(GERMAN_BABEL)].some((match) =>
+    uncommented(text, match.index ?? 0),
+  );
+  if (!active) return [];
+  const constructs: LatexConstruct[] = [];
+  let index = masked.indexOf('"');
+  while (index >= 0) {
+    const decoded = GERMAN_SHORTHANDS.get(masked[index + 1] ?? "");
+    if (decoded !== undefined) {
+      constructs.push({ from: index, to: index + 2, text: decoded });
+      index += 1;
+    }
+    index = masked.indexOf('"', index + 1);
+  }
+  return constructs;
+}
+
+function decodeScan(text: string, scan: LatexScan): DecodedLatexProse {
+  const masked = maskRegions(text, scan.regions);
+  const constructs = [...scan.constructs, ...germanShorthands(text, masked)];
+  if (constructs.length === 0) {
+    return {
+      text: masked,
+      decoded: false,
+      start: (index) => index,
+      end: (index) => index + 1,
+    };
+  }
+  constructs.sort((left, right) => left.from - right.from);
+  let decoded = "";
+  const starts: number[] = [];
+  const ends: number[] = [];
+  let cursor = 0;
+  for (const construct of constructs) {
+    if (construct.from < cursor) continue;
+    for (; cursor < construct.from; cursor++) {
+      decoded += masked[cursor];
+      starts.push(cursor);
+      ends.push(cursor + 1);
+    }
+    for (const character of construct.text) {
+      decoded += character;
+      for (let unit = 0; unit < character.length; unit++) {
+        starts.push(construct.from);
+        ends.push(construct.to);
+      }
+    }
+    cursor = construct.to;
+  }
+  for (; cursor < masked.length; cursor++) {
+    decoded += masked[cursor];
+    starts.push(cursor);
+    ends.push(cursor + 1);
+  }
+  return {
+    text: decoded,
+    decoded: true,
+    start: (index) => starts[index] ?? text.length,
+    end: (index) => ends[index] ?? text.length,
+  };
+}
+
+export function decodeLatexProse(text: string): DecodedLatexProse {
+  return decodeScan(text, collectLatexRegions(text, { preamble: true }));
+}
+
+function decodedWords(
+  prose: DecodedLatexProse,
+  source: string,
+): SpellingWord[] {
+  const locate = (span: SpellingWordSpan) => {
+    const from = prose.start(span.from);
+    const to = prose.end(span.to - 1);
+    const word = prose.text.slice(span.from, span.to);
+    return {
+      from,
+      to,
+      word: prose.decoded ? word : source.slice(from, to),
+    };
+  };
+  return spellingWordSpans(prose.text).map((span) => ({
+    ...locate(span),
+    ...(span.compound ? { compound: locate(span.compound) } : {}),
+  }));
 }
 
 export interface ProseMask {
@@ -479,11 +865,44 @@ function writeProsePlaceholder(
   }
 }
 
+function writeDecodedWords(
+  out: string[],
+  masked: MaskSpan[],
+  text: string,
+  prose: DecodedLatexProse,
+): MaskSpan[] {
+  if (!prose.decoded) return masked;
+  const written: MaskSpan[] = [];
+  for (const word of decodedWords(prose, text)) {
+    const unit = word.compound ?? word;
+    const previous = written.at(-1);
+    if (previous && previous.from === unit.from) continue;
+    if (unit.word === text.slice(unit.from, unit.to)) continue;
+    if (unit.word.length > unit.to - unit.from) continue;
+    blankInto(out, unit.from, unit.to);
+    for (let k = 0; k < unit.word.length; k++) {
+      out[unit.from + k] = unit.word[k];
+    }
+    written.push({ from: unit.from, to: unit.to });
+  }
+  if (written.length === 0) return masked;
+  const merged: MaskSpan[] = [];
+  for (const span of [...masked, ...written].sort(
+    (left, right) => left.from - right.from,
+  )) {
+    const last = merged.at(-1);
+    if (last && span.from < last.to) last.to = Math.max(last.to, span.to);
+    else merged.push({ ...span });
+  }
+  return merged;
+}
+
 export function maskLatexForProseRegions(text: string): ProseMask {
   const out = text.split("");
   const masked: MaskSpan[] = [];
   let applied = 0;
-  for (const region of collectLatexRegions(text)) {
+  const scan = collectLatexRegions(text, { preamble: true });
+  for (const region of scan.regions) {
     if (region.to <= applied) continue;
     const from = Math.max(region.from, applied);
     applied = region.to;
@@ -495,7 +914,8 @@ export function maskLatexForProseRegions(text: string): ProseMask {
     blankInto(out, from, region.to);
     writeProsePlaceholder(out, text, from, region.to);
   }
-  return { prose: out.join(""), masked };
+  const regions = writeDecodedWords(out, masked, text, decodeScan(text, scan));
+  return { prose: out.join(""), masked: regions };
 }
 
 export function maskLatexForProse(text: string): string {
@@ -552,5 +972,5 @@ export function maskToProse(text: string): { prose: string; map: number[] } {
 }
 
 export function spellcheckRanges(text: string): SpellingWord[] {
-  return spellingWordRanges(maskLatex(text), text);
+  return decodedWords(decodeLatexProse(text), text);
 }

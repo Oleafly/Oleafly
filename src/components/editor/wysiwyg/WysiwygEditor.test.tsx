@@ -333,6 +333,84 @@ describe("WysiwygEditor", () => {
     expect(saved).toContain("Body text.");
   });
 
+  it("keeps untouched Markdown comments, citations and footnotes when another block is edited", () => {
+    const source = `---
+title: Práce
+---
+
+# Úvod
+
+<!-- TODO: doplnit zdroje před odevzdáním -->
+
+Jak uvádí [@novak2020, s. 3], papír se skládá z vrcholů[^1].
+
+Platí 1 < 2.
+
+[^1]: Poznámka pod čarou.
+`;
+    setFiles({ "main.md": { content: source, dirty: false } }, "main.md");
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+
+    act(() => {
+      editor.commands.insertContentAt(2, "X");
+    });
+    act(() => flushWysiwygPendingEdits());
+
+    expect(useFilesStore.getState().files["main.md"].content).toBe(
+      source.replace("# Úvod", "# ÚXvod"),
+    );
+  });
+
+  it("writes each Markdown file against its own source when the active file switches", () => {
+    const a = "# Alfa\n\n<!-- poznámka A -->\n\nText [@a2020].\n";
+    const b = "# Beta\n\n<!-- poznámka B -->\n\n[^1]: Poznámka.\n";
+    setFiles(
+      {
+        "a.md": { content: a, dirty: false },
+        "b.md": { content: b, dirty: false },
+      },
+      "a.md",
+    );
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+
+    act(() => {
+      editor.commands.insertContentAt(2, "X");
+      useFilesStore.setState({ activePath: "b.md" } as unknown as ReturnType<typeof useFilesStore.getState>);
+    });
+    expect(useFilesStore.getState().files["a.md"].content).toBe(a.replace("# Alfa", "# AXlfa"));
+
+    act(() => {
+      editor.commands.insertContentAt(2, "Y");
+    });
+    act(() => flushWysiwygPendingEdits());
+    expect(useFilesStore.getState().files["b.md"].content).toBe(b.replace("# Beta", "# BYeta"));
+  });
+
+  it.each([
+    ["a list", "Úvod\n\n* první\n* druhá\n", "Úvod\n\n* první\n* druhá\n\nDalší\n"],
+    [
+      "a list and a reference definition",
+      "Úvod\n\n* [první][x]\n\n[x]: https://example.com\n",
+      "Úvod\n\n* [první][x]\n\n[x]: https://example.com\n\nDalší\n",
+    ],
+  ])("keeps a Markdown file ending in %s when typing below it", (_name, source, expected) => {
+    setFiles({ "main.md": { content: source, dirty: false } }, "main.md");
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    const last = editor.state.doc.lastChild;
+    expect(last?.type.name).toBe("paragraph");
+    expect(last?.content.size).toBe(0);
+
+    act(() => {
+      editor.commands.insertContentAt(editor.state.doc.content.size - 1, "Další");
+    });
+    act(() => flushWysiwygPendingEdits());
+
+    expect(useFilesStore.getState().files["main.md"].content).toBe(expected);
+  });
+
   it("shows a collapsed preamble toggle for a full LaTeX document, hidden by default", () => {
     render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.getByText("Show document preamble")).toBeInTheDocument();

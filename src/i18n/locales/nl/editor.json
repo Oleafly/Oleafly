@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "De app-instelling gebruiken",
     "spellLanguageAriaLabel": "Taal voor de spellingcontrole in dit project",
     "spellLanguageHint": "Geldt alleen voor dit project. Download meer talen bij Instellingen.",
-    "spellLanguageFailed": "Kon de taal voor de spellingcontrole niet wijzigen."
+    "spellLanguageFailed": "Kon de taal voor de spellingcontrole niet wijzigen.",
+    "notChecked": "Niet gecontroleerd",
+    "dictionaryMissing": "{{name}} is niet gedownload, dus de spelling wordt niet gecontroleerd. Download het in Instellingen of kies een andere taal.",
+    "grammarEnglishOnly": "Grammaticacontrole werkt alleen voor Engelse documenten.",
+    "spellLanguageNotDownloaded": "{{name}} (niet gedownload)"
   },
   "table": {
     "trigger": "Tabel invoegen",
@@ -567,7 +571,10 @@
     "keyboardHint": "Gebruik Tab of de pijltjestoetsen om tussen acties te wisselen. Druk op Escape om te sluiten.",
     "endOfDocument": "Einde van het document",
     "hidePreamble": "Documentpreambule verbergen",
-    "showPreamble": "Documentpreambule tonen"
+    "showPreamble": "Documentpreambule tonen",
+    "findingLabel": "{{message}}. Correctiesuggesties openen.",
+    "rawBlockFindings_one": "{{count}} correctiebevinding in dit ruwe blok. {{message}}. Suggesties openen.",
+    "rawBlockFindings_other": "{{count}} correctiebevindingen in dit ruwe blok. {{message}}. Suggesties openen."
   },
   "package": {
     "search": {

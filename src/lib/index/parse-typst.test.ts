@@ -73,3 +73,37 @@ describe("parseFile: Typst", () => {
     expect(targets('#include "child."')).toEqual(["dir/child..typ"]);
   });
 });
+
+describe("parseFile: Typst links, escapes and Unicode names", () => {
+  it("keeps URLs in headings and the label that follows them", () => {
+    const parsed = parseFile(
+      "main.typ",
+      "= Zdroje z https://typst.app/docs#intro <zdroje>\nViz @zdroje.\n",
+    );
+    expect(parsed.defs.map((s) => `${s.kind}:${s.name}`)).toEqual([
+      "section:Zdroje z https://typst.app/docs#intro",
+      "label:zdroje",
+    ]);
+    expect(parsed.uses.map((s) => s.name)).toEqual(["zdroje"]);
+  });
+
+  it("indexes Unicode labels and trims sentence punctuation from references", () => {
+    const text = "= Úvod <kap:úvod>\nViz @kap:úvod. a @введение: <введение>\n";
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.defs.filter((s) => s.kind === "label").map((s) => s.name)).toEqual([
+      "kap:úvod",
+      "введение",
+    ]);
+    const uses = parsed.uses.filter((s) => s.kind === "atuse");
+    expect(uses.map((s) => text.slice(s.from, s.to))).toEqual(["@kap:úvod", "@введение"]);
+  });
+
+  it("ignores escaped at signs and at signs inside URLs", () => {
+    const parsed = parseFile(
+      "main.typ",
+      "jan\\@firma.cz https://example.org/@autor \\<ne> \\\\@ano\n",
+    );
+    expect(parsed.uses.map((s) => s.name)).toEqual(["ano"]);
+    expect(parsed.defs).toEqual([]);
+  });
+});

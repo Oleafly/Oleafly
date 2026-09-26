@@ -39,6 +39,7 @@ vi.mock("./proofreading", async () => {
     },
     isVisualProofreadingIssueCurrent: proofreading.current,
     visualProofreadingIssueGroup: () => proofreading.group,
+    visualProofreadingMessage: (issue: VisualProofreadingIssue) => issue.message,
     applyVisualProofreadingSuggestion: proofreading.apply,
     ignoreVisualProofreadingIssue: proofreading.ignore,
   };

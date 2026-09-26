@@ -205,7 +205,11 @@
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",
     "spellLanguageHint": "只會套用到這個專案。可在設定中下載更多語言。",
-    "spellLanguageFailed": "無法變更拼字檢查語言。"
+    "spellLanguageFailed": "無法變更拼字檢查語言。",
+    "notChecked": "未檢查",
+    "dictionaryMissing": "{{name}} 尚未下載，因此不會檢查拼字。請在設定中下載，或選擇其他語言。",
+    "grammarEnglishOnly": "文法檢查僅適用於英文文件。",
+    "spellLanguageNotDownloaded": "{{name}}（未下載）"
   },
   "table": {
     "trigger": "插入表格",
@@ -562,7 +566,9 @@
     "keyboardHint": "使用 Tab 或方向鍵在各項操作之間移動。按 Escape 關閉。",
     "endOfDocument": "文件結尾",
     "hidePreamble": "隱藏文件序言區",
-    "showPreamble": "顯示文件序言區"
+    "showPreamble": "顯示文件序言區",
+    "findingLabel": "{{message}}。開啟校對建議。",
+    "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。"
   },
   "package": {
     "search": {

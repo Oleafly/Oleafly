@@ -209,7 +209,11 @@
     "spellLanguageAppSetting": "Folosește setarea aplicației",
     "spellLanguageAriaLabel": "Limba verificării ortografice pentru acest proiect",
     "spellLanguageHint": "Se aplică doar acestui proiect. Descarcă mai multe limbi din Setări.",
-    "spellLanguageFailed": "Limba verificării ortografice nu a putut fi schimbată."
+    "spellLanguageFailed": "Limba verificării ortografice nu a putut fi schimbată.",
+    "notChecked": "Neverificat",
+    "dictionaryMissing": "{{name}} nu este descărcat, așa că ortografia nu este verificată. Descarcă-l din Setări sau alege altă limbă.",
+    "grammarEnglishOnly": "Verificarea gramaticală funcționează doar pentru documente în engleză.",
+    "spellLanguageNotDownloaded": "{{name}} (nedescărcat)"
   },
   "table": {
     "trigger": "Inserează un tabel",
@@ -572,7 +576,11 @@
     "keyboardHint": "Folosește Tab sau săgețile ca să treci de la o acțiune la alta. Apasă Escape ca să închizi.",
     "endOfDocument": "Sfârșitul documentului",
     "hidePreamble": "Ascunde preambulul documentului",
-    "showPreamble": "Arată preambulul documentului"
+    "showPreamble": "Arată preambulul documentului",
+    "findingLabel": "{{message}}. Deschide sugestiile de corectură.",
+    "rawBlockFindings_one": "{{count}} observație de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
+    "rawBlockFindings_few": "{{count}} observații de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
+    "rawBlockFindings_other": "{{count}} de observații de corectură în acest bloc brut. {{message}}. Deschide sugestiile."
   },
   "package": {
     "search": {

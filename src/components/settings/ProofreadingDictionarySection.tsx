@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/tabs";
 import {
   DICTIONARY_LIMITS,
+  canStoreWord,
   normalizeDictionaryWord,
   useDictionary,
 } from "@/lib/dictionary";
@@ -46,10 +47,7 @@ function AddWord({
   const { t } = useTranslation(["common", "settings"]);
   const [value, setValue] = useState("");
   const normalized = normalizeDictionaryWord(value);
-  const valid =
-    normalized.length > 0 &&
-    normalized.length <= DICTIONARY_LIMITS.wordCharacters &&
-    !/[\p{Cc}\p{Cf}]/u.test(normalized);
+  const valid = canStoreWord(normalized);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();

@@ -207,7 +207,11 @@
     "spellLanguageAppSetting": "Brug appens indstilling",
     "spellLanguageAriaLabel": "Sprog til stavekontrol i dette projekt",
     "spellLanguageHint": "Gælder kun dette projekt. Download flere sprog under Indstillinger.",
-    "spellLanguageFailed": "Kunne ikke ændre sproget til stavekontrol."
+    "spellLanguageFailed": "Kunne ikke ændre sproget til stavekontrol.",
+    "notChecked": "Ikke kontrolleret",
+    "dictionaryMissing": "{{name}} er ikke hentet, så stavningen kontrolleres ikke. Hent den i Indstillinger, eller vælg et andet sprog.",
+    "grammarEnglishOnly": "Grammatikkontrol virker kun for engelske dokumenter.",
+    "spellLanguageNotDownloaded": "{{name}} (ikke hentet)"
   },
   "table": {
     "trigger": "Indsæt tabel",
@@ -567,7 +571,10 @@
     "keyboardHint": "Brug Tab eller piletasterne til at skifte mellem handlinger. Tryk på Escape for at lukke.",
     "endOfDocument": "Dokumentets slutning",
     "hidePreamble": "Skjul dokumentets præambel",
-    "showPreamble": "Vis dokumentets præambel"
+    "showPreamble": "Vis dokumentets præambel",
+    "findingLabel": "{{message}}. Åbn korrekturforslag.",
+    "rawBlockFindings_one": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag.",
+    "rawBlockFindings_other": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag."
   },
   "package": {
     "search": {

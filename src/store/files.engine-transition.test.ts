@@ -1726,7 +1726,7 @@ describe("external project mutation lease", () => {
       expect(isEditorMutationLocked("project")).toBe(false);
       useFilesStore.getState().setContent("main.tex", "Stashed work plus next edit");
       await useFilesStore.getState().saveFile("main.tex");
-      expect(mocks.writeFileContent).toHaveBeenLastCalledWith("project", "main.tex", "Stashed work plus next edit", 1);
+      expect(mocks.writeFileContent).toHaveBeenLastCalledWith("project", "main.tex", "Stashed work plus next edit", 1, expect.any(String));
     } finally {
       unregister();
     }

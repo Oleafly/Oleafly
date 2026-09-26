@@ -15,6 +15,7 @@ import {
   ghostCompletion,
   pendingGhostCompletion,
 } from "./ghost-completion";
+import { latexCompletions } from "./latex";
 
 // A source that offers the given labels whenever a backslash command or word
 // is being typed, mirroring how the real LaTeX sources behave.
@@ -407,5 +408,58 @@ describe("dismissal", () => {
     await settle();
     expect(pendingGhostCompletion(view)).toBe("a");
     view.destroy();
+  });
+});
+
+describe("ghost prefix follows the source result", () => {
+  async function ghostFor(
+    doc: string,
+    sources: CompletionSource[],
+    syntax: "latex" | "markdown" | "typst",
+  ): Promise<string | null> {
+    const view = new EditorView({
+      state: EditorState.create({
+        doc,
+        selection: { anchor: doc.length },
+        extensions: [ghostCompletion(sources, syntax)],
+      }),
+      parent: document.body,
+    });
+    await settle();
+    const ghost = pendingGhostCompletion(view);
+    view.destroy();
+    return ghost;
+  }
+
+  function keySource(trigger: RegExp, labels: string[]): CompletionSource {
+    return (context) => {
+      const match = context.matchBefore(trigger);
+      if (!match) return null;
+      const key = /[\p{L}\p{M}\p{N}_:.+/-]*$/u.exec(match.text)?.[0] ?? "";
+      return {
+        from: context.pos - key.length,
+        options: labels.map((label) => ({ label })),
+      };
+    };
+  }
+
+  it.each([
+    ["\\label{fig:results-plot}\\label{results}\n\\ref{fig:res", "ults-plot"],
+    ["\\label{k20x}\\label{Nov\u00E1k2020}\n\\ref{Nov\u00E1k20", "20"],
+    ["\\label{\u00FAvodn\u00ED}\n\\ref{\u00FAvo", "dn\u00ED"],
+    ["\\label{sec-intro}\n\\ref{sec-int", "ro"],
+    ["\\label{intro}\n\\ref{int", "ro"],
+  ])("completes %s from the reference argument", async (doc, ghost) => {
+    expect(await ghostFor(doc, [latexCompletions], "latex")).toBe(ghost);
+  });
+
+  it("completes a Typst reference with an accented key", async () => {
+    const source = keySource(/@[\p{L}\p{M}\p{N}_:.+/-]*$/u, ["obr:\u00FAvod", "vod"]);
+    expect(await ghostFor("Viz @obr:\u00FAvo", [source], "typst")).toBe("d");
+  });
+
+  it("completes a Markdown anchor with an accented id", async () => {
+    const source = keySource(/\]\(#[\p{L}\p{M}\p{N}_:.+/-]*$/u, ["\u00FAvod"]);
+    expect(await ghostFor("Viz [x](#\u00FAvo", [source], "markdown")).toBe("d");
   });
 });

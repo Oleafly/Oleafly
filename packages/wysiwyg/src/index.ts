@@ -75,6 +75,11 @@ export {
 } from "./markdown/parse";
 export { serializeMarkdownBody } from "./markdown/serialize";
 export {
+  createMarkdownSourceSnapshot,
+  type MarkdownSourceLayout,
+  type MarkdownSourceSnapshot,
+} from "./markdown/source-layout";
+export {
   parseLatexBody,
   type ParseLatexBodyOptions,
 } from "./latex/parse";

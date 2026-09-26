@@ -1128,3 +1128,80 @@ describe("deferred Hunspell suggestions", () => {
     expect(suggest).not.toHaveBeenCalled();
   });
 });
+
+describe("local grammar fallback", () => {
+  async function fallbackDiagnostics(
+    text: string,
+    options: { path?: string; locale?: string } = {},
+  ): Promise<string[]> {
+    setSpellHost({
+      t: englishEditorMessage,
+      getProjectId: () => "project",
+      getActivePath: () => options.path ?? "main.tex",
+      getLintPrefs: () => ({
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american",
+      }),
+      ...(options.locale ? { getDictionaryLocale: () => options.locale ?? "" } : {}),
+      isSessionIgnored: () => false,
+      isWordIgnored: () => false,
+      ignoreWordForProject: () => undefined,
+      ignoreWordGlobally: () => undefined,
+    });
+    view = new EditorView({
+      state: EditorState.create({
+        doc: text,
+        extensions: [createHarperLinter(true)],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    const found: string[] = [];
+    await vi.waitFor(
+      () => {
+        found.length = 0;
+        forEachDiagnostic(view!.state, (_diagnostic, from, to) => {
+          found.push(text.slice(from, to));
+        });
+        expect(found.length).toBeGreaterThan(0);
+      },
+      { timeout: 2_000 },
+    );
+    return found;
+  }
+
+  it("finds repeated words in any script without splitting at accents", async () => {
+    const found = await fallbackDiagnostics(
+      "To je ještě lepší. Problém může být. Myslím, že že to platí. Он он пришёл. the the end",
+      { locale: "cs_CZ" },
+    );
+    expect(found).toEqual(["že že", "Он он", "the the"]);
+  });
+
+  it("finds a repeat that spans a LaTeX accent macro", async () => {
+    const found = await fallbackDiagnostics(String.raw`Le caf\'e caf\'e noir.`, {
+      locale: "fr_FR",
+    });
+    expect(found).toEqual([String.raw`caf\'e caf\'e`]);
+  });
+
+  it("runs the English typo list only for an English dictionary", async () => {
+    expect(
+      await fallbackDiagnostics("teh cat and the the dog", { locale: "en_GB" }),
+    ).toEqual(["teh", "the the"]);
+    view?.destroy();
+    view = null;
+    expect(
+      await fallbackDiagnostics("teh kočka a a pes", { locale: "cs_CZ" }),
+    ).toEqual(["a a"]);
+  });
+
+  it("masks Typst markup before looking for repeats", async () => {
+    const found = await fallbackDiagnostics(
+      "#set text(lang: \"cs\")\nText text a @knuth @knuth tady tady.",
+      { path: "main.typ", locale: "cs_CZ" },
+    );
+    expect(found).toEqual(["Text text", "tady tady"]);
+  });
+});

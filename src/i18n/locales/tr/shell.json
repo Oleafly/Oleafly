@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "LaTeX ve Markdown Kaynak ve Görsel düzenlemede, ayrıca Typst Kaynak düzenlemede İngilizce dil bilgisini ve üslubu tek tıklamalık düzeltmelerle denetler.",
-        "label": "Dil bilgisi ve üslup (Harper)"
+        "label": "Dil bilgisi ve üslup (Harper)",
+        "englishOnly": "Dil bilgisi denetimi yalnızca İngilizce için çalışır. Yazım sözlüğü {{name}} olduğu sürece duraklatılır."
       },
       "offline": {
         "description": "--only-cached ile derler ve paketleri ağ üzerinden hiç indirmez.",

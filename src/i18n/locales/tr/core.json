@@ -131,6 +131,7 @@
   },
   "dictionary": {
     "full": "Sözlüğünüz dolu, bu yüzden o sözcük bunun yerine bu belgede gizlendi. Kaydetmek için Ayarlar'dan birini kaldırın.",
+    "unsupportedCharacters": "Bu sözcükte sözlüğün kaydedemediği karakterler var.",
     "wordTooLong": "Bu, sözcük olarak kaydedilemeyecek kadar uzun, bu yüzden bunun yerine bu belgede gizlendi. Bir sözcük en fazla {{max}} karakter olabilir."
   },
   "documentScan": {
@@ -369,7 +370,11 @@
     "updatedOn": "{{date}} tarihinde güncellendi",
     "updatedToday": "Bugün güncellendi",
     "updatedYesterday": "Dün güncellendi",
-    "autosaveFailed": "Değişiklikleriniz kaydedilemedi. Hâlâ düzenleyicide duruyorlar."
+    "autosaveFailed": "Değişiklikleriniz kaydedilemedi. Hâlâ düzenleyicide duruyorlar.",
+    "changedOnDisk": "\"{{path}}\" Oleafly dışında değiştirildi. Yeniden yükleyin ya da kendi sürümünüzü korumak için tekrar kaydedin.",
+    "openFileEncoding": "\"{{path}}\" bir UTF-8 metin dosyası olmadığı için açılamıyor. Metin dosyasıysa UTF-8 olarak kaydedip yeniden açın.",
+    "openFileFailed": "\"{{path}}\" açılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
+    "reloadFromDisk": "Yeniden yükle"
   },
   "projectDiagnostics": {
     "analysisFailed": "Çözümleme başarısız oldu: {{message}}",

@@ -43,6 +43,7 @@ import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
+import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
 import { dismissEngineHint, engineHintDismissed } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
@@ -58,6 +59,7 @@ import {
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
+import { diskHash } from "@/lib/disk-hash";
 
 // CodeMirror's document model is LF-based on every platform. Canonicalize
 // backend text before publishing it to the shared store so Windows CRLF files
@@ -71,6 +73,27 @@ async function readCanonicalFileContent(
   path: string,
 ): Promise<string> {
   return normalizeTextContent(await readFileContent(projectId, path));
+}
+
+interface DiskSnapshot {
+  hash: string;
+  crlf: boolean;
+}
+
+function diskSnapshotOf(raw: string): DiskSnapshot {
+  return { hash: diskHash(raw), crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw) };
+}
+
+function diskBytes(content: string, crlf: boolean): string {
+  return crlf ? content.replace(/\n/gu, "\r\n") : content;
+}
+
+async function readDiskText(
+  projectId: string,
+  path: string,
+): Promise<{ content: string; snapshot: DiskSnapshot }> {
+  const raw = await readFileContent(projectId, path);
+  return { content: normalizeTextContent(raw), snapshot: diskSnapshotOf(raw) };
 }
 
 // Pin the user's global default engine onto a freshly created project. Only
@@ -157,9 +180,15 @@ async function checkTexPinStatus(
 }
 
 const MUTATION_CONFLICT = "mutation conflict at generation";
+const DISK_CONFLICT = "file changed on disk";
+const UNSUPPORTED_ENCODING = "unsupported text encoding";
 
 function isMutationConflict(error: unknown): boolean {
   return String(error).includes(MUTATION_CONFLICT);
+}
+
+function isDiskConflict(error: unknown): boolean {
+  return String(error).includes(DISK_CONFLICT);
 }
 
 const ENGINE_FETCH_ATTEMPTS = 3;
@@ -223,6 +252,10 @@ export function reportFileSaveFailure(
   void logError(scope, error);
   if (isMutationConflict(error)) return;
   if (useFilesStore.getState().projectId !== projectId) return;
+  if (isDiskConflict(error)) {
+    reportDiskConflict(projectId, path, explicit);
+    return;
+  }
   let notice = saveFailureNotice;
   if (notice?.projectId !== projectId) {
     forgetSaveFailure();
@@ -237,6 +270,39 @@ export function reportFileSaveFailure(
     i18n.t(($) => $.core.project.autosaveFailed),
     undefined,
     true,
+  );
+}
+
+function reportDiskConflict(projectId: string, path: string, explicit: boolean): void {
+  const key = writeKey(projectId, path);
+  if (diskConflicts.get(key)?.warned && !explicit) return;
+  diskConflicts.set(key, {
+    warned: true,
+    toastId: toast.errorUnique(
+      `disk-conflict:${key}`,
+      i18n.t(($) => $.core.project.changedOnDisk, { path }),
+      {
+        label: i18n.t(($) => $.core.project.reloadFromDisk),
+        onClick: () => {
+          void useFilesStore
+            .getState()
+            .reloadFromDisk(path)
+            .catch((error) => reportFileOpenFailure(projectId, path, error));
+        },
+      },
+      true,
+    ),
+  });
+}
+
+function reportFileOpenFailure(projectId: string, path: string, error: unknown): void {
+  void logError("open file", error);
+  if (useFilesStore.getState().projectId !== projectId) return;
+  toast.errorUnique(
+    `open-file:${projectId}\0${path}`,
+    String(error).includes(UNSUPPORTED_ENCODING)
+      ? i18n.t(($) => $.core.project.openFileEncoding, { path })
+      : i18n.t(($) => $.core.project.openFileFailed, { path }),
   );
 }
 
@@ -267,6 +333,10 @@ interface FileState {
   content: string;
   dirty: boolean;
   edits?: number;
+}
+
+export interface SaveOptions {
+  overwrite?: boolean;
 }
 
 export interface SaveFailure {
@@ -345,8 +415,9 @@ interface FilesStore {
   closeTab: (path: string) => void;
   setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => void;
   bumpDocVersion: () => void;
-  saveActive: () => Promise<void>;
-  saveFile: (path: string) => Promise<void>;
+  saveActive: (options?: SaveOptions) => Promise<void>;
+  saveFile: (path: string, options?: SaveOptions) => Promise<void>;
+  reloadFromDisk: (path: string) => Promise<void>;
   createFile: (
     path: string,
     isDir: boolean,
@@ -382,6 +453,8 @@ const pendingSaves = new Set<string>();
 // a slow autosave can finish after a newer transition flush and put stale
 // content back on disk.
 const pendingWrites = new Map<string, Promise<number>>();
+const diskSnapshots = new Map<string, DiskSnapshot>();
+const diskConflicts = new Map<string, { warned: boolean; toastId?: number }>();
 let knownMutationProjectId: string | null = null;
 let knownMutationGeneration: number | null = null;
 let lastProjectStateRevision = 0;
@@ -428,6 +501,49 @@ function writeKey(projectId: string, path: string) {
   return `${projectId}\0${path}`;
 }
 
+function rememberDiskSnapshot(projectId: string, path: string, snapshot: DiskSnapshot): void {
+  diskSnapshots.set(writeKey(projectId, path), snapshot);
+}
+
+function settleDiskConflict(key: string): void {
+  const toastId = diskConflicts.get(key)?.toastId;
+  if (typeof toastId === "number") toast.dismiss(toastId);
+  diskConflicts.delete(key);
+}
+
+function resetDiskState(): void {
+  for (const key of [...diskConflicts.keys()]) settleDiskConflict(key);
+  diskSnapshots.clear();
+}
+
+function forgetDiskStateUnder(projectId: string, isForgotten: (path: string) => boolean): void {
+  const prefix = `${projectId}\0`;
+  for (const key of [...diskSnapshots.keys()]) {
+    if (key.startsWith(prefix) && isForgotten(key.slice(prefix.length))) diskSnapshots.delete(key);
+  }
+  for (const key of [...diskConflicts.keys()]) {
+    if (key.startsWith(prefix) && isForgotten(key.slice(prefix.length))) settleDiskConflict(key);
+  }
+}
+
+function remapDiskState(projectId: string, remap: (path: string) => string): void {
+  const prefix = `${projectId}\0`;
+  const moved: Array<[string, DiskSnapshot]> = [];
+  for (const [key, snapshot] of [...diskSnapshots.entries()]) {
+    if (!key.startsWith(prefix)) continue;
+    const next = writeKey(projectId, remap(key.slice(prefix.length)));
+    if (next === key) continue;
+    diskSnapshots.delete(key);
+    moved.push([next, snapshot]);
+  }
+  for (const [key, snapshot] of moved) diskSnapshots.set(key, snapshot);
+  for (const key of [...diskConflicts.keys()]) {
+    if (key.startsWith(prefix) && remap(key.slice(prefix.length)) !== key.slice(prefix.length)) {
+      settleDiskConflict(key);
+    }
+  }
+}
+
 function editedSinceLoad(file: FileState | undefined): boolean {
   return (file?.edits ?? 0) > 0;
 }
@@ -455,7 +571,12 @@ async function refreshMutationGeneration(projectId: string): Promise<number> {
   return rememberMutationGeneration(projectId, generation);
 }
 
-function enqueueWrite(projectId: string, path: string, content: string): Promise<void> {
+function enqueueWrite(
+  projectId: string,
+  path: string,
+  content: string,
+  overwrite = false,
+): Promise<void> {
   const key = writeKey(projectId, path);
   const baseline =
     knownMutationProjectId === projectId && knownMutationGeneration !== null
@@ -466,7 +587,15 @@ function enqueueWrite(projectId: string, path: string, content: string): Promise
   let tracked: Promise<number>;
   tracked = expected
     .then(async (expectedGeneration) => {
-      const result = await writeFileContent(projectId, path, content, expectedGeneration);
+      const snapshot = diskSnapshots.get(key);
+      const crlf = snapshot?.crlf ?? false;
+      const bytes = diskBytes(content, crlf);
+      const expectedHash = overwrite ? undefined : snapshot?.hash;
+      const result = expectedHash === undefined
+        ? await writeFileContent(projectId, path, bytes, expectedGeneration)
+        : await writeFileContent(projectId, path, bytes, expectedGeneration, expectedHash);
+      diskSnapshots.set(key, { hash: diskHash(bytes), crlf });
+      settleDiskConflict(key);
       return rememberMutationGeneration(
         projectId,
         Number.isSafeInteger(result?.generation) ? result.generation : expectedGeneration,
@@ -849,6 +978,7 @@ function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesS
   mainDocSeq++;
   cancelPendingAutosave();
   forgetSaveFailure();
+  resetDiskState();
   cancelProofreading("source");
   cancelProofreading("visual");
   resetMutationGeneration(id);
@@ -938,8 +1068,9 @@ async function preloadBibliographies(
   const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
   for (const bibliography of bibliographies) {
     try {
-      const content = await readCanonicalFileContent(id, bibliography.path);
+      const { content, snapshot } = await readDiskText(id, bibliography.path);
       if (superseded()) return;
+      rememberDiskSnapshot(id, bibliography.path, snapshot);
       set((state) => ({
         files: { ...state.files, [bibliography.path]: { content, dirty: false } },
       }));
@@ -985,6 +1116,7 @@ type ProjectMetadataState = Pick<
 
 interface ReloadedProjectFiles {
   loaded: Map<string, string>;
+  snapshots: Map<string, DiskSnapshot>;
   attempted: Set<string>;
 }
 
@@ -1061,19 +1193,22 @@ async function loadChangedProjectFiles(
   filePaths: Set<string>,
 ): Promise<ReloadedProjectFiles> {
   const loaded = new Map<string, string>();
+  const snapshots = new Map<string, DiskSnapshot>();
   const attempted = new Set<string>();
   await Promise.all(
     Object.entries(captured).map(async ([path, file]) => {
       if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
       attempted.add(path);
-      const content = await readCanonicalFileContent(projectId, path).catch((error) => {
+      const read = await readDiskText(projectId, path).catch((error) => {
         if (isEditorMutationLocked(projectId)) throw error;
         return null;
       });
-      if (content !== null) loaded.set(path, content);
+      if (read === null) return;
+      loaded.set(path, read.content);
+      snapshots.set(path, read.snapshot);
     }),
   );
-  return { loaded, attempted };
+  return { loaded, snapshots, attempted };
 }
 
 function reconcileProjectFile(
@@ -1083,6 +1218,7 @@ function reconcileProjectFile(
   filePaths: Set<string>,
   reloaded: ReloadedProjectFiles,
   removedDirty: string[],
+  adopted: string[],
 ): FileState | undefined {
   if (!filePaths.has(path)) {
     if (current.dirty) removedDirty.push(path);
@@ -1091,7 +1227,10 @@ function reconcileProjectFile(
   const previous = captured[path];
   if (!previous || current.dirty || current.content !== previous.content) return current;
   const content = reloaded.loaded.get(path);
-  if (content !== undefined) return { content, dirty: false };
+  if (content !== undefined) {
+    adopted.push(path);
+    return { content, dirty: false };
+  }
   return reloaded.attempted.has(path) ? undefined : current;
 }
 
@@ -1102,6 +1241,7 @@ function reconciledProjectState(
   captured: Record<string, FileState>,
   reloaded: ReloadedProjectFiles,
   removedDirty: string[],
+  adopted: string[],
 ): Partial<FilesStore> {
   const filePaths = new Set(tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
   const files: Record<string, FileState> = {};
@@ -1113,6 +1253,7 @@ function reconciledProjectState(
       filePaths,
       reloaded,
       removedDirty,
+      adopted,
     );
     if (file) files[path] = file;
   }
@@ -1235,6 +1376,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     mainDocSeq++;
     cancelPendingAutosave();
     forgetSaveFailure();
+    resetDiskState();
     cancelProofreading("source");
     cancelProofreading("visual");
     useMcpApprovalStore.getState().cancelAll();
@@ -1336,17 +1478,20 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       fileOpenSuperseded(projectId, epoch, key, requestSeq, get);
     const loadContent = async (): Promise<boolean> => {
       try {
-        const content = await readCanonicalFileContent(projectId, path);
+        const { content, snapshot } = await readDiskText(projectId, path);
         if (superseded()) {
           releasePendingFileOpen(key, requestSeq);
           return false;
         }
+        rememberDiskSnapshot(projectId, path, snapshot);
         set((s) => ({
           files: { ...s.files, [path]: { content, dirty: false } },
         }));
         return true;
-      } catch {
+      } catch (error) {
+        const current = !superseded();
         releasePendingFileOpen(key, requestSeq);
+        if (current) reportFileOpenFailure(projectId, path, error);
         return false;
       }
     };
@@ -1407,13 +1552,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   bumpDocVersion: () => set((s) => ({ docVersion: s.docVersion + 1 })),
 
-  saveActive: async () => {
+  saveActive: async (options) => {
     const { projectId, activePath } = get();
     if (!projectId || !activePath) return;
-    await get().saveFile(activePath);
+    await get().saveFile(activePath, options);
   },
 
-  saveFile: async (path) => {
+  saveFile: async (path, options) => {
     const { projectId, files } = get();
     const state = files[path];
     if (!projectId || !state) return;
@@ -1422,9 +1567,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!state.dirty) return;
     const written = state.content;
     const reloadRevision = fileReloadRevision;
+    const key = writeKey(projectId, path);
+    const overwrite = options?.overwrite === true && diskConflicts.get(key)?.warned === true;
     try {
-      await enqueueWrite(projectId, path, written);
+      await enqueueWrite(projectId, path, written, overwrite);
     } catch (error) {
+      if (isDiskConflict(error) && !diskConflicts.has(key)) diskConflicts.set(key, { warned: false });
       if (get().projectId === projectId && get().files[path]?.dirty) {
         pendingSaves.add(path);
         if (isMutationConflict(error)) {
@@ -1453,6 +1601,25 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     } else {
       pendingSaves.delete(path);
     }
+  },
+
+  reloadFromDisk: async (path) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const { content, snapshot } = await readDiskText(projectId, path);
+    if (get().projectId !== projectId) return;
+    pendingSaves.delete(path);
+    fileReloadRevision++;
+    rememberDiskSnapshot(projectId, path, snapshot);
+    settleDiskConflict(writeKey(projectId, path));
+    set((s) => {
+      if (s.projectId !== projectId || !s.files[path]) return {};
+      return {
+        files: { ...s.files, [path]: { content, dirty: false } },
+        docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
+      };
+    });
+    settleSaveFailure(projectId, path, get().files);
   },
 
   createFile: async (path, isDir, conflictStrategy = "error") => {
@@ -1493,6 +1660,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (get().projectId !== projectId) return;
 
       set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
+      forgetDiskStateUnder(projectId, isDeletedPath);
       await get().refreshTree();
       await reopenMainDocAfterDelete(get, projectId, isDeletedPath);
     } finally {
@@ -1528,6 +1696,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         : p;
     };
     const isWithin = (p: string, root: string) => p === root || p.startsWith(`${root}/`);
+    if (conflictStrategy === "replace") {
+      forgetDiskStateUnder(projectId, (p) => isWithin(p, to) && !isWithin(p, from));
+    }
+    remapDiskState(projectId, remap);
     set((s) => {
       const files: Record<string, FileState> = {};
       for (const [k, v] of Object.entries(s.files)) {
@@ -1716,12 +1888,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
     const expectedGeneration = await get().prepareExternalMutation(projectId);
     const canonicalContent = normalizeTextContent(content);
+    const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
+    const bytes = diskBytes(canonicalContent, crlf);
     const result = await writeFileContent(
       projectId,
       path,
-      canonicalContent,
+      bytes,
       expectedGeneration,
     );
+    rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf });
+    settleDiskConflict(writeKey(projectId, path));
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
@@ -1760,6 +1936,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const current = get().files[path];
     if (!current || current.dirty || pendingSaves.has(path)) return false;
     const canonicalContent = normalizeTextContent(content);
+    rememberDiskSnapshot(projectId, path, diskSnapshotOf(content));
     if (current.content === canonicalContent) return false;
     void refreshMutationGeneration(projectId).catch(() => {});
     set((s) => {
@@ -1781,6 +1958,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   applyExternalWrite: (projectId, path, content) => {
     if (get().projectId !== projectId) return false;
     const canonicalContent = normalizeTextContent(content);
+    rememberDiskSnapshot(projectId, path, diskSnapshotOf(content));
     void refreshMutationGeneration(projectId).catch(() => {});
     const currentFile = get().files[path];
     if (currentFile?.dirty) {
@@ -1867,6 +2045,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     for (const pending of pendingSaves) {
       if (isDeletedPath(pending)) pendingSaves.delete(pending);
     }
+    forgetDiskStateUnder(projectId, isDeletedPath);
     set((s) => {
       const files = { ...s.files };
       for (const candidate of Object.keys(files)) {
@@ -1932,6 +2111,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const remappedActivePath = (path: string | null) =>
       path?.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
     const renamedPending = [...pendingSaves].map(remap);
+    remapDiskState(projectId, remap);
     pendingSaves.clear();
     for (const path of renamedPending) pendingSaves.add(path);
     let mainDocChanged = false;
@@ -2002,10 +2182,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const removedDirty: string[] = [];
+      const adopted: string[] = [];
       set((state) => {
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
-        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty);
+        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted);
       });
+      for (const path of adopted) {
+        const snapshot = reloaded.snapshots.get(path);
+        if (snapshot) rememberDiskSnapshot(projectId, path, snapshot);
+      }
       restoreRemovedDirtyFiles(removedDirty, get);
       scheduleAutosave(get);
       return true;
@@ -2152,12 +2337,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
     set({ loading: true });
     try {
-      const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
-      if (get().projectId !== expectedProjectId) return;
+      await runWithEditorMutationLease(expectedProjectId, async () => {
+        const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
+        if (get().projectId !== expectedProjectId) return;
 
-      const event = await gitRestore(expectedProjectId, oid, expectedGeneration);
-      if (get().projectId !== expectedProjectId) return;
-      await get().applyProjectStateChanged(event);
+        const event = await gitRestore(expectedProjectId, oid, expectedGeneration);
+        if (get().projectId !== expectedProjectId) return;
+        await get().applyProjectStateChanged(event);
+      });
     } finally {
       if (get().projectId === expectedProjectId && get().loading) {
         set({ loading: false });
@@ -2169,13 +2356,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (get().projectId !== expectedProjectId) {
       throw new Error("The open project changed before the Git pull started.");
     }
-    const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
-    if (get().projectId !== expectedProjectId) {
-      throw new Error("The open project changed before the Git pull started.");
-    }
-    const result = await gitPull(expectedProjectId, expectedGeneration);
-    await get().applyProjectStateChanged(result.state);
-    return result;
+    return runWithEditorMutationLease(expectedProjectId, async () => {
+      const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
+      if (get().projectId !== expectedProjectId) {
+        throw new Error("The open project changed before the Git pull started.");
+      }
+      const result = await gitPull(expectedProjectId, expectedGeneration);
+      await get().applyProjectStateChanged(result.state);
+      return result;
+    });
   }),
 
   discardFromGit: (expectedProjectId, path) => enqueueProjectTransition(async () => {
@@ -2190,6 +2379,22 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().applyProjectStateChanged(event);
   }),
 }));
+
+export async function runWithEditorMutationLease<T>(
+  projectId: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  const lease = acquireEditorMutationLease(projectId);
+  try {
+    flushWysiwygPendingEdits();
+    await lease.flush();
+    const result = await run();
+    await lease.reconcile();
+    return result;
+  } finally {
+    lease.release();
+  }
+}
 
 export function useActiveContent(): string {
   return useFilesStore((s) =>
@@ -2235,3 +2440,37 @@ if (typeof window !== "undefined") {
 }
 
 useFilesStore.subscribe(pruneSaveFailure);
+
+function announceProjectDictionaryLocale(
+  state: FilesStore,
+  previous: FilesStore,
+) {
+  if (
+    typeof window === "undefined" ||
+    state.projectId !== previous.projectId ||
+    state.projectDictionaryLocale === previous.projectDictionaryLocale
+  ) {
+    return;
+  }
+  const settings = useSettingsStore.getState();
+  const next = effectiveDictionaryLocale({
+    project: state.projectDictionaryLocale,
+    global: settings.dictionaryLocale,
+  });
+  const before = effectiveDictionaryLocale({
+    project: previous.projectDictionaryLocale,
+    global: settings.dictionaryLocale,
+  });
+  if (next === before) return;
+  window.dispatchEvent(
+    new CustomEvent("oleafly:proofreading-settings-changed", {
+      detail: {
+        setting: "projectDictionaryLocale",
+        spellcheck: settings.spellcheck,
+        harper: settings.harper,
+      },
+    }),
+  );
+}
+
+useFilesStore.subscribe(announceProjectDictionaryLocale);

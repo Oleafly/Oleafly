@@ -209,7 +209,11 @@
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",
     "spellLanguageHint": "Ne s'applique qu'à ce projet. Téléchargez d'autres langues dans les Paramètres.",
-    "spellLanguageFailed": "Impossible de changer la langue de correction orthographique."
+    "spellLanguageFailed": "Impossible de changer la langue de correction orthographique.",
+    "notChecked": "Non vérifié",
+    "dictionaryMissing": "{{name}} n’est pas téléchargé, l’orthographe n’est donc pas vérifiée. Téléchargez-le dans les Réglages ou choisissez une autre langue.",
+    "grammarEnglishOnly": "La vérification grammaticale ne fonctionne que pour les documents en anglais.",
+    "spellLanguageNotDownloaded": "{{name}} (non téléchargé)"
   },
   "table": {
     "trigger": "Insérer un tableau",
@@ -572,7 +576,11 @@
     "keyboardHint": "Utilisez Tab ou les flèches pour passer d'une action à l'autre. Appuyez sur Escape pour fermer.",
     "endOfDocument": "Fin du document",
     "hidePreamble": "Masquer le préambule du document",
-    "showPreamble": "Afficher le préambule du document"
+    "showPreamble": "Afficher le préambule du document",
+    "findingLabel": "{{message}}. Ouvrir les suggestions de correction.",
+    "rawBlockFindings_one": "{{count}} remarque de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
+    "rawBlockFindings_many": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
+    "rawBlockFindings_other": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions."
   },
   "package": {
     "search": {

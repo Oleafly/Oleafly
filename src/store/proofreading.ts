@@ -25,6 +25,7 @@ export interface ProofreadingSurfaceState {
   diagnostics: ProofreadingDiagnostic[];
   truncated: boolean;
   activeDictionaryLocale: string | null;
+  retryable: boolean;
 }
 
 interface ProofreadingState {
@@ -36,6 +37,7 @@ interface ProofreadingState {
     identity: ProofreadingIdentity,
     message: string,
     phase?: "error" | "unavailable",
+    retryable?: boolean,
   ) => void;
   clear: (surface: ProofreadingSurface, path?: string) => void;
 }
@@ -48,6 +50,7 @@ const IDLE_STATE: ProofreadingSurfaceState = {
   diagnostics: [],
   truncated: false,
   activeDictionaryLocale: null,
+  retryable: true,
 };
 
 export const useProofreadingStore = create<ProofreadingState>((set) => ({
@@ -72,6 +75,7 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
           activeDictionaryLocale: sameDocument
             ? previous.activeDictionaryLocale
             : null,
+          retryable: true,
         },
       } as unknown as Pick<
         ProofreadingState,
@@ -97,13 +101,14 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
           truncated: result.truncated ?? false,
           activeDictionaryLocale:
             result.activeDictionaryLocale ?? null,
+          retryable: true,
         },
       } as unknown as Pick<
         ProofreadingState,
         ProofreadingSurface
       >;
     }),
-  fail: (identity, message, phase = "unavailable") =>
+  fail: (identity, message, phase = "unavailable", retryable = true) =>
     set((state) => {
       const current = state[identity.surface];
       if (
@@ -121,6 +126,7 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
           diagnostics: [],
           truncated: false,
           activeDictionaryLocale: null,
+          retryable,
         },
       } as unknown as Pick<
         ProofreadingState,

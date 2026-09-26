@@ -8,6 +8,11 @@ import {
   scanLatexNovalidate,
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
+import {
+  TYPST_IDENTIFIER_PATTERN,
+  TYPST_LABEL_PATTERN,
+  typstAutolinkEnd,
+} from "@oleafly/editor/typst-syntax";
 import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
 import { astAugmentLatexFile } from "./latex-ast";
 import { bibliographyEntrySummary } from "./bibliography-summary";
@@ -346,7 +351,7 @@ function collectCitationKeyTokens(
   closingByOpening: CommandGroupIndex,
   tokens: LatexCommandKeyToken[],
 ): void {
-  const commands = /\\([A-Za-z@]+)\*?(?![A-Za-z@])/g;
+  const commands = /\\([\p{L}\p{M}@]+)\*?(?![\p{L}\p{M}@])/gu;
   for (const match of masked.matchAll(commands)) {
     if (!isLatexCitationCommand(match[1])) continue;
     const braced = commandGroups(
@@ -658,6 +663,8 @@ function typstCommentStep(
     state.quoted = true;
     return offset + 1;
   }
+  const link = typstAutolinkEnd(source, offset);
+  if (link !== null) return link;
   if (source.startsWith("//", offset)) {
     const newline = source.indexOf("\n", offset + 2);
     return newline < 0 ? -1 : newline + 1;
@@ -976,7 +983,7 @@ function latexDefinitionName(
       group.contentFrom,
       group.contentTo,
     );
-    const match = /\\([A-Za-z@]+|.)/u.exec(content.trim());
+    const match = /\\([\p{L}\p{M}@]+|.)/u.exec(content.trim());
     if (match?.[0] !== content.trim()) return null;
     const slash = source.indexOf("\\", group.contentFrom);
     return {
@@ -987,7 +994,7 @@ function latexDefinitionName(
     };
   }
   if (requireBraces || source[cursor] !== "\\") return null;
-  const match = /^\\([A-Za-z@]+|.)/u.exec(source.slice(cursor));
+  const match = /^\\([\p{L}\p{M}@]+|.)/u.exec(source.slice(cursor));
   if (!match) return null;
   return {
     name: match[1],
@@ -1073,7 +1080,7 @@ function xparseDelimiterToken(
     }
   }
   if (source[cursor] === "\\") {
-    const match = /^\\(?:[A-Za-z@]+|.)/u.exec(
+    const match = /^\\(?:[\p{L}\p{M}@]+|.)/u.exec(
       source.slice(cursor),
     );
     if (match) {
@@ -1353,7 +1360,7 @@ function addTexDefDefinitions(
   definitions: ProjectDefinition[],
 ): void {
   for (const match of masked.matchAll(
-    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
+    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[\p{L}\p{M}@]+|.))((?:\s*#[1-9])*)/gu,
   )) {
     if (!latexGroup(masked, match.index + match[0].length)) continue;
     const name = match[1].slice(1);
@@ -1397,7 +1404,7 @@ function addMathOperatorDefinitions(
   definitions: ProjectDefinition[],
 ): void {
   for (const match of masked.matchAll(
-    /\\DeclareMathOperator\*?\s*\{\s*\\([A-Za-z@]+)\s*\}\s*\{/gu,
+    /\\DeclareMathOperator\*?\s*\{\s*\\([\p{L}\p{M}@]+)\s*\}\s*\{/gu,
   )) {
     const nameFrom =
       match.index + match[0].lastIndexOf(`\\${match[1]}`) + 1;
@@ -1945,7 +1952,7 @@ function addLatexCommandCandidates(
   starts: readonly number[],
   uses: ProjectUse[],
 ): void {
-  const commandUse = /\\([A-Za-z@]+)/g;
+  const commandUse = /\\([\p{L}\p{M}@]+)/gu;
   for (const match of masked.matchAll(commandUse)) {
     const nameOffset = match.index + 1;
     addUse(
@@ -1978,13 +1985,58 @@ function markdownTextWithoutHtmlTags(title: string): string {
   return result;
 }
 
-function markdownSlug(title: string): string {
+function markdownHeadingText(title: string): string {
   return markdownTextWithoutHtmlTags(title)
-    .replace(/[`*_~[\]()]/g, "")
-    .toLocaleLowerCase("en-US")
-    .replace(/[^\p{Letter}\p{Number}\s_-]/gu, "")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/gu, "$1")
+    .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, "")
+    .replace(/[`*~[\]]/gu, "");
+}
+
+function markdownSlug(title: string): string {
+  const identifier = markdownHeadingText(title)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_.-]/gu, "")
     .trim()
-    .replace(/\s+/g, "-");
+    .split(/\s+/u)
+    .join("-")
+    .replace(/^\P{L}+/u, "");
+  return identifier || "section";
+}
+
+function uniqueMarkdownIdentifier(
+  base: string,
+  used: ReadonlySet<string>,
+): string {
+  if (!used.has(base)) return base;
+  let suffix = 1;
+  while (used.has(`${base}-${suffix}`)) suffix++;
+  return `${base}-${suffix}`;
+}
+
+const PANDOC_ATTRIBUTE = String.raw`(?:[#.][^\s{}]+|[^\s{}=#.][^\s{}=]*=(?:"[^"\n]*"|[^\s{}"][^\s{}]*))`;
+const PANDOC_ATTRIBUTES = String.raw`\{\s*(${PANDOC_ATTRIBUTE}(?:[ \t]+${PANDOC_ATTRIBUTE})*)\s*\}`;
+const PANDOC_IDENTIFIER = /(?:^|\s)#(\p{L}[\p{L}\p{N}_.:-]*)(?=\s|$)/u;
+
+function pandocAttributeIdentifier(
+  attributes: string,
+): { readonly name: string; readonly offset: number } | null {
+  const match = PANDOC_IDENTIFIER.exec(attributes);
+  if (!match) return null;
+  return { name: match[1], offset: match.index + match[0].indexOf("#") + 1 };
+}
+
+function decodeMarkdownTarget(target: string): string {
+  return target
+    .split("/")
+    .map((segment) => {
+      try {
+        const decoded = decodeURIComponent(segment);
+        return /[/\\]/u.test(decoded) ? segment : decoded;
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
 }
 
 function isExternalMarkdownTarget(target: string): boolean {
@@ -2266,19 +2318,22 @@ function addMarkdownExplicitAnchors(
   urlRanges: readonly { from: number; to: number }[],
 ): void {
   const { file, starts, definitions } = context;
-  const explicitAnchor = /\{#([A-Za-z][A-Za-z0-9_.:-]*)\}/g;
-  for (const match of visible.matchAll(explicitAnchor)) {
+  const attributeBlock = new RegExp(PANDOC_ATTRIBUTES, "gu");
+  for (const match of visible.matchAll(attributeBlock)) {
     if (offsetIsWithin(match.index, urlRanges)) continue;
-    const nameOffset = match.index + 2;
+    const identifier = pandocAttributeIdentifier(match[1]);
+    if (!identifier) continue;
+    const nameOffset =
+      match.index + match[0].indexOf(match[1]) + identifier.offset;
     addDefinition(
       definitions,
       "markdown",
       file,
       starts,
       "anchor",
-      match[1],
+      identifier.name,
       nameOffset,
-      nameOffset + match[1].length,
+      nameOffset + identifier.name.length,
     );
   }
 }
@@ -2288,16 +2343,27 @@ function addMarkdownHeadingAnchors(
   lines: readonly string[],
 ): void {
   const { file, starts, definitions } = context;
-  for (const heading of definitions.filter(
-    (definition) => definition.kind === "section",
-  )) {
+  const headingAttributes = new RegExp(
+    String.raw`${PANDOC_ATTRIBUTES}\s*(?:#+\s*)?$`,
+    "u",
+  );
+  const used = new Set<string>();
+  const headings = definitions
+    .filter((definition) => definition.kind === "section")
+    .sort(
+      (left, right) =>
+        left.location.range.from - right.location.range.from,
+    );
+  for (const heading of headings) {
     const lineText =
       lines[heading.location.range.startLine - 1] ?? heading.name;
-    const explicit = /\{#([A-Za-z][A-Za-z0-9_.:-]*)\}\s*(?:#+\s*)?$/.exec(
-      lineText,
-    )?.[1];
-    const name = explicit ?? markdownSlug(heading.name);
-    if (!name) continue;
+    const attributes = headingAttributes.exec(lineText)?.[1];
+    const explicit = attributes
+      ? pandocAttributeIdentifier(attributes)?.name
+      : undefined;
+    const name =
+      explicit ?? uniqueMarkdownIdentifier(markdownSlug(heading.name), used);
+    used.add(name);
     const existing = definitions.some(
       (definition) =>
         definition.kind === "anchor" &&
@@ -2372,8 +2438,10 @@ function addMarkdownLinks(
     const target = match[3];
     const targetOffset = match.index + match[0].indexOf(target);
     const hash = target.indexOf("#");
-    const targetPath = hash >= 0 ? target.slice(0, hash) : target;
-    const anchor = hash >= 0 ? target.slice(hash + 1) : "";
+    const targetPath = decodeMarkdownTarget(
+      hash >= 0 ? target.slice(0, hash) : target,
+    );
+    const anchor = hash >= 0 ? decodeMarkdownTarget(target.slice(hash + 1)) : "";
     if (!targetPath && anchor) {
       addUse(
         uses,
@@ -2421,7 +2489,7 @@ function addMarkdownReferenceDefinitions(
     );
     const targetOffset = match.index + match[0].indexOf(match[2]);
     if (isExternalMarkdownTarget(match[2])) continue;
-    const resolved = resolveProjectPath(file, match[2]);
+    const resolved = resolveProjectPath(file, decodeMarkdownTarget(match[2]));
     const use = addUse(
       uses,
       "markdown",
@@ -2619,7 +2687,10 @@ function addTypstLetDefinitions(
   starts: readonly number[],
   definitions: ProjectDefinition[],
 ): void {
-  const letDefinition = /#let\s+([A-Za-z_][A-Za-z0-9_-]*)/g;
+  const letDefinition = new RegExp(
+    String.raw`#let\s+(${TYPST_IDENTIFIER_PATTERN})`,
+    "gu",
+  );
   for (const match of codeMask.matchAll(letDefinition)) {
     const nameOffset = match.index + match[0].lastIndexOf(match[1]);
     addDefinition(
@@ -2708,8 +2779,10 @@ function addTypstExplicitReferences(
   starts: readonly number[],
   uses: ProjectUse[],
 ): void {
-  const explicitReference =
-    /#(?:ref|link)\s*\(\s*<([A-Za-z_][A-Za-z0-9_:-]*)>/g;
+  const explicitReference = new RegExp(
+    String.raw`#(?:ref|link)\s*\(\s*<(${TYPST_LABEL_PATTERN})>`,
+    "gu",
+  );
   for (const match of codeMask.matchAll(explicitReference)) {
     const nameOffset = match.index + match[0].lastIndexOf(match[1]);
     addUse(
@@ -2742,13 +2815,19 @@ function typstCitationArgumentEnd(
   return { contentTo: depth === 0 ? cursor - 1 : cursor };
 }
 
+const TYPST_CITATION_KEY = String.raw`[\p{L}\p{M}\p{N}\p{Pc}][\p{L}\p{M}\p{N}\p{Pc}\u200C\u200D:.#$%&+?~/-]*`;
+const TYPST_CITATION_KEYS = new RegExp(
+  String.raw`<(${TYPST_CITATION_KEY})>|(?:^|[[(,]\s*|label\s*\(\s*)"(${TYPST_CITATION_KEY})"`,
+  "gu",
+);
+
 function typstCitationKeys(
   argumentsSource: string,
   contentFrom: number,
 ): Array<{ name: string; from: number }> {
   const keys: Array<{ name: string; from: number }> = [];
   for (const keyMatch of argumentsSource.matchAll(
-    /<([A-Za-z_][A-Za-z0-9_:.#$%&+?~/-]*)>|(?:^|[[(,]\s*|label\s*\(\s*)"([A-Za-z_][A-Za-z0-9_:.#$%&+?~/-]*)"/g,
+    TYPST_CITATION_KEYS,
   )) {
     const name = keyMatch[1] ?? keyMatch[2];
     if (!name) continue;

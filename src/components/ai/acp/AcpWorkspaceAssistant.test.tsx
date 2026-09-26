@@ -53,6 +53,7 @@ import {
 } from "@/lib/acp";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
+import { SaveFlushError, useFilesStore } from "@/store/files";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import {
   agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, session,
@@ -419,6 +420,39 @@ describe("ACP assistant acceptance", () => {
     });
     await waitFor(() => expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument());
     expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
+  });
+
+  it("saves the open file before the agent reads it, and holds the prompt when saving fails", async () => {
+    const initialFiles = useFilesStore.getState();
+    const prepareExternalMutation = vi.fn(async () => 1);
+    useFilesStore.setState({ projectId: "paper", prepareExternalMutation });
+    try {
+      vi.mocked(acpPrompt).mockResolvedValue(snapshots.saved);
+      const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+      await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+      typeMessage(ui.getByLabelText("Message CLI agent"), "Fix the introduction");
+      fireEvent.click(ui.getByRole("button", { name: "Send" }));
+      await waitFor(() => expect(acpPrompt).toHaveBeenCalledOnce());
+      expect(prepareExternalMutation).toHaveBeenCalledWith("paper");
+      expect(prepareExternalMutation.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(acpPrompt).mock.invocationCallOrder[0],
+      );
+
+      prepareExternalMutation.mockRejectedValueOnce(
+        new SaveFlushError([{ path: "main.tex", reason: "disk full" }]),
+      );
+      typeMessage(ui.getByLabelText("Message CLI agent"), "Try again");
+      fireEvent.click(ui.getByRole("button", { name: "Send" }));
+      await waitFor(() => expect(prepareExternalMutation).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(ui.getByRole("button", { name: "Send" })).toBeEnabled());
+      expect(acpPrompt).toHaveBeenCalledOnce();
+      expect(ui.getByLabelText("Message CLI agent")).toHaveValue("Try again");
+    } finally {
+      useFilesStore.setState({
+        projectId: initialFiles.projectId,
+        prepareExternalMutation: initialFiles.prepareExternalMutation,
+      });
+    }
   });
 
   it("keeps the composer draft when the panel unmounts", async () => {

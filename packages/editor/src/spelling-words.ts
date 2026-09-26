@@ -15,7 +15,18 @@ const JOINER = String.raw`(?:['’ʼ׳״·\u00AD\u200C\u200D]+|"(?=\p{sc=Hebrew}
 const WORD = String.raw`${RUN}(?:${JOINER}${RUN})*`;
 const HYPHEN = String.raw`[-\u2010]`;
 
+const IDEOGRAPH = String.raw`(?=\p{L})[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}]`;
+const CLUSTERED = String.raw`[\p{sc=Thai}\p{sc=Lao}\p{sc=Khmer}\p{sc=Myanmar}\p{sc=Tibetan}]`;
+const CLUSTERED_RUN = String.raw`(?=\p{L})${CLUSTERED}(?:(?=[\p{L}\p{M}])${CLUSTERED})*`;
+
 const WORD_PATTERN = new RegExp(WORD, "gu");
+const COUNTED_WORD_PATTERN = new RegExp(
+  `${WORD}|${IDEOGRAPH}|${CLUSTERED_RUN}`,
+  "gu",
+);
+
+export const EMAIL_ADDRESS_PATTERN =
+  /(?<![\p{L}\p{M}\p{N}._%+-])[\p{L}\p{M}\p{N}._%+-]+@[\p{L}\p{M}\p{N}.-]+\.\p{L}[\p{L}\p{M}]+(?![\p{L}\p{M}\p{N}])/gu;
 const COMPOUND_PATTERN = new RegExp(
   String.raw`${WORD}(?:${HYPHEN}${WORD})*`,
   "gu",
@@ -43,6 +54,10 @@ export function spellingWordSpans(masked: string): SpellingWord[] {
     }
   }
   return output;
+}
+
+export function countedWordStarts(masked: string): number[] {
+  return Array.from(masked.matchAll(COUNTED_WORD_PATTERN), (match) => match.index ?? 0);
 }
 
 export function spellingWordRanges(

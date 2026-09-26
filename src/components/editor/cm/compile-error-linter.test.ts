@@ -80,4 +80,61 @@ describe("createCompileErrorLinter", () => {
     expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(0);
     view.destroy();
   });
+
+  it("keeps errors on the file they name when two files share a basename", async () => {
+    useFilesStore.setState({
+      activePath: "cast/b/intro.tex",
+      tree: [
+        { path: "main.tex", name: "main.tex", is_dir: false },
+        { path: "cast/a/intro.tex", name: "intro.tex", is_dir: false },
+        { path: "cast/b/intro.tex", name: "intro.tex", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [
+        { line: 3, file: "cast/a/intro.tex", message: "Undefined control sequence.", kind: "error", explanation: null },
+        { line: 1, file: "cast/b/intro.tex", message: "Missing $ inserted.", kind: "error", explanation: null },
+      ],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView("Beta first\n\nBeta second\n");
+    await runLinting(view);
+
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
+    view.destroy();
+    useFilesStore.setState({ tree: [] } as unknown as ReturnType<typeof useFilesStore.getState>);
+  });
+
+  it("marks the child file for an error Tectonic reports without the .tex extension", async () => {
+    useFilesStore.setState({ activePath: "kapitoly/úvod.tex" } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [{ line: 2, file: "kapitoly/úvod", message: "Undefined control sequence.", kind: "error", explanation: null }],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView("\\section{Úvod}\nPříliš \\chybnýpříkaz\n");
+    await runLinting(view);
+
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
+    view.destroy();
+  });
+
+  it("marks the active file when the tree lists it too and the error names only its basename", async () => {
+    useFilesStore.setState({
+      activePath: "kapitoly/úvod.tex",
+      tree: [
+        { path: "main.tex", name: "main.tex", is_dir: false },
+        { path: "kapitoly/úvod.tex", name: "úvod.tex", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [{ line: 2, file: "úvod.tex", message: "Undefined control sequence.", kind: "error", explanation: null }],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView("\\section{Úvod}\nPříliš \\chybnýpříkaz\n");
+    await runLinting(view);
+
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
+    view.destroy();
+    useFilesStore.setState({ tree: [] } as unknown as ReturnType<typeof useFilesStore.getState>);
+  });
 });

@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Kontrollera engelsk grammatik och stil i källkods- och visuell redigering av LaTeX och Markdown, samt i Typst-källkod, med åtgärder i ett klick.",
-        "label": "Grammatik och stil (Harper)"
+        "label": "Grammatik och stil (Harper)",
+        "englishOnly": "Grammatikkontroll fungerar bara för engelska. Den är pausad så länge stavningsordlistan är {{name}}."
       },
       "offline": {
         "description": "Kompilera med --only-cached och hämta aldrig paket över nätverket.",

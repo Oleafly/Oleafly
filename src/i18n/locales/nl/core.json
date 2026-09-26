@@ -131,6 +131,7 @@
   },
   "dictionary": {
     "full": "Je woordenboek is vol, daarom is dat woord alleen in dit document verborgen. Verwijder er een bij Instellingen om het op te slaan.",
+    "unsupportedCharacters": "Dat woord bevat tekens die het woordenboek niet kan opslaan.",
     "wordTooLong": "Dat is te lang om als woord op te slaan, daarom is het alleen in dit document verborgen. Een woord mag maximaal {{max}} tekens hebben."
   },
   "documentScan": {
@@ -369,7 +370,11 @@
     "updatedOn": "Bijgewerkt op {{date}}",
     "updatedToday": "Vandaag bijgewerkt",
     "updatedYesterday": "Gisteren bijgewerkt",
-    "autosaveFailed": "Kon je wijzigingen niet opslaan. Ze staan nog in de editor."
+    "autosaveFailed": "Kon je wijzigingen niet opslaan. Ze staan nog in de editor.",
+    "changedOnDisk": "\"{{path}}\" is buiten Oleafly gewijzigd. Laad het opnieuw, of sla nogmaals op om je eigen versie te houden.",
+    "openFileEncoding": "\"{{path}}\" kan niet worden geopend omdat het geen UTF-8-tekstbestand is. Als het tekst is, sla het dan op als UTF-8 en open het opnieuw.",
+    "openFileFailed": "Kan \"{{path}}\" niet openen. Zie het app-logboek voor details.",
+    "reloadFromDisk": "Opnieuw laden"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyse mislukt: {{message}}",

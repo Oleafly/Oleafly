@@ -53,7 +53,7 @@ import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, isWindows } from "@/lib/utils";
-import { useFilesStore } from "@/store/files";
+import { runWithEditorMutationLease, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 type Confirmation =
@@ -1025,17 +1025,20 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     if (!action || !isCurrentAction(action)) return;
     setBusyAction(`restore:${checkpoint.snapshot_root}`);
     try {
-      const files = useFilesStore.getState();
-      const expectedGeneration = await files.prepareExternalMutation(action.projectId);
-      if (!isCurrentAction(action)) return;
-      const event = await checkpointRestore(
-        action.projectId,
-        checkpoint.snapshot_root,
-        expectedGeneration,
-      );
-      if (!isCurrentAction(action)) return;
-      await useFilesStore.getState().applyProjectStateChanged(event);
-      if (!isCurrentAction(action)) return;
+      const restored = await runWithEditorMutationLease(action.projectId, async () => {
+        const files = useFilesStore.getState();
+        const expectedGeneration = await files.prepareExternalMutation(action.projectId);
+        if (!isCurrentAction(action)) return false;
+        const event = await checkpointRestore(
+          action.projectId,
+          checkpoint.snapshot_root,
+          expectedGeneration,
+        );
+        if (!isCurrentAction(action)) return false;
+        await useFilesStore.getState().applyProjectStateChanged(event);
+        return true;
+      });
+      if (!restored || !isCurrentAction(action)) return;
       toast.success(t(($) => $.editor.checkpoints.toast.restored));
       closeVersioning();
     } catch (error) {

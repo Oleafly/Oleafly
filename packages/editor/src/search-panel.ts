@@ -74,6 +74,38 @@ function setPressed(button: HTMLButtonElement, pressed: boolean): void {
   button.setAttribute("aria-pressed", String(pressed));
 }
 
+function selectionIsMatch(
+  view: EditorView,
+  query: SearchQuery,
+  from: number,
+  to: number,
+): boolean {
+  if (from === to || !query.valid) return false;
+  const it = query.getCursor(view.state, from, to) as Iterator<{
+    from: number;
+    to: number;
+  }>;
+  for (let r = it.next(); !r.done; r = it.next()) {
+    if (r.value.from === from && r.value.to === to) return true;
+  }
+  return false;
+}
+
+const REPLACE_ESCAPES: Readonly<Record<string, string>> = {
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  "\\": "\\",
+};
+
+function replacementText(query: SearchQuery): string {
+  if (query.literal) return query.replace;
+  return query.replace.replace(
+    /\\([nrt\\])/g,
+    (escape, ch: string) => REPLACE_ESCAPES[ch] ?? escape,
+  );
+}
+
 function countSearchMatches(
   view: EditorView,
   query: SearchQuery,
@@ -198,13 +230,11 @@ function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
   const doReplaceNext = () => {
     // Preserve case (literal search only): map the match's case onto the replacement.
     if (preserveCaseOn && !regexp) {
+      const q = getSearchQuery(view.state);
       const sel = view.state.selection.main;
-      const matched = view.state.sliceDoc(sel.from, sel.to);
-      const isMatch =
-        matched.length > 0 &&
-        (caseSensitive ? matched === findInput.value : matched.toLowerCase() === findInput.value.toLowerCase());
-      if (isMatch) {
-        view.dispatch({ changes: { from: sel.from, to: sel.to, insert: preserveCase(matched, replaceInput.value) } });
+      if (selectionIsMatch(view, q, sel.from, sel.to)) {
+        const matched = view.state.sliceDoc(sel.from, sel.to);
+        view.dispatch({ changes: { from: sel.from, to: sel.to, insert: preserveCase(matched, replacementText(q)) } });
       }
       findNext(view);
     } else {
@@ -222,7 +252,7 @@ function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
           let r = it.next();
           while (!r.done) {
             const matched = view.state.sliceDoc(r.value.from, r.value.to);
-            changes.push({ from: r.value.from, to: r.value.to, insert: preserveCase(matched, replaceInput.value) });
+            changes.push({ from: r.value.from, to: r.value.to, insert: preserveCase(matched, replacementText(q)) });
             r = it.next();
           }
         } catch {

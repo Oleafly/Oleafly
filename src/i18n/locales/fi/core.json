@@ -131,6 +131,7 @@
   },
   "dictionary": {
     "full": "Sanakirja on täynnä, joten sana piilotetaan sen sijaan tästä dokumentista. Poista jokin sana asetuksissa, niin sen voi tallentaa.",
+    "unsupportedCharacters": "Sanassa on merkkejä, joita sanakirja ei voi tallentaa.",
     "wordTooLong": "Tämä on liian pitkä tallennettavaksi sanana, joten se piilotetaan sen sijaan tästä dokumentista. Sanassa voi olla enintään {{max}} merkkiä."
   },
   "documentScan": {
@@ -369,7 +370,11 @@
     "updatedOn": "Päivitetty {{date}}",
     "updatedToday": "Päivitetty tänään",
     "updatedYesterday": "Päivitetty eilen",
-    "autosaveFailed": "Muutoksia ei voitu tallentaa. Ne ovat yhä editorissa."
+    "autosaveFailed": "Muutoksia ei voitu tallentaa. Ne ovat yhä editorissa.",
+    "changedOnDisk": "Tiedostoa ”{{path}}” muutettiin Oleaflyn ulkopuolella. Lataa se uudelleen tai tallenna uudelleen säilyttääksesi oman versiosi.",
+    "openFileEncoding": "Tiedostoa ”{{path}}” ei voi avata, koska se ei ole UTF-8-tekstitiedosto. Jos se on tekstiä, tallenna se UTF-8-muodossa ja avaa se uudelleen.",
+    "openFileFailed": "Tiedostoa ”{{path}}” ei voitu avata. Katso lisätiedot sovelluksen lokista.",
+    "reloadFromDisk": "Lataa uudelleen"
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyysi epäonnistui: {{message}}",

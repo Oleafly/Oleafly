@@ -11,7 +11,11 @@ import {
 import { StateEffect, type Extension } from "@codemirror/state";
 import { EditorView, tooltips, type ViewUpdate } from "@codemirror/view";
 
-import { maskToProse, spellcheckRanges } from "./latex-mask";
+import {
+  decodeLatexProse,
+  maskToProse,
+  spellcheckRanges,
+} from "./latex-mask";
 import {
   attachProofreadingCard,
   diagnosticCardGutter,
@@ -20,7 +24,13 @@ import {
   proofreadingCardFor,
   type ProofreadingCardAction,
 } from "./diagnostic-card";
-import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
+import {
+  markdownSpellcheckRanges,
+  markdownToProse,
+  maskMarkdown,
+} from "./markdown-mask";
+import { spellingWordSpans, type SpellingWord } from "./spelling-words";
+import { maskTypstToProse } from "./typst-mask";
 import type { EditorTranslator } from "./messages";
 import {
   createGrammarSuppressionKeyer,
@@ -85,6 +95,7 @@ export interface SpellHost {
   ): ProofreadingResult["diagnostics"];
   cancelProofreading?(surface: "source", path?: string): void;
   getSpellchecker?(): Promise<{ spell(word: string): boolean }>;
+  getDictionaryLocale?(): string;
   suggest?(word: string): Promise<GrammarSuggestion[]>;
   isSessionIgnored(word: string): boolean;
   isWordIgnored(projectId: string | null, word: string): boolean;
@@ -1068,14 +1079,41 @@ function suggestionActions(
 
 const MAX_GRAMMAR_CHARS = 150_000;
 
+const LOCAL_TYPO_CORRECTIONS = new Map<string, string>([
+  ["teh", "the"],
+  ["recieve", "receive"],
+  ["seperate", "separate"],
+  ["occurence", "occurrence"],
+  ["definately", "definitely"],
+  ["dont", "don't"],
+  ["cant", "can't"],
+  ["wont", "won't"],
+  ["isnt", "isn't"],
+  ["hasnt", "hasn't"],
+]);
+
+function fallbackProse(text: string, path: string) {
+  if (/\.(?:md|markdown|typ)$/i.test(path)) {
+    return {
+      text: /\.typ$/i.test(path) ? maskTypstToProse(text) : maskMarkdown(text),
+      start: (index: number) => index,
+      end: (index: number) => index + 1,
+    };
+  }
+  return decodeLatexProse(text);
+}
+
+function foldWord(word: string): string {
+  return word.normalize("NFC").toLocaleLowerCase();
+}
+
 function localGrammarFallback(
   text: string,
   path: string,
   h: SpellHost,
 ): Diagnostic[] {
-  const masked = /\.(?:md|markdown)$/i.test(path)
-    ? markdownToProse(text)
-    : maskToProse(text);
+  const prose = fallbackProse(text, path);
+  const spans = spellingWordSpans(prose.text);
   const diagnostics: Diagnostic[] = [];
   const add = (
     from: number,
@@ -1099,40 +1137,36 @@ function localGrammarFallback(
     });
   };
 
-  for (const match of masked.prose.matchAll(/\b(\p{L}[\p{L}'’-]*)\s+\1\b/giu)) {
-    if (match.index === undefined) continue;
-    const from = masked.map[match.index];
-    const to = masked.map[match.index + match[0].length - 1];
-    if (from === undefined || to === undefined) continue;
-    add(from, to + 1, h.t("spellcheck.repeatedWord", { word: match[1] ?? "" }));
+  const units: SpellingWord[] = [];
+  for (const span of spans) {
+    const unit = span.compound ?? span;
+    if (units.at(-1)?.from !== unit.from) units.push(unit);
+  }
+  for (let index = 1; index < units.length; index++) {
+    const previous = units[index - 1];
+    const current = units[index];
+    if (
+      !/^\s+$/u.test(prose.text.slice(previous.to, current.from)) ||
+      foldWord(previous.word) !== foldWord(current.word)
+    ) {
+      continue;
+    }
+    add(
+      prose.start(previous.from),
+      prose.end(current.to - 1),
+      h.t("spellcheck.repeatedWord", { word: current.word }),
+    );
   }
 
-  const corrections: Record<string, string> = {
-    teh: "the",
-    recieve: "receive",
-    seperate: "separate",
-    occurence: "occurrence",
-    definately: "definitely",
-    dont: "don't",
-    cant: "can't",
-    wont: "won't",
-    isnt: "isn't",
-    hasnt: "hasn't",
-  };
-  const typoPattern = new RegExp(
-    `\\b(${Object.keys(corrections).join("|")})\\b`,
-    "giu",
-  );
-  for (const match of masked.prose.matchAll(typoPattern)) {
-    if (match.index === undefined) continue;
-    const from = masked.map[match.index];
-    const to = masked.map[match.index + match[0].length - 1];
-    const replacement = corrections[(match[1] ?? "").toLocaleLowerCase()];
-    if (from === undefined || to === undefined || !replacement) continue;
+  const locale = h.getDictionaryLocale?.() ?? "en_US";
+  if (!/^en(?:[_-]|$)/iu.test(locale)) return diagnostics;
+  for (const span of spans) {
+    const replacement = LOCAL_TYPO_CORRECTIONS.get(span.word.toLocaleLowerCase());
+    if (!replacement) continue;
     add(
-      from,
-      to + 1,
-      h.t("spellcheck.possibleIssue", { word: match[0] }),
+      prose.start(span.from),
+      prose.end(span.to - 1),
+      h.t("spellcheck.possibleIssue", { word: span.word }),
       [{ text: replacement, kind: 0 }],
     );
   }
@@ -1243,8 +1277,7 @@ export function createHarperLinter(includeSpelling = false) {
             includeSpelling ? "combined" : "grammar",
           );
         } catch {
-          // Fall through to the local grammar provider when the worker is
-          // unavailable or a request is interrupted during project switching.
+          return [];
         }
         if (workerDiagnostics) return workerDiagnostics;
         try {

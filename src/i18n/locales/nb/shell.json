@@ -598,7 +598,8 @@
       },
       "harper": {
         "description": "Sjekk engelsk grammatikk og stil i LaTeX og Markdown, både i Kilde og Visuell, og i Typst-kilde, med rettelser på ett klikk.",
-        "label": "Grammatikk og stil (Harper)"
+        "label": "Grammatikk og stil (Harper)",
+        "englishOnly": "Grammatikkontroll fungerer bare for engelsk. Den er satt på pause så lenge staveordboken er {{name}}."
       },
       "offline": {
         "description": "Kompiler med --only-cached, og hent aldri pakker over nettet.",

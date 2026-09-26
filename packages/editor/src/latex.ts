@@ -62,7 +62,7 @@ export function setLatexCorpusProvider(
 
 const latexLanguageData = {
   closeBrackets: {
-    brackets: ["(", "[", "{", "'", '"'],
+    brackets: ["(", "[", "{"],
     before: ")]}:;>$",
   },
   commentTokens: { line: "%" },
@@ -89,12 +89,17 @@ export function isStandardLatexEnvironment(name: string): boolean {
   return standardEnvironmentNames.has(name);
 }
 
+const BIBTEX_DIRECTIVES = new Set(["string", "comment", "preamble"]);
+
 export function bibKeysFromSources(sources: Iterable<string>): string[] {
   const out: string[] = [];
   for (const content of sources) {
-    const re = /@\w+\s*\{\s*([^,\s}]+)/g;
+    const re =
+      /@(\w+)\s*(?:\{\s*([^,\s}]+)\s*[,}]|\(\s*([^,\s)]+)\s*[,)])/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(content))) out.push(m[1]);
+    while ((m = re.exec(content))) {
+      if (!BIBTEX_DIRECTIVES.has(m[1].toLowerCase())) out.push(m[2] ?? m[3]);
+    }
   }
   return out;
 }
@@ -365,10 +370,10 @@ function parsedControlSequence(
     const group = parsedGroup(text, from);
     if (!group) return null;
     const label = group.content.trim();
-    if (!/^\\(?:[A-Za-z@]+|.)$/u.test(label)) return null;
+    if (!/^\\(?:[\p{L}\p{M}@]+|.)$/u.test(label)) return null;
     return { label, to: group.to };
   }
-  const match = /^\\(?:[A-Za-z@]+|.)/u.exec(text.slice(from));
+  const match = /^\\(?:[\p{L}\p{M}@]+|.)/u.exec(text.slice(from));
   if (!match) return null;
   return { label: match[0], to: from + match[0].length };
 }
@@ -448,7 +453,7 @@ function xparseDelimiter(
     if (group) return { value: group.content, to: group.to };
   }
   if (specification[cursor] === "\\") {
-    const controlSequence = /^\\(?:[A-Za-z@]+|.)/u.exec(
+    const controlSequence = /^\\(?:[\p{L}\p{M}@]+|.)/u.exec(
       specification.slice(cursor),
     )?.[0];
     if (controlSequence) {
@@ -697,7 +702,7 @@ function collectPrimitiveDefinitions(
   commands: Map<string, LocalCommand>,
 ): void {
   for (const match of catalogText.matchAll(
-    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
+    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[\p{L}\p{M}@]+|.))((?:\s*#[1-9])*)/gu,
   )) {
     const label = match[1];
     if (!label) continue;

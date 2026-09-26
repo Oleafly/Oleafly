@@ -33,7 +33,7 @@ class WorkerMock {
 
   postMessage(message: ProofreadingWorkerRequest) {
     if (control.postThrows) throw new Error("structured clone failed");
-    this.request = message;
+    if (message.type !== "cancel") this.request = message;
   }
 
   addEventListener(

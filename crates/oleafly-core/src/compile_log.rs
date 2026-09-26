@@ -17,6 +17,8 @@ macro_rules! js_space {
 }
 
 const SPACE: &str = concat!("[", js_space!(), "]");
+const SPACE_CHARS: &str = js_space!();
+const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
 const NON_SPACE: &str = concat!("[^", js_space!(), "]");
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -88,6 +90,13 @@ struct Patterns {
     paren: Regex,
     path: Regex,
     miktex_path: Regex,
+    bare_path: Regex,
+    leading_paren: Regex,
+    tectonic_summary: Regex,
+    error_help: Regex,
+    wrapped_reference: Regex,
+    trailing_input_line: Regex,
+    wrapped_line_number: Regex,
 }
 
 fn compile(pattern: String) -> Regex {
@@ -163,6 +172,20 @@ fn patterns() -> &'static Patterns {
         paren: compile(r"[()]".into()),
         path: compile(r#"^"?((?:(?:[a-zA-Z]:|\.|/)?(?:/|\\\\?))[^"()\[\]]*)"#.into()),
         miktex_path: compile(r#"^"?([^"()\[\]]*\.[a-z]{3,})"#.into()),
+        bare_path: compile(format!(
+            r#"^"?([\p{{N}}_-]*[\p{{L}}_][^{SPACE_CHARS}"()\[\]/:]*/[^{SPACE_CHARS}"()\[\]]*[^{SPACE_CHARS}"()\[\]./])"#
+        )),
+        leading_paren: compile(format!(r"^{SPACE}*[()]")),
+        tectonic_summary: compile(format!(r"^(?:error|warning): {ANY}+:[0-9]+: ")),
+        error_help: compile(format!(
+            r"^(?:See the {ANY}+ for explanation\.|Type {{2}}H <return> {{2}}for immediate help\.?)$"
+        )),
+        wrapped_reference: compile(
+            r"(?s)^LaTeX: (Reference|Citation) `(.*?)' on page [0-9]+ undefined on input line ([0-9]+)\.$"
+                .into(),
+        ),
+        trailing_input_line: compile(r"on input line ([0-9]+)\.?$".into()),
+        wrapped_line_number: compile(r"^([^\n]*)\n([0-9]+)(\.?)$".into()),
     })
 }
 
@@ -176,7 +199,43 @@ struct Entry {
 }
 
 impl Entry {
-    fn finalize(self) -> LogDiagnostic {
+    fn unwrap_warning(&mut self) {
+        let text = trim_end_js(&self.text);
+        let unwrappable = matches!(
+            self.category,
+            LogCategory::PackageWarning | LogCategory::Info
+        );
+        if !unwrappable || !text.contains('\n') || text.contains("\n(") {
+            return;
+        }
+        let p = patterns();
+        if let (Some(caps), Some(line)) = (p.wrapped_line_number.captures(text), self.line) {
+            self.line = format!("{line}{}", &caps[2]).parse().ok();
+            self.text = format!("{}{}", &caps[1], &caps[3]);
+            return;
+        }
+        let joined = text.replace('\n', "");
+        let reference = (self.category == LogCategory::PackageWarning)
+            .then(|| p.wrapped_reference.captures(&joined))
+            .flatten();
+        if let Some(caps) = reference {
+            let kind = &caps[1];
+            self.category = if kind == "Citation" {
+                LogCategory::UndefinedCitation
+            } else {
+                LogCategory::UndefinedReference
+            };
+            self.line = parse_number(caps.get(3));
+            self.text = format!("Cannot find {} `{}`.", kind.to_lowercase(), &caps[2]);
+            return;
+        }
+        if let Some(caps) = p.trailing_input_line.captures(&joined) {
+            self.line = parse_number(caps.get(1));
+        }
+    }
+
+    fn finalize(mut self) -> LogDiagnostic {
+        self.unwrap_warning();
         let error_context = self
             .context
             .map(|lines| trim_end_js(&lines.join("\n")).to_string())
@@ -196,6 +255,9 @@ struct Parser<'a> {
     search_empty_line: bool,
     inside_box_warn: bool,
     inside_error: bool,
+    awaiting_error_line: bool,
+    awaited_lines: usize,
+    in_engine_output: bool,
     current: Option<Entry>,
     nested: usize,
     root_file: Option<&'a str>,
@@ -250,6 +312,9 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
         search_empty_line: false,
         inside_box_warn: false,
         inside_error: false,
+        awaiting_error_line: false,
+        awaited_lines: 0,
+        in_engine_output: false,
         current: None,
         nested: 0,
         root_file,
@@ -283,6 +348,55 @@ impl Parser<'_> {
             .last()
             .cloned()
             .or_else(|| self.root_file.map(str::to_string))
+    }
+
+    fn end_entry(&mut self) {
+        self.search_empty_line = false;
+        self.inside_error = false;
+        self.awaiting_error_line = false;
+        self.awaited_lines = 0;
+    }
+
+    fn skip_engine_output(&mut self, p: &Patterns, line: &str) -> bool {
+        if trim_end_js(line) == ENGINE_OUTPUT_MARKER {
+            self.push_current();
+            self.end_entry();
+            self.in_engine_output = true;
+            return true;
+        }
+        if !self.in_engine_output {
+            return false;
+        }
+        if line.starts_with("[Oleafly]") {
+            self.in_engine_output = false;
+            return false;
+        }
+        !p.tectonic_cannot_open.is_match(line)
+    }
+
+    fn starts_new_entry(p: &Patterns, line: &str, inside_error: bool) -> bool {
+        if line.starts_with('!') {
+            return true;
+        }
+        if inside_error {
+            return false;
+        }
+        p.leading_paren.is_match(line)
+            || p.undefined_reference.is_match(line)
+            || p.latex_info.is_match(line)
+            || p.latex_warn.is_match(line)
+            || line == "No pages of output."
+            || p.missing_char.is_match(line)
+            || [
+                &p.overfull_box,
+                &p.overfull_box_alt,
+                &p.overfull_box_output,
+                &p.underfull_box,
+                &p.underfull_box_alt,
+                &p.underfull_box_output,
+            ]
+            .iter()
+            .any(|regex| regex.is_match(line))
     }
 
     fn start(&mut self, entry: Entry) {
@@ -355,15 +469,19 @@ impl Parser<'_> {
             self.inside_box_warn = false;
             return Step::Stop;
         }
+        if self.skip_engine_output(p, line) {
+            return Step::Stop;
+        }
         if let Some(entry) = oleafly_note(p, line) {
             self.push_current();
-            self.search_empty_line = false;
-            self.inside_error = false;
+            self.end_entry();
             self.current = Some(entry);
             return Step::Stop;
         }
         if self.search_empty_line {
-            self.continue_current(line);
+            return self.continue_current(line);
+        }
+        if p.tectonic_summary.is_match(line) {
             return Step::Stop;
         }
         if self.parse_undefined_reference(line, filename.as_deref()) {
@@ -532,15 +650,24 @@ impl Parser<'_> {
         Step::Stop
     }
 
-    fn continue_current(&mut self, line: &str) {
+    fn continue_current(&mut self, line: &str) -> Step {
         let p = patterns();
+        if self.awaiting_error_line {
+            return self.await_error_line(line);
+        }
+        if p.tectonic_summary.is_match(line) {
+            return Step::Stop;
+        }
         if trim_js(line).is_empty() || (self.inside_error && p.leading_whitespace.is_match(line)) {
             if let Some(current) = &mut self.current {
                 current.text.push('\n');
             }
-            self.search_empty_line = false;
-            self.inside_error = false;
-            return;
+            if self.inside_error && self.current.as_ref().is_some_and(|c| c.line.is_none()) {
+                self.awaiting_error_line = true;
+                return Step::Stop;
+            }
+            self.end_entry();
+            return Step::Stop;
         }
         if let Some(caps) = p
             .package_warning_extra_lines
@@ -556,7 +683,11 @@ impl Parser<'_> {
                 ));
                 current.line = parse_number(caps.get(3));
             }
-            return;
+            return Step::Stop;
+        }
+        if Self::starts_new_entry(p, line, self.inside_error) {
+            self.end_entry();
+            return self.parse_line_once(line);
         }
         if self.inside_error {
             if let Some(context) = self.current.as_mut().and_then(|c| c.context.as_mut()) {
@@ -570,15 +701,42 @@ impl Parser<'_> {
                         current.line = parse_number(caps.get(1));
                     }
                 }
-                self.search_empty_line = false;
-                self.inside_error = false;
-                return;
+                self.end_entry();
+                return Step::Stop;
             }
         }
         if let Some(current) = &mut self.current {
             current.text.push('\n');
             current.text.push_str(line);
         }
+        Step::Stop
+    }
+
+    fn await_error_line(&mut self, line: &str) -> Step {
+        let p = patterns();
+        if let Some(caps) = p.message_line.captures(line) {
+            if let Some(current) = &mut self.current {
+                if let Some(context) = current.context.as_mut() {
+                    if context.len() < MAX_ERROR_CONTEXT_LINES {
+                        context.push(line.to_string());
+                    }
+                }
+                if current.line.is_none() {
+                    current.line = parse_number(caps.get(1));
+                }
+            }
+            self.end_entry();
+            return Step::Stop;
+        }
+        let help_shaped = trim_js(line).is_empty()
+            || (p.leading_whitespace.is_match(line) && !p.leading_paren.is_match(line))
+            || p.error_help.is_match(line);
+        if help_shaped && self.awaited_lines < MAX_ERROR_CONTEXT_LINES {
+            self.awaited_lines += 1;
+            return Step::Stop;
+        }
+        self.end_entry();
+        self.parse_line_once(line)
     }
 
     fn parse_undefined_reference(&mut self, line: &str, filename: Option<&str>) -> bool {
@@ -693,6 +851,8 @@ fn parse_file_stack(line: &str, file_stack: &mut Vec<String>, mut nested: usize)
                 file_stack.push(trim_js(&caps[1]).to_string());
             } else if let Some(caps) = p.miktex_path.captures(rest) {
                 file_stack.push(format!("./{}", trim_js(&caps[1])));
+            } else if let Some(caps) = p.bare_path.captures(rest) {
+                file_stack.push(format!("./{}", &caps[1]));
             } else {
                 nested += 1;
             }

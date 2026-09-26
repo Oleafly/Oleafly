@@ -205,7 +205,11 @@
     "spellLanguageAppSetting": "앱 설정 따르기",
     "spellLanguageAriaLabel": "이 프로젝트의 맞춤법 검사 언어",
     "spellLanguageHint": "이 프로젝트에만 적용됩니다. 설정에서 언어를 더 내려받을 수 있습니다.",
-    "spellLanguageFailed": "맞춤법 검사 언어를 바꾸지 못했습니다."
+    "spellLanguageFailed": "맞춤법 검사 언어를 바꾸지 못했습니다.",
+    "notChecked": "검사 안 함",
+    "dictionaryMissing": "{{name}} 사전이 다운로드되지 않아 맞춤법을 검사하지 않습니다. 설정에서 다운로드하거나 다른 언어를 선택하세요.",
+    "grammarEnglishOnly": "문법 검사는 영어 문서에서만 작동합니다.",
+    "spellLanguageNotDownloaded": "{{name}}(다운로드 안 됨)"
   },
   "table": {
     "trigger": "표 삽입",
@@ -562,7 +566,9 @@
     "keyboardHint": "Tab이나 화살표 키로 동작 사이를 이동하세요. 닫으려면 Escape를 누르세요.",
     "endOfDocument": "문서 끝",
     "hidePreamble": "문서 프리앰블 숨기기",
-    "showPreamble": "문서 프리앰블 표시"
+    "showPreamble": "문서 프리앰블 표시",
+    "findingLabel": "{{message}}. 교정 제안을 엽니다.",
+    "rawBlockFindings_other": "이 원시 블록에 교정 항목이 {{count}}개 있습니다. {{message}}. 제안을 엽니다."
   },
   "package": {
     "search": {

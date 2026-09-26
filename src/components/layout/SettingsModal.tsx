@@ -83,8 +83,12 @@ import {
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
-import { i18n } from "@/i18n";
+import { currentLocale, i18n } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
+import {
+  dictionaryLabel,
+  isEnglishDictionaryLocale,
+} from "@/lib/proofreading/dictionary-catalog";
 import { formatDateTime, formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
@@ -246,6 +250,7 @@ export function SettingsModal() {
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
   const setHarper = useSettingsStore((s) => s.setHarper);
+  const dictionaryLocale = useSettingsStore((s) => s.dictionaryLocale);
   const grammarDialect = useSettingsStore((s) => s.grammarDialect);
   const setGrammarDialect = useSettingsStore((s) => s.setGrammarDialect);
   const uiLocalePreference = useSettingsStore((s) => s.uiLocalePreference);
@@ -982,6 +987,19 @@ export function SettingsModal() {
           checked={harper}
           onChange={setHarper}
         />
+        {harper && !isEnglishDictionaryLocale(dictionaryLocale) && (
+          <div
+            data-testid="settings-grammar-english-only"
+            className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+          >
+            {t(($) => $.shell.settings.general.harper.englishOnly, {
+              name: dictionaryLabel(
+                { id: dictionaryLocale, language: dictionaryLocale, region: null },
+                currentLocale(),
+              ),
+            })}
+          </div>
+        )}
         {harper && (
           <>
             <div

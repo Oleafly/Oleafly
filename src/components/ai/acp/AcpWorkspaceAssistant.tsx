@@ -25,7 +25,8 @@ import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { useSkills, type SkillEntry } from "@/lib/skills";
-import { useFilesStore } from "@/store/files";
+import { SaveFlushError, useFilesStore } from "@/store/files";
+import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
@@ -182,6 +183,13 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const beforeSequence = session.lastSequence;
     const clearComposer = () => setComposer(projectId, { draft: "", images: [] });
     setError(null); setSending(true); nearBottomRef.current = true;
+    try {
+      await flushOpenFilesToDisk(projectId, "save before agent prompt");
+    } catch (error_) {
+      if (!(error_ instanceof SaveFlushError)) setError(acpError(error_));
+      setSending(false);
+      return;
+    }
     try {
       useAcpSessionsStore.getState().setSnapshot(await acpPrompt(projectId, activeId, message, attachments.map((value) => value.image)));
       clearComposer();

@@ -1,0 +1,140 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OMS/cmsy/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OT1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for T1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for TS1/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Trying to load font information for TS1+cmr\n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for TU/lmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for OMX/cmex/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: Checking defaults for U/cmr/m/n."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.tex",
+   "line": 2,
+   "message": "LaTeX Font: ... okay."
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./kapitoly/úvod",
+   "line": 2,
+   "message": "Undefined control sequence.",
+   "errorContext": "! Undefined control sequence.\nl.2 ...ťoučký kůň úpěl ďábelské ódy. \\chybnýpříkaz"
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./kapitoly/úvod",
+   "line": 2,
+   "message": "Undefined control sequence.",
+   "errorContext": "! Undefined control sequence.\nl.2 ...belské ódy. \\chybnýpříkaz a pak \\neexistuje"
+  }
+ ]
+}

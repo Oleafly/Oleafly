@@ -624,7 +624,8 @@
       },
       "harper": {
         "description": "Sprawdza angielską gramatykę i styl w edycji źródła i wizualnej dla LaTeX i Markdown oraz w źródle Typst, z poprawkami na jedno kliknięcie.",
-        "label": "Gramatyka i styl (Harper)"
+        "label": "Gramatyka i styl (Harper)",
+        "englishOnly": "Sprawdzanie gramatyki działa tylko dla angielskiego. Jest wstrzymane, dopóki słownikiem pisowni jest {{name}}."
       },
       "offline": {
         "description": "Kompiluj z opcją --only-cached i nigdy nie pobieraj pakietów przez sieć.",

@@ -250,6 +250,10 @@ function bibliographyEngineFor(edge: ProjectEdge): BibliographyEngine {
   return "latex";
 }
 
+function pathFoldKey(path: string): string {
+  return path.normalize("NFC").toLowerCase();
+}
+
 function matchingProjectFiles(
   candidate: string,
   known: ReadonlySet<string>,
@@ -257,7 +261,7 @@ function matchingProjectFiles(
 ): readonly string[] {
   const matches = new Set<string>();
   if (known.has(candidate)) matches.add(candidate);
-  for (const match of knownByLower.get(candidate.toLowerCase()) ?? []) {
+  for (const match of knownByLower.get(pathFoldKey(candidate)) ?? []) {
     matches.add(match);
   }
   return [...matches].sort((a, b) => Number(a > b) - Number(a < b));
@@ -313,7 +317,7 @@ function addExtensionCandidates(
     if (known.has(withExtension)) candidates.add(withExtension);
     for (
       const candidate of
-      knownByLower.get(withExtension.toLowerCase()) ?? []
+      knownByLower.get(pathFoldKey(withExtension)) ?? []
     ) {
       candidates.add(candidate);
     }
@@ -333,7 +337,7 @@ function candidateTargetFiles(
   if (!normalized) return [];
   const candidates = new Set<string>();
   if (known.has(normalized)) candidates.add(normalized);
-  for (const candidate of knownByLower.get(normalized.toLowerCase()) ?? []) {
+  for (const candidate of knownByLower.get(pathFoldKey(normalized)) ?? []) {
     candidates.add(candidate);
   }
 
@@ -607,7 +611,7 @@ function knownFileIndex(knownFiles: readonly string[]): {
   );
   const knownByLower = new Map<string, string[]>();
   for (const file of [...known].sort((a, b) => Number(a > b) - Number(a < b))) {
-    const lower = file.toLowerCase();
+    const lower = pathFoldKey(file);
     knownByLower.set(lower, [...(knownByLower.get(lower) ?? []), file]);
   }
   return { known, knownByLower };

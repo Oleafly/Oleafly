@@ -30,6 +30,12 @@ export function isBundledDictionary(locale: string): boolean {
   return BUNDLED_DICTIONARY_LOCALES.has(normalizeDictionaryLocale(locale));
 }
 
+export function isEnglishDictionaryLocale(locale: string): boolean {
+  return (
+    normalizeDictionaryLocale(locale).split("_")[0].toLowerCase() === "en"
+  );
+}
+
 function qualifierOf(locale: string): string | null {
   const [, qualifier] = normalizeDictionaryLocale(locale).split("_");
   return qualifier ?? null;
@@ -136,9 +142,22 @@ export function loadDictionaryCatalog(): Promise<DictionaryInfo[]> {
   return catalogPromise;
 }
 
-export function refreshDictionaryCatalog(): Promise<DictionaryInfo[]> {
+const catalogListeners = new Set<(entries: DictionaryInfo[]) => void>();
+
+export function subscribeDictionaryCatalog(
+  listener: (entries: DictionaryInfo[]) => void,
+): () => void {
+  catalogListeners.add(listener);
+  return () => {
+    catalogListeners.delete(listener);
+  };
+}
+
+export async function refreshDictionaryCatalog(): Promise<DictionaryInfo[]> {
   catalogPromise = null;
-  return loadDictionaryCatalog();
+  const entries = await loadDictionaryCatalog();
+  for (const listener of catalogListeners) listener(entries);
+  return entries;
 }
 
 export function effectiveDictionaryLocale(input: {

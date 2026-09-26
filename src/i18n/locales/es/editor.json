@@ -209,7 +209,11 @@
     "spellLanguageAppSetting": "Usar el ajuste de la aplicación",
     "spellLanguageAriaLabel": "Idioma de la revisión ortográfica de este proyecto",
     "spellLanguageHint": "Se aplica solo a este proyecto. Descarga más idiomas en Ajustes.",
-    "spellLanguageFailed": "No se pudo cambiar el idioma de la revisión ortográfica."
+    "spellLanguageFailed": "No se pudo cambiar el idioma de la revisión ortográfica.",
+    "notChecked": "Sin revisar",
+    "dictionaryMissing": "{{name}} no está descargado, así que no se revisa la ortografía. Descárgalo en Ajustes o elige otro idioma.",
+    "grammarEnglishOnly": "La revisión gramatical solo funciona en documentos en inglés.",
+    "spellLanguageNotDownloaded": "{{name}} (sin descargar)"
   },
   "table": {
     "trigger": "Insertar una tabla",
@@ -572,7 +576,11 @@
     "keyboardHint": "Usa Tab o las flechas para moverte entre las acciones. Pulsa Esc para cerrar.",
     "endOfDocument": "Fin del documento",
     "hidePreamble": "Ocultar el preámbulo del documento",
-    "showPreamble": "Mostrar el preámbulo del documento"
+    "showPreamble": "Mostrar el preámbulo del documento",
+    "findingLabel": "{{message}}. Abrir sugerencias de corrección.",
+    "rawBlockFindings_one": "{{count}} hallazgo de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
+    "rawBlockFindings_many": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
+    "rawBlockFindings_other": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias."
   },
   "package": {
     "search": {

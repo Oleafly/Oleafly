@@ -1,4 +1,4 @@
-export const PROOFREADING_PROTOCOL_VERSION = 1 as const;
+export const PROOFREADING_PROTOCOL_VERSION = 2 as const;
 
 export const PROOFREADING_LIMITS = {
   grammarCharacters: 500_000,
@@ -147,10 +147,18 @@ export interface ProofreadingSuggestResult {
   suggestions: ProofreadingSuggestion[];
 }
 
+export interface ProofreadingCancelRequest {
+  protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
+  type: "cancel";
+  surface: ProofreadingSurface;
+  path?: string;
+}
+
 export type ProofreadingWorkerRequest =
   | ProofreadingRequest
   | ProofreadingDictionaryDelivery
   | ProofreadingSuggestRequest
+  | ProofreadingCancelRequest
   | {
       protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
       type: "dispose";

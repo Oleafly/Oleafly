@@ -294,6 +294,7 @@ describe("writeProjectFile", () => {
         "references.bib",
         "old\nmine\n",
         9,
+        expect.any(String),
       );
       expect(useFilesStore.getState().files["references.bib"]).toEqual({
         content: "old\nmine\n",
@@ -348,6 +349,7 @@ describe("writeProjectFile", () => {
         "references.bib",
         "old\nmine\n",
         9,
+        expect.any(String),
       );
       expect(useFilesStore.getState().files["references.bib"]).toEqual({
         content: "old\nmine\n",

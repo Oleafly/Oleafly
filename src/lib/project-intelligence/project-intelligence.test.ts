@@ -127,6 +127,21 @@ describe("Phase 3 project intelligence acceptance", () => {
     ).toBe(true);
   });
 
+  it("reads XeTeX macro names with Unicode letters whole", () => {
+    const file = analyzeProjectFile(
+      "main.tex",
+      String.raw`\newcommand{\výsledek}{42}
+\def\αβ{AB}
+Dvo\v{r}\'ak \výsledek \αβ`,
+      1,
+    );
+    const macros = (names: readonly { kind: string; name: string }[]) =>
+      names.filter((item) => item.kind === "macro").map((item) => item.name);
+    expect(macros(file.definitions)).toEqual(["výsledek", "αβ"]);
+    expect(macros(file.uses).filter((name) => name === "v")).toHaveLength(1);
+    expect(macros(file.uses)).toContain("výsledek");
+  });
+
   it("retains cross-file LaTeX command and environment argument forms", () => {
     const file = analyzeProjectFile(
       "macros.sty",
@@ -1252,3 +1267,50 @@ describe("project-wide package and class rollup", () => {
   });
 });
 
+
+describe("project paths in different Unicode normal forms", () => {
+  it("resolves composed source paths to decomposed file names", () => {
+    const chapter = "kapitoly/u\u0301vod.tex";
+    const image = "obra\u0301zky/graf.png";
+    const bibliography = "zdroje/c\u030Cesky\u0301.bib";
+    const value = snapshot(
+      {
+        "main.tex": [
+          "\\documentclass{article}",
+          "\\usepackage{graphicx}",
+          "\\begin{document}",
+          "\\input{kapitoly/\u00FAvod}",
+          "\\includegraphics{obr\u00E1zky/graf.png}",
+          "\\bibliography{zdroje/\u010Desk\u00FD}",
+          "\\end{document}",
+        ].join("\n"),
+        [chapter]: "Text",
+        [bibliography]: "@book{a, title={A}}",
+      },
+      ["main.tex", chapter, image, bibliography],
+    );
+    expect(
+      value.diagnostics.filter((found) => found.code === "unresolved-target"),
+    ).toEqual([]);
+    expect(
+      value.hierarchy.edges.map((edge) => [edge.kind, edge.targetFile]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["include", chapter],
+        ["asset", image],
+        ["bibliography", bibliography],
+      ]),
+    );
+  });
+
+  it("resolves a composed Typst image path to a decomposed file name", () => {
+    const image = "obra\u0301zky/graf.png";
+    const value = snapshot(
+      { "main.typ": '#image("obr\u00E1zky/graf.png")\n' },
+      ["main.typ", image],
+    );
+    expect(
+      value.diagnostics.filter((found) => found.code === "unresolved-target"),
+    ).toEqual([]);
+  });
+});

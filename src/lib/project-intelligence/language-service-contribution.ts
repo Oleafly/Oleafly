@@ -5,6 +5,7 @@ import {
   type Position,
   type PositionEncoding,
 } from "@/lib/language-service";
+import { TYPST_IDENTIFIER_PATTERN } from "@oleafly/editor/typst-syntax";
 import {
   lineStarts,
   rangeFromOffsets,
@@ -175,14 +176,14 @@ function latexDefinition(
     return { kind: "label", name: label[1].trim() };
   }
   const macro =
-    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?\s*\{?\\([A-Za-z@]+)\}?/u.exec(
+    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?\s*\{?\\([\p{L}\p{M}@]+)\}?/u.exec(
       excerpt,
     ) ??
-    /\\(?:def|gdef|edef|xdef)\s*\\([A-Za-z@]+)/u.exec(excerpt);
+    /\\(?:def|gdef|edef|xdef)\s*\\([\p{L}\p{M}@]+)/u.exec(excerpt);
   if (macro) {
     return { kind: "macro", name: macro[1] };
   }
-  const namedMacro = /^define\s+\\([a-z@]+)$/iu.exec(symbol.name);
+  const namedMacro = /^define\s+\\([\p{L}\p{M}@]+)$/iu.exec(symbol.name);
   if (namedMacro) {
     return { kind: "macro", name: namedMacro[1] };
   }
@@ -218,9 +219,10 @@ function typstDefinition(
   }
   const label = /<([^>\s]+)>/u.exec(excerpt);
   if (label) return { kind: "label", name: label[1] };
-  const binding = /#(?:let|show)\s+([A-Za-z_][\w-]*)/u.exec(
-    excerpt,
-  );
+  const binding = new RegExp(
+    String.raw`#(?:let|show)\s+(${TYPST_IDENTIFIER_PATTERN})`,
+    "u",
+  ).exec(excerpt);
   if (binding) return { kind: "macro", name: binding[1] };
   return null;
 }

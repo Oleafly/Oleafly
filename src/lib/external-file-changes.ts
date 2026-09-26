@@ -1,4 +1,4 @@
-import { useFilesStore } from "@/store/files";
+import { reportFileSaveFailure, SaveFlushError, useFilesStore } from "@/store/files";
 
 export type ExternalFileChange =
   | { kind: "write"; path: string; content: string }
@@ -26,6 +26,27 @@ export function applyExternalFileChange(
   let paths = payload.paths;
   if (!paths?.length) paths = Object.keys(files.files);
   for (const path of paths) refreshExternalFile(payload.projectId, path, files.files[path]);
+}
+
+export function refreshOpenFilesFromDisk(projectId: string | null): void {
+  const files = useFilesStore.getState();
+  if (!projectId || files.projectId !== projectId) return;
+  applyExternalFileChange({ projectId, paths: Object.keys(files.files) }, "");
+}
+
+export async function flushOpenFilesToDisk(projectId: string, scope: string): Promise<void> {
+  const files = useFilesStore.getState();
+  if (files.projectId !== projectId) return;
+  try {
+    await files.prepareExternalMutation(projectId);
+  } catch (error) {
+    if (error instanceof SaveFlushError) {
+      for (const failure of error.failures) {
+        reportFileSaveFailure(scope, projectId, failure.path, failure.reason, true);
+      }
+    }
+    throw error;
+  }
 }
 
 function applyKnownExternalChange(

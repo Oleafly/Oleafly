@@ -56,3 +56,77 @@ describe("Markdown prose masking", () => {
     expect(masked).toContain("noon");
   });
 });
+
+describe("Pandoc attributes", () => {
+  it("masks the toolbar underline and highlight syntax but keeps the text", () => {
+    const source =
+      "Toto je [důležité]{.underline} a [zvýrazněné]{.mark} slovo.";
+    const words = markdownSpellcheckRanges(source).map((range) => range.word);
+    expect(words).toEqual(["Toto", "je", "důležité", "a", "zvýrazněné", "slovo"]);
+    expect(markdownToProse(source).prose).toBe(
+      "Toto je důležité a zvýrazněné slovo.",
+    );
+    expect(maskMarkdown(source)).toHaveLength(source.length);
+  });
+
+  it("masks heading ids, image attributes, inline code attributes and div fences", () => {
+    const source = [
+      "# Výsledky měření {#sec:vysledky-mereni}",
+      "",
+      "Setext nadpis {.unnumbered}",
+      "---------------------------",
+      "",
+      "![Graf průběhu](graf.png){width=80%}",
+      "",
+      "Kód `print()`{.python} tady.",
+      "",
+      "::: {.note}",
+      "Poznámka.",
+      ":::",
+      "::: warning",
+      "Pozor.",
+      ":::",
+    ].join("\n");
+    const words = markdownSpellcheckRanges(source).map((range) => range.word);
+    expect(words).toEqual([
+      "Výsledky",
+      "měření",
+      "Setext",
+      "nadpis",
+      "Graf",
+      "průběhu",
+      "Kód",
+      "tady",
+      "Poznámka",
+      "Pozor",
+    ]);
+    expect(maskMarkdown(source).split("\n")).toHaveLength(
+      source.split("\n").length,
+    );
+  });
+
+  it("leaves braces in ordinary prose alone", () => {
+    const source = "The set {apples, pears} is small.";
+    expect(markdownSpellcheckRanges(source).map((range) => range.word)).toEqual([
+      "The",
+      "set",
+      "apples",
+      "pears",
+      "is",
+      "small",
+    ]);
+  });
+});
+
+describe("Markdown email addresses", () => {
+  it("masks addresses with non-ASCII local parts and domains", () => {
+    const source = "Napište na пример@почта.рф nebo ředitel@firma.cz a jan@firma.рф dnes.";
+    expect(markdownSpellcheckRanges(source).map((range) => range.word)).toEqual([
+      "Napište",
+      "na",
+      "nebo",
+      "a",
+      "dnes",
+    ]);
+  });
+});

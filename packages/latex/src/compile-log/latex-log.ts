@@ -34,6 +34,14 @@ const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on th
 const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
 const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
 const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
+const engineOutputMarker = "[Oleafly] Engine output:";
+const tectonicSummaryLine = /^(?:error|warning): .+:\d+: /;
+const errorHelpLine = /^(?:See the .+ for explanation\.|Type {2}H <return> {2}for immediate help\.?)$/;
+const bareRelativePath = /^"?([\p{N}_-]*[\p{L}_][^\s"()[\]/:]*\/[^\s"()[\]]*[^\s"()[\]./])/u;
+const wrappedReference =
+  /^LaTeX: (Reference|Citation) `(.*?)' on page \d+ undefined on input line (\d+)\.$/s;
+const trailingInputLine = /on input line (\d+)\.?$/;
+const wrappedLineNumber = /^([^\n]*)\n(\d+)(\.?)$/;
 
 // LaTeX Warning: Reference `non-exist' on page 1 undefined on input line 10.
 // LaTeX Warning: Citation `also-nothing' on page 1 undefined on input line 12.
@@ -65,6 +73,9 @@ interface ParserState {
   searchEmptyLine: boolean;
   insideBoxWarn: boolean;
   insideError: boolean;
+  awaitingErrorLine: boolean;
+  awaitedLines: number;
+  inEngineOutput: boolean;
   current: MutableEntry | null;
   nested: number;
   rootFile: string | null;
@@ -72,7 +83,34 @@ interface ParserState {
   out: LogDiagnostic[];
 }
 
+function unwrapWarning(entry: MutableEntry) {
+  const text = entry.text.trimEnd();
+  const unwrappable = entry.category === "package-warning" || entry.category === "info";
+  if (!unwrappable || !text.includes("\n") || text.includes("\n(")) {
+    return;
+  }
+  const splitNumber = wrappedLineNumber.exec(text);
+  if (splitNumber && entry.line !== null) {
+    entry.line = Number.parseInt(`${entry.line}${splitNumber[2]}`, 10);
+    entry.text = `${splitNumber[1]}${splitNumber[3]}`;
+    return;
+  }
+  const joined = text.replaceAll("\n", "");
+  const reference = entry.category === "package-warning" ? wrappedReference.exec(joined) : null;
+  if (reference) {
+    entry.category = reference[1] === "Citation" ? "undefined-citation" : "undefined-reference";
+    entry.line = Number.parseInt(reference[3], 10);
+    entry.text = `Cannot find ${reference[1].toLowerCase()} \`${reference[2]}\`.`;
+    return;
+  }
+  const inputLine = trailingInputLine.exec(joined);
+  if (inputLine) {
+    entry.line = Number.parseInt(inputLine[1], 10);
+  }
+}
+
 function finalize(entry: MutableEntry): LogDiagnostic {
+  unwrapWarning(entry);
   const context = entry.contextLines?.join("\n").trimEnd();
   return {
     severity: entry.severity,
@@ -106,6 +144,9 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
     searchEmptyLine: false,
     insideBoxWarn: false,
     insideError: false,
+    awaitingErrorLine: false,
+    awaitedLines: 0,
+    inEngineOutput: false,
     current: null,
     nested: 0,
     rootFile: rootFile ?? null,
@@ -135,12 +176,18 @@ function parseLine(line: string, state: ParserState) {
     state.insideBoxWarn = false;
     return;
   }
+  if (skipEngineOutput(line, state)) {
+    return;
+  }
   if (parseOleaflyAnnotation(line, state)) {
     return;
   }
   // Append the read line, since we have a corresponding result in the matching
   if (state.searchEmptyLine) {
     continueCurrentEntry(line, state);
+    return;
+  }
+  if (tectonicSummaryLine.test(line)) {
     return;
   }
   if (parseUndefinedReference(line, filename, state)) {
@@ -173,6 +220,49 @@ function parseLine(line: string, state: ParserState) {
   }
 }
 
+function endEntry(state: ParserState) {
+  state.searchEmptyLine = false;
+  state.insideError = false;
+  state.awaitingErrorLine = false;
+  state.awaitedLines = 0;
+}
+
+function skipEngineOutput(line: string, state: ParserState): boolean {
+  if (line.trimEnd() === engineOutputMarker) {
+    pushCurrent(state);
+    state.current = null;
+    endEntry(state);
+    state.inEngineOutput = true;
+    return true;
+  }
+  if (!state.inEngineOutput) {
+    return false;
+  }
+  if (line.startsWith("[Oleafly]")) {
+    state.inEngineOutput = false;
+    return false;
+  }
+  return true;
+}
+
+function startsNewEntry(line: string, insideError: boolean): boolean {
+  if (line.startsWith("!")) {
+    return true;
+  }
+  if (insideError) {
+    return false;
+  }
+  return (
+    /^\s*[()]/.test(line) ||
+    UNDEFINED_REFERENCE.test(line) ||
+    latexInfo.test(line) ||
+    latexWarn.test(line) ||
+    latexNoPageOutput.test(line) ||
+    latexMissChar.test(line) ||
+    [...overfullBoxRegexes, ...underfullBoxRegexes].some((regex) => regex.test(line))
+  );
+}
+
 // Oleafly annotations must not be absorbed into a multi-line package warning.
 function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
   if (
@@ -183,8 +273,7 @@ function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
     return false;
   }
   pushCurrent(state);
-  state.searchEmptyLine = false;
-  state.insideError = false;
+  endEntry(state);
   state.current = {
     severity: "error",
     category: "biber",
@@ -202,17 +291,32 @@ function applyPackageExtraLine(current: MutableEntry, match: RegExpExecArray) {
 }
 
 function continueCurrentEntry(line: string, state: ParserState) {
+  if (state.awaitingErrorLine) {
+    awaitErrorLine(line, state);
+    return;
+  }
+  if (tectonicSummaryLine.test(line)) {
+    return;
+  }
   if (line.trim() === "" || (state.insideError && /^\s/.test(line))) {
     if (state.current !== null) {
       state.current.text = `${state.current.text}\n`;
     }
-    state.searchEmptyLine = false;
-    state.insideError = false;
+    if (state.insideError && state.current !== null && state.current.line === null) {
+      state.awaitingErrorLine = true;
+      return;
+    }
+    endEntry(state);
     return;
   }
   const packageExtraLineResult = latexPackageWarningExtraLines.exec(line);
   if (packageExtraLineResult && state.current !== null) {
     applyPackageExtraLine(state.current, packageExtraLineResult);
+    return;
+  }
+  if (startsNewEntry(line, state.insideError)) {
+    endEntry(state);
+    parseLine(line, state);
     return;
   }
   if (state.insideError) {
@@ -222,6 +326,29 @@ function continueCurrentEntry(line: string, state: ParserState) {
   if (state.current !== null) {
     state.current.text = `${state.current.text}\n${line}`;
   }
+}
+
+function awaitErrorLine(line: string, state: ParserState) {
+  const match = messageLine.exec(line);
+  if (match) {
+    const context = state.current?.contextLines;
+    if (context && context.length < MAX_ERROR_CONTEXT_LINES) {
+      context.push(line);
+    }
+    if (state.current !== null && state.current.line === null) {
+      state.current.line = Number.parseInt(match[1], 10);
+    }
+    endEntry(state);
+    return;
+  }
+  const helpShaped =
+    line.trim() === "" || (/^\s/.test(line) && !/^\s*[()]/.test(line)) || errorHelpLine.test(line);
+  if (helpShaped && state.awaitedLines < MAX_ERROR_CONTEXT_LINES) {
+    state.awaitedLines += 1;
+    return;
+  }
+  endEntry(state);
+  parseLine(line, state);
 }
 
 function continueErrorContext(line: string, state: ParserState) {
@@ -235,8 +362,7 @@ function continueErrorContext(line: string, state: ParserState) {
     if (state.current !== null && state.current.line === null) {
       state.current.line = Number.parseInt(match[1], 10);
     }
-    state.searchEmptyLine = false;
-    state.insideError = false;
+    endEntry(state);
     return;
   }
   if (state.current !== null) {
@@ -439,10 +565,13 @@ function parseLaTeXFileStack(line: string, fileStack: string[], nested: number):
     if (paren === "(") {
       const pathResult = /^"?((?:(?:[a-zA-Z]:|\.|\/)?(?:\/|\\\\?))[^"()[\]]*)/.exec(rest);
       const mikTeXPathResult = /^"?([^"()[\]]*\.[a-z]{3,})/.exec(rest);
+      const bareResult = bareRelativePath.exec(rest);
       if (pathResult) {
         fileStack.push(pathResult[1].trim());
       } else if (mikTeXPathResult) {
         fileStack.push(`./${mikTeXPathResult[1].trim()}`);
+      } else if (bareResult) {
+        fileStack.push(`./${bareResult[1]}`);
       } else {
         nested += 1;
       }

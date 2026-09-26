@@ -7,6 +7,7 @@ import { ColorBox, TextColor } from "./color";
 import { Figure, FigureCaption } from "./figure";
 import { Footnote } from "./footnote";
 import { LatexHeadingAttributes } from "./heading";
+import { MarkdownText } from "./markdown/text";
 import { MathDisplay, MathInline } from "./math/nodes";
 import type { WysiwygExtensionOptions } from "./options";
 import { RawBlock } from "./raw-block";
@@ -20,7 +21,9 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
     StarterKit.configure({
       codeBlock: false,
       horizontalRule: false,
+      text: false,
     }),
+    MarkdownText,
     LatexHeadingAttributes,
     Image.configure({ inline: false }),
     Table.configure({ resizable: false }),

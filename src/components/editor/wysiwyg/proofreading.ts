@@ -1,4 +1,8 @@
-import { maskToProse, scanMathExpressions } from "@oleafly/editor";
+import {
+  EMAIL_ADDRESS_PATTERN,
+  maskToProse,
+  scanMathExpressions,
+} from "@oleafly/editor";
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
@@ -25,6 +29,7 @@ import {
 } from "@/lib/proofreading/client";
 import { scrollVisualSelectionLocally } from "./scroll";
 import {
+  type DictionaryWriteOutcome,
   dictionaryWordFromSelection,
   ignoreWordForProject,
   ignoreWordGlobally,
@@ -34,6 +39,7 @@ import { useFilesStore } from "@/store/files";
 import { proofreadingPresentationDiagnostics, storePresentationDiagnostics } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
+import { i18n } from "@/i18n";
 import { isWysiwygActive } from "./controller";
 
 export interface VisualProofreadingIssue
@@ -219,7 +225,7 @@ function appendTextProse(
 
 const PROTECTED_PROSE_PATTERNS = [
   /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-  /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+  EMAIL_ADDRESS_PATTERN,
 ];
 
 function maskProtectedSpans(
@@ -410,6 +416,27 @@ function mapVisualDiagnostic(
   };
 }
 
+export function visualProofreadingMessage(
+  issue: Pick<ProofreadingDiagnostic, "source" | "word" | "message">,
+): string {
+  if (issue.source === "hunspell" && issue.word) {
+    return i18n.t(($) => $.editor.package.spellcheck.notInDictionary, {
+      word: issue.word,
+    });
+  }
+  return issue.message;
+}
+
+function visualProofreadingLabel(
+  issue: VisualProofreadingIssue,
+  count: number,
+): string {
+  const message = visualProofreadingMessage(issue).replace(/[.。]\s*$/u, "");
+  return count > 1
+    ? i18n.t(($) => $.editor.visual.rawBlockFindings, { count, message })
+    : i18n.t(($) => $.editor.visual.findingLabel, { message });
+}
+
 export function mapVisualProofreadingDiagnostics(
   doc: ProseMirrorNode,
   diagnostics: ProofreadingDiagnostic[],
@@ -443,14 +470,11 @@ export function mapVisualProofreadingDiagnostics(
     class: `wysiwyg-proofreading is-${issue.source}`,
     role: "button",
     tabindex: "0",
-    "aria-label":
-      count > 1
-        ? `${count} proofreading findings in this raw block. ${issue.message}. Open suggestions.`
-        : `${issue.message}. Open proofreading suggestions.`,
+    "aria-label": visualProofreadingLabel(issue, count),
     "aria-keyshortcuts": "Enter Space",
     "data-proofreading-issue": issue.id,
     "data-proofreading-count": String(count),
-    title: issue.message,
+    title: visualProofreadingMessage(issue),
   });
   for (const diagnostic of diagnostics) {
     const mapped = mapVisualDiagnostic(diagnostic, {
@@ -1107,12 +1131,14 @@ export function ignoreVisualProofreadingIssue(
     ? dictionaryWordFromSelection(active.word)
     : "";
   if (!active || !ignoredWord) return false;
+  let outcome: DictionaryWriteOutcome;
   if (scope === "project") {
     if (!active.projectId) return false;
-    ignoreWordForProject(active.projectId, ignoredWord);
+    outcome = ignoreWordForProject(active.projectId, ignoredWord);
   } else {
-    ignoreWordGlobally(ignoredWord);
+    outcome = ignoreWordGlobally(ignoredWord);
   }
+  if (outcome !== "stored" && outcome !== "duplicate") return false;
   refreshVisualProofreading(editor);
   publishIssue(null);
   return true;
