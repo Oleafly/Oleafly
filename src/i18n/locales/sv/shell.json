@@ -384,9 +384,9 @@
       "title": "Oleafly kan inte öppna den här mappen.",
       "body": "Kontrollera mappens behörigheter och försök igen. Dina öppna filer ligger kvar här."
     },
-    "locate": "Leta upp…",
+    "locate": "Leta upp",
     "useThisFolder": "Använd den här mappen",
-    "saveCopy": "Spara en kopia…",
+    "saveCopy": "Spara en kopia",
     "tryAgain": "Försök igen",
     "savedCopy": "Dina öppna filer sparades i {{folder}}."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Öppna mappar från Finder",
-    "body": "Lägg till Öppna i Oleafly bland snabbåtgärderna i Finder. Sedan kan du högerklicka på valfri mapp för att öppna den här.",
+    "body": "Lägg till Öppna i Oleafly i Finder. Den fungerar direkt från menyn Tjänster, och från Snabbåtgärder när du har slagit på den.",
     "add": "Lägg till i Finder",
     "notNow": "Inte nu",
-    "added": "Tillagd. Högerklicka på en mapp i Finder och välj Snabbåtgärder › Öppna i Oleafly.",
+    "added": "Tillagd. Den finns nu i menyn Tjänster i Finder. Om du vill använda den från Snabbåtgärder också högerklickar du på en mapp och slår på den under Snabbåtgärder › Anpassa.",
+    "addedInQuickActions": "Tillagd. Högerklicka på en mapp så hittar du den under Snabbåtgärder.",
     "failed": "Det gick inte att lägga till. Du kan försöka igen under Inställningar › Allmänt."
   }
 }

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { notifyError } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
+import { describeSaveFailure } from "@/store/save-flush-error";
 
 export function SaveBlockedDialog() {
   const { t } = useTranslation(["core"]);
@@ -14,13 +15,13 @@ export function SaveBlockedDialog() {
   if (first && failures.length === 1) {
     description = t(($) => $.core.project.saveBlockedOne, {
       file: first.path,
-      reason: first.reason,
+      reason: describeSaveFailure(first),
     });
   } else if (first) {
     description = t(($) => $.core.project.saveBlockedMany, {
       count: failures.length,
       files: failures.map((failure) => failure.path).join(", "),
-      reason: first.reason,
+      reason: describeSaveFailure(first),
     });
   }
   return (

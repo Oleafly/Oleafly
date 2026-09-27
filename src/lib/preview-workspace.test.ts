@@ -201,6 +201,23 @@ describe("detached compile commands", () => {
     cleanup();
   });
 
+  it("says why when a read-only folder refuses the engine switch", async () => {
+    mocks.setEngine.mockRejectedValueOnce(`@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "project.json" },
+      detail: null,
+    })}`);
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "engine", engine: "xetex" } });
+
+    await vi.waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledOnce());
+    expect(mocks.errorUnique).toHaveBeenCalledWith(
+      "engine-switch:current",
+      "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+    cleanup();
+  });
+
   it("only logs failures of the other preview commands", async () => {
     mocks.recompile.mockRejectedValueOnce(new Error("compile queue closed"));
     mocks.refreshTree.mockRejectedValueOnce(new Error("tree unavailable"));

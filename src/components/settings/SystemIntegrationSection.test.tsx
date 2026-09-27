@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enNative from "@/i18n/locales/en/native.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type {
   SystemIntegrationItem,
   SystemIntegrationItemId,
@@ -27,13 +29,25 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 import { SystemIntegrationSection } from "./SystemIntegrationSection";
 
 const copy = enSettings.systemIntegration;
+const menuHint = copy.quickAction.menuHint.replace(
+  "{{title}}",
+  enNative.systemIntegration.openInOleafly,
+);
 
 function item(
   id: SystemIntegrationItemId,
   state: SystemIntegrationItem["state"],
   extra: Partial<SystemIntegrationItem> = {},
 ): SystemIntegrationItem {
-  return { id, state, packaged: false, attention: null, ...extra };
+  return {
+    id,
+    state,
+    packaged: false,
+    attention: null,
+    quick_actions_menu: null,
+    menu_title: null,
+    ...extra,
+  };
 }
 
 function status(
@@ -52,7 +66,7 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("SystemIntegrationSection", () => {
@@ -207,6 +221,14 @@ describe("SystemIntegrationSection", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("treats a status of the wrong shape as a failed check instead of crashing", async () => {
+    mocks.status.mockResolvedValueOnce([]);
+    render(<SystemIntegrationSection shellCommandRow={<div data-testid="shell-command-slot" />} />);
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    expect(screen.getByTestId("shell-command-slot")).toBeInTheDocument();
+    expect(mocks.logError).toHaveBeenCalled();
+  });
+
   it("survives a bridge that fails before it returns a promise", async () => {
     mocks.status.mockImplementationOnce(() => {
       throw new Error("No invoke export");
@@ -228,6 +250,310 @@ describe("SystemIntegrationSection", () => {
     render(<SystemIntegrationSection />);
     await waitFor(() => expect(mocks.status).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.queryByTestId("settings-system-integration")).toBeNull());
+  });
+
+  it("explains how to add the Quick Action to Quick Actions when macOS shows it only under Services", async () => {
+    mocks.status.mockResolvedValue(
+      status("macos", [
+        item("quick_action", "installed", {
+          quick_actions_menu: false,
+          menu_title: enNative.systemIntegration.openInOleafly,
+        }),
+      ]),
+    );
+    render(<SystemIntegrationSection />);
+
+    const row = await screen.findByTestId("system-integration-quick_action");
+    expect(within(row).getByTestId("system-integration-quick-actions-hint")).toHaveTextContent(
+      menuHint,
+    );
+    expect(menuHint).toContain("Quick Actions › Customize");
+    expect(menuHint).toContain("turn on Open in Oleafly.");
+    for (const text of [menuHint, copy.quickAction.description, enShell.quickActionOffer.added]) {
+      expect(text).not.toMatch(/[\u2013\u2014]/);
+    }
+    expect(copy.quickAction.description).toContain("Services menu");
+    expect(enShell.quickActionOffer.added).not.toContain("Quick Actions › Open in Oleafly");
+    expect(enShell.quickActionOffer.added).toContain("Services");
+  });
+
+  it("says to turn it on in Customize once, in the hint, and nowhere else in the row", async () => {
+    mocks.status.mockResolvedValue(
+      status("macos", [
+        item("quick_action", "installed", {
+          quick_actions_menu: false,
+          menu_title: enNative.systemIntegration.openInOleafly,
+        }),
+      ]),
+    );
+    render(<SystemIntegrationSection />);
+
+    const row = await screen.findByTestId("system-integration-quick_action");
+    const hint = within(row).getByTestId("system-integration-quick-actions-hint");
+    expect(within(row).getAllByText(/Customize/)).toEqual([hint]);
+    expect(within(row).getAllByText(/turn on|turn it on/)).toEqual([hint]);
+    expect(within(row).getByText(copy.quickAction.description)).not.toBe(hint);
+  });
+
+  it("after Install, asks to turn it on only when Quick Actions does not show it yet", async () => {
+    for (const quickActionsMenu of [true, false]) {
+      mocks.status.mockResolvedValueOnce(status("macos", [item("quick_action", "not_installed")]));
+      mocks.set.mockResolvedValueOnce(
+        item("quick_action", "installed", {
+          quick_actions_menu: quickActionsMenu,
+          menu_title: enNative.systemIntegration.openInOleafly,
+        }),
+      );
+      const user = userEvent.setup();
+      const { unmount } = render(<SystemIntegrationSection />);
+      const row = await screen.findByTestId("system-integration-quick_action");
+      expect(row).not.toHaveTextContent(/Customize|turn on|turn it on/);
+
+      await user.click(within(row).getByRole("button", { name: copy.actions.install }));
+      expect(await within(row).findByRole("button", { name: enCommon.actions.remove })).toBeEnabled();
+
+      if (quickActionsMenu) {
+        expect(row).not.toHaveTextContent(/Customize|turn on|turn it on/);
+        expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull();
+      } else {
+        expect(within(row).getByTestId("system-integration-quick-actions-hint")).toHaveTextContent(
+          menuHint,
+        );
+      }
+      unmount();
+    }
+  });
+
+  it("names the Quick Action by the title Finder shows, even after a language change", async () => {
+    mocks.status.mockResolvedValue(
+      status("macos", [
+        item("quick_action", "installed", {
+          quick_actions_menu: false,
+          menu_title: "In Oleafly öffnen",
+        }),
+      ]),
+    );
+    render(<SystemIntegrationSection />);
+
+    const hint = await screen.findByTestId("system-integration-quick-actions-hint");
+    expect(hint).toHaveTextContent(copy.quickAction.menuHint.replace("{{title}}", "In Oleafly öffnen"));
+    expect(hint).not.toHaveTextContent(enNative.systemIntegration.openInOleafly);
+  });
+
+  it("hides the Quick Actions hint once it is on, when macOS cannot tell, and before it is installed", async () => {
+    for (const [state, quickActionsMenu] of [
+      ["installed", true],
+      ["installed", null],
+      ["not_installed", false],
+      ["needs_attention", false],
+    ] as const) {
+      mocks.status.mockResolvedValueOnce(
+        status("macos", [
+          item("quick_action", state, {
+            quick_actions_menu: quickActionsMenu,
+            attention: state === "needs_attention" ? "outdated" : null,
+          }),
+        ]),
+      );
+      const { unmount } = render(<SystemIntegrationSection />);
+      const row = await screen.findByTestId("system-integration-quick_action");
+      expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("checks again on focus only while the hint is showing", async () => {
+    mocks.status.mockResolvedValueOnce(status("macos", [item("quick_action", "not_installed")]));
+    mocks.set.mockResolvedValue(
+      item("quick_action", "installed", { quick_actions_menu: false, menu_title: "Open in Oleafly" }),
+    );
+    const user = userEvent.setup();
+    const { unmount } = render(<SystemIntegrationSection />);
+
+    const row = await screen.findByTestId("system-integration-quick_action");
+    fireEvent.focus(window);
+    expect(mocks.status).toHaveBeenCalledTimes(1);
+
+    await user.click(within(row).getByRole("button", { name: copy.actions.install }));
+    expect(await within(row).findByTestId("system-integration-quick-actions-hint")).toBeInTheDocument();
+
+    mocks.status.mockResolvedValueOnce(
+      status("macos", [item("quick_action", "installed", { quick_actions_menu: true })]),
+    );
+    fireEvent.focus(window);
+    await waitFor(() =>
+      expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull(),
+    );
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+
+    fireEvent.focus(window);
+    fireEvent(document, new Event("visibilitychange"));
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+
+    unmount();
+    fireEvent.focus(window);
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+  });
+
+  it("never checks again on focus on Linux or Windows", async () => {
+    for (const next of [
+      status("linux", [item("dolphin", "installed"), item("folder_open_with", "not_installed")]),
+      status("windows", [item("explorer_menu", "installed")]),
+    ]) {
+      mocks.status.mockClear();
+      mocks.status.mockResolvedValue(next);
+      const { unmount } = render(<SystemIntegrationSection />);
+      await screen.findByTestId(`system-integration-${next.items[0].id}`);
+      fireEvent.focus(window);
+      fireEvent(document, new Event("visibilitychange"));
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mocks.status).toHaveBeenCalledTimes(1);
+      unmount();
+    }
+  });
+
+  it("checks again when the window becomes visible, not when it is hidden", async () => {
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
+    try {
+      mocks.status.mockResolvedValueOnce(
+        status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+      );
+      render(<SystemIntegrationSection />);
+      const row = await screen.findByTestId("system-integration-quick_action");
+      expect(await within(row).findByTestId("system-integration-quick-actions-hint")).toHaveTextContent(
+        menuHint,
+      );
+      expect(mocks.status).toHaveBeenCalledTimes(1);
+
+      visibility = "hidden";
+      fireEvent(document, new Event("visibilitychange"));
+      expect(mocks.status).toHaveBeenCalledTimes(1);
+
+      mocks.status.mockResolvedValueOnce(
+        status("macos", [item("quick_action", "installed", { quick_actions_menu: true })]),
+      );
+      visibility = "visible";
+      fireEvent(document, new Event("visibilitychange"));
+      await waitFor(() =>
+        expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull(),
+      );
+      expect(mocks.status).toHaveBeenCalledTimes(2);
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState");
+    }
+  });
+
+  it("keeps the rows when a later check fails and ignores a check that raced a change", async () => {
+    mocks.status.mockResolvedValueOnce(
+      status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+    );
+    const user = userEvent.setup();
+    render(<SystemIntegrationSection />);
+    const row = await screen.findByTestId("system-integration-quick_action");
+    await within(row).findByTestId("system-integration-quick-actions-hint");
+
+    mocks.status.mockRejectedValueOnce(new Error("pbs unavailable"));
+    fireEvent.focus(window);
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalled());
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+    expect(row).toHaveTextContent(copy.state.installed);
+    expect(within(row).getByTestId("system-integration-quick-actions-hint")).toBeInTheDocument();
+
+    const stale = deferred<SystemIntegrationStatus>();
+    mocks.status.mockReturnValueOnce(stale.promise);
+    fireEvent.focus(window);
+    expect(mocks.status).toHaveBeenCalledTimes(3);
+    mocks.set.mockResolvedValueOnce(item("quick_action", "not_installed"));
+    await user.click(within(row).getByRole("button", { name: enCommon.actions.remove }));
+    expect(await within(row).findByRole("button", { name: copy.actions.install })).toBeEnabled();
+
+    await act(async () => {
+      stale.resolve(
+        status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+      );
+      await stale.promise;
+    });
+    expect(row).toHaveTextContent(copy.state.notInstalled);
+    expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull();
+    expect(within(row).queryByRole("button", { name: enCommon.actions.remove })).toBeNull();
+  });
+
+  it("drops a check that starts while an install or remove runs and ends after it", async () => {
+    mocks.status.mockResolvedValueOnce(
+      status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+    );
+    const user = userEvent.setup();
+    render(<SystemIntegrationSection />);
+    const row = await screen.findByTestId("system-integration-quick_action");
+    await within(row).findByTestId("system-integration-quick-actions-hint");
+
+    const removing = deferred<SystemIntegrationItem>();
+    mocks.set.mockReturnValueOnce(removing.promise);
+    await user.click(within(row).getByRole("button", { name: enCommon.actions.remove }));
+    expect(row).toHaveAttribute("aria-busy", "true");
+
+    const stale = deferred<SystemIntegrationStatus>();
+    mocks.status.mockReturnValueOnce(stale.promise);
+    fireEvent.focus(window);
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      removing.resolve(item("quick_action", "not_installed"));
+      await removing.promise;
+    });
+    expect(await within(row).findByRole("button", { name: copy.actions.install })).toBeEnabled();
+
+    await act(async () => {
+      stale.resolve(
+        status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+      );
+      await stale.promise;
+    });
+    expect(row).toHaveTextContent(copy.state.notInstalled);
+    expect(within(row).queryByTestId("system-integration-quick-actions-hint")).toBeNull();
+    expect(within(row).getByRole("button", { name: copy.actions.install })).toBeEnabled();
+  });
+
+  it("drops a check that started before an install or remove and ends while it runs", async () => {
+    mocks.status.mockResolvedValueOnce(
+      status("macos", [item("quick_action", "installed", { quick_actions_menu: false })]),
+    );
+    const user = userEvent.setup();
+    render(<SystemIntegrationSection />);
+    const row = await screen.findByTestId("system-integration-quick_action");
+    await within(row).findByTestId("system-integration-quick-actions-hint");
+
+    const stale = deferred<SystemIntegrationStatus>();
+    mocks.status.mockReturnValueOnce(stale.promise);
+    fireEvent.focus(window);
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+
+    const removing = deferred<SystemIntegrationItem>();
+    mocks.set.mockReturnValueOnce(removing.promise);
+    await user.click(within(row).getByRole("button", { name: enCommon.actions.remove }));
+    expect(row).toHaveAttribute("aria-busy", "true");
+
+    await act(async () => {
+      stale.resolve(
+        status("macos", [
+          item("quick_action", "needs_attention", { attention: "outdated", quick_actions_menu: null }),
+        ]),
+      );
+      await stale.promise;
+    });
+    expect(row).not.toHaveTextContent(copy.attention.outdated);
+    expect(row).toHaveTextContent(copy.state.installed);
+    expect(row).toHaveAttribute("aria-busy", "true");
+
+    await act(async () => {
+      removing.resolve(item("quick_action", "not_installed"));
+      await removing.promise;
+    });
+    expect(await within(row).findByRole("button", { name: copy.actions.install })).toBeEnabled();
+    expect(row).not.toHaveTextContent(copy.attention.outdated);
   });
 
   it("never draws an outline or ring for focus", async () => {

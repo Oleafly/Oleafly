@@ -52,7 +52,6 @@ vi.mock("@/lib/toast", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { Library } from "@/components/library/Library";
-import { RECENT_LIMIT } from "@/lib/library-projects";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
@@ -133,6 +132,27 @@ function columns(name: string) {
     .map((cell) => cell.textContent);
 }
 
+function openFilters() {
+  fireEvent.click(screen.getByRole("button", { name: enLibrary.home.advancedFilters }));
+}
+
+function locationSelect() {
+  return screen.queryByLabelText(enLibrary.home.filters.location);
+}
+
+async function chooseLocation(label: string) {
+  fireEvent.pointerDown(locationSelect() as HTMLElement, {
+    button: 0,
+    ctrlKey: false,
+    pointerType: "mouse",
+  });
+  fireEvent.click(await screen.findByRole("option", { name: label }));
+}
+
+function resetFilters() {
+  return screen.getByRole("button", { name: enLibrary.home.resetFilters });
+}
+
 function openActions(name: string) {
   fireEvent.pointerDown(
     screen.getAllByRole("button", {
@@ -185,7 +205,6 @@ describe("folder cards", () => {
       expect(within(folderCard).getByText("Tectonic")).toBeInTheDocument();
       expect(within(folderCard).getByText(EXTERNAL)).toBeInTheDocument();
       expect(within(folderCard).getByText(projectModifiedLabel(TODAY) as string)).toBeInTheDocument();
-      expect(within(folderCard).queryByText(enLibrary.folder.badge)).toBeNull();
       expect(within(folderCard).queryByText("No main document")).toBeNull();
       expect(folderCard.textContent).not.toContain("Desktop");
       for (const state of Object.values(enLibrary.folder.state)) {
@@ -255,7 +274,9 @@ describe("folder cards", () => {
     reportAll({ "linked-thesis": state, "linked-slides": "ok" });
     await renderLibrary();
     const thesis = card("Open Thesis");
-    expect(await within(thesis).findByText(label)).toBeInTheDocument();
+    const stateLine = (await within(thesis).findByText(label)).parentElement as HTMLElement;
+    expect(stateLine).toHaveClass("text-amber-700");
+    expect(stateLine.querySelector("svg")).toBeNull();
     expect(within(thesis).getByText(EXTERNAL)).toBeInTheDocument();
     expect(within(thesis).queryByText(projectModifiedLabel(TODAY) as string)).toBeNull();
     expect(thesis.querySelector(".grayscale")).not.toBeNull();
@@ -284,7 +305,6 @@ describe("folder cards", () => {
     const list = screen.getByTestId("project-list");
     expect(await within(card("Open Slides")).findAllByText(enLibrary.folder.state.offline)).not.toHaveLength(0);
     expect(list.textContent).not.toContain("Desktop");
-    expect(within(list).queryByText(enLibrary.folder.badge)).toBeNull();
     expect(columns("Open Thesis")).toEqual([EXTERNAL, "Tectonic", projectModifiedLabel(TODAY)]);
     expect(columns("Open Slides")).toEqual([EXTERNAL, "Tectonic", enLibrary.folder.state.offline]);
     const slides = screen.getByRole("button", { name: "Open Slides" });
@@ -395,7 +415,6 @@ describe("folder menu", () => {
         enLibrary.folder.menu.copyToLibrary,
         enLibrary.folder.menu.remove,
         enLibrary.projects.changeColor,
-        enLibrary.projects.favoriteAdd,
       ]),
     );
     expect(
@@ -409,6 +428,8 @@ describe("folder menu", () => {
     ).toBe(true);
     expect(items).not.toContain(enLibrary.projects.delete);
     expect(items).not.toContain(enLibrary.projects.fork);
+    expect(items).not.toContain(enLibrary.projects.favoriteAdd);
+    expect(items).not.toContain(enLibrary.projects.favoriteRemove);
   });
 
   it("reveals the folder by id only", async () => {
@@ -429,11 +450,15 @@ describe("folder menu", () => {
     expect(copyIntoLibrary).toHaveBeenCalledWith("linked-thesis", "Thesis");
   });
 
-  it("bookmarks from the menu", async () => {
+  it("leaves bookmarking to the bookmark on the card", async () => {
     await renderLibrary();
-    openActions("Thesis");
-    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.favoriteAdd }));
+    fireEvent.click(
+      within(card("Open Thesis")).getByRole("button", { name: enLibrary.projects.favoriteAdd }),
+    );
     expect(useFavoritesStore.getState().favs).toContain("linked-thesis");
+    expect(
+      within(card("Open Thesis")).getByRole("button", { name: enLibrary.projects.favoriteRemove }),
+    ).toBeInTheDocument();
   });
 
   it("disables reveal and copy while the folder cannot be reached", async () => {
@@ -521,109 +546,138 @@ describe("remove from Oleafly", () => {
   });
 });
 
-describe("scope chips", () => {
-  it("stay hidden while the library holds no folders", async () => {
+describe("location filter", () => {
+  it("is only offered while the library holds external projects", async () => {
     seed([PAPER, library("notes", { name: "Notes" })]);
     await renderLibrary();
-    expect(screen.queryByRole("group", { name: enLibrary.home.scope.label })).toBeNull();
-    expect(screen.queryByTestId("library-recent")).toBeNull();
+    openFilters();
+    expect(screen.getByRole("heading", { name: enLibrary.home.filtersTitle })).toBeInTheDocument();
+    expect(locationSelect()).toBeNull();
+    expect(screen.queryByTestId("library-scope")).toBeNull();
     expect(probeProjectAvailability).not.toHaveBeenCalled();
   });
 
-  it("filter the shelf", async () => {
+  it("shows only external projects or only library projects until the filters are reset", async () => {
     await renderLibrary();
-    const group = screen.getByRole("group", { name: enLibrary.home.scope.label });
-    const radios = within(group).getAllByRole("radio");
-    expect(radios.map((radio) => radio.closest("label")?.textContent)).toEqual([
-      `${enLibrary.home.scope.all}3`,
-      `${enLibrary.home.scope.library}1`,
-      `${enLibrary.home.scope.folders}2`,
-    ]);
-    expect(radios[0]).toBeChecked();
+    expect(screen.queryByTestId("library-scope")).toBeNull();
+    openFilters();
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationAll);
+    expect(resetFilters()).toBeDisabled();
 
-    fireEvent.click(radios[2]);
-    expect(radios[2]).toBeChecked();
+    fireEvent.pointerDown(locationSelect() as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      enLibrary.home.filters.locationAll,
+      enLibrary.home.filters.locationLibrary,
+      enLibrary.home.filters.locationExternal,
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: enLibrary.home.filters.locationExternal }));
+
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationExternal);
     expect(screen.queryByRole("button", { name: "Open Paper" })).toBeNull();
     expect(screen.getByRole("button", { name: "Open Thesis" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Slides" })).toBeInTheDocument();
+    expect(resetFilters()).toBeEnabled();
 
-    fireEvent.click(radios[1]);
+    await chooseLocation(enLibrary.home.filters.locationLibrary);
     expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Slides" })).toBeNull();
+
+    fireEvent.click(resetFilters());
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationAll);
+    for (const name of ["Open Paper", "Open Thesis", "Open Slides"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+    expect(resetFilters()).toBeDisabled();
   });
 
-  it("fall back to everything when the last folder leaves", async () => {
+  it("combines with the other filters and the search", async () => {
+    useFavoritesStore.setState({ favs: ["linked-slides", "paper"] });
     await renderLibrary();
-    fireEvent.click(screen.getAllByRole("radio")[2]);
+    openFilters();
+    await chooseLocation(enLibrary.home.filters.locationExternal);
+    fireEvent.pointerDown(screen.getByLabelText(enLibrary.home.filters.bookmark), {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+    fireEvent.click(await screen.findByRole("option", { name: enLibrary.home.filters.bookmarkYes }));
+    expect(screen.getByRole("button", { name: "Open Slides" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Paper" })).toBeNull();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {
+      target: { value: "paper" },
+    });
+    expect(screen.getByText(enLibrary.home.noMatchesTitle)).toBeInTheDocument();
+  });
+
+  it("falls back to all projects when the last external project leaves", async () => {
+    await renderLibrary();
+    openFilters();
+    await chooseLocation(enLibrary.home.filters.locationExternal);
+    expect(screen.queryByRole("button", { name: "Open Paper" })).toBeNull();
+
     act(() => seed([PAPER]));
-    expect(screen.queryByRole("group", { name: enLibrary.home.scope.label })).toBeNull();
+    expect(locationSelect()).toBeNull();
+    expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
+    expect(resetFilters()).toBeDisabled();
+
+    act(() => seed([THESIS, PAPER, SLIDES]));
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationAll);
     expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
   });
 });
 
-describe("recent row", () => {
-  const many = [
-    THESIS,
-    PAPER,
-    SLIDES,
-    ...Array.from({ length: RECENT_LIMIT }, (_, index) =>
-      library(`extra-${index}`, { name: `Extra ${index}`, last_opened_at: index === 0 ? 150 : 0 }),
-    ),
-  ];
-
-  it("mixes folders and library projects by when they were last opened", async () => {
-    seed(many);
-    await renderLibrary();
-    const recent = screen.getByTestId("library-recent");
-    const names = within(recent)
-      .getAllByRole("button")
-      .map((button) => button.textContent);
-    expect(names).toEqual([
-      `Thesis${enLibrary.folder.badge}~/Desktop/thesis`,
-      `Paper${enLibrary.home.scope.library}`,
-      `Extra 0${enLibrary.home.scope.library}`,
-      `Slides${enLibrary.folder.badge}~/Desktop/slides`,
-    ]);
-    fireEvent.click(within(recent).getAllByRole("button")[1]);
-    expect(openProject).toHaveBeenCalledWith("paper");
+describe("project order", () => {
+  const DAY = 86_400;
+  const OPENED = library("opened", {
+    name: "Opened",
+    updated_at: TODAY - 7 * DAY,
+    last_opened_at: TODAY,
   });
-
-  it("hides while searching and when every project already fits on screen", async () => {
-    seed(many);
-    await renderLibrary();
-    fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {
-      target: { value: "thesis" },
-    });
-    expect(screen.queryByTestId("library-recent")).toBeNull();
-    fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {
-      target: { value: "" },
-    });
-    expect(screen.getByTestId("library-recent")).toBeInTheDocument();
-
-    act(() => seed([THESIS, PAPER, SLIDES]));
-    expect(screen.queryByTestId("library-recent")).toBeNull();
+  const EDITED = library("edited", {
+    name: "Edited",
+    updated_at: TODAY - DAY,
+    last_opened_at: TODAY - 30 * DAY,
   });
+  const CHANGED = folder("linked-changed", "Changed", { updated_at: TODAY - 40 * DAY });
+  const order = () =>
+    screen
+      .getAllByRole("button", { name: /^Open (Opened|Edited|Changed)$/ })
+      .map((button) => button.getAttribute("aria-label"));
 
-  it("keeps a long path's folder name in view", async () => {
-    const deep = "~/Library/Mobile Documents/com~apple~CloudDocs/2024/thesis";
-    seed([
-      folder("linked-deep", "Deep", {
-        last_opened_at: 500,
-        location: { kind: "linked", display_path: deep, availability: "unknown" },
-      }),
-      ...Array.from({ length: RECENT_LIMIT }, (_, index) =>
-        library(`extra-${index}`, { name: `Extra ${index}` }),
-      ),
-    ]);
-    await renderLibrary();
-    const path = within(screen.getByTestId("library-recent")).getByTitle(deep);
-    expect(path).toHaveTextContent(deep);
-    const tail = within(path).getByText("/2024/thesis");
-    expect(tail).toHaveClass("shrink-0");
-    expect(within(path).getByText("~/Library/Mobile Documents/com~apple~CloudDocs")).toHaveClass(
-      "truncate",
-    );
-  });
+  it.each(["grid", "list"] as const)(
+    "puts the most recent open or edit first in the %s and keeps the edit date on each item",
+    async (layout) => {
+      useSettingsStore.setState({ homeProjectLayout: layout });
+      seed([CHANGED, EDITED, OPENED]);
+      probeProjectAvailability.mockResolvedValue([
+        { project_id: "linked-changed", availability: "ok", modified_at_ms: (TODAY - 3600) * 1000 },
+      ]);
+      render(<Library />);
+      expect(order()).toEqual(["Open Opened", "Open Edited", "Open Changed"]);
+      await waitFor(() =>
+        expect(order()).toEqual(["Open Opened", "Open Changed", "Open Edited"]),
+      );
+      expect(
+        within(card("Open Opened")).getAllByText(projectModifiedLabel(TODAY - 7 * DAY) as string),
+      ).not.toHaveLength(0);
+      expect(
+        within(card("Open Opened")).queryByText(projectModifiedLabel(TODAY) as string),
+      ).toBeNull();
+      expect(
+        within(card("Open Edited")).getAllByText(projectModifiedLabel(TODAY - DAY) as string),
+      ).not.toHaveLength(0);
+    },
+  );
+});
 
+describe("folder search", () => {
   it("finds folders by their path", async () => {
     await renderLibrary();
     fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {

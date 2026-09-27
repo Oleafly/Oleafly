@@ -71,6 +71,7 @@ test("a folder that holds too much is refused with Choose a subfolder", async ({
     await injectOpenRequest(page, broad);
     await expect(notice).toBeVisible({ timeout: 30_000 });
     await expect(notice).toContainText("holds too much to open as one project. Choose a folder inside it.");
+    await expect(notice).not.toContainText("Couldn't open");
     expect(await page.evaluate<string[]>(
       `Array.from(document.querySelectorAll('[data-testid="open-folder-notice"] button')).map((button) => button.textContent?.trim() ?? "")`,
     )).toContain("Choose a subfolder");
@@ -84,10 +85,17 @@ test("a folder that holds too much is refused with Choose a subfolder", async ({
   const before = snapshotFolder(folder);
   const opened = await openFolder(page, folder);
   await injectOpenRequest(page, realpathSync(homedir()));
-  await expect.poll(async () => page.evaluate<string[]>(`(() => {
-    const toast = Array.from(document.querySelectorAll('[data-sonner-toast]')).find((node) => node.textContent?.includes("holds too much to open as one project"));
-    return toast ? Array.from(toast.querySelectorAll('button')).map((button) => button.textContent?.trim() ?? "") : [];
-  })()`), { timeout: 30_000 }).toContain("Choose a subfolder");
+  let toastText = "";
+  await expect.poll(async () => {
+    const toast = await page.evaluate<{ text: string; buttons: string[] } | null>(`(() => {
+      const node = Array.from(document.querySelectorAll('[data-sonner-toast]')).find((candidate) => candidate.textContent?.includes("holds too much to open as one project"));
+      return node ? { text: node.textContent ?? "", buttons: Array.from(node.querySelectorAll('button')).map((button) => button.textContent?.trim() ?? "") } : null;
+    })()`);
+    toastText = toast?.text ?? "";
+    return toast?.buttons ?? [];
+  }, { timeout: 30_000 }).toContain("Choose a subfolder");
+  expect(toastText).toContain("holds too much to open as one project");
+  expect(toastText).not.toContain("Couldn't open");
   expect((await openedState(page)).projectId).toBe(opened.projectId);
   expect(await projectCount(page)).toBe(projects + 1);
   expectFolderUnchanged(folder, before);

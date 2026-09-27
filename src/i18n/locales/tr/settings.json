@@ -1530,8 +1530,9 @@
     },
     "packaged": "Oleafly paketiyle birlikte kuruldu.",
     "quickAction": {
-      "label": "Finder Hızlı Eylemi",
-      "description": "Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'de aç'ı seçin."
+      "label": "Finder'da Hızlı Eylemler",
+      "description": "Finder'da bir klasöre sağ tıkladığınızda Servisler menüsüne Oleafly'de aç komutunu ekler.",
+      "menuHint": "Henüz Hızlı Eylemler'de değil. Bir klasöre sağ tıklayın, Hızlı Eylemler › Özelleştir'i seçin ve {{title}} seçeneğini açın."
     },
     "explorerMenu": {
       "label": "Dosya Gezgini sağ tık menüsü",

@@ -135,6 +135,9 @@ jobs:
       - name: Test the Linux app binary lookup
         run: bash scripts/ci/find-linux-app-binary.test.sh
 
+      - name: Test the installer change check
+        run: bash scripts/ci/installer-changes.test.sh
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
@@ -1123,8 +1126,18 @@ jobs:
     needs: [frontend, rust]
     runs-on: windows-2022
     timeout-minutes: 45
+    outputs:
+      installers: ${{ steps.installer-changes.outputs.run }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check whether the installers changed
+        id: installer-changes
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash scripts/ci/installer-changes.sh "$EVENT" "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -1398,5 +1411,61 @@ jobs:
             e2e-artifacts/**/error-context.md
             e2e-artifacts/**/trace.zip
             e2e-artifacts/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  installers-windows:
+    name: Installers (Windows)
+    needs: e2e-build-windows
+    if: needs.e2e-build-windows.outputs.installers == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+
+      - name: Download the app build
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-app-windows
+
+      - name: Unpack the app build into the target directory
+        shell: bash
+        run: bash scripts/ci/unpack-windows-e2e-app.sh oleafly-e2e-windows.tar.gz src-tauri/target/debug
+
+      - name: Bundle the NSIS and MSI installers
+        shell: bash
+        run: |
+          printf '%s\n' '{"bundle":{"externalBin":[],"resources":[]}}' > src-tauri/tauri.installer-check.conf.json
+          pnpm tauri bundle --debug --features e2e-testing --bundles nsis,msi --config src-tauri/tauri.e2e.conf.json --config src-tauri/tauri.installer-check.conf.json
+
+      - name: Install and uninstall both installers
+        timeout-minutes: 20
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows-installer-check.ps1 -BundleDir src-tauri/target/debug/bundle -LogDir installer-check-logs
+
+      - name: Upload the installer logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-check-windows
+          path: |
+            installer-check-logs/**
+            src-tauri/target/debug/wix/x64/main.wxs
+            src-tauri/target/debug/nsis/x64/installer.nsi
           retention-days: 7
           if-no-files-found: ignore

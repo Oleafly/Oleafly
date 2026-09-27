@@ -179,6 +179,8 @@ fn user_item(id: ItemId, state: ItemState, attention: &'static str) -> Item {
         state,
         packaged: false,
         attention: (state == ItemState::NeedsAttention).then_some(attention),
+        quick_actions_menu: None,
+        menu_title: None,
     }
 }
 
@@ -196,6 +198,8 @@ fn shipped_action(
             state: ItemState::Installed,
             packaged: true,
             attention: None,
+            quick_actions_menu: None,
+            menu_title: None,
         });
     }
     let state = file_state(&layout.data_home.join(dir).join(file), expected);

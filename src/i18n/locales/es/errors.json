@@ -35,7 +35,8 @@
     "copy_needs_folder": "Solo las carpetas abiertas en su ubicación se pueden copiar a la biblioteca.",
     "not_removable": "Solo las carpetas abiertas en su ubicación se pueden quitar de Oleafly.",
     "trash_unavailable": "Oleafly no pudo mover {{path}} a la Papelera. Puede que esta unidad no tenga una.",
-    "linked_replace_folder": "{{path}} es una carpeta, así que Oleafly no la sustituirá. Muévela o cámbiale el nombre primero."
+    "linked_replace_folder": "{{path}} es una carpeta, así que Oleafly no la sustituirá. Muévela o cámbiale el nombre primero.",
+    "folder_read_only": "Oleafly no puede hacer este cambio porque {{name}} o su carpeta es de solo lectura. Copia a la biblioteca la carpeta que abriste y edítala allí."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

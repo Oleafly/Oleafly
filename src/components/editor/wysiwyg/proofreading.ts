@@ -1046,7 +1046,8 @@ export function applyVisualProofreadingSuggestion(
   suggestion: ProofreadingSuggestion,
 ): boolean {
   const active = currentIssue(editor, issue);
-  if (!active) return false;
+  if (!active || !editor.isEditable) return false;
+  const before = editor.state.doc;
   if (active.rawBlockSource) {
     const {
       nodePosition,
@@ -1089,6 +1090,7 @@ export function applyVisualProofreadingSuggestion(
       ),
     );
     editor.view.dispatch(transaction);
+    if (editor.state.doc === before) return false;
     scrollVisualSelectionLocally(editor.view);
     editor.view.focus();
     publishIssue(null);
@@ -1115,6 +1117,7 @@ export function applyVisualProofreadingSuggestion(
     ),
   );
   editor.view.dispatch(transaction);
+  if (editor.state.doc === before) return false;
   scrollVisualSelectionLocally(editor.view);
   editor.view.focus();
   publishIssue(null);

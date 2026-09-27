@@ -67,20 +67,15 @@
       "anyTime": "Alle tijden",
       "last7Days": "Laatste 7 dagen",
       "last30Days": "Laatste 30 dagen",
-      "lastYear": "Laatste jaar"
+      "lastYear": "Laatste jaar",
+      "location": "Locatie",
+      "locationAll": "Alle projecten",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "Externe projecten"
     },
     "openFolder": "Map openen",
     "openFolderShortcut": "Map openen ({{shortcut}})",
-    "createFirstProject": "Nieuw project maken",
-    "scope": {
-      "label": "Projecten tonen",
-      "all": "Alle",
-      "library": "In Oleafly",
-      "folders": "Mappen"
-    },
-    "recent": {
-      "title": "Recent"
-    }
+    "createFirstProject": "Nieuw project maken"
   },
   "projects": {
     "open": "{{name}} openen",
@@ -94,7 +89,7 @@
     "actions": "Acties voor {{name}}",
     "details": "Projectgegevens",
     "exportHistory": "Exportgeschiedenis",
-    "changeColor": "Projectkleur wijzigen",
+    "changeColor": "Projectkleur",
     "fork": "Project forken",
     "delete": "Project verwijderen",
     "favoriteAdd": "Aan favorieten toevoegen",
@@ -484,7 +479,6 @@
     "dismiss": "Sluiten"
   },
   "folder": {
-    "badge": "Map",
     "state": {
       "missing": "Map ontbreekt",
       "offline": "Schijf niet aangesloten",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "Kan “{{name}}” niet vinden",
-        "body": "De map stond op {{path}} en is misschien verplaatst of verwijderd. Zoek hem op om de chats en geschiedenis te bewaren."
+        "body": "De map stond op <path>{{path}}</path> en is misschien verplaatst of verwijderd. Zoek hem op om de chats en geschiedenis te bewaren."
       },
       "offline": {
         "title": "“{{name}}” staat op een schijf die niet is aangesloten",
-        "body": "Sluit de schijf aan of maak verbinding met de netwerkshare waarop {{path}} staat, en probeer het opnieuw."
+        "body": "Sluit de schijf aan of maak verbinding met de netwerkshare waarop <path>{{path}}</path> staat, en probeer het opnieuw."
       },
       "replaced": {
         "title": "“{{name}}” is vervangen",
-        "body": "De map op {{path}} is niet de map die je eerder opende. Gebruik hem alleen als je hem vertrouwt. Bij het wisselen zet Oleafly vertrouwen en goedkeuringen uit."
+        "body": "De map op <path>{{path}}</path> is niet de map die je eerder opende. Gebruik hem alleen als je hem vertrouwt. Bij het wisselen zet Oleafly vertrouwen en goedkeuringen uit."
       },
       "permissionDenied": {
         "title": "Oleafly kan “{{name}}” niet openen",
         "bodyMac": "Geef Oleafly toegang tot deze map in Systeeminstellingen › Privacy en beveiliging › Bestanden en mappen en probeer het opnieuw.",
-        "bodyOther": "Je account kan {{path}} niet lezen. Controleer de rechten van de map en probeer het opnieuw."
+        "bodyOther": "Je account kan <path>{{path}}</path> niet lezen. Controleer de rechten van de map en probeer het opnieuw."
       },
       "back": {
         "title": "“{{name}}” is terug",
-        "body": "Oleafly kan {{path}} weer bereiken."
+        "body": "Oleafly kan <path>{{path}}</path> weer bereiken."
       },
-      "locate": "Zoeken…",
+      "locate": "Zoeken",
       "tryAgain": "Opnieuw proberen",
       "useThisFolder": "Deze map gebruiken",
-      "checking": "Controleren…",
+      "checking": "Controleren",
       "still": "Oleafly kan de map nog steeds niet bereiken."
     },
     "copy": {

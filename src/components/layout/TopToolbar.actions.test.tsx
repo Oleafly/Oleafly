@@ -158,6 +158,24 @@ describe("TopToolbar title", () => {
     expect(renameProject).not.toHaveBeenCalled();
   });
 
+  it("lets a coded rename failure explain itself", async () => {
+    const failure = `@oleafly/error:${JSON.stringify({
+      code: "project.linked_missing",
+      params: { folder: "Retrieval study" },
+      detail: null,
+    })}`;
+    renameProject.mockRejectedValueOnce(failure);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("project-title"));
+    const field = await screen.findByLabelText(toolbar.projectName);
+    await user.clear(field);
+    await user.type(field, "Clash{Enter}");
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("rename project", failure, undefined),
+    );
+  });
+
   it("keeps the old name when the rename fails", async () => {
     const failure = new Error("project rename task failed: taken");
     renameProject.mockRejectedValueOnce(failure);

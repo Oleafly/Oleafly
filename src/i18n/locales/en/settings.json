@@ -1530,8 +1530,9 @@
     },
     "packaged": "Installed with the Oleafly package.",
     "quickAction": {
-      "label": "Finder Quick Action",
-      "description": "Right-click a folder in Finder and choose Quick Actions › Open in Oleafly."
+      "label": "Finder Quick Actions",
+      "description": "Adds Open in Oleafly to the Services menu when you right-click a folder in Finder.",
+      "menuHint": "Not in Quick Actions yet. Right-click a folder, choose Quick Actions › Customize and turn on {{title}}."
     },
     "explorerMenu": {
       "label": "File Explorer right-click menu",

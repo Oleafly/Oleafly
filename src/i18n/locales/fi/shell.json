@@ -384,9 +384,9 @@
       "title": "Oleafly ei voi avata tätä kansiota.",
       "body": "Tarkista kansion käyttöoikeudet ja yritä uudelleen. Avoimet tiedostosi pysyvät täällä."
     },
-    "locate": "Etsi…",
+    "locate": "Etsi",
     "useThisFolder": "Käytä tätä kansiota",
-    "saveCopy": "Tallenna kopio…",
+    "saveCopy": "Tallenna kopio",
     "tryAgain": "Yritä uudelleen",
     "savedCopy": "Avoimet tiedostosi tallennettiin kansioon {{folder}}."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Avaa kansioita Finderista",
-    "body": "Lisää Avaa sovelluksessa Oleafly Finderin pikatoimintoihin. Sen jälkeen voit avata minkä tahansa kansion täällä napsauttamalla sitä hiiren oikealla.",
+    "body": "Lisää Avaa sovelluksessa Oleafly -komento Finderiin. Palvelut-valikosta se toimii heti ja Pikatoiminnot-valikosta sen jälkeen, kun otat sen käyttöön.",
     "add": "Lisää Finderiin",
     "notNow": "Ei nyt",
-    "added": "Lisätty. Napsauta kansiota hiiren oikealla Finderissa ja valitse Pikatoiminnot › Avaa sovelluksessa Oleafly.",
+    "added": "Lisätty. Se on nyt Finderin Palvelut-valikossa. Jos haluat käyttää sitä myös Pikatoiminnot-valikosta, napsauta kansiota hiiren oikealla ja ota se käyttöön kohdassa Pikatoiminnot › Muokkaa.",
+    "addedInQuickActions": "Lisätty. Napsauta kansiota hiiren oikealla, niin löydät sen Pikatoiminnot-valikosta.",
     "failed": "Lisääminen epäonnistui. Voit yrittää uudelleen kohdassa Asetukset › Yleiset."
   }
 }

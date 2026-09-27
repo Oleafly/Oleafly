@@ -312,7 +312,11 @@ export function TopToolbar() {
         void logError("refresh projects after rename", e);
         return;
       }
-      notifyError("rename project", e, i18n.t(($) => $.shell.toolbar.renameFailed));
+      notifyError(
+        "rename project",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.shell.toolbar.renameFailed),
+      );
     }
   };
   const [dlOpen, setDlOpen] = useState(false);

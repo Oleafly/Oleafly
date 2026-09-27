@@ -14,6 +14,7 @@ export function resolveTargetRange(
 }
 
 export function openInlineEdit(view: EditorView): void {
+  if (view.state.readOnly) return;
   if (useInlineEditStore.getState().session) return; // one session at a time
   const { from, to, original } = resolveTargetRange(view.state);
   if (!original.trim()) return;
@@ -29,6 +30,7 @@ export function openInlineEditWithInstruction(
   view: EditorView,
   instruction: string,
 ): boolean {
+  if (view.state.readOnly) return false;
   const store = useInlineEditStore.getState();
   // A session already in flight owns the widget; replacing it mid-stream would
   // strand the running request.

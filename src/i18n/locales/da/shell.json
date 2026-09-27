@@ -384,9 +384,9 @@
       "title": "Oleafly kan ikke åbne denne mappe.",
       "body": "Tjek mappens tilladelser, og prøv igen. Dine åbne filer bliver her."
     },
-    "locate": "Find…",
+    "locate": "Find",
     "useThisFolder": "Brug denne mappe",
-    "saveCopy": "Gem en kopi…",
+    "saveCopy": "Gem en kopi",
     "tryAgain": "Prøv igen",
     "savedCopy": "Dine åbne filer blev gemt i {{folder}}."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Åbn mapper fra Finder",
-    "body": "Føj Åbn i Oleafly til Finders hurtige handlinger. Så kan du højreklikke på en hvilken som helst mappe for at åbne den her.",
+    "body": "Føj Åbn i Oleafly til Finder. Den virker fra menuen Tjenester med det samme og fra Hurtige kommandoer, når du har slået den til.",
     "add": "Føj til Finder",
     "notNow": "Ikke nu",
-    "added": "Tilføjet. Højreklik på en mappe i Finder, og vælg Hurtige handlinger › Åbn i Oleafly.",
+    "added": "Tilføjet. Den ligger nu i menuen Tjenester i Finder. Hvis du også vil bruge den fra Hurtige kommandoer, skal du højreklikke på en mappe og slå den til under Hurtige kommandoer › Tilpas.",
+    "addedInQuickActions": "Tilføjet. Højreklik på en mappe, så finder du den under Hurtige kommandoer.",
     "failed": "Kunne ikke tilføje den. Du kan prøve igen under Indstillinger › Generelt."
   }
 }

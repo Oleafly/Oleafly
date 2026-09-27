@@ -77,7 +77,9 @@ import { useTourStore } from "@/store/tours";
 import {
   automaticCompileAllowed,
   openCompileHydrated,
+  type OpenCompileRetries,
   resetOpenCompileMarker,
+  settleOpenCompile,
   shouldCompileOnOpen,
 } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
@@ -754,11 +756,16 @@ function AppContent() {
   const tree = useFilesStore((s) => s.tree);
   const openCompiledRef = useRef<string | null>(null);
   const openCompileInFlightRef = useRef<string | null>(null);
+  const openCompileRetriesRef = useRef<OpenCompileRetries | null>(null);
   const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
   useEffect(() => {
     void openCompileEpoch;
     void mainDocumentLoaded;
     openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
+    openCompileRetriesRef.current = resetOpenCompileMarker(
+      projectId,
+      openCompileRetriesRef.current,
+    );
     const hydrated = openCompileHydrated(
       projectLoading,
       projectId,
@@ -817,23 +824,27 @@ function AppContent() {
       const analysis =
         useProjectAnalysisStore.getState().snapshot.identity;
       const compile = useCompileStore.getState();
-      const stillSameHydratedRevision =
-        files.projectId === requestedProjectId &&
-        files.mainDoc === requestedMainDocument &&
-        !files.loading &&
-        analysis.projectId === requestedProjectId &&
-        analysis.projectRevision === requestedProjectRevision;
-      const attempt = compile.lastAttemptIdentity;
-      const attemptStartedForRevision =
-        stillSameHydratedRevision &&
-        attempt?.projectId === requestedProjectId &&
-        attempt.mainDocument === requestedMainDocument &&
-        attempt.projectRevision === requestedProjectRevision;
-      const currentArtifact =
-        stillSameHydratedRevision &&
-        isCompileCheckpointCurrent(compile.lastCompileCheckpoint);
-
-      if (attemptStartedForRevision || currentArtifact) {
+      const settlement = settleOpenCompile(
+        {
+          projectId: requestedProjectId,
+          mainDocument: requestedMainDocument,
+          projectRevision: requestedProjectRevision,
+        },
+        {
+          projectId: files.projectId,
+          mainDocument: files.mainDoc,
+          loading: files.loading,
+          analysisProjectId: analysis.projectId,
+          analysisProjectRevision: analysis.projectRevision,
+          attempt: compile.lastAttemptIdentity,
+          hasCurrentArtifact: isCompileCheckpointCurrent(
+            compile.lastCompileCheckpoint,
+          ),
+        },
+        openCompileRetriesRef.current,
+      );
+      openCompileRetriesRef.current = settlement.retries;
+      if (settlement.compiled) {
         openCompiledRef.current = requestedProjectId;
       }
       if (

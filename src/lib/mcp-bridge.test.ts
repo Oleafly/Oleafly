@@ -85,6 +85,7 @@ import {
   validateToolInput,
 } from "@/lib/mcp-bridge";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
+import { summarizeMcpError, summarizeMcpResult } from "@/store/mcp-activity";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillEntry } from "@/lib/skills";
 import { useSettingsStore } from "@/store/settings";
@@ -362,6 +363,34 @@ describe("confirmForPolicy", () => {
   });
 });
 
+describe("MCP activity summaries", () => {
+  const refused = `@oleafly/error:${JSON.stringify({
+    code: "project.folder_read_only",
+    params: { name: "notes.tex" },
+    detail: null,
+  })}`;
+  const sentence =
+    "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.";
+  const textOf = (result: ReturnType<typeof toMcpResult>) =>
+    result.content.find((part) => part.type === "text")?.text;
+
+  it("shows a coded tool error as its sentence instead of the envelope", () => {
+    const failed = toMcpResult({ error: refused }, []);
+    expect(summarizeMcpResult(textOf(failed), failed.isError)).toBe(sentence);
+    expect(summarizeMcpError(refused)).toBe(sentence);
+    expect(summarizeMcpError(new Error(refused))).toBe(sentence);
+  });
+
+  it("leaves plain errors and successful results as they were", () => {
+    const plain = toMcpResult({ error: "No project open" }, []);
+    expect(summarizeMcpResult(textOf(plain), plain.isError)).toBe('{"error":"No project open"}');
+    expect(summarizeMcpError(new Error("boom"))).toBe("Error: boom");
+    const read = toMcpResult({ path: "data.json", content: JSON.stringify({ error: refused }) }, []);
+    const text = textOf(read) ?? "";
+    expect(summarizeMcpResult(text, read.isError)).toBe(`${text.slice(0, 157)}…`);
+  });
+});
+
 describe("toMcpResult", () => {
   it("wraps a plain result as text content", () => {
     const r = toMcpResult({ success: true, path: "main.tex" }, []);
@@ -477,5 +506,52 @@ describe("MCP renderer lifecycle", () => {
     expect(mocks.api.mcpRendererHeartbeat).toHaveBeenCalledTimes(callsBeforeStaleHeartbeat);
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("MCP tool calls that throw", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("logs a thrown coded error as its sentence and hands the client the exact envelope", async () => {
+    vi.resetModules();
+    vi.stubGlobal("window", {
+      setInterval: vi.fn(() => 1),
+      clearInterval: vi.fn(),
+      addEventListener: vi.fn(),
+    });
+    const bridge = await import("@/lib/mcp-bridge");
+    const { useMcpActivityStore } = await import("@/store/mcp-activity");
+    const { useMcpApprovalStore } = await import("@/store/mcp-approvals");
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "notes.tex" },
+      detail: null,
+    })}`;
+    useMcpApprovalStore.setState({ request: vi.fn().mockRejectedValue(refused) });
+
+    await bridge.startMcpBridge();
+    mocks.api.mcpToolResult.mockClear();
+    mocks.events.get("mcp:tool-call")?.({
+      payload: {
+        callId: 5,
+        epoch: 1,
+        rendererSession: 41,
+        name: "remember_note",
+        arguments: { content: "Use British spelling" },
+      },
+    });
+    await vi.waitFor(() => expect(mocks.api.mcpToolResult).toHaveBeenCalledTimes(1));
+
+    expect(mocks.api.mcpToolResult).toHaveBeenCalledWith(
+      5,
+      bridge.toMcpResult({ error: refused }, []),
+      41,
+    );
+    expect(useMcpActivityStore.getState().logs[0]).toMatchObject({
+      name: "remember_note",
+      status: "error",
+      summary:
+        "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    });
   });
 });

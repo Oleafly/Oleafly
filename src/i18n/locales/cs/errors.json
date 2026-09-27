@@ -35,7 +35,8 @@
     "copy_needs_folder": "Do knihovny lze zkopírovat jen složky otevřené na svém místě.",
     "not_removable": "Z Oleafly lze odebrat jen složky otevřené na svém místě.",
     "trash_unavailable": "Oleafly nedokázal přesunout {{path}} do koše. Tato jednotka ho možná nemá.",
-    "linked_replace_folder": "{{path}} je složka, proto ji Oleafly nenahradí. Nejdřív ji přesuňte nebo přejmenujte."
+    "linked_replace_folder": "{{path}} je složka, proto ji Oleafly nenahradí. Nejdřív ji přesuňte nebo přejmenujte.",
+    "folder_read_only": "Oleafly tuto změnu nemůže provést, protože {{name}} nebo složka, ve které se nachází, je jen pro čtení. Zkopírujte otevřenou složku do knihovny a upravujte ji tam."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

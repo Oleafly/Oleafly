@@ -1,13 +1,13 @@
 use super::{
-    acquire_request_slot, allowlisted_tool_runner, approval_classifier, await_tool_result,
-    begin_request, cancel_all_requests, cancel_for_update, cancel_request, drop_pending_tools,
-    endpoint_override_allowed, finish_request, lock_or_recover, native_agent_tool,
-    native_dispatch_allowed, pause_for_update, provider_config, restricted_tool_runner,
-    resume_after_failed_update, run_registered, sanitized_run_config, tool_error, tool_key,
-    tool_pipeline, tool_reply_id, tool_risk, unwrap_mcp_text, Abortable, AgentState, AppConfig,
-    CompletionRequest, Duration, PendingTool, ProviderConfig, RestrictedConfirm, RunConfig,
-    ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS, MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS,
-    MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
+    acquire_request_slot, agent_tool_result, allowlisted_tool_runner, approval_classifier,
+    await_tool_result, begin_request, cancel_all_requests, cancel_for_update, cancel_request,
+    drop_pending_tools, endpoint_override_allowed, finish_request, lock_or_recover,
+    native_agent_tool, native_dispatch_allowed, pause_for_update, provider_config,
+    restricted_tool_runner, resume_after_failed_update, run_registered, sanitized_run_config,
+    tool_error, tool_key, tool_pipeline, tool_reply_id, tool_risk, unwrap_mcp_text, Abortable,
+    AgentState, AppConfig, CompletionRequest, Duration, PendingTool, ProviderConfig,
+    RestrictedConfirm, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
+    MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS, MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
 };
 
 fn config_with(provider: &str, keys: &[(&str, &str)]) -> AppConfig {
@@ -340,6 +340,67 @@ fn unmatched_cancellations_are_bounded() {
         .early_cancellations
         .iter()
         .any(|request_id| request_id == "pending-0"));
+}
+
+const READ_ONLY_NOTES: &str = "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.";
+
+fn read_only_notes() -> String {
+    crate::app_error::AppError::new("project.folder_read_only")
+        .param("name", "notes.tex")
+        .into()
+}
+
+#[test]
+fn native_tool_errors_reach_the_model_in_english() {
+    let output = tool_error(&read_only_notes());
+    let parsed: serde_json::Value = serde_json::from_str(&output.output).unwrap();
+    assert_eq!(parsed["error"], READ_ONLY_NOTES);
+    let plain = tool_error("the tool was not executed");
+    let parsed: serde_json::Value = serde_json::from_str(&plain.output).unwrap();
+    assert_eq!(parsed["error"], "the tool was not executed");
+}
+
+#[test]
+fn webview_tool_errors_reach_the_model_in_english_and_file_contents_do_not() {
+    use tauri::Manager as _;
+    let app = tauri::test::mock_app();
+    app.manage(AgentState::default());
+    let deliver = |call: &str, output: String| -> ToolOutput {
+        let (sender, mut receiver) = tokio::sync::oneshot::channel();
+        lock_or_recover(&app.state::<AgentState>().pending_tools).insert(
+            tool_key("run", call),
+            PendingTool {
+                generation: 1,
+                sender,
+                tool_name: "set_main_doc".to_string(),
+                project_id: None,
+            },
+        );
+        agent_tool_result(
+            app.state::<AgentState>(),
+            "run".to_string(),
+            call.to_string(),
+            ToolOutput::text(output),
+        );
+        receiver.try_recv().expect("the tool result was delivered")
+    };
+
+    let manifest: String = crate::app_error::AppError::new("project.folder_read_only")
+        .param("name", "project.json")
+        .into();
+    let failed = deliver(
+        "set-main",
+        serde_json::json!({ "error": manifest }).to_string(),
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&failed.output).unwrap();
+    assert_eq!(
+        parsed["error"],
+        READ_ONLY_NOTES.replace("notes.tex", "project.json")
+    );
+
+    let document = serde_json::json!({ "error": read_only_notes() }).to_string();
+    let read = serde_json::json!({ "path": "data.json", "content": document }).to_string();
+    assert_eq!(deliver("read", read.clone()).output, read);
 }
 
 #[test]

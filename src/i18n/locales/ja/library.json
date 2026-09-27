@@ -66,20 +66,15 @@
       "anyTime": "期間を指定しない",
       "last7Days": "過去 7 日間",
       "last30Days": "過去 30 日間",
-      "lastYear": "過去 1 年間"
+      "lastYear": "過去 1 年間",
+      "location": "保存場所",
+      "locationAll": "すべてのプロジェクト",
+      "locationLibrary": "Oleafly 内",
+      "locationExternal": "外部プロジェクト"
     },
     "openFolder": "フォルダを開く",
     "openFolderShortcut": "フォルダを開く（{{shortcut}}）",
-    "createFirstProject": "新規プロジェクトを作成",
-    "scope": {
-      "label": "プロジェクトの表示",
-      "all": "すべて",
-      "library": "Oleafly 内",
-      "folders": "フォルダ"
-    },
-    "recent": {
-      "title": "最近"
-    }
+    "createFirstProject": "新規プロジェクトを作成"
   },
   "projects": {
     "open": "{{name}} を開く",
@@ -93,7 +88,7 @@
     "actions": "{{name}} の操作",
     "details": "プロジェクトの詳細",
     "exportHistory": "書き出しの履歴",
-    "changeColor": "プロジェクトの色を変更",
+    "changeColor": "プロジェクトの色",
     "fork": "プロジェクトをフォーク",
     "delete": "プロジェクトを削除",
     "favoriteAdd": "お気に入りに追加",
@@ -475,7 +470,6 @@
     "dismiss": "閉じる"
   },
   "folder": {
-    "badge": "フォルダ",
     "state": {
       "missing": "フォルダが見つかりません",
       "offline": "ドライブ未接続",
@@ -499,29 +493,29 @@
     "unavailable": {
       "missing": {
         "title": "「{{name}}」が見つかりません",
-        "body": "{{path}} にありましたが、移動または削除された可能性があります。チャットと履歴を残すには場所を指定してください。"
+        "body": "<path>{{path}}</path> にありましたが、移動または削除された可能性があります。チャットと履歴を残すには場所を指定してください。"
       },
       "offline": {
         "title": "「{{name}}」は接続されていないドライブにあります",
-        "body": "{{path}} を含むドライブまたはネットワーク共有を接続して、もう一度お試しください。"
+        "body": "<path>{{path}}</path> を含むドライブまたはネットワーク共有を接続して、もう一度お試しください。"
       },
       "replaced": {
         "title": "「{{name}}」は置き換えられました",
-        "body": "{{path}} のフォルダは以前開いたものとは異なります。信頼できる場合だけ使用してください。切り替えると、Oleafly は信頼と承認をオフにします。"
+        "body": "<path>{{path}}</path> のフォルダは以前開いたものとは異なります。信頼できる場合だけ使用してください。切り替えると、Oleafly は信頼と承認をオフにします。"
       },
       "permissionDenied": {
         "title": "Oleafly は「{{name}}」を開けません",
         "bodyMac": "「システム設定」›「プライバシーとセキュリティ」›「ファイルとフォルダ」で Oleafly にこのフォルダの使用を許可してから、もう一度お試しください。",
-        "bodyOther": "お使いのアカウントでは {{path}} を読み取れません。フォルダのアクセス権を確認して、もう一度お試しください。"
+        "bodyOther": "お使いのアカウントでは <path>{{path}}</path> を読み取れません。フォルダのアクセス権を確認して、もう一度お試しください。"
       },
       "back": {
         "title": "「{{name}}」が再び使えるようになりました",
-        "body": "Oleafly から {{path}} に再びアクセスできるようになりました。"
+        "body": "Oleafly から <path>{{path}}</path> に再びアクセスできるようになりました。"
       },
-      "locate": "場所を指定…",
+      "locate": "場所を指定",
       "tryAgain": "再試行",
       "useThisFolder": "このフォルダを使用",
-      "checking": "確認しています…",
+      "checking": "確認中",
       "still": "Oleafly はまだアクセスできません。"
     },
     "copy": {

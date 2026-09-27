@@ -40,6 +40,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { formatNumber } from "@/lib/intl";
 import { FOLDER_LISTING_LIMIT, useFilesStore } from "@/store/files";
@@ -54,8 +55,15 @@ const TREE = [
   { path: "secret.tex", is_dir: false, unreadable: true },
 ];
 
+const FIGURES = [
+  { path: "figures", is_dir: true },
+  { path: "figures/plot.png", is_dir: false },
+  { path: "main.tex", is_dir: false },
+];
+
 beforeEach(async () => {
   await i18n.changeLanguage("en");
+  mocks.notifyError.mockReset();
   mocks.invoke.mockReset().mockImplementation(async (command: string) => {
     if (command === "list_files") return TREE;
     if (command === "read_file") return "content";
@@ -206,6 +214,39 @@ describe("FileTree in an opened folder", () => {
     );
     expect(deleteCalls()[1]).toMatchObject({ path: "main.tex", permanent: true });
     expect(mocks.notifyError).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("never offers a permanent delete for a read-only folder the Trash refused", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "figures" },
+      detail: null,
+    })}`;
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_files") return FIGURES;
+      if (command === "project_mutation_generation") return 0;
+      if (command === "delete_file") throw refused;
+      return undefined;
+    });
+    useFilesStore.setState({ tree: FIGURES });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<FileTree />);
+
+    deleteFromMenu("figures");
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(confirm).toHaveBeenCalledExactlyOnceWith(
+      files.confirmTrash.replace("{{path}}", "figures"),
+    );
+    expect(deleteCalls()).toEqual([expect.objectContaining({ path: "figures" })]);
+    expect(deleteCalls()[0].permanent).toBeUndefined();
+    const [scope, error, fallback] = mocks.notifyError.mock.calls[0];
+    expect(scope).toBe("delete file");
+    expect(fallback).toBeUndefined();
+    expect(describeError(error)).toBe(
+      "Oleafly can't make this change because figures or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
     confirm.mockRestore();
   });
 

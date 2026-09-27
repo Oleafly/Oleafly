@@ -35,7 +35,8 @@
     "copy_needs_folder": "Do biblioteki można skopiować tylko foldery otwarte w ich lokalizacji.",
     "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w ich lokalizacji.",
     "trash_unavailable": "Oleafly nie mógł przenieść {{path}} do Kosza. Ten dysk może go nie mieć.",
-    "linked_replace_folder": "{{path}} to folder, więc Oleafly go nie zastąpi. Najpierw go przenieś lub zmień jego nazwę."
+    "linked_replace_folder": "{{path}} to folder, więc Oleafly go nie zastąpi. Najpierw go przenieś lub zmień jego nazwę.",
+    "folder_read_only": "Oleafly nie może wprowadzić tej zmiany, ponieważ {{name}} lub folder, w którym się znajduje, jest tylko do odczytu. Skopiuj otwarty folder do biblioteki i edytuj go tam."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

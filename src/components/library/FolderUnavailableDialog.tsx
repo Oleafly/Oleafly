@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
-import { useTranslation } from "react-i18next";
-import { FolderCheck } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,11 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  FOLDER_STATE_ICON,
-  asUnavailable,
-  type UnavailableFolder,
-} from "@/components/library/folder-state";
+import { asUnavailable, type UnavailableFolder } from "@/components/library/folder-state";
 import { folderDisplayPath, folderUnavailable } from "@/lib/library-projects";
 import { adoptReplacedFolder, locateProjectFolder, type ProjectInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
@@ -27,27 +22,75 @@ type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 
 type FolderCopyValues = { name: string; path: string };
 
-function folderProblemCopy(t: Translate, state: UnavailableFolder, values: FolderCopyValues) {
-  return {
-    missing: {
-      title: t(($) => $.library.folder.unavailable.missing.title, values),
-      body: t(($) => $.library.folder.unavailable.missing.body, values),
-    },
-    offline: {
-      title: t(($) => $.library.folder.unavailable.offline.title, values),
-      body: t(($) => $.library.folder.unavailable.offline.body, values),
-    },
-    replaced: {
-      title: t(($) => $.library.folder.unavailable.replaced.title, values),
-      body: t(($) => $.library.folder.unavailable.replaced.body, values),
-    },
-    permission_denied: {
-      title: t(($) => $.library.folder.unavailable.permissionDenied.title, values),
-      body: isMac
-        ? t(($) => $.library.folder.unavailable.permissionDenied.bodyMac)
-        : t(($) => $.library.folder.unavailable.permissionDenied.bodyOther, values),
-    },
-  }[state];
+type FolderCopy = { title: string; body: ReactNode };
+
+const PATH_BADGE = {
+  components: {
+    path: (
+      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone" />
+    ),
+  },
+  tOptions: { interpolation: { escapeValue: true } },
+  shouldUnescape: true,
+};
+
+function folderProblemCopy(
+  t: Translate,
+  state: UnavailableFolder,
+  values: FolderCopyValues,
+): FolderCopy {
+  switch (state) {
+    case "missing":
+      return {
+        title: t(($) => $.library.folder.unavailable.missing.title, values),
+        body: (
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.folder.unavailable.missing.body}
+            values={values}
+            {...PATH_BADGE}
+          />
+        ),
+      };
+    case "offline":
+      return {
+        title: t(($) => $.library.folder.unavailable.offline.title, values),
+        body: (
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.folder.unavailable.offline.body}
+            values={values}
+            {...PATH_BADGE}
+          />
+        ),
+      };
+    case "replaced":
+      return {
+        title: t(($) => $.library.folder.unavailable.replaced.title, values),
+        body: (
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.folder.unavailable.replaced.body}
+            values={values}
+            {...PATH_BADGE}
+          />
+        ),
+      };
+    case "permission_denied":
+      return {
+        title: t(($) => $.library.folder.unavailable.permissionDenied.title, values),
+        body: isMac ? (
+          t(($) => $.library.folder.unavailable.permissionDenied.bodyMac)
+        ) : (
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.folder.unavailable.permissionDenied.bodyOther}
+            values={values}
+            {...PATH_BADGE}
+          />
+        ),
+      };
+  }
 }
 
 function folderDialogCopy(
@@ -55,11 +98,18 @@ function folderDialogCopy(
   state: UnavailableFolder,
   reachable: boolean,
   values: FolderCopyValues,
-) {
+): FolderCopy {
   if (!reachable) return folderProblemCopy(t, state, values);
   return {
     title: t(($) => $.library.folder.unavailable.back.title, values),
-    body: t(($) => $.library.folder.unavailable.back.body, values),
+    body: (
+      <Trans
+        ns="library"
+        i18nKey={($) => $.library.folder.unavailable.back.body}
+        values={values}
+        {...PATH_BADGE}
+      />
+    ),
   };
 }
 
@@ -186,7 +236,6 @@ export function FolderUnavailableDialog({
   }, [state, reachable, busy]);
 
   if (!project) return null;
-  const Icon = reachable ? FolderCheck : FOLDER_STATE_ICON[state];
   const values = { name: project.name, path: folderDisplayPath(project) ?? "" };
   const copy = folderDialogCopy(t, state, reachable, values);
 
@@ -251,33 +300,18 @@ export function FolderUnavailableDialog({
           primaryRef.current.focus();
         }}
       >
-        <DialogHeader className="pr-6">
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                reachable
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-              )}
-            >
-              <Icon className="size-4" />
-            </span>
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <DialogTitle className="text-base leading-snug [overflow-wrap:anywhere]">
-                {copy.title}
-              </DialogTitle>
-              <DialogDescription className="text-xs leading-relaxed [overflow-wrap:anywhere]">
-                {copy.body}
-              </DialogDescription>
-            </div>
-          </div>
+        <DialogHeader className="min-w-0 pr-6">
+          <DialogTitle className="text-base leading-snug [overflow-wrap:anywhere]">
+            {copy.title}
+          </DialogTitle>
+          <DialogDescription className="text-xs leading-relaxed [overflow-wrap:anywhere]">
+            {copy.body}
+          </DialogDescription>
         </DialogHeader>
         <p
           role="status"
           aria-live="polite"
-          className="min-h-4 pl-12 text-xs text-amber-700 dark:text-amber-400"
+          className="min-h-4 text-xs text-amber-700 dark:text-amber-400"
         >
           {still && !reachable ? t(($) => $.library.folder.unavailable.still) : null}
         </p>

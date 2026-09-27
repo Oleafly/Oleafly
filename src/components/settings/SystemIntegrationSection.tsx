@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { SettingsSwitchIndicator } from "@/components/settings/SettingsToggleRow";
@@ -141,6 +141,23 @@ function RowControls({
   );
 }
 
+function showsQuickActionsHint(item: SystemIntegrationItem): boolean {
+  return (
+    item.id === "quick_action" && item.state === "installed" && item.quick_actions_menu === false
+  );
+}
+
+function QuickActionsMenuHint({ title }: Readonly<{ title: string | null }>) {
+  const { t } = useTranslation(["settings", "native"]);
+  return (
+    <p data-testid="system-integration-quick-actions-hint" className="text-xs text-muted-foreground">
+      {t(($) => $.settings.systemIntegration.quickAction.menuHint, {
+        title: title ?? t(($) => $.native.systemIntegration.openInOleafly),
+      })}
+    </p>
+  );
+}
+
 function IntegrationRow({
   item,
   busy,
@@ -176,6 +193,7 @@ function IntegrationRow({
             {t(($) => $.settings.systemIntegration.packaged)}
           </p>
         ) : null}
+        {showsQuickActionsHint(item) ? <QuickActionsMenuHint title={item.menu_title} /> : null}
         {attention ? (
           <p className="text-xs text-amber-700 dark:text-amber-300">
             {t(($) => $.settings.systemIntegration.attention[ATTENTION[attention]])}
@@ -194,6 +212,15 @@ function IntegrationRow({
   );
 }
 
+function isSystemIntegrationStatus(value: unknown): value is SystemIntegrationStatus {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "items" in value &&
+    Array.isArray(value.items)
+  );
+}
+
 export function SystemIntegrationSection({
   shellCommandRow = null,
 }: Readonly<{ shellCommandRow?: ReactNode }>) {
@@ -202,25 +229,53 @@ export function SystemIntegrationSection({
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState<Partial<Record<SystemIntegrationItemId, Change>>>({});
   const [failures, setFailures] = useState<Partial<Record<SystemIntegrationItemId, Change>>>({});
+  const revision = useRef(0);
+  const mounted = useRef(false);
+  const loaded = useRef(false);
 
-  useEffect(() => {
-    let live = true;
-    const load = async () => {
-      try {
-        const next = await systemIntegrationStatus();
-        if (live) setStatus(next);
-      } catch (error) {
-        void logError("check the file manager integration", error);
-        if (live) setLoadFailed(true);
+  const load = useCallback(async () => {
+    const started = revision.current;
+    try {
+      const next: unknown = await systemIntegrationStatus();
+      if (!isSystemIntegrationStatus(next)) {
+        throw new Error("unexpected file manager integration status");
       }
-    };
-    void load();
-    return () => {
-      live = false;
-    };
+      if (!mounted.current || revision.current !== started) return;
+      loaded.current = true;
+      setStatus(next);
+      setLoadFailed(false);
+    } catch (error) {
+      void logError("check the file manager integration", error);
+      if (mounted.current && !loaded.current) setLoadFailed(true);
+    }
   }, []);
 
+  useEffect(() => {
+    mounted.current = true;
+    void load();
+    return () => {
+      mounted.current = false;
+    };
+  }, [load]);
+
+  const awaitingQuickActions = status?.items.some(showsQuickActionsHint) ?? false;
+
+  useEffect(() => {
+    if (!awaitingQuickActions) return;
+    const onFocus = () => void load();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") onFocus();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [awaitingQuickActions, load]);
+
   const change = useCallback(async (id: SystemIntegrationItemId, next: Change) => {
+    revision.current += 1;
     setBusy((current) => ({ ...current, [id]: next }));
     setFailures((current) => ({ ...current, [id]: undefined }));
     try {
@@ -237,6 +292,7 @@ export function SystemIntegrationSection({
       void logError(`${next} the ${id} file manager integration`, error);
       setFailures((current) => ({ ...current, [id]: next }));
     } finally {
+      revision.current += 1;
       setBusy((current) => ({ ...current, [id]: undefined }));
     }
   }, []);

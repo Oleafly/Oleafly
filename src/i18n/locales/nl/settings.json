@@ -1530,8 +1530,9 @@
     },
     "packaged": "Geïnstalleerd met het Oleafly-pakket.",
     "quickAction": {
-      "label": "Snelle actie in Finder",
-      "description": "Klik in Finder met de rechtermuisknop op een map en kies Snelle acties › Openen in Oleafly."
+      "label": "Snelle taken in Finder",
+      "description": "Voegt Openen in Oleafly toe aan het menu Voorzieningen als je in Finder met de rechtermuisknop op een map klikt.",
+      "menuHint": "Nog niet onder Snelle taken. Klik met de rechtermuisknop op een map, kies Snelle taken › Pas aan en schakel {{title}} in."
     },
     "explorerMenu": {
       "label": "Rechtsklikmenu in Verkenner",

@@ -1,5 +1,6 @@
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedBib } from "@/lib/citation/types";
 
 const mocks = vi.hoisted(() => ({
@@ -70,6 +71,7 @@ import {
   selectCitationBibliography,
 } from "./citation";
 import { resolveBibliographyPath } from "@oleafly/latex";
+import { useFolderAccessStore } from "@/store/folder-access";
 
 const BIBTEX = "@article{placeholder,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}";
 
@@ -406,6 +408,43 @@ describe("addCitation", () => {
 
     await addCitation(BIBTEX);
 
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+  });
+});
+
+describe("citations in a read-only folder", () => {
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("says the folder is read-only instead of writing or inserting a cite", async () => {
+    useFolderAccessStore.setState({
+      projectId: "project-1",
+      status: { read_only: true, synced_with: null },
+    });
+    filesState.files = {
+      "paper.md": { content: "# Paper\n" },
+      "refs.bib": { content: "@article{earlier2020work,\n  doi = {10.1000/edge}\n}\n" },
+    };
+    filesState.tree = [{ path: "refs.bib", is_dir: false }];
+    const entry: ParsedBib = {
+      type: "article",
+      key: "a",
+      fields: { title: "Edge Sensing", author: "Ada Lovelace", year: "2024" },
+    };
+
+    expect(await addCitation(BIBTEX)).toEqual({ error: enShell.openedFolder.readOnly.banner });
+    expect(
+      await addCitation("@article{fresh,\n  title = {Edge Sensing},\n  doi = {10.1000/edge}\n}"),
+    ).toEqual({ error: enShell.openedFolder.readOnly.banner });
+    expect(await addCitations([entry])).toEqual({
+      imported: 0,
+      duplicates: 0,
+      errors: [enShell.openedFolder.readOnly.banner],
+    });
+
+    expect(mocks.setContent).not.toHaveBeenCalled();
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
     expect(mocks.insertAtCursor).not.toHaveBeenCalled();
   });
 });

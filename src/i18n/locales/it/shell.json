@@ -386,9 +386,9 @@
       "title": "Oleafly non riesce ad aprire questa cartella.",
       "body": "Controlla i permessi della cartella e riprova. I file aperti restano qui."
     },
-    "locate": "Individua…",
+    "locate": "Individua",
     "useThisFolder": "Usa questa cartella",
-    "saveCopy": "Salva una copia…",
+    "saveCopy": "Salva una copia",
     "tryAgain": "Riprova",
     "savedCopy": "I file aperti sono stati salvati in {{folder}}."
   },
@@ -1051,10 +1051,11 @@
   },
   "quickActionOffer": {
     "title": "Apri le cartelle dal Finder",
-    "body": "Aggiungi Apri in Oleafly alle Azioni rapide del Finder. Poi potrai fare clic destro su qualsiasi cartella per aprirla qui.",
+    "body": "Aggiungi Apri in Oleafly al Finder. Funziona subito dal menu Servizi, e da Azioni rapide dopo che la attivi.",
     "add": "Aggiungi al Finder",
     "notNow": "Non ora",
-    "added": "Fatto. Fai clic destro su una cartella nel Finder e scegli Azioni rapide › Apri in Oleafly.",
+    "added": "Fatto. Ora è nel menu Servizi del Finder. Per usarla anche da Azioni rapide, fai clic destro su una cartella e attivala in Azioni rapide › Personalizza.",
+    "addedInQuickActions": "Fatto. Fai clic destro su una cartella e la trovi in Azioni rapide.",
     "failed": "Impossibile aggiungerla. Puoi riprovare in Impostazioni › Generali."
   }
 }

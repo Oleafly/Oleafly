@@ -1515,7 +1515,8 @@
     "packaged": "Oleafly 패키지와 함께 설치되었습니다.",
     "quickAction": {
       "label": "Finder 빠른 동작",
-      "description": "Finder에서 폴더를 오른쪽 클릭하고 빠른 동작 › Oleafly에서 열기를 선택하세요."
+      "description": "Finder에서 폴더를 오른쪽 클릭할 때 나오는 서비스 메뉴에 Oleafly에서 열기를 추가합니다.",
+      "menuHint": "아직 빠른 동작에 없습니다. 폴더를 오른쪽 클릭하고 빠른 동작 › 사용자화를 선택한 다음 {{title}} 항목을 켜세요."
     },
     "explorerMenu": {
       "label": "파일 탐색기 오른쪽 클릭 메뉴",

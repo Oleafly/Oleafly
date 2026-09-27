@@ -96,6 +96,7 @@ export interface EditorHost {
   setContent(path: string, content: string): void;
   saveActive?(): void;
   isEditLocked?(): boolean;
+  useEditLocked?(): boolean;
   registerMutationOwner?(owner: {
     setLocked: (locked: boolean) => void;
     reconcile: () => void;
@@ -597,6 +598,7 @@ export function CodeMirrorEditor({
   // edit), which is pure waste since CodeMirror owns the document and the
   // effect only needs the content when the file or docVersion actually changes.
   const docVersion = host.useDocVersion();
+  const hostEditLocked = host.useEditLocked?.() ?? false;
   const {
     keymap: keymapMode,
     spellcheck,
@@ -823,7 +825,9 @@ export function CodeMirrorEditor({
     setEditorView(view);
     setEditorDocumentPath(initialPath);
     const unregisterMutationOwner = host.registerMutationOwner?.({
-      setLocked: (locked) => view.dispatch({ effects: editability.reconfigure(editabilityExtensions(locked)) }),
+      setLocked: (locked) => view.dispatch({
+        effects: editability.reconfigure(editabilityExtensions(locked || (host.isEditLocked?.() ?? false))),
+      }),
       reconcile: () => synchronizeRef.current(),
     });
     view.focus();
@@ -985,6 +989,15 @@ export function CodeMirrorEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
   useEffect(() => synchronizeRef.current(), [activePath, docVersion]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = editabilityCompartmentRef.current;
+    if (!view || !compartment) return;
+    const locked = hostEditLocked || (host.isEditLocked?.() ?? false);
+    if (view.state.readOnly === locked) return;
+    view.dispatch({ effects: compartment.reconfigure(editabilityExtensions(locked)) });
+  }, [host, hostEditLocked]);
 
   // Sticky scroll depends on both the preference and the file's syntax, and it
   // rebuilds its own scope list on reconfigure, so a single effect covers a

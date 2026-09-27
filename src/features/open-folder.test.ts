@@ -214,7 +214,7 @@ describe("open requests from the OS", () => {
     expect(bootSplashHeld()).toBe(false);
     expect(openProject).not.toHaveBeenCalled();
     expect(useOpenFolderFlowStore.getState().refusal).toEqual({
-      title: "Couldn't open Documents",
+      title: null,
       message: "Documents holds too much to open as one project. Choose a folder inside it.",
       hint: null,
       browse: "scope-1",
@@ -366,6 +366,93 @@ describe("switching to an opened folder", () => {
       false,
     );
     expect(useOpenFolderFlowStore.getState().refusal).toBeNull();
+  });
+
+  it.each([
+    { requested: "ada", label: "the same name" },
+    { requested: "ADA", label: "a different letter case" },
+  ])("states a too-broad refusal once, with Choose a subfolder, for $label", async ({ requested }) => {
+    const reason = "ada holds too much to open as one project. Choose a folder inside it.";
+    mocks.openFolderRequest.mockRejectedValue(
+      '@oleafly/error:{"code":"open_folder.too_broad","params":{"name":"ada","browse":"scope-2"},"detail":null}',
+    );
+    mocks.pickOpenFolder.mockResolvedValue(null);
+
+    await expect(openPendingRequest(request("tb1", requested))).resolves.toBe("refused");
+
+    expect(useOpenFolderFlowStore.getState().refusal).toEqual({
+      title: null,
+      message: reason,
+      hint: null,
+      browse: "scope-2",
+    });
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    await expect(openPendingRequest(request("tb2", requested))).resolves.toBe("refused");
+
+    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.toastErrorUnique).toHaveBeenCalledWith(
+      "open-folder:open_folder.too_broad",
+      reason,
+      { label: "Choose a subfolder", onClick: expect.any(Function) },
+      false,
+    );
+    const action = mocks.toastErrorUnique.mock.calls[0]?.[2] as { onClick: () => void };
+    action.onClick();
+    await settled();
+    expect(mocks.pickOpenFolder).toHaveBeenCalledWith("scope-2");
+  });
+
+  it.each([
+    {
+      code: "protected",
+      params: { name: "System" },
+      folder: "System",
+      reason: "Oleafly can't open folders inside System.",
+    },
+    {
+      code: "protected",
+      params: { name: "System" },
+      folder: "Library",
+      reason: "Oleafly can't open folders inside System.",
+    },
+    {
+      code: "contains_project",
+      params: { name: "thesis" },
+      folder: "thesis",
+      reason: "This folder contains thesis, which is already open in Oleafly as its own project.",
+    },
+    {
+      code: "research_folder",
+      params: { project: "Notes" },
+      folder: "Notes",
+      reason:
+        "Notes can already edit files in this folder through its linked folders. Unlink it there first.",
+    },
+  ])("keeps naming $folder in a $code refusal", async ({ code, params, folder, reason }) => {
+    mocks.openFolderRequest.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: `open_folder.${code}`, params, detail: null })}`,
+    );
+
+    await expect(openPendingRequest(request("kp1", folder))).resolves.toBe("refused");
+
+    expect(useOpenFolderFlowStore.getState().refusal).toEqual({
+      title: `Couldn't open ${folder}`,
+      message: reason,
+      hint: null,
+      browse: null,
+    });
+
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    await expect(openPendingRequest(request("kp2", folder))).resolves.toBe("refused");
+
+    expect(mocks.toastErrorUnique).toHaveBeenCalledWith(
+      `open-folder:open_folder.${code}`,
+      `Couldn't open ${folder}. ${reason}`,
+      undefined,
+      false,
+    );
   });
 
   it("names the folder and says what to do next when permission is denied", async () => {

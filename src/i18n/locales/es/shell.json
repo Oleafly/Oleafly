@@ -386,9 +386,9 @@
       "title": "Oleafly no puede abrir esta carpeta.",
       "body": "Revisa los permisos de la carpeta y vuelve a intentarlo. Tus archivos abiertos siguen aquí."
     },
-    "locate": "Localizar…",
+    "locate": "Localizar",
     "useThisFolder": "Usar esta carpeta",
-    "saveCopy": "Guardar una copia…",
+    "saveCopy": "Guardar una copia",
     "tryAgain": "Volver a intentarlo",
     "savedCopy": "Tus archivos abiertos se guardaron en {{folder}}."
   },
@@ -1051,10 +1051,11 @@
   },
   "quickActionOffer": {
     "title": "Abrir carpetas desde el Finder",
-    "body": "Añade Abrir en Oleafly a las Acciones rápidas del Finder. Luego podrás hacer clic derecho en cualquier carpeta para abrirla aquí.",
+    "body": "Añade Abrir en Oleafly al Finder. Funciona al instante desde el menú Servicios, y desde Acciones rápidas cuando la actives.",
     "add": "Añadir al Finder",
     "notNow": "Ahora no",
-    "added": "Listo. Haz clic derecho en una carpeta en el Finder y elige Acciones rápidas › Abrir en Oleafly.",
+    "added": "Listo. Ya está en el menú Servicios del Finder. Para usarla también desde Acciones rápidas, haz clic derecho en una carpeta y actívala en Acciones rápidas › Personalizar.",
+    "addedInQuickActions": "Listo. Haz clic derecho en una carpeta y la encontrarás en Acciones rápidas.",
     "failed": "No se pudo añadir. Puedes volver a intentarlo en Ajustes › General."
   }
 }

@@ -209,6 +209,8 @@
     "spellLanguageAppSetting": "De app-instelling gebruiken",
     "spellLanguageAriaLabel": "Taal voor de spellingcontrole in dit project",
     "spellLanguageHint": "Geldt alleen voor dit project. Download meer talen bij Instellingen.",
+    "spellLanguageFolderHint": "Opgeslagen in de project.json van deze map, dus het geldt voor iedereen die de map opent. Download meer talen bij Instellingen.",
+    "spellLanguageReadOnly": "Deze map is alleen-lezen, dus de taal in de project.json kan niet worden gewijzigd.",
     "spellLanguageFailed": "Kon de taal voor de spellingcontrole niet wijzigen.",
     "notChecked": "Niet gecontroleerd",
     "dictionaryMissing": "{{name}} is niet gedownload, dus de spelling wordt niet gecontroleerd. Download het in Instellingen of kies een andere taal.",

@@ -17,7 +17,8 @@ export async function addQuickAction(): Promise<void> {
   setPhase("adding");
   try {
     const item = await setSystemIntegration("quick_action", true);
-    setPhase(item.state === "installed" ? "added" : "failed");
+    if (item.state !== "installed") setPhase("failed");
+    else setPhase(item.quick_actions_menu === true ? "addedInQuickActions" : "added");
   } catch (error) {
     void logError("add the Finder Quick Action", error);
     setPhase("failed");

@@ -1091,6 +1091,14 @@ fn name_class(path: &str, root_name: &str) -> NameClass {
     }
 }
 
+fn ranking_name(source: &Source, tier: Tier, name: NameClass) -> NameClass {
+    if tier == Tier::M && file_stem(&source.path) == "index" {
+        NameClass::Main
+    } else {
+        name
+    }
+}
+
 struct Ranked {
     candidate: Candidate,
     name: NameClass,
@@ -1143,7 +1151,7 @@ impl Ranked {
                 depth: source.depth,
                 reasons,
             },
-            name,
+            name: ranking_name(source, tier, name),
             kind_rank: match kind {
                 DocumentKind::Document
                 | DocumentKind::Book
@@ -1219,6 +1227,19 @@ fn automatic_choice(ranked: &[Ranked]) -> Option<usize> {
                 file_stem(&ranked[index].candidate.path).as_str(),
                 "main" | "index" | "paper"
             )
+        }),
+        (0, 0, markdown, _) if markdown > 1 => first(Tier::M).filter(|&chosen| {
+            let named_top_level = |entry: &Ranked| {
+                entry.candidate.tier == Tier::M
+                    && entry.candidate.depth == 0
+                    && entry.name <= NameClass::Paper
+            };
+            ranked[chosen].candidate.depth == 0
+                && ranked[chosen].name == NameClass::Main
+                && !ranked
+                    .iter()
+                    .enumerate()
+                    .any(|(index, other)| index != chosen && named_top_level(other))
         }),
         (0, 0, 0, 1) => first(Tier::W).filter(|&index| !ranked[index].placeholder),
         _ => None,

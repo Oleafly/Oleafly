@@ -107,15 +107,13 @@ import {
   type ProjectInfo,
 } from "@/lib/tauri";
 import {
-  RECENT_LIMIT,
   folderAvailability,
   folderDisplayPath,
   folderUnavailable,
   isFolderProject,
   projectInScope,
   projectUpdatedAt,
-  recentProjects,
-  scopeCounts,
+  sortByActivity,
   type LibraryScope,
 } from "@/lib/library-projects";
 import {
@@ -124,8 +122,6 @@ import {
   type UnavailableFolder,
 } from "@/components/library/folder-state";
 import { FolderUnavailableDialog } from "@/components/library/FolderUnavailableDialog";
-import { LibraryRecentRow } from "@/components/library/LibraryRecentRow";
-import { LibraryScopeChips } from "@/components/library/LibraryScopeChips";
 import { copyIntoLibrary } from "@/store/copy-into-library";
 import { useLibraryAvailabilityStore } from "@/store/library-availability";
 import { formatNumber } from "@/lib/intl";
@@ -142,6 +138,7 @@ const thumbInflight = new Set<string>();
 
 type ProjectFilters = {
   metadata: string;
+  location: LibraryScope;
   engine: "all" | "tectonic" | "typst" | "markdown";
   kind: "all" | "document" | "image" | "diagram";
   bookmark: "all" | "yes" | "no";
@@ -152,6 +149,7 @@ type ProjectFilters = {
 
 const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
   metadata: "",
+  location: "all",
   engine: "all",
   kind: "all",
   bookmark: "all",
@@ -242,6 +240,7 @@ function projectPassesFilters(
   favs: readonly string[],
   updatedAt: number,
 ) {
+  if (!projectInScope(project, filters.location)) return false;
   if (project.recovery_pending) return true;
   const bookmarked = favs.includes(project.id);
   if (!projectMatchesText(project, filters.metadata)) return false;
@@ -347,18 +346,20 @@ function FilterSelect({
   value,
   options,
   onChange,
+  className,
 }: Readonly<{
   name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  className?: string;
 }>) {
   const id = `project-filter-${name}`;
   return (
     <label
       htmlFor={id}
-      className="flex min-w-0 flex-col gap-1 text-xs font-medium"
+      className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium", className)}
     >
       {label}
       <Select value={value} onValueChange={onChange}>
@@ -418,7 +419,6 @@ export function Library() {
     id: string;
     name: string;
   } | null>(null);
-  const [scope, setScope] = useState<LibraryScope>("all");
   const [removeTarget, setRemoveTarget] = useState<ProjectInfo | null>(null);
   const [unavailableTarget, setUnavailableTarget] = useState<{
     project: ProjectInfo;
@@ -432,7 +432,9 @@ export function Library() {
     [projects],
   );
   const hasFolders = folderKey.length > 0;
-  const activeScope: LibraryScope = hasFolders ? scope : "all";
+  if (!hasFolders && filters.location !== "all") {
+    setFilters((current) => ({ ...current, location: "all" }));
+  }
   const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
     folderAvailability(project, checkedFolders);
   const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
@@ -539,7 +541,6 @@ export function Library() {
     );
     if (isFolderProject(p)) {
       const reachable = !folderUnavailable(availabilityOf(p));
-      const starred = favs.includes(p.id);
       return (
         <>
           <Item onClick={() => openFromLibrary(p)}>
@@ -559,16 +560,6 @@ export function Library() {
             <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}
           </Item>
           {colorSub}
-          <Item onClick={() => toggleFav(p.id)}>
-            {starred ? (
-              <BookmarkCheck className="mr-2 size-4" />
-            ) : (
-              <Bookmark className="mr-2 size-4" />
-            )}
-            {starred
-              ? t(($) => $.library.projects.favoriteRemove)
-              : t(($) => $.library.projects.favoriteAdd)}
-          </Item>
           <Item onClick={() => window.setTimeout(() => setRemoveTarget(p), 0)}>
             <FolderMinus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.remove)}
           </Item>
@@ -721,31 +712,19 @@ export function Library() {
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
     () =>
-      projects
-        .filter(
-          (project) =>
-            projectInScope(project, activeScope) &&
-            projectPassesFilters(
-              project,
-              filters,
-              favs,
-              projectUpdatedAt(project, modifiedFolders),
-            ),
-        )
-        .sort(
-          (left, right) =>
-            projectUpdatedAt(right, modifiedFolders) - projectUpdatedAt(left, modifiedFolders),
+      sortByActivity(
+        projects.filter((project) =>
+          projectPassesFilters(
+            project,
+            filters,
+            favs,
+            projectUpdatedAt(project, modifiedFolders),
+          ),
         ),
-    [projects, favs, filters, activeScope, modifiedFolders],
+        modifiedFolders,
+      ),
+    [projects, favs, filters, modifiedFolders],
   );
-  const scopedProjects = useMemo(
-    () => projects.filter((project) => projectInScope(project, activeScope)),
-    [projects, activeScope],
-  );
-  const recent = useMemo(() => recentProjects(scopedProjects), [scopedProjects]);
-  const searching = filters.metadata.trim().length > 0 || activeFilterCount > 0;
-  const showRecent =
-    hasFolders && !searching && recent.length > 0 && scopedProjects.length > RECENT_LIMIT;
 
   // Returning to the library refetches, so externally created or edited
   // projects (and their dates) show up. The store single-flights this with
@@ -1339,27 +1318,6 @@ export function Library() {
     </Dialog>
   );
 
-  const renderFolderNavigation = () =>
-    hasFolders && projects.length > 0 ? (
-      <>
-        <div className="mb-6">
-          <LibraryScopeChips
-            value={activeScope}
-            counts={scopeCounts(projects)}
-            onChange={setScope}
-          />
-        </div>
-        {showRecent ? (
-          <LibraryRecentRow
-            projects={recent}
-            colorOf={coverColor}
-            availabilityOf={availabilityOf}
-            onOpen={openFromLibrary}
-          />
-        ) : null}
-      </>
-    ) : null;
-
   const renderFirstRunWelcome = () => (
     projects.length === 0 && (
       // Until the first listProjects resolves we don't know whether the
@@ -1548,6 +1506,25 @@ export function Library() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
+            {hasFolders ? (
+              <FilterSelect
+                name="location"
+                className="col-span-2"
+                label={t(($) => $.library.home.filters.location)}
+                value={filters.location}
+                onChange={(location) =>
+                  setFilters((current) => ({
+                    ...current,
+                    location: location as ProjectFilters["location"],
+                  }))
+                }
+                options={[
+                  { value: "all", label: t(($) => $.library.home.filters.locationAll) },
+                  { value: "library", label: t(($) => $.library.home.filters.locationLibrary) },
+                  { value: "external", label: t(($) => $.library.home.filters.locationExternal) },
+                ]}
+              />
+            ) : null}
             <FilterSelect
               name="engine"
               label={t(($) => $.library.home.filters.engine)}
@@ -1718,7 +1695,6 @@ export function Library() {
         >
           {renderFirstRunWelcome()}
           {projects.length > 0 ? <OpenFolderNotice className="mb-5" /> : null}
-          {renderFolderNavigation()}
           {renderNoMatchesEmpty()}
           {renderProjectCollection()}
         </div>

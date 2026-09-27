@@ -67,20 +67,15 @@
       "anyTime": "Jederzeit",
       "last7Days": "Letzte 7 Tage",
       "last30Days": "Letzte 30 Tage",
-      "lastYear": "Letztes Jahr"
+      "lastYear": "Letztes Jahr",
+      "location": "Speicherort",
+      "locationAll": "Alle Projekte",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "Externe Projekte"
     },
     "openFolder": "Ordner öffnen",
     "openFolderShortcut": "Ordner öffnen ({{shortcut}})",
-    "createFirstProject": "Neues Projekt anlegen",
-    "scope": {
-      "label": "Projekte anzeigen",
-      "all": "Alle",
-      "library": "In Oleafly",
-      "folders": "Ordner"
-    },
-    "recent": {
-      "title": "Zuletzt geöffnet"
-    }
+    "createFirstProject": "Neues Projekt anlegen"
   },
   "projects": {
     "open": "{{name}} öffnen",
@@ -94,7 +89,7 @@
     "actions": "Aktionen für {{name}}",
     "details": "Projektdetails",
     "exportHistory": "Exportverlauf",
-    "changeColor": "Projektfarbe ändern",
+    "changeColor": "Projektfarbe",
     "fork": "Projekt forken",
     "delete": "Projekt löschen",
     "favoriteAdd": "Zu Favoriten hinzufügen",
@@ -484,7 +479,6 @@
     "dismiss": "Schließen"
   },
   "folder": {
-    "badge": "Ordner",
     "state": {
       "missing": "Ordner fehlt",
       "offline": "Laufwerk nicht verbunden",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "„{{name}}“ wurde nicht gefunden",
-        "body": "Der Ordner lag unter {{path}} und wurde vielleicht verschoben oder gelöscht. Suchen Sie ihn, um seine Chats und seinen Verlauf zu behalten."
+        "body": "Der Ordner lag unter <path>{{path}}</path> und wurde vielleicht verschoben oder gelöscht. Suchen Sie ihn, um seine Chats und seinen Verlauf zu behalten."
       },
       "offline": {
         "title": "„{{name}}“ liegt auf einem Laufwerk, das nicht verbunden ist",
-        "body": "Verbinden Sie das Laufwerk oder die Netzwerkfreigabe mit {{path}} und versuchen Sie es erneut."
+        "body": "Verbinden Sie das Laufwerk oder die Netzwerkfreigabe mit <path>{{path}}</path> und versuchen Sie es erneut."
       },
       "replaced": {
         "title": "„{{name}}“ wurde ersetzt",
-        "body": "Der Ordner unter {{path}} ist nicht der, den Sie zuvor geöffnet haben. Verwenden Sie ihn nur, wenn Sie ihm vertrauen. Beim Wechsel schaltet Oleafly Vertrauen und Freigaben ab."
+        "body": "Der Ordner unter <path>{{path}}</path> ist nicht der, den Sie zuvor geöffnet haben. Verwenden Sie ihn nur, wenn Sie ihm vertrauen. Beim Wechsel schaltet Oleafly Vertrauen und Freigaben ab."
       },
       "permissionDenied": {
         "title": "Oleafly kann „{{name}}“ nicht öffnen",
         "bodyMac": "Erlauben Sie Oleafly den Zugriff auf diesen Ordner unter Systemeinstellungen › Datenschutz & Sicherheit › Dateien und Ordner und versuchen Sie es erneut.",
-        "bodyOther": "Ihr Konto kann {{path}} nicht lesen. Prüfen Sie die Berechtigungen des Ordners und versuchen Sie es erneut."
+        "bodyOther": "Ihr Konto kann <path>{{path}}</path> nicht lesen. Prüfen Sie die Berechtigungen des Ordners und versuchen Sie es erneut."
       },
       "back": {
         "title": "„{{name}}“ ist wieder da",
-        "body": "Oleafly kann {{path}} wieder erreichen."
+        "body": "Oleafly kann <path>{{path}}</path> wieder erreichen."
       },
-      "locate": "Suchen…",
+      "locate": "Suchen",
       "tryAgain": "Erneut versuchen",
       "useThisFolder": "Diesen Ordner verwenden",
-      "checking": "Wird geprüft…",
+      "checking": "Wird geprüft",
       "still": "Oleafly kann den Ordner weiterhin nicht erreichen."
     },
     "copy": {

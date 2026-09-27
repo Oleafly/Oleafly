@@ -35,7 +35,8 @@
     "copy_needs_folder": "Vain sijainnissaan avatut kansiot voi kopioida kirjastoon.",
     "not_removable": "Vain sijainnissaan avatut kansiot voi poistaa Oleaflystä.",
     "trash_unavailable": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Asemalla ei ehkä ole roskakoria.",
-    "linked_replace_folder": "{{path}} on kansio, joten Oleafly ei korvaa sitä. Siirrä tai nimeä se ensin uudelleen."
+    "linked_replace_folder": "{{path}} on kansio, joten Oleafly ei korvaa sitä. Siirrä tai nimeä se ensin uudelleen.",
+    "folder_read_only": "Oleafly ei voi tehdä tätä muutosta, koska {{name}} tai sen kansio on vain luku -tilassa. Kopioi avaamasi kansio kirjastoon ja muokkaa sitä siellä."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

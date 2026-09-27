@@ -35,7 +35,8 @@
     "copy_needs_folder": "Kun mapper, der er åbnet, hvor de ligger, kan kopieres til biblioteket.",
     "not_removable": "Kun mapper, der er åbnet, hvor de ligger, kan fjernes fra Oleafly.",
     "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Drevet har måske ingen papirkurv.",
-    "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flyt eller omdøb den først."
+    "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flyt eller omdøb den først.",
+    "folder_read_only": "Oleafly kan ikke foretage denne ændring, fordi {{name}} eller mappen, den ligger i, er skrivebeskyttet. Kopiér den mappe, du åbnede, til biblioteket, og rediger den der."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."

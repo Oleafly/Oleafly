@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileIcon } from "@/components/files/fileIcon";
 import type { DetectionCandidate } from "@/lib/folder-detection";
+import { decodeAppError } from "@/lib/app-error";
 import { candidateReasonLine, documentKindLabel } from "@/lib/main-document";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
@@ -163,7 +164,7 @@ export function MainDocumentPicker() {
       notifyError(
         "choose the main document",
         error,
-        t(($) => $.shell.openedFolder.picker.openFailed, { path }),
+        decodeAppError(error) ? undefined : t(($) => $.shell.openedFolder.picker.openFailed, { path }),
       );
     } finally {
       setPendingIn((pending) => (pending === startedIn ? null : pending));

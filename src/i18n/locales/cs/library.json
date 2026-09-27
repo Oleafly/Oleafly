@@ -69,20 +69,15 @@
       "anyTime": "Kdykoli",
       "last7Days": "Posledních 7 dní",
       "last30Days": "Posledních 30 dní",
-      "lastYear": "Poslední rok"
+      "lastYear": "Poslední rok",
+      "location": "Umístění",
+      "locationAll": "Všechny projekty",
+      "locationLibrary": "V Oleafly",
+      "locationExternal": "Externí projekty"
     },
     "openFolder": "Otevřít složku",
     "openFolderShortcut": "Otevřít složku ({{shortcut}})",
-    "createFirstProject": "Vytvořit nový projekt",
-    "scope": {
-      "label": "Zobrazit projekty",
-      "all": "Vše",
-      "library": "V Oleafly",
-      "folders": "Složky"
-    },
-    "recent": {
-      "title": "Nedávné"
-    }
+    "createFirstProject": "Vytvořit nový projekt"
   },
   "projects": {
     "open": "Otevřít {{name}}",
@@ -96,7 +91,7 @@
     "actions": "Akce pro {{name}}",
     "details": "Podrobnosti projektu",
     "exportHistory": "Historie exportů",
-    "changeColor": "Změnit barvu projektu",
+    "changeColor": "Barva projektu",
     "fork": "Rozvětvit projekt",
     "delete": "Smazat projekt",
     "favoriteAdd": "Přidat mezi oblíbené",
@@ -502,7 +497,6 @@
     "dismiss": "Zavřít"
   },
   "folder": {
-    "badge": "Složka",
     "state": {
       "missing": "Složka chybí",
       "offline": "Disk není připojen",
@@ -526,29 +520,29 @@
     "unavailable": {
       "missing": {
         "title": "„{{name}}“ nelze najít",
-        "body": "Složka byla v {{path}} a mohla být přesunuta nebo smazána. Najděte ji, abyste zachovali její chaty a historii."
+        "body": "Složka byla v <path>{{path}}</path> a mohla být přesunuta nebo smazána. Najděte ji, abyste zachovali její chaty a historii."
       },
       "offline": {
         "title": "„{{name}}“ je na disku, který není připojen",
-        "body": "Připojte disk nebo síťové úložiště s {{path}} a zkuste to znovu."
+        "body": "Připojte disk nebo síťové úložiště s <path>{{path}}</path> a zkuste to znovu."
       },
       "replaced": {
         "title": "Složka „{{name}}“ byla nahrazena",
-        "body": "Složka v {{path}} není ta, kterou jste otevřeli dříve. Použijte ji, jen pokud jí důvěřujete. Oleafly při změně vypne důvěru a schválení."
+        "body": "Složka v <path>{{path}}</path> není ta, kterou jste otevřeli dříve. Použijte ji, jen pokud jí důvěřujete. Oleafly při změně vypne důvěru a schválení."
       },
       "permissionDenied": {
         "title": "Oleafly nemůže otevřít „{{name}}“",
         "bodyMac": "Povolte Oleafly přístup k této složce v Nastavení systému › Soukromí a zabezpečení › Soubory a složky a zkuste to znovu.",
-        "bodyOther": "Váš účet nemůže číst {{path}}. Zkontrolujte oprávnění složky a zkuste to znovu."
+        "bodyOther": "Váš účet nemůže číst <path>{{path}}</path>. Zkontrolujte oprávnění složky a zkuste to znovu."
       },
       "back": {
         "title": "„{{name}}“ je zpět",
-        "body": "Oleafly má k {{path}} opět přístup."
+        "body": "Oleafly má k <path>{{path}}</path> opět přístup."
       },
-      "locate": "Najít…",
+      "locate": "Najít",
       "tryAgain": "Zkusit znovu",
       "useThisFolder": "Použít tuto složku",
-      "checking": "Kontroluje se…",
+      "checking": "Kontroluje se",
       "still": "Oleafly se ke složce stále nedostane."
     },
     "copy": {

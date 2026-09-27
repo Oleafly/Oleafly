@@ -20,7 +20,7 @@ import {
   validSkills,
 } from "@/lib/skills";
 import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
-import { summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
+import { summarizeMcpError, summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
   appendAppLog,
   appVersion,
@@ -686,7 +686,7 @@ async function handleCall(payload: {
         summary = summarizeMcpResult(textResult?.text, result.isError);
       } catch (e) {
         result = toMcpResult({ error: String(e) }, []);
-        summary = String(e);
+        summary = summarizeMcpError(e);
       }
       bridgeCalls.pendingImages = [];
       bridgeCalls.pendingImageChars = 0;

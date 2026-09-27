@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectAvailability, ProjectInfo } from "@/lib/tauri";
 import {
-  RECENT_LIMIT,
   folderAvailability,
   folderDisplayPath,
   folderUnavailable,
   isFolderProject,
+  projectActivityAt,
   projectInScope,
   projectUpdatedAt,
-  recentProjects,
-  scopeCounts,
-  splitFolderPath,
+  sortByActivity,
 } from "./library-projects";
 
 function project(id: string, extra: Partial<ProjectInfo> = {}): ProjectInfo {
@@ -51,7 +49,7 @@ describe("library scopes", () => {
     expect(folderDisplayPath(projects[0])).toBeNull();
   });
 
-  it("filters and counts by scope", () => {
+  it("filters by location", () => {
     expect(projects.filter((p) => projectInScope(p, "all")).map((p) => p.id)).toEqual([
       "paper",
       "thesis",
@@ -61,39 +59,57 @@ describe("library scopes", () => {
       "paper",
       "notes",
     ]);
-    expect(projects.filter((p) => projectInScope(p, "folders")).map((p) => p.id)).toEqual([
+    expect(projects.filter((p) => projectInScope(p, "external")).map((p) => p.id)).toEqual([
       "thesis",
     ]);
-    expect(scopeCounts(projects)).toEqual({ all: 3, library: 2, folders: 1 });
   });
 });
 
-describe("recent projects", () => {
-  it("mixes folders and library projects by when they were last opened", () => {
-    const listed = [
-      project("never"),
-      project("old", { last_opened_at: 100 }),
-      folder("thesis", "ok", { last_opened_at: 300 }),
-      project("paper", { last_opened_at: 200 }),
-      folder("slides", "missing", { last_opened_at: 250 }),
-      project("recovering", { last_opened_at: 999, recovery_pending: true }),
-    ];
-    expect(recentProjects(listed).map((p) => p.id)).toEqual([
-      "thesis",
-      "slides",
-      "paper",
-      "old",
+describe("activity order", () => {
+  const DAY = 86_400;
+  const NOW = 1_800_000_000;
+
+  it("takes the later of the last open and the last edit", () => {
+    expect(projectActivityAt(project("paper", { updated_at: 10 }), {})).toBe(10);
+    expect(projectActivityAt(project("paper", { updated_at: 10, last_opened_at: 40 }), {})).toBe(40);
+    expect(projectActivityAt(project("paper", { updated_at: 90, last_opened_at: 40 }), {})).toBe(90);
+    expect(projectActivityAt(folder("thesis", "ok", { updated_at: 10, last_opened_at: 40 }), { thesis: 70 })).toBe(70);
+    expect(projectActivityAt(project("paper", { updated_at: 10 }), { paper: 70 })).toBe(10);
+  });
+
+  it("puts a project opened today above one edited yesterday", () => {
+    const openedToday = project("opened-today", {
+      updated_at: NOW - 7 * DAY,
+      last_opened_at: NOW,
+    });
+    const editedYesterday = project("edited-yesterday", {
+      updated_at: NOW - DAY,
+      last_opened_at: NOW - 30 * DAY,
+    });
+    expect(sortByActivity([editedYesterday, openedToday], {}).map((p) => p.id)).toEqual([
+      "opened-today",
+      "edited-yesterday",
     ]);
   });
 
-  it("keeps a stable order for ties and stops at the limit", () => {
-    const listed = Array.from({ length: RECENT_LIMIT + 3 }, (_, index) =>
-      project(`p${String(index).padStart(2, "0")}`, { last_opened_at: index < 2 ? 1 : index }),
-    );
-    const recent = recentProjects(listed);
-    expect(recent).toHaveLength(RECENT_LIMIT);
-    expect(recent[0].id).toBe(`p${String(RECENT_LIMIT + 2).padStart(2, "0")}`);
-    expect(recentProjects(listed, 20).slice(-2).map((p) => p.id)).toEqual(["p00", "p01"]);
+  it("orders folders by their files' last change alongside library projects", () => {
+    const listed = [
+      project("paper", { updated_at: NOW - 3 * DAY, last_opened_at: NOW - 5 * DAY }),
+      folder("thesis", "ok", { updated_at: NOW - 40 * DAY, last_opened_at: NOW - 20 * DAY }),
+      folder("slides", "ok", { updated_at: NOW - 10 * DAY }),
+    ];
+    expect(sortByActivity(listed, {}).map((p) => p.id)).toEqual(["paper", "slides", "thesis"]);
+    expect(sortByActivity(listed, { thesis: NOW - DAY }).map((p) => p.id)).toEqual([
+      "thesis",
+      "paper",
+      "slides",
+    ]);
+  });
+
+  it("breaks ties by id and leaves the input alone", () => {
+    const listed = [project("b", { updated_at: 5 }), project("a", { last_opened_at: 5 }), project("c")];
+    expect(sortByActivity(listed, {}).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(listed.map((p) => p.id)).toEqual(["b", "a", "c"]);
   });
 });
 
@@ -131,29 +147,5 @@ describe("updated time", () => {
     expect(projectUpdatedAt(thesis, { thesis: 50 })).toBe(100);
     expect(projectUpdatedAt(folder("fresh", "ok", { updated_at: 0 }), { fresh: 40 })).toBe(40);
     expect(projectUpdatedAt(project("paper", { updated_at: 10 }), { paper: 999 })).toBe(10);
-  });
-});
-
-describe("folder paths", () => {
-  it("keep the last two parts together so the folder name survives truncation", () => {
-    expect(splitFolderPath("~/Library/Mobile Documents/com~apple~CloudDocs/2024/thesis")).toEqual({
-      head: "~/Library/Mobile Documents/com~apple~CloudDocs",
-      tail: "/2024/thesis",
-    });
-    expect(splitFolderPath("~/Desktop/thesis")).toEqual({ head: "~", tail: "/Desktop/thesis" });
-    expect(splitFolderPath("C:\\Users\\me\\Documents\\thesis")).toEqual({
-      head: "C:\\Users\\me",
-      tail: "\\Documents\\thesis",
-    });
-    expect(splitFolderPath("\\\\server\\share\\thesis")).toEqual({
-      head: "\\\\server",
-      tail: "\\share\\thesis",
-    });
-  });
-
-  it("leave short paths whole", () => {
-    for (const path of ["thesis", "/thesis", "/Volumes/thesis", "~/thesis", ""]) {
-      expect(splitFolderPath(path)).toEqual({ head: "", tail: path });
-    }
   });
 });

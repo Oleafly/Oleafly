@@ -226,7 +226,11 @@ export function FilesPanel() {
     const stack = stackRef.current;
     if (!stack) return;
     const updateCollapsedSize = () => {
-      const height = stack.getBoundingClientRect().height;
+      const style = window.getComputedStyle(stack);
+      const height =
+        stack.getBoundingClientRect().height -
+        (Number.parseFloat(style.paddingTop) || 0) -
+        (Number.parseFloat(style.paddingBottom) || 0);
       if (height <= 0) return;
       const next = Math.max(1.5, Math.min(28, (32 / height) * 100));
       setCollapsedSize((current) =>
@@ -336,7 +340,11 @@ export function FilesPanel() {
   };
 
   return (
-    <div ref={stackRef} data-testid="explorer-stack" className="h-full min-h-0">
+    <div
+      ref={stackRef}
+      data-testid="explorer-stack"
+      className={cn("h-full min-h-0", structureCollapsed && "pb-2.5")}
+    >
       <Group
         groupRef={explorerGroupRef}
         orientation="vertical"

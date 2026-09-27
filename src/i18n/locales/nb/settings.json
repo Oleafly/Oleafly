@@ -1530,8 +1530,9 @@
     },
     "packaged": "Installert med Oleafly-pakken.",
     "quickAction": {
-      "label": "Hurtighandling i Finder",
-      "description": "Høyreklikk på en mappe i Finder, og velg Hurtighandlinger › Åpne i Oleafly."
+      "label": "Hurtighandlinger i Finder",
+      "description": "Legger til Åpne i Oleafly i Tjenester-menyen når du høyreklikker på en mappe i Finder.",
+      "menuHint": "Ikke under Hurtighandlinger ennå. Høyreklikk på en mappe, velg Hurtighandlinger › Tilpass og slå på {{title}}."
     },
     "explorerMenu": {
       "label": "Høyreklikkmeny i Filutforsker",

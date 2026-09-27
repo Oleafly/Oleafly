@@ -213,6 +213,8 @@
     "spellLanguageAppSetting": "Použít nastavení aplikace",
     "spellLanguageAriaLabel": "Jazyk kontroly pravopisu pro tento projekt",
     "spellLanguageHint": "Platí jen pro tento projekt. Další jazyky stáhnete v Nastavení.",
+    "spellLanguageFolderHint": "Uloženo v souboru project.json této složky, takže platí pro každého, kdo složku otevře. Další jazyky stáhnete v Nastavení.",
+    "spellLanguageReadOnly": "Tato složka je jen pro čtení, takže jazyk v jejím souboru project.json nejde změnit.",
     "spellLanguageFailed": "Jazyk kontroly pravopisu se nepodařilo změnit.",
     "notChecked": "Nezkontrolováno",
     "dictionaryMissing": "Slovník „{{name}}“ není stažený, takže se pravopis nekontroluje. Stáhněte ho v Nastavení nebo zvolte jiný jazyk.",

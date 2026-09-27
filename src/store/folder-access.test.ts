@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { applyLocale } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { ProjectTrust } from "@/lib/tauri";
 
@@ -22,6 +23,9 @@ import {
   folderIsReadOnly,
   folderIsRestricted,
   loadFolderAccess,
+  readOnlyFolderMessage,
+  readOnlyFolderMessageInEnglish,
+  refreshFolderStatus,
   terminalNeedsReopen,
   useFolderAccessStore,
 } from "./folder-access";
@@ -187,5 +191,98 @@ describe("folder access", () => {
     const state = useFolderAccessStore.getState();
     expect(folderIsReadOnly(state, "linked-a")).toBe(true);
     expect(state.status?.synced_with).toBe("dropbox");
+  });
+});
+
+describe("read-only folder status", () => {
+  const readOnly = { read_only: true, synced_with: null };
+  const writable = { read_only: false, synced_with: null };
+
+  function pending() {
+    let answer: (value: unknown) => void = () => {};
+    mocks.projectFolderStatus.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    return (value: unknown) => answer(value);
+  }
+
+  it("keeps the folder read-only while the same folder reloads its access", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(readOnly);
+    await loadFolderAccess("linked-a");
+    const seen: boolean[] = [];
+    const stop = useFolderAccessStore.subscribe((state) => seen.push(folderIsReadOnly(state, "linked-a")));
+    const answer = pending();
+    const reload = loadFolderAccess("linked-a");
+    expect(folderIsReadOnly(useFolderAccessStore.getState(), "linked-a")).toBe(true);
+    answer(writable);
+    await reload;
+    stop();
+    expect(seen).toEqual([true, false]);
+  });
+
+  it("keeps the last known status when a reload cannot read it", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(readOnly);
+    await loadFolderAccess("linked-a");
+    mocks.projectFolderStatus.mockRejectedValue(new Error("offline"));
+    await loadFolderAccess("linked-a");
+    expect(folderIsReadOnly(useFolderAccessStore.getState(), "linked-a")).toBe(true);
+  });
+
+  it("never carries a status over to another folder", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(readOnly);
+    await loadFolderAccess("linked-a");
+    const answer = pending();
+    const next = loadFolderAccess("linked-b");
+    expect(useFolderAccessStore.getState().status).toBeNull();
+    answer(writable);
+    await next;
+    expect(folderIsReadOnly(useFolderAccessStore.getState(), "linked-b")).toBe(false);
+  });
+
+  it("rereads the status in place and unlocks a folder that became writable", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(readOnly);
+    await loadFolderAccess("linked-a");
+    mocks.projectFolderStatus.mockResolvedValue(writable);
+    await refreshFolderStatus("linked-a");
+    const state = useFolderAccessStore.getState();
+    expect(folderIsReadOnly(state, "linked-a")).toBe(false);
+    expect(state.loaded).toBe(true);
+  });
+
+  it("asks the backend once for overlapping rechecks of the same folder", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(writable);
+    await loadFolderAccess("linked-a");
+    mocks.projectFolderStatus.mockClear();
+    const answer = pending();
+    const first = refreshFolderStatus("linked-a");
+    const second = refreshFolderStatus("linked-a");
+    answer(readOnly);
+    await Promise.all([first, second]);
+    expect(mocks.projectFolderStatus).toHaveBeenCalledTimes(1);
+    expect(folderIsReadOnly(useFolderAccessStore.getState(), "linked-a")).toBe(true);
+  });
+
+  it("drops a recheck that answers after another folder opened", async () => {
+    mocks.projectFolderStatus.mockResolvedValue(writable);
+    await loadFolderAccess("linked-a");
+    const answer = pending();
+    const late = refreshFolderStatus("linked-a");
+    await loadFolderAccess("linked-b");
+    answer(readOnly);
+    await late;
+    expect(useFolderAccessStore.getState().projectId).toBe("linked-b");
+    expect(useFolderAccessStore.getState().status).toEqual(writable);
+  });
+
+  it("keeps the model's message in English whatever the interface language", async () => {
+    await applyLocale("de");
+    try {
+      expect(readOnlyFolderMessageInEnglish()).toBe(enShell.openedFolder.readOnly.banner);
+      expect(readOnlyFolderMessage()).not.toBe(enShell.openedFolder.readOnly.banner);
+    } finally {
+      await applyLocale("en");
+    }
   });
 });

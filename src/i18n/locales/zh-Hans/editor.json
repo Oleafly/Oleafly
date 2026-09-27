@@ -207,6 +207,8 @@
     "spellLanguageAppSetting": "使用应用设置",
     "spellLanguageAriaLabel": "本项目的拼写检查语言",
     "spellLanguageHint": "仅对本项目生效。可在设置中下载更多语言。",
+    "spellLanguageFolderHint": "保存在此文件夹的 project.json 中，因此对所有打开此文件夹的人都生效。可在设置中下载更多语言。",
+    "spellLanguageReadOnly": "此文件夹为只读，因此无法更改其 project.json 中的语言。",
     "spellLanguageFailed": "无法更改拼写检查语言。",
     "notChecked": "未检查",
     "dictionaryMissing": "{{name}} 尚未下载，因此不会检查拼写。请在设置中下载，或选择其他语言。",

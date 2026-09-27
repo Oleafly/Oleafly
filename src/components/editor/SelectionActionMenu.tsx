@@ -62,6 +62,11 @@ export function SelectionActionMenu() {
         setPos(null);
         return;
       }
+      if (v.state.readOnly) {
+        setPos(null);
+        setExpanded(false);
+        return;
+      }
       const sel = v.state.selection.main;
       if (sel.from === sel.to) {
         setPos(null);
@@ -96,6 +101,11 @@ export function SelectionActionMenu() {
   const runAction = (action: Action) => {
     const prompt = `${action.prompt}:\n\n${text}`;
     const view = getEditorView();
+    if (view?.state.readOnly) {
+      setPos(null);
+      setExpanded(false);
+      return;
+    }
     // These actions rewrite the selection, so they belong inline: the editor
     // shows the shimmer while streaming and then a strikethrough/insert diff to
     // accept or reject. Only fall back to the agent panel when no inline

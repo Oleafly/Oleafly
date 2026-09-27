@@ -65,7 +65,16 @@ const codeMirrorMocks = vi.hoisted(() => ({
 const openCompileMocks = vi.hoisted(() => ({
   automaticCompileAllowed: vi.fn((decision: string) => decision === "auto"),
   openCompileHydrated: vi.fn(() => false),
-  resetOpenCompileMarker: vi.fn(() => null),
+  resetOpenCompileMarker: vi.fn<(projectId: string | null, marker: unknown) => unknown>(
+    () => null,
+  ),
+  settleOpenCompile: vi.fn<
+    (
+      request: unknown,
+      observed: unknown,
+      retries: unknown,
+    ) => { compiled: boolean; retries: { projectId: string; used: number } | null }
+  >(() => ({ compiled: true, retries: null })),
   shouldCompileOnOpen: vi.fn(() => false),
 }));
 vi.mock("@codemirror/view", async (importOriginal) => {
@@ -370,6 +379,10 @@ describe("project dock layout", () => {
     appState.files.mainDecision = "auto";
     appState.compile.recompile.mockClear();
     openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValue(false);
+    openCompileMocks.resetOpenCompileMarker.mockReset().mockReturnValue(null);
+    openCompileMocks.settleOpenCompile
+      .mockReset()
+      .mockReturnValue({ compiled: true, retries: null });
     editorControllerMocks.editorRedo.mockClear();
     editorControllerMocks.editorUndo.mockClear();
     editorControllerMocks.editorVimRedo.mockClear();
@@ -889,5 +902,36 @@ describe("project dock layout", () => {
       root?.render(<App />);
     });
     expect(appState.compile.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
+  });
+
+  it("carries the on-open retry count into the next settle and stops after it", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+
+    const retry = { projectId: "project-1", used: 1 };
+    openCompileMocks.resetOpenCompileMarker.mockImplementation((projectId, marker) =>
+      projectId === null ? null : marker,
+    );
+    openCompileMocks.shouldCompileOnOpen
+      .mockReset()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false);
+    openCompileMocks.settleOpenCompile
+      .mockReset()
+      .mockReturnValueOnce({ compiled: false, retries: retry })
+      .mockReturnValue({ compiled: true, retries: null });
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).toHaveBeenCalledTimes(2);
+    expect(openCompileMocks.settleOpenCompile).toHaveBeenCalledTimes(2);
+    expect(openCompileMocks.settleOpenCompile.mock.calls[0]?.[2]).toBeNull();
+    expect(openCompileMocks.settleOpenCompile.mock.calls[1]?.[2]).toBe(retry);
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -141,6 +141,28 @@ describe("an opened folder without a main document", () => {
     expect(mainDocumentMissing(useFilesStore.getState())).toBe(false);
     expect(screen.queryByTestId("no-main-document")).not.toBeInTheDocument();
     expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("offers a document that appears after an empty folder opened, and a second press keeps the menu open", async () => {
+    openFolder({ tree: [] });
+    render(<FileTree />);
+    act(() => {
+      useFilesStore.setState({ tree: [{ path: "draft.tex", is_dir: false }] });
+    });
+    openRowMenu("draft.tex");
+    await screen.findByRole("menu");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: files.moreActions.replace("{{name}}", "draft.tex"),
+        hidden: true,
+      }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByText(files.setMain)).not.toHaveAttribute("data-disabled");
+    fireEvent.click(within(menu).getByText(files.setMain));
+    await waitFor(() => expect(useFilesStore.getState().mainDoc).toBe("draft.tex"));
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalledWith({ origin: "automatic" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("shows nothing extra for a library project", () => {

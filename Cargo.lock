@@ -3189,7 +3189,7 @@ dependencies = [
 
 [[package]]
 name = "oleafly"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "aes",
  "aho-corasick",
@@ -3215,6 +3215,7 @@ dependencies = [
  "oleafly-cli",
  "oleafly-core",
  "oleafly-history",
+ "plist",
  "portable-pty",
  "rand 0.8.7",
  "rapidfuzz",
@@ -3295,6 +3296,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "unicode-normalization",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

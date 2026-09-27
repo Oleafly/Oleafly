@@ -35,7 +35,8 @@
     "copy_needs_folder": "ライブラリにコピーできるのは、元の場所で開いたフォルダだけです。",
     "not_removable": "Oleafly から削除できるのは、元の場所で開いたフォルダだけです。",
     "trash_unavailable": "Oleafly は {{path}} をごみ箱に移動できませんでした。このドライブにはごみ箱がない可能性があります。",
-    "linked_replace_folder": "{{path}} はフォルダのため、Oleafly は置き換えません。先に移動するか名前を変更してください。"
+    "linked_replace_folder": "{{path}} はフォルダのため、Oleafly は置き換えません。先に移動するか名前を変更してください。",
+    "folder_read_only": "{{name}} またはそのフォルダが読み取り専用のため、Oleafly はこの変更を行えません。開いたフォルダをライブラリにコピーして、そこで編集してください。"
   },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"

@@ -382,9 +382,9 @@
       "title": "Oleafly 無法開啟此資料夾。",
       "body": "請檢查資料夾的權限，然後再試一次。開啟的檔案會保留在這裡。"
     },
-    "locate": "定位…",
+    "locate": "定位",
     "useThisFolder": "使用此資料夾",
-    "saveCopy": "儲存副本…",
+    "saveCopy": "儲存副本",
     "tryAgain": "再試一次",
     "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
   },
@@ -1013,10 +1013,11 @@
   },
   "quickActionOffer": {
     "title": "從 Finder 開啟資料夾",
-    "body": "將「在 Oleafly 中開啟」加入 Finder 的快速動作。之後以右鍵按一下任何資料夾，即可在這裡開啟。",
+    "body": "將「在 Oleafly 中開啟」加入 Finder。它可立即在「服務」選單中使用，開啟後也可在「快速動作」中使用。",
     "add": "加入 Finder",
     "notNow": "以後再說",
-    "added": "已加入。在 Finder 中以右鍵按一下資料夾，然後選擇「快速動作」›「在 Oleafly 中開啟」。",
+    "added": "已加入。現在可以從 Finder 的「服務」選單使用它。若也要在「快速動作」中使用，請以右鍵按一下資料夾，然後在「快速動作」›「自訂」中開啟它。",
+    "addedInQuickActions": "已加入。以右鍵按一下資料夾，即可在「快速動作」中找到它。",
     "failed": "無法加入。你可以在「設定」›「一般」中再試一次。"
   }
 }

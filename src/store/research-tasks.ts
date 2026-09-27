@@ -18,6 +18,7 @@ import {
   type TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { decodeAppError, describeError } from "@/lib/app-error";
 
 export type ResearchTaskDetailTab = "activity" | "review" | "output";
 
@@ -77,6 +78,7 @@ function beginTaskAction(): () => boolean {
 }
 
 function message(error: unknown): string {
+  if (decodeAppError(error)) return describeError(error);
   return error instanceof Error ? error.message : String(error);
 }
 

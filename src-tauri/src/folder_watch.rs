@@ -141,10 +141,26 @@ pub(crate) fn relevant_path(root: &Path, path: &Path) -> Option<String> {
     if last.eq_ignore_ascii_case(".git")
         || last.eq_ignore_ascii_case(".DS_Store")
         || crate::checkpoint_capture::is_oleafly_owned(last)
+        || is_replace_file_scratch(last)
     {
         return None;
     }
     Some(names.join("/"))
+}
+
+fn is_replace_file_scratch(name: &str) -> bool {
+    let Some((stem, suffix)) = name.rsplit_once("~RF").or_else(|| name.rsplit_once("~rf")) else {
+        return false;
+    };
+    let Some(hex) = suffix
+        .strip_suffix(".TMP")
+        .or_else(|| suffix.strip_suffix(".tmp"))
+    else {
+        return false;
+    };
+    !stem.is_empty()
+        && !hex.is_empty()
+        && hex.chars().all(|character| character.is_ascii_hexdigit())
 }
 
 #[derive(Default)]
@@ -519,6 +535,10 @@ mod tests {
             ("chapters/intro.tex", Some("chapters/intro.tex")),
             (".latexmkrc", Some(".latexmkrc")),
             (".main.tex.oleafly-42-7-00ff00ff00ff00ff.tmp", None),
+            ("notes.tex~RFb412a.TMP", None),
+            ("chapters/intro.tex~RF1c2d.tmp", None),
+            ("draft~RFnotes.tmp", Some("draft~RFnotes.tmp")),
+            ("~RFb412a.TMP", Some("~RFb412a.TMP")),
             (".oleafly-case-rename-42-0", None),
             (".oleafly-import-42-0/figure.png", None),
             (".git", None),

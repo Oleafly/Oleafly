@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { lintGutter, setDiagnostics, type Diagnostic } from "@codemirror/lint";
 import {
@@ -43,9 +43,12 @@ function replaceAction(text: string) {
   };
 }
 
-function mount(diagnostics: Diagnostic[]) {
+function mount(diagnostics: Diagnostic[], readOnly = false) {
   const editor = new EditorView({
-    state: EditorState.create({ doc: DOC }),
+    state: EditorState.create({
+      doc: DOC,
+      extensions: EditorState.readOnly.of(readOnly),
+    }),
     parent: document.body,
   });
   editor.dispatch(setDiagnostics(editor.state, diagnostics));
@@ -234,11 +237,15 @@ describe("proofreading hover card", () => {
 });
 
 describe("proofreading gutter card", () => {
-  function mountWithGutter(diagnostics: Diagnostic[]) {
+  function mountWithGutter(diagnostics: Diagnostic[], readOnly = false) {
     const editor = new EditorView({
       state: EditorState.create({
         doc: DOC,
-        extensions: [lintGutter(), diagnosticCardGutter()],
+        extensions: [
+          lintGutter(),
+          diagnosticCardGutter(),
+          EditorState.readOnly.of(readOnly),
+        ],
       }),
       parent: document.body,
     });
@@ -291,6 +298,19 @@ describe("proofreading gutter card", () => {
       .dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 
     expect(editor.state.doc.toString()).toBe("labels were unbounded here");
+  });
+
+  it("leaves the replacements off the gutter card of a read-only editor", () => {
+    const editor = mountWithGutter([spellingDiagnostic(["unbounded"])], true);
+    hoverMarker(editor);
+
+    const card = document.body.querySelector<HTMLElement>(
+      ".cm-proofread-card-floating",
+    );
+    expect(card!.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Not in dictionary: unblinded",
+    );
+    expect(card!.querySelector(".cm-proofread-suggestion")).toBeNull();
   });
 
   it("drops the card when the document changes under it", () => {
@@ -472,5 +492,121 @@ describe("suggestions loaded when the card opens", () => {
     await vi.waitFor(() =>
       expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull(),
     );
+  });
+});
+
+describe("proofreading card in a read-only editor", () => {
+  it("drops the replacements but keeps the ignore options", () => {
+    const project = { name: "p", apply: vi.fn() };
+    const editor = mount(
+      [
+        spellingDiagnostic(["unbounded", "unbranded"], [
+          { label: "Ignore", action: project, icon: "project" },
+        ]),
+      ],
+      true,
+    );
+
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Not in dictionary: unblinded",
+    );
+    expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull();
+    const ignore = dom.querySelector<HTMLButtonElement>(".cm-proofread-ignore")!;
+    expect(ignore.textContent).toBe("Ignore");
+    ignore.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(project.apply).toHaveBeenCalledOnce();
+    expect(editor.state.doc.toString()).toBe(DOC);
+  });
+
+  it("does not look up suggestions that could not be applied", () => {
+    const load = vi.fn(async () => [
+      { label: "unbounded", action: replaceAction("unbounded") },
+    ]);
+    const editor = mount(
+      [
+        attachProofreadingCard(
+          {
+            from: FROM,
+            to: TO,
+            severity: "warning",
+            message: "Possible misspelling",
+            actions: [],
+          },
+          { word: "unblinded", suggestions: [], loadSuggestions: load, ignores: [] },
+        ),
+      ],
+      true,
+    );
+
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull();
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("keeps a grammar message without its fix", () => {
+    const editor = mount(
+      [
+        grammarDiagnostic({
+          message: "Incorrect indefinite article.",
+          kind: "Miscellaneous",
+          rule: "AnA",
+          suggestions: ["an"],
+        }),
+      ],
+      true,
+    );
+
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Incorrect indefinite article.",
+    );
+    expect(dom.querySelector(".cm-proofread-rule")?.textContent).toBe("AnA");
+    expect(dom.querySelector(".cm-proofread-suggestions")).toBeNull();
+  });
+
+  it("keeps the actions of a diagnostic that is not a proofreading finding", () => {
+    const open = { name: "Open the other file", apply: vi.fn() };
+    const editor = mount(
+      [
+        {
+          from: FROM,
+          to: TO,
+          severity: "error",
+          message: "Label defined twice",
+          actions: [open],
+        },
+      ],
+      true,
+    );
+
+    const dom = card(editor, FROM)!;
+    const rows = [...dom.querySelectorAll(".cm-proofread-suggestion")];
+    expect(rows.map((row) => row.textContent)).toEqual(["Open the other file"]);
+    rows[0].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(open.apply).toHaveBeenCalledOnce();
+  });
+
+  it("offers the replacements again once the editor becomes writable", () => {
+    const readOnly = new Compartment();
+    const editor = new EditorView({
+      state: EditorState.create({
+        doc: DOC,
+        extensions: readOnly.of(EditorState.readOnly.of(true)),
+      }),
+      parent: document.body,
+    });
+    view = editor;
+    editor.dispatch(setDiagnostics(editor.state, [spellingDiagnostic(["unbounded"])]));
+    expect(card(editor, FROM)!.querySelector(".cm-proofread-suggestion")).toBeNull();
+
+    editor.dispatch({ effects: readOnly.reconfigure(EditorState.readOnly.of(false)) });
+
+    const row = card(editor, FROM)!.querySelector<HTMLButtonElement>(
+      ".cm-proofread-suggestion",
+    )!;
+    expect(row.textContent).toBe("unbounded");
+    row.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(editor.state.doc.toString()).toBe("labels were unbounded here");
   });
 });

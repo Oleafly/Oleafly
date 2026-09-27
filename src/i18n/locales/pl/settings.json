@@ -1562,8 +1562,9 @@
     },
     "packaged": "Zainstalowano z pakietem Oleafly.",
     "quickAction": {
-      "label": "Szybka czynność w Finderze",
-      "description": "Kliknij folder prawym przyciskiem w Finderze i wybierz Szybkie czynności › Otwórz w Oleafly."
+      "label": "Szybkie czynności w Finderze",
+      "description": "Dodaje Otwórz w Oleafly do menu Usługi, gdy klikniesz folder prawym przyciskiem w Finderze.",
+      "menuHint": "Jeszcze nie ma go w menu Szybkie czynności. Kliknij folder prawym przyciskiem, wybierz Szybkie czynności › Dostosuj i włącz {{title}}."
     },
     "explorerMenu": {
       "label": "Menu kontekstowe Eksploratora plików",

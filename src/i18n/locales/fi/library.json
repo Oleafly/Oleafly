@@ -67,20 +67,15 @@
       "anyTime": "Mikä tahansa aika",
       "last7Days": "Viimeiset 7 päivää",
       "last30Days": "Viimeiset 30 päivää",
-      "lastYear": "Viimeinen vuosi"
+      "lastYear": "Viimeinen vuosi",
+      "location": "Sijainti",
+      "locationAll": "Kaikki projektit",
+      "locationLibrary": "Oleaflyssä",
+      "locationExternal": "Ulkoiset projektit"
     },
     "openFolder": "Avaa kansio",
     "openFolderShortcut": "Avaa kansio ({{shortcut}})",
-    "createFirstProject": "Luo uusi projekti",
-    "scope": {
-      "label": "Näytä projektit",
-      "all": "Kaikki",
-      "library": "Oleaflyssä",
-      "folders": "Kansiot"
-    },
-    "recent": {
-      "title": "Viimeisimmät"
-    }
+    "createFirstProject": "Luo uusi projekti"
   },
   "projects": {
     "open": "Avaa {{name}}",
@@ -94,7 +89,7 @@
     "actions": "Toiminnot kohteelle {{name}}",
     "details": "Projektin tiedot",
     "exportHistory": "Vientihistoria",
-    "changeColor": "Vaihda projektin väri",
+    "changeColor": "Projektin väri",
     "fork": "Haaroita projekti",
     "delete": "Poista projekti",
     "favoriteAdd": "Lisää suosikkeihin",
@@ -484,7 +479,6 @@
     "dismiss": "Sulje"
   },
   "folder": {
-    "badge": "Kansio",
     "state": {
       "missing": "Kansio puuttuu",
       "offline": "Asemaa ei ole liitetty",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "Kohdetta ”{{name}}” ei löydy",
-        "body": "Se oli sijainnissa {{path}}, ja se on ehkä siirretty tai poistettu. Etsi se, niin sen keskustelut ja historia säilyvät."
+        "body": "Se oli sijainnissa <path>{{path}}</path>, ja se on ehkä siirretty tai poistettu. Etsi se, niin sen keskustelut ja historia säilyvät."
       },
       "offline": {
         "title": "”{{name}}” on asemalla, jota ei ole liitetty",
-        "body": "Liitä asema tai yhdistä verkkojako, jolla {{path}} on, ja yritä uudelleen."
+        "body": "Liitä asema tai yhdistä verkkojako, jolla <path>{{path}}</path> on, ja yritä uudelleen."
       },
       "replaced": {
         "title": "”{{name}}” on korvattu",
-        "body": "Sijainnissa {{path}} oleva kansio ei ole se, jonka avasit aiemmin. Käytä sitä vain, jos luotat siihen. Kun vaihdat, Oleafly poistaa luottamuksen ja hyväksynnät käytöstä."
+        "body": "Sijainnissa <path>{{path}}</path> oleva kansio ei ole se, jonka avasit aiemmin. Käytä sitä vain, jos luotat siihen. Kun vaihdat, Oleafly poistaa luottamuksen ja hyväksynnät käytöstä."
       },
       "permissionDenied": {
         "title": "Oleafly ei voi avata kohdetta ”{{name}}”",
         "bodyMac": "Salli Oleaflyn käyttää tätä kansiota kohdassa Järjestelmäasetukset › Yksityisyys ja suojaus › Tiedostot ja kansiot ja yritä uudelleen.",
-        "bodyOther": "Tilisi ei voi lukea sijaintia {{path}}. Tarkista kansion käyttöoikeudet ja yritä uudelleen."
+        "bodyOther": "Tilisi ei voi lukea sijaintia <path>{{path}}</path>. Tarkista kansion käyttöoikeudet ja yritä uudelleen."
       },
       "back": {
         "title": "”{{name}}” on taas käytettävissä",
-        "body": "Oleafly saa taas yhteyden kohteeseen {{path}}."
+        "body": "Oleafly saa taas yhteyden kohteeseen <path>{{path}}</path>."
       },
-      "locate": "Etsi…",
+      "locate": "Etsi",
       "tryAgain": "Yritä uudelleen",
       "useThisFolder": "Käytä tätä kansiota",
-      "checking": "Tarkistetaan…",
+      "checking": "Tarkistetaan",
       "still": "Oleafly ei vieläkään tavoita kansiota."
     },
     "copy": {

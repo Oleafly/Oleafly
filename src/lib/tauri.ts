@@ -312,18 +312,41 @@ export const readProjectBytes = (projectId: string, relPath: string) =>
 export const projectMutationGeneration = (projectId: string) =>
   invoke<number>("project_mutation_generation", { projectId });
 
+type ProjectWriteFailureListener = (projectId: string) => void;
+
+const projectWriteFailureListeners = new Set<ProjectWriteFailureListener>();
+
+export function onProjectWriteFailure(listener: ProjectWriteFailureListener): () => void {
+  projectWriteFailureListeners.add(listener);
+  return () => {
+    projectWriteFailureListeners.delete(listener);
+  };
+}
+
+async function projectWrite<T>(projectId: string, request: Promise<T>): Promise<T> {
+  try {
+    return await request;
+  } catch (error) {
+    for (const listener of projectWriteFailureListeners) listener(projectId);
+    throw error;
+  }
+}
+
 export const writeProjectBytes = (
   projectId: string,
   relPath: string,
   dataBase64: string,
   expectedGeneration?: number,
 ) =>
-  invoke<FileMutationResult>("write_project_bytes", {
+  projectWrite(
     projectId,
-    relPath,
-    dataBase64,
-    expectedGeneration,
-  });
+    invoke<FileMutationResult>("write_project_bytes", {
+      projectId,
+      relPath,
+      dataBase64,
+      expectedGeneration,
+    }),
+  );
 
 // Used for absolute paths from a save dialog.
 export const writeBytesFile = (dest: string, dataBase64: string) =>
@@ -379,13 +402,16 @@ export const writeFileContent = (
   expectedGeneration?: number,
   expectedHash?: string,
 ) =>
-  invoke<FileMutationResult>("write_file", {
+  projectWrite(
     projectId,
-    path,
-    content,
-    expectedGeneration,
-    ...(expectedHash ? { expectedHash } : {}),
-  });
+    invoke<FileMutationResult>("write_file", {
+      projectId,
+      path,
+      content,
+      expectedGeneration,
+      ...(expectedHash ? { expectedHash } : {}),
+    }),
+  );
 
 export async function createFile(
   projectId: string,
@@ -394,13 +420,16 @@ export async function createFile(
   conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
 ): Promise<{ path: string; generation: number }> {
-  const result = await invoke<CreateFileResult>("create_file", {
+  const result = await projectWrite(
     projectId,
-    path,
-    isDir,
-    conflictStrategy,
-    expectedGeneration,
-  });
+    invoke<CreateFileResult>("create_file", {
+      projectId,
+      path,
+      isDir,
+      conflictStrategy,
+      expectedGeneration,
+    }),
+  );
   if (result.status === "conflict") throw new FileConflictError(result);
   return { path: result.path, generation: result.generation };
 }
@@ -411,12 +440,15 @@ export const deleteFile = (
   expectedGeneration?: number,
   permanent?: boolean,
 ) =>
-  invoke<FileMutationResult>("delete_file", {
+  projectWrite(
     projectId,
-    path,
-    expectedGeneration,
-    ...(permanent ? { permanent: true } : {}),
-  });
+    invoke<FileMutationResult>("delete_file", {
+      projectId,
+      path,
+      expectedGeneration,
+      ...(permanent ? { permanent: true } : {}),
+    }),
+  );
 
 export class FileConflictError extends Error {
   readonly destination: string;
@@ -440,13 +472,16 @@ export async function renameFile(
   conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
 ): Promise<string> {
-  const result = await invoke<RenameFileResult>("rename_file", {
+  const result = await projectWrite(
     projectId,
-    from,
-    to,
-    conflictStrategy,
-    expectedGeneration,
-  });
+    invoke<RenameFileResult>("rename_file", {
+      projectId,
+      from,
+      to,
+      conflictStrategy,
+      expectedGeneration,
+    }),
+  );
   if (result.status === "conflict") throw new FileConflictError(result);
   return result.path;
 }
@@ -457,7 +492,11 @@ export const copyFile = (
   from: string,
   to: string,
   expectedGeneration?: number,
-) => invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration });
+) =>
+  projectWrite(
+    projectId,
+    invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration }),
+  );
 
 
 export const importPathsIntoProject = (
@@ -466,19 +505,26 @@ export const importPathsIntoProject = (
   sourcePaths: string[],
   expectedGeneration?: number,
 ) =>
-  invoke<ImportPathsResult>("import_paths_into_project", {
+  projectWrite(
     projectId,
-    destDir,
-    sourcePaths,
-    expectedGeneration,
-  });
+    invoke<ImportPathsResult>("import_paths_into_project", {
+      projectId,
+      destDir,
+      sourcePaths,
+      expectedGeneration,
+    }),
+  );
 
 export const saveFileBase64 = (
   projectId: string,
   path: string,
   data: string,
   expectedGeneration?: number,
-) => invoke<FileMutationResult>("save_file_base64", { projectId, path, data, expectedGeneration });
+) =>
+  projectWrite(
+    projectId,
+    invoke<FileMutationResult>("save_file_base64", { projectId, path, data, expectedGeneration }),
+  );
 
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
@@ -572,6 +618,9 @@ export const setProjectDictionaryLocaleCmd = (
   locale: string | null,
 ) =>
   invoke<ProjectMeta>("set_project_dictionary_locale", { projectId, locale });
+
+export const resetProjectDictionaryLocaleOnDeviceCmd = (projectId: string) =>
+  invoke<ProjectMeta>("reset_project_dictionary_locale_on_device", { projectId });
 
 export const setProjectShellEscapeCmd = (
   projectId: string,
@@ -940,6 +989,8 @@ export interface SystemIntegrationItem {
   state: SystemIntegrationState;
   packaged: boolean;
   attention: SystemIntegrationAttention | null;
+  quick_actions_menu: boolean | null;
+  menu_title: string | null;
 }
 export interface SystemIntegrationStatus {
   platform: "macos" | "windows" | "linux" | "other";

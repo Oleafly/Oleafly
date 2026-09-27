@@ -26,6 +26,7 @@ vi.mock("@/store/main-document", () => ({
   chooseMainDocument: mocks.chooseMainDocument,
 }));
 
+import { describeError } from "@/lib/app-error";
 import { useFilesStore } from "@/store/files";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { MainDocumentPicker } from "./MainDocumentPicker";
@@ -283,6 +284,26 @@ describe("MainDocumentPicker", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: labels.picker.open })).not.toBeDisabled(),
     );
+  });
+
+  it("says why when a read-only folder refuses the choice", async () => {
+    const refused = new Error(
+      `@oleafly/error:${JSON.stringify({
+        code: "project.folder_read_only",
+        params: { name: "project.json" },
+        detail: null,
+      })}`,
+    );
+    mocks.chooseMainDocument.mockRejectedValue(refused);
+    render(<MainDocumentPicker />);
+    present();
+    fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledTimes(1));
+    expect(mocks.notifyError).toHaveBeenCalledWith("choose the main document", refused, undefined);
+    expect(describeError(refused)).toBe(
+      "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("leaves the next folder's picker open when an earlier choice finishes late", async () => {

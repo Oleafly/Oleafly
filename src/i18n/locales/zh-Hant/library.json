@@ -66,20 +66,15 @@
       "anyTime": "不限時間",
       "last7Days": "過去 7 天",
       "last30Days": "過去 30 天",
-      "lastYear": "過去一年"
+      "lastYear": "過去一年",
+      "location": "位置",
+      "locationAll": "所有專案",
+      "locationLibrary": "Oleafly 中",
+      "locationExternal": "外部專案"
     },
     "openFolder": "開啟資料夾",
     "openFolderShortcut": "開啟資料夾（{{shortcut}}）",
-    "createFirstProject": "建立新專案",
-    "scope": {
-      "label": "顯示專案",
-      "all": "全部",
-      "library": "Oleafly 中",
-      "folders": "資料夾"
-    },
-    "recent": {
-      "title": "最近"
-    }
+    "createFirstProject": "建立新專案"
   },
   "projects": {
     "open": "開啟 {{name}}",
@@ -93,7 +88,7 @@
     "actions": "{{name}} 的動作",
     "details": "專案詳細資料",
     "exportHistory": "匯出記錄",
-    "changeColor": "變更專案顏色",
+    "changeColor": "專案顏色",
     "fork": "分支專案",
     "delete": "刪除專案",
     "favoriteAdd": "加入我的最愛",
@@ -475,7 +470,6 @@
     "dismiss": "關閉"
   },
   "folder": {
-    "badge": "資料夾",
     "state": {
       "missing": "資料夾遺失",
       "offline": "磁碟機未連接",
@@ -499,29 +493,29 @@
     "unavailable": {
       "missing": {
         "title": "找不到「{{name}}」",
-        "body": "它原本在 {{path}}，可能已被移動或刪除。重新定位它，就能保留它的聊天與歷史記錄。"
+        "body": "它原本在 <path>{{path}}</path>，可能已被移動或刪除。重新定位它，就能保留它的聊天與歷史記錄。"
       },
       "offline": {
         "title": "「{{name}}」位於未連接的磁碟機上",
-        "body": "請連接含有 {{path}} 的磁碟機或網路共用，然後再試一次。"
+        "body": "請連接含有 <path>{{path}}</path> 的磁碟機或網路共用，然後再試一次。"
       },
       "replaced": {
         "title": "「{{name}}」已被取代",
-        "body": "{{path}} 的資料夾不是你之前開啟的那一個。只有在信任它時才使用。切換後，Oleafly 會關閉信任與核准。"
+        "body": "<path>{{path}}</path> 的資料夾不是你之前開啟的那一個。只有在信任它時才使用。切換後，Oleafly 會關閉信任與核准。"
       },
       "permissionDenied": {
         "title": "Oleafly 無法開啟「{{name}}」",
         "bodyMac": "請在系統設定 › 隱私權與安全性 › 檔案與檔案夾中允許 Oleafly 使用這個資料夾，然後再試一次。",
-        "bodyOther": "你的帳戶無法讀取 {{path}}。請檢查資料夾的權限，然後再試一次。"
+        "bodyOther": "你的帳戶無法讀取 <path>{{path}}</path>。請檢查資料夾的權限，然後再試一次。"
       },
       "back": {
         "title": "「{{name}}」已恢復連線",
-        "body": "Oleafly 可以再次存取 {{path}}。"
+        "body": "Oleafly 可以再次存取 <path>{{path}}</path>。"
       },
-      "locate": "定位…",
+      "locate": "定位",
       "tryAgain": "再試一次",
       "useThisFolder": "使用這個資料夾",
-      "checking": "正在檢查…",
+      "checking": "正在檢查",
       "still": "Oleafly 仍然無法存取它。"
     },
     "copy": {

@@ -1,6 +1,6 @@
 [package]
 name = "oleafly"
-version = "0.4.2"
+version = "0.4.3"
 description = "Oleafly - the intelligent research workspace, free, local-first, 100% open source"
 authors = ["Prajwal Murthy and contributors"]
 license = "AGPL-3.0-or-later"
@@ -82,6 +82,7 @@ trash = "5.2.9"
 security-framework = "=2.11.1"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL"] }
+plist = "1"
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"
@@ -110,6 +111,7 @@ e2e-testing = ["dep:tauri-plugin-playwright"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
+plist = "1"
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = [

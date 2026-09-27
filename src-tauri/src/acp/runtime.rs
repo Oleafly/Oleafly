@@ -1626,29 +1626,6 @@ fn lexical_path_within(path: &Path, root: &Path) -> bool {
         })
 }
 
-#[cfg(windows)]
-fn long_path_name(path: &Path) -> Option<PathBuf> {
-    use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use windows_sys::Win32::Storage::FileSystem::GetLongPathNameW;
-
-    let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-    if input[..input.len() - 1].contains(&0) {
-        return None;
-    }
-    let required = unsafe { GetLongPathNameW(input.as_ptr(), std::ptr::null_mut(), 0) };
-    if required == 0 || required > 32_768 {
-        return None;
-    }
-    let mut output = vec![0u16; required as usize];
-    let written = unsafe { GetLongPathNameW(input.as_ptr(), output.as_mut_ptr(), required) };
-    if written == 0 || written >= required {
-        return None;
-    }
-    Some(PathBuf::from(std::ffi::OsString::from_wide(
-        &output[..written as usize],
-    )))
-}
-
 pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
     let paths = tool["locations"]
         .as_array()
@@ -1697,7 +1674,7 @@ pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
             }
             #[cfg(windows)]
             {
-                let Some(expanded) = long_path_name(existing) else {
+                let Some(expanded) = oleafly_core::long_path_name(existing) else {
                     return false;
                 };
                 candidate

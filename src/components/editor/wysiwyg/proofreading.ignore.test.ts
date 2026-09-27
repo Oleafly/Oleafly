@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Editor } from "@tiptap/core";
+import { Editor, Extension } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
 import { StarterKit } from "@tiptap/starter-kit";
 import type { ProofreadingResult } from "@oleafly/editor";
 import { setDictionaryNotice, useDictionary } from "@/lib/dictionary";
@@ -41,6 +42,7 @@ vi.mock("@/lib/proofreading/client", async (importOriginal) => ({
 }));
 
 import {
+  applyVisualProofreadingSuggestion,
   ignoreVisualProofreadingIssue,
   setVisualProofreadingIssueListener,
   VisualProofreading,
@@ -49,12 +51,23 @@ import {
 
 let editor: Editor | null = null;
 
+const dropEdits = { active: false };
+
+const EditGate = Extension.create({
+  name: "proofreadingTestEditGate",
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      filterTransaction: (transaction) => !transaction.docChanged || !dropEdits.active,
+    })];
+  },
+});
+
 async function paintedIssue(text: string, word: string): Promise<VisualProofreadingIssue> {
   client.words = [word];
   const issues: VisualProofreadingIssue[] = [];
   editor = new Editor({
     element: document.createElement("div"),
-    extensions: [StarterKit, VisualProofreading],
+    extensions: [StarterKit, VisualProofreading, EditGate],
     content: `<p>${text}</p>`,
   });
   await vi.waitFor(() => {
@@ -101,5 +114,49 @@ describe("ignoring a Visual proofreading word", () => {
     expect(useDictionary.getState().global).toEqual([]);
     expect(useDictionary.getState().ignored).toEqual({});
     expect(notices).toHaveLength(2);
+  });
+});
+
+describe("applying a Visual proofreading suggestion", () => {
+  const text = "Das Wort Straßee bleibt.";
+  const word = "Straßee";
+  const fix = { text: "Straße", kind: 0 as const };
+
+  beforeEach(() => {
+    dropEdits.active = false;
+    useDictionary.setState({ ignored: {}, global: [], suppressed: {}, revision: 0 });
+    useFilesStore.setState({ activePath: "main.tex", projectId: "project", docVersion: 1 });
+    useSettingsStore.setState({ spellcheck: true, harper: false });
+  });
+
+  afterEach(() => {
+    dropEdits.active = false;
+    setVisualProofreadingIssueListener(null);
+    editor?.destroy();
+    editor = null;
+  });
+
+  it("replaces the whole word in an editable document", async () => {
+    const issue = await paintedIssue(text, word);
+    expect(applyVisualProofreadingSuggestion(editor as Editor, issue, fix)).toBe(true);
+    expect(editor?.getText()).toBe("Das Wort Straße bleibt.");
+  });
+
+  it("reports failure instead of closing when the document is read-only", async () => {
+    const issue = await paintedIssue(text, word);
+    editor?.setEditable(false, false);
+
+    expect(applyVisualProofreadingSuggestion(editor as Editor, issue, fix)).toBe(false);
+    expect(editor?.getText()).toBe(text);
+    expect(ignoreVisualProofreadingIssue(editor as Editor, issue, "project")).toBe(true);
+    expect(useDictionary.getState().ignored).toEqual({ project: [word] });
+  });
+
+  it("reports failure when the edit is dropped before it lands", async () => {
+    const issue = await paintedIssue(text, word);
+    dropEdits.active = true;
+
+    expect(applyVisualProofreadingSuggestion(editor as Editor, issue, fix)).toBe(false);
+    expect(editor?.getText()).toBe(text);
   });
 });

@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCompactCount } from "@/lib/format";
 import { formatDateTime } from "@/lib/intl";
+import { describeError } from "@/lib/app-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -683,7 +684,7 @@ export function TaskDetailDialog({
                 <p className="text-sm font-medium text-destructive">
                   {t(($) => $.researchTools.tasks.detail.needsAttention)}
                 </p>
-                <p className="mt-1 break-words text-sm text-foreground">{task.error}</p>
+                <p className="mt-1 break-words text-sm text-foreground">{describeError(task.error)}</p>
               </div>
             ) : null}
             {error ? (

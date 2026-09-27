@@ -1,7 +1,7 @@
 import { renameSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect, reloadNativePage } from "../fixtures";
-import { createBlankProject } from "../helpers";
+import { chooseAppSelectOption, createBlankProject } from "../helpers";
 import {
   expectFolderUnchanged,
   expectNoOleaflyFootprint,
@@ -32,29 +32,52 @@ function article(body: string): string {
   return `\\documentclass{article}\n\\begin{document}\n${body}\n\\end{document}\n`;
 }
 
-async function chooseScope(page: Parameters<typeof openFolder>[0], scope: "all" | "library" | "folders") {
-  await page.evaluate(`(document.querySelector('[data-testid="library-scope"] input[value=${JSON.stringify(scope)}]').click(), true)`);
-  await expect.poll(async () => page.evaluate<boolean>(
-    `document.querySelector('[data-testid="library-scope"] input[value=${JSON.stringify(scope)}]')?.checked === true`,
-  )).toBe(true);
-}
+type LibraryPage = Parameters<typeof openFolder>[0];
 
-async function scopeCounts(page: Parameters<typeof openFolder>[0]): Promise<Record<string, number>> {
-  return page.evaluate<Record<string, number>>(
-    `Object.fromEntries(Array.from(document.querySelectorAll('[data-testid="library-scope"] label')).map((label) => [
-      label.querySelector('input')?.value ?? "",
-      Number(label.querySelector('.tabular-nums')?.textContent ?? "NaN"),
-    ]))`,
+const FILTERS_BUTTON = '[aria-label="Advanced project filters"]';
+const LOCATION = "#project-filter-location";
+
+async function locationShown(page: LibraryPage): Promise<string | null> {
+  return page.evaluate<string | null>(
+    `document.querySelector(${scriptValue(LOCATION)})?.textContent?.trim() ?? null`,
   );
 }
 
-async function gridCards(page: Parameters<typeof openFolder>[0]): Promise<string[]> {
+async function openFilters(page: LibraryPage) {
+  if ((await locationShown(page)) === null) await page.click(FILTERS_BUTTON);
+  await expect.poll(async () => locationShown(page), { timeout: 10_000 }).not.toBeNull();
+}
+
+async function chooseLocation(page: LibraryPage, label: "All projects" | "In Oleafly" | "External projects") {
+  await openFilters(page);
+  await chooseAppSelectOption(page, LOCATION, { attribute: "data-label", value: label });
+  await expect.poll(async () => locationShown(page)).toBe(label);
+}
+
+async function resetFilters(page: LibraryPage) {
+  const clicked = await page.evaluate<boolean>(`(() => {
+    const panel = document.querySelector(${scriptValue(LOCATION)})?.closest("[data-radix-popper-content-wrapper]");
+    const reset = Array.from(panel?.querySelectorAll("button") ?? []).find((button) => button.textContent?.trim() === ${scriptValue("Reset")});
+    if (!reset || reset.disabled) return false;
+    reset.click();
+    return true;
+  })()`);
+  expect(clicked, "the Reset button in the filters must be enabled while a location is chosen").toBe(true);
+  await expect.poll(async () => locationShown(page)).toBe("All projects");
+}
+
+async function closeFilters(page: LibraryPage) {
+  await page.evaluate(`(document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })), true)`);
+  await expect.poll(async () => locationShown(page), { timeout: 10_000 }).toBeNull();
+}
+
+async function gridCards(page: LibraryPage): Promise<string[]> {
   return page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[data-testid="project-grid"] button[aria-label^="Open "]')).map((button) => button.getAttribute('aria-label').slice(5))`,
   );
 }
 
-test("the library shows an opened folder as an external card and filters folders", async ({ tauriPage: page }) => {
+test("the library shows an opened folder as an external card and filters by location", async ({ tauriPage: page }) => {
   await createBlankProject(page, LIBRARY_ONLY);
   await goToLibrary(page);
   const folder = fixtures.make(CARD, { "main.tex": article("Card paper body.") });
@@ -73,23 +96,26 @@ test("the library shows an opened folder as an external card and filters folders
   expect(details?.text).not.toContain(fixtures.root);
   expect((await folderCardDetails(page, LIBRARY_ONLY))?.kind).toBe("document");
 
-  await expect(page.locator('[data-testid="library-scope"]')).toBeVisible();
-  const counts = await scopeCounts(page);
-  expect(counts.all).toBe(counts.library + counts.folders);
-  expect(counts.folders).toBeGreaterThanOrEqual(1);
+  await openFilters(page);
+  expect(await locationShown(page)).toBe("All projects");
+  const all = await gridCards(page);
+  expect(all).toEqual(expect.arrayContaining([CARD, LIBRARY_ONLY]));
 
-  await chooseScope(page, "folders");
-  await expect.poll(async () => gridCards(page)).toContain(CARD);
-  const folders = await gridCards(page);
-  expect(folders).not.toContain(LIBRARY_ONLY);
-  expect(folders).toHaveLength(counts.folders);
+  await chooseLocation(page, "External projects");
+  await expect.poll(async () => gridCards(page)).not.toContain(LIBRARY_ONLY);
+  const external = await gridCards(page);
+  expect(external).toContain(CARD);
 
-  await chooseScope(page, "library");
-  await expect.poll(async () => gridCards(page)).toContain(LIBRARY_ONLY);
-  expect(await gridCards(page)).not.toContain(CARD);
+  await chooseLocation(page, "In Oleafly");
+  await expect.poll(async () => gridCards(page)).not.toContain(CARD);
+  const library = await gridCards(page);
+  expect(library).toContain(LIBRARY_ONLY);
+  expect([...external, ...library].sort()).toEqual([...all].sort());
 
-  await chooseScope(page, "all");
+  await resetFilters(page);
   await expect.poll(async () => gridCards(page)).toEqual(expect.arrayContaining([CARD, LIBRARY_ONLY]));
+  expect((await gridCards(page)).sort()).toEqual([...all].sort());
+  await closeFilters(page);
 
   expectFolderUnchanged(folder, before);
   expectNoOleaflyFootprint(folder);

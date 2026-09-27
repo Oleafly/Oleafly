@@ -48,10 +48,12 @@ import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
+import { SaveFlushError, type SaveFailure } from "@/store/save-flush-error";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { dismissEngineHint, engineHintDismissed } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
@@ -74,6 +76,8 @@ import {
 import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
 
+export { SaveFlushError, type SaveFailure };
+
 // CodeMirror's document model is LF-based on every platform. Canonicalize
 // backend text before publishing it to the shared store so Windows CRLF files
 // cannot leave the visible editor and store permanently out of sync.
@@ -91,10 +95,15 @@ async function readCanonicalFileContent(
 interface DiskSnapshot {
   hash: string;
   crlf: boolean;
+  length: number;
 }
 
 function diskSnapshotOf(raw: string): DiskSnapshot {
-  return { hash: diskHash(raw), crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw) };
+  return {
+    hash: diskHash(raw),
+    crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw),
+    length: raw.length,
+  };
 }
 
 function crlfBytes(content: string): string {
@@ -398,25 +407,10 @@ export interface SaveOptions {
   overwrite?: boolean;
 }
 
-export interface SaveFailure {
-  path: string;
-  reason: string;
-}
-
 export interface SaveBlockedState {
   action: "close" | "switch";
   targetProjectId: string | null;
   failures: SaveFailure[];
-}
-
-export class SaveFlushError extends Error {
-  readonly failures: SaveFailure[];
-
-  constructor(failures: SaveFailure[]) {
-    super(failures.map((failure) => `${failure.path}: ${failure.reason}`).join("\n"));
-    this.name = "SaveFlushError";
-    this.failures = failures;
-  }
 }
 
 const describeFailure = (error: unknown): string =>
@@ -573,6 +567,24 @@ function rememberDiskSnapshot(projectId: string, path: string, snapshot: DiskSna
   diskSnapshots.set(writeKey(projectId, path), snapshot);
 }
 
+function savedTextLength(content: string, crlf: boolean): number {
+  if (!crlf) return content.length;
+  let breaks = 0;
+  for (let index = content.indexOf("\n"); index !== -1; index = content.indexOf("\n", index + 1)) {
+    breaks++;
+  }
+  return content.length + breaks;
+}
+
+function matchesSavedDiskText(projectId: string | null, path: string, content: string): boolean {
+  if (!projectId) return false;
+  const key = writeKey(projectId, path);
+  const snapshot = diskSnapshots.get(key);
+  if (!snapshot || pendingWrites.has(key) || diskConflicts.has(key)) return false;
+  if (savedTextLength(content, snapshot.crlf) !== snapshot.length) return false;
+  return diskHash(snapshot.crlf ? crlfBytes(content) : content) === snapshot.hash;
+}
+
 function settleDiskConflict(key: string): void {
   const toastId = diskConflicts.get(key)?.toastId;
   if (typeof toastId === "number") toast.dismiss(toastId);
@@ -715,7 +727,7 @@ function enqueueWrite(
       const result = expectedHash === undefined
         ? await writeFileContent(projectId, path, bytes, expectedGeneration)
         : await writeFileContent(projectId, path, bytes, expectedGeneration, expectedHash);
-      diskSnapshots.set(key, { hash: diskHash(bytes), crlf });
+      diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
       settleDiskConflict(key);
       if (touchesRootManifest([path])) void useFilesStore.getState().refreshManifestHome();
       return rememberMutationGeneration(
@@ -1819,19 +1831,26 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   setContent: (path, content, opts) => {
-    if (isReadOnlyProjectPath(path, get().manifestHome, get().tree)) return false;
+    const { projectId, manifestHome, tree } = get();
+    if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     if (get().files[path]?.content === content) return true;
+    const saved = matchesSavedDiskText(projectId, path, content);
     set((s) => ({
       files: {
         ...s.files,
-        [path]: { content, dirty: true, edits: (s.files[path]?.edits ?? 0) + 1 },
+        [path]: { content, dirty: !saved, edits: (s.files[path]?.edits ?? 0) + 1 },
       },
       docVersion: opts?.bumpVersion ? s.docVersion + 1 : s.docVersion,
     }));
-    // Debounce a save of THIS file. Track every edited path so the single timer
-    // flushes them all, instead of only whichever tab happens to be active when
-    // it fires (which silently lost edits to background tabs).
-    pendingSaves.add(path);
+    if (saved) {
+      pendingSaves.delete(path);
+      if (projectId) settleSaveFailure(projectId, path, get().files);
+    } else {
+      // Debounce a save of THIS file. Track every edited path so the single timer
+      // flushes them all, instead of only whichever tab happens to be active when
+      // it fires (which silently lost edits to background tabs).
+      pendingSaves.add(path);
+    }
     scheduleAutosave(get);
     return true;
   },
@@ -2065,7 +2084,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (get().projectId === projectId) await get().refreshTree();
       if (result?.path && touchesRootManifest([result.path])) await get().refreshManifestHome();
     } catch (e) {
-      notifyError("copy file", e, i18n.t(($) => $.core.project.copyFailed, { path }));
+      notifyError(
+        "copy file",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.core.project.copyFailed, { path }),
+      );
     }
   }),
 
@@ -2104,7 +2127,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (get().projectId === projectId) await get().refreshTree();
       if (touchesRootManifest(result?.paths ?? [])) await get().refreshManifestHome();
     } catch (e) {
-      notifyError("import files", e, i18n.t(($) => $.core.project.importFailed));
+      notifyError(
+        "import files",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.core.project.importFailed),
+      );
     }
   }),
 
@@ -2181,6 +2208,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   writeProjectFile: async (projectId, path, content) => {
+    if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
@@ -2194,7 +2222,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       bytes,
       expectedGeneration,
     );
-    rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf });
+    rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);

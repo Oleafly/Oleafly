@@ -279,6 +279,22 @@ describe("PreviewPane save to project", () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(screen.getByLabelText(enPreview.save.nameLabel)).toBeInTheDocument();
   });
+
+  it("lets a read-only folder refusal explain itself instead of the generic failure", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "main.pdf" },
+      detail: null,
+    })}`;
+    mocks.saveFileBase64.mockRejectedValue(refused);
+    await renderPane();
+    const user = userEvent.setup();
+
+    await saveToProject(user);
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(mocks.notifyError).toHaveBeenCalledWith("save to project", refused, undefined);
+  });
 });
 
 describe("PreviewPane failed-compile panel", () => {

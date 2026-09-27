@@ -209,6 +209,8 @@
     "spellLanguageAppSetting": "Uygulama ayarını kullan",
     "spellLanguageAriaLabel": "Bu proje için yazım denetimi dili",
     "spellLanguageHint": "Yalnızca bu proje için geçerlidir. Daha fazla dili Ayarlar'dan indirin.",
+    "spellLanguageFolderHint": "Bu klasörün project.json dosyasına kaydedilir, bu yüzden klasörü açan herkes için geçerlidir. Daha fazla dili Ayarlar'dan indirin.",
+    "spellLanguageReadOnly": "Bu klasör salt okunur olduğundan project.json dosyasındaki dil değiştirilemez.",
     "spellLanguageFailed": "Yazım denetimi dili değiştirilemedi.",
     "notChecked": "Denetlenmedi",
     "dictionaryMissing": "{{name}} indirilmedi, bu yüzden yazım denetlenmiyor. Ayarlar'dan indirin veya başka bir dil seçin.",

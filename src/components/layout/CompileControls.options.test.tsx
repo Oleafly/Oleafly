@@ -82,6 +82,18 @@ describe("CompileControls button", () => {
   });
 });
 
+describe("CompileControls colours", () => {
+  it("keeps white text on both halves when hovered or open in the light theme", () => {
+    render(<CompileControls />);
+    for (const id of ["compile-button", "compile-options-button"]) {
+      const button = screen.getByTestId(id);
+      expect(button).toHaveClass("text-white", "hover:text-white");
+      expect(button).not.toHaveClass("hover:text-accent-foreground");
+    }
+    expect(screen.getByTestId("compile-options-button")).toHaveClass("data-[state=open]:text-white");
+  });
+});
+
 describe("CompileControls options menu", () => {
   it("labels every preference group", async () => {
     render(<CompileControls />);
@@ -167,6 +179,26 @@ describe("CompileControls options menu", () => {
           key: "engine-switch:p1",
           kind: "error",
           message: enShell.enginePicker.switchFailed,
+        }),
+      ]),
+    );
+  });
+
+  it("says why when a read-only folder refuses the compiler switch", async () => {
+    setEngine.mockRejectedValue(`@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "project.json" },
+      detail: null,
+    })}`);
+    render(<CompileControls />);
+    const user = await openOptions();
+    await user.click(screen.getByTestId("compiler-lualatex"));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([
+        expect.objectContaining({
+          key: "engine-switch:p1",
+          kind: "error",
+          message: "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
         }),
       ]),
     );

@@ -35,7 +35,8 @@
     "copy_needs_folder": "只有在原位置打开的文件夹才能复制到库。",
     "not_removable": "只有在原位置打开的文件夹才能从 Oleafly 中移除。",
     "trash_unavailable": "Oleafly 无法将 {{path}} 移到废纸篓或回收站，该驱动器可能不支持。",
-    "linked_replace_folder": "{{path}} 是文件夹，因此 Oleafly 不会替换它。请先移动或重命名它。"
+    "linked_replace_folder": "{{path}} 是文件夹，因此 Oleafly 不会替换它。请先移动或重命名它。",
+    "folder_read_only": "{{name}} 或其所在的文件夹为只读，因此 Oleafly 无法进行此更改。请将你打开的文件夹复制到库，并在那里编辑。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

@@ -382,9 +382,9 @@
       "title": "Oleafly 无法打开此文件夹。",
       "body": "请检查文件夹的权限，然后重试。打开的文件会保留在这里。"
     },
-    "locate": "定位…",
+    "locate": "定位",
     "useThisFolder": "使用此文件夹",
-    "saveCopy": "保存副本…",
+    "saveCopy": "保存副本",
     "tryAgain": "重试",
     "savedCopy": "已将打开的文件保存到 {{folder}}。"
   },
@@ -1013,10 +1013,11 @@
   },
   "quickActionOffer": {
     "title": "从 Finder 打开文件夹",
-    "body": "将“在 Oleafly 中打开”添加到 Finder 的快速操作。之后右键点按任意文件夹即可在这里打开。",
+    "body": "将“在 Oleafly 中打开”添加到 Finder。它立即可在“服务”菜单中使用，打开后也可在“快速操作”中使用。",
     "add": "添加到 Finder",
     "notNow": "以后再说",
-    "added": "已添加。在 Finder 中右键点按文件夹，然后选择“快速操作” › “在 Oleafly 中打开”。",
+    "added": "已添加。现在可以从 Finder 的“服务”菜单使用它。如需在“快速操作”中使用，请右键点按文件夹，然后在“快速操作” › “自定义”中将其打开。",
+    "addedInQuickActions": "已添加。右键点按文件夹，即可在“快速操作”中找到它。",
     "failed": "无法添加。你可以在“设置” › “通用”中重试。"
   }
 }

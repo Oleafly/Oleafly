@@ -66,20 +66,15 @@
       "anyTime": "전체 기간",
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "lastYear": "최근 1년"
+      "lastYear": "최근 1년",
+      "location": "위치",
+      "locationAll": "모든 프로젝트",
+      "locationLibrary": "Oleafly 안",
+      "locationExternal": "외부 프로젝트"
     },
     "openFolder": "폴더 열기",
     "openFolderShortcut": "폴더 열기({{shortcut}})",
-    "createFirstProject": "새 프로젝트 만들기",
-    "scope": {
-      "label": "프로젝트 보기",
-      "all": "전체",
-      "library": "Oleafly 안",
-      "folders": "폴더"
-    },
-    "recent": {
-      "title": "최근"
-    }
+    "createFirstProject": "새 프로젝트 만들기"
   },
   "projects": {
     "open": "{{name}} 열기",
@@ -93,7 +88,7 @@
     "actions": "{{name}} 작업",
     "details": "프로젝트 정보",
     "exportHistory": "내보내기 기록",
-    "changeColor": "프로젝트 색상 변경",
+    "changeColor": "프로젝트 색상",
     "fork": "프로젝트 포크",
     "delete": "프로젝트 삭제",
     "favoriteAdd": "즐겨찾기에 추가",
@@ -475,7 +470,6 @@
     "dismiss": "닫기"
   },
   "folder": {
-    "badge": "폴더",
     "state": {
       "missing": "폴더 없음",
       "offline": "드라이브 연결 안 됨",
@@ -499,29 +493,29 @@
     "unavailable": {
       "missing": {
         "title": "“{{name}}”을(를) 찾을 수 없음",
-        "body": "{{path}}에 있었지만 이동되었거나 삭제되었을 수 있습니다. 채팅과 기록을 유지하려면 위치를 지정하세요."
+        "body": "<path>{{path}}</path>에 있었지만 이동되었거나 삭제되었을 수 있습니다. 채팅과 기록을 유지하려면 위치를 지정하세요."
       },
       "offline": {
         "title": "“{{name}}”이(가) 연결되지 않은 드라이브에 있음",
-        "body": "{{path}}이(가) 있는 드라이브나 네트워크 공유를 연결한 다음 다시 시도하세요."
+        "body": "<path>{{path}}</path>이(가) 있는 드라이브나 네트워크 공유를 연결한 다음 다시 시도하세요."
       },
       "replaced": {
         "title": "“{{name}}”이(가) 교체됨",
-        "body": "{{path}}에 있는 폴더는 이전에 연 폴더가 아닙니다. 신뢰할 수 있을 때만 사용하세요. 전환하면 Oleafly가 신뢰와 승인을 끕니다."
+        "body": "<path>{{path}}</path>에 있는 폴더는 이전에 연 폴더가 아닙니다. 신뢰할 수 있을 때만 사용하세요. 전환하면 Oleafly가 신뢰와 승인을 끕니다."
       },
       "permissionDenied": {
         "title": "Oleafly가 “{{name}}”을(를) 열 수 없음",
         "bodyMac": "시스템 설정 › 개인정보 보호 및 보안 › 파일 및 폴더에서 Oleafly가 이 폴더를 사용하도록 허용한 다음 다시 시도하세요.",
-        "bodyOther": "계정이 {{path}}을(를) 읽을 수 없습니다. 폴더 권한을 확인한 다음 다시 시도하세요."
+        "bodyOther": "계정이 <path>{{path}}</path>을(를) 읽을 수 없습니다. 폴더 권한을 확인한 다음 다시 시도하세요."
       },
       "back": {
         "title": "“{{name}}”에 다시 연결됨",
-        "body": "Oleafly가 {{path}}에 다시 접근할 수 있습니다."
+        "body": "Oleafly가 <path>{{path}}</path>에 다시 접근할 수 있습니다."
       },
-      "locate": "위치 지정…",
+      "locate": "위치 지정",
       "tryAgain": "다시 시도",
       "useThisFolder": "이 폴더 사용",
-      "checking": "확인 중…",
+      "checking": "확인 중",
       "still": "Oleafly가 아직 폴더에 접근할 수 없습니다."
     },
     "copy": {

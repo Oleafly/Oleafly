@@ -384,9 +384,9 @@
       "title": "Oleafly bu klasörü açamıyor.",
       "body": "Klasörün izinlerini kontrol edip yeniden deneyin. Açık dosyalarınız burada kalır."
     },
-    "locate": "Bul…",
+    "locate": "Bul",
     "useThisFolder": "Bu klasörü kullan",
-    "saveCopy": "Kopya kaydet…",
+    "saveCopy": "Kopya kaydet",
     "tryAgain": "Yeniden deneyin",
     "savedCopy": "Açık dosyalarınız {{folder}} konumuna kaydedildi."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Klasörleri Finder'dan açın",
-    "body": "Oleafly'de aç'ı Finder'ın Hızlı Eylemler menüsüne ekleyin. Ardından herhangi bir klasöre sağ tıklayarak onu burada açabilirsiniz.",
+    "body": "Oleafly'de aç komutunu Finder'a ekleyin. Servisler menüsünden hemen, Hızlı Eylemler'den ise siz açtıktan sonra çalışır.",
     "add": "Finder'a ekle",
     "notNow": "Şimdi değil",
-    "added": "Eklendi. Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'de aç'ı seçin.",
+    "added": "Eklendi. Artık Finder'ın Servisler menüsünde. Hızlı Eylemler'den de kullanmak için bir klasöre sağ tıklayın ve Hızlı Eylemler › Özelleştir'de açın.",
+    "addedInQuickActions": "Eklendi. Bir klasöre sağ tıklayın, komutu Hızlı Eylemler'de bulabilirsiniz.",
     "failed": "Eklenemedi. Ayarlar › Genel bölümünden yeniden deneyebilirsiniz."
   }
 }

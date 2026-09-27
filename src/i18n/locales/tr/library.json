@@ -67,20 +67,15 @@
       "anyTime": "Her zaman",
       "last7Days": "Son 7 gün",
       "last30Days": "Son 30 gün",
-      "lastYear": "Son bir yıl"
+      "lastYear": "Son bir yıl",
+      "location": "Konum",
+      "locationAll": "Tüm projeler",
+      "locationLibrary": "Oleafly'de",
+      "locationExternal": "Harici projeler"
     },
     "openFolder": "Klasör aç",
     "openFolderShortcut": "Klasör aç ({{shortcut}})",
-    "createFirstProject": "Yeni proje oluştur",
-    "scope": {
-      "label": "Projeleri göster",
-      "all": "Tümü",
-      "library": "Oleafly'de",
-      "folders": "Klasörler"
-    },
-    "recent": {
-      "title": "Son açılanlar"
-    }
+    "createFirstProject": "Yeni proje oluştur"
   },
   "projects": {
     "open": "{{name}} projesini aç",
@@ -94,7 +89,7 @@
     "actions": "{{name}} için eylemler",
     "details": "Proje ayrıntıları",
     "exportHistory": "Dışa aktarma geçmişi",
-    "changeColor": "Proje rengini değiştir",
+    "changeColor": "Proje rengi",
     "fork": "Projeyi çatalla",
     "delete": "Projeyi sil",
     "favoriteAdd": "Favorilere ekle",
@@ -484,7 +479,6 @@
     "dismiss": "Kapat"
   },
   "folder": {
-    "badge": "Klasör",
     "state": {
       "missing": "Klasör bulunamadı",
       "offline": "Sürücü bağlı değil",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "“{{name}}” bulunamıyor",
-        "body": "Klasör {{path}} konumundaydı ve taşınmış ya da silinmiş olabilir. Sohbetlerini ve geçmişini korumak için klasörü bulun."
+        "body": "Klasör <path>{{path}}</path> konumundaydı ve taşınmış ya da silinmiş olabilir. Sohbetlerini ve geçmişini korumak için klasörü bulun."
       },
       "offline": {
         "title": "“{{name}}” bağlı olmayan bir sürücüde",
-        "body": "{{path}} konumunu içeren sürücüyü veya ağ paylaşımını bağlayıp yeniden deneyin."
+        "body": "<path>{{path}}</path> konumunu içeren sürücüyü veya ağ paylaşımını bağlayıp yeniden deneyin."
       },
       "replaced": {
         "title": "“{{name}}” değiştirildi",
-        "body": "{{path}} konumundaki klasör daha önce açtığınız klasör değil. Yalnızca güveniyorsanız kullanın. Geçiş yaptığınızda Oleafly güveni ve onayları kapatır."
+        "body": "<path>{{path}}</path> konumundaki klasör daha önce açtığınız klasör değil. Yalnızca güveniyorsanız kullanın. Geçiş yaptığınızda Oleafly güveni ve onayları kapatır."
       },
       "permissionDenied": {
         "title": "Oleafly “{{name}}” klasörünü açamıyor",
         "bodyMac": "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler bölümünde Oleafly'nin bu klasörü kullanmasına izin verip yeniden deneyin.",
-        "bodyOther": "Hesabınız {{path}} konumunu okuyamıyor. Klasörün izinlerini denetleyip yeniden deneyin."
+        "bodyOther": "Hesabınız <path>{{path}}</path> konumunu okuyamıyor. Klasörün izinlerini denetleyip yeniden deneyin."
       },
       "back": {
         "title": "“{{name}}” yeniden erişilebilir",
-        "body": "Oleafly {{path}} konumuna yeniden erişebiliyor."
+        "body": "Oleafly <path>{{path}}</path> konumuna yeniden erişebiliyor."
       },
-      "locate": "Bul…",
+      "locate": "Bul",
       "tryAgain": "Yeniden dene",
       "useThisFolder": "Bu klasörü kullan",
-      "checking": "Denetleniyor…",
+      "checking": "Denetleniyor",
       "still": "Oleafly klasöre hâlâ ulaşamıyor."
     },
     "copy": {

@@ -65,6 +65,8 @@ async function setup(page: Page) {
           }
           if (command === "tinytex_install_state") return { partial_download_bytes: 0 };
           if (command === "get_ai_config") return { providers: [] };
+          if (command === "system_integration_status") return { platform: "other", items: [] };
+          if (command === "shell_command_status") return { state: "unsupported" };
           if (command === "tex_distributions") return [];
           if (command.startsWith("plugin:")) return 1;
           return [];

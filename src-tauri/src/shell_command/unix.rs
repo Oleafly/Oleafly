@@ -641,7 +641,7 @@ fn copy_into_place(bundled: &Path, path: &Path) -> Result<String, AppError> {
     let staged = transaction.staging_file_mut();
     staged.write_all(&bytes).map_err(failed)?;
     staged
-        .set_permissions(std::fs::Permissions::from_mode(0o755))
+        .set_permissions(std::fs::Permissions::from_mode(0o700))
         .map_err(failed)?;
     transaction.commit().map_err(failed)?;
     Ok(format!("{:x}", Sha256::digest(&bytes)))

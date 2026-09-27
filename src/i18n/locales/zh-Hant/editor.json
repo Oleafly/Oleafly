@@ -207,6 +207,8 @@
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",
     "spellLanguageHint": "只會套用到這個專案。可在設定中下載更多語言。",
+    "spellLanguageFolderHint": "儲存在這個資料夾的 project.json 中，因此會套用到每位開啟此資料夾的人。可在設定中下載更多語言。",
+    "spellLanguageReadOnly": "這個資料夾為唯讀，因此無法變更其 project.json 中的語言。",
     "spellLanguageFailed": "無法變更拼字檢查語言。",
     "notChecked": "未檢查",
     "dictionaryMissing": "{{name}} 尚未下載，因此不會檢查拼字。請在設定中下載，或選擇其他語言。",

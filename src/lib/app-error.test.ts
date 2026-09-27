@@ -65,6 +65,25 @@ describe("app errors", () => {
     ).toBe("Trust the papers repository to use Source Control here.");
   });
 
+  it("names the file a read-only opened folder refused, without OS text", async () => {
+    const value = encoded({
+      code: "project.folder_read_only",
+      params: { name: "figures/plot.png" },
+      detail: null,
+    });
+    expect(describeError(value)).toBe(
+      "Oleafly can't make this change because figures/plot.png or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+    await applyLocale("de");
+    expect(describeError(value)).toBe(
+      "Oleafly kann diese Änderung nicht vornehmen, weil figures/plot.png oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
+    );
+    await applyLocale("ja");
+    const japanese = describeError(value);
+    expect(japanese).toContain("figures/plot.png");
+    expect(japanese).not.toMatch(/errors:|\{\{|os error/);
+  });
+
   it("follows the active locale", async () => {
     await applyLocale("zh-Hans");
     const message = describeError(encoded({ code: "project.name_empty", params: {}, detail: null }));

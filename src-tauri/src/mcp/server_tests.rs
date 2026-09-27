@@ -3,13 +3,13 @@ use super::{
     advance_published_epoch, authorized, bounded_activity_tool_name, claim_unexpected_serve_exit,
     clear_renderer_registry, collect_body_limited, collect_body_limited_with_timeout,
     combine_cleanup_error, constant_time_eq, effective_policy, forward_route, host_allowed, json,
-    linked_exposure_refusal, mark_renderer_expiration_revoked_at, native_completion_is_reportable,
-    oneshot, origin_allowed, publication_candidate, remove_discovery_file_at,
-    renderer_session_is_fresh_at, renew_renderer_lease_at, serve_exit_is_current,
-    signal_completion_before_cleanup, tool_disabled_by_read_only, tool_route, watch, Arc,
-    AtomicBool, Body, Bytes, Duration, Instant, McpState, Mutex, Ordering, ServeInstance,
-    StatusCode, ToolMeta, ToolRoute, MAX_ACTIVITY_TOOL_NAME_CHARS, MAX_AUTHENTICATED_REQUESTS,
-    RENDERER_LEASE_TTL,
+    json_tool_error, linked_exposure_refusal, mark_renderer_expiration_revoked_at,
+    native_completion_is_reportable, oneshot, origin_allowed, publication_candidate,
+    remove_discovery_file_at, renderer_session_is_fresh_at, renew_renderer_lease_at,
+    serve_exit_is_current, signal_completion_before_cleanup, tool_disabled_by_read_only,
+    tool_route, watch, Arc, AtomicBool, Body, Bytes, Duration, Instant, McpState, Mutex, Ordering,
+    ServeInstance, StatusCode, ToolMeta, ToolRoute, MAX_ACTIVITY_TOOL_NAME_CHARS,
+    MAX_AUTHENTICATED_REQUESTS, RENDERER_LEASE_TTL,
 };
 #[cfg(unix)]
 use super::{write_discovery_file_at, Value};
@@ -444,5 +444,34 @@ async fn forwarded_calls_for_a_restricted_open_folder_are_refused_before_routing
     assert_eq!(
         forward_route(&state, 0, "write_file", policy).await,
         Ok(ToolRoute::RejectNoRenderer)
+    );
+}
+
+#[tokio::test]
+async fn native_tool_errors_reach_the_client_in_english() {
+    let coded: String = crate::app_error::AppError::new("project.folder_read_only")
+        .param("name", "notes.tex")
+        .into();
+
+    let response = json_tool_error(json!(7), &coded);
+    let body = collect_body_limited(response.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let reply: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(reply["id"], 7);
+    assert_eq!(reply["result"]["isError"], true);
+    assert_eq!(
+        reply["result"]["content"][0]["text"],
+        "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there."
+    );
+    let plain = json_tool_error(json!(8), "project resolution failed");
+    let body = collect_body_limited(plain.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let reply: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        reply["result"]["content"][0]["text"],
+        "project resolution failed"
     );
 }

@@ -10,6 +10,7 @@ import { editableStandaloneDiagram, standaloneDiagramSource } from "@/lib/diagra
 import { KIT } from "@/components/diagram/diagram-kit";
 import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { useProjectFolderReadOnly } from "@/store/folder-access";
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 
 // Lazy-loaded from Editor.tsx (React.lazy): this is the only place the
@@ -27,6 +28,7 @@ export default function DiagramMainFileView({
   const [notDrawable, setNotDrawable] = useState(false);
   const [readOnly, setReadOnly] = useState(true);
   const [mutationLocked, setMutationLocked] = useState(false);
+  const folderReadOnly = useProjectFolderReadOnly(projectId);
   const loadedSource = useRef<string | null>(null);
   const background = useRef<string | undefined>(undefined);
 
@@ -79,7 +81,7 @@ export default function DiagramMainFileView({
 
   const onModelChange = (m: DiagramModel) => {
     const files = useFilesStore.getState();
-    if (readOnly || isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
+    if (readOnly || folderReadOnly || isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
     if (files.files[path]?.content !== loadedSource.current) {
       setReadOnly(true);
       void reload().catch(() => setNotDrawable(true));
@@ -112,7 +114,7 @@ export default function DiagramMainFileView({
         </output>
       )}
       <DiagramKitContext.Provider value={kit}>
-        <DiagramCanvas model={model} onChange={onModelChange} readOnly={readOnly || mutationLocked} />
+        <DiagramCanvas model={model} onChange={onModelChange} readOnly={readOnly || mutationLocked || folderReadOnly} />
       </DiagramKitContext.Provider>
     </div>
   );

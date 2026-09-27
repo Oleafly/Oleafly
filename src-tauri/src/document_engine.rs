@@ -134,6 +134,8 @@ pub struct EngineCompileSpec {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EngineEnvironment {
     variables: Vec<(String, String)>,
+    scratch: Option<std::sync::Arc<oleafly_core::EngineScratch>>,
+    project_root: Option<PathBuf>,
 }
 
 impl EngineEnvironment {
@@ -141,12 +143,29 @@ impl EngineEnvironment {
         let variables = source_date_epoch
             .map(|value| vec![("SOURCE_DATE_EPOCH".into(), value.to_string())])
             .unwrap_or_default();
-        Self { variables }
+        Self {
+            variables,
+            ..Self::default()
+        }
     }
 
     fn with_variable(mut self, name: &str, value: String) -> Self {
         self.variables.push((name.to_owned(), value));
         self
+    }
+
+    fn in_scratch(mut self, scratch: oleafly_core::EngineScratch, project_root: &Path) -> Self {
+        let value = scratch.path().to_string_lossy().into_owned();
+        for name in oleafly_core::TEMP_DIRECTORY_VARIABLES {
+            self.variables.push((name.to_owned(), value.clone()));
+        }
+        self.scratch = Some(std::sync::Arc::new(scratch));
+        self.project_root = Some(project_root.to_owned());
+        self
+    }
+
+    fn path_excluded_root<'a>(&'a self, working_dir: &'a Path) -> &'a Path {
+        self.project_root.as_deref().unwrap_or(working_dir)
     }
 }
 
@@ -1044,15 +1063,12 @@ impl DocumentEngine for MarkdownEngine {
         let tectonic = find_bundled_tectonic().ok_or_else(||
             "Oleafly's bundled Tectonic PDF engine could not be located. Reinstall Oleafly, then compile again.".to_string()
         )?;
-        markdown_compile_spec(
-            self,
-            out_dir,
-            project_dir,
-            main_document,
-            PathBuf::from(pandoc),
+        let tools = MarkdownTools {
+            pandoc: PathBuf::from(pandoc),
             tectonic,
-            options,
-        )
+            scratch: pandoc_scratch(&pandoc_scratch_bases(out_dir))?,
+        };
+        markdown_compile_spec(self, out_dir, project_dir, main_document, tools, options)
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
@@ -1116,15 +1132,42 @@ fn tectonic_sidecar_candidates(
     candidates
 }
 
+fn pandoc_scratch_bases(out_dir: &Path) -> oleafly_core::EngineScratchBases {
+    let owned = crate::paths::oleafly_root()
+        .ok()
+        .map(|root| root.join(oleafly_core::ENGINE_TEMP_DIR));
+    oleafly_core::EngineScratchBases::new(owned, out_dir)
+}
+
+fn pandoc_scratch(
+    bases: &oleafly_core::EngineScratchBases,
+) -> Result<oleafly_core::EngineScratch, String> {
+    oleafly_core::EngineScratch::create(bases).map_err(pandoc_scratch_error)
+}
+
+fn pandoc_scratch_error(error: std::io::Error) -> String {
+    format!("Oleafly could not create a temporary folder for Pandoc: {error}")
+}
+
+struct MarkdownTools {
+    pandoc: PathBuf,
+    tectonic: PathBuf,
+    scratch: oleafly_core::EngineScratch,
+}
+
 fn markdown_compile_spec(
     engine: &MarkdownEngine,
     out_dir: &Path,
     project_dir: &Path,
     main_document: &str,
-    pandoc: PathBuf,
-    tectonic: PathBuf,
+    tools: MarkdownTools,
     options: CompileOptions,
 ) -> Result<EngineCompileSpec, String> {
+    let MarkdownTools {
+        pandoc,
+        tectonic,
+        scratch,
+    } = tools;
     let target = CompileTarget::Main { main_document };
     let input = project_dir.join(main_document);
     let artifacts = engine.artifacts(out_dir, target);
@@ -1132,14 +1175,23 @@ fn markdown_compile_spec(
         .pdf
         .as_ref()
         .ok_or_else(|| "Markdown PDF artifact was not declared".to_string())?;
+    let project = oleafly_core::plain_path(project_dir);
+    let project_text = project.to_string_lossy();
+    let resources = scratch
+        .pandoc_resource_path(&project)
+        .map_err(pandoc_scratch_error)?;
     let mut args = vec![
+        resources.argument.to_string_lossy().into_owned(),
         "--from=markdown".into(),
         "--standalone".into(),
-        format!("--resource-path={}", project_dir.to_string_lossy()),
         format!("--pdf-engine={}", tectonic.to_string_lossy()),
         "--pdf-engine-opt=--bundle".into(),
         format!("--pdf-engine-opt={}", tex_bundle_url()),
-        format!("--output={}", output.to_string_lossy()),
+        format!("--pdf-engine-opt=-Zsearch-path={project_text}"),
+        format!(
+            "--output={}",
+            oleafly_core::plain_path(output).to_string_lossy()
+        ),
         "--sandbox".into(),
         "--citeproc".into(),
     ];
@@ -1147,16 +1199,23 @@ fn markdown_compile_spec(
     args.extend(
         bibliographies
             .into_iter()
-            .map(|path| format!("--bibliography={path}")),
+            .map(|path| format!("--bibliography={}", project.join(path).to_string_lossy())),
     );
-    args.extend(["--".into(), input.to_string_lossy().into_owned()]);
+    args.extend([
+        "--".into(),
+        project.join(main_document).to_string_lossy().into_owned(),
+    ]);
+    let mut environment = EngineEnvironment::inherited(options.source_date_epoch);
+    if let Some((name, value)) = resources.variable {
+        environment = environment.with_variable(name, value.to_string_lossy().into_owned());
+    }
     Ok(EngineCompileSpec {
         executable: EngineExecutable::ExternalPath(pandoc),
         args,
         input: EngineInput::Direct(input),
         artifacts,
-        working_dir: project_dir.to_owned(),
-        environment: EngineEnvironment::inherited(options.source_date_epoch),
+        working_dir: scratch.path().to_owned(),
+        environment: environment.in_scratch(scratch, project_dir),
     })
 }
 
@@ -2709,7 +2768,10 @@ async fn run_supervised_process_with_environment(
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let is_luatex = is_luatex_invocation(path, args);
-    let path_env = crate::biber_toolchain::compile_path_env_for(path, working_dir);
+    let path_env = crate::biber_toolchain::compile_path_env_for(
+        path,
+        environment.path_excluded_root(working_dir),
+    );
     let mut command = tokio::process::Command::new(path);
     command.no_console();
     command
@@ -4802,15 +4864,75 @@ mod tests {
         );
     }
 
+    fn test_scratch(bases: &Path) -> oleafly_core::EngineScratch {
+        oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+            system: bases.to_path_buf(),
+            owned: None,
+            build: bases.join("build"),
+        })
+        .unwrap()
+    }
+
+    fn temp_variables(spec: &EngineCompileSpec) -> Vec<(&str, &str)> {
+        spec.environment
+            .variables
+            .iter()
+            .filter(|(name, _)| oleafly_core::TEMP_DIRECTORY_VARIABLES.contains(&name.as_str()))
+            .map(|(name, value)| (name.as_str(), value.as_str()))
+            .collect()
+    }
+
+    fn resource_variable(spec: &EngineCompileSpec) -> Option<&str> {
+        spec.environment
+            .variables
+            .iter()
+            .find(|(name, _)| name == oleafly_core::PANDOC_RESOURCE_PATH_VARIABLE)
+            .map(|(_, value)| value.as_str())
+    }
+
+    #[cfg(unix)]
+    fn defaults_argument(spec: &EngineCompileSpec) -> Option<PathBuf> {
+        spec.args
+            .first()
+            .and_then(|arg| arg.strip_prefix("--defaults="))
+            .map(PathBuf::from)
+    }
+
+    fn markdown_spec_with(
+        out: &Path,
+        project: &Path,
+        scratch: oleafly_core::EngineScratch,
+    ) -> EngineCompileSpec {
+        markdown_compile_spec(
+            &MARKDOWN_ENGINE,
+            out,
+            project,
+            "main.md",
+            MarkdownTools {
+                pandoc: PathBuf::from("/pandoc"),
+                tectonic: PathBuf::from("/tectonic"),
+                scratch,
+            },
+            CompileOptions::default(),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn markdown_compile_is_direct_and_uses_declared_artifacts() {
+        let bases = tempfile::tempdir().unwrap();
+        let scratch = test_scratch(bases.path());
+        let scratch_path = scratch.path().to_path_buf();
         let spec = markdown_compile_spec(
             &MARKDOWN_ENGINE,
             Path::new("/build"),
             Path::new("/project"),
             "chapters/main.md",
-            PathBuf::from("/cache/pandoc"),
-            PathBuf::from("/app/tectonic"),
+            MarkdownTools {
+                pandoc: PathBuf::from("/cache/pandoc"),
+                tectonic: PathBuf::from("/app/tectonic"),
+                scratch,
+            },
             CompileOptions::default(),
         )
         .unwrap();
@@ -4827,15 +4949,25 @@ mod tests {
             Some(PathBuf::from("/build/_oleafly_entry.pdf"))
         );
         assert_eq!(spec.artifacts.log, None);
+        assert_eq!(spec.working_dir, scratch_path);
+        assert_eq!(
+            spec.environment.path_excluded_root(&spec.working_dir),
+            Path::new("/project")
+        );
+        assert_eq!(
+            EngineEnvironment::default().path_excluded_root(Path::new("/project")),
+            Path::new("/project")
+        );
         assert_eq!(
             spec.args,
             [
+                "--resource-path=/project",
                 "--from=markdown",
                 "--standalone",
-                "--resource-path=/project",
                 "--pdf-engine=/app/tectonic",
                 "--pdf-engine-opt=--bundle",
                 format!("--pdf-engine-opt={}", tex_bundle_url()).as_str(),
+                "--pdf-engine-opt=-Zsearch-path=/project",
                 format!("--output={}", joined("/build", "_oleafly_entry.pdf")).as_str(),
                 "--sandbox",
                 "--citeproc",
@@ -4843,6 +4975,20 @@ mod tests {
                 joined("/project", "chapters/main.md").as_str(),
             ]
         );
+        let retry = args_without_bundle(&spec.args);
+        assert_eq!(retry[0], "--resource-path=/project");
+        assert!(retry
+            .iter()
+            .any(|arg| arg == "--pdf-engine-opt=-Zsearch-path=/project"));
+        assert_eq!(resource_variable(&spec), None);
+        let scratch_text = scratch_path.to_string_lossy().into_owned();
+        assert_eq!(
+            temp_variables(&spec),
+            ["TMP", "TEMP", "TMPDIR"].map(|name| (name, scratch_text.as_str()))
+        );
+        assert!(scratch_path.is_dir());
+        drop(spec);
+        assert!(!scratch_path.exists());
     }
 
     #[test]
@@ -4860,35 +5006,719 @@ mod tests {
         .unwrap();
         #[cfg(unix)]
         std::os::unix::fs::symlink(dir.join("references.bib"), dir.join("linked.bib")).unwrap();
-        let engine = MarkdownEngine;
-        let spec = markdown_compile_spec(
-            &engine,
-            &dir.join("build"),
-            &dir,
-            "main.md",
-            PathBuf::from("/pandoc"),
-            PathBuf::from("/tectonic"),
-            CompileOptions::default(),
-        )
-        .unwrap();
+        let bases = tempfile::tempdir().unwrap();
+        let spec = markdown_spec_with(&dir.join("build"), &dir, test_scratch(bases.path()));
         assert!(spec.args.iter().any(|arg| arg == "--citeproc"));
-        assert!(spec
-            .args
-            .iter()
-            .any(|arg| arg == "--bibliography=references.bib"));
         let bibliography_args: Vec<_> = spec
             .args
             .iter()
             .filter(|arg| arg.starts_with("--bibliography="))
+            .cloned()
             .collect();
         assert_eq!(
             bibliography_args,
             [
-                "--bibliography=references.bib",
-                "--bibliography=sources/refs.bib"
+                format!(
+                    "--bibliography={}",
+                    dir.join("references.bib").to_string_lossy()
+                ),
+                format!(
+                    "--bibliography={}",
+                    dir.join("sources/refs.bib").to_string_lossy()
+                ),
             ]
         );
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn markdown_pandoc_scratch_folder_is_fresh_safe_for_tex_and_outside_the_project() {
+        let base = tempfile::Builder::new()
+            .prefix("oleafly-pandoc-temp-")
+            .tempdir()
+            .unwrap();
+        let project = base.path().join("folders").join("Paper #2 {50% & more}");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("main.md"), "# Notes\n").unwrap();
+        let out = base
+            .path()
+            .join("data")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let production = pandoc_scratch_bases(&out);
+        assert_eq!(production.build, out);
+        assert_eq!(production.system, std::env::temp_dir());
+        assert!(production
+            .owned
+            .as_deref()
+            .is_some_and(|owned| owned.ends_with(oleafly_core::ENGINE_TEMP_DIR)));
+        let root = oleafly_core::plain_path(&base.path().canonicalize().unwrap());
+        let system = base.path().join("system tmp");
+        std::fs::create_dir_all(&system).unwrap();
+        let owned = base.path().join("data").join(oleafly_core::ENGINE_TEMP_DIR);
+        let bases = oleafly_core::EngineScratchBases {
+            system: system.clone(),
+            owned: Some(owned),
+            build: out.clone(),
+        };
+        let expected_parent = oleafly_core::tex_safe_path(&root)
+            .then(|| oleafly_core::plain_path(&system.canonicalize().unwrap()));
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let spec = |scratch| {
+            markdown_compile_spec(
+                &MARKDOWN_ENGINE,
+                &out,
+                &project,
+                "main.md",
+                MarkdownTools {
+                    pandoc: PathBuf::from("/pandoc"),
+                    tectonic: PathBuf::from("/tectonic"),
+                    scratch,
+                },
+                CompileOptions {
+                    source_date_epoch: Some(1_700_000_000),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let first = spec(pandoc_scratch(&bases).unwrap());
+        let second = spec(pandoc_scratch(&bases).unwrap());
+        assert_eq!(
+            first.environment.variables[0],
+            ("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string())
+        );
+        let first_scratch = PathBuf::from(temp_variables(&first)[0].1);
+        let second_scratch = PathBuf::from(temp_variables(&second)[0].1);
+        assert_ne!(first_scratch, second_scratch);
+        assert_eq!(first.working_dir, first_scratch);
+        assert_eq!(second.working_dir, second_scratch);
+        assert_eq!(
+            first.environment.path_excluded_root(&first.working_dir),
+            project
+        );
+        let canonical_project = project.canonicalize().unwrap();
+        for (name, value) in temp_variables(&first) {
+            let value = Path::new(value);
+            assert_eq!(value, first_scratch, "{name}");
+            assert!(value.is_dir(), "{name}");
+            assert!(value.starts_with(&root), "{}", value.display());
+            match &expected_parent {
+                Some(parent) => {
+                    assert_eq!(value.parent(), Some(parent.as_path()));
+                    assert!(oleafly_core::tex_safe_path(value), "{}", value.display());
+                }
+                None => assert!(value.to_string_lossy().ends_with('~')),
+            }
+            assert!(!value.starts_with(&project), "{name}");
+            assert!(!value.starts_with(&canonical_project), "{name}");
+        }
+        drop(first);
+        assert!(!first_scratch.exists());
+        assert!(second_scratch.is_dir());
+        drop(second);
+        assert!(!second_scratch.exists());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+    }
+
+    #[test]
+    fn markdown_arguments_do_not_depend_on_which_scratch_base_was_safe() {
+        let base = tempfile::tempdir().unwrap();
+        let project = base.path().join("Paper #2");
+        std::fs::create_dir_all(project.join("sources")).unwrap();
+        std::fs::write(project.join("main.md"), "See [@demo].").unwrap();
+        std::fs::write(project.join("sources/refs.bib"), "@misc{demo}").unwrap();
+        let system = base.path().join("tmp #1");
+        std::fs::create_dir(&system).unwrap();
+        let out = base.path().join("build 50%");
+        let unsafe_scratch =
+            oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+                system: system.clone(),
+                owned: Some(base.path().join("data {x}").join("engine-tmp")),
+                build: out.clone(),
+            })
+            .unwrap();
+        let unsafe_path = unsafe_scratch.path().to_path_buf();
+        assert!(unsafe_path.to_string_lossy().ends_with('~'));
+        let safe_bases = tempfile::tempdir().unwrap();
+        let safe = markdown_spec_with(&out, &project, test_scratch(safe_bases.path()));
+        let fallback = markdown_spec_with(&out, &project, unsafe_scratch);
+        assert_eq!(fallback.args, safe.args);
+        assert_eq!(fallback.working_dir, unsafe_path);
+        assert_eq!(
+            fallback
+                .environment
+                .path_excluded_root(&fallback.working_dir),
+            project
+        );
+        assert!(safe.args.contains(&format!(
+            "--bibliography={}",
+            project.join("sources/refs.bib").to_string_lossy()
+        )));
+        let scratch_text = unsafe_path.to_string_lossy().into_owned();
+        assert_eq!(
+            temp_variables(&fallback),
+            ["TMP", "TEMP", "TMPDIR"].map(|name| (name, scratch_text.as_str()))
+        );
+        assert_eq!(std::fs::read_dir(&system).unwrap().count(), 0);
+        drop(fallback);
+        assert!(!unsafe_path.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn markdown_hands_pandoc_project_paths_without_the_verbatim_prefix() {
+        let base = tempfile::tempdir().unwrap();
+        let project = std::fs::canonicalize(base.path()).unwrap().join("Paper");
+        std::fs::create_dir_all(project.join("sources")).unwrap();
+        std::fs::write(project.join("main.md"), "See [@demo].").unwrap();
+        std::fs::write(project.join("sources").join("refs.bib"), "@misc{demo}").unwrap();
+        assert!(project.to_string_lossy().starts_with(r"\\?\"));
+        let bases = tempfile::tempdir().unwrap();
+        let out = project.join(".oleafly").join("build");
+        let spec = markdown_spec_with(&out, &project, test_scratch(bases.path()));
+        let plain = oleafly_core::plain_path(&project);
+        let plain_text = plain.to_string_lossy();
+        assert!(plain_text.starts_with(|letter: char| letter.is_ascii_alphabetic()));
+        assert_eq!(resource_variable(&spec), None);
+        for expected in [
+            format!("--resource-path={plain_text}"),
+            format!("--pdf-engine-opt=-Zsearch-path={plain_text}"),
+            format!(
+                "--bibliography={}",
+                plain.join("sources/refs.bib").to_string_lossy()
+            ),
+            format!(
+                "--output={}",
+                oleafly_core::plain_path(&out)
+                    .join("_oleafly_entry.pdf")
+                    .to_string_lossy()
+            ),
+            plain.join("main.md").to_string_lossy().into_owned(),
+        ] {
+            assert!(spec.args.contains(&expected), "{expected} {:?}", spec.args);
+        }
+        assert!(
+            spec.args.iter().all(|arg| !arg.contains(r"\\?\")),
+            "{:?}",
+            spec.args
+        );
+    }
+
+    #[cfg(unix)]
+    const FAKE_TECTONIC: &str = r#"#!/bin/sh
+outdir=
+search=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --outdir) outdir=$2; shift ;;
+    -Zsearch-path=*) search=${1#-Zsearch-path=} ;;
+  esac
+  shift
+done
+cat > "$outdir/texput.tex"
+cp "$outdir/texput.tex" '{record}.tex'
+pwd -P > '{record}.cwd'
+(cd "$outdir" && pwd -P) > '{record}.outdir'
+printf '%s\n' "$outdir" > '{record}.outdir-argument'
+printf '%s\n' "$TMP" "$TEMP" "$TMPDIR" > '{record}.env'
+found() {
+  case $1 in
+    /*) [ -f "$1" ] ;;
+    *) [ -f "$1" ] || { [ -n "$search" ] && [ -f "$search/$1" ]; } ;;
+  esac
+}
+grep -oE '\\includegraphics(\[[^]]*\])?\{[^}]*\}' "$outdir/texput.tex" | sed 's/.*{//; s/}$//' > '{record}.images'
+while IFS= read -r image; do
+  if printf '%s' "$image" | grep -q '[#%^{}~&$\\]'; then
+    echo "unsafe image path: $image" >&2
+    exit 1
+  fi
+  if ! found "$image"; then
+    echo "missing image: $image" >&2
+    exit 1
+  fi
+done < '{record}.images'
+grep -oE '\\input\{[^}]*\}' "$outdir/texput.tex" | sed 's/.*{//; s/}$//' > '{record}.inputs'
+while IFS= read -r input; do
+  if ! found "$input" && ! found "$input.tex"; then
+    echo "missing input: $input" >&2
+    exit 1
+  fi
+done < '{record}.inputs'
+printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
+"#;
+
+    #[cfg(unix)]
+    const ONE_PIXEL_PNG: [u8; 70] = [
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240,
+        31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+
+    #[cfg(unix)]
+    const MARKER_CSL: &str = r#"<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0">
+  <info><title>Marker</title><id>marker</id><updated>2026-01-01T00:00:00+00:00</updated></info>
+  <citation><layout prefix="[CSLMARK " suffix="]" delimiter=", "><text variable="citation-number"/></layout></citation>
+  <bibliography><layout><text variable="title"/></layout></bibliography>
+</style>
+"#;
+
+    #[cfg(unix)]
+    struct RealPandocRun {
+        base: PathBuf,
+        _directory: tempfile::TempDir,
+        pandoc: PathBuf,
+        tectonic: PathBuf,
+        record: PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl RealPandocRun {
+        fn new() -> Option<Self> {
+            let triple = crate::biber_toolchain::host_triple_guess()?;
+            let pandoc = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("binaries")
+                .join(format!("pandoc-{triple}"));
+            if !pandoc.is_file() {
+                return None;
+            }
+            let directory = tempfile::Builder::new()
+                .prefix("oleafly-real-pandoc-")
+                .tempdir()
+                .unwrap();
+            let base = directory.path().canonicalize().unwrap();
+            let bin = base.join("bin");
+            std::fs::create_dir_all(&bin).unwrap();
+            let record = base.join("tectonic-run");
+            let tectonic = bin.join("tectonic");
+            Self::script(
+                &tectonic,
+                &FAKE_TECTONIC.replace("{record}", &record.to_string_lossy()),
+            );
+            Some(Self {
+                base,
+                _directory: directory,
+                pandoc,
+                tectonic,
+                record,
+            })
+        }
+
+        fn script(path: &Path, content: &str) {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::write(path, content).unwrap();
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        fn file(project: &Path, relative: &str, content: &[u8]) {
+            let path = project.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, content).unwrap();
+        }
+
+        fn project(&self, name: &str) -> PathBuf {
+            let project = self.base.join("folders").join(name);
+            Self::file(
+                &project,
+                "main.md",
+                concat!(
+                    "---\n",
+                    "title: Notes\n",
+                    "csl: styles/marker.csl\n",
+                    "header-includes:\n",
+                    "  - \\input{macros}\n",
+                    "  - \\input{tex/extra}\n",
+                    "---\n\n",
+                    "\\MACROTEXT{} and \\EXTRATEXT{}.\n\n",
+                    "As @knuth shows.\n\n",
+                    "![Root](root.png)\n\n",
+                    "![A plot](figs/plot.png)\n\n",
+                    "\\includegraphics{figs/raw.png}\n",
+                )
+                .as_bytes(),
+            );
+            for image in ["root.png", "figs/plot.png", "figs/raw.png"] {
+                Self::file(&project, image, &ONE_PIXEL_PNG);
+            }
+            Self::file(&project, "macros.tex", b"\\newcommand{\\MACROTEXT}{M}\n");
+            Self::file(&project, "tex/extra.tex", b"\\newcommand{\\EXTRATEXT}{E}\n");
+            Self::file(
+                &project,
+                "sources/refs.bib",
+                b"@book{knuth, author={Donald Knuth}, title={KnuthTitle}, year={1984}}\n",
+            );
+            Self::file(&project, "styles/marker.csl", MARKER_CSL.as_bytes());
+            project
+        }
+
+        fn spec(
+            &self,
+            out: &Path,
+            project: &Path,
+            scratch: oleafly_core::EngineScratch,
+        ) -> EngineCompileSpec {
+            markdown_compile_spec(
+                &MARKDOWN_ENGINE,
+                out,
+                project,
+                "main.md",
+                MarkdownTools {
+                    pandoc: self.pandoc.clone(),
+                    tectonic: self.tectonic.clone(),
+                    scratch,
+                },
+                CompileOptions::default(),
+            )
+            .unwrap()
+        }
+
+        fn scratch(&self, out: &Path) -> oleafly_core::EngineScratch {
+            let system = self.base.join("tmp");
+            std::fs::create_dir_all(&system).unwrap();
+            pandoc_scratch(&oleafly_core::EngineScratchBases {
+                system,
+                owned: Some(self.base.join("data").join(oleafly_core::ENGINE_TEMP_DIR)),
+                build: out.to_path_buf(),
+            })
+            .unwrap()
+        }
+
+        async fn run(&self, spec: &EngineCompileSpec, inherited: &[(&str, String)]) {
+            let EngineExecutable::ExternalPath(pandoc) = &spec.executable else {
+                panic!("{:?}", spec.executable);
+            };
+            let mut environment = spec.environment.clone();
+            environment.variables = inherited
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), value.clone()))
+                .chain(spec.environment.variables.iter().cloned())
+                .collect();
+            let (log, code) = run_supervised_process_with_environment(
+                pandoc,
+                &spec.args,
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &environment,
+            )
+            .await
+            .unwrap();
+            assert_eq!(code, Some(0), "{log}");
+        }
+
+        fn recorded(&self, kind: &str) -> String {
+            std::fs::read_to_string(format!("{}.{kind}", self.record.display())).unwrap()
+        }
+
+        fn assert_everything_resolved(&self, scratch: &Path) {
+            let images = self.recorded("images");
+            let images: Vec<_> = images.lines().collect();
+            assert_eq!(images.len(), 3, "{images:?}");
+            assert!(images.contains(&"figs/raw.png"), "{images:?}");
+            let media: Vec<_> = images
+                .iter()
+                .filter(|image| **image != "figs/raw.png")
+                .collect();
+            for image in &media {
+                let image = Path::new(image);
+                assert!(
+                    image.is_relative() || image.starts_with(scratch),
+                    "{}",
+                    image.display()
+                );
+            }
+            assert!(media.iter().any(|image| image.ends_with("/root.png")));
+            assert!(media.iter().any(|image| image.ends_with("/figs/plot.png")));
+            assert_eq!(
+                self.recorded("inputs").lines().collect::<Vec<_>>(),
+                ["macros", "tex/extra"]
+            );
+            let tex = self.recorded("tex");
+            assert!(tex.contains("CSLMARK"), "{tex}");
+            assert!(tex.contains("KnuthTitle"), "{tex}");
+            assert_eq!(Path::new(self.recorded("cwd").trim_end()), scratch);
+            assert!(Path::new(self.recorded("outdir").trim_end()).starts_with(scratch));
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_keeps_its_scratch_folder_out_of_the_project_when_the_inherited_temp_path_has_a_tilde(
+    ) {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Bob's notes");
+        let out = run
+            .base
+            .join("data")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let inherited_temp = run.base.join("oleafly~tmp");
+        std::fs::create_dir_all(&inherited_temp).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        let inherited = oleafly_core::TEMP_DIRECTORY_VARIABLES
+            .map(|name| (name, inherited_temp.to_string_lossy().into_owned()));
+        run.run(&spec, &inherited).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_absolute());
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        assert_eq!(std::fs::read_dir(&inherited_temp).unwrap().count(), 0);
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_compiles_a_project_whose_folder_name_tex_cannot_read() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Paper #2 {50% & more}");
+        let out = project.join(".oleafly").join("build");
+        std::fs::create_dir_all(&out).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        assert!(!scratch.starts_with(&project));
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        drop(spec);
+        assert!(!scratch.exists());
+        std::fs::remove_file(out.join(format!("{}.pdf", crate::paths::ENTRY_STEM))).unwrap();
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project)
+                .into_iter()
+                .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                .collect::<Vec<_>>(),
+            before
+                .into_iter()
+                .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(std::fs::read_dir(&out).unwrap().count(), 0);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_uses_relative_media_paths_when_no_temp_folder_is_safe_for_tex() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Paper #2 {50% & more}");
+        let system = run.base.join("tmp #1");
+        std::fs::create_dir_all(&system).unwrap();
+        let out = run.base.join("linked 50%").join("build");
+        let created = oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+            system: system.clone(),
+            owned: Some(run.base.join("data {x}").join("engine-tmp")),
+            build: out.clone(),
+        })
+        .unwrap();
+        let scratch = created.path().to_path_buf();
+        assert!(scratch.to_string_lossy().ends_with('~'));
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let spec = run.spec(&out, &project, created);
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_relative());
+        assert!(!run.recorded("tex").contains(&*run.base.to_string_lossy()));
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        assert_eq!(std::fs::read_dir(&system).unwrap().count(), 0);
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_with_a_cygwin_uname_on_the_path_writes_nothing_into_the_project() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Cygwin notes");
+        let cygwin = run.base.join("cygwin").join("bin");
+        std::fs::create_dir_all(&cygwin).unwrap();
+        RealPandocRun::script(&cygwin.join("uname"), "#!/bin/sh\necho Cygwin\n");
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        let path = format!(
+            "{}:{}",
+            cygwin.display(),
+            std::env::var("PATH").unwrap_or_default()
+        );
+        run.run(&spec, &[("PATH", path)]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_relative());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_reads_a_yaml_bibliography_and_style_through_the_resource_path() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.base.join("folders").join("Yaml {refs}");
+        RealPandocRun::file(
+            &project,
+            "main.md",
+            b"---\nbibliography: refs/refs.json\ncsl: styles/marker.csl\n---\n\nAs @lamport shows.\n",
+        );
+        RealPandocRun::file(
+            &project,
+            "refs/refs.json",
+            br#"[{"id": "lamport", "type": "book", "title": "LamportTitle", "issued": {"date-parts": [[1986]]}}]"#,
+        );
+        RealPandocRun::file(&project, "styles/marker.csl", MARKER_CSL.as_bytes());
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        assert!(!spec
+            .args
+            .iter()
+            .any(|arg| arg.starts_with("--bibliography=")));
+        run.run(&spec, &[]).await;
+        let tex = run.recorded("tex");
+        assert!(tex.contains("CSLMARK"), "{tex}");
+        assert!(tex.contains("LamportTitle"), "{tex}");
+        assert_eq!(Path::new(run.recorded("cwd").trim_end()), scratch);
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_finds_project_files_when_the_folder_name_has_a_path_separator_or_a_variable(
+    ) {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        for (index, name) in [
+            "Thesis 2024:25",
+            "Notes ${HOME} x",
+            "Draft 1:2 ${HOME} $x ${.} ${USERDATA} ${OLEAFLY_UNDEFINED}",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let project = run.project(name);
+            let out = if index == 0 {
+                run.base.join("data").join("build")
+            } else {
+                project.join(".oleafly").join("build")
+            };
+            let outside_the_build =
+                |snapshot: Vec<(String, u64, Option<std::time::SystemTime>)>| {
+                    snapshot
+                        .into_iter()
+                        .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                        .collect::<Vec<_>>()
+                };
+            std::fs::create_dir_all(&out).unwrap();
+            let before = crate::linked_registry::folder_snapshot_for_test(&project);
+            let created = run.scratch(&out);
+            let scratch = created.path().canonicalize().unwrap();
+            let spec = run.spec(&out, &project, created);
+            let defaults = defaults_argument(&spec);
+            assert_eq!(
+                defaults.as_deref().and_then(Path::parent),
+                name.contains(':').then_some(scratch.as_path()),
+                "{name}"
+            );
+            assert_eq!(
+                resource_variable(&spec),
+                (name.contains(':') && name.contains("${"))
+                    .then(|| project.to_string_lossy())
+                    .as_deref(),
+                "{name}"
+            );
+            run.run(&spec, &[]).await;
+            run.assert_everything_resolved(&scratch);
+            let pdf = out.join(format!("{}.pdf", crate::paths::ENTRY_STEM));
+            assert!(pdf.is_file(), "{name}");
+            std::fs::remove_file(pdf).unwrap();
+            drop(spec);
+            assert!(!scratch.exists(), "{name}");
+            assert_eq!(
+                outside_the_build(crate::linked_registry::folder_snapshot_for_test(&project)),
+                outside_the_build(before),
+                "{name}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_never_runs_a_program_from_the_project_folder() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Tools inside");
+        let tools = project.join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+        let ran = run.base.join("project-uname-ran");
+        RealPandocRun::script(
+            &tools.join("uname"),
+            &format!("#!/bin/sh\ntouch '{}'\necho Cygwin\n", ran.display()),
+        );
+        let pandoc = tools.join("pandoc");
+        std::os::unix::fs::symlink(&run.pandoc, &pandoc).unwrap();
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let mut spec = run.spec(&out, &project, created);
+        spec.executable = EngineExecutable::ExternalPath(pandoc);
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(!ran.exists());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
     }
 
     #[test]

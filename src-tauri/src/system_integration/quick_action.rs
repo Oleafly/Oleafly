@@ -1,15 +1,24 @@
 use super::ItemState;
+use serde_json::Value;
 use std::path::Path;
 
 pub(crate) const WORKFLOW_DIR: &str = "Open in Oleafly.workflow";
 const INFO_PLIST: &str = "Info.plist";
 const DOCUMENT: &str = "document.wflow";
+const SERVICE_MESSAGE: &str = "runWorkflowAsService";
+const SERVICES_STATUS: &str = "NSServicesStatus";
+#[cfg(target_os = "macos")]
+const SERVICES_DOMAIN: &str = "pbs";
 
 pub(crate) fn valid_bundle_id(bundle_id: &str) -> bool {
     !bundle_id.is_empty()
         && bundle_id
             .chars()
             .all(|next| next.is_ascii_alphanumeric() || next == '.' || next == '-')
+}
+
+pub(crate) fn workflow_id(bundle_id: &str) -> String {
+    format!("{bundle_id}.open-folder-quick-action")
 }
 
 pub(crate) fn shell_command(bundle_id: &str) -> String {
@@ -33,13 +42,13 @@ const PLIST_HEAD: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE 
 
 pub(crate) fn info_plist(menu_title: &str, bundle_id: &str) -> String {
     let title = escape(menu_title);
-    let id = escape(bundle_id);
+    let id = escape(&workflow_id(bundle_id));
     format!(
         "{PLIST_HEAD}<dict>
 \t<key>CFBundleDevelopmentRegion</key>
 \t<string>en</string>
 \t<key>CFBundleIdentifier</key>
-\t<string>{id}.open-folder-quick-action</string>
+\t<string>{id}</string>
 \t<key>CFBundleInfoDictionaryVersion</key>
 \t<string>6.0</string>
 \t<key>CFBundleName</key>
@@ -53,13 +62,17 @@ pub(crate) fn info_plist(menu_title: &str, bundle_id: &str) -> String {
 \t<key>NSServices</key>
 \t<array>
 \t\t<dict>
+\t\t\t<key>NSBackgroundColorName</key>
+\t\t\t<string>background</string>
+\t\t\t<key>NSIconName</key>
+\t\t\t<string>NSActionTemplate</string>
 \t\t\t<key>NSMenuItem</key>
 \t\t\t<dict>
 \t\t\t\t<key>default</key>
 \t\t\t\t<string>{title}</string>
 \t\t\t</dict>
 \t\t\t<key>NSMessage</key>
-\t\t\t<string>runWorkflowAsService</string>
+\t\t\t<string>{SERVICE_MESSAGE}</string>
 \t\t\t<key>NSRequiredContext</key>
 \t\t\t<dict>
 \t\t\t\t<key>NSApplicationIdentifier</key>
@@ -186,6 +199,27 @@ pub(crate) fn document(bundle_id: &str) -> String {
 \t<dict/>
 \t<key>workflowMetaData</key>
 \t<dict>
+\t\t<key>applicationBundleID</key>
+\t\t<string>com.apple.finder</string>
+\t\t<key>applicationBundleIDsByPath</key>
+\t\t<dict>
+\t\t\t<key>/System/Library/CoreServices/Finder.app</key>
+\t\t\t<string>com.apple.finder</string>
+\t\t</dict>
+\t\t<key>applicationPath</key>
+\t\t<string>/System/Library/CoreServices/Finder.app</string>
+\t\t<key>applicationPaths</key>
+\t\t<array>
+\t\t\t<string>/System/Library/CoreServices/Finder.app</string>
+\t\t</array>
+\t\t<key>inputTypeIdentifier</key>
+\t\t<string>com.apple.Automator.fileSystemObject.folder</string>
+\t\t<key>outputTypeIdentifier</key>
+\t\t<string>com.apple.Automator.nothing</string>
+\t\t<key>presentationMode</key>
+\t\t<integer>15</integer>
+\t\t<key>processesInput</key>
+\t\t<false/>
 \t\t<key>serviceApplicationBundleID</key>
 \t\t<string>com.apple.finder</string>
 \t\t<key>serviceApplicationPath</key>
@@ -195,6 +229,10 @@ pub(crate) fn document(bundle_id: &str) -> String {
 \t\t<key>serviceOutputTypeIdentifier</key>
 \t\t<string>com.apple.Automator.nothing</string>
 \t\t<key>serviceProcessesInput</key>
+\t\t<false/>
+\t\t<key>systemImageName</key>
+\t\t<string>NSActionTemplate</string>
+\t\t<key>useAutomaticInputType</key>
 \t\t<false/>
 \t\t<key>workflowTypeIdentifier</key>
 \t\t<string>com.apple.Automator.servicesMenu</string>
@@ -272,7 +310,10 @@ pub(crate) fn state(services: &Path, bundle_id: &str) -> ItemState {
     };
     let contents = root.join("Contents");
     let current = metadata.is_dir()
-        && contents.join(INFO_PLIST).is_file()
+        && installed_info(services)
+            .as_ref()
+            .and_then(installed_identifier)
+            == Some(workflow_id(bundle_id).as_str())
         && std::fs::read_to_string(contents.join(DOCUMENT)).ok() == Some(document(bundle_id));
     #[cfg(target_os = "macos")]
     let current = current
@@ -290,6 +331,97 @@ pub(crate) fn state(services: &Path, bundle_id: &str) -> ItemState {
     }
 }
 
+fn installed_info(services: &Path) -> Option<Value> {
+    let info = plist::Value::from_file(
+        services
+            .join(WORKFLOW_DIR)
+            .join("Contents")
+            .join(INFO_PLIST),
+    )
+    .ok()?;
+    serde_json::to_value(info).ok()
+}
+
+fn installed_identifier(info: &Value) -> Option<&str> {
+    info.get("CFBundleIdentifier")?.as_str()
+}
+
+pub(crate) fn installed_menu_title(info: &Value) -> Option<&str> {
+    info.get("NSServices")?
+        .as_array()?
+        .iter()
+        .find_map(|service| service.get("NSMenuItem")?.get("default")?.as_str())
+}
+
+pub(crate) fn installed_service(
+    services: &Path,
+    bundle_id: &str,
+    current_title: &str,
+) -> (String, String) {
+    let info = installed_info(services);
+    let id = info
+        .as_ref()
+        .and_then(installed_identifier)
+        .map_or_else(|| workflow_id(bundle_id), str::to_string);
+    let title = info
+        .as_ref()
+        .and_then(installed_menu_title)
+        .unwrap_or(current_title)
+        .to_string();
+    (id, title)
+}
+
+pub(crate) fn shown_in_quick_actions(
+    services_status: &Value,
+    service_id: &str,
+    menu_title: &str,
+) -> bool {
+    let key = format!("{service_id} - {menu_title} - {SERVICE_MESSAGE}");
+    services_status
+        .get(key.as_str())
+        .and_then(|service| service.get("presentation_modes"))
+        .and_then(|modes| modes.get("ContextMenu"))
+        .is_some_and(|flag| match flag {
+            Value::Bool(on) => *on,
+            Value::Number(number) => number.as_f64().is_some_and(|number| number != 0.0),
+            _ => false,
+        })
+}
+
+pub(crate) fn quick_actions_switch(
+    export: &[u8],
+    service_id: &str,
+    menu_title: &str,
+) -> Option<bool> {
+    let mut domain = plist::Value::from_reader(std::io::Cursor::new(export))
+        .ok()?
+        .into_dictionary()?;
+    let services_status = match domain.remove(SERVICES_STATUS) {
+        Some(status) => serde_json::to_value(status).ok()?,
+        None => Value::Null,
+    };
+    Some(shown_in_quick_actions(
+        &services_status,
+        service_id,
+        menu_title,
+    ))
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn export_defaults(domain: &str) -> Option<Vec<u8>> {
+    let mut command = std::process::Command::new("/usr/bin/defaults");
+    command.args(["export", domain, "-"]);
+    let output =
+        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+            .ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn quick_actions_menu(service_id: &str, menu_title: &str) -> Option<bool> {
+    quick_actions_switch(&export_defaults(SERVICES_DOMAIN)?, service_id, menu_title)
+}
+
 #[cfg(target_os = "macos")]
 pub(crate) fn services_dir() -> Result<std::path::PathBuf, String> {
     Ok(crate::paths::home_dir()?.join("Library").join("Services"))
@@ -297,17 +429,24 @@ pub(crate) fn services_dir() -> Result<std::path::PathBuf, String> {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn refresh_services() {
-    let child = std::process::Command::new("/System/Library/CoreServices/pbs")
+    let Ok(mut child) = std::process::Command::new("/System/Library/CoreServices/pbs")
         .arg("-update")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .spawn();
-    if let Ok(mut child) = child {
-        std::thread::spawn(move || {
-            let _ = child.wait();
-        });
+        .spawn()
+    else {
+        return;
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while std::time::Instant::now() < deadline {
+        if !matches!(child.try_wait(), Ok(None)) {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(target_os = "macos")]

@@ -1530,8 +1530,9 @@
     },
     "packaged": "Installeret med Oleafly-pakken.",
     "quickAction": {
-      "label": "Hurtig handling i Finder",
-      "description": "Højreklik på en mappe i Finder, og vælg Hurtige handlinger › Åbn i Oleafly."
+      "label": "Hurtige kommandoer i Finder",
+      "description": "Føjer Åbn i Oleafly til menuen Tjenester, når du højreklikker på en mappe i Finder.",
+      "menuHint": "Ikke under Hurtige kommandoer endnu. Højreklik på en mappe, vælg Hurtige kommandoer › Tilpas, og slå {{title}} til."
     },
     "explorerMenu": {
       "label": "Højrekliksmenu i Stifinder",

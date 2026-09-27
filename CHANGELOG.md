@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-27
+
 ### Added
 
 - The update window shows what changed in every version since the one you
@@ -16,6 +18,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   snippets have a copy button.
 - Help & About > What's new opens the full changelog inside Oleafly. It marks
   the version you are on and says whether you are up to date.
+- Open any folder on your computer as a project and work on it where it
+  is (#114). Use Open folder in the library, Cmd/Ctrl+Shift+O, the command
+  palette, or File > Open Folder and Open Recent on macOS. Oleafly keeps
+  builds, settings, checkpoints and chats in its own data folder, so nothing
+  is added to your folder unless you ask for it.
+- Oleafly works out which file is the main document of a folder you open.
+  It reads `% !TeX root` lines, `.latexmkrc`, `typst.toml` and the files
+  themselves. With one clear candidate the folder opens straight into the
+  editor. With several it asks which one and remembers your answer. A folder
+  without one opens anyway, and you can pick Set as main in the file tree
+  later.
+- A folder you open is restricted until you trust it. Git, the terminal,
+  agents and shell escape stay off, and a banner offers to trust the folder
+  or the folder it sits in.
+- You can open folders from outside the app. On macOS, drop a folder on the
+  Dock icon or use Open in Oleafly in Finder. It is in the Services menu
+  right away and under Quick Actions once you turn it on there. On Windows,
+  right-click a folder, or the empty space inside one, and choose Open with
+  Oleafly (under Show more options on Windows 11). On Linux, Dolphin and
+  Nemo get an entry, and Settings can add one for Nautilus. In a terminal,
+  `oleafly open <folder>` or `oleafly .` opens the folder. Settings > System
+  integration turns each of these on or off.
+- The library lists opened folders next to your projects, marked External.
+  A card says when its folder is missing, disconnected or can't be read, and
+  Locate helps you find it again. Copy into library makes a copy you own,
+  and Remove from Oleafly leaves the files where they are. Advanced filters
+  has a Location filter for projects in Oleafly or external ones.
+- A read-only folder opens for reading and compiling. Editing is switched
+  off, and a change that can't be saved says so in one sentence instead of
+  showing the system's error.
 
 ### Changed
 
@@ -28,17 +60,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   update fails, Try again retries it from the window.
 - Notifications only appear for something you just did, and only once.
   Work that runs on its own, such as outline and index updates, the checks
-  after you import a project, auto compile, language servers, downloads and
-  checkpoints, no longer pops up messages. A message that repeats updates in
-  place instead of stacking, and no more than four show at a time. A failed
-  autosave or checkpoint still warns you, once per project. When an
-  automatic compile fails for a reason you can fix, the preview shows the
-  fix as a button, or the toolbar does when the preview is hidden.
+  after you import a project, auto compile, language servers, downloads,
+  checkpoints and proofreading, no longer pops up messages. Actions whose
+  result you can already see, such as copying a citation, renaming or
+  importing a project, or pasting an image, no longer confirm it with a
+  message, and the copy buttons in the equation and reference tools say
+  Copied instead. A message that repeats updates in place instead of
+  stacking, and no more than four show at a time. A failed autosave or
+  checkpoint still warns you, once per project. When an automatic compile
+  fails for a reason you can fix, the preview shows the fix as a button, or
+  the toolbar does when the preview is hidden.
 - Setting up the language service is no longer a pop-up. Project info shows
   a Set up button, and a dot on its toolbar button tells you setup is
   waiting.
 - The offer to install a project's pinned TeX packages now appears when a
   compile fails for lack of them, instead of every time the project opens.
+- When a compile cannot download the TeX packages a document needs, for
+  example while you are offline, the preview says so, and Oleafly compiles
+  again by itself once the connection comes back. It used to show an error
+  with a Compile again button and wait for you to press it.
+- Spelling and grammar checks now start at `\begin{document}`. Words in the
+  preamble, where a document sets up its packages and macros, are no longer
+  flagged.
+- The library is sorted by activity: the last time you opened a project or
+  the last time its files changed, whichever is newer. The separate Recent
+  row is gone.
 
 ### Fixed
 
@@ -80,7 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Editing in Markdown Visual mode no longer rewrites the rest of the file.
   Comments, citations and footnotes you did not touch are saved as they were.
 - Word counts include Chinese, Japanese, Cyrillic, Greek and other scripts,
-  and Project info agrees with the word count window.
+  and Project info agrees with the word count window. File paths and
+  options inside commands no longer count as words.
 - Adding a word to the dictionary keeps Hindi vowel signs and Persian
   joiners. Typing `'` or `"` in LaTeX no longer inserts a second quote, and
   citation keys for new entries spell accented names with plain letters
@@ -98,7 +145,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A compile that stops on a broken image now says which image and what is
   wrong with it, such as an empty or cut-off file or a web page saved with a
   .pdf name, and how to fix it. Before, Tectonic could stop with only a
-  libpng error and no file name. This works in the app and in `oleaflyc`.
+  libpng error and no file name. This works in the app and in the `oleafly`
+  command-line tool.
 - Old copies of Biber no longer pile up after an update. Each Biber version
   unpacks into its own folder, and a copy that no Biber on your computer
   uses any more is removed after 7 days. That cleanup runs in the
@@ -122,10 +170,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Windows. Working out which of your agents can share your skills ran on the
   thread that draws the window.
 - Git commands that print a great deal, such as a diff of a large tracked
-  file, keep the first 64 MiB of output instead of failing outright. Staging
-  and committing a large project now get ten minutes before Oleafly gives up
-  on them, up from two, because antivirus software that scans every file can
-  make them slow without anything being wrong.
+  file, keep the first 64 MiB of output instead of failing outright.
+  Commands that go through every file of a large project, such as staging,
+  committing, switching branches, merging and stashing, now get ten minutes
+  before Oleafly gives up on them, up from two, because antivirus software
+  that scans every file can make them slow without anything being wrong.
 - A biblatex bibliography no longer makes the first compile wait for Biber
   to unpack itself again. Biber expands to about 250 MB the first time it
   runs, which takes 10 to 20 seconds, and it used to do that in the system
@@ -136,6 +185,116 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so updates work on networks that require one. If the Windows installer
   cannot be started, the update window now shows the error. Before, Oleafly
   restarted as if it had updated and came back on the old version.
+- If an update fails to download or install from Settings or About, the
+  error and the Try again button stay on screen. A progress update that
+  arrived late used to switch the checker back to "Installing…" with a full
+  bar and hide the error.
+- Compiling while a project's document engine is still loading now waits
+  and compiles as soon as the engine is ready. It used to stop with
+  "Compile is disabled until the document engine is loaded."
+- The compile log no longer shows the same LaTeX or package error twice,
+  and Tectonic's own output, which is added to the end of a failed
+  compile's log, is no longer counted as more errors. `! LaTeX Error`
+  messages now carry their line number, and an error printed straight after
+  an Info line is no longer merged into it and lost.
+- Error marks in the editor and Go to PDF pick the right file when two
+  files share a name or macOS stores a file name with decomposed accents.
+  Clicking PDF text that comes from a file outside the project no longer
+  jumps to an unrelated line in the file you have open.
+- Clicking a word in the PDF selects the whole word in the source in Hindi,
+  Thai, Hebrew with vowel points, Persian, and text with decomposed
+  accents. It used to select part of the word, or part of an earlier one.
+- Find and replace with Preserve case on keeps the replacement as you typed
+  it when the match has no upper or lower case, such as Chinese, Hebrew or
+  a number. It used to lowercase it. Replace no longer just moves to the
+  next match in text with decomposed accents or ligatures, and `\n` and
+  `\t` in the replacement insert a line break and a tab instead of the
+  typed characters.
+- In Emacs mode, `C-x C-l` lowercases the selected region. It used to
+  uppercase it, like `C-x C-u`.
+- The inline suggestion completes reference and citation keys that contain
+  `:`, `-` or accented letters, such as `fig:results-plot` or `úvod`.
+  Before, it looked only at the part after the last such character and
+  suggested the wrong key or nothing.
+- Citation completion and bibliography summaries show names and titles
+  written with LaTeX accents as letters, such as Novák instead of
+  `Nov{\'a}k`, and searching for "novak" finds them. `@string`, `@preamble`
+  and `@comment` are no longer offered as citation keys.
+- Commands named with non-English letters, such as `\výsledek`, which
+  XeLaTeX and LuaLaTeX allow, are no longer reported as malformed. The
+  outline, the index and completion read the whole name.
+- The outline and the breadcrumb show section titles written with LaTeX
+  accents as letters, so `\'Uvod` reads Úvod and `Stra\ss e` reads Straße.
+  The breadcrumb also shows `\&` and `\%` as & and %.
+- `\input`, `\includegraphics` and Typst image paths typed with accents
+  find files whose names macOS stores with decomposed accents. Completion
+  of labels, citation keys and heading links works for keys with combining
+  marks, such as Hindi or Hebrew ones.
+- In Typst, a URL such as `https://typst.app` is no longer read as the
+  start of a `//` comment. The rest of the line used to turn grey, skip
+  spell check and hide any label on it. Escaped characters such as `\$` and
+  `\@` show as plain text instead of starting maths or a reference.
+- Spell check in Markdown skips Pandoc attributes, such as the
+  `{.underline}` the toolbar adds, heading ids like `{#sec:intro}`,
+  `{width=80%}` and `::: {.note}` fences. E-mail addresses with accented
+  letters are skipped in every format, and Markdown link and image paths
+  written with `%20`-style escapes point at the right file.
+- English spell check no longer marks `students'` as a mistake because of
+  the apostrophe at the end, or a word in TeX quotes such as
+  ``` ``word'' ```. Words typed with a curly apostrophe, such as don’t or
+  Italian dell’anno, are accepted.
+- Pasting from Word or a web page into a LaTeX file keeps non-breaking
+  spaces as `~`, as in Czech `v~místě` or French `«~oui~»`. They used to
+  become plain spaces. Empty filler paragraphs are dropped.
+- Images you paste or drop in get file names and figure labels spelled with
+  plain letters, so `údolí hora.png` is saved as `udoli-hora.png`, and
+  `řeka.png` gets the label `fig:reka` instead of `fig:eka`. An image named
+  in a script with no Latin spelling, such as Cyrillic or Chinese, gets a
+  name with the date and time.
+- A figure pasted in Markdown Visual mode is saved as a Markdown image,
+  `![caption](path)`. It used to be written into the file as HTML.
+- In Markdown Visual mode, the tooltip on a misspelled word and the labels
+  read by screen readers use the interface language. They were always in
+  English.
+- When you import a document as a Markdown or Typst project, the notice
+  after the conversion names that format. It always said LaTeX, whatever
+  you chose.
+- In Settings > Downloads, a font or template pack that is downloading
+  keeps its progress when you close and reopen Settings, and a second
+  download cannot start until it finishes. A failed download or removal
+  says what failed in a plain sentence instead of showing the raw error.
+- Clicking twice no longer runs an action twice. Create project and Refine
+  with AI in PDF import, Fork in the Library, and saving a diagram as a new
+  project could each make two projects. Clearing the Recycle Bin or
+  deleting all projects in Settings could start again after you closed and
+  reopened Settings.
+- In the assistant's research results, Open source only appears when the
+  result has a link to open. It used to appear on every result and show an
+  error when there was no link.
+- Compiling from a file with `% !TeX root = thesis.tex` failed with "The
+  main document changed". It now builds the file the comment names.
+- Markdown to PDF on Windows no longer leaves a `media-...` folder in the
+  project when the Windows temp folder has a shortened name, such as
+  `C:\Users\JOHNSM~1\AppData\Local\Temp`.
+- Listing projects, drawing thumbnails and exporting no longer create an
+  empty `.oleafly/build` folder in projects that were never compiled. One
+  unreadable subfolder no longer empties the file tree.
+- Opening Oleafly while it is already running brings the open window
+  forward instead of starting a second copy.
+- If the interface crashes, you can still close the window.
+
+### Security
+
+- Updated prosemirror-view, the editing library behind Markdown Visual
+  mode, from 1.42.2 to 1.42.3. It fixes a security advisory about crafted
+  HTML pasted into the editor (GHSA-c8x8-7fp4-3x9w).
+- The GitHub token is only sent to github.com. Git used to offer it to any
+  HTTPS host a repository pointed at.
+- Linking a GitHub repository no longer replaces an existing remote without
+  asking, and Oleafly no longer creates a repository inside another one.
+- Background Git reads no longer run programs that a repository's own
+  configuration names, and the LaTeX language server no longer runs a
+  project's `.latexmkrc` when it starts.
 
 ## [0.4.2] - 2026-09-20
 
@@ -2300,7 +2459,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...v0.4.0

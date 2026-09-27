@@ -1,6 +1,7 @@
 mod build;
 mod compile_log;
 mod detect;
+mod engine_temp;
 mod error;
 mod image_check;
 pub mod locking;
@@ -18,6 +19,12 @@ pub use detect::{
     DetectOptions, Detection, DetectionSource, DocumentKind, Reason, SourceFamily,
     TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES,
     DETECT_MAX_SOURCES,
+};
+#[cfg(windows)]
+pub use engine_temp::long_path_name;
+pub use engine_temp::{
+    plain_path, tex_safe_path, EngineScratch, EngineScratchBases, PandocResourcePath,
+    ENGINE_TEMP_DIR, PANDOC_RESOURCE_PATH_VARIABLE, TEMP_DIRECTORY_VARIABLES,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use image_check::{

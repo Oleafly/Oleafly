@@ -388,9 +388,9 @@
       "title": "Oleafly tuto složku nemůže otevřít.",
       "body": "Zkontrolujte oprávnění složky a zkuste to znovu. Otevřené soubory tu zůstávají."
     },
-    "locate": "Najít…",
+    "locate": "Najít",
     "useThisFolder": "Použít tuto složku",
-    "saveCopy": "Uložit kopii…",
+    "saveCopy": "Uložit kopii",
     "tryAgain": "Zkusit znovu",
     "savedCopy": "Otevřené soubory byly uloženy do {{folder}}."
   },
@@ -1070,10 +1070,11 @@
   },
   "quickActionOffer": {
     "title": "Otevírejte složky z Finderu",
-    "body": "Přidejte Otevřít v Oleafly do rychlých akcí Finderu. Pak můžete kliknout pravým tlačítkem na libovolnou složku a otevřít ji tady.",
+    "body": "Přidejte Otevřít v Oleafly do Finderu. Z nabídky Služby funguje hned, z nabídky Rychlé akce až po zapnutí.",
     "add": "Přidat do Finderu",
     "notNow": "Teď ne",
-    "added": "Přidáno. Ve Finderu klikněte pravým tlačítkem na složku a vyberte Rychlé akce › Otevřít v Oleafly.",
+    "added": "Přidáno. Teď ji najdete v nabídce Služby ve Finderu. Pokud ji chcete používat i z nabídky Rychlé akce, klikněte pravým tlačítkem na složku a zapněte ji v nabídce Rychlé akce › Vlastní.",
+    "addedInQuickActions": "Přidáno. Klikněte pravým tlačítkem na složku a najdete ji v nabídce Rychlé akce.",
     "failed": "Přidání se nezdařilo. Můžete to zkusit znovu v Nastavení › Obecné."
   }
 }

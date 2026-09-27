@@ -67,20 +67,15 @@
       "anyTime": "Any time",
       "last7Days": "Last 7 days",
       "last30Days": "Last 30 days",
-      "lastYear": "Last year"
+      "lastYear": "Last year",
+      "location": "Location",
+      "locationAll": "All projects",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "External projects"
     },
     "openFolder": "Open folder",
     "openFolderShortcut": "Open folder ({{shortcut}})",
-    "createFirstProject": "Create new project",
-    "scope": {
-      "label": "Show projects",
-      "all": "All",
-      "library": "In Oleafly",
-      "folders": "Folders"
-    },
-    "recent": {
-      "title": "Recent"
-    }
+    "createFirstProject": "Create new project"
   },
   "projects": {
     "open": "Open {{name}}",
@@ -94,7 +89,7 @@
     "actions": "Actions for {{name}}",
     "details": "Project details",
     "exportHistory": "Export history",
-    "changeColor": "Change project color",
+    "changeColor": "Project color",
     "fork": "Fork project",
     "delete": "Delete project",
     "favoriteAdd": "Add to favorites",
@@ -484,7 +479,6 @@
     "dismiss": "Dismiss"
   },
   "folder": {
-    "badge": "Folder",
     "state": {
       "missing": "Folder missing",
       "offline": "Drive not connected",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "Can't find “{{name}}”",
-        "body": "It was at {{path}} and might have been moved or deleted. Locate it to keep its chats and history."
+        "body": "It was at <path>{{path}}</path> and might have been moved or deleted. Locate it to keep its chats and history."
       },
       "offline": {
         "title": "“{{name}}” is on a drive that isn't connected",
-        "body": "Connect the drive or network share that holds {{path}}, then try again."
+        "body": "Connect the drive or network share that holds <path>{{path}}</path>, then try again."
       },
       "replaced": {
         "title": "“{{name}}” was replaced",
-        "body": "The folder at {{path}} isn't the one you opened before. Use it only if you trust it. Oleafly turns off trust and approvals when you switch."
+        "body": "The folder at <path>{{path}}</path> isn't the one you opened before. Use it only if you trust it. Oleafly turns off trust and approvals when you switch."
       },
       "permissionDenied": {
         "title": "Oleafly can't open “{{name}}”",
         "bodyMac": "Allow Oleafly to use this folder in System Settings › Privacy & Security › Files and Folders, then try again.",
-        "bodyOther": "Your account can't read {{path}}. Check the folder's permissions, then try again."
+        "bodyOther": "Your account can't read <path>{{path}}</path>. Check the folder's permissions, then try again."
       },
       "back": {
         "title": "“{{name}}” is back",
-        "body": "Oleafly can reach {{path}} again."
+        "body": "Oleafly can reach <path>{{path}}</path> again."
       },
-      "locate": "Locate…",
+      "locate": "Locate",
       "tryAgain": "Try again",
       "useThisFolder": "Use this folder",
-      "checking": "Checking…",
+      "checking": "Checking",
       "still": "Oleafly still can't reach it."
     },
     "copy": {

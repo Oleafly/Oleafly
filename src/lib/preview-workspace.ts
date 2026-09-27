@@ -7,6 +7,7 @@ import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import type { TexFlavor } from "@/lib/tauri";
 import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
@@ -120,7 +121,9 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       if (payload.action !== "engine") return;
       toast.errorUnique(
         engineSwitchToastKey(projectId),
-        i18n.t(($) => $.shell.enginePicker.switchFailed),
+        decodeAppError(error)
+          ? describeError(error)
+          : i18n.t(($) => $.shell.enginePicker.switchFailed),
       );
     });
   });

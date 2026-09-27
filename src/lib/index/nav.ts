@@ -3,6 +3,7 @@ import { formatList } from "@/lib/intl";
 import type { EditorView } from "@codemirror/view";
 import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useReferencesStore } from "@/store/references";
 import { useRenameStore } from "@/store/rename";
@@ -247,6 +248,10 @@ export function findReferences(view: EditorView): boolean {
 export function startRename(view: EditorView): boolean {
   const sym = legacySymbolAtCursor(view);
   if (!sym) return false;
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    showLookupResult(readOnlyFolderMessage());
+    return true;
+  }
   const index = useIndexStore.getState().index;
   const def = (index?.definitionFor(sym) ?? sym) as Sym;
   if (!RENAMABLE.has(def.kind as DefKind)) {
@@ -301,6 +306,10 @@ export async function applyRename(
   sym: Sym,
   newName: string,
 ): Promise<RenameOutcome> {
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    toast.error(readOnlyFolderMessage());
+    return "skipped";
+  }
   const store = useIndexStore.getState();
   const index = store.index;
   if (!index) return "skipped";

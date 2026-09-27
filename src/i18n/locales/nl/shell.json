@@ -384,9 +384,9 @@
       "title": "Oleafly kan deze map niet openen.",
       "body": "Controleer de rechten van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
     },
-    "locate": "Zoeken…",
+    "locate": "Zoeken",
     "useThisFolder": "Deze map gebruiken",
-    "saveCopy": "Kopie opslaan…",
+    "saveCopy": "Kopie opslaan",
     "tryAgain": "Opnieuw proberen",
     "savedCopy": "Je geopende bestanden zijn opgeslagen in {{folder}}."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Mappen openen vanuit Finder",
-    "body": "Voeg Openen in Oleafly toe aan de snelle acties van Finder. Daarna kun je met de rechtermuisknop op elke map klikken om hem hier te openen.",
+    "body": "Voeg Openen in Oleafly toe aan Finder. Hij werkt meteen via het menu Voorzieningen, en via Snelle taken zodra je hem inschakelt.",
     "add": "Toevoegen aan Finder",
     "notNow": "Niet nu",
-    "added": "Toegevoegd. Klik in Finder met de rechtermuisknop op een map en kies Snelle acties › Openen in Oleafly.",
+    "added": "Toegevoegd. Hij staat nu in het menu Voorzieningen in Finder. Wil je hem ook via Snelle taken gebruiken, klik dan met de rechtermuisknop op een map en schakel hem in bij Snelle taken › Pas aan.",
+    "addedInQuickActions": "Toegevoegd. Klik met de rechtermuisknop op een map, dan vind je hem onder Snelle taken.",
     "failed": "Toevoegen is mislukt. Je kunt het opnieuw proberen via Instellingen › Algemeen."
   }
 }

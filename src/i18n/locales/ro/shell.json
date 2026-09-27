@@ -386,9 +386,9 @@
       "title": "Oleafly nu poate deschide acest folder.",
       "body": "Verifică permisiunile folderului și încearcă din nou. Fișierele deschise rămân aici."
     },
-    "locate": "Localizează…",
+    "locate": "Localizează",
     "useThisFolder": "Folosește acest folder",
-    "saveCopy": "Salvează o copie…",
+    "saveCopy": "Salvează o copie",
     "tryAgain": "Încearcă din nou",
     "savedCopy": "Fișierele deschise au fost salvate în {{folder}}."
   },
@@ -1051,10 +1051,11 @@
   },
   "quickActionOffer": {
     "title": "Deschide foldere din Finder",
-    "body": "Adaugă Deschide în Oleafly la Acțiunile rapide din Finder. Apoi poți face clic dreapta pe orice folder ca să-l deschizi aici.",
+    "body": "Adaugă Deschide în Oleafly în Finder. Funcționează imediat din meniul Servicii, iar din Acțiuni rapide după ce o activezi.",
     "add": "Adaugă în Finder",
     "notNow": "Nu acum",
-    "added": "Gata. Fă clic dreapta pe un folder în Finder și alege Acțiuni rapide › Deschide în Oleafly.",
+    "added": "Gata. Acum apare în meniul Servicii din Finder. Ca s-o folosești și din Acțiuni rapide, fă clic dreapta pe un folder și activeaz-o în Acțiuni rapide › Personalizare.",
+    "addedInQuickActions": "Gata. Fă clic dreapta pe un folder și o găsești în Acțiuni rapide.",
     "failed": "Nu s-a putut adăuga. Poți încerca din nou din Setări › General."
   }
 }

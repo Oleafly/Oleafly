@@ -1546,8 +1546,9 @@
     },
     "packaged": "Instalat împreună cu pachetul Oleafly.",
     "quickAction": {
-      "label": "Acțiune rapidă Finder",
-      "description": "Fă clic dreapta pe un folder în Finder și alege Acțiuni rapide › Deschide în Oleafly."
+      "label": "Acțiuni rapide în Finder",
+      "description": "Adaugă Deschide în Oleafly în meniul Servicii când faci clic dreapta pe un folder în Finder.",
+      "menuHint": "Nu apare încă în Acțiuni rapide. Fă clic dreapta pe un folder, alege Acțiuni rapide › Personalizare și activează {{title}}."
     },
     "explorerMenu": {
       "label": "Meniul contextual din Explorer",

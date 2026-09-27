@@ -104,6 +104,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { ProjectMeta, ProjectStateChanged } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
 import { engineHintDismissed } from "@/store/engine-picker";
@@ -118,6 +119,7 @@ import {
   useFilesStore,
 } from "./files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
+import { useFolderAccessStore } from "@/store/folder-access";
 
 const MAIN_ONLY = [{ path: "main.tex", is_dir: false }];
 const WITH_BIB = [
@@ -1196,6 +1198,70 @@ describe("setContent", () => {
       dirty: false,
     });
     expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(true);
+  });
+});
+
+describe("read-only folders", () => {
+  function setFolderReadOnly(projectId: string, readOnly: boolean): void {
+    useFolderAccessStore.setState({
+      projectId,
+      status: { read_only: readOnly, synced_with: null },
+    });
+  }
+
+  beforeEach(() => {
+    useFilesStore.setState({
+      manifestHome: "folder",
+      tree: WITH_BIB,
+      files: { "main.tex": { content: "Hello", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("never marks a file dirty while its folder is read-only", () => {
+    setFolderReadOnly("project", true);
+
+    expect(useFilesStore.getState().setContent("main.tex", "Hello, typed")).toBe(false);
+    expect(useFilesStore.getState().setContent("notes.tex", "new")).toBe(false);
+
+    expect(useFilesStore.getState().files).toEqual({
+      "main.tex": { content: "Hello", dirty: false },
+    });
+  });
+
+  it("takes edits again once the folder is writable", () => {
+    setFolderReadOnly("project", true);
+    useFilesStore.getState().setContent("main.tex", "Hello, typed");
+    setFolderReadOnly("project", false);
+
+    expect(useFilesStore.getState().setContent("main.tex", "Hello, typed")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "Hello, typed",
+      dirty: true,
+    });
+  });
+
+  it("ignores the read-only status of a different folder", () => {
+    setFolderReadOnly("other", true);
+
+    expect(useFilesStore.getState().setContent("main.tex", "Hello, typed")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(true);
+  });
+
+  it("refuses to write a file with the read-only folder message", async () => {
+    setFolderReadOnly("project", true);
+
+    await expect(
+      useFilesStore.getState().writeProjectFile("project", "references.bib", "@book{a,title={A}}\n"),
+    ).rejects.toThrow(enShell.openedFolder.readOnly.banner);
+
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.projectMutationGeneration).not.toHaveBeenCalled();
   });
 });
 

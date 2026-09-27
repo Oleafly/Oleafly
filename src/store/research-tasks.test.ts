@@ -218,6 +218,25 @@ describe("research task store", () => {
     expect(useResearchTasksStore.getState().error).toBe("editor flush failed");
   });
 
+  it("shows a read-only folder refusal as its sentence in the panel", async () => {
+    const reviewed = task("reviewed", "paper");
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "main.tex" },
+      detail: null,
+    })}`;
+    fileMocks.runExternalProjectMutation.mockRejectedValue(refused);
+    useResearchTasksStore.setState({ projectId: "paper", tasks: [reviewed] });
+
+    await expect(
+      useResearchTasksStore.getState().applyTask(reviewed.id, ["main.tex"]),
+    ).rejects.toBe(refused);
+
+    expect(useResearchTasksStore.getState().error).toBe(
+      "Oleafly can't make this change because main.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+  });
+
   it("keeps the current project selection when an earlier project creation completes", async () => {
     const pending = deferred<ResearchTask>();
     const first = task("created-in-first", "first");

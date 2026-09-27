@@ -366,7 +366,10 @@ fn rewrite_manifest(text: &str, changes: &[FieldChange]) -> Option<String> {
     Some(rendered)
 }
 
-pub(crate) fn write_folder_fields(root: &Path, changes: &[FieldChange]) -> Result<bool, String> {
+pub(crate) fn write_folder_fields(
+    root: &Path,
+    changes: &[FieldChange],
+) -> Result<bool, crate::folder_write::WriteFailure> {
     if !matches!(inspect_folder_manifest(root), FolderManifest::Oleafly(_)) {
         return Err("project.json in this folder changed before Oleafly could update it".into());
     }
@@ -391,8 +394,8 @@ pub(crate) fn write_folder_fields(root: &Path, changes: &[FieldChange]) -> Resul
     let next = splice_manifest(&text, &pending)
         .or_else(|| rewrite_manifest(&text, &pending))
         .ok_or_else(|| "project.json could not be updated".to_string())?;
-    crate::sandbox::atomic_write(&path, next.as_bytes())
-        .map_err(|error| format!("failed to write project.json: {error}"))?;
+    crate::sandbox::write_atomically(&path, next.as_bytes())
+        .map_err(|failure| failure.context("failed to write project.json"))?;
     Ok(true)
 }
 
@@ -418,7 +421,7 @@ fn settings_write_failed(detail: impl ToString) -> String {
 pub(crate) fn create_folder_manifest(
     root: &Path,
     settings: &FolderSettings<'_>,
-) -> Result<(), String> {
+) -> Result<(), crate::folder_write::WriteFailure> {
     let mut bytes = serde_json::to_vec_pretty(settings).map_err(settings_write_failed)?;
     bytes.push(b'\n');
     let value: Value = serde_json::from_slice(&bytes).map_err(settings_write_failed)?;
@@ -438,12 +441,17 @@ pub(crate) fn create_folder_manifest(
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
             return Err(AppError::new("project.settings_file_exists").into())
         }
-        Err(error) => return Err(settings_write_failed(error)),
+        Err(error) => {
+            return Err(crate::folder_write::WriteFailure::with_cause(
+                settings_write_failed(&error),
+                error,
+            ))
+        }
     };
     if let Err(error) = file.write_all(&bytes).and_then(|()| file.sync_all()) {
         drop(file);
         let _ = std::fs::remove_file(&path);
-        return Err(settings_write_failed(error));
+        return Err(settings_write_failed(error).into());
     }
     Ok(())
 }
@@ -702,7 +710,9 @@ mod tests {
             std::fs::read_to_string(folder.path().join("project.json")).unwrap(),
             "{\n  \"name\": \"Thesis\",\n  \"main_doc\": \"thesis.tex\",\n  \"engine\": \"xetex\",\n  \"dictionary_locale\": \"en-GB\"\n}\n"
         );
-        let error = create_folder_manifest(folder.path(), &settings).unwrap_err();
+        let error = create_folder_manifest(folder.path(), &settings)
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("project.settings_file_exists"), "{error}");
         let other = tempfile::tempdir().unwrap();
         let error = create_folder_manifest(
@@ -712,7 +722,8 @@ mod tests {
                 ..settings
             },
         )
-        .unwrap_err();
+        .unwrap_err()
+        .to_string();
         assert!(error.contains("project.settings_need_main"), "{error}");
         assert!(!other.path().join("project.json").exists());
     }
@@ -742,6 +753,8 @@ mod tests {
             return;
         }
         let error = result.unwrap_err();
+        assert!(error.read_only());
+        let error = error.to_string();
         assert!(error.contains("project.settings_write_failed"), "{error}");
         assert!(!locked.join("project.json").exists());
     }

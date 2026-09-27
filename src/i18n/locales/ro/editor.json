@@ -211,6 +211,8 @@
     "spellLanguageAppSetting": "Folosește setarea aplicației",
     "spellLanguageAriaLabel": "Limba verificării ortografice pentru acest proiect",
     "spellLanguageHint": "Se aplică doar acestui proiect. Descarcă mai multe limbi din Setări.",
+    "spellLanguageFolderHint": "Se salvează în project.json al acestui folder, deci se aplică oricui deschide folderul. Descarcă mai multe limbi din Setări.",
+    "spellLanguageReadOnly": "Acest folder este doar în citire, așa că limba din project.json nu poate fi schimbată.",
     "spellLanguageFailed": "Limba verificării ortografice nu a putut fi schimbată.",
     "notChecked": "Neverificat",
     "dictionaryMissing": "{{name}} nu este descărcat, așa că ortografia nu este verificată. Descarcă-l din Setări sau alege altă limbă.",

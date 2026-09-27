@@ -1530,8 +1530,9 @@
     },
     "packaged": "Asennettu Oleafly-paketin mukana.",
     "quickAction": {
-      "label": "Finderin pikatoiminto",
-      "description": "Napsauta kansiota hiiren oikealla Finderissa ja valitse Pikatoiminnot › Avaa sovelluksessa Oleafly."
+      "label": "Pikatoiminnot Finderissa",
+      "description": "Lisää Avaa sovelluksessa Oleafly -komennon Palvelut-valikkoon, kun napsautat kansiota Finderissa hiiren oikealla.",
+      "menuHint": "Ei vielä Pikatoiminnot-valikossa. Napsauta kansiota hiiren oikealla, valitse Pikatoiminnot › Muokkaa ja ota {{title}} käyttöön."
     },
     "explorerMenu": {
       "label": "Resurssienhallinnan pikavalikko",

@@ -250,6 +250,58 @@ fn the_installed_quick_action_is_a_valid_workflow_bundle() {
 }
 
 #[cfg(target_os = "macos")]
+fn plist_value(file: &Path, key_path: &str) -> String {
+    let output = std::process::Command::new("/usr/bin/plutil")
+        .args(["-extract", key_path, "raw", "-o", "-"])
+        .arg(file)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{key_path} missing in {}",
+        file.display()
+    );
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn the_quick_action_is_listed_under_quick_actions_and_not_only_services() {
+    let temp = tempfile::tempdir().unwrap();
+    quick_action::install(temp.path(), "Open in Oleafly", "com.oleafly.app").unwrap();
+    let contents = temp
+        .path()
+        .join(quick_action::WORKFLOW_DIR)
+        .join("Contents");
+    let document = contents.join("document.wflow");
+    let info = contents.join("Info.plist");
+    assert_eq!(
+        plist_value(&document, "workflowMetaData.presentationMode"),
+        "15"
+    );
+    assert_eq!(
+        plist_value(&document, "workflowMetaData.inputTypeIdentifier"),
+        "com.apple.Automator.fileSystemObject.folder"
+    );
+    assert_eq!(
+        plist_value(&document, "workflowMetaData.applicationBundleID"),
+        "com.apple.finder"
+    );
+    assert_eq!(
+        plist_value(&document, "workflowMetaData.systemImageName"),
+        "NSActionTemplate"
+    );
+    assert_eq!(
+        plist_value(&info, "NSServices.0.NSIconName"),
+        "NSActionTemplate"
+    );
+    assert_eq!(
+        plist_value(&info, "NSServices.0.NSBackgroundColorName"),
+        "background"
+    );
+}
+
+#[cfg(target_os = "macos")]
 fn quarantine(path: &Path) {
     use std::os::unix::ffi::OsStrExt;
     let path = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
@@ -295,6 +347,394 @@ fn a_quarantined_quick_action_needs_attention_and_a_repair_clears_it() {
     quick_action::strip_quarantine(&plain).unwrap();
     quick_action::strip_quarantine(&plain).unwrap();
     assert!(!quick_action::is_quarantined(&plain));
+}
+
+fn services_status(entries: &[(&str, serde_json::Value)]) -> serde_json::Value {
+    serde_json::Value::Object(
+        entries
+            .iter()
+            .map(|(key, modes)| {
+                (
+                    (*key).to_string(),
+                    serde_json::json!({ "presentation_modes": modes }),
+                )
+            })
+            .collect(),
+    )
+}
+
+const OUR_SERVICE: &str =
+    "com.oleafly.app.open-folder-quick-action - Open in Oleafly - runWorkflowAsService";
+
+fn pbs_export(services: &[(&str, u8)]) -> String {
+    let entries: String = services
+        .iter()
+        .map(|(key, context_menu)| {
+            format!(
+                "\t\t<key>{key}</key>
+\t\t<dict>
+\t\t\t<key>presentation_modes</key>
+\t\t\t<dict>
+\t\t\t\t<key>ContextMenu</key>
+\t\t\t\t<integer>{context_menu}</integer>
+\t\t\t\t<key>ServicesMenu</key>
+\t\t\t\t<integer>1</integer>
+\t\t\t</dict>
+\t\t</dict>
+"
+            )
+        })
+        .collect();
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+\t<key>FinderActive</key>
+\t<dict>
+\t\t<key>APPEXTENSION-com.apple.finder.MarkupQuickAction</key>
+\t\t<true/>
+\t</dict>
+\t<key>NSServicesStatus</key>
+\t<dict>
+{entries}\t</dict>
+\t<key>ServicesShortcutsPresent</key>
+\t<data>AQ==</data>
+</dict>
+</plist>
+"
+    )
+}
+
+#[test]
+fn the_quick_actions_menu_counts_only_this_services_context_menu_switch() {
+    let bundle = "com.oleafly.app.open-folder-quick-action";
+    let title = "Open in Oleafly";
+    let shown =
+        |status: &serde_json::Value| quick_action::shown_in_quick_actions(status, bundle, title);
+    let enabled = services_status(&[(
+        OUR_SERVICE,
+        serde_json::json!({ "ContextMenu": 1, "FinderPreview": 1, "ServicesMenu": 1, "TouchBar": 0 }),
+    )]);
+    assert!(shown(&enabled));
+    let disabled = services_status(&[(
+        OUR_SERVICE,
+        serde_json::json!({ "ContextMenu": 0, "ServicesMenu": 1 }),
+    )]);
+    assert!(!shown(&disabled));
+    let others = services_status(&[
+        (
+            "com.apple.Terminal - New Terminal at Folder - newTerminalAtURLPaths",
+            serde_json::json!({ "ContextMenu": 1 }),
+        ),
+        (
+            "com.oleafly.app.e2e.open-folder-quick-action - Open in Oleafly - runWorkflowAsService",
+            serde_json::json!({ "ContextMenu": 1 }),
+        ),
+    ]);
+    assert!(!shown(&others));
+    assert!(!shown(&serde_json::Value::Null));
+    assert!(!shown(&serde_json::json!({})));
+    let with_ours = services_status(&[
+        (
+            "com.apple.Terminal - New Terminal at Folder - newTerminalAtURLPaths",
+            serde_json::json!({ "ContextMenu": 0 }),
+        ),
+        (OUR_SERVICE, serde_json::json!({ "ContextMenu": true })),
+    ]);
+    assert!(shown(&with_ours));
+    assert!(!shown(&services_status(&[(
+        OUR_SERVICE,
+        serde_json::json!({ "ServicesMenu": 1 })
+    )])));
+    assert!(!shown(&serde_json::json!({ OUR_SERVICE: {} })));
+    let german = services_status(&[(
+        "com.oleafly.app.open-folder-quick-action - In Oleafly öffnen - runWorkflowAsService",
+        serde_json::json!({ "ContextMenu": 1 }),
+    )]);
+    assert!(!shown(&german));
+    assert!(quick_action::shown_in_quick_actions(
+        &german,
+        bundle,
+        "In Oleafly öffnen"
+    ));
+    assert!(!quick_action::shown_in_quick_actions(
+        &enabled,
+        bundle,
+        "In Oleafly öffnen"
+    ));
+}
+
+#[test]
+fn the_installed_menu_title_is_read_from_the_services_entry() {
+    let info = serde_json::json!({
+        "CFBundleIdentifier": "com.oleafly.app.open-folder-quick-action",
+        "NSServices": [{ "NSMenuItem": { "default": "In Oleafly öffnen" }, "NSMessage": "runWorkflowAsService" }]
+    });
+    assert_eq!(
+        quick_action::installed_menu_title(&info),
+        Some("In Oleafly öffnen")
+    );
+    assert_eq!(
+        quick_action::installed_menu_title(&serde_json::json!({})),
+        None
+    );
+    assert_eq!(
+        quick_action::installed_menu_title(&serde_json::json!({ "NSServices": [{}] })),
+        None
+    );
+    assert_eq!(
+        quick_action::workflow_id("com.oleafly.app"),
+        "com.oleafly.app.open-folder-quick-action"
+    );
+}
+
+#[test]
+fn the_quick_actions_switch_is_read_from_an_exported_services_domain() {
+    let bundle = "com.oleafly.app.open-folder-quick-action";
+    let title = "Open in Oleafly";
+    let switch =
+        |export: &str| quick_action::quick_actions_switch(export.as_bytes(), bundle, title);
+    assert_eq!(switch(&pbs_export(&[(OUR_SERVICE, 1)])), Some(true));
+    assert_eq!(switch(&pbs_export(&[(OUR_SERVICE, 0)])), Some(false));
+    let as_booleans = |export: String| {
+        export
+            .replace("<integer>1</integer>", "<true/>")
+            .replace("<integer>0</integer>", "<false/>")
+    };
+    assert_eq!(
+        switch(&as_booleans(pbs_export(&[(OUR_SERVICE, 1)]))),
+        Some(true)
+    );
+    assert_eq!(
+        switch(&as_booleans(pbs_export(&[(OUR_SERVICE, 0)]))),
+        Some(false)
+    );
+    assert_eq!(
+        switch(&pbs_export(&[(
+            "com.oleafly.app.dev.open-folder-quick-action - Open in Oleafly - runWorkflowAsService",
+            1
+        )])),
+        Some(false)
+    );
+    assert_eq!(switch(&pbs_export(&[])), Some(false));
+    let empty =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict/>\n</plist>\n";
+    assert_eq!(switch(empty), Some(false));
+    let not_a_dict =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<array/>\n</plist>\n";
+    assert_eq!(switch(not_a_dict), None);
+    assert_eq!(switch("not a plist"), None);
+    assert_eq!(switch(""), None);
+}
+
+#[test]
+fn the_installed_info_plist_names_the_menu_title_the_services_status_uses() {
+    let info = quick_action::info_plist("Öffnen in Oleafly & Co", "com.oleafly.app");
+    let info =
+        serde_json::to_value(plist::Value::from_reader_xml(info.as_bytes()).unwrap()).unwrap();
+    assert_eq!(
+        quick_action::installed_menu_title(&info),
+        Some("Öffnen in Oleafly & Co")
+    );
+    assert_eq!(
+        info["CFBundleIdentifier"],
+        quick_action::workflow_id("com.oleafly.app")
+    );
+    assert_eq!(info["NSServices"][0]["NSMessage"], "runWorkflowAsService");
+}
+
+#[test]
+fn the_services_key_uses_the_identifier_and_title_the_installed_workflow_carries() {
+    let temp = tempfile::tempdir().unwrap();
+    assert_eq!(
+        quick_action::installed_service(temp.path(), "com.oleafly.app.dev", "Open in Oleafly"),
+        (
+            "com.oleafly.app.dev.open-folder-quick-action".to_string(),
+            "Open in Oleafly".to_string()
+        )
+    );
+    quick_action::install(temp.path(), "In Oleafly öffnen", "com.oleafly.app").unwrap();
+    assert_eq!(
+        quick_action::installed_service(temp.path(), "com.oleafly.app.dev", "Open in Oleafly"),
+        (
+            "com.oleafly.app.open-folder-quick-action".to_string(),
+            "In Oleafly öffnen".to_string()
+        )
+    );
+}
+
+#[test]
+fn an_installed_quick_action_is_off_until_its_own_services_entry_is_switched_on() {
+    let temp = tempfile::tempdir().unwrap();
+    let bundle = "com.oleafly.unit-test.menu-hint";
+    quick_action::install(temp.path(), "Öffnen in Oleafly & Co", bundle).unwrap();
+    assert_eq!(
+        quick_action::state(temp.path(), bundle),
+        ItemState::Installed
+    );
+    let (service, title) = quick_action::installed_service(temp.path(), bundle, "Open in Oleafly");
+    let installed_key = format!("{service} - {title} - runWorkflowAsService");
+    assert_eq!(
+        installed_key,
+        "com.oleafly.unit-test.menu-hint.open-folder-quick-action - Öffnen in Oleafly & Co - runWorkflowAsService"
+    );
+    let escaped_key = installed_key.replace('&', "&amp;");
+    let current_language_key =
+        "com.oleafly.unit-test.menu-hint.open-folder-quick-action - Open in Oleafly - runWorkflowAsService";
+    for (export, expected) in [
+        (pbs_export(&[(OUR_SERVICE, 1)]), Some(false)),
+        (pbs_export(&[(current_language_key, 1)]), Some(false)),
+        (pbs_export(&[(escaped_key.as_str(), 0)]), Some(false)),
+        (pbs_export(&[(escaped_key.as_str(), 1)]), Some(true)),
+    ] {
+        assert_eq!(
+            quick_action::quick_actions_switch(export.as_bytes(), &service, &title),
+            expected,
+            "{export}"
+        );
+    }
+}
+
+#[test]
+fn a_workflow_left_by_another_build_needs_attention_and_a_repair_makes_it_consistent() {
+    let temp = tempfile::tempdir().unwrap();
+    let contents = temp
+        .path()
+        .join(quick_action::WORKFLOW_DIR)
+        .join("Contents");
+    quick_action::install(temp.path(), "Open in Oleafly", "com.oleafly.app").unwrap();
+    std::fs::write(
+        contents.join("document.wflow"),
+        quick_action::document("com.oleafly.app.dev"),
+    )
+    .unwrap();
+    for bundle in ["com.oleafly.app.dev", "com.oleafly.app"] {
+        assert_eq!(
+            quick_action::state(temp.path(), bundle),
+            ItemState::NeedsAttention,
+            "{bundle}"
+        );
+    }
+
+    quick_action::install(temp.path(), "Open in Oleafly", "com.oleafly.app.dev").unwrap();
+    assert_eq!(
+        quick_action::state(temp.path(), "com.oleafly.app.dev"),
+        ItemState::Installed
+    );
+    assert_eq!(
+        quick_action::installed_service(temp.path(), "com.oleafly.app.dev", "Open in Oleafly").0,
+        "com.oleafly.app.dev.open-folder-quick-action"
+    );
+
+    let info = contents.join("Info.plist");
+    let written = std::fs::read_to_string(&info).unwrap();
+    let without_identifier = written.replace(
+        "\t<key>CFBundleIdentifier</key>\n\t<string>com.oleafly.app.dev.open-folder-quick-action</string>\n",
+        "",
+    );
+    assert_ne!(without_identifier, written);
+    for broken in [without_identifier.as_str(), "not a plist", ""] {
+        std::fs::write(&info, broken).unwrap();
+        assert_eq!(
+            quick_action::state(temp.path(), "com.oleafly.app.dev"),
+            ItemState::NeedsAttention,
+            "{broken}"
+        );
+    }
+    std::fs::remove_file(&info).unwrap();
+    assert_eq!(
+        quick_action::state(temp.path(), "com.oleafly.app.dev"),
+        ItemState::NeedsAttention
+    );
+}
+
+#[test]
+fn a_menu_title_from_another_language_is_not_a_defect() {
+    let temp = tempfile::tempdir().unwrap();
+    let bundle = "com.oleafly.app";
+    quick_action::install(temp.path(), "In Oleafly öffnen", bundle).unwrap();
+    assert_eq!(
+        quick_action::state(temp.path(), bundle),
+        ItemState::Installed
+    );
+    let info = temp
+        .path()
+        .join(quick_action::WORKFLOW_DIR)
+        .join("Contents/Info.plist");
+    std::fs::write(&info, quick_action::info_plist("Oleafly で開く", bundle)).unwrap();
+    assert_eq!(
+        quick_action::state(temp.path(), bundle),
+        ItemState::Installed
+    );
+    assert_eq!(
+        quick_action::installed_service(temp.path(), bundle, "Open in Oleafly").1,
+        "Oleafly で開く"
+    );
+}
+
+#[cfg(target_os = "macos")]
+fn defaults_can_export(defaults: &Path, domain: &Path) -> bool {
+    let mut command = std::process::Command::new(defaults);
+    command.arg("export").arg(domain).arg("-");
+    crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+        .is_ok_and(|output| output.status.success())
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn the_live_export_test_is_skipped_when_defaults_is_missing_or_cannot_run() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = tempfile::tempdir().unwrap();
+    let domain = temp.path().join("services-status.plist");
+    std::fs::write(&domain, pbs_export(&[])).unwrap();
+    let not_a_program = temp.path().join("not-a-program");
+    std::fs::write(&not_a_program, "defaults").unwrap();
+    let failing = temp.path().join("failing");
+    std::fs::write(&failing, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&failing, std::fs::Permissions::from_mode(0o755)).unwrap();
+    for defaults in [
+        temp.path().join("missing"),
+        not_a_program,
+        failing,
+        temp.path().to_path_buf(),
+    ] {
+        assert!(
+            !defaults_can_export(&defaults, &domain),
+            "{}",
+            defaults.display()
+        );
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn defaults_export_reads_a_services_domain_from_a_file_and_never_pbs() {
+    let temp = tempfile::tempdir().unwrap();
+    let bundle = "com.oleafly.unit-test.menu-hint";
+    quick_action::install(temp.path(), "Open in Oleafly", bundle).unwrap();
+    let (service, title) = quick_action::installed_service(temp.path(), bundle, "Open in Oleafly");
+    let key = format!("{service} - {title} - runWorkflowAsService");
+    let domain = temp.path().join("services-status.plist");
+    std::fs::write(&domain, pbs_export(&[(key.as_str(), 1)])).unwrap();
+    if !defaults_can_export(Path::new("/usr/bin/defaults"), &domain) {
+        return;
+    }
+    for (context_menu, expected) in [(1, Some(true)), (0, Some(false))] {
+        std::fs::write(&domain, pbs_export(&[(key.as_str(), context_menu)])).unwrap();
+        let export = quick_action::export_defaults(domain.to_str().unwrap()).unwrap();
+        assert_eq!(
+            quick_action::quick_actions_switch(&export, &service, &title),
+            expected
+        );
+    }
+    let absent = temp.path().join("absent.plist");
+    let export = quick_action::export_defaults(absent.to_str().unwrap()).unwrap();
+    assert_eq!(
+        quick_action::quick_actions_switch(&export, &service, &title),
+        Some(false)
+    );
+    assert!(!absent.exists());
 }
 
 #[test]
@@ -363,6 +803,134 @@ fn the_uninstaller_removes_only_this_installs_verbs_and_keeps_them_across_update
         tauri["bundle"]["windows"]["nsis"]["installerHooks"],
         "windows/hooks.nsh"
     );
+    assert_eq!(
+        tauri["bundle"]["windows"]["wix"]["fragmentPaths"],
+        serde_json::json!(["windows/explorer-menu.wxs"])
+    );
+    assert_eq!(
+        tauri["bundle"]["windows"]["wix"]["componentGroupRefs"],
+        serde_json::json!(["OleaflyExplorerMenu"])
+    );
+}
+
+struct WixElement {
+    name: String,
+    attributes: std::collections::BTreeMap<String, String>,
+    text: String,
+}
+
+impl WixElement {
+    fn attribute(&self, name: &str) -> Option<&str> {
+        self.attributes.get(name).map(String::as_str)
+    }
+}
+
+fn xml_unescaped(text: &str) -> String {
+    text.replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
+fn wix_elements(source: &str) -> Vec<WixElement> {
+    source
+        .split('<')
+        .skip(1)
+        .filter(|chunk| !chunk.starts_with(['/', '?', '!']))
+        .map(|chunk| {
+            let (tag, text) = chunk.split_once('>').expect("an unterminated tag");
+            let tag = tag.trim_end_matches('/');
+            let (name, mut rest) = tag.split_once(char::is_whitespace).unwrap_or((tag, ""));
+            let mut attributes = std::collections::BTreeMap::new();
+            while let Some((key, after)) = rest.split_once("=\"") {
+                let (value, remainder) = after.split_once('"').expect("an unterminated value");
+                attributes.insert(key.trim().to_string(), xml_unescaped(value));
+                rest = remainder;
+            }
+            WixElement {
+                name: name.to_string(),
+                attributes,
+                text: xml_unescaped(text.trim()),
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn the_msi_removes_only_this_installs_verbs_and_keeps_them_across_upgrades() {
+    let elements = wix_elements(include_str!("../../windows/explorer-menu.wxs"));
+    let element = |name: &str, id: &str| -> &WixElement {
+        elements
+            .iter()
+            .find(|element| element.name == name && element.attribute("Id") == Some(id))
+            .unwrap_or_else(|| panic!("no {name} {id} in explorer-menu.wxs"))
+    };
+    let tauri = config(include_str!("../../tauri.conf.json"));
+    assert!(tauri["mainBinaryName"].is_null());
+    let group = tauri["bundle"]["windows"]["wix"]["componentGroupRefs"][0]
+        .as_str()
+        .unwrap();
+    element("ComponentGroup", group);
+
+    let exe = format!("[INSTALLDIR]{}.exe", env!("CARGO_PKG_NAME"));
+    let own = explorer_menu::verb_values(&exe, "");
+    let own_verb = element("SetProperty", "OLEAFLY_OWN_VERB");
+    assert_eq!(own_verb.attribute("Value"), Some(own[2].data.as_str()));
+    assert_eq!(own[2].data, own[5].data);
+    assert_eq!(own_verb.attribute("After"), Some("CostFinalize"));
+    assert_eq!(own_verb.attribute("Sequence"), Some("execute"));
+
+    for key in explorer_menu::VERB_KEYS {
+        let search = elements
+            .windows(2)
+            .find(|pair| {
+                pair[1].name == "RegistrySearch"
+                    && pair[1].attribute("Key") == Some(format!(r"{key}\command").as_str())
+            })
+            .unwrap_or_else(|| panic!("no RegistrySearch for {key}"));
+        assert_eq!(search[0].name, "Property");
+        assert_eq!(search[0].attribute("Secure"), Some("yes"));
+        assert_eq!(search[1].attribute("Root"), Some("HKCU"));
+        assert_eq!(search[1].attribute("Type"), Some("raw"));
+        assert_eq!(search[1].attribute("Name"), None);
+        let property = search[0].attribute("Id").unwrap();
+
+        let condition = format!(
+            r#"REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND {property} ~= OLEAFLY_OWN_VERB"#
+        );
+        let scheduled = elements
+            .iter()
+            .find(|element| element.name == "Custom" && element.text == condition)
+            .unwrap_or_else(|| panic!("no Custom runs on {condition}"));
+        assert_eq!(scheduled.attribute("Before"), Some("InstallFinalize"));
+        let action = scheduled.attribute("Action").unwrap();
+
+        let removal = element("CustomAction", action);
+        assert_eq!(removal.attribute("BinaryKey"), Some("WixCA"));
+        assert_eq!(removal.attribute("DllEntry"), Some("WixQuietExec64"));
+        assert_eq!(removal.attribute("Execute"), Some("deferred"));
+        assert_eq!(removal.attribute("Impersonate"), Some("yes"));
+        assert_eq!(removal.attribute("Return"), Some("ignore"));
+
+        let command = element("SetProperty", action);
+        assert_eq!(
+            command.attribute("Value"),
+            Some(format!(r#""[System64Folder]reg.exe" delete "HKCU\{key}" /f"#).as_str())
+        );
+        assert_eq!(command.attribute("Before"), Some(action));
+        assert_eq!(command.attribute("Sequence"), Some("execute"));
+    }
+    for name in ["RegistrySearch", "CustomAction", "Custom"] {
+        assert_eq!(
+            elements
+                .iter()
+                .filter(|element| element.name == name)
+                .count(),
+            explorer_menu::VERB_KEYS.len(),
+            "{name}"
+        );
+    }
 }
 
 #[cfg(windows)]
@@ -851,6 +1419,8 @@ fn every_item_serializes_with_the_names_the_settings_screen_reads() {
         state: ItemState::NeedsAttention,
         packaged: false,
         attention: Some("moved"),
+        quick_actions_menu: None,
+        menu_title: None,
     };
     assert_eq!(
         serde_json::to_value(&item).unwrap(),
@@ -858,9 +1428,22 @@ fn every_item_serializes_with_the_names_the_settings_screen_reads() {
             "id": "folder_open_with",
             "state": "needs_attention",
             "packaged": false,
-            "attention": "moved"
+            "attention": "moved",
+            "quick_actions_menu": null,
+            "menu_title": null
         })
     );
+    let quick_action = Item {
+        id: ItemId::QuickAction,
+        state: ItemState::Installed,
+        packaged: false,
+        attention: None,
+        quick_actions_menu: Some(false),
+        menu_title: Some("In Oleafly öffnen".to_string()),
+    };
+    let quick_action = serde_json::to_value(&quick_action).unwrap();
+    assert_eq!(quick_action["quick_actions_menu"], false);
+    assert_eq!(quick_action["menu_title"], "In Oleafly öffnen");
     for (id, text) in [
         (ItemId::QuickAction, "quick_action"),
         (ItemId::ExplorerMenu, "explorer_menu"),

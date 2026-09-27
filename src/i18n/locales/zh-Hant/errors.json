@@ -35,7 +35,8 @@
     "copy_needs_folder": "只有在原位置開啟的資料夾才能複製到專案庫。",
     "not_removable": "只有在原位置開啟的資料夾才能從 Oleafly 移除。",
     "trash_unavailable": "Oleafly 無法將 {{path}} 移到垃圾桶或資源回收筒，這個磁碟機可能不支援。",
-    "linked_replace_folder": "{{path}} 是資料夾，因此 Oleafly 不會取代它。請先移動或重新命名。"
+    "linked_replace_folder": "{{path}} 是資料夾，因此 Oleafly 不會取代它。請先移動或重新命名。",
+    "folder_read_only": "{{name}} 或其所在的資料夾為唯讀，因此 Oleafly 無法進行這項變更。請將你開啟的資料夾複製到專案庫，並在那裡編輯。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

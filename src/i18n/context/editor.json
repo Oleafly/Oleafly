@@ -173,7 +173,9 @@
     }
   },
   "projectInfo": {
-    "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info"
+    "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info",
+    "spellLanguageFolderHint": "Note under the spell-check language picker in Project info when the opened folder has its own project.json, which records the choice for everyone who opens the folder",
+    "spellLanguageReadOnly": "Note that replaces the hint when that folder is read-only, so the picker is disabled"
   },
   "changedOnDisk": {
     "keepMine": "Button that saves the user's unsaved version over the newer file on disk",

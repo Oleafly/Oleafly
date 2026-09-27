@@ -1,6 +1,7 @@
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
+import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
 import {
   useCallback,
   useEffect,
@@ -104,7 +105,7 @@ const ExternalMutationGate = Extension.create({
     return [new Plugin({
       filterTransaction: (transaction) => !transaction.docChanged ||
         transaction.getMeta(EXTERNAL_DOCUMENT_SYNC) === true ||
-        !isEditorMutationLocked(useFilesStore.getState().projectId),
+        (!isEditorMutationLocked(useFilesStore.getState().projectId) && !activeFileReadOnly()),
     })];
   },
 });
@@ -183,7 +184,9 @@ function VisualProofreadingPopover({
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
   const issueGroup = visualProofreadingIssueGroup(editor, issue);
+  const editable = editor.isEditable;
   const deferred =
+    editable &&
     issue.source === "hunspell" &&
     issue.suggestionsDeferred === true &&
     issue.suggestions.length === 0;
@@ -208,14 +211,15 @@ function VisualProofreadingPopover({
     deferred && loaded?.id === issue.id
       ? loaded.suggestions
       : issue.suggestions;
-  const suggestions = [
+  const distinct = [
     ...new Map(
       offered.map((suggestion) => [
         `${suggestion.kind}:${suggestion.text}`,
         suggestion,
       ]),
     ).values(),
-  ].slice(0, 8);
+  ];
+  const suggestions = editable ? distinct.slice(0, 8) : [];
 
   useLayoutEffect(() => {
     const place = () => {
@@ -527,6 +531,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
   const saveFile = useFilesStore((s) => s.saveFile);
+  const readOnly = useActiveFileReadOnly();
   const latexSplitRef = useRef<LatexDocumentSplit | null>(null);
   const frontmatterRef = useRef("");
   const markdownSourceRef = useRef<MarkdownSourceSnapshot | null>(null);
@@ -690,7 +695,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     setWysiwygInsertions(editor ? visualInsertions : null);
     const unregisterMutationOwner = editor ? registerEditorMutationOwner({
       projectId: () => projectIdRef.current,
-      setLocked: (locked) => editor.setEditable(!locked, false),
+      setLocked: (locked) => editor.setEditable(!locked && !activeFileReadOnly(), false),
       reconcile: () => synchronizeRef.current(),
     }) : undefined;
     setWysiwygFlushController(
@@ -721,6 +726,12 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       setWysiwygEditor(null);
     };
   }, [editor, flush]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const editable = !readOnly && !isEditorMutationLocked(projectIdRef.current);
+    if (editor.isEditable !== editable) editor.setEditable(editable, false);
+  }, [editor, readOnly]);
 
   useEffect(() => {
     setWysiwygVisible(wysiwyg);
@@ -868,7 +879,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   }, [editor, activePath, projectId, saveFile, flush]);
 
   const onPreambleChange = (value: string) => {
-    if (isEditorMutationLocked(projectIdRef.current)) return;
+    if (isEditorMutationLocked(projectIdRef.current) || activeFileReadOnly()) return;
     setPreamble(value);
     preambleRef.current = value;
     setWysiwygDocumentContext(documentContextForPreamble(value));
@@ -902,6 +913,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
               {showPreamble && (
                 <textarea
                   value={preamble}
+                  readOnly={readOnly}
                   onChange={(e) => onPreambleChange(e.target.value)}
                   spellCheck={false}
                   rows={Math.min(

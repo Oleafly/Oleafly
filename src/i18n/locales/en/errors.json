@@ -35,7 +35,8 @@
     "copy_needs_folder": "Only folders opened in place can be copied into the library.",
     "not_removable": "Only folders opened in place can be removed from Oleafly.",
     "trash_unavailable": "Oleafly couldn't move {{path}} to the Trash or Recycle Bin. The drive might not have one.",
-    "linked_replace_folder": "{{path}} is a folder, so Oleafly won't replace it. Move or rename it first."
+    "linked_replace_folder": "{{path}} is a folder, so Oleafly won't replace it. Move or rename it first.",
+    "folder_read_only": "Oleafly can't make this change because {{name}} or its folder is read-only. Copy the folder you opened into your library and edit it there."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

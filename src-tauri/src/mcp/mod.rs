@@ -173,16 +173,13 @@ pub async fn mcp_register_tools(
 }
 
 #[tauri::command]
-pub async fn mcp_tool_result(
-    app: AppHandle,
+pub async fn mcp_tool_result<R: tauri::Runtime>(
+    app: AppHandle<R>,
     call_id: u64,
     result: Value,
     renderer_session: u64,
 ) -> Result<(), String> {
-    let state = app.state::<McpState>();
-    if let Some(call) = server::take_pending_result(&state, call_id, renderer_session) {
-        let _ = call.sender.send(server::PendingReply::Result(result));
-    }
+    server::deliver_renderer_result(&app.state::<McpState>(), call_id, result, renderer_session);
     Ok(())
 }
 

@@ -53,8 +53,8 @@ paths it expects to change. Trust prompts are answered through
 | Git repository in an untrusted folder | the trust banner and the Source Control reason show, no Source Control actions exist and the repository is untouched; after Trust this folder, Source Control lists the fixture commit, and `.git/config`, `HEAD` and the branch ref are unchanged | 105 |
 | Trusted plain folder | Source Control says it is not initialized, and no `.git` appears after opening and compiling | 105 |
 | Opening a folder with an unsaved edit | the buffer is dirty when the request arrives, the edit is on disk after the switch with no leftover temporary files, and reopening shows it | 106 |
-| Folder deleted while open | the unavailable banner offers Locate…; the library card says Folder missing and opening it offers Locate… | 106 |
-| Folder card and Folders filter | the card says external where a library project says document and shows when its files last changed, with no path or main file on it; the All, In Oleafly and Folders chips count and filter the grid | 107 |
+| Folder deleted while open | the unavailable banner offers Locate and Save a copy; the library card says Folder missing and opening it offers Locate, with the folder path shown as a badge | 106 |
+| Folder card and Location filter | the card says external where a library project says document and shows when its files last changed, with no path or main file on it; the Location filter in Advanced filters shows only External projects or only In Oleafly projects, the two add up to All projects, and Reset brings every project back | 107 |
 | Remove from Oleafly | the confirmation says the files stay, the card goes away and the folder is unchanged; reopening the folder brings its chat back and shows it untrusted again | 107 |
 | Folder renamed while closed | reopening the renamed folder keeps the same project id, main file and chat; the project and its card show the new folder name | 107 |
 | Forwarding a second launch to the running app | single instance is off in e2e builds | Rust `open_request` and `single_instance` tests, manual matrix |

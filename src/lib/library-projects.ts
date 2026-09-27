@@ -1,11 +1,7 @@
 import { projectLocation } from "@/lib/project-location";
 import type { ProjectAvailability, ProjectInfo } from "@/lib/tauri";
 
-export type LibraryScope = "all" | "library" | "folders";
-
-export const LIBRARY_SCOPES: readonly LibraryScope[] = ["all", "library", "folders"];
-
-export const RECENT_LIMIT = 6;
+export type LibraryScope = "all" | "library" | "external";
 
 type Located = Pick<ProjectInfo, "location">;
 
@@ -18,36 +14,9 @@ export function folderDisplayPath(project: Located): string | null {
   return location.kind === "linked" ? location.display_path : null;
 }
 
-export function splitFolderPath(path: string): { head: string; tail: string } {
-  const separatorBefore = (end: number) =>
-    end < 0 ? -1 : Math.max(path.lastIndexOf("/", end), path.lastIndexOf("\\", end));
-  const last = separatorBefore(path.length - 1);
-  const previous = last > 0 ? separatorBefore(last - 1) : -1;
-  if (previous <= 0) return { head: "", tail: path };
-  return { head: path.slice(0, previous), tail: path.slice(previous) };
-}
-
 export function projectInScope(project: Located, scope: LibraryScope): boolean {
   if (scope === "all") return true;
-  return isFolderProject(project) === (scope === "folders");
-}
-
-export function scopeCounts(projects: readonly Located[]): Record<LibraryScope, number> {
-  const folders = projects.filter(isFolderProject).length;
-  return { all: projects.length, library: projects.length - folders, folders };
-}
-
-export function recentProjects(
-  projects: readonly ProjectInfo[],
-  limit: number = RECENT_LIMIT,
-): ProjectInfo[] {
-  return projects
-    .filter((project) => !project.recovery_pending && (project.last_opened_at ?? 0) > 0)
-    .sort(
-      (a, b) =>
-        (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || a.id.localeCompare(b.id),
-    )
-    .slice(0, limit);
+  return isFolderProject(project) === (scope === "external");
 }
 
 export function folderAvailability(
@@ -69,4 +38,23 @@ export function projectUpdatedAt(
 ): number {
   if (!isFolderProject(project)) return project.updated_at;
   return Math.max(project.updated_at, modified[project.id] ?? 0);
+}
+
+type Active = Pick<ProjectInfo, "id" | "location" | "updated_at" | "last_opened_at">;
+
+export function projectActivityAt(
+  project: Active,
+  modified: Readonly<Record<string, number>>,
+): number {
+  return Math.max(project.last_opened_at ?? 0, projectUpdatedAt(project, modified));
+}
+
+export function sortByActivity<T extends Active>(
+  projects: readonly T[],
+  modified: Readonly<Record<string, number>>,
+): T[] {
+  return projects
+    .map((project) => ({ project, at: projectActivityAt(project, modified) }))
+    .sort((a, b) => b.at - a.at || a.project.id.localeCompare(b.project.id))
+    .map(({ project }) => project);
 }

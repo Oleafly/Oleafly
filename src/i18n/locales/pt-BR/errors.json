@@ -35,7 +35,8 @@
     "copy_needs_folder": "Só pastas abertas no próprio local podem ser copiadas para a biblioteca.",
     "not_removable": "Só pastas abertas no próprio local podem ser removidas do Oleafly.",
     "trash_unavailable": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Talvez esta unidade não tenha uma.",
-    "linked_replace_folder": "{{path}} é uma pasta, então o Oleafly não vai substituí-la. Mova ou renomeie antes."
+    "linked_replace_folder": "{{path}} é uma pasta, então o Oleafly não vai substituí-la. Mova ou renomeie antes.",
+    "folder_read_only": "O Oleafly não pode fazer esta alteração porque {{name}} ou a pasta onde fica é somente leitura. Copie para a biblioteca a pasta que você abriu e edite-a lá."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

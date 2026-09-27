@@ -211,6 +211,8 @@
     "spellLanguageAppSetting": "Usa l'impostazione dell'app",
     "spellLanguageAriaLabel": "Lingua del controllo ortografico per questo progetto",
     "spellLanguageHint": "Vale solo per questo progetto. Scarica altre lingue nelle impostazioni.",
+    "spellLanguageFolderHint": "Salvata nel project.json di questa cartella, quindi vale per chiunque la apra. Scarica altre lingue nelle impostazioni.",
+    "spellLanguageReadOnly": "Questa cartella è di sola lettura, quindi la lingua nel suo project.json non può essere cambiata.",
     "spellLanguageFailed": "Impossibile cambiare la lingua del controllo ortografico.",
     "notChecked": "Non controllato",
     "dictionaryMissing": "{{name}} non è scaricato, quindi l’ortografia non viene controllata. Scaricalo nelle Impostazioni o scegli un’altra lingua.",

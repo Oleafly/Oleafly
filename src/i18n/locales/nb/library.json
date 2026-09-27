@@ -67,20 +67,15 @@
       "anyTime": "Når som helst",
       "last7Days": "Siste 7 dager",
       "last30Days": "Siste 30 dager",
-      "lastYear": "Siste år"
+      "lastYear": "Siste år",
+      "location": "Plassering",
+      "locationAll": "Alle prosjekter",
+      "locationLibrary": "I Oleafly",
+      "locationExternal": "Eksterne prosjekter"
     },
     "openFolder": "Åpne mappe",
     "openFolderShortcut": "Åpne mappe ({{shortcut}})",
-    "createFirstProject": "Opprett nytt prosjekt",
-    "scope": {
-      "label": "Vis prosjekter",
-      "all": "Alle",
-      "library": "I Oleafly",
-      "folders": "Mapper"
-    },
-    "recent": {
-      "title": "Nylige"
-    }
+    "createFirstProject": "Opprett nytt prosjekt"
   },
   "projects": {
     "open": "Åpne {{name}}",
@@ -94,7 +89,7 @@
     "actions": "Handlinger for {{name}}",
     "details": "Prosjektdetaljer",
     "exportHistory": "Eksporthistorikk",
-    "changeColor": "Endre prosjektfargen",
+    "changeColor": "Prosjektfarge",
     "fork": "Forgren prosjektet",
     "delete": "Slett prosjektet",
     "favoriteAdd": "Legg til i favoritter",
@@ -484,7 +479,6 @@
     "dismiss": "Lukk"
   },
   "folder": {
-    "badge": "Mappe",
     "state": {
       "missing": "Mappen mangler",
       "offline": "Stasjonen er ikke tilkoblet",
@@ -508,29 +502,29 @@
     "unavailable": {
       "missing": {
         "title": "Finner ikke «{{name}}»",
-        "body": "Mappen lå i {{path}} og kan ha blitt flyttet eller slettet. Finn den for å beholde chattene og historikken."
+        "body": "Mappen lå i <path>{{path}}</path> og kan ha blitt flyttet eller slettet. Finn den for å beholde chattene og historikken."
       },
       "offline": {
         "title": "«{{name}}» ligger på en stasjon som ikke er tilkoblet",
-        "body": "Koble til stasjonen eller nettverksressursen der {{path}} ligger, og prøv igjen."
+        "body": "Koble til stasjonen eller nettverksressursen der <path>{{path}}</path> ligger, og prøv igjen."
       },
       "replaced": {
         "title": "«{{name}}» er erstattet",
-        "body": "Mappen i {{path}} er ikke den du åpnet før. Bruk den bare hvis du stoler på den. Oleafly slår av tillit og godkjenninger når du bytter."
+        "body": "Mappen i <path>{{path}}</path> er ikke den du åpnet før. Bruk den bare hvis du stoler på den. Oleafly slår av tillit og godkjenninger når du bytter."
       },
       "permissionDenied": {
         "title": "Oleafly kan ikke åpne «{{name}}»",
         "bodyMac": "Gi Oleafly tilgang til mappen i Systeminnstillinger › Personvern og sikkerhet › Filer og mapper, og prøv igjen.",
-        "bodyOther": "Kontoen din kan ikke lese {{path}}. Sjekk tillatelsene for mappen, og prøv igjen."
+        "bodyOther": "Kontoen din kan ikke lese <path>{{path}}</path>. Sjekk tillatelsene for mappen, og prøv igjen."
       },
       "back": {
         "title": "«{{name}}» er tilbake",
-        "body": "Oleafly når {{path}} igjen."
+        "body": "Oleafly når <path>{{path}}</path> igjen."
       },
-      "locate": "Finn…",
+      "locate": "Finn",
       "tryAgain": "Prøv igjen",
       "useThisFolder": "Bruk denne mappen",
-      "checking": "Sjekker…",
+      "checking": "Sjekker",
       "still": "Oleafly når fortsatt ikke mappen."
     },
     "copy": {

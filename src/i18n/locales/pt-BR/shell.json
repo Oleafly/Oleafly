@@ -386,9 +386,9 @@
       "title": "O Oleafly não consegue abrir esta pasta.",
       "body": "Verifique as permissões da pasta e tente de novo. Seus arquivos abertos continuam aqui."
     },
-    "locate": "Localizar…",
+    "locate": "Localizar",
     "useThisFolder": "Usar esta pasta",
-    "saveCopy": "Salvar uma cópia…",
+    "saveCopy": "Salvar uma cópia",
     "tryAgain": "Tentar de novo",
     "savedCopy": "Seus arquivos abertos foram salvos em {{folder}}."
   },
@@ -1051,10 +1051,11 @@
   },
   "quickActionOffer": {
     "title": "Abra pastas pelo Finder",
-    "body": "Adicione Abrir no Oleafly às Ações Rápidas do Finder. Depois, clique com o botão direito em qualquer pasta para abri-la aqui.",
+    "body": "Adicione Abrir no Oleafly ao Finder. Funciona na hora pelo menu Serviços, e por Ações Rápidas depois que você a ativar.",
     "add": "Adicionar ao Finder",
     "notNow": "Agora não",
-    "added": "Pronto. Clique com o botão direito em uma pasta no Finder e escolha Ações Rápidas › Abrir no Oleafly.",
+    "added": "Pronto. Ela já está no menu Serviços do Finder. Para usá-la também em Ações Rápidas, clique com o botão direito em uma pasta e ative-a em Ações Rápidas › Personalizar.",
+    "addedInQuickActions": "Pronto. Clique com o botão direito em uma pasta e você vai encontrá-la em Ações Rápidas.",
     "failed": "Não foi possível adicionar. Você pode tentar de novo em Configurações › Geral."
   }
 }

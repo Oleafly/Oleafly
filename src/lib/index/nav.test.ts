@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorView } from "@codemirror/view";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { useFolderAccessStore } from "@/store/folder-access";
 import type { Sym } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -308,6 +310,52 @@ describe("applyRename in a file that links outside the folder", () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       'Renamed to "new2021" in 0 of 1 files. Could not write refs.bib.',
     );
+  });
+});
+
+describe("renaming in a read-only folder", () => {
+  beforeEach(() => {
+    useFolderAccessStore.setState({
+      projectId: "project-1",
+      status: { read_only: true, synced_with: null },
+    });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("does not open the rename box and says the folder is read-only", () => {
+    const label = { kind: "label", name: "fig:x", file: "main.tex" };
+    mocks.indexSymbolAt.mockReturnValue(label);
+    mocks.definitionFor.mockReturnValue(label);
+
+    expect(startRename(editorView())).toBe(true);
+    expect(mocks.openRename).not.toHaveBeenCalled();
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+      NAVIGATION_LOOKUP_TOAST_KEY,
+      enShell.openedFolder.readOnly.banner,
+    );
+  });
+
+  it("changes no file and says the folder is read-only", async () => {
+    const editor = { dispatch: vi.fn() } as unknown as EditorView;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "main.tex", from: 5, to: 12, newText: "fig:new" },
+        { file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" },
+      ],
+    });
+
+    await expect(applyRename(editor, SYMBOL, "fig:new")).resolves.toBe("skipped");
+
+    expect(editor.dispatch).not.toHaveBeenCalled();
+    expect(mocks.setContent).not.toHaveBeenCalled();
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(enShell.openedFolder.readOnly.banner);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
 

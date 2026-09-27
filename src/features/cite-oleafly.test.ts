@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const target = vi.fn();
 vi.mock("@/features/citation", () => ({ bibliographyTargetForProject: () => target() }));
@@ -17,6 +17,8 @@ import { citeOleafly, runCiteOleaflyAction } from "./cite-oleafly";
 import { oleaflyBibtex } from "@/lib/cite-oleafly";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
+import { useFolderAccessStore } from "@/store/folder-access";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const writeProjectFile = vi.fn(async () => {});
 const setContent = vi.fn((_path: string, _content: string) => true);
@@ -109,6 +111,34 @@ describe("citeOleafly and a bibliography linked from outside the folder", () => 
     expect(toasts.error).toHaveBeenCalledWith(expect.stringContaining("Zotero"));
     expect(toasts.success).not.toHaveBeenCalled();
     expect(useCiteOleaflyStore.getState().open).toBe(false);
+  });
+});
+
+describe("citeOleafly in a read-only folder", () => {
+  beforeEach(() => {
+    useFolderAccessStore.setState({
+      projectId: "paper",
+      status: { read_only: true, synced_with: null },
+    });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("leaves the bibliography alone and says the folder is read-only", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    expect(await citeOleafly()).toEqual({ kind: "read-only-folder" });
+    await runCiteOleaflyAction();
+    expect(toasts.error).toHaveBeenCalledWith(enShell.openedFolder.readOnly.banner);
+    expect(writeProjectFile).not.toHaveBeenCalled();
+    expect(setContent).not.toHaveBeenCalled();
+    expect(toasts.success).not.toHaveBeenCalled();
+  });
+
+  it("still reports an entry the bibliography already has", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "@software{oleafly,\n title={x}}" });
+    expect((await citeOleafly()).kind).toBe("present");
   });
 });
 

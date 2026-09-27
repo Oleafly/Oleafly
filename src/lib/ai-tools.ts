@@ -26,6 +26,8 @@ import {
   type ConfirmFn,
 } from "@oleafly/ai-tools";
 import { useFilesStore } from "@/store/files";
+import { codedSaveFailure } from "@/store/save-flush-error";
+import { projectFolderIsReadOnly, readOnlyFolderMessageInEnglish } from "@/store/folder-access";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { useCompileStore } from "@/store/compile";
 import { agentCompileAllowed } from "@/lib/open-compile";
@@ -57,6 +59,18 @@ function recordMutationResult(projectId: string, result: unknown): void {
   }
 }
 
+function assertFolderWritable(projectId: string): void {
+  if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessageInEnglish());
+}
+
+async function prepareExternalMutation(projectId: string): Promise<number> {
+  try {
+    return await useFilesStore.getState().prepareExternalMutation(projectId);
+  } catch (error) {
+    throw codedSaveFailure(error) ?? error;
+  }
+}
+
 function mutationAllowed(
   projectId: string,
   allowed: () => boolean,
@@ -75,13 +89,14 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   allowed = () => true,
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
+  assertFolderWritable(projectId);
   if (getEditorView()) {
     insertAtCursor(text);
     return true;
   }
   const files = useFilesStore.getState();
   const path = files.activePath || files.mainDoc || "main.tex";
-  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const expectedGeneration = await prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
   const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
@@ -100,13 +115,14 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
   allowed = () => true,
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
+  assertFolderWritable(projectId);
   if (getEditorView()) {
     replaceRangeInEditor(from, to, text);
     return true;
   }
   const files = useFilesStore.getState();
   const path = files.activePath || files.mainDoc || "main.tex";
-  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const expectedGeneration = await prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
   const start = Math.max(0, Math.min(from, current.length));
@@ -261,11 +277,13 @@ const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent,
   writeFileContent: async (projectId, path, content, expectedGeneration) => {
+    assertFolderWritable(projectId);
     const result = await writeFileContent(projectId, path, content, expectedGeneration);
     recordMutationResult(projectId, result);
     return result;
   },
   createFile: async (projectId, path, isDir, expectedGeneration) => {
+    assertFolderWritable(projectId);
     // The agent gets the strict contract: a collision is a structured error
     // it must resolve by choosing a different name, never a silent overwrite.
     const result = await createFile(projectId, path, isDir, "error", expectedGeneration);
@@ -273,11 +291,13 @@ const HOST: AiToolsHost = {
     return result;
   },
   deleteFile: async (projectId, path, expectedGeneration) => {
+    assertFolderWritable(projectId);
     const result = await deleteFile(projectId, path, expectedGeneration);
     recordMutationResult(projectId, result);
     return result;
   },
   renameFile: async (projectId, from, to, expectedGeneration) => {
+    assertFolderWritable(projectId);
     const path = await renameFileCmd(projectId, from, to, "error", expectedGeneration);
     const generation = await projectMutationGeneration(projectId).catch(() => null);
     if (generation !== null) {
@@ -295,12 +315,12 @@ const HOST: AiToolsHost = {
   searchProject,
   readProjectBytes: (projectId, path) => readProjectBytes(projectId, path),
   writeProjectBytes: async (projectId, relPath, b64, expectedGeneration) => {
+    assertFolderWritable(projectId);
     const result = await writeProjectBytes(projectId, relPath, b64, expectedGeneration);
     recordMutationResult(projectId, result);
     return result;
   },
-  prepareExternalMutation: (projectId) =>
-    useFilesStore.getState().prepareExternalMutation(projectId),
+  prepareExternalMutation,
   applyExternalWrite: (projectId, path, content) => {
     const files = useFilesStore.getState();
     if (files.projectId !== projectId) return false;

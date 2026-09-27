@@ -1530,8 +1530,9 @@
     },
     "packaged": "Installerad med Oleafly-paketet.",
     "quickAction": {
-      "label": "Snabbåtgärd i Finder",
-      "description": "Högerklicka på en mapp i Finder och välj Snabbåtgärder › Öppna i Oleafly."
+      "label": "Snabbåtgärder i Finder",
+      "description": "Lägger till Öppna i Oleafly i menyn Tjänster när du högerklickar på en mapp i Finder.",
+      "menuHint": "Inte under Snabbåtgärder än. Högerklicka på en mapp, välj Snabbåtgärder › Anpassa och slå på {{title}}."
     },
     "explorerMenu": {
       "label": "Högerklicksmeny i Utforskaren",

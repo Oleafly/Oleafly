@@ -15,7 +15,7 @@ import {
 } from "@/lib/proofreading/dictionary-catalog";
 import { forgetProofreadingDictionary } from "@/lib/proofreading/client";
 import { notifyError } from "@/lib/toast";
-import { removeDictionary, setProjectDictionaryLocaleCmd } from "@/lib/tauri";
+import { removeDictionary, resetProjectDictionaryLocaleOnDeviceCmd } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -29,12 +29,11 @@ async function resetOpenProjectLocale(locale: string): Promise<boolean> {
     return false;
   }
   try {
-    const meta = await setProjectDictionaryLocaleCmd(projectId, null);
+    const meta = await resetProjectDictionaryLocaleOnDeviceCmd(projectId);
     if (useFilesStore.getState().projectId !== projectId) return false;
-    useFilesStore.setState({
-      projectDictionaryLocale: meta.dictionary_locale ?? null,
-    });
-    return true;
+    const next = meta.dictionary_locale ?? null;
+    useFilesStore.setState({ projectDictionaryLocale: next });
+    return next !== projectDictionaryLocale;
   } catch (error) {
     void logError("reset the project spelling language", error);
     return false;

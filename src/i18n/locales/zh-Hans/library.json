@@ -66,20 +66,15 @@
       "anyTime": "任意时间",
       "last7Days": "最近 7 天",
       "last30Days": "最近 30 天",
-      "lastYear": "最近一年"
+      "lastYear": "最近一年",
+      "location": "位置",
+      "locationAll": "所有项目",
+      "locationLibrary": "Oleafly 中",
+      "locationExternal": "外部项目"
     },
     "openFolder": "打开文件夹",
     "openFolderShortcut": "打开文件夹（{{shortcut}}）",
-    "createFirstProject": "创建新项目",
-    "scope": {
-      "label": "显示项目",
-      "all": "全部",
-      "library": "Oleafly 中",
-      "folders": "文件夹"
-    },
-    "recent": {
-      "title": "最近"
-    }
+    "createFirstProject": "创建新项目"
   },
   "projects": {
     "open": "打开 {{name}}",
@@ -93,7 +88,7 @@
     "actions": "{{name}} 的操作",
     "details": "项目详情",
     "exportHistory": "导出历史",
-    "changeColor": "更改项目颜色",
+    "changeColor": "项目颜色",
     "fork": "复刻项目",
     "delete": "删除项目",
     "favoriteAdd": "添加到收藏",
@@ -475,7 +470,6 @@
     "dismiss": "关闭"
   },
   "folder": {
-    "badge": "文件夹",
     "state": {
       "missing": "文件夹丢失",
       "offline": "驱动器未连接",
@@ -499,29 +493,29 @@
     "unavailable": {
       "missing": {
         "title": "找不到“{{name}}”",
-        "body": "它原来在 {{path}}，可能已被移动或删除。定位它即可保留它的聊天和历史记录。"
+        "body": "它原来在 <path>{{path}}</path>，可能已被移动或删除。定位它即可保留它的聊天和历史记录。"
       },
       "offline": {
         "title": "“{{name}}”位于未连接的驱动器上",
-        "body": "请连接包含 {{path}} 的驱动器或网络共享，然后重试。"
+        "body": "请连接包含 <path>{{path}}</path> 的驱动器或网络共享，然后重试。"
       },
       "replaced": {
         "title": "“{{name}}”已被替换",
-        "body": "{{path}} 处的文件夹不是你之前打开的那个。只有在信任它时才使用。切换后，Oleafly 会关闭信任和批准。"
+        "body": "<path>{{path}}</path> 处的文件夹不是你之前打开的那个。只有在信任它时才使用。切换后，Oleafly 会关闭信任和批准。"
       },
       "permissionDenied": {
         "title": "Oleafly 无法打开“{{name}}”",
         "bodyMac": "请在系统设置 › 隐私与安全性 › 文件和文件夹中允许 Oleafly 使用此文件夹，然后重试。",
-        "bodyOther": "你的账户无法读取 {{path}}。请检查文件夹的权限，然后重试。"
+        "bodyOther": "你的账户无法读取 <path>{{path}}</path>。请检查文件夹的权限，然后重试。"
       },
       "back": {
         "title": "“{{name}}”已恢复连接",
-        "body": "Oleafly 可以再次访问 {{path}}。"
+        "body": "Oleafly 可以再次访问 <path>{{path}}</path>。"
       },
-      "locate": "定位…",
+      "locate": "定位",
       "tryAgain": "重试",
       "useThisFolder": "使用此文件夹",
-      "checking": "正在检查…",
+      "checking": "正在检查",
       "still": "Oleafly 仍无法访问它。"
     },
     "copy": {

@@ -95,7 +95,7 @@ test("deleting an open folder shows it as unavailable with Locate", async ({ tau
   await expect(banner).toContainText("This folder isn't available.");
   expect(await page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[data-testid="folder-unavailable-banner"] button')).map((button) => button.textContent?.trim() ?? "")`,
-  )).toContain("Locate…");
+  )).toEqual(expect.arrayContaining(["Locate", "Save a copy"]));
 
   await goToLibrary(page);
   const card = folderCard(VANISHING);
@@ -108,5 +108,8 @@ test("deleting an open folder shows it as unavailable with Locate", async ({ tau
   await expect(dialog).toContainText(`Can't find “${VANISHING}”`);
   expect(await page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[role="dialog"] button')).map((button) => button.textContent?.trim() ?? "")`,
-  )).toContain("Locate…");
+  )).toContain("Locate");
+  expect(await page.evaluate<string>(
+    `document.querySelector('[role="dialog"] p .font-mono')?.textContent ?? ""`,
+  )).toContain(VANISHING);
 });

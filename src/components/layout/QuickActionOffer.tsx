@@ -15,6 +15,9 @@ export function QuickActionOffer() {
   const adding = phase === "adding";
   let message = t(($) => $.shell.quickActionOffer.body);
   if (phase === "added") message = t(($) => $.shell.quickActionOffer.added);
+  if (phase === "addedInQuickActions") {
+    message = t(($) => $.shell.quickActionOffer.addedInQuickActions);
+  }
   if (phase === "failed") message = t(($) => $.shell.quickActionOffer.failed);
   return (
     <section

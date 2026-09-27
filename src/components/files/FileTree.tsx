@@ -54,7 +54,7 @@ import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError } from "@/lib/tauri";
-import { decodeAppError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { cn, isWindows } from "@/lib/utils";
@@ -480,13 +480,10 @@ export function FileTree({
       if (isFileConflictError(error)) {
         setConflict({ op: "rename", from, to, suggestedDestination: error.suggestedDestination });
       } else {
-        notifyError(
-          `${action} file`,
-          error,
-          action === "rename"
-            ? i18n.t(($) => $.workspace.files.renameFailed, { path: from })
-            : i18n.t(($) => $.workspace.files.moveFailed, { path: from }),
-        );
+        const fallback = action === "rename"
+          ? i18n.t(($) => $.workspace.files.renameFailed, { path: from })
+          : i18n.t(($) => $.workspace.files.moveFailed, { path: from });
+        notifyError(`${action} file`, error, decodeAppError(error) ? undefined : fallback);
       }
       return null;
     } finally {
@@ -618,7 +615,11 @@ export function FileTree({
           suggestedDestination: e.suggestedDestination,
         });
       } else {
-        notifyError("create file", e, i18n.t(($) => $.workspace.files.createFailed, { path }));
+        notifyError(
+          "create file",
+          e,
+          decodeAppError(e) ? undefined : i18n.t(($) => $.workspace.files.createFailed, { path }),
+        );
       }
     }
   };
@@ -662,7 +663,11 @@ export function FileTree({
     },
     onDelete: (path) => {
       const failed = (error: unknown) =>
-        notifyError("delete file", error, i18n.t(($) => $.workspace.files.deleteFailed, { path }));
+        notifyError(
+          "delete file",
+          error,
+          decodeAppError(error) ? undefined : i18n.t(($) => $.workspace.files.deleteFailed, { path }),
+        );
       void deleteEntry(path).catch((error) => {
         if (decodeAppError(error)?.code !== "project.trash_unavailable") {
           failed(error);
@@ -684,9 +689,13 @@ export function FileTree({
     },
     onSetMain: (path) => {
       const change = noMainDocument ? chooseMainDocument(path) : setMainDoc(path);
-      void change.catch(() => {
+      void change.catch((error: unknown) => {
         if (useFilesStore.getState().mainDoc === path) return;
-        toast.error(i18n.t(($) => $.workspace.files.setMainFailed, { path }));
+        toast.error(
+          decodeAppError(error)
+            ? describeError(error)
+            : i18n.t(($) => $.workspace.files.setMainFailed, { path }),
+        );
       });
     },
     mainExtensions,

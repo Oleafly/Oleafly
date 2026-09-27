@@ -1546,8 +1546,9 @@
     },
     "packaged": "Installato con il pacchetto di Oleafly.",
     "quickAction": {
-      "label": "Azione rapida del Finder",
-      "description": "Fai clic destro su una cartella nel Finder e scegli Azioni rapide › Apri in Oleafly."
+      "label": "Azioni rapide del Finder",
+      "description": "Aggiunge Apri in Oleafly al menu Servizi quando fai clic destro su una cartella nel Finder.",
+      "menuHint": "Non è ancora in Azioni rapide. Fai clic destro su una cartella, scegli Azioni rapide › Personalizza e attiva {{title}}."
     },
     "explorerMenu": {
       "label": "Menu contestuale di Esplora file",

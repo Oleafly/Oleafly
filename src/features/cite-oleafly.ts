@@ -6,11 +6,13 @@ import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 
 export type CiteOleaflyOutcome =
   | { kind: "added"; path: string; undo: () => Promise<void> }
   | { kind: "present"; path: string }
   | { kind: "read-only"; path: string }
+  | { kind: "read-only-folder" }
   | { kind: "no-bibliography" }
   | { kind: "no-project" };
 
@@ -56,6 +58,7 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
     readOnly = target.readOnly;
   }
   if (bibtexHasOleaflyEntry(content)) return { kind: "present", path };
+  if (projectFolderIsReadOnly(projectId)) return { kind: "read-only-folder" };
   if (readOnly) return { kind: "read-only", path };
   const version = await appVersion().catch(() => "");
   const entry = oleaflyBibtex(version);
@@ -105,6 +108,9 @@ async function reportCiteOleafly(options: { path?: string }): Promise<void> {
         return;
       case "read-only":
         toast.error(linkedBibliographyMessage(outcome.path));
+        return;
+      case "read-only-folder":
+        toast.error(readOnlyFolderMessage());
         return;
       case "no-bibliography":
       case "no-project":

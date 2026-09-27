@@ -211,6 +211,8 @@
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",
     "spellLanguageHint": "Ne s'applique qu'à ce projet. Téléchargez d'autres langues dans les Paramètres.",
+    "spellLanguageFolderHint": "Enregistrée dans le project.json de ce dossier, elle s'applique donc à toute personne qui l'ouvre. Téléchargez d'autres langues dans les Paramètres.",
+    "spellLanguageReadOnly": "Ce dossier est en lecture seule, la langue de son project.json ne peut donc pas être modifiée.",
     "spellLanguageFailed": "Impossible de changer la langue de correction orthographique.",
     "notChecked": "Non vérifié",
     "dictionaryMissing": "{{name}} n’est pas téléchargé, l’orthographe n’est donc pas vérifiée. Téléchargez-le dans les Réglages ou choisissez une autre langue.",

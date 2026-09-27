@@ -16,6 +16,7 @@ import {
   waitForCompileSuccess,
   waitForPdfPage,
 } from "../open-folder";
+import { scriptValue } from "../script-value";
 
 const fixtures = folderFixtures("detection");
 
@@ -26,35 +27,56 @@ function article(body: string, documentClass = "article"): string {
 }
 
 async function clickTreeAction(page: Parameters<typeof openFolder>[0], path: string, action: string) {
-  await page.waitForFunction(
-    `!!document.querySelector('[aria-label="Explorer file tree"] [data-path=' + CSS.escape(${JSON.stringify(path)}) + ']')`,
-    30_000,
-  );
-  const opened = await page.evaluate<boolean>(
+  const row = `document.querySelector('[aria-label="Explorer file tree"] [data-path=' + CSS.escape(${scriptValue(path)}) + ']')`;
+  const item = `Array.from(document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')).find((candidate) => candidate.textContent?.trim() === ${scriptValue(action)} && candidate.getAttribute('data-disabled') === null && candidate.getBoundingClientRect().width > 0)`;
+  const press = `((target) => {
+    const init = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: 1, pointerId: 1, pointerType: "mouse", isPrimary: true };
+    target.dispatchEvent(new PointerEvent("pointerdown", init));
+    target.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0 }));
+    target.click();
+    return true;
+  })`;
+  const menuState = `JSON.stringify({
+    row: !!${row},
+    focused: document.hasFocus(),
+    visibility: document.visibilityState,
+    menus: Array.from(document.querySelectorAll('[role="menu"]')).map((menu) => menu.getAttribute('data-state') + ': ' + Array.from(menu.querySelectorAll('[role="menuitem"]')).map((entry) => (entry.textContent?.trim() ?? '') + (entry.getAttribute('data-disabled') === null ? '' : ' (disabled)')).join(' | ')),
+  })`;
+  const deadline = Date.now() + 30_000;
+  for (let attempt = 1; ; attempt++) {
+    await page.waitForFunction(`!!${row}`, 30_000);
+    const opened = await page.evaluate<boolean>(
+      `(() => {
+        const row = ${row};
+        const expected = ${scriptValue(`More actions for ${path.split("/").pop()}`)};
+        const button = row && Array.from(row.querySelectorAll('button')).find((candidate) => candidate.getAttribute('aria-label') === expected);
+        return button instanceof HTMLButtonElement && ${press}(button);
+      })()`,
+    );
+    const shown = opened && await page.waitForFunction(`!!(${item})`, 3_000).then(() => true, () => false);
+    const pressed = shown && await page.evaluate<boolean>(
+      `(() => {
+        const entry = ${item};
+        return entry instanceof HTMLElement && ${press}(entry);
+      })()`,
+    );
+    if (pressed) break;
+    const state = await page.evaluate<string>(menuState);
+    if (Date.now() > deadline) {
+      throw new Error(`"${action}" never showed in the menu for ${path} after ${attempt} attempts: ${state}`);
+    }
+    console.warn(`reopening the menu for ${path} (attempt ${attempt}): ${state}`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  const closed = `!document.querySelector('[role="menu"][data-state="open"]')`;
+  if (await page.waitForFunction(closed, 2_000).then(() => true, () => false)) return;
+  await page.evaluate(
     `(() => {
-      const row = document.querySelector('[aria-label="Explorer file tree"] [data-path=' + CSS.escape(${JSON.stringify(path)}) + ']');
-      const expected = ${JSON.stringify(`More actions for ${path.split("/").pop()}`)};
-      const button = row && Array.from(row.querySelectorAll('button')).find((candidate) => candidate.getAttribute('aria-label') === expected);
-      if (!(button instanceof HTMLButtonElement)) return false;
-      button.click();
+      document.querySelector('[role="menu"][data-state="open"]')?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
       return true;
     })()`,
   );
-  expect(opened).toBe(true);
-  const item = `Array.from(document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')).find((candidate) => candidate.textContent?.trim() === ${JSON.stringify(action)} && candidate.getAttribute('data-disabled') === null && candidate.getBoundingClientRect().width > 0)`;
-  await page.waitForFunction(`!!(${item})`, 10_000);
-  const pressed = await page.evaluate<boolean>(
-    `(() => {
-      const entry = ${item};
-      if (!(entry instanceof HTMLElement)) return false;
-      const init = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: 1, pointerId: 1, pointerType: "mouse", isPrimary: true };
-      entry.dispatchEvent(new PointerEvent("pointerdown", init));
-      entry.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0 }));
-      entry.click();
-      return true;
-    })()`,
-  );
-  expect(pressed).toBe(true);
+  await page.waitForFunction(closed, 5_000);
 }
 
 test("a single nested main opens by itself and compiles from its own folder", async ({ tauriPage: page }) => {
@@ -112,15 +134,15 @@ test("an ambiguous folder asks for the main document and remembers the choice", 
   const opened = await openFolder(page, folder);
   const picker = page.locator('[data-testid="main-document-picker"]');
   await expect(picker).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[data-testid="main-document-candidates"] [role="option"][data-path="alpha/report.tex"]')).toBeVisible();
-  await expect(page.locator('[data-testid="main-document-candidates"] [role="option"][data-path="beta/thesis.tex"]')).toBeVisible();
+  await expect(page.locator('[data-testid="main-document-candidates"] label[data-path="alpha/report.tex"]')).toBeVisible();
+  await expect(page.locator('[data-testid="main-document-candidates"] label[data-path="beta/thesis.tex"]')).toBeVisible();
   expect(await page.evaluate<string | null>(
-    `document.querySelector('[data-testid="main-document-candidates"] [role="option"][aria-selected="true"]')?.getAttribute('data-path') ?? null`,
+    `document.querySelector('[data-testid="main-document-candidates"] input[type="radio"]:checked')?.closest('label')?.getAttribute('data-path') ?? null`,
   )).toBe("beta/thesis.tex");
 
-  await page.click('[data-testid="main-document-candidates"] [role="option"][data-path="alpha/report.tex"]');
+  await page.click('[data-testid="main-document-candidates"] label[data-path="alpha/report.tex"]');
   await expect.poll(async () => page.evaluate<string | null>(
-    `document.querySelector('[data-testid="main-document-candidates"] [role="option"][aria-selected="true"]')?.getAttribute('data-path') ?? null`,
+    `document.querySelector('[data-testid="main-document-candidates"] input[type="radio"]:checked')?.closest('label')?.getAttribute('data-path') ?? null`,
   )).toBe("alpha/report.tex");
   await page.evaluate(`(() => {
     const open = Array.from(document.querySelectorAll('[data-testid="main-document-picker"] button')).find((button) => button.textContent?.trim() === "Open");

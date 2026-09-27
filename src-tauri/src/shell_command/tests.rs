@@ -246,7 +246,7 @@ fn an_appimage_install_copies_the_command_and_records_where_the_app_is() {
     let command = local_bin(&environment).join("oleafly");
     let metadata = std::fs::symlink_metadata(&command).unwrap();
     assert!(metadata.is_file());
-    assert_eq!(metadata.permissions().mode() & 0o777, 0o755);
+    assert_eq!(metadata.permissions().mode() & 0o777, 0o700);
     assert_eq!(
         std::fs::read(&command).unwrap(),
         std::fs::read(environment.bundled.as_ref().unwrap()).unwrap()

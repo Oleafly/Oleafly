@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   setRailTab: vi.fn(),
   refreshEngine: vi.fn(async () => {}),
   refreshGitStatus: vi.fn(async () => {}),
+  writeFailureListeners: new Set<(projectId: string) => void>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
@@ -24,6 +25,10 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@/lib/tauri", () => ({
   projectTrustState: mocks.projectTrustState,
   projectFolderStatus: mocks.projectFolderStatus,
+  onProjectWriteFailure: (listener: (projectId: string) => void) => {
+    mocks.writeFailureListeners.add(listener);
+    return () => mocks.writeFailureListeners.delete(listener);
+  },
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/store/files", async () => {
@@ -35,6 +40,7 @@ vi.mock("@/store/files", async () => {
       manifestHome: "library",
       mainDoc: "main.tex",
       tree: [] as { path: string; is_dir: boolean }[],
+      projects: [] as { id: string; location?: { kind: string } }[],
       refreshEngine: mocks.refreshEngine,
     })),
   };
@@ -115,9 +121,10 @@ beforeEach(() => {
     fn.mockReset();
   }
   mocks.listeners.clear();
+  mocks.writeFailureListeners.clear();
   mocks.projectTrustState.mockResolvedValue(restricted);
   mocks.projectFolderStatus.mockResolvedValue({ read_only: false, synced_with: null });
-  useFilesStore.setState({ projectId: null, loading: false, manifestHome: "library" } as never);
+  useFilesStore.setState({ projectId: null, loading: false, manifestHome: "library", projects: [] } as never);
   useOpenFolderStore.getState().dismiss();
   useFolderAccessStore.getState().reset(null);
   useProjectAvailabilityStore.getState().reset(null);
@@ -271,5 +278,107 @@ describe("OpenFolderKeeper", () => {
     });
     expect(mocks.projectTrustState.mock.calls).toEqual([["linked-a"], ["linked-b"]]);
     expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"], ["linked-b"]]);
+  });
+
+  describe("folder permissions", () => {
+    const readOnly = { read_only: true, synced_with: null };
+    const writable = { read_only: false, synced_with: null };
+
+    function refuseWrite(projectId: string) {
+      for (const listener of mocks.writeFailureListeners) listener(projectId);
+    }
+
+    it("rechecks a linked folder once when the window regains focus and unlocks it", async () => {
+      mocks.projectFolderStatus.mockResolvedValue(readOnly);
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().status).toEqual(readOnly));
+      vi.useFakeTimers();
+      mocks.projectFolderStatus.mockClear();
+      mocks.projectFolderStatus.mockResolvedValue(writable);
+      act(() => {
+        window.dispatchEvent(new Event("focus"));
+        window.dispatchEvent(new Event("focus"));
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+        window.dispatchEvent(new Event("focus"));
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"]]);
+      expect(useFolderAccessStore.getState().status).toEqual(writable);
+      await act(async () => {
+        window.dispatchEvent(new Event("focus"));
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(mocks.projectFolderStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it("rechecks a linked folder once each time the window becomes visible", async () => {
+      mocks.projectFolderStatus.mockResolvedValue(readOnly);
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().status).toEqual(readOnly));
+      vi.useFakeTimers();
+      mocks.projectFolderStatus.mockClear();
+      mocks.projectFolderStatus.mockResolvedValue(writable);
+      let visibility: DocumentVisibilityState = "hidden";
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
+      try {
+        await act(async () => {
+          document.dispatchEvent(new Event("visibilitychange"));
+          await vi.advanceTimersByTimeAsync(1_000);
+        });
+        expect(mocks.projectFolderStatus).not.toHaveBeenCalled();
+        visibility = "visible";
+        await act(async () => {
+          document.dispatchEvent(new Event("visibilitychange"));
+          await vi.advanceTimersByTimeAsync(1_000);
+        });
+        expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"]]);
+        expect(useFolderAccessStore.getState().status).toEqual(writable);
+        mocks.projectFolderStatus.mockResolvedValue(readOnly);
+        await act(async () => {
+          document.dispatchEvent(new Event("visibilitychange"));
+          window.dispatchEvent(new Event("focus"));
+          await vi.advanceTimersByTimeAsync(1_000);
+        });
+      } finally {
+        Reflect.deleteProperty(document, "visibilityState");
+      }
+      expect(mocks.projectFolderStatus).toHaveBeenCalledTimes(2);
+      expect(useFolderAccessStore.getState().status).toEqual(readOnly);
+    });
+
+    it("leaves a library project alone when the window regains focus or a write fails", async () => {
+      mocks.projectFolderStatus.mockResolvedValue(null);
+      render(<OpenFolderKeeper />);
+      await openFolder("paper", {
+        manifestHome: "library",
+        projects: [{ id: "paper", location: { kind: "library" } }],
+      });
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().loaded).toBe(true));
+      vi.useFakeTimers();
+      mocks.projectFolderStatus.mockClear();
+      await act(async () => {
+        window.dispatchEvent(new Event("focus"));
+        await vi.advanceTimersByTimeAsync(1_000);
+        refuseWrite("paper");
+      });
+      expect(mocks.projectFolderStatus).not.toHaveBeenCalled();
+    });
+
+    it("rechecks the folder when the backend refuses a write in it", async () => {
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().status).toEqual(writable));
+      mocks.projectFolderStatus.mockClear();
+      mocks.projectFolderStatus.mockResolvedValue(readOnly);
+      act(() => refuseWrite("linked-b"));
+      expect(mocks.projectFolderStatus).not.toHaveBeenCalled();
+      act(() => refuseWrite("linked-a"));
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().status).toEqual(readOnly));
+      expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"]]);
+    });
   });
 });

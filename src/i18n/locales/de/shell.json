@@ -384,9 +384,9 @@
       "title": "Oleafly kann diesen Ordner nicht öffnen.",
       "body": "Prüfen Sie die Berechtigungen des Ordners und versuchen Sie es erneut. Ihre geöffneten Dateien bleiben hier."
     },
-    "locate": "Suchen…",
+    "locate": "Suchen",
     "useThisFolder": "Diesen Ordner verwenden",
-    "saveCopy": "Kopie speichern…",
+    "saveCopy": "Kopie speichern",
     "tryAgain": "Erneut versuchen",
     "savedCopy": "Ihre geöffneten Dateien wurden in {{folder}} gespeichert."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Ordner aus dem Finder öffnen",
-    "body": "Fügen Sie In Oleafly öffnen zu den Schnellaktionen im Finder hinzu. Dann können Sie jeden Ordner per Rechtsklick hier öffnen.",
+    "body": "Fügen Sie „In Oleafly öffnen“ zum Finder hinzu. Über das Menü „Dienste“ funktioniert der Befehl sofort, unter Schnellaktionen erst, nachdem Sie ihn aktiviert haben.",
     "add": "Zum Finder hinzufügen",
     "notNow": "Nicht jetzt",
-    "added": "Hinzugefügt. Klicken Sie im Finder mit der rechten Maustaste auf einen Ordner und wählen Sie Schnellaktionen › In Oleafly öffnen.",
+    "added": "Hinzugefügt. Der Befehl ist jetzt im Menü „Dienste“ im Finder. Um ihn auch unter Schnellaktionen zu nutzen, klicken Sie mit der rechten Maustaste auf einen Ordner und aktivieren Sie ihn unter Schnellaktionen › Anpassen.",
+    "addedInQuickActions": "Hinzugefügt. Klicken Sie mit der rechten Maustaste auf einen Ordner, dann finden Sie den Befehl unter Schnellaktionen.",
     "failed": "Das Hinzufügen ist fehlgeschlagen. Sie können es unter Einstellungen › Allgemein erneut versuchen."
   }
 }

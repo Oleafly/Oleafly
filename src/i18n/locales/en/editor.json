@@ -209,6 +209,8 @@
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",
     "spellLanguageHint": "Applies to this project only. Download more languages in Settings.",
+    "spellLanguageFolderHint": "Saved in this folder's project.json, so it applies to anyone who opens the folder. Download more languages in Settings.",
+    "spellLanguageReadOnly": "This folder is read-only, so the language in its project.json can't be changed.",
     "spellLanguageFailed": "Couldn't change the spell-check language.",
     "notChecked": "Not checked",
     "dictionaryMissing": "{{name}} is not downloaded, so spelling is not checked. Download it in Settings or pick another language.",

@@ -25,13 +25,15 @@ import {
   effectiveDictionaryLocale,
   isEnglishDictionaryLocale,
   loadDictionaryCatalog,
+  normalizeDictionaryLocale,
   subscribeDictionaryCatalog,
 } from "@/lib/proofreading/dictionary-catalog";
 import { notifyError } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
-import { useFolderAccessStore } from "@/store/folder-access";
+import { folderIsReadOnly, useFolderAccessStore } from "@/store/folder-access";
 import type { SyncService } from "@/lib/tauri";
 import {
   useProofreadingStore,
@@ -333,6 +335,8 @@ function ProjectSpellLanguage() {
   const { t } = useTranslation(["common", "editor"]);
   const projectId = useFilesStore((state) => state.projectId);
   const projectLocale = useFilesStore((state) => state.projectDictionaryLocale);
+  const sharedInFolder = useFilesStore((state) => state.manifestHome === "folder");
+  const readOnlyFolder = useFolderAccessStore((state) => folderIsReadOnly(state, projectId));
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const entries = useDictionaryCatalog();
   const [busy, setBusy] = useState(false);
@@ -354,7 +358,7 @@ function ProjectSpellLanguage() {
         notifyError(
           "set the spelling language",
           error,
-          t(($) => $.editor.projectInfo.spellLanguageFailed),
+          decodeAppError(error) ? undefined : t(($) => $.editor.projectInfo.spellLanguageFailed),
         );
       } finally {
         setBusy(false);
@@ -366,17 +370,23 @@ function ProjectSpellLanguage() {
   if (!spellcheck || !projectId) return null;
 
   const uiLocale = currentLocale();
+  const chosen = projectLocale ? normalizeDictionaryLocale(projectLocale) : null;
+  const locked = sharedInFolder && readOnlyFolder;
   const usable = entries.filter(
-    (entry) => entry.state !== "available" || entry.id === projectLocale,
+    (entry) => entry.state !== "available" || entry.id === chosen,
   );
+  let hint: string;
+  if (locked) hint = t(($) => $.editor.projectInfo.spellLanguageReadOnly);
+  else if (sharedInFolder) hint = t(($) => $.editor.projectInfo.spellLanguageFolderHint);
+  else hint = t(($) => $.editor.projectInfo.spellLanguageHint);
 
   return (
     <>
       <SectionLabel>{t(($) => $.editor.projectInfo.spellLanguage)}</SectionLabel>
       <Select
-        value={projectLocale ?? APP_SETTING}
+        value={chosen ?? APP_SETTING}
         onValueChange={(value) => void choose(value)}
-        disabled={busy}
+        disabled={busy || locked}
       >
         <SelectTrigger
           data-testid="project-dictionary-locale"
@@ -410,7 +420,7 @@ function ProjectSpellLanguage() {
         </SelectContent>
       </Select>
       <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
-        {t(($) => $.editor.projectInfo.spellLanguageHint)}
+        {hint}
       </p>
     </>
   );

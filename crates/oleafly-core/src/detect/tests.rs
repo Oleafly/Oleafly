@@ -382,6 +382,145 @@ fn markdown_and_quarto_folders_open_only_named_documents() {
 }
 
 #[test]
+fn a_markdown_folder_opens_its_index_page() {
+    let directory = tree(&[
+        ("index.md", "# Markdown notes\n"),
+        ("appendix.md", "# Appendix\n"),
+    ]);
+    let detection = detect(&directory);
+    auto(&detection, "index.md", DetectionSource::Scan);
+    assert_eq!(paths(&detection), ["index.md", "appendix.md"]);
+    assert_eq!(
+        candidate(&detection, "index.md").reasons,
+        [Reason::TopLevel]
+    );
+}
+
+#[test]
+fn a_top_level_markdown_index_opens_beside_nested_indexes() {
+    let directory = tree(&[
+        ("index.md", "# Handbook\n"),
+        ("notes/index.md", "# Notes\n"),
+        ("chapter.md", "# Chapter\n"),
+    ]);
+    let detection = detect(&directory);
+    auto(&detection, "index.md", DetectionSource::Scan);
+    assert_eq!(
+        paths(&detection),
+        ["index.md", "chapter.md", "notes/index.md"]
+    );
+}
+
+#[test]
+fn a_nested_markdown_index_never_opens_on_its_own() {
+    let directory = tree(&[
+        ("docs/index.md", "# Docs\n"),
+        ("docs/guide.md", "# Guide\n"),
+    ]);
+    let detection = detect(&directory);
+    assert_eq!(
+        (detection.decision, detection.main.as_deref()),
+        (Decision::Ask, None)
+    );
+    assert_eq!(paths(&detection), ["docs/index.md", "docs/guide.md"]);
+}
+
+#[test]
+fn an_index_page_beside_a_named_markdown_document_asks_with_the_index_first() {
+    let names = [
+        "paper.md",
+        "article.md",
+        "manuscript.md",
+        "ms.md",
+        "thesis.md",
+        "dissertation.md",
+    ];
+    let observed: Vec<_> = names
+        .iter()
+        .map(|&named| {
+            let directory = tree(&[(named, "# Draft\n"), ("index.md", "# Index\n")]);
+            let detection = detect(&directory);
+            let order = paths(&detection).join(", ");
+            (named, detection.decision, detection.main, order)
+        })
+        .collect();
+    let expected: Vec<_> = names
+        .iter()
+        .map(|&named| {
+            (
+                named,
+                Decision::Ask,
+                None::<String>,
+                format!("index.md, {named}"),
+            )
+        })
+        .collect();
+    assert_eq!(observed, expected);
+}
+
+#[test]
+fn an_index_page_beside_a_markdown_file_named_after_its_folder_asks() {
+    let directory = tree(&[
+        ("field-notes/field-notes.md", "# Field notes\n"),
+        ("field-notes/index.md", "# Index\n"),
+    ]);
+    let detection = detect_main_document(
+        &directory.path().join("field-notes"),
+        &DetectOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        (detection.decision, detection.main.as_deref()),
+        (Decision::Ask, None)
+    );
+    assert_eq!(paths(&detection), ["index.md", "field-notes.md"]);
+    assert!(candidate(&detection, "field-notes.md")
+        .reasons
+        .contains(&Reason::NamedAfterFolder));
+}
+
+#[test]
+fn an_index_page_beside_another_markdown_main_asks() {
+    let directory = tree(&[("main.markdown", "# Main\n"), ("index.md", "# Index\n")]);
+    let detection = detect(&directory);
+    assert_eq!(
+        (detection.decision, detection.main.as_deref()),
+        (Decision::Ask, None)
+    );
+    assert_eq!(paths(&detection), ["index.md", "main.markdown"]);
+}
+
+#[test]
+fn a_root_main_md_still_opens_directly_beside_an_index_page() {
+    let directory = tree(&[("main.md", "# Main\n"), ("index.md", "# Index\n")]);
+    auto(&detect(&directory), "main.md", DetectionSource::RootMain);
+}
+
+#[test]
+fn a_markdown_paper_beside_an_appendix_still_asks() {
+    let directory = tree(&[("paper.md", "# Paper\n"), ("appendix.md", "# Appendix\n")]);
+    let detection = detect(&directory);
+    assert_eq!(
+        (detection.decision, detection.main.as_deref()),
+        (Decision::Ask, None)
+    );
+    assert_eq!(paths(&detection), ["paper.md", "appendix.md"]);
+}
+
+#[test]
+fn an_index_file_is_an_entry_page_only_in_markdown() {
+    let latex = tree(&[("index.tex", ARTICLE), ("appendix.tex", ARTICLE)]);
+    let detection = detect(&latex);
+    assert_eq!(detection.decision, Decision::Ask);
+    assert_eq!(paths(&detection), ["appendix.tex", "index.tex"]);
+
+    let typst = tree(&[("index.typ", "= Index\n"), ("appendix.typ", "= Appendix\n")]);
+    let detection = detect(&typst);
+    assert_eq!(detection.decision, Decision::Ask);
+    assert_eq!(paths(&detection), ["appendix.typ", "index.typ"]);
+}
+
+#[test]
 fn a_broad_folder_never_opens_a_deep_guess_after_a_truncated_scan() {
     let mut files: Vec<(String, String)> = (0..40)
         .map(|index| (format!("folder{index:02}/notes.txt"), "x".to_owned()))
@@ -924,6 +1063,34 @@ fn placeholders_are_listed_but_never_read_or_opened() {
         "paper.tex",
         DetectionSource::Scan,
     );
+}
+
+fn every_file_evicted(_path: &Path, _metadata: &std::fs::Metadata) -> bool {
+    true
+}
+
+#[test]
+fn a_placeholder_index_page_keeps_its_plain_rank() {
+    let options = DetectOptions {
+        placeholder: every_file_evicted,
+        ..DetectOptions::default()
+    };
+    let names = ["thesis.tex", "paper.tex"];
+    let observed: Vec<_> = names
+        .iter()
+        .map(|&named| {
+            let directory = tree(&[(named, ARTICLE), ("index.md", "# Index\n")]);
+            let detection = detect_with(&directory, options);
+            let index = candidate(&detection, "index.md").tier;
+            let order = paths(&detection).join(", ");
+            (named, detection.decision, index, order)
+        })
+        .collect();
+    let expected: Vec<_> = names
+        .iter()
+        .map(|&named| (named, Decision::Ask, Tier::W, format!("{named}, index.md")))
+        .collect();
+    assert_eq!(observed, expected);
 }
 
 #[test]

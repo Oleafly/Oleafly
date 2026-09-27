@@ -211,6 +211,8 @@
     "spellLanguageAppSetting": "Usar a configuração do aplicativo",
     "spellLanguageAriaLabel": "Idioma da verificação ortográfica deste projeto",
     "spellLanguageHint": "Vale só para este projeto. Baixe mais idiomas em Configurações.",
+    "spellLanguageFolderHint": "Salvo no project.json desta pasta, então vale para todos que abrirem a pasta. Baixe mais idiomas em Configurações.",
+    "spellLanguageReadOnly": "Esta pasta é somente leitura, então o idioma do project.json dela não pode ser alterado.",
     "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica.",
     "notChecked": "Não verificado",
     "dictionaryMissing": "{{name}} não foi baixado, então a ortografia não é verificada. Baixe-o nas Configurações ou escolha outro idioma.",

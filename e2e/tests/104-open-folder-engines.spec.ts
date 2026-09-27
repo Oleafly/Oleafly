@@ -74,8 +74,11 @@ test("a TeX root comment in an opened folder compiles the root it declares", asy
   await openFolder(page, folder);
   const picker = page.locator('[data-testid="main-document-picker"]');
   await expect(picker).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[data-testid="main-document-candidates"] [role="option"][data-path="appendix/appendix.tex"]')).toBeVisible();
-  await page.click('[data-testid="main-document-candidates"] [role="option"][data-path="main.tex"]');
+  await expect(page.locator('[data-testid="main-document-candidates"] label[data-path="appendix/appendix.tex"]')).toBeVisible();
+  await page.click('[data-testid="main-document-candidates"] label[data-path="main.tex"]');
+  await expect.poll(async () => page.evaluate<string | null>(
+    `document.querySelector('[data-testid="main-document-candidates"] input[type="radio"]:checked')?.closest('label')?.getAttribute('data-path') ?? null`,
+  )).toBe("main.tex");
   await page.evaluate(`(() => {
     const open = Array.from(document.querySelectorAll('[data-testid="main-document-picker"] button')).find((button) => button.textContent?.trim() === "Open");
     open.click();

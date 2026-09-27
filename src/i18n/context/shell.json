@@ -89,6 +89,11 @@
       "trustParent": "Button that trusts the folder that contains this one, and everything inside it. No ellipsis at the end"
     }
   },
+  "quickActionOffer": {
+    "body": "Text of the one-time offer card, before the user adds the Finder Quick Action. macOS lists it in the Services menu right away, and in the Quick Actions menu only after the user turns it on. Use the exact names Finder shows in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
+    "added": "Confirmation in the one-time offer card after the user adds the Finder Quick Action while it is still off in the Quick Actions menu, or when macOS cannot tell. macOS lists it in the Services menu right away, and in the Quick Actions menu only after the user turns it on in Quick Actions › Customize. Use the exact names Finder shows in your language, without the trailing ellipsis Finder puts after Customize. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
+    "addedInQuickActions": "Confirmation in the one-time offer card after the user adds the Finder Quick Action when macOS already shows it in the Quick Actions menu, because the user turned it on for an earlier install. Do not tell the user to turn it on. Use the exact name Finder shows for the Quick Actions menu in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it."
+  },
   "renameDialog": {
     "symbolKinds": {
       "atuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",

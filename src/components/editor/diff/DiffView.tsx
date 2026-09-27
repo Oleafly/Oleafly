@@ -15,6 +15,7 @@ import { languageForPath } from "../cm/languages";
 import { gitShow, readFileContent } from "@/lib/tauri";
 import { useDiffStore, activeDiff, diffKey, type DiffSide } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
+import { useProjectFolderReadOnly } from "@/store/folder-access";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { diffSides } from "./sides";
@@ -68,6 +69,9 @@ export function DiffView() {
   const mode = useDiffStore((s) => s.mode);
   const setMode = useDiffStore((s) => s.setMode);
   const projectId = useFilesStore((s) => s.projectId);
+  const folderReadOnly = useProjectFolderReadOnly(projectId);
+  const folderReadOnlyRef = useRef(folderReadOnly);
+  const refreshEditabilityRef = useRef<(() => void) | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const navViewRef = useRef<EditorView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +110,12 @@ export function DiffView() {
   }, []);
 
   useEffect(() => {
+    if (folderReadOnlyRef.current === folderReadOnly) return;
+    folderReadOnlyRef.current = folderReadOnly;
+    refreshEditabilityRef.current?.();
+  }, [folderReadOnly]);
+
+  useEffect(() => {
     void reloadKey;
     if (!diff || !projectId) return;
     const { path, side } = diff;
@@ -120,10 +130,13 @@ export function DiffView() {
 
     let synchronizing = false;
     const editability = new Compartment();
-    const editabilityExtensions = (locked: boolean) => [
-      EditorState.readOnly.of(!editable || locked),
-      EditorView.editable.of(editable && !locked),
-    ];
+    const editabilityExtensions = (locked: boolean) => {
+      const writable = editable && !locked && !folderReadOnlyRef.current;
+      return [EditorState.readOnly.of(!writable), EditorView.editable.of(writable)];
+    };
+    refreshEditabilityRef.current = () => navViewRef.current?.dispatch({
+      effects: editability.reconfigure(editabilityExtensions(isEditorMutationLocked(projectId))),
+    });
     const onEdit = EditorView.updateListener.of((update) => {
       if (update.docChanged && !synchronizing && useFilesStore.getState().projectId === projectId) {
         useFilesStore.getState().setContent(path, update.state.doc.toString());
@@ -241,6 +254,7 @@ export function DiffView() {
 
     return () => {
       cancelled = true;
+      refreshEditabilityRef.current = null;
       unregisterMutationOwner();
       detachResizer();
       detachResizer = () => {};

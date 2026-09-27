@@ -69,20 +69,15 @@
       "anyTime": "Dowolny czas",
       "last7Days": "Ostatnie 7 dni",
       "last30Days": "Ostatnie 30 dni",
-      "lastYear": "Ostatni rok"
+      "lastYear": "Ostatni rok",
+      "location": "Lokalizacja",
+      "locationAll": "Wszystkie projekty",
+      "locationLibrary": "W Oleafly",
+      "locationExternal": "Projekty zewnętrzne"
     },
     "openFolder": "Otwórz folder",
     "openFolderShortcut": "Otwórz folder ({{shortcut}})",
-    "createFirstProject": "Utwórz nowy projekt",
-    "scope": {
-      "label": "Pokaż projekty",
-      "all": "Wszystkie",
-      "library": "W Oleafly",
-      "folders": "Foldery"
-    },
-    "recent": {
-      "title": "Ostatnie"
-    }
+    "createFirstProject": "Utwórz nowy projekt"
   },
   "projects": {
     "open": "Otwórz {{name}}",
@@ -96,7 +91,7 @@
     "actions": "Działania dla {{name}}",
     "details": "Szczegóły projektu",
     "exportHistory": "Historia eksportów",
-    "changeColor": "Zmień kolor projektu",
+    "changeColor": "Kolor projektu",
     "fork": "Rozgałęź projekt",
     "delete": "Usuń projekt",
     "favoriteAdd": "Dodaj do ulubionych",
@@ -502,7 +497,6 @@
     "dismiss": "Zamknij"
   },
   "folder": {
-    "badge": "Folder",
     "state": {
       "missing": "Brak folderu",
       "offline": "Dysk niepodłączony",
@@ -526,29 +520,29 @@
     "unavailable": {
       "missing": {
         "title": "Nie można znaleźć „{{name}}”",
-        "body": "Folder był w {{path}} i mógł zostać przeniesiony lub usunięty. Wskaż go, aby zachować jego czaty i historię."
+        "body": "Folder był w <path>{{path}}</path> i mógł zostać przeniesiony lub usunięty. Wskaż go, aby zachować jego czaty i historię."
       },
       "offline": {
         "title": "„{{name}}” jest na dysku, który nie jest podłączony",
-        "body": "Podłącz dysk lub udział sieciowy z {{path}} i spróbuj ponownie."
+        "body": "Podłącz dysk lub udział sieciowy z <path>{{path}}</path> i spróbuj ponownie."
       },
       "replaced": {
         "title": "Folder „{{name}}” został zastąpiony",
-        "body": "Folder w {{path}} to nie ten, który był otwarty wcześniej. Używaj go tylko wtedy, gdy mu ufasz. Po zmianie Oleafly wyłącza zaufanie i zgody."
+        "body": "Folder w <path>{{path}}</path> to nie ten, który był otwarty wcześniej. Używaj go tylko wtedy, gdy mu ufasz. Po zmianie Oleafly wyłącza zaufanie i zgody."
       },
       "permissionDenied": {
         "title": "Oleafly nie może otworzyć „{{name}}”",
         "bodyMac": "Zezwól Oleafly na dostęp do tego folderu w Ustawieniach systemowych › Prywatność i ochrona › Pliki i foldery, a potem spróbuj ponownie.",
-        "bodyOther": "Twoje konto nie może odczytać {{path}}. Sprawdź uprawnienia folderu i spróbuj ponownie."
+        "bodyOther": "Twoje konto nie może odczytać <path>{{path}}</path>. Sprawdź uprawnienia folderu i spróbuj ponownie."
       },
       "back": {
         "title": "Znów masz dostęp do „{{name}}”",
-        "body": "Oleafly może znów odczytać {{path}}."
+        "body": "Oleafly może znów odczytać <path>{{path}}</path>."
       },
-      "locate": "Wskaż…",
+      "locate": "Wskaż folder",
       "tryAgain": "Spróbuj ponownie",
       "useThisFolder": "Użyj tego folderu",
-      "checking": "Sprawdzanie…",
+      "checking": "Sprawdzanie",
       "still": "Oleafly nadal nie ma do niego dostępu."
     },
     "copy": {

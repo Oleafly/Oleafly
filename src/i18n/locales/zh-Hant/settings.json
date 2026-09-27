@@ -1515,7 +1515,8 @@
     "packaged": "已隨 Oleafly 套件安裝。",
     "quickAction": {
       "label": "Finder 快速動作",
-      "description": "在 Finder 中以右鍵按一下資料夾，然後選擇「快速動作」›「在 Oleafly 中開啟」。"
+      "description": "在 Finder 中以右鍵按一下資料夾時，可從「服務」選單使用「在 Oleafly 中開啟」。",
+      "menuHint": "尚未出現在「快速動作」中。請以右鍵按一下資料夾，選擇「快速動作」›「自訂」，然後開啟「{{title}}」。"
     },
     "explorerMenu": {
       "label": "檔案總管右鍵選單",

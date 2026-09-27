@@ -78,7 +78,7 @@ fn read_json<T: DeserializeOwned>(path: &Path, limit: u64) -> Option<T> {
     serde_json::from_slice(&std::fs::read(path).ok()?).ok()
 }
 
-fn data_root() -> Option<PathBuf> {
+pub(crate) fn data_root() -> Option<PathBuf> {
     if let Some(directory) = std::env::var_os("OLEAFLY_DATA_DIR").filter(|value| !value.is_empty())
     {
         return Some(PathBuf::from(directory));

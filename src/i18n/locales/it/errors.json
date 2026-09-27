@@ -35,7 +35,8 @@
     "copy_needs_folder": "Solo le cartelle aperte nella loro posizione possono essere copiate nella libreria.",
     "not_removable": "Solo le cartelle aperte nella loro posizione possono essere rimosse da Oleafly.",
     "trash_unavailable": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Forse questa unità non ne ha uno.",
-    "linked_replace_folder": "{{path}} è una cartella, quindi Oleafly non la sostituisce. Spostala o rinominala prima."
+    "linked_replace_folder": "{{path}} è una cartella, quindi Oleafly non la sostituisce. Spostala o rinominala prima.",
+    "folder_read_only": "Oleafly non può apportare questa modifica perché {{name}} o la sua cartella è di sola lettura. Copia nella libreria la cartella che hai aperto e modificala lì."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

@@ -207,6 +207,8 @@
     "spellLanguageAppSetting": "アプリの設定を使う",
     "spellLanguageAriaLabel": "このプロジェクトのスペルチェック言語",
     "spellLanguageHint": "このプロジェクトにのみ適用されます。ほかの言語は設定からダウンロードできます。",
+    "spellLanguageFolderHint": "このフォルダの project.json に保存されるため、フォルダを開くすべての人に適用されます。ほかの言語は設定からダウンロードできます。",
+    "spellLanguageReadOnly": "このフォルダは読み取り専用のため、project.json の言語は変更できません。",
     "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。",
     "notChecked": "未チェック",
     "dictionaryMissing": "{{name}} がダウンロードされていないため、スペルはチェックされません。設定でダウンロードするか、別の言語を選んでください。",

@@ -1149,6 +1149,7 @@ async fn await_tool_result(
 }
 
 fn tool_error(message: &str) -> ToolOutput {
+    let message = crate::app_error::english_error(message);
     ToolOutput::text(serde_json::json!({ "error": message }).to_string())
 }
 
@@ -1276,8 +1277,11 @@ pub fn agent_tool_result(
     state: State<'_, AgentState>,
     request_id: String,
     call_id: String,
-    output: ToolOutput,
+    mut output: ToolOutput,
 ) {
+    if let Some(english) = crate::app_error::english_tool_output(&output.output) {
+        output.output = english;
+    }
     let key = tool_key(&request_id, &call_id);
     let pending = { lock_or_recover(&state.pending_tools).remove(&key) };
     if let Some(pending) = pending {

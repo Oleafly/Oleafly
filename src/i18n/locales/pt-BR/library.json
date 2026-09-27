@@ -68,20 +68,15 @@
       "anyTime": "Qualquer data",
       "last7Days": "Últimos 7 dias",
       "last30Days": "Últimos 30 dias",
-      "lastYear": "Último ano"
+      "lastYear": "Último ano",
+      "location": "Local",
+      "locationAll": "Todos os projetos",
+      "locationLibrary": "No Oleafly",
+      "locationExternal": "Projetos externos"
     },
     "openFolder": "Abrir pasta",
     "openFolderShortcut": "Abrir pasta ({{shortcut}})",
-    "createFirstProject": "Criar novo projeto",
-    "scope": {
-      "label": "Mostrar projetos",
-      "all": "Todos",
-      "library": "No Oleafly",
-      "folders": "Pastas"
-    },
-    "recent": {
-      "title": "Recentes"
-    }
+    "createFirstProject": "Criar novo projeto"
   },
   "projects": {
     "open": "Abrir {{name}}",
@@ -95,7 +90,7 @@
     "actions": "Ações para {{name}}",
     "details": "Detalhes do projeto",
     "exportHistory": "Histórico de exportações",
-    "changeColor": "Mudar a cor do projeto",
+    "changeColor": "Cor do projeto",
     "fork": "Bifurcar projeto",
     "delete": "Excluir projeto",
     "favoriteAdd": "Adicionar aos favoritos",
@@ -493,7 +488,6 @@
     "dismiss": "Fechar"
   },
   "folder": {
-    "badge": "Pasta",
     "state": {
       "missing": "Pasta não encontrada",
       "offline": "Unidade não conectada",
@@ -517,29 +511,29 @@
     "unavailable": {
       "missing": {
         "title": "Não foi possível encontrar “{{name}}”",
-        "body": "Estava em {{path}} e pode ter sido movida ou apagada. Localize a pasta para manter as conversas e o histórico."
+        "body": "Estava em <path>{{path}}</path> e pode ter sido movida ou apagada. Localize a pasta para manter as conversas e o histórico."
       },
       "offline": {
         "title": "“{{name}}” está em uma unidade que não está conectada",
-        "body": "Conecte a unidade ou o compartilhamento de rede que contém {{path}} e tente de novo."
+        "body": "Conecte a unidade ou o compartilhamento de rede que contém <path>{{path}}</path> e tente de novo."
       },
       "replaced": {
         "title": "“{{name}}” foi substituída",
-        "body": "A pasta em {{path}} não é a que você abriu antes. Use-a só se confiar nela. Ao trocar, o Oleafly desativa a confiança e as aprovações."
+        "body": "A pasta em <path>{{path}}</path> não é a que você abriu antes. Use-a só se confiar nela. Ao trocar, o Oleafly desativa a confiança e as aprovações."
       },
       "permissionDenied": {
         "title": "O Oleafly não consegue abrir “{{name}}”",
         "bodyMac": "Permita que o Oleafly use esta pasta em Ajustes do Sistema › Privacidade e Segurança › Arquivos e Pastas e tente de novo.",
-        "bodyOther": "Sua conta não consegue ler {{path}}. Verifique as permissões da pasta e tente de novo."
+        "bodyOther": "Sua conta não consegue ler <path>{{path}}</path>. Verifique as permissões da pasta e tente de novo."
       },
       "back": {
         "title": "“{{name}}” voltou",
-        "body": "O Oleafly consegue acessar {{path}} de novo."
+        "body": "O Oleafly consegue acessar <path>{{path}}</path> de novo."
       },
-      "locate": "Localizar…",
+      "locate": "Localizar",
       "tryAgain": "Tentar de novo",
       "useThisFolder": "Usar esta pasta",
-      "checking": "Verificando…",
+      "checking": "Verificando",
       "still": "O Oleafly ainda não consegue acessá-la."
     },
     "copy": {

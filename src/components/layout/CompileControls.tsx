@@ -36,6 +36,7 @@ import { cn, shortcut } from "@/lib/utils";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 
 function basename(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -222,7 +223,7 @@ export function CompileControlsView({
         variant="ghost"
         size="sm"
         className={cn(
-          "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
+          "rounded-md bg-primary text-white shadow-sm hover:bg-primary hover:text-white",
           "h-7 gap-1.5 px-2.5",
           // Set here rather than by ButtonGroup: the tooltip wrapper sits
           // between the group and this button.
@@ -250,7 +251,7 @@ export function CompileControlsView({
           variant="ghost"
           size="sm"
           className={cn(
-            "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary",
+            "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary hover:text-white data-[state=open]:text-white",
             "h-7 border-l border-white/25 px-1.5",
           )}
           // Openable while compiling, otherwise "Stop compilation" inside is
@@ -354,7 +355,9 @@ export function CompileControlsView({
                   if (!projectId) return;
                   toast.errorUnique(
                     engineSwitchToastKey(projectId),
-                    t(($) => $.shell.enginePicker.switchFailed),
+                    decodeAppError(error)
+                      ? describeError(error)
+                      : t(($) => $.shell.enginePicker.switchFailed),
                   );
                 });
               }}

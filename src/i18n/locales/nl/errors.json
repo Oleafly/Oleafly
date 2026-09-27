@@ -35,7 +35,8 @@
     "copy_needs_folder": "Alleen mappen die op hun eigen locatie zijn geopend, kunnen naar de bibliotheek worden gekopieerd.",
     "not_removable": "Alleen mappen die op hun eigen locatie zijn geopend, kunnen uit Oleafly worden verwijderd.",
     "trash_unavailable": "Oleafly kon {{path}} niet naar de Prullenmand of Prullenbak verplaatsen. Deze schijf heeft er misschien geen.",
-    "linked_replace_folder": "{{path}} is een map, dus Oleafly vervangt die niet. Verplaats of hernoem hem eerst."
+    "linked_replace_folder": "{{path}} is een map, dus Oleafly vervangt die niet. Verplaats of hernoem hem eerst.",
+    "folder_read_only": "Oleafly kan deze wijziging niet uitvoeren, omdat {{name}} of de bovenliggende map alleen-lezen is. Kopieer de map die je hebt geopend naar de bibliotheek en bewerk hem daar."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

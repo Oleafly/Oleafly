@@ -26,20 +26,17 @@
       "bookmarkAll": "Select option meaning the bookmark filter is off",
       "previewAll": "Select option meaning the PDF preview filter is off",
       "previewYes": "A compiled PDF exists for the project",
-      "previewNo": "No compiled PDF exists for the project"
-    },
-    "scope": {
-      "label": "Accessible name of the chip group that filters the project shelf by where each project lives",
-      "library": "Filter chip: projects stored inside the Oleafly library, as opposed to folders opened where they are on disk",
-      "folders": "Filter chip: folders the user opened in place from anywhere on disk"
-    },
-    "recent": {
-      "title": "Heading of a row listing the most recently opened projects and folders"
+      "previewNo": "No compiled PDF exists for the project",
+      "location": "Label of the filter that picks projects by where they live: inside the Oleafly library, or in folders opened in place on disk",
+      "locationAll": "Location filter option that shows projects from both places",
+      "locationLibrary": "Location filter option: projects stored inside the Oleafly library, as opposed to folders opened where they are on disk",
+      "locationExternal": "Location filter option: folders the user opened in place from anywhere on disk. Use the same word as the external project kind"
     }
   },
   "projects": {
     "openToRecover": "The project was interrupted mid restore and must be opened to finish recovery",
     "recoveryShort": "Short badge for a project that needs recovery",
+    "changeColor": "Menu item that opens a submenu of cover colours for the project book",
     "kind": {
       "document": "Project kind, shown in lower case and capitalised by the style sheet",
       "image": "Project kind, shown in lower case and capitalised by the style sheet",
@@ -95,7 +92,6 @@
     "nextDeadline": "{{kind}} is a deadline name from the dataset, such as Abstract or Submission, and stays verbatim"
   },
   "folder": {
-    "badge": "Screen-reader label in the Recent row, read before the path, that marks an entry as a folder opened in place from disk",
     "state": {
       "offline": "The external or network drive that holds the folder is not connected",
       "replaced": "A different folder now sits at the saved path"
@@ -105,12 +101,23 @@
       "remove": "Forgets the folder in Oleafly without deleting any of its files"
     },
     "unavailable": {
+      "missing": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "offline": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "replaced": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
       "locate": "Button that opens a folder picker so the user can point Oleafly at the moved folder",
       "permissionDenied": {
-        "bodyMac": "Path through macOS System Settings; use the names macOS shows in this language"
+        "bodyMac": "Path through macOS System Settings; use the names macOS shows in this language",
+        "bodyOther": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
       },
       "back": {
-        "title": "A folder that could not be reached a moment ago can be reached again"
+        "title": "A folder that could not be reached a moment ago can be reached again",
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
       }
     },
     "copy": {

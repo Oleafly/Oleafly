@@ -27,6 +27,7 @@ import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
@@ -413,6 +414,9 @@ function dedupeImportedEntries(
 }
 
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    return { error: readOnlyFolderMessage() };
+  }
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: i18n.t(($) => $.core.citation.parseFailed) };
 
@@ -462,6 +466,9 @@ export interface BatchImportResult {
 // \cite{} at the cursor - a bulk import is a library, not a citation action.
 export async function addCitations(entries: ParsedBib[]): Promise<BatchImportResult> {
   if (!entries.length) return { imported: 0, duplicates: 0, errors: [] };
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    return { imported: 0, duplicates: 0, errors: [readOnlyFolderMessage()] };
+  }
 
   const files = useFilesStore.getState();
   const id = files.projectId;

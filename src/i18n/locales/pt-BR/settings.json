@@ -1546,8 +1546,9 @@
     },
     "packaged": "Instalado com o pacote do Oleafly.",
     "quickAction": {
-      "label": "Ação Rápida do Finder",
-      "description": "Clique com o botão direito em uma pasta no Finder e escolha Ações Rápidas › Abrir no Oleafly."
+      "label": "Ações Rápidas do Finder",
+      "description": "Adiciona Abrir no Oleafly ao menu Serviços quando você clica com o botão direito em uma pasta no Finder.",
+      "menuHint": "Ainda não está em Ações Rápidas. Clique com o botão direito em uma pasta, escolha Ações Rápidas › Personalizar e ative {{title}}."
     },
     "explorerMenu": {
       "label": "Menu de contexto do Explorador de Arquivos",

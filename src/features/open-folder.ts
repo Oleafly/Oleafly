@@ -41,6 +41,7 @@ export const OPEN_FOLDER_MENU_EVENT = "menu://open-folder";
 export const OPEN_RECENT_MENU_EVENT = "menu://open-recent";
 const RECENT_MENU_LIMIT = 10;
 const PERMISSION_DENIED = "open_folder.permission_denied";
+const TOO_BROAD = "open_folder.too_broad";
 
 const handledTokens = new Set<string>();
 let draining: Promise<void> | null = null;
@@ -255,12 +256,13 @@ function permissionHint(): string {
   return i18n.t(($) => $.shell.openFolder.permissionHint.linux);
 }
 
-function reportRefusal(error: unknown, name: string | null): void {
+function reportRefusal(error: unknown, requested: string | null): void {
   void logError("open folder", error);
   const app = decodeAppError(error);
   const message = describeError(error);
   const hint = app?.code === PERMISSION_DENIED ? permissionHint() : null;
   const browse = app?.params.browse ?? null;
+  const name = app?.code === TOO_BROAD ? null : requested;
   const title = name ? i18n.t(($) => $.shell.openFolder.refusedTitle, { name }) : null;
   if (!useFilesStore.getState().projectId && useHomeViewStore.getState().page === "library") {
     useOpenFolderFlowStore.getState().refuse({ title, message, hint, browse });

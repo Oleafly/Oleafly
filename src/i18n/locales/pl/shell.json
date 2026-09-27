@@ -388,9 +388,9 @@
       "title": "Oleafly nie może otworzyć tego folderu.",
       "body": "Sprawdź uprawnienia folderu i spróbuj ponownie. Otwarte pliki zostają tutaj."
     },
-    "locate": "Wskaż…",
+    "locate": "Wskaż folder",
     "useThisFolder": "Użyj tego folderu",
-    "saveCopy": "Zapisz kopię…",
+    "saveCopy": "Zapisz kopię",
     "tryAgain": "Spróbuj ponownie",
     "savedCopy": "Otwarte pliki zapisano w {{folder}}."
   },
@@ -1070,10 +1070,11 @@
   },
   "quickActionOffer": {
     "title": "Otwieraj foldery z Findera",
-    "body": "Dodaj Otwórz w Oleafly do szybkich czynności w Finderze. Potem możesz kliknąć prawym przyciskiem dowolny folder, aby otworzyć go tutaj.",
+    "body": "Dodaj Otwórz w Oleafly do Findera. Od razu działa z menu Usługi, a z menu Szybkie czynności po włączeniu.",
     "add": "Dodaj do Findera",
     "notNow": "Nie teraz",
-    "added": "Dodano. Kliknij folder prawym przyciskiem w Finderze i wybierz Szybkie czynności › Otwórz w Oleafly.",
+    "added": "Dodano. Polecenie jest już w menu Usługi w Finderze. Aby używać go też z menu Szybkie czynności, kliknij folder prawym przyciskiem i włącz je w menu Szybkie czynności › Dostosuj.",
+    "addedInQuickActions": "Dodano. Kliknij folder prawym przyciskiem, a znajdziesz polecenie w menu Szybkie czynności.",
     "failed": "Nie udało się dodać. Możesz spróbować ponownie w sekcji Ustawienia › Ogólne."
   }
 }

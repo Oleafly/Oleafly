@@ -60,6 +60,9 @@ const smallButton = (variant: "default" | "outline") =>
   cn(buttonVariants({ variant, size: "sm" }));
 const fill = (text: string) =>
   text.replace("{{name}}", "Thesis").replace("{{path}}", "~/Desktop/thesis");
+const plain = (text: string) => fill(text).replace(/<\/?path>/g, "");
+const described = (text: string) =>
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(plain(text));
 
 function show(availability: UnavailableFolder) {
   return render(
@@ -94,12 +97,39 @@ describe("FolderUnavailableDialog", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it.each(["missing", "offline", "replaced"] as const)(
+    "shows the %s folder's path as a badge and no icon",
+    (state) => {
+      show(state);
+      const dialog = screen.getByRole("dialog");
+      const badge = within(dialog).getByText("~/Desktop/thesis");
+      expect(badge.tagName).toBe("SPAN");
+      expect(badge).toHaveClass("font-mono", "bg-muted", "break-all");
+      const heading = screen.getByRole("heading", { name: fill(unavailable[state].title) });
+      expect(heading.parentElement?.querySelector("svg")).toBeNull();
+    },
+  );
+
+  it("keeps a path that looks like markup as plain text", () => {
+    const path = "~/Desktop/<draft> & <i>notes</i>";
+    render(
+      <FolderUnavailableDialog
+        project={{ ...THESIS, location: { kind: "linked", display_path: path, availability: "unknown" } }}
+        availability="missing"
+        onClose={onClose}
+        onOpen={onOpen}
+        onRemove={onRemove}
+      />,
+    );
+    expect(within(screen.getByRole("dialog")).getByText(path)).toHaveClass("font-mono");
+  });
+
   it("offers Locate for a missing folder and opens it once found", async () => {
     locateProjectFolder.mockResolvedValue("rebound");
     check.mockResolvedValue({ "linked-thesis": "ok" });
     show("missing");
     expect(screen.getByRole("heading", { name: fill(unavailable.missing.title) })).toBeInTheDocument();
-    expect(screen.getByText(fill(unavailable.missing.body))).toBeInTheDocument();
+    described(unavailable.missing.body);
     expect(screen.queryByRole("button", { name: unavailable.tryAgain })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: unavailable.locate }));
@@ -126,7 +156,7 @@ describe("FolderUnavailableDialog", () => {
     check.mockResolvedValueOnce({ "linked-thesis": "offline" });
     show("offline");
     expect(screen.getByRole("heading", { name: fill(unavailable.offline.title) })).toBeInTheDocument();
-    expect(screen.getByText(fill(unavailable.offline.body))).toBeInTheDocument();
+    described(unavailable.offline.body);
 
     fireEvent.click(screen.getByRole("button", { name: unavailable.tryAgain }));
 
@@ -163,7 +193,7 @@ describe("FolderUnavailableDialog", () => {
     check.mockResolvedValue({ "linked-thesis": "ok" });
     show("replaced");
     expect(screen.getByRole("heading", { name: fill(unavailable.replaced.title) })).toBeInTheDocument();
-    expect(screen.getByText(fill(unavailable.replaced.body))).toBeInTheDocument();
+    described(unavailable.replaced.body);
 
     fireEvent.click(screen.getByRole("button", { name: unavailable.useThisFolder }));
 
@@ -176,13 +206,13 @@ describe("FolderUnavailableDialog", () => {
     expect(
       screen.getByRole("heading", { name: fill(unavailable.permissionDenied.title) }),
     ).toBeInTheDocument();
-    expect(screen.getByText(unavailable.permissionDenied.bodyMac)).toBeInTheDocument();
+    described(unavailable.permissionDenied.bodyMac);
     expect(screen.queryByRole("button", { name: unavailable.locate })).toBeNull();
     view.unmount();
 
     platform.mac = false;
     show("permission_denied");
-    expect(screen.getByText(fill(unavailable.permissionDenied.bodyOther))).toBeInTheDocument();
+    described(unavailable.permissionDenied.bodyOther);
   });
 
   it.each([
@@ -259,7 +289,7 @@ describe("FolderUnavailableDialog", () => {
     );
 
     expect(screen.getByRole("heading", { name: fill(unavailable.back.title) })).toBeInTheDocument();
-    expect(screen.getByText(fill(unavailable.back.body))).toBeInTheDocument();
+    described(unavailable.back.body);
     expect(screen.queryByRole("heading", { name: fill(unavailable.missing.title) })).toBeNull();
     expect(screen.queryByRole("button", { name: unavailable.locate })).toBeNull();
     const open = screen.getByRole("button", { name: enCommon.actions.open });

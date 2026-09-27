@@ -1546,8 +1546,9 @@
     },
     "packaged": "Installé avec le paquet Oleafly.",
     "quickAction": {
-      "label": "Action rapide du Finder",
-      "description": "Faites un clic droit sur un dossier dans le Finder et choisissez Actions rapides › Ouvrir dans Oleafly."
+      "label": "Actions rapides du Finder",
+      "description": "Ajoute Ouvrir dans Oleafly au menu Services quand vous faites un clic droit sur un dossier dans le Finder.",
+      "menuHint": "Pas encore dans Actions rapides. Faites un clic droit sur un dossier, choisissez Actions rapides › Personnaliser et activez {{title}}."
     },
     "explorerMenu": {
       "label": "Menu contextuel de l'Explorateur de fichiers",

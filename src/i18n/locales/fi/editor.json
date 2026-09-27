@@ -209,6 +209,8 @@
     "spellLanguageAppSetting": "Käytä sovelluksen asetusta",
     "spellLanguageAriaLabel": "Tämän projektin oikoluvun kieli",
     "spellLanguageHint": "Koskee vain tätä projektia. Lataa lisää kieliä asetuksissa.",
+    "spellLanguageFolderHint": "Tallennetaan tämän kansion project.json-tiedostoon, joten se koskee kaikkia, jotka avaavat kansion. Lataa lisää kieliä asetuksissa.",
+    "spellLanguageReadOnly": "Tämä kansio on vain luku -tilassa, joten sen project.json-tiedoston kieltä ei voi muuttaa.",
     "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa.",
     "notChecked": "Ei tarkistettu",
     "dictionaryMissing": "{{name}} ei ole ladattu, joten oikeinkirjoitusta ei tarkisteta. Lataa se asetuksista tai valitse toinen kieli.",

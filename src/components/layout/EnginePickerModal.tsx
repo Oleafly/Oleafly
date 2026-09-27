@@ -16,6 +16,7 @@ import {
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
@@ -87,7 +88,10 @@ export function EnginePickerModal() {
 
   const reportSwitchFailure = (scope: string, error: unknown, message: string) => {
     void logError(scope, error);
-    toast.errorUnique(engineSwitchToastKey(projectId ?? ""), message);
+    toast.errorUnique(
+      engineSwitchToastKey(projectId ?? ""),
+      decodeAppError(error) ? describeError(error) : message,
+    );
   };
 
   const pinLatexmk = async (afterInstall: boolean) => {

@@ -40,6 +40,8 @@ pub(crate) struct Item {
     pub(crate) state: ItemState,
     pub(crate) packaged: bool,
     pub(crate) attention: Option<&'static str>,
+    pub(crate) quick_actions_menu: Option<bool>,
+    pub(crate) menu_title: Option<String>,
 }
 
 impl Item {
@@ -50,6 +52,8 @@ impl Item {
             state,
             packaged: false,
             attention: (state == ItemState::NeedsAttention).then_some(attention),
+            quick_actions_menu: None,
+            menu_title: None,
         }
     }
 }
@@ -133,15 +137,27 @@ const OFFERED_PREF: &str = "quick_action_offered";
 const OUTDATED: &str = "outdated";
 
 #[cfg(target_os = "macos")]
+fn quick_action_item(context: &Context, services: &Path) -> Item {
+    let state = quick_action::state(services, &context.identifier);
+    let mut item = Item::managed(ItemId::QuickAction, state, OUTDATED);
+    if state == ItemState::Installed {
+        let (service_id, title) = quick_action::installed_service(
+            services,
+            &context.identifier,
+            &crate::i18n::t("systemIntegration.openInOleafly"),
+        );
+        item.quick_actions_menu = quick_action::quick_actions_menu(&service_id, &title);
+        item.menu_title = Some(title);
+    }
+    item
+}
+
+#[cfg(target_os = "macos")]
 fn status(context: &Context) -> Result<Status, String> {
     let services = quick_action::services_dir()?;
     Ok(Status {
         platform: "macos",
-        items: vec![Item::managed(
-            ItemId::QuickAction,
-            quick_action::state(&services, &context.identifier),
-            OUTDATED,
-        )],
+        items: vec![quick_action_item(context, &services)],
     })
 }
 
@@ -158,11 +174,7 @@ fn set(context: &Context, id: ItemId, enabled: bool) -> Result<Item, String> {
         quick_action::remove(&services)?;
     }
     quick_action::refresh_services();
-    Ok(Item::managed(
-        id,
-        quick_action::state(&services, &context.identifier),
-        OUTDATED,
-    ))
+    Ok(quick_action_item(context, &services))
 }
 
 #[cfg(target_os = "macos")]
@@ -388,6 +400,18 @@ pub(crate) fn lifecycle_plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::RunEvent) {
+    if matches!(event, tauri::RunEvent::Ready) {
+        let context = Context::of(app);
+        std::thread::spawn(move || {
+            let Ok(services) = quick_action::services_dir() else {
+                return;
+            };
+            if quick_action::state(&services, &context.identifier) == ItemState::Installed {
+                quick_action::refresh_services();
+            }
+        });
+        return;
+    }
     if let tauri::RunEvent::Opened { urls } = event {
         let entries = opened_entries(urls);
         if !entries.is_empty() {

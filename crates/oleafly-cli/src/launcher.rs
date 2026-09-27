@@ -64,37 +64,7 @@ pub(crate) fn resolve_folder(requested: &Path, current: &Path) -> Result<PathBuf
             ),
         ));
     }
-    Ok(plain_path(canonical))
-}
-
-#[cfg(windows)]
-fn plain_path(path: PathBuf) -> PathBuf {
-    without_verbatim_prefix(&path)
-}
-
-#[cfg(not(windows))]
-fn plain_path(path: PathBuf) -> PathBuf {
-    path
-}
-
-#[cfg(any(windows, test))]
-fn without_verbatim_prefix(path: &Path) -> PathBuf {
-    let Some(text) = path.to_str() else {
-        return path.to_path_buf();
-    };
-    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
-        return PathBuf::from(format!(r"\\{rest}"));
-    }
-    match text.strip_prefix(r"\\?\") {
-        Some(rest)
-            if rest.len() >= 2
-                && rest.as_bytes()[0].is_ascii_alphabetic()
-                && rest.as_bytes()[1] == b':' =>
-        {
-            PathBuf::from(rest)
-        }
-        _ => path.to_path_buf(),
-    }
+    Ok(oleafly_core::plain_path(&canonical))
 }
 
 pub(crate) fn open_in_app(folder: &Path) -> Result<(), Error> {
@@ -477,7 +447,7 @@ mod tests {
         let root = TempDir::new().unwrap();
         let thesis = root.path().join("my thesis").join("論文 café");
         std::fs::create_dir_all(thesis.join("chapters")).unwrap();
-        let canonical = thesis.canonicalize().unwrap();
+        let canonical = oleafly_core::plain_path(&thesis.canonicalize().unwrap());
         let chapters = thesis.join("chapters");
 
         assert_eq!(resolve_folder(Path::new("."), &thesis).unwrap(), canonical);
@@ -505,7 +475,7 @@ mod tests {
         std::fs::create_dir(root.path().join("build")).unwrap();
         assert_eq!(
             resolve_folder(Path::new("build"), root.path()).unwrap(),
-            root.path().join("build").canonicalize().unwrap()
+            oleafly_core::plain_path(&root.path().join("build").canonicalize().unwrap())
         );
     }
 
@@ -527,19 +497,17 @@ mod tests {
         assert!(file.message().contains("paper.tex"), "{}", file.message());
     }
 
+    #[cfg(windows)]
     #[test]
     fn windows_verbatim_prefixes_are_removed_before_the_app_sees_the_path() {
-        for (input, expected) in [
-            (r"\\?\C:\Users\me\thesis", r"C:\Users\me\thesis"),
-            (r"\\?\UNC\server\share\thesis", r"\\server\share\thesis"),
-            (r"C:\Users\me\thesis", r"C:\Users\me\thesis"),
-            (r"\\?\Volume{0000}\thesis", r"\\?\Volume{0000}\thesis"),
-        ] {
-            assert_eq!(
-                without_verbatim_prefix(Path::new(input)),
-                PathBuf::from(expected)
-            );
-        }
+        let root = TempDir::new().unwrap();
+        let thesis = root.path().join("thesis");
+        std::fs::create_dir(&thesis).unwrap();
+        let canonical = thesis.canonicalize().unwrap();
+        assert!(canonical.to_string_lossy().starts_with(r"\\?\"));
+        let resolved = resolve_folder(Path::new("thesis"), root.path()).unwrap();
+        assert!(!resolved.to_string_lossy().starts_with(r"\\"));
+        assert_eq!(resolved, oleafly_core::plain_path(&canonical));
     }
 
     #[test]

@@ -213,6 +213,8 @@
     "spellLanguageAppSetting": "Użyj ustawienia aplikacji",
     "spellLanguageAriaLabel": "Język sprawdzania pisowni w tym projekcie",
     "spellLanguageHint": "Dotyczy tylko tego projektu. Więcej języków pobierzesz w Ustawieniach.",
+    "spellLanguageFolderHint": "Zapisany w pliku project.json tego folderu, więc dotyczy każdego, kto otworzy folder. Więcej języków pobierzesz w Ustawieniach.",
+    "spellLanguageReadOnly": "Ten folder jest tylko do odczytu, więc nie da się zmienić języka w jego pliku project.json.",
     "spellLanguageFailed": "Nie udało się zmienić języka sprawdzania pisowni.",
     "notChecked": "Nie sprawdzono",
     "dictionaryMissing": "{{name}} nie jest pobrany, więc pisownia nie jest sprawdzana. Pobierz go w Ustawieniach lub wybierz inny język.",

@@ -68,20 +68,15 @@
       "anyTime": "Cualquier fecha",
       "last7Days": "Últimos 7 días",
       "last30Days": "Últimos 30 días",
-      "lastYear": "Último año"
+      "lastYear": "Último año",
+      "location": "Ubicación",
+      "locationAll": "Todos los proyectos",
+      "locationLibrary": "En Oleafly",
+      "locationExternal": "Proyectos externos"
     },
     "openFolder": "Abrir carpeta",
     "openFolderShortcut": "Abrir carpeta ({{shortcut}})",
-    "createFirstProject": "Crear un proyecto nuevo",
-    "scope": {
-      "label": "Mostrar proyectos",
-      "all": "Todos",
-      "library": "En Oleafly",
-      "folders": "Carpetas"
-    },
-    "recent": {
-      "title": "Recientes"
-    }
+    "createFirstProject": "Crear un proyecto nuevo"
   },
   "projects": {
     "open": "Abrir {{name}}",
@@ -95,7 +90,7 @@
     "actions": "Acciones para {{name}}",
     "details": "Detalles del proyecto",
     "exportHistory": "Historial de exportaciones",
-    "changeColor": "Cambiar el color del proyecto",
+    "changeColor": "Color del proyecto",
     "fork": "Duplicar el proyecto",
     "delete": "Eliminar el proyecto",
     "favoriteAdd": "Añadir a favoritos",
@@ -493,7 +488,6 @@
     "dismiss": "Cerrar"
   },
   "folder": {
-    "badge": "Carpeta",
     "state": {
       "missing": "Falta la carpeta",
       "offline": "Unidad no conectada",
@@ -517,29 +511,29 @@
     "unavailable": {
       "missing": {
         "title": "No se encuentra “{{name}}”",
-        "body": "Estaba en {{path}} y puede que se haya movido o borrado. Localízala para conservar sus chats y su historial."
+        "body": "Estaba en <path>{{path}}</path> y puede que se haya movido o borrado. Localízala para conservar sus chats y su historial."
       },
       "offline": {
         "title": "“{{name}}” está en una unidad que no está conectada",
-        "body": "Conecta la unidad o el recurso compartido de red que contiene {{path}} y vuelve a intentarlo."
+        "body": "Conecta la unidad o el recurso compartido de red que contiene <path>{{path}}</path> y vuelve a intentarlo."
       },
       "replaced": {
         "title": "“{{name}}” se reemplazó",
-        "body": "La carpeta de {{path}} no es la que abriste antes. Úsala solo si confías en ella. Oleafly desactiva la confianza y las aprobaciones al cambiar."
+        "body": "La carpeta de <path>{{path}}</path> no es la que abriste antes. Úsala solo si confías en ella. Oleafly desactiva la confianza y las aprobaciones al cambiar."
       },
       "permissionDenied": {
         "title": "Oleafly no puede abrir “{{name}}”",
         "bodyMac": "Permite que Oleafly use esta carpeta en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas, y vuelve a intentarlo.",
-        "bodyOther": "Tu cuenta no puede leer {{path}}. Revisa los permisos de la carpeta y vuelve a intentarlo."
+        "bodyOther": "Tu cuenta no puede leer <path>{{path}}</path>. Revisa los permisos de la carpeta y vuelve a intentarlo."
       },
       "back": {
         "title": "“{{name}}” ha vuelto",
-        "body": "Oleafly vuelve a tener acceso a {{path}}."
+        "body": "Oleafly vuelve a tener acceso a <path>{{path}}</path>."
       },
-      "locate": "Localizar…",
+      "locate": "Localizar",
       "tryAgain": "Volver a intentarlo",
       "useThisFolder": "Usar esta carpeta",
-      "checking": "Comprobando…",
+      "checking": "Comprobando",
       "still": "Oleafly sigue sin poder acceder a ella."
     },
     "copy": {

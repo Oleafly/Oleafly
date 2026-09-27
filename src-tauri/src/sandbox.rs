@@ -9,6 +9,7 @@ use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::folder_write::WriteFailure;
 use crate::paths;
 
 /// Resolve a project-relative path, rejecting traversal escapes.
@@ -151,6 +152,10 @@ pub struct AtomicFile {
 
 impl AtomicFile {
     pub fn new(destination: &Path) -> Result<Self, String> {
+        Self::create(destination).map_err(String::from)
+    }
+
+    fn create(destination: &Path) -> Result<Self, WriteFailure> {
         let requested_parent = destination
             .parent()
             .filter(|path| !path.as_os_str().is_empty())
@@ -197,7 +202,7 @@ impl AtomicFile {
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(error) => {
-                    return Err(format!("failed to create staging file: {error}"));
+                    return Err(WriteFailure::io("failed to create staging file", error));
                 }
             }
         }
@@ -219,7 +224,11 @@ impl AtomicFile {
             .expect("staging file is available before commit")
     }
 
-    pub fn commit(mut self) -> Result<(), String> {
+    pub fn commit(self) -> Result<(), String> {
+        self.publish().map_err(String::from)
+    }
+
+    fn publish(mut self) -> Result<(), WriteFailure> {
         let current_parent = same_file::Handle::from_path(&self.parent)
             .map_err(|error| format!("file destination folder changed: {error}"))?;
         if current_parent != self.parent_identity {
@@ -276,11 +285,12 @@ impl AtomicFile {
                     "failed to publish staged artifact: {}. The new content is kept in {}",
                     failure.error,
                     self.staging.display()
-                ));
+                )
+                .into());
             }
-            return Err(format!(
-                "failed to publish staged artifact: {}",
-                failure.error
+            return Err(WriteFailure::io(
+                "failed to publish staged artifact",
+                failure.error,
             ));
         }
         // From here the destination file exists. Nothing after this point may
@@ -314,45 +324,60 @@ impl ReplaceFailure {
 }
 
 pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
-    let mut transaction = AtomicFile::new(destination)?;
+    write_atomically(destination, bytes).map_err(String::from)
+}
+
+pub(crate) fn write_atomically(destination: &Path, bytes: &[u8]) -> Result<(), WriteFailure> {
+    let mut transaction = AtomicFile::create(destination)?;
     transaction
         .staging_file_mut()
         .write_all(bytes)
-        .map_err(|error| format!("failed to write staged file: {error}"))?;
-    transaction.commit()
+        .map_err(|error| WriteFailure::io("failed to write staged file", error))?;
+    transaction.publish()
 }
 
 pub(crate) fn atomic_write_preserving(
     destination: &Path,
     bytes: &[u8],
     backups: &dyn Fn() -> Result<PathBuf, String>,
-) -> Result<(), String> {
+) -> Result<(), WriteFailure> {
     let existing = std::fs::symlink_metadata(destination)
         .ok()
         .filter(|metadata| metadata.is_file() && !metadata.file_type().is_symlink());
     if existing.is_some_and(|metadata| link_count(destination, &metadata) > 1) {
         return write_through_links(destination, bytes, &backups()?);
     }
-    let mut transaction = AtomicFile::new(destination)?;
+    let mut transaction = AtomicFile::create(destination)?;
     transaction.preserve_metadata = true;
     transaction
         .staging_file_mut()
         .write_all(bytes)
-        .map_err(|error| format!("failed to write staged file: {error}"))?;
-    transaction.commit()
+        .map_err(|error| WriteFailure::io("failed to write staged file", error))?;
+    transaction.publish()
 }
 
-fn write_in_place(destination: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let mut file = std::fs::OpenOptions::new()
+fn open_in_place(destination: &Path) -> std::io::Result<File> {
+    std::fs::OpenOptions::new()
         .write(true)
         .truncate(true)
-        .open(destination)?;
+        .open(destination)
+}
+
+fn write_open_file(mut file: File, bytes: &[u8]) -> std::io::Result<()> {
     file.write_all(bytes)?;
     let _ = file.sync_all();
     Ok(())
 }
 
-fn write_through_links(destination: &Path, bytes: &[u8], backups: &Path) -> Result<(), String> {
+fn write_in_place(destination: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    write_open_file(open_in_place(destination)?, bytes)
+}
+
+fn write_through_links(
+    destination: &Path,
+    bytes: &[u8],
+    backups: &Path,
+) -> Result<(), WriteFailure> {
     let name = destination
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -364,7 +389,14 @@ fn write_through_links(destination: &Path, bytes: &[u8], backups: &Path) -> Resu
     ));
     std::fs::copy(destination, &backup)
         .map_err(|error| format!("failed to back up the linked file: {error}"))?;
-    match write_in_place(destination, bytes) {
+    let file = match open_in_place(destination) {
+        Ok(file) => file,
+        Err(error) => {
+            let _ = std::fs::remove_file(&backup);
+            return Err(WriteFailure::io("failed to write the linked file", error));
+        }
+    };
+    match write_open_file(file, bytes) {
         Ok(()) => {
             let _ = std::fs::remove_file(&backup);
             Ok(())
@@ -375,12 +407,13 @@ fn write_through_links(destination: &Path, bytes: &[u8], backups: &Path) -> Resu
             match restored {
                 Ok(()) => {
                     let _ = std::fs::remove_file(&backup);
-                    Err(format!("failed to write the linked file: {error}"))
+                    Err(WriteFailure::io("failed to write the linked file", error))
                 }
                 Err(restore_error) => Err(format!(
                     "failed to write the linked file: {error}. The previous version is kept at {}: {restore_error}",
                     backup.display()
-                )),
+                )
+                .into()),
             }
         }
     }
@@ -870,6 +903,48 @@ mod tests {
         assert!(same_file::is_same_file(&destination, &alias).unwrap());
         assert_eq!(std::fs::read_dir(&backups).unwrap().count(), 0);
         assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 2);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hard_linked_file_that_refuses_writes_is_untouched_and_leaves_no_backup() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let root = temp_root();
+        let folder = root.join("folder");
+        std::fs::create_dir(&folder).unwrap();
+        let destination = folder.join("main.tex");
+        let alias = folder.join("alias.tex");
+        std::fs::write(&destination, b"old").unwrap();
+        std::fs::hard_link(&destination, &alias).unwrap();
+        std::fs::set_permissions(&destination, std::fs::Permissions::from_mode(0o444)).unwrap();
+        let backups = backup_folder(&root);
+        if std::fs::OpenOptions::new()
+            .write(true)
+            .open(&destination)
+            .is_ok()
+        {
+            std::fs::remove_dir_all(&root).ok();
+            return;
+        }
+
+        let failure =
+            atomic_write_preserving(&destination, b"new", &|| Ok(backups.clone())).unwrap_err();
+
+        let text = failure.to_string();
+        assert!(
+            text.starts_with("failed to write the linked file: "),
+            "{text}"
+        );
+        assert!(!text.contains("previous version"), "{text}");
+        assert!(crate::folder_write::Folder::new(
+            crate::project_location::ProjectKind::Linked,
+            &root
+        )
+        .describe(&destination, "main.tex", failure, String::from)
+        .starts_with("failed to write the linked file: "));
+        assert_eq!(std::fs::read(&alias).unwrap(), b"old");
+        assert_eq!(std::fs::read_dir(&backups).unwrap().count(), 0);
         std::fs::remove_dir_all(&root).ok();
     }
 

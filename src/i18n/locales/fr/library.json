@@ -68,20 +68,15 @@
       "anyTime": "À tout moment",
       "last7Days": "7 derniers jours",
       "last30Days": "30 derniers jours",
-      "lastYear": "Dernière année"
+      "lastYear": "Dernière année",
+      "location": "Emplacement",
+      "locationAll": "Tous les projets",
+      "locationLibrary": "Dans Oleafly",
+      "locationExternal": "Projets externes"
     },
     "openFolder": "Ouvrir un dossier",
     "openFolderShortcut": "Ouvrir un dossier ({{shortcut}})",
-    "createFirstProject": "Créer un projet",
-    "scope": {
-      "label": "Afficher les projets",
-      "all": "Tous",
-      "library": "Dans Oleafly",
-      "folders": "Dossiers"
-    },
-    "recent": {
-      "title": "Récents"
-    }
+    "createFirstProject": "Créer un projet"
   },
   "projects": {
     "open": "Ouvrir {{name}}",
@@ -95,7 +90,7 @@
     "actions": "Actions pour {{name}}",
     "details": "Détails du projet",
     "exportHistory": "Historique des exports",
-    "changeColor": "Changer la couleur du projet",
+    "changeColor": "Couleur du projet",
     "fork": "Dupliquer le projet",
     "delete": "Supprimer le projet",
     "favoriteAdd": "Ajouter aux favoris",
@@ -493,7 +488,6 @@
     "dismiss": "Fermer"
   },
   "folder": {
-    "badge": "Dossier",
     "state": {
       "missing": "Dossier introuvable",
       "offline": "Disque non connecté",
@@ -517,29 +511,29 @@
     "unavailable": {
       "missing": {
         "title": "Impossible de trouver « {{name}} »",
-        "body": "Il se trouvait dans {{path}} et a peut-être été déplacé ou supprimé. Localisez-le pour garder ses discussions et son historique."
+        "body": "Il se trouvait dans <path>{{path}}</path> et a peut-être été déplacé ou supprimé. Localisez-le pour garder ses discussions et son historique."
       },
       "offline": {
         "title": "« {{name}} » se trouve sur un disque qui n'est pas connecté",
-        "body": "Connectez le disque ou le partage réseau qui contient {{path}}, puis réessayez."
+        "body": "Connectez le disque ou le partage réseau qui contient <path>{{path}}</path>, puis réessayez."
       },
       "replaced": {
         "title": "« {{name}} » a été remplacé",
-        "body": "Le dossier situé dans {{path}} n'est pas celui que vous aviez ouvert. Utilisez-le seulement si vous lui faites confiance. Oleafly désactive la confiance et les autorisations lors du changement."
+        "body": "Le dossier situé dans <path>{{path}}</path> n'est pas celui que vous aviez ouvert. Utilisez-le seulement si vous lui faites confiance. Oleafly désactive la confiance et les autorisations lors du changement."
       },
       "permissionDenied": {
         "title": "Oleafly ne peut pas ouvrir « {{name}} »",
         "bodyMac": "Autorisez Oleafly à utiliser ce dossier dans Réglages Système › Confidentialité et sécurité › Fichiers et dossiers, puis réessayez.",
-        "bodyOther": "Votre compte ne peut pas lire {{path}}. Vérifiez les autorisations du dossier, puis réessayez."
+        "bodyOther": "Votre compte ne peut pas lire <path>{{path}}</path>. Vérifiez les autorisations du dossier, puis réessayez."
       },
       "back": {
         "title": "« {{name}} » est de retour",
-        "body": "Oleafly peut de nouveau accéder à {{path}}."
+        "body": "Oleafly peut de nouveau accéder à <path>{{path}}</path>."
       },
-      "locate": "Localiser…",
+      "locate": "Localiser",
       "tryAgain": "Réessayer",
       "useThisFolder": "Utiliser ce dossier",
-      "checking": "Vérification…",
+      "checking": "Vérification en cours",
       "still": "Oleafly ne peut toujours pas y accéder."
     },
     "copy": {

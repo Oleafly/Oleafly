@@ -1562,8 +1562,9 @@
     },
     "packaged": "Nainstalováno s balíčkem Oleafly.",
     "quickAction": {
-      "label": "Rychlá akce ve Finderu",
-      "description": "Ve Finderu klikněte pravým tlačítkem na složku a vyberte Rychlé akce › Otevřít v Oleafly."
+      "label": "Rychlé akce ve Finderu",
+      "description": "Přidá Otevřít v Oleafly do nabídky Služby, když ve Finderu kliknete pravým tlačítkem na složku.",
+      "menuHint": "V nabídce Rychlé akce zatím není. Klikněte pravým tlačítkem na složku, vyberte Rychlé akce › Vlastní a zapněte {{title}}."
     },
     "explorerMenu": {
       "label": "Místní nabídka Průzkumníka souborů",

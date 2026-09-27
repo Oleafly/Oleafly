@@ -1,5 +1,5 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { isReadOnlyProjectPath } from "@/lib/project-paths";
+import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
 import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
@@ -233,13 +233,9 @@ const HOST: EditorHost = {
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
   saveActive: saveActiveFromKeymap,
-  isEditLocked: () => {
-    const { projectId, activePath, manifestHome, tree } = useFilesStore.getState();
-    return (
-      isEditorMutationLocked(projectId) ||
-      (!!activePath && isReadOnlyProjectPath(activePath, manifestHome, tree))
-    );
-  },
+  isEditLocked: () =>
+    isEditorMutationLocked(useFilesStore.getState().projectId) || activeFileReadOnly(),
+  useEditLocked: useActiveFileReadOnly,
   registerMutationOwner: (owner) => registerEditorMutationOwner({
     ...owner,
     projectId: () => useFilesStore.getState().projectId,

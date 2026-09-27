@@ -131,8 +131,14 @@ function cardFromDiagnostic(diagnostic: Diagnostic): ProofreadingCard {
   };
 }
 
-function cardFor(diagnostic: Diagnostic): ProofreadingCard {
-  return cards.get(diagnostic) ?? cardFromDiagnostic(diagnostic);
+function cardFor(view: EditorView, diagnostic: Diagnostic): ProofreadingCard {
+  const card = cards.get(diagnostic);
+  if (!card) return cardFromDiagnostic(diagnostic);
+  return view.state.readOnly ? withoutReplacements(card) : card;
+}
+
+function withoutReplacements(card: ProofreadingCard): ProofreadingCard {
+  return { ...card, suggestions: [], loadSuggestions: undefined };
 }
 
 // Keyed by diagnostic identity: the presentation data never has to survive a
@@ -329,7 +335,7 @@ export function diagnosticCardSource(
   });
   if (!found) return null;
   const hit = found as { diagnostic: Diagnostic; from: number; to: number };
-  const card = cardFor(hit.diagnostic);
+  const card = cardFor(view, hit.diagnostic);
   return {
     pos: hit.from,
     end: hit.to,
@@ -355,7 +361,7 @@ function cardForLine(
   let hit: { card: ProofreadingCard; from: number; to: number } | null = null;
   forEachDiagnostic(view.state, (diagnostic, from, to) => {
     if (hit || to < block.from || from > block.to) return;
-    hit = { card: cardFor(diagnostic), from, to };
+    hit = { card: cardFor(view, diagnostic), from, to };
   });
   return hit;
 }

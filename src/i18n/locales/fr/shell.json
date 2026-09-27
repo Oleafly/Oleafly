@@ -386,9 +386,9 @@
       "title": "Oleafly ne peut pas ouvrir ce dossier.",
       "body": "Vérifiez les autorisations du dossier, puis réessayez. Vos fichiers ouverts restent ici."
     },
-    "locate": "Localiser…",
+    "locate": "Localiser",
     "useThisFolder": "Utiliser ce dossier",
-    "saveCopy": "Enregistrer une copie…",
+    "saveCopy": "Enregistrer une copie",
     "tryAgain": "Réessayer",
     "savedCopy": "Vos fichiers ouverts ont été enregistrés dans {{folder}}."
   },
@@ -1051,10 +1051,11 @@
   },
   "quickActionOffer": {
     "title": "Ouvrir des dossiers depuis le Finder",
-    "body": "Ajoutez Ouvrir dans Oleafly aux actions rapides du Finder. Vous pourrez ensuite faire un clic droit sur n'importe quel dossier pour l'ouvrir ici.",
+    "body": "Ajoutez Ouvrir dans Oleafly au Finder. Elle marche tout de suite depuis le menu Services, et depuis Actions rapides une fois activée.",
     "add": "Ajouter au Finder",
     "notNow": "Plus tard",
-    "added": "C'est fait. Faites un clic droit sur un dossier dans le Finder et choisissez Actions rapides › Ouvrir dans Oleafly.",
+    "added": "C'est fait. Elle se trouve maintenant dans le menu Services du Finder. Pour l'utiliser aussi depuis Actions rapides, faites un clic droit sur un dossier et activez-la dans Actions rapides › Personnaliser.",
+    "addedInQuickActions": "C'est fait. Faites un clic droit sur un dossier et vous la trouverez dans Actions rapides.",
     "failed": "Impossible de l'ajouter. Vous pouvez réessayer dans Paramètres › Général."
   }
 }

@@ -88,6 +88,7 @@ import {
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
 import { cn, shortcut } from "@/lib/utils";
 import {
   attachPreviewZoom,
@@ -1047,7 +1048,7 @@ export function PreviewPane() {
         toast.success(t(($) => $.preview.save.pdfSaved));
       }
     } catch (e) {
-      notifyError("save to project", e, t(($) => $.preview.save.failed));
+      notifyError("save to project", e, decodeAppError(e) ? undefined : t(($) => $.preview.save.failed));
     } finally {
       setSaving(false);
     }

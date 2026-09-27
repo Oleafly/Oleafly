@@ -75,7 +75,7 @@ export const useFolderAccessStore = create<FolderAccessState>((set, get) => ({
       projectId,
       loaded: false,
       trust: null,
-      status: null,
+      status: projectId !== null && projectId === state.projectId ? state.status : null,
       trusting: null,
       bannerHidden: projectId !== null && state.hiddenBanners.includes(projectId),
       limitedTerminals:
@@ -133,14 +133,48 @@ export const useFolderAccessStore = create<FolderAccessState>((set, get) => ({
   },
 }));
 
+async function readFolderStatus(projectId: string): Promise<FolderStatus | null | undefined> {
+  try {
+    return await projectFolderStatus(projectId);
+  } catch (error) {
+    void logError("read folder status", error);
+    return undefined;
+  }
+}
+
+function sameStatus(left: FolderStatus | null, right: FolderStatus | null): boolean {
+  return left?.read_only === right?.read_only && left?.synced_with === right?.synced_with;
+}
+
 export async function loadFolderAccess(projectId: string): Promise<void> {
   useFolderAccessStore.getState().reset(projectId);
   const [trust, status] = await Promise.all([
     quietly("read folder trust", () => projectTrustState(projectId)),
-    quietly("read folder status", () => projectFolderStatus(projectId)),
+    readFolderStatus(projectId),
   ]);
   if (useFolderAccessStore.getState().projectId !== projectId) return;
-  useFolderAccessStore.setState((state) => ({ ...withTrust(state, trust), status, loaded: true }));
+  useFolderAccessStore.setState((state) => ({
+    ...withTrust(state, trust),
+    status: status === undefined || sameStatus(state.status, status) ? state.status : status,
+    loaded: true,
+  }));
+}
+
+let statusRefresh: { projectId: string; request: Promise<void> } | null = null;
+
+export function refreshFolderStatus(projectId: string): Promise<void> {
+  if (statusRefresh?.projectId === projectId) return statusRefresh.request;
+  const request = readFolderStatus(projectId)
+    .then((status) => {
+      const state = useFolderAccessStore.getState();
+      if (status === undefined || state.projectId !== projectId || sameStatus(state.status, status)) return;
+      useFolderAccessStore.setState({ status });
+    })
+    .finally(() => {
+      if (statusRefresh?.request === request) statusRefresh = null;
+    });
+  statusRefresh = { projectId, request };
+  return request;
 }
 
 export function folderIsRestricted(state: FolderAccessView, projectId: string | null): boolean {
@@ -163,4 +197,20 @@ export function terminalNeedsReopen(
 
 export function folderIsReadOnly(state: FolderAccessView, projectId: string | null): boolean {
   return projectId !== null && state.projectId === projectId && state.status?.read_only === true;
+}
+
+export function projectFolderIsReadOnly(projectId: string | null): boolean {
+  return folderIsReadOnly(useFolderAccessStore.getState(), projectId);
+}
+
+export function useProjectFolderReadOnly(projectId: string | null): boolean {
+  return useFolderAccessStore((state) => folderIsReadOnly(state, projectId));
+}
+
+export function readOnlyFolderMessage(): string {
+  return i18n.t(($) => $.shell.openedFolder.readOnly.banner);
+}
+
+export function readOnlyFolderMessageInEnglish(): string {
+  return i18n.getFixedT("en", ["common", "shell"])(($) => $.shell.openedFolder.readOnly.banner);
 }

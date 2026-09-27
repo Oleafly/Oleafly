@@ -35,7 +35,8 @@
     "copy_needs_folder": "Nur direkt am Speicherort geöffnete Ordner können in die Bibliothek kopiert werden.",
     "not_removable": "Nur direkt am Speicherort geöffnete Ordner können aus Oleafly entfernt werden.",
     "trash_unavailable": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Das Laufwerk hat möglicherweise keinen.",
-    "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um."
+    "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um.",
+    "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

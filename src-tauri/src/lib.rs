@@ -42,6 +42,7 @@ mod document_stats;
 mod folder_listing;
 mod folder_status;
 mod folder_watch;
+mod folder_write;
 mod fs_identity;
 mod fsperm;
 mod git;
@@ -703,6 +704,7 @@ pub fn run() {
             assets::template_prerequisites,
             assets::ensure_template_assets,
             project::set_project_dictionary_locale,
+            project::reset_project_dictionary_locale_on_device,
             dictionaries::list_dictionaries,
             dictionaries::install_dictionary,
             dictionaries::remove_dictionary,

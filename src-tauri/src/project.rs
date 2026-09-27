@@ -516,6 +516,7 @@ impl CreateFileResult {
 /// every platform, conflicts are structured and non-destructive, and
 /// `KeepBoth` diverts to the suggested sibling. Create never replaces.
 fn create_path_in_project(
+    kind: ProjectKind,
     root: &Path,
     requested: &Path,
     requested_rel: &str,
@@ -524,7 +525,14 @@ fn create_path_in_project(
 ) -> Result<CreateFileResult, String> {
     if let Some(parent) = requested.parent() {
         if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(parent).map_err(|error| {
+                crate::folder_write::Folder::new(kind, root).describe(
+                    requested,
+                    requested_rel,
+                    error,
+                    String::from,
+                )
+            })?;
         }
     }
     let target = match portable_collision(requested)? {
@@ -570,7 +578,12 @@ fn create_path_in_project(
                 generation: 0,
             })
         }
-        Err(error) => Err(error.to_string()),
+        Err(error) => Err(crate::folder_write::Folder::new(kind, root).describe(
+            &target,
+            &rel_slash(root, &target),
+            error,
+            String::from,
+        )),
     }
 }
 
@@ -741,6 +754,7 @@ enum MetaWrite<'a> {
 
 const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
 const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor"];
+const DICTIONARY_FIELDS: &[&str] = &["dictionary_locale"];
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     write_chosen_meta(project_id, meta, &[])
@@ -779,7 +793,16 @@ fn write_routed_meta(
             ));
         }
         if !changes.is_empty() {
-            crate::project_manifest::write_folder_fields(&location.root, &changes)?;
+            crate::project_manifest::write_folder_fields(&location.root, &changes).map_err(
+                |failure| {
+                    crate::folder_write::Folder::of(location).describe(
+                        &location.root.join(crate::project_location::MANIFEST_FILE),
+                        crate::project_location::MANIFEST_FILE,
+                        failure,
+                        String::from,
+                    )
+                },
+            )?;
         }
     }
     let path = route.location().manifest_path();
@@ -2121,14 +2144,11 @@ async fn write_project_file(
         expected_generation,
     )?;
     tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
-        let (_, generation) = admission.run(|| {
+        let (_, generation) = admission.run_with_change_status(|| {
             let p = resolve(&project_id, &path)?;
             ensure_disk_unchanged(&p, expected_hash.as_deref(), &path)?;
-            if let Some(parent) = p.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            write_project_bytes(&project_id, &p, content.as_bytes())
-                .map_err(|e| format!("failed to write {path}: {e}"))
+            let written = write_project_bytes(&project_id, &p, &path, content.as_bytes())?;
+            Ok(((), written))
         })?;
         Ok(FileMutationResult { generation })
     })
@@ -2136,17 +2156,44 @@ async fn write_project_file(
     .map_err(|e| format!("file write task failed: {e}"))?
 }
 
-fn write_project_bytes(project_id: &str, target: &Path, bytes: &[u8]) -> Result<(), String> {
-    let location = crate::project_location::locate(project_id)?;
+fn write_project_bytes(
+    project_id: &str,
+    target: &Path,
+    path: &str,
+    bytes: &[u8],
+) -> Result<bool, String> {
+    let failed = |error: String| format!("failed to write {path}: {error}");
+    let location =
+        crate::project_location::locate(project_id).map_err(|error| failed(error.into()))?;
+    if disk_bytes_match(target, bytes) {
+        return Ok(false);
+    }
+    let folder = crate::folder_write::Folder::of(&location);
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| folder.describe(target, path, error, String::from))?;
+    }
     if location.kind == ProjectKind::Library {
-        return atomic_write(target, bytes);
+        atomic_write(target, bytes).map_err(failed)?;
+        return Ok(true);
     }
     let backups = location.private_state_dir().join("save-backups");
     crate::sandbox::atomic_write_preserving(target, bytes, &|| {
         location.ensure_linked_state(&backups)
-    })?;
+    })
+    .map_err(|failure| folder.describe(target, path, failure, |failure| failed(failure.into())))?;
     crate::folder_watch::note_own_write(target);
-    Ok(())
+    Ok(true)
+}
+
+fn disk_bytes_match(target: &Path, bytes: &[u8]) -> bool {
+    let Ok(metadata) = std::fs::symlink_metadata(target) else {
+        return false;
+    };
+    if !metadata.is_file() || metadata.len() != bytes.len() as u64 {
+        return false;
+    }
+    std::fs::read(target).is_ok_and(|current| current == bytes)
 }
 
 const DISK_CONFLICT: &str = "file changed on disk";
@@ -2197,13 +2244,10 @@ impl ProjectFileWrite {
     pub(crate) fn write(self, bytes: &[u8]) -> Result<FileMutationResult, String> {
         let project_id = self.project_id;
         let path = self.path;
-        let (_, generation) = self.admission.run(|| {
+        let (_, generation) = self.admission.run_with_change_status(|| {
             let target = resolve(&project_id, &path)?;
-            if let Some(parent) = target.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            write_project_bytes(&project_id, &target, bytes)
-                .map_err(|e| format!("failed to write {path}: {e}"))
+            let written = write_project_bytes(&project_id, &target, &path, bytes)?;
+            Ok(((), written))
         })?;
         Ok(FileMutationResult { generation })
     }
@@ -2224,9 +2268,10 @@ pub fn create_file(
     let admission = admit_mutation(&project_id, vec![scope], expected_generation)?;
     let strategy = conflict_strategy.unwrap_or_default();
     let (result, generation) = admission.run(|| {
+        let kind = crate::project_location::kind_of(&project_id).unwrap_or(ProjectKind::Library);
         let root = paths::project_dir(&project_id)?;
         let requested = resolve(&project_id, &path)?;
-        create_path_in_project(&root, &requested, &path, is_dir, strategy)
+        create_path_in_project(kind, &root, &requested, &path, is_dir, strategy)
     })?;
     Ok(result.with_generation(generation))
 }
@@ -2257,10 +2302,22 @@ pub fn delete_file(
                         .into(),
                 );
             }
-            if crate::project_location::kind_of(&project_id)? == ProjectKind::Linked
-                && !permanent.unwrap_or(false)
-            {
+            let kind = crate::project_location::kind_of(&project_id)?;
+            let root = paths::project_dir(&project_id).ok();
+            let folder = root
+                .as_deref()
+                .map(|root| crate::folder_write::Folder::new(kind, root));
+            if kind == ProjectKind::Linked && !permanent.unwrap_or(false) {
+                #[cfg(unix)]
+                {
+                    if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
+                        return Err(crate::folder_write::read_only(&path));
+                    }
+                }
                 return crate::os_trash::move_to_trash(&p).map_err(|error| {
+                    if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
+                        return crate::folder_write::read_only(&path);
+                    }
                     crate::app_error::AppError::new("project.trash_unavailable")
                         .param("path", &path)
                         .detail(error)
@@ -2272,7 +2329,24 @@ pub fn delete_file(
             } else {
                 std::fs::remove_file(&p)
             }
-            .map_err(|e| format!("failed to delete {path}: {e}"))
+            .map_err(|error| {
+                let fallback = |failure| format!("failed to delete {path}: {failure}");
+                let (Some(root), Some(folder)) = (root.as_deref(), folder) else {
+                    return fallback(crate::folder_write::WriteFailure::from(error));
+                };
+                folder.describe_with(
+                    error,
+                    |folder| {
+                        let entry = folder.refused_removal(&p)?;
+                        Some(if entry == p {
+                            path.clone()
+                        } else {
+                            rel_slash(root, &entry)
+                        })
+                    },
+                    fallback,
+                )
+            })
         })
     })?;
     Ok(FileMutationResult { generation })
@@ -2421,7 +2495,7 @@ impl MoveTransaction {
                 case_only,
             } => {
                 if case_only {
-                    rename_case_only(&current, &original)
+                    rename_case_only(&current, &original).map_err(String::from)
                 } else {
                     rename_exclusive(&current, &original)
                         .map_err(|e| format!("failed to roll back move: {e}"))
@@ -2543,6 +2617,7 @@ fn rename_path_and_update_meta(
     if let Err(error) = written {
         let rollback = transaction.rollback();
         return Err(match rollback {
+            Ok(()) if crate::folder_write::is_read_only_refusal(&error) => error,
             Ok(()) => format!("failed to update the main document after the move. The move was rolled back: {error}"),
             Err(rollback_error) => format!(
                 "failed to update the main document after the move: {error}. Rollback also failed: {rollback_error}"
@@ -2574,6 +2649,25 @@ fn stage_rename_path(
     if src == root || requested_dst == root {
         return Err("refusing to move the project root".into());
     }
+    let name = rel_slash(root, src);
+    let destination_name = rel_slash(root, requested_dst);
+    let refused = |failure: crate::folder_write::WriteFailure| {
+        crate::folder_write::Folder::of(location).describe_with(
+            failure,
+            |folder| {
+                [(src, &name), (requested_dst, &destination_name)]
+                    .into_iter()
+                    .find(|(target, _)| folder.refuses_writes_at(target))
+                    .map(|(_, refused)| refused.clone())
+                    .or_else(|| {
+                        folder
+                            .refuses_move_of(src, requested_dst)
+                            .then(|| name.clone())
+                    })
+            },
+            String::from,
+        )
+    };
     let source_meta = std::fs::symlink_metadata(src)
         .map_err(|e| format!("could not read the move source: {e}"))?;
     if source_meta.file_type().is_symlink() {
@@ -2593,13 +2687,13 @@ fn stage_rename_path(
     }
 
     if let Some(parent) = requested_dst.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent).map_err(|error| refused(error.into()))?;
     }
 
     let collision = portable_collision(requested_dst)?;
     if let Some(existing) = collision.as_ref() {
         if same_entry(src, existing) {
-            rename_case_only(src, requested_dst)?;
+            rename_case_only(src, requested_dst).map_err(refused)?;
             return Ok(MoveTransaction {
                 result: RenameFileResult::Renamed {
                     path: requested_rel.to_string(),
@@ -2630,7 +2724,8 @@ fn stage_rename_path(
             unique_destination(requested_dst, source_meta.is_dir())?
         }
         (Some(existing), FileConflictStrategy::Replace) => {
-            let rollback = stage_replace_path(location, src, &existing, requested_dst)?;
+            let rollback =
+                stage_replace_path(location, src, &existing, requested_dst).map_err(refused)?;
             return Ok(MoveTransaction {
                 result: RenameFileResult::Renamed {
                     path: requested_rel.to_string(),
@@ -2657,8 +2752,12 @@ fn stage_rename_path(
         Err(_error) if portable_collision(&destination)?.is_some() => {
             if strategy == FileConflictStrategy::KeepBoth {
                 let retry = unique_destination(&destination, source_meta.is_dir())?;
-                rename_exclusive(src, &retry)
-                    .map_err(|e| format!("move failed after choosing a unique name: {e}"))?;
+                rename_exclusive(src, &retry).map_err(|error| {
+                    refused(crate::folder_write::WriteFailure::io(
+                        "move failed after choosing a unique name",
+                        error,
+                    ))
+                })?;
                 Ok(MoveTransaction {
                     result: RenameFileResult::Renamed {
                         path: rel_slash(root, &retry),
@@ -2682,7 +2781,10 @@ fn stage_rename_path(
                 })
             }
         }
-        Err(error) => Err(format!("move failed: {error}")),
+        Err(error) => Err(refused(crate::folder_write::WriteFailure::io(
+            "move failed",
+            error,
+        ))),
     }
 }
 
@@ -2785,18 +2887,21 @@ fn unique_copy_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String>
     Err("could not find an available copy name".into())
 }
 
-fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
+fn rename_case_only(src: &Path, dst: &Path) -> Result<(), crate::folder_write::WriteFailure> {
+    use crate::folder_write::WriteFailure;
     let parent = src
         .parent()
         .ok_or_else(|| "move source has no parent folder".to_string())?;
     let temporary = unique_temporary_path(parent, ".oleafly-case-rename")?;
-    rename_exclusive(src, &temporary).map_err(|e| format!("case-only move failed: {e}"))?;
+    rename_exclusive(src, &temporary)
+        .map_err(|error| WriteFailure::io("case-only move failed", error))?;
     if let Err(error) = rename_exclusive(&temporary, dst) {
         let rollback = rename_exclusive(&temporary, src);
         return Err(match rollback {
-            Ok(()) => format!("case-only move failed and was rolled back: {error}"),
+            Ok(()) => WriteFailure::io("case-only move failed and was rolled back", error),
             Err(rollback_error) => {
                 format!("Case-only move failed: {error}. Rollback also failed: {rollback_error}")
+                    .into()
             }
         });
     }
@@ -2808,7 +2913,8 @@ fn stage_linked_replace_path(
     src: &Path,
     existing: &Path,
     dst: &Path,
-) -> Result<MoveRollback, String> {
+) -> Result<MoveRollback, crate::folder_write::WriteFailure> {
+    use crate::folder_write::WriteFailure;
     let replaced = std::fs::symlink_metadata(existing)
         .map_err(|e| format!("could not read the existing destination: {e}"))?;
     if !replaced.is_file() || replaced.file_type().is_symlink() {
@@ -2824,15 +2930,20 @@ fn stage_linked_replace_path(
         .map_err(|e| format!("could not back up the existing destination: {e}"))?;
     if let Err(error) = std::fs::remove_file(existing) {
         let _ = std::fs::remove_file(&backup);
-        return Err(format!(
-            "could not replace the existing destination: {error}"
-        ));
+        return Err(crate::folder_write::Folder::of(location)
+            .describe(
+                existing,
+                &rel_slash(&location.root, existing),
+                WriteFailure::io("could not replace the existing destination", error),
+                String::from,
+            )
+            .into());
     }
     if let Err(error) = rename_exclusive(src, dst) {
         return Err(match restore_replaced_copy(&backup, existing) {
-            Ok(()) => format!("replace failed and was rolled back: {error}"),
+            Ok(()) => WriteFailure::io("replace failed and was rolled back", error),
             Err(rollback_error) => {
-                format!("Replace failed: {error}. Rollback also failed: {rollback_error}")
+                format!("Replace failed: {error}. Rollback also failed: {rollback_error}").into()
             }
         });
     }
@@ -2849,7 +2960,7 @@ fn stage_replace_path(
     src: &Path,
     existing: &Path,
     dst: &Path,
-) -> Result<MoveRollback, String> {
+) -> Result<MoveRollback, crate::folder_write::WriteFailure> {
     if location.kind == ProjectKind::Linked {
         return stage_linked_replace_path(location, src, existing, dst);
     }
@@ -2861,12 +2972,13 @@ fn stage_replace_path(
 
     if let Err(error) = rename_exclusive(src, dst) {
         let rollback = rename_exclusive(&backup, existing);
-        return Err(match rollback {
+        let message = match rollback {
             Ok(()) => format!("replace failed and was rolled back: {error}"),
             Err(rollback_error) => {
                 format!("Replace failed: {error}. Rollback also failed: {rollback_error}")
             }
-        });
+        };
+        return Err(message.into());
     }
 
     Ok(MoveRollback::Replaced {
@@ -2918,13 +3030,18 @@ fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String>
 pub(crate) fn create_unique_temporary_directory(
     parent: &Path,
     prefix: &str,
-) -> Result<PathBuf, String> {
+) -> Result<PathBuf, crate::folder_write::WriteFailure> {
     for suffix in 0..10_000_u32 {
         let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
         match std::fs::create_dir(&candidate) {
             Ok(()) => return Ok(candidate),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(format!("could not create a staging directory: {error}")),
+            Err(error) => {
+                return Err(crate::folder_write::WriteFailure::io(
+                    "could not create a staging directory",
+                    error,
+                ))
+            }
         }
     }
     Err("could not reserve a staging directory".into())
@@ -3037,10 +3154,12 @@ pub async fn copy_file(
     )?;
     tauri::async_runtime::spawn_blocking(move || -> Result<CopyFileResult, String> {
         let (path, generation) = admission.run(|| {
+            let kind =
+                crate::project_location::kind_of(&project_id).unwrap_or(ProjectKind::Library);
             let root = paths::project_dir(&project_id)?;
             let src = resolve(&project_id, &from)?;
             let requested_dst = resolve(&project_id, &to)?;
-            copy_path_in_project(&root, &src, &requested_dst)
+            copy_path_in_project(kind, &root, &src, &requested_dst)
         })?;
         Ok(CopyFileResult { path, generation })
     })
@@ -3048,7 +3167,12 @@ pub async fn copy_file(
     .map_err(|e| e.to_string())?
 }
 
-fn copy_path_in_project(root: &Path, src: &Path, requested_dst: &Path) -> Result<String, String> {
+fn copy_path_in_project(
+    kind: ProjectKind,
+    root: &Path,
+    src: &Path,
+    requested_dst: &Path,
+) -> Result<String, String> {
     static FILE_COPY_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     let _guard = FILE_COPY_LOCK
         .get_or_init(|| Mutex::new(()))
@@ -3065,31 +3189,36 @@ fn copy_path_in_project(root: &Path, src: &Path, requested_dst: &Path) -> Result
         return Err("cannot copy a folder into itself".into());
     }
     let dst = unique_copy_destination(requested_dst, meta.is_dir())?;
+    let name = rel_slash(root, &dst);
+    let refused = |failure: crate::folder_write::WriteFailure| {
+        crate::folder_write::Folder::new(kind, root).describe(&dst, &name, failure, String::from)
+    };
     let parent = dst
         .parent()
         .ok_or_else(|| "copy destination has no parent folder".to_string())?;
     if !parent.exists() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent).map_err(|error| refused(error.into()))?;
     }
     let staged = unique_temporary_path(parent, ".oleafly-copy")?;
     let copied = if meta.is_dir() {
         copy_dir_recursive(src, &staged, 0)
     } else {
-        std::fs::copy(src, &staged)
-            .map(|_| ())
-            .map_err(|e| format!("copy failed: {e}"))
+        copy_regular_file(src, &staged).map_err(|failure| failure.context("copy failed"))
     };
     if let Err(error) = copied {
         if staged.exists() {
             let _ = remove_path(&staged);
         }
-        return Err(error);
+        return Err(refused(error));
     }
     if let Err(error) = rename_exclusive(&staged, &dst) {
         let _ = remove_path(&staged);
-        return Err(format!("could not publish the copy: {error}"));
+        return Err(refused(crate::folder_write::WriteFailure::io(
+            "could not publish the copy",
+            error,
+        )));
     }
-    Ok(rel_slash(root, &dst))
+    Ok(name)
 }
 
 /// Write base64-encoded bytes to a project file (used to save a compiled PDF
@@ -3112,13 +3241,10 @@ pub async fn save_file_base64(
         let bytes = STANDARD
             .decode(data.trim())
             .map_err(|e| format!("invalid base64: {e}"))?;
-        let (_, generation) = admission.run(|| {
+        let (_, generation) = admission.run_with_change_status(|| {
             let p = resolve(&project_id, &path)?;
-            if let Some(parent) = p.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            write_project_bytes(&project_id, &p, &bytes)
-                .map_err(|e| format!("failed to write {path}: {e}"))
+            let written = write_project_bytes(&project_id, &p, &path, &bytes)?;
+            Ok(((), written))
         })?;
         Ok(FileMutationResult { generation })
     })
@@ -3510,20 +3636,41 @@ pub async fn set_project_dictionary_locale(
     locale: Option<String>,
 ) -> Result<ProjectMeta, String> {
     let locale = validate_dictionary_locale(&app, locale.as_deref())?;
+    store_dictionary_locale(
+        &app,
+        &state,
+        project_id,
+        locale,
+        MetaWrite::Explicit(DICTIONARY_FIELDS),
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn reset_project_dictionary_locale_on_device(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<ProjectMeta, String> {
+    store_dictionary_locale(&app, &state, project_id, None, MetaWrite::Device).await
+}
+
+async fn store_dictionary_locale(
+    app: &tauri::AppHandle,
+    state: &crate::state::AppState,
+    project_id: String,
+    locale: Option<String>,
+    intent: MetaWrite<'static>,
+) -> Result<ProjectMeta, String> {
     let owned = project_id.clone();
-    let meta = tauri::async_runtime::spawn_blocking(move || -> Result<ProjectMeta, String> {
-        with_project_metadata(&owned, || {
-            let mut meta = read_meta(&owned)?;
-            meta.dictionary_locale = locale;
-            write_meta(&owned, &meta)?;
-            Ok(meta)
-        })
+    let meta = tauri::async_runtime::spawn_blocking(move || {
+        write_dictionary_locale(&owned, locale, intent)
     })
     .await
     .map_err(|error| format!("failed to set the spelling dictionary: {error}"))??;
     let _ = publish_project_state_changed(
-        &app,
-        &state,
+        app,
+        state,
         &project_id,
         meta.clone(),
         "dictionary-changed",
@@ -3531,6 +3678,20 @@ pub async fn set_project_dictionary_locale(
         project_mutation_generation(project_id.clone()).ok(),
     );
     Ok(meta)
+}
+
+fn write_dictionary_locale(
+    project_id: &str,
+    locale: Option<String>,
+    intent: MetaWrite<'_>,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let route = crate::project_manifest::route_project(project_id)?;
+        let mut meta = read_routed_meta(project_id, &route)?;
+        meta.dictionary_locale = locale;
+        write_routed_meta(project_id, &route, &meta, intent)?;
+        read_meta(project_id)
+    })
 }
 
 fn validate_dictionary_locale(
@@ -4016,11 +4177,24 @@ fn save_project_settings_to_folder_blocking(
                     dictionary_locale: meta.dictionary_locale.as_deref(),
                     compile_dir: compile_dir.as_deref(),
                 },
-            )?;
+            )
+            .map_err(|failure| settings_write_failure(location, failure))?;
             write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
             read_meta(project_id)
         })
     })
+}
+
+fn settings_write_failure(
+    location: &ProjectLocation,
+    failure: crate::folder_write::WriteFailure,
+) -> String {
+    crate::folder_write::Folder::of(location).describe(
+        &location.root.join(crate::project_location::MANIFEST_FILE),
+        crate::project_location::MANIFEST_FILE,
+        failure,
+        String::from,
+    )
 }
 
 #[tauri::command]
@@ -6980,13 +7154,25 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
     .map_err(|e| e.to_string())?
 }
 
-fn copy_dir_recursive(src: &Path, dst: &Path, depth: usize) -> Result<(), String> {
+fn copy_regular_file(src: &Path, dst: &Path) -> Result<(), crate::folder_write::WriteFailure> {
+    std::fs::copy(src, dst).map(|_| ()).map_err(|error| {
+        if std::fs::File::open(src).is_ok() {
+            error.into()
+        } else {
+            error.to_string().into()
+        }
+    })
+}
+
+fn copy_dir_recursive(
+    src: &Path,
+    dst: &Path,
+    depth: usize,
+) -> Result<(), crate::folder_write::WriteFailure> {
     if depth >= MAX_WALK_DEPTH {
-        return Err(format!(
-            "copy exceeds the maximum folder depth of {MAX_WALK_DEPTH}"
-        ));
+        return Err(format!("copy exceeds the maximum folder depth of {MAX_WALK_DEPTH}").into());
     }
-    std::fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         // Skip symlinks: don't copy or follow them (avoids escaping the source
@@ -7003,7 +7189,7 @@ fn copy_dir_recursive(src: &Path, dst: &Path, depth: usize) -> Result<(), String
         if ft.is_dir() {
             copy_dir_recursive(&path, &dest, depth + 1)?;
         } else {
-            std::fs::copy(&path, &dest).map_err(|e| e.to_string())?;
+            copy_regular_file(&path, &dest)?;
         }
     }
     Ok(())
@@ -7206,6 +7392,14 @@ where
     if plans.is_empty() {
         return Ok(Vec::new());
     }
+    let refused = |destination: &Path, failure: crate::folder_write::WriteFailure| {
+        crate::folder_write::Folder::new(location.kind, project_root).describe(
+            destination,
+            &rel_slash(project_root, destination),
+            failure,
+            String::from,
+        )
+    };
 
     let staging = match location.kind {
         ProjectKind::Library => {
@@ -7217,7 +7411,8 @@ where
             std::fs::create_dir(&staging).map_err(|e| format!("cannot stage the import: {e}"))?;
             staging
         }
-        ProjectKind::Linked => create_unique_temporary_directory(project_root, ".oleafly-import")?,
+        ProjectKind::Linked => create_unique_temporary_directory(project_root, ".oleafly-import")
+            .map_err(|failure| refused(&plans[0].2, failure))?,
     };
 
     let mut staged = Vec::with_capacity(plans.len());
@@ -7226,13 +7421,12 @@ where
         let result = if *is_dir {
             copy_dir_recursive(source, &staged_path, 0)
         } else {
-            std::fs::copy(source, &staged_path)
-                .map(|_| ())
-                .map_err(|e| format!("import failed: {e}"))
+            copy_regular_file(source, &staged_path)
+                .map_err(|failure| failure.context("import failed"))
         };
         if let Err(error) = result {
             let _ = std::fs::remove_dir_all(&staging);
-            return Err(error);
+            return Err(refused(destination, error));
         }
         staged.push((staged_path, destination.clone()));
     }
@@ -7248,8 +7442,12 @@ where
             }
             let _ = std::fs::remove_dir_all(&staging);
             return if rollback_errors.is_empty() {
-                Err(format!(
-                    "Could not publish the import. Changes were rolled back: {error}"
+                Err(refused(
+                    destination,
+                    crate::folder_write::WriteFailure::io(
+                        "Could not publish the import. Changes were rolled back",
+                        error,
+                    ),
                 ))
             } else {
                 Err(format!(
@@ -7661,6 +7859,130 @@ mod tests {
         assert_eq!(
             std::fs::metadata(&manifest).unwrap().modified().unwrap(),
             modified
+        );
+    }
+
+    fn linked_folder_with(
+        fixture: &crate::trust::testing::LinkedFixture,
+        name: &str,
+        manifest: Option<&str>,
+    ) -> (String, std::path::PathBuf) {
+        let (project_id, folder) = fixture.link(name);
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        if let Some(manifest) = manifest {
+            std::fs::write(folder.join("project.json"), manifest).unwrap();
+        }
+        (project_id, folder)
+    }
+
+    fn spelling_locale(project_id: &str) -> Option<String> {
+        read_meta(project_id).unwrap().dictionary_locale
+    }
+
+    #[test]
+    fn a_chosen_spelling_language_reaches_the_folder_only_through_its_oleafly_manifest() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let explicit = super::MetaWrite::Explicit(super::DICTIONARY_FIELDS);
+
+        let (plain_id, plain) = linked_folder_with(&fixture, "notes", None);
+        let untouched = crate::linked_registry::folder_snapshot_for_test(&plain);
+        assert!(matches!(
+            crate::project_manifest::route_project(&plain_id).unwrap(),
+            crate::project_manifest::Route::Sidecar { foreign: false, .. }
+        ));
+        let meta =
+            super::write_dictionary_locale(&plain_id, Some("cs_CZ".into()), explicit).unwrap();
+        assert_eq!(meta.dictionary_locale.as_deref(), Some("cs_CZ"));
+        assert_eq!(spelling_locale(&plain_id).as_deref(), Some("cs_CZ"));
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&plain),
+            untouched
+        );
+
+        let (foreign_id, foreign) = linked_folder_with(
+            &fixture,
+            "workspace",
+            Some(crate::project_manifest::NX_PROJECT_JSON),
+        );
+        let untouched = crate::linked_registry::folder_snapshot_for_test(&foreign);
+        assert!(matches!(
+            crate::project_manifest::route_project(&foreign_id).unwrap(),
+            crate::project_manifest::Route::Sidecar { foreign: true, .. }
+        ));
+        super::write_dictionary_locale(&foreign_id, Some("cs_CZ".into()), explicit).unwrap();
+        assert_eq!(spelling_locale(&foreign_id).as_deref(), Some("cs_CZ"));
+        assert_eq!(
+            std::fs::read_to_string(foreign.join("project.json")).unwrap(),
+            crate::project_manifest::NX_PROJECT_JSON
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&foreign),
+            untouched
+        );
+
+        let (shared_id, shared) = linked_folder_with(
+            &fixture,
+            "thesis",
+            Some("{\n  \"main_doc\": \"main.tex\",\n  \"dictionary_locale\": \"de-DE\"\n}\n"),
+        );
+        assert!(matches!(
+            crate::project_manifest::route_project(&shared_id).unwrap(),
+            crate::project_manifest::Route::Split { .. }
+        ));
+        let meta =
+            super::write_dictionary_locale(&shared_id, Some("cs_CZ".into()), explicit).unwrap();
+        assert_eq!(meta.dictionary_locale.as_deref(), Some("cs_CZ"));
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            "{\n  \"main_doc\": \"main.tex\",\n  \"dictionary_locale\": \"cs_CZ\"\n}\n"
+        );
+        super::write_dictionary_locale(&shared_id, None, explicit).unwrap();
+        assert_eq!(spelling_locale(&shared_id), None);
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            "{\n  \"main_doc\": \"main.tex\"\n}\n"
+        );
+    }
+
+    #[test]
+    fn a_removed_dictionary_resets_the_language_on_this_device_and_never_in_the_folder() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+
+        let (plain_id, plain) = linked_folder_with(&fixture, "notes", None);
+        super::write_dictionary_locale(
+            &plain_id,
+            Some("cs_CZ".into()),
+            super::MetaWrite::Explicit(super::DICTIONARY_FIELDS),
+        )
+        .unwrap();
+        let untouched = crate::linked_registry::folder_snapshot_for_test(&plain);
+        let meta =
+            super::write_dictionary_locale(&plain_id, None, super::MetaWrite::Device).unwrap();
+        assert_eq!(meta.dictionary_locale, None);
+        assert_eq!(spelling_locale(&plain_id), None);
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&plain),
+            untouched
+        );
+
+        let manifest = "{\n  \"main_doc\": \"main.tex\",\n  \"dictionary_locale\": \"cs_CZ\"\n}\n";
+        let (shared_id, shared) = linked_folder_with(&fixture, "thesis", Some(manifest));
+        assert!(matches!(
+            crate::project_manifest::route_project(&shared_id).unwrap(),
+            crate::project_manifest::Route::Split { .. }
+        ));
+        let untouched = crate::linked_registry::folder_snapshot_for_test(&shared);
+        let meta =
+            super::write_dictionary_locale(&shared_id, None, super::MetaWrite::Device).unwrap();
+        assert_eq!(meta.dictionary_locale.as_deref(), Some("cs_CZ"));
+        assert_eq!(spelling_locale(&shared_id).as_deref(), Some("cs_CZ"));
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&shared),
+            untouched
         );
     }
 
@@ -8124,6 +8446,93 @@ mod tests {
             "thesis.tex"
         );
         assert_eq!(read_meta(&project_id).unwrap().main_doc, "thesis.tex");
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn saving_the_bytes_already_on_disk_leaves_an_opened_folder_untouched() {
+        use std::os::unix::fs::MetadataExt as _;
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let unlinked = fixture.folders.path().join("untouched");
+        std::fs::create_dir_all(&unlinked).unwrap();
+        let original = "\\documentclass{article}\n\\begin{document}\nSame.\n\\end{document}\n";
+        std::fs::write(unlinked.join("main.tex"), original).unwrap();
+        let past = std::time::SystemTime::now() - std::time::Duration::from_secs(3_600);
+        std::fs::File::options()
+            .write(true)
+            .open(unlinked.join("main.tex"))
+            .unwrap()
+            .set_modified(past)
+            .unwrap();
+        std::fs::File::open(&unlinked)
+            .unwrap()
+            .set_modified(past)
+            .unwrap();
+        let (project_id, folder) = fixture.link("untouched");
+        let main = folder.join("main.tex");
+        let file_before = std::fs::metadata(&main).unwrap();
+        let folder_before = std::fs::metadata(&folder).unwrap();
+        let generation_before = super::project_mutation_generation(project_id.clone()).unwrap();
+        let loaded = crate::project_sources::source_hash(original.as_bytes());
+
+        let mut generations = Vec::new();
+        for expected_hash in [Some(loaded.clone()), None] {
+            let result = super::write_project_file(
+                project_id.clone(),
+                "main.tex".into(),
+                original.into(),
+                None,
+                expected_hash,
+            )
+            .await
+            .unwrap();
+            generations.push(result.generation);
+        }
+        let file_after = std::fs::metadata(&main).unwrap();
+        assert_eq!(
+            file_after.modified().unwrap(),
+            file_before.modified().unwrap()
+        );
+        assert_eq!(file_after.ino(), file_before.ino());
+        assert_eq!(
+            std::fs::metadata(&folder).unwrap().modified().unwrap(),
+            folder_before.modified().unwrap()
+        );
+        let names: Vec<_> = std::fs::read_dir(&folder)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["main.tex"]);
+        assert_eq!(generations, [generation_before, generation_before]);
+
+        let stale = crate::project_sources::source_hash(b"loaded before an outside edit\n");
+        let error = super::write_project_file(
+            project_id.clone(),
+            "main.tex".into(),
+            original.into(),
+            None,
+            Some(stale),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.starts_with(super::DISK_CONFLICT), "{error}");
+
+        let changed = super::write_project_file(
+            project_id.clone(),
+            "main.tex".into(),
+            "changed\n".into(),
+            None,
+            Some(loaded),
+        )
+        .await
+        .unwrap();
+        assert!(changed.generation > generation_before);
+        assert_eq!(std::fs::read_to_string(&main).unwrap(), "changed\n");
+        assert_ne!(
+            std::fs::metadata(&main).unwrap().modified().unwrap(),
+            file_before.modified().unwrap()
+        );
     }
 
     #[allow(clippy::await_holding_lock)]
@@ -8648,9 +9057,651 @@ mod tests {
     fn a_new_linked_folder_error_has_an_english_message() {
         let catalog: serde_json::Value =
             serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
-        for code in ["trash_unavailable", "linked_replace_folder"] {
+        for code in [
+            "trash_unavailable",
+            "linked_replace_folder",
+            "folder_read_only",
+        ] {
             assert!(catalog["project"][code].is_string(), "{code}");
         }
+    }
+
+    fn read_only_name(error: &str) -> String {
+        assert!(!error.contains("os error"), "{error}");
+        let json = error
+            .strip_prefix(crate::app_error::PREFIX)
+            .unwrap_or_else(|| panic!("not a coded error: {error}"));
+        let value: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(value["code"], crate::folder_write::READ_ONLY, "{error}");
+        assert!(value["detail"].is_null(), "{error}");
+        value["params"]["name"].as_str().unwrap().to_string()
+    }
+
+    #[cfg(unix)]
+    fn lock_folder(folder: &Path) -> Option<LockedFolder> {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(folder, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let guard = LockedFolder(folder.to_path_buf());
+        let probe = folder.join(".oleafly-write-probe");
+        if std::fs::File::create(&probe).is_ok() {
+            let _ = std::fs::remove_file(&probe);
+            eprintln!("skipping: this user can write into a folder with mode 555");
+            return None;
+        }
+        Some(guard)
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn saves_into_a_read_only_linked_folder_name_the_file_without_os_text() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let Some(_locked) = lock_folder(&folder) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let saved =
+            super::write_project_file(id.clone(), "notes.tex".into(), "revised".into(), None, None)
+                .await;
+        let picture = super::admit_project_file_write(id.clone(), "diagrams/flow.png".into(), None)
+            .and_then(|write| write.write(b"png"));
+        let equation = super::admit_project_file_write(id.clone(), "equation.png".into(), None)
+            .and_then(|write| write.write(b"png"));
+        let pdf = super::save_file_base64(id, "notes.pdf".into(), "cGRm".into(), None).await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&saved.unwrap_err()), "notes.tex");
+        assert_eq!(read_only_name(&picture.unwrap_err()), "diagrams/flow.png");
+        assert_eq!(read_only_name(&equation.unwrap_err()), "equation.png");
+        assert_eq!(read_only_name(&pdf.unwrap_err()), "notes.pdf");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+            "notes"
+        );
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn file_tree_changes_in_a_read_only_linked_folder_name_the_entry() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        std::fs::write(folder.join("draft.tex"), "draft").unwrap();
+        let external = folders.path().join("external.tex");
+        std::fs::write(&external, "external").unwrap();
+        let Some(_locked) = lock_folder(&folder) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let created = super::create_file(id.clone(), "chapter.tex".into(), false, None, None);
+        let created_folder = super::create_file(id.clone(), "appendix".into(), true, None, None);
+        let renamed = super::rename_file_blocking(
+            id.clone(),
+            "notes.tex".into(),
+            "summary.tex".into(),
+            None,
+            None,
+        );
+        let replaced = super::rename_file_blocking(
+            id.clone(),
+            "notes.tex".into(),
+            "draft.tex".into(),
+            Some(FileConflictStrategy::Replace),
+            None,
+        );
+        let trashed = super::delete_file(id.clone(), "notes.tex".into(), None, None);
+        let removed = super::delete_file(id.clone(), "notes.tex".into(), None, Some(true));
+        let copied = super::copy_file(
+            id.clone(),
+            "notes.tex".into(),
+            "notes copy.tex".into(),
+            None,
+        )
+        .await;
+        let imported = super::import_project_paths(
+            id,
+            String::new(),
+            vec![external.to_string_lossy().into_owned()],
+            None,
+        )
+        .await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&created.unwrap_err()), "chapter.tex");
+        assert_eq!(read_only_name(&created_folder.unwrap_err()), "appendix");
+        assert_eq!(read_only_name(&renamed.unwrap_err()), "notes.tex");
+        assert_eq!(read_only_name(&replaced.unwrap_err()), "draft.tex");
+        assert_eq!(read_only_name(&trashed.unwrap_err()), "notes.tex");
+        assert_eq!(read_only_name(&removed.unwrap_err()), "notes.tex");
+        assert_eq!(read_only_name(&copied.unwrap_err()), "notes copy.tex");
+        assert_eq!(read_only_name(&imported.unwrap_err()), "external.tex");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+            "notes"
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("draft.tex")).unwrap(),
+            "draft"
+        );
+        assert!(!crate::os_trash::test_support::trashed(
+            &folder.join("notes.tex")
+        ));
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_read_only_library_project_keeps_its_original_errors() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project_id = mutation_project_id("read-only-library");
+        let project = crate::paths::create_project_dir(&project_id).unwrap();
+        std::fs::write(project.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(project.join("notes.tex"), "notes").unwrap();
+        let Some(_locked) = lock_folder(&project) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let saved = super::write_project_file(
+            project_id.clone(),
+            "notes.tex".into(),
+            "revised".into(),
+            None,
+            None,
+        )
+        .await;
+        let created =
+            super::create_file(project_id.clone(), "chapter.tex".into(), false, None, None);
+        let renamed = super::rename_file_blocking(
+            project_id.clone(),
+            "notes.tex".into(),
+            "summary.tex".into(),
+            None,
+            None,
+        );
+        let removed = super::delete_file(project_id, "notes.tex".into(), None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let denied = std::io::Error::from_raw_os_error(libc::EACCES);
+        assert_eq!(
+            saved.unwrap_err(),
+            format!("failed to write notes.tex: failed to create staging file: {denied}")
+        );
+        assert_eq!(created.unwrap_err(), denied.to_string());
+        assert_eq!(renamed.unwrap_err(), format!("move failed: {denied}"));
+        assert_eq!(
+            removed.unwrap_err(),
+            format!("failed to delete notes.tex: {denied}")
+        );
+    }
+
+    fn is_read_only_refusal(error: &str) -> bool {
+        crate::folder_write::is_read_only_refusal(error)
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_read_only_file_in_a_writable_linked_folder_keeps_the_os_text() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let notes = folder.join("notes.tex");
+        std::fs::hard_link(&notes, folder.join("notes-alias.tex")).unwrap();
+        std::fs::set_permissions(&notes, std::fs::Permissions::from_mode(0o444)).unwrap();
+        if std::fs::OpenOptions::new().write(true).open(&notes).is_ok() {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        }
+
+        let writable =
+            super::write_project_file(id.clone(), "notes.tex".into(), "revised".into(), None, None)
+                .await;
+        let locked = lock_folder(&folder);
+        let refused =
+            super::write_project_file(id, "notes.tex".into(), "revised".into(), None, None).await;
+        drop(locked);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let writable = writable.unwrap_err();
+        assert!(!is_read_only_refusal(&writable), "{writable}");
+        assert!(
+            writable.starts_with("failed to write notes.tex: failed to write the linked file: "),
+            "{writable}"
+        );
+        assert!(!writable.contains("previous version"), "{writable}");
+        assert_eq!(read_only_name(&refused.unwrap_err()), "notes.tex");
+        assert_eq!(std::fs::read_to_string(&notes).unwrap(), "notes");
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_move_into_a_read_only_subfolder_names_the_destination() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let Some(_locked) = lock_folder(&folder.join("figures")) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let moved = super::rename_file_blocking(
+            id.clone(),
+            "notes.tex".into(),
+            "figures/notes.tex".into(),
+            None,
+            None,
+        );
+        let saved = super::write_project_file(
+            id.clone(),
+            "figures/new.tex".into(),
+            "new".into(),
+            None,
+            None,
+        )
+        .await;
+        let root_file =
+            super::write_project_file(id, "notes.tex".into(), "revised".into(), None, None).await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&moved.unwrap_err()), "figures/notes.tex");
+        assert_eq!(read_only_name(&saved.unwrap_err()), "figures/new.tex");
+        root_file.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+            "revised"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    struct Unlocked(std::ffi::CString);
+
+    #[cfg(target_os = "macos")]
+    impl Drop for Unlocked {
+        fn drop(&mut self) {
+            unsafe { libc::chflags(self.0.as_ptr(), 0) };
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_finder_locked_file_in_a_writable_linked_folder_keeps_the_os_text() {
+        use std::os::unix::ffi::OsStrExt as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let lock = |path: &Path| {
+            let path = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+            assert_eq!(
+                unsafe { libc::chflags(path.as_ptr(), libc::UF_IMMUTABLE) },
+                0
+            );
+            Unlocked(path)
+        };
+        let _notes = lock(&folder.join("notes.tex"));
+        let _plot = lock(&folder.join("figures/plot.png"));
+
+        let saved =
+            super::write_project_file(id.clone(), "notes.tex".into(), "revised".into(), None, None)
+                .await;
+        let renamed = super::rename_file_blocking(
+            id.clone(),
+            "notes.tex".into(),
+            "summary.tex".into(),
+            None,
+            None,
+        );
+        let removed = super::delete_file(id.clone(), "notes.tex".into(), None, Some(true));
+        let removed_folder = super::delete_file(id.clone(), "figures".into(), None, Some(true));
+        let trashed = super::delete_file(id, "notes.tex".into(), None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let not_permitted = std::io::Error::from_raw_os_error(libc::EPERM).to_string();
+        assert_eq!(
+            removed_folder.as_ref().unwrap_err(),
+            &format!("failed to delete figures: {not_permitted}")
+        );
+        for error in [
+            saved.unwrap_err(),
+            renamed.unwrap_err(),
+            removed.unwrap_err(),
+            removed_folder.unwrap_err(),
+        ] {
+            assert!(!is_read_only_refusal(&error), "{error}");
+            assert!(error.contains(&not_permitted), "{error}");
+        }
+        let trashed = trashed.unwrap_err();
+        assert!(trashed.contains("project.trash_unavailable"), "{trashed}");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+            "notes"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn settings_shared_in_a_read_only_folder_name_project_json() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::create_dir(folder.join("chapters")).unwrap();
+        for name in ["thesis.tex", "appendix.tex"] {
+            std::fs::write(folder.join("chapters").join(name), "\\documentclass{book}").unwrap();
+        }
+        let manifest = "{\n  \"name\": \"Thesis\",\n  \"main_doc\": \"chapters/thesis.tex\",\n  \"engine\": \"LaTeXmk\"\n}\n";
+        std::fs::write(folder.join("project.json"), manifest).unwrap();
+        let Some(_locked) = lock_folder(&folder) else {
+            return;
+        };
+
+        let main = set_main_doc_unlocked(project_id.clone(), "chapters/appendix.tex".into());
+        let engine = super::set_project_engine_unlocked(&project_id, "xetex", None);
+        let dictionary = super::write_dictionary_locale(
+            &project_id,
+            Some("de-DE".into()),
+            super::MetaWrite::Explicit(super::DICTIONARY_FIELDS),
+        );
+        let remapped = super::rename_file_blocking(
+            project_id.clone(),
+            "chapters/thesis.tex".into(),
+            "chapters/final.tex".into(),
+            None,
+            None,
+        );
+        let renamed = super::rename_project_blocking(project_id.clone(), "Renamed".into());
+
+        assert_eq!(
+            read_only_name(&main.map(|_| ()).unwrap_err()),
+            "project.json"
+        );
+        assert_eq!(
+            read_only_name(&engine.map(|_| ()).unwrap_err()),
+            "project.json"
+        );
+        assert_eq!(
+            read_only_name(&dictionary.map(|_| ()).unwrap_err()),
+            "project.json"
+        );
+        assert_eq!(read_only_name(&remapped.unwrap_err()), "project.json");
+        assert_eq!(renamed.unwrap().name, "Renamed");
+        assert!(folder.join("chapters/thesis.tex").is_file());
+        assert!(!folder.join("chapters/final.tex").exists());
+        assert_eq!(
+            std::fs::read_to_string(folder.join("project.json")).unwrap(),
+            manifest
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn moving_or_deleting_a_read_only_subfolder_names_the_entry_that_failed() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        std::fs::create_dir(folder.join("archive")).unwrap();
+        std::fs::create_dir_all(folder.join("data/raw")).unwrap();
+        std::fs::write(folder.join("data/raw/samples.csv"), "1,2").unwrap();
+        let (Some(_figures), Some(_raw)) = (
+            lock_folder(&folder.join("figures")),
+            lock_folder(&folder.join("data/raw")),
+        ) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let moved = super::rename_file_blocking(
+            id.clone(),
+            "figures".into(),
+            "archive/figures".into(),
+            None,
+            None,
+        );
+        let deleted = super::delete_file(id.clone(), "figures".into(), None, Some(true));
+        let nested = super::delete_file(id.clone(), "data".into(), None, Some(true));
+        let holder_moved = super::rename_file_blocking(
+            id.clone(),
+            "data".into(),
+            "archive/data".into(),
+            None,
+            None,
+        );
+        let holder_moved_in = folder.join("archive/data/raw/samples.csv").is_file();
+        let holder_back =
+            super::rename_file_blocking(id, "archive/data".into(), "data".into(), None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&moved.unwrap_err()), "figures");
+        assert_eq!(read_only_name(&deleted.unwrap_err()), "figures/plot.png");
+        assert_eq!(read_only_name(&nested.unwrap_err()), "data/raw/samples.csv");
+        holder_moved.unwrap();
+        assert!(holder_moved_in);
+        holder_back.unwrap();
+        assert!(folder.join("figures/plot.png").is_file());
+        assert!(folder.join("data/raw/samples.csv").is_file());
+        assert!(!folder.join("archive/figures").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn trashing_a_read_only_folder_with_contents_never_falls_through_to_a_permanent_delete() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let figures = folder.join("figures");
+        std::fs::create_dir(figures.join("sub")).unwrap();
+        for name in ["a.txt", "b.txt"] {
+            std::fs::write(figures.join("sub").join(name), name).unwrap();
+        }
+        let empty = folder.join("empty");
+        std::fs::create_dir(&empty).unwrap();
+        let (Some(_figures), Some(_empty)) = (lock_folder(&figures), lock_folder(&empty)) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let trashed = super::delete_file(id.clone(), "figures".into(), None, None);
+        let empty_trashed = super::delete_file(id.clone(), "empty".into(), None, None);
+        let empty_kept = empty.is_dir();
+        let empty_removed = super::delete_file(id, "empty".into(), None, Some(true));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&trashed.unwrap_err()), "figures");
+        for name in ["plot.png", "sub/a.txt", "sub/b.txt"] {
+            assert!(figures.join(name).is_file(), "{name}");
+        }
+        assert!(!crate::os_trash::test_support::trashed(&figures));
+        let empty_trashed = empty_trashed.unwrap_err();
+        assert!(
+            empty_trashed.contains("\"code\":\"project.trash_unavailable\""),
+            "{empty_trashed}"
+        );
+        assert!(empty_kept);
+        empty_removed.unwrap();
+        assert!(!empty.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn deleting_a_folder_with_an_unreadable_subfolder_keeps_the_os_text() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let private = folder.join("data/private");
+        std::fs::create_dir_all(&private).unwrap();
+        std::fs::write(private.join("keys.txt"), "secret").unwrap();
+        std::fs::set_permissions(&private, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let _restore = LockedFolder(private.clone());
+        if std::fs::read_dir(&private).is_ok() {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        }
+
+        let removed = super::delete_file(id, "data".into(), None, Some(true));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let removed = removed.unwrap_err();
+        assert!(!is_read_only_refusal(&removed), "{removed}");
+        assert_eq!(
+            removed,
+            format!(
+                "failed to delete data: {}",
+                std::io::Error::from_raw_os_error(libc::EACCES)
+            )
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn saving_project_settings_into_a_read_only_folder_names_project_json() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("thesis");
+        std::fs::write(folder.join("thesis.tex"), "\\documentclass{book}").unwrap();
+        set_main_doc_unlocked(project_id.clone(), "thesis.tex".into()).unwrap();
+        let Some(_locked) = lock_folder(&folder) else {
+            return;
+        };
+
+        let saved = super::save_project_settings_to_folder_blocking(&project_id).map(|_| ());
+
+        assert_eq!(read_only_name(&saved.unwrap_err()), "project.json");
+        assert!(!folder.join("project.json").exists());
+        assert_eq!(read_meta(&project_id).unwrap().main_doc, "thesis.tex");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_settings_failure_in_a_writable_folder_keeps_the_settings_error() {
+        let folder = tempfile::tempdir().unwrap();
+        let location = crate::project_location::ProjectLocation {
+            id: format!("{}{:032x}", crate::linked_registry::LINKED_ID_PREFIX, 9),
+            kind: crate::project_location::ProjectKind::Linked,
+            root: folder.path().to_path_buf(),
+            state_dir: folder.path().join("unused-state"),
+            manifest: crate::project_location::ManifestSource::Sidecar,
+            compile_dir: folder.path().to_path_buf(),
+        };
+        let denied = || std::io::Error::from_raw_os_error(libc::EACCES);
+        let failure = || {
+            let message: String = crate::app_error::AppError::new("project.settings_write_failed")
+                .detail(denied())
+                .into();
+            crate::folder_write::WriteFailure::with_cause(message, denied())
+        };
+
+        let kept = super::settings_write_failure(&location, failure());
+        let refused = lock_folder(folder.path())
+            .map(|_locked| super::settings_write_failure(&location, failure()));
+
+        assert_eq!(kept, String::from(failure()));
+        assert!(kept.contains("project.settings_write_failed"), "{kept}");
+        assert!(kept.contains(&denied().to_string()), "{kept}");
+        if let Some(refused) = refused {
+            assert_eq!(read_only_name(&refused), "project.json");
+        }
+    }
+
+    #[cfg(windows)]
+    struct DeniedFolder(std::path::PathBuf);
+
+    #[cfg(windows)]
+    impl Drop for DeniedFolder {
+        fn drop(&mut self) {
+            let _ = std::process::Command::new("icacls")
+                .arg(&self.0)
+                .args(["/remove:d", "*S-1-1-0"])
+                .status();
+        }
+    }
+
+    #[cfg(windows)]
+    fn deny_everyone(path: &Path, rights: &str) -> DeniedFolder {
+        let denied = std::process::Command::new("icacls")
+            .arg(path)
+            .args(["/deny", &format!("*S-1-1-0:({rights})")])
+            .status()
+            .is_ok_and(|status| status.success());
+        let guard = DeniedFolder(path.to_path_buf());
+        assert!(
+            denied,
+            "icacls could not deny {rights} on {}",
+            path.display()
+        );
+        guard
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_file_that_refuses_deletion_in_a_writable_linked_folder_keeps_the_os_text_on_windows() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let thesis = folders.path().join("thesis");
+        let _notes = deny_everyone(&thesis.join("notes.tex"), "DE");
+        let _children = deny_everyone(&thesis, "DC");
+
+        let removed = super::delete_file(id, "notes.tex".into(), None, Some(true));
+        let folder_is_read_only = crate::folder_status::folder_is_read_only(&folder);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let removed = removed.unwrap_err();
+        assert!(!folder_is_read_only);
+        assert!(!is_read_only_refusal(&removed), "{removed}");
+        assert!(
+            removed.starts_with("failed to delete notes.tex: "),
+            "{removed}"
+        );
+        assert!(folder.join("notes.tex").is_file());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn writes_into_a_linked_folder_that_denies_new_files_name_the_file() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let _denied = deny_everyone(&folders.path().join("thesis"), "WD,AD");
+
+        let saved = super::admit_project_file_write(id.clone(), "notes.tex".into(), None)
+            .and_then(|write| write.write(b"revised"));
+        let created = super::create_file(id, "chapter.tex".into(), false, None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read_only_name(&saved.unwrap_err()), "notes.tex");
+        assert_eq!(read_only_name(&created.unwrap_err()), "chapter.tex");
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+            "notes"
+        );
     }
 
     #[test]
@@ -10601,8 +11652,20 @@ mod tests {
         std::fs::write(&source, "original").unwrap();
         std::fs::write(&requested, "existing copy").unwrap();
 
-        let first = copy_path_in_project(&root, &source, &requested).unwrap();
-        let second = copy_path_in_project(&root, &source, &requested).unwrap();
+        let first = copy_path_in_project(
+            crate::project_location::ProjectKind::Library,
+            &root,
+            &source,
+            &requested,
+        )
+        .unwrap();
+        let second = copy_path_in_project(
+            crate::project_location::ProjectKind::Library,
+            &root,
+            &source,
+            &requested,
+        )
+        .unwrap();
 
         assert_eq!(first, "draft copy 2.tex");
         assert_eq!(second, "draft copy 3.tex");
@@ -10634,7 +11697,13 @@ mod tests {
             let source = source.clone();
             let requested = requested.clone();
             workers.push(std::thread::spawn(move || {
-                copy_path_in_project(&root, &source, &requested).unwrap()
+                copy_path_in_project(
+                    crate::project_location::ProjectKind::Library,
+                    &root,
+                    &source,
+                    &requested,
+                )
+                .unwrap()
             }));
         }
         let mut destinations: Vec<String> = workers
@@ -10721,7 +11790,13 @@ mod tests {
         std::fs::write(cursor.join("leaf.txt"), "leaf").unwrap();
         let requested = root.join("deep copy");
 
-        let error = copy_path_in_project(&root, &source, &requested).unwrap_err();
+        let error = copy_path_in_project(
+            crate::project_location::ProjectKind::Library,
+            &root,
+            &source,
+            &requested,
+        )
+        .unwrap_err();
 
         assert!(error.contains("maximum folder depth"));
         assert!(!requested.exists());
@@ -11004,6 +12079,7 @@ mod tests {
         std::fs::write(root.join("Paper.tex"), "published").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("paper.tex"),
             "paper.tex",
@@ -11034,6 +12110,7 @@ mod tests {
         std::fs::write(root.join("notes.tex"), "keep me").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("notes.tex"),
             "notes.tex",
@@ -11056,6 +12133,7 @@ mod tests {
         std::fs::write(root.join("notes.tex"), "keep me").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("notes.tex"),
             "notes.tex",
@@ -11085,6 +12163,7 @@ mod tests {
         std::fs::write(root.join("notes.tex"), "keep me").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("notes.tex"),
             "notes.tex",
@@ -11106,6 +12185,7 @@ mod tests {
         std::fs::create_dir(root.join("figures")).unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("figures"),
             "figures",
@@ -11129,6 +12209,7 @@ mod tests {
         std::fs::write(root.join("notes (2).tex"), "already claimed").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("notes.tex"),
             "notes.tex",
@@ -11157,6 +12238,7 @@ mod tests {
         std::fs::write(root.join("Results"), "a file").unwrap();
 
         let result = create_path_in_project(
+            crate::project_location::ProjectKind::Library,
             &root,
             &root.join("results"),
             "results",

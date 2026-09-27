@@ -923,6 +923,7 @@ export interface BackendPort {
     projectId: string,
     locale: string | null,
   ) => Promise<ProjectMeta>;
+  resetProjectDictionaryLocaleOnDeviceCmd: (projectId: string) => Promise<ProjectMeta>;
   templatePrerequisites: (templateId: string) => Promise<Prerequisite[]>;
   ensureTemplateAssets: (templateId: string) => Promise<void>;
   listTemplatePacks: () => Promise<PackInfo[]>;

@@ -1515,7 +1515,8 @@
     "packaged": "已随 Oleafly 软件包安装。",
     "quickAction": {
       "label": "Finder 快速操作",
-      "description": "在 Finder 中右键点按文件夹，然后选择“快速操作” › “在 Oleafly 中打开”。"
+      "description": "在 Finder 中右键点按文件夹时，可从“服务”菜单使用“在 Oleafly 中打开”。",
+      "menuHint": "尚未出现在“快速操作”中。请右键点按文件夹，选择“快速操作” › “自定义”，然后打开“{{title}}”。"
     },
     "explorerMenu": {
       "label": "文件资源管理器右键菜单",

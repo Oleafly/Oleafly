@@ -1530,8 +1530,9 @@
     },
     "packaged": "Mit dem Oleafly-Paket installiert.",
     "quickAction": {
-      "label": "Finder-Schnellaktion",
-      "description": "Klicken Sie im Finder mit der rechten Maustaste auf einen Ordner und wählen Sie Schnellaktionen › In Oleafly öffnen."
+      "label": "Schnellaktionen im Finder",
+      "description": "Fügt „In Oleafly öffnen“ zum Menü „Dienste“ hinzu, wenn Sie im Finder mit der rechten Maustaste auf einen Ordner klicken.",
+      "menuHint": "Noch nicht unter Schnellaktionen. Klicken Sie mit der rechten Maustaste auf einen Ordner, wählen Sie Schnellaktionen › Anpassen und aktivieren Sie {{title}}."
     },
     "explorerMenu": {
       "label": "Kontextmenü im Datei-Explorer",

@@ -209,6 +209,8 @@
     "spellLanguageAppSetting": "Brug appens indstilling",
     "spellLanguageAriaLabel": "Sprog til stavekontrol i dette projekt",
     "spellLanguageHint": "Gælder kun dette projekt. Download flere sprog under Indstillinger.",
+    "spellLanguageFolderHint": "Gemt i mappens project.json, så det gælder for alle, der åbner mappen. Download flere sprog under Indstillinger.",
+    "spellLanguageReadOnly": "Denne mappe er skrivebeskyttet, så sproget i dens project.json kan ikke ændres.",
     "spellLanguageFailed": "Kunne ikke ændre sproget til stavekontrol.",
     "notChecked": "Ikke kontrolleret",
     "dictionaryMissing": "{{name}} er ikke hentet, så stavningen kontrolleres ikke. Hent den i Indstillinger, eller vælg et andet sprog.",

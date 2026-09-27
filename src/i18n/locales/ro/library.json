@@ -68,20 +68,15 @@
       "anyTime": "Oricând",
       "last7Days": "Ultimele 7 zile",
       "last30Days": "Ultimele 30 de zile",
-      "lastYear": "Ultimul an"
+      "lastYear": "Ultimul an",
+      "location": "Locație",
+      "locationAll": "Toate proiectele",
+      "locationLibrary": "În Oleafly",
+      "locationExternal": "Proiecte externe"
     },
     "openFolder": "Deschide un folder",
     "openFolderShortcut": "Deschide un folder ({{shortcut}})",
-    "createFirstProject": "Creează un proiect nou",
-    "scope": {
-      "label": "Afișează proiectele",
-      "all": "Toate",
-      "library": "În Oleafly",
-      "folders": "Foldere"
-    },
-    "recent": {
-      "title": "Recente"
-    }
+    "createFirstProject": "Creează un proiect nou"
   },
   "projects": {
     "open": "Deschide {{name}}",
@@ -95,7 +90,7 @@
     "actions": "Acțiuni pentru {{name}}",
     "details": "Detaliile proiectului",
     "exportHistory": "Istoricul exporturilor",
-    "changeColor": "Schimbă culoarea proiectului",
+    "changeColor": "Culoarea proiectului",
     "fork": "Bifurcă proiectul",
     "delete": "Șterge proiectul",
     "favoriteAdd": "Adaugă la favorite",
@@ -493,7 +488,6 @@
     "dismiss": "Închide"
   },
   "folder": {
-    "badge": "Folder",
     "state": {
       "missing": "Folder lipsă",
       "offline": "Unitate neconectată",
@@ -517,29 +511,29 @@
     "unavailable": {
       "missing": {
         "title": "„{{name}}” nu poate fi găsit",
-        "body": "Era în {{path}} și poate a fost mutat sau șters. Localizează-l ca să-i păstrezi conversațiile și istoricul."
+        "body": "Era în <path>{{path}}</path> și poate a fost mutat sau șters. Localizează-l ca să-i păstrezi conversațiile și istoricul."
       },
       "offline": {
         "title": "„{{name}}” este pe o unitate care nu e conectată",
-        "body": "Conectează unitatea sau partajarea de rețea care conține {{path}}, apoi încearcă din nou."
+        "body": "Conectează unitatea sau partajarea de rețea care conține <path>{{path}}</path>, apoi încearcă din nou."
       },
       "replaced": {
         "title": "„{{name}}” a fost înlocuit",
-        "body": "Folderul din {{path}} nu este cel pe care l-ai deschis înainte. Folosește-l doar dacă ai încredere în el. La schimbare, Oleafly dezactivează încrederea și aprobările."
+        "body": "Folderul din <path>{{path}}</path> nu este cel pe care l-ai deschis înainte. Folosește-l doar dacă ai încredere în el. La schimbare, Oleafly dezactivează încrederea și aprobările."
       },
       "permissionDenied": {
         "title": "Oleafly nu poate deschide „{{name}}”",
         "bodyMac": "Permite-i lui Oleafly să folosească acest folder în Configurări sistem › Confidențialitate și securitate › Fișiere și dosare, apoi încearcă din nou.",
-        "bodyOther": "Contul tău nu poate citi {{path}}. Verifică permisiunile folderului, apoi încearcă din nou."
+        "bodyOther": "Contul tău nu poate citi <path>{{path}}</path>. Verifică permisiunile folderului, apoi încearcă din nou."
       },
       "back": {
         "title": "„{{name}}” este din nou disponibil",
-        "body": "Oleafly poate accesa din nou {{path}}."
+        "body": "Oleafly poate accesa din nou <path>{{path}}</path>."
       },
-      "locate": "Localizează…",
+      "locate": "Localizează",
       "tryAgain": "Încearcă din nou",
       "useThisFolder": "Folosește acest folder",
-      "checking": "Se verifică…",
+      "checking": "Se verifică",
       "still": "Oleafly tot nu poate ajunge la el."
     },
     "copy": {

@@ -235,8 +235,9 @@ pub(super) fn linked_exposure_refusal(
     }
 }
 
-fn json_tool_error(id: Value, message: &str) -> Response {
-    (StatusCode::OK, Json(rpc_tool_error(id, message))).into_response()
+pub(super) fn json_tool_error(id: Value, message: &str) -> Response {
+    let message = crate::app_error::english_error(message);
+    (StatusCode::OK, Json(rpc_tool_error(id, &message))).into_response()
 }
 
 async fn authenticate_request(

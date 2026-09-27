@@ -384,9 +384,9 @@
       "title": "Oleafly can't open this folder.",
       "body": "Check the folder's permissions and try again. Your open files stay here."
     },
-    "locate": "Locate…",
+    "locate": "Locate",
     "useThisFolder": "Use this folder",
-    "saveCopy": "Save a copy…",
+    "saveCopy": "Save a copy",
     "tryAgain": "Try again",
     "savedCopy": "Saved your open files to {{folder}}."
   },
@@ -1032,10 +1032,11 @@
   },
   "quickActionOffer": {
     "title": "Open folders from Finder",
-    "body": "Add Open in Oleafly to Finder's Quick Actions. Then you can right-click any folder to open it here.",
+    "body": "Add Open in Oleafly to Finder. It works from the Services menu right away and from Quick Actions once you turn it on.",
     "add": "Add to Finder",
     "notNow": "Not now",
-    "added": "Added. Right-click a folder in Finder and choose Quick Actions › Open in Oleafly.",
+    "added": "Added. It's in Finder's Services menu now. To use it from Quick Actions too, right-click a folder and turn it on in Quick Actions › Customize.",
+    "addedInQuickActions": "Added. Right-click a folder and you'll find it under Quick Actions.",
     "failed": "Couldn't add it. You can try again in Settings › General."
   }
 }
