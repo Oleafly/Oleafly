@@ -241,7 +241,7 @@ export function Book({
         <div className="min-w-0">
         {kind && (
           <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
-            <span>{kind}</span>
+            <span data-testid="project-card-kind">{kind}</span>
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>
@@ -261,7 +261,11 @@ export function Book({
             ) : null}
           </div>
         )}
-        {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
+        {date && (
+          <div data-testid="project-card-date" className="mt-0.5 text-xs text-muted-foreground">
+            {date}
+          </div>
+        )}
         </div>
         {menu}
       </div>

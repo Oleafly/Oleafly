@@ -5,7 +5,8 @@ abstract: "A free, local-first desktop workspace for writing research papers in 
 type: software
 authors:
   - family-names: Venkateshmurthy
-    given-names: Prajwal S
+    given-names: "Prajwal S."
+    orcid: "https://orcid.org/0009-0004-8830-0725"
   - name: "The Oleafly contributors"
 repository-code: "https://github.com/Oleafly/Oleafly"
 url: "https://oleafly.com/"

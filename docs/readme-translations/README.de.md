@@ -587,7 +587,7 @@ Wenn du Oleafly nutzt, hilft ein [GitHub-Stern](https://github.com/Oleafly/Oleaf
 
 ```bibtex
 @software{oleafly,
-  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first desktop workspace for research writing},
   year    = {2026},
   version = {0.4.2},

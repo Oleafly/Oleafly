@@ -134,6 +134,7 @@ fetch() {
     echo "✓ $out"
     return
   fi
+  rm -f "$out"
   cp "$bin" "$out"
   chmod +x "$out"
   if [[ "$(uname)" == "Darwin" ]]; then

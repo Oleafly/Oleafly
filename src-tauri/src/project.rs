@@ -787,9 +787,25 @@ fn write_routed_meta(
         Route::Library(location) => {
             write_meta_at_if_changed(&path, &library_meta_to_write(&location.root, &path, meta))
         }
-        _ => write_meta_at_if_changed(&path, meta),
+        Route::Sidecar { .. } => write_meta_at_if_changed(&path, &linked_meta_to_write(meta, None)),
+        Route::Split { folder, .. } => {
+            write_meta_at_if_changed(&path, &linked_meta_to_write(meta, folder.name.as_deref()))
+        }
     }
     .map(|_| ())
+}
+
+fn linked_meta_to_write<'a>(
+    meta: &'a ProjectMeta,
+    declared_name: Option<&str>,
+) -> std::borrow::Cow<'a, ProjectMeta> {
+    let name = declared_name.unwrap_or_default();
+    if meta.name == name {
+        return std::borrow::Cow::Borrowed(meta);
+    }
+    let mut next = meta.clone();
+    name.clone_into(&mut next.name);
+    std::borrow::Cow::Owned(next)
 }
 
 fn library_meta_to_write<'a>(

@@ -258,6 +258,29 @@ describe("SourceControl in a folder that is not trusted yet", () => {
     expect(screen.queryAllByRole("alert")).toEqual([]);
   });
 
+  it("loads the repository when trusting the folder also announces a Git change", async () => {
+    restrict(untrusted);
+    mocks.gitWorkspaceSnapshot.mockReset();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot());
+    const stop = useFolderAccessStore.subscribe((state, previous) => {
+      if (state.trust?.trusted === true && previous.trust?.trusted === false) {
+        window.dispatchEvent(new Event("oleafly:git-changed"));
+      }
+    });
+    try {
+      render(<SourceControl />);
+      await act(async () => {});
+      expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+      await act(async () => {
+        useFolderAccessStore.setState({ trust: trusted as never });
+      });
+      expect(await screen.findByText("library.bib")).toBeInTheDocument();
+      expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledWith("project-1");
+    } finally {
+      stop();
+    }
+  });
+
   it("drops a refusal that lands after the folder lost trust", async () => {
     restrict(trusted);
     let refuse: (error: unknown) => void = () => {};

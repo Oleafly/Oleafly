@@ -4,7 +4,7 @@ export const OLEAFLY_REPOSITORY_URL = "https://github.com/Oleafly/Oleafly";
 export const OLEAFLY_CITATION_TITLE =
   "Oleafly: a local-first desktop workspace for research writing";
 export const OLEAFLY_CITATION_AUTHOR =
-  "Venkateshmurthy, Prajwal S and {The Oleafly contributors}";
+  "Venkateshmurthy, Prajwal S. and {The Oleafly contributors}";
 export const OLEAFLY_CITATION_LICENSE = "AGPL-3.0-or-later";
 
 export type BibtexTokenKind = "entry" | "key" | "field" | "punctuation" | "value";

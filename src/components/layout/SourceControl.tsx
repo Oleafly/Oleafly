@@ -248,13 +248,15 @@ export function SourceControl() {
     };
     pendingRefresh.current = operation;
     operation.promise = (async () => {
-      do {
-        operation.queued = false;
-        await refreshOnceRef.current();
-      } while (operation.queued && pendingRefresh.current === operation);
-    })().finally(() => {
-      if (pendingRefresh.current === operation) pendingRefresh.current = null;
-    });
+      try {
+        do {
+          operation.queued = false;
+          await refreshOnceRef.current();
+        } while (operation.queued && pendingRefresh.current === operation);
+      } finally {
+        if (pendingRefresh.current === operation) pendingRefresh.current = null;
+      }
+    })();
     return operation.promise;
   }, [projectId]);
   useEffect(() => {

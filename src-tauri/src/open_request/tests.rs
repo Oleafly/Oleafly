@@ -750,6 +750,62 @@ fn a_remembered_main_leaves_the_card_named_after_the_folder_it_is_in() {
 }
 
 #[test]
+fn choosing_a_main_by_hand_leaves_the_card_named_after_the_folder() {
+    let data = DataDir::new();
+    let folder = data.folder(
+        "work/papers",
+        &[("alpha/report.tex", ARTICLE), ("beta/report.tex", ARTICLE)],
+    );
+    let reply = opened(&folder, None);
+    assert_eq!(reply.detection.decision, oleafly_core::Decision::Ask);
+    crate::project::set_main_doc_for_test(&reply.project_id, "alpha/report.tex");
+    assert_eq!(
+        crate::project::linked_listing_meta(&reply.project_id)
+            .unwrap()
+            .name,
+        ""
+    );
+    let moved = folder.with_file_name("papers-final");
+    std::fs::rename(&folder, &moved).unwrap();
+    crate::linked_registry::update(&reply.project_id, |record| {
+        record.canonical_path = moved.to_string_lossy().into_owned();
+        Ok(())
+    })
+    .unwrap();
+
+    let info = listed(&reply.project_id);
+    assert_eq!(info.name, "papers-final");
+    assert_eq!(info.main_doc, "alpha/report.tex");
+    assert!(!moved.join("project.json").exists());
+}
+
+#[test]
+fn a_name_the_folder_declares_is_kept_for_the_library_card() {
+    let data = DataDir::new();
+    let folder = data.folder("work/thesis", &[("main.tex", ARTICLE)]);
+    oleafly_core::Workspace::init(
+        &folder,
+        oleafly_core::InitOptions {
+            name: Some("Thesis".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let reply = opened(&folder, None);
+    assert_eq!(
+        crate::project::linked_listing_meta(&reply.project_id)
+            .unwrap()
+            .name,
+        "Thesis"
+    );
+    assert_eq!(listed(&reply.project_id).name, "Thesis");
+    assert_eq!(
+        crate::project::read_meta(&reply.project_id).unwrap().name,
+        "Thesis"
+    );
+}
+
+#[test]
 fn a_root_main_tex_is_kept_on_this_device_so_the_library_knows_it_and_its_preview() {
     let data = DataDir::new();
     let folder = data.folder("work/happy", &[("main.tex", ARTICLE)]);

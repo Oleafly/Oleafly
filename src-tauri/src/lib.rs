@@ -521,6 +521,7 @@ pub fn run() {
             trust::project_trust_state,
             trust::trust_folder,
             trust::revoke_folder_trust,
+            trust::debug_answer_next_confirmation,
             folder_status::project_folder_status,
             skills::skills_list,
             skills::skills_add,

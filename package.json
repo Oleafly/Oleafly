@@ -9,7 +9,7 @@
   },
   "description": "Oleafly - the intelligent research workspace, free, local-first, 100% open source.",
   "license": "AGPL-3.0-or-later",
-  "author": "Prajwal S Venkateshmurthy",
+  "author": "Prajwal S. Venkateshmurthy",
   "scripts": {
     "gen:conversion-matrix": "node scripts/generate-conversion-matrix.mjs",
     "dev": "vite",

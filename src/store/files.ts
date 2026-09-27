@@ -1820,6 +1820,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   setContent: (path, content, opts) => {
     if (isReadOnlyProjectPath(path, get().manifestHome, get().tree)) return false;
+    if (get().files[path]?.content === content) return true;
     set((s) => ({
       files: {
         ...s.files,

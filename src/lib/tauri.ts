@@ -920,6 +920,8 @@ export const pickOpenFolder = (browse: string | null = null) =>
   invoke<PendingOpenRequest | null>("pick_open_folder", { browse });
 export const debugInjectOpenRequest = (path: string) =>
   invoke<PendingOpenRequest>("debug_inject_open_request", { path });
+export const debugAnswerNextConfirmation = (answer: boolean) =>
+  invoke<void>("debug_answer_next_confirmation", { answer });
 export type SystemIntegrationItemId =
   | "quick_action"
   | "explorer_menu"

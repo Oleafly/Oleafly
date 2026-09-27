@@ -1021,6 +1021,33 @@ fn describe(project_id: &str) -> Result<ProjectTrust, AppError> {
     })
 }
 
+static SCRIPTED_CONFIRMATION: std::sync::Mutex<Option<bool>> = std::sync::Mutex::new(None);
+
+fn script_next_confirmation(answer: bool) {
+    *SCRIPTED_CONFIRMATION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(answer);
+}
+
+fn scripted_confirmation(e2e_build: bool) -> Option<bool> {
+    if !e2e_build {
+        return None;
+    }
+    SCRIPTED_CONFIRMATION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+}
+
+#[tauri::command]
+pub async fn debug_answer_next_confirmation(answer: bool) -> Result<(), String> {
+    if !cfg!(feature = "e2e-testing") {
+        return Err("Confirmations can be answered ahead only in e2e builds.".into());
+    }
+    script_next_confirmation(answer);
+    Ok(())
+}
+
 async fn native_confirm<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     title: &str,
@@ -1028,6 +1055,9 @@ async fn native_confirm<R: tauri::Runtime>(
     confirm: &str,
 ) -> Result<bool, String> {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+    if let Some(answer) = scripted_confirmation(cfg!(feature = "e2e-testing")) {
+        return Ok(answer);
+    }
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
         .message(message)
@@ -2170,5 +2200,16 @@ mod tests {
             project_trust(&notes).unwrap(),
             TrustState::Trusted(TrustSource::ParentFolder)
         );
+    }
+
+    #[test]
+    fn a_scripted_confirmation_answers_once_and_only_in_e2e_builds() {
+        script_next_confirmation(true);
+        assert_eq!(scripted_confirmation(false), None);
+        assert_eq!(scripted_confirmation(true), Some(true));
+        assert_eq!(scripted_confirmation(true), None);
+        script_next_confirmation(false);
+        assert_eq!(scripted_confirmation(true), Some(false));
+        assert_eq!(scripted_confirmation(true), None);
     }
 }

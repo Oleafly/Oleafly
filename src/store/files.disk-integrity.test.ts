@@ -174,6 +174,29 @@ describe("line endings", () => {
   });
 });
 
+describe("text that did not change", () => {
+  it("keeps an unchanged file clean and never writes it back", async () => {
+    mocks.readFileContent.mockResolvedValue("Úvod.\r\nPůvodní věta.\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    const loaded = useFilesStore.getState().files["main.tex"].content;
+    vi.useFakeTimers();
+    expect(useFilesStore.getState().setContent("main.tex", loaded)).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: loaded, dirty: false });
+    await vi.runAllTimersAsync();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("still saves a real edit made after an unchanged update", async () => {
+    mocks.readFileContent.mockResolvedValue("one\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\n");
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("one\ntwo\n");
+  });
+});
+
 describe("files that cannot be opened", () => {
   it("tells the user once why a Windows-1250 file did not open", async () => {
     mocks.readFileContent.mockRejectedValue(ENCODING_ERROR);
