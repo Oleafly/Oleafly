@@ -693,3 +693,166 @@ fn clean_and_doctor_accept_a_folder_that_build_detected() {
     assert!(again.status.success());
     assert!(String::from_utf8_lossy(&again.stdout).contains("already clean"));
 }
+
+#[cfg(unix)]
+fn recording_app(directory: &std::path::Path) -> (PathBuf, PathBuf) {
+    use std::os::unix::fs::PermissionsExt;
+    let app = directory.join("recording app");
+    let record = directory.join("launched.txt");
+    std::fs::write(
+        &app,
+        format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}.partial'\nmv '{}.partial' '{}'\n",
+            record.display(),
+            record.display(),
+            record.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&app, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (app, record)
+}
+
+#[cfg(unix)]
+fn launched(record: &std::path::Path) -> Vec<String> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !record.exists() {
+        assert!(Instant::now() < deadline, "the app was never launched");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    std::fs::read_to_string(record)
+        .unwrap()
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+#[cfg(unix)]
+#[test]
+fn a_bare_dot_hands_the_current_folder_to_the_app() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    let thesis = root.path().join("my thesis").join("論文");
+    std::fs::create_dir_all(&thesis).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(&thesis)
+        .env("OLEAFLY_APP", &app)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty(), "a successful open prints nothing");
+    let canonical = thesis.canonicalize().unwrap();
+    assert_eq!(
+        launched(&record),
+        vec!["--open-folder".to_string(), canonical.display().to_string()]
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn open_without_a_path_opens_the_current_folder_and_reports_json() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("build")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "open"])
+        .current_dir(root.path().join("build"))
+        .env("OLEAFLY_APP", &app)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let canonical = root.path().join("build").canonicalize().unwrap();
+    let value = json(&output);
+    assert_eq!(value["ok"], true);
+    assert_eq!(value["command"], "open");
+    assert_eq!(value["folder"], canonical.display().to_string());
+    assert_eq!(launched(&record)[1], canonical.display().to_string());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_folder_named_like_a_command_opens_through_open_or_a_path() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("build")).unwrap();
+    let canonical = root.path().join("build").canonicalize().unwrap();
+    for arguments in [vec!["open", "build"], vec!["./build"]] {
+        let _ = std::fs::remove_file(&record);
+        let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(&arguments)
+            .current_dir(root.path())
+            .env("OLEAFLY_APP", &app)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(launched(&record)[1], canonical.display().to_string());
+    }
+}
+
+#[test]
+fn a_bare_folder_name_is_still_a_command_error_with_a_tip() {
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("thesis")).unwrap();
+    let output = run(&["thesis"], Some(root.path()));
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("unrecognized subcommand"), "{stderr}");
+    assert!(stderr.contains("oleafly ./thesis"), "{stderr}");
+
+    let output = run(&["nothing-here"], Some(root.path()));
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!stderr.contains("oleafly ./"), "{stderr}");
+}
+
+#[test]
+fn open_refuses_missing_folders_files_and_a_missing_app() {
+    let root = TempDir::new().unwrap();
+    std::fs::write(root.path().join("paper.tex"), ARTICLE).unwrap();
+
+    let missing = run(&["open", "nowhere"], Some(root.path()));
+    assert_eq!(missing.status.code(), Some(3));
+    assert!(String::from_utf8_lossy(&missing.stderr).contains("nowhere"));
+
+    let file = run(&["--json", "open", "paper.tex"], Some(root.path()));
+    assert_eq!(file.status.code(), Some(3));
+    let value = json(&file);
+    assert_eq!(value["ok"], false);
+    assert_eq!(value["command"], "open");
+    assert_eq!(value["error"]["kind"], "invalid_input");
+
+    let app = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(root.path())
+        .env("OLEAFLY_APP", root.path().join("Missing.app"))
+        .output()
+        .unwrap();
+    assert_eq!(app.status.code(), Some(4));
+    assert!(String::from_utf8_lossy(&app.stderr).contains("OLEAFLY_APP"));
+
+    let itself = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(root.path())
+        .env("OLEAFLY_APP", env!("CARGO_BIN_EXE_oleaflyc"))
+        .output()
+        .unwrap();
+    assert_eq!(itself.status.code(), Some(4));
+    let stderr = String::from_utf8_lossy(&itself.stderr);
+    assert!(stderr.contains("that's this command"), "{stderr}");
+}

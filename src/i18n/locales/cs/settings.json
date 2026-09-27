@@ -1399,6 +1399,35 @@
     "description": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty.",
     "label": "Obnovit nastavení"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} bude v PATH, až se odhlásíte a znovu přihlásíte. Pak otevřete nový terminál.",
+    "checking": "Kontroluje se…",
+    "description": "Napište v terminálu <code>oleafly .</code> a složka se otevře v Oleafly.",
+    "install": "Nainstalovat",
+    "installing": "Instaluje se…",
+    "loadFailed": "Stav příkazu pro terminál se nepodařilo zjistit.",
+    "notOnPath": {
+      "file": "{{directory}} zatím není v PATH. Přidejte tento řádek do {{file}} a otevřete nový terminál:",
+      "run": "{{directory}} zatím není v PATH. Jednou spusťte tento příkaz a otevřete nový terminál:"
+    },
+    "removing": "Odebírá se…",
+    "result": {
+      "copied": "Příkaz byl zkopírován do {{path}}.",
+      "linked": "{{path}} teď odkazuje na tuto kopii Oleafly.",
+      "removed": "{{path}} byl odebrán."
+    },
+    "state": {
+      "installed": "Nainstalováno v {{path}}.",
+      "moveApp": "Nejprve přesuňte Oleafly do složky Aplikace a pak zde příkaz nainstalujte.",
+      "notInstalled": "Přidá oleafly do {{directory}}.",
+      "occupied": "{{path}} už existuje a nevytvořil ho Oleafly, proto zůstane beze změny.",
+      "outdated": "{{path}} stále odkazuje na starší kopii Oleafly. Aktualizujte ho, aby používal tuto kopii.",
+      "packaged": "Nainstalováno v {{path}} balíčkem Oleafly.",
+      "unavailable": "Tato kopie Oleafly příkaz neobsahuje."
+    },
+    "title": "Příkaz pro terminál",
+    "update": "Aktualizovat"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1558,7 +1587,7 @@
       "description": "Zobrazí Oleafly v nabídce Otevřít pomocí pro složky. Váš výchozí správce souborů zůstane stejný."
     },
     "attention": {
-      "outdated": "Je zastaralá nebo ji zablokoval macOS. Opravte ji a obnovíte ji.",
+      "outdated": "Je zastaralá nebo ji zablokoval macOS. Opravou ji obnovíte.",
       "elsewhere": "Nabídka otevírá jinou kopii Oleafly. Opravte ji, abyste používali tuto.",
       "moved": "Odkazuje na kopii Oleafly, která byla přesunuta. Opravte ji, abyste používali tuto.",
       "noDefaultFileManager": "Váš systém nemá výchozího správce souborů pro složky, takže by tato položka mohla otevírat každou složku v Oleafly. Odeberte ji."

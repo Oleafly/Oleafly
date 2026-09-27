@@ -11,6 +11,7 @@
     "linked_replaced": "The folder {{folder}} isn't the one Oleafly opened before. Open it again to continue.",
     "linked_permission_denied": "Oleafly doesn't have permission to open the folder {{folder}}.",
     "linked_invalid": "Oleafly's link to this folder is damaged. Remove it from Oleafly, then open the folder again.",
+    "linked_in_app_data": "Oleafly can't open the folder {{folder}} because it's now inside Oleafly's data folder, or the data folder is inside it. Move one out of the other, then open the folder again.",
     "linked_not_recyclable": "This folder was opened in place, so it can't be moved to the Recycle Bin. Your files are untouched.",
     "linked_not_duplicable": "This folder was opened in place, so Oleafly can't duplicate it.",
     "folder_not_a_folder": "Oleafly can't use that location. Choose a folder.",
@@ -94,6 +95,15 @@
     "failed": "Oleafly couldn't open this folder.",
     "request_expired": "This folder request has expired. Open the folder again.",
     "timed_out": "Oleafly couldn't reach this folder. Check that its drive is connected, then try again."
+  },
+  "shell_command": {
+    "unavailable": "This copy of Oleafly doesn't include the terminal command.",
+    "move_app": "Move Oleafly to your Applications folder first, then install the command.",
+    "occupied": "{{path}} already exists and wasn't made by Oleafly, so it was left as it is.",
+    "changed": "{{path}} changed after Oleafly installed it, so it was left as it is.",
+    "failed": "Oleafly couldn't install the terminal command.",
+    "remove_failed": "Oleafly couldn't remove the terminal command.",
+    "unsupported": "The terminal command isn't available on this system yet."
   },
   "research": {
     "linked_project_folder": "This folder is open in Oleafly as its own project. Link it as read-only instead."

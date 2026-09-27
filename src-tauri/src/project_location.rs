@@ -371,8 +371,10 @@ fn linked_location(record: LinkRecord, state_dir: PathBuf) -> Result<ProjectLoca
         }
     }
     if crate::paths::overlaps_app_data(&canonical).map_err(corrupt_link)? {
-        return Err(corrupt_link(
-            "a linked folder cannot overlap Oleafly's app data".to_string(),
+        return Err(LocateError::Invalid(
+            AppError::new("project.linked_in_app_data")
+                .param("folder", folder)
+                .into(),
         ));
     }
     let compile_dir = record
@@ -952,7 +954,7 @@ mod tests {
         std::os::unix::fs::symlink(&moved, fixture.data.path()).unwrap();
         let error = locate(&record.id).unwrap_err();
         assert!(matches!(error, LocateError::Invalid(_)), "{error:?}");
-        assert!(String::from(error).contains("project.linked_invalid"));
+        assert!(String::from(error).contains("project.linked_in_app_data"));
         assert!(crate::paths::project_dir(&record.id).is_err());
     }
 
@@ -969,7 +971,48 @@ mod tests {
         std::os::unix::fs::symlink(&inside, &before).unwrap();
         let error = locate(&record.id).unwrap_err();
         assert!(matches!(error, LocateError::Invalid(_)), "{error:?}");
-        assert!(String::from(error).contains("project.linked_invalid"));
+        assert!(String::from(error).contains("project.linked_in_app_data"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_opened_folder_that_overlaps_the_app_data_says_so_instead_of_calling_the_link_damaged() {
+        let fixture = Fixture::new();
+        let inside = fixture.folder("before/thesis");
+        let holder = fixture.folder("paper");
+        let inside_record = register_folder_for_test(&inside);
+        let holder_record = register_folder_for_test(&holder);
+        let before = inside.parent().unwrap().to_path_buf();
+        let moved_in = fixture.data.path().join("inside");
+        std::fs::rename(&before, &moved_in).unwrap();
+        std::os::unix::fs::symlink(&moved_in, &before).unwrap();
+        let library = fixture.folder("paper/library");
+        std::os::unix::fs::symlink(&library, fixture.data.path().join("projects")).unwrap();
+
+        for (record, name) in [(&inside_record, "thesis"), (&holder_record, "paper")] {
+            let error = locate(&record.id).unwrap_err();
+            assert!(matches!(error, LocateError::Invalid(_)), "{error:?}");
+            let message = String::from(error);
+            assert!(message.starts_with(crate::app_error::PREFIX), "{message}");
+            assert!(
+                message.contains("\"code\":\"project.linked_in_app_data\""),
+                "{message}"
+            );
+            assert!(
+                message.contains(&format!("\"folder\":\"{name}\"")),
+                "{message}"
+            );
+            assert!(!message.contains("project.linked_invalid"), "{message}");
+            assert!(
+                !message.contains(fixture.folders.path().to_str().unwrap()),
+                "{message}"
+            );
+        }
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        assert!(catalog["project"]["linked_in_app_data"]
+            .as_str()
+            .is_some_and(|text| text.contains("{{folder}}")));
     }
 
     #[cfg(unix)]
@@ -982,6 +1025,7 @@ mod tests {
         std::os::unix::fs::symlink(&library, fixture.data.path().join("projects")).unwrap();
         let error = locate(&record.id).unwrap_err();
         assert!(matches!(error, LocateError::Invalid(_)), "{error:?}");
+        assert!(String::from(error).contains("project.linked_in_app_data"));
         assert_eq!(
             crate::paths::create_project_dir("paper").unwrap(),
             library.join("paper")

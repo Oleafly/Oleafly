@@ -54,6 +54,7 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
+import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
@@ -1204,7 +1205,7 @@ export function SettingsModal() {
             </div>
           )}
         </div>
-        <SystemIntegrationSection />
+        <SystemIntegrationSection shellCommandRow={<ShellCommandRow />} />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}

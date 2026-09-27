@@ -1860,9 +1860,21 @@ impl MutationAdmission {
     }
 
     fn run_with_change_status<T>(
-        mut self,
+        self,
         operation: impl FnOnce() -> Result<(T, bool), String>,
     ) -> Result<(T, u64), String> {
+        let project_id = self.project_id.clone();
+        let (value, generation, changed) = self.run_locked(operation)?;
+        if changed {
+            crate::linked_registry::note_changed(&project_id);
+        }
+        Ok((value, generation))
+    }
+
+    fn run_locked<T>(
+        mut self,
+        operation: impl FnOnce() -> Result<(T, bool), String>,
+    ) -> Result<(T, u64, bool), String> {
         let coordinator = Arc::clone(&self.coordinator);
         let _operation = lock_unpoisoned(&coordinator.operation);
         let _worktree = if self.allow_pending_restore_recovery {
@@ -1884,11 +1896,11 @@ impl MutationAdmission {
                 self.remove_pending(&mut state);
                 state.committed_generation
             };
-            return Ok((value, generation));
+            return Ok((value, generation, false));
         }
         let mut state = lock_unpoisoned(&coordinator.state);
         self.record_commit(&mut state);
-        Ok((value, self.generation))
+        Ok((value, self.generation, true))
     }
 }
 
@@ -3350,20 +3362,75 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
 
 pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result<bool, String> {
     with_project_metadata(project_id, || {
-        let mut meta = read_meta(project_id)?;
-        if meta.main_doc == main_doc || !resolve(project_id, main_doc)?.is_file() {
+        let route = crate::project_manifest::route_project(project_id)?;
+        if matches!(route, Route::Library(_)) || !resolve(project_id, main_doc)?.is_file() {
             return Ok(false);
         }
-        let engine = engine_for_main_document(&meta.engine, main_doc)?;
+        let effective = read_routed_meta(project_id, &route)?;
+        let engine = engine_for_main_document(&effective.engine, main_doc)?;
+        let stored = linked_listing_meta(project_id);
+        if stored
+            .as_ref()
+            .is_some_and(|stored| stored.main_doc == main_doc && stored.engine == engine)
+        {
+            return Ok(false);
+        }
+        let mut meta = stored.unwrap_or_else(|| ProjectMeta {
+            name: String::new(),
+            ..missing_project_meta(project_id, route.location())
+        });
         meta.main_doc = main_doc.to_string();
         if engine != "latexmk" {
             meta.tex_flavor = None;
             meta.allow_shell_escape = false;
         }
         meta.engine = engine;
-        write_device_meta(project_id, &meta)?;
+        write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
         Ok(true)
     })
+}
+
+fn remember_main_on_open(project_id: &str) {
+    if linked_listing_meta(project_id)
+        .is_some_and(|stored| project_main_file_is_usable(project_id, &stored.main_doc))
+    {
+        return;
+    }
+    let remembered = detect_main_on_open(project_id).and_then(|detection| {
+        match (detection.decision, detection.main) {
+            (oleafly_core::Decision::Auto, Some(main)) => {
+                remember_detected_main(project_id, &main).map(|_| ())
+            }
+            _ => Ok(()),
+        }
+    });
+    if let Err(error) = remembered {
+        let _ = append_app_log(format!(
+            "Could not find the main document of {project_id}: {error}"
+        ));
+    }
+}
+
+pub(crate) fn detect_main_on_open(project_id: &str) -> Result<oleafly_core::Detection, String> {
+    let route = crate::project_manifest::route_project(project_id)?;
+    let saved = match &route {
+        Route::Sidecar { location, .. } if !location.manifest_path().is_file() => None,
+        _ => Some(read_routed_meta(project_id, &route)?.main_doc),
+    };
+    let options = oleafly_core::DetectOptions {
+        saved_main: saved.as_deref(),
+        ..oleafly_core::DetectOptions::default()
+    };
+    oleafly_core::detect_main_document(&route.location().root, &options)
+        .map_err(|error| error.to_string())
+}
+
+fn settle_opened_folder(project_id: &str) {
+    if !crate::linked_registry::is_linked_id(project_id) {
+        return;
+    }
+    remember_main_on_open(project_id);
+    crate::linked_registry::note_modified_on_disk(project_id);
 }
 
 /// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
@@ -3966,6 +4033,7 @@ async fn open_project<R: tauri::Runtime>(
         let read_project_id = project_id.clone();
         let project = tauri::async_runtime::spawn_blocking(move || {
             let _ = refresh_linked_mirror(&read_project_id);
+            settle_opened_folder(&read_project_id);
             let project = read_meta(&read_project_id)?;
             crate::project_recents::record_project_opened_now(&read_project_id);
             Ok::<ProjectMeta, String>(project)
@@ -4235,7 +4303,7 @@ fn linked_project_info(
             .filter(|kind| !kind.is_empty())
             .unwrap_or_else(|| "document".to_string()),
         created_at: record.created_at as f64 / 1000.0,
-        updated_at: record.last_opened_at as f64 / 1000.0,
+        updated_at: record.changed_at.map_or(0.0, |at| at as f64 / 1000.0),
         color: meta
             .as_ref()
             .map(|meta| meta.color.clone())
@@ -9393,6 +9461,164 @@ mod tests {
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
         std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    fn backdate(path: &Path, seconds: u64) {
+        std::fs::File::options()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(seconds))
+            .unwrap();
+    }
+
+    fn modified_seconds(path: &Path) -> f64 {
+        let modified = std::fs::symlink_metadata(path).unwrap().modified().unwrap();
+        let millis = modified
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        u64::try_from(millis).unwrap() as f64 / 1000.0
+    }
+
+    #[test]
+    fn reopening_a_folder_from_its_card_keeps_its_main_and_lists_when_its_files_changed() {
+        use tauri::Manager as _;
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("linked-reopen");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        write_git_auto_init(false);
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let handle = app.handle().clone();
+        let state = app.state::<crate::state::AppState>();
+        let thesis = test_dir("linked-reopen-thesis");
+        std::fs::create_dir(thesis.join("paper")).unwrap();
+        let main = thesis.join("paper").join("main.tex");
+        std::fs::write(&main, "\\documentclass{article}").unwrap();
+        backdate(&main, 3_600);
+        let papers = test_dir("linked-reopen-papers");
+        for part in ["alpha", "beta"] {
+            std::fs::create_dir(papers.join(part)).unwrap();
+            std::fs::write(
+                papers.join(part).join("report.tex"),
+                "\\documentclass{article}",
+            )
+            .unwrap();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let thesis_link = crate::linked_registry::register_folder_for_test(&thesis);
+        let papers_link = crate::linked_registry::register_folder_for_test(&papers);
+        let thesis_before = crate::linked_registry::folder_snapshot_for_test(&thesis);
+        let papers_before = crate::linked_registry::folder_snapshot_for_test(&papers);
+        let listed = |project_id: &str| {
+            super::list_projects_blocking()
+                .unwrap()
+                .into_iter()
+                .find(|project| project.id == project_id)
+                .unwrap()
+        };
+        assert_eq!(listed(&thesis_link.id).main_doc, "");
+
+        let (opened, _) = tauri::async_runtime::block_on(super::open_project(
+            &handle,
+            &state,
+            thesis_link.id.clone(),
+        ))
+        .unwrap();
+        tauri::async_runtime::block_on(super::open_project(
+            &handle,
+            &state,
+            papers_link.id.clone(),
+        ))
+        .unwrap();
+
+        assert_eq!(opened.main_doc, "paper/main.tex");
+        let thesis_info = listed(&thesis_link.id);
+        assert_eq!(thesis_info.main_doc, "paper/main.tex");
+        assert_eq!(thesis_info.updated_at, modified_seconds(&main));
+        let papers_info = listed(&papers_link.id);
+        assert_eq!(papers_info.main_doc, "");
+        assert_eq!(papers_info.updated_at, modified_seconds(&papers));
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&thesis),
+            thesis_before
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&papers),
+            papers_before
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(thesis).unwrap();
+        std::fs::remove_dir_all(papers).unwrap();
+    }
+
+    #[test]
+    fn a_folder_is_listed_as_updated_when_its_files_change_not_when_it_compiles() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("linked-changed");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let saved = test_dir("linked-changed-saved");
+        let compiled = test_dir("linked-changed-compiled");
+        let mut links = Vec::new();
+        for folder in [&saved, &compiled] {
+            std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+            let link = crate::linked_registry::register_folder_for_test(folder);
+            crate::linked_registry::update(&link.id, |record| {
+                record.last_opened_at = 4_102_444_800_000;
+                Ok(())
+            })
+            .unwrap();
+            links.push(link.id);
+        }
+        let listed_at = |project_id: &str| {
+            super::list_projects_blocking()
+                .unwrap()
+                .into_iter()
+                .find(|project| project.id == project_id)
+                .unwrap()
+                .updated_at
+        };
+        let before = [listed_at(&links[0]), listed_at(&links[1])];
+        let started = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        tauri::async_runtime::block_on(super::write_project_file(
+            links[0].clone(),
+            "main.tex".into(),
+            "\\documentclass{book}".into(),
+            None,
+            None,
+        ))
+        .unwrap();
+        super::write_build_metadata(&links[1], 1, "xetex", None, 1);
+
+        assert_eq!(before, [0.0, 0.0]);
+        let changed_at = |project_id: &str| {
+            crate::linked_registry::get(project_id)
+                .unwrap()
+                .unwrap()
+                .changed_at
+        };
+        let saved_at = changed_at(&links[0]).expect("the save is recorded");
+        assert!(saved_at as f64 / 1000.0 >= started.floor());
+        assert_eq!(listed_at(&links[0]), saved_at as f64 / 1000.0);
+        assert_eq!(changed_at(&links[1]), None);
+        assert_eq!(listed_at(&links[1]), 0.0);
+        assert_eq!(
+            std::fs::read_to_string(saved.join("main.tex")).unwrap(),
+            "\\documentclass{book}"
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+        std::fs::remove_dir_all(saved).unwrap();
+        std::fs::remove_dir_all(compiled).unwrap();
     }
 
     #[test]

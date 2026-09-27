@@ -11,6 +11,7 @@
     "linked_replaced": "La carpeta {{folder}} no es la que Oleafly abrió antes. Vuelve a abrirla para continuar.",
     "linked_permission_denied": "Oleafly no tiene permiso para abrir la carpeta {{folder}}.",
     "linked_invalid": "El enlace de Oleafly con esta carpeta está dañado. Quítala de Oleafly y vuelve a abrir la carpeta.",
+    "linked_in_app_data": "Oleafly no puede abrir la carpeta {{folder}} porque ahora está dentro de la carpeta de datos de Oleafly, o la carpeta de datos está dentro de ella. Saca una de la otra y vuelve a abrir la carpeta.",
     "linked_not_recyclable": "Esta carpeta se abrió en su ubicación, así que no se puede mover a la papelera. Tus archivos no se han modificado.",
     "linked_not_duplicable": "Esta carpeta se abrió en su ubicación, así que Oleafly no puede duplicarla.",
     "folder_not_a_folder": "Oleafly no puede usar esa ubicación. Elige una carpeta.",
@@ -48,7 +49,7 @@
     "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
     "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta.",
     "latexmk_build_path": "latexmk no puede usar la carpeta de compilación de Oleafly en este equipo porque su ruta contiene caracteres que latexmk no acepta. Cambia este proyecto a Tectonic para compilarlo.",
-    "latexmk_network_folder": "latexmk no puede compilar una carpeta en una unidad de red compartida. Cambia este proyecto a Tectonic o copia la carpeta a este equipo."
+    "latexmk_network_folder": "latexmk no puede compilar una carpeta en un recurso compartido de red. Cambia este proyecto a Tectonic o copia la carpeta a este equipo."
   },
   "github": {
     "sign_in_expired": "El código de inicio de sesión caducó. Inténtalo de nuevo.",
@@ -92,8 +93,17 @@
     "contains_project": "Esta carpeta contiene {{name}}, que ya está abierta en Oleafly como un proyecto independiente.",
     "research_folder": "{{project}} ya puede editar archivos de esta carpeta a través de sus carpetas enlazadas. Primero quita el enlace allí.",
     "failed": "Oleafly no pudo abrir esta carpeta.",
-    "request_expired": "Esta solicitud de carpeta ha caducado. Vuelve a abrir la carpeta.",
+    "request_expired": "Esta petición de apertura ha caducado. Vuelve a abrir la carpeta.",
     "timed_out": "Oleafly no pudo acceder a esta carpeta. Comprueba que su unidad esté conectada y vuelve a intentarlo."
+  },
+  "shell_command": {
+    "unavailable": "Esta copia de Oleafly no incluye el comando de terminal.",
+    "move_app": "Primero mueve Oleafly a la carpeta Aplicaciones y luego instala el comando.",
+    "occupied": "{{path}} ya existe y no lo creó Oleafly, así que se dejó como estaba.",
+    "changed": "{{path}} cambió después de que Oleafly lo instalara, así que se dejó como estaba.",
+    "failed": "Oleafly no pudo instalar el comando de terminal.",
+    "remove_failed": "Oleafly no pudo quitar el comando de terminal.",
+    "unsupported": "El comando de terminal aún no está disponible en este sistema."
   },
   "research": {
     "linked_project_folder": "Esta carpeta está abierta en Oleafly como un proyecto independiente. Enlázala en modo de solo lectura."

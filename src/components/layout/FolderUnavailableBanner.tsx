@@ -56,7 +56,7 @@ export function FolderUnavailableBanner() {
   return (
     <div
       data-testid="folder-unavailable-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
+      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-[color-mix(in_srgb,var(--color-amber-500)_10%,var(--background))] px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
     >
       <FolderX aria-hidden="true" className="size-3.5 shrink-0" />
       <output className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">

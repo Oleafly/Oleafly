@@ -170,7 +170,7 @@
       "label": "Kompiler igen"
     },
     "saveSettingsToFolder": {
-      "keywords": "gem projektindstillinger mappe project.json del hoveddokument",
+      "keywords": "gem projektindstillinger mappe project.json del hoveddokument motor save project settings folder share main document engine",
       "label": "Gem projektindstillinger i denne mappe",
       "saved": "Projektindstillingerne er gemt i project.json i denne mappe."
     },
@@ -222,7 +222,7 @@
     },
     "openFolder": {
       "label": "Åbn mappe…",
-      "keywords": "åbn mappe bibliotek eksisterende lokale filer disk"
+      "keywords": "åbn mappe katalog eksisterende lokale filer disk open folder directory existing local files"
     }
   },
   "community": {
@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Hvilket dokument skal Oleafly kompilere?",
       "askDescription": "Denne mappe har mere end ét dokument. Vælg hoveddokumentet. Du kan ændre det senere.",
-      "changeTitle": "Vælg hoveddokumentet",
-      "changeDescription": "Oleafly kompilerer det dokument, du vælger, og husker det for denne mappe.",
       "listLabel": "Dokumenter i denne mappe",
       "open": "Åbn",
       "browse": "Gennemse bare filerne",
       "bestMatch": "Bedste match",
-      "current": "Nuværende",
-      "loading": "Leder efter dokumenter…",
-      "empty": "Oleafly fandt ingen dokumenter her. Højreklik på en fil i filtræet, og vælg Vælg som hoveddokument.",
-      "failed": "Oleafly kunne ikke læse denne mappe.",
+      "empty": "Oleafly fandt ingen dokumenter her. Højreklik på en fil i filtræet, og klik på Vælg som hoveddokument.",
       "truncated": "Mappen er stor, så Oleafly stoppede tidligt med at lede. Nogle dokumenter er måske ikke med på listen.",
       "openFailed": "Kunne ikke gøre {{path}} til hoveddokument."
     },
@@ -487,19 +482,12 @@
       "standalone_figure": "Selvstændig figur",
       "placeholder": "Ikke hentet endnu"
     },
-    "main": {
-      "label": "Hoveddokument: {{path}}",
-      "change": "Skift",
-      "changeLabel": "Skift hoveddokument",
-      "others": "Andre dokumenter",
-      "switchFailed": "Kunne ikke skifte til {{path}}."
-    },
-    "noMain": "Intet hoveddokument endnu. Vælg en fil, og vælg Vælg som hoveddokument.",
+    "noMain": "Intet hoveddokument endnu. Vælg en fil, og klik på Vælg som hoveddokument.",
     "trust": {
-      "banner": "Oleafly har begrænset nogle funktioner i denne mappe. Stol på den for at slå Git, terminal, agenter og shell escape til.",
+      "banner": "Oleafly har begrænset nogle funktioner i denne mappe. Vil du stole på den og slå Git, terminal, agenter og shell escape til?",
       "trustFolder": "Stol på denne mappe",
-      "trustParent": "Stol på den overordnede mappe…",
-      "trustRepository": "Stol på repositoriet",
+      "trustParent": "Stol på den overordnede mappe",
+      "trustRepository": "Stol på repositoryet",
       "hide": "Skjul",
       "terminal": "Git-hooks og repositoryindstillinger er slået fra i denne terminal, indtil du stoler på mappen.",
       "terminalReopen": "Denne terminal startede, før du stolede på mappen. Genåbn den for at slå Git-hooks til.",
@@ -645,8 +633,8 @@
         "calculating": "Beregner lagerforbrug…",
         "desktopOnly": "Oplysninger om lagerplads findes i skrivebordsappen.",
         "error": "Oplysningerne om lagerplads kunne ikke beregnes.",
-        "linkedFolders_one": "{{size}} byggeoutput og indstillinger for {{count}} åbnet mappe",
-        "linkedFolders_other": "{{size}} byggeoutput og indstillinger for {{count}} åbnede mapper",
+        "linkedFolders_one": "{{size}} byggefiler og indstillinger for {{count}} åbnet mappe",
+        "linkedFolders_other": "{{size}} byggefiler og indstillinger for {{count}} åbnede mapper",
         "refresh": "Opdater lagerforbruget",
         "stats": {
           "appData": "Appdata",
@@ -1027,7 +1015,7 @@
     "update": "Oleafly-opdatering"
   },
   "openFolder": {
-    "confirmTitle": "Stop og åbn {{name}}?",
+    "confirmTitle": "Vil du stoppe og åbne {{name}}?",
     "confirmCompile": "{{project}} kompileres stadig. Hvis du åbner {{name}}, stopper kompileringen. Dine ændringer gemmes først.",
     "confirmAssistant": "Assistenten arbejder stadig i {{project}}. Hvis du åbner {{name}}, stopper svaret. Dine ændringer gemmes først.",
     "confirmBoth": "{{project}} kompileres stadig, og assistenten arbejder stadig. Hvis du åbner {{name}}, stopper begge dele. Dine ændringer gemmes først.",
@@ -1037,7 +1025,7 @@
     "refused": "Kunne ikke åbne {{name}}. {{reason}}",
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
-      "mac": "Åbn Anonymitet & sikkerhed i Systemindstillinger, gå til Arkiver og mapper, og slå Oleafly til. Hvis Oleafly ikke står på listen, så tilføj det under Fuld diskadgang, og prøv igen.",
+      "mac": "Åbn Anonymitet og sikkerhed i Systemindstillinger, gå til Filer og mapper, og slå Oleafly til. Hvis Oleafly ikke står på listen, så tilføj det under Fuld diskadgang, og prøv igen.",
       "windows": "Tjek fanen Sikkerhed under mappens Egenskaber for at sikre, at din konto kan læse den, og prøv igen.",
       "linux": "Tjek, at din konto kan læse denne mappe, og prøv igen."
     }

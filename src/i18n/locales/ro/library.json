@@ -45,8 +45,7 @@
       "name": "Nume",
       "type": "Tip",
       "engine": "Motor",
-      "modified": "Modificat",
-      "activity": "Ultima activitate"
+      "modified": "Modificat"
     },
     "filters": {
       "engine": "Motor",
@@ -71,8 +70,8 @@
       "last30Days": "Ultimele 30 de zile",
       "lastYear": "Ultimul an"
     },
-    "openFolder": "Deschide folderul…",
-    "openFolderShortcut": "Deschide folderul ({{shortcut}})",
+    "openFolder": "Deschide un folder",
+    "openFolderShortcut": "Deschide un folder ({{shortcut}})",
     "createFirstProject": "Creează un proiect nou",
     "scope": {
       "label": "Afișează proiectele",
@@ -108,7 +107,8 @@
     "kind": {
       "document": "document",
       "image": "imagine",
-      "diagram": "diagramă"
+      "diagram": "diagramă",
+      "external": "extern"
     },
     "preview": {
       "title": "Previzualizare PDF: {{name}}",
@@ -494,10 +494,6 @@
   },
   "folder": {
     "badge": "Folder",
-    "noMain": "Niciun document principal",
-    "openedToday": "Deschis azi",
-    "openedYesterday": "Deschis ieri",
-    "openedOn": "Deschis pe {{date}}",
     "state": {
       "missing": "Folder lipsă",
       "offline": "Unitate neconectată",

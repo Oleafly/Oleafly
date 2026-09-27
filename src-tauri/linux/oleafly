@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ "$#" -eq 0 ]; then
+  exec /usr/bin/oleafly-desktop
+fi
+exec /usr/bin/oleafly-cli "$@"

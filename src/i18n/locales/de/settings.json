@@ -1367,6 +1367,35 @@
     "description": "Setzt die Einstellungen für {{sectionName}} auf die Standards zurück.",
     "label": "Einstellungen zurücksetzen"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} ist in Ihrem PATH, sobald Sie sich ab- und wieder anmelden. Öffnen Sie danach ein neues Terminal.",
+    "checking": "Wird geprüft…",
+    "description": "Geben Sie <code>oleafly .</code> in einem Terminal ein, um diesen Ordner in Oleafly zu öffnen.",
+    "install": "Installieren",
+    "installing": "Wird installiert…",
+    "loadFailed": "Der Terminalbefehl konnte nicht geprüft werden.",
+    "notOnPath": {
+      "file": "{{directory}} ist noch nicht in Ihrem PATH. Fügen Sie diese Zeile zu {{file}} hinzu und öffnen Sie dann ein neues Terminal:",
+      "run": "{{directory}} ist noch nicht in Ihrem PATH. Führen Sie dies einmal aus und öffnen Sie dann ein neues Terminal:"
+    },
+    "removing": "Wird entfernt…",
+    "result": {
+      "copied": "Der Befehl wurde nach {{path}} kopiert.",
+      "linked": "{{path}} verweist jetzt auf diese Kopie von Oleafly.",
+      "removed": "{{path}} wurde entfernt."
+    },
+    "state": {
+      "installed": "Installiert in {{path}}.",
+      "moveApp": "Verschieben Sie Oleafly zuerst in den Ordner „Programme“ und installieren Sie den Befehl dann hier.",
+      "notInstalled": "Fügt oleafly zu {{directory}} hinzu.",
+      "occupied": "{{path}} existiert bereits und stammt nicht von Oleafly, deshalb bleibt es unverändert.",
+      "outdated": "{{path}} verweist noch auf eine ältere Kopie von Oleafly. Aktualisieren Sie den Befehl, damit er diese Kopie verwendet.",
+      "packaged": "Von Ihrem Oleafly-Paket unter {{path}} installiert.",
+      "unavailable": "Diese Kopie von Oleafly enthält den Befehl nicht."
+    },
+    "title": "Terminalbefehl",
+    "update": "Aktualisieren"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1507,7 +1536,7 @@
     "explorerMenu": {
       "label": "Kontextmenü im Datei-Explorer",
       "description": "Klicken Sie mit der rechten Maustaste auf einen Ordner oder auf eine freie Stelle darin und wählen Sie Mit Oleafly öffnen. Unter Windows 11 finden Sie den Eintrag unter Weitere Optionen anzeigen.",
-      "toggle": "Mit Oleafly öffnen im Datei-Explorer anzeigen"
+      "toggle": "„Mit Oleafly öffnen“ im Datei-Explorer anzeigen"
     },
     "dolphin": {
       "label": "Dolphin",

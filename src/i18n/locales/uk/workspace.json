@@ -11,7 +11,7 @@
       "replace": "Замінити",
       "title": "Ця назва вже зайнята",
       "unchanged": "Початковий шлях і шлях призначення залишилися без змін.",
-      "renameFolderBody": "<destination>{{destination}}</destination> уже існує як папка. Збережіть обидві з назвою <suggestion>{{suggestion}}</suggestion>. У папці, відкритій на її місці, Oleafly ніколи не замінює папку повністю."
+      "renameFolderBody": "Тека <destination>{{destination}}</destination> уже існує. Збережіть обидві з назвою <suggestion>{{suggestion}}</suggestion>. У теці, відкритій на її місці, Oleafly ніколи не замінює теку повністю."
     },
     "createFailed": "Не вдалося створити «{{path}}».",
     "deleteFailed": "Не вдалося видалити «{{path}}».",
@@ -43,15 +43,15 @@
     "title": "Провідник",
     "treeAriaLabel": "Дерево файлів провідника",
     "setMainFailed": "Не вдалося зробити «{{path}}» головним документом.",
-    "listingStopped": "Показано перші {{limit}} елементів. Решту вмісту папки не показано.",
+    "listingStopped": "Показано перші {{limit}} елементів. Решту вмісту теки не показано.",
     "unreadable": "Немає доступу",
     "unreadableHint": "Oleafly не має дозволу відкрити цей елемент.",
-    "confirmTrash": "Перемістити {{path}} до Кошика?",
+    "confirmTrash": "Перемістити {{path}} до Смітника?",
     "confirmTrashWindows": "Перемістити {{path}} до Кошика?",
-    "confirmPermanentDelete": "Oleafly не вдалося перемістити {{path}} до Кошика. Видалити назавжди? Цю дію не можна скасувати.",
+    "confirmPermanentDelete": "Oleafly не вдалося перемістити {{path}} до Смітника. Видалити назавжди? Цю дію не можна скасувати.",
     "confirmPermanentDeleteWindows": "Oleafly не вдалося перемістити {{path}} до Кошика. Видалити назавжди? Цю дію не можна скасувати.",
-    "linkedReadOnly": "Посилається на файл поза цією папкою, тому доступний лише для читання.",
-    "partialFolder": "Показано не всі елементи цієї папки."
+    "linkedReadOnly": "Посилається на файл поза цією текою, тому доступний лише для читання.",
+    "partialFolder": "Показано не всі елементи цієї теки."
   },
   "explorer": {
     "resizeSections": "Змінити розмір: {{first}} і {{second}}"

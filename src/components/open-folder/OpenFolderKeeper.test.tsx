@@ -7,7 +7,6 @@ import type { ProjectTrust } from "@/lib/tauri";
 const mocks = vi.hoisted(() => ({
   projectTrustState: vi.fn(),
   projectFolderStatus: vi.fn(),
-  projectDocumentCandidates: vi.fn(),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   setShowTree: vi.fn(),
   setRailTab: vi.fn(),
@@ -25,7 +24,6 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@/lib/tauri", () => ({
   projectTrustState: mocks.projectTrustState,
   projectFolderStatus: mocks.projectFolderStatus,
-  projectDocumentCandidates: mocks.projectDocumentCandidates,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/store/files", async () => {
@@ -52,7 +50,6 @@ vi.mock("@/store/settings", () => ({
 
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
-import { useMainDocumentStore } from "@/store/main-document";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { OpenFolderKeeper } from "./OpenFolderKeeper";
@@ -110,7 +107,6 @@ beforeEach(() => {
   for (const fn of [
     mocks.projectTrustState,
     mocks.projectFolderStatus,
-    mocks.projectDocumentCandidates,
     mocks.setShowTree,
     mocks.setRailTab,
     mocks.refreshEngine,
@@ -121,11 +117,9 @@ beforeEach(() => {
   mocks.listeners.clear();
   mocks.projectTrustState.mockResolvedValue(restricted);
   mocks.projectFolderStatus.mockResolvedValue({ read_only: false, synced_with: null });
-  mocks.projectDocumentCandidates.mockResolvedValue(detection("auto", "paper/main.tex"));
   useFilesStore.setState({ projectId: null, loading: false, manifestHome: "library" } as never);
   useOpenFolderStore.getState().dismiss();
   useFolderAccessStore.getState().reset(null);
-  useMainDocumentStore.getState().reset(null);
   useProjectAvailabilityStore.getState().reset(null);
 });
 
@@ -141,7 +135,6 @@ describe("OpenFolderKeeper", () => {
     expect(useFolderAccessStore.getState()).toMatchObject({ projectId: "linked-a", trust: restricted });
     await openFolder("linked-b");
     expect(useFolderAccessStore.getState().projectId).toBe("linked-b");
-    expect(useMainDocumentStore.getState().projectId).toBe("linked-b");
     expect(mocks.projectTrustState).toHaveBeenCalledWith("linked-b");
   });
 
@@ -191,7 +184,7 @@ describe("OpenFolderKeeper", () => {
     await vi.waitFor(() => expect(mocks.projectTrustState).toHaveBeenCalledWith("linked-a"));
   });
 
-  it("shows the file tree for a folder with no main and hands the detection over", async () => {
+  it("shows the file tree for a folder with no main", async () => {
     render(<OpenFolderKeeper />);
     await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });
     act(() =>
@@ -203,7 +196,6 @@ describe("OpenFolderKeeper", () => {
     expect(mocks.setShowTree).toHaveBeenCalledWith(true);
     expect(mocks.setRailTab).toHaveBeenCalledWith("files");
     expect(useOpenFolderStore.getState().opened).toBeNull();
-    expect(useMainDocumentStore.getState().status).toBe("idle");
   });
 
   it("keeps an ambiguous folder presented for the picker and shows the tree behind it", async () => {
@@ -217,10 +209,9 @@ describe("OpenFolderKeeper", () => {
     );
     expect(useOpenFolderStore.getState().opened).not.toBeNull();
     expect(mocks.setShowTree).toHaveBeenCalledWith(true);
-    expect(useMainDocumentStore.getState().detection?.candidates).toHaveLength(2);
   });
 
-  it("keeps the other documents of a clear main without asking anything", async () => {
+  it("takes a clear main without asking anything", async () => {
     render(<OpenFolderKeeper />);
     await openFolder("linked-a");
     act(() =>
@@ -231,7 +222,6 @@ describe("OpenFolderKeeper", () => {
     );
     expect(useOpenFolderStore.getState().opened).toBeNull();
     expect(mocks.setShowTree).not.toHaveBeenCalled();
-    expect(useMainDocumentStore.getState().detection?.main).toBe("paper/main.tex");
   });
 
   it("waits for the editor to switch before taking a presented folder", async () => {
@@ -246,7 +236,6 @@ describe("OpenFolderKeeper", () => {
     expect(useOpenFolderStore.getState().opened).not.toBeNull();
     await openFolder("linked-b");
     expect(useOpenFolderStore.getState().opened).toBeNull();
-    expect(useMainDocumentStore.getState().projectId).toBe("linked-b");
   });
 
   it("drops an unanswered picker when the user leaves the project", async () => {
@@ -262,18 +251,7 @@ describe("OpenFolderKeeper", () => {
     expect(useOpenFolderStore.getState().opened).toBeNull();
   });
 
-  it("looks for other documents in the background for a folder reopened later", async () => {
-    vi.useFakeTimers();
-    render(<OpenFolderKeeper />);
-    await openFolder("linked-a");
-    expect(mocks.projectDocumentCandidates).not.toHaveBeenCalled();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    expect(mocks.projectDocumentCandidates).toHaveBeenCalledWith("linked-a");
-  });
-
-  it("lists the other documents of a folder whose main came from its own settings", async () => {
+  it("never scans an opened folder in the background", async () => {
     vi.useFakeTimers();
     render(<OpenFolderKeeper />);
     await openFolder("linked-a");
@@ -287,40 +265,11 @@ describe("OpenFolderKeeper", () => {
         },
       }),
     );
-    expect(useOpenFolderStore.getState().opened).toBeNull();
+    await openFolder("linked-b");
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
-    expect(mocks.projectDocumentCandidates).toHaveBeenCalledWith("linked-a");
-    expect(useMainDocumentStore.getState().detection?.candidates.map((c) => c.path)).toEqual([
-      "paper/main.tex",
-      "talk/slides.tex",
-    ]);
-  });
-
-  it("does not search while the folder has no main document", async () => {
-    vi.useFakeTimers();
-    render(<OpenFolderKeeper />);
-    await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });
-    act(() =>
-      useOpenFolderStore.getState().present({
-        project_id: "linked-a",
-        detection: { ...detection("no_main", null), candidates: [] },
-      }),
-    );
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    expect(mocks.projectDocumentCandidates).not.toHaveBeenCalled();
-  });
-
-  it("never searches a library project", async () => {
-    vi.useFakeTimers();
-    render(<OpenFolderKeeper />);
-    await openFolder("paper", { manifestHome: "library" });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    expect(mocks.projectDocumentCandidates).not.toHaveBeenCalled();
+    expect(mocks.projectTrustState.mock.calls).toEqual([["linked-a"], ["linked-b"]]);
+    expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"], ["linked-b"]]);
   });
 });

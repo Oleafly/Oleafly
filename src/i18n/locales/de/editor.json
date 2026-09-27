@@ -1035,9 +1035,9 @@
   "changedOnDisk": {
     "message": "{{file}} wurde auf dem Datenträger geändert, während Sie ungespeicherte Änderungen hatten.",
     "compare": "Vergleichen",
-    "keepMine": "Meine behalten",
+    "keepMine": "Meine Version behalten",
     "reload": "Neu laden",
     "failed": "Oleafly konnte {{file}} nicht aktualisieren. Versuchen Sie es erneut.",
-    "tabMark": "Auf dem Datenträger geändert. Öffnen Sie diesen Tab, um zu wählen, welche Version bleibt."
+    "tabMark": "Auf dem Datenträger geändert. Öffnen Sie diesen Reiter, um zu wählen, welche Version bleibt."
   }
 }

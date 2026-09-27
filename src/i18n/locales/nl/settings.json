@@ -1367,6 +1367,35 @@
     "description": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden.",
     "label": "Instellingen resetten"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} staat in je PATH zodra je uitlogt en weer inlogt. Open daarna een nieuwe terminal.",
+    "checking": "Controleren…",
+    "description": "Typ <code>oleafly .</code> in een terminal om die map in Oleafly te openen.",
+    "install": "Installeren",
+    "installing": "Installeren…",
+    "loadFailed": "De terminalopdracht kon niet worden gecontroleerd.",
+    "notOnPath": {
+      "file": "{{directory}} staat nog niet in je PATH. Voeg deze regel toe aan {{file}} en open een nieuwe terminal:",
+      "run": "{{directory}} staat nog niet in je PATH. Voer dit één keer uit en open een nieuwe terminal:"
+    },
+    "removing": "Verwijderen…",
+    "result": {
+      "copied": "Opdracht gekopieerd naar {{path}}.",
+      "linked": "{{path}} verwijst nu naar deze kopie van Oleafly.",
+      "removed": "{{path}} verwijderd."
+    },
+    "state": {
+      "installed": "Geïnstalleerd in {{path}}.",
+      "moveApp": "Verplaats Oleafly eerst naar de map Programma's en installeer de opdracht daarna hier.",
+      "notInstalled": "Voegt oleafly toe aan {{directory}}.",
+      "occupied": "{{path}} bestaat al en is niet door Oleafly gemaakt, dus het blijft zoals het is.",
+      "outdated": "{{path}} verwijst nog naar een oudere kopie van Oleafly. Werk het bij om deze kopie te gebruiken.",
+      "packaged": "Geïnstalleerd in {{path}} door je Oleafly-pakket.",
+      "unavailable": "Deze kopie van Oleafly bevat de opdracht niet."
+    },
+    "title": "Terminalopdracht",
+    "update": "Bijwerken"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

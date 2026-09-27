@@ -33,6 +33,8 @@ pub enum ProjectLocationInfo {
 pub struct ProjectAvailabilityReport {
     pub project_id: String,
     pub availability: ProjectAvailability,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub modified_at_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -160,7 +162,9 @@ pub(crate) fn relocated(project_id: &str, grants_reset: bool) {
     emit(tracker().relocated(project_id, grants_reset));
 }
 
-type Probe = Arc<dyn Fn(&str) -> ProjectAvailability + Send + Sync>;
+type Probed = (ProjectAvailability, Option<u64>);
+
+type Probe = Arc<dyn Fn(&str) -> Probed + Send + Sync>;
 
 pub(crate) fn abbreviated_display_path(path: &Path, home: Option<&Path>) -> String {
     let shown = without_verbatim_prefix(path);
@@ -214,7 +218,7 @@ fn in_flight() -> &'static Mutex<HashSet<String>> {
     IN_FLIGHT.get_or_init(Default::default)
 }
 
-fn start_probe(project_id: &str, probe: Probe) -> Option<Receiver<ProjectAvailability>> {
+fn start_probe(project_id: &str, probe: Probe) -> Option<Receiver<Probed>> {
     if !in_flight()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
@@ -227,12 +231,12 @@ fn start_probe(project_id: &str, probe: Probe) -> Option<Receiver<ProjectAvailab
     let spawned = std::thread::Builder::new()
         .name("oleafly-folder-probe".into())
         .spawn(move || {
-            let availability = probe(&id);
+            let probed = probe(&id);
             in_flight()
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .remove(&id);
-            let _ = sender.send(availability);
+            let _ = sender.send(probed);
         });
     if spawned.is_err() {
         in_flight()
@@ -259,13 +263,18 @@ fn probe_all(
         .collect();
     started
         .into_iter()
-        .map(|(project_id, receiver)| ProjectAvailabilityReport {
-            availability: receiver.map_or(ProjectAvailability::Unknown, |receiver| {
-                receiver
-                    .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                    .unwrap_or(ProjectAvailability::Offline)
-            }),
-            project_id,
+        .map(|(project_id, receiver)| {
+            let (availability, modified_at_ms) =
+                receiver.map_or((ProjectAvailability::Unknown, None), |receiver| {
+                    receiver
+                        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+                        .unwrap_or((ProjectAvailability::Offline, None))
+                });
+            ProjectAvailabilityReport {
+                project_id,
+                availability,
+                modified_at_ms,
+            }
         })
         .collect()
 }
@@ -277,7 +286,51 @@ pub(crate) fn probe_linked_projects(
     probe_all(
         project_ids,
         budget,
-        Arc::new(|project_id: &str| availability_of(&crate::project_location::locate(project_id))),
+        Arc::new(|project_id: &str| {
+            (
+                availability_of(&crate::project_location::locate(project_id)),
+                None,
+            )
+        }),
+    )
+}
+
+pub(crate) fn content_modified_at(
+    location: &crate::project_location::ProjectLocation,
+) -> Option<u64> {
+    let main = crate::project::linked_listing_meta(&location.id)
+        .map(|meta| meta.main_doc)
+        .filter(|main| !main.is_empty());
+    let target = match main {
+        Some(main) => {
+            let relative = Path::new(&main);
+            if !relative
+                .components()
+                .all(|component| matches!(component, Component::Normal(_)))
+            {
+                return None;
+            }
+            location.root.join(relative)
+        }
+        None => location.root.clone(),
+    };
+    let modified = std::fs::symlink_metadata(target).ok()?.modified().ok()?;
+    let elapsed = modified.duration_since(std::time::UNIX_EPOCH).ok()?;
+    u64::try_from(elapsed.as_millis()).ok()
+}
+
+fn probe_linked_activity(
+    project_ids: Vec<String>,
+    budget: Duration,
+) -> Vec<ProjectAvailabilityReport> {
+    probe_all(
+        project_ids,
+        budget,
+        Arc::new(|project_id: &str| {
+            let located = crate::project_location::locate(project_id);
+            let modified = located.as_ref().ok().and_then(content_modified_at);
+            (availability_of(&located), modified)
+        }),
     )
 }
 
@@ -294,7 +347,7 @@ fn probe_blocking(
             linked.push(project_id);
         }
     }
-    Ok(probe_linked_projects(linked, budget))
+    Ok(probe_linked_activity(linked, budget))
 }
 
 #[tauri::command]
@@ -372,7 +425,7 @@ mod tests {
         let started = Instant::now();
         let slow: Probe = Arc::new(|_| {
             std::thread::sleep(Duration::from_secs(2));
-            ProjectAvailability::Ok
+            (ProjectAvailability::Ok, None)
         });
         let id = "linked-ffffffffffffffffffffffffffffff01".to_string();
         let first = probe_all(
@@ -394,11 +447,11 @@ mod tests {
         std::fs::create_dir(&data).unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
         crate::paths::create_project_dir("paper").unwrap();
-        let present = directory.path().join("present");
+        let present_folder = directory.path().join("present");
         let gone = directory.path().join("gone");
-        std::fs::create_dir(&present).unwrap();
+        std::fs::create_dir(&present_folder).unwrap();
         std::fs::create_dir(&gone).unwrap();
-        let present = crate::linked_registry::register_folder_for_test(&present);
+        let present = crate::linked_registry::register_folder_for_test(&present_folder);
         let gone_link = crate::linked_registry::register_folder_for_test(&gone);
         std::fs::remove_dir(&gone).unwrap();
 
@@ -414,10 +467,12 @@ mod tests {
                 ProjectAvailabilityReport {
                     project_id: present.id.clone(),
                     availability: ProjectAvailability::Ok,
+                    modified_at_ms: Some(modified_ms(&present_folder)),
                 },
                 ProjectAvailabilityReport {
                     project_id: gone_link.id.clone(),
                     availability: ProjectAvailability::Missing,
+                    modified_at_ms: None,
                 },
             ]
         );
@@ -425,11 +480,52 @@ mod tests {
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
+    fn modified_ms(path: &Path) -> u64 {
+        let modified = std::fs::symlink_metadata(path).unwrap().modified().unwrap();
+        u64::try_from(
+            modified
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn a_probe_reports_when_the_recorded_main_document_changed_and_search_skips_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        std::fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        std::fs::create_dir_all(folder.join("paper")).unwrap();
+        let main = folder.join("paper/main.tex");
+        std::fs::write(&main, "\\documentclass{article}").unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&main)
+            .unwrap()
+            .set_modified(std::time::SystemTime::now() - Duration::from_secs(3_600))
+            .unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        crate::project::set_main_doc_for_test(&record.id, "paper/main.tex");
+
+        let reports = probe_blocking(vec![record.id.clone()], Duration::from_secs(5)).unwrap();
+        let searched = probe_linked_projects(vec![record.id.clone()], Duration::from_secs(5));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(reports[0].availability, ProjectAvailability::Ok);
+        assert_eq!(reports[0].modified_at_ms, Some(modified_ms(&main)));
+        assert_ne!(reports[0].modified_at_ms, Some(modified_ms(&folder)));
+        assert_eq!(searched[0].modified_at_ms, None);
+    }
+
     #[test]
     fn slow_folders_each_get_the_budget_instead_of_adding_up() {
         let slow: Probe = Arc::new(|_| {
             std::thread::sleep(Duration::from_millis(900));
-            ProjectAvailability::Ok
+            (ProjectAvailability::Ok, None)
         });
         let ids: Vec<String> = (0..8)
             .map(|index| format!("linked-{:032x}", 0x5100 + index))

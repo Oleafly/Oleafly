@@ -682,7 +682,8 @@ pub(crate) fn open_validated(
     let opened = crate::open_folder::register_or_resolve_folder(path)
         .map_err(|error| OpenFailure::Refused(refusal(error, path)))?;
     let project_id = opened.project_id;
-    let detection = detect_opened(&project_id).map_err(OpenFailure::Failed)?;
+    let detection =
+        crate::project::detect_main_on_open(&project_id).map_err(OpenFailure::Failed)?;
     let switches = router.placement(&project_id, shown) == Placement::SwitchInPlace;
     if opened.kind == OpenedKind::Linked && switches {
         mark_opened(&project_id);
@@ -690,26 +691,12 @@ pub(crate) fn open_validated(
             crate::project::remember_detected_main(&project_id, main)
                 .map_err(OpenFailure::Failed)?;
         }
+        crate::linked_registry::note_modified_on_disk(&project_id);
     }
     Ok(OpenedFolderReply {
         project_id,
         detection,
     })
-}
-
-fn detect_opened(project_id: &str) -> Result<oleafly_core::Detection, String> {
-    use crate::project_manifest::Route;
-    let route = crate::project_manifest::route_project(project_id)?;
-    let saved = match &route {
-        Route::Sidecar { location, .. } if !location.manifest_path().is_file() => None,
-        _ => Some(crate::project::read_meta(project_id)?.main_doc),
-    };
-    let options = oleafly_core::DetectOptions {
-        saved_main: saved.as_deref(),
-        ..oleafly_core::DetectOptions::default()
-    };
-    oleafly_core::detect_main_document(&route.location().root, &options)
-        .map_err(|error| error.to_string())
 }
 
 fn mark_opened(project_id: &str) {

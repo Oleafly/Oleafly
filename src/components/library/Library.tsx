@@ -110,19 +110,15 @@ import {
   RECENT_LIMIT,
   folderAvailability,
   folderDisplayPath,
-  folderOpenedLabel,
   folderUnavailable,
   isFolderProject,
   projectInScope,
+  projectUpdatedAt,
   recentProjects,
   scopeCounts,
   type LibraryScope,
 } from "@/lib/library-projects";
 import {
-  FolderBookDetails,
-  FolderCoverBadge,
-  FolderInlineBadge,
-  FolderPath,
   FolderStateLine,
   asUnavailable,
   type UnavailableFolder,
@@ -244,6 +240,7 @@ function projectPassesFilters(
   project: ProjectInfo,
   filters: ProjectFilters,
   favs: readonly string[],
+  updatedAt: number,
 ) {
   if (project.recovery_pending) return true;
   const bookmarked = favs.includes(project.id);
@@ -256,7 +253,7 @@ function projectPassesFilters(
   if (filters.preview === "yes" && !project.has_preview) return false;
   if (filters.preview === "no" && project.has_preview) return false;
   if (!isWithinDays(project.created_at, filters.created)) return false;
-  return isWithinDays(project.updated_at, filters.modified);
+  return isWithinDays(updatedAt, filters.modified);
 }
 
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
@@ -274,7 +271,12 @@ function projectKindLabel(t: Translate, kind: string | undefined): string {
   }
 }
 
-function projectCardLabels(t: Translate, project: ProjectInfo) {
+function projectTypeLabel(t: Translate, project: ProjectInfo): string {
+  if (isFolderProject(project)) return t(($) => $.library.projects.kind.external);
+  return projectKindLabel(t, project.kind);
+}
+
+function projectCardLabels(t: Translate, project: ProjectInfo, updatedAt: number) {
   if (project.recovery_pending) {
     return {
       date: t(($) => $.library.projects.openToRecover),
@@ -284,19 +286,14 @@ function projectCardLabels(t: Translate, project: ProjectInfo) {
     };
   }
   return {
-    date: projectModifiedLabel(project.updated_at),
+    date: projectModifiedLabel(updatedAt),
     engine: projectEngineLabel(project.engine, project.main_doc),
-    kind: projectKindLabel(t, project.kind),
+    kind: projectTypeLabel(t, project),
     openLabel: undefined,
   };
 }
 
-function projectActivityLabel(project: ProjectInfo, folderPath: string | null) {
-  if (folderPath === null) return projectModifiedLabel(project.updated_at);
-  return folderOpenedLabel(project.last_opened_at || project.updated_at);
-}
-
-function projectRowColumns(t: Translate, project: ProjectInfo, folderPath: string | null) {
+function projectRowColumns(t: Translate, project: ProjectInfo, updatedAt: number) {
   if (project.recovery_pending) {
     return {
       kind: t(($) => $.library.projects.recoveryShort),
@@ -305,35 +302,20 @@ function projectRowColumns(t: Translate, project: ProjectInfo, folderPath: strin
     };
   }
   return {
-    kind: projectKindLabel(t, project.kind),
+    kind: projectTypeLabel(t, project),
     engine: projectEngineLabel(project.engine, project.main_doc),
-    activity: projectActivityLabel(project, folderPath),
+    activity: projectModifiedLabel(updatedAt),
   };
 }
 
 function ProjectRowCaption({
   project,
-  folderPath,
   folderState,
 }: Readonly<{
   project: ProjectInfo;
-  folderPath: string | null;
   folderState: UnavailableFolder | null;
 }>) {
   const { t } = useTranslation(["common", "library"]);
-  if (folderPath !== null) {
-    return (
-      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-        {folderState ? (
-          <>
-            <FolderStateLine state={folderState} className="shrink-0" />
-            <span aria-hidden="true">·</span>
-          </>
-        ) : null}
-        <FolderPath path={folderPath} />
-      </span>
-    );
-  }
   if (project.recovery_pending) {
     return (
       <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
@@ -341,9 +323,20 @@ function ProjectRowCaption({
       </span>
     );
   }
+  const caption = `${projectEngineLabel(project.engine, project.main_doc)} · ${projectTypeLabel(t, project)}`;
+  if (folderState) {
+    return (
+      <span className="mt-1 block min-w-0 text-xs lg:hidden">
+        <FolderStateLine state={folderState} className="sm:hidden" />
+        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
+          {caption}
+        </span>
+      </span>
+    );
+  }
   return (
     <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-      {projectEngineLabel(project.engine, project.main_doc)} · {projectKindLabel(t, project.kind)}
+      {caption}
     </span>
   );
 }
@@ -432,6 +425,7 @@ export function Library() {
     state: UnavailableFolder;
   } | null>(null);
   const checkedFolders = useLibraryAvailabilityStore((s) => s.checked);
+  const modifiedFolders = useLibraryAvailabilityStore((s) => s.modified);
   const checkFolders = useLibraryAvailabilityStore((s) => s.check);
   const folderKey = useMemo(
     () => projects.filter(isFolderProject).map((project) => project.id).join("\n"),
@@ -441,6 +435,7 @@ export function Library() {
   const activeScope: LibraryScope = hasFolders ? scope : "all";
   const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
     folderAvailability(project, checkedFolders);
+  const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
   const coverColor = (project: ProjectInfo) =>
     projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR);
   const revealLabel = () => {
@@ -726,11 +721,22 @@ export function Library() {
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
     () =>
-      projects.filter(
-        (project) =>
-          projectInScope(project, activeScope) && projectPassesFilters(project, filters, favs),
-      ),
-    [projects, favs, filters, activeScope],
+      projects
+        .filter(
+          (project) =>
+            projectInScope(project, activeScope) &&
+            projectPassesFilters(
+              project,
+              filters,
+              favs,
+              projectUpdatedAt(project, modifiedFolders),
+            ),
+        )
+        .sort(
+          (left, right) =>
+            projectUpdatedAt(right, modifiedFolders) - projectUpdatedAt(left, modifiedFolders),
+        ),
+    [projects, favs, filters, activeScope, modifiedFolders],
   );
   const scopedProjects = useMemo(
     () => projects.filter((project) => projectInScope(project, activeScope)),
@@ -839,9 +845,8 @@ export function Library() {
       className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
     >
       {visibleProjects.map((p) => {
-        const folderPath = folderDisplayPath(p);
-        const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
-        const labels = projectCardLabels(t, p);
+        const folderState = asUnavailable(availabilityOf(p));
+        const labels = projectCardLabels(t, p, updatedAtOf(p));
         return (
         <ContextMenu key={p.id}>
           <ContextMenuTrigger asChild>
@@ -849,19 +854,9 @@ export function Library() {
               <Book
                 title={p.name}
                 color={coverColor(p)}
-                date={labels.date}
+                date={folderState ? <FolderStateLine state={folderState} /> : labels.date}
                 engine={labels.engine}
                 forkedFrom={p.forked_from}
-                badge={folderPath === null ? undefined : <FolderCoverBadge />}
-                details={
-                  folderPath === null ? undefined : (
-                    <FolderBookDetails
-                      path={folderPath}
-                      mainDoc={p.main_doc}
-                      availability={availabilityOf(p)}
-                    />
-                  )
-                }
                 dimmed={folderState !== null}
                 kind={labels.kind}
                 openLabel={labels.openLabel}
@@ -927,19 +922,14 @@ export function Library() {
         <span>{t(($) => $.library.home.columns.name)}</span>
         <span>{t(($) => $.library.home.columns.type)}</span>
         <span>{t(($) => $.library.home.columns.engine)}</span>
-        <span>
-          {visibleProjects.some(isFolderProject)
-            ? t(($) => $.library.home.columns.activity)
-            : t(($) => $.library.home.columns.modified)}
-        </span>
+        <span>{t(($) => $.library.home.columns.modified)}</span>
         <span />
       </div>
       {visibleProjects.map((p) => {
         const recoveryPending = p.recovery_pending;
         const color = coverColor(p);
-        const folderPath = folderDisplayPath(p);
-        const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
-        const columns = projectRowColumns(t, p, folderPath);
+        const folderState = asUnavailable(availabilityOf(p));
+        const columns = projectRowColumns(t, p, updatedAtOf(p));
         const starred = favs.includes(p.id);
         const forkSource = p.forked_from
           ? projects.find((project) => project.id === p.forked_from)?.name ??
@@ -1096,17 +1086,10 @@ export function Library() {
                     ) : null}
                   </span>
                   <span className="min-w-0">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-sm font-medium text-foreground">
-                        {p.name}
-                      </span>
-                      {folderPath === null ? null : <FolderInlineBadge />}
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {p.name}
                     </span>
-                    <ProjectRowCaption
-                      project={p}
-                      folderPath={folderPath}
-                      folderState={folderState}
-                    />
+                    <ProjectRowCaption project={p} folderState={folderState} />
                   </span>
                 </button>
                 <span className="hidden text-xs capitalize text-muted-foreground lg:block">
@@ -1115,8 +1098,8 @@ export function Library() {
                 <span className="hidden text-xs text-muted-foreground lg:block">
                   {columns.engine}
                 </span>
-                <span className="hidden text-xs text-muted-foreground sm:block">
-                  {columns.activity}
+                <span className="hidden min-w-0 text-xs text-muted-foreground sm:block">
+                  {folderState ? <FolderStateLine state={folderState} /> : columns.activity}
                 </span>
                 {renderProjectRowActions()}
               </div>
@@ -1504,7 +1487,7 @@ export function Library() {
               aria-label={t(($) => $.library.home.import)}
               className={cn(
                 HOME_DOCK_GLASS_SURFACE,
-                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
+                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground focus-visible:!bg-accent focus-visible:text-foreground dark:!bg-background/65 dark:shadow-sm dark:focus-visible:!bg-accent/60",
               )}
             >
               {busy ? (

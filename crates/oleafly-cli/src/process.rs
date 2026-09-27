@@ -6,6 +6,27 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 #[cfg(windows)]
 const CREATE_SUSPENDED: u32 = 0x0000_0004;
+#[cfg(windows)]
+const DETACHED_PROCESS: u32 = 0x0000_0008;
+
+pub(crate) fn detach(command: &mut std::process::Command) {
+    #[cfg(unix)]
+    unsafe {
+        use std::os::unix::process::CommandExt;
+        command.pre_exec(|| {
+            if libc::setsid() == -1 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        });
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+    }
+}
 
 pub(crate) fn isolate(command: &mut tokio::process::Command) {
     #[cfg(unix)]

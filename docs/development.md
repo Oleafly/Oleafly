@@ -81,8 +81,8 @@ pnpm build              # typecheck + build the frontend (tsc -b && vite build)
 pnpm tauri build        # produce a distributable bundle
 ```
 
-The command-line adapter is source-only for now. Run it from the workspace.
-Cargo builds it as `oleaflyc`, because the desktop package already owns the
+The command-line adapter ships inside the desktop app but has no standalone
+package yet. Run it from the workspace. Cargo builds it as `oleaflyc`, because the desktop package already owns the
 name `oleafly` in this workspace. Help, completions, the manual and release
 archives all call it `oleafly`:
 
@@ -100,6 +100,26 @@ JSON events. Build and watch kill a compiler after 300 seconds unless you pass
 `--timeout <seconds>`. The CLI never turns on TeX shell escape. Only the
 desktop can, and only through its device-local trust prompt for the system TeX
 engine.
+
+`oleafly open [path]` hands a folder to the desktop app, and `oleafly .` is
+short for it. A bare `.` or `..`, or an argument with a path separator, opens
+that folder. Anything else is still read as a command, so a folder named
+`build` opens with `oleafly ./build` or `oleafly open build`. On macOS the CLI
+asks Launch Services for the app, and prefers the bundle it ships inside. On
+Windows it reads the install folder from the registry. On Linux it starts
+`oleafly-desktop`: the desktop binary has that name on Linux so the CLI can own
+`oleafly`. Set `OLEAFLY_APP` to a `.app` bundle or an app executable to open a
+development build instead.
+
+The .deb and .rpm packages also install `/usr/bin/oleafly`. It's a short
+script: with arguments it runs `oleafly-cli`, and with none it starts the app.
+Older packages put the app itself at that path, and an older copy that installs
+an update restarts through it, so the script has to stay.
+
+The desktop app carries the CLI as a second binary, `oleafly-cli`, next to its
+own executable. Settings can link it into `~/.local/bin` as `oleafly`, or into
+`/usr/local/bin` on a Mac where you can write to that folder. An AppImage gets
+a copy instead of a link, because its files vanish when it quits.
 
 The CLI does not bundle compilers. `doctor` lists the ones the project's
 engine needs, and when one is missing it prints an install command for the

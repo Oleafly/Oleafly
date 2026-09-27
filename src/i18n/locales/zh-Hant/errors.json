@@ -11,14 +11,15 @@
     "linked_replaced": "資料夾 {{folder}} 已不是 Oleafly 先前開啟的那個資料夾。請重新開啟以繼續。",
     "linked_permission_denied": "Oleafly 沒有開啟資料夾 {{folder}} 的權限。",
     "linked_invalid": "Oleafly 中此資料夾的連結已損毀。請將它從 Oleafly 移除，然後重新開啟該資料夾。",
+    "linked_in_app_data": "Oleafly 無法開啟資料夾 {{folder}}，因為它現在位於 Oleafly 存放資料的資料夾內，或者後者位於它裡面。請將其中一個移出另一個，然後重新開啟資料夾。",
     "linked_not_recyclable": "此資料夾是在原位置開啟的，無法移至資源回收筒。你的檔案沒有任何變更。",
     "linked_not_duplicable": "此資料夾是在原位置開啟的，Oleafly 無法複製它。",
     "folder_not_a_folder": "Oleafly 無法使用該位置。請選擇一個資料夾。",
     "folder_in_app_data": "Oleafly 在該資料夾中儲存自己的資料。請選擇其他資料夾。",
     "folder_too_broad": "{{name}} 範圍太大，無法作為一個專案開啟。請選擇只包含此專案的資料夾。",
     "folder_already_linked": "該資料夾與 Oleafly 中的另一個專案重疊。請選擇其他資料夾。",
-    "not_linked": "只有就地開啟的資料夾才能重新定位。",
-    "copy_destination_refused": "請選擇專案與 Oleafly 資料夾以外的資料夾。",
+    "not_linked": "只有在原位置開啟的資料夾才能重新定位。",
+    "copy_destination_refused": "請選擇位於專案與 Oleafly 資料目錄以外的資料夾。",
     "copy_nothing_open": "沒有開啟的檔案，因此沒有可儲存的內容。",
     "copy_too_large": "開啟的檔案太大，無法另存為副本。",
     "copy_failed": "Oleafly 無法將副本儲存到該位置。請選擇一個你有寫入權限的資料夾。",
@@ -28,12 +29,12 @@
     "settings_need_main": "請先選擇主要文件，再將專案設定儲存到此資料夾。",
     "settings_write_failed": "Oleafly 無法將專案設定儲存到此資料夾。",
     "copy_entry_limit": "這個資料夾有超過 5,000 個檔案與資料夾，超出 Oleafly 一次能複製的數量。",
-    "copy_entry_limit_git": "算上 Git 歷史紀錄，這個資料夾有超過 5,000 個檔案與資料夾，超出 Oleafly 一次能複製的數量。",
+    "copy_entry_limit_git": "算上 Git 歷史記錄，這個資料夾有超過 5,000 個檔案與資料夾，超出 Oleafly 一次能複製的數量。",
     "copy_size_limit": "這個資料夾大於 2 GB，超出 Oleafly 一次能複製的大小。",
     "copy_cancelled": "已取消複製。",
-    "copy_needs_folder": "只有就地開啟的資料夾才能複製到專案庫。",
-    "not_removable": "只有就地開啟的資料夾才能從 Oleafly 移除。",
-    "trash_unavailable": "Oleafly 無法將 {{path}} 移到垃圾桶或資源回收筒。這個磁碟機可能沒有。",
+    "copy_needs_folder": "只有在原位置開啟的資料夾才能複製到專案庫。",
+    "not_removable": "只有在原位置開啟的資料夾才能從 Oleafly 移除。",
+    "trash_unavailable": "Oleafly 無法將 {{path}} 移到垃圾桶或資源回收筒，這個磁碟機可能不支援。",
     "linked_replace_folder": "{{path}} 是資料夾，因此 Oleafly 不會取代它。請先移動或重新命名。"
   },
   "settings": {
@@ -93,7 +94,16 @@
     "research_folder": "{{project}} 已可透過其已連結資料夾編輯此資料夾中的檔案。請先在該處取消連結。",
     "failed": "Oleafly 無法開啟此資料夾。",
     "request_expired": "此資料夾要求已過期。請重新開啟該資料夾。",
-    "timed_out": "Oleafly 無法存取此資料夾。請檢查所在的磁碟是否已連接，然後再試一次。"
+    "timed_out": "Oleafly 無法存取此資料夾。請檢查它所在的磁碟機是否已連接，然後再試一次。"
+  },
+  "shell_command": {
+    "unavailable": "此 Oleafly 副本不包含終端機指令。",
+    "move_app": "請先將 Oleafly 移到「應用程式」檔案夾，再安裝指令。",
+    "occupied": "{{path}} 已存在，且不是由 Oleafly 建立，因此已保持原狀。",
+    "changed": "{{path}} 在 Oleafly 安裝後遭到變更，因此已保持原狀。",
+    "failed": "Oleafly 無法安裝終端機指令。",
+    "remove_failed": "Oleafly 無法移除終端機指令。",
+    "unsupported": "此系統尚不支援終端機指令。"
   },
   "research": {
     "linked_project_folder": "此資料夾已在 Oleafly 中作為獨立專案開啟。請改為以唯讀方式連結。"

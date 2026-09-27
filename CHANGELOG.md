@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On Linux the app's program is now `oleafly-desktop`, and `oleafly` is the
+  command-line tool. The .deb and .rpm packages install both. With those
+  packages, typing `oleafly` on its own still opens the app, so existing
+  launchers keep working, and so does the restart after this update.
 - The update window follows your accent colour and theme, drops the
   separate hero banner, and keeps everything on one scrolling page. If an
   update fails, Try again retries it from the window.

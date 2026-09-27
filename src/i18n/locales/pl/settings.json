@@ -1399,6 +1399,35 @@
     "description": "Przywróć domyślne preferencje sekcji {{sectionName}}.",
     "label": "Resetowanie ustawień"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} będzie w PATH po wylogowaniu się i ponownym zalogowaniu. Potem otwórz nowy terminal.",
+    "checking": "Sprawdzanie…",
+    "description": "Wpisz <code>oleafly .</code> w terminalu, aby otworzyć ten folder w Oleafly.",
+    "install": "Zainstaluj",
+    "installing": "Instalowanie…",
+    "loadFailed": "Nie udało się sprawdzić polecenia terminala.",
+    "notOnPath": {
+      "file": "{{directory}} nie jest jeszcze w PATH. Dodaj ten wiersz do {{file}}, a potem otwórz nowy terminal:",
+      "run": "{{directory}} nie jest jeszcze w PATH. Uruchom to raz, a potem otwórz nowy terminal:"
+    },
+    "removing": "Usuwanie…",
+    "result": {
+      "copied": "Skopiowano polecenie do {{path}}.",
+      "linked": "{{path}} wskazuje teraz tę kopię Oleafly.",
+      "removed": "Usunięto {{path}}."
+    },
+    "state": {
+      "installed": "Zainstalowano w {{path}}.",
+      "moveApp": "Najpierw przenieś Oleafly do folderu Aplikacje, a potem zainstaluj tutaj polecenie.",
+      "notInstalled": "Dodaje oleafly do {{directory}}.",
+      "occupied": "{{path}} już istnieje i nie pochodzi z Oleafly, więc pozostanie bez zmian.",
+      "outdated": "{{path}} nadal wskazuje starszą kopię Oleafly. Zaktualizuj polecenie, aby używało tej kopii.",
+      "packaged": "Zainstalowano w {{path}} przez pakiet Oleafly.",
+      "unavailable": "Ta kopia Oleafly nie zawiera polecenia."
+    },
+    "title": "Polecenie terminala",
+    "update": "Zaktualizuj"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

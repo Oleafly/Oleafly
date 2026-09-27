@@ -172,7 +172,7 @@
     "managedFileReadOnly": "Oleafly hallinnoi tiedostoa {{file}}, joten se on täällä vain luettavissa. Projektin asetuksia muutetaan Oleaflyn kautta, ei tätä tiedostoa muokkaamalla.",
     "noFileOpen": "Ei avointa tiedostoa.",
     "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta.",
-    "linkedFileReadOnly": "{{file}} linkittää tämän kansion ulkopuoliseen tiedostoon, joten et voi muokata sitä täällä. Muuta sitä sen omassa sijainnissa, esimerkiksi Zoterossa.",
+    "linkedFileReadOnly": "{{file}} on linkki tämän kansion ulkopuoliseen tiedostoon, joten et voi muokata sitä täällä. Muuta sitä sen omassa sijainnissa, esimerkiksi Zoterossa.",
     "diffOnDisk": "Levyllä"
   },
   "projectInfo": {

@@ -178,10 +178,17 @@ describe("Library states", () => {
     expect(screen.queryByTestId("open-folder-button")).not.toBeInTheDocument();
   });
 
-  it("keeps an Open folder button beside Import once projects exist", () => {
+  it("keeps an Open folder button beside Import once projects exist, both tinted on keyboard focus", () => {
     render(<Library />);
-    expect(screen.getByRole("button", { name: enLibrary.home.openFolder })).toBeInTheDocument();
-    expect(screen.getByTestId("import-project-button")).toBeInTheDocument();
+    const openFolder = screen.getByRole("button", { name: enLibrary.home.openFolder });
+    const importProject = screen.getByTestId("import-project-button");
+    for (const button of [openFolder, importProject]) {
+      expect(button).toHaveClass(
+        "focus-visible:!bg-accent",
+        "dark:focus-visible:!bg-accent/60",
+        "focus-visible:text-foreground",
+      );
+    }
   });
 
   it("explains an empty bookmark filter", async () => {

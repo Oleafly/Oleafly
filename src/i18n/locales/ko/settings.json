@@ -1351,6 +1351,35 @@
     "description": "{{sectionName}} 설정을 기본값으로 되돌립니다.",
     "label": "설정 초기화"
   },
+  "shellCommand": {
+    "afterSignIn": "로그아웃했다가 다시 로그인하면 {{directory}}이(가) PATH에 포함됩니다. 그런 다음 새 터미널을 여세요.",
+    "checking": "확인 중…",
+    "description": "터미널에 <code>oleafly .</code>를 입력하면 그 폴더를 Oleafly에서 엽니다.",
+    "install": "설치",
+    "installing": "설치 중…",
+    "loadFailed": "터미널 명령 상태를 확인하지 못했습니다.",
+    "notOnPath": {
+      "file": "{{directory}}이(가) 아직 PATH에 없습니다. 이 줄을 {{file}}에 추가한 다음 새 터미널을 여세요:",
+      "run": "{{directory}}이(가) 아직 PATH에 없습니다. 이 명령을 한 번 실행한 다음 새 터미널을 여세요:"
+    },
+    "removing": "제거 중…",
+    "result": {
+      "copied": "명령을 {{path}}에 복사했습니다.",
+      "linked": "{{path}}이(가) 이제 이 Oleafly 사본을 가리킵니다.",
+      "removed": "{{path}}을(를) 제거했습니다."
+    },
+    "state": {
+      "installed": "{{path}}에 설치되어 있습니다.",
+      "moveApp": "먼저 Oleafly를 응용 프로그램 폴더로 옮긴 다음 여기에서 명령을 설치하세요.",
+      "notInstalled": "{{directory}}에 oleafly를 추가합니다.",
+      "occupied": "{{path}}이(가) 이미 있고 Oleafly가 만든 것이 아니므로 그대로 둡니다.",
+      "outdated": "{{path}}이(가) 아직 이전 Oleafly 사본을 가리킵니다. 이 사본을 쓰도록 업데이트하세요.",
+      "packaged": "Oleafly 패키지로 {{path}}에 설치되어 있습니다.",
+      "unavailable": "이 Oleafly 사본에는 명령이 포함되어 있지 않습니다."
+    },
+    "title": "터미널 명령",
+    "update": "업데이트"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

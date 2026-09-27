@@ -43,8 +43,7 @@
       "name": "이름",
       "type": "유형",
       "engine": "엔진",
-      "modified": "수정일",
-      "activity": "최근 활동"
+      "modified": "수정일"
     },
     "filters": {
       "engine": "엔진",
@@ -69,7 +68,7 @@
       "last30Days": "최근 30일",
       "lastYear": "최근 1년"
     },
-    "openFolder": "폴더 열기…",
+    "openFolder": "폴더 열기",
     "openFolderShortcut": "폴더 열기({{shortcut}})",
     "createFirstProject": "새 프로젝트 만들기",
     "scope": {
@@ -106,7 +105,8 @@
     "kind": {
       "document": "문서",
       "image": "이미지",
-      "diagram": "다이어그램"
+      "diagram": "다이어그램",
+      "external": "외부"
     },
     "preview": {
       "title": "PDF 미리보기: {{name}}",
@@ -476,14 +476,10 @@
   },
   "folder": {
     "badge": "폴더",
-    "noMain": "주 문서 없음",
-    "openedToday": "오늘 열었음",
-    "openedYesterday": "어제 열었음",
-    "openedOn": "{{date}}에 열었음",
     "state": {
       "missing": "폴더 없음",
       "offline": "드라이브 연결 안 됨",
-      "replaced": "폴더가 바뀜",
+      "replaced": "폴더 교체됨",
       "permissionDenied": "권한 없음"
     },
     "menu": {
@@ -510,7 +506,7 @@
         "body": "{{path}}이(가) 있는 드라이브나 네트워크 공유를 연결한 다음 다시 시도하세요."
       },
       "replaced": {
-        "title": "“{{name}}”이(가) 바뀌었음",
+        "title": "“{{name}}”이(가) 교체됨",
         "body": "{{path}}에 있는 폴더는 이전에 연 폴더가 아닙니다. 신뢰할 수 있을 때만 사용하세요. 전환하면 Oleafly가 신뢰와 승인을 끕니다."
       },
       "permissionDenied": {
@@ -519,7 +515,7 @@
         "bodyOther": "계정이 {{path}}을(를) 읽을 수 없습니다. 폴더 권한을 확인한 다음 다시 시도하세요."
       },
       "back": {
-        "title": "“{{name}}”에 다시 연결되었습니다",
+        "title": "“{{name}}”에 다시 연결됨",
         "body": "Oleafly가 {{path}}에 다시 접근할 수 있습니다."
       },
       "locate": "위치 지정…",
@@ -530,7 +526,7 @@
     },
     "copy": {
       "title": "“{{name}}”을(를) 라이브러리로 복사",
-      "description": "Oleafly는 파일을 라이브러리의 새 프로젝트로 복사하고 폴더는 그대로 둡니다. Git 기록은 함께 복사되지만 Git 훅과 빌드 파일은 복사되지 않습니다.",
+      "description": "Oleafly는 파일을 라이브러리의 새 프로젝트로 복사하고 폴더는 그대로 둡니다. Git 이력은 함께 복사되지만 Git 훅과 빌드 파일은 복사되지 않습니다.",
       "counting": "파일 세는 중…",
       "copying": "파일 복사 중…",
       "count": "{{done}} / {{total}}",

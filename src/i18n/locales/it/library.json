@@ -45,8 +45,7 @@
       "name": "Nome",
       "type": "Tipo",
       "engine": "Motore",
-      "modified": "Modificato",
-      "activity": "Ultima attività"
+      "modified": "Modificato"
     },
     "filters": {
       "engine": "Motore",
@@ -71,7 +70,7 @@
       "last30Days": "Ultimi 30 giorni",
       "lastYear": "Ultimo anno"
     },
-    "openFolder": "Apri cartella…",
+    "openFolder": "Apri cartella",
     "openFolderShortcut": "Apri cartella ({{shortcut}})",
     "createFirstProject": "Crea un nuovo progetto",
     "scope": {
@@ -108,7 +107,8 @@
     "kind": {
       "document": "documento",
       "image": "immagine",
-      "diagram": "diagramma"
+      "diagram": "diagramma",
+      "external": "esterno"
     },
     "preview": {
       "title": "Anteprima PDF: {{name}}",
@@ -391,7 +391,7 @@
     "published": "Pubblicato su {{repository}}.",
     "linked": "Collegato a {{remote}} e push eseguito.",
     "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}",
-    "replaceRemotePrompt": "Questo progetto è collegato a {{remote}}. Sostituire il collegamento?",
+    "replaceRemotePrompt": "Questo progetto è collegato a {{remote}}. Vuoi sostituire il collegamento?",
     "replaceRemote": "Sostituisci collegamento"
   },
   "deadlines": {
@@ -494,10 +494,6 @@
   },
   "folder": {
     "badge": "Cartella",
-    "noMain": "Nessun documento principale",
-    "openedToday": "Aperto oggi",
-    "openedYesterday": "Aperto ieri",
-    "openedOn": "Aperto il {{date}}",
     "state": {
       "missing": "Cartella mancante",
       "offline": "Unità non collegata",
@@ -512,8 +508,8 @@
       "remove": "Rimuovi da Oleafly"
     },
     "remove": {
-      "title": "Rimuovere “{{name}}” da Oleafly?",
-      "description": "I tuoi file restano dove sono. Oleafly elimina i propri file di compilazione per questa cartella e ne reimposta attendibilità, approvazioni e cartelle collegate. Riapri la cartella entro 30 giorni per recuperare le chat e la cronologia. Il resto andrà configurato di nuovo.",
+      "title": "Vuoi rimuovere “{{name}}” da Oleafly?",
+      "description": "I tuoi file restano dove sono. Oleafly elimina i propri file di compilazione per questa cartella e ne reimposta l'affidabilità, le approvazioni e le cartelle collegate. Riapri la cartella entro 30 giorni per recuperare le chat e la cronologia. Il resto andrà configurato di nuovo.",
       "confirm": "Rimuovi da Oleafly",
       "done": "“{{name}}” è stato rimosso da Oleafly. I file sono ancora nella cartella.",
       "failed": "Impossibile rimuovere “{{name}}” da Oleafly."
@@ -529,7 +525,7 @@
       },
       "replaced": {
         "title": "“{{name}}” è stata sostituita",
-        "body": "La cartella in {{path}} non è quella che avevi aperto. Usala solo se ti fidi. Con il cambio, Oleafly disattiva attendibilità e approvazioni."
+        "body": "La cartella in {{path}} non è quella che avevi aperto. Usala solo se ti fidi. Quando cambi cartella, Oleafly revoca l'affidabilità e le approvazioni."
       },
       "permissionDenied": {
         "title": "Oleafly non riesce ad aprire “{{name}}”",
@@ -543,7 +539,7 @@
       "locate": "Individua…",
       "tryAgain": "Riprova",
       "useThisFolder": "Usa questa cartella",
-      "checking": "Verifica in corso…",
+      "checking": "Controllo…",
       "still": "Oleafly non riesce ancora a raggiungerla."
     },
     "copy": {

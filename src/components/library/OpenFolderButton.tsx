@@ -20,19 +20,20 @@ export function OpenFolderButton({ className }: Readonly<{ className?: string }>
       <Button
         data-testid="open-folder-button"
         variant="ghost"
+        size="icon"
         disabled={opening}
+        aria-label={t(($) => $.library.home.openFolder)}
         className={cn(
           HOME_DOCK_GLASS_SURFACE,
-          "h-10 gap-2 whitespace-nowrap rounded-2xl !bg-background/75 px-3.5 text-sm font-medium text-foreground shadow-sm hover:!bg-accent/80 focus-visible:!bg-accent dark:!bg-background/65 dark:shadow-sm dark:hover:!bg-accent/60",
+          "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground focus-visible:!bg-accent focus-visible:text-foreground dark:!bg-background/65 dark:shadow-sm dark:focus-visible:!bg-accent/60",
         )}
         onClick={() => void openFolderWithPicker()}
       >
         {opening ? (
           <Loader2 aria-hidden="true" className="size-4 animate-spin" />
         ) : (
-          <FolderOpen aria-hidden="true" className="size-4 text-muted-foreground" />
+          <FolderOpen aria-hidden="true" className="size-4" />
         )}
-        {t(($) => $.library.home.openFolder)}
       </Button>
     </Tooltip>
   );

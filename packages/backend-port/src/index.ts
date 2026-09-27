@@ -379,6 +379,7 @@ export type MainDecision = "auto" | "ask" | "no_main";
 export interface ProjectAvailabilityReport {
     project_id: string;
     availability: ProjectAvailability;
+    modified_at_ms?: number;
 }
 export interface ProjectInfo {
     id: string;

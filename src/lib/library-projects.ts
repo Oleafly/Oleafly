@@ -1,4 +1,3 @@
-import { currentLocale, i18n } from "@/i18n";
 import { projectLocation } from "@/lib/project-location";
 import type { ProjectAvailability, ProjectInfo } from "@/lib/tauri";
 
@@ -64,20 +63,10 @@ export function folderUnavailable(availability: ProjectAvailability): boolean {
   return availability !== "ok" && availability !== "unknown";
 }
 
-export function folderOpenedLabel(timestamp: number): string | undefined {
-  if (!timestamp) return undefined;
-  const date = new Date(timestamp * 1000);
-  if (Number.isNaN(date.getTime())) return undefined;
-  const startOfDay = (value: Date) =>
-    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86_400_000);
-  if (days === 0) return i18n.t(($) => $.library.folder.openedToday);
-  if (days === 1) return i18n.t(($) => $.library.folder.openedYesterday);
-  return i18n.t(($) => $.library.folder.openedOn, {
-    date: new Intl.DateTimeFormat(currentLocale(), {
-      month: "short",
-      day: "numeric",
-      year: new Date().getFullYear() === date.getFullYear() ? undefined : "numeric",
-    }).format(date),
-  });
+export function projectUpdatedAt(
+  project: Pick<ProjectInfo, "id" | "location" | "updated_at">,
+  modified: Readonly<Record<string, number>>,
+): number {
+  if (!isFolderProject(project)) return project.updated_at;
+  return Math.max(project.updated_at, modified[project.id] ?? 0);
 }

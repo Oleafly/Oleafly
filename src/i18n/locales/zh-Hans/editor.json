@@ -1023,10 +1023,10 @@
     "untitled": "未命名"
   },
   "changedOnDisk": {
-    "message": "你有未保存的编辑时，{{file}} 在磁盘上发生了更改。",
+    "message": "{{file}} 已在磁盘上更改，而你还有未保存的编辑。",
     "compare": "比较",
     "keepMine": "保留我的版本",
-    "reload": "重新载入",
+    "reload": "重新加载",
     "failed": "Oleafly 无法更新 {{file}}。请重试。",
     "tabMark": "已在磁盘上更改。打开此标签页以选择要保留的版本。"
   }

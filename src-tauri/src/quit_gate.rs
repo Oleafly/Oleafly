@@ -11,9 +11,21 @@
 //! discard unsaved work.
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, Instant};
 
 static FLUSH_CONFIRMED: AtomicBool = AtomicBool::new(false);
 static RESTART_PENDING: AtomicBool = AtomicBool::new(false);
+static UNANSWERED_SINCE: Mutex<Option<Instant>> = Mutex::new(None);
+
+pub const ANSWER_GRACE: Duration = Duration::from_secs(8);
+pub const REQUEST_EXPIRY: Duration = Duration::from_secs(60);
+
+fn unanswered_since() -> MutexGuard<'static, Option<Instant>> {
+    UNANSWERED_SINCE
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+}
 
 /// True when the pending quit is a restart, not an exit. Retained while
 /// another gate (the TinyTeX install confirm) defers the teardown, so the
@@ -34,6 +46,7 @@ pub fn flush_confirmed() -> bool {
 
 /// Record that the quit flush finished (or was explicitly overridden).
 pub fn mark_flush_confirmed() {
+    *unanswered_since() = None;
     FLUSH_CONFIRMED.store(true, Ordering::SeqCst);
 }
 
@@ -41,6 +54,7 @@ pub fn mark_flush_confirmed() {
 /// the next quit attempt flushes again (new edits may exist by then), and
 /// drop any pending restart intent with it.
 pub fn clear_flush_confirmed() {
+    *unanswered_since() = None;
     FLUSH_CONFIRMED.store(false, Ordering::SeqCst);
     RESTART_PENDING.store(false, Ordering::SeqCst);
 }
@@ -53,6 +67,38 @@ pub enum QuitAction {
     Exit,
     Restart,
     DeferToInstallGate,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CloseDecision {
+    Allow,
+    AskPageToFlush,
+    AskInstallGate,
+    QuitUnanswered,
+}
+
+pub fn decide_main_window_close(now: Instant, install_gate_pending: bool) -> CloseDecision {
+    if flush_confirmed() {
+        return if install_gate_pending {
+            CloseDecision::AskInstallGate
+        } else {
+            CloseDecision::Allow
+        };
+    }
+    let mut since = unanswered_since();
+    let waited = since.map(|asked| now.saturating_duration_since(asked));
+    match waited {
+        Some(waited) if waited >= ANSWER_GRACE && waited < REQUEST_EXPIRY => {
+            drop(since);
+            mark_flush_confirmed();
+            CloseDecision::QuitUnanswered
+        }
+        Some(waited) if waited < ANSWER_GRACE => CloseDecision::AskPageToFlush,
+        _ => {
+            *since = Some(now);
+            CloseDecision::AskPageToFlush
+        }
+    }
 }
 
 pub fn resolve_quit_action(install_gate_pending: bool) -> QuitAction {
@@ -108,6 +154,161 @@ pub(crate) fn test_lock() -> &'static tokio::sync::Mutex<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fresh_gate() -> Instant {
+        clear_flush_confirmed();
+        Instant::now()
+    }
+
+    #[test]
+    fn the_first_close_asks_the_page_to_flush() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+
+        assert_eq!(
+            decide_main_window_close(start, false),
+            CloseDecision::AskPageToFlush
+        );
+        assert!(!flush_confirmed());
+    }
+
+    #[test]
+    fn a_healthy_confirm_lets_the_close_through() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        assert_eq!(
+            decide_main_window_close(start, false),
+            CloseDecision::AskPageToFlush
+        );
+
+        mark_flush_confirmed();
+
+        assert_eq!(
+            decide_main_window_close(start + Duration::from_millis(300), false),
+            CloseDecision::Allow
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn a_second_close_before_the_grace_still_waits_for_the_page() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, false);
+
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE - Duration::from_millis(1), false),
+            CloseDecision::AskPageToFlush
+        );
+        assert!(!flush_confirmed());
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn a_second_close_after_the_grace_quits_when_the_page_never_answered() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, false);
+
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE, false),
+            CloseDecision::QuitUnanswered
+        );
+        assert!(
+            flush_confirmed(),
+            "the forced quit must run the same shutdown as a confirmed one"
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn repeated_closes_do_not_push_the_grace_back() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, false);
+        decide_main_window_close(start + Duration::from_secs(3), false);
+        decide_main_window_close(start + Duration::from_secs(6), false);
+
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE, false),
+            CloseDecision::QuitUnanswered
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn a_page_that_answered_is_asked_again_instead_of_forced() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, false);
+
+        cancel_quit_flush();
+
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE * 2, false),
+            CloseDecision::AskPageToFlush
+        );
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE * 2 + Duration::from_secs(1), false),
+            CloseDecision::AskPageToFlush
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn a_stale_request_is_asked_again_instead_of_forced() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, false);
+        let later = start + REQUEST_EXPIRY;
+
+        assert_eq!(
+            decide_main_window_close(later, false),
+            CloseDecision::AskPageToFlush
+        );
+        assert_eq!(
+            decide_main_window_close(later + ANSWER_GRACE, false),
+            CloseDecision::QuitUnanswered
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn the_install_gate_is_unchanged_once_the_flush_is_confirmed() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        assert_eq!(
+            decide_main_window_close(start, true),
+            CloseDecision::AskPageToFlush,
+            "the flush still runs before the install gate"
+        );
+
+        mark_flush_confirmed();
+
+        assert_eq!(
+            decide_main_window_close(start + Duration::from_secs(1), true),
+            CloseDecision::AskInstallGate
+        );
+        assert_eq!(
+            decide_main_window_close(start + REQUEST_EXPIRY * 5, true),
+            CloseDecision::AskInstallGate,
+            "waiting on the install dialog never turns into a forced quit"
+        );
+        clear_flush_confirmed();
+    }
+
+    #[test]
+    fn an_unanswered_page_cannot_hold_the_window_behind_the_install_gate() {
+        let _lock = test_lock().blocking_lock();
+        let start = fresh_gate();
+        decide_main_window_close(start, true);
+
+        assert_eq!(
+            decide_main_window_close(start + ANSWER_GRACE, true),
+            CloseDecision::QuitUnanswered
+        );
+        clear_flush_confirmed();
+    }
 
     #[test]
     fn the_cancel_command_re_arms_both_flags() {

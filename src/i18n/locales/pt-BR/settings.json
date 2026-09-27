@@ -1383,6 +1383,35 @@
     "description": "Restaura as preferências de {{sectionName}} aos padrões.",
     "label": "Redefinir configurações"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} estará no seu PATH depois que você sair e entrar de novo na sessão. Em seguida, abra um novo terminal.",
+    "checking": "Verificando…",
+    "description": "Digite <code>oleafly .</code> em um terminal para abrir essa pasta no Oleafly.",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "loadFailed": "Não foi possível verificar o comando de terminal.",
+    "notOnPath": {
+      "file": "{{directory}} ainda não está no seu PATH. Adicione esta linha a {{file}} e abra um novo terminal:",
+      "run": "{{directory}} ainda não está no seu PATH. Execute isto uma vez e abra um novo terminal:"
+    },
+    "removing": "Removendo…",
+    "result": {
+      "copied": "O comando foi copiado para {{path}}.",
+      "linked": "{{path}} agora aponta para esta cópia do Oleafly.",
+      "removed": "{{path}} foi removido."
+    },
+    "state": {
+      "installed": "Instalado em {{path}}.",
+      "moveApp": "Primeiro mova o Oleafly para a pasta Aplicativos e depois instale o comando aqui.",
+      "notInstalled": "Adiciona o oleafly a {{directory}}.",
+      "occupied": "{{path}} já existe e não foi criado pelo Oleafly, então fica como está.",
+      "outdated": "{{path}} ainda aponta para uma cópia mais antiga do Oleafly. Atualize para usar esta cópia.",
+      "packaged": "Instalado em {{path}} pelo seu pacote do Oleafly.",
+      "unavailable": "Esta cópia do Oleafly não inclui o comando."
+    },
+    "title": "Comando de terminal",
+    "update": "Atualizar"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1512,8 +1541,8 @@
       "repair": "Reparar"
     },
     "failed": {
-      "install": "Não foi possível instalar. Tente novamente.",
-      "remove": "Não foi possível remover. Tente novamente."
+      "install": "Não foi possível instalar. Tente de novo.",
+      "remove": "Não foi possível remover. Tente de novo."
     },
     "packaged": "Instalado com o pacote do Oleafly.",
     "quickAction": {

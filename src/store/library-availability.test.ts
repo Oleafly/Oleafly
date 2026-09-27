@@ -93,6 +93,23 @@ describe("library folder checks", () => {
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps when each folder's content last changed, in seconds, and keeps it across checks", async () => {
+    probeProjectAvailability.mockResolvedValueOnce([
+      { project_id: "linked-a", availability: "ok", modified_at_ms: 1_790_000_000_500 },
+      { project_id: "linked-b", availability: "missing" },
+    ]);
+    const store = useLibraryAvailabilityStore.getState();
+    await store.check(["linked-a", "linked-b"]);
+    expect(useLibraryAvailabilityStore.getState().modified).toEqual({ "linked-a": 1_790_000_000.5 });
+
+    probeProjectAvailability.mockResolvedValueOnce([{ project_id: "linked-a", availability: "offline" }]);
+    await store.check(["linked-a"], { force: true });
+    expect(useLibraryAvailabilityStore.getState().modified).toEqual({ "linked-a": 1_790_000_000.5 });
+
+    store.reset();
+    expect(useLibraryAvailabilityStore.getState().modified).toEqual({});
+  });
+
   it("skips the call when there is nothing to check", async () => {
     await useLibraryAvailabilityStore.getState().check([]);
     expect(probeProjectAvailability).not.toHaveBeenCalled();

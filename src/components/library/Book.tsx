@@ -83,15 +83,13 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
-  badge,
-  details,
   dimmed = false,
 }: Readonly<{
   title: string;
   color?: string;
   textColor?: string;
   illustration?: ReactNode;
-  date?: string;
+  date?: ReactNode;
   engine?: string;
   forkedFrom?: string | null;
   kind?: string;
@@ -104,8 +102,6 @@ export function Book({
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
-  badge?: ReactNode;
-  details?: ReactNode;
   dimmed?: boolean;
 }>) {
   const { t } = useTranslation(["library"]);
@@ -178,7 +174,6 @@ export function Book({
             )}
 
             {illustration}
-            {badge}
 
             <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-end p-3">
               {engine && (
@@ -243,7 +238,7 @@ export function Book({
         </div>
       )}
       <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
-        {details ? <div className="min-w-0 flex-1">{details}</div> : <div className="min-w-0">
+        <div className="min-w-0">
         {kind && (
           <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
             <span>{kind}</span>
@@ -267,7 +262,7 @@ export function Book({
           </div>
         )}
         {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
-        </div>}
+        </div>
         {menu}
       </div>
     </div>

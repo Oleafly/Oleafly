@@ -372,7 +372,7 @@
   "folderUnavailable": {
     "missing": {
       "title": "이 폴더를 사용할 수 없습니다.",
-      "body": "드라이브를 다시 연결하거나 폴더를 찾으세요. 열린 파일은 여기에 그대로 있으며, 폴더가 돌아올 때까지 Oleafly는 저장하거나 컴파일하지 않습니다."
+      "body": "드라이브를 다시 연결하거나 폴더를 찾으세요. 열린 파일은 여기에 그대로 있으며, 폴더를 다시 사용할 수 있을 때까지 Oleafly는 저장하거나 컴파일하지 않습니다."
     },
     "replaced": {
       "title": "이 폴더가 교체되었습니다.",
@@ -382,7 +382,7 @@
       "title": "Oleafly에서 이 폴더를 열 수 없습니다.",
       "body": "폴더 권한을 확인한 뒤 다시 시도하세요. 열린 파일은 여기에 그대로 있습니다."
     },
-    "locate": "위치 찾기…",
+    "locate": "위치 지정…",
     "useThisFolder": "이 폴더 사용",
     "saveCopy": "사본 저장…",
     "tryAgain": "다시 시도",
@@ -451,16 +451,11 @@
     "picker": {
       "askTitle": "Oleafly가 어떤 문서를 컴파일할까요?",
       "askDescription": "이 폴더에는 문서가 여러 개 있습니다. 주 문서를 고르세요. 나중에 바꿀 수 있습니다.",
-      "changeTitle": "주 문서 고르기",
-      "changeDescription": "Oleafly는 고른 문서를 컴파일하고 이 폴더에 대해 기억합니다.",
       "listLabel": "이 폴더의 문서",
       "open": "열기",
       "browse": "파일만 둘러보기",
       "bestMatch": "가장 적합",
-      "current": "현재",
-      "loading": "문서를 찾는 중…",
-      "empty": "Oleafly가 여기서 문서를 찾지 못했습니다. 파일 트리에서 파일을 마우스 오른쪽 버튼으로 클릭하고 주 문서로 지정을 고르세요.",
-      "failed": "Oleafly가 이 폴더를 읽지 못했습니다.",
+      "empty": "Oleafly가 여기서 문서를 찾지 못했습니다. 파일 트리에서 파일을 오른쪽 클릭하고 주 문서로 지정을 선택하세요.",
       "truncated": "폴더가 커서 Oleafly가 일찍 검색을 멈췄습니다. 목록에 없는 문서가 있을 수 있습니다.",
       "openFailed": "{{path}}을(를) 주 문서로 지정하지 못했습니다."
     },
@@ -485,18 +480,11 @@
       "standalone_figure": "독립 그림",
       "placeholder": "아직 다운로드되지 않음"
     },
-    "main": {
-      "label": "주 문서: {{path}}",
-      "change": "변경",
-      "changeLabel": "주 문서 변경",
-      "others": "다른 문서",
-      "switchFailed": "{{path}}(으)로 전환하지 못했습니다."
-    },
     "noMain": "아직 주 문서가 없습니다. 파일을 고르고 주 문서로 지정을 선택하세요.",
     "trust": {
-      "banner": "Oleafly가 이 폴더에서 일부 기능을 제한했습니다. 폴더를 신뢰하면 Git, 터미널, 에이전트, shell escape가 켜집니다.",
+      "banner": "Oleafly가 이 폴더에서 일부 기능을 제한했습니다. 폴더를 신뢰하고 Git, 터미널, 에이전트, shell escape를 켤까요?",
       "trustFolder": "이 폴더 신뢰",
-      "trustParent": "상위 폴더 신뢰…",
+      "trustParent": "상위 폴더 신뢰",
       "trustRepository": "저장소 신뢰",
       "hide": "숨기기",
       "terminal": "폴더를 신뢰하기 전까지 이 터미널에서는 Git 훅과 저장소 설정이 꺼져 있습니다.",

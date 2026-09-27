@@ -455,6 +455,10 @@ fn watch_linked_project_as(
     } else {
         WatchMode::Native
     });
+    let sink: ChangeSink = Arc::new(move |change: FolderChange| {
+        crate::linked_registry::note_changed(&change.project_id);
+        sink(change);
+    });
     let probe_id = project_id.to_owned();
     let on_root_changed = Box::new(move || {
         if crate::project_location::locate(&probe_id).is_err() {
@@ -828,6 +832,52 @@ mod tests {
 
         assert_eq!(watched.unwrap(), None);
         assert_eq!(active_token("watch-library"), None);
+    }
+
+    #[test]
+    fn a_change_seen_while_the_folder_is_open_is_recorded_as_its_last_update() {
+        let _guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), "one").unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(folder.join("main.tex"))
+            .unwrap()
+            .set_modified(SystemTime::now() - Duration::from_secs(60))
+            .unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let (sink, receiver) = recorder();
+
+        let token = watch_linked_project(
+            &record.id,
+            sink,
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap()
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+        let started = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        std::fs::write(folder.join("main.tex"), "two, longer").unwrap();
+        let change = next_change(&receiver);
+        stop(&record.id, Some(token));
+        let changed_at = crate::linked_registry::get(&record.id)
+            .unwrap()
+            .unwrap()
+            .changed_at;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(change.is_some());
+        assert!(
+            changed_at.is_some_and(|at| u128::from(at) >= started),
+            "{changed_at:?}"
+        );
     }
 
     #[test]

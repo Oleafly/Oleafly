@@ -68,7 +68,7 @@
     },
     "rebindFolder": {
       "title": "Farklı bir klasör kullanılsın mı?",
-      "message": "{{name}}, Oleafly'ın bu proje için kullandığı klasör değil. Bunu kullanırsanız Oleafly kaydedilmemiş değişikliklerinizi bu klasöre kaydeder ve bu projenin terminallerini ve ajan oturumlarını kapatır. Bunlarda çalışan her şey durur. Oleafly ayrıca klasöre güvenmeyi bırakır, tam erişimi kapatır, asistan onaylarını sıfırlar ve araştırma klasörlerinin bağlantısını kaldırır. Sohbetler ve geçmiş korunur.",
+      "message": "{{name}}, Oleafly'nin bu proje için kullandığı klasör değil. Bunu kullanırsanız Oleafly kaydedilmemiş değişikliklerinizi bu klasöre kaydeder ve bu projenin terminallerini ve ajan oturumlarını kapatır. Bunlarda çalışan her şey durur. Oleafly ayrıca klasöre güvenmeyi bırakır, tam erişimi kapatır, asistan onaylarını sıfırlar ve araştırma klasörlerinin bağlantısını kaldırır. Sohbetler ve geçmiş korunur.",
       "confirm": "Bu klasörü kullan"
     },
     "saveCopy": {
@@ -89,7 +89,7 @@
     "approvalDialogClosed": "Yerel onay penceresi beklenmedik biçimde kapandı."
   },
   "systemIntegration": {
-    "openInOleafly": "Oleafly'da aç",
+    "openInOleafly": "Oleafly'de aç",
     "openWithOleafly": "Oleafly ile aç"
   }
 }

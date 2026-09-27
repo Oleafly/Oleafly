@@ -44,8 +44,7 @@
       "name": "Navn",
       "type": "Type",
       "engine": "Motor",
-      "modified": "Endret",
-      "activity": "Siste aktivitet"
+      "modified": "Endret"
     },
     "filters": {
       "engine": "Motor",
@@ -70,7 +69,7 @@
       "last30Days": "Siste 30 dager",
       "lastYear": "Siste år"
     },
-    "openFolder": "Åpne mappe…",
+    "openFolder": "Åpne mappe",
     "openFolderShortcut": "Åpne mappe ({{shortcut}})",
     "createFirstProject": "Opprett nytt prosjekt",
     "scope": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "dokument",
       "image": "bilde",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "ekstern"
     },
     "preview": {
       "title": "PDF-forhåndsvisning: {{name}}",
@@ -485,10 +485,6 @@
   },
   "folder": {
     "badge": "Mappe",
-    "noMain": "Ingen hoveddokument",
-    "openedToday": "Åpnet i dag",
-    "openedYesterday": "Åpnet i går",
-    "openedOn": "Åpnet {{date}}",
     "state": {
       "missing": "Mappen mangler",
       "offline": "Stasjonen er ikke tilkoblet",
@@ -504,7 +500,7 @@
     },
     "remove": {
       "title": "Vil du fjerne «{{name}}» fra Oleafly?",
-      "description": "Filene dine blir der de er. Oleafly sletter byggfilene sine for mappen og tilbakestiller tillit, godkjenninger og lenkede mapper. Åpne mappen igjen innen 30 dager for å få tilbake chattene og historikken. Resten må du sette opp på nytt.",
+      "description": "Filene dine blir der de er. Oleafly sletter byggefilene sine for mappen og tilbakestiller tillit, godkjenninger og lenkede mapper. Åpne mappen igjen innen 30 dager for å få tilbake chattene og historikken. Resten må du sette opp på nytt.",
       "confirm": "Fjern fra Oleafly",
       "done": "«{{name}}» er fjernet fra Oleafly. Filene ligger fortsatt i mappen.",
       "failed": "Kunne ikke fjerne «{{name}}» fra Oleafly."
@@ -516,7 +512,7 @@
       },
       "offline": {
         "title": "«{{name}}» ligger på en stasjon som ikke er tilkoblet",
-        "body": "Koble til stasjonen eller nettverksressursen med {{path}}, og prøv igjen."
+        "body": "Koble til stasjonen eller nettverksressursen der {{path}} ligger, og prøv igjen."
       },
       "replaced": {
         "title": "«{{name}}» er erstattet",
@@ -539,7 +535,7 @@
     },
     "copy": {
       "title": "Kopier «{{name}}» til biblioteket ditt",
-      "description": "Oleafly kopierer filene til et nytt biblioteksprosjekt og lar mappen bli der den er. Git-historikken blir med, men ikke Git-hooks eller byggfiler.",
+      "description": "Oleafly kopierer filene til et nytt biblioteksprosjekt og lar mappen bli der den er. Git-historikken blir med, men ikke Git-hooks eller byggefiler.",
       "counting": "Teller filer…",
       "copying": "Kopierer filer…",
       "count": "{{done}} av {{total}}",

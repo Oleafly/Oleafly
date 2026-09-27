@@ -246,10 +246,6 @@ pub fn detect_main_document(root: &Path, options: &DetectOptions<'_>) -> Result<
     scan_folder(&root, options)
 }
 
-pub fn detect_documents(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
-    scan_folder(&inspected_root(root)?, options)
-}
-
 fn scan_folder(root: &Path, options: &DetectOptions<'_>) -> Result<Detection> {
     let root = root.to_path_buf();
     let mut scan = Scan::run(&root, options)?;

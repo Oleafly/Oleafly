@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CompileOfferButton } from "@/components/preview/CompileOfferButton";
-import { MainDocumentIndicator } from "@/components/open-folder/MainDocumentIndicator";
 import { useCompileStore } from "@/store/compile";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -141,7 +140,6 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
   const grantTrust = useFolderAccessStore((s) => s.grant);
   return <>
-    <MainDocumentIndicator iconOnly={iconOnly} />
     <TexRootIndicator />
     <CompileControlsView
       iconOnly={iconOnly}

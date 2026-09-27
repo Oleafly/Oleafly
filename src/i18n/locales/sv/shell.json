@@ -170,7 +170,7 @@
       "label": "Kompilera om"
     },
     "saveSettingsToFolder": {
-      "keywords": "spara projektinställningar mapp project.json dela huvuddokument",
+      "keywords": "spara projektinställningar mapp project.json dela huvuddokument motor",
       "label": "Spara projektinställningarna i den här mappen",
       "saved": "Projektinställningarna har sparats i project.json i den här mappen."
     },
@@ -384,7 +384,7 @@
       "title": "Oleafly kan inte öppna den här mappen.",
       "body": "Kontrollera mappens behörigheter och försök igen. Dina öppna filer ligger kvar här."
     },
-    "locate": "Hitta…",
+    "locate": "Leta upp…",
     "useThisFolder": "Använd den här mappen",
     "saveCopy": "Spara en kopia…",
     "tryAgain": "Försök igen",
@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Vilket dokument ska Oleafly kompilera?",
       "askDescription": "Den här mappen har mer än ett dokument. Välj huvuddokumentet. Du kan ändra det senare.",
-      "changeTitle": "Välj huvuddokument",
-      "changeDescription": "Oleafly kompilerar dokumentet du väljer och kommer ihåg det för den här mappen.",
       "listLabel": "Dokument i den här mappen",
       "open": "Öppna",
       "browse": "Bläddra bara bland filerna",
       "bestMatch": "Bästa träff",
-      "current": "Nuvarande",
-      "loading": "Letar efter dokument…",
       "empty": "Oleafly hittade inga dokument här. Högerklicka på en fil i filträdet och välj Ange som huvuddokument.",
-      "failed": "Oleafly kunde inte läsa den här mappen.",
       "truncated": "Mappen är stor, så Oleafly slutade leta tidigt. Vissa dokument kanske inte finns med i listan.",
       "openFailed": "Det gick inte att göra {{path}} till huvuddokument."
     },
@@ -487,21 +482,14 @@
       "standalone_figure": "Fristående figur",
       "placeholder": "Inte nedladdad än"
     },
-    "main": {
-      "label": "Huvuddokument: {{path}}",
-      "change": "Ändra",
-      "changeLabel": "Ändra huvuddokument",
-      "others": "Andra dokument",
-      "switchFailed": "Det gick inte att byta till {{path}}."
-    },
     "noMain": "Inget huvuddokument än. Välj en fil och sedan Ange som huvuddokument.",
     "trust": {
-      "banner": "Oleafly har begränsat vissa funktioner i den här mappen. Lita på den för att slå på Git, terminalen, agenter och shell escape.",
+      "banner": "Oleafly har begränsat vissa funktioner i den här mappen. Vill du lita på den och slå på Git, terminalen, agenter och shell escape?",
       "trustFolder": "Lita på den här mappen",
-      "trustParent": "Lita på den överordnade mappen…",
+      "trustParent": "Lita på den överordnade mappen",
       "trustRepository": "Lita på repositoriet",
       "hide": "Dölj",
-      "terminal": "Git-hooks och repositoryinställningar är avstängda i den här terminalen tills du litar på mappen.",
+      "terminal": "Git-hooks och repositoriets inställningar är avstängda i den här terminalen tills du litar på mappen.",
       "terminalReopen": "Den här terminalen startade innan du litade på mappen. Öppna den igen för att slå på Git-hooks.",
       "reopenTerminal": "Öppna terminalen igen",
       "failed": "Det gick inte att lita på den här mappen."
@@ -1027,7 +1015,7 @@
     "update": "Oleafly-uppdatering"
   },
   "openFolder": {
-    "confirmTitle": "Stoppa och öppna {{name}}?",
+    "confirmTitle": "Vill du stoppa och öppna {{name}}?",
     "confirmCompile": "{{project}} kompileras fortfarande. Om du öppnar {{name}} stoppas kompileringen. Dina ändringar sparas först.",
     "confirmAssistant": "Assistenten arbetar fortfarande i {{project}}. Om du öppnar {{name}} stoppas svaret. Dina ändringar sparas först.",
     "confirmBoth": "{{project}} kompileras fortfarande och assistenten arbetar fortfarande. Om du öppnar {{name}} stoppas båda. Dina ändringar sparas först.",

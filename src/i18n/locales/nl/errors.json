@@ -11,13 +11,14 @@
     "linked_replaced": "De map {{folder}} is niet de map die Oleafly eerder opende. Open hem opnieuw om verder te gaan.",
     "linked_permission_denied": "Oleafly heeft geen toestemming om de map {{folder}} te openen.",
     "linked_invalid": "De koppeling van Oleafly met deze map is beschadigd. Verwijder de map uit Oleafly en open hem daarna opnieuw.",
+    "linked_in_app_data": "Oleafly kan de map {{folder}} niet openen, omdat die nu in de gegevensmap van Oleafly staat of de gegevensmap erin staat. Verplaats de ene uit de andere en open de map daarna opnieuw.",
     "linked_not_recyclable": "Deze map is op zijn eigen locatie geopend en kan daarom niet naar de Prullenbak worden verplaatst. Je bestanden zijn niet gewijzigd.",
     "linked_not_duplicable": "Deze map is op zijn eigen locatie geopend, dus Oleafly kan hem niet dupliceren.",
     "folder_not_a_folder": "Oleafly kan die locatie niet gebruiken. Kies een map.",
     "folder_in_app_data": "Oleafly bewaart eigen gegevens in die map. Kies een andere map.",
-    "folder_too_broad": "{{name}} is te breed om als één project te openen. Kies de map die alleen dit project bevat.",
+    "folder_too_broad": "{{name}} is te omvangrijk om als één project te openen. Kies de map die alleen dit project bevat.",
     "folder_already_linked": "Die map overlapt met een ander project in Oleafly. Kies een andere map.",
-    "not_linked": "Zoeken werkt alleen voor mappen die op hun eigen plek zijn geopend.",
+    "not_linked": "Zoeken werkt alleen voor mappen die op hun eigen locatie zijn geopend.",
     "copy_destination_refused": "Kies een map buiten het project en buiten de gegevensmap van Oleafly.",
     "copy_nothing_open": "Er zijn geen bestanden geopend, dus er valt niets op te slaan.",
     "copy_too_large": "De geopende bestanden zijn te groot om als kopie op te slaan.",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "Met de Git-geschiedenis erbij bevat deze map meer dan 5.000 bestanden en mappen. Dat is meer dan Oleafly in één keer kan kopiëren.",
     "copy_size_limit": "Deze map is groter dan 2 GB. Dat is meer dan Oleafly in één keer kan kopiëren.",
     "copy_cancelled": "Het kopiëren is geannuleerd.",
-    "copy_needs_folder": "Alleen mappen die ter plekke zijn geopend, kunnen naar de bibliotheek worden gekopieerd.",
-    "not_removable": "Alleen mappen die ter plekke zijn geopend, kunnen uit Oleafly worden verwijderd.",
-    "trash_unavailable": "Oleafly kon {{path}} niet naar de Prullenmand of Prullenbak verplaatsen. Dit station heeft er misschien geen.",
+    "copy_needs_folder": "Alleen mappen die op hun eigen locatie zijn geopend, kunnen naar de bibliotheek worden gekopieerd.",
+    "not_removable": "Alleen mappen die op hun eigen locatie zijn geopend, kunnen uit Oleafly worden verwijderd.",
+    "trash_unavailable": "Oleafly kon {{path}} niet naar de Prullenmand of Prullenbak verplaatsen. Deze schijf heeft er misschien geen.",
     "linked_replace_folder": "{{path}} is een map, dus Oleafly vervangt die niet. Verplaats of hernoem hem eerst."
   },
   "settings": {
@@ -94,6 +95,15 @@
     "failed": "Oleafly kon deze map niet openen.",
     "request_expired": "Dit mapverzoek is verlopen. Open de map opnieuw.",
     "timed_out": "Oleafly kon deze map niet bereiken. Controleer of de schijf is aangesloten en probeer het opnieuw."
+  },
+  "shell_command": {
+    "unavailable": "Deze kopie van Oleafly bevat de terminalopdracht niet.",
+    "move_app": "Verplaats Oleafly eerst naar de map Programma's en installeer de opdracht daarna.",
+    "occupied": "{{path}} bestaat al en is niet door Oleafly gemaakt, dus Oleafly heeft het ongewijzigd gelaten.",
+    "changed": "{{path}} is gewijzigd nadat Oleafly het had geïnstalleerd, dus Oleafly heeft het ongewijzigd gelaten.",
+    "failed": "Oleafly kon de terminalopdracht niet installeren.",
+    "remove_failed": "Oleafly kon de terminalopdracht niet verwijderen.",
+    "unsupported": "De terminalopdracht is op dit systeem nog niet beschikbaar."
   },
   "research": {
     "linked_project_folder": "Deze map is in Oleafly als eigen project geopend. Koppel de map in plaats daarvan als alleen-lezen."

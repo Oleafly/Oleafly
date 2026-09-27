@@ -19,9 +19,8 @@
   "home": {
     "resetFilters": "Button that returns every advanced filter to its default",
     "columns": {
-      "type": "Column header for the project kind: document, image or diagram",
-      "engine": "Column header for the compiler a project uses",
-      "activity": "List column header over dates that read either Updated for library projects or Opened for folders"
+      "type": "Column header for the project kind: document, image or diagram, or external for a folder opened where it is on disk",
+      "engine": "Column header for the compiler a project uses"
     },
     "filters": {
       "bookmarkAll": "Select option meaning the bookmark filter is off",
@@ -44,7 +43,8 @@
     "kind": {
       "document": "Project kind, shown in lower case and capitalised by the style sheet",
       "image": "Project kind, shown in lower case and capitalised by the style sheet",
-      "diagram": "Project kind, shown in lower case and capitalised by the style sheet"
+      "diagram": "Project kind, shown in lower case and capitalised by the style sheet",
+      "external": "Project kind for a folder opened where it is on disk instead of stored in the Oleafly library. Shown in lower case and capitalised by the style sheet, in the same place and style as document"
     },
     "forkDialog": {
       "confirm": "Button that creates the copy"
@@ -95,7 +95,7 @@
     "nextDeadline": "{{kind}} is a deadline name from the dataset, such as Abstract or Submission, and stays verbatim"
   },
   "folder": {
-    "badge": "Short badge on a project card that was opened in place from a folder on disk",
+    "badge": "Screen-reader label in the Recent row, read before the path, that marks an entry as a folder opened in place from disk",
     "state": {
       "offline": "The external or network drive that holds the folder is not connected",
       "replaced": "A different folder now sits at the saved path"

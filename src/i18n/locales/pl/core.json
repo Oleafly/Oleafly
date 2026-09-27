@@ -47,7 +47,7 @@
     "readFailed": "Nie udało się odczytać {{path}}: {{detail}}",
     "unrecognizedFile": "Nierozpoznany typ pliku: {{name}}",
     "writeFailed": "Nie udało się zapisać {{path}}: {{detail}}",
-    "linkedBibliography": "{{path}} wskazuje plik poza tym folderem, więc Oleafly nie może nic do niego dodać. Dodaj pozycję w Zotero lub tam, gdzie ten plik jest prowadzony."
+    "linkedBibliography": "{{path}} wskazuje plik poza tym folderem, więc Oleafly nie może nic do niego dodać. Dodaj pozycję w Zotero lub tam, gdzie przechowujesz ten plik."
   },
   "citeOleafly": {
     "added": "Dodano pozycję Oleafly do {{path}}. Zacytuj ją za pomocą {{markup}}.",

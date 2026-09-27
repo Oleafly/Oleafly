@@ -1351,6 +1351,35 @@
     "description": "{{sectionName}} の設定を既定に戻します。",
     "label": "設定をリセット"
   },
+  "shellCommand": {
+    "afterSignIn": "ログアウトして再度ログインすると、{{directory}} が PATH に含まれます。その後、新しいターミナルを開いてください。",
+    "checking": "確認中…",
+    "description": "ターミナルで <code>oleafly .</code> と入力すると、そのフォルダを Oleafly で開けます。",
+    "install": "インストール",
+    "installing": "インストール中…",
+    "loadFailed": "ターミナルコマンドの状態を確認できませんでした。",
+    "notOnPath": {
+      "file": "{{directory}} はまだ PATH に含まれていません。この行を {{file}} に追加してから、新しいターミナルを開いてください:",
+      "run": "{{directory}} はまだ PATH に含まれていません。これを一度実行してから、新しいターミナルを開いてください:"
+    },
+    "removing": "削除中…",
+    "result": {
+      "copied": "コマンドを {{path}} にコピーしました。",
+      "linked": "{{path}} がこの Oleafly を指すようにしました。",
+      "removed": "{{path}} を削除しました。"
+    },
+    "state": {
+      "installed": "{{path}} にインストール済みです。",
+      "moveApp": "先に Oleafly を「アプリケーション」フォルダに移動してから、ここでコマンドをインストールしてください。",
+      "notInstalled": "oleafly を {{directory}} に追加します。",
+      "occupied": "{{path}} はすでに存在し、Oleafly が作成したものではないため、そのままにします。",
+      "outdated": "{{path}} はまだ古い Oleafly を指しています。このコピーを使うよう更新してください。",
+      "packaged": "Oleafly のパッケージにより {{path}} にインストール済みです。",
+      "unavailable": "この Oleafly にはコマンドが含まれていません。"
+    },
+    "title": "ターミナルコマンド",
+    "update": "更新"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1387,7 +1416,7 @@
       },
       "openFolder": {
         "label": "フォルダを開く",
-        "description": "パソコン上のフォルダをプロジェクトとして開きます。"
+        "description": "コンピュータ上のフォルダをプロジェクトとして開きます。"
       }
     },
     "application": {
@@ -1506,8 +1535,8 @@
       "description": "GNOME ファイルでフォルダを右クリックしたときに、「スクリプト」メニューに「Oleafly で開く」を追加します。"
     },
     "folderOpenWith": {
-      "label": "フォルダの「このアプリケーションで開く」メニュー",
-      "description": "フォルダの「このアプリケーションで開く」に Oleafly を表示します。既定のファイルマネージャーは変わりません。"
+      "label": "フォルダの「アプリケーションで開く」メニュー",
+      "description": "フォルダの「アプリケーションで開く」に Oleafly を表示します。既定のファイルマネージャーは変わりません。"
     },
     "attention": {
       "outdated": "古くなっているか、macOS によってブロックされています。修復すると元に戻ります。",

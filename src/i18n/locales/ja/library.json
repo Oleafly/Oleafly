@@ -43,8 +43,7 @@
       "name": "名前",
       "type": "種類",
       "engine": "エンジン",
-      "modified": "更新日",
-      "activity": "最終アクティビティ"
+      "modified": "更新日"
     },
     "filters": {
       "engine": "エンジン",
@@ -69,7 +68,7 @@
       "last30Days": "過去 30 日間",
       "lastYear": "過去 1 年間"
     },
-    "openFolder": "フォルダを開く…",
+    "openFolder": "フォルダを開く",
     "openFolderShortcut": "フォルダを開く（{{shortcut}}）",
     "createFirstProject": "新規プロジェクトを作成",
     "scope": {
@@ -106,7 +105,8 @@
     "kind": {
       "document": "文書",
       "image": "画像",
-      "diagram": "ダイアグラム"
+      "diagram": "ダイアグラム",
+      "external": "外部"
     },
     "preview": {
       "title": "PDF プレビュー: {{name}}",
@@ -469,17 +469,13 @@
     "newProjectTitle": "新規プロジェクト",
     "newProjectDescription": "テンプレートか白紙のページから始めます。",
     "openFolderTitle": "フォルダを開く",
-    "openFolderDescription": "パソコンにすでにあるファイルで作業します。ファイルは元の場所に置いたままです。"
+    "openFolderDescription": "コンピュータにすでにあるファイルで作業します。ファイルは元の場所に置いたままです。"
   },
   "openFolder": {
     "dismiss": "閉じる"
   },
   "folder": {
     "badge": "フォルダ",
-    "noMain": "メイン文書なし",
-    "openedToday": "今日開いた",
-    "openedYesterday": "昨日開いた",
-    "openedOn": "{{date}} に開いた",
     "state": {
       "missing": "フォルダが見つかりません",
       "offline": "ドライブ未接続",
@@ -487,7 +483,7 @@
       "permissionDenied": "アクセス権なし"
     },
     "menu": {
-      "showInFinder": "Finder に表示",
+      "showInFinder": "Finder で表示",
       "showInExplorer": "エクスプローラーで表示",
       "showInFileManager": "ファイルマネージャーで表示",
       "copyToLibrary": "ライブラリにコピー",
@@ -515,11 +511,11 @@
       },
       "permissionDenied": {
         "title": "Oleafly は「{{name}}」を開けません",
-        "bodyMac": "システム設定 › プライバシーとセキュリティ › ファイルとフォルダで Oleafly にこのフォルダの使用を許可してから、もう一度お試しください。",
+        "bodyMac": "「システム設定」›「プライバシーとセキュリティ」›「ファイルとフォルダ」で Oleafly にこのフォルダの使用を許可してから、もう一度お試しください。",
         "bodyOther": "お使いのアカウントでは {{path}} を読み取れません。フォルダのアクセス権を確認して、もう一度お試しください。"
       },
       "back": {
-        "title": "「{{name}}」が戻りました",
+        "title": "「{{name}}」が再び使えるようになりました",
         "body": "Oleafly から {{path}} に再びアクセスできるようになりました。"
       },
       "locate": "場所を指定…",

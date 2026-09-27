@@ -11,13 +11,14 @@
     "linked_replaced": "文件夹 {{folder}} 已不是 Oleafly 之前打开的那个文件夹。请重新打开它以继续。",
     "linked_permission_denied": "Oleafly 没有打开文件夹 {{folder}} 的权限。",
     "linked_invalid": "Oleafly 中此文件夹的链接已损坏。请将其从 Oleafly 中移除，然后重新打开该文件夹。",
+    "linked_in_app_data": "Oleafly 无法打开文件夹 {{folder}}，因为它现在位于 Oleafly 的数据文件夹内，或者数据文件夹位于它里面。请将其中一个移出另一个，然后重新打开该文件夹。",
     "linked_not_recyclable": "此文件夹是在原位置打开的，无法移入回收站。你的文件没有任何改动。",
     "linked_not_duplicable": "此文件夹是在原位置打开的，Oleafly 无法复制它。",
     "folder_not_a_folder": "Oleafly 无法使用该位置。请选择一个文件夹。",
     "folder_in_app_data": "Oleafly 在该文件夹中保存自己的数据。请选择其他文件夹。",
     "folder_too_broad": "{{name}} 范围太大，无法作为一个项目打开。请选择只包含此项目的文件夹。",
     "folder_already_linked": "该文件夹与 Oleafly 中的另一个项目重叠。请选择其他文件夹。",
-    "not_linked": "只有就地打开的文件夹才能重新定位。",
+    "not_linked": "只有在原位置打开的文件夹才能重新定位。",
     "copy_destination_refused": "请选择项目和 Oleafly 数据文件夹之外的文件夹。",
     "copy_nothing_open": "没有打开的文件，因此没有可保存的内容。",
     "copy_too_large": "打开的文件太大，无法另存为副本。",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "算上 Git 历史记录，此文件夹包含超过 5,000 个文件和文件夹，超出了 Oleafly 一次能复制的数量。",
     "copy_size_limit": "此文件夹大于 2 GB，超出了 Oleafly 一次能复制的大小。",
     "copy_cancelled": "已取消复制。",
-    "copy_needs_folder": "只有就地打开的文件夹才能复制到库。",
-    "not_removable": "只有就地打开的文件夹才能从 Oleafly 中移除。",
-    "trash_unavailable": "Oleafly 无法将 {{path}} 移到废纸篓或回收站。此驱动器可能没有。",
+    "copy_needs_folder": "只有在原位置打开的文件夹才能复制到库。",
+    "not_removable": "只有在原位置打开的文件夹才能从 Oleafly 中移除。",
+    "trash_unavailable": "Oleafly 无法将 {{path}} 移到废纸篓或回收站，该驱动器可能不支持。",
     "linked_replace_folder": "{{path}} 是文件夹，因此 Oleafly 不会替换它。请先移动或重命名它。"
   },
   "settings": {
@@ -93,7 +94,16 @@
     "research_folder": "{{project}} 已可通过其已链接文件夹编辑此文件夹中的文件。请先在那里取消链接。",
     "failed": "Oleafly 无法打开此文件夹。",
     "request_expired": "此文件夹请求已过期。请重新打开该文件夹。",
-    "timed_out": "Oleafly 无法访问此文件夹。请检查所在的驱动器是否已连接，然后重试。"
+    "timed_out": "Oleafly 无法访问此文件夹。请检查它所在的驱动器是否已连接，然后重试。"
+  },
+  "shell_command": {
+    "unavailable": "此 Oleafly 副本不包含终端命令。",
+    "move_app": "请先将 Oleafly 移到“应用程序”文件夹，然后再安装命令。",
+    "occupied": "{{path}} 已存在，且不是 Oleafly 创建的，因此已保持原样。",
+    "changed": "{{path}} 在 Oleafly 安装后被更改过，因此已保持原样。",
+    "failed": "Oleafly 无法安装终端命令。",
+    "remove_failed": "Oleafly 无法移除终端命令。",
+    "unsupported": "此系统暂不支持终端命令。"
   },
   "research": {
     "linked_project_folder": "此文件夹已在 Oleafly 中作为独立项目打开。请改为以只读方式链接。"

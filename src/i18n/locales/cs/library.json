@@ -46,8 +46,7 @@
       "name": "Název",
       "type": "Druh",
       "engine": "Engine",
-      "modified": "Změněno",
-      "activity": "Poslední aktivita"
+      "modified": "Změněno"
     },
     "filters": {
       "engine": "Engine",
@@ -72,7 +71,7 @@
       "last30Days": "Posledních 30 dní",
       "lastYear": "Poslední rok"
     },
-    "openFolder": "Otevřít složku…",
+    "openFolder": "Otevřít složku",
     "openFolderShortcut": "Otevřít složku ({{shortcut}})",
     "createFirstProject": "Vytvořit nový projekt",
     "scope": {
@@ -109,7 +108,8 @@
     "kind": {
       "document": "dokument",
       "image": "obrázek",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "externí"
     },
     "preview": {
       "title": "Náhled PDF: {{name}}",
@@ -503,10 +503,6 @@
   },
   "folder": {
     "badge": "Složka",
-    "noMain": "Žádný hlavní dokument",
-    "openedToday": "Otevřeno dnes",
-    "openedYesterday": "Otevřeno včera",
-    "openedOn": "Otevřeno {{date}}",
     "state": {
       "missing": "Složka chybí",
       "offline": "Disk není připojen",
@@ -524,8 +520,8 @@
       "title": "Odebrat „{{name}}“ z Oleafly?",
       "description": "Vaše soubory zůstanou, kde jsou. Oleafly smaže své soubory sestavení pro tuto složku a zruší její důvěru, schválení a propojené složky. Když složku do 30 dnů znovu otevřete, získáte zpět její chaty a historii. Zbytek bude potřeba nastavit znovu.",
       "confirm": "Odebrat z Oleafly",
-      "done": "„{{name}}“ byla odebrána z Oleafly. Soubory zůstaly ve složce.",
-      "failed": "„{{name}}“ nelze odebrat z Oleafly."
+      "done": "Složka „{{name}}“ byla odebrána z Oleafly. Soubory zůstaly ve složce.",
+      "failed": "Složku „{{name}}“ se nepodařilo odebrat z Oleafly."
     },
     "unavailable": {
       "missing": {
@@ -537,7 +533,7 @@
         "body": "Připojte disk nebo síťové úložiště s {{path}} a zkuste to znovu."
       },
       "replaced": {
-        "title": "„{{name}}“ byla nahrazena",
+        "title": "Složka „{{name}}“ byla nahrazena",
         "body": "Složka v {{path}} není ta, kterou jste otevřeli dříve. Použijte ji, jen pokud jí důvěřujete. Oleafly při změně vypne důvěru a schválení."
       },
       "permissionDenied": {
@@ -557,13 +553,13 @@
     },
     "copy": {
       "title": "Zkopírovat „{{name}}“ do knihovny",
-      "description": "Oleafly zkopíruje soubory do nového projektu v knihovně a složku nechá na místě. Historie Git se zkopíruje, háky Git a soubory sestavení ne.",
+      "description": "Oleafly zkopíruje soubory do nového projektu v knihovně a složku nechá na místě. Historie Gitu se zkopíruje, hooky Gitu a soubory sestavení ne.",
       "counting": "Počítají se soubory…",
       "copying": "Kopírují se soubory…",
       "count": "{{done}} z {{total}}",
       "done": "„{{name}}“ je teď ve vaší knihovně.",
       "doneLeftOut": "„{{name}}“ je teď ve vaší knihovně. Odkazy na soubory jinde a příliš hluboko vnořené složky se nezkopírovaly.",
-      "failed": "„{{name}}“ nelze zkopírovat do knihovny."
+      "failed": "Složku „{{name}}“ se nepodařilo zkopírovat do knihovny."
     }
   }
 }

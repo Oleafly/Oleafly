@@ -170,7 +170,7 @@
       "label": "Käännä uudelleen"
     },
     "saveSettingsToFolder": {
-      "keywords": "tallenna projektin asetukset kansio project.json jaa päädokumentti",
+      "keywords": "tallenna projektin asetukset kansio project.json jaa päädokumentti moottori save project settings folder share main document engine",
       "label": "Tallenna projektin asetukset tähän kansioon",
       "saved": "Projektin asetukset tallennettiin tämän kansion project.json-tiedostoon."
     },
@@ -222,7 +222,7 @@
     },
     "openFolder": {
       "label": "Avaa kansio…",
-      "keywords": "avaa kansio hakemisto olemassa oleva paikallinen tiedostot levy"
+      "keywords": "avaa kansio hakemisto olemassa oleva paikallinen tiedostot levy open folder directory existing local files disk"
     }
   },
   "community": {
@@ -384,7 +384,7 @@
       "title": "Oleafly ei voi avata tätä kansiota.",
       "body": "Tarkista kansion käyttöoikeudet ja yritä uudelleen. Avoimet tiedostosi pysyvät täällä."
     },
-    "locate": "Paikanna…",
+    "locate": "Etsi…",
     "useThisFolder": "Käytä tätä kansiota",
     "saveCopy": "Tallenna kopio…",
     "tryAgain": "Yritä uudelleen",
@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Minkä dokumentin Oleafly kääntää?",
       "askDescription": "Tässä kansiossa on useampi dokumentti. Valitse päädokumentti. Voit vaihtaa sen myöhemmin.",
-      "changeTitle": "Valitse päädokumentti",
-      "changeDescription": "Oleafly kääntää valitsemasi dokumentin ja muistaa sen tälle kansiolle.",
       "listLabel": "Tämän kansion dokumentit",
       "open": "Avaa",
       "browse": "Selaa vain tiedostoja",
       "bestMatch": "Paras osuma",
-      "current": "Nykyinen",
-      "loading": "Etsitään dokumentteja…",
       "empty": "Oleafly ei löytänyt täältä dokumentteja. Napsauta tiedostoa tiedostopuussa hiiren oikealla painikkeella ja valitse Aseta päädokumentiksi.",
-      "failed": "Oleafly ei voinut lukea tätä kansiota.",
       "truncated": "Kansio on suuri, joten Oleafly lopetti etsimisen aikaisin. Kaikki dokumentit eivät ehkä näy luettelossa.",
       "openFailed": "Tiedostoa {{path}} ei voitu asettaa päädokumentiksi."
     },
@@ -487,18 +482,11 @@
       "standalone_figure": "Erillinen kuva",
       "placeholder": "Ei vielä ladattu"
     },
-    "main": {
-      "label": "Päädokumentti: {{path}}",
-      "change": "Vaihda",
-      "changeLabel": "Vaihda päädokumentti",
-      "others": "Muut dokumentit",
-      "switchFailed": "Vaihto tiedostoon {{path}} epäonnistui."
-    },
     "noMain": "Päädokumenttia ei ole vielä. Valitse tiedosto ja sitten Aseta päädokumentiksi.",
     "trust": {
-      "banner": "Oleafly rajoitti joitakin toimintoja tässä kansiossa. Luota kansioon, niin Git, pääte, agentit ja shell escape otetaan käyttöön.",
+      "banner": "Oleafly rajoitti joitakin toimintoja tässä kansiossa. Luotetaanko kansioon, jotta Git, pääte, agentit ja shell escape otetaan käyttöön?",
       "trustFolder": "Luota tähän kansioon",
-      "trustParent": "Luota yläkansioon…",
+      "trustParent": "Luota yläkansioon",
       "trustRepository": "Luota repositorioon",
       "hide": "Piilota",
       "terminal": "Git-koukut ja repositorion asetukset ovat pois päältä tässä päätteessä, kunnes luotat kansioon.",
@@ -1037,7 +1025,7 @@
     "refused": "Kohdetta {{name}} ei voitu avata. {{reason}}",
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
-      "mac": "Avaa Järjestelmäasetuksista Tietosuoja ja suojaus ja sitten Tiedostot ja kansiot, ja salli Oleafly. Jos Oleaflya ei ole luettelossa, lisää se kohtaan Täysi levyn käyttöoikeus ja yritä uudelleen.",
+      "mac": "Avaa Järjestelmäasetuksista Yksityisyys ja suojaus ja sitten Tiedostot ja kansiot, ja salli Oleafly. Jos Oleaflyä ei ole luettelossa, lisää se kohtaan Täysi levyn käyttöoikeus ja yritä uudelleen.",
       "windows": "Varmista kansion Ominaisuudet-ikkunan Suojaus-välilehdeltä, että tililläsi on lukuoikeus kansioon, ja yritä uudelleen.",
       "linux": "Varmista, että tililläsi on lukuoikeus tähän kansioon, ja yritä uudelleen."
     }

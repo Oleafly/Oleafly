@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Oleafly hangi belgeyi derlesin?",
       "askDescription": "Bu klasörde birden fazla belge var. Ana belgeyi seçin. Daha sonra değiştirebilirsiniz.",
-      "changeTitle": "Ana belgeyi seçin",
-      "changeDescription": "Oleafly seçtiğiniz belgeyi derler ve bu klasör için hatırlar.",
       "listLabel": "Bu klasördeki belgeler",
       "open": "Aç",
       "browse": "Yalnızca dosyalara göz at",
       "bestMatch": "En iyi eşleşme",
-      "current": "Geçerli",
-      "loading": "Belgeler aranıyor…",
       "empty": "Oleafly burada belge bulamadı. Dosya ağacında bir dosyaya sağ tıklayıp Ana belge olarak ayarla seçeneğini seçin.",
-      "failed": "Oleafly bu klasörü okuyamadı.",
       "truncated": "Bu klasör büyük olduğu için Oleafly aramayı erken bıraktı. Bazı belgeler listede olmayabilir.",
       "openFailed": "{{path}} ana belge yapılamadı."
     },
@@ -487,18 +482,11 @@
       "standalone_figure": "Bağımsız şekil",
       "placeholder": "Henüz indirilmedi"
     },
-    "main": {
-      "label": "Ana belge: {{path}}",
-      "change": "Değiştir",
-      "changeLabel": "Ana belgeyi değiştir",
-      "others": "Diğer belgeler",
-      "switchFailed": "{{path}} belgesine geçilemedi."
-    },
     "noMain": "Henüz ana belge yok. Bir dosya seçip Ana belge olarak ayarla seçeneğini seçin.",
     "trust": {
-      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar ve shell escape özelliklerini açmak için klasöre güvenin.",
+      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar ve shell escape özelliklerini açmak için klasöre güvenilsin mi?",
       "trustFolder": "Bu klasöre güven",
-      "trustParent": "Üst klasöre güven…",
+      "trustParent": "Üst klasöre güven",
       "trustRepository": "Depoya güven",
       "hide": "Gizle",
       "terminal": "Klasöre güvenene kadar bu terminalde Git kancaları ve depo ayarları kapalı.",
@@ -1044,10 +1032,10 @@
   },
   "quickActionOffer": {
     "title": "Klasörleri Finder'dan açın",
-    "body": "Oleafly'da aç'ı Finder'ın Hızlı Eylemler menüsüne ekleyin. Ardından herhangi bir klasöre sağ tıklayarak onu burada açabilirsiniz.",
+    "body": "Oleafly'de aç'ı Finder'ın Hızlı Eylemler menüsüne ekleyin. Ardından herhangi bir klasöre sağ tıklayarak onu burada açabilirsiniz.",
     "add": "Finder'a ekle",
     "notNow": "Şimdi değil",
-    "added": "Eklendi. Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'da aç'ı seçin.",
-    "failed": "Eklenemedi. Ayarlar › Genel bölümünden tekrar deneyebilirsiniz."
+    "added": "Eklendi. Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'de aç'ı seçin.",
+    "failed": "Eklenemedi. Ayarlar › Genel bölümünden yeniden deneyebilirsiniz."
   }
 }

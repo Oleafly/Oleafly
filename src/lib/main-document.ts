@@ -1,11 +1,6 @@
 import type { FileEntry, ManifestHome } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
-import type {
-  DetectionCandidate,
-  DetectionReason,
-  DocumentKind,
-  FolderDetection,
-} from "@/lib/folder-detection";
+import type { DetectionCandidate, DetectionReason, DocumentKind } from "@/lib/folder-detection";
 
 export const ALL_MAIN_EXTENSIONS: readonly string[] = ["tex", "ltx", "latex", "typ", "md", "markdown"];
 
@@ -38,10 +33,6 @@ function foldedPath(path: string): string {
   return path.normalize("NFC").toLowerCase();
 }
 
-export function sameDocumentPath(left: string, right: string): boolean {
-  return left === right || foldedPath(left) === foldedPath(right);
-}
-
 interface TreeFiles {
   exact: ReadonlySet<string>;
   folded: ReadonlySet<string>;
@@ -68,32 +59,6 @@ export function mainDocumentMissing(state: MainDocumentView): boolean {
   if (state.projectId === null || !isLinkedHome(state.manifestHome)) return false;
   const files = filesOf(state.tree);
   return !files.exact.has(state.mainDoc) && !files.folded.has(foldedPath(state.mainDoc));
-}
-
-const PATH_BUDGET = 28;
-
-export function compactDocumentPath(path: string, budget = PATH_BUDGET): string {
-  if (path.length <= budget) return path;
-  const folders = path.split("/");
-  const name = folders.pop() ?? path;
-  if (name.length + 2 > budget) return name;
-  let tail = name;
-  for (let index = folders.length - 1; index >= 0; index -= 1) {
-    const next = `${folders[index]}/${tail}`;
-    if (next.length + 2 > budget) break;
-    tail = next;
-  }
-  return `…/${tail}`;
-}
-
-export function otherDocuments(
-  detection: FolderDetection | null,
-  mainDoc: string,
-): DetectionCandidate[] {
-  if (!detection) return [];
-  return detection.candidates.filter(
-    (candidate) => candidate.tier !== "w" && !sameDocumentPath(candidate.path, mainDoc),
-  );
 }
 
 export function documentKindLabel(kind: DocumentKind): string {

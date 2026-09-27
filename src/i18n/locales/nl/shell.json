@@ -170,7 +170,7 @@
       "label": "Opnieuw compileren"
     },
     "saveSettingsToFolder": {
-      "keywords": "projectinstellingen opslaan map project.json delen hoofddocument",
+      "keywords": "projectinstellingen opslaan map project.json delen hoofddocument engine",
       "label": "Projectinstellingen in deze map opslaan",
       "saved": "De projectinstellingen zijn opgeslagen in project.json in deze map."
     },
@@ -374,7 +374,7 @@
   "folderUnavailable": {
     "missing": {
       "title": "Deze map is niet beschikbaar.",
-      "body": "Sluit het station opnieuw aan of zoek de map. Je geopende bestanden blijven hier, en Oleafly slaat niets op en compileert niet totdat de map terug is."
+      "body": "Sluit de schijf opnieuw aan of zoek de map. Je geopende bestanden blijven hier, en Oleafly slaat niets op en compileert niet totdat de map terug is."
     },
     "replaced": {
       "title": "Deze map is vervangen.",
@@ -382,7 +382,7 @@
     },
     "permissionDenied": {
       "title": "Oleafly kan deze map niet openen.",
-      "body": "Controleer de machtigingen van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
+      "body": "Controleer de rechten van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
     },
     "locate": "Zoeken…",
     "useThisFolder": "Deze map gebruiken",
@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Welk document moet Oleafly compileren?",
       "askDescription": "Deze map bevat meer dan één document. Kies het hoofddocument. Je kunt het later wijzigen.",
-      "changeTitle": "Kies het hoofddocument",
-      "changeDescription": "Oleafly compileert het document dat je kiest en onthoudt het voor deze map.",
       "listLabel": "Documenten in deze map",
       "open": "Openen",
       "browse": "Alleen bestanden bekijken",
       "bestMatch": "Beste keuze",
-      "current": "Huidig",
-      "loading": "Documenten zoeken…",
       "empty": "Oleafly heeft hier geen documenten gevonden. Klik met de rechtermuisknop op een bestand in de bestandsboom en kies Instellen als hoofddocument.",
-      "failed": "Oleafly kon deze map niet lezen.",
       "truncated": "Deze map is groot, dus Oleafly is eerder gestopt met zoeken. Sommige documenten staan misschien niet in de lijst.",
       "openFailed": "Kan {{path}} niet instellen als hoofddocument."
     },
@@ -487,18 +482,11 @@
       "standalone_figure": "Losse figuur",
       "placeholder": "Nog niet gedownload"
     },
-    "main": {
-      "label": "Hoofddocument: {{path}}",
-      "change": "Wijzigen",
-      "changeLabel": "Hoofddocument wijzigen",
-      "others": "Andere documenten",
-      "switchFailed": "Kan niet overschakelen naar {{path}}."
-    },
     "noMain": "Nog geen hoofddocument. Kies een bestand en daarna Instellen als hoofddocument.",
     "trust": {
-      "banner": "Oleafly heeft sommige functies in deze map beperkt. Vertrouw de map om Git, de terminal, agents en shell escape aan te zetten.",
+      "banner": "Oleafly heeft sommige functies in deze map beperkt. De map vertrouwen om Git, de terminal, agents en shell escape aan te zetten?",
       "trustFolder": "Deze map vertrouwen",
-      "trustParent": "De bovenliggende map vertrouwen…",
+      "trustParent": "De bovenliggende map vertrouwen",
       "trustRepository": "De repository vertrouwen",
       "hide": "Verbergen",
       "terminal": "Git-hooks en repository-instellingen staan in deze terminal uit totdat je de map vertrouwt.",
@@ -1030,7 +1018,7 @@
     "confirmTitle": "Stoppen en {{name}} openen?",
     "confirmCompile": "{{project}} wordt nog gecompileerd. Als je {{name}} opent, stopt het compileren. Je wijzigingen worden eerst opgeslagen.",
     "confirmAssistant": "De assistent is nog bezig in {{project}}. Als je {{name}} opent, stopt het antwoord. Je wijzigingen worden eerst opgeslagen.",
-    "confirmBoth": "{{project}} wordt nog gecompileerd en de assistent is nog bezig. Als je {{name}} opent, stopt allebei. Je wijzigingen worden eerst opgeslagen.",
+    "confirmBoth": "{{project}} wordt nog gecompileerd en de assistent is nog bezig. Als je {{name}} opent, stoppen ze allebei. Je wijzigingen worden eerst opgeslagen.",
     "confirmAction": "Stoppen en openen",
     "chooseSubfolder": "Kies een submap",
     "refusedTitle": "Kan {{name}} niet openen",

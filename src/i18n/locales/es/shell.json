@@ -455,16 +455,11 @@
     "picker": {
       "askTitle": "¿Qué documento debe compilar Oleafly?",
       "askDescription": "Esta carpeta tiene más de un documento. Elige el principal. Puedes cambiarlo más tarde.",
-      "changeTitle": "Elige el documento principal",
-      "changeDescription": "Oleafly compila el documento que elijas y lo recuerda para esta carpeta.",
       "listLabel": "Documentos de esta carpeta",
       "open": "Abrir",
       "browse": "Solo explorar archivos",
       "bestMatch": "Mejor opción",
-      "current": "Actual",
-      "loading": "Buscando documentos…",
       "empty": "Oleafly no encontró documentos aquí. Haz clic derecho en un archivo del árbol de archivos y elige Establecer como documento principal.",
-      "failed": "Oleafly no pudo leer esta carpeta.",
       "truncated": "Esta carpeta es grande, así que Oleafly dejó de buscar antes de tiempo. Puede que falten algunos documentos en la lista.",
       "openFailed": "No se pudo establecer {{path}} como documento principal."
     },
@@ -489,21 +484,14 @@
       "standalone_figure": "Figura independiente",
       "placeholder": "Aún no descargado"
     },
-    "main": {
-      "label": "Principal: {{path}}",
-      "change": "Cambiar",
-      "changeLabel": "Cambiar el documento principal",
-      "others": "Otros documentos",
-      "switchFailed": "No se pudo cambiar a {{path}}."
-    },
     "noMain": "Todavía no hay documento principal. Elige un archivo y selecciona Establecer como documento principal.",
     "trust": {
-      "banner": "Oleafly limitó algunas funciones en esta carpeta. Confía en ella para activar Git, el terminal, los agentes y el shell escape.",
+      "banner": "Oleafly limitó algunas funciones en esta carpeta. ¿Confiar en ella para activar Git, el terminal, los agentes y el shell escape?",
       "trustFolder": "Confiar en esta carpeta",
-      "trustParent": "Confiar en la carpeta superior…",
+      "trustParent": "Confiar en la carpeta superior",
       "trustRepository": "Confiar en el repositorio",
       "hide": "Ocultar",
-      "terminal": "Los hooks de Git y los ajustes del repositorio están desactivados en este terminal hasta que confíes en la carpeta.",
+      "terminal": "Los hooks de Git y la configuración del repositorio están desactivados en este terminal hasta que confíes en la carpeta.",
       "terminalReopen": "Este terminal se abrió antes de que confiaras en la carpeta. Vuelve a abrirlo para activar los hooks de Git.",
       "reopenTerminal": "Volver a abrir el terminal",
       "failed": "No se pudo confiar en esta carpeta."

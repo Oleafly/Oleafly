@@ -44,8 +44,7 @@
       "name": "Name",
       "type": "Type",
       "engine": "Engine",
-      "modified": "Modified",
-      "activity": "Last activity"
+      "modified": "Modified"
     },
     "filters": {
       "engine": "Engine",
@@ -70,7 +69,7 @@
       "last30Days": "Last 30 days",
       "lastYear": "Last year"
     },
-    "openFolder": "Open folder…",
+    "openFolder": "Open folder",
     "openFolderShortcut": "Open folder ({{shortcut}})",
     "createFirstProject": "Create new project",
     "scope": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "document",
       "image": "image",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "external"
     },
     "preview": {
       "title": "PDF preview: {{name}}",
@@ -485,10 +485,6 @@
   },
   "folder": {
     "badge": "Folder",
-    "noMain": "No main document",
-    "openedToday": "Opened today",
-    "openedYesterday": "Opened yesterday",
-    "openedOn": "Opened {{date}}",
     "state": {
       "missing": "Folder missing",
       "offline": "Drive not connected",

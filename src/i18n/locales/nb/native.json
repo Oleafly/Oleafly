@@ -68,7 +68,7 @@
     },
     "rebindFolder": {
       "title": "Vil du bruke en annen mappe?",
-      "message": "{{name}} er ikke mappen Oleafly hadde for dette prosjektet. Hvis du bruker den, lagrer Oleafly de ulagrede endringene dine i den og lukker prosjektets terminaler og agentøkter. Alt som kjører i dem, stoppes. Oleafly slutter også å stole på mappen, slår av full tilgang, tilbakestiller assistentens godkjenninger og kobler fra forskningsmapper. Chatter og historikk beholdes.",
+      "message": "{{name}} er ikke mappen Oleafly hadde for dette prosjektet. Hvis du bruker den, lagrer Oleafly de ulagrede endringene dine i den og lukker prosjektets terminaler og agentøkter. Alt som kjører i dem, stoppes. Oleafly slutter også å stole på mappen, slår av full tilgang, tilbakestiller assistentens godkjenninger og fjerner lenkene til forskningsmapper. Chatter og historikk beholdes.",
       "confirm": "Bruk denne mappen"
     },
     "saveCopy": {

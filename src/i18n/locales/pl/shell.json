@@ -388,7 +388,7 @@
       "title": "Oleafly nie może otworzyć tego folderu.",
       "body": "Sprawdź uprawnienia folderu i spróbuj ponownie. Otwarte pliki zostają tutaj."
     },
-    "locate": "Zlokalizuj…",
+    "locate": "Wskaż…",
     "useThisFolder": "Użyj tego folderu",
     "saveCopy": "Zapisz kopię…",
     "tryAgain": "Spróbuj ponownie",
@@ -457,16 +457,11 @@
     "picker": {
       "askTitle": "Który dokument ma skompilować Oleafly?",
       "askDescription": "Ten folder zawiera więcej niż jeden dokument. Wybierz główny. Możesz go później zmienić.",
-      "changeTitle": "Wybierz dokument główny",
-      "changeDescription": "Oleafly kompiluje wybrany dokument i zapamiętuje go dla tego folderu.",
       "listLabel": "Dokumenty w tym folderze",
       "open": "Otwórz",
       "browse": "Tylko przeglądaj pliki",
       "bestMatch": "Najlepsze dopasowanie",
-      "current": "Bieżący",
-      "loading": "Szukanie dokumentów…",
       "empty": "Oleafly nie znalazł tu żadnych dokumentów. Kliknij plik prawym przyciskiem w drzewie plików i wybierz Ustaw jako dokument główny.",
-      "failed": "Oleafly nie mógł odczytać tego folderu.",
       "truncated": "Ten folder jest duży, więc Oleafly wcześniej przerwał wyszukiwanie. Niektórych dokumentów może brakować na liście.",
       "openFailed": "Nie udało się ustawić {{path}} jako dokumentu głównego."
     },
@@ -484,25 +479,18 @@
       "declared": "Oznaczony jako plik główny",
       "top_level": "W folderze najwyższego poziomu",
       "named_main": "Nazywa się main",
-      "named_after_folder": "Nazwany jak jego folder",
+      "named_after_folder": "Ma taką samą nazwę jak folder",
       "includes_files": "Dołącza inne pliki",
       "has_bibliography": "Ma bibliografię",
       "no_begin_document": "Brak \\begin{document}",
       "standalone_figure": "Samodzielna ilustracja",
       "placeholder": "Jeszcze nie pobrany"
     },
-    "main": {
-      "label": "Główny: {{path}}",
-      "change": "Zmień",
-      "changeLabel": "Zmień dokument główny",
-      "others": "Inne dokumenty",
-      "switchFailed": "Nie udało się przełączyć na {{path}}."
-    },
     "noMain": "Nie ma jeszcze dokumentu głównego. Wybierz plik i kliknij Ustaw jako dokument główny.",
     "trust": {
-      "banner": "Oleafly ograniczył niektóre funkcje w tym folderze. Zaufaj mu, aby włączyć Git, terminal, agentów i shell escape.",
+      "banner": "Oleafly ograniczył niektóre funkcje w tym folderze. Zaufać mu, aby włączyć Git, terminal, agentów i shell escape?",
       "trustFolder": "Zaufaj temu folderowi",
-      "trustParent": "Zaufaj folderowi nadrzędnemu…",
+      "trustParent": "Zaufaj folderowi nadrzędnemu",
       "trustRepository": "Zaufaj repozytorium",
       "hide": "Ukryj",
       "terminal": "Hooki Git i ustawienia repozytorium są wyłączone w tym terminalu, dopóki nie zaufasz folderowi.",
@@ -512,7 +500,7 @@
     },
     "readOnly": {
       "banner": "Ten folder jest tylko do odczytu. Możesz kompilować, ale nie da się zapisać zmian.",
-      "copy": "Kopiuj do biblioteki",
+      "copy": "Skopiuj do biblioteki",
       "copied": "Oleafly skopiował ten folder do Twojej biblioteki. Edytujesz teraz kopię."
     },
     "sync": {
@@ -1071,8 +1059,8 @@
     "confirmBoth": "{{project}} wciąż się kompiluje, a asystent wciąż pracuje. Otwarcie {{name}} zatrzyma jedno i drugie. Twoje zmiany zostaną najpierw zapisane.",
     "confirmAction": "Zatrzymaj i otwórz",
     "chooseSubfolder": "Wybierz podfolder",
-    "refusedTitle": "Nie można otworzyć {{name}}",
-    "refused": "Nie można otworzyć {{name}}. {{reason}}",
+    "refusedTitle": "Nie udało się otworzyć {{name}}",
+    "refused": "Nie udało się otworzyć {{name}}. {{reason}}",
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
       "mac": "W Ustawieniach systemowych otwórz Prywatność i ochrona, a potem Pliki i foldery, i włącz Oleafly. Jeśli Oleafly nie ma na liście, dodaj go w sekcji Pełny dostęp do dysku i spróbuj ponownie.",
@@ -1086,6 +1074,6 @@
     "add": "Dodaj do Findera",
     "notNow": "Nie teraz",
     "added": "Dodano. Kliknij folder prawym przyciskiem w Finderze i wybierz Szybkie czynności › Otwórz w Oleafly.",
-    "failed": "Nie udało się dodać. Możesz spróbować ponownie w Ustawienia › Ogólne."
+    "failed": "Nie udało się dodać. Możesz spróbować ponownie w sekcji Ustawienia › Ogólne."
   }
 }

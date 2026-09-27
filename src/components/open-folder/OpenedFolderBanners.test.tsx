@@ -90,6 +90,25 @@ describe("trust banner", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("asks the owner's question and names the parent button without an ellipsis", async () => {
+    render(<OpenedFolderBanners />);
+    await open();
+    expect(screen.getByTestId("folder-trust-banner")).toHaveTextContent(
+      "Oleafly limited some features in this folder. Trust it to turn on Git, terminal, agents and shell escape?",
+    );
+    expect(screen.getByRole("button", { name: "Trust the parent folder" })).toBeInTheDocument();
+  });
+
+  it("sits on an opaque surface so the window behind never shows through", async () => {
+    render(<OpenedFolderBanners />);
+    await open();
+    const banner = screen.getByTestId("folder-trust-banner");
+    expect(banner.className).toContain("bg-[color-mix(in_srgb,var(--primary)_5%,var(--background))]");
+    expect(banner.className).not.toMatch(/(^|\s)bg-[\w-]+\/\d+/);
+    expect(banner.className).toContain("border-primary/20");
+    expect(banner.querySelector("svg")?.getAttribute("class")).toContain("text-primary");
+  });
+
   it("leaves out the parent choice when the parent is too broad to trust", async () => {
     render(<OpenedFolderBanners />);
     await open({ ...restricted, parent: null });
@@ -144,6 +163,31 @@ describe("trust banner", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button.className).not.toMatch(/ring|outline/);
     }
+  });
+});
+
+describe("trust banner copy in every language", () => {
+  const catalogs = import.meta.glob<{ openedFolder: { trust: { banner: string; trustParent: string } } }>(
+    "../../i18n/locales/*/shell.json",
+    { eager: true, import: "default" },
+  );
+  const entries = Object.entries(catalogs).map(([path, catalog]) => [
+    path.split("/").at(-2) ?? path,
+    catalog.openedFolder.trust,
+  ] as const);
+
+  it("covers all 21 catalogs", () => {
+    expect(entries).toHaveLength(21);
+  });
+
+  it.each(entries)("%s ends the banner with a question", (locale, trust) => {
+    const mark = locale.startsWith("zh-") || locale === "ja" ? "\uFF1F" : "?";
+    expect(trust.banner.endsWith(mark)).toBe(true);
+    expect(trust.banner).not.toMatch(/[.\u3002]$/);
+  });
+
+  it.each(entries)("%s names the parent button without an ellipsis", (_locale, trust) => {
+    expect(trust.trustParent).not.toMatch(/(\u2026|\.\.\.)\s*$/);
   });
 });
 

@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Welches Dokument soll Oleafly kompilieren?",
       "askDescription": "Dieser Ordner enthält mehr als ein Dokument. Wählen Sie das Hauptdokument. Sie können es später ändern.",
-      "changeTitle": "Hauptdokument wählen",
-      "changeDescription": "Oleafly kompiliert das gewählte Dokument und merkt es sich für diesen Ordner.",
       "listLabel": "Dokumente in diesem Ordner",
       "open": "Öffnen",
-      "browse": "Nur Dateien durchsuchen",
+      "browse": "Nur Dateien ansehen",
       "bestMatch": "Bester Treffer",
-      "current": "Aktuell",
-      "loading": "Dokumente werden gesucht…",
       "empty": "Oleafly hat hier keine Dokumente gefunden. Klicken Sie im Dateibaum mit der rechten Maustaste auf eine Datei und wählen Sie Als Hauptdokument festlegen.",
-      "failed": "Oleafly konnte diesen Ordner nicht lesen.",
       "truncated": "Dieser Ordner ist groß, daher hat Oleafly die Suche früh beendet. Möglicherweise fehlen einige Dokumente in der Liste.",
       "openFailed": "{{path}} konnte nicht zum Hauptdokument gemacht werden."
     },
@@ -487,18 +482,11 @@
       "standalone_figure": "Eigenständige Grafik",
       "placeholder": "Noch nicht heruntergeladen"
     },
-    "main": {
-      "label": "Hauptdokument: {{path}}",
-      "change": "Ändern",
-      "changeLabel": "Hauptdokument ändern",
-      "others": "Weitere Dokumente",
-      "switchFailed": "Wechsel zu {{path}} fehlgeschlagen."
-    },
     "noMain": "Noch kein Hauptdokument. Wählen Sie eine Datei und dann Als Hauptdokument festlegen.",
     "trust": {
-      "banner": "Oleafly hat in diesem Ordner einige Funktionen eingeschränkt. Vertrauen Sie ihm, um Git, Terminal, Agenten und shell escape einzuschalten.",
+      "banner": "Oleafly hat in diesem Ordner einige Funktionen eingeschränkt. Diesem Ordner vertrauen und Git, Terminal, Agenten und shell escape einschalten?",
       "trustFolder": "Diesem Ordner vertrauen",
-      "trustParent": "Dem übergeordneten Ordner vertrauen…",
+      "trustParent": "Dem übergeordneten Ordner vertrauen",
       "trustRepository": "Dem Repository vertrauen",
       "hide": "Ausblenden",
       "terminal": "Git-Hooks und Repository-Einstellungen sind in diesem Terminal aus, bis Sie dem Ordner vertrauen.",
@@ -645,8 +633,8 @@
         "calculating": "Speicherbelegung wird berechnet…",
         "desktopOnly": "Angaben zum Speicher gibt es in der Desktop-App.",
         "error": "Die Angaben zum Speicher konnten nicht berechnet werden.",
-        "linkedFolders_one": "{{size}} Build-Ausgabe und Einstellungen für {{count}} geöffneten Ordner",
-        "linkedFolders_other": "{{size}} Build-Ausgabe und Einstellungen für {{count}} geöffnete Ordner",
+        "linkedFolders_one": "{{size}} Ausgabedateien und Einstellungen für {{count}} geöffneten Ordner",
+        "linkedFolders_other": "{{size}} Ausgabedateien und Einstellungen für {{count}} geöffnete Ordner",
         "refresh": "Speicherbelegung aktualisieren",
         "stats": {
           "appData": "App-Daten",
@@ -1038,7 +1026,7 @@
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
       "mac": "Öffnen Sie in den Systemeinstellungen Datenschutz & Sicherheit und dann Dateien und Ordner, und aktivieren Sie Oleafly. Fehlt Oleafly dort, fügen Sie es unter Festplattenvollzugriff hinzu und versuchen Sie es erneut.",
-      "windows": "Prüfen Sie im Tab Sicherheit in den Eigenschaften des Ordners, ob Ihr Konto ihn lesen kann, und versuchen Sie es erneut.",
+      "windows": "Prüfen Sie auf der Registerkarte „Sicherheit“ in den Eigenschaften des Ordners, ob Ihr Konto ihn lesen kann, und versuchen Sie es erneut.",
       "linux": "Prüfen Sie, ob Ihr Konto diesen Ordner lesen kann, und versuchen Sie es erneut."
     }
   },

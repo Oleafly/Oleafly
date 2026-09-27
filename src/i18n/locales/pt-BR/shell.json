@@ -455,16 +455,11 @@
     "picker": {
       "askTitle": "Qual documento o Oleafly deve compilar?",
       "askDescription": "Esta pasta tem mais de um documento. Escolha o principal. Você pode mudar depois.",
-      "changeTitle": "Escolha o documento principal",
-      "changeDescription": "O Oleafly compila o documento que você escolher e lembra dele para esta pasta.",
       "listLabel": "Documentos nesta pasta",
       "open": "Abrir",
       "browse": "Só navegar pelos arquivos",
       "bestMatch": "Melhor opção",
-      "current": "Atual",
-      "loading": "Procurando documentos…",
       "empty": "O Oleafly não encontrou documentos aqui. Clique com o botão direito em um arquivo na árvore de arquivos e escolha Definir como documento principal.",
-      "failed": "O Oleafly não conseguiu ler esta pasta.",
       "truncated": "Esta pasta é grande, então o Oleafly parou de procurar antes. Alguns documentos podem não aparecer na lista.",
       "openFailed": "Não foi possível definir {{path}} como documento principal."
     },
@@ -489,18 +484,11 @@
       "standalone_figure": "Figura independente",
       "placeholder": "Ainda não baixado"
     },
-    "main": {
-      "label": "Principal: {{path}}",
-      "change": "Alterar",
-      "changeLabel": "Alterar o documento principal",
-      "others": "Outros documentos",
-      "switchFailed": "Não foi possível trocar para {{path}}."
-    },
     "noMain": "Ainda não há documento principal. Escolha um arquivo e selecione Definir como documento principal.",
     "trust": {
-      "banner": "O Oleafly limitou alguns recursos nesta pasta. Confie nela para ativar o Git, o terminal, os agentes e o shell escape.",
+      "banner": "O Oleafly limitou alguns recursos nesta pasta. Confiar nela para ativar o Git, o terminal, os agentes e o shell escape?",
       "trustFolder": "Confiar nesta pasta",
-      "trustParent": "Confiar na pasta superior…",
+      "trustParent": "Confiar na pasta superior",
       "trustRepository": "Confiar no repositório",
       "hide": "Ocultar",
       "terminal": "Os hooks do Git e as configurações do repositório ficam desativados neste terminal até você confiar na pasta.",
@@ -1057,7 +1045,7 @@
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
       "mac": "Nos Ajustes do Sistema, abra Privacidade e Segurança, depois Arquivos e Pastas, e ative o Oleafly. Se o Oleafly não aparecer, adicione-o em Acesso Total ao Disco e tente de novo.",
-      "windows": "Verifique na aba Segurança das Propriedades da pasta se a sua conta consegue lê-la e tente de novo.",
+      "windows": "Verifique na guia Segurança das Propriedades da pasta se a sua conta consegue lê-la e tente de novo.",
       "linux": "Verifique se a sua conta consegue ler esta pasta e tente de novo."
     }
   },

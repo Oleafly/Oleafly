@@ -11,6 +11,7 @@
     "linked_replaced": "Le dossier {{folder}} n'est pas celui qu'Oleafly a ouvert auparavant. Ouvrez-le à nouveau pour continuer.",
     "linked_permission_denied": "Oleafly n'a pas l'autorisation d'ouvrir le dossier {{folder}}.",
     "linked_invalid": "Le lien d'Oleafly vers ce dossier est endommagé. Retirez-le d'Oleafly, puis ouvrez à nouveau le dossier.",
+    "linked_in_app_data": "Oleafly ne peut pas ouvrir le dossier {{folder}}, car il se trouve maintenant dans le dossier de données d'Oleafly, ou c'est le dossier de données qui se trouve à l'intérieur. Sortez l'un des deux de l'autre, puis rouvrez le dossier.",
     "linked_not_recyclable": "Ce dossier a été ouvert sur place, il ne peut donc pas être déplacé vers la corbeille. Vos fichiers restent intacts.",
     "linked_not_duplicable": "Ce dossier a été ouvert sur place, Oleafly ne peut donc pas le dupliquer.",
     "folder_not_a_folder": "Oleafly ne peut pas utiliser cet emplacement. Choisissez un dossier.",
@@ -27,9 +28,9 @@
     "settings_file_exists": "Ce dossier contient déjà un fichier project.json, Oleafly l'a donc laissé tel quel.",
     "settings_need_main": "Choisissez d'abord un document principal, puis enregistrez les paramètres du projet dans ce dossier.",
     "settings_write_failed": "Oleafly n'a pas pu enregistrer les paramètres du projet dans ce dossier.",
-    "copy_entry_limit": "Ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
-    "copy_entry_limit_git": "Avec son historique Git, ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
-    "copy_size_limit": "Ce dossier dépasse 2 Go. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_entry_limit": "Ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_entry_limit_git": "Avec son historique Git, ce dossier contient plus de 5 000 fichiers et dossiers. C'est plus qu'Oleafly ne peut copier en une fois.",
+    "copy_size_limit": "Ce dossier dépasse 2 Go. C'est plus qu'Oleafly ne peut copier en une fois.",
     "copy_cancelled": "La copie a été annulée.",
     "copy_needs_folder": "Seuls les dossiers ouverts sur place peuvent être copiés dans la bibliothèque.",
     "not_removable": "Seuls les dossiers ouverts sur place peuvent être retirés d'Oleafly.",
@@ -59,7 +60,7 @@
   },
   "git": {
     "remote_exists": "Ce projet est déjà lié à {{remote}}.",
-    "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n’y crée pas de dépôt distinct."
+    "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n'y crée pas de dépôt distinct."
   },
   "approvals": {
     "full_access_declined": "L'accès complet n'a pas été activé."
@@ -75,9 +76,9 @@
     "full_access": "Faites confiance à ce dossier avant d'activer l'accès complet.",
     "system_tex": "Faites confiance à ce dossier pour compiler avec latexmk.",
     "shell_escape": "Faites confiance à ce dossier avant d'autoriser le shell escape.",
-    "broad_folder": "Oleafly ne peut pas faire confiance à tout {{name}}. Choisissez un dossier plus petit.",
-    "declined": "Le dossier n'a pas été approuvé.",
-    "unavailable": "Oleafly n'a pas pu vérifier si ce dossier est approuvé."
+    "broad_folder": "Oleafly ne peut pas faire confiance à l'ensemble du dossier {{name}}. Choisissez un dossier plus petit.",
+    "declined": "La confiance n'a pas été accordée au dossier.",
+    "unavailable": "Oleafly n'a pas pu vérifier si ce dossier est de confiance."
   },
   "open_folder": {
     "not_absolute": "Indiquez le chemin complet du dossier.",
@@ -94,6 +95,15 @@
     "failed": "Oleafly n'a pas pu ouvrir ce dossier.",
     "request_expired": "Cette demande d'ouverture a expiré. Ouvrez le dossier à nouveau.",
     "timed_out": "Oleafly n'a pas pu accéder à ce dossier. Vérifiez que son disque est connecté, puis réessayez."
+  },
+  "shell_command": {
+    "unavailable": "Cette copie d'Oleafly n'inclut pas la commande de terminal.",
+    "move_app": "Déplacez d'abord Oleafly dans le dossier Applications, puis installez la commande.",
+    "occupied": "{{path}} existe déjà et n'a pas été créé par Oleafly, il a donc été laissé tel quel.",
+    "changed": "{{path}} a changé après son installation par Oleafly, il a donc été laissé tel quel.",
+    "failed": "Oleafly n'a pas pu installer la commande de terminal.",
+    "remove_failed": "Oleafly n'a pas pu supprimer la commande de terminal.",
+    "unsupported": "La commande de terminal n'est pas encore disponible sur ce système."
   },
   "research": {
     "linked_project_folder": "Ce dossier est ouvert dans Oleafly comme projet à part entière. Liez-le plutôt en lecture seule."

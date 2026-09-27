@@ -43,8 +43,7 @@
       "name": "名称",
       "type": "类型",
       "engine": "引擎",
-      "modified": "修改时间",
-      "activity": "最近活动"
+      "modified": "修改时间"
     },
     "filters": {
       "engine": "引擎",
@@ -69,7 +68,7 @@
       "last30Days": "最近 30 天",
       "lastYear": "最近一年"
     },
-    "openFolder": "打开文件夹…",
+    "openFolder": "打开文件夹",
     "openFolderShortcut": "打开文件夹（{{shortcut}}）",
     "createFirstProject": "创建新项目",
     "scope": {
@@ -106,7 +105,8 @@
     "kind": {
       "document": "文档",
       "image": "图片",
-      "diagram": "图表"
+      "diagram": "图表",
+      "external": "外部"
     },
     "preview": {
       "title": "PDF 预览：{{name}}",
@@ -476,10 +476,6 @@
   },
   "folder": {
     "badge": "文件夹",
-    "noMain": "没有主文档",
-    "openedToday": "今天打开",
-    "openedYesterday": "昨天打开",
-    "openedOn": "{{date}} 打开",
     "state": {
       "missing": "文件夹丢失",
       "offline": "驱动器未连接",
@@ -487,7 +483,7 @@
       "permissionDenied": "没有权限"
     },
     "menu": {
-      "showInFinder": "在访达中显示",
+      "showInFinder": "在 Finder 中显示",
       "showInExplorer": "在文件资源管理器中显示",
       "showInFileManager": "在文件管理器中显示",
       "copyToLibrary": "复制到库",
@@ -516,7 +512,7 @@
       "permissionDenied": {
         "title": "Oleafly 无法打开“{{name}}”",
         "bodyMac": "请在系统设置 › 隐私与安全性 › 文件和文件夹中允许 Oleafly 使用此文件夹，然后重试。",
-        "bodyOther": "你的帐户无法读取 {{path}}。请检查文件夹的权限，然后重试。"
+        "bodyOther": "你的账户无法读取 {{path}}。请检查文件夹的权限，然后重试。"
       },
       "back": {
         "title": "“{{name}}”已恢复连接",

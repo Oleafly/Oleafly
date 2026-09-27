@@ -1,7 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
-import type { FolderDetection, OpenedFolder } from "@/lib/folder-detection";
+import type { OpenedFolder } from "@/lib/folder-detection";
 
 export interface McpRegistrySearchRequest {
   query: string;
@@ -1506,8 +1506,6 @@ export type FolderStatus = {
 };
 export const projectFolderStatus = (projectId: string) =>
   invoke<FolderStatus | null>("project_folder_status", { projectId });
-export const projectDocumentCandidates = (projectId: string) =>
-  invoke<FolderDetection>("project_document_candidates", { projectId });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

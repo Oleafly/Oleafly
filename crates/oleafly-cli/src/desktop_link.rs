@@ -4,6 +4,10 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 const LINK_FILE: &str = "link.json";
+#[cfg(any(not(any(target_os = "macos", windows)), test))]
+const SHELL_COMMAND_FILE: &str = "shell-command.json";
+#[cfg(any(not(any(target_os = "macos", windows)), test))]
+const MAX_SHELL_COMMAND_BYTES: u64 = 16 * 1024;
 const SIDECAR_FILE: &str = "project.json";
 const MAX_LINKS: usize = 4_096;
 const MAX_LINK_BYTES: u64 = 64 * 1024;
@@ -21,6 +25,24 @@ struct Link {
 #[derive(Deserialize)]
 struct Sidecar {
     main_doc: Option<String>,
+}
+
+#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[derive(Deserialize)]
+struct ShellCommand {
+    app: Option<PathBuf>,
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+pub(crate) fn recorded_app() -> Option<PathBuf> {
+    recorded_app_in(&data_root()?)
+}
+
+#[cfg(any(not(any(target_os = "macos", windows)), test))]
+fn recorded_app_in(root: &Path) -> Option<PathBuf> {
+    read_json::<ShellCommand>(&root.join(SHELL_COMMAND_FILE), MAX_SHELL_COMMAND_BYTES)?
+        .app
+        .filter(|app| app.is_absolute())
 }
 
 pub(crate) fn saved_main_document(folder: &Path) -> Option<String> {
@@ -87,6 +109,27 @@ mod tests {
             )
             .unwrap();
         }
+    }
+
+    #[test]
+    fn the_appimage_the_desktop_app_recorded_is_where_the_command_finds_it() {
+        let data = TempDir::new().unwrap();
+        assert_eq!(recorded_app_in(data.path()), None);
+        std::fs::write(
+            data.path().join(SHELL_COMMAND_FILE),
+            r#"{"version":1,"path":"/home/me/.local/bin/oleafly","method":"copy","app":"/home/me/Apps/Oleafly.AppImage"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            recorded_app_in(data.path()),
+            Some(PathBuf::from("/home/me/Apps/Oleafly.AppImage"))
+        );
+        std::fs::write(
+            data.path().join(SHELL_COMMAND_FILE),
+            r#"{"version":1,"path":"/home/me/.local/bin/oleafly","method":"link","app":"Oleafly.AppImage"}"#,
+        )
+        .unwrap();
+        assert_eq!(recorded_app_in(data.path()), None);
     }
 
     #[test]

@@ -1367,6 +1367,35 @@
     "description": "Restore {{sectionName}} preferences to their defaults.",
     "label": "Reset settings"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} will be on your PATH once you sign out and back in. Then open a new terminal.",
+    "checking": "Checking…",
+    "description": "Type <code>oleafly .</code> in a terminal to open that folder in Oleafly.",
+    "install": "Install",
+    "installing": "Installing…",
+    "loadFailed": "Couldn't check the terminal command.",
+    "notOnPath": {
+      "file": "{{directory}} isn't on your PATH yet. Add this line to {{file}}, then open a new terminal:",
+      "run": "{{directory}} isn't on your PATH yet. Run this once, then open a new terminal:"
+    },
+    "removing": "Removing…",
+    "result": {
+      "copied": "Copied the command to {{path}}.",
+      "linked": "Linked {{path}} to this copy of Oleafly.",
+      "removed": "Removed {{path}}."
+    },
+    "state": {
+      "installed": "Installed at {{path}}.",
+      "moveApp": "Move Oleafly to your Applications folder first, then install the command here.",
+      "notInstalled": "Adds oleafly to {{directory}}.",
+      "occupied": "{{path}} already exists and wasn't made by Oleafly, so it stays as it is.",
+      "outdated": "{{path}} still points to an older copy of Oleafly. Update it to use this copy.",
+      "packaged": "Installed at {{path}} by your Oleafly package.",
+      "unavailable": "This copy of Oleafly doesn't include the command."
+    },
+    "title": "Terminal command",
+    "update": "Update"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

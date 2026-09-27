@@ -143,20 +143,55 @@ describe("an opened folder without a main document", () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
-  it("keeps the current engine filter once the folder has a main document", async () => {
+  it("shows nothing extra for a library project", () => {
+    openFolder({ projectId: "paper", manifestHome: "library" });
+    render(<FileTree />);
+    expect(screen.queryByTestId("no-main-document")).not.toBeInTheDocument();
+  });
+});
+
+describe("an opened folder with a main document", () => {
+  it("still offers every document family as the main", async () => {
     openFolder({ mainDoc: "poster.typ", engine: TYPST_ENGINE });
     render(<FileTree />);
     expect(screen.queryByTestId("no-main-document")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("notes"));
     openRowMenu("draft.md");
+    expect(within(await screen.findByRole("menu")).getByText(files.setMain)).not.toHaveAttribute(
+      "data-disabled",
+    );
+  });
+
+  it("switches the main to a document of another family", async () => {
+    openFolder({ mainDoc: "poster.typ", engine: TYPST_ENGINE });
+    render(<FileTree />);
+    fireEvent.click(screen.getByText("notes"));
+    openRowMenu("draft.md");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.setMain));
+    await waitFor(() => expect(useFilesStore.getState().mainDoc).toBe("notes/draft.md"));
+    expect(mocks.invoke).toHaveBeenCalledWith("set_main_doc", {
+      projectId: "linked-a",
+      mainDoc: "notes/draft.md",
+    });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("still refuses files that are not documents", async () => {
+    openFolder({ mainDoc: "poster.typ", engine: TYPST_ENGINE });
+    render(<FileTree />);
+    openRowMenu("refs.bib");
     expect(within(await screen.findByRole("menu")).getByText(files.setMain)).toHaveAttribute(
       "data-disabled",
     );
   });
 
-  it("shows nothing extra for a library project", () => {
-    openFolder({ projectId: "paper", manifestHome: "library" });
+  it("keeps the current engine filter in a library project", async () => {
+    openFolder({ projectId: "paper", manifestHome: "library", mainDoc: "poster.typ", engine: TYPST_ENGINE });
     render(<FileTree />);
-    expect(screen.queryByTestId("no-main-document")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("notes"));
+    openRowMenu("draft.md");
+    expect(within(await screen.findByRole("menu")).getByText(files.setMain)).toHaveAttribute(
+      "data-disabled",
+    );
   });
 });

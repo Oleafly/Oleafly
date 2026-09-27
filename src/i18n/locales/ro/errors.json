@@ -11,13 +11,14 @@
     "linked_replaced": "Folderul {{folder}} nu este cel pe care Oleafly l-a deschis anterior. Deschide-l din nou pentru a continua.",
     "linked_permission_denied": "Oleafly nu are permisiunea de a deschide folderul {{folder}}.",
     "linked_invalid": "Legătura Oleafly cu acest folder este deteriorată. Elimină-l din Oleafly, apoi deschide din nou folderul.",
+    "linked_in_app_data": "Oleafly nu poate deschide folderul {{folder}}, deoarece acum se află în folderul de date Oleafly sau folderul de date se află în el. Mută unul în afara celuilalt, apoi deschide din nou folderul.",
     "linked_not_recyclable": "Acest folder a fost deschis în locația sa, așa că nu poate fi mutat în Coșul de reciclare. Fișierele tale nu au fost modificate.",
     "linked_not_duplicable": "Acest folder a fost deschis în locația sa, așa că Oleafly nu îl poate duplica.",
     "folder_not_a_folder": "Oleafly nu poate folosi această locație. Alege un folder.",
     "folder_in_app_data": "Oleafly își păstrează propriile date în acel folder. Alege altul.",
     "folder_too_broad": "{{name}} este prea cuprinzător pentru a fi deschis ca un singur proiect. Alege folderul care conține doar acest proiect.",
     "folder_already_linked": "Acel folder se suprapune cu alt proiect din Oleafly. Alege alt folder.",
-    "not_linked": "Localizarea funcționează doar pentru folderele deschise pe loc.",
+    "not_linked": "Localizarea funcționează doar pentru folderele deschise în locația lor.",
     "copy_destination_refused": "Alege un folder din afara proiectului și din afara folderului de date Oleafly.",
     "copy_nothing_open": "Nu este deschis niciun fișier, deci nu ai ce salva.",
     "copy_too_large": "Fișierele deschise sunt prea mari pentru a fi salvate ca o copie.",
@@ -31,8 +32,8 @@
     "copy_entry_limit_git": "Împreună cu istoricul Git, folderul are peste 5.000 de fișiere și foldere. Este mai mult decât poate copia Oleafly dintr-odată.",
     "copy_size_limit": "Folderul are peste 2 GB. Este mai mult decât poate copia Oleafly dintr-odată.",
     "copy_cancelled": "Copierea a fost anulată.",
-    "copy_needs_folder": "Doar folderele deschise pe loc pot fi copiate în bibliotecă.",
-    "not_removable": "Doar folderele deschise pe loc pot fi eliminate din Oleafly.",
+    "copy_needs_folder": "Doar folderele deschise în locația lor pot fi copiate în bibliotecă.",
+    "not_removable": "Doar folderele deschise în locația lor pot fi eliminate din Oleafly.",
     "trash_unavailable": "Oleafly nu a putut muta {{path}} în Coș sau în Coșul de reciclare. Probabil unitatea nu are unul.",
     "linked_replace_folder": "{{path}} este un folder, așa că Oleafly nu îl înlocuiește. Mută-l sau redenumește-l mai întâi."
   },
@@ -94,6 +95,15 @@
     "failed": "Oleafly nu a putut deschide acest folder.",
     "request_expired": "Această cerere de deschidere a expirat. Deschide din nou folderul.",
     "timed_out": "Oleafly nu a putut accesa acest folder. Verifică dacă unitatea este conectată, apoi încearcă din nou."
+  },
+  "shell_command": {
+    "unavailable": "Această copie a Oleafly nu include comanda de terminal.",
+    "move_app": "Mută mai întâi Oleafly în folderul Aplicații, apoi instalează comanda.",
+    "occupied": "{{path}} există deja și nu a fost creat de Oleafly, așa că a fost lăsat neschimbat.",
+    "changed": "{{path}} s-a schimbat după ce Oleafly l-a instalat, așa că a fost lăsat neschimbat.",
+    "failed": "Oleafly nu a putut instala comanda de terminal.",
+    "remove_failed": "Oleafly nu a putut elimina comanda de terminal.",
+    "unsupported": "Comanda de terminal nu este încă disponibilă pe acest sistem."
   },
   "research": {
     "linked_project_folder": "Acest folder este deschis în Oleafly ca proiect separat. Asociază-l în schimb doar pentru citire."

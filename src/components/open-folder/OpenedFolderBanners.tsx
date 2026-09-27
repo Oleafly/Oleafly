@@ -30,7 +30,7 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
   return (
     <div
       data-testid="folder-trust-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground"
+      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-primary/20 bg-[color-mix(in_srgb,var(--primary)_5%,var(--background))] px-3 py-1.5 text-xs text-foreground"
     >
       <ShieldAlert aria-hidden className="size-3.5 shrink-0 text-primary" />
       <p className="min-w-0 flex-1">{t(($) => $.shell.openedFolder.trust.banner)}</p>
@@ -89,7 +89,7 @@ function ReadOnlyBanner({ projectId }: Readonly<{ projectId: string }>) {
   return (
     <div
       data-testid="folder-read-only-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
+      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-[color-mix(in_srgb,var(--color-amber-500)_10%,var(--background))] px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
     >
       <Lock aria-hidden className="size-3.5 shrink-0" />
       <p className="min-w-0 flex-1">{t(($) => $.shell.openedFolder.readOnly.banner)}</p>

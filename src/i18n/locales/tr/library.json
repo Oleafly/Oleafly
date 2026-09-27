@@ -44,8 +44,7 @@
       "name": "Ad",
       "type": "Tür",
       "engine": "Motor",
-      "modified": "Değiştirilme",
-      "activity": "Son etkinlik"
+      "modified": "Değiştirilme"
     },
     "filters": {
       "engine": "Motor",
@@ -70,13 +69,13 @@
       "last30Days": "Son 30 gün",
       "lastYear": "Son bir yıl"
     },
-    "openFolder": "Klasör aç…",
+    "openFolder": "Klasör aç",
     "openFolderShortcut": "Klasör aç ({{shortcut}})",
     "createFirstProject": "Yeni proje oluştur",
     "scope": {
       "label": "Projeleri göster",
       "all": "Tümü",
-      "library": "Oleafly'da",
+      "library": "Oleafly'de",
       "folders": "Klasörler"
     },
     "recent": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "belge",
       "image": "görsel",
-      "diagram": "diyagram"
+      "diagram": "diyagram",
+      "external": "harici"
     },
     "preview": {
       "title": "PDF önizlemesi: {{name}}",
@@ -485,10 +485,6 @@
   },
   "folder": {
     "badge": "Klasör",
-    "noMain": "Ana belge yok",
-    "openedToday": "Bugün açıldı",
-    "openedYesterday": "Dün açıldı",
-    "openedOn": "{{date}} tarihinde açıldı",
     "state": {
       "missing": "Klasör bulunamadı",
       "offline": "Sürücü bağlı değil",
@@ -500,14 +496,14 @@
       "showInExplorer": "Dosya Gezgini'nde göster",
       "showInFileManager": "Dosya yöneticisinde göster",
       "copyToLibrary": "Kitaplığa kopyala",
-      "remove": "Oleafly'dan kaldır"
+      "remove": "Oleafly'den kaldır"
     },
     "remove": {
-      "title": "“{{name}}” Oleafly'dan kaldırılsın mı?",
+      "title": "“{{name}}” Oleafly'den kaldırılsın mı?",
       "description": "Dosyalarınız olduğu yerde kalır. Oleafly bu klasör için oluşturduğu derleme dosyalarını siler ve klasörün güvenini, onaylarını ve bağlı klasörlerini sıfırlar. Sohbetlerini ve geçmişini geri almak için klasörü 30 gün içinde yeniden açın. Geri kalanını yeniden ayarlamanız gerekir.",
-      "confirm": "Oleafly'dan kaldır",
-      "done": "“{{name}}” Oleafly'dan kaldırıldı. Dosyaları hâlâ klasörde.",
-      "failed": "“{{name}}” Oleafly'dan kaldırılamadı."
+      "confirm": "Oleafly'den kaldır",
+      "done": "“{{name}}” Oleafly'den kaldırıldı. Dosyaları hâlâ klasörde.",
+      "failed": "“{{name}}” Oleafly'den kaldırılamadı."
     },
     "unavailable": {
       "missing": {
@@ -524,7 +520,7 @@
       },
       "permissionDenied": {
         "title": "Oleafly “{{name}}” klasörünü açamıyor",
-        "bodyMac": "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler bölümünde Oleafly'ın bu klasörü kullanmasına izin verip yeniden deneyin.",
+        "bodyMac": "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler bölümünde Oleafly'nin bu klasörü kullanmasına izin verip yeniden deneyin.",
         "bodyOther": "Hesabınız {{path}} konumunu okuyamıyor. Klasörün izinlerini denetleyip yeniden deneyin."
       },
       "back": {

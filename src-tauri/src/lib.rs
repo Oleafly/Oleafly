@@ -91,6 +91,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod shell_command;
 mod single_instance;
 mod skills;
 mod skills_catalog;
@@ -148,16 +149,26 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
         if window.label() != "main" {
             return;
         }
-        // Dirty-buffer flush comes first: confirming the TinyTeX
-        // dialog exits immediately, so reaching it before the flush
-        // could discard unsaved edits. `confirm_quit_flush` re-enters
-        // the TinyTeX gate itself once the flush is done.
-        if !quit_gate::flush_confirmed() {
-            api.prevent_close();
-            let _ = window.emit("quit-flush-requested", false);
-        } else if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
-            api.prevent_close();
-            let _ = window.emit("tinytex-quit-blocked", ());
+        let install_gate_pending =
+            latex_engine::install_in_progress() && !latex_engine::quit_confirmed();
+        match quit_gate::decide_main_window_close(std::time::Instant::now(), install_gate_pending) {
+            quit_gate::CloseDecision::Allow => {}
+            quit_gate::CloseDecision::AskPageToFlush => {
+                api.prevent_close();
+                let _ = window.emit("quit-flush-requested", false);
+            }
+            quit_gate::CloseDecision::AskInstallGate => {
+                api.prevent_close();
+                let _ = window.emit("tinytex-quit-blocked", ());
+            }
+            quit_gate::CloseDecision::QuitUnanswered => {
+                api.prevent_close();
+                let _ = crate::project::append_app_log(
+                    "Quitting without a save flush: the window did not answer the quit request"
+                        .to_string(),
+                );
+                window.app_handle().exit(0);
+            }
         }
     }
 }
@@ -495,6 +506,9 @@ pub fn run() {
             system_integration::system_integration_status,
             system_integration::system_integration_set,
             system_integration::claim_quick_action_offer,
+            shell_command::shell_command_status,
+            shell_command::shell_command_install,
+            shell_command::shell_command_uninstall,
             chunked::chunked_ack,
             chunked::read_app_log_chunked,
             logsafe::export_log_archive,
@@ -508,7 +522,6 @@ pub fn run() {
             trust::trust_folder,
             trust::revoke_folder_trust,
             folder_status::project_folder_status,
-            folder_status::project_document_candidates,
             skills::skills_list,
             skills::skills_add,
             skills::skills_create,

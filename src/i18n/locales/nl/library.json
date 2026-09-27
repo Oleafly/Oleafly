@@ -44,8 +44,7 @@
       "name": "Naam",
       "type": "Soort",
       "engine": "Engine",
-      "modified": "Gewijzigd",
-      "activity": "Laatste activiteit"
+      "modified": "Gewijzigd"
     },
     "filters": {
       "engine": "Engine",
@@ -70,7 +69,7 @@
       "last30Days": "Laatste 30 dagen",
       "lastYear": "Laatste jaar"
     },
-    "openFolder": "Map openen…",
+    "openFolder": "Map openen",
     "openFolderShortcut": "Map openen ({{shortcut}})",
     "createFirstProject": "Nieuw project maken",
     "scope": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "document",
       "image": "afbeelding",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "extern"
     },
     "preview": {
       "title": "PDF-voorbeeld: {{name}}",
@@ -485,26 +485,22 @@
   },
   "folder": {
     "badge": "Map",
-    "noMain": "Geen hoofddocument",
-    "openedToday": "Vandaag geopend",
-    "openedYesterday": "Gisteren geopend",
-    "openedOn": "Geopend op {{date}}",
     "state": {
       "missing": "Map ontbreekt",
-      "offline": "Schijf niet verbonden",
+      "offline": "Schijf niet aangesloten",
       "replaced": "Map vervangen",
       "permissionDenied": "Geen toestemming"
     },
     "menu": {
       "showInFinder": "Tonen in Finder",
       "showInExplorer": "Tonen in Verkenner",
-      "showInFileManager": "Tonen in bestandsbeheer",
+      "showInFileManager": "Tonen in de bestandsbeheerder",
       "copyToLibrary": "Naar bibliotheek kopiëren",
       "remove": "Uit Oleafly verwijderen"
     },
     "remove": {
       "title": "“{{name}}” uit Oleafly verwijderen?",
-      "description": "Je bestanden blijven waar ze zijn. Oleafly verwijdert zijn buildbestanden voor deze map en zet vertrouwen, goedkeuringen en gekoppelde mappen terug. Open de map binnen 30 dagen opnieuw om de chats en geschiedenis terug te krijgen. De rest moet je opnieuw instellen.",
+      "description": "Je bestanden blijven waar ze zijn. Oleafly verwijdert zijn buildbestanden voor deze map en reset het vertrouwen, de goedkeuringen en de gekoppelde mappen. Open de map binnen 30 dagen opnieuw om de chats en geschiedenis terug te krijgen. De rest moet je opnieuw instellen.",
       "confirm": "Uit Oleafly verwijderen",
       "done": "“{{name}}” is uit Oleafly verwijderd. De bestanden staan nog in de map.",
       "failed": "Kan “{{name}}” niet uit Oleafly verwijderen."
@@ -515,8 +511,8 @@
         "body": "De map stond op {{path}} en is misschien verplaatst of verwijderd. Zoek hem op om de chats en geschiedenis te bewaren."
       },
       "offline": {
-        "title": "“{{name}}” staat op een schijf die niet verbonden is",
-        "body": "Verbind de schijf of netwerkshare met {{path}} en probeer het opnieuw."
+        "title": "“{{name}}” staat op een schijf die niet is aangesloten",
+        "body": "Sluit de schijf aan of maak verbinding met de netwerkshare waarop {{path}} staat, en probeer het opnieuw."
       },
       "replaced": {
         "title": "“{{name}}” is vervangen",

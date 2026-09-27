@@ -44,8 +44,7 @@
       "name": "Name",
       "type": "Art",
       "engine": "Engine",
-      "modified": "Geändert",
-      "activity": "Letzte Aktivität"
+      "modified": "Geändert"
     },
     "filters": {
       "engine": "Engine",
@@ -70,7 +69,7 @@
       "last30Days": "Letzte 30 Tage",
       "lastYear": "Letztes Jahr"
     },
-    "openFolder": "Ordner öffnen…",
+    "openFolder": "Ordner öffnen",
     "openFolderShortcut": "Ordner öffnen ({{shortcut}})",
     "createFirstProject": "Neues Projekt anlegen",
     "scope": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "Dokument",
       "image": "Bild",
-      "diagram": "Diagramm"
+      "diagram": "Diagramm",
+      "external": "Extern"
     },
     "preview": {
       "title": "PDF-Vorschau: {{name}}",
@@ -485,10 +485,6 @@
   },
   "folder": {
     "badge": "Ordner",
-    "noMain": "Kein Hauptdokument",
-    "openedToday": "Heute geöffnet",
-    "openedYesterday": "Gestern geöffnet",
-    "openedOn": "Geöffnet am {{date}}",
     "state": {
       "missing": "Ordner fehlt",
       "offline": "Laufwerk nicht verbunden",
@@ -504,7 +500,7 @@
     },
     "remove": {
       "title": "„{{name}}“ aus Oleafly entfernen?",
-      "description": "Ihre Dateien bleiben, wo sie sind. Oleafly löscht seine Build-Dateien für diesen Ordner und setzt Vertrauen, Freigaben und verknüpfte Ordner zurück. Öffnen Sie den Ordner innerhalb von 30 Tagen erneut, um seine Chats und seinen Verlauf zurückzubekommen. Den Rest müssen Sie neu einrichten.",
+      "description": "Ihre Dateien bleiben, wo sie sind. Oleafly löscht seine Ausgabedateien für diesen Ordner und setzt Vertrauen, Freigaben und verknüpfte Ordner zurück. Öffnen Sie den Ordner innerhalb von 30 Tagen erneut, um seine Chats und seinen Verlauf zurückzubekommen. Den Rest müssen Sie neu einrichten.",
       "confirm": "Aus Oleafly entfernen",
       "done": "„{{name}}“ wurde aus Oleafly entfernt. Die Dateien liegen weiterhin im Ordner.",
       "failed": "„{{name}}“ konnte nicht aus Oleafly entfernt werden."
@@ -539,7 +535,7 @@
     },
     "copy": {
       "title": "„{{name}}“ in Ihre Bibliothek kopieren",
-      "description": "Oleafly kopiert die Dateien in ein neues Bibliotheksprojekt und lässt den Ordner, wo er ist. Der Git-Verlauf wird mitkopiert, Git-Hooks und Build-Dateien nicht.",
+      "description": "Oleafly kopiert die Dateien in ein neues Bibliotheksprojekt und lässt den Ordner, wo er ist. Der Git-Verlauf wird mitkopiert, Git-Hooks und Ausgabedateien nicht.",
       "counting": "Dateien werden gezählt…",
       "copying": "Dateien werden kopiert…",
       "count": "{{done}} von {{total}}",

@@ -48,8 +48,8 @@
     "unreadableHint": "Oleafly nie ma uprawnień, aby to otworzyć.",
     "confirmTrash": "Przenieść {{path}} do Kosza?",
     "confirmTrashWindows": "Przenieść {{path}} do Kosza?",
-    "confirmPermanentDelete": "Oleafly nie może przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
-    "confirmPermanentDeleteWindows": "Oleafly nie może przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "confirmPermanentDelete": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "confirmPermanentDeleteWindows": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
     "linkedReadOnly": "Wskazuje plik poza tym folderem, więc jest tylko do odczytu.",
     "partialFolder": "Nie wszystkie elementy tego folderu są wymienione."
   },

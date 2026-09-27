@@ -2,19 +2,14 @@ import { useEffect } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { logError } from "@/lib/log";
-import { isLinkedHome, mainDocumentMissing } from "@/lib/main-document";
 import { useFilesStore } from "@/store/files";
 import { loadFolderAccess, useFolderAccessStore } from "@/store/folder-access";
 import { useGitStatusStore } from "@/store/git-status";
-import { useMainDocumentStore } from "@/store/main-document";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { useSettingsStore } from "@/store/settings";
 
-const BACKGROUND_SEARCH_DELAY_MS = 1500;
-
 function switchProject(projectId: string | null): void {
-  useMainDocumentStore.getState().reset(projectId);
   if (projectId) void loadFolderAccess(projectId);
   else useFolderAccessStore.getState().reset(null);
 }
@@ -23,29 +18,12 @@ function takePresentedFolder(): void {
   const opened = useOpenFolderStore.getState().opened;
   const files = useFilesStore.getState();
   if (!opened || files.loading || files.projectId !== opened.project_id) return;
-  useMainDocumentStore.getState().seed(opened.project_id, opened.detection);
   if (opened.detection.decision !== "auto") {
     const settings = useSettingsStore.getState();
     settings.setShowTree(true);
     settings.setRailTab("files");
   }
   if (opened.detection.decision !== "ask") useOpenFolderStore.getState().dismiss();
-}
-
-function searchNeeded(): string | null {
-  const files = useFilesStore.getState();
-  const candidates = useMainDocumentStore.getState();
-  if (
-    !files.projectId ||
-    files.loading ||
-    !isLinkedHome(files.manifestHome) ||
-    mainDocumentMissing(files) ||
-    candidates.projectId !== files.projectId ||
-    candidates.status !== "idle"
-  ) {
-    return null;
-  }
-  return files.projectId;
 }
 
 export function OpenFolderKeeper() {
@@ -112,25 +90,6 @@ export function OpenFolderKeeper() {
       stop?.();
     };
   }, []);
-
-  const projectId = useFilesStore((state) => state.projectId);
-  const projectLoading = useFilesStore((state) => state.loading);
-  const linked = useFilesStore((state) => isLinkedHome(state.manifestHome));
-  const missing = useFilesStore(mainDocumentMissing);
-  const unsearched = useMainDocumentStore(
-    (state) => state.projectId === projectId && state.status === "idle",
-  );
-  const pendingSearch =
-    projectId && !projectLoading && linked && !missing && unsearched ? projectId : null;
-  useEffect(() => {
-    if (!pendingSearch) return;
-    const timer = setTimeout(() => {
-      if (searchNeeded() === pendingSearch) {
-        void useMainDocumentStore.getState().load(pendingSearch);
-      }
-    }, BACKGROUND_SEARCH_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [pendingSearch]);
 
   return null;
 }

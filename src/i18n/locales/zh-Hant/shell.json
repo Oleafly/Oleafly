@@ -385,7 +385,7 @@
     "locate": "定位…",
     "useThisFolder": "使用此資料夾",
     "saveCopy": "儲存副本…",
-    "tryAgain": "重試",
+    "tryAgain": "再試一次",
     "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
   },
   "githubMenu": {
@@ -451,16 +451,11 @@
     "picker": {
       "askTitle": "Oleafly 要編譯哪一份文件？",
       "askDescription": "這個資料夾有多份文件。請選擇主要文件，之後可以再變更。",
-      "changeTitle": "選擇主要文件",
-      "changeDescription": "Oleafly 會編譯你選擇的文件，並為這個資料夾記住它。",
       "listLabel": "這個資料夾中的文件",
       "open": "開啟",
       "browse": "只瀏覽檔案",
       "bestMatch": "最佳選擇",
-      "current": "目前",
-      "loading": "正在尋找文件…",
-      "empty": "Oleafly 在這裡找不到文件。請在檔案樹中以右鍵點選檔案，然後選擇「設為主要文件」。",
-      "failed": "Oleafly 無法讀取這個資料夾。",
+      "empty": "Oleafly 在這裡找不到文件。請在檔案樹中以右鍵按一下檔案，然後選擇「設為主要文件」。",
       "truncated": "這個資料夾很大，所以 Oleafly 提早停止尋找。部分文件可能沒有列出。",
       "openFailed": "無法將 {{path}} 設為主要文件。"
     },
@@ -485,18 +480,11 @@
       "standalone_figure": "獨立圖形",
       "placeholder": "尚未下載"
     },
-    "main": {
-      "label": "主要文件：{{path}}",
-      "change": "變更",
-      "changeLabel": "變更主要文件",
-      "others": "其他文件",
-      "switchFailed": "無法切換到 {{path}}。"
-    },
     "noMain": "還沒有主要文件。請選擇一個檔案，然後選擇「設為主要文件」。",
     "trust": {
-      "banner": "Oleafly 已限制這個資料夾中的部分功能。信任它即可開啟 Git、終端機、代理程式和 shell escape。",
+      "banner": "Oleafly 已限制這個資料夾中的部分功能。要信任它並開啟 Git、終端機、代理程式和 shell escape 嗎？",
       "trustFolder": "信任這個資料夾",
-      "trustParent": "信任上層資料夾…",
+      "trustParent": "信任上層資料夾",
       "trustRepository": "信任這個儲存庫",
       "hide": "隱藏",
       "terminal": "在你信任這個資料夾前，這個終端機中的 Git 掛鉤與儲存庫設定都會關閉。",
@@ -1018,9 +1006,9 @@
     "refused": "無法開啟 {{name}}。{{reason}}",
     "reasonWithHint": "{{reason}}{{hint}}",
     "permissionHint": {
-      "mac": "請在「系統設定」中開啟「隱私權與安全性」，再進入「檔案與資料夾」，為 Oleafly 開啟取用權限。如果列表中沒有 Oleafly，請將它加入「完整磁碟取用權限」，然後再試一次。",
-      "windows": "請在資料夾「內容」的「安全性」分頁中確認你的帳號可以讀取它，然後再試一次。",
-      "linux": "請確認你的帳號可以讀取此資料夾，然後再試一次。"
+      "mac": "請在「系統設定」中開啟「隱私權與安全性」，再進入「檔案與檔案夾」，為 Oleafly 開啟取用權限。如果列表中沒有 Oleafly，請將它加入「完整磁碟取用權限」，然後再試一次。",
+      "windows": "請在資料夾「內容」的「安全性」分頁中確認你的帳戶可以讀取它，然後再試一次。",
+      "linux": "請確認你的帳戶可以讀取此資料夾，然後再試一次。"
     }
   },
   "quickActionOffer": {

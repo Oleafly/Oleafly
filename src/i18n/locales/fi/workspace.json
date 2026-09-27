@@ -45,12 +45,12 @@
     "setMainFailed": "Kohdetta \"{{path}}\" ei voitu asettaa päädokumentiksi.",
     "listingStopped": "Näytetään ensimmäiset {{limit}} kohdetta. Kansion loppua ei ole listattu.",
     "unreadable": "Ei käyttöoikeutta",
-    "unreadableHint": "Oleaflylla ei ole oikeutta avata tätä.",
+    "unreadableHint": "Oleaflyllä ei ole oikeutta avata tätä.",
     "confirmTrash": "Siirretäänkö {{path}} roskakoriin?",
     "confirmTrashWindows": "Siirretäänkö {{path}} roskakoriin?",
     "confirmPermanentDelete": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
     "confirmPermanentDeleteWindows": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
-    "linkedReadOnly": "Linkittää tämän kansion ulkopuoliseen tiedostoon, joten se on vain luettavissa.",
+    "linkedReadOnly": "Linkki tämän kansion ulkopuoliseen tiedostoon, joten se on vain luettavissa.",
     "partialFolder": "Kaikkia tämän kansion kohteita ei ole listattu."
   },
   "explorer": {

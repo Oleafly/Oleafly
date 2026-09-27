@@ -11,6 +11,7 @@
     "linked_replaced": "Mappen {{folder}} er ikke den Oleafly åpnet tidligere. Åpne den på nytt for å fortsette.",
     "linked_permission_denied": "Oleafly har ikke tillatelse til å åpne mappen {{folder}}.",
     "linked_invalid": "Oleaflys kobling til denne mappen er skadet. Fjern den fra Oleafly, og åpne deretter mappen på nytt.",
+    "linked_in_app_data": "Oleafly kan ikke åpne mappen {{folder}} fordi den nå ligger inne i datamappen til Oleafly, eller datamappen ligger inne i den. Flytt den ene ut av den andre, og åpne deretter mappen på nytt.",
     "linked_not_recyclable": "Mappen ble åpnet der den ligger, så den kan ikke flyttes til papirkurven. Filene dine er uendret.",
     "linked_not_duplicable": "Mappen ble åpnet der den ligger, så Oleafly kan ikke duplisere den.",
     "folder_not_a_folder": "Oleafly kan ikke bruke den plasseringen. Velg en mappe.",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "Med Git-historikken har mappen mer enn 5 000 filer og mapper. Det er mer enn Oleafly kan kopiere på én gang.",
     "copy_size_limit": "Mappen er større enn 2 GB. Det er mer enn Oleafly kan kopiere på én gang.",
     "copy_cancelled": "Kopieringen ble avbrutt.",
-    "copy_needs_folder": "Bare mapper som er åpnet på stedet, kan kopieres til biblioteket.",
-    "not_removable": "Bare mapper som er åpnet på stedet, kan fjernes fra Oleafly.",
-    "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Stasjonen har kanskje ikke en.",
+    "copy_needs_folder": "Bare mapper som er åpnet der de ligger, kan kopieres til biblioteket.",
+    "not_removable": "Bare mapper som er åpnet der de ligger, kan fjernes fra Oleafly.",
+    "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Stasjonen har kanskje ingen papirkurv.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flytt eller gi den nytt navn først."
   },
   "settings": {
@@ -48,7 +49,7 @@
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil som passer denne maskinen.",
     "package_operation_timeout": "Pakkeoperasjonen brukte mer enn {{span}} og ble stoppet, slik at du kan kompilere igjen. TeX Live-speilet er trolig opptatt. Prøv igjen senere, eller kjør tlmgr selv.",
     "latexmk_build_path": "latexmk kan ikke bruke byggemappen til Oleafly på denne datamaskinen, fordi stien inneholder tegn som latexmk ikke godtar. Bytt dette prosjektet til Tectonic for å kompilere det.",
-    "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på en nettverksdeling. Bytt dette prosjektet til Tectonic, eller kopier mappen til denne datamaskinen."
+    "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på en nettverksressurs. Bytt dette prosjektet til Tectonic, eller kopier mappen til denne datamaskinen."
   },
   "github": {
     "sign_in_expired": "Innloggingskoden utløp. Prøv igjen.",
@@ -94,6 +95,15 @@
     "failed": "Oleafly kunne ikke åpne denne mappen.",
     "request_expired": "Denne mappeforespørselen har utløpt. Åpne mappen på nytt.",
     "timed_out": "Oleafly fikk ikke tilgang til denne mappen. Kontroller at stasjonen er koblet til, og prøv igjen."
+  },
+  "shell_command": {
+    "unavailable": "Denne kopien av Oleafly inneholder ikke terminalkommandoen.",
+    "move_app": "Flytt Oleafly til Programmer-mappen først, og installer deretter kommandoen.",
+    "occupied": "{{path}} finnes allerede og er ikke laget av Oleafly, så den ble latt være.",
+    "changed": "{{path}} er endret etter at Oleafly installerte den, så den ble latt være.",
+    "failed": "Oleafly kunne ikke installere terminalkommandoen.",
+    "remove_failed": "Oleafly kunne ikke fjerne terminalkommandoen.",
+    "unsupported": "Terminalkommandoen er ikke tilgjengelig på dette systemet ennå."
   },
   "research": {
     "linked_project_folder": "Denne mappen er åpnet i Oleafly som et eget prosjekt. Lenk den heller som skrivebeskyttet."

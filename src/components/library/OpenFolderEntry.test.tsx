@@ -32,8 +32,8 @@ describe("OpenFolderButton", () => {
     const user = userEvent.setup();
     render(<OpenFolderButton />);
     const button = screen.getByRole("button", { name: enLibrary.home.openFolder });
-    expect(button).toHaveTextContent(enLibrary.home.openFolder);
-    expect(button).not.toHaveAttribute("aria-label");
+    expect(button).toHaveAttribute("aria-label", enLibrary.home.openFolder);
+    expect(button.textContent).toBe("");
     fireEvent.mouseEnter(button.parentElement as HTMLElement);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       `Open folder (${shortcutLabel(useShortcutStore.getState().bindings.openFolder)})`,

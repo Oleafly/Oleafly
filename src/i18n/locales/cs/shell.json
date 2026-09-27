@@ -457,16 +457,11 @@
     "picker": {
       "askTitle": "Který dokument má Oleafly kompilovat?",
       "askDescription": "Tato složka obsahuje více dokumentů. Vyberte hlavní. Později ho můžete změnit.",
-      "changeTitle": "Vyberte hlavní dokument",
-      "changeDescription": "Oleafly zkompiluje vybraný dokument a zapamatuje si ho pro tuto složku.",
       "listLabel": "Dokumenty v této složce",
       "open": "Otevřít",
       "browse": "Jen procházet soubory",
       "bestMatch": "Nejlepší shoda",
-      "current": "Aktuální",
-      "loading": "Hledají se dokumenty…",
       "empty": "Oleafly tu nenašel žádné dokumenty. Klikněte pravým tlačítkem na soubor ve stromu souborů a zvolte Nastavit jako hlavní dokument.",
-      "failed": "Oleafly nemohl tuto složku přečíst.",
       "truncated": "Tato složka je velká, a tak Oleafly přestal hledat dříve. Některé dokumenty nemusí být v seznamu.",
       "openFailed": "{{path}} se nepodařilo nastavit jako hlavní dokument."
     },
@@ -482,7 +477,7 @@
     },
     "reason": {
       "declared": "Označen jako hlavní soubor",
-      "top_level": "V hlavní složce",
+      "top_level": "V kořenové složce",
       "named_main": "Jmenuje se main",
       "named_after_folder": "Pojmenován podle své složky",
       "includes_files": "Vkládá další soubory",
@@ -491,18 +486,11 @@
       "standalone_figure": "Samostatný obrázek",
       "placeholder": "Ještě není stažen"
     },
-    "main": {
-      "label": "Hlavní: {{path}}",
-      "change": "Změnit",
-      "changeLabel": "Změnit hlavní dokument",
-      "others": "Další dokumenty",
-      "switchFailed": "Nepodařilo se přepnout na {{path}}."
-    },
     "noMain": "Zatím tu není hlavní dokument. Vyberte soubor a zvolte Nastavit jako hlavní dokument.",
     "trust": {
-      "banner": "Oleafly v této složce omezil některé funkce. Důvěřujte jí, abyste zapnuli Git, terminál, agenty a shell escape.",
+      "banner": "Oleafly v této složce omezil některé funkce. Důvěřovat této složce a zapnout Git, terminál, agenty a shell escape?",
       "trustFolder": "Důvěřovat této složce",
-      "trustParent": "Důvěřovat nadřazené složce…",
+      "trustParent": "Důvěřovat nadřazené složce",
       "trustRepository": "Důvěřovat repozitáři",
       "hide": "Skrýt",
       "terminal": "Hooky Gitu a nastavení repozitáře jsou v tomto terminálu vypnuté, dokud složce nebudete důvěřovat.",
@@ -1071,8 +1059,8 @@
     "confirmBoth": "{{project}} se stále kompiluje a asistent stále pracuje. Otevřením {{name}} se zastaví obojí. Vaše změny se nejdřív uloží.",
     "confirmAction": "Zastavit a otevřít",
     "chooseSubfolder": "Vybrat podsložku",
-    "refusedTitle": "{{name}} nelze otevřít",
-    "refused": "{{name}} nelze otevřít. {{reason}}",
+    "refusedTitle": "{{name}} se nepodařilo otevřít",
+    "refused": "{{name}} se nepodařilo otevřít. {{reason}}",
     "reasonWithHint": "{{reason}} {{hint}}",
     "permissionHint": {
       "mac": "V Nastavení systému otevřete Soukromí a zabezpečení, potom Soubory a složky, a zapněte Oleafly. Pokud tam Oleafly není, přidejte ho v části Přístup k celému disku a zkuste to znovu.",

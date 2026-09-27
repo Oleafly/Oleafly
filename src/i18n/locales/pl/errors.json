@@ -11,13 +11,14 @@
     "linked_replaced": "Folder {{folder}} nie jest tym, który Oleafly otworzył wcześniej. Otwórz go ponownie, aby kontynuować.",
     "linked_permission_denied": "Oleafly nie ma uprawnień do otwarcia folderu {{folder}}.",
     "linked_invalid": "Połączenie Oleafly z tym folderem jest uszkodzone. Usuń go z Oleafly, a potem otwórz folder ponownie.",
+    "linked_in_app_data": "Oleafly nie może otworzyć folderu {{folder}}, ponieważ znajduje się on teraz w folderze danych Oleafly albo folder danych znajduje się w nim. Przenieś jeden z nich poza drugi, a potem otwórz folder ponownie.",
     "linked_not_recyclable": "Ten folder otwarto w jego lokalizacji, więc nie można go przenieść do Kosza. Twoje pliki pozostały bez zmian.",
     "linked_not_duplicable": "Ten folder otwarto w jego lokalizacji, więc Oleafly nie może go zduplikować.",
     "folder_not_a_folder": "Oleafly nie może użyć tej lokalizacji. Wybierz folder.",
     "folder_in_app_data": "Oleafly przechowuje w tym folderze własne dane. Wybierz inny.",
     "folder_too_broad": "{{name}} obejmuje zbyt wiele, aby otworzyć go jako jeden projekt. Wybierz folder, który zawiera tylko ten projekt.",
     "folder_already_linked": "Ten folder nakłada się na inny projekt w Oleafly. Wybierz inny folder.",
-    "not_linked": "Lokalizowanie działa tylko dla folderów otwartych w ich miejscu.",
+    "not_linked": "Opcja Wskaż działa tylko dla folderów otwartych w ich lokalizacji.",
     "copy_destination_refused": "Wybierz folder poza projektem i poza folderem danych Oleafly.",
     "copy_nothing_open": "Żadne pliki nie są otwarte, więc nie ma czego zapisać.",
     "copy_too_large": "Otwarte pliki są zbyt duże, aby zapisać je jako kopię.",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "Razem z historią Git ten folder zawiera ponad 5000 plików i folderów. To więcej, niż Oleafly może skopiować naraz.",
     "copy_size_limit": "Ten folder ma ponad 2 GB. To więcej, niż Oleafly może skopiować naraz.",
     "copy_cancelled": "Kopiowanie zostało anulowane.",
-    "copy_needs_folder": "Do biblioteki można skopiować tylko foldery otwarte w miejscu.",
-    "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w miejscu.",
-    "trash_unavailable": "Oleafly nie może przenieść {{path}} do Kosza. Ten dysk może go nie mieć.",
+    "copy_needs_folder": "Do biblioteki można skopiować tylko foldery otwarte w ich lokalizacji.",
+    "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w ich lokalizacji.",
+    "trash_unavailable": "Oleafly nie mógł przenieść {{path}} do Kosza. Ten dysk może go nie mieć.",
     "linked_replace_folder": "{{path}} to folder, więc Oleafly go nie zastąpi. Najpierw go przenieś lub zmień jego nazwę."
   },
   "settings": {
@@ -91,9 +92,18 @@
     "app_data": "Ten folder należy do danych aplikacji Oleafly. Wybierz folder poza nim.",
     "contains_project": "Ten folder zawiera {{name}}, który jest już otwarty w Oleafly jako osobny projekt.",
     "research_folder": "Projekt {{project}} może już edytować pliki w tym folderze przez swoje powiązane foldery. Najpierw usuń tam powiązanie.",
-    "failed": "Oleafly nie udało się otworzyć tego folderu.",
+    "failed": "Oleafly nie mógł otworzyć tego folderu.",
     "request_expired": "To żądanie otwarcia folderu wygasło. Otwórz folder ponownie.",
-    "timed_out": "Oleafly nie może uzyskać dostępu do tego folderu. Sprawdź, czy dysk jest podłączony, i spróbuj ponownie."
+    "timed_out": "Oleafly nie mógł uzyskać dostępu do tego folderu. Sprawdź, czy dysk jest podłączony, i spróbuj ponownie."
+  },
+  "shell_command": {
+    "unavailable": "Ta kopia Oleafly nie zawiera polecenia terminala.",
+    "move_app": "Najpierw przenieś Oleafly do folderu Aplikacje, a potem zainstaluj polecenie.",
+    "occupied": "{{path}} już istnieje i nie pochodzi z Oleafly, więc pozostawiono go bez zmian.",
+    "changed": "{{path}} zmienił się po instalacji przez Oleafly, więc pozostawiono go bez zmian.",
+    "failed": "Oleafly nie mógł zainstalować polecenia terminala.",
+    "remove_failed": "Oleafly nie mógł usunąć polecenia terminala.",
+    "unsupported": "Polecenie terminala nie jest jeszcze dostępne w tym systemie."
   },
   "research": {
     "linked_project_folder": "Ten folder jest otwarty w Oleafly jako osobny projekt. Zamiast tego powiąż go tylko do odczytu."

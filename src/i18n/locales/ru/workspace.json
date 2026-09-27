@@ -11,7 +11,7 @@
       "replace": "Заменить",
       "title": "Это имя уже занято",
       "unchanged": "Исходный путь и путь назначения остались без изменений.",
-      "renameFolderBody": "<destination>{{destination}}</destination> уже существует как папка. Сохраните обе, используя имя <suggestion>{{suggestion}}</suggestion>. В папке, открытой на своём месте, Oleafly никогда не заменяет папку целиком."
+      "renameFolderBody": "Папка <destination>{{destination}}</destination> уже существует. Сохраните обе, используя имя <suggestion>{{suggestion}}</suggestion>. В папке, открытой на своём месте, Oleafly никогда не заменяет папку целиком."
     },
     "createFailed": "Не удалось создать «{{path}}».",
     "deleteFailed": "Не удалось удалить «{{path}}».",

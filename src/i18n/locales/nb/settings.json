@@ -1367,6 +1367,35 @@
     "description": "Tilbakestill innstillingene under {{sectionName}} til standard.",
     "label": "Tilbakestill innstillingene"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} blir lagt til i PATH når du har logget ut og inn igjen. Åpne deretter en ny terminal.",
+    "checking": "Sjekker…",
+    "description": "Skriv <code>oleafly .</code> i en terminal for å åpne mappen i Oleafly.",
+    "install": "Installer",
+    "installing": "Installerer…",
+    "loadFailed": "Kunne ikke sjekke terminalkommandoen.",
+    "notOnPath": {
+      "file": "{{directory}} er ikke i PATH ennå. Legg til denne linjen i {{file}}, og åpne en ny terminal:",
+      "run": "{{directory}} er ikke i PATH ennå. Kjør dette én gang, og åpne en ny terminal:"
+    },
+    "removing": "Fjerner…",
+    "result": {
+      "copied": "Kommandoen ble kopiert til {{path}}.",
+      "linked": "{{path}} peker nå på denne kopien av Oleafly.",
+      "removed": "{{path}} ble fjernet."
+    },
+    "state": {
+      "installed": "Installert i {{path}}.",
+      "moveApp": "Flytt Oleafly til Programmer-mappen først, og installer deretter kommandoen her.",
+      "notInstalled": "Legger oleafly til i {{directory}}.",
+      "occupied": "{{path}} finnes allerede og er ikke laget av Oleafly, så den blir stående som den er.",
+      "outdated": "{{path}} peker fortsatt på en eldre kopi av Oleafly. Oppdater den for å bruke denne kopien.",
+      "packaged": "Installert i {{path}} av Oleafly-pakken din.",
+      "unavailable": "Denne kopien av Oleafly inneholder ikke kommandoen."
+    },
+    "title": "Terminalkommando",
+    "update": "Oppdater"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

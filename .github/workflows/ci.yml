@@ -132,6 +132,9 @@ jobs:
       - name: Test the Tauri version check
         run: pnpm tauri-versions:test
 
+      - name: Test the Linux app binary lookup
+        run: bash scripts/ci/find-linux-app-binary.test.sh
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
@@ -740,6 +743,9 @@ jobs:
           grep -E '/(bin|sbin)/' deb-contents.txt || echo "(none matched /bin/)"
           echo "--- libexec, resources, sidecars (first 25) ---"
           grep -E '/lib/' deb-contents.txt | sed -n '1,25p' || echo "(none matched /lib/)"
+          echo "--- desktop entries ---"
+          grep -E 'usr/share/applications/' deb-contents.txt || echo "(none matched usr/share/applications/)"
+          dpkg-deb --fsys-tarfile oleafly-e2e-linux.deb | tar -xOf - --wildcards '*usr/share/applications/*.desktop' || echo "(could not read the desktop entry)"
           echo "--- $(wc -l < deb-contents.txt) entries total ---"
           echo "--- desktop entries and file manager actions ---"
           grep -E '[.](desktop|nemo_action)$' deb-contents.txt || echo "(none matched)"
@@ -943,30 +949,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
           pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
-          # Match the app by NAME, never by position. The package installs the
-          # engine sidecars beside the app - /usr/bin holds tectonic,
-          # tectonic-biber, pandoc, typst and oleafly - so "the first executable in
-          # /usr/bin" is tectonic, and the suite duly launched tectonic as the
-          # app and got "required arguments were not provided". The Debian
-          # package name and the app binary name are both derived from
-          # productName, so match on that and fail loudly rather than guess.
           # Every filter is guarded: an unmatched grep returns 1 under pipefail.
           dpkg -L "$pkg" > installed-files.txt
           echo "--- executables installed by $pkg ---"
           grep -E '^/usr/bin/.' installed-files.txt || echo "(none)"
-          app_bin=""
-          while IFS= read -r candidate; do
-            case "$candidate" in /usr/bin/*) ;; *) continue ;; esac
-            [ -f "$candidate" ] && [ -x "$candidate" ] || continue
-            base="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
-            if [ "$base" = "$(printf '%s' "$pkg" | tr '[:upper:]' '[:lower:]')" ]; then
-              app_bin="$candidate"
-              break
-            fi
-          done < installed-files.txt
-          if [ -z "$app_bin" ]; then
-            echo "package $pkg installed no executable named '$pkg' in /usr/bin" >&2
+          echo "--- desktop entries installed by $pkg ---"
+          grep -E '^/usr/share/applications/.' installed-files.txt || echo "(none)"
+          if ! app_bin="$(bash scripts/ci/find-linux-app-binary.sh installed-files.txt)"; then
             cat installed-files.txt >&2
+            exit 1
+          fi
+          cli_bin="$(dirname "$app_bin")/oleafly-cli"
+          if [ ! -x "$cli_bin" ]; then
+            echo "package $pkg installed no command-line tool beside $app_bin" >&2
+            exit 1
+          fi
+          "$cli_bin" --version
+          command_bin="$(dirname "$app_bin")/oleafly"
+          if [ ! -x "$command_bin" ]; then
+            echo "package $pkg installed no oleafly command beside $app_bin" >&2
+            exit 1
+          fi
+          command_version="$("$command_bin" --version)"
+          echo "$command_bin --version: $command_version"
+          if [ "$command_version" != "$("$cli_bin" --version)" ]; then
+            echo "$command_bin does not hand its arguments to $cli_bin" >&2
             exit 1
           fi
           echo "app binary: $app_bin"

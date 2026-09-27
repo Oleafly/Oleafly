@@ -431,8 +431,8 @@
     },
     "capture": {
       "paused": "Checkpoints zijn gepauzeerd omdat deze map te groot is. Een checkpoint kan maximaal {{files}} bestanden of {{size}} bevatten.",
-      "skipped_one": "{{formattedCount}} bestand in deze map zit niet in de checkpoints. Oleafly laat links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken weg.",
-      "skipped_other": "{{formattedCount}} bestanden in deze map zitten niet in de checkpoints. Oleafly laat links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken weg."
+      "skipped_one": "{{formattedCount}} bestand in deze map zit niet in de checkpoints. Links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken, neemt Oleafly niet op.",
+      "skipped_other": "{{formattedCount}} bestanden in deze map zitten niet in de checkpoints. Links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken, neemt Oleafly niet op."
     },
     "catalog": {
       "formatVersion": "Formaatversie",
@@ -1038,6 +1038,6 @@
     "keepMine": "Mijn versie houden",
     "reload": "Opnieuw laden",
     "failed": "Oleafly kon {{file}} niet bijwerken. Probeer het opnieuw.",
-    "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je houdt."
+    "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je wilt houden."
   }
 }

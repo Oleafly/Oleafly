@@ -1,4 +1,30 @@
 {
+  "mainBinaryName": "oleafly-desktop",
+  "bundle": {
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/bin/oleafly": "./linux/oleafly",
+          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+        },
+        "desktopTemplate": "linux/main.desktop"
+      },
+      "rpm": {
+        "files": {
+          "/usr/bin/oleafly": "./linux/oleafly",
+          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+        },
+        "desktopTemplate": "linux/main.desktop"
+      },
+      "appimage": {
+        "files": {
+          "/usr/share/applications/Oleafly.desktop": "linux/appimage.desktop"
+        }
+      }
+    }
+  },
   "app": {
     "windows": [
       {
@@ -18,28 +44,5 @@
         "dragDropEnabled": false
       }
     ]
-  },
-  "bundle": {
-    "linux": {
-      "deb": {
-        "desktopTemplate": "linux/main.desktop",
-        "files": {
-          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
-          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
-        }
-      },
-      "rpm": {
-        "desktopTemplate": "linux/main.desktop",
-        "files": {
-          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
-          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
-        }
-      },
-      "appimage": {
-        "files": {
-          "/usr/share/applications/Oleafly.desktop": "linux/appimage.desktop"
-        }
-      }
-    }
   }
 }

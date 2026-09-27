@@ -1383,6 +1383,35 @@
     "description": "Riporta le preferenze di {{sectionName}} ai valori predefiniti.",
     "label": "Reimposta le impostazioni"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} sarà nel tuo PATH quando esci e rientri nella sessione. Poi apri un nuovo terminale.",
+    "checking": "Controllo…",
+    "description": "Digita <code>oleafly .</code> in un terminale per aprire quella cartella in Oleafly.",
+    "install": "Installa",
+    "installing": "Installazione…",
+    "loadFailed": "Impossibile verificare il comando del terminale.",
+    "notOnPath": {
+      "file": "{{directory}} non è ancora nel tuo PATH. Aggiungi questa riga a {{file}}, poi apri un nuovo terminale:",
+      "run": "{{directory}} non è ancora nel tuo PATH. Esegui questo comando una volta, poi apri un nuovo terminale:"
+    },
+    "removing": "Rimozione…",
+    "result": {
+      "copied": "Comando copiato in {{path}}.",
+      "linked": "{{path}} ora punta a questa copia di Oleafly.",
+      "removed": "{{path}} rimosso."
+    },
+    "state": {
+      "installed": "Installato in {{path}}.",
+      "moveApp": "Sposta prima Oleafly nella cartella Applicazioni, poi installa il comando qui.",
+      "notInstalled": "Aggiunge oleafly a {{directory}}.",
+      "occupied": "{{path}} esiste già e non è stato creato da Oleafly, quindi resta com'è.",
+      "outdated": "{{path}} punta ancora a una copia precedente di Oleafly. Aggiornalo per usare questa copia.",
+      "packaged": "Installato in {{path}} dal tuo pacchetto Oleafly.",
+      "unavailable": "Questa copia di Oleafly non include il comando."
+    },
+    "title": "Comando del terminale",
+    "update": "Aggiorna"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1500,7 +1529,7 @@
   "systemIntegration": {
     "title": "Integrazione con il sistema",
     "description": "Apri le cartelle in Oleafly dal tuo file manager.",
-    "checking": "Verifica in corso…",
+    "checking": "Controllo…",
     "loadFailed": "Impossibile verificare la configurazione del file manager.",
     "state": {
       "installed": "Installato",

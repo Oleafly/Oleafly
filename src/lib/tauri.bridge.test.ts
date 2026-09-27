@@ -55,7 +55,6 @@ import {
   mcpServerUpdate,
   mcpServerUpdateValidated,
   mcpServerValidate,
-  projectDocumentCandidates,
   projectFolderStatus,
   projectTrustState,
   renameFile,
@@ -540,10 +539,6 @@ describe("opened folder bridge", () => {
       synced_with: "icloud_drive",
     });
     expect(mocks.invoke).toHaveBeenLastCalledWith("project_folder_status", {
-      projectId: "linked-1",
-    });
-    await projectDocumentCandidates("linked-1");
-    expect(mocks.invoke).toHaveBeenLastCalledWith("project_document_candidates", {
       projectId: "linked-1",
     });
   });

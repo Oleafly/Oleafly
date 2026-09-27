@@ -45,7 +45,7 @@
     "setMainFailed": "\"{{path}}\" ana belge yapılamadı.",
     "listingStopped": "İlk {{limit}} öğe gösteriliyor. Bu klasörün geri kalanı listelenmiyor.",
     "unreadable": "Erişim yok",
-    "unreadableHint": "Oleafly'ın bunu açma izni yok.",
+    "unreadableHint": "Oleafly'nin bunu açma izni yok.",
     "confirmTrash": "{{path}} Çöp Sepeti'ne taşınsın mı?",
     "confirmTrashWindows": "{{path}} Geri Dönüşüm Kutusu'na taşınsın mı?",
     "confirmPermanentDelete": "Oleafly, {{path}} öğesini Çöp Sepeti'ne taşıyamadı. Bunun yerine kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",

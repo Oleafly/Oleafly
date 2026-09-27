@@ -170,7 +170,7 @@
       "label": "Kompiler på nytt"
     },
     "saveSettingsToFolder": {
-      "keywords": "lagre prosjektinnstillinger mappe project.json dele hoveddokument",
+      "keywords": "lagre prosjektinnstillinger mappe project.json dele hoveddokument motor save project settings folder share main document engine",
       "label": "Lagre prosjektinnstillingene i denne mappen",
       "saved": "Prosjektinnstillingene er lagret i project.json i denne mappen."
     },
@@ -222,7 +222,7 @@
     },
     "openFolder": {
       "label": "Åpne mappe…",
-      "keywords": "åpne mappe katalog eksisterende lokale filer disk"
+      "keywords": "åpne mappe katalog eksisterende lokale filer disk open folder directory existing local files"
     }
   },
   "community": {
@@ -453,16 +453,11 @@
     "picker": {
       "askTitle": "Hvilket dokument skal Oleafly kompilere?",
       "askDescription": "Denne mappen har mer enn ett dokument. Velg hoveddokumentet. Du kan endre det senere.",
-      "changeTitle": "Velg hoveddokument",
-      "changeDescription": "Oleafly kompilerer dokumentet du velger, og husker det for denne mappen.",
       "listLabel": "Dokumenter i denne mappen",
       "open": "Åpne",
       "browse": "Bare bla i filene",
       "bestMatch": "Beste treff",
-      "current": "Nåværende",
-      "loading": "Leter etter dokumenter…",
       "empty": "Oleafly fant ingen dokumenter her. Høyreklikk på en fil i filtreet og velg Bruk som hoveddokument.",
-      "failed": "Oleafly kunne ikke lese denne mappen.",
       "truncated": "Mappen er stor, så Oleafly sluttet å lete tidlig. Noen dokumenter er kanskje ikke med i listen.",
       "openFailed": "Kunne ikke gjøre {{path}} til hoveddokument."
     },
@@ -487,21 +482,14 @@
       "standalone_figure": "Frittstående figur",
       "placeholder": "Ikke lastet ned ennå"
     },
-    "main": {
-      "label": "Hoveddokument: {{path}}",
-      "change": "Endre",
-      "changeLabel": "Endre hoveddokument",
-      "others": "Andre dokumenter",
-      "switchFailed": "Kunne ikke bytte til {{path}}."
-    },
     "noMain": "Ingen hoveddokument ennå. Velg en fil og deretter Bruk som hoveddokument.",
     "trust": {
-      "banner": "Oleafly har begrenset noen funksjoner i denne mappen. Stol på den for å slå på Git, terminal, agenter og shell escape.",
+      "banner": "Oleafly har begrenset noen funksjoner i denne mappen. Vil du stole på den og slå på Git, terminal, agenter og shell escape?",
       "trustFolder": "Stol på denne mappen",
-      "trustParent": "Stol på den overordnede mappen…",
+      "trustParent": "Stol på den overordnede mappen",
       "trustRepository": "Stol på repositoriet",
       "hide": "Skjul",
-      "terminal": "Git-hooks og repositoryinnstillinger er slått av i denne terminalen til du stoler på mappen.",
+      "terminal": "Git-hooks og repositoriets innstillinger er slått av i denne terminalen til du stoler på mappen.",
       "terminalReopen": "Denne terminalen startet før du stolte på mappen. Åpne den på nytt for å slå på Git-hooks.",
       "reopenTerminal": "Åpne terminalen på nytt",
       "failed": "Kunne ikke stole på denne mappen."
@@ -1027,7 +1015,7 @@
     "update": "Oleafly-oppdatering"
   },
   "openFolder": {
-    "confirmTitle": "Stopp og åpne {{name}}?",
+    "confirmTitle": "Stoppe og åpne {{name}}?",
     "confirmCompile": "{{project}} kompileres fortsatt. Hvis du åpner {{name}}, stopper kompileringen. Endringene dine lagres først.",
     "confirmAssistant": "Assistenten jobber fortsatt i {{project}}. Hvis du åpner {{name}}, stopper svaret. Endringene dine lagres først.",
     "confirmBoth": "{{project}} kompileres fortsatt, og assistenten jobber fortsatt. Hvis du åpner {{name}}, stopper begge deler. Endringene dine lagres først.",

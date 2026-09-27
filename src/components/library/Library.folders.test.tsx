@@ -52,7 +52,7 @@ vi.mock("@/lib/toast", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { Library } from "@/components/library/Library";
-import { RECENT_LIMIT, folderOpenedLabel } from "@/lib/library-projects";
+import { RECENT_LIMIT } from "@/lib/library-projects";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
@@ -95,8 +95,14 @@ function folder(
   });
 }
 
-const THESIS = folder("linked-thesis", "Thesis", { main_doc: "paper/main.tex", last_opened_at: 300 });
-const SLIDES = folder("linked-slides", "Slides", { main_doc: "", last_opened_at: 100 });
+const TODAY = Math.floor(Date.now() / 1000);
+const EXTERNAL = enLibrary.projects.kind.external;
+const THESIS = folder("linked-thesis", "Thesis", {
+  main_doc: "paper/main.tex",
+  last_opened_at: 300,
+  updated_at: TODAY,
+});
+const SLIDES = folder("linked-slides", "Slides", { main_doc: "", last_opened_at: 100, updated_at: TODAY });
 const PAPER = library("paper", { name: "Paper", last_opened_at: 200 });
 
 function seed(projects: ProjectInfo[]) {
@@ -115,6 +121,16 @@ async function renderLibrary() {
     await new Promise((resolve) => setTimeout(resolve, 20));
   });
   return view;
+}
+
+function card(name: string) {
+  return screen.getByRole("button", { name }).parentElement as HTMLElement;
+}
+
+function columns(name: string) {
+  return Array.from(card(name).children)
+    .slice(1, 4)
+    .map((cell) => cell.textContent);
 }
 
 function openActions(name: string) {
@@ -162,17 +178,61 @@ beforeEach(() => {
 });
 
 describe("folder cards", () => {
-  it("show a Folder badge, the short path and the main file", async () => {
+  it("read like library cards, with External as their kind and when they were updated", async () => {
     await renderLibrary();
-    const card = screen.getByRole("button", { name: "Open Thesis" }).parentElement as HTMLElement;
-    expect(within(card).getByText(enLibrary.folder.badge)).toBeInTheDocument();
-    expect(within(card).getByTitle("~/Desktop/thesis")).toHaveTextContent("~/Desktop/thesis");
-    expect(within(card).getByText("paper/main.tex")).toBeInTheDocument();
-    const slides = screen.getByRole("button", { name: "Open Slides" }).parentElement as HTMLElement;
-    expect(within(slides).getByText(enLibrary.folder.noMain)).toBeInTheDocument();
-    const paper = screen.getByRole("button", { name: "Open Paper" }).parentElement as HTMLElement;
-    expect(within(paper).queryByText(enLibrary.folder.badge)).toBeNull();
+    for (const name of ["Open Thesis", "Open Slides"]) {
+      const folderCard = card(name);
+      expect(within(folderCard).getByText("Tectonic")).toBeInTheDocument();
+      expect(within(folderCard).getByText(EXTERNAL)).toBeInTheDocument();
+      expect(within(folderCard).getByText(projectModifiedLabel(TODAY) as string)).toBeInTheDocument();
+      expect(within(folderCard).queryByText(enLibrary.folder.badge)).toBeNull();
+      expect(within(folderCard).queryByText("No main document")).toBeNull();
+      expect(folderCard.textContent).not.toContain("Desktop");
+      for (const state of Object.values(enLibrary.folder.state)) {
+        expect(within(folderCard).queryByText(state)).toBeNull();
+      }
+      expect(folderCard.querySelector(".grayscale")).toBeNull();
+    }
+    expect(within(card("Open Thesis")).queryByText("paper/main.tex")).toBeNull();
+    const paper = card("Open Paper");
+    expect(within(paper).getByText(enLibrary.projects.kind.document)).toBeInTheDocument();
+    expect(within(paper).queryByText(EXTERNAL)).toBeNull();
   });
+
+  it("show a change the folder check found after the first paint", async () => {
+    const lastMonth = TODAY - 40 * 86_400;
+    seed([folder("linked-thesis", "Thesis", { updated_at: lastMonth }), PAPER]);
+    probeProjectAvailability.mockResolvedValue([
+      { project_id: "linked-thesis", availability: "ok", modified_at_ms: TODAY * 1000 },
+    ]);
+    render(<Library />);
+    expect(
+      within(card("Open Thesis")).getByText(projectModifiedLabel(lastMonth) as string),
+    ).toBeInTheDocument();
+    expect(
+      await within(card("Open Thesis")).findByText(projectModifiedLabel(TODAY) as string),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["grid", "list"] as const)(
+    "move a folder up in the %s once the folder check finds a newer change",
+    async (layout) => {
+      useSettingsStore.setState({ homeProjectLayout: layout });
+      seed([
+        library("paper", { name: "Paper", updated_at: TODAY - 7 * 86_400 }),
+        folder("linked-thesis", "Thesis", { updated_at: TODAY - 40 * 86_400 }),
+      ]);
+      probeProjectAvailability.mockResolvedValue([
+        { project_id: "linked-thesis", availability: "ok", modified_at_ms: TODAY * 1000 },
+      ]);
+      const first = () => screen.getAllByRole("button", { name: /^Open (Paper|Thesis)$/ })[0];
+      render(<Library />);
+      expect(first()).toBe(screen.getByRole("button", { name: "Open Paper" }));
+      await waitFor(() =>
+        expect(first()).toBe(screen.getByRole("button", { name: "Open Thesis" })),
+      );
+    },
+  );
 
   it("check folders only after the first paint and only for folders", async () => {
     render(<Library />);
@@ -194,9 +254,11 @@ describe("folder cards", () => {
   ] as const)("show the %s state and explain it instead of opening", async (state, label, title) => {
     reportAll({ "linked-thesis": state, "linked-slides": "ok" });
     await renderLibrary();
-    const card = screen.getByRole("button", { name: "Open Thesis" }).parentElement as HTMLElement;
-    expect(await within(card).findByText(label)).toBeInTheDocument();
-    expect(within(card).queryByText("paper/main.tex")).toBeNull();
+    const thesis = card("Open Thesis");
+    expect(await within(thesis).findByText(label)).toBeInTheDocument();
+    expect(within(thesis).getByText(EXTERNAL)).toBeInTheDocument();
+    expect(within(thesis).queryByText(projectModifiedLabel(TODAY) as string)).toBeNull();
+    expect(thesis.querySelector(".grayscale")).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Thesis" }));
 
@@ -215,43 +277,29 @@ describe("folder cards", () => {
     expect(openProject).toHaveBeenNthCalledWith(2, "linked-slides");
   });
 
-  it("show the path and state in the list view too", async () => {
+  it("list like library rows, with their state where the date would be", async () => {
     useSettingsStore.setState({ homeProjectLayout: "list" });
     reportAll({ "linked-slides": "offline" });
     await renderLibrary();
     const list = screen.getByTestId("project-list");
-    expect(within(list).getByTitle("~/Desktop/thesis")).toHaveTextContent("~/Desktop/thesis");
-    expect(await within(list).findByText(enLibrary.folder.state.offline)).toBeInTheDocument();
-    expect(within(list).getByTitle("~/Desktop/slides")).toHaveTextContent("~/Desktop/slides");
-    expect(within(list).getAllByText(enLibrary.folder.badge)).toHaveLength(2);
+    expect(await within(card("Open Slides")).findAllByText(enLibrary.folder.state.offline)).not.toHaveLength(0);
+    expect(list.textContent).not.toContain("Desktop");
+    expect(within(list).queryByText(enLibrary.folder.badge)).toBeNull();
+    expect(columns("Open Thesis")).toEqual([EXTERNAL, "Tectonic", projectModifiedLabel(TODAY)]);
+    expect(columns("Open Slides")).toEqual([EXTERNAL, "Tectonic", enLibrary.folder.state.offline]);
+    const slides = screen.getByRole("button", { name: "Open Slides" });
+    expect(within(slides).getByText(enLibrary.folder.state.offline).closest("span.sm\\:hidden")).not.toBeNull();
+    expect(within(slides).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("hidden", "sm:block", "lg:hidden");
+    expect(within(screen.getByRole("button", { name: "Open Thesis" })).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("lg:hidden");
   });
 
-  it("label the date column for both kinds of date once folders are listed", async () => {
+  it("label the date column Modified whether or not folders are listed", async () => {
     useSettingsStore.setState({ homeProjectLayout: "list" });
     await renderLibrary();
-    const list = screen.getByTestId("project-list");
-    expect(within(list).getByText(enLibrary.home.columns.activity)).toBeInTheDocument();
-    expect(within(list).queryByText(enLibrary.home.columns.modified)).toBeNull();
+    expect(within(screen.getByTestId("project-list")).getByText(enLibrary.home.columns.modified)).toBeInTheDocument();
 
     act(() => seed([PAPER]));
     expect(within(screen.getByTestId("project-list")).getByText(enLibrary.home.columns.modified)).toBeInTheDocument();
-  });
-
-  it("keep a long path's folder name in view", async () => {
-    const deep = "~/Library/Mobile Documents/com~apple~CloudDocs/2024/thesis";
-    seed([
-      folder("linked-deep", "Deep", {
-        location: { kind: "linked", display_path: deep, availability: "unknown" },
-      }),
-    ]);
-    await renderLibrary();
-    const path = screen.getByTitle(deep);
-    expect(path).toHaveTextContent(deep);
-    const tail = within(path).getByText("/2024/thesis");
-    expect(tail).toHaveClass("shrink-0");
-    expect(within(path).getByText("~/Library/Mobile Documents/com~apple~CloudDocs")).toHaveClass(
-      "truncate",
-    );
   });
 });
 
@@ -274,20 +322,6 @@ describe("project cards and rows", () => {
   });
   const UNOPENED = folder("linked-unopened", "Unopened", { updated_at: today });
 
-  function card(name: string) {
-    return screen.getByRole("button", { name }).parentElement as HTMLElement;
-  }
-
-  function row(name: string) {
-    return screen.getByRole("button", { name }).parentElement as HTMLElement;
-  }
-
-  function columns(name: string) {
-    return Array.from(row(name).children)
-      .slice(1, 4)
-      .map((cell) => cell.textContent);
-  }
-
   it("label recovery and library cards in the grid", async () => {
     seed([RECOVERY, NOTES, THESIS]);
     await renderLibrary();
@@ -308,7 +342,8 @@ describe("project cards and rows", () => {
 
     const thesis = card("Open Thesis");
     expect(within(thesis).getByText("Tectonic")).toBeInTheDocument();
-    expect(within(thesis).getByText("paper/main.tex")).toBeInTheDocument();
+    expect(within(thesis).getByText(EXTERNAL)).toBeInTheDocument();
+    expect(within(thesis).queryByText("paper/main.tex")).toBeNull();
     expect(within(thesis).queryByText(enLibrary.projects.kind.document)).toBeNull();
   });
 
@@ -339,14 +374,10 @@ describe("project cards and rows", () => {
     ]);
 
     const thesis = screen.getByRole("button", { name: "Open Thesis" });
-    expect(within(thesis).getByTitle("~/Desktop/thesis")).toBeInTheDocument();
-    expect(within(thesis).queryByText(`Tectonic · ${enLibrary.projects.kind.document}`)).toBeNull();
-    expect(columns("Open Thesis")).toEqual([
-      enLibrary.projects.kind.document,
-      "Tectonic",
-      folderOpenedLabel(300),
-    ]);
-    expect(columns("Open Unopened")[2]).toBe(folderOpenedLabel(today));
+    expect(within(thesis).queryByTitle(/Desktop/)).toBeNull();
+    expect(within(thesis).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("lg:hidden");
+    expect(columns("Open Thesis")).toEqual([EXTERNAL, "Tectonic", projectModifiedLabel(TODAY)]);
+    expect(columns("Open Unopened")[2]).toBe(projectModifiedLabel(today));
   });
 });
 
@@ -570,6 +601,27 @@ describe("recent row", () => {
 
     act(() => seed([THESIS, PAPER, SLIDES]));
     expect(screen.queryByTestId("library-recent")).toBeNull();
+  });
+
+  it("keeps a long path's folder name in view", async () => {
+    const deep = "~/Library/Mobile Documents/com~apple~CloudDocs/2024/thesis";
+    seed([
+      folder("linked-deep", "Deep", {
+        last_opened_at: 500,
+        location: { kind: "linked", display_path: deep, availability: "unknown" },
+      }),
+      ...Array.from({ length: RECENT_LIMIT }, (_, index) =>
+        library(`extra-${index}`, { name: `Extra ${index}` }),
+      ),
+    ]);
+    await renderLibrary();
+    const path = within(screen.getByTestId("library-recent")).getByTitle(deep);
+    expect(path).toHaveTextContent(deep);
+    const tail = within(path).getByText("/2024/thesis");
+    expect(tail).toHaveClass("shrink-0");
+    expect(within(path).getByText("~/Library/Mobile Documents/com~apple~CloudDocs")).toHaveClass(
+      "truncate",
+    );
   });
 
   it("finds folders by their path", async () => {

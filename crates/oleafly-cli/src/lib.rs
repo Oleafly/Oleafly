@@ -1,6 +1,7 @@
 extern crate self as oleafly_cli;
 
 mod desktop_link;
+mod launcher;
 mod native;
 mod process;
 
@@ -18,6 +19,7 @@ use oleafly_core::{
     Workspace,
 };
 use serde_json::{json, Value};
+use std::ffi::{OsStr, OsString};
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
@@ -64,6 +66,8 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    #[command(about = "Open a folder in the Oleafly app")]
+    Open(OpenCommand),
     #[command(about = "Initialize an Oleafly project")]
     Init(InitCommand),
     #[command(about = "Build the project PDF")]
@@ -86,6 +90,15 @@ pub enum Command {
     },
     #[command(about = "Print the manual page in roff format")]
     Man,
+}
+
+#[derive(Debug, Args)]
+pub struct OpenCommand {
+    #[arg(
+        value_name = "PATH",
+        help = "Folder to open. Without one, oleafly opens the current folder"
+    )]
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
@@ -214,10 +227,99 @@ impl Reporter {
     }
 }
 
+pub fn main() -> std::process::ExitCode {
+    let arguments = expand_open_shorthand(std::env::args_os());
+    let cli = match Cli::try_parse_from(&arguments) {
+        Ok(cli) => cli,
+        Err(error) => with_open_tip(error).exit(),
+    };
+    match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => std::process::ExitCode::from(runtime.block_on(run(cli))),
+        Err(error) => {
+            eprintln!("error: could not start the async runtime: {error}");
+            std::process::ExitCode::from(EXIT_ENVIRONMENT)
+        }
+    }
+}
+
+fn with_open_tip(mut error: clap::Error) -> clap::Error {
+    use clap::error::{ContextKind, ContextValue};
+    if error.kind() != clap::error::ErrorKind::InvalidSubcommand {
+        return error;
+    }
+    let Some(ContextValue::String(name)) = error.get(ContextKind::InvalidSubcommand) else {
+        return error;
+    };
+    if !Path::new(name).is_dir() {
+        return error;
+    }
+    let tip = clap::builder::StyledStr::from(format!(
+        "to open the folder '{name}', use 'oleafly ./{name}'"
+    ));
+    let mut tips = match error.get(ContextKind::Suggested) {
+        Some(ContextValue::StyledStrs(existing)) => existing.clone(),
+        _ => Vec::new(),
+    };
+    tips.push(tip);
+    error.insert(ContextKind::Suggested, ContextValue::StyledStrs(tips));
+    error
+}
+
+pub fn expand_open_shorthand<I, T>(arguments: I) -> Vec<OsString>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let mut arguments: Vec<OsString> = arguments.into_iter().map(Into::into).collect();
+    let mut index = 1;
+    while let Some(argument) = arguments.get(index) {
+        match argument.to_str() {
+            Some("--") => break,
+            Some("-C" | "--project") => index += 2,
+            Some(option) if option.starts_with('-') => index += 1,
+            _ => {
+                if names_a_folder(argument) {
+                    arguments.insert(index, OsString::from("open"));
+                }
+                break;
+            }
+        }
+    }
+    arguments
+}
+
+fn names_a_folder(argument: &OsStr) -> bool {
+    if is_subcommand(argument) {
+        return false;
+    }
+    argument == "."
+        || argument == ".."
+        || argument
+            .to_string_lossy()
+            .chars()
+            .any(std::path::is_separator)
+}
+
+fn is_subcommand(argument: &OsStr) -> bool {
+    let Some(name) = argument.to_str() else {
+        return false;
+    };
+    name == "help"
+        || <Cli as clap::CommandFactory>::command()
+            .get_subcommands()
+            .any(|command| {
+                command.get_name() == name || command.get_all_aliases().any(|alias| alias == name)
+            })
+}
+
 pub async fn run(cli: Cli) -> u8 {
     let reporter = Reporter { json: cli.json };
     let command_name = command_name(&cli.command);
     let result = match cli.command {
+        Command::Open(command) => run_open(&cli.project, command, reporter),
         Command::Init(command) => run_init(&cli.project, command, reporter),
         Command::Build(command) => {
             run_build(&cli.project, BuildRequest::new(command, reporter)).await
@@ -244,6 +346,7 @@ pub async fn run(cli: Cli) -> u8 {
 
 fn command_name(command: &Command) -> &'static str {
     match command {
+        Command::Open(_) => "open",
         Command::Init(_) => "init",
         Command::Build(_) => "build",
         Command::Watch(_) => "watch",
@@ -265,6 +368,20 @@ fn run_completions(shell: clap_complete::Shell) -> Result<u8, Error> {
 fn run_man() -> Result<u8, Error> {
     let command = <Cli as clap::CommandFactory>::command();
     clap_mangen::Man::new(command).render(&mut std::io::stdout())?;
+    Ok(EXIT_SUCCESS)
+}
+
+fn run_open(project: &Path, command: OpenCommand, reporter: Reporter) -> Result<u8, Error> {
+    let requested = command.path.as_deref().unwrap_or(project);
+    let current = std::env::current_dir().map_err(|error| {
+        Error::new(
+            ErrorKind::Io,
+            format!("could not read the current folder: {error}"),
+        )
+    })?;
+    let folder = launcher::resolve_folder(requested, &current)?;
+    launcher::open_in_app(&folder)?;
+    reporter.value(json!({"ok": true, "command": "open", "folder": folder}))?;
     Ok(EXIT_SUCCESS)
 }
 
@@ -705,6 +822,109 @@ mod tests {
         ] {
             Cli::try_parse_from(command).unwrap();
         }
+    }
+
+    fn expanded(arguments: &[&str]) -> Vec<String> {
+        expand_open_shorthand(arguments.iter().map(OsString::from))
+            .into_iter()
+            .map(|argument| argument.into_string().unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn a_path_in_place_of_a_command_opens_that_folder() {
+        for (arguments, expected) in [
+            (vec!["oleafly", "."], vec!["oleafly", "open", "."]),
+            (vec!["oleafly", ".."], vec!["oleafly", "open", ".."]),
+            (
+                vec!["oleafly", "./build"],
+                vec!["oleafly", "open", "./build"],
+            ),
+            (
+                vec!["oleafly", "../thesis"],
+                vec!["oleafly", "open", "../thesis"],
+            ),
+            (
+                vec!["oleafly", "/home/me/thesis"],
+                vec!["oleafly", "open", "/home/me/thesis"],
+            ),
+            (
+                vec!["oleafly", "papers/my thesis"],
+                vec!["oleafly", "open", "papers/my thesis"],
+            ),
+            (
+                vec!["oleafly", "論文/café"],
+                vec!["oleafly", "open", "論文/café"],
+            ),
+            (
+                vec!["oleafly", "--json", "."],
+                vec!["oleafly", "--json", "open", "."],
+            ),
+            (
+                vec!["oleafly", "-C", "elsewhere", "./x"],
+                vec!["oleafly", "-C", "elsewhere", "open", "./x"],
+            ),
+            (
+                vec!["oleafly", "--project", "elsewhere", "."],
+                vec!["oleafly", "--project", "elsewhere", "open", "."],
+            ),
+            (
+                vec!["oleafly", "--project=elsewhere", ".."],
+                vec!["oleafly", "--project=elsewhere", "open", ".."],
+            ),
+        ] {
+            assert_eq!(expanded(&arguments), expected, "{arguments:?}");
+        }
+    }
+
+    #[test]
+    fn commands_and_bare_names_are_left_to_the_parser() {
+        for arguments in [
+            vec!["oleafly"],
+            vec!["oleafly", "build"],
+            vec!["oleafly", "build", "./chapters"],
+            vec!["oleafly", "--json", "doctor"],
+            vec!["oleafly", "-C", "./thesis", "build"],
+            vec!["oleafly", "open"],
+            vec!["oleafly", "open", "build"],
+            vec!["oleafly", "project", "info"],
+            vec!["oleafly", "help"],
+            vec!["oleafly", "thesis"],
+            vec!["oleafly", "--", "."],
+            vec!["oleafly", "--help"],
+        ] {
+            assert_eq!(expanded(&arguments), arguments, "{arguments:?}");
+        }
+        assert_eq!(
+            expanded(&["oleafly", "a\\b"]).len(),
+            if cfg!(windows) { 3 } else { 2 }
+        );
+    }
+
+    #[test]
+    fn open_takes_an_optional_folder_that_may_be_named_like_a_command() {
+        let cli = Cli::try_parse_from(["oleafly", "open"]).unwrap();
+        let Command::Open(command) = cli.command else {
+            panic!("expected open command");
+        };
+        assert_eq!(command.path, None);
+        assert_eq!(cli.project, PathBuf::from("."));
+
+        let cli = Cli::try_parse_from(["oleafly", "open", "build"]).unwrap();
+        let Command::Open(command) = cli.command else {
+            panic!("expected open command");
+        };
+        assert_eq!(command.path, Some(PathBuf::from("build")));
+
+        let cli = Cli::try_parse_from(expand_open_shorthand(["oleafly", ".."])).unwrap();
+        let Command::Open(command) = cli.command else {
+            panic!("expected open command");
+        };
+        assert_eq!(command.path, Some(PathBuf::from("..")));
+
+        let cli = Cli::try_parse_from(expand_open_shorthand(["oleafly", "build"])).unwrap();
+        assert!(matches!(cli.command, Command::Build(_)));
+        assert_eq!(command_name(&cli.command), "build");
     }
 
     #[test]

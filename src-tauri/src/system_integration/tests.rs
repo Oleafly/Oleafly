@@ -3,8 +3,8 @@ use std::ffi::OsString;
 #[cfg(target_os = "macos")]
 use tauri::Manager;
 
-const LINUX_BINARY: &str = "oleafly";
-const PACKAGED_EXE: &str = "/usr/bin/oleafly";
+const LINUX_BINARY: &str = "oleafly-desktop";
+const PACKAGED_EXE: &str = "/usr/bin/oleafly-desktop";
 
 fn url(text: &str) -> tauri::Url {
     tauri::Url::parse(text).unwrap()
@@ -448,7 +448,7 @@ fn packaged_linux_launchers_run_the_installed_binary_with_every_folder() {
         );
     }
     let rendered = desktop_template_rendered(LINUX_BINARY);
-    assert!(rendered.contains("\nExec=/usr/bin/oleafly %F\n"));
+    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %F\n"));
     assert!(rendered.contains("\nName=Oleafly\n"));
 }
 
@@ -459,8 +459,10 @@ fn the_appimage_launcher_runs_its_own_binary_by_name() {
         linux["bundle"]["linux"]["appimage"]["files"]["/usr/share/applications/Oleafly.desktop"],
         "linux/appimage.desktop"
     );
-    let expected = desktop_template_rendered(LINUX_BINARY)
-        .replace("\nExec=/usr/bin/oleafly %F\n", "\nExec=oleafly %F\n");
+    let expected = desktop_template_rendered(LINUX_BINARY).replace(
+        "\nExec=/usr/bin/oleafly-desktop %F\n",
+        "\nExec=oleafly-desktop %F\n",
+    );
     assert_eq!(include_str!("../../linux/appimage.desktop"), expected);
 }
 
@@ -497,7 +499,8 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "linux/oleafly-open-folder.nemo_action",
             "{format}"
         );
-        assert_eq!(files.as_object().unwrap().len(), 2, "{format}");
+        assert_eq!(files["/usr/bin/oleafly"], "./linux/oleafly", "{format}");
+        assert_eq!(files.as_object().unwrap().len(), 3, "{format}");
     }
 }
 
@@ -508,11 +511,11 @@ fn service_menus_open_folders_and_carry_every_translation() {
         "[Desktop Entry]\nType=Service\nMimeType=inode/directory;\nActions=openWithOleafly;\n"
     ));
     assert!(dolphin.contains("\nName=Open with Oleafly\n"));
-    assert!(dolphin.contains("\nExec=/usr/bin/oleafly --open-folder %f\n"));
-    assert!(dolphin.contains("\nIcon=oleafly\n"));
+    assert!(dolphin.contains("\nExec=/usr/bin/oleafly-desktop --open-folder %f\n"));
+    assert!(dolphin.contains("\nIcon=oleafly-desktop\n"));
     let nemo = file_manager::nemo_action(PACKAGED_EXE);
     assert!(nemo.starts_with("[Nemo Action]\n"));
-    assert!(nemo.contains("\nExec=/usr/bin/oleafly --open-folder %F\n"));
+    assert!(nemo.contains("\nExec=/usr/bin/oleafly-desktop --open-folder %F\n"));
     assert!(nemo.contains("\nSelection=s\nExtensions=dir;\nQuote=double\n"));
     for text in [&dolphin, &nemo] {
         let translated = text
@@ -533,8 +536,8 @@ fn service_menus_open_folders_and_carry_every_translation() {
 #[test]
 fn exec_arguments_are_quoted_the_way_desktop_entries_require() {
     assert_eq!(
-        file_manager::exec_argument("/usr/bin/oleafly"),
-        "/usr/bin/oleafly"
+        file_manager::exec_argument("/usr/bin/oleafly-desktop"),
+        "/usr/bin/oleafly-desktop"
     );
     assert_eq!(
         file_manager::exec_argument("/home/me/My Apps/Oleafly.AppImage"),
@@ -784,7 +787,7 @@ fn the_folder_open_with_entry_is_offered_only_beside_an_existing_default() {
         .join("com.oleafly.app.open-folder.desktop");
     let text = std::fs::read_to_string(&entry).unwrap();
     assert!(text.contains("\nNoDisplay=true\nMimeType=inode/directory;\n"));
-    assert!(text.contains("\nExec=/usr/bin/oleafly --open-folder %f\n"));
+    assert!(text.contains("\nExec=/usr/bin/oleafly-desktop --open-folder %f\n"));
     assert_eq!(
         item_state(&here, ItemId::FolderOpenWith),
         Some((ItemState::Installed, false, None))

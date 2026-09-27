@@ -45,8 +45,7 @@
       "name": "Nombre",
       "type": "Tipo",
       "engine": "Motor",
-      "modified": "Modificado",
-      "activity": "Última actividad"
+      "modified": "Modificado"
     },
     "filters": {
       "engine": "Motor",
@@ -71,7 +70,7 @@
       "last30Days": "Últimos 30 días",
       "lastYear": "Último año"
     },
-    "openFolder": "Abrir carpeta…",
+    "openFolder": "Abrir carpeta",
     "openFolderShortcut": "Abrir carpeta ({{shortcut}})",
     "createFirstProject": "Crear un proyecto nuevo",
     "scope": {
@@ -108,7 +107,8 @@
     "kind": {
       "document": "documento",
       "image": "imagen",
-      "diagram": "diagrama"
+      "diagram": "diagrama",
+      "external": "externo"
     },
     "preview": {
       "title": "Vista previa del PDF: {{name}}",
@@ -494,10 +494,6 @@
   },
   "folder": {
     "badge": "Carpeta",
-    "noMain": "Sin documento principal",
-    "openedToday": "Abierto hoy",
-    "openedYesterday": "Abierto ayer",
-    "openedOn": "Abierto el {{date}}",
     "state": {
       "missing": "Falta la carpeta",
       "offline": "Unidad no conectada",
@@ -525,7 +521,7 @@
       },
       "offline": {
         "title": "“{{name}}” está en una unidad que no está conectada",
-        "body": "Conecta la unidad o el recurso de red que contiene {{path}} y vuelve a intentarlo."
+        "body": "Conecta la unidad o el recurso compartido de red que contiene {{path}} y vuelve a intentarlo."
       },
       "replaced": {
         "title": "“{{name}}” se reemplazó",
@@ -541,7 +537,7 @@
         "body": "Oleafly vuelve a tener acceso a {{path}}."
       },
       "locate": "Localizar…",
-      "tryAgain": "Reintentar",
+      "tryAgain": "Volver a intentarlo",
       "useThisFolder": "Usar esta carpeta",
       "checking": "Comprobando…",
       "still": "Oleafly sigue sin poder acceder a ella."

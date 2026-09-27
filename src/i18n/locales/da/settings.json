@@ -1367,6 +1367,35 @@
     "description": "Gendan indstillingerne under {{sectionName}} til standarderne.",
     "label": "Nulstil indstillinger"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} bliver føjet til din PATH, når du har logget ud og ind igen. Åbn derefter en ny terminal.",
+    "checking": "Tjekker…",
+    "description": "Skriv <code>oleafly .</code> i en terminal for at åbne mappen i Oleafly.",
+    "install": "Installer",
+    "installing": "Installerer…",
+    "loadFailed": "Kunne ikke tjekke terminalkommandoen.",
+    "notOnPath": {
+      "file": "{{directory}} er ikke i din PATH endnu. Tilføj denne linje til {{file}}, og åbn en ny terminal:",
+      "run": "{{directory}} er ikke i din PATH endnu. Kør dette én gang, og åbn en ny terminal:"
+    },
+    "removing": "Fjerner…",
+    "result": {
+      "copied": "Kommandoen er kopieret til {{path}}.",
+      "linked": "{{path}} peger nu på denne kopi af Oleafly.",
+      "removed": "{{path}} er fjernet."
+    },
+    "state": {
+      "installed": "Installeret i {{path}}.",
+      "moveApp": "Flyt først Oleafly til mappen Programmer, og installer så kommandoen her.",
+      "notInstalled": "Tilføjer oleafly til {{directory}}.",
+      "occupied": "{{path}} findes allerede og er ikke lavet af Oleafly, så den bliver ikke ændret.",
+      "outdated": "{{path}} peger stadig på en ældre kopi af Oleafly. Opdater den, så den bruger denne kopi.",
+      "packaged": "Installeret i {{path}} af din Oleafly-pakke.",
+      "unavailable": "Denne kopi af Oleafly indeholder ikke kommandoen."
+    },
+    "title": "Terminalkommando",
+    "update": "Opdater"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1484,7 +1513,7 @@
   "systemIntegration": {
     "title": "Systemintegration",
     "description": "Åbn mapper i Oleafly direkte fra din filhåndtering.",
-    "checking": "Kontrollerer…",
+    "checking": "Tjekker…",
     "loadFailed": "Kunne ikke kontrollere opsætningen af filhåndteringen.",
     "state": {
       "installed": "Installeret",

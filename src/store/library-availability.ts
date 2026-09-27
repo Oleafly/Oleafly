@@ -9,6 +9,7 @@ const lastChecked = new Map<string, number>();
 
 interface LibraryAvailabilityState {
   checked: Record<string, ProjectAvailability>;
+  modified: Record<string, number>;
   checking: Record<string, true>;
   check: (
     projectIds: readonly string[],
@@ -37,13 +38,20 @@ async function runCheck(projectIds: string[], set: SetState): Promise<void> {
   try {
     const reports = await probeProjectAvailability(projectIds);
     const found: Record<string, ProjectAvailability> = {};
+    const changed: Record<string, number> = {};
     const checkedAt = Date.now();
     for (const report of reports) {
+      if (typeof report.modified_at_ms === "number") {
+        changed[report.project_id] = report.modified_at_ms / 1000;
+      }
       if (report.availability === "unknown") continue;
       found[report.project_id] = report.availability;
       lastChecked.set(report.project_id, checkedAt);
     }
-    set((state) => ({ checked: { ...state.checked, ...found } }));
+    set((state) => ({
+      checked: { ...state.checked, ...found },
+      modified: { ...state.modified, ...changed },
+    }));
   } catch (error) {
     void logError("check library folders", error);
   } finally {
@@ -54,6 +62,7 @@ async function runCheck(projectIds: string[], set: SetState): Promise<void> {
 
 export const useLibraryAvailabilityStore = create<LibraryAvailabilityState>((set, get) => ({
   checked: {},
+  modified: {},
   checking: {},
   check: async (projectIds, options = {}) => {
     const now = Date.now();
@@ -85,6 +94,6 @@ export const useLibraryAvailabilityStore = create<LibraryAvailabilityState>((set
   reset: () => {
     inFlight.clear();
     lastChecked.clear();
-    set({ checked: {}, checking: {} });
+    set({ checked: {}, modified: {}, checking: {} });
   },
 }));

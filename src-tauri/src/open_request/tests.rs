@@ -665,6 +665,169 @@ fn opening_a_folder_with_one_clear_main_remembers_it_for_the_editor() {
     );
 }
 
+fn listed(project_id: &str) -> crate::project::ProjectInfo {
+    crate::project::list_projects_blocking()
+        .unwrap()
+        .into_iter()
+        .find(|project| project.id == project_id)
+        .unwrap()
+}
+
+fn backdate(path: &Path, seconds: u64) {
+    std::fs::File::options()
+        .write(true)
+        .open(path)
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(seconds))
+        .unwrap();
+}
+
+fn modified_seconds(path: &Path) -> f64 {
+    let modified = std::fs::symlink_metadata(path).unwrap().modified().unwrap();
+    let millis = modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    u64::try_from(millis).unwrap() as f64 / 1000.0
+}
+
+#[test]
+fn opening_a_folder_lists_when_its_files_last_changed_not_when_it_was_opened() {
+    let data = DataDir::new();
+    let happy = data.folder("work/happy", &[("main.tex", ARTICLE)]);
+    backdate(&happy.join("main.tex"), 3_600);
+    let papers = data.folder(
+        "work/papers",
+        &[("alpha/report.tex", ARTICLE), ("beta/report.tex", ARTICLE)],
+    );
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    let before = crate::linked_registry::folder_snapshot_for_test(&happy);
+
+    let happy_id = opened(&happy, None).project_id;
+    let ambiguous = opened(&papers, None);
+
+    assert_eq!(ambiguous.detection.decision, oleafly_core::Decision::Ask);
+    assert_eq!(
+        listed(&happy_id).updated_at,
+        modified_seconds(&happy.join("main.tex"))
+    );
+    assert_eq!(
+        listed(&ambiguous.project_id).updated_at,
+        modified_seconds(&papers)
+    );
+    assert_eq!(
+        crate::linked_registry::folder_snapshot_for_test(&happy),
+        before
+    );
+}
+
+#[test]
+fn a_remembered_main_leaves_the_card_named_after_the_folder_it_is_in() {
+    let data = DataDir::new();
+    let folder = data.folder("work/draft", &[("main.tex", ARTICLE)]);
+    let reply = opened(&folder, None);
+    assert_eq!(
+        crate::project::linked_listing_meta(&reply.project_id)
+            .unwrap()
+            .main_doc,
+        "main.tex"
+    );
+    let moved = folder.with_file_name("final");
+    std::fs::rename(&folder, &moved).unwrap();
+    crate::linked_registry::update(&reply.project_id, |record| {
+        record.canonical_path = moved.to_string_lossy().into_owned();
+        Ok(())
+    })
+    .unwrap();
+
+    let info = listed(&reply.project_id);
+    assert_eq!(info.name, "final");
+    assert_eq!(info.main_doc, "main.tex");
+    assert_eq!(
+        crate::project::read_meta(&reply.project_id).unwrap().name,
+        "final"
+    );
+}
+
+#[test]
+fn a_root_main_tex_is_kept_on_this_device_so_the_library_knows_it_and_its_preview() {
+    let data = DataDir::new();
+    let folder = data.folder("work/happy", &[("main.tex", ARTICLE)]);
+    let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+    let reply = opened(&folder, None);
+    assert_eq!(reply.detection.decision, oleafly_core::Decision::Auto);
+    assert_eq!(reply.detection.main.as_deref(), Some("main.tex"));
+    let stored = crate::project::linked_listing_meta(&reply.project_id).unwrap();
+    assert_eq!(stored.main_doc, "main.tex");
+    assert_eq!(stored.engine, "xetex");
+    crate::paths::build_dir(&reply.project_id).unwrap();
+    let pdf = crate::document_engine::existing_compiled_pdf_path(
+        &reply.project_id,
+        &stored.engine,
+        "main.tex",
+    )
+    .unwrap()
+    .unwrap();
+    std::fs::write(pdf, b"%PDF-1.7").unwrap();
+    let info = listed(&reply.project_id);
+    assert_eq!(info.main_doc, "main.tex");
+    assert!(info.has_preview);
+    assert_eq!(
+        crate::linked_registry::folder_snapshot_for_test(&folder),
+        before
+    );
+}
+
+#[test]
+fn an_oleafly_manifest_main_is_copied_to_this_device_and_never_written_back() {
+    let data = DataDir::new();
+    let manifest = "{\n  \"name\": \"Shared\",\n  \"main_doc\": \"paper.tex\"\n}\n";
+    let folder = data.folder(
+        "work/shared",
+        &[
+            ("paper.tex", ARTICLE),
+            ("main.tex", ARTICLE),
+            ("project.json", manifest),
+        ],
+    );
+    let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+    let reply = opened(&folder, None);
+    assert_eq!(reply.detection.decision, oleafly_core::Decision::Auto);
+    assert_eq!(reply.detection.main.as_deref(), Some("paper.tex"));
+    let stored = crate::project::linked_listing_meta(&reply.project_id).unwrap();
+    assert_eq!(stored.main_doc, "paper.tex");
+    assert_eq!(listed(&reply.project_id).main_doc, "paper.tex");
+    assert_eq!(
+        std::fs::read_to_string(folder.join("project.json")).unwrap(),
+        manifest
+    );
+    assert_eq!(
+        crate::linked_registry::folder_snapshot_for_test(&folder),
+        before
+    );
+}
+
+#[test]
+fn reopening_a_folder_after_choosing_its_main_skips_the_picker_and_lists_the_choice() {
+    let data = DataDir::new();
+    let folder = data.folder(
+        "work/papers",
+        &[("alpha/report.tex", ARTICLE), ("beta/report.tex", ARTICLE)],
+    );
+    let first = opened(&folder, None);
+    assert_eq!(first.detection.decision, oleafly_core::Decision::Ask);
+    crate::project::set_main_doc_for_test(&first.project_id, "beta/report.tex");
+    let again = opened(&folder, None);
+    assert_eq!(again.project_id, first.project_id);
+    assert_eq!(again.detection.decision, oleafly_core::Decision::Auto);
+    assert_eq!(
+        again.detection.source,
+        oleafly_core::DetectionSource::SavedChoice
+    );
+    assert_eq!(again.detection.main.as_deref(), Some("beta/report.tex"));
+    assert_eq!(listed(&first.project_id).main_doc, "beta/report.tex");
+}
+
 #[test]
 fn an_ambiguous_folder_is_left_for_the_person_to_choose() {
     let data = DataDir::new();

@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import type { DetectionCandidate, FolderDetection } from "@/lib/folder-detection";
+import type { DetectionCandidate } from "@/lib/folder-detection";
 import {
   ALL_MAIN_EXTENSIONS,
   candidateReasonLine,
-  compactDocumentPath,
   documentKindLabel,
   isLinkedHome,
   mainDocumentMissing,
-  otherDocuments,
-  sameDocumentPath,
 } from "./main-document";
 
 const labels = enShell.openedFolder;
@@ -25,17 +22,6 @@ function candidate(path: string, overrides: Partial<DetectionCandidate> = {}): D
     depth: path.split("/").length - 1,
     reasons: [],
     ...overrides,
-  };
-}
-
-function detection(candidates: DetectionCandidate[], main: string | null): FolderDetection {
-  return {
-    main,
-    decision: main ? "auto" : "ask",
-    source: "scan",
-    candidates,
-    truncated: false,
-    compile_dir: null,
   };
 }
 
@@ -96,57 +82,6 @@ describe("main document helpers", () => {
     expect(mainDocumentMissing(view(decomposed))).toBe(false);
     expect(mainDocumentMissing(view("paper"))).toBe(true);
     expect(mainDocumentMissing(view("paper\\main.tex"))).toBe(true);
-    expect(sameDocumentPath("Paper/Main.tex", "paper/main.tex")).toBe(true);
-    expect(sameDocumentPath(composed, decomposed)).toBe(true);
-    expect(sameDocumentPath("paper/main.tex", "paper/intro.tex")).toBe(false);
-  });
-
-  it("shortens a long main path from the folder side and keeps the file name whole", () => {
-    expect(compactDocumentPath("paper/main.tex")).toBe("paper/main.tex");
-    expect(compactDocumentPath("thesis/chapters/part-one/appendices/final/main.tex")).toBe(
-      "…/appendices/final/main.tex",
-    );
-    expect(compactDocumentPath("a-very-long-folder-name-for-the-thesis/main.tex")).toBe("…/main.tex");
-    expect(compactDocumentPath("a-file-name-that-is-longer-than-the-whole-budget.tex")).toBe(
-      "a-file-name-that-is-longer-than-the-whole-budget.tex",
-    );
-    expect(
-      compactDocumentPath("folder/a-file-name-that-is-longer-than-the-whole-budget.tex"),
-    ).toBe("a-file-name-that-is-longer-than-the-whole-budget.tex");
-  });
-
-  it("does not list the main again when its spelling differs from the scan", () => {
-    const found = detection(
-      [candidate("Paper/Main.tex"), candidate("slides/talk.tex", { kind: "presentation" })],
-      "Paper/Main.tex",
-    );
-    expect(otherDocuments(found, "paper/main.tex").map((entry) => entry.path)).toEqual([
-      "slides/talk.tex",
-    ]);
-  });
-
-  it("lists the other real documents, not fragments or the current main", () => {
-    const found = detection(
-      [
-        candidate("paper/main.tex", { kind: "document" }),
-        candidate("slides/talk.tex", { kind: "presentation", class: "beamer" }),
-        candidate("poster/poster.tex", { kind: "poster" }),
-        candidate("notes.typ", { family: "typst", tier: "a", kind: "typst", class: null }),
-        candidate("figures/plot.tex", { tier: "w", kind: "standalone", class: "standalone" }),
-      ],
-      "paper/main.tex",
-    );
-    expect(otherDocuments(found, "paper/main.tex").map((entry) => entry.path)).toEqual([
-      "slides/talk.tex",
-      "poster/poster.tex",
-      "notes.typ",
-    ]);
-    expect(otherDocuments(found, "slides/talk.tex").map((entry) => entry.path)).toEqual([
-      "paper/main.tex",
-      "poster/poster.tex",
-      "notes.typ",
-    ]);
-    expect(otherDocuments(null, "paper/main.tex")).toEqual([]);
   });
 
   it("names each document kind", () => {

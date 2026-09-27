@@ -202,26 +202,11 @@ fn folder_status(project_id: &str) -> Result<Option<FolderStatus>, String> {
     }))
 }
 
-fn document_candidates(project_id: &str) -> Result<oleafly_core::Detection, String> {
-    let root = crate::project_location::locate(project_id)?.root;
-    oleafly_core::detect_documents(&root, &oleafly_core::DetectOptions::default())
-        .map_err(|error| error.to_string())
-}
-
 #[tauri::command]
 pub async fn project_folder_status(project_id: String) -> Result<Option<FolderStatus>, String> {
     tauri::async_runtime::spawn_blocking(move || folder_status(&project_id))
         .await
         .map_err(|error| format!("folder status task failed: {error}"))?
-}
-
-#[tauri::command]
-pub async fn project_document_candidates(
-    project_id: String,
-) -> Result<oleafly_core::Detection, String> {
-    tauri::async_runtime::spawn_blocking(move || document_candidates(&project_id))
-        .await
-        .map_err(|error| format!("document search task failed: {error}"))?
 }
 
 #[cfg(test)]
@@ -378,93 +363,5 @@ mod tests {
         )
         .unwrap();
         assert_eq!(folder_status("paper-1").unwrap(), None);
-    }
-
-    #[test]
-    fn document_candidates_come_from_a_fresh_scan_of_the_folder() {
-        let fixture = LinkedFixture::new();
-        let (id, root) = fixture.link("papers");
-        for name in ["alpha", "beta"] {
-            std::fs::create_dir_all(root.join(name)).unwrap();
-            std::fs::write(
-                root.join(name).join("paper.tex"),
-                "\\documentclass{article}\n\\title{A study}\n\\begin{document}\nHi\n\\end{document}\n",
-            )
-            .unwrap();
-        }
-        let detection = document_candidates(&id).unwrap();
-        assert_eq!(detection.decision, oleafly_core::Decision::Ask);
-        let paths: Vec<&str> = detection
-            .candidates
-            .iter()
-            .map(|candidate| candidate.path.as_str())
-            .collect();
-        assert_eq!(paths, ["alpha/paper.tex", "beta/paper.tex"]);
-    }
-
-    #[test]
-    fn document_candidates_ignore_the_saved_choice() {
-        let fixture = LinkedFixture::new();
-        let (id, root) = fixture.link("thesis");
-        std::fs::write(
-            root.join("main.tex"),
-            "\\documentclass{book}\n\\begin{document}\nHi\n\\end{document}\n",
-        )
-        .unwrap();
-        std::fs::write(
-            root.join("slides.tex"),
-            "\\documentclass{beamer}\n\\begin{document}\nHi\n\\end{document}\n",
-        )
-        .unwrap();
-        let sidecar = crate::project_location::linked_state_dir(&id)
-            .unwrap()
-            .unwrap()
-            .join(crate::project_location::MANIFEST_FILE);
-        std::fs::write(
-            sidecar,
-            r#"{"name":"Thesis","main_doc":"slides.tex","engine":"xetex"}"#,
-        )
-        .unwrap();
-        let detection = document_candidates(&id).unwrap();
-        let paths: Vec<&str> = detection
-            .candidates
-            .iter()
-            .map(|candidate| candidate.path.as_str())
-            .collect();
-        assert!(paths.contains(&"main.tex"), "{paths:?}");
-        assert!(paths.contains(&"slides.tex"), "{paths:?}");
-    }
-
-    #[test]
-    fn document_candidates_list_every_document_even_with_a_folder_manifest() {
-        let fixture = LinkedFixture::new();
-        let (id, root) = fixture.link("paper");
-        for (path, class) in [("main.tex", "article"), ("talk/slides.tex", "beamer")] {
-            let file = root.join(path);
-            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
-            std::fs::write(
-                file,
-                format!("\\documentclass{{{class}}}\n\\begin{{document}}\nHi\n\\end{{document}}\n"),
-            )
-            .unwrap();
-        }
-        std::fs::write(
-            root.join("project.json"),
-            r#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
-        )
-        .unwrap();
-        let detection = document_candidates(&id).unwrap();
-        let paths: Vec<&str> = detection
-            .candidates
-            .iter()
-            .map(|candidate| candidate.path.as_str())
-            .collect();
-        assert_eq!(paths, ["main.tex", "talk/slides.tex"]);
-    }
-
-    #[test]
-    fn document_candidates_report_an_unknown_project() {
-        let _fixture = LinkedFixture::new();
-        assert!(document_candidates("linked-00000000000000000000000000000000").is_err());
     }
 }

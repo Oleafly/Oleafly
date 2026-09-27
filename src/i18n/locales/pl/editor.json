@@ -1057,7 +1057,7 @@
     "compare": "Porównaj",
     "keepMine": "Zachowaj moją wersję",
     "reload": "Wczytaj ponownie",
-    "failed": "Oleafly nie może zaktualizować {{file}}. Spróbuj ponownie.",
+    "failed": "Oleafly nie mógł zaktualizować {{file}}. Spróbuj ponownie.",
     "tabMark": "Zmieniono na dysku. Otwórz tę kartę, aby wybrać, którą wersję zachować."
   }
 }

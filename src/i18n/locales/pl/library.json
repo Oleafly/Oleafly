@@ -46,8 +46,7 @@
       "name": "Nazwa",
       "type": "Rodzaj",
       "engine": "Silnik",
-      "modified": "Zmodyfikowano",
-      "activity": "Ostatnia aktywność"
+      "modified": "Zmodyfikowano"
     },
     "filters": {
       "engine": "Silnik",
@@ -72,7 +71,7 @@
       "last30Days": "Ostatnie 30 dni",
       "lastYear": "Ostatni rok"
     },
-    "openFolder": "Otwórz folder…",
+    "openFolder": "Otwórz folder",
     "openFolderShortcut": "Otwórz folder ({{shortcut}})",
     "createFirstProject": "Utwórz nowy projekt",
     "scope": {
@@ -109,7 +108,8 @@
     "kind": {
       "document": "dokument",
       "image": "obraz",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "zewnętrzny"
     },
     "preview": {
       "title": "Podgląd PDF: {{name}}",
@@ -503,10 +503,6 @@
   },
   "folder": {
     "badge": "Folder",
-    "noMain": "Brak dokumentu głównego",
-    "openedToday": "Otwarto dzisiaj",
-    "openedYesterday": "Otwarto wczoraj",
-    "openedOn": "Otwarto {{date}}",
     "state": {
       "missing": "Brak folderu",
       "offline": "Dysk niepodłączony",

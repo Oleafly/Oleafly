@@ -44,8 +44,7 @@
       "name": "Namn",
       "type": "Typ",
       "engine": "Motor",
-      "modified": "Ändrad",
-      "activity": "Senaste aktivitet"
+      "modified": "Ändrad"
     },
     "filters": {
       "engine": "Motor",
@@ -70,7 +69,7 @@
       "last30Days": "Senaste 30 dagarna",
       "lastYear": "Senaste året"
     },
-    "openFolder": "Öppna mapp…",
+    "openFolder": "Öppna mapp",
     "openFolderShortcut": "Öppna mapp ({{shortcut}})",
     "createFirstProject": "Skapa nytt projekt",
     "scope": {
@@ -107,7 +106,8 @@
     "kind": {
       "document": "dokument",
       "image": "bild",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "extern"
     },
     "preview": {
       "title": "PDF-förhandsvisning: {{name}}",
@@ -485,10 +485,6 @@
   },
   "folder": {
     "badge": "Mapp",
-    "noMain": "Inget huvuddokument",
-    "openedToday": "Öppnades i dag",
-    "openedYesterday": "Öppnades i går",
-    "openedOn": "Öppnades {{date}}",
     "state": {
       "missing": "Mappen saknas",
       "offline": "Enheten är inte ansluten",

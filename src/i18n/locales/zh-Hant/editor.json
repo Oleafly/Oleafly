@@ -1023,7 +1023,7 @@
     "untitled": "未命名"
   },
   "changedOnDisk": {
-    "message": "你有尚未儲存的編輯時，{{file}} 在磁碟上已被變更。",
+    "message": "{{file}} 已在磁碟上變更，而你還有尚未儲存的編輯。",
     "compare": "比較",
     "keepMine": "保留我的版本",
     "reload": "重新載入",

@@ -50,7 +50,7 @@
       "title": "Luotetaanko tähän kansioon?",
       "message": "Oleafly ottaa käyttöön Gitin, päätteen, agentit ja LaTeX-työkalut kansiolle {{name}}. Luota vain kansioihin, joiden sisällön tunnet.",
       "messageParent": "Oleafly luottaa kansioon {{name}} ja jokaiseen sen sisällä olevaan kansioon, myös niihin, jotka avaat myöhemmin.",
-      "messageRepository": "Oleafly suorittaa Gitiä kansiossa {{name}} repositorion omilla asetuksilla ja hookeilla.",
+      "messageRepository": "Oleafly suorittaa Gitiä kansiossa {{name}} repositorion omilla asetuksilla ja koukuilla.",
       "confirm": "Luota"
     },
     "restrictedWrite": {
@@ -68,7 +68,7 @@
     },
     "rebindFolder": {
       "title": "Käytetäänkö toista kansiota?",
-      "message": "{{name}} ei ole kansio, joka Oleaflylla oli tälle projektille. Jos käytät sitä, Oleafly tallentaa tallentamattomat muutoksesi siihen ja sulkee tämän projektin päätteet ja agenttien istunnot. Kaikki niissä käynnissä oleva pysähtyy. Lisäksi Oleafly lakkaa luottamasta kansioon, poistaa täyden käyttöoikeuden käytöstä, nollaa avustajan hyväksynnät ja irrottaa tutkimuskansiot. Keskustelut ja historia säilyvät.",
+      "message": "{{name}} ei ole kansio, joka Oleaflyllä oli tälle projektille. Jos käytät sitä, Oleafly tallentaa tallentamattomat muutoksesi siihen ja sulkee tämän projektin päätteet ja agenttien istunnot. Kaikki niissä käynnissä oleva pysähtyy. Lisäksi Oleafly lakkaa luottamasta kansioon, poistaa täyden käyttöoikeuden käytöstä, nollaa avustajan hyväksynnät ja poistaa tutkimuskansioiden linkitykset. Keskustelut ja historia säilyvät.",
       "confirm": "Käytä tätä kansiota"
     },
     "saveCopy": {

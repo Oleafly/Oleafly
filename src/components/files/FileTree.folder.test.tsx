@@ -347,4 +347,3 @@ describe("FileTree in an opened folder", () => {
     expect(within(menu).queryByRole("menuitem", { name: files.makeCopy })).not.toBeInTheDocument();
   });
 });
-

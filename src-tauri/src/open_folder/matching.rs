@@ -253,6 +253,7 @@ mod tests {
             display_name: None,
             created_at: 1,
             last_opened_at: 1,
+            changed_at: None,
             removed_at: None,
             volume_kind: VolumeKind::Local,
             compile_dir: None,

@@ -11,6 +11,7 @@
     "linked_replaced": "La cartella {{folder}} non è quella che Oleafly ha aperto in precedenza. Riaprila per continuare.",
     "linked_permission_denied": "Oleafly non ha l'autorizzazione per aprire la cartella {{folder}}.",
     "linked_invalid": "Il collegamento di Oleafly a questa cartella è danneggiato. Rimuovila da Oleafly, poi riapri la cartella.",
+    "linked_in_app_data": "Oleafly non può aprire la cartella {{folder}} perché ora si trova nella cartella dei dati di Oleafly, oppure è la cartella dei dati a trovarsi al suo interno. Sposta una delle due fuori dall'altra, poi apri di nuovo la cartella.",
     "linked_not_recyclable": "Questa cartella è stata aperta nella sua posizione, quindi non può essere spostata nel cestino. I tuoi file non sono stati modificati.",
     "linked_not_duplicable": "Questa cartella è stata aperta nella sua posizione, quindi Oleafly non può duplicarla.",
     "folder_not_a_folder": "Oleafly non può usare quella posizione. Scegli una cartella.",
@@ -31,8 +32,8 @@
     "copy_entry_limit_git": "Con la cronologia Git, questa cartella contiene più di 5.000 file e cartelle. Sono più di quanti Oleafly possa copiarne in una volta.",
     "copy_size_limit": "Questa cartella supera i 2 GB. È più di quanto Oleafly possa copiare in una volta.",
     "copy_cancelled": "La copia è stata annullata.",
-    "copy_needs_folder": "Solo le cartelle aperte sul posto possono essere copiate nella libreria.",
-    "not_removable": "Solo le cartelle aperte sul posto possono essere rimosse da Oleafly.",
+    "copy_needs_folder": "Solo le cartelle aperte nella loro posizione possono essere copiate nella libreria.",
+    "not_removable": "Solo le cartelle aperte nella loro posizione possono essere rimosse da Oleafly.",
     "trash_unavailable": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Forse questa unità non ne ha uno.",
     "linked_replace_folder": "{{path}} è una cartella, quindi Oleafly non la sostituisce. Spostala o rinominala prima."
   },
@@ -94,6 +95,15 @@
     "failed": "Oleafly non è riuscito ad aprire questa cartella.",
     "request_expired": "Questa richiesta di apertura è scaduta. Apri di nuovo la cartella.",
     "timed_out": "Oleafly non è riuscito a raggiungere questa cartella. Controlla che l'unità sia collegata, poi riprova."
+  },
+  "shell_command": {
+    "unavailable": "Questa copia di Oleafly non include il comando del terminale.",
+    "move_app": "Sposta prima Oleafly nella cartella Applicazioni, poi installa il comando.",
+    "occupied": "{{path}} esiste già e non è stato creato da Oleafly, quindi è stato lasciato com'era.",
+    "changed": "{{path}} è cambiato dopo che Oleafly lo ha installato, quindi è stato lasciato com'era.",
+    "failed": "Oleafly non è riuscito a installare il comando del terminale.",
+    "remove_failed": "Oleafly non è riuscito a rimuovere il comando del terminale.",
+    "unsupported": "Il comando del terminale non è ancora disponibile su questo sistema."
   },
   "research": {
     "linked_project_folder": "Questa cartella è aperta in Oleafly come progetto a sé. Collegala invece in sola lettura."

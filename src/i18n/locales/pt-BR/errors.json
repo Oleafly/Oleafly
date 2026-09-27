@@ -11,6 +11,7 @@
     "linked_replaced": "A pasta {{folder}} não é a mesma que o Oleafly abriu antes. Abra-a novamente para continuar.",
     "linked_permission_denied": "O Oleafly não tem permissão para abrir a pasta {{folder}}.",
     "linked_invalid": "O vínculo do Oleafly com esta pasta está danificado. Remova-a do Oleafly e abra a pasta novamente.",
+    "linked_in_app_data": "O Oleafly não pode abrir a pasta {{folder}} porque ela agora está dentro da pasta de dados do Oleafly, ou a pasta de dados está dentro dela. Tire uma de dentro da outra e abra a pasta de novo.",
     "linked_not_recyclable": "Esta pasta foi aberta no próprio local, então não pode ser movida para a Lixeira. Seus arquivos não foram alterados.",
     "linked_not_duplicable": "Esta pasta foi aberta no próprio local, então o Oleafly não pode duplicá-la.",
     "folder_not_a_folder": "O Oleafly não pode usar esse local. Escolha uma pasta.",
@@ -22,7 +23,7 @@
     "copy_nothing_open": "Nenhum arquivo está aberto, então não há nada para salvar.",
     "copy_too_large": "Os arquivos abertos são grandes demais para salvar como cópia.",
     "copy_failed": "O Oleafly não conseguiu salvar a cópia nesse local. Escolha uma pasta em que você possa gravar.",
-    "folder_picker_failed": "O Oleafly não conseguiu abrir o seletor de pastas. Tente novamente.",
+    "folder_picker_failed": "O Oleafly não conseguiu abrir o seletor de pastas. Tente de novo.",
     "import_no_main": "Esta importação não tem nenhum documento LaTeX, Typst ou Markdown para compilar.",
     "settings_file_exists": "Esta pasta já tem um project.json, então o Oleafly o deixou como estava.",
     "settings_need_main": "Escolha primeiro um documento principal e depois salve as configurações do projeto nesta pasta.",
@@ -85,15 +86,24 @@
     "permission_denied": "O Oleafly não tem permissão para abrir esta pasta.",
     "not_a_folder": "Escolha uma pasta, não um arquivo.",
     "unsupported_folder": "O Oleafly não consegue abrir este tipo de pasta.",
-    "path_not_unicode": "O caminho desta pasta contém caracteres que o Oleafly não consegue ler. Renomeie a pasta e tente novamente.",
+    "path_not_unicode": "O caminho desta pasta contém caracteres que o Oleafly não consegue ler. Renomeie a pasta e tente de novo.",
     "too_broad": "{{name}} contém coisas demais para ser aberta como um único projeto. Escolha uma pasta dentro dela.",
     "protected": "O Oleafly não pode abrir pastas dentro de {{name}}.",
     "app_data": "Esta pasta faz parte dos dados do aplicativo Oleafly. Escolha uma pasta fora dela.",
     "contains_project": "Esta pasta contém {{name}}, que já está aberta no Oleafly como um projeto próprio.",
     "research_folder": "{{project}} já pode editar arquivos desta pasta pelas suas pastas vinculadas. Primeiro desvincule a pasta lá.",
     "failed": "O Oleafly não conseguiu abrir esta pasta.",
-    "request_expired": "Esta solicitação de pasta expirou. Abra a pasta novamente.",
-    "timed_out": "O Oleafly não conseguiu acessar esta pasta. Verifique se a unidade está conectada e tente novamente."
+    "request_expired": "Esta solicitação de abertura expirou. Abra a pasta de novo.",
+    "timed_out": "O Oleafly não conseguiu acessar esta pasta. Verifique se a unidade está conectada e tente de novo."
+  },
+  "shell_command": {
+    "unavailable": "Esta cópia do Oleafly não inclui o comando de terminal.",
+    "move_app": "Primeiro mova o Oleafly para a pasta Aplicativos e depois instale o comando.",
+    "occupied": "{{path}} já existe e não foi criado pelo Oleafly, então foi deixado como estava.",
+    "changed": "{{path}} mudou depois que o Oleafly o instalou, então foi deixado como estava.",
+    "failed": "O Oleafly não conseguiu instalar o comando de terminal.",
+    "remove_failed": "O Oleafly não conseguiu remover o comando de terminal.",
+    "unsupported": "O comando de terminal ainda não está disponível neste sistema."
   },
   "research": {
     "linked_project_folder": "Esta pasta está aberta no Oleafly como um projeto próprio. Vincule-a como somente leitura."
@@ -101,6 +111,6 @@
   "checkpoint": {
     "library_history_for_folder": "Este histórico de pontos de verificação vem de um projeto da sua biblioteca do Oleafly, então não pode ser usado com uma pasta aberta no próprio local.",
     "folder_history_for_library": "Este histórico de pontos de verificação vem de uma pasta aberta no próprio local, então não pode ser usado com um projeto da sua biblioteca do Oleafly.",
-    "restore_path_blocked": "O Oleafly não pode restaurar {{path}} porque há um link ou outra coisa que não é um arquivo no lugar. Mova-o e tente novamente."
+    "restore_path_blocked": "O Oleafly não pode restaurar {{path}} porque há um link ou outra coisa que não é um arquivo no lugar. Mova-o e tente de novo."
   }
 }

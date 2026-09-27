@@ -73,10 +73,6 @@
     "kind": {
       "standalone": "Kind of document: a LaTeX file that uses the standalone class, usually one figure"
     },
-    "main": {
-      "change": "Short link-style button after the main document name in the compile toolbar. It opens the list of documents to choose from",
-      "label": "Compile toolbar text naming the document that compiles; path is a file path"
-    },
     "picker": {
       "bestMatch": "Badge on the document the app thinks is the main one",
       "browse": "Secondary button: close the chooser without picking a document and look at the files"
@@ -86,10 +82,11 @@
       "top_level": "Reason shown under a file: it sits in the opened folder itself, not in a subfolder"
     },
     "trust": {
+      "banner": "Banner above the editor in a folder that isn't trusted yet. The second sentence is a yes-or-no question that the Trust buttons after it answer, so end it with your language's question mark",
       "hide": "Accessible name of the close button that hides the trust banner until the app restarts",
       "reopenTerminal": "Menu action on a terminal tab strip. It closes the shell of the current terminal and starts a new one in the same tab",
       "terminalReopen": "Shown on a terminal whose shell started while the folder was not trusted. Git hooks stay off in that shell until it is reopened",
-      "trustParent": "Button that trusts the folder that contains this one, and everything inside it"
+      "trustParent": "Button that trusts the folder that contains this one, and everything inside it. No ellipsis at the end"
     }
   },
   "renameDialog": {

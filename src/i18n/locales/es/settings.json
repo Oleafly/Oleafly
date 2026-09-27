@@ -1383,6 +1383,35 @@
     "description": "Restaura las preferencias de {{sectionName}} a sus valores predeterminados.",
     "label": "Restablecer los ajustes"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} estará en tu PATH cuando cierres sesión y vuelvas a entrar. Después, abre un terminal nuevo.",
+    "checking": "Comprobando…",
+    "description": "Escribe <code>oleafly .</code> en un terminal para abrir esa carpeta en Oleafly.",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "loadFailed": "No se pudo comprobar el comando de terminal.",
+    "notOnPath": {
+      "file": "{{directory}} aún no está en tu PATH. Añade esta línea a {{file}} y abre un terminal nuevo:",
+      "run": "{{directory}} aún no está en tu PATH. Ejecuta esto una vez y abre un terminal nuevo:"
+    },
+    "removing": "Quitando…",
+    "result": {
+      "copied": "Se copió el comando en {{path}}.",
+      "linked": "{{path}} ahora apunta a esta copia de Oleafly.",
+      "removed": "Se quitó {{path}}."
+    },
+    "state": {
+      "installed": "Instalado en {{path}}.",
+      "moveApp": "Primero mueve Oleafly a la carpeta Aplicaciones y luego instala el comando aquí.",
+      "notInstalled": "Añade oleafly a {{directory}}.",
+      "occupied": "{{path}} ya existe y no lo creó Oleafly, así que se queda como está.",
+      "outdated": "{{path}} todavía apunta a una copia anterior de Oleafly. Actualízalo para usar esta copia.",
+      "packaged": "Instalado en {{path}} por tu paquete de Oleafly.",
+      "unavailable": "Esta copia de Oleafly no incluye el comando."
+    },
+    "title": "Comando de terminal",
+    "update": "Actualizar"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

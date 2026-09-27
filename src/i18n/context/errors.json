@@ -1,0 +1,5 @@
+{
+  "project": {
+    "linked_in_app_data": "Shown when a folder opened in place and Oleafly's own data folder end up one inside the other, usually after one of them was moved. {{folder}} is only the folder's name, never a full path. Either folder can be the one inside."
+  }
+}

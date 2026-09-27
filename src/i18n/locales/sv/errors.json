@@ -11,13 +11,14 @@
     "linked_replaced": "Mappen {{folder}} är inte den som Oleafly öppnade tidigare. Öppna den igen för att fortsätta.",
     "linked_permission_denied": "Oleafly har inte behörighet att öppna mappen {{folder}}.",
     "linked_invalid": "Oleaflys länk till den här mappen är skadad. Ta bort den från Oleafly och öppna sedan mappen igen.",
+    "linked_in_app_data": "Oleafly kan inte öppna mappen {{folder}} eftersom den nu ligger i Oleaflys datamapp, eller så ligger datamappen i den. Flytta ut den ena ur den andra och öppna sedan mappen igen.",
     "linked_not_recyclable": "Mappen öppnades där den ligger, så den kan inte flyttas till papperskorgen. Dina filer är oförändrade.",
     "linked_not_duplicable": "Mappen öppnades där den ligger, så Oleafly kan inte duplicera den.",
     "folder_not_a_folder": "Oleafly kan inte använda den platsen. Välj en mapp.",
     "folder_in_app_data": "Oleafly sparar egna data i den mappen. Välj en annan.",
     "folder_too_broad": "{{name}} är för omfattande för att öppnas som ett projekt. Välj mappen som bara innehåller det här projektet.",
     "folder_already_linked": "Den mappen överlappar ett annat projekt i Oleafly. Välj en annan mapp.",
-    "not_linked": "Hitta fungerar bara för mappar som öppnats på sin plats.",
+    "not_linked": "Leta upp fungerar bara för mappar som öppnats där de ligger.",
     "copy_destination_refused": "Välj en mapp utanför projektet och utanför Oleaflys datamapp.",
     "copy_nothing_open": "Inga filer är öppna, så det finns inget att spara.",
     "copy_too_large": "De öppna filerna är för stora för att sparas som en kopia.",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "Med Git-historiken innehåller mappen mer än 5 000 filer och mappar. Det är mer än Oleafly kan kopiera på en gång.",
     "copy_size_limit": "Mappen är större än 2 GB. Det är mer än Oleafly kan kopiera på en gång.",
     "copy_cancelled": "Kopieringen avbröts.",
-    "copy_needs_folder": "Bara mappar som öppnats på plats kan kopieras till biblioteket.",
-    "not_removable": "Bara mappar som öppnats på plats kan tas bort från Oleafly.",
-    "trash_unavailable": "Oleafly kunde inte flytta {{path}} till papperskorgen. Enheten kanske saknar en.",
+    "copy_needs_folder": "Bara mappar som öppnats där de ligger kan kopieras till biblioteket.",
+    "not_removable": "Bara mappar som öppnats där de ligger kan tas bort från Oleafly.",
+    "trash_unavailable": "Oleafly kunde inte flytta {{path}} till papperskorgen. Enheten kanske inte har någon papperskorg.",
     "linked_replace_folder": "{{path}} är en mapp, så Oleafly ersätter den inte. Flytta eller byt namn på den först."
   },
   "settings": {
@@ -94,6 +95,15 @@
     "failed": "Oleafly kunde inte öppna den här mappen.",
     "request_expired": "Den här mappbegäran har gått ut. Öppna mappen igen.",
     "timed_out": "Oleafly kunde inte nå den här mappen. Kontrollera att enheten är ansluten och försök igen."
+  },
+  "shell_command": {
+    "unavailable": "Den här kopian av Oleafly innehåller inte terminalkommandot.",
+    "move_app": "Flytta först Oleafly till mappen Program och installera sedan kommandot.",
+    "occupied": "{{path}} finns redan och skapades inte av Oleafly, så det lämnades som det var.",
+    "changed": "{{path}} har ändrats sedan Oleafly installerade det, så det lämnades som det var.",
+    "failed": "Oleafly kunde inte installera terminalkommandot.",
+    "remove_failed": "Oleafly kunde inte ta bort terminalkommandot.",
+    "unsupported": "Terminalkommandot är inte tillgängligt i det här systemet ännu."
   },
   "research": {
     "linked_project_folder": "Den här mappen är öppen i Oleafly som ett eget projekt. Länka den som skrivskyddad i stället."

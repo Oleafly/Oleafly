@@ -11,13 +11,14 @@
     "linked_replaced": "Mappen {{folder}} er ikke den, Oleafly åbnede før. Åbn den igen for at fortsætte.",
     "linked_permission_denied": "Oleafly har ikke tilladelse til at åbne mappen {{folder}}.",
     "linked_invalid": "Oleaflys link til denne mappe er beskadiget. Fjern den fra Oleafly, og åbn derefter mappen igen.",
+    "linked_in_app_data": "Oleafly kan ikke åbne mappen {{folder}}, fordi den nu ligger inde i Oleaflys datamappe, eller datamappen ligger inde i den. Flyt den ene ud af den anden, og åbn så mappen igen.",
     "linked_not_recyclable": "Mappen blev åbnet, hvor den ligger, så den kan ikke flyttes til papirkurven. Dine filer er uændrede.",
     "linked_not_duplicable": "Mappen blev åbnet, hvor den ligger, så Oleafly kan ikke duplikere den.",
     "folder_not_a_folder": "Oleafly kan ikke bruge den placering. Vælg en mappe.",
     "folder_in_app_data": "Oleafly gemmer sine egne data i den mappe. Vælg en anden.",
-    "folder_too_broad": "{{name}} er for bred til at blive åbnet som ét projekt. Vælg den mappe, der kun indeholder dette projekt.",
+    "folder_too_broad": "{{name}} er for omfattende til at blive åbnet som ét projekt. Vælg den mappe, der kun indeholder dette projekt.",
     "folder_already_linked": "Den mappe overlapper et andet projekt i Oleafly. Vælg en anden mappe.",
-    "not_linked": "Find virker kun for mapper, der er åbnet på deres egen placering.",
+    "not_linked": "Find virker kun for mapper, der er åbnet, hvor de ligger.",
     "copy_destination_refused": "Vælg en mappe uden for projektet og uden for Oleaflys datamappe.",
     "copy_nothing_open": "Ingen filer er åbne, så der er intet at gemme.",
     "copy_too_large": "De åbne filer er for store til at blive gemt som en kopi.",
@@ -31,9 +32,9 @@
     "copy_entry_limit_git": "Med Git-historikken indeholder mappen mere end 5.000 filer og mapper. Det er mere, end Oleafly kan kopiere på én gang.",
     "copy_size_limit": "Mappen er større end 2 GB. Det er mere, end Oleafly kan kopiere på én gang.",
     "copy_cancelled": "Kopieringen blev annulleret.",
-    "copy_needs_folder": "Kun mapper, der er åbnet på stedet, kan kopieres til biblioteket.",
-    "not_removable": "Kun mapper, der er åbnet på stedet, kan fjernes fra Oleafly.",
-    "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Drevet har måske ikke en.",
+    "copy_needs_folder": "Kun mapper, der er åbnet, hvor de ligger, kan kopieres til biblioteket.",
+    "not_removable": "Kun mapper, der er åbnet, hvor de ligger, kan fjernes fra Oleafly.",
+    "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Drevet har måske ingen papirkurv.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flyt eller omdøb den først."
   },
   "settings": {
@@ -47,7 +48,7 @@
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
     "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv.",
-    "latexmk_build_path": "latexmk kan ikke bruge Oleaflys build-mappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
+    "latexmk_build_path": "latexmk kan ikke bruge Oleaflys byggemappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
     "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer."
   },
   "github": {
@@ -66,7 +67,7 @@
   },
   "trust": {
     "git": "Stol på denne mappe for at bruge versionsstyring.",
-    "repository": "Stol på repositoriet {{name}} for at bruge versionsstyring her.",
+    "repository": "Stol på repositoryet {{name}} for at bruge versionsstyring her.",
     "terminal": "Åbn selv terminalen for at bruge den i denne mappe.",
     "agents": "Stol på denne mappe for at bruge eksterne agenter.",
     "mcp": "Stol på denne mappe, før MCP-klienter kan bruge den.",
@@ -94,6 +95,15 @@
     "failed": "Oleafly kunne ikke åbne denne mappe.",
     "request_expired": "Denne mappeanmodning er udløbet. Åbn mappen igen.",
     "timed_out": "Oleafly kunne ikke nå denne mappe. Kontrollér, at drevet er tilsluttet, og prøv igen."
+  },
+  "shell_command": {
+    "unavailable": "Denne kopi af Oleafly indeholder ikke terminalkommandoen.",
+    "move_app": "Flyt først Oleafly til mappen Programmer, og installer så kommandoen.",
+    "occupied": "{{path}} findes allerede og er ikke lavet af Oleafly, så den blev ikke ændret.",
+    "changed": "{{path}} er ændret, siden Oleafly installerede den, så den blev ikke rørt.",
+    "failed": "Oleafly kunne ikke installere terminalkommandoen.",
+    "remove_failed": "Oleafly kunne ikke fjerne terminalkommandoen.",
+    "unsupported": "Terminalkommandoen er endnu ikke tilgængelig på dette system."
   },
   "research": {
     "linked_project_folder": "Denne mappe er åbnet i Oleafly som et selvstændigt projekt. Tilknyt den i stedet som skrivebeskyttet."

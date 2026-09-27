@@ -435,7 +435,7 @@
       "reclaimable": "Recuperabil"
     },
     "capture": {
-      "paused": "Punctele de control sunt întrerupte, deoarece acest folder este prea mare. Un punct de control poate conține cel mult {{files}} fișiere sau {{size}}.",
+      "paused": "Punctele de control sunt în pauză, deoarece acest folder este prea mare. Un punct de control poate conține cel mult {{files}} fișiere sau {{size}}.",
       "skipped_one": "{{formattedCount}} fișier din acest folder nu este în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele.",
       "skipped_few": "{{formattedCount}} fișiere din acest folder nu sunt în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele.",
       "skipped_other": "{{formattedCount}} de fișiere din acest folder nu sunt în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele."

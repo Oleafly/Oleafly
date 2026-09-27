@@ -357,6 +357,21 @@
     "description": "Sentence under the heading. {{sectionName}} is the name of the settings section, for example Appearance.",
     "label": "Heading of the row that resets one settings section."
   },
+  "shellCommand": {
+    "afterSignIn": "Linux only. Shown when the folder reaches PATH only after the user signs out of the desktop session and signs back in. PATH is the environment variable name. Keep it verbatim.",
+    "description": "The text inside <code> is a literal command. Keep oleafly and the dot exactly as written.",
+    "notOnPath": {
+      "file": "{{file}} is a shell startup file such as ~/.zshrc. PATH is the environment variable name. Keep it verbatim.",
+      "run": "Shown to fish users, who run a one-line command instead of editing a file. PATH is the environment variable name."
+    },
+    "state": {
+      "moveApp": "macOS runs apps opened straight from Downloads or a disk image from a temporary place. Use the Finder name of the Applications folder in your language.",
+      "notInstalled": "oleafly is the command name. Keep it lowercase and untranslated.",
+      "occupied": "Another program already has a file named oleafly at this path. Oleafly never replaces it.",
+      "packaged": "Linux .deb and .rpm installs. The package itself put the oleafly command at {{path}}, usually /usr/bin/oleafly, so there is nothing to install."
+    },
+    "title": "Settings row that puts an oleafly command on the user's PATH so a terminal can open folders in the app"
+  },
   "shortcuts": {
     "application": {
       "recording": "Label on the key box while the app waits for the user to press a key combination."

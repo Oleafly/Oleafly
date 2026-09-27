@@ -1057,7 +1057,7 @@
     "compare": "Porovnat",
     "keepMine": "Ponechat moji verzi",
     "reload": "Načíst znovu",
-    "failed": "Oleafly nemohl aktualizovat {{file}}. Zkuste to znovu.",
+    "failed": "Oleafly nedokázal aktualizovat {{file}}. Zkuste to znovu.",
     "tabMark": "Změněno na disku. Otevřete tuto kartu a vyberte, kterou verzi ponechat."
   }
 }

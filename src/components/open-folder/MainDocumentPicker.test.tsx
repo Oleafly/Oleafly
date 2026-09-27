@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { DetectionCandidate, FolderDetection, OpenedFolder } from "@/lib/folder-detection";
 
 const mocks = vi.hoisted(() => ({
   chooseMainDocument: vi.fn(),
-  projectDocumentCandidates: vi.fn(),
   notifyError: vi.fn(),
 }));
 
@@ -23,17 +21,12 @@ vi.mock("@/store/files", async () => {
     })),
   };
 });
-vi.mock("@/lib/tauri", () => ({
-  projectDocumentCandidates: mocks.projectDocumentCandidates,
-}));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
-vi.mock("@/store/main-document", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/store/main-document")>()),
+vi.mock("@/store/main-document", () => ({
   chooseMainDocument: mocks.chooseMainDocument,
 }));
 
 import { useFilesStore } from "@/store/files";
-import { useMainDocumentStore } from "@/store/main-document";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { MainDocumentPicker } from "./MainDocumentPicker";
 
@@ -103,12 +96,10 @@ beforeEach(() => {
     tree: [],
   });
   useOpenFolderStore.getState().dismiss();
-  useMainDocumentStore.getState().reset("linked-a");
 });
 
 afterEach(() => {
   useOpenFolderStore.getState().dismiss();
-  useMainDocumentStore.getState().reset(null);
 });
 
 describe("MainDocumentPicker", () => {
@@ -143,6 +134,12 @@ describe("MainDocumentPicker", () => {
     expect(other.className).not.toMatch(/ring|outline/);
     expect(list().className).not.toMatch(/ring|outline/);
     expect(list().className).toMatch(/focus-visible\]:border-/);
+  });
+
+  it("stays closed for a folder whose main was clear", () => {
+    render(<MainDocumentPicker />);
+    present({ ...ambiguous, main: "paper/main.tex", decision: "auto" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("ignores a folder presented for another project", () => {
@@ -301,7 +298,6 @@ describe("MainDocumentPicker", () => {
     await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("paper/main.tex"));
     act(() => {
       useFilesStore.setState({ projectId: "linked-b" });
-      useMainDocumentStore.getState().reset("linked-b");
     });
     present(ambiguous, "linked-b");
     expect(screen.getByRole("button", { name: labels.picker.open })).not.toBeDisabled();
@@ -310,100 +306,16 @@ describe("MainDocumentPicker", () => {
     expect(screen.getByRole("dialog", { name: labels.picker.askTitle })).toBeInTheDocument();
   });
 
-  it("keeps the change picker of the next folder open when an earlier switch finishes late", async () => {
-    let finish: (chosen: boolean) => void = () => {};
-    mocks.chooseMainDocument.mockReturnValueOnce(
-      new Promise<boolean>((resolve) => {
-        finish = resolve;
-      }),
-    );
-    mocks.projectDocumentCandidates.mockResolvedValue(ambiguous);
-    useMainDocumentStore.getState().seed("linked-a", ambiguous);
-    render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
-    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("paper/main.tex"));
-    act(() => {
-      useFilesStore.setState({ projectId: "linked-b" });
-      useMainDocumentStore.getState().reset("linked-b");
-      useMainDocumentStore.getState().openChange();
-    });
-    await act(async () => finish(false));
-    expect(useMainDocumentStore.getState().changing).toBe(true);
-    expect(screen.getByRole("dialog", { name: labels.picker.changeTitle })).toBeInTheDocument();
-  });
-
-  it("shows the last list while it looks again, then the fresh one", async () => {
-    let finish: (detection: FolderDetection) => void = () => {};
-    mocks.projectDocumentCandidates.mockReturnValueOnce(
-      new Promise<FolderDetection>((resolve) => {
-        finish = resolve;
-      }),
-    );
-    useMainDocumentStore.getState().seed("linked-a", ambiguous);
-    render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    expect(options()).toHaveLength(3);
-    await act(async () =>
-      finish({ ...ambiguous, candidates: [...ambiguous.candidates, candidate("appendix/extra.tex")] }),
-    );
-    expect(options()).toHaveLength(4);
-    expect(within(row(options()[3])).getByText("appendix/extra.tex")).toBeInTheDocument();
-  });
-
   it("says when the search stopped early", () => {
     render(<MainDocumentPicker />);
     present({ ...ambiguous, truncated: true });
     expect(screen.getByText(labels.picker.truncated)).toBeInTheDocument();
   });
 
-  it("changes the main document from a fresh search with the current main selected", async () => {
-    useFilesStore.setState({ mainDoc: "talk/slides.tex", tree: [{ path: "talk/slides.tex", is_dir: false }] });
-    mocks.projectDocumentCandidates.mockResolvedValue({
-      ...ambiguous,
-      main: "talk/slides.tex",
-      decision: "auto",
-    });
+  it("explains a list with no documents", () => {
     render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    expect(screen.getByRole("dialog", { name: labels.picker.changeTitle })).toBeInTheDocument();
-    await waitFor(() => expect(options()).toHaveLength(3));
-    await waitFor(() => expect(options()[1]).toHaveFocus());
-    expect(options()[1]).toBeChecked();
-    expect(within(row(options()[1])).getByText(labels.picker.current)).toBeInTheDocument();
-    expect(screen.queryByText(labels.picker.bestMatch)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.cancel }));
-    expect(useMainDocumentStore.getState().changing).toBe(false);
-    expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
-  });
-
-  it("closes without a round trip when the current main is kept", async () => {
-    useFilesStore.setState({ mainDoc: "paper/main.tex" });
-    useMainDocumentStore.getState().seed("linked-a", { ...ambiguous, main: "paper/main.tex" });
-    render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
-    expect(useMainDocumentStore.getState().changing).toBe(false);
-    expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
-  });
-
-  it("explains an empty search", async () => {
-    mocks.projectDocumentCandidates.mockResolvedValue({
-      ...ambiguous,
-      candidates: [],
-      decision: "no_main",
-    });
-    render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    await waitFor(() => expect(screen.getByText(labels.picker.empty)).toBeInTheDocument());
+    present({ ...ambiguous, candidates: [] });
+    expect(screen.getByText(labels.picker.empty)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: labels.picker.open })).toBeDisabled();
-  });
-
-  it("explains a failed search", async () => {
-    mocks.projectDocumentCandidates.mockRejectedValue(new Error("gone"));
-    render(<MainDocumentPicker />);
-    act(() => useMainDocumentStore.getState().openChange());
-    await waitFor(() => expect(screen.getByText(labels.picker.failed)).toBeInTheDocument());
-    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });

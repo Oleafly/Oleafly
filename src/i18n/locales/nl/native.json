@@ -68,7 +68,7 @@
     },
     "rebindFolder": {
       "title": "Een andere map gebruiken?",
-      "message": "{{name}} is niet de map die Oleafly voor dit project had. Als je deze gebruikt, slaat Oleafly je niet-opgeslagen wijzigingen erin op en sluit het de terminals en agentsessies van dit project. Alles wat daarin draait, stopt. Daarnaast vertrouwt Oleafly de map niet meer, zet het volledige toegang uit, worden de goedkeuringen van de assistent teruggezet en worden onderzoeksmappen ontkoppeld. Chats en geschiedenis blijven bewaard.",
+      "message": "{{name}} is niet de map die Oleafly voor dit project had. Als je deze gebruikt, slaat Oleafly je niet-opgeslagen wijzigingen erin op en sluit het de terminals en agentsessies van dit project. Alles wat daarin draait, stopt. Daarnaast vertrouwt Oleafly de map niet meer, zet het volledige toegang uit, reset het de goedkeuringen van de assistent en ontkoppelt het de onderzoeksmappen. Chats en geschiedenis blijven bewaard.",
       "confirm": "Deze map gebruiken"
     },
     "saveCopy": {

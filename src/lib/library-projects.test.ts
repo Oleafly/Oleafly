@@ -1,14 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ProjectAvailability, ProjectInfo } from "@/lib/tauri";
-import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import {
   RECENT_LIMIT,
   folderAvailability,
   folderDisplayPath,
-  folderOpenedLabel,
   folderUnavailable,
   isFolderProject,
   projectInScope,
+  projectUpdatedAt,
   recentProjects,
   scopeCounts,
   splitFolderPath,
@@ -124,22 +123,14 @@ describe("folder availability", () => {
   });
 });
 
-describe("opened labels", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 26, 15, 0, 0));
-  });
-  afterEach(() => vi.useRealTimers());
-
-  it("says today, yesterday, or the date", () => {
-    const seconds = (date: Date) => date.getTime() / 1000;
-    expect(folderOpenedLabel(seconds(new Date(2026, 8, 26, 9)))).toBe(enLibrary.folder.openedToday);
-    expect(folderOpenedLabel(seconds(new Date(2026, 8, 25, 23)))).toBe(
-      enLibrary.folder.openedYesterday,
-    );
-    expect(folderOpenedLabel(seconds(new Date(2026, 5, 2, 12)))).toMatch(/^Opened Jun 2$/);
-    expect(folderOpenedLabel(seconds(new Date(2025, 5, 2, 12)))).toMatch(/2025/);
-    expect(folderOpenedLabel(0)).toBeUndefined();
+describe("updated time", () => {
+  it("takes the newer of the listing and a folder check for folders only", () => {
+    const thesis = folder("thesis", "ok", { updated_at: 100 });
+    expect(projectUpdatedAt(thesis, {})).toBe(100);
+    expect(projectUpdatedAt(thesis, { thesis: 250 })).toBe(250);
+    expect(projectUpdatedAt(thesis, { thesis: 50 })).toBe(100);
+    expect(projectUpdatedAt(folder("fresh", "ok", { updated_at: 0 }), { fresh: 40 })).toBe(40);
+    expect(projectUpdatedAt(project("paper", { updated_at: 10 }), { paper: 999 })).toBe(10);
   });
 });
 

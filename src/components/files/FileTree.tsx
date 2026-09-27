@@ -49,7 +49,7 @@ import { SidebarSection } from "@/components/layout/SidebarSection";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
 import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
-import { ALL_MAIN_EXTENSIONS, mainDocumentMissing } from "@/lib/main-document";
+import { ALL_MAIN_EXTENSIONS, isLinkedHome, mainDocumentMissing } from "@/lib/main-document";
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
@@ -233,8 +233,9 @@ export function FileTree({
   const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const noMainDocument = useFilesStore(mainDocumentMissing);
+  const linkedFolder = useFilesStore((s) => isLinkedHome(s.manifestHome));
   let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
-  if (noMainDocument) mainExtensions = ALL_MAIN_EXTENSIONS;
+  if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);

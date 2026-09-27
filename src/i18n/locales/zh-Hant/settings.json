@@ -1351,6 +1351,35 @@
     "description": "將「{{sectionName}}」偏好設定還原為預設值。",
     "label": "重設設定"
   },
+  "shellCommand": {
+    "afterSignIn": "登出並重新登入後，{{directory}} 就會在你的 PATH 中。然後開啟新的終端機。",
+    "checking": "正在檢查…",
+    "description": "在終端機中輸入 <code>oleafly .</code>，即可在 Oleafly 中開啟該資料夾。",
+    "install": "安裝",
+    "installing": "正在安裝…",
+    "loadFailed": "無法檢查終端機指令。",
+    "notOnPath": {
+      "file": "{{directory}} 尚未在你的 PATH 中。請將這一行加入 {{file}}，然後開啟新的終端機：",
+      "run": "{{directory}} 尚未在你的 PATH 中。請執行一次這個指令，然後開啟新的終端機："
+    },
+    "removing": "正在移除…",
+    "result": {
+      "copied": "已將指令複製到 {{path}}。",
+      "linked": "{{path}} 現在指向這個 Oleafly 副本。",
+      "removed": "已移除 {{path}}。"
+    },
+    "state": {
+      "installed": "已安裝於 {{path}}。",
+      "moveApp": "請先將 Oleafly 移到「應用程式」檔案夾，再於此處安裝指令。",
+      "notInstalled": "會將 oleafly 加入 {{directory}}。",
+      "occupied": "{{path}} 已存在，且不是由 Oleafly 建立，因此會保持原狀。",
+      "outdated": "{{path}} 仍指向較舊的 Oleafly 副本。請更新，讓它使用目前的副本。",
+      "packaged": "已由你的 Oleafly 套件安裝於 {{path}}。",
+      "unavailable": "此 Oleafly 副本不包含該指令。"
+    },
+    "title": "終端機指令",
+    "update": "更新"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {

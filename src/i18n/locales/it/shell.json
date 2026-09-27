@@ -455,16 +455,11 @@
     "picker": {
       "askTitle": "Quale documento deve compilare Oleafly?",
       "askDescription": "Questa cartella contiene più di un documento. Scegli quello principale. Puoi cambiarlo in seguito.",
-      "changeTitle": "Scegli il documento principale",
-      "changeDescription": "Oleafly compila il documento che scegli e lo ricorda per questa cartella.",
       "listLabel": "Documenti in questa cartella",
       "open": "Apri",
       "browse": "Sfoglia solo i file",
       "bestMatch": "Scelta migliore",
-      "current": "Attuale",
-      "loading": "Ricerca dei documenti…",
       "empty": "Oleafly non ha trovato documenti qui. Fai clic destro su un file nell'albero dei file e scegli Imposta come documento principale.",
-      "failed": "Oleafly non è riuscito a leggere questa cartella.",
       "truncated": "Questa cartella è grande, quindi Oleafly ha smesso di cercare prima. Alcuni documenti potrebbero mancare dall'elenco.",
       "openFailed": "Impossibile impostare {{path}} come documento principale."
     },
@@ -489,18 +484,11 @@
       "standalone_figure": "Figura autonoma",
       "placeholder": "Non ancora scaricato"
     },
-    "main": {
-      "label": "Principale: {{path}}",
-      "change": "Cambia",
-      "changeLabel": "Cambia il documento principale",
-      "others": "Altri documenti",
-      "switchFailed": "Impossibile passare a {{path}}."
-    },
     "noMain": "Nessun documento principale per ora. Scegli un file e poi Imposta come documento principale.",
     "trust": {
-      "banner": "Oleafly ha limitato alcune funzioni in questa cartella. Considerala affidabile per attivare Git, il terminale, gli agenti e lo shell escape.",
+      "banner": "Oleafly ha limitato alcune funzioni in questa cartella. Vuoi considerarla affidabile per attivare Git, il terminale, gli agenti e lo shell escape?",
       "trustFolder": "Considera affidabile questa cartella",
-      "trustParent": "Considera affidabile la cartella superiore…",
+      "trustParent": "Considera affidabile la cartella superiore",
       "trustRepository": "Considera affidabile il repository",
       "hide": "Nascondi",
       "terminal": "Gli hook di Git e le impostazioni del repository sono disattivati in questo terminale finché non consideri affidabile la cartella.",
@@ -1046,7 +1034,7 @@
     "update": "Aggiornamento di Oleafly"
   },
   "openFolder": {
-    "confirmTitle": "Interrompere e aprire {{name}}?",
+    "confirmTitle": "Vuoi interrompere e aprire {{name}}?",
     "confirmCompile": "{{project}} è ancora in compilazione. Aprire {{name}} interrompe la compilazione. Le tue modifiche vengono salvate prima.",
     "confirmAssistant": "L'assistente sta ancora lavorando in {{project}}. Aprire {{name}} interrompe la sua risposta. Le tue modifiche vengono salvate prima.",
     "confirmBoth": "{{project}} è ancora in compilazione e l'assistente sta ancora lavorando. Aprire {{name}} interrompe entrambi. Le tue modifiche vengono salvate prima.",

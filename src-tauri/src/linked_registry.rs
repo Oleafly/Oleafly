@@ -25,6 +25,8 @@ pub(crate) struct LinkRecord {
     pub(crate) created_at: u64,
     pub(crate) last_opened_at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) changed_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) removed_at: Option<u64>,
     pub(crate) volume_kind: VolumeKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -530,7 +532,7 @@ fn registrable_path(path: &Path) -> Result<String, String> {
         return Err("a linked folder must be a real directory".to_string());
     }
     if crate::paths::overlaps_app_data(&canonical)? {
-        return Err("a folder that holds Oleafly's app data cannot be linked".to_string());
+        return Err(crate::app_error::AppError::new("project.folder_in_app_data").into());
     }
     canonical
         .to_str()
@@ -582,6 +584,66 @@ where
         read_cached(&directory, project_id),
     );
     Ok(next)
+}
+
+const CHANGE_GRANULARITY_MS: u64 = 60_000;
+
+fn recorded_changes() -> MutexGuard<'static, HashMap<String, u64>> {
+    static RECORDED: OnceLock<Mutex<HashMap<String, u64>>> = OnceLock::new();
+    RECORDED
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX))
+        .unwrap_or_default()
+}
+
+fn record_change(project_id: &str, at: u64) -> bool {
+    let recorded = update(project_id, |record| {
+        if record.is_active() && record.changed_at.is_none_or(|changed| changed < at) {
+            record.changed_at = Some(at);
+        }
+        Ok(())
+    });
+    if let Err(error) = &recorded {
+        let _ = crate::project::append_app_log(format!(
+            "Could not record when {project_id} last changed: {error}"
+        ));
+    }
+    recorded.is_ok()
+}
+
+pub(crate) fn note_changed(project_id: &str) {
+    if !is_linked_id(project_id) {
+        return;
+    }
+    let now = now_millis();
+    if recorded_changes()
+        .get(project_id)
+        .is_some_and(|last| now < last.saturating_add(CHANGE_GRANULARITY_MS))
+    {
+        return;
+    }
+    if record_change(project_id, now) {
+        recorded_changes().insert(project_id.to_owned(), now);
+    }
+}
+
+pub(crate) fn note_modified_on_disk(project_id: &str) {
+    if !is_linked_id(project_id) {
+        return;
+    }
+    let Ok(location) = crate::project_location::locate(project_id) else {
+        return;
+    };
+    if let Some(modified) = crate::project_availability::content_modified_at(&location) {
+        record_change(project_id, modified.min(now_millis()));
+    }
 }
 
 fn overlaps(left: &Path, right: &Path) -> bool {
@@ -904,6 +966,7 @@ mod management {
                 display_name: link.display_name,
                 created_at: now,
                 last_opened_at: now,
+                changed_at: None,
                 removed_at: None,
                 volume_kind: link.volume_kind,
                 compile_dir: None,
@@ -1032,6 +1095,7 @@ mod tests {
             display_name: None,
             created_at: 1,
             last_opened_at: 1,
+            changed_at: None,
             removed_at: None,
             volume_kind: observed.volume_kind,
             compile_dir: None,
@@ -1350,8 +1414,12 @@ mod tests {
         assert!(attempt(file).is_err());
         let inside_data = data.path().canonicalize().unwrap().join("inside");
         std::fs::create_dir(&inside_data).unwrap();
-        assert!(attempt(inside_data).is_err());
-        assert!(attempt(data.path().canonicalize().unwrap()).is_err());
+        assert!(attempt(inside_data)
+            .unwrap_err()
+            .contains("project.folder_in_app_data"));
+        assert!(attempt(data.path().canonicalize().unwrap())
+            .unwrap_err()
+            .contains("project.folder_in_app_data"));
         assert!(!data.path().join("linked").exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
