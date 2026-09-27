@@ -979,7 +979,7 @@ export function onSaveBlockedSettled(listener: SaveBlockedListener): () => void 
 }
 
 function settleSaveBlocked(blocked: SaveBlockedState, left: boolean): void {
-  for (const listener of [...saveBlockedListeners]) listener(blocked, left);
+  for (const listener of saveBlockedListeners) listener(blocked, left);
 }
 
 function reportSaveBlocked(

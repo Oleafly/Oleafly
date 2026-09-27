@@ -6,6 +6,7 @@ const UNIX: ParseRules = ParseRules {
     file_urls: false,
     windows_paths: false,
 };
+#[cfg(unix)]
 const MAC: ParseRules = ParseRules {
     file_urls: true,
     windows_paths: false,

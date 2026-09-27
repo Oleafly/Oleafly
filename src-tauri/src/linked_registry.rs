@@ -703,7 +703,15 @@ pub(crate) use management::{
 };
 
 mod management {
-    use super::*;
+    use super::{
+        apply_update, is_linked_id, lock_registry_writes, read_cached, read_record,
+        registrable_path, store_entry, write_record, LinkRecord, ReattachOffer, RegistryWriteLock,
+        LINKED_ID_PREFIX, LINK_VERSION,
+    };
+    use crate::fs_identity::{FsIdentity, VolumeKind};
+    use std::collections::BTreeMap;
+    use std::path::{Path, PathBuf};
+    use std::time::SystemTime;
 
     pub(super) fn new_linked_id() -> String {
         format!("{LINKED_ID_PREFIX}{:032x}", rand::random::<u128>())
