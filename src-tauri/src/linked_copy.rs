@@ -104,6 +104,39 @@ impl Plan {
             self.git_entries += 1;
         }
     }
+
+    fn add(
+        &mut self,
+        item: Planned,
+        in_git: bool,
+        bytes: u64,
+        limits: CopyLimits,
+    ) -> Result<(), String> {
+        self.count(in_git, bytes);
+        if let Some(error) = limit_error(self, limits) {
+            return Err(error);
+        }
+        self.items.push(item);
+        Ok(())
+    }
+
+    fn counting_progress(&self) -> CopyProgress {
+        CopyProgress {
+            phase: CopyPhase::Counting,
+            entries_done: self.entries,
+            entries_total: 0,
+            bytes_done: self.bytes,
+            bytes_total: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntryKind {
+    Skipped,
+    LeftOut,
+    Folder,
+    File,
 }
 
 fn skipped_name(name: &str) -> bool {
@@ -165,6 +198,51 @@ fn limit_error(plan: &Plan, limits: CopyLimits) -> Option<String> {
     None
 }
 
+fn dropped_from_git_directory(name: &str) -> bool {
+    name == "hooks" || name == "worktrees"
+}
+
+fn entry_kind(
+    entry: &std::fs::DirEntry,
+    name: &str,
+    relative: &Path,
+    git_directory: bool,
+) -> EntryKind {
+    let Ok(file_type) = entry.file_type() else {
+        return EntryKind::Skipped;
+    };
+    if skipped_name(name) {
+        return EntryKind::Skipped;
+    }
+    if file_type.is_symlink() {
+        return EntryKind::LeftOut;
+    }
+    if file_type.is_dir() {
+        if git_directory && dropped_from_git_directory(name) {
+            EntryKind::Skipped
+        } else {
+            EntryKind::Folder
+        }
+    } else if file_type.is_file() {
+        if name == ".git" && !portable_git_link(&entry.path(), relative) {
+            EntryKind::Skipped
+        } else {
+            EntryKind::File
+        }
+    } else {
+        EntryKind::LeftOut
+    }
+}
+
+fn sorted_entries(directory: &Path, relative: &Path) -> Result<Vec<std::fs::DirEntry>, String> {
+    let mut entries: Vec<_> = std::fs::read_dir(directory)
+        .map_err(|error| format!("could not read {}: {error}", relative.display()))?
+        .flatten()
+        .collect();
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    Ok(entries)
+}
+
 fn scan(
     root: &Path,
     relative: &Path,
@@ -180,70 +258,32 @@ fn scan(
         return Ok(());
     }
     let git_directory = in_git && directory.join("HEAD").is_file();
-    let mut entries: Vec<_> = std::fs::read_dir(&directory)
-        .map_err(|error| format!("could not read {}: {error}", relative.display()))?
-        .flatten()
-        .collect();
-    entries.sort_by_key(std::fs::DirEntry::file_name);
-    for entry in entries {
+    for entry in sorted_entries(&directory, relative)? {
         reporter.check()?;
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
         let name = entry.file_name().to_string_lossy().into_owned();
-        if skipped_name(&name) {
-            continue;
-        }
-        if file_type.is_symlink() {
-            plan.left_out += 1;
-            continue;
-        }
         let child = relative.join(entry.file_name());
-        if file_type.is_dir() {
-            if git_directory && (name == "hooks" || name == "worktrees") {
+        let inside_git = in_git || name == ".git";
+        match entry_kind(&entry, &name, relative, git_directory) {
+            EntryKind::Skipped => continue,
+            EntryKind::LeftOut => {
+                plan.left_out += 1;
                 continue;
             }
-            plan.items.push(Planned::Directory(child.clone()));
-            plan.count(in_git || name == ".git", 0);
-            if let Some(error) = limit_error(plan, limits) {
-                return Err(error);
+            EntryKind::Folder => {
+                plan.add(Planned::Directory(child.clone()), inside_git, 0, limits)?;
+                scan(root, &child, inside_git, limits, plan, reporter)?;
             }
-            scan(
-                root,
-                &child,
-                in_git || name == ".git",
-                limits,
-                plan,
-                reporter,
-            )?;
-        } else if file_type.is_file() {
-            if name == ".git" && !portable_git_link(&entry.path(), relative) {
-                continue;
+            EntryKind::File => {
+                let size = entry.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+                let item = if git_directory && name == "config" {
+                    Planned::GitConfig(child, size)
+                } else {
+                    Planned::File(child)
+                };
+                plan.add(item, inside_git, size, limits)?;
             }
-            let size = entry.metadata().map(|metadata| metadata.len()).unwrap_or(0);
-            plan.count(in_git || name == ".git", size);
-            if let Some(error) = limit_error(plan, limits) {
-                return Err(error);
-            }
-            plan.items.push(if git_directory && name == "config" {
-                Planned::GitConfig(child, size)
-            } else {
-                Planned::File(child)
-            });
-        } else {
-            plan.left_out += 1;
-            continue;
         }
-        reporter.report(
-            CopyProgress {
-                phase: CopyPhase::Counting,
-                entries_done: plan.entries,
-                entries_total: 0,
-                bytes_done: plan.bytes,
-                bytes_total: 0,
-            },
-            false,
-        );
+        reporter.report(plan.counting_progress(), false);
     }
     Ok(())
 }
@@ -433,7 +473,7 @@ pub(crate) fn copy_folder_into_library(
     {
         return Err(AppError::new("project.copy_needs_folder").into());
     }
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     let mut reporter = Reporter {
         sink: progress,
         cancel,
@@ -1091,6 +1131,53 @@ mod tests {
                 .map(|copied| copied.left_out),
             Ok(0)
         );
+    }
+
+    #[test]
+    fn hooks_worktrees_and_config_outside_git_history_are_copied_as_they_are() {
+        let fixture = LinkedFixture::new();
+        let (source, folder) = thesis(&fixture);
+        write(&folder, "tools/HEAD", "not a repository");
+        write(&folder, "tools/config", "[core]\n\tfsmonitor = keep me\n");
+        write(&folder, "tools/hooks/setup.tex", "Hooks");
+        write(&folder, "tools/worktrees/draft.tex", "Draft");
+        write(&folder, "notes/.git", "not a link");
+        write(&folder, "notes/todo.md", "Todo");
+
+        let copied =
+            copy_folder_into_library(&source, COPY_LIMITS, &AtomicBool::new(false), &mut |_| {})
+                .unwrap();
+
+        let root = crate::paths::project_dir(&copied.project_id).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("tools/config")).unwrap(),
+            "[core]\n\tfsmonitor = keep me\n"
+        );
+        assert!(root.join("tools/HEAD").is_file());
+        assert!(root.join("tools/hooks/setup.tex").is_file());
+        assert!(root.join("tools/worktrees/draft.tex").is_file());
+        assert!(root.join("notes/todo.md").is_file());
+        assert!(!root.join("notes/.git").exists());
+        assert_eq!(copied.left_out, 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn special_files_are_left_out_and_counted() {
+        use std::os::unix::ffi::OsStrExt as _;
+        let fixture = LinkedFixture::new();
+        let (source, folder) = thesis(&fixture);
+        let pipe = std::ffi::CString::new(folder.join("pipe").as_os_str().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(pipe.as_ptr(), 0o600) }, 0);
+
+        let copied =
+            copy_folder_into_library(&source, COPY_LIMITS, &AtomicBool::new(false), &mut |_| {})
+                .unwrap();
+
+        assert_eq!(copied.left_out, 1);
+        let root = crate::paths::project_dir(&copied.project_id).unwrap();
+        assert!(root.join("main.tex").is_file());
+        assert!(std::fs::symlink_metadata(root.join("pipe")).is_err());
     }
 
     #[test]

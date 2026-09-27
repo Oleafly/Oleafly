@@ -32,6 +32,8 @@ vi.mock("@/lib/utils", async (original) => ({
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FolderUnavailableDialog } from "./FolderUnavailableDialog";
 
 const THESIS: ProjectInfo = {
@@ -54,6 +56,8 @@ const onClose = vi.fn();
 const onOpen = vi.fn();
 const onRemove = vi.fn();
 const unavailable = enLibrary.folder.unavailable;
+const smallButton = (variant: "default" | "outline") =>
+  cn(buttonVariants({ variant, size: "sm" }));
 const fill = (text: string) =>
   text.replace("{{name}}", "Thesis").replace("{{path}}", "~/Desktop/thesis");
 
@@ -190,6 +194,55 @@ describe("FolderUnavailableDialog", () => {
     show(state);
     await waitFor(() => expect(screen.getByRole("button", { name: action })).toHaveFocus());
     expect(screen.getByRole("button", { name: enLibrary.folder.menu.remove })).not.toHaveFocus();
+  });
+
+  it.each([
+    ["missing", [[unavailable.locate, "default"]]],
+    [
+      "offline",
+      [
+        [unavailable.locate, "outline"],
+        [unavailable.tryAgain, "default"],
+      ],
+    ],
+    [
+      "replaced",
+      [
+        [unavailable.locate, "outline"],
+        [unavailable.useThisFolder, "default"],
+      ],
+    ],
+    ["permission_denied", [[unavailable.tryAgain, "default"]]],
+  ] as const)("lays out the %s actions after Remove and Cancel", (state, actions) => {
+    show(state);
+    const footer = screen.getByRole("button", { name: enCommon.actions.cancel })
+      .parentElement as HTMLElement;
+    const buttons = within(footer).getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      enLibrary.folder.menu.remove,
+      enCommon.actions.cancel,
+      ...actions.map(([name]) =>
+        name === unavailable.tryAgain ? `${name}${unavailable.checking}` : name,
+      ),
+    ]);
+    buttons.slice(2).forEach((button, index) => {
+      expect(button.className).toBe(smallButton(actions[index][1]));
+      expect(button).toBeEnabled();
+    });
+  });
+
+  it("moves focus to the new main action when its own check finds another problem", async () => {
+    check.mockResolvedValueOnce({ "linked-thesis": "replaced" });
+    show("offline");
+    const tryAgain = screen.getByRole("button", { name: unavailable.tryAgain });
+    await waitFor(() => expect(tryAgain).toHaveFocus());
+    fireEvent.click(tryAgain);
+    const adopt = await screen.findByRole("button", { name: unavailable.useThisFolder });
+    await waitFor(() => expect(adopt).toHaveFocus());
+    expect(tryAgain).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: unavailable.locate }).className).toBe(
+      smallButton("outline"),
+    );
   });
 
   it("keeps the problem it opened with and says so when the folder comes back", async () => {

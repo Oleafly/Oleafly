@@ -1,7 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
-import type { OpenedFolder } from "@/lib/folder-detection";
+import type { FolderDetection, OpenedFolder } from "@/lib/folder-detection";
 
 export interface McpRegistrySearchRequest {
   query: string;
@@ -36,7 +36,6 @@ export const mcpRegistrySearch = (request: McpRegistrySearchRequest) =>
   invoke<McpRegistrySearchResult>("mcp_registry_search", { request });
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { SkillEntry } from "@/lib/skills";
-import type { FolderDetection } from "@/lib/folder-detection";
 
 import type {
   AheadBehind,

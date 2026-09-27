@@ -1226,6 +1226,13 @@ export function PreviewPane() {
     if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
     return "0/0";
   };
+  const emptyPreviewMessage = (): string => {
+    if (noMainDocument) return t(($) => $.shell.openedFolder.noMain);
+    if (status === "unavailable") {
+      return compileFailureReason ?? t(($) => $.preview.empty.compileUnavailable);
+    }
+    return compileFailureReason ?? t(($) => $.preview.empty.compileFailed);
+  };
   const downloadActionLabel = (): string => {
     if (isImage) return t(($) => $.preview.actions.downloadImage);
     if (pdfIsStale) return t(($) => $.preview.actions.downloadStalePdf);
@@ -1517,6 +1524,31 @@ export function PreviewPane() {
       )
   );
 
+  const renderEmptyPreview = () => (
+    <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
+      {noMainDocument || status === "error" || status === "unavailable" ? (
+        <div className="space-y-3 text-center text-muted-foreground">
+          <FileText className="mx-auto size-10 opacity-30" />
+          <p className="max-w-xs text-sm" role={noMainDocument ? undefined : "alert"}>
+            {emptyPreviewMessage()}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {noMainDocument ? null : (
+              <Button size="sm" onClick={() => void recompile()}>
+                {t(($) => $.preview.actions.retryCompile)}
+              </Button>
+            )}
+            <CompileOfferButton placement="preview" />
+          </div>
+        </div>
+      ) : (
+        <DocumentStartupProgress
+          stages={startupStages}
+        />
+      )}
+    </div>
+  );
+
   const renderPreviewBody = () => (
     tab !== "logs" && (displayedBytes && viewerDocument ? (
       <div className="flex h-full min-h-0 flex-col bg-sidebar">
@@ -1613,33 +1645,7 @@ export function PreviewPane() {
         </div>
       </div>
     ) : (
-      <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
-        {noMainDocument || status === "error" || status === "unavailable" ? (
-          <div className="space-y-3 text-center text-muted-foreground">
-            <FileText className="mx-auto size-10 opacity-30" />
-            <p className="max-w-xs text-sm" role={noMainDocument ? undefined : "alert"}>
-              {noMainDocument
-                ? t(($) => $.shell.openedFolder.noMain)
-                : (compileFailureReason ??
-                  (status === "unavailable"
-                    ? t(($) => $.preview.empty.compileUnavailable)
-                    : t(($) => $.preview.empty.compileFailed)))}
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {noMainDocument ? null : (
-                <Button size="sm" onClick={() => void recompile()}>
-                  {t(($) => $.preview.actions.retryCompile)}
-                </Button>
-              )}
-              <CompileOfferButton placement="preview" />
-            </div>
-          </div>
-        ) : (
-          <DocumentStartupProgress
-            stages={startupStages}
-          />
-        )}
-      </div>
+      renderEmptyPreview()
     ))
   );
 

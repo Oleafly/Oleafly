@@ -69,6 +69,51 @@ describe("FolderWatchKeeper", () => {
     await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledTimes(2));
   });
 
+  it("watches the new place again after the folder moves", async () => {
+    mocks.watchProjectFolder.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
+    render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledTimes(1));
+
+    act(() =>
+      useProjectAvailabilityStore.getState().apply({
+        projectId: "linked-a",
+        availability: "ok",
+        locationGeneration: 1,
+        relocated: true,
+        grantsReset: false,
+      }),
+    );
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.unwatchProjectFolder).toHaveBeenCalledWith("linked-a", 7));
+    expect(mocks.unwatchProjectFolder).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      useProjectAvailabilityStore.getState().apply({
+        projectId: "linked-a",
+        availability: "ok",
+        locationGeneration: 2,
+        relocated: false,
+        grantsReset: false,
+      }),
+    );
+    await act(() => Promise.resolve());
+    expect(mocks.watchProjectFolder).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a watch that fails to start and never stops it", async () => {
+    const failure = new Error("watch refused");
+    mocks.watchProjectFolder.mockRejectedValueOnce(failure);
+    mocks.logError.mockClear();
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("watch project folder", failure),
+    );
+
+    view.unmount();
+    await act(() => Promise.resolve());
+    expect(mocks.unwatchProjectFolder).not.toHaveBeenCalled();
+  });
+
   it("applies folder changes the backend reports", async () => {
     render(<FolderWatchKeeper />);
     await waitFor(() => expect(mocks.events.has("project-folder-changed")).toBe(true));

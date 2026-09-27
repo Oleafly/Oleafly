@@ -75,14 +75,13 @@ export function CopyIntoLibraryDialog() {
                   </span>
                 ) : null}
               </div>
-              <div
-                role="progressbar"
+              <progress
                 aria-label={phaseLabel}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percent ?? undefined}
-                className="h-1.5 overflow-hidden rounded-full bg-muted"
-              >
+                max={100}
+                value={percent ?? undefined}
+                className="sr-only"
+              />
+              <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className={cn(
                     "h-full rounded-full bg-primary transition-[width] duration-200 ease-out motion-reduce:transition-none",

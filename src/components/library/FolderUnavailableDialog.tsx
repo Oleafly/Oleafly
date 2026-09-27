@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,131 @@ import { cn, isMac } from "@/lib/utils";
 import { useLibraryAvailabilityStore } from "@/store/library-availability";
 
 type Busy = "locate" | "check" | "adopt" | null;
+
+type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
+
+type FolderCopyValues = { name: string; path: string };
+
+function folderProblemCopy(t: Translate, state: UnavailableFolder, values: FolderCopyValues) {
+  return {
+    missing: {
+      title: t(($) => $.library.folder.unavailable.missing.title, values),
+      body: t(($) => $.library.folder.unavailable.missing.body, values),
+    },
+    offline: {
+      title: t(($) => $.library.folder.unavailable.offline.title, values),
+      body: t(($) => $.library.folder.unavailable.offline.body, values),
+    },
+    replaced: {
+      title: t(($) => $.library.folder.unavailable.replaced.title, values),
+      body: t(($) => $.library.folder.unavailable.replaced.body, values),
+    },
+    permission_denied: {
+      title: t(($) => $.library.folder.unavailable.permissionDenied.title, values),
+      body: isMac
+        ? t(($) => $.library.folder.unavailable.permissionDenied.bodyMac)
+        : t(($) => $.library.folder.unavailable.permissionDenied.bodyOther, values),
+    },
+  }[state];
+}
+
+function folderDialogCopy(
+  t: Translate,
+  state: UnavailableFolder,
+  reachable: boolean,
+  values: FolderCopyValues,
+) {
+  if (!reachable) return folderProblemCopy(t, state, values);
+  return {
+    title: t(($) => $.library.folder.unavailable.back.title, values),
+    body: t(($) => $.library.folder.unavailable.back.body, values),
+  };
+}
+
+function TryAgainButton({
+  primaryRef,
+  busy,
+  onClick,
+}: Readonly<{
+  primaryRef: RefObject<HTMLButtonElement | null>;
+  busy: Busy;
+  onClick: () => void;
+}>) {
+  const { t } = useTranslation(["common", "library"]);
+  const checking = busy === "check";
+  return (
+    <Button ref={primaryRef} size="sm" disabled={busy !== null} onClick={onClick}>
+      <span className="grid">
+        <span
+          aria-hidden={checking}
+          className={cn("col-start-1 row-start-1", checking && "invisible")}
+        >
+          {t(($) => $.library.folder.unavailable.tryAgain)}
+        </span>
+        <span
+          aria-hidden={!checking}
+          className={cn("col-start-1 row-start-1", !checking && "invisible")}
+        >
+          {t(($) => $.library.folder.unavailable.checking)}
+        </span>
+      </span>
+    </Button>
+  );
+}
+
+function FolderProblemActions({
+  state,
+  primaryRef,
+  busy,
+  onLocate,
+  onTryAgain,
+  onAdopt,
+}: Readonly<{
+  state: UnavailableFolder;
+  primaryRef: RefObject<HTMLButtonElement | null>;
+  busy: Busy;
+  onLocate: () => void;
+  onTryAgain: () => void;
+  onAdopt: () => void;
+}>) {
+  const { t } = useTranslation(["common", "library"]);
+  const locateButton = (primary: boolean) => (
+    <Button
+      ref={primary ? primaryRef : undefined}
+      size="sm"
+      variant={primary ? "default" : "outline"}
+      disabled={busy !== null}
+      onClick={onLocate}
+    >
+      {t(($) => $.library.folder.unavailable.locate)}
+    </Button>
+  );
+  const tryAgainButton = (
+    <TryAgainButton primaryRef={primaryRef} busy={busy} onClick={onTryAgain} />
+  );
+  switch (state) {
+    case "missing":
+      return locateButton(true);
+    case "offline":
+      return (
+        <>
+          {locateButton(false)}
+          {tryAgainButton}
+        </>
+      );
+    case "replaced":
+      return (
+        <>
+          {locateButton(false)}
+          <Button ref={primaryRef} size="sm" disabled={busy !== null} onClick={onAdopt}>
+            {t(($) => $.library.folder.unavailable.useThisFolder)}
+          </Button>
+        </>
+      );
+    case "permission_denied":
+      return tryAgainButton;
+  }
+}
 
 export function FolderUnavailableDialog({
   project,
@@ -63,32 +188,7 @@ export function FolderUnavailableDialog({
   if (!project) return null;
   const Icon = reachable ? FolderCheck : FOLDER_STATE_ICON[state];
   const values = { name: project.name, path: folderDisplayPath(project) ?? "" };
-  const problem = {
-    missing: {
-      title: t(($) => $.library.folder.unavailable.missing.title, values),
-      body: t(($) => $.library.folder.unavailable.missing.body, values),
-    },
-    offline: {
-      title: t(($) => $.library.folder.unavailable.offline.title, values),
-      body: t(($) => $.library.folder.unavailable.offline.body, values),
-    },
-    replaced: {
-      title: t(($) => $.library.folder.unavailable.replaced.title, values),
-      body: t(($) => $.library.folder.unavailable.replaced.body, values),
-    },
-    permission_denied: {
-      title: t(($) => $.library.folder.unavailable.permissionDenied.title, values),
-      body: isMac
-        ? t(($) => $.library.folder.unavailable.permissionDenied.bodyMac)
-        : t(($) => $.library.folder.unavailable.permissionDenied.bodyOther, values),
-    },
-  }[state];
-  const copy = reachable
-    ? {
-        title: t(($) => $.library.folder.unavailable.back.title, values),
-        body: t(($) => $.library.folder.unavailable.back.body, values),
-      }
-    : problem;
+  const copy = folderDialogCopy(t, state, reachable, values);
 
   const run = (action: Exclude<Busy, null>, scope: string, work: () => Promise<void>) => {
     if (busy) return;
@@ -120,59 +220,20 @@ export function FolderUnavailableDialog({
       else setStill(true);
     });
 
-  const locateButton = (primary: boolean) => (
-    <Button
-      ref={primary ? primaryRef : undefined}
-      size="sm"
-      variant={primary ? "default" : "outline"}
-      disabled={busy !== null}
-      onClick={locate}
-    >
-      {t(($) => $.library.folder.unavailable.locate)}
-    </Button>
-  );
-  const checking = busy === "check";
-  const tryAgainButton = (
-    <Button ref={primaryRef} size="sm" disabled={busy !== null} onClick={tryAgain}>
-      <span className="grid">
-        <span
-          aria-hidden={checking}
-          className={cn("col-start-1 row-start-1", checking && "invisible")}
-        >
-          {t(($) => $.library.folder.unavailable.tryAgain)}
-        </span>
-        <span
-          aria-hidden={!checking}
-          className={cn("col-start-1 row-start-1", !checking && "invisible")}
-        >
-          {t(($) => $.library.folder.unavailable.checking)}
-        </span>
-      </span>
-    </Button>
-  );
   const actions = reachable ? (
     <Button ref={primaryRef} size="sm" onClick={() => onOpen(project.id)}>
       {t(($) => $.common.actions.open)}
     </Button>
   ) : (
-    <>
-      {state === "missing" ? locateButton(true) : null}
-      {state === "offline" ? (
-        <>
-          {locateButton(false)}
-          {tryAgainButton}
-        </>
-      ) : null}
-      {state === "replaced" ? (
-        <>
-          {locateButton(false)}
-          <Button ref={primaryRef} size="sm" disabled={busy !== null} onClick={adopt}>
-            {t(($) => $.library.folder.unavailable.useThisFolder)}
-          </Button>
-        </>
-      ) : null}
-      {state === "permission_denied" ? tryAgainButton : null}
-    </>
+    <FolderProblemActions
+      key={state}
+      state={state}
+      primaryRef={primaryRef}
+      busy={busy}
+      onLocate={locate}
+      onTryAgain={tryAgain}
+      onAdopt={adopt}
+    />
   );
 
   return (

@@ -170,6 +170,19 @@ describe("Editor shell", () => {
     expect(useDiffStore.getState().diffs).toHaveLength(1);
   });
 
+  it("labels a diff against the file on disk", () => {
+    openFile("main.tex");
+    useDiffStore.setState({
+      diffs: [{ path: "main.tex", side: "disk", order: 2 }],
+      activeKey: "disk:main.tex",
+    });
+    render(<Editor />);
+
+    expect(screen.getByText(shell.diffOnDisk)).toBeInTheDocument();
+    expect(screen.queryByText(shell.diffWorkingTree)).not.toBeInTheDocument();
+    expect(screen.queryByText(shell.diffIndex)).not.toBeInTheDocument();
+  });
+
   it("opens the editor settings section from the tab strip", () => {
     render(<Editor />);
 

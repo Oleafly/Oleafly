@@ -1696,6 +1696,43 @@ describe("folder listings that stop early", () => {
     await useFilesStore.getState().refreshTree();
     expect(useFilesStore.getState().tree).toEqual(tree);
   });
+
+  it("keeps an unchanged tree when a flag is absent on one side and false on the other", async () => {
+    const tree = [
+      { path: "locked", is_dir: true, unreadable: true },
+      { path: "main.tex", is_dir: false, placeholder: false, read_only: true, partial: false },
+    ];
+    useFilesStore.setState({ tree, treeTruncated: false });
+    mocks.listFileTree.mockResolvedValueOnce({
+      entries: [
+        { path: "locked", is_dir: true, unreadable: true, placeholder: false, read_only: false },
+        { path: "main.tex", is_dir: false, unreadable: false, read_only: true },
+      ],
+      truncated: false,
+    });
+    await expect(useFilesStore.getState().refreshTree({ keepUnchanged: true })).resolves.toBe(
+      false,
+    );
+    expect(useFilesStore.getState().tree).toBe(tree);
+  });
+
+  it.each([
+    "unreadable",
+    "placeholder",
+    "read_only",
+    "partial",
+  ] as const)("replaces an unchanged-looking tree when %s flips", async (flag) => {
+    const tree = [{ path: "main.tex", is_dir: false }];
+    const flipped = [{ path: "main.tex", is_dir: false, [flag]: true }];
+    useFilesStore.setState({ tree, treeTruncated: false });
+    mocks.listFileTree.mockResolvedValueOnce({ entries: flipped, truncated: false });
+    await expect(useFilesStore.getState().refreshTree({ keepUnchanged: true })).resolves.toBe(true);
+    expect(useFilesStore.getState().tree).toEqual(flipped);
+
+    mocks.listFileTree.mockResolvedValueOnce({ entries: tree, truncated: false });
+    await expect(useFilesStore.getState().refreshTree({ keepUnchanged: true })).resolves.toBe(true);
+    expect(useFilesStore.getState().tree).toEqual(tree);
+  });
 });
 
 describe("autosave failures", () => {

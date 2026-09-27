@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useDiffStore } from "@/store/diff";
+import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { type DiffSide, useDiffStore } from "@/store/diff";
 import { DiffView } from "./DiffView";
 
 const mocks = vi.hoisted(() => ({ gitShow: vi.fn(), readFileContent: vi.fn() }));
@@ -98,3 +99,15 @@ it("compares the file on disk with the unsaved buffer without running Git", asyn
   expect(mocks.gitShow).not.toHaveBeenCalled();
 });
 
+it.each<[DiffSide, string]>([
+  ["working", en.diff.workingHeading],
+  ["staged", en.diff.stagedHeading],
+  ["disk", en.diff.diskHeading],
+])("names what a %s diff compares in its heading", async (side, heading) => {
+  mocks.gitShow.mockResolvedValue("Original line\n");
+  mocks.readFileContent.mockResolvedValue("Original line\n");
+  useDiffStore.getState().openDiff("main.tex", side);
+  render(<DiffView />);
+
+  expect(await screen.findByText(heading)).toBeInTheDocument();
+});

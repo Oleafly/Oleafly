@@ -9,17 +9,8 @@ import { folderReachable, useProjectAvailabilityStore } from "@/store/project-av
 
 export const FOLDER_CHANGED_EVENT = "project-folder-changed";
 
-export function FolderWatchKeeper() {
-  const projectId = useFilesStore((state) => state.projectId);
-  const openedInPlace = useFilesStore((state) => state.manifestHome !== "library");
-  const reachable = useProjectAvailabilityStore(
-    (state) => state.projectId !== projectId || folderReachable(state.availability),
-  );
-  const relocations = useProjectAvailabilityStore((state) => state.relocations);
-
+function FolderWatch({ projectId }: Readonly<{ projectId: string }>) {
   useEffect(() => {
-    if (!isTauri() || !projectId || !openedInPlace || !reachable) return;
-    void relocations;
     const started = watchProjectFolder(projectId).catch((error) => {
       void logError("watch project folder", error);
       return null;
@@ -32,7 +23,18 @@ export function FolderWatchKeeper() {
         );
       });
     };
-  }, [projectId, openedInPlace, reachable, relocations]);
+  }, [projectId]);
+
+  return null;
+}
+
+export function FolderWatchKeeper() {
+  const projectId = useFilesStore((state) => state.projectId);
+  const openedInPlace = useFilesStore((state) => state.manifestHome !== "library");
+  const reachable = useProjectAvailabilityStore(
+    (state) => state.projectId !== projectId || folderReachable(state.availability),
+  );
+  const relocations = useProjectAvailabilityStore((state) => state.relocations);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -52,5 +54,6 @@ export function FolderWatchKeeper() {
     };
   }, []);
 
-  return null;
+  if (!isTauri() || !projectId || !openedInPlace || !reachable) return null;
+  return <FolderWatch key={`${projectId}:${relocations}`} projectId={projectId} />;
 }

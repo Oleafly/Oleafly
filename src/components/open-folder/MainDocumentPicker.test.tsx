@@ -74,8 +74,22 @@ function present(detection: FolderDetection = ambiguous, projectId = "linked-a")
   act(() => useOpenFolderStore.getState().present(opened));
 }
 
+function list() {
+  return screen.getByRole("group", { name: labels.picker.listLabel });
+}
+
 function options() {
-  return within(screen.getByRole("listbox")).getAllByRole("option");
+  return within(list()).getAllByRole("radio");
+}
+
+function row(option: HTMLElement) {
+  const label = option.closest("label");
+  if (!label) throw new Error("the choice is not inside its row");
+  return label;
+}
+
+function press(key: string) {
+  fireEvent.keyDown(document.activeElement ?? document.body, { key });
 }
 
 beforeEach(() => {
@@ -103,9 +117,10 @@ describe("MainDocumentPicker", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     present();
     expect(screen.getByRole("dialog", { name: labels.picker.askTitle })).toBeInTheDocument();
-    const rows = options();
-    expect(rows).toHaveLength(3);
-    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    const choices = options();
+    expect(choices).toHaveLength(3);
+    expect(choices[0]).toBeChecked();
+    const rows = choices.map(row);
     expect(within(rows[0]).getByText(labels.picker.bestMatch)).toBeInTheDocument();
     expect(within(rows[0]).getByText("paper/main.tex")).toBeInTheDocument();
     expect(within(rows[0]).getByText(labels.kind.document)).toBeInTheDocument();
@@ -122,11 +137,12 @@ describe("MainDocumentPicker", () => {
   it("shows the selection with a tint, never an outline or ring", () => {
     render(<MainDocumentPicker />);
     present();
-    const [selected, other] = options();
+    const [selected, other] = options().map(row);
     expect(selected.className).toMatch(/bg-/);
     expect(selected.className).not.toMatch(/ring|outline/);
     expect(other.className).not.toMatch(/ring|outline/);
-    expect(screen.getByRole("listbox").className).not.toMatch(/ring|outline/);
+    expect(list().className).not.toMatch(/ring|outline/);
+    expect(list().className).toMatch(/focus-visible\]:border-/);
   });
 
   it("ignores a folder presented for another project", () => {
@@ -147,29 +163,86 @@ describe("MainDocumentPicker", () => {
   it("moves with the arrow keys and opens the chosen document with Enter", async () => {
     render(<MainDocumentPicker />);
     present();
-    const list = screen.getByRole("listbox");
-    await waitFor(() => expect(list).toHaveFocus());
-    fireEvent.keyDown(list, { key: "ArrowDown" });
-    expect(options()[1]).toHaveAttribute("aria-selected", "true");
-    expect(list).toHaveAttribute("aria-activedescendant", options()[1].id);
-    fireEvent.keyDown(list, { key: "End" });
-    expect(options()[2]).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(list, { key: "ArrowDown" });
-    expect(options()[2]).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(list, { key: "Home" });
-    fireEvent.keyDown(list, { key: "ArrowUp" });
-    expect(options()[0]).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(list, { key: "ArrowDown" });
-    fireEvent.keyDown(list, { key: "Enter" });
+    await waitFor(() => expect(options()[0]).toHaveFocus());
+    press("ArrowDown");
+    expect(options()[1]).toBeChecked();
+    expect(options()[1]).toHaveFocus();
+    press("End");
+    expect(options()[2]).toBeChecked();
+    expect(options()[2]).toHaveFocus();
+    press("ArrowDown");
+    expect(options()[2]).toBeChecked();
+    press("Home");
+    press("ArrowUp");
+    expect(options()[0]).toBeChecked();
+    expect(options()[0]).toHaveFocus();
+    press("ArrowDown");
+    press("Enter");
     await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex"));
     await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("stops at the ends of the list instead of wrapping around", async () => {
+    render(<MainDocumentPicker />);
+    present();
+    await waitFor(() => expect(options()[0]).toHaveFocus());
+    press("ArrowUp");
+    expect(options()[0]).toBeChecked();
+    press("ArrowLeft");
+    expect(options()[0]).toBeChecked();
+    press("ArrowRight");
+    expect(options()[1]).toBeChecked();
+    expect(options()[1]).toHaveFocus();
+    press("End");
+    press("ArrowRight");
+    expect(options()[2]).toBeChecked();
+    press("ArrowLeft");
+    expect(options()[1]).toBeChecked();
+    expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
+  });
+
+  it("keeps the keyboard on the list after a click", async () => {
+    render(<MainDocumentPicker />);
+    present();
+    fireEvent.click(options()[1]);
+    expect(options()[1]).toBeChecked();
+    expect(options()[1]).toHaveFocus();
+    press("ArrowDown");
+    expect(options()[2]).toBeChecked();
+    expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
+  });
+
+  it("takes the keyboard back when the selected row is clicked again", async () => {
+    render(<MainDocumentPicker />);
+    present();
+    const browse = screen.getByRole("button", { name: labels.picker.browse });
+    act(() => browse.focus());
+    expect(browse).toHaveFocus();
+    fireEvent.click(options()[0]);
+    expect(options()[0]).toBeChecked();
+    expect(options()[0]).toHaveFocus();
+    press("ArrowDown");
+    expect(options()[1]).toBeChecked();
+    press("Enter");
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("talk/slides.tex"));
+  });
+
+  it("gives the list a single tab stop on the selected choice", async () => {
+    render(<MainDocumentPicker />);
+    present();
+    await waitFor(() => expect(options()[0]).toHaveFocus());
+    expect(options().map((option) => option.tabIndex)).toEqual([0, -1, -1]);
+    press("End");
+    expect(options().map((option) => option.tabIndex)).toEqual([-1, -1, 0]);
+    fireEvent.click(options()[1]);
+    expect(options().map((option) => option.tabIndex)).toEqual([-1, 0, -1]);
+  });
+
   it("opens the selected document from the Open button", async () => {
     render(<MainDocumentPicker />);
     present();
-    fireEvent.click(options()[2]);
+    fireEvent.click(row(options()[2]));
     fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
     await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledWith("notes/index.md"));
     await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
@@ -193,7 +266,8 @@ describe("MainDocumentPicker", () => {
   it("treats Escape as just browsing", async () => {
     render(<MainDocumentPicker />);
     present();
-    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
+    await waitFor(() => expect(options()[0]).toHaveFocus());
+    press("Escape");
     await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
     expect(mocks.chooseMainDocument).not.toHaveBeenCalled();
   });
@@ -274,7 +348,7 @@ describe("MainDocumentPicker", () => {
       finish({ ...ambiguous, candidates: [...ambiguous.candidates, candidate("appendix/extra.tex")] }),
     );
     expect(options()).toHaveLength(4);
-    expect(within(options()[3]).getByText("appendix/extra.tex")).toBeInTheDocument();
+    expect(within(row(options()[3])).getByText("appendix/extra.tex")).toBeInTheDocument();
   });
 
   it("says when the search stopped early", () => {
@@ -294,9 +368,9 @@ describe("MainDocumentPicker", () => {
     act(() => useMainDocumentStore.getState().openChange());
     expect(screen.getByRole("dialog", { name: labels.picker.changeTitle })).toBeInTheDocument();
     await waitFor(() => expect(options()).toHaveLength(3));
-    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    expect(options()[1]).toHaveAttribute("aria-selected", "true");
-    expect(within(options()[1]).getByText(labels.picker.current)).toBeInTheDocument();
+    await waitFor(() => expect(options()[1]).toHaveFocus());
+    expect(options()[1]).toBeChecked();
+    expect(within(row(options()[1])).getByText(labels.picker.current)).toBeInTheDocument();
     expect(screen.queryByText(labels.picker.bestMatch)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: enCommon.actions.cancel }));
     expect(useMainDocumentStore.getState().changing).toBe(false);

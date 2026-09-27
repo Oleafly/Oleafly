@@ -165,6 +165,14 @@ function buildTree(
   return root.children;
 }
 
+function conflictBodyKey(
+  op: "rename" | "create",
+  replacesFolderInPlace: boolean,
+): "renameFolderBody" | "renameBody" | "createBody" {
+  if (replacesFolderInPlace) return "renameFolderBody";
+  return op === "rename" ? "renameBody" : "createBody";
+}
+
 interface TreeCtx {
   expanded: Set<string>;
   toggle: (p: string) => void;
@@ -889,12 +897,8 @@ export function FileTree({
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               <Trans
                 ns="workspace"
-                i18nKey={
-                  replacesFolderInPlace
-                    ? ($) => $.workspace.files.conflict.renameFolderBody
-                    : conflict.op === "rename"
-                      ? ($) => $.workspace.files.conflict.renameBody
-                      : ($) => $.workspace.files.conflict.createBody
+                i18nKey={($) =>
+                  $.workspace.files.conflict[conflictBodyKey(conflict.op, replacesFolderInPlace)]
                 }
                 values={{
                   destination: conflict.to,
@@ -1057,6 +1061,132 @@ export function RenameEntryInput({
   );
 }
 
+function treeRowHintKey(
+  unreadable: boolean,
+  readOnlyLink: boolean,
+  partial: boolean,
+): "unreadableHint" | "linkedReadOnly" | "partialFolder" | null {
+  if (unreadable) return "unreadableHint";
+  if (readOnlyLink) return "linkedReadOnly";
+  if (partial) return "partialFolder";
+  return null;
+}
+
+function TreeRowIcon({
+  node,
+  expanded,
+  isMain,
+}: Readonly<{ node: TreeNode; expanded: boolean; isMain: boolean }>) {
+  if (node.unreadable) {
+    return (
+      <>
+        <span aria-hidden className="w-3.5 shrink-0" />
+        {node.isDir ? (
+          <FolderLock className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <FileLock className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </>
+    );
+  }
+  if (node.isDir) {
+    return (
+      <>
+        <ChevronRight
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-90"
+          )}
+        />
+        {expanded ? (
+          <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <Folder className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </>
+    );
+  }
+  return (
+    <>
+      <span className="flex w-3.5 shrink-0 items-center justify-center">
+        {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
+      </span>
+      <FileIcon name={node.name} className="size-4 shrink-0" />
+    </>
+  );
+}
+
+function TreeRowKindMenuItems({
+  node,
+  ctx,
+  readOnlyLink,
+}: Readonly<{ node: TreeNode; ctx: TreeCtx; readOnlyLink: boolean }>) {
+  const { t } = useTranslation(["common", "workspace"]);
+  if (node.unreadable) return null;
+  if (node.isDir) {
+    return (
+      <>
+        <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "file")}>
+          <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "dir")}>
+          <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => ctx.onImport(node.path, "file")}>
+          <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => ctx.onImport(node.path, "dir")}>
+          <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
+        </ContextMenuItem>
+      </>
+    );
+  }
+  return (
+    <>
+      <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
+        {t(($) => $.common.actions.open)}
+      </ContextMenuItem>
+      {!readOnlyLink && (
+        <ContextMenuItem
+          disabled={!ctx.mainExtensions.some((extension) =>
+            node.path.toLowerCase().endsWith(`.${extension.toLowerCase()}`),
+          )}
+          onClick={() => ctx.onSetMain(node.path)}
+        >
+          {t(($) => $.workspace.files.setMain)}
+        </ContextMenuItem>
+      )}
+    </>
+  );
+}
+
+function TreeRowEditMenuItems({ node, ctx }: Readonly<{ node: TreeNode; ctx: TreeCtx }>) {
+  const { t } = useTranslation(["common", "workspace"]);
+  return (
+    <>
+      {!node.unreadable && <ContextMenuSeparator />}
+      <ContextMenuItem onClick={() => ctx.onStartRename(node.path, node.name)}>
+        <Pencil className="mr-2 size-4" /> {t(($) => $.common.actions.rename)}
+      </ContextMenuItem>
+      {!node.unreadable && (
+        <ContextMenuItem onClick={() => ctx.onCopy(node.path, node.isDir)}>
+          <CopyPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.makeCopy)}
+        </ContextMenuItem>
+      )}
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        className="text-destructive focus:text-destructive"
+        onClick={() => {
+          if (window.confirm(ctx.deleteQuestion(node.path))) ctx.onDelete(node.path);
+        }}
+      >
+        <Trash2 className="mr-2 size-4" /> {t(($) => $.common.actions.delete)}
+      </ContextMenuItem>
+    </>
+  );
+}
+
 function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
@@ -1069,10 +1199,8 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   const readOnlyLink = node.readOnly && !node.isDir;
   const expandable = node.isDir && !unreadable;
   const partial = expandable && node.partial;
-  let hint: string | undefined;
-  if (unreadable) hint = t(($) => $.workspace.files.unreadableHint);
-  else if (readOnlyLink) hint = t(($) => $.workspace.files.linkedReadOnly);
-  else if (partial) hint = t(($) => $.workspace.files.partialFolder);
+  const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
+  const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
   const rowRef = useRef<HTMLDivElement>(null);
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
@@ -1146,7 +1274,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       ref={rowRef}
       role="treeitem"
       data-path={node.path}
-      data-main-document={isMain ? "true" : "false"}
+      data-main-document={String(isMain)}
       tabIndex={0}
       draggable={!isRenaming && !readOnlyLink}
       aria-expanded={expandable ? ctx.expanded.has(node.path) : undefined}
@@ -1167,37 +1295,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {unreadable ? (
-        <>
-          <span aria-hidden className="w-3.5 shrink-0" />
-          {node.isDir ? (
-            <FolderLock className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <FileLock className="size-4 shrink-0 text-muted-foreground" />
-          )}
-        </>
-      ) : node.isDir ? (
-        <>
-          <ChevronRight
-            className={cn(
-              "size-3.5 shrink-0 text-muted-foreground transition-transform",
-              ctx.expanded.has(node.path) && "rotate-90"
-            )}
-          />
-          {ctx.expanded.has(node.path) ? (
-            <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <Folder className="size-4 shrink-0 text-muted-foreground" />
-          )}
-        </>
-      ) : (
-        <>
-          <span className="flex w-3.5 shrink-0 items-center justify-center">
-            {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
-          </span>
-          <FileIcon name={node.name} className="size-4 shrink-0" />
-        </>
-      )}
+      <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} />
       <span className={cn("truncate", unreadable && "text-muted-foreground")}>{node.name}</span>
       {readOnlyLink && (
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
@@ -1234,61 +1332,8 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
         <ContextMenu>
           <ContextMenuTrigger asChild>{content}</ContextMenuTrigger>
           <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
-            {unreadable ? null : node.isDir ? (
-              <>
-                <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "file")}>
-                  <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "dir")}>
-                  <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => ctx.onImport(node.path, "file")}>
-                  <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => ctx.onImport(node.path, "dir")}>
-                  <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
-                </ContextMenuItem>
-              </>
-            ) : (
-              <>
-                <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
-                  {t(($) => $.common.actions.open)}
-                </ContextMenuItem>
-                {!readOnlyLink && (
-                  <ContextMenuItem
-                    disabled={!ctx.mainExtensions.some((extension) =>
-                      node.path.toLowerCase().endsWith(`.${extension.toLowerCase()}`),
-                    )}
-                    onClick={() => ctx.onSetMain(node.path)}
-                  >
-                    {t(($) => $.workspace.files.setMain)}
-                  </ContextMenuItem>
-                )}
-              </>
-            )}
-            {!readOnlyLink && (
-              <>
-                {!unreadable && <ContextMenuSeparator />}
-                <ContextMenuItem onClick={() => ctx.onStartRename(node.path, node.name)}>
-                  <Pencil className="mr-2 size-4" /> {t(($) => $.common.actions.rename)}
-                </ContextMenuItem>
-                {!unreadable && (
-                  <ContextMenuItem onClick={() => ctx.onCopy(node.path, node.isDir)}>
-                    <CopyPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.makeCopy)}
-                  </ContextMenuItem>
-                )}
-                <ContextMenuSeparator />
-                <ContextMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => {
-                    if (window.confirm(ctx.deleteQuestion(node.path))) ctx.onDelete(node.path);
-                  }}
-                >
-                  <Trash2 className="mr-2 size-4" /> {t(($) => $.common.actions.delete)}
-                </ContextMenuItem>
-              </>
-            )}
+            <TreeRowKindMenuItems node={node} ctx={ctx} readOnlyLink={readOnlyLink} />
+            {!readOnlyLink && <TreeRowEditMenuItems node={node} ctx={ctx} />}
           </ContextMenuContent>
         </ContextMenu>
       )}

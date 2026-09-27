@@ -20,7 +20,7 @@ import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
 import { FileTabStatus } from "./FileTabStatus";
-import { useDiffStore, diffKey } from "@/store/diff";
+import { useDiffStore, diffKey, type DiffSide } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
@@ -53,6 +53,12 @@ const MARKDOWN_SPLIT_LIMITS = {
 function basename(p: string) {
   return p.slice(p.lastIndexOf("/") + 1);
 }
+
+const DIFF_TAB_SIDE_LABEL = {
+  working: "diffWorkingTree",
+  staged: "diffIndex",
+  disk: "diffOnDisk",
+} as const satisfies Record<DiffSide, string>;
 
 function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -525,11 +531,7 @@ export function Editor() {
               >
                 {basename(tab.d.path)}
                 <span className="text-muted-foreground">
-                  {tab.d.side === "staged"
-                    ? t(($) => $.editor.shell.diffIndex)
-                    : tab.d.side === "disk"
-                      ? t(($) => $.editor.shell.diffOnDisk)
-                      : t(($) => $.editor.shell.diffWorkingTree)}
+                  {t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
                 </span>
               </button>
               <button

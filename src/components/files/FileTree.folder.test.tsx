@@ -257,6 +257,73 @@ describe("FileTree in an opened folder", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByRole("button", { name: files.conflict.keepBoth })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: files.conflict.replace })).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/is an existing folder/)).toBeInTheDocument();
+    expect(within(dialog).getByText("open (2)")).toBeInTheDocument();
+  });
+
+  it("offers to replace a file that already has the new name", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_files") return TREE;
+      if (command === "project_mutation_generation") return 0;
+      if (command === "rename_file") {
+        return {
+          status: "conflict",
+          destination: "notes.tex",
+          suggested_destination: "notes (2).tex",
+          generation: 0,
+        };
+      }
+      return undefined;
+    });
+    useFilesStore.setState({
+      tree: [
+        { path: "draft.tex", is_dir: false },
+        { path: "notes.tex", is_dir: false },
+        { path: "main.tex", is_dir: false },
+      ],
+    });
+    render(<FileTree />);
+
+    fireEvent.contextMenu(screen.getByRole("treeitem", { name: /draft\.tex/ }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: /rename/i }));
+    const input = screen.getByRole("textbox", { name: files.renameAriaLabel });
+    fireEvent.change(input, { target: { value: "notes.tex" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/or replace the existing destination/)).toBeInTheDocument();
+    expect(within(dialog).getByText("notes (2).tex")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: files.conflict.replace })).toBeInTheDocument();
+  });
+
+  it("draws folders with a chevron that turns open and stars the main document", () => {
+    useFilesStore.setState({
+      tree: [
+        { path: "chapters", is_dir: true },
+        { path: "chapters/intro.tex", is_dir: false },
+        { path: "main.tex", is_dir: false },
+      ],
+    });
+    render(<FileTree />);
+
+    const folder = screen.getByRole("treeitem", { name: /chapters/ });
+    expect(folder).toHaveAttribute("aria-expanded", "false");
+    expect(folder.querySelector("svg.lucide-folder")).toBeInTheDocument();
+    expect(folder.querySelector("svg.lucide-folder-open")).not.toBeInTheDocument();
+    expect(folder.querySelector("svg.lucide-chevron-right")).not.toHaveClass("rotate-90");
+    expect(folder.querySelector("svg.lucide-star")).not.toBeInTheDocument();
+
+    const main = screen.getByRole("treeitem", { name: /main\.tex/ });
+    expect(main.querySelector("svg.lucide-star")).toBeInTheDocument();
+    expect(main.querySelector("svg.lucide-chevron-right")).not.toBeInTheDocument();
+
+    fireEvent.click(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "true");
+    expect(folder.querySelector("svg.lucide-folder-open")).toBeInTheDocument();
+    expect(folder.querySelector("svg.lucide-chevron-right")).toHaveClass("rotate-90");
+    const intro = screen.getByRole("treeitem", { name: /intro\.tex/ });
+    expect(intro.querySelector("svg.lucide-star")).not.toBeInTheDocument();
+    expect(intro.querySelector("svg.lucide-folder")).not.toBeInTheDocument();
   });
 
   it("marks a linked bibliography as read-only and offers only Open", () => {

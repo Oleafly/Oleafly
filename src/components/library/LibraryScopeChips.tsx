@@ -34,7 +34,7 @@ export function LibraryScopeChips({
             className="peer sr-only"
           />
           <span className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background/60 px-3 text-xs font-medium text-muted-foreground backdrop-blur-md transition-colors hover:bg-accent/60 hover:text-foreground peer-checked:border-primary/45 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:border-primary/70 peer-focus-visible:bg-accent/70 peer-focus-visible:text-foreground">
-            <span>{labels[scope]}</span>
+            {labels[scope]}
             <span className="tabular-nums opacity-70">{formatNumber(counts[scope])}</span>
           </span>
         </label>

@@ -32,6 +32,19 @@ function show(state: Partial<ReturnType<typeof useCopyIntoLibraryStore.getState>
   return render(<CopyIntoLibraryDialog />);
 }
 
+function progressBar(name: string) {
+  const bar = screen.getByRole("progressbar", { name });
+  expect(bar.tagName).toBe("PROGRESS");
+  expect(bar).toHaveAttribute("max", "100");
+  return bar;
+}
+
+function visibleFill() {
+  const track = document.querySelector(".h-1\\.5.rounded-full.bg-muted");
+  expect(track).toHaveAttribute("aria-hidden", "true");
+  return track?.firstElementChild as HTMLElement;
+}
+
 beforeEach(() => {
   cancel.mockReset();
   close.mockReset();
@@ -53,7 +66,9 @@ describe("CopyIntoLibraryDialog", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(enLibrary.folder.copy.counting)).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).not.toHaveAttribute("aria-valuenow");
+    expect(progressBar(enLibrary.folder.copy.counting)).not.toHaveAttribute("value");
+    expect(visibleFill()).toHaveClass("w-1/3", "animate-pulse");
+    expect(visibleFill().style.width).toBe("");
 
     useCopyIntoLibraryStore.setState({
       progress: {
@@ -68,7 +83,9 @@ describe("CopyIntoLibraryDialog", () => {
 
     expect(screen.getByText(enLibrary.folder.copy.copying)).toBeInTheDocument();
     expect(screen.getByText("1.5 KB of 4 KB")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "38");
+    expect(progressBar(enLibrary.folder.copy.copying)).toHaveAttribute("value", "38");
+    expect(visibleFill()).not.toHaveClass("animate-pulse");
+    expect(visibleFill().style.width).toBe("38%");
   });
 
   it("moves the bar through one large file and counts items when there are no bytes", () => {
@@ -82,14 +99,15 @@ describe("CopyIntoLibraryDialog", () => {
       },
     });
     expect(screen.getByText("3 MB of 4 MB")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
+    expect(progressBar(enLibrary.folder.copy.copying)).toHaveAttribute("value", "75");
 
     useCopyIntoLibraryStore.setState({
       progress: { phase: "copying", entriesDone: 3, entriesTotal: 4, bytesDone: 0, bytesTotal: 0 },
     });
     view.rerender(<CopyIntoLibraryDialog />);
     expect(screen.getByText("3 of 4")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
+    expect(progressBar(enLibrary.folder.copy.copying)).toHaveAttribute("value", "75");
+    expect(visibleFill().style.width).toBe("75%");
   });
 
   it("cancels from the button and from Escape", () => {

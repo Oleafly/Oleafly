@@ -71,6 +71,73 @@ pub(crate) fn outbound_resource_link(root: &Path, relative: &str) -> Option<Path
     outside_resource(root, &folder.join(relative_path.file_name()?))
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ItemKind {
+    ReadOnlyLink,
+    Unreadable,
+    File,
+    Folder,
+}
+
+impl FolderListing {
+    fn mark_unreadable(&mut self, index: usize, error: &std::io::Error) {
+        let entry = &mut self.entries[index];
+        entry.unreadable = true;
+        self.unreadable
+            .push((entry.path.clone(), error.to_string()));
+    }
+
+    fn cut_short(&mut self, current: Option<usize>, pending: &VecDeque<PendingFolder>) {
+        self.truncated = true;
+        let unfinished = pending.iter().filter_map(|remaining| remaining.entry);
+        for index in current.into_iter().chain(unfinished) {
+            self.entries[index].partial = true;
+        }
+    }
+}
+
+fn sorted_items(
+    folder: &PendingFolder,
+    listing: &mut FolderListing,
+) -> Result<Option<Vec<std::fs::DirEntry>>, String> {
+    match std::fs::read_dir(&folder.path) {
+        Ok(entries) => {
+            let mut items: Vec<_> = entries.filter_map(Result::ok).collect();
+            items.sort_by_key(std::fs::DirEntry::file_name);
+            Ok(Some(items))
+        }
+        Err(error) => match folder.entry {
+            None => Err(error.to_string()),
+            Some(index) => {
+                listing.mark_unreadable(index, &error);
+                Ok(None)
+            }
+        },
+    }
+}
+
+fn item_kind(root: &Path, item: &std::fs::DirEntry) -> Option<ItemKind> {
+    let name = item.file_name();
+    if hidden_from_listing(&name) {
+        return None;
+    }
+    match item.file_type() {
+        Ok(file_type) if file_type.is_symlink() => {
+            outside_resource(root, &item.path()).map(|_| ItemKind::ReadOnlyLink)
+        }
+        Ok(file_type) if file_type.is_dir() => {
+            (!oleafly_core::is_skipped_scan_directory(&name)).then_some(ItemKind::Folder)
+        }
+        Ok(_) => Some(ItemKind::File),
+        Err(_) => Some(ItemKind::Unreadable),
+    }
+}
+
+fn is_cloud_placeholder(item: &std::fs::DirEntry, path: &Path) -> bool {
+    item.metadata()
+        .is_ok_and(|metadata| crate::cloud_files::is_placeholder(path, &metadata))
+}
+
 pub(crate) fn list_linked_folder(root: &Path, limit: usize) -> Result<FolderListing, String> {
     let mut listing = FolderListing::default();
     let mut pending = VecDeque::from([PendingFolder {
@@ -79,84 +146,35 @@ pub(crate) fn list_linked_folder(root: &Path, limit: usize) -> Result<FolderList
         depth: 0,
     }]);
     while let Some(folder) = pending.pop_front() {
-        let entries = match std::fs::read_dir(&folder.path) {
-            Ok(entries) => entries,
-            Err(error) => match folder.entry {
-                None => return Err(error.to_string()),
-                Some(index) => {
-                    let entry = &mut listing.entries[index];
-                    entry.unreadable = true;
-                    listing
-                        .unreadable
-                        .push((entry.path.clone(), error.to_string()));
-                    continue;
-                }
-            },
+        let Some(items) = sorted_items(&folder, &mut listing)? else {
+            continue;
         };
-        let mut items: Vec<_> = entries.filter_map(Result::ok).collect();
-        items.sort_by_key(std::fs::DirEntry::file_name);
         for item in items {
-            let name = item.file_name();
-            if hidden_from_listing(&name) {
+            let Some(kind) = item_kind(root, &item) else {
                 continue;
-            }
-            let file_type = item.file_type();
-            let path = item.path();
-            let read_only_link = match &file_type {
-                Ok(file_type) if file_type.is_symlink() => {
-                    if outside_resource(root, &path).is_none() {
-                        continue;
-                    }
-                    true
-                }
-                Ok(file_type)
-                    if file_type.is_dir() && oleafly_core::is_skipped_scan_directory(&name) =>
-                {
-                    continue;
-                }
-                _ => false,
             };
             if listing.entries.len() >= limit {
-                listing.truncated = true;
-                let unfinished = pending.iter().filter_map(|remaining| remaining.entry);
-                for index in folder.entry.into_iter().chain(unfinished) {
-                    listing.entries[index].partial = true;
-                }
+                listing.cut_short(folder.entry, &pending);
                 return Ok(listing);
             }
-            let relative = rel_slash(root, &path);
-            if read_only_link {
-                let mut entry = FileEntry::new(relative, false);
-                entry.read_only = true;
-                listing.entries.push(entry);
-                continue;
-            }
-            let Ok(file_type) = file_type else {
-                let mut entry = FileEntry::new(relative, false);
-                entry.unreadable = true;
-                listing.entries.push(entry);
-                continue;
-            };
-            let mut entry = FileEntry::new(relative, file_type.is_dir());
-            if !file_type.is_dir() {
-                entry.placeholder = item
-                    .metadata()
-                    .is_ok_and(|metadata| crate::cloud_files::is_placeholder(&path, &metadata));
-                listing.entries.push(entry);
-                continue;
-            }
-            if folder.depth + 1 >= MAX_WALK_DEPTH {
-                entry.partial = true;
-                listing.entries.push(entry);
-                listing.truncated = true;
-                continue;
+            let path = item.path();
+            let depth = folder.depth + 1;
+            let mut entry = FileEntry::new(rel_slash(root, &path), kind == ItemKind::Folder);
+            match kind {
+                ItemKind::ReadOnlyLink => entry.read_only = true,
+                ItemKind::Unreadable => entry.unreadable = true,
+                ItemKind::File => entry.placeholder = is_cloud_placeholder(&item, &path),
+                ItemKind::Folder if depth >= MAX_WALK_DEPTH => {
+                    entry.partial = true;
+                    listing.truncated = true;
+                }
+                ItemKind::Folder => pending.push_back(PendingFolder {
+                    path,
+                    entry: Some(listing.entries.len()),
+                    depth,
+                }),
             }
             listing.entries.push(entry);
-            pending.push_back(PendingFolder {
-                path,
-                entry: Some(listing.entries.len() - 1),
-                depth: folder.depth + 1,
-            });
         }
     }
     Ok(listing)
@@ -270,6 +288,55 @@ mod tests {
                 ("a/one.tex", false),
             ]
         );
+        assert!(listing.truncated);
+    }
+
+    #[test]
+    fn entries_the_listing_skips_never_count_against_its_bound() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        write(&root, ".git/config", "[core]");
+        write(&root, "main.tex", "main");
+        write(&root, "node_modules/pkg/index.js", "x");
+        write(&root, "out/main.pdf", "pdf");
+        write(&root, "target/debug/app", "bin");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(root.join("main.tex"), root.join("z.tex")).unwrap();
+
+        let listing = list_linked_folder(&root, 1).unwrap();
+
+        assert_eq!(listed(&listing), [("main.tex", false, false)]);
+        assert!(!listing.truncated);
+        assert!(!listing.entries[0].partial);
+    }
+
+    #[test]
+    fn a_folder_at_the_depth_bound_is_listed_partial_and_left_unopened() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        let deepest = vec!["d"; MAX_WALK_DEPTH].join("/");
+        let beside = vec!["d"; MAX_WALK_DEPTH - 1].join("/");
+        write(&root, &format!("{deepest}/inside.tex"), "inside");
+        write(&root, &format!("{beside}/beside.tex"), "beside");
+
+        let listing = list_linked_folder(&root, LINKED_LISTING_LIMIT).unwrap();
+
+        let partial: Vec<_> = listing
+            .entries
+            .iter()
+            .filter(|entry| entry.partial)
+            .map(|entry| (entry.path.as_str(), entry.is_dir))
+            .collect();
+        assert_eq!(partial, [(deepest.as_str(), true)]);
+        assert!(listing
+            .entries
+            .iter()
+            .any(|entry| entry.path == format!("{beside}/beside.tex")));
+        assert!(!listing
+            .entries
+            .iter()
+            .any(|entry| entry.path.ends_with("inside.tex")));
+        assert_eq!(listing.entries.len(), MAX_WALK_DEPTH + 1);
         assert!(listing.truncated);
     }
 

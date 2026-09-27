@@ -52,7 +52,8 @@ vi.mock("@/lib/toast", () => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { Library } from "@/components/library/Library";
-import { RECENT_LIMIT } from "@/lib/library-projects";
+import { RECENT_LIMIT, folderOpenedLabel } from "@/lib/library-projects";
+import { projectModifiedLabel } from "@/lib/project-format";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -251,6 +252,101 @@ describe("folder cards", () => {
     expect(within(path).getByText("~/Library/Mobile Documents/com~apple~CloudDocs")).toHaveClass(
       "truncate",
     );
+  });
+});
+
+describe("project cards and rows", () => {
+  const today = Math.floor(Date.now() / 1000);
+  const RECOVERY = library("recovery", {
+    name: "Rescue",
+    main_doc: "",
+    engine: "",
+    kind: "",
+    updated_at: 0,
+    recovery_pending: true,
+  });
+  const NOTES = library("notes", {
+    name: "Notes",
+    main_doc: "notes.md",
+    engine: "markdown",
+    kind: "image",
+    updated_at: today,
+  });
+  const UNOPENED = folder("linked-unopened", "Unopened", { updated_at: today });
+
+  function card(name: string) {
+    return screen.getByRole("button", { name }).parentElement as HTMLElement;
+  }
+
+  function row(name: string) {
+    return screen.getByRole("button", { name }).parentElement as HTMLElement;
+  }
+
+  function columns(name: string) {
+    return Array.from(row(name).children)
+      .slice(1, 4)
+      .map((cell) => cell.textContent);
+  }
+
+  it("label recovery and library cards in the grid", async () => {
+    seed([RECOVERY, NOTES, THESIS]);
+    await renderLibrary();
+    const rescue = card("Open to recover Rescue");
+    expect(within(rescue).getByText(enLibrary.projects.recoveryRequired)).toBeInTheDocument();
+    expect(within(rescue).getAllByText(enLibrary.projects.openToRecover)).toHaveLength(2);
+    expect(
+      within(rescue).queryByRole("button", { name: enLibrary.projects.favoriteAdd }),
+    ).toBeNull();
+
+    const notes = card("Open Notes");
+    expect(within(notes).getByText("Markdown")).toBeInTheDocument();
+    expect(within(notes).getByText(enLibrary.projects.kind.image)).toBeInTheDocument();
+    expect(within(notes).getByText(projectModifiedLabel(today) as string)).toBeInTheDocument();
+    expect(
+      within(notes).getByRole("button", { name: enLibrary.projects.favoriteAdd }),
+    ).toBeInTheDocument();
+
+    const thesis = card("Open Thesis");
+    expect(within(thesis).getByText("Tectonic")).toBeInTheDocument();
+    expect(within(thesis).getByText("paper/main.tex")).toBeInTheDocument();
+    expect(within(thesis).queryByText(enLibrary.projects.kind.document)).toBeNull();
+  });
+
+  it("fill the list columns and the caption under each name", async () => {
+    useSettingsStore.setState({ homeProjectLayout: "list" });
+    seed([RECOVERY, NOTES, THESIS, UNOPENED]);
+    await renderLibrary();
+
+    const rescue = screen.getByRole("button", { name: "Open to recover Rescue" });
+    expect(within(rescue).getByText(enLibrary.projects.openToRecover)).toHaveClass(
+      "text-amber-600",
+    );
+    expect(columns("Open to recover Rescue")).toEqual([
+      enLibrary.projects.recoveryShort,
+      enLibrary.projects.recoveryMetadata,
+      enLibrary.projects.recoveryModified,
+    ]);
+
+    const notes = screen.getByRole("button", { name: "Open Notes" });
+    expect(within(notes).getByText(`Markdown · ${enLibrary.projects.kind.image}`)).toHaveClass(
+      "lg:hidden",
+    );
+    expect(within(notes).queryByTitle(/Desktop/)).toBeNull();
+    expect(columns("Open Notes")).toEqual([
+      enLibrary.projects.kind.image,
+      "Markdown",
+      projectModifiedLabel(today),
+    ]);
+
+    const thesis = screen.getByRole("button", { name: "Open Thesis" });
+    expect(within(thesis).getByTitle("~/Desktop/thesis")).toBeInTheDocument();
+    expect(within(thesis).queryByText(`Tectonic · ${enLibrary.projects.kind.document}`)).toBeNull();
+    expect(columns("Open Thesis")).toEqual([
+      enLibrary.projects.kind.document,
+      "Tectonic",
+      folderOpenedLabel(300),
+    ]);
+    expect(columns("Open Unopened")[2]).toBe(folderOpenedLabel(today));
   });
 });
 

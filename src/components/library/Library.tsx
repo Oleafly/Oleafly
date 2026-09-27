@@ -274,6 +274,80 @@ function projectKindLabel(t: Translate, kind: string | undefined): string {
   }
 }
 
+function projectCardLabels(t: Translate, project: ProjectInfo) {
+  if (project.recovery_pending) {
+    return {
+      date: t(($) => $.library.projects.openToRecover),
+      engine: t(($) => $.library.projects.recoveryRequired),
+      kind: t(($) => $.library.projects.openToRecover),
+      openLabel: t(($) => $.library.projects.openToRecoverNamed, { name: project.name }),
+    };
+  }
+  return {
+    date: projectModifiedLabel(project.updated_at),
+    engine: projectEngineLabel(project.engine, project.main_doc),
+    kind: projectKindLabel(t, project.kind),
+    openLabel: undefined,
+  };
+}
+
+function projectActivityLabel(project: ProjectInfo, folderPath: string | null) {
+  if (folderPath === null) return projectModifiedLabel(project.updated_at);
+  return folderOpenedLabel(project.last_opened_at || project.updated_at);
+}
+
+function projectRowColumns(t: Translate, project: ProjectInfo, folderPath: string | null) {
+  if (project.recovery_pending) {
+    return {
+      kind: t(($) => $.library.projects.recoveryShort),
+      engine: t(($) => $.library.projects.recoveryMetadata),
+      activity: t(($) => $.library.projects.recoveryModified),
+    };
+  }
+  return {
+    kind: projectKindLabel(t, project.kind),
+    engine: projectEngineLabel(project.engine, project.main_doc),
+    activity: projectActivityLabel(project, folderPath),
+  };
+}
+
+function ProjectRowCaption({
+  project,
+  folderPath,
+  folderState,
+}: Readonly<{
+  project: ProjectInfo;
+  folderPath: string | null;
+  folderState: UnavailableFolder | null;
+}>) {
+  const { t } = useTranslation(["common", "library"]);
+  if (folderPath !== null) {
+    return (
+      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+        {folderState ? (
+          <>
+            <FolderStateLine state={folderState} className="shrink-0" />
+            <span aria-hidden="true">·</span>
+          </>
+        ) : null}
+        <FolderPath path={folderPath} />
+      </span>
+    );
+  }
+  if (project.recovery_pending) {
+    return (
+      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+        {t(($) => $.library.projects.openToRecover)}
+      </span>
+    );
+  }
+  return (
+    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+      {projectEngineLabel(project.engine, project.main_doc)} · {projectKindLabel(t, project.kind)}
+    </span>
+  );
+}
+
 function FilterSelect({
   name,
   label,
@@ -767,23 +841,16 @@ export function Library() {
       {visibleProjects.map((p) => {
         const folderPath = folderDisplayPath(p);
         const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
+        const labels = projectCardLabels(t, p);
         return (
         <ContextMenu key={p.id}>
           <ContextMenuTrigger asChild>
             <div className="flex justify-center">
               <Book
                 title={p.name}
-                color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
-                date={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecover)
-                    : projectModifiedLabel(p.updated_at)
-                }
-                engine={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.recoveryRequired)
-                    : projectEngineLabel(p.engine, p.main_doc)
-                }
+                color={coverColor(p)}
+                date={labels.date}
+                engine={labels.engine}
                 forkedFrom={p.forked_from}
                 badge={folderPath === null ? undefined : <FolderCoverBadge />}
                 details={
@@ -796,16 +863,8 @@ export function Library() {
                   )
                 }
                 dimmed={folderState !== null}
-                kind={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecover)
-                    : projectKindLabel(t, p.kind)
-                }
-                openLabel={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                    : undefined
-                }
+                kind={labels.kind}
+                openLabel={labels.openLabel}
                 starred={favs.includes(p.id)}
                 onStarToggle={
                   p.recovery_pending ? undefined : () => toggleFav(p.id)
@@ -880,6 +939,7 @@ export function Library() {
         const color = coverColor(p);
         const folderPath = folderDisplayPath(p);
         const folderState = folderPath === null ? null : asUnavailable(availabilityOf(p));
+        const columns = projectRowColumns(t, p, folderPath);
         const starred = favs.includes(p.id);
         const forkSource = p.forked_from
           ? projects.find((project) => project.id === p.forked_from)?.name ??
@@ -1042,44 +1102,21 @@ export function Library() {
                       </span>
                       {folderPath === null ? null : <FolderInlineBadge />}
                     </span>
-                    {folderPath === null ? null : (
-                      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                        {folderState ? (
-                          <>
-                            <FolderStateLine state={folderState} className="shrink-0" />
-                            <span aria-hidden="true">·</span>
-                          </>
-                        ) : null}
-                        <FolderPath path={folderPath} />
-                      </span>
-                    )}
-                    {folderPath !== null ? null : recoveryPending ? (
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
-                        {t(($) => $.library.projects.openToRecover)}
-                      </span>
-                    ) : (
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-                        {projectEngineLabel(p.engine, p.main_doc)} · {projectKindLabel(t, p.kind)}
-                      </span>
-                    )}
+                    <ProjectRowCaption
+                      project={p}
+                      folderPath={folderPath}
+                      folderState={folderState}
+                    />
                   </span>
                 </button>
                 <span className="hidden text-xs capitalize text-muted-foreground lg:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryShort)
-                    : projectKindLabel(t, p.kind)}
+                  {columns.kind}
                 </span>
                 <span className="hidden text-xs text-muted-foreground lg:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryMetadata)
-                    : projectEngineLabel(p.engine, p.main_doc)}
+                  {columns.engine}
                 </span>
                 <span className="hidden text-xs text-muted-foreground sm:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryModified)
-                    : folderPath === null
-                      ? projectModifiedLabel(p.updated_at)
-                      : folderOpenedLabel(p.last_opened_at || p.updated_at)}
+                  {columns.activity}
                 </span>
                 {renderProjectRowActions()}
               </div>

@@ -18,7 +18,7 @@ pub fn resolve(project_id: &str, rel: &str) -> Result<PathBuf, String> {
 }
 
 pub fn resolve_readable(project_id: &str, rel: &str) -> Result<PathBuf, String> {
-    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    let location = crate::project_location::locate(project_id)?;
     resolve_readable_at(&location, rel)
 }
 

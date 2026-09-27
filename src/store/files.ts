@@ -345,10 +345,10 @@ function sameTreeEntries(left: readonly FileEntry[], right: readonly FileEntry[]
       return (
         entry.path === other.path &&
         entry.is_dir === other.is_dir &&
-        !entry.unreadable === !other.unreadable &&
-        !entry.placeholder === !other.placeholder &&
-        !entry.read_only === !other.read_only &&
-        !entry.partial === !other.partial
+        Boolean(entry.unreadable) === Boolean(other.unreadable) &&
+        Boolean(entry.placeholder) === Boolean(other.placeholder) &&
+        Boolean(entry.read_only) === Boolean(other.read_only) &&
+        Boolean(entry.partial) === Boolean(other.partial)
       );
     })
   );
@@ -1281,6 +1281,14 @@ interface ReloadedProjectFiles {
   attempted: Set<string>;
 }
 
+interface ProjectFileReconciliation {
+  captured: Record<string, FileState>;
+  filePaths: ReadonlySet<string>;
+  reloaded: ReloadedProjectFiles;
+  removedDirty: string[];
+  adopted: string[];
+}
+
 const BINARY_RELOAD_EXTENSIONS = new Set([
   "pdf",
   "png",
@@ -1394,11 +1402,7 @@ async function presentFilePaths(
 function reconcileProjectFile(
   path: string,
   current: FileState,
-  captured: Record<string, FileState>,
-  filePaths: ReadonlySet<string>,
-  reloaded: ReloadedProjectFiles,
-  removedDirty: string[],
-  adopted: string[],
+  { captured, filePaths, reloaded, removedDirty, adopted }: ProjectFileReconciliation,
 ): FileState | undefined {
   if (!filePaths.has(path)) {
     if (current.dirty) removedDirty.push(path);
@@ -1418,26 +1422,14 @@ function reconciledProjectState(
   state: FilesStore,
   metadata: ProjectMetadataState,
   tree: FileEntry[],
-  filePaths: ReadonlySet<string>,
-  captured: Record<string, FileState>,
-  reloaded: ReloadedProjectFiles,
-  removedDirty: string[],
-  adopted: string[],
+  reconciliation: ProjectFileReconciliation,
 ): Partial<FilesStore> {
   const files: Record<string, FileState> = {};
   for (const [path, current] of Object.entries(state.files)) {
-    const file = reconcileProjectFile(
-      path,
-      current,
-      captured,
-      filePaths,
-      reloaded,
-      removedDirty,
-      adopted,
-    );
+    const file = reconcileProjectFile(path, current, reconciliation);
     if (file) files[path] = file;
   }
-  const retained = (path: string) => filePaths.has(path) || files[path]?.dirty;
+  const retained = (path: string) => reconciliation.filePaths.has(path) || files[path]?.dirty;
   const openTabs = state.openTabs.filter(retained);
   return {
     ...metadata,
@@ -2493,16 +2485,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set((state) => {
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
         return {
-          ...reconciledProjectState(
-            state,
-            metadata,
-            tree,
-            filePaths,
+          ...reconciledProjectState(state, metadata, tree, {
             captured,
+            filePaths,
             reloaded,
             removedDirty,
             adopted,
-          ),
+          }),
           treeTruncated: listing.truncated,
           manifestHome,
         };

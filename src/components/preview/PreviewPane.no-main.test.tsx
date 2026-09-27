@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -24,7 +24,11 @@ vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
 
 import { PreviewPane } from "./PreviewPane";
 
-function show(tree: { path: string; is_dir: boolean }[], status = "unavailable") {
+function show(
+  tree: { path: string; is_dir: boolean }[],
+  status = "unavailable",
+  failureReason: string | null = status === "unavailable" ? enShell.openedFolder.noMain : null,
+) {
   useFilesStore.setState({
     projectId: "linked-a",
     projectName: "Notes",
@@ -39,7 +43,7 @@ function show(tree: { path: string; is_dir: boolean }[], status = "unavailable")
     phase: "idle",
     log: "",
     errors: [],
-    failureReason: status === "unavailable" ? enShell.openedFolder.noMain : null,
+    failureReason,
     pdfBytes: null,
     lastCompileCheckpoint: null,
     lastAttemptIdentity: null,
@@ -74,5 +78,33 @@ describe("preview of an opened folder without a main document", () => {
     expect(
       screen.getByRole("button", { name: enPreview.actions.retryCompile }),
     ).toBeInTheDocument();
+  });
+
+  it("gives the reason compiling failed when it has one", () => {
+    show([{ path: "main.tex", is_dir: false }], "error", "The file main.tex is empty.");
+    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.showPdf }));
+    expect(screen.getByRole("alert")).toHaveTextContent("The file main.tex is empty.");
+    expect(
+      screen.getByRole("button", { name: enPreview.actions.retryCompile }),
+    ).toBeInTheDocument();
+  });
+
+  it("says compiling failed when no reason came back", () => {
+    show([{ path: "main.tex", is_dir: false }], "error", null);
+    fireEvent.click(screen.getByRole("button", { name: enPreview.toolbar.showPdf }));
+    expect(screen.getByRole("alert")).toHaveTextContent(enPreview.empty.compileFailed);
+  });
+
+  it("says compiling is unavailable when no reason came back", () => {
+    show([{ path: "main.tex", is_dir: false }], "unavailable", null);
+    expect(screen.getByRole("alert")).toHaveTextContent(enPreview.empty.compileUnavailable);
+  });
+
+  it("shows no alert while the first compile is still to come", () => {
+    show([{ path: "main.tex", is_dir: false }], "idle", null);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: enPreview.actions.retryCompile }),
+    ).not.toBeInTheDocument();
   });
 });

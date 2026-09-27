@@ -13,7 +13,7 @@ import { ChevronDown, ChevronUp, Columns2, GitCompare, Rows3 } from "lucide-reac
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { gitShow, readFileContent } from "@/lib/tauri";
-import { useDiffStore, activeDiff, diffKey } from "@/store/diff";
+import { useDiffStore, activeDiff, diffKey, type DiffSide } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,12 @@ function hasNullByte(s: string): boolean {
 }
 
 type ChunkInfo = NonNullable<ReturnType<typeof getChunks>>;
+
+const DIFF_SIDE_HEADING = {
+  working: "workingHeading",
+  staged: "stagedHeading",
+  disk: "diskHeading",
+} as const satisfies Record<DiffSide, string>;
 
 function chunkIndexFor(
   chunks: ChunkInfo["chunks"],
@@ -273,11 +279,7 @@ export function DiffView() {
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
         <GitCompare className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="text-[11px] text-muted-foreground">
-          {diff.side === "staged"
-            ? t(($) => $.editor.diff.stagedHeading)
-            : diff.side === "disk"
-              ? t(($) => $.editor.diff.diskHeading)
-              : t(($) => $.editor.diff.workingHeading)}
+          {t(($) => $.editor.diff[DIFF_SIDE_HEADING[diff.side]])}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
