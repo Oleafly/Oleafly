@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Potvrzení úplného přístupu bylo zavřeno.",
     "fullAccessDeclined": "Úplný přístup nebyl povolen.",
     "approvalDialogClosed": "Nativní dialog schválení se neočekávaně zavřel."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Otevřít v Oleafly",
+    "openWithOleafly": "Otevřít v aplikaci Oleafly"
   }
 }

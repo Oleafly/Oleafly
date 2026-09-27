@@ -194,7 +194,7 @@ fn lexically_normal(path: &Path) -> PathBuf {
 pub(crate) enum OpenSource {
     Launch,
     Forwarded,
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(not(any(test, target_os = "macos")), allow(dead_code))]
     Os,
     Picker,
     Test,
@@ -899,6 +899,8 @@ pub async fn open_folder_request(
         .await
         .clone();
     let router = intake.router();
+    #[cfg(target_os = "macos")]
+    let canonical = folder.canonical.clone();
     let outcome = tauri::async_runtime::spawn_blocking(move || {
         open_validated(&folder.canonical, shown.as_deref(), router.as_ref())
     })
@@ -906,10 +908,15 @@ pub async fn open_folder_request(
     intake.finish(&token);
     let outcome =
         outcome.map_err(|error| OpenFolderError::Failed(error.to_string()).app_error())?;
-    outcome.map_err(|failure| match failure {
+    let reply = outcome.map_err(|failure| match failure {
         OpenFailure::Refused(refusal) => refusal_error(&intake, refusal),
         OpenFailure::Failed(detail) => OpenFolderError::Failed(detail).into(),
-    })
+    })?;
+    #[cfg(target_os = "macos")]
+    if crate::linked_registry::is_linked_id(&reply.project_id) {
+        crate::system_integration::note_recent_folder(&app, &canonical);
+    }
+    Ok(reply)
 }
 
 #[tauri::command]

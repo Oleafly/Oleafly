@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Bekreftelsen for full tilgang ble lukket.",
     "fullAccessDeclined": "Full tilgang ble ikke slått på.",
     "approvalDialogClosed": "Den native godkjenningsdialogen lukket seg uventet."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Åpne i Oleafly",
+    "openWithOleafly": "Åpne med Oleafly"
   }
 }

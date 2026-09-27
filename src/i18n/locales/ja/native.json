@@ -87,5 +87,9 @@
     "fullAccessDismissed": "フルアクセスの確認が閉じられました。",
     "fullAccessDeclined": "フルアクセスは有効になりませんでした。",
     "approvalDialogClosed": "ネイティブの承認ダイアログが予期せず閉じました。"
+  },
+  "systemIntegration": {
+    "openInOleafly": "Oleafly で開く",
+    "openWithOleafly": "Oleafly で開く"
   }
 }

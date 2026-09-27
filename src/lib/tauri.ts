@@ -920,6 +920,34 @@ export const pickOpenFolder = (browse: string | null = null) =>
   invoke<PendingOpenRequest | null>("pick_open_folder", { browse });
 export const debugInjectOpenRequest = (path: string) =>
   invoke<PendingOpenRequest>("debug_inject_open_request", { path });
+export type SystemIntegrationItemId =
+  | "quick_action"
+  | "explorer_menu"
+  | "dolphin"
+  | "nemo"
+  | "nautilus"
+  | "folder_open_with";
+export type SystemIntegrationState = "installed" | "not_installed" | "needs_attention";
+export type SystemIntegrationAttention =
+  | "outdated"
+  | "elsewhere"
+  | "moved"
+  | "no_default_file_manager";
+export interface SystemIntegrationItem {
+  id: SystemIntegrationItemId;
+  state: SystemIntegrationState;
+  packaged: boolean;
+  attention: SystemIntegrationAttention | null;
+}
+export interface SystemIntegrationStatus {
+  platform: "macos" | "windows" | "linux" | "other";
+  items: SystemIntegrationItem[];
+}
+export const systemIntegrationStatus = () =>
+  invoke<SystemIntegrationStatus>("system_integration_status");
+export const setSystemIntegration = (item: SystemIntegrationItemId, enabled: boolean) =>
+  invoke<SystemIntegrationItem>("system_integration_set", { item, enabled });
+export const claimQuickActionOffer = () => invoke<boolean>("claim_quick_action_offer");
 export interface RecentProjectEntry {
   id: string;
   name: string;

@@ -1496,5 +1496,56 @@
       },
       "unbound": "Non impostata"
     }
+  },
+  "systemIntegration": {
+    "title": "Integrazione con il sistema",
+    "description": "Apri le cartelle in Oleafly dal tuo file manager.",
+    "checking": "Verifica in corso…",
+    "loadFailed": "Impossibile verificare la configurazione del file manager.",
+    "state": {
+      "installed": "Installato",
+      "notInstalled": "Non installato",
+      "needsAttention": "Da controllare"
+    },
+    "actions": {
+      "install": "Installa",
+      "repair": "Ripara"
+    },
+    "failed": {
+      "install": "Impossibile installarlo. Riprova.",
+      "remove": "Impossibile rimuoverlo. Riprova."
+    },
+    "packaged": "Installato con il pacchetto di Oleafly.",
+    "quickAction": {
+      "label": "Azione rapida del Finder",
+      "description": "Fai clic destro su una cartella nel Finder e scegli Azioni rapide › Apri in Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Menu contestuale di Esplora file",
+      "description": "Fai clic destro su una cartella, o su uno spazio vuoto al suo interno, e scegli Apri con Oleafly. In Windows 11 si trova in Mostra altre opzioni.",
+      "toggle": "Mostra Apri con Oleafly in Esplora file"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Aggiunge Apri con Oleafly quando fai clic destro su una cartella in Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Aggiunge Apri con Oleafly quando fai clic destro su una cartella in Nemo."
+    },
+    "nautilus": {
+      "label": "File",
+      "description": "Aggiunge Apri con Oleafly al menu Script quando fai clic destro su una cartella in File di GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Apri con per le cartelle",
+      "description": "Mostra Oleafly in Apri con per le cartelle. Il tuo file manager predefinito non cambia."
+    },
+    "attention": {
+      "outdated": "È obsoleta o macOS l'ha bloccata. Riparala per ripristinarla.",
+      "elsewhere": "Il menu apre un'altra copia di Oleafly. Riparalo per usare questa.",
+      "moved": "Punta a una copia di Oleafly che è stata spostata. Riparala per usare questa.",
+      "noDefaultFileManager": "Il sistema non ha un file manager predefinito per le cartelle, quindi questa voce potrebbe aprire ogni cartella in Oleafly. Rimuovila."
+    }
   }
 }

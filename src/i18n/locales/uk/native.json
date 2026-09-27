@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Підтвердження повного доступу було закрито.",
     "fullAccessDeclined": "Повний доступ не увімкнено.",
     "approvalDialogClosed": "Системне вікно схвалення несподівано закрилося."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Відкрити в Oleafly",
+    "openWithOleafly": "Відкрити за допомогою Oleafly"
   }
 }

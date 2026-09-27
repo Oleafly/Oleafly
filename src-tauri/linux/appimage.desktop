@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories=
+Comment=Oleafly - the intelligent research workspace, free, local-first, 100% open source
+Exec=oleafly %F
+StartupWMClass=oleafly
+Icon=oleafly
+Name=Oleafly
+Terminal=false
+Type=Application

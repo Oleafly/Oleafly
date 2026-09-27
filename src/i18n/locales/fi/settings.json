@@ -1480,5 +1480,56 @@
       },
       "unbound": "Ei asetettu"
     }
+  },
+  "systemIntegration": {
+    "title": "Järjestelmäintegraatio",
+    "description": "Avaa kansioita Oleaflyssa suoraan tiedostonhallinnasta.",
+    "checking": "Tarkistetaan…",
+    "loadFailed": "Tiedostonhallinnan asetuksia ei voitu tarkistaa.",
+    "state": {
+      "installed": "Asennettu",
+      "notInstalled": "Ei asennettu",
+      "needsAttention": "Vaatii huomiota"
+    },
+    "actions": {
+      "install": "Asenna",
+      "repair": "Korjaa"
+    },
+    "failed": {
+      "install": "Asennus epäonnistui. Yritä uudelleen.",
+      "remove": "Poistaminen epäonnistui. Yritä uudelleen."
+    },
+    "packaged": "Asennettu Oleafly-paketin mukana.",
+    "quickAction": {
+      "label": "Finderin pikatoiminto",
+      "description": "Napsauta kansiota hiiren oikealla Finderissa ja valitse Pikatoiminnot › Avaa sovelluksessa Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Resurssienhallinnan pikavalikko",
+      "description": "Napsauta kansiota tai sen sisällä olevaa tyhjää kohtaa hiiren oikealla ja valitse Avaa sovelluksella Oleafly. Windows 11:ssä se on kohdassa Näytä lisää vaihtoehtoja.",
+      "toggle": "Näytä Avaa sovelluksella Oleafly Resurssienhallinnassa"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Lisää Avaa sovelluksella Oleafly, kun napsautat kansiota hiiren oikealla Dolphinissa."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Lisää Avaa sovelluksella Oleafly, kun napsautat kansiota hiiren oikealla Nemossa."
+    },
+    "nautilus": {
+      "label": "Tiedostot",
+      "description": "Lisää Avaa sovelluksella Oleafly Skriptit-valikkoon, kun napsautat kansiota hiiren oikealla GNOME Tiedostoissa."
+    },
+    "folderOpenWith": {
+      "label": "Avaa sovelluksella -valikko kansioille",
+      "description": "Näyttää Oleaflyn kansioiden Avaa sovelluksella -valikossa. Oletustiedostonhallintasi pysyy samana."
+    },
+    "attention": {
+      "outdated": "Se on vanhentunut tai macOS esti sen. Korjaa se palauttaaksesi sen.",
+      "elsewhere": "Valikko avaa toisen Oleafly-kopion. Korjaa se käyttääksesi tätä.",
+      "moved": "Se osoittaa Oleafly-kopioon, joka on siirretty. Korjaa se käyttääksesi tätä.",
+      "noDefaultFileManager": "Järjestelmässäsi ei ole kansioiden oletustiedostonhallintaa, joten tämä merkintä voisi avata jokaisen kansion Oleaflyssa. Poista se."
+    }
   }
 }

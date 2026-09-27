@@ -1041,5 +1041,13 @@
       "windows": "Check the Security tab in the folder's Properties to make sure your account can read it, then try again.",
       "linux": "Check that your account can read this folder, then try again."
     }
+  },
+  "quickActionOffer": {
+    "title": "Open folders from Finder",
+    "body": "Add Open in Oleafly to Finder's Quick Actions. Then you can right-click any folder to open it here.",
+    "add": "Add to Finder",
+    "notNow": "Not now",
+    "added": "Added. Right-click a folder in Finder and choose Quick Actions › Open in Oleafly.",
+    "failed": "Couldn't add it. You can try again in Settings › General."
   }
 }

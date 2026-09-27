@@ -1480,5 +1480,56 @@
       },
       "unbound": "Atanmadı"
     }
+  },
+  "systemIntegration": {
+    "title": "Sistem entegrasyonu",
+    "description": "Klasörleri dosya yöneticinizden doğrudan Oleafly'da açın.",
+    "checking": "Denetleniyor…",
+    "loadFailed": "Dosya yöneticisi kurulumu denetlenemedi.",
+    "state": {
+      "installed": "Yüklendi",
+      "notInstalled": "Yüklü değil",
+      "needsAttention": "İlgilenilmesi gerekiyor"
+    },
+    "actions": {
+      "install": "Yükle",
+      "repair": "Onar"
+    },
+    "failed": {
+      "install": "Yüklenemedi. Tekrar deneyin.",
+      "remove": "Kaldırılamadı. Tekrar deneyin."
+    },
+    "packaged": "Oleafly paketiyle birlikte yüklendi.",
+    "quickAction": {
+      "label": "Finder Hızlı Eylemi",
+      "description": "Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'da aç'ı seçin."
+    },
+    "explorerMenu": {
+      "label": "Dosya Gezgini sağ tık menüsü",
+      "description": "Bir klasöre ya da içindeki boş bir alana sağ tıklayın ve Oleafly ile aç'ı seçin. Windows 11'de bu seçenek Daha fazla seçenek göster altındadır.",
+      "toggle": "Dosya Gezgini'nde Oleafly ile aç'ı göster"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Dolphin'de bir klasöre sağ tıkladığınızda Oleafly ile aç seçeneğini ekler."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Nemo'da bir klasöre sağ tıkladığınızda Oleafly ile aç seçeneğini ekler."
+    },
+    "nautilus": {
+      "label": "Dosyalar",
+      "description": "GNOME Dosyalar'da bir klasöre sağ tıkladığınızda Betikler menüsüne Oleafly ile aç seçeneğini ekler."
+    },
+    "folderOpenWith": {
+      "label": "Klasörler için Birlikte Aç menüsü",
+      "description": "Oleafly'ı klasörler için Birlikte Aç menüsünde gösterir. Varsayılan dosya yöneticiniz değişmez."
+    },
+    "attention": {
+      "outdated": "Güncel değil ya da macOS tarafından engellendi. Geri getirmek için onarın.",
+      "elsewhere": "Menü başka bir Oleafly kopyasını açıyor. Bu kopyayı kullanmak için onarın.",
+      "moved": "Taşınmış bir Oleafly kopyasını gösteriyor. Bu kopyayı kullanmak için onarın.",
+      "noDefaultFileManager": "Sisteminizde klasörler için varsayılan bir dosya yöneticisi yok, bu yüzden bu kayıt her klasörü Oleafly'da açabilir. Kaldırın."
+    }
   }
 }

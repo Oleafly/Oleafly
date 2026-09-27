@@ -87,5 +87,9 @@
     "fullAccessDismissed": "De bevestiging voor volledige toegang is weggeklikt.",
     "fullAccessDeclined": "Volledige toegang is niet ingeschakeld.",
     "approvalDialogClosed": "Het systeemvenster voor goedkeuring is onverwacht gesloten."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Openen in Oleafly",
+    "openWithOleafly": "Openen met Oleafly"
   }
 }

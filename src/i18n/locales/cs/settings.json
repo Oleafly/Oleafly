@@ -1512,5 +1512,56 @@
       },
       "unbound": "Nenastaveno"
     }
+  },
+  "systemIntegration": {
+    "title": "Integrace se systémem",
+    "description": "Otevírejte složky v Oleafly přímo ze správce souborů.",
+    "checking": "Kontroluje se…",
+    "loadFailed": "Nastavení správce souborů se nepodařilo zkontrolovat.",
+    "state": {
+      "installed": "Nainstalováno",
+      "notInstalled": "Nenainstalováno",
+      "needsAttention": "Vyžaduje pozornost"
+    },
+    "actions": {
+      "install": "Nainstalovat",
+      "repair": "Opravit"
+    },
+    "failed": {
+      "install": "Instalace se nezdařila. Zkuste to znovu.",
+      "remove": "Odebrání se nezdařilo. Zkuste to znovu."
+    },
+    "packaged": "Nainstalováno s balíčkem Oleafly.",
+    "quickAction": {
+      "label": "Rychlá akce ve Finderu",
+      "description": "Ve Finderu klikněte pravým tlačítkem na složku a vyberte Rychlé akce › Otevřít v Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Místní nabídka Průzkumníka souborů",
+      "description": "Klikněte pravým tlačítkem na složku nebo na prázdné místo v ní a vyberte Otevřít v aplikaci Oleafly. Ve Windows 11 ji najdete pod Zobrazit další možnosti.",
+      "toggle": "Zobrazovat Otevřít v aplikaci Oleafly v Průzkumníkovi souborů"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Přidá Otevřít v aplikaci Oleafly, když v Dolphinu kliknete pravým tlačítkem na složku."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Přidá Otevřít v aplikaci Oleafly, když v Nemo kliknete pravým tlačítkem na složku."
+    },
+    "nautilus": {
+      "label": "Soubory",
+      "description": "Přidá Otevřít v aplikaci Oleafly do nabídky Skripty, když v Souborech GNOME kliknete pravým tlačítkem na složku."
+    },
+    "folderOpenWith": {
+      "label": "Nabídka Otevřít pomocí pro složky",
+      "description": "Zobrazí Oleafly v nabídce Otevřít pomocí pro složky. Váš výchozí správce souborů zůstane stejný."
+    },
+    "attention": {
+      "outdated": "Je zastaralá nebo ji zablokoval macOS. Opravte ji a obnovíte ji.",
+      "elsewhere": "Nabídka otevírá jinou kopii Oleafly. Opravte ji, abyste používali tuto.",
+      "moved": "Odkazuje na kopii Oleafly, která byla přesunuta. Opravte ji, abyste používali tuto.",
+      "noDefaultFileManager": "Váš systém nemá výchozího správce souborů pro složky, takže by tato položka mohla otevírat každou složku v Oleafly. Odeberte ji."
+    }
   }
 }

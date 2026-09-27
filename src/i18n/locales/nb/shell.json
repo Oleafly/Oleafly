@@ -1041,5 +1041,13 @@
       "windows": "Sjekk fanen Sikkerhet under mappens Egenskaper for å se at kontoen din kan lese den, og prøv igjen.",
       "linux": "Sjekk at kontoen din kan lese denne mappen, og prøv igjen."
     }
+  },
+  "quickActionOffer": {
+    "title": "Åpne mapper fra Finder",
+    "body": "Legg til Åpne i Oleafly i hurtighandlingene i Finder. Da kan du høyreklikke på en hvilken som helst mappe for å åpne den her.",
+    "add": "Legg til i Finder",
+    "notNow": "Ikke nå",
+    "added": "Lagt til. Høyreklikk på en mappe i Finder, og velg Hurtighandlinger › Åpne i Oleafly.",
+    "failed": "Kunne ikke legge den til. Du kan prøve igjen under Innstillinger › Generelt."
   }
 }

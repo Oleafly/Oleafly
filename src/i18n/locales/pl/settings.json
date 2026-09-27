@@ -1512,5 +1512,56 @@
       },
       "unbound": "Nieustawione"
     }
+  },
+  "systemIntegration": {
+    "title": "Integracja z systemem",
+    "description": "Otwieraj foldery w Oleafly bezpośrednio z menedżera plików.",
+    "checking": "Sprawdzanie…",
+    "loadFailed": "Nie udało się sprawdzić konfiguracji menedżera plików.",
+    "state": {
+      "installed": "Zainstalowano",
+      "notInstalled": "Nie zainstalowano",
+      "needsAttention": "Wymaga uwagi"
+    },
+    "actions": {
+      "install": "Zainstaluj",
+      "repair": "Napraw"
+    },
+    "failed": {
+      "install": "Nie udało się zainstalować. Spróbuj ponownie.",
+      "remove": "Nie udało się usunąć. Spróbuj ponownie."
+    },
+    "packaged": "Zainstalowano z pakietem Oleafly.",
+    "quickAction": {
+      "label": "Szybka czynność w Finderze",
+      "description": "Kliknij folder prawym przyciskiem w Finderze i wybierz Szybkie czynności › Otwórz w Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Menu kontekstowe Eksploratora plików",
+      "description": "Kliknij prawym przyciskiem folder lub puste miejsce w nim i wybierz Otwórz w programie Oleafly. W Windows 11 ta opcja jest w menu Pokaż więcej opcji.",
+      "toggle": "Pokazuj Otwórz w programie Oleafly w Eksploratorze plików"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Dodaje Otwórz w programie Oleafly po kliknięciu folderu prawym przyciskiem w Dolphinie."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Dodaje Otwórz w programie Oleafly po kliknięciu folderu prawym przyciskiem w Nemo."
+    },
+    "nautilus": {
+      "label": "Pliki",
+      "description": "Dodaje Otwórz w programie Oleafly do menu Skrypty po kliknięciu folderu prawym przyciskiem w Plikach GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Otwórz za pomocą dla folderów",
+      "description": "Pokazuje Oleafly w menu Otwórz za pomocą dla folderów. Domyślny menedżer plików się nie zmienia."
+    },
+    "attention": {
+      "outdated": "Jest nieaktualna albo zablokował ją macOS. Napraw ją, aby ją przywrócić.",
+      "elsewhere": "Menu otwiera inną kopię Oleafly. Napraw je, aby używać tej.",
+      "moved": "Wskazuje kopię Oleafly, która została przeniesiona. Napraw, aby używać tej.",
+      "noDefaultFileManager": "System nie ma domyślnego menedżera plików dla folderów, więc ten wpis mógłby otwierać każdy folder w Oleafly. Usuń go."
+    }
   }
 }

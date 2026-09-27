@@ -1480,5 +1480,56 @@
       },
       "unbound": "Inte angiven"
     }
+  },
+  "systemIntegration": {
+    "title": "Systemintegration",
+    "description": "Öppna mappar i Oleafly direkt från filhanteraren.",
+    "checking": "Kontrollerar…",
+    "loadFailed": "Det gick inte att kontrollera filhanterarens inställningar.",
+    "state": {
+      "installed": "Installerad",
+      "notInstalled": "Inte installerad",
+      "needsAttention": "Behöver åtgärdas"
+    },
+    "actions": {
+      "install": "Installera",
+      "repair": "Reparera"
+    },
+    "failed": {
+      "install": "Det gick inte att installera. Försök igen.",
+      "remove": "Det gick inte att ta bort. Försök igen."
+    },
+    "packaged": "Installerad med Oleafly-paketet.",
+    "quickAction": {
+      "label": "Snabbåtgärd i Finder",
+      "description": "Högerklicka på en mapp i Finder och välj Snabbåtgärder › Öppna i Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Högerklicksmeny i Utforskaren",
+      "description": "Högerklicka på en mapp, eller på ett tomt område i den, och välj Öppna med Oleafly. I Windows 11 finns den under Visa fler alternativ.",
+      "toggle": "Visa Öppna med Oleafly i Utforskaren"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Lägger till Öppna med Oleafly när du högerklickar på en mapp i Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Lägger till Öppna med Oleafly när du högerklickar på en mapp i Nemo."
+    },
+    "nautilus": {
+      "label": "Filer",
+      "description": "Lägger till Öppna med Oleafly i menyn Skript när du högerklickar på en mapp i GNOME Filer."
+    },
+    "folderOpenWith": {
+      "label": "Menyn Öppna med för mappar",
+      "description": "Visar Oleafly under Öppna med för mappar. Din standardfilhanterare förblir densamma."
+    },
+    "attention": {
+      "outdated": "Den är inaktuell eller blockerad av macOS. Reparera den för att få tillbaka den.",
+      "elsewhere": "Menyn öppnar en annan kopia av Oleafly. Reparera den för att använda den här.",
+      "moved": "Den pekar på en kopia av Oleafly som har flyttats. Reparera den för att använda den här.",
+      "noDefaultFileManager": "Systemet har ingen standardfilhanterare för mappar, så den här posten kan öppna alla mappar i Oleafly. Ta bort den."
+    }
   }
 }

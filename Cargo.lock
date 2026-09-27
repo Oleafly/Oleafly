@@ -3209,6 +3209,8 @@ dependencies = [
  "libc",
  "liblzma",
  "notify",
+ "objc2",
+ "objc2-foundation",
  "oleafly-agent",
  "oleafly-core",
  "oleafly-history",
@@ -3243,6 +3245,7 @@ dependencies = [
  "unicode-normalization",
  "webview2-com",
  "window-vibrancy 0.8.1",
+ "windows-registry",
  "windows-sys 0.61.2",
  "zeroize",
  "zip",
@@ -5265,6 +5268,7 @@ dependencies = [
 name = "tauri-plugin-single-instance"
 version = "2.4.5"
 dependencies = [
+ "libc",
  "serde",
  "serde_json",
  "tauri",

@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Tam erişim onayı kapatıldı.",
     "fullAccessDeclined": "Tam erişim etkinleştirilmedi.",
     "approvalDialogClosed": "Yerel onay penceresi beklenmedik biçimde kapandı."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Oleafly'da aç",
+    "openWithOleafly": "Oleafly ile aç"
   }
 }

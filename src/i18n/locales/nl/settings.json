@@ -1480,5 +1480,56 @@
       },
       "unbound": "Niet ingesteld"
     }
+  },
+  "systemIntegration": {
+    "title": "Systeemintegratie",
+    "description": "Open mappen in Oleafly vanuit je bestandsbeheerder.",
+    "checking": "Controleren…",
+    "loadFailed": "De instellingen van de bestandsbeheerder konden niet worden gecontroleerd.",
+    "state": {
+      "installed": "Geïnstalleerd",
+      "notInstalled": "Niet geïnstalleerd",
+      "needsAttention": "Aandacht nodig"
+    },
+    "actions": {
+      "install": "Installeren",
+      "repair": "Herstellen"
+    },
+    "failed": {
+      "install": "Installeren is mislukt. Probeer het opnieuw.",
+      "remove": "Verwijderen is mislukt. Probeer het opnieuw."
+    },
+    "packaged": "Geïnstalleerd met het Oleafly-pakket.",
+    "quickAction": {
+      "label": "Snelle actie in Finder",
+      "description": "Klik in Finder met de rechtermuisknop op een map en kies Snelle acties › Openen in Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Rechtsklikmenu in Verkenner",
+      "description": "Klik met de rechtermuisknop op een map, of op een lege plek erin, en kies Openen met Oleafly. In Windows 11 staat het onder Meer opties weergeven.",
+      "toggle": "Openen met Oleafly tonen in Verkenner"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Voegt Openen met Oleafly toe als je in Dolphin met de rechtermuisknop op een map klikt."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Voegt Openen met Oleafly toe als je in Nemo met de rechtermuisknop op een map klikt."
+    },
+    "nautilus": {
+      "label": "Bestanden",
+      "description": "Voegt Openen met Oleafly toe aan het menu Scripts als je in GNOME Bestanden met de rechtermuisknop op een map klikt."
+    },
+    "folderOpenWith": {
+      "label": "Menu Openen met voor mappen",
+      "description": "Toont Oleafly onder Openen met voor mappen. Je standaard bestandsbeheerder blijft hetzelfde."
+    },
+    "attention": {
+      "outdated": "Deze is verouderd of macOS heeft hem geblokkeerd. Herstel hem om hem terug te zetten.",
+      "elsewhere": "Het menu opent een andere kopie van Oleafly. Herstel het om deze kopie te gebruiken.",
+      "moved": "Dit verwijst naar een kopie van Oleafly die is verplaatst. Herstel het om deze kopie te gebruiken.",
+      "noDefaultFileManager": "Je systeem heeft geen standaard bestandsbeheerder voor mappen, dus dit item kan elke map in Oleafly openen. Verwijder het."
+    }
   }
 }

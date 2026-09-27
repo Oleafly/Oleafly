@@ -3,6 +3,7 @@ import { i18n } from "@/i18n";
 import { activeChatRun } from "@/components/ai/chat-run-registry";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { holdBootSplash, releaseBootSplash } from "@/lib/boot-telemetry";
+import { offerQuickActionOnce } from "@/features/quick-action-offer";
 import type { OpenedFolder } from "@/lib/folder-detection";
 import { logError } from "@/lib/log";
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
@@ -88,7 +89,9 @@ export async function openFolderWithPicker(browse: string | null = null): Promis
     return "refused";
   }
   if (!picked) return "cancelled";
-  return openPendingRequest(picked);
+  const outcome = await openPendingRequest(picked);
+  if (outcome === "opened" || outcome === "focused") void offerQuickActionOnce();
+  return outcome;
 }
 
 export async function openRecentProject(projectId: string): Promise<void> {

@@ -18,5 +18,28 @@
         "dragDropEnabled": false
       }
     ]
+  },
+  "bundle": {
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/main.desktop",
+        "files": {
+          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "linux/main.desktop",
+        "files": {
+          "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+        }
+      },
+      "appimage": {
+        "files": {
+          "/usr/share/applications/Oleafly.desktop": "linux/appimage.desktop"
+        }
+      }
+    }
   }
 }

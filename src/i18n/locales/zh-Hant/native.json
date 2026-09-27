@@ -87,5 +87,9 @@
     "fullAccessDismissed": "完整存取權確認已關閉。",
     "fullAccessDeclined": "未啟用完整存取權。",
     "approvalDialogClosed": "原生核准對話框意外關閉。"
+  },
+  "systemIntegration": {
+    "openInOleafly": "在 Oleafly 中開啟",
+    "openWithOleafly": "以 Oleafly 開啟"
   }
 }

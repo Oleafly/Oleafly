@@ -1041,5 +1041,13 @@
       "windows": "Prüfen Sie im Tab Sicherheit in den Eigenschaften des Ordners, ob Ihr Konto ihn lesen kann, und versuchen Sie es erneut.",
       "linux": "Prüfen Sie, ob Ihr Konto diesen Ordner lesen kann, und versuchen Sie es erneut."
     }
+  },
+  "quickActionOffer": {
+    "title": "Ordner aus dem Finder öffnen",
+    "body": "Fügen Sie In Oleafly öffnen zu den Schnellaktionen im Finder hinzu. Dann können Sie jeden Ordner per Rechtsklick hier öffnen.",
+    "add": "Zum Finder hinzufügen",
+    "notNow": "Nicht jetzt",
+    "added": "Hinzugefügt. Klicken Sie im Finder mit der rechten Maustaste auf einen Ordner und wählen Sie Schnellaktionen › In Oleafly öffnen.",
+    "failed": "Das Hinzufügen ist fehlgeschlagen. Sie können es unter Einstellungen › Allgemein erneut versuchen."
   }
 }

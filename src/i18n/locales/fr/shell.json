@@ -1060,5 +1060,13 @@
       "windows": "Vérifiez dans l'onglet Sécurité des Propriétés du dossier que votre compte peut le lire, puis réessayez.",
       "linux": "Vérifiez que votre compte peut lire ce dossier, puis réessayez."
     }
+  },
+  "quickActionOffer": {
+    "title": "Ouvrir des dossiers depuis le Finder",
+    "body": "Ajoutez Ouvrir dans Oleafly aux actions rapides du Finder. Vous pourrez ensuite faire un clic droit sur n'importe quel dossier pour l'ouvrir ici.",
+    "add": "Ajouter au Finder",
+    "notNow": "Plus tard",
+    "added": "C'est fait. Faites un clic droit sur un dossier dans le Finder et choisissez Actions rapides › Ouvrir dans Oleafly.",
+    "failed": "Impossible de l'ajouter. Vous pouvez réessayer dans Paramètres › Général."
   }
 }

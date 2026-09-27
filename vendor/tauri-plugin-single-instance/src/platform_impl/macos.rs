@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 use std::{
+    ffi::OsString,
     io::{BufWriter, Error, ErrorKind, Write},
-    os::unix::net::UnixStream,
-    path::PathBuf,
+    os::unix::{ffi::OsStringExt, fs::MetadataExt, net::UnixStream},
+    path::{Path, PathBuf},
 };
 
 #[cfg(feature = "semver")]
@@ -67,8 +68,47 @@ fn socket_path(config: &Config, _package_info: &tauri::PackageInfo) -> PathBuf {
         semver_compat_string(&_package_info.version),
     );
 
-    // Use /tmp as socket path must be shorter than 100 chars.
-    PathBuf::from(format!("/tmp/{}_si.sock", identifier))
+    let name = format!("{identifier}_si.sock");
+    user_temp_dir()
+        .map(|dir| dir.join(&name))
+        .filter(|path| path.as_os_str().len() < SOCKET_PATH_LIMIT)
+        .unwrap_or_else(|| {
+            PathBuf::from(format!(
+                "/tmp/{identifier}_{}_si.sock",
+                unsafe { libc::geteuid() }
+            ))
+        })
+}
+
+const SOCKET_PATH_LIMIT: usize = 104;
+
+fn user_temp_dir() -> Option<PathBuf> {
+    let mut buffer = vec![0u8; 1024];
+    let needed = unsafe {
+        libc::confstr(
+            libc::_CS_DARWIN_USER_TEMP_DIR,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+        )
+    };
+    if needed == 0 || needed > buffer.len() {
+        return None;
+    }
+    buffer.truncate(needed - 1);
+    let dir = PathBuf::from(OsString::from_vec(buffer));
+    dir.is_absolute().then_some(dir)
+}
+
+fn owned_by_this_user(socket: &Path) -> Result<(), Error> {
+    let metadata = std::fs::symlink_metadata(socket)?;
+    if metadata.uid() == unsafe { libc::geteuid() } {
+        Ok(())
+    } else {
+        Err(Error::new(
+            ErrorKind::PermissionDenied,
+            "the single instance socket belongs to another user",
+        ))
+    }
 }
 
 fn socket_cleanup(socket: &PathBuf) {
@@ -76,6 +116,7 @@ fn socket_cleanup(socket: &PathBuf) {
 }
 
 fn notify_singleton(socket: &PathBuf) -> Result<(), Error> {
+    owned_by_this_user(socket)?;
     let stream = UnixStream::connect(socket)?;
     let mut bf = BufWriter::new(&stream);
     let cwd = std::env::current_dir()

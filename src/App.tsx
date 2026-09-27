@@ -113,6 +113,7 @@ import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
 import { OpenFolderStopDialog, useOpenFolderIntake } from "@/components/layout/OpenFolderGuards";
+import { QuickActionOffer } from "@/components/layout/QuickActionOffer";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
   CHECKPOINT_PUBLICATION_EVENT,
@@ -891,6 +892,7 @@ function AppContent() {
         <QuitGuard />
         <SaveBlockedDialog />
         <OpenFolderStopDialog />
+        <QuickActionOffer />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -1132,6 +1134,7 @@ function AppContent() {
         <QuitGuard />
         <SaveBlockedDialog />
         <OpenFolderStopDialog />
+        <QuickActionOffer />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

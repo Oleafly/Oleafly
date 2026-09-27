@@ -87,5 +87,9 @@
     "fullAccessDismissed": "A confirmação de acesso total foi dispensada.",
     "fullAccessDeclined": "O acesso total não foi ativado.",
     "approvalDialogClosed": "A caixa de diálogo nativa de aprovação fechou inesperadamente."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Abrir no Oleafly",
+    "openWithOleafly": "Abrir com o Oleafly"
   }
 }

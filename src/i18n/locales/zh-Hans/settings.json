@@ -1464,5 +1464,56 @@
       },
       "unbound": "未设置"
     }
+  },
+  "systemIntegration": {
+    "title": "系统集成",
+    "description": "直接从文件管理器用 Oleafly 打开文件夹。",
+    "checking": "正在检查…",
+    "loadFailed": "无法检查文件管理器的设置。",
+    "state": {
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "needsAttention": "需要处理"
+    },
+    "actions": {
+      "install": "安装",
+      "repair": "修复"
+    },
+    "failed": {
+      "install": "无法安装，请重试。",
+      "remove": "无法移除，请重试。"
+    },
+    "packaged": "已随 Oleafly 软件包安装。",
+    "quickAction": {
+      "label": "Finder 快速操作",
+      "description": "在 Finder 中右键点按文件夹，然后选择“快速操作” › “在 Oleafly 中打开”。"
+    },
+    "explorerMenu": {
+      "label": "文件资源管理器右键菜单",
+      "description": "右键点击文件夹或其中的空白处，然后选择“用 Oleafly 打开”。在 Windows 11 中，它位于“显示更多选项”里。",
+      "toggle": "在文件资源管理器中显示“用 Oleafly 打开”"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "在 Dolphin 中右键点击文件夹时显示“用 Oleafly 打开”。"
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "在 Nemo 中右键点击文件夹时显示“用 Oleafly 打开”。"
+    },
+    "nautilus": {
+      "label": "文件",
+      "description": "在 GNOME 文件中右键点击文件夹时，将“用 Oleafly 打开”添加到“脚本”菜单。"
+    },
+    "folderOpenWith": {
+      "label": "文件夹的“打开方式”菜单",
+      "description": "在文件夹的“打开方式”中列出 Oleafly。默认文件管理器保持不变。"
+    },
+    "attention": {
+      "outdated": "它已过期或被 macOS 阻止。修复后即可恢复。",
+      "elsewhere": "菜单会打开另一份 Oleafly。修复后将使用当前这份。",
+      "moved": "它指向一份已移动的 Oleafly。修复后将使用当前这份。",
+      "noDefaultFileManager": "系统没有为文件夹设置默认文件管理器，此条目可能会让所有文件夹都用 Oleafly 打开。请移除它。"
+    }
   }
 }

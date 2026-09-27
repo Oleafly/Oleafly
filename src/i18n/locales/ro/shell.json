@@ -1060,5 +1060,13 @@
       "windows": "Verifică în fila Securitate din Proprietățile folderului dacă contul tău îl poate citi, apoi încearcă din nou.",
       "linux": "Verifică dacă contul tău poate citi acest folder, apoi încearcă din nou."
     }
+  },
+  "quickActionOffer": {
+    "title": "Deschide foldere din Finder",
+    "body": "Adaugă Deschide în Oleafly la Acțiunile rapide din Finder. Apoi poți face clic dreapta pe orice folder ca să-l deschizi aici.",
+    "add": "Adaugă în Finder",
+    "notNow": "Nu acum",
+    "added": "Gata. Fă clic dreapta pe un folder în Finder și alege Acțiuni rapide › Deschide în Oleafly.",
+    "failed": "Nu s-a putut adăuga. Poți încerca din nou din Setări › General."
   }
 }

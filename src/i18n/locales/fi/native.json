@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Täyden käyttöoikeuden vahvistus ohitettiin.",
     "fullAccessDeclined": "Täyttä käyttöoikeutta ei otettu käyttöön.",
     "approvalDialogClosed": "Järjestelmän hyväksyntäikkuna sulkeutui odottamatta."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Avaa sovelluksessa Oleafly",
+    "openWithOleafly": "Avaa sovelluksella Oleafly"
   }
 }

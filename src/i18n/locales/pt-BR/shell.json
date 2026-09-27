@@ -1060,5 +1060,13 @@
       "windows": "Verifique na aba Segurança das Propriedades da pasta se a sua conta consegue lê-la e tente de novo.",
       "linux": "Verifique se a sua conta consegue ler esta pasta e tente de novo."
     }
+  },
+  "quickActionOffer": {
+    "title": "Abra pastas pelo Finder",
+    "body": "Adicione Abrir no Oleafly às Ações Rápidas do Finder. Depois, clique com o botão direito em qualquer pasta para abri-la aqui.",
+    "add": "Adicionar ao Finder",
+    "notNow": "Agora não",
+    "added": "Pronto. Clique com o botão direito em uma pasta no Finder e escolha Ações Rápidas › Abrir no Oleafly.",
+    "failed": "Não foi possível adicionar. Você pode tentar de novo em Configurações › Geral."
   }
 }

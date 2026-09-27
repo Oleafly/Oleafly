@@ -1480,5 +1480,56 @@
       },
       "unbound": "Nicht belegt"
     }
+  },
+  "systemIntegration": {
+    "title": "Systemintegration",
+    "description": "Ordner direkt aus dem Dateimanager in Oleafly öffnen.",
+    "checking": "Wird geprüft…",
+    "loadFailed": "Die Einrichtung des Dateimanagers konnte nicht geprüft werden.",
+    "state": {
+      "installed": "Installiert",
+      "notInstalled": "Nicht installiert",
+      "needsAttention": "Handlungsbedarf"
+    },
+    "actions": {
+      "install": "Installieren",
+      "repair": "Reparieren"
+    },
+    "failed": {
+      "install": "Die Installation ist fehlgeschlagen. Versuchen Sie es erneut.",
+      "remove": "Das Entfernen ist fehlgeschlagen. Versuchen Sie es erneut."
+    },
+    "packaged": "Mit dem Oleafly-Paket installiert.",
+    "quickAction": {
+      "label": "Finder-Schnellaktion",
+      "description": "Klicken Sie im Finder mit der rechten Maustaste auf einen Ordner und wählen Sie Schnellaktionen › In Oleafly öffnen."
+    },
+    "explorerMenu": {
+      "label": "Kontextmenü im Datei-Explorer",
+      "description": "Klicken Sie mit der rechten Maustaste auf einen Ordner oder auf eine freie Stelle darin und wählen Sie Mit Oleafly öffnen. Unter Windows 11 finden Sie den Eintrag unter Weitere Optionen anzeigen.",
+      "toggle": "Mit Oleafly öffnen im Datei-Explorer anzeigen"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Fügt Mit Oleafly öffnen hinzu, wenn Sie in Dolphin mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Fügt Mit Oleafly öffnen hinzu, wenn Sie in Nemo mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "nautilus": {
+      "label": "Dateien",
+      "description": "Fügt Mit Oleafly öffnen zum Menü Skripte hinzu, wenn Sie in GNOME Dateien mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "folderOpenWith": {
+      "label": "Menü Öffnen mit für Ordner",
+      "description": "Zeigt Oleafly unter Öffnen mit für Ordner an. Ihr Standard-Dateimanager bleibt unverändert."
+    },
+    "attention": {
+      "outdated": "Der Eintrag ist veraltet oder wurde von macOS blockiert. Reparieren Sie ihn, um ihn wiederherzustellen.",
+      "elsewhere": "Das Menü öffnet eine andere Oleafly-Kopie. Reparieren Sie es, um diese Kopie zu verwenden.",
+      "moved": "Der Eintrag verweist auf eine Oleafly-Kopie, die verschoben wurde. Reparieren Sie ihn, um diese Kopie zu verwenden.",
+      "noDefaultFileManager": "Ihr System hat keinen Standard-Dateimanager für Ordner, daher könnte dieser Eintrag jeden Ordner in Oleafly öffnen. Entfernen Sie ihn."
+    }
   }
 }

@@ -87,5 +87,9 @@
     "fullAccessDismissed": "Potwierdzenie pełnego dostępu zostało zamknięte.",
     "fullAccessDeclined": "Pełny dostęp nie został włączony.",
     "approvalDialogClosed": "Natywne okno zatwierdzania zostało nieoczekiwanie zamknięte."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Otwórz w Oleafly",
+    "openWithOleafly": "Otwórz w programie Oleafly"
   }
 }

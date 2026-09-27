@@ -1480,5 +1480,56 @@
       },
       "unbound": "Ikke satt"
     }
+  },
+  "systemIntegration": {
+    "title": "Systemintegrering",
+    "description": "Åpne mapper i Oleafly rett fra filbehandleren.",
+    "checking": "Sjekker…",
+    "loadFailed": "Kunne ikke sjekke oppsettet for filbehandleren.",
+    "state": {
+      "installed": "Installert",
+      "notInstalled": "Ikke installert",
+      "needsAttention": "Trenger oppmerksomhet"
+    },
+    "actions": {
+      "install": "Installer",
+      "repair": "Reparer"
+    },
+    "failed": {
+      "install": "Kunne ikke installere. Prøv igjen.",
+      "remove": "Kunne ikke fjerne. Prøv igjen."
+    },
+    "packaged": "Installert med Oleafly-pakken.",
+    "quickAction": {
+      "label": "Hurtighandling i Finder",
+      "description": "Høyreklikk på en mappe i Finder, og velg Hurtighandlinger › Åpne i Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Høyreklikkmeny i Filutforsker",
+      "description": "Høyreklikk på en mappe, eller et tomt område i den, og velg Åpne med Oleafly. I Windows 11 ligger den under Vis flere alternativer.",
+      "toggle": "Vis Åpne med Oleafly i Filutforsker"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Legger til Åpne med Oleafly når du høyreklikker på en mappe i Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Legger til Åpne med Oleafly når du høyreklikker på en mappe i Nemo."
+    },
+    "nautilus": {
+      "label": "Filer",
+      "description": "Legger til Åpne med Oleafly i Skript-menyen når du høyreklikker på en mappe i GNOME Filer."
+    },
+    "folderOpenWith": {
+      "label": "Åpne med-menyen for mapper",
+      "description": "Viser Oleafly under Åpne med for mapper. Standard filbehandler forblir den samme."
+    },
+    "attention": {
+      "outdated": "Den er utdatert, eller macOS har blokkert den. Reparer den for å få den tilbake.",
+      "elsewhere": "Menyen åpner en annen kopi av Oleafly. Reparer den for å bruke denne.",
+      "moved": "Den peker på en kopi av Oleafly som er flyttet. Reparer den for å bruke denne.",
+      "noDefaultFileManager": "Systemet ditt har ingen standard filbehandler for mapper, så denne oppføringen kan åpne alle mapper i Oleafly. Fjern den."
+    }
   }
 }

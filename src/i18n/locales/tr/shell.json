@@ -1041,5 +1041,13 @@
       "windows": "Klasörün Özellikler penceresindeki Güvenlik sekmesinden hesabınızın klasörü okuyabildiğini kontrol edip yeniden deneyin.",
       "linux": "Hesabınızın bu klasörü okuyabildiğini kontrol edip yeniden deneyin."
     }
+  },
+  "quickActionOffer": {
+    "title": "Klasörleri Finder'dan açın",
+    "body": "Oleafly'da aç'ı Finder'ın Hızlı Eylemler menüsüne ekleyin. Ardından herhangi bir klasöre sağ tıklayarak onu burada açabilirsiniz.",
+    "add": "Finder'a ekle",
+    "notNow": "Şimdi değil",
+    "added": "Eklendi. Finder'da bir klasöre sağ tıklayın ve Hızlı Eylemler › Oleafly'da aç'ı seçin.",
+    "failed": "Eklenemedi. Ayarlar › Genel bölümünden tekrar deneyebilirsiniz."
   }
 }

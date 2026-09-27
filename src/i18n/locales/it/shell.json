@@ -1060,5 +1060,13 @@
       "windows": "Controlla nella scheda Sicurezza delle Proprietà della cartella che il tuo account possa leggerla, poi riprova.",
       "linux": "Controlla che il tuo account possa leggere questa cartella, poi riprova."
     }
+  },
+  "quickActionOffer": {
+    "title": "Apri le cartelle dal Finder",
+    "body": "Aggiungi Apri in Oleafly alle Azioni rapide del Finder. Poi potrai fare clic destro su qualsiasi cartella per aprirla qui.",
+    "add": "Aggiungi al Finder",
+    "notNow": "Non ora",
+    "added": "Fatto. Fai clic destro su una cartella nel Finder e scegli Azioni rapide › Apri in Oleafly.",
+    "failed": "Impossibile aggiungerla. Puoi riprovare in Impostazioni › Generali."
   }
 }

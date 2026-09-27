@@ -1041,5 +1041,13 @@
       "windows": "Varmista kansion Ominaisuudet-ikkunan Suojaus-välilehdeltä, että tililläsi on lukuoikeus kansioon, ja yritä uudelleen.",
       "linux": "Varmista, että tililläsi on lukuoikeus tähän kansioon, ja yritä uudelleen."
     }
+  },
+  "quickActionOffer": {
+    "title": "Avaa kansioita Finderista",
+    "body": "Lisää Avaa sovelluksessa Oleafly Finderin pikatoimintoihin. Sen jälkeen voit avata minkä tahansa kansion täällä napsauttamalla sitä hiiren oikealla.",
+    "add": "Lisää Finderiin",
+    "notNow": "Ei nyt",
+    "added": "Lisätty. Napsauta kansiota hiiren oikealla Finderissa ja valitse Pikatoiminnot › Avaa sovelluksessa Oleafly.",
+    "failed": "Lisääminen epäonnistui. Voit yrittää uudelleen kohdassa Asetukset › Yleiset."
   }
 }

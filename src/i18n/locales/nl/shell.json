@@ -1041,5 +1041,13 @@
       "windows": "Controleer op het tabblad Beveiliging in de Eigenschappen van de map of je account de map kan lezen, en probeer het opnieuw.",
       "linux": "Controleer of je account deze map kan lezen, en probeer het opnieuw."
     }
+  },
+  "quickActionOffer": {
+    "title": "Mappen openen vanuit Finder",
+    "body": "Voeg Openen in Oleafly toe aan de snelle acties van Finder. Daarna kun je met de rechtermuisknop op elke map klikken om hem hier te openen.",
+    "add": "Toevoegen aan Finder",
+    "notNow": "Niet nu",
+    "added": "Toegevoegd. Klik in Finder met de rechtermuisknop op een map en kies Snelle acties › Openen in Oleafly.",
+    "failed": "Toevoegen is mislukt. Je kunt het opnieuw proberen via Instellingen › Algemeen."
   }
 }

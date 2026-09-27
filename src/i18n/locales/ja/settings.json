@@ -1464,5 +1464,56 @@
       },
       "unbound": "未設定"
     }
+  },
+  "systemIntegration": {
+    "title": "システム連携",
+    "description": "ファイルマネージャーから Oleafly でフォルダを開けます。",
+    "checking": "確認中…",
+    "loadFailed": "ファイルマネージャーの設定を確認できませんでした。",
+    "state": {
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "needsAttention": "要確認"
+    },
+    "actions": {
+      "install": "インストール",
+      "repair": "修復"
+    },
+    "failed": {
+      "install": "インストールできませんでした。もう一度お試しください。",
+      "remove": "削除できませんでした。もう一度お試しください。"
+    },
+    "packaged": "Oleafly のパッケージと一緒にインストールされています。",
+    "quickAction": {
+      "label": "Finder のクイックアクション",
+      "description": "Finder でフォルダを右クリックし、「クイックアクション」›「Oleafly で開く」を選びます。"
+    },
+    "explorerMenu": {
+      "label": "エクスプローラーの右クリックメニュー",
+      "description": "フォルダ、またはフォルダ内の空いている場所を右クリックし、「Oleafly で開く」を選びます。Windows 11 では「その他のオプションを確認」の中にあります。",
+      "toggle": "エクスプローラーに「Oleafly で開く」を表示"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Dolphin でフォルダを右クリックしたときに「Oleafly で開く」を表示します。"
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Nemo でフォルダを右クリックしたときに「Oleafly で開く」を表示します。"
+    },
+    "nautilus": {
+      "label": "ファイル",
+      "description": "GNOME ファイルでフォルダを右クリックしたときに、「スクリプト」メニューに「Oleafly で開く」を追加します。"
+    },
+    "folderOpenWith": {
+      "label": "フォルダの「このアプリケーションで開く」メニュー",
+      "description": "フォルダの「このアプリケーションで開く」に Oleafly を表示します。既定のファイルマネージャーは変わりません。"
+    },
+    "attention": {
+      "outdated": "古くなっているか、macOS によってブロックされています。修復すると元に戻ります。",
+      "elsewhere": "メニューが別の Oleafly を開きます。修復するとこのコピーを使います。",
+      "moved": "移動した Oleafly を指しています。修復するとこのコピーを使います。",
+      "noDefaultFileManager": "フォルダ用の既定のファイルマネージャーが設定されていないため、この項目によってすべてのフォルダが Oleafly で開かれる可能性があります。削除してください。"
+    }
   }
 }

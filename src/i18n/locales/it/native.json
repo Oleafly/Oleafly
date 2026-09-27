@@ -87,5 +87,9 @@
     "fullAccessDismissed": "La conferma dell'accesso completo è stata ignorata.",
     "fullAccessDeclined": "L'accesso completo non è stato abilitato.",
     "approvalDialogClosed": "La finestra di approvazione nativa si è chiusa in modo imprevisto."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Apri in Oleafly",
+    "openWithOleafly": "Apri con Oleafly"
   }
 }

@@ -1464,5 +1464,56 @@
       },
       "unbound": "未設定"
     }
+  },
+  "systemIntegration": {
+    "title": "系統整合",
+    "description": "直接從檔案管理員以 Oleafly 開啟資料夾。",
+    "checking": "正在檢查…",
+    "loadFailed": "無法檢查檔案管理員的設定。",
+    "state": {
+      "installed": "已安裝",
+      "notInstalled": "未安裝",
+      "needsAttention": "需要處理"
+    },
+    "actions": {
+      "install": "安裝",
+      "repair": "修復"
+    },
+    "failed": {
+      "install": "無法安裝，請再試一次。",
+      "remove": "無法移除，請再試一次。"
+    },
+    "packaged": "已隨 Oleafly 套件安裝。",
+    "quickAction": {
+      "label": "Finder 快速動作",
+      "description": "在 Finder 中以右鍵按一下資料夾，然後選擇「快速動作」›「在 Oleafly 中開啟」。"
+    },
+    "explorerMenu": {
+      "label": "檔案總管右鍵選單",
+      "description": "以右鍵按一下資料夾或其中的空白處，然後選擇「以 Oleafly 開啟」。在 Windows 11 中，它位於「顯示其他選項」裡。",
+      "toggle": "在檔案總管中顯示「以 Oleafly 開啟」"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "在 Dolphin 中以右鍵按一下資料夾時顯示「以 Oleafly 開啟」。"
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "在 Nemo 中以右鍵按一下資料夾時顯示「以 Oleafly 開啟」。"
+    },
+    "nautilus": {
+      "label": "檔案",
+      "description": "在 GNOME 檔案中以右鍵按一下資料夾時，將「以 Oleafly 開啟」加入「指令稿」選單。"
+    },
+    "folderOpenWith": {
+      "label": "資料夾的「開啟方式」選單",
+      "description": "在資料夾的「開啟方式」中列出 Oleafly。預設檔案管理員不會改變。"
+    },
+    "attention": {
+      "outdated": "它已過期或遭 macOS 封鎖。修復後即可恢復。",
+      "elsewhere": "選單會開啟另一份 Oleafly。修復後將使用目前這份。",
+      "moved": "它指向一份已移動的 Oleafly。修復後將使用目前這份。",
+      "noDefaultFileManager": "系統沒有為資料夾設定預設檔案管理員，此項目可能會讓所有資料夾都以 Oleafly 開啟。請移除它。"
+    }
   }
 }

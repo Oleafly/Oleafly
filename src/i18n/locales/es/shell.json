@@ -1060,5 +1060,13 @@
       "windows": "Revisa en la pestaña Seguridad de las Propiedades de la carpeta que tu cuenta pueda leerla y vuelve a intentarlo.",
       "linux": "Comprueba que tu cuenta pueda leer esta carpeta y vuelve a intentarlo."
     }
+  },
+  "quickActionOffer": {
+    "title": "Abrir carpetas desde el Finder",
+    "body": "Añade Abrir en Oleafly a las Acciones rápidas del Finder. Luego podrás hacer clic derecho en cualquier carpeta para abrirla aquí.",
+    "add": "Añadir al Finder",
+    "notNow": "Ahora no",
+    "added": "Listo. Haz clic derecho en una carpeta en el Finder y elige Acciones rápidas › Abrir en Oleafly.",
+    "failed": "No se pudo añadir. Puedes volver a intentarlo en Ajustes › General."
   }
 }

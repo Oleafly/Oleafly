@@ -87,5 +87,9 @@
     "fullAccessDismissed": "完全访问权限确认已关闭。",
     "fullAccessDeclined": "未启用完全访问权限。",
     "approvalDialogClosed": "原生审批对话框意外关闭了。"
+  },
+  "systemIntegration": {
+    "openInOleafly": "在 Oleafly 中打开",
+    "openWithOleafly": "用 Oleafly 打开"
   }
 }

@@ -101,6 +101,7 @@ mod state;
 mod stats;
 mod storage;
 mod synctex;
+mod system_integration;
 mod template_packs;
 mod templates;
 mod terminal;
@@ -110,6 +111,16 @@ mod trust;
 mod worktree_lock;
 
 use state::AppState;
+
+fn with_open_intake<R: tauri::Runtime>(
+    builder: tauri::Builder<R>,
+    intake: open_request::OpenIntake,
+) -> tauri::Builder<R> {
+    let builder = builder.manage(intake);
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(system_integration::lifecycle_plugin());
+    builder
+}
 
 fn traced_commands<R, F>(
     handler: F,
@@ -244,6 +255,8 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     crate::open_request::start(app.handle());
+    #[cfg(windows)]
+    crate::system_integration::repair_at_launch();
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
@@ -304,8 +317,7 @@ pub fn run() {
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
     }
-    builder = builder
-        .manage(open_intake)
+    builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
@@ -480,6 +492,9 @@ pub fn run() {
             open_request::open_folder_request,
             open_request::pick_open_folder,
             open_request::debug_inject_open_request,
+            system_integration::system_integration_status,
+            system_integration::system_integration_set,
+            system_integration::claim_quick_action_offer,
             chunked::chunked_ack,
             chunked::read_app_log_chunked,
             logsafe::export_log_archive,

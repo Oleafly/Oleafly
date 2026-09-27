@@ -1079,5 +1079,13 @@
       "windows": "Na kartě Zabezpečení ve Vlastnostech složky ověřte, že ji váš účet může číst, a zkuste to znovu.",
       "linux": "Ověřte, že váš účet může tuto složku číst, a zkuste to znovu."
     }
+  },
+  "quickActionOffer": {
+    "title": "Otevírejte složky z Finderu",
+    "body": "Přidejte Otevřít v Oleafly do rychlých akcí Finderu. Pak můžete kliknout pravým tlačítkem na libovolnou složku a otevřít ji tady.",
+    "add": "Přidat do Finderu",
+    "notNow": "Teď ne",
+    "added": "Přidáno. Ve Finderu klikněte pravým tlačítkem na složku a vyberte Rychlé akce › Otevřít v Oleafly.",
+    "failed": "Přidání se nezdařilo. Můžete to zkusit znovu v Nastavení › Obecné."
   }
 }

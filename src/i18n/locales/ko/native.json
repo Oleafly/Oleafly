@@ -87,5 +87,9 @@
     "fullAccessDismissed": "전체 접근 권한 확인 창을 닫았습니다.",
     "fullAccessDeclined": "전체 접근 권한이 활성화되지 않았습니다.",
     "approvalDialogClosed": "네이티브 승인 대화 상자가 예기치 않게 닫혔습니다."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Oleafly에서 열기",
+    "openWithOleafly": "Oleafly로 열기"
   }
 }

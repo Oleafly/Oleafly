@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   toastErrorUnique: vi.fn(),
   logError: vi.fn(),
+  offerQuickActionOnce: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -43,6 +44,9 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/features/quick-action-offer", () => ({
+  offerQuickActionOnce: mocks.offerQuickActionOnce,
+}));
 vi.mock("@/lib/toast", () => ({
   toast: { errorUnique: mocks.toastErrorUnique, error: vi.fn(), success: vi.fn() },
   notifyError: vi.fn(),
@@ -408,6 +412,28 @@ describe("the folder picker", () => {
     expect(mocks.openFolderRequest).toHaveBeenCalledWith("p1", SESSION);
     expect(openProject).toHaveBeenCalledWith(THESIS_ID);
     expect(useOpenFolderFlowStore.getState().opening).toBe(false);
+  });
+
+  it("offers the Finder Quick Action only after a picked folder opens", async () => {
+    mocks.pickOpenFolder.mockResolvedValueOnce(null);
+    await openFolderWithPicker();
+    mocks.pickOpenFolder.mockResolvedValueOnce(request("p2", "home"));
+    mocks.openFolderRequest.mockRejectedValueOnce(
+      '@oleafly/error:{"code":"open_folder.not_found","params":{},"detail":null}',
+    );
+    await expect(openFolderWithPicker()).resolves.toBe("refused");
+    expect(mocks.offerQuickActionOnce).not.toHaveBeenCalled();
+
+    mocks.pickOpenFolder.mockResolvedValueOnce(request("p3", "paper"));
+    mocks.openFolderRequest.mockResolvedValueOnce(opened(THESIS_ID));
+    await expect(openFolderWithPicker()).resolves.toBe("opened");
+    expect(mocks.offerQuickActionOnce).toHaveBeenCalledTimes(1);
+  });
+
+  it("never offers the Quick Action for folders the OS or another launch sends", async () => {
+    mocks.openFolderRequest.mockResolvedValueOnce(opened(THESIS_ID));
+    await expect(openPendingRequest(request("x9", "thesis"))).resolves.toBe("opened");
+    expect(mocks.offerQuickActionOnce).not.toHaveBeenCalled();
   });
 
   it("opens a recent project through the same stop prompt", async () => {

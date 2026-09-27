@@ -1496,5 +1496,56 @@
       },
       "unbound": "Nesetată"
     }
+  },
+  "systemIntegration": {
+    "title": "Integrare cu sistemul",
+    "description": "Deschide foldere în Oleafly direct din managerul de fișiere.",
+    "checking": "Se verifică…",
+    "loadFailed": "Nu s-a putut verifica configurarea managerului de fișiere.",
+    "state": {
+      "installed": "Instalat",
+      "notInstalled": "Neinstalat",
+      "needsAttention": "Necesită atenție"
+    },
+    "actions": {
+      "install": "Instalează",
+      "repair": "Repară"
+    },
+    "failed": {
+      "install": "Nu s-a putut instala. Încearcă din nou.",
+      "remove": "Nu s-a putut elimina. Încearcă din nou."
+    },
+    "packaged": "Instalat împreună cu pachetul Oleafly.",
+    "quickAction": {
+      "label": "Acțiune rapidă Finder",
+      "description": "Fă clic dreapta pe un folder în Finder și alege Acțiuni rapide › Deschide în Oleafly."
+    },
+    "explorerMenu": {
+      "label": "Meniul contextual din Explorer",
+      "description": "Fă clic dreapta pe un folder sau pe un spațiu gol din el și alege Deschide cu Oleafly. În Windows 11 se află sub Afișați mai multe opțiuni.",
+      "toggle": "Afișează Deschide cu Oleafly în Explorer"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Adaugă Deschide cu Oleafly când faci clic dreapta pe un folder în Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Adaugă Deschide cu Oleafly când faci clic dreapta pe un folder în Nemo."
+    },
+    "nautilus": {
+      "label": "Fișiere",
+      "description": "Adaugă Deschide cu Oleafly în meniul Scripturi când faci clic dreapta pe un folder în Fișiere GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Meniul Deschide cu pentru foldere",
+      "description": "Afișează Oleafly în Deschide cu pentru foldere. Managerul de fișiere implicit rămâne același."
+    },
+    "attention": {
+      "outdated": "Este învechită sau macOS a blocat-o. Repar-o ca să o readuci.",
+      "elsewhere": "Meniul deschide o altă copie Oleafly. Repară-l ca să folosești aceasta.",
+      "moved": "Indică o copie Oleafly care a fost mutată. Repar-o ca să folosești aceasta.",
+      "noDefaultFileManager": "Sistemul nu are un manager de fișiere implicit pentru foldere, așa că această intrare ar putea deschide orice folder în Oleafly. Elimin-o."
+    }
   }
 }

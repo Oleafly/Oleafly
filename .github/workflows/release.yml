@@ -485,6 +485,39 @@ jobs:
             test -f "$RUNTIME_DIR/typst"
           fi
 
+      - name: Describe the Linux desktop entries (diagnostic only)
+        if: startsWith(matrix.os, 'ubuntu-')
+        continue-on-error: true
+        shell: bash
+        run: |
+          for bundle in "src-tauri/target/${{ matrix.rust_target }}/release/bundle" "src-tauri/target/release/bundle"; do
+            [ -d "$bundle" ] || continue
+            echo "bundle folder: $bundle"
+            for deb in "$bundle"/deb/*.deb; do
+              [ -f "$deb" ] || continue
+              echo "--- $deb ---"
+              root="$(mktemp -d)"
+              dpkg-deb -x "$deb" "$root" || echo "(could not unpack the package)"
+              for entry in "$root"/usr/share/applications/*.desktop "$root"/usr/share/kio/servicemenus/*.desktop "$root"/usr/share/nemo/actions/*.nemo_action; do
+                [ -f "$entry" ] || continue
+                echo "${entry#"$root"}:"
+                grep -E '^(Type|Exec|MimeType)=' "$entry" || echo "(no Type, Exec or MimeType line)"
+              done
+              rm -rf "$root"
+            done
+            for rpm in "$bundle"/rpm/*.rpm; do
+              [ -f "$rpm" ] || continue
+              echo "--- $rpm ---"
+              rpm -qlp "$rpm" 2>/dev/null | grep -E '[.](desktop|nemo_action)$' || echo "(no rpm listing or no desktop entries)"
+            done
+            for entry in "$bundle"/appimage/*.AppDir/usr/share/applications/*.desktop; do
+              [ -f "$entry" ] || continue
+              echo "--- AppImage ${entry#"$bundle"/appimage/} ---"
+              grep -E '^(Type|Exec|MimeType)=' "$entry" || echo "(no Type, Exec or MimeType line)"
+            done
+          done
+          exit 0
+
   # Each tauri-action leg produces a complete latest.json candidate by merging
   # the release's current manifest. Those read/delete/upload operations are not
   # atomic across a matrix, so the last writer can otherwise lose a concurrent

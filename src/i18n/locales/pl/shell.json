@@ -1079,5 +1079,13 @@
       "windows": "Na karcie Zabezpieczenia we Właściwościach folderu sprawdź, czy Twoje konto może go odczytać, i spróbuj ponownie.",
       "linux": "Sprawdź, czy Twoje konto może odczytać ten folder, i spróbuj ponownie."
     }
+  },
+  "quickActionOffer": {
+    "title": "Otwieraj foldery z Findera",
+    "body": "Dodaj Otwórz w Oleafly do szybkich czynności w Finderze. Potem możesz kliknąć prawym przyciskiem dowolny folder, aby otworzyć go tutaj.",
+    "add": "Dodaj do Findera",
+    "notNow": "Nie teraz",
+    "added": "Dodano. Kliknij folder prawym przyciskiem w Finderze i wybierz Szybkie czynności › Otwórz w Oleafly.",
+    "failed": "Nie udało się dodać. Możesz spróbować ponownie w Ustawienia › Ogólne."
   }
 }

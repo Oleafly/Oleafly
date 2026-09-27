@@ -54,6 +54,7 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
+import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -1203,6 +1204,7 @@ export function SettingsModal() {
             </div>
           )}
         </div>
+        <SystemIntegrationSection />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}
