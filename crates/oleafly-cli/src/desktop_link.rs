@@ -4,9 +4,9 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 const LINK_FILE: &str = "link.json";
-#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
 const SHELL_COMMAND_FILE: &str = "shell-command.json";
-#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
 const MAX_SHELL_COMMAND_BYTES: u64 = 16 * 1024;
 const SIDECAR_FILE: &str = "project.json";
 const MAX_LINKS: usize = 4_096;
@@ -27,7 +27,7 @@ struct Sidecar {
     main_doc: Option<String>,
 }
 
-#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
 #[derive(Deserialize)]
 struct ShellCommand {
     app: Option<PathBuf>,
@@ -38,7 +38,7 @@ pub(crate) fn recorded_app() -> Option<PathBuf> {
     recorded_app_in(&data_root()?)
 }
 
-#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
 fn recorded_app_in(root: &Path) -> Option<PathBuf> {
     read_json::<ShellCommand>(&root.join(SHELL_COMMAND_FILE), MAX_SHELL_COMMAND_BYTES)?
         .app
@@ -111,6 +111,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     #[test]
     fn the_appimage_the_desktop_app_recorded_is_where_the_command_finds_it() {
         let data = TempDir::new().unwrap();

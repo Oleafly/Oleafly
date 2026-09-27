@@ -216,7 +216,7 @@ fn enclosing_app_bundle(executable: &Path) -> Option<PathBuf> {
     shaped.then(|| bundle.to_path_buf())
 }
 
-#[cfg(any(not(any(target_os = "macos", windows)), test))]
+#[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
 fn linux_candidates(
     appimage: Option<PathBuf>,
     own_directory: Option<PathBuf>,
@@ -585,6 +585,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn linux_prefers_the_appimage_then_the_app_beside_the_command() {
         let candidates = linux_candidates(
@@ -613,6 +614,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn linux_never_launches_the_command_line_tool_as_the_app() {
         let candidates = linux_candidates(None, Some(PathBuf::from("/usr/bin")), None, None);

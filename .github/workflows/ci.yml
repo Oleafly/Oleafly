@@ -329,7 +329,7 @@ jobs:
 
       - name: Test
         if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --all-targets --no-fail-fast
 
       - name: Format check
         run: cargo fmt --all -- --check
@@ -379,7 +379,7 @@ jobs:
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --all-targets --no-fail-fast
 
       - name: Lint all native Windows targets
         run: cargo clippy --workspace --all-targets -- -D warnings
