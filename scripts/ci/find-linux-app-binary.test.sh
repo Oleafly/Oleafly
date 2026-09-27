@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 FIND="$ROOT/scripts/ci/find-linux-app-binary.sh"
+DESKTOP_EXEC="Exec=oleafly-desktop"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/oleafly-find-app.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -54,11 +55,11 @@ expect_refusal() {
   fi
 }
 
-package renamed "Exec=oleafly-desktop" \
+package renamed "$DESKTOP_EXEC" \
   /usr/bin/tectonic /usr/bin/oleafly-cli /usr/bin/oleafly-desktop /usr/bin/typst
 expect_app renamed /usr/bin/oleafly-desktop
 
-package with-command "Exec=oleafly-desktop" \
+package with-command "$DESKTOP_EXEC" \
   /usr/bin/oleafly /usr/bin/oleafly-cli /usr/bin/oleafly-desktop /usr/bin/tectonic
 expect_app with-command /usr/bin/oleafly-desktop
 
@@ -74,10 +75,10 @@ expect_refusal old-name "command-line tool"
 package no-entry "" /usr/bin/oleafly-desktop
 expect_refusal no-entry "no desktop entry"
 
-package not-shipped "Exec=oleafly-desktop" /usr/bin/tectonic
+package not-shipped "$DESKTOP_EXEC" /usr/bin/tectonic
 expect_refusal not-shipped "oleafly-desktop"
 
-package not-executable "Exec=oleafly-desktop" /usr/bin/oleafly-desktop
+package not-executable "$DESKTOP_EXEC" /usr/bin/oleafly-desktop
 chmod 644 "$WORK/not-executable/usr/bin/oleafly-desktop"
 expect_refusal not-executable "not executable"
 

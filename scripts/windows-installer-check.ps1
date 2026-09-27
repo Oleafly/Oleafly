@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$InformationPreference = "Continue"
 
 $VerbKeys = @(
   "Software\Classes\Directory\shell\Oleafly",
@@ -47,7 +48,7 @@ function Test-Elevated {
 }
 
 function Invoke-Installer([string]$file, [string]$arguments) {
-  Write-Host "> $file $arguments"
+  Write-Information "> $file $arguments"
   $process = Start-Process -FilePath $file -ArgumentList $arguments -PassThru
   $null = $process.Handle
   if (-not $process.WaitForExit($InstallerTimeoutMs)) {
@@ -62,7 +63,7 @@ function Invoke-Msiexec([string]$arguments) {
   for ($attempt = 1; $attempt -le 4; $attempt++) {
     $code = Invoke-Installer "msiexec.exe" $arguments
     if ($code -ne 1618) { return $code }
-    Write-Host "another installation is running (1618), retrying in $BusyRetryDelaySeconds s"
+    Write-Information "another installation is running (1618), retrying in $BusyRetryDelaySeconds s"
     Start-Sleep -Seconds $BusyRetryDelaySeconds
   }
   return $code
@@ -91,7 +92,7 @@ function Clear-Leftovers {
 
 function Add-Failure([string]$message) {
   $Failures.Add($message)
-  Write-Host "FAIL $message"
+  Write-Information "FAIL $message"
 }
 
 function Show-Verbs([string]$label) {
@@ -138,7 +139,7 @@ function Find-Installer([string]$explicit, [string]$folder, [string]$filter) {
   $directory = Join-Path $BundleDir $folder
   $found = @(Get-ChildItem -LiteralPath $directory -Filter $filter -File -ErrorAction SilentlyContinue)
   if ($found.Count -ne 1) {
-    Write-Host "bundle directory $BundleDir holds"
+    Write-Information "bundle directory $BundleDir holds"
     Show-BundleDir
     throw "expected one $filter in $directory, found $($found.Count)"
   }
@@ -166,11 +167,11 @@ function Test-Kept([string]$label) {
 function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) {
   $label = "$kind pass $pass"
   $dir = Join-Path $WorkDir "$($kind.ToLowerInvariant())-$pass"
-  Write-Host ""
+  Write-Information ""
   if ($own) {
-    Write-Host "== $label installs into $dir and the verbs point at this install"
+    Write-Information "== $label installs into $dir and the verbs point at this install"
   } else {
-    Write-Host "== $label installs into $dir and the verbs point at $ForeignExe"
+    Write-Information "== $label installs into $dir and the verbs point at $ForeignExe"
   }
   Clear-Leftovers
   if ($kind -eq "NSIS") {
@@ -208,8 +209,8 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
 function Invoke-InstallerCheck {
   $nsisInstaller = Find-Installer $Nsis "nsis" "*-setup.exe"
   $msiInstaller = Find-Installer $Msi "msi" "*.msi"
-  Write-Host "NSIS installer $nsisInstaller"
-  Write-Host "MSI installer $msiInstaller"
+  Write-Information "NSIS installer $nsisInstaller"
+  Write-Information "MSI installer $msiInstaller"
   if (-not $WorkDir) {
     if ($env:RUNNER_TEMP) { $base = $env:RUNNER_TEMP } else { $base = [System.IO.Path]::GetTempPath() }
     $script:WorkDir = Join-Path $base "oleafly-installer-check"
@@ -241,7 +242,7 @@ function Invoke-InstallerCheck {
       }
     }
   } finally {
-    try { Clear-Leftovers } catch { Write-Host "could not clear the test keys ($($_.Exception.Message))" }
+    try { Clear-Leftovers } catch { Write-Information "could not clear the test keys ($($_.Exception.Message))" }
     Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
   }
 }

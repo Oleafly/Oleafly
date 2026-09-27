@@ -121,7 +121,7 @@ it("follows the folder's permissions in place without rebuilding the working dif
   expect(editableView()).toBe(editable);
   expect(editable.state.readOnly).toBe(false);
   expect(editable.state.selection.main.anchor).toBe(5);
-  expect(mocks.gitShow.mock.calls.length).toBe(calls);
+  expect(mocks.gitShow.mock.calls).toHaveLength(calls);
 });
 
 it("compares the file on disk with the unsaved buffer without running Git", async () => {
