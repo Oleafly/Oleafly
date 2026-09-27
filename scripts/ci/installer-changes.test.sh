@@ -9,7 +9,9 @@ trap 'rm -rf "$WORK"' EXIT
 failures=0
 
 git_in() {
-  git -C "$1" -c user.name=ci -c user.email=ci@example.invalid -c commit.gpgsign=false "${@:2}"
+  local repo="$1"
+  shift
+  git -C "$repo" -c user.name=ci -c user.email=ci@example.invalid -c commit.gpgsign=false "$@"
 }
 
 origin="$WORK/origin"

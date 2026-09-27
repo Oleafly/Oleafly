@@ -411,7 +411,7 @@ pub(crate) fn path_hint(
 ) -> PathHint {
     let name = shell
         .and_then(Path::file_name)
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default();
     if name == "fish" {
         return PathHint {

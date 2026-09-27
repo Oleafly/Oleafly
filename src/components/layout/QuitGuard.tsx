@@ -15,6 +15,10 @@ import {
   QUIT_FLUSH_REQUESTED,
 } from "@/lib/quit-flush";
 
+function holdQuitAfterFailedSave() {
+  return cancelQuitFlush().catch((cancelError) => logError("hold quit after failed save", cancelError));
+}
+
 /**
  * Transactional quit: the Rust side blocks window close, Cmd+Q, and Restart
  * while dirty buffers may exist and emits `quit-flush-requested` (payload:
@@ -58,7 +62,7 @@ export function QuitGuard() {
               message: error instanceof Error ? error.message : String(error),
               restart,
             });
-            await cancelQuitFlush().catch((cancelError) => logError("hold quit after failed save", cancelError));
+            await holdQuitAfterFailedSave();
           }),
       );
     }).then((stop) => {

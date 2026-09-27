@@ -297,7 +297,7 @@ export function SystemIntegrationSection({
     }
   }, []);
 
-  if (status && status.items.length === 0 && !shellCommandRow) return null;
+  if (status?.items.length === 0 && !shellCommandRow) return null;
 
   return (
     <section
@@ -317,13 +317,13 @@ export function SystemIntegrationSection({
         </p>
       </div>
       {status === null && !loadFailed ? (
-        <div
-          role="status"
+        <output
+          aria-live="polite"
           className="flex items-center gap-2 rounded-lg border bg-card p-3 text-xs text-muted-foreground"
         >
           <Loader2 aria-hidden className="size-3.5 animate-spin" />
           {t(($) => $.settings.systemIntegration.checking)}
-        </div>
+        </output>
       ) : null}
       {loadFailed ? (
         <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

@@ -31,12 +31,13 @@ export function QuickActionOffer() {
           <h2 id="quick-action-offer-title" className="text-sm font-medium">
             {t(($) => $.shell.quickActionOffer.title)}
           </h2>
-          <p
-            role={phase === "failed" ? "alert" : "status"}
-            className="text-xs leading-relaxed text-muted-foreground"
+          <output
+            role={phase === "failed" ? "alert" : undefined}
+            aria-live={phase === "failed" ? undefined : "polite"}
+            className="block text-xs leading-relaxed text-muted-foreground"
           >
             {message}
-          </p>
+          </output>
         </div>
         {phase === "offer" || adding ? (
           <div className="flex items-center gap-2">
