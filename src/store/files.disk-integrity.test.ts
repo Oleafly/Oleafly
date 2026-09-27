@@ -46,6 +46,10 @@ vi.mock("@/lib/tauri", () => ({
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -265,6 +269,80 @@ describe("git pull and restore", () => {
     await useFilesStore.getState().restoreFromGit("project", "abc");
     expect(locked).toBe(true);
     expect(useFilesStore.getState().files["main.tex"].content).toBe("v1\n");
+  });
+});
+
+describe("a changed file in a folder opened in place", () => {
+  const CONFLICT = "file changed on disk: main.tex was changed outside Oleafly after it was loaded";
+
+  async function conflicted() {
+    useFilesStore.setState({ manifestHome: "device" });
+    mocks.readFileContent.mockResolvedValue("old\n");
+    await useFilesStore.getState().openFile("main.tex");
+    mocks.writeFileContent.mockRejectedValueOnce(CONFLICT);
+    useFilesStore.getState().setContent("main.tex", "mine\n");
+    await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toMatch("file changed on disk");
+    const { reportFileSaveFailure } = await import("./files");
+    reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
+  }
+
+  it("offers the changed-on-disk choice instead of a toast", async () => {
+    await conflicted();
+
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "mine\n", dirty: true });
+  });
+
+  it("keeps my version by writing over the file on disk", async () => {
+    await conflicted();
+
+    await useFilesStore.getState().keepLocalVersion("main.tex");
+
+    expect(mocks.writeFileContent.mock.calls.at(-1)).toHaveLength(4);
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("mine\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("reloads the version on disk and clears the choice", async () => {
+    await conflicted();
+    mocks.readFileContent.mockResolvedValue("theirs\n");
+
+    await useFilesStore.getState().reloadFromDisk("main.tex");
+
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "theirs\n", dirty: false });
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("forgets the choice when the project closes", async () => {
+    await conflicted();
+    await useFilesStore.getState().closeProject();
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("names a file in another tab when a save the user asked for is blocked", async () => {
+    await conflicted();
+    useFilesStore.setState({ activePath: null });
+    const { reportFileSaveFailure } = await import("./files");
+
+    reportFileSaveFailure("save before agent prompt", "project", "main.tex", CONFLICT, true);
+
+    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    const [, message, action] = mocks.toastErrorUnique.mock.calls[0];
+    expect(message).toContain("main.tex");
+    action.onClick();
+    await vi.waitFor(() => expect(useFilesStore.getState().activePath).toBe("main.tex"));
+  });
+
+  it("leaves the banner to explain a blocked save of the file on screen", async () => {
+    await conflicted();
+    const { reportFileSaveFailure } = await import("./files");
+
+    reportFileSaveFailure("editor save", "project", "main.tex", CONFLICT, true);
+
+    expect(useFilesStore.getState().activePath).toBe("main.tex");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
   });
 });
 

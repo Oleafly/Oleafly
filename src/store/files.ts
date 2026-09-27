@@ -15,7 +15,8 @@ import {
   getProjectEngine,
   importOverleafProjectCmd,
   importPathsIntoProject as apiImportPathsIntoProject,
-  listFiles,
+  existingProjectFiles,
+  listFileTree,
   listProjects,
   readFileContent,
   renameFile as apiRenameFile,
@@ -31,6 +32,7 @@ import {
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
+  type FileTreeListing,
   type GitPullResult,
   type MainDecision,
   type ManifestHome,
@@ -58,7 +60,7 @@ import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { isManagedProjectPath } from "@/lib/project-paths";
+import { isManagedProjectPath, isReadOnlyProjectPath } from "@/lib/project-paths";
 import { mainDocumentMissing } from "@/lib/main-document";
 import {
   projectFolderAvailable,
@@ -190,6 +192,8 @@ async function checkTexPinStatus(
   logTexPinStatus(status, gap);
 }
 
+export const FOLDER_LISTING_LIMIT = 20_000;
+
 const MUTATION_CONFLICT = "mutation conflict at generation";
 const DISK_CONFLICT = "file changed on disk";
 const UNSUPPORTED_ENCODING = "unsupported text encoding";
@@ -286,6 +290,12 @@ export function reportFileSaveFailure(
 }
 
 function reportDiskConflict(projectId: string, path: string, explicit: boolean): void {
+  const state = useFilesStore.getState();
+  if (state.manifestHome !== "library") {
+    noteChangedOnDisk(projectId, path);
+    if (explicit && state.activePath !== path) reportBackgroundDiskConflict(projectId, path);
+    return;
+  }
   const key = writeKey(projectId, path);
   if (diskConflicts.get(key)?.warned && !explicit) return;
   diskConflicts.set(key, {
@@ -305,6 +315,43 @@ function reportDiskConflict(projectId: string, path: string, explicit: boolean):
       true,
     ),
   });
+}
+
+function reportBackgroundDiskConflict(projectId: string, path: string): void {
+  const key = writeKey(projectId, path);
+  const toastId = toast.errorUnique(
+    `disk-conflict:${key}`,
+    i18n.t(($) => $.core.project.changedOnDiskElsewhere, { path }),
+    {
+      label: i18n.t(($) => $.common.actions.open),
+      onClick: () => {
+        if (useFilesStore.getState().projectId !== projectId) return;
+        void useFilesStore
+          .getState()
+          .openFile(path)
+          .catch((error) => reportFileOpenFailure(projectId, path, error));
+      },
+    },
+    true,
+  );
+  diskConflicts.set(key, { ...diskConflicts.get(key), warned: true, toastId });
+}
+
+function sameTreeEntries(left: readonly FileEntry[], right: readonly FileEntry[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((entry, index) => {
+      const other = right[index];
+      return (
+        entry.path === other.path &&
+        entry.is_dir === other.is_dir &&
+        !entry.unreadable === !other.unreadable &&
+        !entry.placeholder === !other.placeholder &&
+        !entry.read_only === !other.read_only &&
+        !entry.partial === !other.partial
+      );
+    })
+  );
 }
 
 function reportFileOpenFailure(projectId: string, path: string, error: unknown): void {
@@ -389,6 +436,7 @@ interface FilesStore {
   engineLoaded: boolean;
   engineError: EngineErrorCode | null;
   tree: FileEntry[];
+  treeTruncated: boolean;
   files: Record<string, FileState>;
   openTabs: string[];
   // Open-order stamp per file tab, shared with diff tabs so the editor renders
@@ -400,6 +448,7 @@ interface FilesStore {
   loading: boolean;
   docVersion: number;
   saveBlocked: SaveBlockedState | null;
+  changedOnDisk: string[];
 
   refreshProjects: () => Promise<void>;
   openProject: (id: string, shouldContinue?: () => boolean) => Promise<void>;
@@ -425,22 +474,23 @@ interface FilesStore {
   pullFromGit: (expectedProjectId: string) => Promise<GitPullResult>;
   discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
-  refreshTree: () => Promise<void>;
+  refreshTree: (options?: { keepUnchanged?: boolean }) => Promise<boolean>;
   resumeAutosave: (projectId: string) => void;
   openFile: (path: string) => Promise<void>;
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => void;
+  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
   reloadFromDisk: (path: string) => Promise<void>;
+  keepLocalVersion: (path: string) => Promise<void>;
   createFile: (
     path: string,
     isDir: boolean,
     conflictStrategy?: FileConflictStrategy,
   ) => Promise<void>;
-  deleteEntry: (path: string) => Promise<void>;
+  deleteEntry: (path: string, options?: { permanent?: boolean }) => Promise<void>;
   renameEntry: (from: string, to: string, conflictStrategy?: FileConflictStrategy) => Promise<string>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
   importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
@@ -527,6 +577,36 @@ function settleDiskConflict(key: string): void {
   const toastId = diskConflicts.get(key)?.toastId;
   if (typeof toastId === "number") toast.dismiss(toastId);
   diskConflicts.delete(key);
+  const { projectId, changedOnDisk } = useFilesStore.getState();
+  if (!projectId || !key.startsWith(`${projectId}\0`)) return;
+  const path = key.slice(projectId.length + 1);
+  if (changedOnDisk.includes(path)) {
+    useFilesStore.setState({ changedOnDisk: changedOnDisk.filter((entry) => entry !== path) });
+  }
+}
+
+function noteChangedOnDisk(projectId: string, path: string): void {
+  const key = writeKey(projectId, path);
+  diskConflicts.set(key, { ...diskConflicts.get(key), warned: true });
+  const state = useFilesStore.getState();
+  if (state.projectId !== projectId || state.changedOnDisk.includes(path)) return;
+  useFilesStore.setState({ changedOnDisk: [...state.changedOnDisk, path] });
+}
+
+export async function detectDiskChange(projectId: string, path: string): Promise<boolean> {
+  const key = writeKey(projectId, path);
+  if (!diskSnapshots.has(key) || pendingWrites.has(key)) return false;
+  let raw: string;
+  try {
+    raw = await readFileContent(projectId, path);
+  } catch {
+    return false;
+  }
+  const current = useFilesStore.getState();
+  if (current.projectId !== projectId || !current.files[path]?.dirty) return false;
+  if (pendingWrites.has(key) || diskHash(raw) === diskSnapshots.get(key)?.hash) return false;
+  noteChangedOnDisk(projectId, path);
+  return true;
 }
 
 function projectKeysWhere(
@@ -894,8 +974,10 @@ async function loadCompatibilityInputs(
 ) {
   const mainPath = meta.main_doc || "main.tex";
   const depth = (path: string) => path.split("/").length;
+  const readable = (entry: FileEntry) =>
+    !entry.is_dir && (!entry.placeholder || get().files[entry.path] !== undefined);
   const texPaths = tree
-    .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
+    .filter((entry) => readable(entry) && isTexSourcePath(entry.path))
     .map((entry) => entry.path)
     .sort((left, right) => {
       if (left === mainPath) return -1;
@@ -911,7 +993,7 @@ async function loadCompatibilityInputs(
     if (content) texFiles.push({ path, content });
   }
   const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
-    tree.some((entry) => !entry.is_dir && entry.path === name),
+    tree.some((entry) => readable(entry) && entry.path === name),
   );
   const latexmkrc = rcName ? await readCompatibilityInput(id, rcName) : null;
   return { texFiles, latexmkrc };
@@ -1080,11 +1162,12 @@ async function loadOpenedProject(
   if (superseded()) return;
   rememberMutationGeneration(id, generation);
   const activation = mcpSetActiveProject(id).catch(() => {});
-  const [tree, engine] = await Promise.all([
-    listFiles(id),
+  const [listing, engine] = await Promise.all([
+    listFileTree(id),
     loadOpenedProjectEngine(id, () => seq === openSeq),
   ]);
   if (superseded()) return;
+  const tree = listing.entries;
   set({
     projectName: meta.name,
     projectKind: meta.kind ?? "",
@@ -1092,6 +1175,7 @@ async function loadOpenedProject(
     manifestHome,
     mainDoc: meta.main_doc,
     tree,
+    treeTruncated: listing.truncated,
     ...engine.state,
   });
   if (engine.failure !== null) void logError("load document engine", engine.failure);
@@ -1140,7 +1224,9 @@ async function preloadBibliographies(
   superseded: () => boolean,
   set: FilesSet,
 ): Promise<void> {
-  const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
+  const bibliographies = tree.filter(
+    (entry) => !entry.is_dir && !entry.placeholder && entry.path.endsWith(".bib"),
+  );
   for (const bibliography of bibliographies) {
     try {
       const { content, snapshot } = await readDiskText(id, bibliography.path);
@@ -1265,7 +1351,7 @@ function isBinaryReloadPath(path: string): boolean {
 async function loadChangedProjectFiles(
   projectId: string,
   captured: Record<string, FileState>,
-  filePaths: Set<string>,
+  filePaths: ReadonlySet<string>,
 ): Promise<ReloadedProjectFiles> {
   const loaded = new Map<string, string>();
   const snapshots = new Map<string, DiskSnapshot>();
@@ -1286,11 +1372,30 @@ async function loadChangedProjectFiles(
   return { loaded, snapshots, attempted };
 }
 
+async function presentFilePaths(
+  projectId: string,
+  listing: FileTreeListing,
+  captured: Record<string, FileState>,
+  get: FilesGet,
+): Promise<Set<string>> {
+  const filePaths = new Set(
+    listing.entries.filter((entry) => !entry.is_dir).map((entry) => entry.path),
+  );
+  if (!listing.truncated && get().manifestHome === "library") return filePaths;
+  const unlisted = [...new Set([...Object.keys(captured), ...Object.keys(get().files)])].filter(
+    (path) => !filePaths.has(path),
+  );
+  if (unlisted.length === 0) return filePaths;
+  const present = await existingProjectFiles(projectId, unlisted).catch(() => unlisted);
+  for (const path of present) filePaths.add(path);
+  return filePaths;
+}
+
 function reconcileProjectFile(
   path: string,
   current: FileState,
   captured: Record<string, FileState>,
-  filePaths: Set<string>,
+  filePaths: ReadonlySet<string>,
   reloaded: ReloadedProjectFiles,
   removedDirty: string[],
   adopted: string[],
@@ -1313,12 +1418,12 @@ function reconciledProjectState(
   state: FilesStore,
   metadata: ProjectMetadataState,
   tree: FileEntry[],
+  filePaths: ReadonlySet<string>,
   captured: Record<string, FileState>,
   reloaded: ReloadedProjectFiles,
   removedDirty: string[],
   adopted: string[],
 ): Partial<FilesStore> {
-  const filePaths = new Set(tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
   const files: Record<string, FileState> = {};
   for (const [path, current] of Object.entries(state.files)) {
     const file = reconcileProjectFile(
@@ -1434,12 +1539,14 @@ const EMPTY_PROJECT_STATE = {
   engineLoaded: false,
   engineError: null,
   tree: [],
+  treeTruncated: false,
   files: {},
   openTabs: [],
   tabOrder: {},
   activePath: null,
   loading: false,
   saveBlocked: null,
+  changedOnDisk: [],
 } satisfies Partial<FilesStore>;
 
 export const useFilesStore = create<FilesStore>((set, get) => ({
@@ -1454,6 +1561,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   engineLoaded: false,
   engineError: null,
   tree: [],
+  treeTruncated: false,
   files: {},
   openTabs: [],
   tabOrder: {},
@@ -1463,6 +1571,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   loading: false,
   docVersion: 0,
   saveBlocked: null,
+  changedOnDisk: [],
 
   refreshProjects: async () => {
     // Single-flight: the app shell and the library both ask for the list on
@@ -1617,17 +1726,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return id;
   },
 
-  refreshTree: async () => {
+  refreshTree: async (options) => {
     const { projectId } = get();
-    if (!projectId || !projectFolderAvailable(projectId)) return;
-    let tree: Awaited<ReturnType<typeof listFiles>>;
+    if (!projectId || !projectFolderAvailable(projectId)) return false;
+    let listing: Awaited<ReturnType<typeof listFileTree>>;
     try {
-      tree = await listFiles(projectId);
+      listing = await listFileTree(projectId);
     } catch (error) {
-      if (reportLocationError(projectId, error)) return;
+      if (reportLocationError(projectId, error)) return false;
       throw error;
     }
-    if (get().projectId === projectId) set({ tree });
+    const current = get();
+    if (current.projectId !== projectId) return false;
+    if (
+      options?.keepUnchanged &&
+      current.treeTruncated === listing.truncated &&
+      sameTreeEntries(current.tree, listing.entries)
+    ) {
+      return false;
+    }
+    set({ tree: listing.entries, treeTruncated: listing.truncated });
+    return true;
   },
 
   resumeAutosave: (projectId) => {
@@ -1708,7 +1827,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   setContent: (path, content, opts) => {
-    if (isManagedProjectPath(path, get().manifestHome)) return;
+    if (isReadOnlyProjectPath(path, get().manifestHome, get().tree)) return false;
     set((s) => ({
       files: {
         ...s.files,
@@ -1721,6 +1840,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // it fires (which silently lost edits to background tabs).
     pendingSaves.add(path);
     scheduleAutosave(get);
+    return true;
   },
 
   bumpDocVersion: () => set((s) => ({ docVersion: s.docVersion + 1 })),
@@ -1789,6 +1909,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     settleSaveFailure(projectId, path, get().files);
   },
 
+  keepLocalVersion: async (path) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const key = writeKey(projectId, path);
+    diskConflicts.set(key, { ...diskConflicts.get(key), warned: true });
+    await get().saveFile(path, { overwrite: true });
+    if (get().projectId === projectId && !get().files[path]?.dirty) settleDiskConflict(key);
+  },
+
   createFile: async (path, isDir, conflictStrategy = "error") => {
     const { projectId } = get();
     if (!projectId) return;
@@ -1804,7 +1933,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!isDir) await get().openFile(result.path);
   },
 
-  deleteEntry: (path) => enqueueProjectTransition(async () => {
+  deleteEntry: (path, options) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
 
@@ -1820,7 +1949,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (get().projectId !== projectId) return;
 
       const expectedGeneration = await refreshMutationGeneration(projectId);
-      const result = await apiDeleteFile(projectId, path, expectedGeneration);
+      const result = await apiDeleteFile(
+        projectId,
+        path,
+        expectedGeneration,
+        options?.permanent,
+      );
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }
@@ -2346,11 +2480,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     fileReloadRevision++;
     const captured = get().files;
     try {
-      const tree = await listFiles(projectId);
+      const listing = await listFileTree(projectId);
+      const tree = listing.entries;
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
-      const filePaths = new Set(
-        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
-      );
+      const filePaths = await presentFilePaths(projectId, listing, captured, get);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
       const manifestHome = await loadManifestHome(projectId);
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
@@ -2359,7 +2493,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set((state) => {
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
         return {
-          ...reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted),
+          ...reconciledProjectState(
+            state,
+            metadata,
+            tree,
+            filePaths,
+            captured,
+            reloaded,
+            removedDirty,
+            adopted,
+          ),
+          treeTruncated: listing.truncated,
           manifestHome,
         };
       });

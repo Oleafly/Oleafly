@@ -66,6 +66,7 @@ import type {
   FigureCacheResult,
   FileConflictStrategy,
   FileEntry,
+  FileTreeListing,
   FileMutationResult,
   GitCommit,
   GitWorktreeOperationResult,
@@ -342,6 +343,18 @@ export const saveProjectChats = (projectId: string, json: string) =>
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 
+export const listFileTree = (projectId: string) =>
+  invoke<FileTreeListing>("list_file_tree", { projectId });
+
+export const existingProjectFiles = (projectId: string, paths: string[]) =>
+  invoke<string[]>("existing_project_files", { projectId, paths });
+
+export const watchProjectFolder = (projectId: string) =>
+  invoke<number | null>("watch_project_folder", { projectId });
+
+export const unwatchProjectFolder = (projectId: string, token: number) =>
+  invoke<boolean>("unwatch_project_folder", { projectId, token });
+
 export const readFileContent = (projectId: string, path: string, allowMissing = false) =>
   invoke<string>("read_file", { projectId, path, ...(allowMissing ? { allowMissing: true } : {}) });
 
@@ -393,8 +406,18 @@ export async function createFile(
   return { path: result.path, generation: result.generation };
 }
 
-export const deleteFile = (projectId: string, path: string, expectedGeneration?: number) =>
-  invoke<FileMutationResult>("delete_file", { projectId, path, expectedGeneration });
+export const deleteFile = (
+  projectId: string,
+  path: string,
+  expectedGeneration?: number,
+  permanent?: boolean,
+) =>
+  invoke<FileMutationResult>("delete_file", {
+    projectId,
+    path,
+    expectedGeneration,
+    ...(permanent ? { permanent: true } : {}),
+  });
 
 export class FileConflictError extends Error {
   readonly destination: string;

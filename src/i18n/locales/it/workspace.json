@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> esiste già. Puoi tenere entrambi i file usando <suggestion>{{suggestion}}</suggestion> oppure sostituire la destinazione esistente. Oleafly non la sostituisce se non scegli Sostituisci.",
       "replace": "Sostituisci",
       "title": "Questo nome è già in uso",
-      "unchanged": "I percorsi di origine e destinazione sono rimasti invariati."
+      "unchanged": "I percorsi di origine e destinazione sono rimasti invariati.",
+      "renameFolderBody": "<destination>{{destination}}</destination> è una cartella esistente. Puoi tenerle entrambe usando <suggestion>{{suggestion}}</suggestion>. In una cartella aperta nella sua posizione, Oleafly non sostituisce mai un'intera cartella."
     },
     "createFailed": "Impossibile creare \"{{path}}\".",
     "deleteFailed": "Impossibile eliminare \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Imposta come documento principale",
     "title": "Esplora file",
     "treeAriaLabel": "Albero dei file del progetto",
-    "setMainFailed": "Impossibile impostare \"{{path}}\" come documento principale."
+    "setMainFailed": "Impossibile impostare \"{{path}}\" come documento principale.",
+    "listingStopped": "Vengono mostrati i primi {{limit}} elementi. Il resto di questa cartella non è elencato.",
+    "unreadable": "Nessun accesso",
+    "unreadableHint": "Oleafly non ha il permesso di aprire questo elemento.",
+    "confirmTrash": "Spostare {{path}} nel Cestino?",
+    "confirmTrashWindows": "Spostare {{path}} nel Cestino?",
+    "confirmPermanentDelete": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Vuoi eliminarlo definitivamente? L'operazione non può essere annullata.",
+    "confirmPermanentDeleteWindows": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Vuoi eliminarlo definitivamente? L'operazione non può essere annullata.",
+    "linkedReadOnly": "Rimanda a un file fuori da questa cartella, quindi è in sola lettura.",
+    "partialFolder": "Alcuni elementi di questa cartella non sono elencati."
   },
   "explorer": {
     "resizeSections": "Ridimensiona {{first}} e {{second}}"

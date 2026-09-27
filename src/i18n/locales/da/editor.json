@@ -171,7 +171,9 @@
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
     "managedFileReadOnly": "{{file}} styres af Oleafly og er skrivebeskyttet her. Projektindstillinger ændres i Oleafly selv, ikke ved at redigere denne fil.",
     "noFileOpen": "Ingen fil er åben.",
-    "noFileOpenHint": "Vælg en fil i træet for at begynde at redigere."
+    "noFileOpenHint": "Vælg en fil i træet for at begynde at redigere.",
+    "linkedFileReadOnly": "{{file}} linker til en fil uden for mappen, så du kan ikke redigere den her. Ret den der, hvor den ligger, for eksempel i Zotero.",
+    "diffOnDisk": "På disken"
   },
   "projectInfo": {
     "trigger": "Projektoplysninger",
@@ -330,7 +332,8 @@
     "splitView": "Delt visning",
     "unifiedView": "Samlet visning",
     "loading": "Indlæser forskellen…",
-    "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel."
+    "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel.",
+    "diskHeading": "På disken ↔ Dine ændringer"
   },
   "hotkeys": {
     "title": "Tastaturgenveje",
@@ -1028,5 +1031,13 @@
     "label": "Placering i dokumentet",
     "goTo": "Gå til {{title}}",
     "untitled": "Uden titel"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} blev ændret på disken, mens du havde ændringer, der ikke var gemt.",
+    "compare": "Sammenlign",
+    "keepMine": "Behold min",
+    "reload": "Genindlæs",
+    "failed": "Oleafly kunne ikke opdatere {{file}}. Prøv igen.",
+    "tabMark": "Ændret på disken. Åbn fanen for at vælge, hvilken version du vil beholde."
   }
 }

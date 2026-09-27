@@ -32,7 +32,9 @@
     "copy_size_limit": "Questa cartella supera i 2 GB. È più di quanto Oleafly possa copiare in una volta.",
     "copy_cancelled": "La copia è stata annullata.",
     "copy_needs_folder": "Solo le cartelle aperte sul posto possono essere copiate nella libreria.",
-    "not_removable": "Solo le cartelle aperte sul posto possono essere rimosse da Oleafly."
+    "not_removable": "Solo le cartelle aperte sul posto possono essere rimosse da Oleafly.",
+    "trash_unavailable": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Forse questa unità non ne ha uno.",
+    "linked_replace_folder": "{{path}} è una cartella, quindi Oleafly non la sostituisce. Spostala o rinominala prima."
   },
   "settings": {
     "locale_unsupported": "La lingua {{locale}} non è disponibile."

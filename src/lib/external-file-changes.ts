@@ -1,5 +1,12 @@
-import { reportFileSaveFailure, SaveFlushError, useFilesStore } from "@/store/files";
+import {
+  detectDiskChange,
+  reportFileSaveFailure,
+  SaveFlushError,
+  useFilesStore,
+} from "@/store/files";
 import { projectFolderAvailable } from "@/store/project-availability";
+import { useIndexStore } from "@/store/project-index";
+import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 
 export type ExternalFileChange =
   | { kind: "write"; path: string; content: string }
@@ -27,6 +34,47 @@ export function applyExternalFileChange(
   let paths = payload.paths;
   if (!paths?.length) paths = Object.keys(files.files);
   for (const path of paths) refreshExternalFile(payload.projectId, path, files.files[path]);
+}
+
+export interface FolderChangePayload {
+  projectId: string;
+  paths: string[];
+  rescan: boolean;
+  structural?: boolean;
+}
+
+async function refreshAfterFolderChange(
+  projectId: string,
+  listAgain: boolean,
+  sourcesChanged: boolean,
+): Promise<void> {
+  const treeChanged = listAgain
+    ? await useFilesStore.getState().refreshTree({ keepUnchanged: true }).catch(() => false)
+    : false;
+  if (treeChanged || !sourcesChanged) return;
+  if (useFilesStore.getState().projectId !== projectId) return;
+  await useIndexStore.getState().rebuildFromDisk();
+}
+
+export function applyFolderChange(change: FolderChangePayload): void {
+  const files = useFilesStore.getState();
+  if (!change.projectId || change.projectId !== files.projectId) return;
+  if (!projectFolderAvailable(change.projectId)) return;
+  const known = new Set(files.tree.map((entry) => entry.path));
+  const listAgain =
+    change.rescan ||
+    change.structural === true ||
+    change.paths.some((path) => !known.has(path));
+  const sourcesChanged = change.rescan || change.paths.some(isProjectIntelligencePath);
+  void refreshAfterFolderChange(change.projectId, listAgain, sourcesChanged).catch(() => {});
+  const affected = (path: string) =>
+    change.rescan ||
+    change.paths.some((changed) => path === changed || path.startsWith(`${changed}/`));
+  for (const [path, file] of Object.entries(files.files)) {
+    if (!affected(path)) continue;
+    if (file.dirty) void detectDiskChange(change.projectId, path);
+    else refreshExternalFile(change.projectId, path, file);
+  }
 }
 
 export function refreshOpenFilesFromDisk(projectId: string | null): void {

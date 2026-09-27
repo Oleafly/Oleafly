@@ -46,7 +46,8 @@
     "projectChangedRetry": "Projekti muuttui viittausten tuonnin aikana. Yritä uudelleen alkuperäisessä projektissa.",
     "readFailed": "Kohdetta {{path}} ei voitu lukea: {{detail}}",
     "unrecognizedFile": "Tunnistamaton tiedostotyyppi: {{name}}",
-    "writeFailed": "Kohteeseen {{path}} ei voitu kirjoittaa: {{detail}}"
+    "writeFailed": "Kohteeseen {{path}} ei voitu kirjoittaa: {{detail}}",
+    "linkedBibliography": "{{path}} linkittää tämän kansion ulkopuoliseen tiedostoon, joten Oleafly ei voi lisätä siihen mitään. Lisää viite Zoterossa tai siellä, missä tiedostoa ylläpidetään."
   },
   "citeOleafly": {
     "added": "Oleafly-viite lisättiin tiedostoon {{path}}. Viittaa siihen merkinnällä {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "Tiedostoa ”{{path}}” muutettiin Oleaflyn ulkopuolella. Lataa se uudelleen tai tallenna uudelleen säilyttääksesi oman versiosi.",
     "openFileEncoding": "Tiedostoa ”{{path}}” ei voi avata, koska se ei ole UTF-8-tekstitiedosto. Jos se on tekstiä, tallenna se UTF-8-muodossa ja avaa se uudelleen.",
     "openFileFailed": "Tiedostoa ”{{path}}” ei voitu avata. Katso lisätiedot sovelluksen lokista.",
-    "reloadFromDisk": "Lataa uudelleen"
+    "reloadFromDisk": "Lataa uudelleen",
+    "changedOnDiskElsewhere": "{{path}} muuttui levyllä, joten Oleafly ei tallentanut sitä. Avaa se ja valitse, kumman version pidät."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyysi epäonnistui: {{message}}",

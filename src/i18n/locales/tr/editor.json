@@ -171,7 +171,9 @@
     "binaryFile": "İkili dosya. Önizleme yok.",
     "managedFileReadOnly": "{{file}} Oleafly tarafından yönetilir ve burada salt okunurdur. Proje ayarları bu dosya düzenlenerek değil, Oleafly üzerinden değişir.",
     "noFileOpen": "Açık dosya yok.",
-    "noFileOpenHint": "Düzenlemeye başlamak için ağaçtan bir dosya seçin."
+    "noFileOpenHint": "Düzenlemeye başlamak için ağaçtan bir dosya seçin.",
+    "linkedFileReadOnly": "{{file}} bu klasörün dışındaki bir dosyaya bağlantı verir, bu yüzden burada düzenleyemezsiniz. Dosyayı bulunduğu yerde değiştirin, örneğin Zotero'da.",
+    "diffOnDisk": "Diskte"
   },
   "projectInfo": {
     "trigger": "Proje bilgileri",
@@ -330,7 +332,8 @@
     "splitView": "Bölünmüş görünüm",
     "unifiedView": "Birleşik görünüm",
     "loading": "Fark yükleniyor…",
-    "previewTooLarge": "Dosya, fark önizlenemeyecek kadar büyük."
+    "previewTooLarge": "Dosya, fark önizlenemeyecek kadar büyük.",
+    "diskHeading": "Diskte ↔ Düzenlemeleriniz"
   },
   "hotkeys": {
     "title": "Klavye kısayolları",
@@ -1028,5 +1031,13 @@
     "label": "Belgedeki konum",
     "goTo": "{{title}} bölümüne git",
     "untitled": "Adsız"
+  },
+  "changedOnDisk": {
+    "message": "Kaydedilmemiş düzenlemeleriniz varken {{file}} diskte değişti.",
+    "compare": "Karşılaştır",
+    "keepMine": "Benimkini koru",
+    "reload": "Yeniden yükle",
+    "failed": "Oleafly {{file}} dosyasını güncelleyemedi. Yeniden deneyin.",
+    "tabMark": "Diskte değişti. Hangi sürümü tutacağınızı seçmek için bu sekmeyi açın."
   }
 }

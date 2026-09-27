@@ -32,7 +32,9 @@
     "copy_size_limit": "Esta carpeta ocupa más de 2 GB. Es más de lo que Oleafly puede copiar de una vez.",
     "copy_cancelled": "Se canceló la copia.",
     "copy_needs_folder": "Solo las carpetas abiertas en su ubicación se pueden copiar a la biblioteca.",
-    "not_removable": "Solo las carpetas abiertas en su ubicación se pueden quitar de Oleafly."
+    "not_removable": "Solo las carpetas abiertas en su ubicación se pueden quitar de Oleafly.",
+    "trash_unavailable": "Oleafly no pudo mover {{path}} a la Papelera. Puede que esta unidad no tenga una.",
+    "linked_replace_folder": "{{path}} es una carpeta, así que Oleafly no la sustituirá. Muévela o cámbiale el nombre primero."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."

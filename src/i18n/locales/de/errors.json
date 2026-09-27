@@ -32,7 +32,9 @@
     "copy_size_limit": "Dieser Ordner ist größer als 2 GB. So viel kann Oleafly nicht auf einmal kopieren.",
     "copy_cancelled": "Das Kopieren wurde abgebrochen.",
     "copy_needs_folder": "Nur direkt geöffnete Ordner können in die Bibliothek kopiert werden.",
-    "not_removable": "Nur direkt geöffnete Ordner können aus Oleafly entfernt werden."
+    "not_removable": "Nur direkt geöffnete Ordner können aus Oleafly entfernt werden.",
+    "trash_unavailable": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Das Laufwerk hat möglicherweise keinen.",
+    "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."

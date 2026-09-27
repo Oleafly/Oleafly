@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
 const filesState = {
   projectId: "project-1" as string | null,
   activePath: "main.tex" as string | null,
+  manifestHome: "library" as string,
+  tree: [] as Array<{ path: string; is_dir: boolean; read_only?: boolean }>,
   files: {} as Record<string, { content: string; dirty: boolean }>,
   setContent: mocks.setContent,
   writeProjectFile: mocks.writeProjectFile,
@@ -133,8 +135,11 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.writeProjectFile.mockResolvedValue(undefined);
   mocks.rebuildFromDisk.mockResolvedValue(undefined);
+  mocks.setContent.mockReturnValue(true);
   filesState.projectId = "project-1";
   filesState.activePath = "main.tex";
+  filesState.manifestHome = "library";
+  filesState.tree = [];
   filesState.files = {};
   indexState.texts = { "chapters/intro.tex": "See \\ref{fig:old}.\n" };
   indexState.intelligenceState = { status: "not_run", stale: false };
@@ -249,6 +254,59 @@ describe("applyRename", () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       'Renamed to "fig:new" (2 edits in 1 file)',
+    );
+  });
+});
+
+describe("applyRename in a file that links outside the folder", () => {
+  const LINKED = { path: "refs.bib", is_dir: false, read_only: true };
+  const KEY: Sym = { ...SYMBOL, kind: "bibentry", name: "old2020", file: "refs.bib" } as Sym;
+
+  beforeEach(() => {
+    filesState.manifestHome = "folder";
+    filesState.tree = [{ path: "main.tex", is_dir: false }, LINKED];
+    indexState.texts = {
+      "main.tex": "See \\cite{old2020}.\n",
+      "refs.bib": "@misc{old2020,}\n",
+    };
+  });
+
+  it("does not count a linked bibliography it could not change", async () => {
+    filesState.files = { "refs.bib": { content: "@misc{old2020,}\n", dirty: false } };
+    mocks.setContent.mockImplementation((path: string) => path !== "refs.bib");
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "main.tex", from: 10, to: 17, newText: "new2021" },
+        { file: "refs.bib", from: 6, to: 13, newText: "new2021" },
+      ],
+    });
+    filesState.activePath = "chapters/intro.tex";
+
+    await applyRename(view, KEY, "new2021");
+
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "new2021" in 1 of 2 files. Could not write refs.bib.',
+    );
+  });
+
+  it("leaves an open linked bibliography untouched in the editor", async () => {
+    filesState.activePath = "refs.bib";
+    filesState.files = { "refs.bib": { content: "@misc{old2020,}\n", dirty: false } };
+    const editor = { dispatch: vi.fn() } as unknown as EditorView;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "refs.bib", from: 6, to: 13, newText: "new2021" }],
+    });
+
+    await applyRename(editor, KEY, "new2021");
+
+    expect(editor.dispatch).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "new2021" in 0 of 1 files. Could not write refs.bib.',
     );
   });
 });

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useDiffStore } from "@/store/diff";
 import { DiffView } from "./DiffView";
 
-const mocks = vi.hoisted(() => ({ gitShow: vi.fn() }));
+const mocks = vi.hoisted(() => ({ gitShow: vi.fn(), readFileContent: vi.fn() }));
 const source = "Original line\nAdded line\n";
 const files = {
   projectId: "diff-project",
@@ -20,12 +20,16 @@ vi.mock("@/store/files", () => ({
     { getState: () => files },
   ),
 }));
-vi.mock("@/lib/tauri", () => ({ gitShow: mocks.gitShow, readFileContent: vi.fn() }));
+vi.mock("@/lib/tauri", () => ({
+  gitShow: mocks.gitShow,
+  readFileContent: mocks.readFileContent,
+}));
 vi.mock("../cm/theme", () => ({ editorTheme: () => [] }));
 vi.mock("../cm/languages", () => ({ languageForPath: () => null }));
 
 beforeEach(() => {
   mocks.gitShow.mockReset();
+  mocks.readFileContent.mockReset();
   useDiffStore.setState({ diffs: [], activeKey: null, mode: "split" });
 });
 afterEach(cleanup);
@@ -79,3 +83,18 @@ it("keeps the editable working view when a git change leaves the baseline alone"
   expect(editableView()).toBe(editable);
   expect(editable.state.selection.main.anchor).toBe(5);
 });
+
+it("compares the file on disk with the unsaved buffer without running Git", async () => {
+  mocks.readFileContent.mockResolvedValue("Their line\n");
+  useDiffStore.getState().openDiff("main.tex", "disk");
+  render(<DiffView />);
+
+  await waitFor(() => expect(sideText("a")).toBe("Their line\n"));
+  expect(sideText("b")).toBe(source);
+  expect(mocks.readFileContent).toHaveBeenCalledWith("diff-project", "main.tex");
+
+  act(() => window.dispatchEvent(new CustomEvent("oleafly:git-changed")));
+  await act(() => Promise.resolve());
+  expect(mocks.gitShow).not.toHaveBeenCalled();
+});
+

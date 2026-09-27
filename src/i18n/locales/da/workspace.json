@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> findes allerede. Behold begge filer ved at bruge <suggestion>{{suggestion}}</suggestion>, eller erstat den eksisterende destination. Oleafly erstatter den kun, hvis du vælger Erstat.",
       "replace": "Erstat",
       "title": "Det navn er allerede i brug",
-      "unchanged": "Den oprindelige sti og destinationsstien blev ikke ændret."
+      "unchanged": "Den oprindelige sti og destinationsstien blev ikke ændret.",
+      "renameFolderBody": "<destination>{{destination}}</destination> er en eksisterende mappe. Behold begge ved at bruge <suggestion>{{suggestion}}</suggestion>. I en mappe, du har åbnet, hvor den ligger, erstatter Oleafly aldrig en hel mappe."
     },
     "createFailed": "Kunne ikke oprette \"{{path}}\".",
     "deleteFailed": "Kunne ikke slette \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Vælg som hoveddokument",
     "title": "Filer",
     "treeAriaLabel": "Filtræ i filpanelet",
-    "setMainFailed": "Kunne ikke gøre \"{{path}}\" til hoveddokument."
+    "setMainFailed": "Kunne ikke gøre \"{{path}}\" til hoveddokument.",
+    "listingStopped": "Viser de første {{limit}} elementer. Resten af mappen vises ikke.",
+    "unreadable": "Ingen adgang",
+    "unreadableHint": "Oleafly har ikke tilladelse til at åbne dette.",
+    "confirmTrash": "Vil du flytte {{path}} til papirkurven?",
+    "confirmTrashWindows": "Vil du flytte {{path}} til papirkurven?",
+    "confirmPermanentDelete": "Oleafly kunne ikke flytte {{path}} til papirkurven. Vil du slette den permanent i stedet? Det kan ikke fortrydes.",
+    "confirmPermanentDeleteWindows": "Oleafly kunne ikke flytte {{path}} til papirkurven. Vil du slette den permanent i stedet? Det kan ikke fortrydes.",
+    "linkedReadOnly": "Linker til en fil uden for mappen og er derfor skrivebeskyttet.",
+    "partialFolder": "Ikke alle elementer i denne mappe vises."
   },
   "explorer": {
     "resizeSections": "Tilpas størrelsen på {{first}} og {{second}}"

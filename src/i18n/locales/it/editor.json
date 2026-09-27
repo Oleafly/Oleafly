@@ -171,7 +171,9 @@
     "binaryFile": "File binario. Nessuna anteprima disponibile.",
     "managedFileReadOnly": "{{file}} è gestito da Oleafly ed è in sola lettura qui. Le impostazioni del progetto si cambiano da Oleafly stesso, non modificando questo file.",
     "noFileOpen": "Nessun file aperto.",
-    "noFileOpenHint": "Scegli un file dall'albero per iniziare a scrivere."
+    "noFileOpenHint": "Scegli un file dall'albero per iniziare a scrivere.",
+    "linkedFileReadOnly": "{{file}} rimanda a un file fuori da questa cartella, quindi non puoi modificarlo qui. Modificalo dove si trova, per esempio in Zotero.",
+    "diffOnDisk": "Su disco"
   },
   "projectInfo": {
     "trigger": "Informazioni sul progetto",
@@ -333,7 +335,8 @@
     "splitView": "Vista affiancata",
     "unifiedView": "Vista unificata",
     "loading": "Caricamento del diff…",
-    "previewTooLarge": "File troppo grande per l'anteprima di un diff."
+    "previewTooLarge": "File troppo grande per l'anteprima di un diff.",
+    "diskHeading": "Su disco ↔ Le tue modifiche"
   },
   "hotkeys": {
     "title": "Scorciatoie da tastiera",
@@ -1038,5 +1041,13 @@
     "label": "Posizione nel documento",
     "goTo": "Vai a {{title}}",
     "untitled": "Senza titolo"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} è cambiato sul disco mentre avevi modifiche non salvate.",
+    "compare": "Confronta",
+    "keepMine": "Mantieni la mia versione",
+    "reload": "Ricarica",
+    "failed": "Oleafly non è riuscito ad aggiornare {{file}}. Riprova.",
+    "tabMark": "Cambiato sul disco. Apri questa scheda per scegliere quale versione tenere."
   }
 }

@@ -32,7 +32,9 @@
     "copy_size_limit": "Bu klasör 2 GB'tan büyük. Bu, Oleafly'ın tek seferde kopyalayabileceğinden fazla.",
     "copy_cancelled": "Kopyalama iptal edildi.",
     "copy_needs_folder": "Kitaplığa yalnızca yerinde açılan klasörler kopyalanabilir.",
-    "not_removable": "Oleafly'dan yalnızca yerinde açılan klasörler kaldırılabilir."
+    "not_removable": "Oleafly'dan yalnızca yerinde açılan klasörler kaldırılabilir.",
+    "trash_unavailable": "Oleafly, {{path}} öğesini Çöp Sepeti'ne veya Geri Dönüşüm Kutusu'na taşıyamadı. Sürücüde bunlardan biri olmayabilir.",
+    "linked_replace_folder": "{{path}} bir klasör olduğu için Oleafly onu değiştirmez. Önce taşıyın veya yeniden adlandırın."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."

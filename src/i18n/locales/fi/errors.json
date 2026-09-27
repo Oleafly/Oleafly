@@ -32,7 +32,9 @@
     "copy_size_limit": "Kansio on yli 2 Gt. Se on enemmän kuin Oleafly voi kopioida kerralla.",
     "copy_cancelled": "Kopiointi peruttiin.",
     "copy_needs_folder": "Vain paikallaan avatut kansiot voi kopioida kirjastoon.",
-    "not_removable": "Vain paikallaan avatut kansiot voi poistaa Oleaflysta."
+    "not_removable": "Vain paikallaan avatut kansiot voi poistaa Oleaflysta.",
+    "trash_unavailable": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Asemalla ei ehkä ole roskakoria.",
+    "linked_replace_folder": "{{path}} on kansio, joten Oleafly ei korvaa sitä. Siirrä tai nimeä se ensin uudelleen."
   },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."

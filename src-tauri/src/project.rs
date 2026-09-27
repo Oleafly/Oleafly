@@ -417,6 +417,27 @@ fn default_engine() -> String {
 pub struct FileEntry {
     pub path: String,
     pub is_dir: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub unreadable: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub placeholder: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub read_only: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub partial: bool,
+}
+
+impl FileEntry {
+    pub(crate) fn new(path: String, is_dir: bool) -> Self {
+        Self {
+            path,
+            is_dir,
+            unreadable: false,
+            placeholder: false,
+            read_only: false,
+            partial: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
@@ -1027,7 +1048,11 @@ fn walk(
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(error) if depth > 0 => {
-            unreadable.push((rel_slash(root, dir), error.to_string()));
+            let relative = rel_slash(root, dir);
+            if let Some(entry) = out.last_mut().filter(|entry| entry.path == relative) {
+                entry.unreadable = true;
+            }
+            unreadable.push((relative, error.to_string()));
             return Ok(());
         }
         Err(error) => return Err(error.to_string()),
@@ -1051,10 +1076,7 @@ fn walk(
             continue;
         }
         let path = entry.path();
-        out.push(FileEntry {
-            path: rel_slash(root, &path),
-            is_dir: ft.is_dir(),
-        });
+        out.push(FileEntry::new(rel_slash(root, &path), ft.is_dir()));
         if ft.is_dir() {
             walk(root, &path, out, unreadable, depth + 1)?;
         }
@@ -1078,16 +1100,65 @@ fn log_unreadable_project_folders(project_id: &str, folders: &[(String, String)]
     }
 }
 
+#[derive(Serialize)]
+pub struct FileTreeListing {
+    pub entries: Vec<FileEntry>,
+    pub truncated: bool,
+}
+
 #[tauri::command]
-pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<FileEntry>, String> {
+pub async fn list_file_tree(project_id: String) -> Result<FileTreeListing, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<FileTreeListing, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let root = paths::project_dir(&project_id)?;
+        let location = crate::project_location::locate(&project_id)?;
+        if location.kind == ProjectKind::Linked {
+            let listing = crate::folder_listing::list_linked_folder(
+                &location.root,
+                crate::folder_listing::LINKED_LISTING_LIMIT,
+            )?;
+            log_unreadable_project_folders(&project_id, &listing.unreadable);
+            return Ok(FileTreeListing {
+                entries: listing.entries,
+                truncated: listing.truncated,
+            });
+        }
+        let root = location.root;
         let mut out = Vec::new();
         let mut unreadable = Vec::new();
         walk(&root, &root, &mut out, &mut unreadable, 0)?;
         log_unreadable_project_folders(&project_id, &unreadable);
-        Ok(out)
+        Ok(FileTreeListing {
+            entries: out,
+            truncated: false,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
+    Ok(list_file_tree(project_id).await?.entries)
+}
+
+const MAX_EXISTENCE_CHECKS: usize = 2_000;
+
+#[tauri::command]
+pub async fn existing_project_files(
+    project_id: String,
+    paths: Vec<String>,
+) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let location = crate::project_location::locate(&project_id)?;
+        Ok(paths
+            .into_iter()
+            .take(MAX_EXISTENCE_CHECKS)
+            .filter(|path| {
+                crate::sandbox::resolve_readable_at(&location, path)
+                    .is_ok_and(|resolved| resolved.is_file())
+            })
+            .collect())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -1197,10 +1268,8 @@ fn bounded_list_walk(
             _ => continue,
         };
         let path = entry.path();
-        out.entries.push(FileEntry {
-            path: rel_slash(root, &path),
-            is_dir: file_type.is_dir(),
-        });
+        out.entries
+            .push(FileEntry::new(rel_slash(root, &path), file_type.is_dir()));
         if file_type.is_dir() {
             bounded_list_walk(root, &path, out, limits, cancelled, depth + 1)?;
             if out.truncated {
@@ -1247,7 +1316,7 @@ pub async fn read_file(
             return read_file_blocking(&project_id, &path);
         }
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        read_text_file(&resolve(&project_id, &path)?, true)
+        read_text_file(&crate::sandbox::resolve_readable(&project_id, &path)?, true)
     })
     .await
     .map_err(|error| format!("failed to read file: {error}"))?
@@ -1255,7 +1324,7 @@ pub async fn read_file(
 
 pub(crate) fn read_file_blocking(project_id: &str, path: &str) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
-    let p = resolve(project_id, path)?;
+    let p = crate::sandbox::resolve_readable(project_id, path)?;
     read_text_file(&p, false)
 }
 
@@ -2030,12 +2099,26 @@ async fn write_project_file(
             if let Some(parent) = p.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
+            write_project_bytes(&project_id, &p, content.as_bytes())
+                .map_err(|e| format!("failed to write {path}: {e}"))
         })?;
         Ok(FileMutationResult { generation })
     })
     .await
     .map_err(|e| format!("file write task failed: {e}"))?
+}
+
+fn write_project_bytes(project_id: &str, target: &Path, bytes: &[u8]) -> Result<(), String> {
+    let location = crate::project_location::locate(project_id)?;
+    if location.kind == ProjectKind::Library {
+        return atomic_write(target, bytes);
+    }
+    let backups = location.private_state_dir().join("save-backups");
+    crate::sandbox::atomic_write_preserving(target, bytes, &|| {
+        location.ensure_linked_state(&backups)
+    })?;
+    crate::folder_watch::note_own_write(target);
+    Ok(())
 }
 
 const DISK_CONFLICT: &str = "file changed on disk";
@@ -2091,7 +2174,8 @@ impl ProjectFileWrite {
             if let Some(parent) = target.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            atomic_write(&target, bytes).map_err(|e| format!("failed to write {path}: {e}"))
+            write_project_bytes(&project_id, &target, bytes)
+                .map_err(|e| format!("failed to write {path}: {e}"))
         })?;
         Ok(FileMutationResult { generation })
     }
@@ -2124,6 +2208,7 @@ pub fn delete_file(
     project_id: String,
     path: String,
     expected_generation: Option<u64>,
+    permanent: Option<bool>,
 ) -> Result<FileMutationResult, String> {
     let deleted_rel = mutation_relative_path(&project_id, &path, true)?;
     if deleted_rel.is_empty() {
@@ -2143,6 +2228,16 @@ pub fn delete_file(
                     "cannot delete the configured main document. Select another main document first"
                         .into(),
                 );
+            }
+            if crate::project_location::kind_of(&project_id)? == ProjectKind::Linked
+                && !permanent.unwrap_or(false)
+            {
+                return crate::os_trash::move_to_trash(&p).map_err(|error| {
+                    crate::app_error::AppError::new("project.trash_unavailable")
+                        .param("path", &path)
+                        .detail(error)
+                        .into()
+                });
             }
             if p.is_dir() {
                 std::fs::remove_dir_all(&p)
@@ -2263,6 +2358,12 @@ enum MoveRollback {
         backup: PathBuf,
         replaced_original: PathBuf,
     },
+    ReplacedByCopy {
+        current: PathBuf,
+        original: PathBuf,
+        backup: PathBuf,
+        replaced_original: PathBuf,
+    },
 }
 
 struct MoveTransaction {
@@ -2272,7 +2373,10 @@ struct MoveTransaction {
 
 impl MoveTransaction {
     fn commit(self) -> RenameFileResult {
-        if let Some(MoveRollback::Replaced { backup, .. }) = &self.rollback {
+        if let Some(
+            MoveRollback::Replaced { backup, .. } | MoveRollback::ReplacedByCopy { backup, .. },
+        ) = &self.rollback
+        {
             let _ = remove_path(backup);
         }
         self.result
@@ -2306,8 +2410,25 @@ impl MoveTransaction {
                 rename_exclusive(&backup, &replaced_original)
                     .map_err(|e| format!("failed to restore the replaced destination: {e}"))
             }
+            MoveRollback::ReplacedByCopy {
+                current,
+                original,
+                backup,
+                replaced_original,
+            } => {
+                rename_exclusive(&current, &original)
+                    .map_err(|e| format!("failed to restore the moved source: {e}"))?;
+                restore_replaced_copy(&backup, &replaced_original)
+            }
         }
     }
+}
+
+fn restore_replaced_copy(backup: &Path, replaced: &Path) -> Result<(), String> {
+    std::fs::copy(backup, replaced)
+        .map_err(|e| format!("failed to restore the replaced destination: {e}"))?;
+    let _ = std::fs::remove_file(backup);
+    Ok(())
 }
 
 fn remap_main_document(main_doc: &str, from: &str, to: &str) -> Option<String> {
@@ -2654,20 +2775,58 @@ fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn stage_linked_replace_path(
+    location: &ProjectLocation,
+    src: &Path,
+    existing: &Path,
+    dst: &Path,
+) -> Result<MoveRollback, String> {
+    let replaced = std::fs::symlink_metadata(existing)
+        .map_err(|e| format!("could not read the existing destination: {e}"))?;
+    if !replaced.is_file() || replaced.file_type().is_symlink() {
+        return Err(
+            crate::app_error::AppError::new("project.linked_replace_folder")
+                .param("path", rel_slash(&location.root, existing))
+                .into(),
+        );
+    }
+    let backup_root = location.ensure_linked_state(&location.move_backups_dir())?;
+    let backup = unique_temporary_path(&backup_root, "replaced")?;
+    std::fs::copy(existing, &backup)
+        .map_err(|e| format!("could not back up the existing destination: {e}"))?;
+    if let Err(error) = std::fs::remove_file(existing) {
+        let _ = std::fs::remove_file(&backup);
+        return Err(format!(
+            "could not replace the existing destination: {error}"
+        ));
+    }
+    if let Err(error) = rename_exclusive(src, dst) {
+        return Err(match restore_replaced_copy(&backup, existing) {
+            Ok(()) => format!("replace failed and was rolled back: {error}"),
+            Err(rollback_error) => {
+                format!("Replace failed: {error}. Rollback also failed: {rollback_error}")
+            }
+        });
+    }
+    Ok(MoveRollback::ReplacedByCopy {
+        current: dst.to_path_buf(),
+        original: src.to_path_buf(),
+        backup,
+        replaced_original: existing.to_path_buf(),
+    })
+}
+
 fn stage_replace_path(
     location: &ProjectLocation,
     src: &Path,
     existing: &Path,
     dst: &Path,
 ) -> Result<MoveRollback, String> {
-    let backup_root = match location.kind {
-        ProjectKind::Library => {
-            let backup_root = location.move_backups_dir();
-            ensure_private_directory(&location.root, &backup_root)?;
-            backup_root
-        }
-        ProjectKind::Linked => location.ensure_linked_state(&location.move_backups_dir())?,
-    };
+    if location.kind == ProjectKind::Linked {
+        return stage_linked_replace_path(location, src, existing, dst);
+    }
+    let backup_root = location.move_backups_dir();
+    ensure_private_directory(&location.root, &backup_root)?;
     let backup = unique_temporary_path(&backup_root, "replaced")?;
     rename_exclusive(existing, &backup)
         .map_err(|e| format!("could not stage the existing destination: {e}"))?;
@@ -2930,7 +3089,8 @@ pub async fn save_file_base64(
             if let Some(parent) = p.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            atomic_write(&p, &bytes).map_err(|e| format!("failed to write {path}: {e}"))
+            write_project_bytes(&project_id, &p, &bytes)
+                .map_err(|e| format!("failed to write {path}: {e}"))
         })?;
         Ok(FileMutationResult { generation })
     })
@@ -6226,7 +6386,7 @@ fn search_walk(
             );
             continue;
         }
-        if !is_searchable(&name_str) {
+        if !is_searchable(&name_str) || crate::cloud_files::path_is_placeholder(&path) {
             continue;
         }
         let rel = rel_slash(root, &path);
@@ -6336,7 +6496,13 @@ fn bounded_search_walk(
         }
         out.scanned_files += 1;
         let metadata = match std::fs::symlink_metadata(&path) {
-            Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => metadata,
+            Ok(metadata)
+                if metadata.is_file()
+                    && !metadata.file_type().is_symlink()
+                    && !crate::cloud_files::is_placeholder(&path, &metadata) =>
+            {
+                metadata
+            }
             _ => continue,
         };
         if metadata.len() > limits.max_file_bytes as u64 {
@@ -7909,7 +8075,7 @@ mod tests {
         )
         .unwrap();
         super::create_file(foreign_id.clone(), "project.json".into(), false, None, None).unwrap();
-        super::delete_file(foreign_id.clone(), "project.json".into(), None).unwrap();
+        super::delete_file(foreign_id.clone(), "project.json".into(), None, None).unwrap();
         assert!(!foreign.join("project.json").exists());
 
         let (managed_id, managed) = fixture.link("thesis");
@@ -7925,7 +8091,7 @@ mod tests {
         .unwrap_err();
         assert!(error.contains("managed by Oleafly"), "{error}");
         assert!(
-            super::delete_file(managed_id.clone(), "PROJECT.JSON".into(), None)
+            super::delete_file(managed_id.clone(), "PROJECT.JSON".into(), None, None)
                 .unwrap_err()
                 .contains("managed by Oleafly")
         );
@@ -8163,6 +8329,246 @@ mod tests {
         );
     }
 
+    fn linked_fixture(folders: &Path) -> (String, std::path::PathBuf) {
+        let folder = folders.join("thesis");
+        std::fs::create_dir_all(folder.join("figures")).unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(folder.join("notes.tex"), "notes").unwrap();
+        std::fs::write(folder.join("figures/plot.png"), "png").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        (record.id, folder.canonicalize().unwrap())
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn saving_in_a_linked_folder_keeps_hard_links_and_leaves_nothing_behind() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        std::fs::hard_link(folder.join("notes.tex"), folder.join("notes-alias.tex")).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder)
+            .into_iter()
+            .map(|(path, _, _)| path)
+            .collect::<Vec<_>>();
+
+        let written =
+            super::write_project_file(id, "notes.tex".into(), "revised".into(), None, None).await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        written.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(folder.join("notes-alias.tex")).unwrap(),
+            "revised"
+        );
+        assert!(
+            same_file::is_same_file(folder.join("notes.tex"), folder.join("notes-alias.tex"))
+                .unwrap()
+        );
+        let after = crate::linked_registry::folder_snapshot_for_test(&folder)
+            .into_iter()
+            .map(|(path, _, _)| path)
+            .collect::<Vec<_>>();
+        assert_eq!(after, before);
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn an_oleafly_save_is_not_reported_back_but_an_outside_edit_is() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let stamp = |seconds: i64| {
+            let when = std::time::SystemTime::now();
+            let when = if seconds < 0 {
+                when - std::time::Duration::from_secs(seconds.unsigned_abs())
+            } else {
+                when + std::time::Duration::from_secs(seconds.unsigned_abs())
+            };
+            std::fs::File::options()
+                .write(true)
+                .open(folder.join("notes.tex"))
+                .unwrap()
+                .set_modified(when)
+                .unwrap();
+        };
+        stamp(-60);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let sender = std::sync::Mutex::new(sender);
+        let sink: crate::folder_watch::ChangeSink = std::sync::Arc::new(move |change| {
+            let _ = sender
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .send(change);
+        });
+        let watched = crate::folder_watch::watch_linked_project(
+            &id,
+            sink,
+            Some(crate::folder_watch::WatchMode::Poll(
+                std::time::Duration::from_millis(50),
+            )),
+        );
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let saved = super::write_project_file(
+            id.clone(),
+            "notes.tex".into(),
+            "saved by Oleafly".into(),
+            None,
+            None,
+        )
+        .await;
+        let echo = receiver.recv_timeout(std::time::Duration::from_millis(1_200));
+        std::fs::write(folder.join("notes.tex"), "edited in another editor").unwrap();
+        stamp(60);
+        let outside = receiver.recv_timeout(std::time::Duration::from_secs(10));
+        crate::folder_watch::stop_all();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(watched.unwrap().is_some());
+        saved.unwrap();
+        assert!(echo.is_err(), "{echo:?}");
+        let outside = outside.expect("an outside edit is reported");
+        assert_eq!(outside.paths, ["notes.tex"]);
+    }
+
+    #[cfg(unix)]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn an_outbound_bibliography_link_can_be_read_but_never_written() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        let zotero = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let library = zotero.path().join("My Library.bib");
+        std::fs::write(&library, "@misc{zotero}").unwrap();
+        std::os::unix::fs::symlink(&library, folder.join("refs.bib")).unwrap();
+        let project_id = mutation_project_id("library-link");
+        let project = crate::paths::create_project_dir(&project_id).unwrap();
+        std::os::unix::fs::symlink(&library, project.join("refs.bib")).unwrap();
+
+        let read = super::read_file(id.clone(), "refs.bib".into(), None).await;
+        let sources = crate::project_sources::read_project_sources_sync(
+            &id,
+            crate::project_sources::ProjectSourcesRequest {
+                paths: vec!["refs.bib".into()],
+                known: Vec::new(),
+            },
+            crate::project_sources::SourceLimits::DEFAULT,
+        );
+        let write =
+            super::write_project_file(id.clone(), "refs.bib".into(), "@misc{x}".into(), None, None)
+                .await;
+        let delete = super::delete_file(id.clone(), "refs.bib".into(), None, None);
+        let tree = super::list_file_tree(id).await;
+        let library_read = super::read_file(project_id, "refs.bib".into(), None).await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(read.unwrap(), "@misc{zotero}");
+        let sources = sources.unwrap();
+        assert_eq!(sources.files.len(), 1, "{:?}", sources.unreadable);
+        assert_eq!(sources.files[0].text, "@misc{zotero}");
+        assert!(write.is_err());
+        assert!(delete.is_err());
+        assert_eq!(std::fs::read_to_string(&library).unwrap(), "@misc{zotero}");
+        assert!(folder.join("refs.bib").is_symlink());
+        let tree = tree.unwrap();
+        let link = tree
+            .entries
+            .iter()
+            .find(|entry| entry.path == "refs.bib")
+            .unwrap();
+        assert!(link.read_only);
+        assert!(library_read.is_err());
+    }
+
+    #[test]
+    fn deleting_inside_a_linked_folder_moves_the_item_to_the_trash() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+
+        let file = super::delete_file(id.clone(), "notes.tex".into(), None, None);
+        let directory = super::delete_file(id, "figures".into(), None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        file.unwrap();
+        directory.unwrap();
+        assert!(!folder.join("notes.tex").exists());
+        assert!(!folder.join("figures").exists());
+        assert!(crate::os_trash::test_support::trashed(
+            &folder.join("notes.tex")
+        ));
+        assert!(crate::os_trash::test_support::trashed(
+            &folder.join("figures")
+        ));
+        assert!(folder.join("main.tex").is_file());
+    }
+
+    #[test]
+    fn a_linked_folder_without_a_trash_deletes_for_good_only_when_asked() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        crate::os_trash::test_support::refuse(&folder.join("notes.tex"));
+
+        let refused = super::delete_file(id.clone(), "notes.tex".into(), None, None);
+        let kept = folder.join("notes.tex").is_file();
+        let permanent = super::delete_file(id, "notes.tex".into(), None, Some(true));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let error = refused.unwrap_err();
+        assert!(
+            error.contains("\"code\":\"project.trash_unavailable\""),
+            "{error}"
+        );
+        assert!(error.contains("\"path\":\"notes.tex\""), "{error}");
+        assert!(kept);
+        permanent.unwrap();
+        assert!(!folder.join("notes.tex").exists());
+        assert!(!crate::os_trash::test_support::trashed(
+            &folder.join("notes.tex")
+        ));
+    }
+
+    #[test]
+    fn deleting_in_a_library_project_never_uses_the_trash() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project_id = mutation_project_id("library-delete");
+        let project = crate::paths::create_project_dir(&project_id).unwrap();
+        std::fs::write(project.join("main.tex"), "x").unwrap();
+        std::fs::write(project.join("notes.tex"), "notes").unwrap();
+
+        let deleted = super::delete_file(project_id, "notes.tex".into(), None, None);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        deleted.unwrap();
+        assert!(!project.join("notes.tex").exists());
+        assert!(!crate::os_trash::test_support::trashed(
+            &project.join("notes.tex")
+        ));
+    }
+
+    #[test]
+    fn a_new_linked_folder_error_has_an_english_message() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        for code in ["trash_unavailable", "linked_replace_folder"] {
+            assert!(catalog["project"][code].is_string(), "{code}");
+        }
+    }
+
     #[test]
     fn replacing_a_file_in_a_linked_folder_keeps_the_backup_out_of_the_folder() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -8210,6 +8616,91 @@ mod tests {
             0
         );
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_replace_backs_the_replaced_file_up_by_copy_and_can_roll_back() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("draft.tex"), "new draft").unwrap();
+        std::fs::write(folder.join("paper.tex"), "published").unwrap();
+        std::fs::hard_link(folder.join("paper.tex"), folder.join("paper-alias.tex")).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+
+        let transaction = super::stage_rename_path(
+            &location,
+            &location.root.join("draft.tex"),
+            &location.root.join("paper.tex"),
+            "paper.tex",
+            FileConflictStrategy::Replace,
+        )
+        .unwrap();
+        let backups: Vec<_> = std::fs::read_dir(location.move_backups_dir())
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.path())
+            .collect();
+        let backup_is_a_copy = backups.len() == 1
+            && !same_file::is_same_file(&backups[0], location.root.join("paper-alias.tex"))
+                .unwrap()
+            && std::fs::read_to_string(&backups[0]).unwrap() == "published";
+        let staged = std::fs::read_to_string(location.root.join("paper.tex")).unwrap();
+        transaction.rollback().unwrap();
+        let restored_paper = std::fs::read_to_string(location.root.join("paper.tex")).unwrap();
+        let restored_draft = std::fs::read_to_string(location.root.join("draft.tex")).unwrap();
+        let leftover = std::fs::read_dir(location.move_backups_dir())
+            .unwrap()
+            .count();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(backup_is_a_copy, "{backups:?}");
+        assert_eq!(staged, "new draft");
+        assert_eq!(restored_paper, "published");
+        assert_eq!(restored_draft, "new draft");
+        assert_eq!(leftover, 0);
+    }
+
+    #[test]
+    fn replacing_a_whole_folder_is_refused_in_a_linked_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir_all(folder.join("figures")).unwrap();
+        std::fs::write(folder.join("figures/plot.png"), "png").unwrap();
+        std::fs::create_dir_all(folder.join("images")).unwrap();
+        std::fs::write(folder.join("images/other.png"), "other").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+
+        let error = rename_path_in_project(
+            &location,
+            &location.root.join("images"),
+            &location.root.join("figures"),
+            "figures",
+            FileConflictStrategy::Replace,
+        )
+        .unwrap_err();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(
+            error.contains("\"code\":\"project.linked_replace_folder\""),
+            "{error}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("figures/plot.png")).unwrap(),
+            "png"
+        );
+        assert_eq!(
+            std::fs::read_to_string(folder.join("images/other.png")).unwrap(),
+            "other"
+        );
     }
 
     #[cfg(unix)]
@@ -9129,6 +9620,50 @@ mod tests {
         assert!(cancelled_listing.entries.is_empty());
         assert!(cancelled_listing.truncated);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn project_search_never_reads_a_cloud_placeholder() {
+        let root = test_dir("search-placeholder");
+        std::fs::write(root.join("local.tex"), "needle\n").unwrap();
+        std::fs::write(root.join("evicted.tex"), "needle\n").unwrap();
+        crate::cloud_files::test_support::mark(&root.join("evicted.tex"));
+
+        let mut hits: Vec<SearchHit> = Vec::new();
+        super::search_walk("project", "Project", &root, &root, "needle", &mut hits, 0);
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let mut search = super::BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        super::bounded_search_walk(
+            "project",
+            "Project",
+            &root,
+            &root,
+            "needle",
+            &mut search,
+            super::SearchLimits {
+                max_results: 20,
+                max_entries: 20,
+                max_files: 20,
+                max_file_bytes: 1024,
+                max_total_bytes: 4096,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(5),
+            },
+            &cancelled,
+            0,
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+
+        let paths =
+            |hits: &[SearchHit]| hits.iter().map(|hit| hit.path.clone()).collect::<Vec<_>>();
+        assert_eq!(paths(&hits), ["local.tex"]);
+        assert_eq!(paths(&search.hits), ["local.tex"]);
+        assert_eq!(search.scanned_bytes, "needle\n".len());
     }
 
     #[test]
@@ -11430,15 +11965,15 @@ mod tests {
 
         let listed: Vec<_> = first
             .iter()
-            .map(|entry| (entry.path.as_str(), entry.is_dir))
+            .map(|entry| (entry.path.as_str(), entry.is_dir, entry.unreadable))
             .collect();
         assert_eq!(
             listed,
             [
-                ("figures", true),
-                ("figures/plot.png", false),
-                ("locked", true),
-                ("main.tex", false)
+                ("figures", true, false),
+                ("figures/plot.png", false, false),
+                ("locked", true, true),
+                ("main.tex", false, false)
             ]
         );
         assert_eq!(second.len(), 4);
@@ -11447,6 +11982,77 @@ mod tests {
         drop(locked);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn open_files_the_listing_skipped_can_still_be_found_on_disk() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        std::fs::create_dir_all(folder.join("build")).unwrap();
+        std::fs::write(folder.join("build/generated.tex"), "generated").unwrap();
+
+        let found = super::existing_project_files(
+            id,
+            vec![
+                "main.tex".into(),
+                "build/generated.tex".into(),
+                "figures".into(),
+                "gone.tex".into(),
+                "../outside.tex".into(),
+            ],
+        )
+        .await;
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert_eq!(found.unwrap(), ["main.tex", "build/generated.tex"]);
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn a_linked_file_tree_uses_the_folder_listing_and_a_library_tree_is_unchanged() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir_all(folder.join("node_modules/pkg")).unwrap();
+        std::fs::write(folder.join("main.tex"), "x").unwrap();
+        std::fs::write(folder.join("node_modules/pkg/index.js"), "x").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let project_id = mutation_project_id("file-tree-library");
+        let project = crate::paths::create_project_dir(&project_id).unwrap();
+        std::fs::create_dir_all(project.join("node_modules/pkg")).unwrap();
+        std::fs::write(project.join("main.tex"), "x").unwrap();
+        std::fs::write(project.join("node_modules/pkg/index.js"), "x").unwrap();
+
+        let linked = super::list_file_tree(record.id.clone()).await.unwrap();
+        let library = super::list_file_tree(project_id.clone()).await.unwrap();
+        let files = super::list_files(record.id.clone()).await.unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let paths = |entries: &[super::FileEntry]| {
+            entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(paths(&linked.entries), ["main.tex"]);
+        assert!(!linked.truncated);
+        assert_eq!(paths(&files), ["main.tex"]);
+        assert_eq!(
+            paths(&library.entries),
+            [
+                "main.tex",
+                "node_modules",
+                "node_modules/pkg",
+                "node_modules/pkg/index.js"
+            ]
+        );
+        assert!(!library.truncated);
     }
 
     #[cfg(unix)]
@@ -11987,7 +12593,7 @@ mod tests {
                 .contains("managed by Oleafly")
         );
         assert!(
-            super::delete_file(project_id.clone(), "project.json".into(), None)
+            super::delete_file(project_id.clone(), "project.json".into(), None, None)
                 .unwrap_err()
                 .contains("managed by Oleafly")
         );

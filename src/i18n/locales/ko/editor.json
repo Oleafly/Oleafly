@@ -171,7 +171,9 @@
     "binaryFile": "바이너리 파일입니다. 미리보기를 제공하지 않습니다.",
     "managedFileReadOnly": "{{file}}은(는) Oleafly가 관리하므로 여기에서는 읽기 전용입니다. 프로젝트 설정은 이 파일을 편집하는 대신 Oleafly에서 바꾸세요.",
     "noFileOpen": "열린 파일이 없습니다.",
-    "noFileOpenHint": "편집을 시작하려면 트리에서 파일을 고르세요."
+    "noFileOpenHint": "편집을 시작하려면 트리에서 파일을 고르세요.",
+    "linkedFileReadOnly": "{{file}}은(는) 이 폴더 밖의 파일로 연결되어 있어 여기에서 편집할 수 없습니다. Zotero처럼 파일이 있는 곳에서 바꾸세요.",
+    "diffOnDisk": "디스크"
   },
   "projectInfo": {
     "trigger": "프로젝트 정보",
@@ -327,7 +329,8 @@
     "splitView": "나란히 보기",
     "unifiedView": "한 열로 보기",
     "loading": "diff를 불러오는 중…",
-    "previewTooLarge": "파일이 너무 커서 diff를 미리 볼 수 없습니다."
+    "previewTooLarge": "파일이 너무 커서 diff를 미리 볼 수 없습니다.",
+    "diskHeading": "디스크 ↔ 내 편집"
   },
   "hotkeys": {
     "title": "키보드 단축키",
@@ -1018,5 +1021,13 @@
     "label": "문서 내 위치",
     "goTo": "{{title}}(으)로 이동",
     "untitled": "제목 없음"
+  },
+  "changedOnDisk": {
+    "message": "저장하지 않은 편집이 있는 동안 {{file}}이(가) 디스크에서 바뀌었습니다.",
+    "compare": "비교",
+    "keepMine": "내 버전 유지",
+    "reload": "다시 불러오기",
+    "failed": "Oleafly가 {{file}}을(를) 업데이트하지 못했습니다. 다시 시도하세요.",
+    "tabMark": "디스크에서 바뀌었습니다. 이 탭을 열어 남길 버전을 고르세요."
   }
 }

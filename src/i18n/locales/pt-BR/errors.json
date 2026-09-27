@@ -32,7 +32,9 @@
     "copy_size_limit": "Esta pasta tem mais de 2 GB. É mais do que o Oleafly consegue copiar de uma vez.",
     "copy_cancelled": "A cópia foi cancelada.",
     "copy_needs_folder": "Só pastas abertas no próprio local podem ser copiadas para a biblioteca.",
-    "not_removable": "Só pastas abertas no próprio local podem ser removidas do Oleafly."
+    "not_removable": "Só pastas abertas no próprio local podem ser removidas do Oleafly.",
+    "trash_unavailable": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Talvez esta unidade não tenha uma.",
+    "linked_replace_folder": "{{path}} é uma pasta, então o Oleafly não vai substituí-la. Mova ou renomeie antes."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."

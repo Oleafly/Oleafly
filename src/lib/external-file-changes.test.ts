@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
   notifyProjectFilesChanged: vi.fn(),
+  rebuildFromDisk: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -38,6 +39,10 @@ vi.mock("@/lib/tauri", () => ({
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -78,11 +83,15 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: mocks.flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
+vi.mock("@/store/project-index", () => ({
+  useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk }) },
+}));
 
 import { useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   applyExternalFileChange,
+  applyFolderChange,
   flushOpenFilesToDisk,
   refreshOpenFilesFromDisk,
 } from "./external-file-changes";
@@ -258,5 +267,166 @@ describe("open files and programs outside the editor", () => {
 
     expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "typed\n", 3);
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+});
+
+describe("applyFolderChange", () => {
+  async function editOpenFile(path: string, disk: string, typed: string) {
+    mocks.readFileContent.mockResolvedValueOnce(disk);
+    await useFilesStore.getState().openFile(path);
+    useFilesStore.getState().setContent(path, typed);
+  }
+
+  it("reloads a clean buffer from disk without asking", async () => {
+    mocks.readFileContent.mockResolvedValue("from another editor\n");
+    applyFolderChange({ projectId: "project", paths: ["references.bib"], rescan: false });
+
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().files["references.bib"]).toEqual({
+        content: "from another editor\n",
+        dirty: false,
+      });
+    });
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+  });
+
+  it("asks about an unsaved buffer whose file changed on disk", async () => {
+    await editOpenFile("main.tex", "original\n", "my edit\n");
+    mocks.readFileContent.mockResolvedValue("their edit\n");
+
+    applyFolderChange({ projectId: "project", paths: ["main.tex"], rescan: false });
+
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
+    });
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "my edit\n",
+      dirty: true,
+    });
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when the file on disk is still the version the buffer came from", async () => {
+    await editOpenFile("main.tex", "original\n", "my edit\n");
+    mocks.readFileContent.mockResolvedValue("original\n");
+
+    applyFolderChange({ projectId: "project", paths: ["main.tex"], rescan: false });
+
+    await vi.waitFor(() => {
+      expect(mocks.readFileContent).toHaveBeenCalledTimes(2);
+    });
+    await Promise.resolve();
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("waits for its own save to land instead of asking about it", async () => {
+    await editOpenFile("main.tex", "original\n", "my edit\n");
+    let finishWrite: (value: { generation: number }) => void = () => {};
+    mocks.writeFileContent.mockImplementation(
+      () => new Promise((resolve) => {
+        finishWrite = resolve;
+      }),
+    );
+    const saving = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalled());
+    useFilesStore.getState().setContent("main.tex", "my edit, continued\n");
+    mocks.readFileContent.mockResolvedValue("my edit\n");
+
+    applyFolderChange({ projectId: "project", paths: ["main.tex"], rescan: false });
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const flaggedWhileSaving = [...useFilesStore.getState().changedOnDisk];
+    finishWrite({ generation: 4 });
+    await saving;
+    mocks.writeFileContent.mockResolvedValue({ generation: 5 });
+
+    expect(flaggedWhileSaving).toEqual([]);
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("checks every open buffer after a rescan and the ones under a changed folder", async () => {
+    useFilesStore.setState({
+      files: {
+        "chapters/intro.tex": { content: "old intro\n", dirty: false },
+        "references.bib": { content: "old\n", dirty: false },
+      },
+    });
+    mocks.readFileContent.mockResolvedValue("new\n");
+
+    applyFolderChange({ projectId: "project", paths: ["chapters"], rescan: false });
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().files["chapters/intro.tex"]?.content).toBe("new\n");
+    });
+    expect(useFilesStore.getState().files["references.bib"]?.content).toBe("old\n");
+
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "chapters/intro.tex": { content: "typing\n", dirty: true },
+      },
+    }));
+    applyFolderChange({ projectId: "project", paths: [], rescan: true });
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().files["references.bib"]?.content).toBe("new\n");
+    });
+  });
+
+  it("ignores a change for another project", () => {
+    applyFolderChange({ projectId: "elsewhere", paths: ["main.tex"], rescan: false });
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("folder changes and the file tree", () => {
+  const change = (paths: string[], structural = false) => ({
+    projectId: "project",
+    paths,
+    rescan: false,
+    structural,
+  });
+
+  it("does not list the folder again when a known file only changed its content", async () => {
+    applyFolderChange(change(["references.bib"]));
+
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1));
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+  });
+
+  it("lists the folder again for a file it has not seen", async () => {
+    mocks.listFiles.mockResolvedValue([...TREE, { path: "figures/plot.png", is_dir: false }]);
+
+    applyFolderChange(change(["figures/plot.png"]));
+
+    await vi.waitFor(() => {
+      expect(useFilesStore.getState().tree.map((entry) => entry.path)).toContain(
+        "figures/plot.png",
+      );
+    });
+    expect(mocks.listFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the same tree when a new listing matches the old one", async () => {
+    const before = useFilesStore.getState().tree;
+    mocks.listFiles.mockResolvedValue(TREE.map((entry) => ({ ...entry })));
+
+    applyFolderChange(change(["main.tex"], true));
+
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1));
+    expect(mocks.listFiles).toHaveBeenCalledTimes(1);
+    expect(useFilesStore.getState().tree).toBe(before);
+  });
+
+  it("leaves the project index alone when only a figure changed", async () => {
+    useFilesStore.setState({ tree: [...TREE, { path: "figure.png", is_dir: false }] });
+
+    applyFolderChange(change(["figure.png"]));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
   });
 });

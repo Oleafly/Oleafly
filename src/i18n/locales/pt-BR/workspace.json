@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> já existe. Mantenha os dois arquivos usando <suggestion>{{suggestion}}</suggestion> ou substitua o destino existente. O Oleafly não vai substituí-lo a menos que você escolha Substituir.",
       "replace": "Substituir",
       "title": "Esse nome já está em uso",
-      "unchanged": "Os caminhos de origem e de destino ficaram inalterados."
+      "unchanged": "Os caminhos de origem e de destino ficaram inalterados.",
+      "renameFolderBody": "<destination>{{destination}}</destination> é uma pasta que já existe. Mantenha as duas usando <suggestion>{{suggestion}}</suggestion>. Em uma pasta aberta no próprio local, o Oleafly nunca substitui uma pasta inteira."
     },
     "createFailed": "Não foi possível criar \"{{path}}\".",
     "deleteFailed": "Não foi possível excluir \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Definir como documento principal",
     "title": "Explorador",
     "treeAriaLabel": "Árvore de arquivos do explorador",
-    "setMainFailed": "Não foi possível definir \"{{path}}\" como documento principal."
+    "setMainFailed": "Não foi possível definir \"{{path}}\" como documento principal.",
+    "listingStopped": "Mostrando os primeiros {{limit}} itens. O restante desta pasta não está listado.",
+    "unreadable": "Sem acesso",
+    "unreadableHint": "O Oleafly não tem permissão para abrir isto.",
+    "confirmTrash": "Mover {{path}} para a Lixeira?",
+    "confirmTrashWindows": "Mover {{path}} para a Lixeira?",
+    "confirmPermanentDelete": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Excluir permanentemente? Isso não pode ser desfeito.",
+    "confirmPermanentDeleteWindows": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Excluir permanentemente? Isso não pode ser desfeito.",
+    "linkedReadOnly": "Aponta para um arquivo fora desta pasta, então é somente leitura.",
+    "partialFolder": "Alguns itens desta pasta não estão listados."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} e {{second}}"

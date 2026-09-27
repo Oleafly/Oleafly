@@ -17,6 +17,24 @@ pub fn resolve(project_id: &str, rel: &str) -> Result<PathBuf, String> {
     resolve_within(&root, rel)
 }
 
+pub fn resolve_readable(project_id: &str, rel: &str) -> Result<PathBuf, String> {
+    let location = crate::project_location::locate(project_id).map_err(String::from)?;
+    resolve_readable_at(&location, rel)
+}
+
+pub(crate) fn resolve_readable_at(
+    location: &crate::project_location::ProjectLocation,
+    rel: &str,
+) -> Result<PathBuf, String> {
+    match resolve_within(&location.root, rel) {
+        Ok(path) => Ok(path),
+        Err(error) if location.kind == crate::project_location::ProjectKind::Linked => {
+            crate::folder_listing::outbound_resource_link(&location.root, rel).ok_or(error)
+        }
+        Err(error) => Err(error),
+    }
+}
+
 /// Public resolver for other modules (e.g. compile/export) so a user-supplied
 /// `main_doc` can't escape the project via an absolute path or `..`.
 pub fn resolve_in_project(project_id: &str, rel: &str) -> Result<PathBuf, String> {
@@ -127,6 +145,8 @@ pub struct AtomicFile {
     staging: PathBuf,
     staging_file: Option<File>,
     committed: bool,
+    preserve_metadata: bool,
+    keep_staging: bool,
 }
 
 impl AtomicFile {
@@ -171,6 +191,8 @@ impl AtomicFile {
                         staging,
                         staging_file: Some(file),
                         committed: false,
+                        preserve_metadata: false,
+                        keep_staging: false,
                     });
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -230,6 +252,9 @@ impl AtomicFile {
                     .map_err(|error| {
                         format!("failed to preserve destination permissions: {error}")
                     })?;
+                if self.preserve_metadata {
+                    copy_extended_metadata(&self.destination, staging_file);
+                }
             }
         }
         // Staging-file fsync is best-effort. Some volumes reject fsync while
@@ -239,8 +264,25 @@ impl AtomicFile {
         drop(bound_staging);
         drop(current_staging);
         drop(self.staging_file.take());
-        replace_file(&self.staging, &self.destination)
-            .map_err(|error| format!("failed to publish staged artifact: {error}"))?;
+        let published = if self.preserve_metadata {
+            replace_file_preserving(&self.staging, &self.destination)
+        } else {
+            replace_file(&self.staging, &self.destination).map_err(ReplaceFailure::intact)
+        };
+        if let Err(failure) = published {
+            if failure.staging_is_only_copy {
+                self.keep_staging = true;
+                return Err(format!(
+                    "failed to publish staged artifact: {}. The new content is kept in {}",
+                    failure.error,
+                    self.staging.display()
+                ));
+            }
+            return Err(format!(
+                "failed to publish staged artifact: {}",
+                failure.error
+            ));
+        }
         // From here the destination file exists. Nothing after this point may
         // turn a successful publish into a user-facing export failure.
         self.committed = true;
@@ -251,8 +293,22 @@ impl AtomicFile {
 
 impl Drop for AtomicFile {
     fn drop(&mut self) {
-        if !self.committed {
+        if !self.committed && !self.keep_staging {
             let _ = std::fs::remove_file(&self.staging);
+        }
+    }
+}
+
+struct ReplaceFailure {
+    error: std::io::Error,
+    staging_is_only_copy: bool,
+}
+
+impl ReplaceFailure {
+    fn intact(error: std::io::Error) -> Self {
+        Self {
+            error,
+            staging_is_only_copy: false,
         }
     }
 }
@@ -264,6 +320,239 @@ pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
         .write_all(bytes)
         .map_err(|error| format!("failed to write staged file: {error}"))?;
     transaction.commit()
+}
+
+pub(crate) fn atomic_write_preserving(
+    destination: &Path,
+    bytes: &[u8],
+    backups: &dyn Fn() -> Result<PathBuf, String>,
+) -> Result<(), String> {
+    let existing = std::fs::symlink_metadata(destination)
+        .ok()
+        .filter(|metadata| metadata.is_file() && !metadata.file_type().is_symlink());
+    if existing.is_some_and(|metadata| link_count(destination, &metadata) > 1) {
+        return write_through_links(destination, bytes, &backups()?);
+    }
+    let mut transaction = AtomicFile::new(destination)?;
+    transaction.preserve_metadata = true;
+    transaction
+        .staging_file_mut()
+        .write_all(bytes)
+        .map_err(|error| format!("failed to write staged file: {error}"))?;
+    transaction.commit()
+}
+
+fn write_in_place(destination: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(destination)?;
+    file.write_all(bytes)?;
+    let _ = file.sync_all();
+    Ok(())
+}
+
+fn write_through_links(destination: &Path, bytes: &[u8], backups: &Path) -> Result<(), String> {
+    let name = destination
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let backup = backups.join(format!(
+        "{}-{}-{name}",
+        std::process::id(),
+        ATOMIC_FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::copy(destination, &backup)
+        .map_err(|error| format!("failed to back up the linked file: {error}"))?;
+    match write_in_place(destination, bytes) {
+        Ok(()) => {
+            let _ = std::fs::remove_file(&backup);
+            Ok(())
+        }
+        Err(error) => {
+            let restored =
+                std::fs::read(&backup).and_then(|previous| write_in_place(destination, &previous));
+            match restored {
+                Ok(()) => {
+                    let _ = std::fs::remove_file(&backup);
+                    Err(format!("failed to write the linked file: {error}"))
+                }
+                Err(restore_error) => Err(format!(
+                    "failed to write the linked file: {error}. The previous version is kept at {}: {restore_error}",
+                    backup.display()
+                )),
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+fn link_count(_path: &Path, metadata: &std::fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt as _;
+    metadata.nlink()
+}
+
+#[cfg(windows)]
+fn link_count(path: &Path, _metadata: &std::fs::Metadata) -> u64 {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_READ_ATTRIBUTES,
+        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    };
+    let Ok(file) = std::fs::OpenOptions::new()
+        .access_mode(FILE_READ_ATTRIBUTES)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .open(path)
+    else {
+        return 1;
+    };
+    let mut information = BY_HANDLE_FILE_INFORMATION::default();
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut information) } == 0 {
+        return 1;
+    }
+    u64::from(information.nNumberOfLinks)
+}
+
+#[cfg(not(any(unix, windows)))]
+fn link_count(_path: &Path, _metadata: &std::fs::Metadata) -> u64 {
+    1
+}
+
+#[cfg(target_os = "macos")]
+fn copy_extended_metadata(source: &Path, staging: &File) {
+    use std::os::fd::AsRawFd as _;
+    let Ok(original) = File::open(source) else {
+        return;
+    };
+    let _ = unsafe {
+        libc::fcopyfile(
+            original.as_raw_fd(),
+            staging.as_raw_fd(),
+            std::ptr::null_mut(),
+            libc::COPYFILE_ACL | libc::COPYFILE_XATTR,
+        )
+    };
+}
+
+#[cfg(target_os = "linux")]
+fn copy_extended_metadata(source: &Path, staging: &File) {
+    use std::os::fd::AsRawFd as _;
+    let Ok(original) = File::open(source) else {
+        return;
+    };
+    let (from, to) = (original.as_raw_fd(), staging.as_raw_fd());
+    let size = unsafe { libc::flistxattr(from, std::ptr::null_mut(), 0) };
+    if size <= 0 {
+        return;
+    }
+    let mut names = vec![0u8; size as usize];
+    let size = unsafe { libc::flistxattr(from, names.as_mut_ptr().cast(), names.len()) };
+    if size <= 0 {
+        return;
+    }
+    names.truncate(size as usize);
+    for name in names
+        .split(|byte| *byte == 0)
+        .filter(|name| !name.is_empty())
+    {
+        let Ok(name) = std::ffi::CString::new(name) else {
+            continue;
+        };
+        let length = unsafe { libc::fgetxattr(from, name.as_ptr(), std::ptr::null_mut(), 0) };
+        if length < 0 {
+            continue;
+        }
+        let mut value = vec![0u8; length as usize];
+        let length =
+            unsafe { libc::fgetxattr(from, name.as_ptr(), value.as_mut_ptr().cast(), value.len()) };
+        if length < 0 {
+            continue;
+        }
+        let _ = unsafe {
+            libc::fsetxattr(to, name.as_ptr(), value.as_ptr().cast(), length as usize, 0)
+        };
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn copy_extended_metadata(_source: &Path, _staging: &File) {}
+
+#[cfg(windows)]
+fn replace_file_preserving(source: &Path, destination: &Path) -> Result<(), ReplaceFailure> {
+    use std::os::windows::ffi::OsStrExt as _;
+    use windows_sys::Win32::Storage::FileSystem::{
+        ReplaceFileW, REPLACEFILE_IGNORE_ACL_ERRORS, REPLACEFILE_IGNORE_MERGE_ERRORS,
+    };
+    if std::fs::symlink_metadata(destination).is_err() {
+        return replace_file(source, destination).map_err(ReplaceFailure::intact);
+    }
+    let wide = |path: &Path| {
+        path.as_os_str()
+            .encode_wide()
+            .chain(Some(0))
+            .collect::<Vec<u16>>()
+    };
+    let (replaced, replacement) = (wide(destination), wide(source));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+    let mut delay = std::time::Duration::from_millis(10);
+    loop {
+        let replaced_ok = unsafe {
+            ReplaceFileW(
+                replaced.as_ptr(),
+                replacement.as_ptr(),
+                std::ptr::null(),
+                REPLACEFILE_IGNORE_MERGE_ERRORS | REPLACEFILE_IGNORE_ACL_ERRORS,
+                std::ptr::null(),
+                std::ptr::null(),
+            )
+        };
+        if replaced_ok != 0 {
+            return Ok(());
+        }
+        let error = std::io::Error::last_os_error();
+        match replace_recovery(error.raw_os_error()) {
+            ReplaceRecovery::MoveReplacement => {
+                return replace_file(source, destination).map_err(|error| ReplaceFailure {
+                    error,
+                    staging_is_only_copy: true,
+                });
+            }
+            ReplaceRecovery::Retry if std::time::Instant::now() < deadline => {
+                std::thread::sleep(
+                    delay.min(deadline.saturating_duration_since(std::time::Instant::now())),
+                );
+                delay = (delay * 2).min(std::time::Duration::from_millis(250));
+            }
+            _ => return Err(ReplaceFailure::intact(error)),
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn replace_file_preserving(source: &Path, destination: &Path) -> Result<(), ReplaceFailure> {
+    replace_file(source, destination).map_err(ReplaceFailure::intact)
+}
+
+#[cfg(any(windows, test))]
+#[derive(Debug, PartialEq, Eq)]
+enum ReplaceRecovery {
+    MoveReplacement,
+    Retry,
+    Fail,
+}
+
+#[cfg(any(windows, test))]
+fn replace_recovery(code: Option<i32>) -> ReplaceRecovery {
+    const ERROR_UNABLE_TO_MOVE_REPLACEMENT: i32 = 1176;
+    const ERROR_UNABLE_TO_MOVE_REPLACEMENT_2: i32 = 1177;
+    match code {
+        Some(ERROR_UNABLE_TO_MOVE_REPLACEMENT | ERROR_UNABLE_TO_MOVE_REPLACEMENT_2) => {
+            ReplaceRecovery::MoveReplacement
+        }
+        code if is_retryable_replace_error_code(code) => ReplaceRecovery::Retry,
+        _ => ReplaceRecovery::Fail,
+    }
 }
 
 pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
@@ -540,6 +829,185 @@ mod tests {
             0o751
         );
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_partial_windows_replace_moves_the_new_file_into_place() {
+        assert_eq!(
+            replace_recovery(Some(1176)),
+            ReplaceRecovery::MoveReplacement
+        );
+        assert_eq!(
+            replace_recovery(Some(1177)),
+            ReplaceRecovery::MoveReplacement
+        );
+        assert_eq!(replace_recovery(Some(1175)), ReplaceRecovery::Fail);
+        assert_eq!(replace_recovery(Some(32)), ReplaceRecovery::Retry);
+        assert_eq!(replace_recovery(Some(5)), ReplaceRecovery::Retry);
+        assert_eq!(replace_recovery(None), ReplaceRecovery::Fail);
+    }
+
+    fn backup_folder(root: &Path) -> PathBuf {
+        let backups = root.join("backups");
+        std::fs::create_dir_all(&backups).unwrap();
+        backups
+    }
+
+    #[test]
+    fn a_preserving_save_writes_through_hard_links_and_keeps_no_backup() {
+        let root = temp_root();
+        let folder = root.join("folder");
+        std::fs::create_dir(&folder).unwrap();
+        let destination = folder.join("main.tex");
+        let alias = folder.join("alias.tex");
+        std::fs::write(&destination, b"old").unwrap();
+        std::fs::hard_link(&destination, &alias).unwrap();
+        let backups = backup_folder(&root);
+
+        atomic_write_preserving(&destination, b"new", &|| Ok(backups.clone())).unwrap();
+
+        assert_eq!(std::fs::read(&alias).unwrap(), b"new");
+        assert!(same_file::is_same_file(&destination, &alias).unwrap());
+        assert_eq!(std::fs::read_dir(&backups).unwrap().count(), 0);
+        assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 2);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_preserving_save_creates_a_missing_file_without_a_backup_folder() {
+        let root = temp_root();
+        let destination = root.join("new.tex");
+
+        atomic_write_preserving(&destination, b"fresh", &|| {
+            Err("no backup folder was needed".into())
+        })
+        .unwrap();
+
+        assert_eq!(std::fs::read(&destination).unwrap(), b"fresh");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[cfg(target_os = "macos")]
+    fn set_xattr(path: &Path, name: &str, value: &[u8]) {
+        use std::os::unix::ffi::OsStrExt as _;
+        let path = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+        let name = std::ffi::CString::new(name).unwrap();
+        let status = unsafe {
+            libc::setxattr(
+                path.as_ptr(),
+                name.as_ptr(),
+                value.as_ptr().cast(),
+                value.len(),
+                0,
+                0,
+            )
+        };
+        assert_eq!(status, 0, "{}", std::io::Error::last_os_error());
+    }
+
+    #[cfg(target_os = "macos")]
+    fn get_xattr(path: &Path, name: &str) -> Option<Vec<u8>> {
+        use std::os::unix::ffi::OsStrExt as _;
+        let path = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+        let name = std::ffi::CString::new(name).unwrap();
+        let mut value = vec![0u8; 4096];
+        let read = unsafe {
+            libc::getxattr(
+                path.as_ptr(),
+                name.as_ptr(),
+                value.as_mut_ptr().cast(),
+                value.len(),
+                0,
+                0,
+            )
+        };
+        (read >= 0).then(|| {
+            value.truncate(read as usize);
+            value
+        })
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_preserving_save_keeps_extended_attributes_and_finder_tags() {
+        let root = temp_root();
+        let destination = root.join("main.tex");
+        std::fs::write(&destination, b"old").unwrap();
+        set_xattr(&destination, "com.oleafly.test", b"kept");
+        set_xattr(
+            &destination,
+            "com.apple.metadata:_kMDItemUserTags",
+            b"bplist00\xa1\x01URed\n6\x08\x0a\x00\x00\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10",
+        );
+        let backups = backup_folder(&root);
+
+        atomic_write_preserving(&destination, b"new", &|| Ok(backups.clone())).unwrap();
+
+        assert_eq!(std::fs::read(&destination).unwrap(), b"new");
+        assert_eq!(
+            get_xattr(&destination, "com.oleafly.test").as_deref(),
+            Some(&b"kept"[..])
+        );
+        assert!(get_xattr(&destination, "com.apple.metadata:_kMDItemUserTags").is_some());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_preserving_save_keeps_user_extended_attributes() {
+        use std::os::unix::ffi::OsStrExt as _;
+        let root = temp_root();
+        let destination = root.join("main.tex");
+        std::fs::write(&destination, b"old").unwrap();
+        let path = std::ffi::CString::new(destination.as_os_str().as_bytes()).unwrap();
+        let name = std::ffi::CString::new("user.oleafly").unwrap();
+        let set =
+            unsafe { libc::setxattr(path.as_ptr(), name.as_ptr(), b"kept".as_ptr().cast(), 4, 0) };
+        if set != 0 {
+            eprintln!("skipping: {}", std::io::Error::last_os_error());
+            std::fs::remove_dir_all(&root).ok();
+            return;
+        }
+        let backups = backup_folder(&root);
+
+        atomic_write_preserving(&destination, b"new", &|| Ok(backups.clone())).unwrap();
+
+        let path = std::ffi::CString::new(destination.as_os_str().as_bytes()).unwrap();
+        let mut value = [0u8; 16];
+        let read = unsafe {
+            libc::getxattr(
+                path.as_ptr(),
+                name.as_ptr(),
+                value.as_mut_ptr().cast(),
+                value.len(),
+            )
+        };
+        assert_eq!(read, 4);
+        assert_eq!(&value[..4], b"kept");
+        assert_eq!(std::fs::read(&destination).unwrap(), b"new");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_preserving_save_keeps_alternate_data_streams_and_the_creation_time() {
+        let root = tempfile::tempdir().unwrap();
+        let destination = root.path().join("main.tex");
+        std::fs::write(&destination, b"old").unwrap();
+        let stream = root.path().join("main.tex:oleafly.tag");
+        std::fs::write(&stream, b"kept").unwrap();
+        let created = std::fs::metadata(&destination).unwrap().created().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let backups = backup_folder(root.path());
+
+        atomic_write_preserving(&destination, b"new", &|| Ok(backups.clone())).unwrap();
+
+        assert_eq!(std::fs::read(&destination).unwrap(), b"new");
+        assert_eq!(std::fs::read(&stream).unwrap(), b"kept");
+        assert_eq!(
+            std::fs::metadata(&destination).unwrap().created().unwrap(),
+            created
+        );
     }
 
     #[cfg(unix)]

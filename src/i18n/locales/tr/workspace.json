@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> zaten var. <suggestion>{{suggestion}}</suggestion> adını kullanarak iki dosyayı da tutabilir veya var olan hedefin yerine yazabilirsiniz. Siz Değiştir seçeneğini seçmedikçe Oleafly onun yerine yazmaz.",
       "replace": "Değiştir",
       "title": "Bu ad zaten kullanılıyor",
-      "unchanged": "Özgün ve hedef yollar değiştirilmeden bırakıldı."
+      "unchanged": "Özgün ve hedef yollar değiştirilmeden bırakıldı.",
+      "renameFolderBody": "<destination>{{destination}}</destination> zaten var olan bir klasör. <suggestion>{{suggestion}}</suggestion> adını kullanarak ikisini de tutabilirsiniz. Bulunduğu yerde açtığınız bir klasörde Oleafly hiçbir zaman bir klasörün tamamını değiştirmez."
     },
     "createFailed": "\"{{path}}\" oluşturulamadı.",
     "deleteFailed": "\"{{path}}\" silinemedi.",
@@ -41,7 +42,16 @@
     "setMain": "Ana belge olarak ayarla",
     "title": "Gezgin",
     "treeAriaLabel": "Gezgin dosya ağacı",
-    "setMainFailed": "\"{{path}}\" ana belge yapılamadı."
+    "setMainFailed": "\"{{path}}\" ana belge yapılamadı.",
+    "listingStopped": "İlk {{limit}} öğe gösteriliyor. Bu klasörün geri kalanı listelenmiyor.",
+    "unreadable": "Erişim yok",
+    "unreadableHint": "Oleafly'ın bunu açma izni yok.",
+    "confirmTrash": "{{path}} Çöp Sepeti'ne taşınsın mı?",
+    "confirmTrashWindows": "{{path}} Geri Dönüşüm Kutusu'na taşınsın mı?",
+    "confirmPermanentDelete": "Oleafly, {{path}} öğesini Çöp Sepeti'ne taşıyamadı. Bunun yerine kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    "confirmPermanentDeleteWindows": "Oleafly, {{path}} öğesini Geri Dönüşüm Kutusu'na taşıyamadı. Bunun yerine kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    "linkedReadOnly": "Bu klasörün dışındaki bir dosyaya bağlantı verir, bu yüzden salt okunurdur.",
+    "partialFolder": "Bu klasördeki bazı öğeler listelenmiyor."
   },
   "explorer": {
     "resizeSections": "{{first}} ve {{second}} bölümlerini yeniden boyutlandır"

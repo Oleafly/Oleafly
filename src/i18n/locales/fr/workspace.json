@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> existe déjà. Conservez les deux fichiers en utilisant <suggestion>{{suggestion}}</suggestion>, ou remplacez la destination existante. Oleafly ne la remplacera que si vous choisissez Remplacer.",
       "replace": "Remplacer",
       "title": "Ce nom est déjà utilisé",
-      "unchanged": "Les chemins d'origine et de destination sont restés inchangés."
+      "unchanged": "Les chemins d'origine et de destination sont restés inchangés.",
+      "renameFolderBody": "<destination>{{destination}}</destination> est un dossier existant. Conservez les deux en utilisant <suggestion>{{suggestion}}</suggestion>. Dans un dossier ouvert sur place, Oleafly ne remplace jamais un dossier entier."
     },
     "createFailed": "Impossible de créer \"{{path}}\".",
     "deleteFailed": "Impossible de supprimer \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Définir comme document principal",
     "title": "Explorateur",
     "treeAriaLabel": "Arborescence de l'explorateur",
-    "setMainFailed": "Impossible de définir « {{path}} » comme document principal."
+    "setMainFailed": "Impossible de définir « {{path}} » comme document principal.",
+    "listingStopped": "Affichage des {{limit}} premiers éléments. Le reste de ce dossier n'est pas listé.",
+    "unreadable": "Accès refusé",
+    "unreadableHint": "Oleafly n'a pas l'autorisation d'ouvrir cet élément.",
+    "confirmTrash": "Placer {{path}} dans la Corbeille ?",
+    "confirmTrashWindows": "Placer {{path}} dans la Corbeille ?",
+    "confirmPermanentDelete": "Oleafly n'a pas pu placer {{path}} dans la Corbeille. Le supprimer définitivement à la place ? Cette action est irréversible.",
+    "confirmPermanentDeleteWindows": "Oleafly n'a pas pu placer {{path}} dans la Corbeille. Le supprimer définitivement à la place ? Cette action est irréversible.",
+    "linkedReadOnly": "Renvoie vers un fichier situé hors de ce dossier, il est donc en lecture seule.",
+    "partialFolder": "Certains éléments de ce dossier ne sont pas listés."
   },
   "explorer": {
     "resizeSections": "Redimensionner {{first}} et {{second}}"

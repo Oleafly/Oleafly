@@ -32,7 +32,9 @@
     "copy_size_limit": "Folderul are peste 2 GB. Este mai mult decât poate copia Oleafly dintr-odată.",
     "copy_cancelled": "Copierea a fost anulată.",
     "copy_needs_folder": "Doar folderele deschise pe loc pot fi copiate în bibliotecă.",
-    "not_removable": "Doar folderele deschise pe loc pot fi eliminate din Oleafly."
+    "not_removable": "Doar folderele deschise pe loc pot fi eliminate din Oleafly.",
+    "trash_unavailable": "Oleafly nu a putut muta {{path}} în Coș sau în Coșul de reciclare. Probabil unitatea nu are unul.",
+    "linked_replace_folder": "{{path}} este un folder, așa că Oleafly nu îl înlocuiește. Mută-l sau redenumește-l mai întâi."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."

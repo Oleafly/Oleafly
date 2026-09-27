@@ -64,6 +64,10 @@ vi.mock("@/features/equation-export", async (importOriginal) => ({
 vi.mock("@/lib/tauri", () => ({
   createImageProject: mocks.createImageProject,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   projectMutationGeneration: mocks.projectMutationGeneration,
   writeProjectBytes: mocks.writeProjectBytes,
 }));

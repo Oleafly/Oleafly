@@ -46,7 +46,8 @@
     "projectChangedRetry": "引用の読み込み中にプロジェクトが変更されました。元のプロジェクトでもう一度お試しください。",
     "readFailed": "{{path}} を読み取れませんでした: {{detail}}",
     "unrecognizedFile": "認識できないファイル形式です: {{name}}",
-    "writeFailed": "{{path}} に書き込めませんでした: {{detail}}"
+    "writeFailed": "{{path}} に書き込めませんでした: {{detail}}",
+    "linkedBibliography": "{{path}} はこのフォルダ外のファイルへのリンクのため、Oleafly は追記できません。Zotero など、ファイルを管理している場所で文献を追加してください。"
   },
   "citeOleafly": {
     "added": "Oleafly の項目を {{path}} に追加しました。{{markup}} で引用できます。",
@@ -365,7 +366,8 @@
     "changedOnDisk": "「{{path}}」が Oleafly の外で変更されました。再読み込みするか、もう一度保存して自分の版を残してください。",
     "openFileEncoding": "「{{path}}」は UTF-8 のテキストファイルではないため開けません。テキストの場合は UTF-8 で保存してから、もう一度開いてください。",
     "openFileFailed": "「{{path}}」を開けませんでした。詳細はアプリのログを確認してください。",
-    "reloadFromDisk": "再読み込み"
+    "reloadFromDisk": "再読み込み",
+    "changedOnDiskElsewhere": "{{path}} がディスク上で変更されたため、Oleafly は保存しませんでした。ファイルを開いて、残す版を選んでください。"
   },
   "projectDiagnostics": {
     "analysisFailed": "解析に失敗しました: {{message}}",

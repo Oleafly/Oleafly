@@ -48,6 +48,8 @@ pub struct ProjectSourcesResult {
     pub unchanged: Vec<String>,
     pub unreadable: Vec<UnreadableSource>,
     pub oversized: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub placeholders: Vec<String>,
     pub truncated: bool,
 }
 
@@ -139,18 +141,23 @@ pub(crate) fn read_project_sources_sync(
         unchanged: Vec::new(),
         unreadable: Vec::new(),
         oversized: Vec::new(),
+        placeholders: Vec::new(),
         truncated: false,
     };
     let mut consumed = 0usize;
     for path in paths {
         let remaining = limits.batch_bytes.saturating_sub(consumed);
-        let resolved = match crate::sandbox::resolve(project_id, &path) {
+        let resolved = match crate::sandbox::resolve_readable(project_id, &path) {
             Ok(resolved) => resolved,
             Err(message) => {
                 result.unreadable.push(UnreadableSource { path, message });
                 continue;
             }
         };
+        if crate::cloud_files::path_is_placeholder(&resolved) {
+            result.placeholders.push(path);
+            continue;
+        }
         match read_source_bytes(&resolved, limits.file_bytes, remaining) {
             SourceRead::Bytes(bytes) => {
                 consumed = consumed.saturating_add(bytes.len());
@@ -250,6 +257,25 @@ mod tests {
 
     fn read(project: &TestProject, request: ProjectSourcesRequest) -> ProjectSourcesResult {
         read_project_sources_sync(&project.id, request, SourceLimits::DEFAULT).unwrap()
+    }
+
+    #[test]
+    fn a_cloud_placeholder_is_reported_without_being_read() {
+        let project = project("sources-placeholder");
+        write(&project, "main.tex", b"main");
+        write(&project, "chapters/evicted.tex", b"cloud");
+        crate::cloud_files::test_support::mark(&project.root.join("chapters/evicted.tex"));
+
+        let result = read(
+            &project,
+            request(&["main.tex", "chapters/evicted.tex"], &[]),
+        );
+
+        assert_eq!(result.files.len(), 1);
+        assert_eq!(result.files[0].path, "main.tex");
+        assert_eq!(result.placeholders, ["chapters/evicted.tex"]);
+        assert!(result.unreadable.is_empty());
+        assert!(!result.truncated);
     }
 
     #[test]
@@ -564,6 +590,7 @@ mod tests {
                 message: "c.tex could not be read: gone.".into(),
             }],
             oversized: vec!["d.tex".into()],
+            placeholders: vec!["e.tex".into()],
             truncated: false,
         })
         .unwrap();
@@ -574,6 +601,7 @@ mod tests {
             "c.tex could not be read: gone."
         );
         assert_eq!(value["oversized"], serde_json::json!(["d.tex"]));
+        assert_eq!(value["placeholders"], serde_json::json!(["e.tex"]));
         assert_eq!(value["truncated"], false);
     }
 

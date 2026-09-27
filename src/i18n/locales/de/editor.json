@@ -171,7 +171,9 @@
     "binaryFile": "Binärdatei. Keine Vorschau verfügbar.",
     "managedFileReadOnly": "{{file}} wird von Oleafly verwaltet und ist hier schreibgeschützt. Projekteinstellungen ändern Sie über Oleafly selbst, nicht durch Bearbeiten dieser Datei.",
     "noFileOpen": "Keine Datei geöffnet.",
-    "noFileOpenHint": "Wählen Sie eine Datei aus dem Baum, um mit dem Bearbeiten zu beginnen."
+    "noFileOpenHint": "Wählen Sie eine Datei aus dem Baum, um mit dem Bearbeiten zu beginnen.",
+    "linkedFileReadOnly": "{{file}} verweist auf eine Datei außerhalb dieses Ordners und lässt sich hier nicht bearbeiten. Ändern Sie sie dort, wo sie liegt, zum Beispiel in Zotero.",
+    "diffOnDisk": "Auf dem Datenträger"
   },
   "projectInfo": {
     "trigger": "Projektinfo",
@@ -330,7 +332,8 @@
     "splitView": "Geteilte Ansicht",
     "unifiedView": "Zusammengeführte Ansicht",
     "loading": "Vergleich wird geladen…",
-    "previewTooLarge": "Die Datei ist zu groß für eine Vergleichsvorschau."
+    "previewTooLarge": "Die Datei ist zu groß für eine Vergleichsvorschau.",
+    "diskHeading": "Auf dem Datenträger ↔ Ihre Änderungen"
   },
   "hotkeys": {
     "title": "Tastenkürzel",
@@ -1028,5 +1031,13 @@
     "label": "Position im Dokument",
     "goTo": "Zu {{title}} springen",
     "untitled": "Ohne Titel"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} wurde auf dem Datenträger geändert, während Sie ungespeicherte Änderungen hatten.",
+    "compare": "Vergleichen",
+    "keepMine": "Meine behalten",
+    "reload": "Neu laden",
+    "failed": "Oleafly konnte {{file}} nicht aktualisieren. Versuchen Sie es erneut.",
+    "tabMark": "Auf dem Datenträger geändert. Öffnen Sie diesen Tab, um zu wählen, welche Version bleibt."
   }
 }

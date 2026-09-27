@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   getProjectEngine: vi.fn(),
   projectMutationGeneration: vi.fn(),
   listFiles: vi.fn(),
+  listFileTree: vi.fn(),
+  existingProjectFiles: vi.fn(),
   readFileContent: vi.fn(),
   writeFileContent: vi.fn(),
   createFile: vi.fn(),
@@ -47,6 +49,8 @@ vi.mock("@/lib/tauri", () => ({
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
+  listFileTree: mocks.listFileTree,
+  existingProjectFiles: mocks.existingProjectFiles,
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -128,6 +132,10 @@ beforeEach(async () => {
   mocks.projectManifestHome.mockResolvedValue("library");
   mocks.writeFileContent.mockResolvedValue({ path: "references.bib", generation: 9 });
   mocks.listFiles.mockResolvedValue(WITH_BIB);
+  mocks.listFileTree.mockImplementation(async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }));
   mocks.readFileContent.mockResolvedValue("");
   mocks.mcpSetActiveProject.mockResolvedValue(undefined);
   useFilesStore.setState({
@@ -862,6 +870,35 @@ describe("engineErrorMessage", () => {
   });
 });
 
+describe("opening a folder with files that live only in the cloud", () => {
+  it("reads the main document but no placeholder bibliography or source", async () => {
+    primeOpen(LATEX_ENGINE);
+    mocks.projectTexStatus.mockResolvedValue(null);
+    mocks.listFiles.mockResolvedValue([
+      { path: "chapters", is_dir: true },
+      { path: "chapters/evicted.tex", is_dir: false, placeholder: true },
+      { path: "chapters/local.tex", is_dir: false },
+      { path: "evicted.bib", is_dir: false, placeholder: true },
+      { path: "local.bib", is_dir: false },
+      { path: ".latexmkrc", is_dir: false, placeholder: true },
+      { path: "main.tex", is_dir: false, placeholder: true },
+    ]);
+
+    await useFilesStore.getState().openProject("opened");
+    await until(() =>
+      mocks.readFileContent.mock.calls.some(([, path]) => path === "chapters/local.tex"),
+    );
+    await settle();
+
+    const read = mocks.readFileContent.mock.calls.map(([, path]) => path);
+    expect(read).toContain("main.tex");
+    expect(read).toContain("local.bib");
+    expect(read).not.toContain("evicted.bib");
+    expect(read).not.toContain("chapters/evicted.tex");
+    expect(read).not.toContain(".latexmkrc");
+  });
+});
+
 describe("openProject", () => {
   it("reports a project that will not open", async () => {
     primeOpen();
@@ -1137,6 +1174,29 @@ describe("setContent", () => {
       dirty: false,
     });
   });
+
+  it("never marks a file that links outside the folder as dirty", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      manifestHome: "device",
+      tree: [
+        { path: "refs.bib", is_dir: false, read_only: true },
+        { path: "main.tex", is_dir: false },
+      ],
+      files: { "refs.bib": { content: "@misc{a}", dirty: false } },
+      openTabs: ["refs.bib"],
+      activePath: "refs.bib",
+    });
+
+    useFilesStore.getState().setContent("refs.bib", "@misc{b}");
+    useFilesStore.getState().setContent("main.tex", "edited");
+
+    expect(useFilesStore.getState().files["refs.bib"]).toEqual({
+      content: "@misc{a}",
+      dirty: false,
+    });
+    expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(true);
+  });
 });
 
 describe("importProject", () => {
@@ -1306,6 +1366,71 @@ describe("applyProjectStateChanged", () => {
     );
     expect(useFilesStore.getState().files["gone.tex"]).toMatchObject({ content: "mine\n" });
     expectNoToasts();
+  });
+});
+
+describe("a folder listing that stops before every open file", () => {
+  const event = (revision: number): ProjectStateChanged =>
+    ({
+      projectId: "project",
+      revision,
+      reason: "settings",
+      filesChanged: true,
+      mutationGeneration: 4,
+      project: { ...META, name: "Paper" },
+      engine: LATEX_ENGINE,
+    }) as ProjectStateChanged;
+
+  function openFiles(manifestHome: "library" | "device") {
+    useFilesStore.setState({
+      manifestHome,
+      files: {
+        "main.tex": { content: "main\n", dirty: false },
+        "paper/deep.tex": { content: "deep\n", dirty: false },
+        "paper/draft.tex": { content: "mine\n", dirty: true },
+        "gone.tex": { content: "old\n", dirty: false },
+      },
+      openTabs: ["main.tex", "paper/deep.tex", "paper/draft.tex", "gone.tex"],
+      activePath: "paper/deep.tex",
+    });
+  }
+
+  it("asks the disk before closing tabs the listing never reached", async () => {
+    openFiles("device");
+    mocks.projectManifestHome.mockResolvedValue("device");
+    mocks.listFileTree.mockResolvedValue({ entries: MAIN_ONLY, truncated: true });
+    mocks.existingProjectFiles.mockResolvedValue(["paper/deep.tex", "paper/draft.tex"]);
+    mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
+      path === "paper/deep.tex" ? "deep, restored\n" : "main\n",
+    );
+
+    await useFilesStore.getState().applyProjectStateChanged(event(Date.now() + 10));
+
+    const state = useFilesStore.getState();
+    expect(mocks.existingProjectFiles).toHaveBeenCalledWith(
+      "project",
+      expect.arrayContaining(["paper/deep.tex", "paper/draft.tex", "gone.tex"]),
+    );
+    expect(state.openTabs).toEqual(["main.tex", "paper/deep.tex", "paper/draft.tex"]);
+    expect(state.activePath).toBe("paper/deep.tex");
+    expect(state.files["paper/deep.tex"]).toEqual({ content: "deep, restored\n", dirty: false });
+    expect(state.files["paper/draft.tex"]).toEqual({ content: "mine\n", dirty: true });
+    expect(state.files["gone.tex"]).toBeUndefined();
+    expect(mocks.logError).not.toHaveBeenCalledWith(
+      "restore unsaved files after project update",
+      expect.anything(),
+    );
+  });
+
+  it("keeps trusting a complete library listing", async () => {
+    openFiles("library");
+    mocks.listFileTree.mockResolvedValue({ entries: MAIN_ONLY, truncated: false });
+    mocks.writeFileContent.mockResolvedValue({ path: "paper/draft.tex", generation: 12 });
+
+    await useFilesStore.getState().applyProjectStateChanged(event(Date.now() + 11));
+
+    expect(mocks.existingProjectFiles).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().openTabs).toEqual(["main.tex", "paper/draft.tex"]);
   });
 });
 
@@ -1525,7 +1650,7 @@ describe("a project folder that goes away", () => {
 
     useProjectAvailabilityStore.getState().report("linked-a", "ok");
     mocks.listFiles.mockRejectedValueOnce(missing);
-    await expect(useFilesStore.getState().refreshTree()).resolves.toBeUndefined();
+    await expect(useFilesStore.getState().refreshTree()).resolves.toBe(false);
     expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
   });
 
@@ -1547,6 +1672,29 @@ describe("a project folder that goes away", () => {
       { path: "refs.bib", content: "@misc{a}\n" },
     ]);
     expect(collectOpenBuffersForCopy("other")).toEqual([]);
+  });
+});
+
+describe("folder listings that stop early", () => {
+  it("remembers when the backend stopped listing a large folder", async () => {
+    mocks.listFileTree.mockResolvedValueOnce({ entries: MAIN_ONLY, truncated: true });
+    await useFilesStore.getState().refreshTree();
+    expect(useFilesStore.getState().tree).toEqual(MAIN_ONLY);
+    expect(useFilesStore.getState().treeTruncated).toBe(true);
+
+    await useFilesStore.getState().refreshTree();
+    expect(useFilesStore.getState().tree).toEqual(WITH_BIB);
+    expect(useFilesStore.getState().treeTruncated).toBe(false);
+  });
+
+  it("keeps unreadable entries in the tree", async () => {
+    const tree = [
+      { path: "locked", is_dir: true, unreadable: true },
+      { path: "main.tex", is_dir: false },
+    ];
+    mocks.listFileTree.mockResolvedValueOnce({ entries: tree, truncated: false });
+    await useFilesStore.getState().refreshTree();
+    expect(useFilesStore.getState().tree).toEqual(tree);
   });
 });
 

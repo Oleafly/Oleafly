@@ -46,7 +46,8 @@
     "projectChangedRetry": "Projektet blev ændret under importen af citationer. Prøv igen i det oprindelige projekt.",
     "readFailed": "Kunne ikke læse {{path}}: {{detail}}",
     "unrecognizedFile": "Ukendt filtype: {{name}}",
-    "writeFailed": "Kunne ikke skrive {{path}}: {{detail}}"
+    "writeFailed": "Kunne ikke skrive {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} linker til en fil uden for mappen, så Oleafly kan ikke tilføje noget til den. Tilføj referencen i Zotero, eller hvor filen ellers vedligeholdes."
   },
   "citeOleafly": {
     "added": "Tilføjede Oleafly-posten til {{path}}. Citer den med {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "\"{{path}}\" blev ændret uden for Oleafly. Genindlæs filen, eller gem igen for at beholde din version.",
     "openFileEncoding": "\"{{path}}\" kan ikke åbnes, fordi det ikke er en UTF-8-tekstfil. Hvis det er tekst, så gem den som UTF-8, og åbn den igen.",
     "openFileFailed": "\"{{path}}\" kunne ikke åbnes. Se appens log for detaljer.",
-    "reloadFromDisk": "Genindlæs"
+    "reloadFromDisk": "Genindlæs",
+    "changedOnDiskElsewhere": "{{path}} blev ændret på disken, så Oleafly gemte den ikke. Åbn den for at vælge, hvilken version du vil beholde."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen mislykkedes: {{message}}",

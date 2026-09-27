@@ -312,7 +312,7 @@ fn starts_with_ignoring_case(name: &str, prefix: &str) -> bool {
         .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
 }
 
-fn is_oleafly_owned(name: &str) -> bool {
+pub(crate) fn is_oleafly_owned(name: &str) -> bool {
     starts_with_ignoring_case(name, ".oleafly")
         || (name.starts_with('.') && name.ends_with(".tmp") && name.contains(".oleafly-"))
 }

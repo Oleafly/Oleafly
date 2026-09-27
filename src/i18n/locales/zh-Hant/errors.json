@@ -32,7 +32,9 @@
     "copy_size_limit": "這個資料夾大於 2 GB，超出 Oleafly 一次能複製的大小。",
     "copy_cancelled": "已取消複製。",
     "copy_needs_folder": "只有就地開啟的資料夾才能複製到專案庫。",
-    "not_removable": "只有就地開啟的資料夾才能從 Oleafly 移除。"
+    "not_removable": "只有就地開啟的資料夾才能從 Oleafly 移除。",
+    "trash_unavailable": "Oleafly 無法將 {{path}} 移到垃圾桶或資源回收筒。這個磁碟機可能沒有。",
+    "linked_replace_folder": "{{path}} 是資料夾，因此 Oleafly 不會取代它。請先移動或重新命名。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"

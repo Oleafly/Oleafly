@@ -355,6 +355,23 @@ describe("readProjectSourcesBatch with the batch command available", () => {
     expect(bridge.readFileContent).toHaveBeenCalledTimes(2);
   });
 
+  it("never reads a cloud placeholder the backend skipped, one by one or otherwise", async () => {
+    const disk = fakeDisk({ "main.tex": "x", "evicted.tex": "in the cloud" });
+    mountFallback(disk);
+    const hash = cachedHash(new TextEncoder().encode("x"));
+    bridge.batch = async (_projectId, request) => ({
+      files: [{ path: "main.tex", hash, text: "x" }],
+      unchanged: [],
+      unreadable: [],
+      placeholders: request.paths.filter((path) => path === "evicted.tex"),
+      truncated: false,
+    });
+    const result = await readProjectSourcesBatch("p", ["main.tex", "evicted.tex"]);
+    expect(result.texts).toEqual({ "main.tex": "x" });
+    expect(result.unreadable.size).toBe(0);
+    expect(bridge.readFileContent).not.toHaveBeenCalled();
+  });
+
   it("re-reads a path the backend calls unchanged when the cache has no copy", async () => {
     const disk = fakeDisk({ "main.tex": "x" });
     mountFallback(disk);

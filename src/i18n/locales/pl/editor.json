@@ -171,7 +171,9 @@
     "binaryFile": "Plik binarny. Podgląd niedostępny.",
     "managedFileReadOnly": "Plikiem {{file}} zarządza Oleafly i jest on tutaj tylko do odczytu. Ustawienia projektu zmienia się w samym Oleafly, a nie przez edycję tego pliku.",
     "noFileOpen": "Nie otwarto pliku.",
-    "noFileOpenHint": "Wybierz plik z drzewa, aby zacząć edycję."
+    "noFileOpenHint": "Wybierz plik z drzewa, aby zacząć edycję.",
+    "linkedFileReadOnly": "{{file}} wskazuje plik poza tym folderem, więc nie możesz go tu edytować. Zmień go tam, gdzie się znajduje, na przykład w Zotero.",
+    "diffOnDisk": "Na dysku"
   },
   "projectInfo": {
     "trigger": "Informacje o projekcie",
@@ -336,7 +338,8 @@
     "splitView": "Widok dzielony",
     "unifiedView": "Widok jednolity",
     "loading": "Wczytywanie porównania…",
-    "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania."
+    "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania.",
+    "diskHeading": "Na dysku ↔ Twoje zmiany"
   },
   "hotkeys": {
     "title": "Skróty klawiaturowe",
@@ -1048,5 +1051,13 @@
     "label": "Położenie w dokumencie",
     "goTo": "Przejdź do {{title}}",
     "untitled": "Bez tytułu"
+  },
+  "changedOnDisk": {
+    "message": "Plik {{file}} został zmieniony na dysku, a masz w nim niezapisane zmiany.",
+    "compare": "Porównaj",
+    "keepMine": "Zachowaj moją wersję",
+    "reload": "Wczytaj ponownie",
+    "failed": "Oleafly nie może zaktualizować {{file}}. Spróbuj ponownie.",
+    "tabMark": "Zmieniono na dysku. Otwórz tę kartę, aby wybrać, którą wersję zachować."
   }
 }

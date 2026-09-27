@@ -3,7 +3,12 @@
     "newFile": "Context-menu item that creates an empty file",
     "newFolder": "Context-menu item that creates an empty folder",
     "setMain": "Marks this file as the document the compiler builds",
-    "setMainFailed": "Error after the user picks Set as main document in the file tree and the project refuses it"
+    "setMainFailed": "Error after the user picks Set as main document in the file tree and the project refuses it",
+    "unreadable": "Short label at the end of a file tree row the app has no permission to read",
+    "listingStopped": "Quiet note under the file tree when a very large opened folder was only partly listed",
+    "confirmTrash": "Confirmation before moving a file or folder to the macOS or Linux Trash",
+    "confirmTrashWindows": "Confirmation before moving a file or folder to the Windows Recycle Bin",
+    "partialFolder": "Tooltip on a folder in the file tree, and a note inside it when expanded, when a very large opened folder was listed only in part"
   },
   "outline": {
     "title": "Panel heading listing the headings of the open document"

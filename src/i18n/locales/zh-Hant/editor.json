@@ -171,7 +171,9 @@
     "binaryFile": "二進位檔案。無法預覽。",
     "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在這裡是唯讀的。專案設定要透過 Oleafly 本身修改，而不是編輯這個檔案。",
     "noFileOpen": "未開啟任何檔案。",
-    "noFileOpenHint": "從檔案樹選一個檔案即可開始編輯。"
+    "noFileOpenHint": "從檔案樹選一個檔案即可開始編輯。",
+    "linkedFileReadOnly": "{{file}} 連結到此資料夾以外的檔案，因此無法在這裡編輯。請到檔案所在的位置修改，例如在 Zotero 中。",
+    "diffOnDisk": "磁碟上"
   },
   "projectInfo": {
     "trigger": "專案資訊",
@@ -327,7 +329,8 @@
     "splitView": "分割檢視",
     "unifiedView": "單欄檢視",
     "loading": "載入差異中…",
-    "previewTooLarge": "檔案太大，無法預覽差異。"
+    "previewTooLarge": "檔案太大，無法預覽差異。",
+    "diskHeading": "磁碟上 ↔ 你的編輯"
   },
   "hotkeys": {
     "title": "鍵盤快捷鍵",
@@ -1018,5 +1021,13 @@
     "label": "文件中的位置",
     "goTo": "前往 {{title}}",
     "untitled": "未命名"
+  },
+  "changedOnDisk": {
+    "message": "你有尚未儲存的編輯時，{{file}} 在磁碟上已被變更。",
+    "compare": "比較",
+    "keepMine": "保留我的版本",
+    "reload": "重新載入",
+    "failed": "Oleafly 無法更新 {{file}}。請再試一次。",
+    "tabMark": "已在磁碟上變更。開啟此分頁以選擇要保留的版本。"
   }
 }

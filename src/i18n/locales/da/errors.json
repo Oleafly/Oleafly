@@ -32,7 +32,9 @@
     "copy_size_limit": "Mappen er større end 2 GB. Det er mere, end Oleafly kan kopiere på én gang.",
     "copy_cancelled": "Kopieringen blev annulleret.",
     "copy_needs_folder": "Kun mapper, der er åbnet på stedet, kan kopieres til biblioteket.",
-    "not_removable": "Kun mapper, der er åbnet på stedet, kan fjernes fra Oleafly."
+    "not_removable": "Kun mapper, der er åbnet på stedet, kan fjernes fra Oleafly.",
+    "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Drevet har måske ikke en.",
+    "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flyt eller omdøb den først."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."

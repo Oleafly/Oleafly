@@ -32,7 +32,9 @@
     "copy_size_limit": "Ten folder ma ponad 2 GB. To więcej, niż Oleafly może skopiować naraz.",
     "copy_cancelled": "Kopiowanie zostało anulowane.",
     "copy_needs_folder": "Do biblioteki można skopiować tylko foldery otwarte w miejscu.",
-    "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w miejscu."
+    "not_removable": "Z Oleafly można usunąć tylko foldery otwarte w miejscu.",
+    "trash_unavailable": "Oleafly nie może przenieść {{path}} do Kosza. Ten dysk może go nie mieć.",
+    "linked_replace_folder": "{{path}} to folder, więc Oleafly go nie zastąpi. Najpierw go przenieś lub zmień jego nazwę."
   },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."

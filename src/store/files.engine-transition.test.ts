@@ -46,6 +46,10 @@ vi.mock("@/lib/tauri", () => ({
   gitPull: mocks.gitPull,
   gitDiscard: mocks.gitDiscard,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   setMainDocCmd: mocks.setMainDocCmd,

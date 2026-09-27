@@ -1183,6 +1183,7 @@ fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
                 && path
                     .extension()
                     .is_some_and(|extension| extension.eq_ignore_ascii_case("bib"))
+                && !crate::cloud_files::path_is_placeholder(&path)
             {
                 let relative = path
                     .strip_prefix(root)
@@ -3406,6 +3407,18 @@ pub fn existing_compiled_pdf_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bibliography_discovery_leaves_cloud_placeholders_alone() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        std::fs::create_dir(root.join("refs")).unwrap();
+        std::fs::write(root.join("refs/local.bib"), "@misc{a}").unwrap();
+        std::fs::write(root.join("refs/evicted.bib"), "@misc{b}").unwrap();
+        crate::cloud_files::test_support::mark(&root.join("refs/evicted.bib"));
+
+        assert_eq!(discover_bibliographies(root).unwrap(), ["refs/local.bib"]);
+    }
 
     #[test]
     fn tex_program_magic_never_names_an_arbitrary_program() {

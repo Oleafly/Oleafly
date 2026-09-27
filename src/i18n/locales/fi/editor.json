@@ -171,7 +171,9 @@
     "binaryFile": "Binääritiedosto. Esikatselua ei ole.",
     "managedFileReadOnly": "Oleafly hallinnoi tiedostoa {{file}}, joten se on täällä vain luettavissa. Projektin asetuksia muutetaan Oleaflyn kautta, ei tätä tiedostoa muokkaamalla.",
     "noFileOpen": "Ei avointa tiedostoa.",
-    "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta."
+    "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta.",
+    "linkedFileReadOnly": "{{file}} linkittää tämän kansion ulkopuoliseen tiedostoon, joten et voi muokata sitä täällä. Muuta sitä sen omassa sijainnissa, esimerkiksi Zoterossa.",
+    "diffOnDisk": "Levyllä"
   },
   "projectInfo": {
     "trigger": "Projektin tiedot",
@@ -330,7 +332,8 @@
     "splitView": "Rinnakkaisnäkymä",
     "unifiedView": "Yhdistetty näkymä",
     "loading": "Ladataan vertailua…",
-    "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun."
+    "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun.",
+    "diskHeading": "Levyllä ↔ Omat muutoksesi"
   },
   "hotkeys": {
     "title": "Pikanäppäimet",
@@ -1028,5 +1031,13 @@
     "label": "Sijainti dokumentissa",
     "goTo": "Siirry kohteeseen {{title}}",
     "untitled": "Nimetön"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} muuttui levyllä, kun sinulla oli tallentamattomia muutoksia.",
+    "compare": "Vertaa",
+    "keepMine": "Pidä omani",
+    "reload": "Lataa uudelleen",
+    "failed": "Oleafly ei voinut päivittää tiedostoa {{file}}. Yritä uudelleen.",
+    "tabMark": "Muuttui levyllä. Avaa tämä välilehti ja valitse, kumman version pidät."
   }
 }

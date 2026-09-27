@@ -17,7 +17,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
-import { isManagedProjectPath } from "@/lib/project-paths";
+import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
+import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
+import { FileTabStatus } from "./FileTabStatus";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
@@ -50,14 +52,6 @@ const MARKDOWN_SPLIT_LIMITS = {
 
 function basename(p: string) {
   return p.slice(p.lastIndexOf("/") + 1);
-}
-
-// Subscribes to just this file's `dirty` boolean, not the `files` map (which
-// is rebuilt on every edit), so the tab bar doesn't re-render on each keystroke.
-function DirtyDot({ path }: Readonly<{ path: string }>) {
-  const dirty = useFilesStore((s) => s.files[path]?.dirty ?? false);
-  if (!dirty) return null;
-  return <span className="size-1.5 rounded-full bg-primary" />;
 }
 
 function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
@@ -136,6 +130,9 @@ export function Editor() {
   const activePath = useFilesStore((s) => s.activePath);
   const manifestHome = useFilesStore((s) => s.manifestHome);
   const managedFile = !!activePath && isManagedProjectPath(activePath, manifestHome);
+  const linkedFile = useFilesStore(
+    (s) => !!s.activePath && isReadOnlyLink(s.activePath, s.tree),
+  );
   const setActive = useFilesStore((s) => s.setActive);
   const closeTab = useFilesStore((s) => s.closeTab);
   const diffs = useDiffStore((s) => s.diffs);
@@ -257,6 +254,15 @@ export function Editor() {
           className="border-b px-4 py-2 text-sm text-muted-foreground"
         >
           {t(($) => $.editor.shell.managedFileReadOnly, { file: activePath })}
+        </output>
+      ) : null}
+      <ChangedOnDiskBanner />
+      {linkedFile && !managedFile ? (
+        <output
+          data-testid="linked-file-notice"
+          className="border-b px-4 py-2 text-sm text-muted-foreground"
+        >
+          {t(($) => $.editor.shell.linkedFileReadOnly, { file: activePath })}
         </output>
       ) : null}
       {showBreadcrumbs ? <Breadcrumbs visual={wysiwyg} /> : null}
@@ -488,7 +494,7 @@ export function Editor() {
                 className="flex items-center gap-1.5"
               >
                 {basename(tab.id)}
-                <DirtyDot path={tab.id} />
+                <FileTabStatus path={tab.id} />
               </button>
               <button
                 type="button"
@@ -521,7 +527,9 @@ export function Editor() {
                 <span className="text-muted-foreground">
                   {tab.d.side === "staged"
                     ? t(($) => $.editor.shell.diffIndex)
-                    : t(($) => $.editor.shell.diffWorkingTree)}
+                    : tab.d.side === "disk"
+                      ? t(($) => $.editor.shell.diffOnDisk)
+                      : t(($) => $.editor.shell.diffWorkingTree)}
                 </span>
               </button>
               <button

@@ -124,7 +124,9 @@ const HOST: DiagramHost = {
   applyExternalWrite: (projectId, path, content) =>
     useFilesStore.getState().applyExternalWrite(projectId, path, content),
   saveActive: () => useFilesStore.getState().saveActive(),
-  refreshTree: () => useFilesStore.getState().refreshTree(),
+  refreshTree: async () => {
+    await useFilesStore.getState().refreshTree();
+  },
   createImageProject,
   createDiagramProject,
   refreshProjects: () => useFilesStore.getState().refreshProjects(),

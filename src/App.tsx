@@ -35,6 +35,7 @@ import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker"
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
+import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
   editorUndo,
@@ -1216,6 +1217,7 @@ export default function App() {
       <AutoCompileKeeper />
       <ProjectAvailabilityKeeper />
       <OpenFolderKeeper />
+      <FolderWatchKeeper />
       <AppContent />
     </>
   );

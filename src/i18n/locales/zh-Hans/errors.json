@@ -32,7 +32,9 @@
     "copy_size_limit": "此文件夹大于 2 GB，超出了 Oleafly 一次能复制的大小。",
     "copy_cancelled": "已取消复制。",
     "copy_needs_folder": "只有就地打开的文件夹才能复制到库。",
-    "not_removable": "只有就地打开的文件夹才能从 Oleafly 中移除。"
+    "not_removable": "只有就地打开的文件夹才能从 Oleafly 中移除。",
+    "trash_unavailable": "Oleafly 无法将 {{path}} 移到废纸篓或回收站。此驱动器可能没有。",
+    "linked_replace_folder": "{{path}} 是文件夹，因此 Oleafly 不会替换它。请先移动或重命名它。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"

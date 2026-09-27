@@ -32,7 +32,9 @@
     "copy_size_limit": "Tato složka je větší než 2 GB. To je víc, než Oleafly dokáže zkopírovat najednou.",
     "copy_cancelled": "Kopírování bylo zrušeno.",
     "copy_needs_folder": "Do knihovny lze zkopírovat jen složky otevřené na místě.",
-    "not_removable": "Z Oleafly lze odebrat jen složky otevřené na místě."
+    "not_removable": "Z Oleafly lze odebrat jen složky otevřené na místě.",
+    "trash_unavailable": "Oleafly nemohl přesunout {{path}} do koše. Tato jednotka ho možná nemá.",
+    "linked_replace_folder": "{{path}} je složka, proto ji Oleafly nenahradí. Nejdřív ji přesuňte nebo přejmenujte."
   },
   "settings": {
     "locale_unsupported": "Jazyk {{locale}} není k dispozici."

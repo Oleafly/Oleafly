@@ -27,6 +27,7 @@ mod checkpoint_publication;
 mod checkpoints;
 mod chunked;
 mod citation;
+mod cloud_files;
 mod commands;
 mod community;
 mod compile_fingerprint;
@@ -38,7 +39,9 @@ mod deadlines;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
+mod folder_listing;
 mod folder_status;
+mod folder_watch;
 mod fs_identity;
 mod fsperm;
 mod git;
@@ -61,6 +64,7 @@ mod menu;
 mod ollama;
 mod open_folder;
 mod open_request;
+mod os_trash;
 mod paths;
 mod proc;
 mod process_identity;
@@ -576,6 +580,10 @@ pub fn run() {
             synctex::synctex_inverse,
             synctex::synctex_map_line,
             project::list_files,
+            project::list_file_tree,
+            project::existing_project_files,
+            folder_watch::watch_project_folder,
+            folder_watch::unwatch_project_folder,
             project::read_file,
             project_sources::read_project_sources,
             document_stats::document_stats,

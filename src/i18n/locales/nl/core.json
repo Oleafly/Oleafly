@@ -46,7 +46,8 @@
     "projectChangedRetry": "Het project is tijdens het importeren van de citatie gewijzigd. Probeer het opnieuw in het oorspronkelijke project.",
     "readFailed": "Kon {{path}} niet lezen: {{detail}}",
     "unrecognizedFile": "Onbekend bestandstype: {{name}}",
-    "writeFailed": "Kon {{path}} niet schrijven: {{detail}}"
+    "writeFailed": "Kon {{path}} niet schrijven: {{detail}}",
+    "linkedBibliography": "{{path}} verwijst naar een bestand buiten deze map, dus Oleafly kan er niets aan toevoegen. Voeg de verwijzing toe in Zotero of waar dat bestand wordt beheerd."
   },
   "citeOleafly": {
     "added": "Het Oleafly-item is toegevoegd aan {{path}}. Citeer het met {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "\"{{path}}\" is buiten Oleafly gewijzigd. Laad het opnieuw, of sla nogmaals op om je eigen versie te houden.",
     "openFileEncoding": "\"{{path}}\" kan niet worden geopend omdat het geen UTF-8-tekstbestand is. Als het tekst is, sla het dan op als UTF-8 en open het opnieuw.",
     "openFileFailed": "Kan \"{{path}}\" niet openen. Zie het app-logboek voor details.",
-    "reloadFromDisk": "Opnieuw laden"
+    "reloadFromDisk": "Opnieuw laden",
+    "changedOnDiskElsewhere": "{{path}} is op schijf gewijzigd, dus Oleafly heeft het niet opgeslagen. Open het om te kiezen welke versie je houdt."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyse mislukt: {{message}}",

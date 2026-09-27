@@ -13,7 +13,7 @@ import { ChevronDown, ChevronUp, Columns2, GitCompare, Rows3 } from "lucide-reac
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { gitShow, readFileContent } from "@/lib/tauri";
-import { useDiffStore, activeDiff } from "@/store/diff";
+import { useDiffStore, activeDiff, diffKey } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,7 @@ export function DiffView() {
   useEffect(() => {
     const onChanged = () => {
       const current = activeDiff(useDiffStore.getState());
-      if (!current) return;
+      if (!current || current.side === "disk") return;
       if (current.side === "staged") {
         setReloadKey((k) => k + 1);
         return;
@@ -86,7 +86,7 @@ export function DiffView() {
       const activeProject = useFilesStore.getState().projectId;
       if (!activeProject) return;
       const baseline = baselineRef.current;
-      void gitShow(activeProject, diffSides(current.side).oldRev, current.path)
+      void gitShow(activeProject, "INDEX", current.path)
         .then((next) => {
           const still = activeDiff(useDiffStore.getState());
           if (still?.path !== current.path || still.side !== current.side) return;
@@ -132,7 +132,7 @@ export function DiffView() {
         if (!editable || cancelled) return;
         const files = useFilesStore.getState();
         if (!files.tree.some((entry) => entry.path === path && !entry.is_dir)) {
-          useDiffStore.getState().closeDiff(`working:${path}`);
+          useDiffStore.getState().closeDiff(diffKey({ path, side }));
           return;
         }
         const content = files.files[path]?.content ?? await readFileContent(projectId, path).catch((error) => {
@@ -157,7 +157,10 @@ export function DiffView() {
 
     const build = async () => {
       try {
-        const oldText = await gitShow(projectId, oldRev, path);
+        const oldText =
+          oldRev === "DISK"
+            ? await readFileContent(projectId, path)
+            : await gitShow(projectId, oldRev, path);
         baselineRef.current = oldText;
         const newText =
           newRev === "WORKTREE"
@@ -272,7 +275,9 @@ export function DiffView() {
         <span className="text-[11px] text-muted-foreground">
           {diff.side === "staged"
             ? t(($) => $.editor.diff.stagedHeading)
-            : t(($) => $.editor.diff.workingHeading)}
+            : diff.side === "disk"
+              ? t(($) => $.editor.diff.diskHeading)
+              : t(($) => $.editor.diff.workingHeading)}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button

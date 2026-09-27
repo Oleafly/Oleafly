@@ -171,7 +171,9 @@
     "binaryFile": "Binair bestand. Geen voorbeeld beschikbaar.",
     "managedFileReadOnly": "{{file}} wordt door Oleafly beheerd en is hier alleen-lezen. Projectinstellingen wijzig je via Oleafly zelf, niet door dit bestand te bewerken.",
     "noFileOpen": "Geen bestand geopend.",
-    "noFileOpenHint": "Kies een bestand uit de boom om te beginnen met bewerken."
+    "noFileOpenHint": "Kies een bestand uit de boom om te beginnen met bewerken.",
+    "linkedFileReadOnly": "{{file}} verwijst naar een bestand buiten deze map, dus je kunt het hier niet bewerken. Wijzig het waar het staat, bijvoorbeeld in Zotero.",
+    "diffOnDisk": "Op schijf"
   },
   "projectInfo": {
     "trigger": "Projectinfo",
@@ -330,7 +332,8 @@
     "splitView": "Gesplitste weergave",
     "unifiedView": "Gecombineerde weergave",
     "loading": "Diff laden…",
-    "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld."
+    "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld.",
+    "diskHeading": "Op schijf ↔ Jouw wijzigingen"
   },
   "hotkeys": {
     "title": "Sneltoetsen",
@@ -1028,5 +1031,13 @@
     "label": "Positie in het document",
     "goTo": "Naar {{title}}",
     "untitled": "Naamloos"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} is op schijf gewijzigd terwijl je niet-opgeslagen wijzigingen had.",
+    "compare": "Vergelijken",
+    "keepMine": "Mijn versie houden",
+    "reload": "Opnieuw laden",
+    "failed": "Oleafly kon {{file}} niet bijwerken. Probeer het opnieuw.",
+    "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je houdt."
   }
 }

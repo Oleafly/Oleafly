@@ -46,7 +46,8 @@
     "projectChangedRetry": "El proyecto cambió durante la importación de citas. Inténtalo de nuevo en el proyecto original.",
     "readFailed": "No se pudo leer {{path}}: {{detail}}",
     "unrecognizedFile": "Tipo de archivo no reconocido: {{name}}",
-    "writeFailed": "No se pudo escribir {{path}}: {{detail}}"
+    "writeFailed": "No se pudo escribir {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} enlaza con un archivo fuera de esta carpeta, así que Oleafly no puede añadirle nada. Añade la referencia en Zotero o donde se gestione ese archivo."
   },
   "citeOleafly": {
     "added": "Se añadió la entrada de Oleafly a {{path}}. Cítala con {{markup}}.",
@@ -383,7 +384,8 @@
     "changedOnDisk": "\"{{path}}\" se modificó fuera de Oleafly. Vuelve a cargarlo o guarda otra vez para conservar tu versión.",
     "openFileEncoding": "No se puede abrir \"{{path}}\" porque no es un archivo de texto UTF-8. Si es texto, guárdalo en UTF-8 y vuelve a abrirlo.",
     "openFileFailed": "No se pudo abrir \"{{path}}\". Consulta el registro de la aplicación para más detalles.",
-    "reloadFromDisk": "Volver a cargar"
+    "reloadFromDisk": "Volver a cargar",
+    "changedOnDiskElsewhere": "{{path}} cambió en el disco, así que Oleafly no lo guardó. Ábrelo para elegir qué versión conservar."
   },
   "projectDiagnostics": {
     "analysisFailed": "El análisis falló: {{message}}",

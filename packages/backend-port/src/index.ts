@@ -197,6 +197,7 @@ export interface ProjectSourcesResult {
     unchanged: string[];
     unreadable: ProjectSourcesUnreadable[];
     oversized?: string[];
+    placeholders?: string[];
     truncated: boolean;
 }
 export interface DocumentStatsCounts {
@@ -246,6 +247,14 @@ export interface RagChunk {
 export interface FileEntry {
     path: string;
     is_dir: boolean;
+    unreadable?: boolean;
+    placeholder?: boolean;
+    read_only?: boolean;
+    partial?: boolean;
+}
+export interface FileTreeListing {
+    entries: FileEntry[];
+    truncated: boolean;
 }
 export type CheckpointCaptureMode = "engine_dependencies" | (string & {});
 export interface CheckpointPolicy {
@@ -844,6 +853,10 @@ export interface BackendPort {
   loadProjectChats: (projectId: string) => Promise<string>;
   saveProjectChats: (projectId: string, json: string) => Promise<void>;
   listFiles: (projectId: string) => Promise<FileEntry[]>;
+  listFileTree: (projectId: string) => Promise<FileTreeListing>;
+  existingProjectFiles: (projectId: string, paths: string[]) => Promise<string[]>;
+  watchProjectFolder: (projectId: string) => Promise<number | null>;
+  unwatchProjectFolder: (projectId: string, token: number) => Promise<boolean>;
   readFileContent: (projectId: string, path: string) => Promise<string>;
   readProjectSourcesBatch: (projectId: string, request: ProjectSourcesRequest) => Promise<ProjectSourcesResult>;
   documentStats: (projectId: string, request: DocumentStatsRequest) => Promise<DocumentStatsResult>;
@@ -853,7 +866,7 @@ export interface BackendPort {
     path: string;
     generation: number;
 }>;
-  deleteFile: (projectId: string, path: string, expectedGeneration?: number) => Promise<FileMutationResult>;
+  deleteFile: (projectId: string, path: string, expectedGeneration?: number, permanent?: boolean) => Promise<FileMutationResult>;
   isFileConflictError: (error: unknown) => error is Error & FileConflictInfo;
   renameFile(projectId: string, from: string, to: string, conflictStrategy?: FileConflictStrategy, expectedGeneration?: number): Promise<string>;
   copyFile: (projectId: string, from: string, to: string, expectedGeneration?: number) => Promise<CopyFileResult>;

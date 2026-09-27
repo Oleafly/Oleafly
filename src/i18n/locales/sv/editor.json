@@ -171,7 +171,9 @@
     "binaryFile": "Binär fil. Ingen förhandsvisning är tillgänglig.",
     "managedFileReadOnly": "{{file}} hanteras av Oleafly och är skrivskyddad här. Projektinställningar ändras via Oleafly, inte genom att redigera den här filen.",
     "noFileOpen": "Ingen fil är öppen.",
-    "noFileOpenHint": "Välj en fil i trädet för att börja redigera."
+    "noFileOpenHint": "Välj en fil i trädet för att börja redigera.",
+    "linkedFileReadOnly": "{{file}} länkar till en fil utanför mappen, så du kan inte redigera den här. Ändra den där den finns, till exempel i Zotero.",
+    "diffOnDisk": "På disken"
   },
   "projectInfo": {
     "trigger": "Projektinfo",
@@ -330,7 +332,8 @@
     "splitView": "Delad vy",
     "unifiedView": "Sammanslagen vy",
     "loading": "Läser in jämförelsen…",
-    "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse."
+    "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse.",
+    "diskHeading": "På disken ↔ Dina ändringar"
   },
   "hotkeys": {
     "title": "Kortkommandon",
@@ -1028,5 +1031,13 @@
     "label": "Plats i dokumentet",
     "goTo": "Gå till {{title}}",
     "untitled": "Namnlöst"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} ändrades på disken medan du hade osparade ändringar.",
+    "compare": "Jämför",
+    "keepMine": "Behåll min",
+    "reload": "Läs in igen",
+    "failed": "Oleafly kunde inte uppdatera {{file}}. Försök igen.",
+    "tabMark": "Ändrad på disken. Öppna fliken för att välja vilken version du vill behålla."
   }
 }

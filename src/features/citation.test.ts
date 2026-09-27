@@ -130,6 +130,7 @@ beforeEach(() => {
   mocks.getEditorView.mockReturnValue({});
   mocks.setContent.mockImplementation((path: string, content: string) => {
     filesState.files[path] = { content };
+    return true;
   });
   filesState.projectId = "project-1";
   filesState.mainDoc = "paper.md";

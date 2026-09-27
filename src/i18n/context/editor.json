@@ -34,7 +34,8 @@
   },
   "shell": {
     "diffIndex": "Git index side of a diff tab, shown in parentheses after the file name",
-    "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name"
+    "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name",
+    "diffOnDisk": "Suffix on a comparison tab whose left side is the file as saved on disk"
   },
   "log": {
     "open": "Jumps to the source line of a compile error",
@@ -173,5 +174,11 @@
   },
   "projectInfo": {
     "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info"
+  },
+  "changedOnDisk": {
+    "keepMine": "Button that saves the user's unsaved version over the newer file on disk",
+    "reload": "Button that discards the unsaved edits and loads the newer file from disk",
+    "compare": "Button that opens a side-by-side comparison of the file on disk and the unsaved edits",
+    "tabMark": "Tooltip and screen reader label on an editor tab whose file changed on disk while it had unsaved edits"
   }
 }

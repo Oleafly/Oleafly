@@ -41,6 +41,7 @@ import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
+import { isReadOnlyLink } from "@/lib/project-paths";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -364,6 +365,7 @@ export function EditorToolbar({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
   const activePath = useFilesStore((s) => s.activePath);
+  const activeLinked = useFilesStore((s) => !!s.activePath && isReadOnlyLink(s.activePath, s.tree));
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
@@ -550,7 +552,7 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        {activePath?.toLowerCase().endsWith(".bib") && (
+        {activePath?.toLowerCase().endsWith(".bib") && !activeLinked && (
           <IconBtn
             onClick={() => void runCiteOleaflyAction({ path: activePath })}
             title={t(($) => $.editor.toolbar.citeOleafly)}

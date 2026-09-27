@@ -32,7 +32,9 @@
     "copy_size_limit": "Deze map is groter dan 2 GB. Dat is meer dan Oleafly in één keer kan kopiëren.",
     "copy_cancelled": "Het kopiëren is geannuleerd.",
     "copy_needs_folder": "Alleen mappen die ter plekke zijn geopend, kunnen naar de bibliotheek worden gekopieerd.",
-    "not_removable": "Alleen mappen die ter plekke zijn geopend, kunnen uit Oleafly worden verwijderd."
+    "not_removable": "Alleen mappen die ter plekke zijn geopend, kunnen uit Oleafly worden verwijderd.",
+    "trash_unavailable": "Oleafly kon {{path}} niet naar de Prullenmand of Prullenbak verplaatsen. Dit station heeft er misschien geen.",
+    "linked_replace_folder": "{{path}} is een map, dus Oleafly vervangt die niet. Verplaats of hernoem hem eerst."
   },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."

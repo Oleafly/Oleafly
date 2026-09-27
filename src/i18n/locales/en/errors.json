@@ -32,7 +32,9 @@
     "copy_size_limit": "This folder is larger than 2 GB. That's more than Oleafly can copy at once.",
     "copy_cancelled": "The copy was cancelled.",
     "copy_needs_folder": "Only folders opened in place can be copied into the library.",
-    "not_removable": "Only folders opened in place can be removed from Oleafly."
+    "not_removable": "Only folders opened in place can be removed from Oleafly.",
+    "trash_unavailable": "Oleafly couldn't move {{path}} to the Trash or Recycle Bin. The drive might not have one.",
+    "linked_replace_folder": "{{path}} is a folder, so Oleafly won't replace it. Move or rename it first."
   },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."

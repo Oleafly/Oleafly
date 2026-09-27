@@ -1,4 +1,5 @@
 import { bibliographyTargetForProject } from "@/features/citation";
+import { isReadOnlyLink } from "@/lib/project-paths";
 import { appVersion } from "@/lib/tauri";
 import { bibtexHasOleaflyEntry, OLEAFLY_CITATION_KEY, oleaflyBibtex } from "@/lib/cite-oleafly";
 import { notifyError, toast } from "@/lib/toast";
@@ -9,15 +10,20 @@ import { useFilesStore } from "@/store/files";
 export type CiteOleaflyOutcome =
   | { kind: "added"; path: string; undo: () => Promise<void> }
   | { kind: "present"; path: string }
+  | { kind: "read-only"; path: string }
   | { kind: "no-bibliography" }
   | { kind: "no-project" };
 
 let pendingRun: Promise<void> | null = null;
 
+function linkedBibliographyMessage(path: string): string {
+  return i18n.t(($) => $.core.citation.linkedBibliography, { path });
+}
+
 async function writeBibliography(projectId: string, path: string, content: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
-    files.setContent(path, content);
+    if (!files.setContent(path, content)) throw new Error(linkedBibliographyMessage(path));
     await useFilesStore.getState().saveFile(path);
     return;
   }
@@ -37,16 +43,20 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
   if (!projectId) return { kind: "no-project" };
   let path: string;
   let content: string;
+  let readOnly: boolean;
   if (options.path) {
     path = options.path;
     content = files.files[path]?.content ?? (await bibliographyTargetForProject())?.content ?? "";
+    readOnly = isReadOnlyLink(path, files.tree);
   } else {
     const target = await bibliographyTargetForProject();
     if (!target?.exists) return { kind: "no-bibliography" };
     path = target.path;
     content = target.content;
+    readOnly = target.readOnly;
   }
   if (bibtexHasOleaflyEntry(content)) return { kind: "present", path };
+  if (readOnly) return { kind: "read-only", path };
   const version = await appVersion().catch(() => "");
   const entry = oleaflyBibtex(version);
   const trimmed = content.trimEnd();
@@ -92,6 +102,9 @@ async function reportCiteOleafly(options: { path?: string }): Promise<void> {
             markup: citationMarkup(),
           }),
         );
+        return;
+      case "read-only":
+        toast.error(linkedBibliographyMessage(outcome.path));
         return;
       case "no-bibliography":
       case "no-project":

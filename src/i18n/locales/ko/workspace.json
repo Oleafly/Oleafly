@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination>이(가) 이미 있습니다. <suggestion>{{suggestion}}</suggestion>을(를) 써서 두 파일을 모두 유지하거나, 기존 대상 파일을 대체할 수 있습니다. 대체를 선택하지 않으면 Oleafly는 파일을 대체하지 않습니다.",
       "replace": "대체",
       "title": "이미 사용 중인 이름입니다",
-      "unchanged": "원본 경로와 대상 경로를 그대로 두었습니다."
+      "unchanged": "원본 경로와 대상 경로를 그대로 두었습니다.",
+      "renameFolderBody": "<destination>{{destination}}</destination>은(는) 이미 있는 폴더입니다. <suggestion>{{suggestion}}</suggestion>을(를) 써서 둘 다 유지하세요. 원래 위치에서 연 폴더에서는 Oleafly가 폴더 전체를 대체하지 않습니다."
     },
     "createFailed": "\"{{path}}\"을(를) 만들지 못했습니다.",
     "deleteFailed": "\"{{path}}\"을(를) 삭제하지 못했습니다.",
@@ -41,7 +42,16 @@
     "setMain": "주 문서로 지정",
     "title": "탐색기",
     "treeAriaLabel": "탐색기 파일 트리",
-    "setMainFailed": "\"{{path}}\"을(를) 주 문서로 지정하지 못했습니다."
+    "setMainFailed": "\"{{path}}\"을(를) 주 문서로 지정하지 못했습니다.",
+    "listingStopped": "처음 {{limit}}개 항목을 표시합니다. 이 폴더의 나머지는 목록에 없습니다.",
+    "unreadable": "접근 권한 없음",
+    "unreadableHint": "Oleafly에 이 항목을 열 권한이 없습니다.",
+    "confirmTrash": "{{path}}을(를) 휴지통으로 이동할까요?",
+    "confirmTrashWindows": "{{path}}을(를) 휴지통으로 이동할까요?",
+    "confirmPermanentDelete": "Oleafly가 {{path}}을(를) 휴지통으로 이동하지 못했습니다. 대신 영구적으로 삭제할까요? 되돌릴 수 없습니다.",
+    "confirmPermanentDeleteWindows": "Oleafly가 {{path}}을(를) 휴지통으로 이동하지 못했습니다. 대신 영구적으로 삭제할까요? 되돌릴 수 없습니다.",
+    "linkedReadOnly": "이 폴더 밖의 파일로 연결되어 있어 읽기 전용입니다.",
+    "partialFolder": "이 폴더의 일부 항목은 목록에 없습니다."
   },
   "explorer": {
     "resizeSections": "{{first}}와(과) {{second}} 크기 조절"

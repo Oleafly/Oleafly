@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { nextTabSeq } from "@/store/tab-order";
 
-export type DiffSide = "working" | "staged";
+export type DiffSide = "working" | "staged" | "disk";
 export type DiffMode = "split" | "unified";
 
 export interface OpenDiff {

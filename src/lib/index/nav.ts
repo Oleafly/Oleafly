@@ -3,6 +3,7 @@ import { formatList } from "@/lib/intl";
 import type { EditorView } from "@codemirror/view";
 import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
+import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useReferencesStore } from "@/store/references";
 import { useRenameStore } from "@/store/rename";
 import { useSettingsStore } from "@/store/settings";
@@ -281,8 +282,7 @@ async function writeRenamedFile(
   text: string,
 ): Promise<"edited" | "ignored" | "failed"> {
   if (files.files[file] !== undefined) {
-    files.setContent(file, text);
-    return "edited";
+    return files.setContent(file, text) ? "edited" : "failed";
   }
   if (!projectId) return "ignored";
   try {
@@ -324,6 +324,10 @@ export async function applyRename(
   let editedFiles = 0;
   let editedCount = 0;
   for (const [file, edits] of byFile) {
+    if (isReadOnlyProjectPath(file, files.manifestHome, files.tree)) {
+      unwritten.push(file);
+      continue;
+    }
     if (file === activePath) {
       // Edit the live editor so the view updates; CM wants ascending, non-overlapping changes.
       const asc = [...edits].sort((a, b) => a.from - b.from);

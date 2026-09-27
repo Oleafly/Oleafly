@@ -171,7 +171,9 @@
     "binaryFile": "Fișier binar. Nu există previzualizare.",
     "managedFileReadOnly": "{{file}} este gestionat de Oleafly și nu poate fi modificat aici. Setările proiectului se schimbă din Oleafly, nu prin editarea acestui fișier.",
     "noFileOpen": "Niciun fișier deschis.",
-    "noFileOpenHint": "Alege un fișier din arbore ca să începi să editezi."
+    "noFileOpenHint": "Alege un fișier din arbore ca să începi să editezi.",
+    "linkedFileReadOnly": "{{file}} trimite la un fișier din afara acestui folder, așa că nu îl poți edita aici. Modifică-l acolo unde se află, de exemplu în Zotero.",
+    "diffOnDisk": "Pe disc"
   },
   "projectInfo": {
     "trigger": "Informații despre proiect",
@@ -333,7 +335,8 @@
     "splitView": "Vizualizare alăturată",
     "unifiedView": "Vizualizare unificată",
     "loading": "Se încarcă comparația…",
-    "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație."
+    "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație.",
+    "diskHeading": "Pe disc ↔ Modificările tale"
   },
   "hotkeys": {
     "title": "Scurtături de tastatură",
@@ -1038,5 +1041,13 @@
     "label": "Poziția în document",
     "goTo": "Mergi la {{title}}",
     "untitled": "Fără titlu"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} s-a schimbat pe disc în timp ce aveai modificări nesalvate.",
+    "compare": "Compară",
+    "keepMine": "Păstrează versiunea mea",
+    "reload": "Reîncarcă",
+    "failed": "Oleafly nu a putut actualiza {{file}}. Încearcă din nou.",
+    "tabMark": "Schimbat pe disc. Deschide această filă ca să alegi ce versiune păstrezi."
   }
 }

@@ -46,7 +46,8 @@
     "projectChangedRetry": "Proje, atıf içe aktarma sırasında değişti. Özgün projede yeniden deneyin.",
     "readFailed": "{{path}} okunamadı: {{detail}}",
     "unrecognizedFile": "Tanınmayan dosya türü: {{name}}",
-    "writeFailed": "{{path}} yazılamadı: {{detail}}"
+    "writeFailed": "{{path}} yazılamadı: {{detail}}",
+    "linkedBibliography": "{{path}} bu klasörün dışındaki bir dosyaya bağlantı verir, bu yüzden Oleafly ona bir şey ekleyemez. Kaynağı Zotero'da veya dosyanın yönetildiği yerde ekleyin."
   },
   "citeOleafly": {
     "added": "Oleafly kaydı {{path}} dosyasına eklendi. {{markup}} ile atıf verin.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "\"{{path}}\" Oleafly dışında değiştirildi. Yeniden yükleyin ya da kendi sürümünüzü korumak için tekrar kaydedin.",
     "openFileEncoding": "\"{{path}}\" bir UTF-8 metin dosyası olmadığı için açılamıyor. Metin dosyasıysa UTF-8 olarak kaydedip yeniden açın.",
     "openFileFailed": "\"{{path}}\" açılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
-    "reloadFromDisk": "Yeniden yükle"
+    "reloadFromDisk": "Yeniden yükle",
+    "changedOnDiskElsewhere": "{{path}} diskte değişti, bu yüzden Oleafly onu kaydetmedi. Hangi sürümü tutacağınızı seçmek için dosyayı açın."
   },
   "projectDiagnostics": {
     "analysisFailed": "Çözümleme başarısız oldu: {{message}}",
