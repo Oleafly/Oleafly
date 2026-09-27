@@ -165,6 +165,27 @@ fn reject_pending_restore(project_id: &str) -> Result<(), String> {
 
 pub(crate) fn pending_restore_marker_exists(project_id: &str) -> Result<bool, String> {
     crate::paths::validate_project_id(project_id)?;
+    if let Some(state_dir) = crate::project_location::linked_state_dir(project_id)? {
+        let marker_dir = crate::project_location::private_state_dir(
+            crate::project_location::ProjectKind::Linked,
+            &state_dir,
+        );
+        return match std::fs::symlink_metadata(&marker_dir) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(format!(
+                "could not inspect project recovery directory: {error}"
+            )),
+            Ok(metadata) => {
+                validate_real_directory(&marker_dir, &metadata, "project recovery directory")?;
+                restore_marker_file_exists(&marker_dir)
+            }
+        };
+    }
+    library_restore_marker_exists(project_id)
+}
+
+fn library_restore_marker_exists(project_id: &str) -> Result<bool, String> {
+    crate::paths::validate_project_id(project_id)?;
     let projects = crate::paths::projects_root()?
         .canonicalize()
         .map_err(|error| format!("could not resolve projects directory: {error}"))?;
@@ -199,7 +220,10 @@ pub(crate) fn pending_restore_marker_exists(project_id: &str) -> Result<bool, St
     if internal.parent() != Some(project.as_path()) {
         return Err("project recovery directory escapes the project".into());
     }
+    restore_marker_file_exists(&internal)
+}
 
+fn restore_marker_file_exists(internal: &Path) -> Result<bool, String> {
     let marker = internal.join(RESTORE_PENDING_FILE);
     let metadata = match std::fs::symlink_metadata(&marker) {
         Ok(metadata) => metadata,
@@ -369,6 +393,97 @@ mod tests {
 
         drop(held);
         assert!(ProjectWorktreeLock::shared_bounded("paper", Duration::from_millis(150)).is_ok());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_restore_marker_is_kept_centrally_and_blocks_access_even_offline() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let marker_dir = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id)
+            .join("state");
+        fs::create_dir(&marker_dir).unwrap();
+        fs::write(marker_dir.join(super::RESTORE_PENDING_FILE), b"").unwrap();
+
+        assert!(ProjectWorktreeLock::shared(&record.id)
+            .unwrap_err()
+            .contains("recovery is pending"));
+        assert!(!folder.join(".oleafly").exists());
+        fs::remove_dir(&folder).unwrap();
+        assert!(super::pending_restore_marker_exists(&record.id).unwrap());
+        fs::remove_file(marker_dir.join(super::RESTORE_PENDING_FILE)).unwrap();
+        assert!(!super::pending_restore_marker_exists(&record.id).unwrap());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_project_reads_its_restore_marker_from_central_state_only() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir_all(folder.join(".oleafly")).unwrap();
+        fs::write(
+            folder.join(".oleafly").join(super::RESTORE_PENDING_FILE),
+            b"",
+        )
+        .unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+
+        assert!(!super::pending_restore_marker_exists(&record.id).unwrap());
+        drop(ProjectWorktreeLock::shared(&record.id).unwrap());
+
+        let recovery = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id)
+            .join("state");
+        fs::create_dir(&recovery).unwrap();
+        fs::write(recovery.join(super::RESTORE_PENDING_FILE), b"").unwrap();
+        fs::remove_dir_all(&folder).unwrap();
+
+        assert!(super::pending_restore_marker_exists(&record.id).unwrap());
+        assert!(ProjectWorktreeLock::shared(&record.id)
+            .unwrap_err()
+            .contains("recovery is pending"));
+        let recovery_lock =
+            ProjectWorktreeLock::exclusive_for_restore_recovery(&record.id).unwrap();
+        fs::remove_file(recovery.join(super::RESTORE_PENDING_FILE)).unwrap();
+        drop(recovery_lock);
+        drop(ProjectWorktreeLock::shared(&record.id).unwrap());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_restore_marker_directory_must_be_real() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        let outside = folders.path().join("outside");
+        fs::create_dir(&outside).unwrap();
+        fs::write(outside.join(super::RESTORE_PENDING_FILE), b"").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let state = crate::paths::existing_linked_root()
+            .unwrap()
+            .unwrap()
+            .join(&record.id);
+        std::os::unix::fs::symlink(&outside, state.join("state")).unwrap();
+
+        assert!(super::pending_restore_marker_exists(&record.id).is_err());
+        assert!(ProjectWorktreeLock::shared(&record.id).is_err());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

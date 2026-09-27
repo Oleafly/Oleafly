@@ -45,6 +45,7 @@ import {
 } from "@/lib/chat-activity";
 import { tokenizeComposer } from "@/lib/composer-tokens";
 import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
@@ -660,7 +661,7 @@ export function formatToolOutput(output: unknown): string {
     const record = output as Record<string, unknown>;
     if (typeof record.content === "string") return record.content;
     if (typeof record.error === "string") {
-      return i18n.t(($) => $.ai.chat.toolOutputError, { message: record.error });
+      return i18n.t(($) => $.ai.chat.toolOutputError, { message: describeError(record.error) });
     }
   }
   return JSON.stringify(output, null, 2) ?? String(output);

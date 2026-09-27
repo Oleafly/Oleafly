@@ -46,7 +46,8 @@
     "projectChangedRetry": "Proiectul s-a schimbat în timpul importului de citări. Încearcă din nou în proiectul original.",
     "readFailed": "Nu s-a putut citi {{path}}: {{detail}}",
     "unrecognizedFile": "Tip de fișier nerecunoscut: {{name}}",
-    "writeFailed": "Nu s-a putut scrie {{path}}: {{detail}}"
+    "writeFailed": "Nu s-a putut scrie {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} trimite la un fișier din afara acestui folder, așa că Oleafly nu poate adăuga nimic în el. Adaugă referința în Zotero sau acolo unde este gestionat fișierul."
   },
   "citeOleafly": {
     "added": "Intrarea Oleafly a fost adăugată în {{path}}. Citeaz-o cu {{markup}}.",
@@ -383,7 +384,8 @@
     "changedOnDisk": "„{{path}}” a fost modificat în afara Oleafly. Reîncarcă-l sau salvează din nou ca să păstrezi versiunea ta.",
     "openFileEncoding": "„{{path}}” nu poate fi deschis deoarece nu este un fișier text UTF-8. Dacă este text, salvează-l în UTF-8, apoi deschide-l din nou.",
     "openFileFailed": "„{{path}}” nu a putut fi deschis. Vezi jurnalul aplicației pentru detalii.",
-    "reloadFromDisk": "Reîncarcă"
+    "reloadFromDisk": "Reîncarcă",
+    "changedOnDiskElsewhere": "{{path}} s-a schimbat pe disc, așa că Oleafly nu l-a salvat. Deschide-l ca să alegi ce versiune păstrezi."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analiza a eșuat: {{message}}",
@@ -591,5 +593,9 @@
   "checkpoint": {
     "storageUnavailable": "Un punct de control nu a putut fi salvat. Discul este plin sau în folderul punctelor de control nu se poate scrie. Eliberează spațiu sau verifică permisiunile folderului, apoi compilează din nou.",
     "incompleteCapture": "Ultimele puncte de control nu au putut fi salvate, deoarece unele fișiere ale proiectului nu au putut fi citite. Verifică-le permisiunile, apoi compilează din nou."
+  },
+  "folderUnavailable": {
+    "compile": "Compilarea este în pauză până revine folderul proiectului.",
+    "saveReason": "folderul proiectului nu este disponibil"
   }
 }

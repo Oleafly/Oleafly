@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalPane } from "./TerminalPane";
 
@@ -271,6 +271,24 @@ describe("TerminalPane", () => {
         projectId: "project-1",
       });
     });
+  });
+
+  it("reports a started session once, and nothing when the shell cannot start", async () => {
+    const onStarted = vi.fn();
+    const view = render(<TerminalPane projectId="project-1" visible onStarted={onStarted} />);
+    await waitFor(() => expect(onStarted).toHaveBeenCalledTimes(1));
+    view.unmount();
+
+    const failed = vi.fn();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? Promise.reject(new Error("no shell")) : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible onStarted={failed} />);
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything()),
+    );
+    await act(async () => {});
+    expect(failed).not.toHaveBeenCalled();
   });
 
   it("focuses xterm after opening, connecting, becoming visible, and being clicked", async () => {
@@ -752,6 +770,57 @@ describe("TerminalPane", () => {
     });
     expect(mocks.terminals).toHaveLength(1);
     expect(mocks.terminals[0].focus).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet and waits for the user when a restricted folder refuses a background start", async () => {
+    let opens = 0;
+    mocks.invoke.mockImplementation((command: string, args?: { autostart?: boolean }) => {
+      if (command === "term_open") {
+        opens += 1;
+        return args?.autostart
+          ? Promise.reject('@oleafly/error:{"code":"trust.terminal","params":{},"detail":null}')
+          : Promise.resolve(`term-${opens}`);
+      }
+      return Promise.resolve(undefined);
+    });
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    await waitFor(() => expect(opens).toBe(1));
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "term_open",
+      expect.objectContaining({ autostart: true }),
+    );
+    await waitFor(() => expect(mocks.terminals[0].dispose).toHaveBeenCalled());
+    expect(mocks.terminals[0].write).not.toHaveBeenCalled();
+    expect(mocks.terminals[0].writeln).not.toHaveBeenCalled();
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+    await waitFor(() => expect(opens).toBe(2));
+    const opened = mocks.invoke.mock.calls.filter(([command]) => command === "term_open");
+    expect(opened[1][1]).toEqual(expect.objectContaining({ autostart: false }));
+  });
+
+  it("tries a background start again for the next project after a refusal", async () => {
+    let opens = 0;
+    mocks.invoke.mockImplementation(
+      (command: string, args?: { autostart?: boolean; projectId?: string }) => {
+        if (command === "term_open") {
+          opens += 1;
+          return args?.projectId === "restricted"
+            ? Promise.reject('@oleafly/error:{"code":"trust.terminal","params":{},"detail":null}')
+            : Promise.resolve(`term-${opens}`);
+        }
+        return Promise.resolve(undefined);
+      },
+    );
+    const view = render(<TerminalPane projectId="restricted" visible={false} />);
+    await waitFor(() => expect(mocks.terminals[0]?.dispose).toHaveBeenCalled());
+    view.rerender(<TerminalPane projectId="trusted" visible={false} />);
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenLastCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "trusted", autostart: true }),
+      ),
+    );
+    expect(opens).toBe(2);
   });
 
   it("keeps the dock test ids for the active pane only", async () => {

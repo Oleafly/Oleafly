@@ -67,6 +67,8 @@ for line in sys.stdin:
         if "--initialize-barrier" in sys.argv:
             write_pid(os.getpid())
             time.sleep(300)
+        if "--record-git-env" in sys.argv:
+            (declared_root / "git-env.json").write_text(json.dumps({key: value for key, value in os.environ.items() if key.startswith("GIT_CONFIG")}))
         mcp_capabilities = {} if "--no-http-mcp" in sys.argv else {"http": True}
         result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": {"loadSession": True, "promptCapabilities": {"image": True}, "mcpCapabilities": mcp_capabilities}, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
     elif method == "authenticate":

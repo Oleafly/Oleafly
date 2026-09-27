@@ -54,6 +54,8 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
+import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
+import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -90,6 +92,12 @@ import {
   isEnglishDictionaryLocale,
 } from "@/lib/proofreading/dictionary-catalog";
 import { formatDateTime, formatNumber } from "@/lib/intl";
+import {
+  decodeAppError,
+  PROJECT_LINKED_NOT_RECYCLABLE,
+  PROJECT_NOT_FOUND,
+} from "@/lib/app-error";
+import { isLibraryProject } from "@/lib/project-location";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -269,6 +277,7 @@ export function SettingsModal() {
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
+  const libraryProjects = projects.filter(isLibraryProject);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const githubStatus = useGithubStore((s) => s.status);
@@ -452,8 +461,14 @@ export function SettingsModal() {
           return;
         }
       }
-      for (const project of projects) {
-        await recycleProject(project.id);
+      for (const project of libraryProjects) {
+        try {
+          await recycleProject(project.id);
+        } catch (error) {
+          const code = decodeAppError(error)?.code;
+          if (code !== PROJECT_NOT_FOUND && code !== PROJECT_LINKED_NOT_RECYCLABLE) throw error;
+          continue;
+        }
         moved += 1;
       }
       await refreshProjects().catch((error: unknown) => {
@@ -762,6 +777,14 @@ export function SettingsModal() {
         </Tooltip>
       </div>
       {renderStorageSummary()}
+      {storageSummary && storageSummary.linked_folder_count > 0 ? (
+        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+          {t(($) => $.shell.settings.data.storage.linkedFolders, {
+            count: storageSummary.linked_folder_count,
+            size: formatBytes(storageSummary.linked_folders_bytes),
+          })}
+        </p>
+      ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
         <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
           {t(($) => $.shell.settings.data.storage.unreadable, {
@@ -903,7 +926,7 @@ export function SettingsModal() {
               variant="destructive"
               size="sm"
               className="shrink-0"
-              disabled={projects.length === 0 || deletingAllProjects}
+              disabled={libraryProjects.length === 0 || deletingAllProjects}
               onClick={() => setConfirmDeleteAllProjects(true)}
             >
               <Trash2 aria-hidden className="size-3.5" />
@@ -1182,6 +1205,7 @@ export function SettingsModal() {
             </div>
           )}
         </div>
+        <SystemIntegrationSection shellCommandRow={<ShellCommandRow />} />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}
@@ -1324,7 +1348,7 @@ export function SettingsModal() {
       <ConfirmationDialog
         open={confirmDeleteAllProjects}
         title={t(($) => $.shell.settings.data.danger.confirmDeleteAllTitle, {
-          count: projects.length,
+          count: libraryProjects.length,
         })}
         description={t(($) => $.shell.settings.data.danger.confirmDeleteAllDescription)}
         confirmLabel={t(($) => $.shell.settings.data.danger.confirmDeleteAllAction)}

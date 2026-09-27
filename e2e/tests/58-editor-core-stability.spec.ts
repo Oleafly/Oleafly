@@ -10,6 +10,7 @@ import {
   typeInEditorAfter,
   waitLong,
   writeProjectText,
+  type Page,
 } from "../helpers";
 import { buildLargeLatexBookProject } from "../../test/fixtures/editor-support/large-book";
 
@@ -1127,6 +1128,59 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   await expectFullAuthoringWorkspace(tauriPage);
 });
 
+interface ProofreadingSnapshot {
+  ready: boolean;
+  phase: string;
+  message: string | null;
+  locale: string | null;
+  providers: string[];
+  diagnostics: number;
+  identity: { projectId: string | null; path: string | null } | null;
+  editorProjectId: string | null;
+  harper: boolean;
+  spellcheck: boolean;
+  dictionaryLocale: string;
+}
+
+async function waitForBothProofreaders(page: Page, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let last: ProofreadingSnapshot | null = null;
+  while (Date.now() < deadline) {
+    last = await page.evaluate<ProofreadingSnapshot>(
+      `Promise.all([
+        import("/src/store/proofreading.ts"),
+        import("/src/store/settings.ts"),
+        import("/src/store/files.ts"),
+      ]).then(([proofreading, settings, files]) => {
+        const source = proofreading.useProofreadingStore.getState().source;
+        const providers = [...new Set(source.diagnostics.map((item) => item.source))].sort();
+        const preferences = settings.useSettingsStore.getState();
+        return {
+          ready: (source.phase === "ready" || source.phase === "partial")
+            && providers.includes("harper")
+            && providers.includes("hunspell")
+            && source.diagnostics.some((item) => item.word.toLowerCase() === "qwertzuiopz"),
+          phase: source.phase,
+          message: source.message ?? null,
+          locale: source.activeDictionaryLocale ?? null,
+          providers,
+          diagnostics: source.diagnostics.length,
+          identity: source.identity
+            ? { projectId: source.identity.projectId ?? null, path: source.identity.path ?? null }
+            : null,
+          editorProjectId: files.useFilesStore.getState().projectId ?? null,
+          harper: preferences.harper,
+          spellcheck: preferences.spellcheck,
+          dictionaryLocale: preferences.dictionaryLocale,
+        };
+      })`,
+    );
+    if (last.ready) return;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`grammar and spelling results never arrived: ${JSON.stringify(last)}`);
+}
+
 test("all core intelligence surfaces agree on one real project revision", async ({
   tauriPage,
 }) => {
@@ -1197,20 +1251,7 @@ The integrated preview renders a second page.
     })`,
     60_000,
   );
-  await waitLong(
-    tauriPage,
-    `import("/src/store/proofreading.ts").then(({ useProofreadingStore }) => {
-      const source = useProofreadingStore.getState().source;
-      const providers = new Set(source.diagnostics.map((item) => item.source));
-      return (source.phase === "ready" || source.phase === "partial")
-        && providers.has("harper")
-        && providers.has("hunspell")
-        && source.diagnostics.some(
-          (item) => item.word.toLowerCase() === "qwertzuiopz",
-        );
-    })`,
-    90_000,
-  );
+  await waitForBothProofreaders(tauriPage, 90_000);
   await setEditorCaretAfter(tauriPage, "a^2+b^2");
   await tauriPage.waitForFunction(
     `!!document.querySelector(".ofl-visual-math-tooltip .katex")`,

@@ -15,7 +15,11 @@
     "selectAll": "Seleziona tutto",
     "view": "Visualizza",
     "toggleTerminal": "Mostra o nascondi il terminale",
-    "toggleBrowser": "Mostra o nascondi il browser"
+    "toggleBrowser": "Mostra o nascondi il browser",
+    "file": "File",
+    "openFolder": "Apri cartella…",
+    "openRecent": "Apri recenti",
+    "noRecent": "Nessun progetto recente"
   },
   "window": {
     "browser": "Browser Oleafly",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Scegli un foglio di calcolo da importare",
       "filter": "Fogli di calcolo"
+    },
+    "trustFolder": {
+      "title": "Vuoi considerare affidabile questa cartella?",
+      "message": "Oleafly attiverà Git, il terminale, gli agenti e gli strumenti LaTeX per {{name}}. Considera affidabili solo le cartelle di cui conosci il contenuto.",
+      "messageParent": "Oleafly considererà affidabile {{name}} e ogni cartella al suo interno, comprese quelle che aprirai in seguito.",
+      "messageRepository": "Oleafly eseguirà Git in {{name}} con le impostazioni e gli hook del repository stesso.",
+      "confirm": "Considera affidabile"
+    },
+    "restrictedWrite": {
+      "title": "Vuoi consentire questa modifica?",
+      "message": "L'assistente vuole modificare {{path}}. File di questo tipo possono eseguire programmi e questa cartella non è ancora affidabile.",
+      "confirm": "Consenti"
+    },
+    "restrictedNetwork": {
+      "title": "Vuoi consentire questa richiesta?",
+      "message": "L'assistente vuole usare {{tool}}, che invia testo a un servizio online. Questa cartella non è ancora affidabile.",
+      "confirm": "Consenti"
+    },
+    "locateFolder": {
+      "title": "Trova la cartella del progetto"
+    },
+    "rebindFolder": {
+      "title": "Vuoi usare un'altra cartella?",
+      "message": "{{name}} non è la cartella che Oleafly aveva per questo progetto. Se la usi, Oleafly vi salva le modifiche non salvate e chiude i terminali e le sessioni degli agenti di questo progetto. Tutto ciò che è in esecuzione al loro interno si interrompe. Oleafly inoltre smette di considerarla affidabile, disattiva l'accesso completo, reimposta le approvazioni dell'assistente e scollega le cartelle di ricerca. Chat e cronologia vengono conservate.",
+      "confirm": "Usa questa cartella"
+    },
+    "saveCopy": {
+      "title": "Scegli dove salvare una copia",
+      "folderSuffix": "copia"
+    },
+    "openFolder": {
+      "title": "Apri una cartella",
+      "inside": "Scegli una cartella in {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "La conferma dell'accesso completo è stata ignorata.",
     "fullAccessDeclined": "L'accesso completo non è stato abilitato.",
     "approvalDialogClosed": "La finestra di approvazione nativa si è chiusa in modo imprevisto."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Apri in Oleafly",
+    "openWithOleafly": "Apri con Oleafly"
   }
 }

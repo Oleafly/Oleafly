@@ -8,22 +8,12 @@ import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { registerUpdateInstallGuard } from "@/lib/update-install-guard";
-import { useFilesStore } from "@/store/files";
-import { i18n } from "@/i18n";
-
-const QUIT_FLUSH_TIMEOUT_MS = 5_000;
-
-function flushForQuitWithDeadline(): Promise<void> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => {
-      reject(new Error(i18n.t(($) => $.shell.quitGuard.flushTimeout)));
-    }, QUIT_FLUSH_TIMEOUT_MS);
-  });
-  return Promise.race([useFilesStore.getState().flushForQuit(), deadline]).finally(() => {
-    if (timeout !== undefined) clearTimeout(timeout);
-  });
-}
+import {
+  answerQuitRequest,
+  claimQuitRequests,
+  flushForQuitWithDeadline,
+  QUIT_FLUSH_REQUESTED,
+} from "@/lib/quit-flush";
 
 /**
  * Transactional quit: the Rust side blocks window close, Cmd+Q, and Restart
@@ -36,7 +26,6 @@ function flushForQuitWithDeadline(): Promise<void> {
 export function QuitGuard() {
   const { t } = useTranslation(["shell"]);
   const [failure, setFailure] = useState<{ message: string; restart: boolean } | null>(null);
-  const flushing = useRef(false);
   const [installing, setInstalling] = useState(false);
   const installingRef = useRef(false);
   useEffect(() => {
@@ -55,31 +44,30 @@ export function QuitGuard() {
 
   useEffect(() => {
     if (!isTauri()) return;
+    const release = claimQuitRequests();
     let disposed = false;
     let unlisten: (() => void) | null = null;
-    void listen<boolean>("quit-flush-requested", (event) => {
+    void listen<boolean>(QUIT_FLUSH_REQUESTED, (event) => {
       const restart = event.payload === true;
-      // Repeated Cmd+Q while a flush runs must not start a second flush or
-      // stack dialogs; the running flush decides the outcome.
-      if (flushing.current || installingRef.current) return;
-      flushing.current = true;
-      flushForQuitWithDeadline()
-        .then(() => confirmQuitFlush(restart))
-        .catch((error: unknown) => {
-          setFailure({
-            message: error instanceof Error ? error.message : String(error),
-            restart,
-          });
-        })
-        .finally(() => {
-          flushing.current = false;
-        });
+      if (installingRef.current) return;
+      answerQuitRequest(() =>
+        flushForQuitWithDeadline()
+          .then(() => confirmQuitFlush(restart))
+          .catch(async (error: unknown) => {
+            setFailure({
+              message: error instanceof Error ? error.message : String(error),
+              restart,
+            });
+            await cancelQuitFlush().catch((cancelError) => logError("hold quit after failed save", cancelError));
+          }),
+      );
     }).then((stop) => {
       if (disposed) stop();
       else unlisten = stop;
     });
     return () => {
       disposed = true;
+      release();
       unlisten?.();
     };
   }, []);

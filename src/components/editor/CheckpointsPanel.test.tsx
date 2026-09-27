@@ -6,6 +6,7 @@ import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useToastStore } from "@/store/toast";
 
 const mocks = vi.hoisted(() => ({
   checkpointDelete: vi.fn(),
@@ -140,6 +141,7 @@ async function openAdvanced(user: ReturnType<typeof userEvent.setup>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.notifyError.mockReset();
   vi.spyOn(Date, "now").mockReturnValue(NOW);
   mocks.checkpointList.mockResolvedValue(checkpoints);
   mocks.checkpointStats.mockResolvedValue(stats);
@@ -946,6 +948,19 @@ describe("CheckpointsPanel failure reporting", () => {
     return user;
   }
 
+  async function showRealToasts() {
+    const actual = await vi.importActual<typeof import("@/lib/toast")>("@/lib/toast");
+    mocks.notifyError.mockImplementation(actual.notifyError);
+    useToastStore.getState().reset();
+  }
+
+  function errorToasts(): string[] {
+    return useToastStore
+      .getState()
+      .toasts.filter((item) => item.kind === "error")
+      .map((item) => item.message);
+  }
+
   it("reports a restore that failed and leaves the panel open", async () => {
     mocks.checkpointRestore.mockRejectedValue(new Error("pack is corrupt"));
     const user = await renderPanel();
@@ -962,6 +977,41 @@ describe("CheckpointsPanel failure reporting", () => {
     );
     expect(useSettingsStore.getState().versioningOpen).toBe(true);
     expect(mocks.applyProjectStateChanged).not.toHaveBeenCalled();
+  });
+
+  it("names the path that blocked a restore", async () => {
+    await showRealToasts();
+    mocks.checkpointRestore.mockRejectedValue(
+      '@oleafly/error:{"code":"checkpoint.restore_path_blocked","params":{"path":"figures/plot.png"}}',
+    );
+    const user = await renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Restore V2" }));
+    await user.click(screen.getByRole("button", { name: "Restore files" }));
+
+    await waitFor(() =>
+      expect(errorToasts()).toEqual([
+        "Oleafly can't restore figures/plot.png because a link or something else that isn't a file is in the way. Move it and try again.",
+      ]),
+    );
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+  });
+
+  it("explains a restore refused because the history belongs to a folder", async () => {
+    await showRealToasts();
+    mocks.checkpointRestore.mockRejectedValue(
+      '@oleafly/error:{"code":"checkpoint.folder_history_for_library","params":{}}',
+    );
+    const user = await renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Restore V2" }));
+    await user.click(screen.getByRole("button", { name: "Restore files" }));
+
+    await waitFor(() =>
+      expect(errorToasts()).toEqual([
+        "This checkpoint history comes from a folder you opened in place, so it can't be used with a project in your Oleafly library.",
+      ]),
+    );
   });
 
   it("reports a deletion that failed", async () => {
@@ -1056,6 +1106,27 @@ describe("CheckpointsPanel failure reporting", () => {
     expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
   });
 
+  it("explains an import refused because the archive belongs to a library project", async () => {
+    await showRealToasts();
+    mocks.pickOpenPath.mockResolvedValue("/tmp/incoming.oleafly-checkpoints");
+    mocks.checkpointImport.mockRejectedValue(
+      new Error('@oleafly/error:{"code":"checkpoint.library_history_for_folder","params":{}}'),
+    );
+    const user = await renderPanel();
+
+    await openAdvanced(user);
+    const password = await screen.findByLabelText("Archive password");
+    await user.type(password, "battery staple");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+
+    await waitFor(() =>
+      expect(errorToasts()).toEqual([
+        "This checkpoint history comes from a project in your Oleafly library, so it can't be used with a folder you opened in place.",
+      ]),
+    );
+    expect(password).toHaveValue("battery staple");
+  });
+
   it("retires the copied marker on its own", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -1099,5 +1170,107 @@ describe("CheckpointsPanel failure reporting", () => {
         "Couldn't copy that checkpoint id.",
       ),
     );
+  });
+});
+
+describe("CheckpointsPanel capture notices", () => {
+  const quiet = { links: 0, unsupported_names: 0, large: 0, cloud: 0, other: 0 };
+
+  it("says once that checkpoints are paused for a large folder", async () => {
+    mocks.checkpointStats.mockResolvedValue({
+      ...stats,
+      capture: {
+        paused: { files: 6200, bytes: 700_000_000, file_limit: 5000, byte_limit: 536_870_912 },
+        skipped: { ...quiet, links: 1 },
+      },
+    });
+    render(<CheckpointsPanel />);
+
+    expect(await screen.findByTestId("checkpoint-capture-notice")).toHaveTextContent(
+      "Checkpoints are paused because this folder is too big. A checkpoint can hold at most 5,000 files or 512 MB.",
+    );
+    expect(screen.getAllByTestId("checkpoint-capture-notice")).toHaveLength(1);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("counts the files checkpoints left out", async () => {
+    mocks.checkpointStats.mockResolvedValue({
+      ...stats,
+      capture: { paused: null, skipped: { ...quiet, links: 2, large: 1 } },
+    });
+    render(<CheckpointsPanel />);
+
+    expect(await screen.findByTestId("checkpoint-capture-notice")).toHaveTextContent(
+      "3 files in this folder aren't in checkpoints. Oleafly leaves out links, very large files, cloud-only files and names that don't work on every system.",
+    );
+  });
+
+  it("uses the singular for one file left out", async () => {
+    mocks.checkpointStats.mockResolvedValue({
+      ...stats,
+      capture: { paused: null, skipped: { ...quiet, cloud: 1 } },
+    });
+    render(<CheckpointsPanel />);
+
+    expect(await screen.findByTestId("checkpoint-capture-notice")).toHaveTextContent(
+      "1 file in this folder isn't in checkpoints.",
+    );
+  });
+
+  it("shows no notice for library projects", async () => {
+    render(<CheckpointsPanel />);
+
+    expect(await screen.findByTestId("checkpoint-timeline")).toBeInTheDocument();
+    expect(screen.queryByTestId("checkpoint-capture-notice")).toBeNull();
+  });
+
+  it("names the folder settings entry instead of its reserved path", async () => {
+    const user = userEvent.setup();
+    mocks.checkpointFiles.mockResolvedValue([
+      {
+        path: ".oleafly-manifest.json",
+        bytes: 90,
+        content_hash: "hash-settings",
+        stored: true,
+        folder_settings: true,
+      },
+      { path: "main.tex", bytes: 2048, content_hash: "hash-main", stored: true },
+    ]);
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+
+    const rows = await screen.findAllByTestId("checkpoint-file");
+    expect(rows.map((row) => row.getAttribute("data-path"))).toEqual([
+      ".oleafly-manifest.json",
+      "main.tex",
+    ]);
+    expect(within(rows[0]).getByText("Oleafly settings for this folder")).toBeInTheDocument();
+    expect(screen.queryByText(".oleafly-manifest.json")).toBeNull();
+    expect(within(rows[1]).getByText("main.tex")).toBeInTheDocument();
+  });
+
+  it("names the folder settings entry in the catalog file list too", async () => {
+    const user = userEvent.setup();
+    mocks.checkpointFiles.mockResolvedValue([
+      {
+        path: ".oleafly-manifest.json",
+        bytes: 90,
+        content_hash: "hash-settings",
+        stored: true,
+        folder_settings: true,
+      },
+    ]);
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+    await user.click(screen.getByRole("button", { name: "Show catalog files for V2" }));
+
+    expect(await screen.findByText("Oleafly settings for this folder")).toBeInTheDocument();
+    expect(screen.queryByText(".oleafly-manifest.json")).toBeNull();
   });
 });

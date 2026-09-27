@@ -168,6 +168,11 @@
     "recompile": {
       "label": "다시 컴파일"
     },
+    "saveSettingsToFolder": {
+      "keywords": "프로젝트 설정 저장 폴더 project.json 공유 주 문서",
+      "label": "프로젝트 설정을 이 폴더에 저장",
+      "saved": "프로젝트 설정을 이 폴더의 project.json에 저장했습니다."
+    },
     "section": {
       "label": "절"
     },
@@ -213,6 +218,10 @@
         "titleCase": "제목 표기 첫 글자 대문자 텍스트",
         "uppercase": "대문자 대소문자 텍스트"
       }
+    },
+    "openFolder": {
+      "label": "폴더 열기…",
+      "keywords": "열기 폴더 디렉터리 기존 로컬 파일 디스크"
     }
   },
   "community": {
@@ -259,6 +268,7 @@
     "texRootBroken": "{{file}}의 % !TEX root가 없는 파일을 가리킵니다({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}}의 % !TEX root가 LaTeX 파일이 아닌 {{target}}을(를) 가리킵니다",
     "texRootOverride": "root: {{path}}({{file}}의 % !TEX root로 지정됨)"
   },
   "datePicker": {
@@ -359,6 +369,25 @@
     },
     "title": "문제가 발생했습니다"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "이 폴더를 사용할 수 없습니다.",
+      "body": "드라이브를 다시 연결하거나 폴더를 찾으세요. 열린 파일은 여기에 그대로 있으며, 폴더를 다시 사용할 수 있을 때까지 Oleafly는 저장하거나 컴파일하지 않습니다."
+    },
+    "replaced": {
+      "title": "이 폴더가 교체되었습니다.",
+      "body": "그 자리에 이제 다른 폴더가 있습니다. 아무것도 덮어쓰지 않도록 Oleafly가 저장을 멈췄습니다."
+    },
+    "permissionDenied": {
+      "title": "Oleafly에서 이 폴더를 열 수 없습니다.",
+      "body": "폴더 권한을 확인한 뒤 다시 시도하세요. 열린 파일은 여기에 그대로 있습니다."
+    },
+    "locate": "위치 지정",
+    "useThisFolder": "이 폴더 사용",
+    "saveCopy": "사본 저장",
+    "tryAgain": "다시 시도",
+    "savedCopy": "열린 파일을 {{folder}}에 저장했습니다."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub 작업",
@@ -417,6 +446,68 @@
     },
     "tryCommand": "명령을 써 보세요",
     "unknownCommand": "알 수 없는 명령입니다. /를 입력하면 쓸 수 있는 명령을 볼 수 있습니다."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly가 어떤 문서를 컴파일할까요?",
+      "askDescription": "이 폴더에는 문서가 여러 개 있습니다. 주 문서를 고르세요. 나중에 바꿀 수 있습니다.",
+      "listLabel": "이 폴더의 문서",
+      "open": "열기",
+      "browse": "파일만 둘러보기",
+      "bestMatch": "가장 적합",
+      "empty": "Oleafly가 여기서 문서를 찾지 못했습니다. 파일 트리에서 파일을 오른쪽 클릭하고 주 문서로 지정을 선택하세요.",
+      "truncated": "폴더가 커서 Oleafly가 일찍 검색을 멈췄습니다. 목록에 없는 문서가 있을 수 있습니다.",
+      "openFailed": "{{path}}을(를) 주 문서로 지정하지 못했습니다."
+    },
+    "kind": {
+      "document": "문서",
+      "book": "책",
+      "presentation": "프레젠테이션",
+      "poster": "포스터",
+      "standalone": "독립 그림",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "기타"
+    },
+    "reason": {
+      "declared": "주 파일로 지정됨",
+      "top_level": "최상위 폴더에 있음",
+      "named_main": "이름이 main",
+      "named_after_folder": "폴더 이름과 같음",
+      "includes_files": "다른 파일을 포함",
+      "has_bibliography": "참고문헌 있음",
+      "no_begin_document": "\\begin{document} 없음",
+      "standalone_figure": "독립 그림",
+      "placeholder": "아직 다운로드되지 않음"
+    },
+    "noMain": "아직 주 문서가 없습니다. 파일을 고르고 주 문서로 지정을 선택하세요.",
+    "trust": {
+      "banner": "Oleafly가 이 폴더에서 일부 기능을 제한했습니다. 폴더를 신뢰하고 Git, 터미널, 에이전트, shell escape를 켤까요?",
+      "trustFolder": "이 폴더 신뢰",
+      "trustParent": "상위 폴더 신뢰",
+      "trustRepository": "저장소 신뢰",
+      "hide": "숨기기",
+      "terminal": "폴더를 신뢰하기 전까지 이 터미널에서는 Git 훅과 저장소 설정이 꺼져 있습니다.",
+      "terminalReopen": "이 터미널은 폴더를 신뢰하기 전에 시작되었습니다. Git 훅을 켜려면 터미널을 다시 여세요.",
+      "reopenTerminal": "터미널 다시 열기",
+      "failed": "이 폴더를 신뢰하지 못했습니다."
+    },
+    "readOnly": {
+      "banner": "이 폴더는 읽기 전용입니다. 컴파일은 할 수 있지만 변경 내용은 저장할 수 없습니다.",
+      "copy": "라이브러리로 복사",
+      "copied": "Oleafly가 이 폴더를 라이브러리로 복사했습니다. 지금은 사본을 편집하고 있습니다."
+    },
+    "sync": {
+      "syncsWith": "{{service}}와(과) 동기화됨",
+      "cloudStorage": "클라우드 서비스와 동기화됨",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google 드라이브",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "이 프로젝트의 파일 전체에서 검색합니다.",
@@ -531,6 +622,7 @@
         "calculating": "저장 공간 사용량을 계산하는 중…",
         "desktopOnly": "저장 공간 정보는 데스크톱 앱에서 볼 수 있습니다.",
         "error": "저장 공간 정보를 계산하지 못했습니다.",
+        "linkedFolders_other": "연 폴더 {{count}}개의 빌드 출력과 설정에 {{size}}",
         "refresh": "저장 공간 사용량 새로 고침",
         "stats": {
           "appData": "앱 데이터",
@@ -767,7 +859,8 @@
     "loadingCore": "Oleafly Core를 불러오는 중",
     "loadingHarness": "Oleafly Harness를 불러오는 중",
     "loadingParsers": "Oleafly Parsers를 불러오는 중",
-    "starting": "Oleafly를 시작하는 중"
+    "starting": "Oleafly를 시작하는 중",
+    "opening": "{{name}} 여는 중…"
   },
   "theme": {
     "dark": "어둡게",
@@ -901,5 +994,30 @@
   "windows": {
     "preview": "미리보기: {{title}}",
     "update": "Oleafly 업데이트"
+  },
+  "openFolder": {
+    "confirmTitle": "중지하고 {{name}}을(를) 열까요?",
+    "confirmCompile": "{{project}}이(가) 아직 컴파일 중입니다. {{name}}을(를) 열면 컴파일이 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmAssistant": "어시스턴트가 아직 {{project}}에서 작업 중입니다. {{name}}을(를) 열면 응답이 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmBoth": "{{project}}이(가) 아직 컴파일 중이고 어시스턴트도 작업 중입니다. {{name}}을(를) 열면 둘 다 중지됩니다. 변경 내용은 먼저 저장됩니다.",
+    "confirmAction": "중지하고 열기",
+    "chooseSubfolder": "하위 폴더 선택",
+    "refusedTitle": "{{name}}을(를) 열 수 없습니다",
+    "refused": "{{name}}을(를) 열 수 없습니다. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "시스템 설정에서 개인정보 보호 및 보안을 열고 파일 및 폴더에서 Oleafly를 켜세요. Oleafly가 목록에 없으면 전체 디스크 접근 권한에 추가한 뒤 다시 시도하세요.",
+      "windows": "폴더 속성의 보안 탭에서 계정에 이 폴더를 읽을 권한이 있는지 확인한 뒤 다시 시도하세요.",
+      "linux": "계정에 이 폴더를 읽을 권한이 있는지 확인한 뒤 다시 시도하세요."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Finder에서 폴더 열기",
+    "body": "Finder에 Oleafly에서 열기를 추가하세요. 서비스 메뉴에서는 바로 쓸 수 있고, 빠른 동작에서는 켜고 나면 쓸 수 있습니다.",
+    "add": "Finder에 추가",
+    "notNow": "나중에",
+    "added": "추가했습니다. 이제 Finder의 서비스 메뉴에서 사용할 수 있습니다. 빠른 동작에서도 사용하려면 폴더를 오른쪽 클릭하고 빠른 동작 › 사용자화에서 켜세요.",
+    "addedInQuickActions": "추가했습니다. 폴더를 오른쪽 클릭하면 빠른 동작에서 찾을 수 있습니다.",
+    "failed": "추가하지 못했습니다. 설정 › 일반에서 다시 시도할 수 있습니다."
   }
 }

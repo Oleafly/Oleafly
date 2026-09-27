@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> już istnieje. Zachowaj oba pliki, używając nazwy <suggestion>{{suggestion}}</suggestion>, albo zastąp istniejący plik docelowy. Oleafly nie zastąpi go bez wybrania opcji Zastąp.",
       "replace": "Zastąp",
       "title": "Ta nazwa jest już zajęta",
-      "unchanged": "Ścieżka źródłowa i docelowa pozostały bez zmian."
+      "unchanged": "Ścieżka źródłowa i docelowa pozostały bez zmian.",
+      "renameFolderBody": "<destination>{{destination}}</destination> to istniejący folder. Zachowaj oba, używając nazwy <suggestion>{{suggestion}}</suggestion>. W folderze otwartym w jego lokalizacji Oleafly nigdy nie zastępuje całego folderu."
     },
     "createFailed": "Nie udało się utworzyć \"{{path}}\".",
     "deleteFailed": "Nie udało się usunąć \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Ustaw jako dokument główny",
     "title": "Eksplorator",
     "treeAriaLabel": "Drzewo plików eksploratora",
-    "setMainFailed": "Nie udało się ustawić \"{{path}}\" jako dokumentu głównego."
+    "setMainFailed": "Nie udało się ustawić \"{{path}}\" jako dokumentu głównego.",
+    "listingStopped": "Wyświetlono pierwsze {{limit}} elementów. Reszta tego folderu nie jest wymieniona.",
+    "unreadable": "Brak dostępu",
+    "unreadableHint": "Oleafly nie ma uprawnień, aby to otworzyć.",
+    "confirmTrash": "Przenieść {{path}} do Kosza?",
+    "confirmTrashWindows": "Przenieść {{path}} do Kosza?",
+    "confirmPermanentDelete": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "confirmPermanentDeleteWindows": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "linkedReadOnly": "Wskazuje plik poza tym folderem, więc jest tylko do odczytu.",
+    "partialFolder": "Nie wszystkie elementy tego folderu są wymienione."
   },
   "explorer": {
     "resizeSections": "Zmień rozmiar sekcji {{first}} i {{second}}"

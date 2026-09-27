@@ -7,10 +7,13 @@ import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import type { TexFlavor } from "@/lib/tauri";
 import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
+import { mainDocumentMissing } from "@/lib/main-document";
+import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
 export interface PreviewWorkspaceSnapshot extends
@@ -19,12 +22,14 @@ export interface PreviewWorkspaceSnapshot extends
   Pick<FileState, "engine" | "engineLoaded" | "mainDoc"> {
   projectId: string;
   compileRevision: number;
+  noMainDocument: boolean;
+  systemTexLocked: boolean;
   previewState?: PreviewWindowState;
 }
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
-  | { action: "stop" | "ready" | "pdf-settings" | "refresh-files" | "ask-ai" }
+  | { action: "stop" | "ready" | "pdf-settings" | "refresh-files" | "ask-ai" | "trust-folder" }
   | { action: "auto-compile" | "syntax-check" | "stop-on-error"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
   | { action: "engine"; engine: string; flavor?: TexFlavor | null }
@@ -49,6 +54,8 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       compileTimeMs: compile.compileTimeMs, compileRevision: compile.lastCompileCheckpoint?.outputRevision ?? 0,
       autoCompile: compile.autoCompile, compileMode: compile.compileMode,
       checkSyntaxBeforeCompile: compile.checkSyntaxBeforeCompile, stopOnFirstError: compile.stopOnFirstError,
+      noMainDocument: mainDocumentMissing(files),
+      systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
@@ -85,6 +92,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           }
           break;
         case "refresh-files": await files.refreshTree(); break;
+        case "trust-folder": await useFolderAccessStore.getState().grant("folder"); break;
         case "pdf-settings": {
           useSettingsStore.getState().openSettingsAt("appearance", "pdf");
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
@@ -113,7 +121,9 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       if (payload.action !== "engine") return;
       toast.errorUnique(
         engineSwitchToastKey(projectId),
-        i18n.t(($) => $.shell.enginePicker.switchFailed),
+        decodeAppError(error)
+          ? describeError(error)
+          : i18n.t(($) => $.shell.enginePicker.switchFailed),
       );
     });
   });
@@ -126,7 +136,12 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
   // A fast preview can request its snapshot before the window-created event.
   const offDetached = usePreviewDetachedStore.subscribe(schedule);
   const offFiles = useFilesStore.subscribe((next, previous) => {
-    if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc) schedule();
+    if (next.engine !== previous.engine || next.engineLoaded !== previous.engineLoaded || next.mainDoc !== previous.mainDoc ||
+      mainDocumentMissing(next) !== mainDocumentMissing(previous)) schedule();
   });
-  return () => { offRequest(); offCompile(); offDetached(); offFiles(); clearTimeout(timer); };
+  const offAccess = useFolderAccessStore.subscribe((next, previous) => {
+    const projectId = useFilesStore.getState().projectId;
+    if (folderIsRestricted(next, projectId) !== folderIsRestricted(previous, projectId)) schedule();
+  });
+  return () => { offRequest(); offCompile(); offDetached(); offFiles(); offAccess(); clearTimeout(timer); };
 }

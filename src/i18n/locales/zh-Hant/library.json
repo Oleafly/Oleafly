@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly 應用程式圖示",
     "welcomeTitle": "歡迎使用 Oleafly",
     "welcomeDescription": "撰寫、編譯並校對 LaTeX、Typst 與 Markdown。管理引用、審閱 PDF、用 Git 追蹤修改，並搭配你選擇的 AI 模型。",
-    "createFirstProject": "建立新專案",
     "loading": "正在讀取你的專案庫…",
     "noBookmarksTitle": "尚無書籤",
     "noBookmarksDescription": "把游標移到書本上，點選書籤即可加入。",
@@ -67,8 +66,15 @@
       "anyTime": "不限時間",
       "last7Days": "過去 7 天",
       "last30Days": "過去 30 天",
-      "lastYear": "過去一年"
-    }
+      "lastYear": "過去一年",
+      "location": "位置",
+      "locationAll": "所有專案",
+      "locationLibrary": "Oleafly 中",
+      "locationExternal": "外部專案"
+    },
+    "openFolder": "開啟資料夾",
+    "openFolderShortcut": "開啟資料夾（{{shortcut}}）",
+    "createFirstProject": "建立新專案"
   },
   "projects": {
     "open": "開啟 {{name}}",
@@ -82,7 +88,7 @@
     "actions": "{{name}} 的動作",
     "details": "專案詳細資料",
     "exportHistory": "匯出記錄",
-    "changeColor": "變更專案顏色",
+    "changeColor": "專案顏色",
     "fork": "分支專案",
     "delete": "刪除專案",
     "favoriteAdd": "加入我的最愛",
@@ -94,7 +100,8 @@
     "kind": {
       "document": "文件",
       "image": "圖片",
-      "diagram": "圖表"
+      "diagram": "圖表",
+      "external": "外部"
     },
     "preview": {
       "title": "PDF 預覽：{{name}}",
@@ -364,7 +371,9 @@
     "nameRequired": "請輸入儲存庫名稱。",
     "published": "已發布到 {{repository}}。",
     "linked": "已連結並推送到 {{remote}}。",
-    "pushNeedsPull": "已連結到 {{remote}}，但推送前需要先拉取：{{detail}}"
+    "pushNeedsPull": "已連結到 {{remote}}，但推送前需要先拉取：{{detail}}",
+    "replaceRemotePrompt": "此專案目前連結的是 {{remote}}。要取代這個連結嗎？",
+    "replaceRemote": "取代連結"
   },
   "deadlines": {
     "title": "研討會截止日期",
@@ -449,6 +458,75 @@
       "sourcesTitle": "來源",
       "sourcesBody": "這些記錄結合了開放的 ccf-deadlines 資料集，以及 Oleafly 追蹤的官方研討會網站。",
       "confirm": "投稿前請到官方研討會網站確認每一個日期。"
+    }
+  },
+  "start": {
+    "newProjectTitle": "新增專案",
+    "newProjectDescription": "從範本或空白頁面開始。",
+    "openFolderTitle": "開啟資料夾",
+    "openFolderDescription": "處理電腦上已有的檔案。檔案會留在原本的位置。"
+  },
+  "openFolder": {
+    "dismiss": "關閉"
+  },
+  "folder": {
+    "state": {
+      "missing": "資料夾遺失",
+      "offline": "磁碟機未連接",
+      "replaced": "資料夾已被取代",
+      "permissionDenied": "沒有權限"
+    },
+    "menu": {
+      "showInFinder": "在 Finder 中顯示",
+      "showInExplorer": "在檔案總管中顯示",
+      "showInFileManager": "在檔案管理員中顯示",
+      "copyToLibrary": "複製到專案庫",
+      "remove": "從 Oleafly 移除"
+    },
+    "remove": {
+      "title": "要從 Oleafly 移除「{{name}}」嗎？",
+      "description": "你的檔案會留在原處。Oleafly 會刪除它為這個資料夾產生的建置檔案，並重設它的信任、核准與已連結資料夾。在 30 天內再次開啟這個資料夾，就能找回它的聊天與歷史記錄。其餘項目需要重新設定。",
+      "confirm": "從 Oleafly 移除",
+      "done": "已從 Oleafly 移除「{{name}}」。檔案仍在資料夾中。",
+      "failed": "無法從 Oleafly 移除「{{name}}」。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "找不到「{{name}}」",
+        "body": "它原本在 <path>{{path}}</path>，可能已被移動或刪除。重新定位它，就能保留它的聊天與歷史記錄。"
+      },
+      "offline": {
+        "title": "「{{name}}」位於未連接的磁碟機上",
+        "body": "請連接含有 <path>{{path}}</path> 的磁碟機或網路共用，然後再試一次。"
+      },
+      "replaced": {
+        "title": "「{{name}}」已被取代",
+        "body": "<path>{{path}}</path> 的資料夾不是你之前開啟的那一個。只有在信任它時才使用。切換後，Oleafly 會關閉信任與核准。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly 無法開啟「{{name}}」",
+        "bodyMac": "請在系統設定 › 隱私權與安全性 › 檔案與檔案夾中允許 Oleafly 使用這個資料夾，然後再試一次。",
+        "bodyOther": "你的帳戶無法讀取 <path>{{path}}</path>。請檢查資料夾的權限，然後再試一次。"
+      },
+      "back": {
+        "title": "「{{name}}」已恢復連線",
+        "body": "Oleafly 可以再次存取 <path>{{path}}</path>。"
+      },
+      "locate": "定位",
+      "tryAgain": "再試一次",
+      "useThisFolder": "使用這個資料夾",
+      "checking": "正在檢查",
+      "still": "Oleafly 仍然無法存取它。"
+    },
+    "copy": {
+      "title": "將「{{name}}」複製到你的專案庫",
+      "description": "Oleafly 會把檔案複製到專案庫的新專案，資料夾則留在原處。Git 歷史記錄會一併複製，但 Git 掛鉤與建置檔案不會。",
+      "counting": "正在計算檔案數量…",
+      "copying": "正在複製檔案…",
+      "count": "{{done}} / {{total}}",
+      "done": "「{{name}}」現在已在你的專案庫中。",
+      "doneLeftOut": "「{{name}}」現在已在你的專案庫中。指向其他位置檔案的連結，以及層級過深的資料夾都沒有複製。",
+      "failed": "無法將「{{name}}」複製到你的專案庫。"
     }
   }
 }

@@ -46,7 +46,8 @@
     "projectChangedRetry": "引用导入期间项目发生了更改。请在原项目中重试。",
     "readFailed": "无法读取 {{path}}：{{detail}}",
     "unrecognizedFile": "无法识别的文件类型：{{name}}",
-    "writeFailed": "无法写入 {{path}}：{{detail}}"
+    "writeFailed": "无法写入 {{path}}：{{detail}}",
+    "linkedBibliography": "{{path}} 链接到此文件夹之外的文件，因此 Oleafly 无法向其中添加内容。请在 Zotero 或管理该文件的地方添加这条文献。"
   },
   "citeOleafly": {
     "added": "已将 Oleafly 条目添加到 {{path}}。使用 {{markup}} 引用它。",
@@ -365,7 +366,8 @@
     "changedOnDisk": "“{{path}}”已在 Oleafly 之外被修改。请重新加载，或再次保存以保留你的版本。",
     "openFileEncoding": "无法打开“{{path}}”，因为它不是 UTF-8 文本文件。如果是文本文件，请以 UTF-8 保存后重新打开。",
     "openFileFailed": "无法打开“{{path}}”。详情请查看应用日志。",
-    "reloadFromDisk": "重新加载"
+    "reloadFromDisk": "重新加载",
+    "changedOnDiskElsewhere": "{{path}} 已在磁盘上更改，因此 Oleafly 没有保存它。请打开该文件，选择要保留的版本。"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失败：{{message}}",
@@ -559,5 +561,9 @@
   "checkpoint": {
     "storageUnavailable": "无法保存检查点。磁盘已满，或检查点文件夹无法写入。请释放一些空间或检查文件夹权限，然后重新编译。",
     "incompleteCapture": "由于部分项目文件无法读取，最近的几个检查点未能保存。请检查这些文件的权限，然后重新编译。"
+  },
+  "folderUnavailable": {
+    "compile": "编译已暂停，直到项目文件夹恢复。",
+    "saveReason": "项目文件夹不可用"
   }
 }

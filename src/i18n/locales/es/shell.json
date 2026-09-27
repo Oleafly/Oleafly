@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompilar"
     },
+    "saveSettingsToFolder": {
+      "keywords": "guardar configuración proyecto carpeta project.json compartir documento principal",
+      "label": "Guardar la configuración del proyecto en esta carpeta",
+      "saved": "La configuración del proyecto se guardó en project.json en esta carpeta."
+    },
     "section": {
       "label": "Sección"
     },
@@ -215,6 +220,10 @@
         "titleCase": "mayúscula inicial capitalizar texto title case capitalize",
         "uppercase": "mayúsculas texto uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Abrir carpeta…",
+      "keywords": "abrir carpeta directorio existente local archivos disco"
     }
   },
   "community": {
@@ -261,6 +270,7 @@
     "texRootBroken": "El % !TEX root de {{file}} apunta a un archivo que no existe ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "raíz: {{name}}",
+    "texRootNotTex": "El % !TEX root de {{file}} apunta a {{target}}, que no es un archivo LaTeX",
     "texRootOverride": "raíz: {{path}} (definida por % !TEX root en {{file}})"
   },
   "datePicker": {
@@ -363,6 +373,25 @@
     },
     "title": "Algo salió mal"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Esta carpeta no está disponible.",
+      "body": "Vuelve a conectar la unidad o busca la carpeta. Tus archivos abiertos siguen aquí, y Oleafly no guardará ni compilará hasta que la carpeta vuelva."
+    },
+    "replaced": {
+      "title": "Esta carpeta se ha reemplazado.",
+      "body": "Ahora hay otra carpeta en su lugar. Oleafly dejó de guardar para no sobrescribir nada allí."
+    },
+    "permissionDenied": {
+      "title": "Oleafly no puede abrir esta carpeta.",
+      "body": "Revisa los permisos de la carpeta y vuelve a intentarlo. Tus archivos abiertos siguen aquí."
+    },
+    "locate": "Localizar",
+    "useThisFolder": "Usar esta carpeta",
+    "saveCopy": "Guardar una copia",
+    "tryAgain": "Volver a intentarlo",
+    "savedCopy": "Tus archivos abiertos se guardaron en {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Acciones de GitHub",
@@ -421,6 +450,68 @@
     },
     "tryCommand": "Prueba un comando",
     "unknownCommand": "Comando desconocido. Escribe / para ver los comandos disponibles."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "¿Qué documento debe compilar Oleafly?",
+      "askDescription": "Esta carpeta tiene más de un documento. Elige el principal. Puedes cambiarlo más tarde.",
+      "listLabel": "Documentos de esta carpeta",
+      "open": "Abrir",
+      "browse": "Solo explorar archivos",
+      "bestMatch": "Mejor opción",
+      "empty": "Oleafly no encontró documentos aquí. Haz clic derecho en un archivo del árbol de archivos y elige Establecer como documento principal.",
+      "truncated": "Esta carpeta es grande, así que Oleafly dejó de buscar antes de tiempo. Puede que falten algunos documentos en la lista.",
+      "openFailed": "No se pudo establecer {{path}} como documento principal."
+    },
+    "kind": {
+      "document": "Documento",
+      "book": "Libro",
+      "presentation": "Presentación",
+      "poster": "Póster",
+      "standalone": "Figura independiente",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Otro"
+    },
+    "reason": {
+      "declared": "Marcado como archivo principal",
+      "top_level": "En la carpeta superior",
+      "named_main": "Se llama main",
+      "named_after_folder": "Lleva el nombre de su carpeta",
+      "includes_files": "Incluye otros archivos",
+      "has_bibliography": "Tiene bibliografía",
+      "no_begin_document": "Sin \\begin{document}",
+      "standalone_figure": "Figura independiente",
+      "placeholder": "Aún no descargado"
+    },
+    "noMain": "Todavía no hay documento principal. Elige un archivo y selecciona Establecer como documento principal.",
+    "trust": {
+      "banner": "Oleafly limitó algunas funciones en esta carpeta. ¿Confiar en ella para activar Git, el terminal, los agentes y el shell escape?",
+      "trustFolder": "Confiar en esta carpeta",
+      "trustParent": "Confiar en la carpeta superior",
+      "trustRepository": "Confiar en el repositorio",
+      "hide": "Ocultar",
+      "terminal": "Los hooks de Git y la configuración del repositorio están desactivados en este terminal hasta que confíes en la carpeta.",
+      "terminalReopen": "Este terminal se abrió antes de que confiaras en la carpeta. Vuelve a abrirlo para activar los hooks de Git.",
+      "reopenTerminal": "Volver a abrir el terminal",
+      "failed": "No se pudo confiar en esta carpeta."
+    },
+    "readOnly": {
+      "banner": "Esta carpeta es de solo lectura. Puedes compilar, pero los cambios no se pueden guardar.",
+      "copy": "Copiar a la biblioteca",
+      "copied": "Oleafly copió esta carpeta en tu biblioteca. Ahora estás editando la copia."
+    },
+    "sync": {
+      "syncsWith": "Se sincroniza con {{service}}",
+      "cloudStorage": "Se sincroniza con un servicio en la nube",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Busca en todos los archivos de este proyecto.",
@@ -553,6 +644,9 @@
         "calculating": "Calculando el uso de almacenamiento…",
         "desktopOnly": "Los detalles de almacenamiento están disponibles en la aplicación de escritorio.",
         "error": "No se pudieron calcular los detalles de almacenamiento.",
+        "linkedFolders_one": "{{size}} de resultados de compilación y ajustes para {{count}} carpeta abierta",
+        "linkedFolders_many": "{{size}} de resultados de compilación y ajustes para {{count}} carpetas abiertas",
+        "linkedFolders_other": "{{size}} de resultados de compilación y ajustes para {{count}} carpetas abiertas",
         "refresh": "Actualizar el uso de almacenamiento",
         "stats": {
           "appData": "Datos de la aplicación",
@@ -803,7 +897,8 @@
     "loadingCore": "Cargando Oleafly Core",
     "loadingHarness": "Cargando Oleafly Harness",
     "loadingParsers": "Cargando Oleafly Parsers",
-    "starting": "Arrancando Oleafly"
+    "starting": "Arrancando Oleafly",
+    "opening": "Abriendo {{name}}…"
   },
   "theme": {
     "dark": "Oscuro",
@@ -937,5 +1032,30 @@
   "windows": {
     "preview": "Vista previa: {{title}}",
     "update": "Actualización de Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "¿Detener y abrir {{name}}?",
+    "confirmCompile": "{{project}} todavía se está compilando. Abrir {{name}} detiene la compilación. Tus cambios se guardan antes.",
+    "confirmAssistant": "El asistente sigue trabajando en {{project}}. Abrir {{name}} detiene su respuesta. Tus cambios se guardan antes.",
+    "confirmBoth": "{{project}} todavía se está compilando y el asistente sigue trabajando. Abrir {{name}} detiene ambos. Tus cambios se guardan antes.",
+    "confirmAction": "Detener y abrir",
+    "chooseSubfolder": "Elegir una subcarpeta",
+    "refusedTitle": "No se pudo abrir {{name}}",
+    "refused": "No se pudo abrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "En Ajustes del Sistema, abre Privacidad y seguridad, luego Archivos y carpetas, y activa Oleafly. Si Oleafly no aparece, añádelo en Acceso total al disco y vuelve a intentarlo.",
+      "windows": "Revisa en la pestaña Seguridad de las Propiedades de la carpeta que tu cuenta pueda leerla y vuelve a intentarlo.",
+      "linux": "Comprueba que tu cuenta pueda leer esta carpeta y vuelve a intentarlo."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Abrir carpetas desde el Finder",
+    "body": "Añade Abrir en Oleafly al Finder. Funciona al instante desde el menú Servicios, y desde Acciones rápidas cuando la actives.",
+    "add": "Añadir al Finder",
+    "notNow": "Ahora no",
+    "added": "Listo. Ya está en el menú Servicios del Finder. Para usarla también desde Acciones rápidas, haz clic derecho en una carpeta y actívala en Acciones rápidas › Personalizar.",
+    "addedInQuickActions": "Listo. Haz clic derecho en una carpeta y la encontrarás en Acciones rápidas.",
+    "failed": "No se pudo añadir. Puedes volver a intentarlo en Ajustes › General."
   }
 }

@@ -51,17 +51,23 @@ pub async fn start_restricted(
     start_inner(app, project_id, Some(execution_root), Some(allowed_paths)).await
 }
 
+fn admit(project_id: &str) -> Result<PathBuf, String> {
+    crate::paths::validate_project_id(project_id)?;
+    crate::trust::require_trusted(project_id, crate::trust::Capability::McpExposure)?;
+    let project_root = crate::paths::project_dir(project_id)?;
+    if !project_root.is_dir() {
+        return Err("The research project is no longer available.".into());
+    }
+    Ok(project_root)
+}
+
 async fn start_inner(
     app: tauri::AppHandle,
     project_id: String,
     execution_root: Option<PathBuf>,
     allowed_paths: Option<Vec<String>>,
 ) -> Result<ScopedResearchMcp, String> {
-    crate::paths::validate_project_id(&project_id)?;
-    let project_root = crate::paths::project_dir(&project_id)?;
-    if !project_root.is_dir() {
-        return Err("The research project is no longer available.".into());
-    }
+    let project_root = admit(&project_id)?;
     let root = execution_root.unwrap_or(project_root);
     let files = files::FileScope::open(&root, allowed_paths)?;
     let linked_roots = match crate::research_workspace::get_research_workspace(project_id.clone()) {

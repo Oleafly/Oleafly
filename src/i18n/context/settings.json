@@ -357,6 +357,21 @@
     "description": "Sentence under the heading. {{sectionName}} is the name of the settings section, for example Appearance.",
     "label": "Heading of the row that resets one settings section."
   },
+  "shellCommand": {
+    "afterSignIn": "Linux only. Shown when the folder reaches PATH only after the user signs out of the desktop session and signs back in. PATH is the environment variable name. Keep it verbatim.",
+    "description": "The text inside <code> is a literal command. Keep oleafly and the dot exactly as written.",
+    "notOnPath": {
+      "file": "{{file}} is a shell startup file such as ~/.zshrc. PATH is the environment variable name. Keep it verbatim.",
+      "run": "Shown to fish users, who run a one-line command instead of editing a file. PATH is the environment variable name."
+    },
+    "state": {
+      "moveApp": "macOS runs apps opened straight from Downloads or a disk image from a temporary place. Use the Finder name of the Applications folder in your language.",
+      "notInstalled": "oleafly is the command name. Keep it lowercase and untranslated.",
+      "occupied": "Another program already has a file named oleafly at this path. Oleafly never replaces it.",
+      "packaged": "Linux .deb and .rpm installs. The package itself put the oleafly command at {{path}}, usually /usr/bin/oleafly, so there is nothing to install."
+    },
+    "title": "Settings row that puts an oleafly command on the user's PATH so a terminal can open folders in the app"
+  },
   "shortcuts": {
     "application": {
       "recording": "Label on the key box while the app waits for the user to press a key combination."
@@ -382,6 +397,13 @@
     },
     "tabs": {
       "application": "Tab label for shortcuts the user can rebind, as opposed to editor shortcuts."
+    }
+  },
+  "systemIntegration": {
+    "quickAction": {
+      "label": "Title of the macOS row that adds Open in Oleafly to Finder's right-click menus. Finder has no singular term for one Quick Action, so use the plural name of Finder's Quick Actions menu exactly as macOS shows it in your language.",
+      "description": "Always shown under the Finder Quick Actions row. It names only the Services menu, where a new Quick Action works right away. Leave out Quick Actions and Customize here. A separate hint explains that step when it is needed. Use the name macOS shows for the Services menu in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
+      "menuHint": "Shown under the Finder Quick Actions row while it is installed but still off in the Quick Actions menu. {{title}} is the menu title of the installed Quick Action, which stays in the language Oleafly used when it was installed. Use the exact names Finder shows in your language, without the trailing ellipsis Finder puts after Customize. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it."
     }
   }
 }

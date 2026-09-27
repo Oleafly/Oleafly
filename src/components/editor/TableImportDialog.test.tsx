@@ -2,11 +2,15 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { useFolderAccessStore } from "@/store/folder-access";
 import { useTableImportStore } from "@/store/table-import";
 
 interface FilesState {
   projectId: string;
   activePath: string;
+  manifestHome: string;
+  tree: { path: string; is_dir: boolean }[];
   engine: { id: string };
 }
 const mocks = vi.hoisted(() => ({
@@ -38,7 +42,13 @@ async function choose() {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.files = { projectId: "paper", activePath: "main.tex", engine: { id: "latex" } };
+  mocks.files = {
+    projectId: "paper",
+    activePath: "main.tex",
+    manifestHome: "folder",
+    tree: [{ path: "main.tex", is_dir: false }],
+    engine: { id: "latex" },
+  };
   mocks.pick.mockResolvedValue("/tmp/results.csv");
   mocks.read.mockResolvedValue([["Method", "Score"], ["A&B", "50%"]]);
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
@@ -82,6 +92,21 @@ describe("TableImportDialog", () => {
     expect(mocks.insert).toHaveBeenCalledWith(`\n${source}\n`);
     expect(useTableImportStore.getState().open).toBe(false);
     expect(mocks.success).toHaveBeenLastCalledWith(expect.stringContaining("booktabs"));
+  });
+
+  it("keeps the table out of a read-only folder and says why", async () => {
+    useFolderAccessStore.setState({ projectId: "paper", status: { read_only: true, synced_with: null } });
+    try {
+      render(<TableImportDialog />);
+      await choose();
+      fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+      expect(screen.getByRole("alert")).toHaveTextContent(enShell.openedFolder.readOnly.banner);
+      expect(mocks.insert).not.toHaveBeenCalled();
+      expect(mocks.success).not.toHaveBeenCalled();
+      expect(useTableImportStore.getState().open).toBe(true);
+    } finally {
+      useFolderAccessStore.getState().reset(null);
+    }
   });
 
   it("blocks unsafe labels and accepts an omitted label after correction", async () => {

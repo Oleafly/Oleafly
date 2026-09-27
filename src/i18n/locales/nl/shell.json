@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Opnieuw compileren"
     },
+    "saveSettingsToFolder": {
+      "keywords": "projectinstellingen opslaan map project.json delen hoofddocument engine",
+      "label": "Projectinstellingen in deze map opslaan",
+      "saved": "De projectinstellingen zijn opgeslagen in project.json in deze map."
+    },
     "section": {
       "label": "Sectie"
     },
@@ -214,6 +219,10 @@
         "titleCase": "beginhoofdletters hoofdlettergebruik tekst",
         "uppercase": "hoofdletters hoofdlettergebruik tekst"
       }
+    },
+    "openFolder": {
+      "label": "Map openen…",
+      "keywords": "openen map directory bestaand lokaal bestanden schijf"
     }
   },
   "community": {
@@ -260,6 +269,7 @@
     "texRootBroken": "% !TEX root in {{file}} wijst naar een ontbrekend bestand ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root in {{file}} wijst naar {{target}}, dat geen LaTeX-bestand is",
     "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})"
   },
   "datePicker": {
@@ -361,6 +371,25 @@
     },
     "title": "Er is iets misgegaan"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Deze map is niet beschikbaar.",
+      "body": "Sluit de schijf opnieuw aan of zoek de map. Je geopende bestanden blijven hier, en Oleafly slaat niets op en compileert niet totdat de map terug is."
+    },
+    "replaced": {
+      "title": "Deze map is vervangen.",
+      "body": "Er staat nu een andere map op die plek. Oleafly is gestopt met opslaan, zodat daar niets wordt overschreven."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan deze map niet openen.",
+      "body": "Controleer de rechten van de map en probeer het opnieuw. Je geopende bestanden blijven hier."
+    },
+    "locate": "Zoeken",
+    "useThisFolder": "Deze map gebruiken",
+    "saveCopy": "Kopie opslaan",
+    "tryAgain": "Opnieuw proberen",
+    "savedCopy": "Je geopende bestanden zijn opgeslagen in {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-acties",
@@ -419,6 +448,68 @@
     },
     "tryCommand": "Probeer een opdracht",
     "unknownCommand": "Onbekende opdracht. Typ / om de beschikbare opdrachten te zien."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Welk document moet Oleafly compileren?",
+      "askDescription": "Deze map bevat meer dan één document. Kies het hoofddocument. Je kunt het later wijzigen.",
+      "listLabel": "Documenten in deze map",
+      "open": "Openen",
+      "browse": "Alleen bestanden bekijken",
+      "bestMatch": "Beste keuze",
+      "empty": "Oleafly heeft hier geen documenten gevonden. Klik met de rechtermuisknop op een bestand in de bestandsboom en kies Instellen als hoofddocument.",
+      "truncated": "Deze map is groot, dus Oleafly is eerder gestopt met zoeken. Sommige documenten staan misschien niet in de lijst.",
+      "openFailed": "Kan {{path}} niet instellen als hoofddocument."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Boek",
+      "presentation": "Presentatie",
+      "poster": "Poster",
+      "standalone": "Losse figuur",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Overig"
+    },
+    "reason": {
+      "declared": "Aangewezen als hoofdbestand",
+      "top_level": "In de bovenste map",
+      "named_main": "Heet main",
+      "named_after_folder": "Vernoemd naar de map",
+      "includes_files": "Voegt andere bestanden in",
+      "has_bibliography": "Heeft een bibliografie",
+      "no_begin_document": "Geen \\begin{document}",
+      "standalone_figure": "Losse figuur",
+      "placeholder": "Nog niet gedownload"
+    },
+    "noMain": "Nog geen hoofddocument. Kies een bestand en daarna Instellen als hoofddocument.",
+    "trust": {
+      "banner": "Oleafly heeft sommige functies in deze map beperkt. De map vertrouwen om Git, de terminal, agents en shell escape aan te zetten?",
+      "trustFolder": "Deze map vertrouwen",
+      "trustParent": "De bovenliggende map vertrouwen",
+      "trustRepository": "De repository vertrouwen",
+      "hide": "Verbergen",
+      "terminal": "Git-hooks en repository-instellingen staan in deze terminal uit totdat je de map vertrouwt.",
+      "terminalReopen": "Deze terminal is gestart voordat je de map vertrouwde. Open hem opnieuw om Git-hooks aan te zetten.",
+      "reopenTerminal": "Terminal opnieuw openen",
+      "failed": "Kan deze map niet vertrouwen."
+    },
+    "readOnly": {
+      "banner": "Deze map is alleen-lezen. Je kunt compileren, maar wijzigingen kunnen niet worden opgeslagen.",
+      "copy": "Kopiëren naar bibliotheek",
+      "copied": "Oleafly heeft deze map naar je bibliotheek gekopieerd. Je bewerkt nu de kopie."
+    },
+    "sync": {
+      "syncsWith": "Synchroniseert met {{service}}",
+      "cloudStorage": "Synchroniseert met een clouddienst",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Doorzoek de bestanden van dit project.",
@@ -542,6 +633,8 @@
         "calculating": "Opslaggebruik berekenen…",
         "desktopOnly": "Opslagdetails zijn beschikbaar in de desktop-app.",
         "error": "De opslagdetails konden niet worden berekend.",
+        "linkedFolders_one": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende map",
+        "linkedFolders_other": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende mappen",
         "refresh": "Opslaggebruik vernieuwen",
         "stats": {
           "appData": "App-gegevens",
@@ -785,7 +878,8 @@
     "loadingCore": "Oleafly Core laden",
     "loadingHarness": "Oleafly Harness laden",
     "loadingParsers": "Oleafly Parsers laden",
-    "starting": "Oleafly starten"
+    "starting": "Oleafly starten",
+    "opening": "{{name}} openen…"
   },
   "theme": {
     "dark": "Donker",
@@ -919,5 +1013,30 @@
   "windows": {
     "preview": "Voorbeeld: {{title}}",
     "update": "Oleafly-update"
+  },
+  "openFolder": {
+    "confirmTitle": "Stoppen en {{name}} openen?",
+    "confirmCompile": "{{project}} wordt nog gecompileerd. Als je {{name}} opent, stopt het compileren. Je wijzigingen worden eerst opgeslagen.",
+    "confirmAssistant": "De assistent is nog bezig in {{project}}. Als je {{name}} opent, stopt het antwoord. Je wijzigingen worden eerst opgeslagen.",
+    "confirmBoth": "{{project}} wordt nog gecompileerd en de assistent is nog bezig. Als je {{name}} opent, stoppen ze allebei. Je wijzigingen worden eerst opgeslagen.",
+    "confirmAction": "Stoppen en openen",
+    "chooseSubfolder": "Kies een submap",
+    "refusedTitle": "Kan {{name}} niet openen",
+    "refused": "Kan {{name}} niet openen. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Open in Systeeminstellingen Privacy en beveiliging en daarna Bestanden en mappen, en zet Oleafly aan. Staat Oleafly er niet bij, voeg het dan toe onder Volledige schijftoegang en probeer het opnieuw.",
+      "windows": "Controleer op het tabblad Beveiliging in de Eigenschappen van de map of je account de map kan lezen, en probeer het opnieuw.",
+      "linux": "Controleer of je account deze map kan lezen, en probeer het opnieuw."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Mappen openen vanuit Finder",
+    "body": "Voeg Openen in Oleafly toe aan Finder. Hij werkt meteen via het menu Voorzieningen, en via Snelle taken zodra je hem inschakelt.",
+    "add": "Toevoegen aan Finder",
+    "notNow": "Niet nu",
+    "added": "Toegevoegd. Hij staat nu in het menu Voorzieningen in Finder. Wil je hem ook via Snelle taken gebruiken, klik dan met de rechtermuisknop op een map en schakel hem in bij Snelle taken › Pas aan.",
+    "addedInQuickActions": "Toegevoegd. Klik met de rechtermuisknop op een map, dan vind je hem onder Snelle taken.",
+    "failed": "Toevoegen is mislukt. Je kunt het opnieuw proberen via Instellingen › Algemeen."
   }
 }

@@ -14,7 +14,7 @@ const bridge = vi.hoisted(() => ({
 const store = vi.hoisted(() => ({
   state: {
     projectId: null as string | null,
-    tree: [] as { path: string; is_dir: boolean }[],
+    tree: [] as { path: string; is_dir: boolean; placeholder?: boolean }[],
     files: {} as Record<string, { content: string; dirty: boolean }>,
   },
 }));
@@ -299,6 +299,17 @@ describe("retrieveProjectChunks", () => {
     const result = await retrieveProjectChunks("needle", { topK: 4 });
     expect(result.map((c) => c.path)).toEqual(["main.tex"]);
     expect(bridge.readFileContent).toHaveBeenCalledTimes(2);
+  });
+
+  it("never reads a cloud placeholder on the fallback path", async () => {
+    openProject();
+    store.state.tree = [
+      ...store.state.tree,
+      { path: "evicted.tex", is_dir: false, placeholder: true },
+    ];
+    bridge.readFileContent.mockImplementation(async () => "needle here");
+    await retrieveProjectChunks("needle", { topK: 4 });
+    expect(bridge.readFileContent.mock.calls.map((call) => call[1])).not.toContain("evicted.tex");
   });
 
   it("skips a file that cannot be read on the fallback path", async () => {

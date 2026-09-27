@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const target = vi.fn();
 vi.mock("@/features/citation", () => ({ bibliographyTargetForProject: () => target() }));
 vi.mock("@/lib/tauri", () => ({ appVersion: async () => "0.4.0" }));
-const toasts = { success: vi.fn(), info: vi.fn() };
+const toasts = { success: vi.fn(), info: vi.fn(), error: vi.fn() };
 vi.mock("@/lib/toast", () => ({
-  toast: { success: (...args: unknown[]) => toasts.success(...args), info: (...args: unknown[]) => toasts.info(...args) },
+  toast: {
+    success: (...args: unknown[]) => toasts.success(...args),
+    info: (...args: unknown[]) => toasts.info(...args),
+    error: (...args: unknown[]) => toasts.error(...args),
+  },
   notifyError: vi.fn(),
 }));
 
@@ -13,9 +17,11 @@ import { citeOleafly, runCiteOleaflyAction } from "./cite-oleafly";
 import { oleaflyBibtex } from "@/lib/cite-oleafly";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
+import { useFolderAccessStore } from "@/store/folder-access";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const writeProjectFile = vi.fn(async () => {});
-const setContent = vi.fn();
+const setContent = vi.fn((_path: string, _content: string) => true);
 const saveFile = vi.fn(async () => {});
 
 beforeEach(() => {
@@ -24,6 +30,7 @@ beforeEach(() => {
   useFilesStore.setState({
     projectId: "paper",
     files: {},
+    tree: [],
     writeProjectFile,
     setContent,
     saveFile,
@@ -68,6 +75,70 @@ describe("citeOleafly", () => {
     await outcome.undo();
     expect(setContent).toHaveBeenLastCalledWith("extra.bib", "");
     expect(saveFile).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("citeOleafly and a bibliography linked from outside the folder", () => {
+  const LINKED_TREE = [{ path: "refs.bib", is_dir: false, read_only: true }];
+
+  it("leaves the project's linked bibliography alone", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "", readOnly: true });
+    expect(await citeOleafly()).toEqual({ kind: "read-only", path: "refs.bib" });
+    expect(writeProjectFile).not.toHaveBeenCalled();
+    expect(setContent).not.toHaveBeenCalled();
+  });
+
+  it("leaves the open linked bibliography the toolbar names alone", async () => {
+    useFilesStore.setState({ files: { "refs.bib": { content: "" } }, tree: LINKED_TREE } as never);
+    expect(await citeOleafly({ path: "refs.bib" })).toEqual({ kind: "read-only", path: "refs.bib" });
+    expect(setContent).not.toHaveBeenCalled();
+    expect(saveFile).not.toHaveBeenCalled();
+  });
+
+  it("still reports an entry the linked bibliography already has", async () => {
+    target.mockResolvedValue({
+      path: "refs.bib",
+      exists: true,
+      content: "@software{oleafly,\n title={x}}",
+      readOnly: true,
+    });
+    expect((await citeOleafly()).kind).toBe("present");
+  });
+
+  it("says where to add the entry instead", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "", readOnly: true });
+    await runCiteOleaflyAction();
+    expect(toasts.error).toHaveBeenCalledWith(expect.stringContaining("Zotero"));
+    expect(toasts.success).not.toHaveBeenCalled();
+    expect(useCiteOleaflyStore.getState().open).toBe(false);
+  });
+});
+
+describe("citeOleafly in a read-only folder", () => {
+  beforeEach(() => {
+    useFolderAccessStore.setState({
+      projectId: "paper",
+      status: { read_only: true, synced_with: null },
+    });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("leaves the bibliography alone and says the folder is read-only", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    expect(await citeOleafly()).toEqual({ kind: "read-only-folder" });
+    await runCiteOleaflyAction();
+    expect(toasts.error).toHaveBeenCalledWith(enShell.openedFolder.readOnly.banner);
+    expect(writeProjectFile).not.toHaveBeenCalled();
+    expect(setContent).not.toHaveBeenCalled();
+    expect(toasts.success).not.toHaveBeenCalled();
+  });
+
+  it("still reports an entry the bibliography already has", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "@software{oleafly,\n title={x}}" });
+    expect((await citeOleafly()).kind).toBe("present");
   });
 });
 

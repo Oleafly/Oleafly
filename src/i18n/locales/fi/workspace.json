@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> on jo olemassa. Säilytä molemmat tiedostot nimellä <suggestion>{{suggestion}}</suggestion> tai korvaa olemassa oleva kohde. Oleafly ei korvaa sitä ilman erillistä Korvaa-valintaa.",
       "replace": "Korvaa",
       "title": "Nimi on jo käytössä",
-      "unchanged": "Alkuperäinen ja kohdepolku jäivät ennalleen."
+      "unchanged": "Alkuperäinen ja kohdepolku jäivät ennalleen.",
+      "renameFolderBody": "<destination>{{destination}}</destination> on jo olemassa oleva kansio. Säilytä molemmat nimellä <suggestion>{{suggestion}}</suggestion>. Sijainnissaan avatussa kansiossa Oleafly ei koskaan korvaa kokonaista kansiota."
     },
     "createFailed": "Kohdetta \"{{path}}\" ei voitu luoda.",
     "deleteFailed": "Kohdetta \"{{path}}\" ei voitu poistaa.",
@@ -41,7 +42,16 @@
     "setMain": "Aseta päädokumentiksi",
     "title": "Resurssienhallinta",
     "treeAriaLabel": "Resurssienhallinnan tiedostopuu",
-    "setMainFailed": "Kohdetta \"{{path}}\" ei voitu asettaa päädokumentiksi."
+    "setMainFailed": "Kohdetta \"{{path}}\" ei voitu asettaa päädokumentiksi.",
+    "listingStopped": "Näytetään ensimmäiset {{limit}} kohdetta. Kansion loppua ei ole listattu.",
+    "unreadable": "Ei käyttöoikeutta",
+    "unreadableHint": "Oleaflyllä ei ole oikeutta avata tätä.",
+    "confirmTrash": "Siirretäänkö {{path}} roskakoriin?",
+    "confirmTrashWindows": "Siirretäänkö {{path}} roskakoriin?",
+    "confirmPermanentDelete": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
+    "confirmPermanentDeleteWindows": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
+    "linkedReadOnly": "Linkki tämän kansion ulkopuoliseen tiedostoon, joten se on vain luettavissa.",
+    "partialFolder": "Kaikkia tämän kansion kohteita ei ole listattu."
   },
   "explorer": {
     "resizeSections": "Muuta osioiden {{first}} ja {{second}} kokoa"

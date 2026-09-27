@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly 应用图标",
     "welcomeTitle": "欢迎使用 Oleafly",
     "welcomeDescription": "编写、编译并校对 LaTeX、Typst 和 Markdown 文档。管理引用、审阅 PDF、通过 Git 跟踪更改，并使用你选择的 AI 模型。",
-    "createFirstProject": "创建新项目",
     "loading": "正在读取你的库…",
     "noBookmarksTitle": "暂无收藏",
     "noBookmarksDescription": "将鼠标悬停在书本上，点击书签图标即可收藏。",
@@ -67,8 +66,15 @@
       "anyTime": "任意时间",
       "last7Days": "最近 7 天",
       "last30Days": "最近 30 天",
-      "lastYear": "最近一年"
-    }
+      "lastYear": "最近一年",
+      "location": "位置",
+      "locationAll": "所有项目",
+      "locationLibrary": "Oleafly 中",
+      "locationExternal": "外部项目"
+    },
+    "openFolder": "打开文件夹",
+    "openFolderShortcut": "打开文件夹（{{shortcut}}）",
+    "createFirstProject": "创建新项目"
   },
   "projects": {
     "open": "打开 {{name}}",
@@ -82,7 +88,7 @@
     "actions": "{{name}} 的操作",
     "details": "项目详情",
     "exportHistory": "导出历史",
-    "changeColor": "更改项目颜色",
+    "changeColor": "项目颜色",
     "fork": "复刻项目",
     "delete": "删除项目",
     "favoriteAdd": "添加到收藏",
@@ -94,7 +100,8 @@
     "kind": {
       "document": "文档",
       "image": "图片",
-      "diagram": "图表"
+      "diagram": "图表",
+      "external": "外部"
     },
     "preview": {
       "title": "PDF 预览：{{name}}",
@@ -364,7 +371,9 @@
     "nameRequired": "请输入仓库名称。",
     "published": "已发布到 {{repository}}",
     "linked": "已关联并推送到 {{remote}}。",
-    "pushNeedsPull": "已关联 {{remote}}，但推送前需要先拉取：{{detail}}。"
+    "pushNeedsPull": "已关联 {{remote}}，但推送前需要先拉取：{{detail}}。",
+    "replaceRemotePrompt": "此项目当前关联的是 {{remote}}。要替换这个关联吗？",
+    "replaceRemote": "替换关联"
   },
   "deadlines": {
     "title": "会议截止日期",
@@ -449,6 +458,75 @@
       "sourcesTitle": "数据来源",
       "sourcesBody": "记录数据整合了开源的 ccf-deadlines 数据集与 Oleafly 跟踪的官方会议网站。",
       "confirm": "提交前请在会议官网确认所有日期"
+    }
+  },
+  "start": {
+    "newProjectTitle": "新建项目",
+    "newProjectDescription": "从模板或空白页面开始。",
+    "openFolderTitle": "打开文件夹",
+    "openFolderDescription": "处理电脑上已有的文件。文件会留在原来的位置。"
+  },
+  "openFolder": {
+    "dismiss": "关闭"
+  },
+  "folder": {
+    "state": {
+      "missing": "文件夹丢失",
+      "offline": "驱动器未连接",
+      "replaced": "文件夹已被替换",
+      "permissionDenied": "没有权限"
+    },
+    "menu": {
+      "showInFinder": "在 Finder 中显示",
+      "showInExplorer": "在文件资源管理器中显示",
+      "showInFileManager": "在文件管理器中显示",
+      "copyToLibrary": "复制到库",
+      "remove": "从 Oleafly 中移除"
+    },
+    "remove": {
+      "title": "要从 Oleafly 中移除“{{name}}”吗？",
+      "description": "你的文件保留在原处。Oleafly 会删除它为此文件夹生成的构建文件，并重置它的信任、批准和已链接文件夹。在 30 天内再次打开此文件夹，即可找回它的聊天和历史记录。其余设置需要重新配置。",
+      "confirm": "从 Oleafly 中移除",
+      "done": "已从 Oleafly 中移除“{{name}}”。文件仍在文件夹中。",
+      "failed": "无法从 Oleafly 中移除“{{name}}”。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "找不到“{{name}}”",
+        "body": "它原来在 <path>{{path}}</path>，可能已被移动或删除。定位它即可保留它的聊天和历史记录。"
+      },
+      "offline": {
+        "title": "“{{name}}”位于未连接的驱动器上",
+        "body": "请连接包含 <path>{{path}}</path> 的驱动器或网络共享，然后重试。"
+      },
+      "replaced": {
+        "title": "“{{name}}”已被替换",
+        "body": "<path>{{path}}</path> 处的文件夹不是你之前打开的那个。只有在信任它时才使用。切换后，Oleafly 会关闭信任和批准。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly 无法打开“{{name}}”",
+        "bodyMac": "请在系统设置 › 隐私与安全性 › 文件和文件夹中允许 Oleafly 使用此文件夹，然后重试。",
+        "bodyOther": "你的账户无法读取 <path>{{path}}</path>。请检查文件夹的权限，然后重试。"
+      },
+      "back": {
+        "title": "“{{name}}”已恢复连接",
+        "body": "Oleafly 可以再次访问 <path>{{path}}</path>。"
+      },
+      "locate": "定位",
+      "tryAgain": "重试",
+      "useThisFolder": "使用此文件夹",
+      "checking": "正在检查",
+      "still": "Oleafly 仍无法访问它。"
+    },
+    "copy": {
+      "title": "将“{{name}}”复制到你的库",
+      "description": "Oleafly 会把文件复制到库中的新项目，文件夹保留在原处。Git 历史记录会一并复制，但 Git 钩子和构建文件不会。",
+      "counting": "正在统计文件…",
+      "copying": "正在复制文件…",
+      "count": "{{done}} / {{total}}",
+      "done": "“{{name}}”现已在你的库中。",
+      "doneLeftOut": "“{{name}}”现已在你的库中。指向其他位置文件的链接和嵌套过深的文件夹未被复制。",
+      "failed": "无法将“{{name}}”复制到你的库。"
     }
   }
 }

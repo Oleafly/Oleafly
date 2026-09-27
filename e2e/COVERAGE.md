@@ -30,6 +30,35 @@ operator-list names. A source assertion alone is never labeled Render.
 | Direct project switch | dirty editor buffer is flushed before the target project loads | 50 |
 | Change book color / open via Enter | | — (low risk; color is cosmetic) |
 
+## Opened folders
+
+Each test makes its own folders in the OS temp folder, outside the repo. Every
+open goes through `debug_inject_open_request`, so the app's real path checks
+run. Before opening a folder, the test records the relative path, size,
+modification time, mode and content hash of every entry in it, and it compares
+them again at the end. When a test changes a file on purpose, it lists the
+paths it expects to change. Trust prompts are answered through
+`debug_answer_next_confirmation`, which only e2e builds accept.
+
+| Surface | Interactions | Spec |
+| --- | --- | --- |
+| Folder with a root `main.tex` | opens straight into the editor on `main.tex`, marked as main in the file tree, compiles, shows the PDF; the folder is unchanged and has no `.oleafly`, `.git`, `project.json` or build files, before and after closing | 102 |
+| Folder that holds too much | the temp folder itself and the home folder are refused from the library with "Choose a subfolder" and nothing is added; with a project open the same refusal is a toast with the same action and the project stays open | 102 |
+| One nested main | `paper/main.tex` opens by itself, and its `\input{sections/intro}` resolves from `paper/` in the compiled PDF | 103 |
+| Long main path | a main file with a long name in a subfolder opens and compiles, and the page can't scroll sideways | 103 |
+| Several possible mains | the picker lists both documents with the best match selected; choosing the other row opens and compiles it, and reopening after a renderer reload goes straight to the chosen file | 103 |
+| Folder with no document | "No main document yet" shows, compile is blocked and nothing is compiled; a file added from outside the app appears in the tree, Set as main document unblocks compile and the PDF shows its text | 103 |
+| Typst and Markdown folders | a Typst-only folder opens with the Typst engine and a Markdown folder opens `paper.md` (not the readme) with the Markdown engine; both compile | 104 |
+| `% !TeX root` in an opened folder | with `main.tex` chosen in the picker, opening `appendix/part.tex` compiles the root it declares, and the stored main stays `main.tex` | 104 |
+| Git repository in an untrusted folder | the trust banner and the Source Control reason show, no Source Control actions exist and the repository is untouched; after Trust this folder, Source Control lists the fixture commit, and `.git/config`, `HEAD` and the branch ref are unchanged | 105 |
+| Trusted plain folder | Source Control says it is not initialized, and no `.git` appears after opening and compiling | 105 |
+| Opening a folder with an unsaved edit | the buffer is dirty when the request arrives, the edit is on disk after the switch with no leftover temporary files, and reopening shows it | 106 |
+| Folder deleted while open | the unavailable banner offers Locate and Save a copy; the library card says Folder missing and opening it offers Locate, with the folder path shown as a badge | 106 |
+| Folder card and Location filter | the card says external where a library project says document and shows when its files last changed, with no path or main file on it; the Location filter in Advanced filters shows only External projects or only In Oleafly projects, the two add up to All projects, and Reset brings every project back | 107 |
+| Remove from Oleafly | the confirmation says the files stay, the card goes away and the folder is unchanged; reopening the folder brings its chat back and shows it untrusted again | 107 |
+| Folder renamed while closed | reopening the renamed folder keeps the same project id, main file and chat; the project and its card show the new folder name | 107 |
+| Forwarding a second launch to the running app | single instance is off in e2e builds | Rust `open_request` and `single_instance` tests, manual matrix |
+
 ## Editor
 | Surface | Interactions | Spec |
 | --- | --- | --- |
@@ -227,8 +256,10 @@ their subject is Playwright's own Chromium/WebKit, which the Windows dev-mode
 lane still exercises on every push. It is the only dev-mode lane left now that
 Linux runs packaged too, so packaging Windows would end that coverage and has
 to replace it first. localStorage seeding happens
-before boot (OLEAFLY_E2E_BOOT_LOCALSTORAGE) instead of via dev-server reloads,
-and dev-server module imports resolve through src/lib/e2e-import-registry.ts.
+before boot instead of via dev-server reloads. OLEAFLY_E2E_BOOT_LOCALSTORAGE
+applies on every page load. OLEAFLY_E2E_LAUNCH_LOCALSTORAGE applies once per
+launch, so a preference a spec changes survives an in-app reload. Dev-server
+module imports resolve through src/lib/e2e-import-registry.ts.
 
 One platform exception: 62-large-document-interaction is skipped on Linux.
 Opening its project always compiles it, and on the two-core CI runner that

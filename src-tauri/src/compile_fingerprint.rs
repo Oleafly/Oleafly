@@ -71,18 +71,32 @@ fn collect_hashes(
         }
         if meta.is_dir() {
             collect_hashes(root, &path, out)?;
+        } else if crate::cloud_files::is_placeholder(&path, &meta) {
+            out.insert(relative_slash(root, &path)?, placeholder_hash(&meta));
         } else {
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|e| e.to_string())?
-                .components()
-                .map(|component| component.as_os_str().to_string_lossy().into_owned())
-                .collect::<Vec<_>>()
-                .join("/");
-            out.insert(relative, stream_sha256(&path)?);
+            out.insert(relative_slash(root, &path)?, stream_sha256(&path)?);
         }
     }
     Ok(())
+}
+
+fn relative_slash(root: &Path, path: &Path) -> Result<String, String> {
+    Ok(path
+        .strip_prefix(root)
+        .map_err(|e| e.to_string())?
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/"))
+}
+
+fn placeholder_hash(metadata: &std::fs::Metadata) -> String {
+    let modified = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |elapsed| elapsed.as_millis());
+    format!("placeholder:{}:{modified}", metadata.len())
 }
 
 pub fn write_fingerprint(
@@ -237,6 +251,23 @@ mod tests {
             "This is pdfTeX\nOutput written on main.pdf"
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_cloud_placeholder_is_fingerprinted_by_size_without_reading_it() {
+        let root = test_root("placeholder");
+        let evicted = root.join("sections/intro.tex");
+        crate::cloud_files::test_support::mark(&evicted);
+
+        let hashes = source_hashes(&root).unwrap();
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert!(
+            hashes["sections/intro.tex"].starts_with("placeholder:5:"),
+            "{}",
+            hashes["sections/intro.tex"]
+        );
+        assert_eq!(hashes["main.tex"].len(), 64);
     }
 
     fn test_root(name: &str) -> PathBuf {

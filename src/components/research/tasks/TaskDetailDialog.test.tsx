@@ -190,6 +190,25 @@ describe("TaskDetailDialog", () => {
     expect(within(detail as HTMLElement).getByText(enResearchTools.tasks.status.awaitingReview)).toBeInTheDocument();
   });
 
+  it("shows a stored read-only folder refusal as its sentence", () => {
+    const current = {
+      ...task("refused"),
+      error: `@oleafly/error:${JSON.stringify({
+        code: "project.folder_read_only",
+        params: { name: "main.tex" },
+        detail: null,
+      })}`,
+    };
+    render(<TaskDetailDialog {...props(current)} />);
+    const alert = page().getByText(enResearchTools.tasks.detail.needsAttention).parentElement as HTMLElement;
+    expect(
+      within(alert).getByText(
+        "Oleafly can't make this change because main.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+      ),
+    ).toBeInTheDocument();
+    expect(alert.textContent).not.toContain("@oleafly/error:");
+  });
+
   it("rejects a file preview that completes after the selected task changes", async () => {
     const pending = deferred<TaskFilePreview>();
     previewMocks.file.mockReturnValue(pending.promise);

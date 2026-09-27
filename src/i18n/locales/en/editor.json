@@ -171,7 +171,9 @@
     "binaryFile": "Binary file. No preview available.",
     "managedFileReadOnly": "{{file}} is managed by Oleafly and is read-only here. Project settings change through Oleafly itself, not by editing this file.",
     "noFileOpen": "No file open.",
-    "noFileOpenHint": "Pick a file from the tree to start editing."
+    "noFileOpenHint": "Pick a file from the tree to start editing.",
+    "linkedFileReadOnly": "{{file}} links to a file outside this folder, so you can't edit it here. Change it where it lives, for example in Zotero.",
+    "diffOnDisk": "On Disk"
   },
   "projectInfo": {
     "trigger": "Project info",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",
     "spellLanguageHint": "Applies to this project only. Download more languages in Settings.",
+    "spellLanguageFolderHint": "Saved in this folder's project.json, so it applies to anyone who opens the folder. Download more languages in Settings.",
+    "spellLanguageReadOnly": "This folder is read-only, so the language in its project.json can't be changed.",
     "spellLanguageFailed": "Couldn't change the spell-check language.",
     "notChecked": "Not checked",
     "dictionaryMissing": "{{name}} is not downloaded, so spelling is not checked. Download it in Settings or pick another language.",
@@ -330,7 +334,8 @@
     "splitView": "Split view",
     "unifiedView": "Unified view",
     "loading": "Loading diff…",
-    "previewTooLarge": "File too large to preview a diff."
+    "previewTooLarge": "File too large to preview a diff.",
+    "diskHeading": "On disk ↔ Your edits"
   },
   "hotkeys": {
     "title": "Keyboard Shortcuts",
@@ -426,6 +431,11 @@
       "sourceSize": "Source size",
       "reclaimable": "Reclaimable"
     },
+    "capture": {
+      "paused": "Checkpoints are paused because this folder is too big. A checkpoint can hold at most {{files}} files or {{size}}.",
+      "skipped_one": "{{formattedCount}} file in this folder isn't in checkpoints. Oleafly leaves out links, very large files, cloud-only files and names that don't work on every system.",
+      "skipped_other": "{{formattedCount}} files in this folder aren't in checkpoints. Oleafly leaves out links, very large files, cloud-only files and names that don't work on every system."
+    },
     "catalog": {
       "formatVersion": "Format version",
       "lineage": "Lineage",
@@ -458,7 +468,8 @@
       "showFor": "Show files for {{version}}",
       "hideFor": "Hide files for {{version}}",
       "show": "Show files",
-      "hide": "Hide files"
+      "hide": "Hide files",
+      "folderSettings": "Oleafly settings for this folder"
     },
     "entry": {
       "labelInput": "Checkpoint label",
@@ -1022,5 +1033,13 @@
     "label": "Document location",
     "goTo": "Go to {{title}}",
     "untitled": "Untitled"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} changed on disk while you had unsaved edits.",
+    "compare": "Compare",
+    "keepMine": "Keep mine",
+    "reload": "Reload",
+    "failed": "Oleafly couldn't update {{file}}. Try again.",
+    "tabMark": "Changed on disk. Open this tab to pick which version to keep."
   }
 }

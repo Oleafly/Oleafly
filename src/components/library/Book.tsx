@@ -83,12 +83,13 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
+  dimmed = false,
 }: Readonly<{
   title: string;
   color?: string;
   textColor?: string;
   illustration?: ReactNode;
-  date?: string;
+  date?: ReactNode;
   engine?: string;
   forkedFrom?: string | null;
   kind?: string;
@@ -101,6 +102,7 @@ export function Book({
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
+  dimmed?: boolean;
 }>) {
   const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
@@ -137,7 +139,10 @@ export function Book({
         onFocus={onPreviewRequest}
         className="block w-full cursor-pointer rounded-md text-left focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <div style={{ perspective: "1600px" }}>
+        <div
+          style={{ perspective: "1600px" }}
+          className={cn(dimmed && "opacity-60 grayscale transition-[filter,opacity]")}
+        >
         <div
           className={cn(
             "relative transition-transform duration-500 ease-out [transform-style:preserve-3d]",
@@ -236,7 +241,7 @@ export function Book({
         <div className="min-w-0">
         {kind && (
           <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
-            <span>{kind}</span>
+            <span data-testid="project-card-kind">{kind}</span>
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>
@@ -256,7 +261,11 @@ export function Book({
             ) : null}
           </div>
         )}
-        {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
+        {date && (
+          <div data-testid="project-card-date" className="mt-0.5 text-xs text-muted-foreground">
+            {date}
+          </div>
+        )}
         </div>
         {menu}
       </div>

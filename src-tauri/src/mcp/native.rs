@@ -54,13 +54,24 @@ fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
 
 pub fn resolve_project(arguments: &Value, reported: Option<String>) -> Result<String, String> {
     let projects = crate::paths::projects_root()?;
-    resolve_project_in(&projects, arguments, reported)
+    resolve_project_in(&projects, arguments, reported, linked_root)
+}
+
+fn linked_root(project_id: &str) -> Result<Option<std::path::PathBuf>, String> {
+    if crate::project_location::kind_of(project_id)? != crate::project_location::ProjectKind::Linked
+    {
+        return Ok(None);
+    }
+    crate::project_location::locate(project_id)
+        .map(|location| Some(location.root))
+        .map_err(|_| "the open project is no longer available".to_string())
 }
 
 fn resolve_project_in(
     projects_root: &std::path::Path,
     arguments: &Value,
     reported: Option<String>,
+    linked_root: impl Fn(&str) -> Result<Option<std::path::PathBuf>, String>,
 ) -> Result<String, String> {
     if arguments.get("project_id").is_some() {
         return Err("project_id is not accepted. Native tools use the open project".into());
@@ -72,6 +83,9 @@ fn resolve_project_in(
         .filter(|project| !project.is_empty())
         .ok_or_else(|| "no project is open in Oleafly".to_string())?;
     crate::paths::validate_project_id(&project_id)?;
+    if linked_root(&project_id)?.is_some() {
+        return Ok(project_id);
+    }
     validate_open_project(&root, &project_id)?;
     Ok(project_id)
 }
@@ -412,13 +426,70 @@ mod tests {
             .keep()
     }
 
+    fn no_linked(_: &str) -> Result<Option<std::path::PathBuf>, String> {
+        Ok(None)
+    }
+
+    #[test]
+    fn a_linked_open_project_resolves_by_membership_before_library_checks() {
+        let root = project_root();
+        let id = "linked-0123456789abcdef0123456789abcdef";
+        let folder = project_root();
+        let found = folder.clone();
+        assert_eq!(
+            resolve_project_in(&root, &json!({}), Some(id.into()), move |project| {
+                Ok((project == id).then(|| found.clone()))
+            })
+            .unwrap(),
+            id
+        );
+        assert!(!root.join(id).exists());
+        std::fs::create_dir(root.join(id)).unwrap();
+        let error = resolve_project_in(&root, &json!({}), Some(id.into()), |_| {
+            Err("the open project is no longer available".into())
+        })
+        .unwrap_err();
+        assert!(error.contains("no longer available"));
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn the_production_seam_finds_registered_folders_only() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        crate::paths::create_project_dir("paper").unwrap();
+
+        assert_eq!(
+            linked_root(&record.id).unwrap(),
+            Some(folder.canonicalize().unwrap())
+        );
+        assert_eq!(linked_root("paper").unwrap(), None);
+        assert_eq!(
+            resolve_project(&json!({}), Some(record.id.clone())).unwrap(),
+            record.id
+        );
+        std::fs::remove_dir(&folder).unwrap();
+        assert!(resolve_project(&json!({}), Some(record.id.clone()))
+            .unwrap_err()
+            .contains("no longer available"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     #[test]
     fn an_explicit_project_argument_cannot_override_the_open_project() {
         let root = project_root();
         std::fs::create_dir(root.join("swift-violet-fox")).unwrap();
         let arguments = json!({ "project_id": "swift-violet-fox" });
         std::fs::create_dir(root.join("other-project")).unwrap();
-        assert!(resolve_project_in(&root, &arguments, Some("other-project".into())).is_err());
+        assert!(
+            resolve_project_in(&root, &arguments, Some("other-project".into()), no_linked).is_err()
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -426,7 +497,7 @@ mod tests {
     fn a_traversal_project_id_is_refused() {
         let root = project_root();
         let arguments = json!({ "project_id": "../../etc" });
-        assert!(resolve_project_in(&root, &arguments, None).is_err());
+        assert!(resolve_project_in(&root, &arguments, None, no_linked).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -437,7 +508,7 @@ mod tests {
         std::fs::create_dir(&project).unwrap();
         std::fs::write(project.join("project.json"), "{}").unwrap();
         assert_eq!(
-            resolve_project_in(&root, &json!({}), Some("open-one".into())).unwrap(),
+            resolve_project_in(&root, &json!({}), Some("open-one".into()), no_linked).unwrap(),
             "open-one"
         );
         std::fs::remove_dir_all(root).unwrap();
@@ -452,8 +523,8 @@ mod tests {
             std::fs::write(project.join("project.json"), "{}").unwrap();
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        assert!(resolve_project_in(&root, &json!({}), Some(String::new())).is_err());
-        assert!(resolve_project_in(&root, &json!({}), None).is_err());
+        assert!(resolve_project_in(&root, &json!({}), Some(String::new()), no_linked).is_err());
+        assert!(resolve_project_in(&root, &json!({}), None, no_linked).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -462,7 +533,8 @@ mod tests {
         let root = project_root();
         let missing = root.join("missing-project");
         let error =
-            resolve_project_in(&root, &json!({}), Some("missing-project".into())).unwrap_err();
+            resolve_project_in(&root, &json!({}), Some("missing-project".into()), no_linked)
+                .unwrap_err();
         assert!(error.contains("no longer available"));
         assert!(!missing.exists());
         std::fs::remove_dir_all(root).unwrap();

@@ -42,9 +42,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -169,6 +174,81 @@ describe("line endings", () => {
   });
 });
 
+describe("text that did not change", () => {
+  it("keeps an unchanged file clean and never writes it back", async () => {
+    mocks.readFileContent.mockResolvedValue("Úvod.\r\nPůvodní věta.\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    const loaded = useFilesStore.getState().files["main.tex"].content;
+    vi.useFakeTimers();
+    expect(useFilesStore.getState().setContent("main.tex", loaded)).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: loaded, dirty: false });
+    await vi.runAllTimersAsync();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("treats an edit undone before autosave as clean and never writes it back", async () => {
+    mocks.readFileContent.mockResolvedValue("Úvod.\r\nPůvodní věta.\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    const loaded = useFilesStore.getState().files["main.tex"].content;
+    vi.useFakeTimers();
+    useFilesStore.getState().setContent("main.tex", `Just ${loaded}`);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    useFilesStore.getState().setContent("main.tex", loaded);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: loaded, dirty: false });
+    await vi.runAllTimersAsync();
+    await useFilesStore.getState().saveActive();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("writes the original text back once an edit of it reached the disk", async () => {
+    mocks.readFileContent.mockResolvedValue("one\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[2])).toEqual(["one\ntwo\n", "one\n"]);
+  });
+
+  it("keeps an undo dirty while the edit is still being written", async () => {
+    mocks.readFileContent.mockResolvedValue("one\n");
+    await useFilesStore.getState().openFile("main.tex");
+    let finishWrite!: (value: { generation: number }) => void;
+    mocks.writeFileContent.mockImplementationOnce(() => new Promise((resolve) => { finishWrite = resolve; }));
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\n");
+    const first = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    useFilesStore.getState().setContent("main.tex", "one\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    finishWrite({ generation: 10 });
+    await first;
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("one\n");
+  });
+
+  it("does not treat text matching an outside edit as saved while that edit is unresolved", async () => {
+    const CONFLICT = "file changed on disk: main.tex was changed outside Oleafly after it was loaded";
+    mocks.readFileContent.mockResolvedValue("old\n");
+    await useFilesStore.getState().openFile("main.tex");
+    mocks.writeFileContent.mockRejectedValueOnce(CONFLICT);
+    useFilesStore.getState().setContent("main.tex", "mine\n");
+    await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toMatch("file changed on disk");
+    useFilesStore.getState().setContent("main.tex", "old\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+  });
+
+  it("still saves a real edit made after an unchanged update", async () => {
+    mocks.readFileContent.mockResolvedValue("one\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "one\n");
+    useFilesStore.getState().setContent("main.tex", "one\ntwo\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("one\ntwo\n");
+  });
+});
+
 describe("files that cannot be opened", () => {
   it("tells the user once why a Windows-1250 file did not open", async () => {
     mocks.readFileContent.mockRejectedValue(ENCODING_ERROR);
@@ -264,6 +344,80 @@ describe("git pull and restore", () => {
     await useFilesStore.getState().restoreFromGit("project", "abc");
     expect(locked).toBe(true);
     expect(useFilesStore.getState().files["main.tex"].content).toBe("v1\n");
+  });
+});
+
+describe("a changed file in a folder opened in place", () => {
+  const CONFLICT = "file changed on disk: main.tex was changed outside Oleafly after it was loaded";
+
+  async function conflicted() {
+    useFilesStore.setState({ manifestHome: "device" });
+    mocks.readFileContent.mockResolvedValue("old\n");
+    await useFilesStore.getState().openFile("main.tex");
+    mocks.writeFileContent.mockRejectedValueOnce(CONFLICT);
+    useFilesStore.getState().setContent("main.tex", "mine\n");
+    await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toMatch("file changed on disk");
+    const { reportFileSaveFailure } = await import("./files");
+    reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
+  }
+
+  it("offers the changed-on-disk choice instead of a toast", async () => {
+    await conflicted();
+
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "mine\n", dirty: true });
+  });
+
+  it("keeps my version by writing over the file on disk", async () => {
+    await conflicted();
+
+    await useFilesStore.getState().keepLocalVersion("main.tex");
+
+    expect(mocks.writeFileContent.mock.calls.at(-1)).toHaveLength(4);
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("mine\n");
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("reloads the version on disk and clears the choice", async () => {
+    await conflicted();
+    mocks.readFileContent.mockResolvedValue("theirs\n");
+
+    await useFilesStore.getState().reloadFromDisk("main.tex");
+
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "theirs\n", dirty: false });
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("forgets the choice when the project closes", async () => {
+    await conflicted();
+    await useFilesStore.getState().closeProject();
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("names a file in another tab when a save the user asked for is blocked", async () => {
+    await conflicted();
+    useFilesStore.setState({ activePath: null });
+    const { reportFileSaveFailure } = await import("./files");
+
+    reportFileSaveFailure("save before agent prompt", "project", "main.tex", CONFLICT, true);
+
+    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    const [, message, action] = mocks.toastErrorUnique.mock.calls[0];
+    expect(message).toContain("main.tex");
+    action.onClick();
+    await vi.waitFor(() => expect(useFilesStore.getState().activePath).toBe("main.tex"));
+  });
+
+  it("leaves the banner to explain a blocked save of the file on screen", async () => {
+    await conflicted();
+    const { reportFileSaveFailure } = await import("./files");
+
+    reportFileSaveFailure("editor save", "project", "main.tex", CONFLICT, true);
+
+    expect(useFilesStore.getState().activePath).toBe("main.tex");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
   });
 });
 

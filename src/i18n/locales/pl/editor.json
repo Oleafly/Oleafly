@@ -171,7 +171,9 @@
     "binaryFile": "Plik binarny. Podgląd niedostępny.",
     "managedFileReadOnly": "Plikiem {{file}} zarządza Oleafly i jest on tutaj tylko do odczytu. Ustawienia projektu zmienia się w samym Oleafly, a nie przez edycję tego pliku.",
     "noFileOpen": "Nie otwarto pliku.",
-    "noFileOpenHint": "Wybierz plik z drzewa, aby zacząć edycję."
+    "noFileOpenHint": "Wybierz plik z drzewa, aby zacząć edycję.",
+    "linkedFileReadOnly": "{{file}} wskazuje plik poza tym folderem, więc nie możesz go tu edytować. Zmień go tam, gdzie się znajduje, na przykład w Zotero.",
+    "diffOnDisk": "Na dysku"
   },
   "projectInfo": {
     "trigger": "Informacje o projekcie",
@@ -211,6 +213,8 @@
     "spellLanguageAppSetting": "Użyj ustawienia aplikacji",
     "spellLanguageAriaLabel": "Język sprawdzania pisowni w tym projekcie",
     "spellLanguageHint": "Dotyczy tylko tego projektu. Więcej języków pobierzesz w Ustawieniach.",
+    "spellLanguageFolderHint": "Zapisany w pliku project.json tego folderu, więc dotyczy każdego, kto otworzy folder. Więcej języków pobierzesz w Ustawieniach.",
+    "spellLanguageReadOnly": "Ten folder jest tylko do odczytu, więc nie da się zmienić języka w jego pliku project.json.",
     "spellLanguageFailed": "Nie udało się zmienić języka sprawdzania pisowni.",
     "notChecked": "Nie sprawdzono",
     "dictionaryMissing": "{{name}} nie jest pobrany, więc pisownia nie jest sprawdzana. Pobierz go w Ustawieniach lub wybierz inny język.",
@@ -336,7 +340,8 @@
     "splitView": "Widok dzielony",
     "unifiedView": "Widok jednolity",
     "loading": "Wczytywanie porównania…",
-    "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania."
+    "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania.",
+    "diskHeading": "Na dysku ↔ Twoje zmiany"
   },
   "hotkeys": {
     "title": "Skróty klawiaturowe",
@@ -436,6 +441,13 @@
       "sourceSize": "Rozmiar źródeł",
       "reclaimable": "Do odzyskania"
     },
+    "capture": {
+      "paused": "Punkty kontrolne są wstrzymane, ponieważ ten folder jest zbyt duży. Punkt kontrolny może zawierać najwyżej {{files}} plików lub {{size}}.",
+      "skipped_one": "{{formattedCount}} plik w tym folderze nie trafił do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_few": "{{formattedCount}} pliki w tym folderze nie trafiły do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_many": "{{formattedCount}} plików w tym folderze nie trafiło do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie.",
+      "skipped_other": "{{formattedCount}} pliku w tym folderze nie trafiło do punktów kontrolnych. Oleafly pomija linki, bardzo duże pliki, pliki dostępne tylko w chmurze i nazwy, które nie działają w każdym systemie."
+    },
     "catalog": {
       "formatVersion": "Wersja formatu",
       "lineage": "Pochodzenie",
@@ -468,7 +480,8 @@
       "showFor": "Pokaż pliki dla {{version}}",
       "hideFor": "Ukryj pliki dla {{version}}",
       "show": "Pokaż pliki",
-      "hide": "Ukryj pliki"
+      "hide": "Ukryj pliki",
+      "folderSettings": "Ustawienia Oleafly dla tego folderu"
     },
     "entry": {
       "labelInput": "Etykieta punktu kontrolnego",
@@ -1040,5 +1053,13 @@
     "label": "Położenie w dokumencie",
     "goTo": "Przejdź do {{title}}",
     "untitled": "Bez tytułu"
+  },
+  "changedOnDisk": {
+    "message": "Plik {{file}} został zmieniony na dysku, a masz w nim niezapisane zmiany.",
+    "compare": "Porównaj",
+    "keepMine": "Zachowaj moją wersję",
+    "reload": "Wczytaj ponownie",
+    "failed": "Oleafly nie mógł zaktualizować {{file}}. Spróbuj ponownie.",
+    "tabMark": "Zmieniono na dysku. Otwórz tę kartę, aby wybrać, którą wersję zachować."
   }
 }

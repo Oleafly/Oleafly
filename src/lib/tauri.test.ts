@@ -11,6 +11,16 @@ import {
   agentModelMetadataStatus,
   agentProbeModel,
   agentRefreshModelMetadata,
+  copyFile,
+  createFile,
+  deleteFile,
+  importPathsIntoProject,
+  onProjectWriteFailure,
+  readFileContent,
+  renameFile,
+  saveFileBase64,
+  writeFileContent,
+  writeProjectBytes,
 } from "./tauri";
 
 beforeEach(() => {
@@ -104,5 +114,57 @@ describe("model metadata bridge", () => {
 
     await agentRefreshModelMetadata();
     expect(mocks.invoke).toHaveBeenLastCalledWith("agent_refresh_model_metadata", { force: false });
+  });
+});
+
+describe("project write failures", () => {
+  it("tells listeners which project refused a write and still rejects with the same error", async () => {
+    const heard = vi.fn();
+    const stop = onProjectWriteFailure(heard);
+    const denied = "failed to write main.tex: Permission denied (os error 13)";
+    try {
+      mocks.invoke.mockRejectedValueOnce(denied);
+      await expect(writeFileContent("linked-a", "main.tex", "x")).rejects.toBe(denied);
+      mocks.invoke.mockRejectedValueOnce(denied);
+      await expect(createFile("linked-a", "notes.tex", false)).rejects.toBe(denied);
+      expect(heard).toHaveBeenCalledTimes(2);
+      expect(heard).toHaveBeenCalledWith("linked-a");
+    } finally {
+      stop();
+    }
+  });
+
+  it.each([
+    ["writeProjectBytes", () => writeProjectBytes("linked-a", "figures/a.png", "AA==")],
+    ["writeFileContent", () => writeFileContent("linked-a", "main.tex", "x")],
+    ["createFile", () => createFile("linked-a", "notes.tex", false)],
+    ["deleteFile", () => deleteFile("linked-a", "notes.tex")],
+    ["renameFile", () => renameFile("linked-a", "notes.tex", "draft.tex")],
+    ["copyFile", () => copyFile("linked-a", "notes.tex", "copy.tex")],
+    ["importPathsIntoProject", () => importPathsIntoProject("linked-a", "figures", ["/tmp/a.png"])],
+    ["saveFileBase64", () => saveFileBase64("linked-a", "out.pdf", "AA==")],
+  ] as const)("reports a refused %s to listeners", async (_name, write) => {
+    const heard = vi.fn();
+    const stop = onProjectWriteFailure(heard);
+    try {
+      mocks.invoke.mockRejectedValueOnce("denied");
+      await expect(write()).rejects.toBe("denied");
+      expect(heard).toHaveBeenCalledExactlyOnceWith("linked-a");
+    } finally {
+      stop();
+    }
+  });
+
+  it("stays quiet for successful writes, reads and removed listeners", async () => {
+    const heard = vi.fn();
+    const stop = onProjectWriteFailure(heard);
+    mocks.invoke.mockResolvedValueOnce({ generation: 3 });
+    await expect(writeProjectBytes("linked-a", "figures/a.png", "AA==")).resolves.toEqual({ generation: 3 });
+    mocks.invoke.mockRejectedValueOnce("missing");
+    await expect(readFileContent("linked-a", "main.tex")).rejects.toBe("missing");
+    stop();
+    mocks.invoke.mockRejectedValueOnce("denied");
+    await expect(writeFileContent("linked-a", "main.tex", "x")).rejects.toBe("denied");
+    expect(heard).not.toHaveBeenCalled();
   });
 });

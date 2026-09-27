@@ -46,7 +46,8 @@
     "projectChangedRetry": "Projektet ändrades under importen av citeringar. Försök igen i det ursprungliga projektet.",
     "readFailed": "Det gick inte att läsa {{path}}: {{detail}}",
     "unrecognizedFile": "Okänd filtyp: {{name}}",
-    "writeFailed": "Det gick inte att skriva {{path}}: {{detail}}"
+    "writeFailed": "Det gick inte att skriva {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} länkar till en fil utanför mappen, så Oleafly kan inte lägga till något i den. Lägg till referensen i Zotero eller där filen hanteras."
   },
   "citeOleafly": {
     "added": "Lade till Oleafly-posten i {{path}}. Citera den med {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "\"{{path}}\" ändrades utanför Oleafly. Läs in filen igen, eller spara igen för att behålla din version.",
     "openFileEncoding": "\"{{path}}\" kan inte öppnas eftersom det inte är en UTF-8-textfil. Om det är text sparar du den som UTF-8 och öppnar den igen.",
     "openFileFailed": "Det gick inte att öppna \"{{path}}\". Se appens logg för mer information.",
-    "reloadFromDisk": "Läs in igen"
+    "reloadFromDisk": "Läs in igen",
+    "changedOnDiskElsewhere": "{{path}} ändrades på disken, så Oleafly sparade den inte. Öppna den för att välja vilken version du vill behålla."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen misslyckades: {{message}}",
@@ -575,5 +577,9 @@
   "checkpoint": {
     "storageUnavailable": "Det gick inte att spara en kontrollpunkt. Disken är full eller så går det inte att skriva till mappen för kontrollpunkter. Frigör utrymme eller kontrollera mappens behörigheter och kompilera sedan igen.",
     "incompleteCapture": "Det gick inte att spara de senaste kontrollpunkterna eftersom vissa projektfiler inte kunde läsas. Kontrollera deras behörigheter och kompilera sedan igen."
+  },
+  "folderUnavailable": {
+    "compile": "Kompileringen är pausad tills projektmappen är tillbaka.",
+    "saveReason": "projektmappen är inte tillgänglig"
   }
 }

@@ -8,6 +8,7 @@ import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { i18n } from "@/i18n";
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { useFilesStore } from "@/store/files";
+import { useFolderAccessStore } from "@/store/folder-access";
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 
@@ -109,6 +110,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  mocks.notifyError.mockReset();
   mocks.listDictionaries.mockReset();
   mocks.listDictionaries.mockResolvedValue([
     entry("en_US", "English", "United States", "bundled"),
@@ -130,8 +132,10 @@ beforeEach(async () => {
   useFilesStore.setState({
     projectId: "guide",
     activePath: "main.tex",
+    manifestHome: "library",
     projectDictionaryLocale: null,
   });
+  useFolderAccessStore.getState().reset(null);
   useSettingsStore.setState({ spellcheck: true, harper: false });
   useProofreadingStore.setState({ source: IDLE });
   await refreshDictionaryCatalog();
@@ -195,6 +199,26 @@ describe("per-project spell-check language", () => {
     );
   });
 
+  it("lets a read-only folder refusal explain itself", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "project.json" },
+      detail: null,
+    })}`;
+    mocks.setProjectDictionaryLocaleCmd.mockRejectedValue(refused);
+    const user = userEvent.setup();
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    });
+    await user.click(control);
+    await user.click(await screen.findByRole("option", { name: "French (France)" }));
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(mocks.notifyError).toHaveBeenCalledWith("set the spelling language", refused, undefined);
+  });
+
   it("explains a rejected language change in plain words", async () => {
     const failure = "failed to set the spelling dictionary: unknown locale";
     mocks.setProjectDictionaryLocaleCmd.mockRejectedValue(failure);
@@ -244,6 +268,90 @@ describe("per-project spell-check language", () => {
     view.unmount();
     await act(async () => finish({ dictionary_locale: "fr_FR" }));
     expect(useFilesStore.getState().projectDictionaryLocale).toBe("en_US");
+  });
+});
+
+describe("spell-check language of an opened folder", () => {
+  function openFolder(
+    manifestHome: "folder" | "device",
+    readOnly: boolean,
+    locale: string | null = null,
+  ) {
+    useFilesStore.setState({ manifestHome, projectDictionaryLocale: locale });
+    useFolderAccessStore.setState({
+      projectId: "guide",
+      loaded: true,
+      status: { read_only: readOnly, synced_with: null },
+    });
+  }
+
+  async function languageControl() {
+    return screen.findByRole("combobox", {
+      name: enEditor.projectInfo.spellLanguageAriaLabel,
+    });
+  }
+
+  it("shows a hyphenated language from the folder's project.json as its catalog entry", async () => {
+    openFolder("folder", false, "es-ES");
+    const user = userEvent.setup();
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await languageControl();
+    await waitFor(() => expect(control).toHaveTextContent("Spanish (Spain)"));
+    await user.click(control);
+    expect(
+      await screen.findByRole("option", { name: "Spanish (Spain)", selected: true }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(mocks.setProjectDictionaryLocaleCmd).not.toHaveBeenCalled();
+  });
+
+  it("lists a hyphenated language that is not downloaded yet", async () => {
+    openFolder("folder", false, "it-IT");
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await languageControl();
+    await waitFor(() =>
+      expect(control).toHaveTextContent("Italian (Italy) (not downloaded)"),
+    );
+  });
+
+  it("says a choice is saved in the folder's project.json and shared", async () => {
+    openFolder("folder", false);
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    expect(await languageControl()).toBeEnabled();
+    expect(
+      screen.getByText(enEditor.projectInfo.spellLanguageFolderHint),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enEditor.projectInfo.spellLanguageHint),
+    ).not.toBeInTheDocument();
+  });
+
+  it("locks the language a read-only folder's project.json declares", async () => {
+    openFolder("folder", true, "es_ES");
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    const control = await languageControl();
+    expect(control).toBeDisabled();
+    await waitFor(() => expect(control).toHaveTextContent("Spanish (Spain)"));
+    expect(
+      screen.getByText(enEditor.projectInfo.spellLanguageReadOnly),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enEditor.projectInfo.spellLanguageFolderHint),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the choice open in a read-only folder that has no project.json", async () => {
+    openFolder("device", true);
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+
+    expect(await languageControl()).toBeEnabled();
+    expect(
+      screen.getByText(enEditor.projectInfo.spellLanguageHint),
+    ).toBeInTheDocument();
   });
 });
 

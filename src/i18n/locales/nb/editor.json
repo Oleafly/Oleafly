@@ -171,7 +171,9 @@
     "binaryFile": "Binærfil. Ingen forhåndsvisning tilgjengelig.",
     "managedFileReadOnly": "{{file}} styres av Oleafly og er skrivebeskyttet her. Prosjektinnstillinger endrer du i Oleafly, ikke ved å redigere denne filen.",
     "noFileOpen": "Ingen filer er åpne.",
-    "noFileOpenHint": "Velg en fil fra treet for å begynne å redigere."
+    "noFileOpenHint": "Velg en fil fra treet for å begynne å redigere.",
+    "linkedFileReadOnly": "{{file}} lenker til en fil utenfor mappen, så du kan ikke redigere den her. Endre den der den ligger, for eksempel i Zotero.",
+    "diffOnDisk": "På disken"
   },
   "projectInfo": {
     "trigger": "Prosjektinfo",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "Bruk innstillingen i appen",
     "spellLanguageAriaLabel": "Språk for stavekontroll i dette prosjektet",
     "spellLanguageHint": "Gjelder bare dette prosjektet. Last ned flere språk i Innstillinger.",
+    "spellLanguageFolderHint": "Lagres i mappens project.json, så det gjelder for alle som åpner mappen. Last ned flere språk i Innstillinger.",
+    "spellLanguageReadOnly": "Denne mappen er skrivebeskyttet, så språket i project.json kan ikke endres.",
     "spellLanguageFailed": "Kunne ikke endre språk for stavekontroll.",
     "notChecked": "Ikke kontrollert",
     "dictionaryMissing": "{{name}} er ikke lastet ned, så stavingen kontrolleres ikke. Last den ned i Innstillinger, eller velg et annet språk.",
@@ -330,7 +334,8 @@
     "splitView": "Delt visning",
     "unifiedView": "Samlet visning",
     "loading": "Laster diffen…",
-    "previewTooLarge": "Filen er for stor til å forhåndsvise en diff."
+    "previewTooLarge": "Filen er for stor til å forhåndsvise en diff.",
+    "diskHeading": "På disken ↔ Dine endringer"
   },
   "hotkeys": {
     "title": "Hurtigtaster",
@@ -426,6 +431,11 @@
       "sourceSize": "Kildestørrelse",
       "reclaimable": "Kan frigjøres"
     },
+    "capture": {
+      "paused": "Sjekkpunkter er satt på pause fordi mappen er for stor. Et sjekkpunkt kan inneholde høyst {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i denne mappen er ikke med i sjekkpunktene. Oleafly utelater lenker, svært store filer, filer som bare ligger i skyen, og navn som ikke fungerer på alle systemer.",
+      "skipped_other": "{{formattedCount}} filer i denne mappen er ikke med i sjekkpunktene. Oleafly utelater lenker, svært store filer, filer som bare ligger i skyen, og navn som ikke fungerer på alle systemer."
+    },
     "catalog": {
       "formatVersion": "Formatversjon",
       "lineage": "Slektslinje",
@@ -458,7 +468,8 @@
       "showFor": "Vis filene for {{version}}",
       "hideFor": "Skjul filene for {{version}}",
       "show": "Vis filene",
-      "hide": "Skjul filene"
+      "hide": "Skjul filene",
+      "folderSettings": "Oleafly-innstillinger for denne mappen"
     },
     "entry": {
       "labelInput": "Sjekkpunktetikett",
@@ -1022,5 +1033,13 @@
     "label": "Plassering i dokumentet",
     "goTo": "Gå til {{title}}",
     "untitled": "Uten navn"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} ble endret på disken mens du hadde endringer som ikke var lagret.",
+    "compare": "Sammenlign",
+    "keepMine": "Behold min",
+    "reload": "Last inn på nytt",
+    "failed": "Oleafly kunne ikke oppdatere {{file}}. Prøv igjen.",
+    "tabMark": "Endret på disken. Åpne fanen for å velge hvilken versjon du vil beholde."
   }
 }

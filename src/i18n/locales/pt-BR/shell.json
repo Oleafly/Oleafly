@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Compilar de novo"
     },
+    "saveSettingsToFolder": {
+      "keywords": "salvar configurações projeto pasta project.json compartilhar documento principal",
+      "label": "Salvar as configurações do projeto nesta pasta",
+      "saved": "As configurações do projeto foram salvas em project.json nesta pasta."
+    },
     "section": {
       "label": "Seção"
     },
@@ -215,6 +220,10 @@
         "titleCase": "iniciais maiúsculas capitalizar texto",
         "uppercase": "maiúsculas caixa texto"
       }
+    },
+    "openFolder": {
+      "label": "Abrir pasta…",
+      "keywords": "abrir pasta diretório existente local arquivos disco"
     }
   },
   "community": {
@@ -261,6 +270,7 @@
     "texRootBroken": "O % !TEX root em {{file}} aponta para um arquivo inexistente ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "raiz: {{name}}",
+    "texRootNotTex": "O % !TEX root em {{file}} aponta para {{target}}, que não é um arquivo LaTeX",
     "texRootOverride": "raiz: {{path}} (definida por % !TEX root em {{file}})"
   },
   "datePicker": {
@@ -363,6 +373,25 @@
     },
     "title": "Algo deu errado"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Esta pasta não está disponível.",
+      "body": "Reconecte a unidade ou encontre a pasta. Seus arquivos abertos continuam aqui, e o Oleafly não vai salvar nem compilar até a pasta voltar."
+    },
+    "replaced": {
+      "title": "Esta pasta foi substituída.",
+      "body": "Agora há outra pasta no lugar dela. O Oleafly parou de salvar para não sobrescrever nada lá."
+    },
+    "permissionDenied": {
+      "title": "O Oleafly não consegue abrir esta pasta.",
+      "body": "Verifique as permissões da pasta e tente de novo. Seus arquivos abertos continuam aqui."
+    },
+    "locate": "Localizar",
+    "useThisFolder": "Usar esta pasta",
+    "saveCopy": "Salvar uma cópia",
+    "tryAgain": "Tentar de novo",
+    "savedCopy": "Seus arquivos abertos foram salvos em {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Ações do GitHub",
@@ -421,6 +450,68 @@
     },
     "tryCommand": "Experimente um comando",
     "unknownCommand": "Comando desconhecido. Digite / para ver os comandos disponíveis."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Qual documento o Oleafly deve compilar?",
+      "askDescription": "Esta pasta tem mais de um documento. Escolha o principal. Você pode mudar depois.",
+      "listLabel": "Documentos nesta pasta",
+      "open": "Abrir",
+      "browse": "Só navegar pelos arquivos",
+      "bestMatch": "Melhor opção",
+      "empty": "O Oleafly não encontrou documentos aqui. Clique com o botão direito em um arquivo na árvore de arquivos e escolha Definir como documento principal.",
+      "truncated": "Esta pasta é grande, então o Oleafly parou de procurar antes. Alguns documentos podem não aparecer na lista.",
+      "openFailed": "Não foi possível definir {{path}} como documento principal."
+    },
+    "kind": {
+      "document": "Documento",
+      "book": "Livro",
+      "presentation": "Apresentação",
+      "poster": "Pôster",
+      "standalone": "Figura independente",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Outro"
+    },
+    "reason": {
+      "declared": "Marcado como arquivo principal",
+      "top_level": "Na pasta de nível superior",
+      "named_main": "Chama-se main",
+      "named_after_folder": "Tem o nome da pasta",
+      "includes_files": "Inclui outros arquivos",
+      "has_bibliography": "Tem bibliografia",
+      "no_begin_document": "Sem \\begin{document}",
+      "standalone_figure": "Figura independente",
+      "placeholder": "Ainda não baixado"
+    },
+    "noMain": "Ainda não há documento principal. Escolha um arquivo e selecione Definir como documento principal.",
+    "trust": {
+      "banner": "O Oleafly limitou alguns recursos nesta pasta. Confiar nela para ativar o Git, o terminal, os agentes e o shell escape?",
+      "trustFolder": "Confiar nesta pasta",
+      "trustParent": "Confiar na pasta superior",
+      "trustRepository": "Confiar no repositório",
+      "hide": "Ocultar",
+      "terminal": "Os hooks do Git e as configurações do repositório ficam desativados neste terminal até você confiar na pasta.",
+      "terminalReopen": "Este terminal foi aberto antes de você confiar na pasta. Abra-o de novo para ativar os hooks do Git.",
+      "reopenTerminal": "Reabrir terminal",
+      "failed": "Não foi possível confiar nesta pasta."
+    },
+    "readOnly": {
+      "banner": "Esta pasta é somente leitura. Você pode compilar, mas as edições não podem ser salvas.",
+      "copy": "Copiar para a biblioteca",
+      "copied": "O Oleafly copiou esta pasta para a sua biblioteca. Agora você está editando a cópia."
+    },
+    "sync": {
+      "syncsWith": "Sincroniza com o {{service}}",
+      "cloudStorage": "Sincroniza com um serviço de nuvem",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Busque em todos os arquivos deste projeto.",
@@ -553,6 +644,9 @@
         "calculating": "Calculando o uso de armazenamento…",
         "desktopOnly": "Os detalhes de armazenamento estão disponíveis no aplicativo para desktop.",
         "error": "Não foi possível calcular os detalhes de armazenamento.",
+        "linkedFolders_one": "{{size}} de saída de compilação e configurações para {{count}} pasta aberta",
+        "linkedFolders_many": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
+        "linkedFolders_other": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
         "refresh": "Atualizar o uso de armazenamento",
         "stats": {
           "appData": "Dados do aplicativo",
@@ -803,7 +897,8 @@
     "loadingCore": "Carregando o núcleo do Oleafly",
     "loadingHarness": "Carregando o ambiente do Oleafly",
     "loadingParsers": "Carregando os analisadores do Oleafly",
-    "starting": "Iniciando o Oleafly"
+    "starting": "Iniciando o Oleafly",
+    "opening": "Abrindo {{name}}…"
   },
   "theme": {
     "dark": "Escuro",
@@ -937,5 +1032,30 @@
   "windows": {
     "preview": "Visualização: {{title}}",
     "update": "Atualização do Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Parar e abrir {{name}}?",
+    "confirmCompile": "{{project}} ainda está compilando. Abrir {{name}} interrompe a compilação. Suas alterações são salvas antes.",
+    "confirmAssistant": "O assistente ainda está trabalhando em {{project}}. Abrir {{name}} interrompe a resposta. Suas alterações são salvas antes.",
+    "confirmBoth": "{{project}} ainda está compilando e o assistente ainda está trabalhando. Abrir {{name}} interrompe os dois. Suas alterações são salvas antes.",
+    "confirmAction": "Parar e abrir",
+    "chooseSubfolder": "Escolher uma subpasta",
+    "refusedTitle": "Não foi possível abrir {{name}}",
+    "refused": "Não foi possível abrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Nos Ajustes do Sistema, abra Privacidade e Segurança, depois Arquivos e Pastas, e ative o Oleafly. Se o Oleafly não aparecer, adicione-o em Acesso Total ao Disco e tente de novo.",
+      "windows": "Verifique na guia Segurança das Propriedades da pasta se a sua conta consegue lê-la e tente de novo.",
+      "linux": "Verifique se a sua conta consegue ler esta pasta e tente de novo."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Abra pastas pelo Finder",
+    "body": "Adicione Abrir no Oleafly ao Finder. Funciona na hora pelo menu Serviços, e por Ações Rápidas depois que você a ativar.",
+    "add": "Adicionar ao Finder",
+    "notNow": "Agora não",
+    "added": "Pronto. Ela já está no menu Serviços do Finder. Para usá-la também em Ações Rápidas, clique com o botão direito em uma pasta e ative-a em Ações Rápidas › Personalizar.",
+    "addedInQuickActions": "Pronto. Clique com o botão direito em uma pasta e você vai encontrá-la em Ações Rápidas.",
+    "failed": "Não foi possível adicionar. Você pode tentar de novo em Configurações › Geral."
   }
 }

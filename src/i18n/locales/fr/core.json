@@ -46,7 +46,8 @@
     "projectChangedRetry": "Le projet a changé pendant l'import de citations. Réessayez dans le projet d'origine.",
     "readFailed": "Impossible de lire {{path}} : {{detail}}",
     "unrecognizedFile": "Type de fichier non reconnu : {{name}}",
-    "writeFailed": "Impossible d'écrire {{path}} : {{detail}}"
+    "writeFailed": "Impossible d'écrire {{path}} : {{detail}}",
+    "linkedBibliography": "{{path}} renvoie vers un fichier situé hors de ce dossier, Oleafly ne peut donc rien y ajouter. Ajoutez la référence dans Zotero ou là où ce fichier est géré."
   },
   "citeOleafly": {
     "added": "Entrée Oleafly ajoutée à {{path}}. Citez-la avec {{markup}}.",
@@ -383,7 +384,8 @@
     "changedOnDisk": "« {{path}} » a été modifié en dehors d’Oleafly. Rechargez-le, ou enregistrez à nouveau pour garder votre version.",
     "openFileEncoding": "Impossible d’ouvrir « {{path}} », car ce n’est pas un fichier texte UTF-8. S’il s’agit de texte, enregistrez-le en UTF-8, puis rouvrez-le.",
     "openFileFailed": "Impossible d’ouvrir « {{path}} ». Consultez le journal de l’application pour plus de détails.",
-    "reloadFromDisk": "Recharger"
+    "reloadFromDisk": "Recharger",
+    "changedOnDiskElsewhere": "{{path}} a été modifié sur le disque, Oleafly ne l'a donc pas enregistré. Ouvrez-le pour choisir la version à garder."
   },
   "projectDiagnostics": {
     "analysisFailed": "L'analyse a échoué : {{message}}",
@@ -591,5 +593,9 @@
   "checkpoint": {
     "storageUnavailable": "Impossible d'enregistrer un point de contrôle. Le disque est plein ou le dossier des points de contrôle n'est pas accessible en écriture. Libérez de l'espace ou vérifiez les autorisations du dossier, puis compilez à nouveau.",
     "incompleteCapture": "Impossible d'enregistrer les derniers points de contrôle, car certains fichiers du projet n'ont pas pu être lus. Vérifiez leurs autorisations, puis compilez à nouveau."
+  },
+  "folderUnavailable": {
+    "compile": "La compilation est en pause jusqu'au retour du dossier du projet.",
+    "saveReason": "le dossier du projet n'est pas disponible"
   }
 }

@@ -5,7 +5,7 @@ import { initialState, seedStarterPersonas } from "@/lib/tauri";
 import { appQueryClient } from "@/lib/query";
 import { projectsKey } from "@/lib/queries/projects";
 import { useFilesStore } from "@/store/files";
-import { getSnapshotConfig, hydrateFromSnapshot } from "./initial-state";
+import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "./initial-state";
 
 vi.mock("@/lib/tauri", () => ({
   initialState: vi.fn(),
@@ -47,6 +47,31 @@ describe("startup snapshot hydration", () => {
     expect(appQueryClient().getQueryData(projectsKey)).toEqual(PROJECTS);
     expect(getSnapshotConfig()?.ai_provider).toBe("openai");
     expect(mockSeedStarterPersonas).not.toHaveBeenCalled();
+  });
+
+  it("keeps the folders the OS asked to open so the splash can name them", async () => {
+    mockInitial.mockResolvedValue({
+      config: { ai_starter_personas_seeded: true } as never,
+      projects: [],
+      pending_open: [{ token: "t1", display_name: "thesis", source: "launch" }],
+    });
+
+    await hydrateFromSnapshot();
+
+    expect(getSnapshotPendingOpen()).toEqual([
+      { token: "t1", display_name: "thesis", source: "launch" },
+    ]);
+  });
+
+  it("treats a snapshot from an older backend as having nothing to open", async () => {
+    mockInitial.mockResolvedValue({
+      config: { ai_starter_personas_seeded: true } as never,
+      projects: [],
+    });
+
+    await hydrateFromSnapshot();
+
+    expect(getSnapshotPendingOpen()).toEqual([]);
   });
 
   it("atomically persists all starter personas without restoring stale config fields", async () => {

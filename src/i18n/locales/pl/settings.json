@@ -1399,6 +1399,35 @@
     "description": "Przywróć domyślne preferencje sekcji {{sectionName}}.",
     "label": "Resetowanie ustawień"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} będzie w PATH po wylogowaniu się i ponownym zalogowaniu. Potem otwórz nowy terminal.",
+    "checking": "Sprawdzanie…",
+    "description": "Wpisz <code>oleafly .</code> w terminalu, aby otworzyć ten folder w Oleafly.",
+    "install": "Zainstaluj",
+    "installing": "Instalowanie…",
+    "loadFailed": "Nie udało się sprawdzić polecenia terminala.",
+    "notOnPath": {
+      "file": "{{directory}} nie jest jeszcze w PATH. Dodaj ten wiersz do {{file}}, a potem otwórz nowy terminal:",
+      "run": "{{directory}} nie jest jeszcze w PATH. Uruchom to raz, a potem otwórz nowy terminal:"
+    },
+    "removing": "Usuwanie…",
+    "result": {
+      "copied": "Skopiowano polecenie do {{path}}.",
+      "linked": "{{path}} wskazuje teraz tę kopię Oleafly.",
+      "removed": "Usunięto {{path}}."
+    },
+    "state": {
+      "installed": "Zainstalowano w {{path}}.",
+      "moveApp": "Najpierw przenieś Oleafly do folderu Aplikacje, a potem zainstaluj tutaj polecenie.",
+      "notInstalled": "Dodaje oleafly do {{directory}}.",
+      "occupied": "{{path}} już istnieje i nie pochodzi z Oleafly, więc pozostanie bez zmian.",
+      "outdated": "{{path}} nadal wskazuje starszą kopię Oleafly. Zaktualizuj polecenie, aby używało tej kopii.",
+      "packaged": "Zainstalowano w {{path}} przez pakiet Oleafly.",
+      "unavailable": "Ta kopia Oleafly nie zawiera polecenia."
+    },
+    "title": "Polecenie terminala",
+    "update": "Zaktualizuj"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1432,6 +1461,10 @@
       "toggleTerminal": {
         "description": "Pokaż albo ukryj terminal projektu.",
         "label": "Przełącz terminal"
+      },
+      "openFolder": {
+        "label": "Otwórz folder",
+        "description": "Otwórz folder z komputera jako projekt."
       }
     },
     "application": {
@@ -1507,6 +1540,58 @@
         "uppercase": "Wielkie litery"
       },
       "unbound": "Nieustawione"
+    }
+  },
+  "systemIntegration": {
+    "title": "Integracja z systemem",
+    "description": "Otwieraj foldery w Oleafly bezpośrednio z menedżera plików.",
+    "checking": "Sprawdzanie…",
+    "loadFailed": "Nie udało się sprawdzić konfiguracji menedżera plików.",
+    "state": {
+      "installed": "Zainstalowano",
+      "notInstalled": "Nie zainstalowano",
+      "needsAttention": "Wymaga uwagi"
+    },
+    "actions": {
+      "install": "Zainstaluj",
+      "repair": "Napraw"
+    },
+    "failed": {
+      "install": "Nie udało się zainstalować. Spróbuj ponownie.",
+      "remove": "Nie udało się usunąć. Spróbuj ponownie."
+    },
+    "packaged": "Zainstalowano z pakietem Oleafly.",
+    "quickAction": {
+      "label": "Szybkie czynności w Finderze",
+      "description": "Dodaje Otwórz w Oleafly do menu Usługi, gdy klikniesz folder prawym przyciskiem w Finderze.",
+      "menuHint": "Jeszcze nie ma go w menu Szybkie czynności. Kliknij folder prawym przyciskiem, wybierz Szybkie czynności › Dostosuj i włącz {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Menu kontekstowe Eksploratora plików",
+      "description": "Kliknij prawym przyciskiem folder lub puste miejsce w nim i wybierz Otwórz w programie Oleafly. W Windows 11 ta opcja jest w menu Pokaż więcej opcji.",
+      "toggle": "Pokazuj Otwórz w programie Oleafly w Eksploratorze plików"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Dodaje Otwórz w programie Oleafly po kliknięciu folderu prawym przyciskiem w Dolphinie."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Dodaje Otwórz w programie Oleafly po kliknięciu folderu prawym przyciskiem w Nemo."
+    },
+    "nautilus": {
+      "label": "Pliki",
+      "description": "Dodaje Otwórz w programie Oleafly do menu Skrypty po kliknięciu folderu prawym przyciskiem w Plikach GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Otwórz za pomocą dla folderów",
+      "description": "Pokazuje Oleafly w menu Otwórz za pomocą dla folderów. Domyślny menedżer plików się nie zmienia."
+    },
+    "attention": {
+      "outdated": "Jest nieaktualna albo zablokował ją macOS. Napraw ją, aby ją przywrócić.",
+      "elsewhere": "Menu otwiera inną kopię Oleafly. Napraw je, aby używać tej.",
+      "moved": "Wskazuje kopię Oleafly, która została przeniesiona. Napraw, aby używać tej.",
+      "noDefaultFileManager": "System nie ma domyślnego menedżera plików dla folderów, więc ten wpis mógłby otwierać każdy folder w Oleafly. Usuń go."
     }
   }
 }

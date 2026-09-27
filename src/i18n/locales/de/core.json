@@ -46,7 +46,8 @@
     "projectChangedRetry": "Das Projekt hat sich während des Zitationsimports geändert. Versuchen Sie es im ursprünglichen Projekt erneut.",
     "readFailed": "{{path}} konnte nicht gelesen werden: {{detail}}",
     "unrecognizedFile": "Unbekannter Dateityp: {{name}}",
-    "writeFailed": "{{path}} konnte nicht geschrieben werden: {{detail}}"
+    "writeFailed": "{{path}} konnte nicht geschrieben werden: {{detail}}",
+    "linkedBibliography": "{{path}} verweist auf eine Datei außerhalb dieses Ordners, daher kann Oleafly nichts hinzufügen. Fügen Sie den Eintrag in Zotero oder dort hinzu, wo die Datei gepflegt wird."
   },
   "citeOleafly": {
     "added": "Der Oleafly-Eintrag wurde zu {{path}} hinzugefügt. Zitieren Sie ihn mit {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "„{{path}}“ wurde außerhalb von Oleafly geändert. Lade die Datei neu oder speichere erneut, um deine Version zu behalten.",
     "openFileEncoding": "„{{path}}“ kann nicht geöffnet werden, weil es keine UTF-8-Textdatei ist. Wenn es Text ist, speichere die Datei als UTF-8 und öffne sie erneut.",
     "openFileFailed": "„{{path}}“ konnte nicht geöffnet werden. Einzelheiten stehen im Protokoll der App.",
-    "reloadFromDisk": "Neu laden"
+    "reloadFromDisk": "Neu laden",
+    "changedOnDiskElsewhere": "{{path}} wurde auf dem Datenträger geändert, daher hat Oleafly die Datei nicht gespeichert. Öffnen Sie sie, um zu wählen, welche Version bleibt."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyse fehlgeschlagen: {{message}}",
@@ -575,5 +577,9 @@
   "checkpoint": {
     "storageUnavailable": "Ein Checkpoint konnte nicht gespeichert werden. Der Datenträger ist voll oder der Checkpoint-Ordner ist nicht beschreibbar. Geben Sie Speicherplatz frei oder prüfen Sie die Ordnerberechtigungen und kompilieren Sie dann erneut.",
     "incompleteCapture": "Die letzten Checkpoints konnten nicht gespeichert werden, weil einige Projektdateien nicht lesbar waren. Prüfen Sie deren Berechtigungen und kompilieren Sie dann erneut."
+  },
+  "folderUnavailable": {
+    "compile": "Das Kompilieren ist pausiert, bis der Projektordner wieder verfügbar ist.",
+    "saveReason": "der Projektordner ist nicht verfügbar"
   }
 }

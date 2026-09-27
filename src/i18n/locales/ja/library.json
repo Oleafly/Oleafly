@@ -34,7 +34,6 @@
     "appIconAlt": "Oleafly のアプリアイコン",
     "welcomeTitle": "Oleafly へようこそ",
     "welcomeDescription": "LaTeX、Typst、Markdown を書き、コンパイルし、校正できます。引用を管理し、PDF を確認し、Git で変更を追い、好きな AI モデルと一緒に作業できます。",
-    "createFirstProject": "新規プロジェクトを作成",
     "loading": "ライブラリを読み込んでいます…",
     "noBookmarksTitle": "ブックマークはまだありません",
     "noBookmarksDescription": "本にカーソルを合わせ、しおりをクリックすると追加できます。",
@@ -67,8 +66,15 @@
       "anyTime": "期間を指定しない",
       "last7Days": "過去 7 日間",
       "last30Days": "過去 30 日間",
-      "lastYear": "過去 1 年間"
-    }
+      "lastYear": "過去 1 年間",
+      "location": "保存場所",
+      "locationAll": "すべてのプロジェクト",
+      "locationLibrary": "Oleafly 内",
+      "locationExternal": "外部プロジェクト"
+    },
+    "openFolder": "フォルダを開く",
+    "openFolderShortcut": "フォルダを開く（{{shortcut}}）",
+    "createFirstProject": "新規プロジェクトを作成"
   },
   "projects": {
     "open": "{{name}} を開く",
@@ -82,7 +88,7 @@
     "actions": "{{name}} の操作",
     "details": "プロジェクトの詳細",
     "exportHistory": "書き出しの履歴",
-    "changeColor": "プロジェクトの色を変更",
+    "changeColor": "プロジェクトの色",
     "fork": "プロジェクトをフォーク",
     "delete": "プロジェクトを削除",
     "favoriteAdd": "お気に入りに追加",
@@ -94,7 +100,8 @@
     "kind": {
       "document": "文書",
       "image": "画像",
-      "diagram": "ダイアグラム"
+      "diagram": "ダイアグラム",
+      "external": "外部"
     },
     "preview": {
       "title": "PDF プレビュー: {{name}}",
@@ -364,7 +371,9 @@
     "nameRequired": "リポジトリ名を入力してください。",
     "published": "{{repository}} に公開しました。",
     "linked": "{{remote}} にリンクしてプッシュしました。",
-    "pushNeedsPull": "{{remote}} にリンクしましたが、プッシュの前にプルが必要です: {{detail}}"
+    "pushNeedsPull": "{{remote}} にリンクしましたが、プッシュの前にプルが必要です: {{detail}}",
+    "replaceRemotePrompt": "このプロジェクトは {{remote}} にリンクされています。このリンクを置き換えますか？",
+    "replaceRemote": "リンクを置き換える"
   },
   "deadlines": {
     "title": "国際会議の締め切り",
@@ -449,6 +458,75 @@
       "sourcesTitle": "出典",
       "sourcesBody": "記録は、公開されている ccf-deadlines のデータセットと、Oleafly が追跡している公式の会議サイトを組み合わせたものです。",
       "confirm": "投稿する前に、必ず公式の会議サイトですべての日付を確認してください。"
+    }
+  },
+  "start": {
+    "newProjectTitle": "新規プロジェクト",
+    "newProjectDescription": "テンプレートか白紙のページから始めます。",
+    "openFolderTitle": "フォルダを開く",
+    "openFolderDescription": "コンピュータにすでにあるファイルで作業します。ファイルは元の場所に置いたままです。"
+  },
+  "openFolder": {
+    "dismiss": "閉じる"
+  },
+  "folder": {
+    "state": {
+      "missing": "フォルダが見つかりません",
+      "offline": "ドライブ未接続",
+      "replaced": "フォルダが置き換えられました",
+      "permissionDenied": "アクセス権なし"
+    },
+    "menu": {
+      "showInFinder": "Finder で表示",
+      "showInExplorer": "エクスプローラーで表示",
+      "showInFileManager": "ファイルマネージャーで表示",
+      "copyToLibrary": "ライブラリにコピー",
+      "remove": "Oleafly から削除"
+    },
+    "remove": {
+      "title": "「{{name}}」を Oleafly から削除しますか？",
+      "description": "ファイルはそのままの場所に残ります。Oleafly はこのフォルダ用に作ったビルドファイルを削除し、信頼、承認、リンクしたフォルダをリセットします。30 日以内にフォルダをもう一度開くと、チャットと履歴が戻ります。それ以外はもう一度設定する必要があります。",
+      "confirm": "Oleafly から削除",
+      "done": "「{{name}}」を Oleafly から削除しました。ファイルはフォルダに残っています。",
+      "failed": "「{{name}}」を Oleafly から削除できませんでした。"
+    },
+    "unavailable": {
+      "missing": {
+        "title": "「{{name}}」が見つかりません",
+        "body": "<path>{{path}}</path> にありましたが、移動または削除された可能性があります。チャットと履歴を残すには場所を指定してください。"
+      },
+      "offline": {
+        "title": "「{{name}}」は接続されていないドライブにあります",
+        "body": "<path>{{path}}</path> を含むドライブまたはネットワーク共有を接続して、もう一度お試しください。"
+      },
+      "replaced": {
+        "title": "「{{name}}」は置き換えられました",
+        "body": "<path>{{path}}</path> のフォルダは以前開いたものとは異なります。信頼できる場合だけ使用してください。切り替えると、Oleafly は信頼と承認をオフにします。"
+      },
+      "permissionDenied": {
+        "title": "Oleafly は「{{name}}」を開けません",
+        "bodyMac": "「システム設定」›「プライバシーとセキュリティ」›「ファイルとフォルダ」で Oleafly にこのフォルダの使用を許可してから、もう一度お試しください。",
+        "bodyOther": "お使いのアカウントでは <path>{{path}}</path> を読み取れません。フォルダのアクセス権を確認して、もう一度お試しください。"
+      },
+      "back": {
+        "title": "「{{name}}」が再び使えるようになりました",
+        "body": "Oleafly から <path>{{path}}</path> に再びアクセスできるようになりました。"
+      },
+      "locate": "場所を指定",
+      "tryAgain": "再試行",
+      "useThisFolder": "このフォルダを使用",
+      "checking": "確認中",
+      "still": "Oleafly はまだアクセスできません。"
+    },
+    "copy": {
+      "title": "「{{name}}」をライブラリにコピー",
+      "description": "Oleafly はファイルをライブラリの新しいプロジェクトにコピーし、フォルダはそのまま残します。Git の履歴はコピーされますが、Git フックとビルドファイルはコピーされません。",
+      "counting": "ファイルを数えています…",
+      "copying": "ファイルをコピーしています…",
+      "count": "{{done}} / {{total}}",
+      "done": "「{{name}}」をライブラリに追加しました。",
+      "doneLeftOut": "「{{name}}」をライブラリに追加しました。別の場所にあるファイルへのリンクと、階層が深すぎるフォルダはコピーされませんでした。",
+      "failed": "「{{name}}」をライブラリにコピーできませんでした。"
     }
   }
 }

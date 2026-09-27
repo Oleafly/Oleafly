@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> 已存在。可使用 <suggestion>{{suggestion}}</suggestion> 保留两个文件，或替换现有的目标文件。除非你选择“替换”，否则 Oleafly 不会替换该文件。",
       "replace": "替换",
       "title": "该名称已被使用",
-      "unchanged": "原始路径和目标路径均未更改。"
+      "unchanged": "原始路径和目标路径均未更改。",
+      "renameFolderBody": "<destination>{{destination}}</destination> 是一个已有的文件夹。可使用 <suggestion>{{suggestion}}</suggestion> 保留两者。在原位置打开的文件夹中，Oleafly 从不替换整个文件夹。"
     },
     "createFailed": "无法创建“{{path}}”。",
     "deleteFailed": "无法删除“{{path}}”。",
@@ -38,10 +39,19 @@
     "newFolderTitle": "新建文件夹（在所选文件夹中）",
     "renameAriaLabel": "重命名文件",
     "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
-    "setMain": "已将此文件设为主文档。",
+    "setMain": "设为主文档",
     "title": "资源管理器",
     "treeAriaLabel": "资源管理器文件树",
-    "setMainFailed": "无法将“{{path}}”设为主文档。"
+    "setMainFailed": "无法将“{{path}}”设为主文档。",
+    "listingStopped": "仅显示前 {{limit}} 项。此文件夹的其余内容未列出。",
+    "unreadable": "无访问权限",
+    "unreadableHint": "Oleafly 没有打开此项的权限。",
+    "confirmTrash": "将 {{path}} 移到废纸篓？",
+    "confirmTrashWindows": "将 {{path}} 移到回收站？",
+    "confirmPermanentDelete": "Oleafly 无法将 {{path}} 移到废纸篓。要改为永久删除吗？此操作无法撤销。",
+    "confirmPermanentDeleteWindows": "Oleafly 无法将 {{path}} 移到回收站。要改为永久删除吗？此操作无法撤销。",
+    "linkedReadOnly": "链接到此文件夹之外的文件，因此为只读。",
+    "partialFolder": "此文件夹中的部分项目未列出。"
   },
   "explorer": {
     "resizeSections": "调整 {{first}} 与 {{second}} 的大小"

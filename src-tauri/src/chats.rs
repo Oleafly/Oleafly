@@ -26,6 +26,19 @@ fn chats_path(project_id: &str) -> Result<std::path::PathBuf, String> {
     Ok(chats_root()?.join(format!("{project_id}.json")))
 }
 
+pub(crate) fn remove_project_chats(project_id: &str) -> Result<(), String> {
+    let path = chats_path(project_id)?;
+    let lock = SAVE_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock
+        .lock()
+        .map_err(|_| "chat save lock is poisoned".to_string())?;
+    match std::fs::remove_file(&path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to delete chats: {error}")),
+    }
+}
+
 /// Hard cap so a runaway chat history cannot fill the disk via IPC.
 const MAX_CHATS_JSON_BYTES: usize = 8 * 1024 * 1024; // 8 MiB
 

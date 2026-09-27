@@ -70,7 +70,11 @@ pub async fn acp_start(
     let _startup = runtime.begin_startup()?;
     let generation = runtime.owner_generation(window.label());
     let project_path = crate::paths::project_dir(&project_id)?;
-    let bridge = crate::research_mcp::start(app, project_id.clone(), None).await?;
+    let bridge = super::admit_agent_bridge(
+        &project_id,
+        crate::research_mcp::start(app, project_id.clone(), None),
+    )
+    .await?;
     let result = runtime
         .start_with_mcp_at_generation(
             StartSession {
@@ -108,7 +112,11 @@ pub async fn acp_reconnect(
     if root != std::path::Path::new(&record.project_path) {
         return Err("The saved session uses a different project directory.".into());
     }
-    let bridge = crate::research_mcp::start(app, project_id, None).await?;
+    let bridge = super::admit_agent_bridge(
+        &project_id,
+        crate::research_mcp::start(app, project_id.clone(), None),
+    )
+    .await?;
     let result = runtime
         .reconnect_with_mcp_at_generation(
             &session_id,

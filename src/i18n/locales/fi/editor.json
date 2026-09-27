@@ -171,7 +171,9 @@
     "binaryFile": "Binääritiedosto. Esikatselua ei ole.",
     "managedFileReadOnly": "Oleafly hallinnoi tiedostoa {{file}}, joten se on täällä vain luettavissa. Projektin asetuksia muutetaan Oleaflyn kautta, ei tätä tiedostoa muokkaamalla.",
     "noFileOpen": "Ei avointa tiedostoa.",
-    "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta."
+    "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta.",
+    "linkedFileReadOnly": "{{file}} on linkki tämän kansion ulkopuoliseen tiedostoon, joten et voi muokata sitä täällä. Muuta sitä sen omassa sijainnissa, esimerkiksi Zoterossa.",
+    "diffOnDisk": "Levyllä"
   },
   "projectInfo": {
     "trigger": "Projektin tiedot",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "Käytä sovelluksen asetusta",
     "spellLanguageAriaLabel": "Tämän projektin oikoluvun kieli",
     "spellLanguageHint": "Koskee vain tätä projektia. Lataa lisää kieliä asetuksissa.",
+    "spellLanguageFolderHint": "Tallennetaan tämän kansion project.json-tiedostoon, joten se koskee kaikkia, jotka avaavat kansion. Lataa lisää kieliä asetuksissa.",
+    "spellLanguageReadOnly": "Tämä kansio on vain luku -tilassa, joten sen project.json-tiedoston kieltä ei voi muuttaa.",
     "spellLanguageFailed": "Oikoluvun kieltä ei voitu vaihtaa.",
     "notChecked": "Ei tarkistettu",
     "dictionaryMissing": "{{name}} ei ole ladattu, joten oikeinkirjoitusta ei tarkisteta. Lataa se asetuksista tai valitse toinen kieli.",
@@ -330,7 +334,8 @@
     "splitView": "Rinnakkaisnäkymä",
     "unifiedView": "Yhdistetty näkymä",
     "loading": "Ladataan vertailua…",
-    "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun."
+    "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun.",
+    "diskHeading": "Levyllä ↔ Omat muutoksesi"
   },
   "hotkeys": {
     "title": "Pikanäppäimet",
@@ -426,6 +431,11 @@
       "sourceSize": "Lähdekoodin koko",
       "reclaimable": "Vapautettavissa"
     },
+    "capture": {
+      "paused": "Tarkistuspisteet on keskeytetty, koska tämä kansio on liian suuri. Tarkistuspisteeseen mahtuu enintään {{files}} tiedostoa tai {{size}}.",
+      "skipped_one": "{{formattedCount}} tiedosto tässä kansiossa ei ole tarkistuspisteissä. Oleafly jättää pois linkit, hyvin suuret tiedostot, vain pilvessä olevat tiedostot ja nimet, jotka eivät toimi kaikissa järjestelmissä.",
+      "skipped_other": "{{formattedCount}} tiedostoa tässä kansiossa ei ole tarkistuspisteissä. Oleafly jättää pois linkit, hyvin suuret tiedostot, vain pilvessä olevat tiedostot ja nimet, jotka eivät toimi kaikissa järjestelmissä."
+    },
     "catalog": {
       "formatVersion": "Muodon versio",
       "lineage": "Sukulinja",
@@ -458,7 +468,8 @@
       "showFor": "Näytä version {{version}} tiedostot",
       "hideFor": "Piilota version {{version}} tiedostot",
       "show": "Näytä tiedostot",
-      "hide": "Piilota tiedostot"
+      "hide": "Piilota tiedostot",
+      "folderSettings": "Oleaflyn asetukset tälle kansiolle"
     },
     "entry": {
       "labelInput": "Tarkistuspisteen nimi",
@@ -1022,5 +1033,13 @@
     "label": "Sijainti dokumentissa",
     "goTo": "Siirry kohteeseen {{title}}",
     "untitled": "Nimetön"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} muuttui levyllä, kun sinulla oli tallentamattomia muutoksia.",
+    "compare": "Vertaa",
+    "keepMine": "Pidä omani",
+    "reload": "Lataa uudelleen",
+    "failed": "Oleafly ei voinut päivittää tiedostoa {{file}}. Yritä uudelleen.",
+    "tabMark": "Muuttui levyllä. Avaa tämä välilehti ja valitse, kumman version pidät."
   }
 }

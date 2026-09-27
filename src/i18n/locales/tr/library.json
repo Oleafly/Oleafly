@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly uygulama simgesi",
     "welcomeTitle": "Oleafly'ye hoş geldiniz",
     "welcomeDescription": "LaTeX, Typst ve Markdown yazın, derleyin ve redaksiyondan geçirin. Atıfları yönetin, PDF'leri inceleyin, değişiklikleri Git ile izleyin ve seçtiğiniz yapay zeka modelleriyle çalışın.",
-    "createFirstProject": "Yeni proje oluştur",
     "loading": "Kitaplığınız okunuyor…",
     "noBookmarksTitle": "Henüz yer imi yok",
     "noBookmarksDescription": "Eklemek için bir kitabın üzerine gelip yer imine tıklayın.",
@@ -68,8 +67,15 @@
       "anyTime": "Her zaman",
       "last7Days": "Son 7 gün",
       "last30Days": "Son 30 gün",
-      "lastYear": "Son bir yıl"
-    }
+      "lastYear": "Son bir yıl",
+      "location": "Konum",
+      "locationAll": "Tüm projeler",
+      "locationLibrary": "Oleafly'de",
+      "locationExternal": "Harici projeler"
+    },
+    "openFolder": "Klasör aç",
+    "openFolderShortcut": "Klasör aç ({{shortcut}})",
+    "createFirstProject": "Yeni proje oluştur"
   },
   "projects": {
     "open": "{{name}} projesini aç",
@@ -83,7 +89,7 @@
     "actions": "{{name}} için eylemler",
     "details": "Proje ayrıntıları",
     "exportHistory": "Dışa aktarma geçmişi",
-    "changeColor": "Proje rengini değiştir",
+    "changeColor": "Proje rengi",
     "fork": "Projeyi çatalla",
     "delete": "Projeyi sil",
     "favoriteAdd": "Favorilere ekle",
@@ -95,7 +101,8 @@
     "kind": {
       "document": "belge",
       "image": "görsel",
-      "diagram": "diyagram"
+      "diagram": "diyagram",
+      "external": "harici"
     },
     "preview": {
       "title": "PDF önizlemesi: {{name}}",
@@ -371,7 +378,9 @@
     "nameRequired": "Bir depo adı girin.",
     "published": "{{repository}} deposunda yayımlandı.",
     "linked": "{{remote}} bağlandı ve gönderildi.",
-    "pushNeedsPull": "{{remote}} bağlandı, ancak gönderimden önce bir çekme gerekiyor: {{detail}}"
+    "pushNeedsPull": "{{remote}} bağlandı, ancak gönderimden önce bir çekme gerekiyor: {{detail}}",
+    "replaceRemotePrompt": "Bu proje {{remote}} ile bağlantılı. Bu bağlantı değiştirilsin mi?",
+    "replaceRemote": "Bağlantıyı değiştir"
   },
   "deadlines": {
     "title": "Konferans son tarihleri",
@@ -458,6 +467,75 @@
       "sourcesTitle": "Kaynaklar",
       "sourcesBody": "Kayıtlar, açık ccf-deadlines veri kümesini Oleafly'nin izlediği resmi konferans siteleriyle birleştirir.",
       "confirm": "Göndermeden önce her tarihi resmi konferans web sitesinden doğrulayın."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Yeni proje",
+    "newProjectDescription": "Bir şablonla ya da boş bir sayfayla başlayın.",
+    "openFolderTitle": "Bir klasör aç",
+    "openFolderDescription": "Bilgisayarınızda zaten bulunan dosyalar üzerinde çalışın. Dosyalar oldukları yerde kalır."
+  },
+  "openFolder": {
+    "dismiss": "Kapat"
+  },
+  "folder": {
+    "state": {
+      "missing": "Klasör bulunamadı",
+      "offline": "Sürücü bağlı değil",
+      "replaced": "Klasör değiştirildi",
+      "permissionDenied": "İzin yok"
+    },
+    "menu": {
+      "showInFinder": "Finder'da göster",
+      "showInExplorer": "Dosya Gezgini'nde göster",
+      "showInFileManager": "Dosya yöneticisinde göster",
+      "copyToLibrary": "Kitaplığa kopyala",
+      "remove": "Oleafly'den kaldır"
+    },
+    "remove": {
+      "title": "“{{name}}” Oleafly'den kaldırılsın mı?",
+      "description": "Dosyalarınız olduğu yerde kalır. Oleafly bu klasör için oluşturduğu derleme dosyalarını siler ve klasörün güvenini, onaylarını ve bağlı klasörlerini sıfırlar. Sohbetlerini ve geçmişini geri almak için klasörü 30 gün içinde yeniden açın. Geri kalanını yeniden ayarlamanız gerekir.",
+      "confirm": "Oleafly'den kaldır",
+      "done": "“{{name}}” Oleafly'den kaldırıldı. Dosyaları hâlâ klasörde.",
+      "failed": "“{{name}}” Oleafly'den kaldırılamadı."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "“{{name}}” bulunamıyor",
+        "body": "Klasör <path>{{path}}</path> konumundaydı ve taşınmış ya da silinmiş olabilir. Sohbetlerini ve geçmişini korumak için klasörü bulun."
+      },
+      "offline": {
+        "title": "“{{name}}” bağlı olmayan bir sürücüde",
+        "body": "<path>{{path}}</path> konumunu içeren sürücüyü veya ağ paylaşımını bağlayıp yeniden deneyin."
+      },
+      "replaced": {
+        "title": "“{{name}}” değiştirildi",
+        "body": "<path>{{path}}</path> konumundaki klasör daha önce açtığınız klasör değil. Yalnızca güveniyorsanız kullanın. Geçiş yaptığınızda Oleafly güveni ve onayları kapatır."
+      },
+      "permissionDenied": {
+        "title": "Oleafly “{{name}}” klasörünü açamıyor",
+        "bodyMac": "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler bölümünde Oleafly'nin bu klasörü kullanmasına izin verip yeniden deneyin.",
+        "bodyOther": "Hesabınız <path>{{path}}</path> konumunu okuyamıyor. Klasörün izinlerini denetleyip yeniden deneyin."
+      },
+      "back": {
+        "title": "“{{name}}” yeniden erişilebilir",
+        "body": "Oleafly <path>{{path}}</path> konumuna yeniden erişebiliyor."
+      },
+      "locate": "Bul",
+      "tryAgain": "Yeniden dene",
+      "useThisFolder": "Bu klasörü kullan",
+      "checking": "Denetleniyor",
+      "still": "Oleafly klasöre hâlâ ulaşamıyor."
+    },
+    "copy": {
+      "title": "“{{name}}” klasörünü kitaplığınıza kopyalayın",
+      "description": "Oleafly dosyaları kitaplıkta yeni bir projeye kopyalar ve klasörü olduğu yerde bırakır. Git geçmişi de kopyalanır, ancak Git kancaları ve derleme dosyaları kopyalanmaz.",
+      "counting": "Dosyalar sayılıyor…",
+      "copying": "Dosyalar kopyalanıyor…",
+      "count": "{{done}} / {{total}}",
+      "done": "“{{name}}” artık kitaplığınızda.",
+      "doneLeftOut": "“{{name}}” artık kitaplığınızda. Başka yerlerdeki dosyalara giden bağlantılar ve çok derinde iç içe geçmiş klasörler kopyalanmadı.",
+      "failed": "“{{name}}” kitaplığınıza kopyalanamadı."
     }
   }
 }

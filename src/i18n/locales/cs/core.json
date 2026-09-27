@@ -46,7 +46,8 @@
     "projectChangedRetry": "Projekt se během importu citace změnil. Zkuste to znovu v původním projektu.",
     "readFailed": "Nepodařilo se přečíst {{path}}: {{detail}}",
     "unrecognizedFile": "Nerozpoznaný typ souboru: {{name}}",
-    "writeFailed": "Nepodařilo se zapsat {{path}}: {{detail}}"
+    "writeFailed": "Nepodařilo se zapsat {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} odkazuje na soubor mimo tuto složku, proto do něj Oleafly nemůže nic přidat. Přidejte záznam v Zotero nebo tam, kde se tento soubor spravuje."
   },
   "citeOleafly": {
     "added": "Záznam Oleafly byl přidán do {{path}}. Citujte jej pomocí {{markup}}.",
@@ -392,7 +393,8 @@
     "changedOnDisk": "Soubor „{{path}}“ byl změněn mimo Oleafly. Načtěte ho znovu, nebo ho uložte ještě jednou a ponechte svou verzi.",
     "openFileEncoding": "Soubor „{{path}}“ nelze otevřít, protože nejde o textový soubor v kódování UTF-8. Pokud jde o text, uložte ho v UTF-8 a otevřete ho znovu.",
     "openFileFailed": "Soubor „{{path}}“ nelze otevřít. Podrobnosti najdete v protokolu aplikace.",
-    "reloadFromDisk": "Načíst znovu"
+    "reloadFromDisk": "Načíst znovu",
+    "changedOnDiskElsewhere": "Soubor {{path}} se na disku změnil, proto ho Oleafly neuložil. Otevřete ho a vyberte, kterou verzi ponechat."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analýza selhala: {{message}}",
@@ -607,5 +609,9 @@
   "checkpoint": {
     "storageUnavailable": "Záchytný bod se nepodařilo uložit. Disk je plný nebo do složky záchytných bodů nelze zapisovat. Uvolněte místo nebo zkontrolujte oprávnění složky a pak znovu spusťte kompilaci.",
     "incompleteCapture": "Posledních několik záchytných bodů se nepodařilo uložit, protože některé soubory projektu nešlo přečíst. Zkontrolujte jejich oprávnění a pak znovu spusťte kompilaci."
+  },
+  "folderUnavailable": {
+    "compile": "Kompilace je pozastavena, dokud se složka projektu nevrátí.",
+    "saveReason": "složka projektu není dostupná"
   }
 }

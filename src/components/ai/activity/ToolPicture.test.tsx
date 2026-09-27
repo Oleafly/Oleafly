@@ -27,12 +27,12 @@ const picture: ToolEntry = {
   image: "data:image/png;base64,AAAA",
 };
 
-const refreshTree = vi.fn<() => Promise<void>>();
+const refreshTree = vi.fn<() => Promise<boolean>>();
 
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(writeProjectBytes).mockResolvedValue({ generation: 1 });
-  refreshTree.mockResolvedValue(undefined);
+  refreshTree.mockResolvedValue(true);
   useFilesStore.setState({ projectId: "paper", tree: [], refreshTree });
 });
 afterEach(cleanup);

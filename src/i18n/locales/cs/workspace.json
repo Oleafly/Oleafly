@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> už existuje. Zachovejte oba soubory pod názvem <suggestion>{{suggestion}}</suggestion>, nebo existující cíl nahraďte. Oleafly jej nenahradí, dokud nezvolíte Nahradit.",
       "replace": "Nahradit",
       "title": "Tento název se už používá",
-      "unchanged": "Původní i cílová cesta zůstaly beze změny."
+      "unchanged": "Původní i cílová cesta zůstaly beze změny.",
+      "renameFolderBody": "<destination>{{destination}}</destination> je existující složka. Zachovejte obě pod názvem <suggestion>{{suggestion}}</suggestion>. Ve složce otevřené na svém místě Oleafly nikdy nenahrazuje celou složku."
     },
     "createFailed": "Nepodařilo se vytvořit „{{path}}“.",
     "deleteFailed": "Nepodařilo se smazat „{{path}}“.",
@@ -41,7 +42,16 @@
     "setMain": "Nastavit jako hlavní dokument",
     "title": "Průzkumník",
     "treeAriaLabel": "Strom souborů v průzkumníku",
-    "setMainFailed": "„{{path}}“ se nepodařilo nastavit jako hlavní dokument."
+    "setMainFailed": "„{{path}}“ se nepodařilo nastavit jako hlavní dokument.",
+    "listingStopped": "Zobrazuje se prvních {{limit}} položek. Zbytek této složky se nevypisuje.",
+    "unreadable": "Bez přístupu",
+    "unreadableHint": "Oleafly nemá oprávnění tuto položku otevřít.",
+    "confirmTrash": "Přesunout {{path}} do koše?",
+    "confirmTrashWindows": "Přesunout {{path}} do koše?",
+    "confirmPermanentDelete": "Oleafly nedokázal přesunout {{path}} do koše. Smazat natrvalo? Tuto akci nelze vrátit zpět.",
+    "confirmPermanentDeleteWindows": "Oleafly nedokázal přesunout {{path}} do koše. Smazat natrvalo? Tuto akci nelze vrátit zpět.",
+    "linkedReadOnly": "Odkazuje na soubor mimo tuto složku, proto je jen ke čtení.",
+    "partialFolder": "Některé položky v této složce nejsou vypsané."
   },
   "explorer": {
     "resizeSections": "Změnit velikost sekcí {{first}} a {{second}}"

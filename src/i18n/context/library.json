@@ -19,23 +19,29 @@
   "home": {
     "resetFilters": "Button that returns every advanced filter to its default",
     "columns": {
-      "type": "Column header for the project kind: document, image or diagram",
+      "type": "Column header for the project kind: document, image or diagram, or external for a folder opened where it is on disk",
       "engine": "Column header for the compiler a project uses"
     },
     "filters": {
       "bookmarkAll": "Select option meaning the bookmark filter is off",
       "previewAll": "Select option meaning the PDF preview filter is off",
       "previewYes": "A compiled PDF exists for the project",
-      "previewNo": "No compiled PDF exists for the project"
+      "previewNo": "No compiled PDF exists for the project",
+      "location": "Label of the filter that picks projects by where they live: inside the Oleafly library, or in folders opened in place on disk",
+      "locationAll": "Location filter option that shows projects from both places",
+      "locationLibrary": "Location filter option: projects stored inside the Oleafly library, as opposed to folders opened where they are on disk",
+      "locationExternal": "Location filter option: folders the user opened in place from anywhere on disk. Use the same word as the external project kind"
     }
   },
   "projects": {
     "openToRecover": "The project was interrupted mid restore and must be opened to finish recovery",
     "recoveryShort": "Short badge for a project that needs recovery",
+    "changeColor": "Menu item that opens a submenu of cover colours for the project book",
     "kind": {
       "document": "Project kind, shown in lower case and capitalised by the style sheet",
       "image": "Project kind, shown in lower case and capitalised by the style sheet",
-      "diagram": "Project kind, shown in lower case and capitalised by the style sheet"
+      "diagram": "Project kind, shown in lower case and capitalised by the style sheet",
+      "external": "Project kind for a folder opened where it is on disk instead of stored in the Oleafly library. Shown in lower case and capitalised by the style sheet, in the same place and style as document"
     },
     "forkDialog": {
       "confirm": "Button that creates the copy"
@@ -84,5 +90,39 @@
       "seconds": "Countdown unit label"
     },
     "nextDeadline": "{{kind}} is a deadline name from the dataset, such as Abstract or Submission, and stays verbatim"
+  },
+  "folder": {
+    "state": {
+      "offline": "The external or network drive that holds the folder is not connected",
+      "replaced": "A different folder now sits at the saved path"
+    },
+    "menu": {
+      "copyToLibrary": "Menu item that copies an opened folder into a new project inside the Oleafly library",
+      "remove": "Forgets the folder in Oleafly without deleting any of its files"
+    },
+    "unavailable": {
+      "missing": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "offline": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "replaced": {
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "locate": "Button that opens a folder picker so the user can point Oleafly at the moved folder",
+      "permissionDenied": {
+        "bodyMac": "Path through macOS System Settings; use the names macOS shows in this language",
+        "bodyOther": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      },
+      "back": {
+        "title": "A folder that could not be reached a moment ago can be reached again",
+        "body": "<path> wraps the folder path, which is shown as a code-style badge. Keep the tag around {{path}}"
+      }
+    },
+    "copy": {
+      "count": "Progress, for example 12 of 40 items or 1.2 MB of 3 MB",
+      "doneLeftOut": "Links are symbolic links pointing outside the folder; nested too deeply means past the folder depth Oleafly walks"
+    }
   }
 }

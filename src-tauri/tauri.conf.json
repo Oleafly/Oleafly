@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Oleafly",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "identifier": "com.oleafly.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -77,7 +77,12 @@
         "installerIcon": "icons/icon.ico",
         "uninstallerIcon": "icons/icon.ico",
         "languages": ["English", "SimpChinese", "TradChinese", "German", "French", "Spanish", "Italian", "Dutch", "PortugueseBR", "Polish", "Russian", "Ukrainian", "Turkish", "Czech", "Danish", "Swedish", "Norwegian", "Finnish", "Romanian", "Japanese", "Korean"],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "installerHooks": "windows/hooks.nsh"
+      },
+      "wix": {
+        "fragmentPaths": ["windows/explorer-menu.wxs"],
+        "componentGroupRefs": ["OleaflyExplorerMenu"]
       }
     }
   },

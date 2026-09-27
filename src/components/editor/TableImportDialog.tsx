@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { pickTableImportPath } from "@/lib/native-file-dialog";
 import { logError } from "@/lib/log";
+import { readOnlyEditMessage } from "@/lib/read-only-files";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useTableImportStore } from "@/store/table-import";
@@ -132,6 +133,11 @@ export function TableImportDialog() {
     if (rows.length === 0) return;
     if (!tableContext || !contextMatches(tableContext)) {
       setError(t(($) => $.editor.tableImport.activeChangedInsert));
+      return;
+    }
+    const readOnly = readOnlyEditMessage(tableContext.activePath);
+    if (readOnly) {
+      setError(readOnly);
       return;
     }
     const tableSource = source();

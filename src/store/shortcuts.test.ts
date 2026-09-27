@@ -147,6 +147,20 @@ describe("shortcut bindings", () => {
     ).toEqual(["toggleTerminal", "toggleBrowser"]);
   });
 
+  it("opens a folder with Cmd or Ctrl+Shift+O by default, without clashing with another action", async () => {
+    const { SHORTCUT_DEFINITIONS, sameShortcutBinding, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+    const openFolder = useShortcutStore.getState().bindings.openFolder;
+
+    expect(openFolder).toEqual({ key: "o", mod: true, shift: true });
+    expect(
+      SHORTCUT_DEFINITIONS.filter(({ id, defaultBinding }) =>
+        id !== "openFolder" && sameShortcutBinding(defaultBinding, openFolder),
+      ),
+    ).toEqual([]);
+  });
+
   it("persists edits and restores individual and global defaults", async () => {
     const { useShortcutStore } = await import("@/store/shortcuts");
 

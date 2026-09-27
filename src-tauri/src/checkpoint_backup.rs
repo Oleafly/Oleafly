@@ -4,9 +4,11 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
-use oleafly_history::Store;
+use oleafly_history::{ProjectManifestBytes, Store};
 
+use crate::app_error::AppError;
 use crate::checkpoint_archive::{ArchiveDecryptReader, ArchiveEncryptWriter};
+use crate::project_location::ProjectKind;
 use crate::sandbox::AtomicFile;
 
 const SPACE_RESERVE_BYTES: u64 = 16 * 1024 * 1024;
@@ -160,18 +162,48 @@ fn export_store_to_path(store: &Store, destination: &str, password: &str) -> Res
     transaction.commit()
 }
 
+#[cfg(test)]
 fn import_archive_into_store(store: &Store, source: File, password: &str) -> Result<(), String> {
+    import_archive_for_kind(store, source, password, ProjectKind::Library)
+}
+
+fn import_archive_for_kind(
+    store: &Store,
+    source: File,
+    password: &str,
+    kind: ProjectKind,
+) -> Result<(), String> {
     let mut plaintext = ArchiveDecryptReader::new(BufReader::new(source), password)?;
-    store
-        .import_history_validated(&mut plaintext, |engine, main_document, project_json| {
-            crate::checkpoints::validate_checkpoint_project_metadata(
-                project_json,
-                engine,
-                main_document,
-            )
-        })
-        .map_err(|error| format!("could not import Checkpoints: {error}"))?;
-    Ok(())
+    let mut mismatch: Option<&'static str> = None;
+    let imported =
+        store.import_history_validated(&mut plaintext, |engine, main_document, manifest| {
+            match (kind, manifest) {
+                (ProjectKind::Library, ProjectManifestBytes::InProject(bytes)) => {
+                    crate::checkpoints::validate_checkpoint_project_metadata(
+                        bytes,
+                        engine,
+                        main_document,
+                    )
+                }
+                (ProjectKind::Linked, ProjectManifestBytes::Detached(Some(bytes))) => {
+                    crate::project::parse_project_meta(bytes).map(|_| ())
+                }
+                (ProjectKind::Linked, ProjectManifestBytes::Detached(None)) => Ok(()),
+                (ProjectKind::Library, ProjectManifestBytes::Detached(_)) => {
+                    mismatch = Some("checkpoint.folder_history_for_library");
+                    Err("history belongs to a folder opened in place".into())
+                }
+                (ProjectKind::Linked, ProjectManifestBytes::InProject(_)) => {
+                    mismatch = Some("checkpoint.library_history_for_folder");
+                    Err("history belongs to a library project".into())
+                }
+            }
+        });
+    match (imported, mismatch) {
+        (Ok(_), _) => Ok(()),
+        (Err(_), Some(code)) => Err(AppError::new(code).into()),
+        (Err(error), None) => Err(format!("could not import Checkpoints: {error}")),
+    }
 }
 
 fn export_checkpoint_archive_sync(
@@ -197,6 +229,7 @@ fn import_checkpoint_archive_sync(
 ) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
+    let kind = crate::project_location::kind_of(project_id)?;
     let (source, source_bytes) = archive_source(source_path)?;
     let data_root = crate::paths::oleafly_root()?;
     require_available_space(
@@ -216,7 +249,7 @@ fn import_checkpoint_archive_sync(
     // A failed first import deliberately leaves the empty initialized store in
     // place. Removing it here could delete a store concurrently opened by
     // another app process after this function observed it as absent.
-    import_archive_into_store(&store, source, password)
+    import_archive_for_kind(&store, source, password, kind)
 }
 
 #[tauri::command]
@@ -276,6 +309,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{export_store_to_path, import_archive_into_store, import_checkpoint_archive_sync};
+    use crate::project_location::ProjectKind;
 
     fn populated_store_with_identity(
         root: &Path,
@@ -335,6 +369,152 @@ mod tests {
 
     fn populated_store(root: &Path, project: &Path) -> Store {
         populated_store_with_identity(root, project, "xetex", "xetex")
+    }
+
+    fn linked_store(root: &Path, folder: &Path, sidecar: Option<&Path>) -> Store {
+        fs::create_dir_all(folder).unwrap();
+        fs::write(folder.join("main.tex"), b"Hello Checkpoints").unwrap();
+        let store = Store::open(root).unwrap();
+        let mut inputs = vec![CaptureInput::explicit("main.tex").unwrap()];
+        if let Some(sidecar) = sidecar {
+            inputs.push(CaptureInput::detached_manifest(sidecar));
+        }
+        let candidate = store.stage_detached_candidate(folder, &inputs).unwrap();
+        let evidence = CompileEvidence::new(
+            "xetex",
+            "xetex-test@1",
+            "main.tex",
+            ContentHash::digest(b"compiled pdf"),
+            1,
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        store
+    }
+
+    #[test]
+    fn a_folder_history_imports_only_into_a_folder_and_a_library_history_only_into_the_library() {
+        let password = "correct horse battery staple";
+        let directory = tempdir().unwrap();
+        let sidecar = directory.path().join("sidecar.json");
+        fs::write(
+            &sidecar,
+            br#"{"name":"Thesis","main_doc":"paper.tex","engine":"latexmk"}"#,
+        )
+        .unwrap();
+        let linked = linked_store(
+            &directory.path().join("linked-history"),
+            &directory.path().join("folder"),
+            Some(&sidecar),
+        );
+        let linked_archive = directory.path().join("folder.oleafly-checkpoints");
+        export_store_to_path(&linked, linked_archive.to_str().unwrap(), password).unwrap();
+        let bare = linked_store(
+            &directory.path().join("bare-history"),
+            &directory.path().join("bare"),
+            None,
+        );
+        let bare_archive = directory.path().join("bare.oleafly-checkpoints");
+        export_store_to_path(&bare, bare_archive.to_str().unwrap(), password).unwrap();
+        let library = populated_store(
+            &directory.path().join("library-history"),
+            &directory.path().join("project"),
+        );
+        let library_archive = directory.path().join("library.oleafly-checkpoints");
+        export_store_to_path(&library, library_archive.to_str().unwrap(), password).unwrap();
+        fs::write(&sidecar, b"not json").unwrap();
+        let broken = linked_store(
+            &directory.path().join("broken-history"),
+            &directory.path().join("broken"),
+            Some(&sidecar),
+        );
+        let broken_archive = directory.path().join("broken.oleafly-checkpoints");
+        export_store_to_path(&broken, broken_archive.to_str().unwrap(), password).unwrap();
+
+        let into_folder = Store::open(directory.path().join("into-folder")).unwrap();
+        super::import_archive_for_kind(
+            &into_folder,
+            File::open(&linked_archive).unwrap(),
+            password,
+            ProjectKind::Linked,
+        )
+        .unwrap();
+        assert_eq!(into_folder.list().unwrap(), linked.list().unwrap());
+        let into_bare = Store::open(directory.path().join("into-bare")).unwrap();
+        super::import_archive_for_kind(
+            &into_bare,
+            File::open(&bare_archive).unwrap(),
+            password,
+            ProjectKind::Linked,
+        )
+        .unwrap();
+        assert_eq!(into_bare.list().unwrap(), bare.list().unwrap());
+
+        let error = super::import_archive_for_kind(
+            &Store::open(directory.path().join("wrong-folder")).unwrap(),
+            File::open(&library_archive).unwrap(),
+            password,
+            ProjectKind::Linked,
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("checkpoint.library_history_for_folder"),
+            "{error}"
+        );
+        let error = import_archive_into_store(
+            &Store::open(directory.path().join("wrong-library")).unwrap(),
+            File::open(&linked_archive).unwrap(),
+            password,
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("checkpoint.folder_history_for_library"),
+            "{error}"
+        );
+        let broken_into = Store::open(directory.path().join("broken-into")).unwrap();
+        let error = super::import_archive_for_kind(
+            &broken_into,
+            File::open(&broken_archive).unwrap(),
+            password,
+            ProjectKind::Linked,
+        )
+        .unwrap_err();
+        assert!(error.contains("could not import Checkpoints"), "{error}");
+        assert!(broken_into.list().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_folder_history_imports_through_the_command_path_of_a_linked_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let password = "correct horse battery staple";
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let source = linked_store(
+            &folders.path().join("source-history"),
+            &folders.path().join("elsewhere"),
+            None,
+        );
+        let archive = folders.path().join("folder.oleafly-checkpoints");
+        export_store_to_path(&source, archive.to_str().unwrap(), password).unwrap();
+
+        import_checkpoint_archive_sync(&record.id, archive.to_str().unwrap(), password).unwrap();
+
+        let store_path = crate::paths::existing_checkpoint_store_dir(&record.id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            Store::open_existing(store_path)
+                .unwrap()
+                .unwrap()
+                .list()
+                .unwrap(),
+            source.list().unwrap()
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]

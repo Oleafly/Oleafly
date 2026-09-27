@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompilera om"
     },
+    "saveSettingsToFolder": {
+      "keywords": "spara projektinställningar mapp project.json dela huvuddokument motor",
+      "label": "Spara projektinställningarna i den här mappen",
+      "saved": "Projektinställningarna har sparats i project.json i den här mappen."
+    },
     "section": {
       "label": "Avsnitt"
     },
@@ -214,6 +219,10 @@
         "titleCase": "inledande versal text",
         "uppercase": "versaler gemener text"
       }
+    },
+    "openFolder": {
+      "label": "Öppna mapp…",
+      "keywords": "öppna mapp katalog befintlig lokala filer disk"
     }
   },
   "community": {
@@ -260,6 +269,7 @@
     "texRootBroken": "% !TEX root i {{file}} pekar på en fil som saknas ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "rot: {{name}}",
+    "texRootNotTex": "% !TEX root i {{file}} pekar på {{target}}, som inte är en LaTeX-fil",
     "texRootOverride": "rot: {{path}} (angiven av % !TEX root i {{file}})"
   },
   "datePicker": {
@@ -361,6 +371,25 @@
     },
     "title": "Något gick fel"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Den här mappen är inte tillgänglig.",
+      "body": "Anslut enheten igen eller hitta mappen. Dina öppna filer ligger kvar här, och Oleafly sparar eller kompilerar inte förrän mappen är tillbaka."
+    },
+    "replaced": {
+      "title": "Den här mappen har ersatts.",
+      "body": "En annan mapp ligger nu på dess plats. Oleafly slutade spara så att inget där skrivs över."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan inte öppna den här mappen.",
+      "body": "Kontrollera mappens behörigheter och försök igen. Dina öppna filer ligger kvar här."
+    },
+    "locate": "Leta upp",
+    "useThisFolder": "Använd den här mappen",
+    "saveCopy": "Spara en kopia",
+    "tryAgain": "Försök igen",
+    "savedCopy": "Dina öppna filer sparades i {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-åtgärder",
@@ -419,6 +448,68 @@
     },
     "tryCommand": "Prova ett kommando",
     "unknownCommand": "Okänt kommando. Skriv / för att se tillgängliga kommandon."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Vilket dokument ska Oleafly kompilera?",
+      "askDescription": "Den här mappen har mer än ett dokument. Välj huvuddokumentet. Du kan ändra det senare.",
+      "listLabel": "Dokument i den här mappen",
+      "open": "Öppna",
+      "browse": "Bläddra bara bland filerna",
+      "bestMatch": "Bästa träff",
+      "empty": "Oleafly hittade inga dokument här. Högerklicka på en fil i filträdet och välj Ange som huvuddokument.",
+      "truncated": "Mappen är stor, så Oleafly slutade leta tidigt. Vissa dokument kanske inte finns med i listan.",
+      "openFailed": "Det gick inte att göra {{path}} till huvuddokument."
+    },
+    "kind": {
+      "document": "Dokument",
+      "book": "Bok",
+      "presentation": "Presentation",
+      "poster": "Affisch",
+      "standalone": "Fristående figur",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Annat"
+    },
+    "reason": {
+      "declared": "Markerad som huvudfil",
+      "top_level": "I den översta mappen",
+      "named_main": "Heter main",
+      "named_after_folder": "Namngiven efter sin mapp",
+      "includes_files": "Inkluderar andra filer",
+      "has_bibliography": "Har en litteraturlista",
+      "no_begin_document": "Saknar \\begin{document}",
+      "standalone_figure": "Fristående figur",
+      "placeholder": "Inte nedladdad än"
+    },
+    "noMain": "Inget huvuddokument än. Välj en fil och sedan Ange som huvuddokument.",
+    "trust": {
+      "banner": "Oleafly har begränsat vissa funktioner i den här mappen. Vill du lita på den och slå på Git, terminalen, agenter och shell escape?",
+      "trustFolder": "Lita på den här mappen",
+      "trustParent": "Lita på den överordnade mappen",
+      "trustRepository": "Lita på repositoriet",
+      "hide": "Dölj",
+      "terminal": "Git-hooks och repositoriets inställningar är avstängda i den här terminalen tills du litar på mappen.",
+      "terminalReopen": "Den här terminalen startade innan du litade på mappen. Öppna den igen för att slå på Git-hooks.",
+      "reopenTerminal": "Öppna terminalen igen",
+      "failed": "Det gick inte att lita på den här mappen."
+    },
+    "readOnly": {
+      "banner": "Den här mappen är skrivskyddad. Du kan kompilera, men ändringar kan inte sparas.",
+      "copy": "Kopiera till biblioteket",
+      "copied": "Oleafly kopierade mappen till ditt bibliotek. Du redigerar nu kopian."
+    },
+    "sync": {
+      "syncsWith": "Synkroniseras med {{service}}",
+      "cloudStorage": "Synkroniseras med en molntjänst",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Sök i det här projektets filer.",
@@ -542,6 +633,8 @@
         "calculating": "Beräknar lagringsanvändning…",
         "desktopOnly": "Lagringsdetaljer finns i skrivbordsappen.",
         "error": "Lagringsdetaljerna kunde inte beräknas.",
+        "linkedFolders_one": "{{size}} byggutdata och inställningar för {{count}} öppnad mapp",
+        "linkedFolders_other": "{{size}} byggutdata och inställningar för {{count}} öppnade mappar",
         "refresh": "Uppdatera lagringsanvändningen",
         "stats": {
           "appData": "Appdata",
@@ -785,7 +878,8 @@
     "loadingCore": "Läser in Oleafly Core",
     "loadingHarness": "Läser in Oleafly Harness",
     "loadingParsers": "Läser in Oleafly Parsers",
-    "starting": "Startar Oleafly"
+    "starting": "Startar Oleafly",
+    "opening": "Öppnar {{name}}…"
   },
   "theme": {
     "dark": "Mörkt",
@@ -919,5 +1013,30 @@
   "windows": {
     "preview": "Förhandsvisning: {{title}}",
     "update": "Oleafly-uppdatering"
+  },
+  "openFolder": {
+    "confirmTitle": "Vill du stoppa och öppna {{name}}?",
+    "confirmCompile": "{{project}} kompileras fortfarande. Om du öppnar {{name}} stoppas kompileringen. Dina ändringar sparas först.",
+    "confirmAssistant": "Assistenten arbetar fortfarande i {{project}}. Om du öppnar {{name}} stoppas svaret. Dina ändringar sparas först.",
+    "confirmBoth": "{{project}} kompileras fortfarande och assistenten arbetar fortfarande. Om du öppnar {{name}} stoppas båda. Dina ändringar sparas först.",
+    "confirmAction": "Stoppa och öppna",
+    "chooseSubfolder": "Välj en undermapp",
+    "refusedTitle": "Det gick inte att öppna {{name}}",
+    "refused": "Det gick inte att öppna {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Öppna Integritet och säkerhet i Systeminställningar, gå till Filer och mappar och slå på Oleafly. Om Oleafly inte finns i listan lägger du till det under Fullständig diskåtkomst och försöker igen.",
+      "windows": "Kontrollera på fliken Säkerhet under mappens Egenskaper att ditt konto kan läsa den och försök igen.",
+      "linux": "Kontrollera att ditt konto kan läsa den här mappen och försök igen."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Öppna mappar från Finder",
+    "body": "Lägg till Öppna i Oleafly i Finder. Den fungerar direkt från menyn Tjänster, och från Snabbåtgärder när du har slagit på den.",
+    "add": "Lägg till i Finder",
+    "notNow": "Inte nu",
+    "added": "Tillagd. Den finns nu i menyn Tjänster i Finder. Om du vill använda den från Snabbåtgärder också högerklickar du på en mapp och slår på den under Snabbåtgärder › Anpassa.",
+    "addedInQuickActions": "Tillagd. Högerklicka på en mapp så hittar du den under Snabbåtgärder.",
+    "failed": "Det gick inte att lägga till. Du kan försöka igen under Inställningar › Allmänt."
   }
 }

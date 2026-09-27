@@ -327,3 +327,65 @@ async fn a_pending_apply_for_a_deleted_project_no_longer_blocks_every_other_reco
     assert!(cleared.error.is_some());
     stop(&state).await;
 }
+
+fn sleeping_process() -> tokio::process::Child {
+    use crate::proc::NoConsole;
+    #[cfg(windows)]
+    let mut command = tokio::process::Command::new("ping");
+    #[cfg(windows)]
+    command.args(["-n", "30", "127.0.0.1"]);
+    #[cfg(not(windows))]
+    let mut command = tokio::process::Command::new("sleep");
+    #[cfg(not(windows))]
+    command.arg("30");
+    command
+        .stdout(std::process::Stdio::null())
+        .no_console()
+        .spawn()
+        .unwrap()
+}
+
+#[tokio::test]
+async fn recovery_keeps_a_run_owned_by_a_live_process_until_that_process_exits() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let store = state.store().unwrap();
+    let task = requested(&store, draft("paper", "Owned elsewhere"));
+    store.claim_next().unwrap().unwrap();
+    let mut owner = sleeping_process();
+    let owner_pid = owner.id().unwrap();
+    let crate::process_identity::ProcessProbe::Running { started } =
+        crate::process_identity::probe(owner_pid)
+    else {
+        panic!("the owning process is not running");
+    };
+    store
+        .set_owner(
+            &task.id,
+            Some(crate::process_identity::ProcessIdentity {
+                pid: owner_pid,
+                started,
+            }),
+        )
+        .unwrap();
+
+    state
+        .recover(&crate::state::AppState::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Running
+    );
+
+    owner.kill().await.unwrap();
+    state
+        .recover(&crate::state::AppState::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Failed
+    );
+}

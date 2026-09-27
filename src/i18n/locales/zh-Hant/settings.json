@@ -1351,6 +1351,35 @@
     "description": "將「{{sectionName}}」偏好設定還原為預設值。",
     "label": "重設設定"
   },
+  "shellCommand": {
+    "afterSignIn": "登出並重新登入後，{{directory}} 就會在你的 PATH 中。然後開啟新的終端機。",
+    "checking": "正在檢查…",
+    "description": "在終端機中輸入 <code>oleafly .</code>，即可在 Oleafly 中開啟該資料夾。",
+    "install": "安裝",
+    "installing": "正在安裝…",
+    "loadFailed": "無法檢查終端機指令。",
+    "notOnPath": {
+      "file": "{{directory}} 尚未在你的 PATH 中。請將這一行加入 {{file}}，然後開啟新的終端機：",
+      "run": "{{directory}} 尚未在你的 PATH 中。請執行一次這個指令，然後開啟新的終端機："
+    },
+    "removing": "正在移除…",
+    "result": {
+      "copied": "已將指令複製到 {{path}}。",
+      "linked": "{{path}} 現在指向這個 Oleafly 副本。",
+      "removed": "已移除 {{path}}。"
+    },
+    "state": {
+      "installed": "已安裝於 {{path}}。",
+      "moveApp": "請先將 Oleafly 移到「應用程式」檔案夾，再於此處安裝指令。",
+      "notInstalled": "會將 oleafly 加入 {{directory}}。",
+      "occupied": "{{path}} 已存在，且不是由 Oleafly 建立，因此會保持原狀。",
+      "outdated": "{{path}} 仍指向較舊的 Oleafly 副本。請更新，讓它使用目前的副本。",
+      "packaged": "已由你的 Oleafly 套件安裝於 {{path}}。",
+      "unavailable": "此 Oleafly 副本不包含該指令。"
+    },
+    "title": "終端機指令",
+    "update": "更新"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1384,6 +1413,10 @@
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"
+      },
+      "openFolder": {
+        "label": "開啟資料夾",
+        "description": "將電腦上的資料夾作為專案開啟。"
       }
     },
     "application": {
@@ -1459,6 +1492,58 @@
         "uppercase": "轉為大寫"
       },
       "unbound": "未設定"
+    }
+  },
+  "systemIntegration": {
+    "title": "系統整合",
+    "description": "直接從檔案管理員以 Oleafly 開啟資料夾。",
+    "checking": "正在檢查…",
+    "loadFailed": "無法檢查檔案管理員的設定。",
+    "state": {
+      "installed": "已安裝",
+      "notInstalled": "未安裝",
+      "needsAttention": "需要處理"
+    },
+    "actions": {
+      "install": "安裝",
+      "repair": "修復"
+    },
+    "failed": {
+      "install": "無法安裝，請再試一次。",
+      "remove": "無法移除，請再試一次。"
+    },
+    "packaged": "已隨 Oleafly 套件安裝。",
+    "quickAction": {
+      "label": "Finder 快速動作",
+      "description": "在 Finder 中以右鍵按一下資料夾時，可從「服務」選單使用「在 Oleafly 中開啟」。",
+      "menuHint": "尚未出現在「快速動作」中。請以右鍵按一下資料夾，選擇「快速動作」›「自訂」，然後開啟「{{title}}」。"
+    },
+    "explorerMenu": {
+      "label": "檔案總管右鍵選單",
+      "description": "以右鍵按一下資料夾或其中的空白處，然後選擇「以 Oleafly 開啟」。在 Windows 11 中，它位於「顯示其他選項」裡。",
+      "toggle": "在檔案總管中顯示「以 Oleafly 開啟」"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "在 Dolphin 中以右鍵按一下資料夾時顯示「以 Oleafly 開啟」。"
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "在 Nemo 中以右鍵按一下資料夾時顯示「以 Oleafly 開啟」。"
+    },
+    "nautilus": {
+      "label": "檔案",
+      "description": "在 GNOME 檔案中以右鍵按一下資料夾時，將「以 Oleafly 開啟」加入「指令稿」選單。"
+    },
+    "folderOpenWith": {
+      "label": "資料夾的「開啟方式」選單",
+      "description": "在資料夾的「開啟方式」中列出 Oleafly。預設檔案管理員不會改變。"
+    },
+    "attention": {
+      "outdated": "它已過期或遭 macOS 封鎖。修復後即可恢復。",
+      "elsewhere": "選單會開啟另一份 Oleafly。修復後將使用目前這份。",
+      "moved": "它指向一份已移動的 Oleafly。修復後將使用目前這份。",
+      "noDefaultFileManager": "系統沒有為資料夾設定預設檔案管理員，此項目可能會讓所有資料夾都以 Oleafly 開啟。請移除它。"
     }
   }
 }

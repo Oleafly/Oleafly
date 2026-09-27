@@ -16,6 +16,9 @@ import {
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
+import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
+import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
 import { formatList } from "@/lib/intl";
 import { cn } from "@/lib/utils";
@@ -31,7 +34,7 @@ const LEVEL_DOT: Record<ImportCompatFinding["level"], string> = {
  * (minted, glossaries/makeindex, pythontex, shell-escape-heavy templates).
  */
 export function EnginePickerModal() {
-  const { t } = useTranslation(["common", "shell"]);
+  const { t } = useTranslation(["common", "shell", "errors"]);
   const open = useEnginePickerStore((s) => s.open);
   const source = useEnginePickerStore((s) => s.source);
   const findings = useEnginePickerStore((s) => s.findings);
@@ -42,6 +45,7 @@ export function EnginePickerModal() {
   const allowShellEscape = useFilesStore((s) => s.engine.allow_shell_escape);
   const setEngine = useFilesStore((s) => s.setEngine);
   const setShellEscape = useFilesStore((s) => s.setShellEscape);
+  const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
 
   const info = useEngineStore((s) => s.info);
   const installing = useEngineStore((s) => s.installing);
@@ -84,7 +88,10 @@ export function EnginePickerModal() {
 
   const reportSwitchFailure = (scope: string, error: unknown, message: string) => {
     void logError(scope, error);
-    toast.errorUnique(engineSwitchToastKey(projectId ?? ""), message);
+    toast.errorUnique(
+      engineSwitchToastKey(projectId ?? ""),
+      decodeAppError(error) ? describeError(error) : message,
+    );
   };
 
   const pinLatexmk = async (afterInstall: boolean) => {
@@ -232,6 +239,11 @@ export function EnginePickerModal() {
           ? t(($) => $.shell.enginePicker.systemTex.found)
           : t(($) => $.shell.enginePicker.systemTex.missing)}
       </p>
+      <TrustRequiredNotice
+        projectId={projectId}
+        reason={t(($) => $.errors.trust.system_tex)}
+        className="mt-2"
+      />
       {info?.latexmk && (
         <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
           {info.latexmk}
@@ -246,7 +258,7 @@ export function EnginePickerModal() {
             id="engine-shell-escape"
             data-testid="engine-picker-shell-escape"
             checked={shellEscapeConsent}
-            disabled={switching || shellEscapeSaving}
+            disabled={switching || shellEscapeSaving || systemTexLocked}
             aria-describedby="engine-shell-escape-warning"
             onCheckedChange={(checked) => void updateShellEscape(checked === true)}
             className="mt-0.5"
@@ -278,7 +290,7 @@ export function EnginePickerModal() {
         <Button
           size="sm"
           data-testid="engine-picker-use-system"
-          disabled={!hasSystemTex || switching || alreadyLatexmk}
+          disabled={!hasSystemTex || switching || alreadyLatexmk || systemTexLocked}
           onClick={() => void pinLatexmk(false)}
           data-modal-initial-focus={hasSystemTex || undefined}
         >
@@ -361,7 +373,7 @@ export function EnginePickerModal() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={installing || switching}
+                  disabled={installing || switching || systemTexLocked}
                   onClick={() => void installThenPin()}
                 >
                   {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}

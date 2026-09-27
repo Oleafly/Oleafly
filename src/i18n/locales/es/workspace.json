@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> ya existe. Conserva los dos archivos usando <suggestion>{{suggestion}}</suggestion> o sustituye el destino existente. Oleafly no lo sustituirá salvo que elijas Sustituir.",
       "replace": "Sustituir",
       "title": "Ese nombre ya está en uso",
-      "unchanged": "Las rutas de origen y de destino no se modificaron."
+      "unchanged": "Las rutas de origen y de destino no se modificaron.",
+      "renameFolderBody": "<destination>{{destination}}</destination> es una carpeta que ya existe. Conserva ambas usando <suggestion>{{suggestion}}</suggestion>. En una carpeta abierta en su ubicación, Oleafly nunca sustituye una carpeta entera."
     },
     "createFailed": "No se pudo crear \"{{path}}\".",
     "deleteFailed": "No se pudo eliminar \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Establecer como documento principal",
     "title": "Explorador",
     "treeAriaLabel": "Árbol de archivos del explorador",
-    "setMainFailed": "No se pudo establecer \"{{path}}\" como documento principal."
+    "setMainFailed": "No se pudo establecer \"{{path}}\" como documento principal.",
+    "listingStopped": "Se muestran los primeros {{limit}} elementos. El resto de esta carpeta no aparece en la lista.",
+    "unreadable": "Sin acceso",
+    "unreadableHint": "Oleafly no tiene permiso para abrir esto.",
+    "confirmTrash": "¿Mover {{path}} a la Papelera?",
+    "confirmTrashWindows": "¿Mover {{path}} a la Papelera de reciclaje?",
+    "confirmPermanentDelete": "Oleafly no pudo mover {{path}} a la Papelera. ¿Eliminarlo de forma permanente? No se puede deshacer.",
+    "confirmPermanentDeleteWindows": "Oleafly no pudo mover {{path}} a la Papelera de reciclaje. ¿Eliminarlo de forma permanente? No se puede deshacer.",
+    "linkedReadOnly": "Enlaza con un archivo fuera de esta carpeta, así que es de solo lectura.",
+    "partialFolder": "Algunos elementos de esta carpeta no aparecen en la lista."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} y {{second}}"

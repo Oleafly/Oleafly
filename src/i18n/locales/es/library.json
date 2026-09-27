@@ -36,7 +36,6 @@
     "appIconAlt": "Icono de la aplicación Oleafly",
     "welcomeTitle": "Te damos la bienvenida a Oleafly",
     "welcomeDescription": "Escribe, compila y corrige en LaTeX, Typst y Markdown. Gestiona citas, revisa PDF, controla los cambios con Git y trabaja con los modelos de IA que elijas.",
-    "createFirstProject": "Crear un proyecto nuevo",
     "loading": "Leyendo tu biblioteca…",
     "noBookmarksTitle": "Todavía no hay marcadores",
     "noBookmarksDescription": "Pasa el cursor por un libro y haz clic en su marcador para añadir uno.",
@@ -69,8 +68,15 @@
       "anyTime": "Cualquier fecha",
       "last7Days": "Últimos 7 días",
       "last30Days": "Últimos 30 días",
-      "lastYear": "Último año"
-    }
+      "lastYear": "Último año",
+      "location": "Ubicación",
+      "locationAll": "Todos los proyectos",
+      "locationLibrary": "En Oleafly",
+      "locationExternal": "Proyectos externos"
+    },
+    "openFolder": "Abrir carpeta",
+    "openFolderShortcut": "Abrir carpeta ({{shortcut}})",
+    "createFirstProject": "Crear un proyecto nuevo"
   },
   "projects": {
     "open": "Abrir {{name}}",
@@ -84,7 +90,7 @@
     "actions": "Acciones para {{name}}",
     "details": "Detalles del proyecto",
     "exportHistory": "Historial de exportaciones",
-    "changeColor": "Cambiar el color del proyecto",
+    "changeColor": "Color del proyecto",
     "fork": "Duplicar el proyecto",
     "delete": "Eliminar el proyecto",
     "favoriteAdd": "Añadir a favoritos",
@@ -96,7 +102,8 @@
     "kind": {
       "document": "documento",
       "image": "imagen",
-      "diagram": "diagrama"
+      "diagram": "diagrama",
+      "external": "externo"
     },
     "preview": {
       "title": "Vista previa del PDF: {{name}}",
@@ -378,7 +385,9 @@
     "nameRequired": "Escribe un nombre de repositorio.",
     "published": "Publicado en {{repository}}.",
     "linked": "Enlazado y subido a {{remote}}.",
-    "pushNeedsPull": "Se enlazó con {{remote}}, pero antes de subir hay que descargar los cambios: {{detail}}"
+    "pushNeedsPull": "Se enlazó con {{remote}}, pero antes de subir hay que descargar los cambios: {{detail}}",
+    "replaceRemotePrompt": "Este proyecto está enlazado con {{remote}}. ¿Quieres reemplazar ese enlace?",
+    "replaceRemote": "Reemplazar enlace"
   },
   "deadlines": {
     "title": "Fechas límite de congresos",
@@ -467,6 +476,75 @@
       "sourcesTitle": "Fuentes",
       "sourcesBody": "Los registros combinan el conjunto de datos abierto ccf-deadlines con los sitios web oficiales de congresos que sigue Oleafly.",
       "confirm": "Confirma cada fecha en el sitio web oficial del congreso antes de enviar nada."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nuevo proyecto",
+    "newProjectDescription": "Empieza con una plantilla o una página en blanco.",
+    "openFolderTitle": "Abrir una carpeta",
+    "openFolderDescription": "Trabaja con archivos que ya tienes en tu ordenador. Se quedan donde están."
+  },
+  "openFolder": {
+    "dismiss": "Cerrar"
+  },
+  "folder": {
+    "state": {
+      "missing": "Falta la carpeta",
+      "offline": "Unidad no conectada",
+      "replaced": "Carpeta reemplazada",
+      "permissionDenied": "Sin permiso"
+    },
+    "menu": {
+      "showInFinder": "Mostrar en Finder",
+      "showInExplorer": "Mostrar en el Explorador de archivos",
+      "showInFileManager": "Mostrar en el gestor de archivos",
+      "copyToLibrary": "Copiar a la biblioteca",
+      "remove": "Quitar de Oleafly"
+    },
+    "remove": {
+      "title": "¿Quitar “{{name}}” de Oleafly?",
+      "description": "Tus archivos se quedan donde están. Oleafly borra sus archivos de compilación de esta carpeta y restablece su confianza, sus aprobaciones y sus carpetas enlazadas. Vuelve a abrir la carpeta en un plazo de 30 días para recuperar sus chats y su historial. Lo demás tendrás que configurarlo de nuevo.",
+      "confirm": "Quitar de Oleafly",
+      "done": "Se quitó “{{name}}” de Oleafly. Sus archivos siguen en la carpeta.",
+      "failed": "No se pudo quitar “{{name}}” de Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "No se encuentra “{{name}}”",
+        "body": "Estaba en <path>{{path}}</path> y puede que se haya movido o borrado. Localízala para conservar sus chats y su historial."
+      },
+      "offline": {
+        "title": "“{{name}}” está en una unidad que no está conectada",
+        "body": "Conecta la unidad o el recurso compartido de red que contiene <path>{{path}}</path> y vuelve a intentarlo."
+      },
+      "replaced": {
+        "title": "“{{name}}” se reemplazó",
+        "body": "La carpeta de <path>{{path}}</path> no es la que abriste antes. Úsala solo si confías en ella. Oleafly desactiva la confianza y las aprobaciones al cambiar."
+      },
+      "permissionDenied": {
+        "title": "Oleafly no puede abrir “{{name}}”",
+        "bodyMac": "Permite que Oleafly use esta carpeta en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas, y vuelve a intentarlo.",
+        "bodyOther": "Tu cuenta no puede leer <path>{{path}}</path>. Revisa los permisos de la carpeta y vuelve a intentarlo."
+      },
+      "back": {
+        "title": "“{{name}}” ha vuelto",
+        "body": "Oleafly vuelve a tener acceso a <path>{{path}}</path>."
+      },
+      "locate": "Localizar",
+      "tryAgain": "Volver a intentarlo",
+      "useThisFolder": "Usar esta carpeta",
+      "checking": "Comprobando",
+      "still": "Oleafly sigue sin poder acceder a ella."
+    },
+    "copy": {
+      "title": "Copiar “{{name}}” a tu biblioteca",
+      "description": "Oleafly copia los archivos en un nuevo proyecto de la biblioteca y deja la carpeta donde está. El historial de Git se copia, pero los hooks de Git y los archivos de compilación no.",
+      "counting": "Contando archivos…",
+      "copying": "Copiando archivos…",
+      "count": "{{done}} de {{total}}",
+      "done": "“{{name}}” ya está en tu biblioteca.",
+      "doneLeftOut": "“{{name}}” ya está en tu biblioteca. No se copiaron los enlaces a archivos de otros sitios ni las carpetas anidadas a demasiada profundidad.",
+      "failed": "No se pudo copiar “{{name}}” a tu biblioteca."
     }
   }
 }

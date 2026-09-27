@@ -177,6 +177,19 @@ describe("import recovery", () => {
     fireEvent.click(screen.getByTestId("project-import-project"));
     await waitFor(() => expect(importSelectedFile).toHaveBeenCalledOnce());
   });
+  it("explains a refused repository import instead of showing the raw error", async () => {
+    vi.mocked(importGitHubRepository).mockRejectedValueOnce(
+      '@oleafly/error:{"code":"git.nested_repository","params":{}}',
+    );
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(await screen.findByTestId("project-import-repository-oleafly/paper"));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("inside another Git repository");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+    expect(onClose).not.toHaveBeenCalled();
+  });
   it("keeps the selected file and target choices when conversion cannot start", async () => {
     vi.mocked(pickOpenPath).mockResolvedValueOnce("/tmp/paper.html");
     vi.mocked(importSelectedFile).mockResolvedValueOnce(false);

@@ -7,9 +7,14 @@ use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 
-use oleafly_history::{Checkpoint, HistoryError, SnapshotRoot, Store, StoreInspection, StoreStats};
+use oleafly_history::{
+    Checkpoint, HistoryError, ManifestLayout, SnapshotRoot, Store, StoreInspection, StoreStats,
+    DETACHED_MANIFEST_PATH,
+};
 use serde::{Deserialize, Serialize};
 
+use crate::app_error::AppError;
+use crate::project_location::{ProjectKind, ProjectLocation};
 use crate::worktree_lock::RESTORE_PENDING_FILE;
 
 const RESTORE_TRANSACTION: &str = "restore-transaction";
@@ -24,6 +29,7 @@ const PHASE_INSTALLING: &str = "phase-installing";
 const PHASE_ROLLING_BACK: &str = "phase-rolling-back";
 const PHASE_RESTORING_BACKUP: &str = "phase-restoring-backup";
 const PHASE_INSTALLED: &str = "phase-installed";
+const MANIFEST_BACKUP_FILE: &str = "backup-manifest";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CheckpointSummary {
@@ -60,6 +66,8 @@ pub struct CheckpointStats {
     pub stored_pack_bytes: u64,
     pub logical_bytes: u64,
     pub reclaimable_bytes: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture: Option<crate::checkpoint_capture::CaptureNotice>,
 }
 
 impl From<StoreStats> for CheckpointStats {
@@ -69,6 +77,7 @@ impl From<StoreStats> for CheckpointStats {
             stored_pack_bytes: stats.stored_pack_bytes,
             logical_bytes: stats.visible_logical_bytes,
             reclaimable_bytes: stats.reclaimable_pack_bytes,
+            capture: None,
         }
     }
 }
@@ -79,6 +88,8 @@ pub struct CheckpointFileSummary {
     pub bytes: u64,
     pub content_hash: String,
     pub stored: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub folder_settings: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -270,12 +281,19 @@ fn checkpoint_set_label_sync(
 fn checkpoint_stats_sync(project_id: &str) -> Result<CheckpointStats, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
+    let capture = crate::checkpoint_capture::read_capture_notice(project_id);
     let Some(store) = open_existing_store(project_id)? else {
-        return Ok(CheckpointStats::default());
+        return Ok(CheckpointStats {
+            capture,
+            ..CheckpointStats::default()
+        });
     };
     store
         .stats()
-        .map(Into::into)
+        .map(|stats| CheckpointStats {
+            capture,
+            ..CheckpointStats::from(stats)
+        })
         .map_err(|_| "Could not measure this project's Checkpoints history.".to_string())
 }
 
@@ -291,9 +309,15 @@ fn checkpoint_files_sync(
         .checkpoint_files(&root)
         .map_err(|_| "Could not read the selected Checkpoint's files.".to_string())?
         .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
+    let detached = crate::project_location::kind_of(project_id)? == ProjectKind::Linked
+        && store
+            .checkpoint_layout(&root)
+            .map_err(|_| "Could not read the selected Checkpoint's files.".to_string())?
+            == Some(ManifestLayout::Detached);
     Ok(files
         .into_iter()
         .map(|file| CheckpointFileSummary {
+            folder_settings: detached && file.relative_path == DETACHED_MANIFEST_PATH,
             path: file.relative_path,
             bytes: file.logical_bytes,
             content_hash: file.content_hash.to_string(),
@@ -540,7 +564,19 @@ pub async fn checkpoint_restore(
             // identity is pinned so deletion and project-id reuse cannot swap
             // the store between validation and restore.
             let store = require_existing_store(&restore_project_id)?;
-            restore_checkpoint_sync(&store, &root, project_root, RestoreFault::None)?;
+            let location = crate::project_location::locate(&restore_project_id)?;
+            match location.kind {
+                ProjectKind::Library => restore_checkpoint_into(
+                    &store,
+                    &root,
+                    project_root,
+                    &location.private_state_dir(),
+                    RestoreFault::None,
+                )?,
+                ProjectKind::Linked => {
+                    restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)?
+                }
+            }
             Ok(((), true))
         },
     )
@@ -578,6 +614,8 @@ enum RestoreFault {
     AfterFirstBackup,
     #[cfg(test)]
     AfterFirstInstall,
+    #[cfg(test)]
+    CrashDuringInstall,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -625,10 +663,27 @@ impl RestoreFault {
     }
 }
 
+#[cfg(test)]
 fn restore_checkpoint_sync(
     store: &Store,
     snapshot_root: &SnapshotRoot,
     project_root: &Path,
+    fault: RestoreFault,
+) -> Result<(), String> {
+    restore_checkpoint_into(
+        store,
+        snapshot_root,
+        project_root,
+        &project_root.join(crate::project_location::LIBRARY_STATE_DIR),
+        fault,
+    )
+}
+
+fn restore_checkpoint_into(
+    store: &Store,
+    snapshot_root: &SnapshotRoot,
+    project_root: &Path,
+    marker_dir: &Path,
     fault: RestoreFault,
 ) -> Result<(), String> {
     let locked_store = store
@@ -639,7 +694,7 @@ fn restore_checkpoint_sync(
         .map_err(|_| "The selected Checkpoint could not be read.".to_string())?
         .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
     let transaction = locked_store.root().join(RESTORE_TRANSACTION);
-    recover_or_discard_restore_transaction(project_root, &transaction)?;
+    recover_or_discard_restore_transaction(project_root, marker_dir, &transaction)?;
     create_private_directory(&transaction)?;
     let incoming = transaction.join(INCOMING_DIRECTORY);
     let backup = transaction.join(BACKUP_DIRECTORY);
@@ -655,9 +710,12 @@ fn restore_checkpoint_sync(
             write_injected_partial_file(&incoming.join("partial-materialization"), b"partial")?;
             return Err("injected restore crash during materialization".into());
         }
-        locked_store
+        let materialized = locked_store
             .materialize(snapshot_root, &incoming)
             .map_err(|_| "The selected Checkpoint could not be verified.".to_string())?;
+        if materialized.layout != ManifestLayout::InProject {
+            return Err(AppError::new("checkpoint.folder_history_for_library").into());
+        }
         validate_materialized_checkpoint_identity(&incoming, &checkpoint)?;
         create_private_directory(&backup)?;
         let plan = prepare_restore_plan(&incoming, project_root)?;
@@ -671,7 +729,7 @@ fn restore_checkpoint_sync(
         }
         write_restore_plan(&transaction, &plan)?;
         mark_phase(&transaction, PHASE_PREPARED)?;
-        write_restore_pending_marker(project_root)?;
+        write_restore_pending_marker(marker_dir)?;
 
         mark_phase(&transaction, PHASE_BACKING_UP)?;
         backup_restore_paths(project_root, &backup, &plan, fault)?;
@@ -686,13 +744,23 @@ fn restore_checkpoint_sync(
         return prepared.and_then(|_| Err("injected restore crash did not trigger".into()));
     }
 
+    conclude_restore(prepared, marker_dir, &transaction, fault, || {
+        recover_restore_transaction(project_root, marker_dir, &transaction, fault)
+    })
+}
+
+fn conclude_restore(
+    prepared: Result<(), String>,
+    marker_dir: &Path,
+    transaction: &Path,
+    fault: RestoreFault,
+    recover: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
     match prepared {
         Ok(()) => {
-            // The installed marker makes cleanup restartable. Failure here does
-            // not turn a completed restore into a reported rollback.
             let cleanup = complete_terminal_restore_cleanup(
-                project_root,
-                &transaction,
+                marker_dir,
+                transaction,
                 RestoreTerminalOutcome::Installed,
                 fault,
             );
@@ -703,12 +771,12 @@ fn restore_checkpoint_sync(
             let _ = cleanup;
             Ok(())
         }
-        Err(operation_error) => match restore_pending_marker_exists(project_root) {
+        Err(operation_error) => match restore_pending_marker_exists(marker_dir) {
             Ok(false) => {
-                let _ = discard_unstarted_restore_transaction(&transaction);
+                let _ = discard_unstarted_restore_transaction(transaction);
                 Err(operation_error)
             }
-            Ok(true) => match recover_restore_transaction(project_root, &transaction, fault) {
+            Ok(true) => match recover() {
                 Ok(()) => Err(operation_error),
                 Err(rollback_error) => Err(format!(
                     "{operation_error} Recovery is still pending: {rollback_error}"
@@ -766,12 +834,12 @@ mod metadata_identity_tests {
     }
 }
 
-fn restore_pending_marker(project: &Path) -> PathBuf {
-    project.join(".oleafly").join(RESTORE_PENDING_FILE)
+fn restore_pending_marker(marker_dir: &Path) -> PathBuf {
+    marker_dir.join(RESTORE_PENDING_FILE)
 }
 
-fn write_restore_pending_marker(project: &Path) -> Result<(), String> {
-    let internal = project.join(".oleafly");
+fn write_restore_pending_marker(marker_dir: &Path) -> Result<(), String> {
+    let internal = marker_dir.to_path_buf();
     match fs::symlink_metadata(&internal) {
         Ok(metadata)
             if metadata.is_dir()
@@ -786,7 +854,7 @@ fn write_restore_pending_marker(project: &Path) -> Result<(), String> {
         }
         Err(error) => return Err(format!("could not inspect project data directory: {error}")),
     }
-    let marker = restore_pending_marker(project);
+    let marker = restore_pending_marker(marker_dir);
     let file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -805,8 +873,8 @@ fn write_restore_pending_marker(project: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn remove_restore_pending_marker(project: &Path) -> Result<(), String> {
-    let marker = restore_pending_marker(project);
+fn remove_restore_pending_marker(marker_dir: &Path) -> Result<(), String> {
+    let marker = restore_pending_marker(marker_dir);
     match fs::remove_file(&marker) {
         Ok(()) => sync_parent(&marker),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -814,8 +882,8 @@ fn remove_restore_pending_marker(project: &Path) -> Result<(), String> {
     }
 }
 
-fn restore_pending_marker_exists(project: &Path) -> Result<bool, String> {
-    let internal = project.join(".oleafly");
+fn restore_pending_marker_exists(marker_dir: &Path) -> Result<bool, String> {
+    let internal = marker_dir.to_path_buf();
     let metadata = match fs::symlink_metadata(&internal) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -828,7 +896,7 @@ fn restore_pending_marker_exists(project: &Path) -> Result<bool, String> {
     if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
         return Err("Checkpoint restore marker directory is not a real directory".into());
     }
-    match fs::symlink_metadata(restore_pending_marker(project)) {
+    match fs::symlink_metadata(restore_pending_marker(marker_dir)) {
         Ok(metadata)
             if metadata.is_file()
                 && !metadata.file_type().is_symlink()
@@ -986,7 +1054,8 @@ fn remove_restore_terminal_marker(store: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 fn has_restore_pending_marker(project: &Path) -> bool {
-    restore_pending_marker_exists(project).unwrap_or(false)
+    restore_pending_marker_exists(&project.join(crate::project_location::LIBRARY_STATE_DIR))
+        .unwrap_or(false)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1149,7 +1218,7 @@ fn missing_project_directories(
     Ok(missing)
 }
 
-fn write_restore_plan(transaction: &Path, plan: &RestorePlan) -> Result<(), String> {
+fn write_restore_plan<T: Serialize>(transaction: &Path, plan: &T) -> Result<(), String> {
     let path = transaction.join(RESTORE_PLAN_FILE);
     let bytes = serde_json::to_vec(plan)
         .map_err(|error| format!("could not encode restore plan: {error}"))?;
@@ -1244,7 +1313,7 @@ fn backup_restore_paths(
         if let Some(parent) = destination.parent() {
             create_restore_directories_durable(backup, parent, fault)?;
         }
-        fs::rename(&source, &destination)
+        rename_path(&source, &destination)
             .map_err(|error| format!("could not back up a project path during restore: {error}"))?;
         record_touched_parent(&mut touched, &source)?;
         record_touched_parent(&mut touched, &destination)?;
@@ -1266,23 +1335,7 @@ fn install_restore_paths(
     plan: &RestorePlan,
     fault: RestoreFault,
 ) -> Result<(), String> {
-    for relative in &plan.created_project_directories {
-        let directory = restore_path(project, relative)?;
-        match fs::create_dir(&directory) {
-            Ok(()) => sync_parent(&directory)?,
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                let metadata = fs::symlink_metadata(&directory)
-                    .map_err(|error| format!("could not inspect a project directory: {error}"))?;
-                if !metadata.is_dir()
-                    || metadata.file_type().is_symlink()
-                    || is_reparse_point(&metadata)
-                {
-                    return Err("A restore parent path is not a real directory.".into());
-                }
-            }
-            Err(error) => return Err(format!("could not create a project directory: {error}")),
-        }
-    }
+    create_planned_directories(project, plan, Durability::Strict)?;
 
     let mut moved = 0_u64;
     let mut touched = BTreeSet::new();
@@ -1294,7 +1347,7 @@ fn install_restore_paths(
                 "A restore transaction found a conflict at {relative}."
             ));
         }
-        fs::rename(&source, &destination)
+        rename_path(&source, &destination)
             .map_err(|error| format!("could not install a project path during restore: {error}"))?;
         record_touched_parent(&mut touched, &source)?;
         record_touched_parent(&mut touched, &destination)?;
@@ -1436,10 +1489,11 @@ fn has_phase(transaction: &Path, phase: &str) -> Result<bool, String> {
 pub(crate) fn recover_interrupted_restore_lock_held(project_id: &str) -> Result<bool, String> {
     crate::paths::validate_project_id(project_id)?;
     let _activity = ActiveRestore::acquire(project_id);
-    let project = crate::paths::project_dir(project_id)?;
+    let location = crate::project_location::locate(project_id)?;
+    let marker_dir = location.private_state_dir();
     // Ordinary project reads remain independent from Checkpoints storage.
     // Only a durable in-project marker proves that worktree mutation began.
-    let pending = restore_pending_marker_exists(&project)?;
+    let pending = restore_pending_marker_exists(&marker_dir)?;
     let Some(store_path) = crate::paths::existing_checkpoint_store_dir(project_id)? else {
         return if pending {
             Err("A Checkpoint restore is pending, but its recovery data is unavailable.".into())
@@ -1457,7 +1511,21 @@ pub(crate) fn recover_interrupted_restore_lock_held(project_id: &str) -> Result<
         .map_err(|_| "Could not lock Checkpoints recovery data.".to_string())?;
     let transaction = locked_store.root().join(RESTORE_TRANSACTION);
     if pending {
-        recover_restore_transaction(&project, &transaction, RestoreFault::None)?;
+        match location.kind {
+            ProjectKind::Library => recover_restore_transaction(
+                &location.root,
+                &marker_dir,
+                &transaction,
+                RestoreFault::None,
+            )?,
+            ProjectKind::Linked => recover_linked_restore_transaction(
+                &location.root,
+                &marker_dir,
+                &linked_sidecar(&location)?,
+                &transaction,
+                RestoreFault::None,
+            )?,
+        }
         Ok(true)
     } else {
         clear_stale_restore_terminal_marker(&transaction)?;
@@ -1467,10 +1535,21 @@ pub(crate) fn recover_interrupted_restore_lock_held(project_id: &str) -> Result<
 
 fn recover_or_discard_restore_transaction(
     project: &Path,
+    marker_dir: &Path,
     transaction: &Path,
 ) -> Result<(), String> {
-    if restore_pending_marker_exists(project)? {
-        recover_restore_transaction(project, transaction, RestoreFault::None)
+    recover_or_discard_with(marker_dir, transaction, || {
+        recover_restore_transaction(project, marker_dir, transaction, RestoreFault::None)
+    })
+}
+
+fn recover_or_discard_with(
+    marker_dir: &Path,
+    transaction: &Path,
+    recover: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    if restore_pending_marker_exists(marker_dir)? {
+        recover()
     } else {
         clear_stale_restore_terminal_marker(transaction)?;
         discard_unstarted_restore_transaction(transaction)
@@ -1504,7 +1583,7 @@ fn discard_unstarted_restore_transaction(transaction: &Path) -> Result<(), Strin
 }
 
 fn complete_terminal_restore_cleanup(
-    project: &Path,
+    marker_dir: &Path,
     transaction: &Path,
     outcome: RestoreTerminalOutcome,
     fault: RestoreFault,
@@ -1523,7 +1602,7 @@ fn complete_terminal_restore_cleanup(
         return Err("injected restore crash after transaction cleanup".into());
     }
 
-    remove_restore_pending_marker(project)?;
+    remove_restore_pending_marker(marker_dir)?;
 
     #[cfg(test)]
     if fault == RestoreFault::CrashAfterPendingMarkerCleanup
@@ -1537,6 +1616,7 @@ fn complete_terminal_restore_cleanup(
 
 fn recover_restore_transaction(
     project: &Path,
+    marker_dir: &Path,
     transaction: &Path,
     fault: RestoreFault,
 ) -> Result<(), String> {
@@ -1545,7 +1625,7 @@ fn recover_restore_transaction(
         .ok_or_else(|| "restore staging has no Checkpoints store".to_string())?;
     if restore_terminal_marker_exists(store)? {
         return complete_terminal_restore_cleanup(
-            project,
+            marker_dir,
             transaction,
             RestoreTerminalOutcome::RolledBack,
             fault,
@@ -1557,7 +1637,7 @@ fn recover_restore_transaction(
 
     if has_phase(&transaction, PHASE_INSTALLED)? {
         return complete_terminal_restore_cleanup(
-            project,
+            marker_dir,
             &transaction,
             RestoreTerminalOutcome::Installed,
             fault,
@@ -1586,11 +1666,11 @@ fn recover_restore_transaction(
         let backup = existing_real_directory(&backup, &transaction)?
             .ok_or_else(|| "restore staging is missing its rollback data".to_string())?;
         restore_backup_paths(&backup, project, &plan)?;
-        remove_created_project_directories(project, &plan)?;
+        remove_created_project_directories(project, &plan, Durability::Strict)?;
     }
 
     complete_terminal_restore_cleanup(
-        project,
+        marker_dir,
         &transaction,
         RestoreTerminalOutcome::RolledBack,
         fault,
@@ -1621,7 +1701,7 @@ fn move_installed_paths_back(
         if let Some(parent) = staged.parent() {
             create_restore_directories_durable(incoming, parent, RestoreFault::None)?;
         }
-        fs::rename(&installed, &staged)
+        rename_path(&installed, &staged)
             .map_err(|error| format!("could not roll back installed path {relative}: {error}"))?;
         record_touched_parent(&mut touched, &installed)?;
         record_touched_parent(&mut touched, &staged)?;
@@ -1647,7 +1727,7 @@ fn restore_backup_paths(backup: &Path, project: &Path, plan: &RestorePlan) -> Re
         if let Some(parent) = destination.parent() {
             create_restore_directories_durable(project, parent, RestoreFault::None)?;
         }
-        fs::rename(&saved, &destination)
+        rename_path(&saved, &destination)
             .map_err(|error| format!("could not restore project path {relative}: {error}"))?;
         record_touched_parent(&mut touched, &saved)?;
         record_touched_parent(&mut touched, &destination)?;
@@ -1655,11 +1735,15 @@ fn restore_backup_paths(backup: &Path, project: &Path, plan: &RestorePlan) -> Re
     sync_touched_parents(touched)
 }
 
-fn remove_created_project_directories(project: &Path, plan: &RestorePlan) -> Result<(), String> {
+fn remove_created_project_directories(
+    project: &Path,
+    plan: &RestorePlan,
+    durability: Durability,
+) -> Result<(), String> {
     for relative in plan.created_project_directories.iter().rev() {
         let directory = restore_path(project, relative)?;
         match fs::remove_dir(&directory) {
-            Ok(()) => sync_parent(&directory)?,
+            Ok(()) => sync_parent_with(&directory, durability)?,
             Err(error)
                 if matches!(
                     error.kind(),
@@ -1673,6 +1757,497 @@ fn remove_created_project_directories(project: &Path, plan: &RestorePlan) -> Res
         }
     }
     Ok(())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Durability {
+    Strict,
+    BestEffort,
+}
+
+fn sync_parent_with(path: &Path, durability: Durability) -> Result<(), String> {
+    match durability {
+        Durability::Strict => sync_parent(path),
+        Durability::BestEffort => {
+            let _ = sync_parent(path);
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static RENAME_BOUNDARIES: std::cell::RefCell<Vec<PathBuf>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
+struct RenameBoundary(PathBuf);
+
+#[cfg(test)]
+fn forbid_renames_across(root: &Path) -> RenameBoundary {
+    let root = root.canonicalize().unwrap();
+    RENAME_BOUNDARIES.with(|boundaries| boundaries.borrow_mut().push(root.clone()));
+    RenameBoundary(root)
+}
+
+#[cfg(test)]
+impl Drop for RenameBoundary {
+    fn drop(&mut self) {
+        RENAME_BOUNDARIES.with(|boundaries| boundaries.borrow_mut().retain(|root| root != &self.0));
+    }
+}
+
+fn rename_path(source: &Path, destination: &Path) -> std::io::Result<()> {
+    #[cfg(test)]
+    if RENAME_BOUNDARIES.with(|boundaries| {
+        boundaries
+            .borrow()
+            .iter()
+            .any(|root| source.starts_with(root) != destination.starts_with(root))
+    }) {
+        return Err(std::io::Error::from(std::io::ErrorKind::CrossesDevices));
+    }
+    fs::rename(source, destination)
+}
+
+fn create_planned_directories(
+    project: &Path,
+    plan: &RestorePlan,
+    durability: Durability,
+) -> Result<(), String> {
+    for relative in &plan.created_project_directories {
+        let directory = restore_path(project, relative)?;
+        match fs::create_dir(&directory) {
+            Ok(()) => sync_parent_with(&directory, durability)?,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                let metadata = fs::symlink_metadata(&directory)
+                    .map_err(|error| format!("could not inspect a project directory: {error}"))?;
+                if !metadata.is_dir()
+                    || metadata.file_type().is_symlink()
+                    || is_reparse_point(&metadata)
+                {
+                    return Err("A restore parent path is not a real directory.".into());
+                }
+            }
+            Err(error) => return Err(format!("could not create a project directory: {error}")),
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct LinkedRestorePlan {
+    #[serde(flatten)]
+    paths: RestorePlan,
+    detached_manifest: bool,
+}
+
+fn linked_sidecar(location: &ProjectLocation) -> Result<PathBuf, String> {
+    location
+        .sidecar_manifest_path()
+        .ok_or_else(|| "This project is not a folder opened in place.".to_string())
+}
+
+fn restore_linked_checkpoint_into(
+    store: &Store,
+    snapshot_root: &SnapshotRoot,
+    location: &ProjectLocation,
+    fault: RestoreFault,
+) -> Result<(), String> {
+    let sidecar = linked_sidecar(location)?;
+    let marker_dir = location.private_state_dir();
+    let locked_store = store
+        .lock_exclusive()
+        .map_err(|_| "Could not lock this project's Checkpoints history.".to_string())?;
+    let checkpoint = locked_store
+        .checkpoint(snapshot_root)
+        .map_err(|_| "The selected Checkpoint could not be read.".to_string())?
+        .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
+    let transaction = locked_store.root().join(RESTORE_TRANSACTION);
+    recover_or_discard_with(&marker_dir, &transaction, || {
+        recover_linked_restore_transaction(
+            &location.root,
+            &marker_dir,
+            &sidecar,
+            &transaction,
+            RestoreFault::None,
+        )
+    })?;
+    create_private_directory(&transaction)?;
+    let incoming = transaction.join(INCOMING_DIRECTORY);
+    let prepared = (|| -> Result<(), String> {
+        let materialized = locked_store
+            .materialize(snapshot_root, &incoming)
+            .map_err(|_| "The selected Checkpoint could not be verified.".to_string())?;
+        if materialized.layout != ManifestLayout::Detached {
+            return Err(AppError::new("checkpoint.library_history_for_folder").into());
+        }
+        let plan = prepare_linked_restore_plan(&incoming, &location.root, &checkpoint)?;
+        create_private_directory(&transaction.join(BACKUP_DIRECTORY))?;
+        write_restore_plan(&transaction, &plan)?;
+        mark_phase(&transaction, PHASE_PREPARED)?;
+        write_restore_pending_marker(&marker_dir)?;
+        mark_phase(&transaction, PHASE_BACKING_UP)?;
+        copy_restore_backups(&location.root, &sidecar, &transaction, &plan, fault)?;
+        mark_phase(&transaction, PHASE_INSTALLING)?;
+        install_restore_copies(&incoming, &location.root, &sidecar, &plan, fault)?;
+        mark_phase(&transaction, PHASE_INSTALLED)?;
+        Ok(())
+    })();
+    #[cfg(test)]
+    if fault == RestoreFault::CrashDuringInstall {
+        return prepared.and_then(|_| Err("injected restore crash did not trigger".into()));
+    }
+    conclude_restore(prepared, &marker_dir, &transaction, fault, || {
+        recover_linked_restore_transaction(
+            &location.root,
+            &marker_dir,
+            &sidecar,
+            &transaction,
+            fault,
+        )
+    })
+}
+
+fn prepare_linked_restore_plan(
+    incoming: &Path,
+    project_root: &Path,
+    checkpoint: &Checkpoint,
+) -> Result<LinkedRestorePlan, String> {
+    let mut files = Vec::new();
+    collect_restore_files(incoming, incoming, &mut files)?;
+    files.sort();
+    let detached_manifest = match files.iter().position(|path| path == DETACHED_MANIFEST_PATH) {
+        Some(index) => {
+            files.remove(index);
+            true
+        }
+        None => false,
+    };
+    if detached_manifest {
+        let bytes = fs::read(incoming.join(DETACHED_MANIFEST_PATH)).map_err(|_| {
+            "The selected Checkpoint contains unreadable project metadata.".to_string()
+        })?;
+        crate::project::parse_project_meta(&bytes).map_err(|error| {
+            format!("The Checkpoint contains invalid project metadata: {error}")
+        })?;
+    }
+    if !files.iter().any(|path| path == &checkpoint.main_document) {
+        return Err(format!(
+            "The selected Checkpoint does not contain its main document, {}.",
+            checkpoint.main_document
+        ));
+    }
+    for relative in &files {
+        refuse_blocked_destination(&restore_path(project_root, relative)?, relative)?;
+    }
+    let created_project_directories = missing_project_directories(project_root, &files)?;
+    Ok(LinkedRestorePlan {
+        paths: RestorePlan {
+            files,
+            created_project_directories,
+        },
+        detached_manifest,
+    })
+}
+
+fn refuse_blocked_destination(destination: &Path, relative: &str) -> Result<(), String> {
+    match fs::symlink_metadata(destination) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Err(format!(
+            "Cannot restore {relative} because it is currently a directory."
+        )),
+        Ok(metadata)
+            if !metadata.is_file()
+                || metadata.file_type().is_symlink()
+                || is_reparse_point(&metadata) =>
+        {
+            Err(AppError::new("checkpoint.restore_path_blocked")
+                .param("path", relative)
+                .into())
+        }
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not inspect a project path: {error}")),
+    }
+}
+
+fn ensure_real_parents(root: &Path, relative: &str) -> Result<(), String> {
+    let parts = relative.split('/').collect::<Vec<_>>();
+    let mut current = root.to_path_buf();
+    for part in &parts[..parts.len().saturating_sub(1)] {
+        current.push(part);
+        let metadata = fs::symlink_metadata(&current)
+            .map_err(|error| format!("could not inspect a project directory: {error}"))?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Err(format!(
+                "Cannot restore {relative} because one of its parent paths is not a real directory."
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn open_regular_no_follow(path: &Path) -> Result<fs::File, String> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options
+        .open(path)
+        .map_err(|error| format!("could not read a restore path: {error}"))?;
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("could not read a restore path: {error}"))?;
+    if !metadata.is_file() || is_reparse_point(&metadata) {
+        return Err("A restore path is not a regular file.".into());
+    }
+    Ok(file)
+}
+
+fn copy_file_durable(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut reader = open_regular_no_follow(source)?;
+    let mut writer = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(destination)
+        .map_err(|error| format!("could not stage a restore copy: {error}"))?;
+    set_private_file_permissions(destination)?;
+    std::io::copy(&mut reader, &mut writer)
+        .map_err(|error| format!("could not stage a restore copy: {error}"))?;
+    writer
+        .sync_all()
+        .map_err(|error| format!("could not save a restore copy: {error}"))
+}
+
+fn install_copy(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut reader = open_regular_no_follow(source)?;
+    let mut staged = crate::sandbox::AtomicFile::new(destination)?;
+    std::io::copy(&mut reader, staged.staging_file_mut())
+        .map_err(|error| format!("could not install a project path during restore: {error}"))?;
+    staged.commit()
+}
+
+fn file_digest(path: &Path) -> Result<oleafly_history::ContentHash, String> {
+    oleafly_history::ContentHash::digest_file(path)
+        .map_err(|error| format!("could not read a restore path: {error}"))
+}
+
+fn regular_file_exists(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|metadata| {
+        metadata.is_file() && !metadata.file_type().is_symlink() && !is_reparse_point(&metadata)
+    })
+}
+
+fn copy_restore_backups(
+    project: &Path,
+    sidecar: &Path,
+    transaction: &Path,
+    plan: &LinkedRestorePlan,
+    fault: RestoreFault,
+) -> Result<(), String> {
+    let backup = transaction.join(BACKUP_DIRECTORY);
+    let mut copied = 0_u64;
+    let mut touched = BTreeSet::new();
+    for relative in &plan.paths.files {
+        let source = restore_path(project, relative)?;
+        match fs::symlink_metadata(&source) {
+            Ok(_) => refuse_blocked_destination(&source, relative)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(format!("could not inspect a project path: {error}")),
+        }
+        let destination = restore_path(&backup, relative)?;
+        if let Some(parent) = destination.parent() {
+            create_restore_directories_durable(&backup, parent, fault)?;
+        }
+        copy_file_durable(&source, &destination)?;
+        record_touched_parent(&mut touched, &destination)?;
+        copied += 1;
+        #[cfg(test)]
+        if copied == 1 && fault == RestoreFault::AfterFirstBackup {
+            sync_touched_parents(touched)?;
+            return Err("injected restore failure".into());
+        }
+    }
+    if plan.detached_manifest && regular_file_exists(sidecar) {
+        let destination = transaction.join(MANIFEST_BACKUP_FILE);
+        copy_file_durable(sidecar, &destination)?;
+        record_touched_parent(&mut touched, &destination)?;
+    }
+    let _ = (fault, copied);
+    sync_touched_parents(touched)
+}
+
+fn install_restore_copies(
+    incoming: &Path,
+    project: &Path,
+    sidecar: &Path,
+    plan: &LinkedRestorePlan,
+    fault: RestoreFault,
+) -> Result<(), String> {
+    create_planned_directories(project, &plan.paths, Durability::BestEffort)?;
+    let mut installed = 0_u64;
+    for relative in &plan.paths.files {
+        ensure_real_parents(project, relative)?;
+        let destination = restore_path(project, relative)?;
+        refuse_blocked_destination(&destination, relative)?;
+        install_copy(&restore_path(incoming, relative)?, &destination)?;
+        installed += 1;
+        #[cfg(test)]
+        if installed == 1 && fault.fails_after_first_install() {
+            return Err("injected restore failure".into());
+        }
+        #[cfg(test)]
+        if installed == 1 && fault == RestoreFault::CrashDuringInstall {
+            return Err("injected restore crash during install".into());
+        }
+    }
+    if plan.detached_manifest {
+        install_copy(&incoming.join(DETACHED_MANIFEST_PATH), sidecar)?;
+    }
+    let _ = (fault, installed);
+    Ok(())
+}
+
+fn remove_installed(destination: &Path) -> Result<(), String> {
+    match fs::remove_file(destination) {
+        Ok(()) => {
+            let _ = sync_parent(destination);
+            Ok(())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!(
+            "could not remove a restored path during rollback: {error}"
+        )),
+    }
+}
+
+fn digest_if_regular(
+    path: &Path,
+    context: &str,
+) -> Result<Option<oleafly_history::ContentHash>, String> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata)
+            if metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && !is_reparse_point(&metadata) =>
+        {
+            file_digest(path).map(Some)
+        }
+        Ok(_) => Err(format!("{context} is not a regular file")),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("could not inspect {context}: {error}")),
+    }
+}
+
+fn undo_copy(staged: &Path, saved: &Path, destination: &Path) -> Result<(), String> {
+    let current = match digest_if_regular(destination, "a project path during rollback") {
+        Ok(current) => current,
+        Err(_) if fs::symlink_metadata(destination).is_ok() => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    let saved_digest = digest_if_regular(saved, "restore rollback data")?;
+    let installed = match current {
+        Some(current) => current == file_digest(staged)?,
+        None => false,
+    };
+    match (saved_digest, current) {
+        (Some(saved_digest), Some(current)) if current == saved_digest => Ok(()),
+        (Some(_), None) => install_copy(saved, destination),
+        (Some(_), Some(_)) if installed => install_copy(saved, destination),
+        (None, Some(_)) if installed => remove_installed(destination),
+        _ => Ok(()),
+    }
+}
+
+fn roll_back_restore_copies(
+    transaction: &Path,
+    project: &Path,
+    sidecar: &Path,
+    plan: &LinkedRestorePlan,
+) -> Result<(), String> {
+    let incoming = existing_real_directory(&transaction.join(INCOMING_DIRECTORY), transaction)?
+        .ok_or_else(|| "restore staging is missing its verified payload".to_string())?;
+    let backup = existing_real_directory(&transaction.join(BACKUP_DIRECTORY), transaction)?
+        .ok_or_else(|| "restore staging is missing its rollback data".to_string())?;
+    for relative in &plan.paths.files {
+        undo_copy(
+            &restore_path(&incoming, relative)?,
+            &restore_path(&backup, relative)?,
+            &restore_path(project, relative)?,
+        )?;
+    }
+    if plan.detached_manifest {
+        undo_copy(
+            &incoming.join(DETACHED_MANIFEST_PATH),
+            &transaction.join(MANIFEST_BACKUP_FILE),
+            sidecar,
+        )?;
+    }
+    remove_created_project_directories(project, &plan.paths, Durability::BestEffort)
+}
+
+fn read_linked_restore_plan(transaction: &Path) -> Result<LinkedRestorePlan, String> {
+    let paths = read_restore_plan(transaction)?;
+    let bytes = fs::read(transaction.join(RESTORE_PLAN_FILE))
+        .map_err(|error| format!("could not read restore plan: {error}"))?;
+    let plan: LinkedRestorePlan = serde_json::from_slice(&bytes)
+        .map_err(|_| "restore staging does not belong to a folder opened in place".to_string())?;
+    Ok(LinkedRestorePlan {
+        paths,
+        detached_manifest: plan.detached_manifest,
+    })
+}
+
+fn recover_linked_restore_transaction(
+    root: &Path,
+    marker_dir: &Path,
+    sidecar: &Path,
+    transaction: &Path,
+    fault: RestoreFault,
+) -> Result<(), String> {
+    let store = transaction
+        .parent()
+        .ok_or_else(|| "restore staging has no Checkpoints store".to_string())?;
+    if restore_terminal_marker_exists(store)? {
+        return complete_terminal_restore_cleanup(
+            marker_dir,
+            transaction,
+            RestoreTerminalOutcome::RolledBack,
+            fault,
+        );
+    }
+    let transaction = existing_real_directory(transaction, store)?.ok_or_else(|| {
+        "A Checkpoint restore is pending, but its recovery data is unavailable.".to_string()
+    })?;
+    if has_phase(&transaction, PHASE_INSTALLED)? {
+        return complete_terminal_restore_cleanup(
+            marker_dir,
+            &transaction,
+            RestoreTerminalOutcome::Installed,
+            fault,
+        );
+    }
+    let plan = read_linked_restore_plan(&transaction)?;
+    if has_phase(&transaction, PHASE_INSTALLING)? || has_phase(&transaction, PHASE_ROLLING_BACK)? {
+        mark_phase(&transaction, PHASE_ROLLING_BACK)?;
+        roll_back_restore_copies(&transaction, root, sidecar, &plan)?;
+    }
+    complete_terminal_restore_cleanup(
+        marker_dir,
+        &transaction,
+        RestoreTerminalOutcome::RolledBack,
+        fault,
+    )
 }
 
 fn remove_transaction_directory(transaction: &Path) -> Result<(), String> {
@@ -2226,7 +2801,7 @@ mod tests {
         fs::write(project.join("main.tex"), b"current source").unwrap();
         let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
         drop(store);
-        super::write_restore_pending_marker(&project).unwrap();
+        super::write_restore_pending_marker(&project.join(".oleafly")).unwrap();
 
         let error = super::recover_interrupted_restore_lock_held("paper").unwrap_err();
 
@@ -2237,6 +2812,545 @@ mod tests {
         );
         assert!(super::has_restore_pending_marker(&project));
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn restore_markers_are_written_where_the_project_location_keeps_them() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let linked = crate::project_location::locate(&record.id).unwrap();
+        super::write_restore_pending_marker(&linked.private_state_dir()).unwrap();
+        assert!(linked.restore_marker().is_file());
+        assert!(crate::worktree_lock::pending_restore_marker_exists(&record.id).unwrap());
+        assert!(!folder.join(".oleafly").exists());
+        super::remove_restore_pending_marker(&linked.private_state_dir()).unwrap();
+        assert!(!crate::worktree_lock::pending_restore_marker_exists(&record.id).unwrap());
+
+        let project = crate::paths::create_project_dir("paper").unwrap();
+        let library = crate::project_location::locate("paper").unwrap();
+        super::write_restore_pending_marker(&library.private_state_dir()).unwrap();
+        assert!(project
+            .join(".oleafly")
+            .join(crate::worktree_lock::RESTORE_PENDING_FILE)
+            .is_file());
+        assert!(super::has_restore_pending_marker(&project));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_pending_restore_without_recovery_data_stays_fail_closed() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folder = folders.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        super::write_restore_pending_marker(&location.private_state_dir()).unwrap();
+
+        let error = super::recover_interrupted_restore_lock_held(&record.id).unwrap_err();
+
+        assert!(error.contains("recovery data"), "{error}");
+        assert!(location.restore_marker().is_file());
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"current source"
+        );
+        assert!(!folder.join(".oleafly").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    fn linked_project(
+        folders: &std::path::Path,
+    ) -> (crate::project_location::ProjectLocation, std::path::PathBuf) {
+        let folder = folders.join("thesis");
+        fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        (
+            crate::project_location::locate(&record.id).unwrap(),
+            folder.canonicalize().unwrap(),
+        )
+    }
+
+    fn write_linked_meta(project_id: &str, color: &str) {
+        let mut meta = crate::project::read_meta(project_id).unwrap();
+        meta.main_doc = "main.tex".into();
+        meta.engine = "xetex".into();
+        meta.color = color.into();
+        crate::project::write_meta(project_id, &meta).unwrap();
+    }
+
+    fn publish_linked(
+        store: &Store,
+        location: &crate::project_location::ProjectLocation,
+        source: &[u8],
+        time: i64,
+    ) -> SnapshotRoot {
+        fs::write(location.root.join("main.tex"), source).unwrap();
+        let capture = crate::checkpoint_capture::walk_linked_folder(
+            &location.root,
+            location.sidecar_manifest_path().as_deref(),
+            &crate::checkpoint_capture::LinkedCapturePolicy::new(Default::default()),
+        )
+        .unwrap();
+        let candidate = store
+            .stage_detached_candidate(&location.root, &capture.capture_inputs().unwrap())
+            .unwrap();
+        let root = *candidate.snapshot_root();
+        let evidence = CompileEvidence::new(
+            "xetex",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"validated output"),
+            time,
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        root
+    }
+
+    fn linked_setup(
+        folders: &std::path::Path,
+    ) -> (
+        crate::project_location::ProjectLocation,
+        std::path::PathBuf,
+        Store,
+        SnapshotRoot,
+    ) {
+        let (location, folder) = linked_project(folders);
+        fs::write(folder.join("project.json"), br#"{"name":"nx-app"}"#).unwrap();
+        fs::create_dir(folder.join("chapters")).unwrap();
+        fs::write(folder.join("chapters/one.tex"), b"chapter one").unwrap();
+        write_linked_meta(&location.id, "#112233");
+        let store = Store::open(crate::paths::checkpoint_store_dir(&location.id).unwrap()).unwrap();
+        let root = publish_linked(&store, &location, b"checkpoint source", 10);
+        (location, folder, store, root)
+    }
+
+    fn no_staging_files(folder: &std::path::Path) -> bool {
+        fs::read_dir(folder).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")
+        })
+    }
+
+    #[test]
+    fn a_linked_restore_copies_files_back_and_writes_the_manifest_only_to_the_sidecar() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        let sidecar = location.sidecar_manifest_path().unwrap();
+        let saved_sidecar = fs::read(&sidecar).unwrap();
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+        fs::write(folder.join("project.json"), br#"{"name":"nx-app","v":2}"#).unwrap();
+        fs::remove_dir_all(folder.join("chapters")).unwrap();
+        fs::write(folder.join("untracked.txt"), b"preserve me").unwrap();
+        write_linked_meta(&location.id, "#445566");
+
+        super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+            .unwrap();
+
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"checkpoint source"
+        );
+        assert_eq!(
+            fs::read(folder.join("project.json")).unwrap(),
+            br#"{"name":"nx-app"}"#
+        );
+        assert_eq!(
+            fs::read(folder.join("chapters/one.tex")).unwrap(),
+            b"chapter one"
+        );
+        assert_eq!(
+            fs::read(folder.join("untracked.txt")).unwrap(),
+            b"preserve me"
+        );
+        assert_eq!(fs::read(&sidecar).unwrap(), saved_sidecar);
+        assert_eq!(
+            crate::project::read_meta(&location.id).unwrap().color,
+            "#112233"
+        );
+        assert!(!folder.join(".oleafly").exists());
+        assert!(!folder
+            .join(oleafly_history::DETACHED_MANIFEST_PATH)
+            .exists());
+        assert!(no_staging_files(&folder));
+        assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
+        assert!(!location.restore_marker().exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_restore_never_renames_between_the_store_and_the_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+        {
+            let _boundary = super::forbid_renames_across(&folder);
+            super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+                .unwrap();
+        }
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"checkpoint source"
+        );
+
+        let project = crate::paths::create_project_dir("paper").unwrap();
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let library_store =
+            Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
+        let library_root = publish(&library_store, &project, b"library source", 10);
+        fs::write(project.join("main.tex"), b"library edit").unwrap();
+        let _boundary = super::forbid_renames_across(&project);
+        let error =
+            restore_checkpoint_sync(&library_store, &library_root, &project, RestoreFault::None)
+                .unwrap_err();
+        assert!(error.contains("cross-device"), "{error}");
+        assert_eq!(fs::read(project.join("main.tex")).unwrap(), b"library edit");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_restore_rolls_back_a_failed_install_by_copy() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+        fs::remove_dir_all(folder.join("chapters")).unwrap();
+        write_linked_meta(&location.id, "#445566");
+        let sidecar = location.sidecar_manifest_path().unwrap();
+        let current_sidecar = fs::read(&sidecar).unwrap();
+
+        let error = super::restore_linked_checkpoint_into(
+            &store,
+            &root,
+            &location,
+            RestoreFault::AfterFirstInstall,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("injected restore failure"), "{error}");
+        assert!(!folder.join("chapters").exists());
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"current source"
+        );
+        assert_eq!(fs::read(&sidecar).unwrap(), current_sidecar);
+        assert!(no_staging_files(&folder));
+        assert!(!location.restore_marker().exists());
+        assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_linked_restore_interrupted_mid_install_rolls_back_on_recovery() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+        fs::remove_dir_all(folder.join("chapters")).unwrap();
+
+        let error = super::restore_linked_checkpoint_into(
+            &store,
+            &root,
+            &location,
+            RestoreFault::CrashDuringInstall,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("injected restore crash"), "{error}");
+        assert!(location.restore_marker().is_file());
+        assert!(folder.join("chapters/one.tex").is_file());
+        assert!(crate::worktree_lock::ProjectWorktreeLock::shared(&location.id).is_err());
+        assert!(super::recover_interrupted_restore_lock_held(&location.id).unwrap());
+        assert!(!folder.join("chapters").exists());
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"current source"
+        );
+        assert!(!location.restore_marker().exists());
+        assert!(!folder.join(".oleafly").exists());
+        crate::worktree_lock::ProjectWorktreeLock::shared(&location.id).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_library_checkpoint_is_refused_for_a_folder_opened_in_place() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder) = linked_project(folders.path());
+        fs::write(
+            folder.join("project.json"),
+            br#"{"name":"Thesis","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir(&location.id).unwrap()).unwrap();
+        let root = publish(&store, &location.root, b"checkpoint source", 10);
+        fs::write(folder.join("main.tex"), b"current").unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&folder);
+
+        let error =
+            super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+                .unwrap_err();
+
+        assert!(
+            error.contains("checkpoint.library_history_for_folder"),
+            "{error}"
+        );
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&folder),
+            before
+        );
+        assert!(!location.restore_marker().exists());
+        assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_folder_checkpoint_is_refused_for_a_library_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("paper").unwrap();
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        fs::write(project.join("main.tex"), b"checkpoint source").unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
+        let inputs = [
+            CaptureInput::explicit("project.json").unwrap(),
+            CaptureInput::explicit("main.tex").unwrap(),
+        ];
+        let candidate = store.stage_detached_candidate(&project, &inputs).unwrap();
+        let root = *candidate.snapshot_root();
+        let evidence = CompileEvidence::new(
+            "xetex",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"validated output"),
+            10,
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        fs::write(project.join("main.tex"), b"current").unwrap();
+
+        let error =
+            restore_checkpoint_sync(&store, &root, &project, RestoreFault::None).unwrap_err();
+
+        assert!(
+            error.contains("checkpoint.folder_history_for_library"),
+            "{error}"
+        );
+        assert_eq!(fs::read(project.join("main.tex")).unwrap(), b"current");
+        assert!(!super::has_restore_pending_marker(&project));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_folder_settings_only_need_to_parse_to_be_restored() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder) = linked_project(folders.path());
+        let sidecar = location.sidecar_manifest_path().unwrap();
+        fs::write(
+            &sidecar,
+            br#"{"name":"Thesis","main_doc":"paper.tex","engine":"latexmk"}"#,
+        )
+        .unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir(&location.id).unwrap()).unwrap();
+        let root = publish_linked(&store, &location, b"checkpoint source", 10);
+        fs::write(folder.join("main.tex"), b"current").unwrap();
+        super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+            .unwrap();
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"checkpoint source"
+        );
+
+        fs::write(&sidecar, b"not json").unwrap();
+        let broken = publish_linked(&store, &location, b"broken settings", 20);
+        fs::write(&sidecar, br#"{"name":"Thesis","main_doc":"main.tex"}"#).unwrap();
+        fs::write(folder.join("main.tex"), b"current").unwrap();
+        let error =
+            super::restore_linked_checkpoint_into(&store, &broken, &location, RestoreFault::None)
+                .unwrap_err();
+        assert!(error.contains("invalid project metadata"), "{error}");
+        assert_eq!(fs::read(folder.join("main.tex")).unwrap(), b"current");
+        assert!(!location.restore_marker().exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_in_the_way_stops_a_linked_restore_before_anything_changes() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder, store, root) = linked_setup(folders.path());
+        let outside = folders.path().join("outside.tex");
+        fs::write(&outside, b"outside").unwrap();
+        fs::remove_file(folder.join("main.tex")).unwrap();
+        std::os::unix::fs::symlink(&outside, folder.join("main.tex")).unwrap();
+
+        let error =
+            super::restore_linked_checkpoint_into(&store, &root, &location, RestoreFault::None)
+                .unwrap_err();
+
+        assert!(error.contains("checkpoint.restore_path_blocked"), "{error}");
+        assert!(fs::symlink_metadata(folder.join("main.tex"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(fs::read(&outside).unwrap(), b"outside");
+        assert!(!location.restore_marker().exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_checkpoint_files_mark_the_folder_settings_entry() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, _folder, store, root) = linked_setup(folders.path());
+        drop(store);
+        let files = super::checkpoint_files_sync(&location.id, &root.to_string()).unwrap();
+        assert_eq!(
+            files
+                .iter()
+                .filter(|file| file.folder_settings)
+                .map(|file| file.path.as_str())
+                .collect::<Vec<_>>(),
+            vec![oleafly_history::DETACHED_MANIFEST_PATH]
+        );
+        let main = files.iter().find(|file| file.path == "main.tex").unwrap();
+        assert_eq!(
+            serde_json::to_value(main).unwrap().get("folder_settings"),
+            None
+        );
+        let settings = files.iter().find(|file| file.folder_settings).unwrap();
+        assert_eq!(
+            serde_json::to_value(settings).unwrap()["folder_settings"],
+            serde_json::json!(true)
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn only_linked_stats_carry_the_capture_notice() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, _folder) = linked_project(folders.path());
+        let notice = crate::checkpoint_capture::CaptureNotice {
+            paused: None,
+            skipped: crate::checkpoint_capture::SkippedFiles {
+                links: 2,
+                ..Default::default()
+            },
+        };
+        crate::checkpoint_capture::record_capture_notice(&location, &notice);
+        assert_eq!(
+            checkpoint_stats_sync(&location.id).unwrap().capture,
+            Some(notice.clone())
+        );
+        crate::checkpoint_capture::record_capture_notice(&location, &Default::default());
+        assert_eq!(checkpoint_stats_sync(&location.id).unwrap().capture, None);
+
+        let project = crate::paths::create_project_dir("paper").unwrap();
+        fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
+        let library = crate::project_location::locate("paper").unwrap();
+        crate::checkpoint_capture::record_capture_notice(&library, &notice);
+        assert!(!project.join(".oleafly").exists());
+        let stats = checkpoint_stats_sync("paper").unwrap();
+        assert_eq!(stats, CheckpointStats::default());
+        assert!(serde_json::to_value(stats)
+            .unwrap()
+            .get("capture")
+            .is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn checkpoint_error_codes_exist_in_the_english_catalog() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        for code in [
+            "checkpoint.library_history_for_folder",
+            "checkpoint.folder_history_for_library",
+            "checkpoint.restore_path_blocked",
+        ] {
+            let (namespace, key) = code.split_once('.').unwrap();
+            assert!(catalog[namespace][key].is_string(), "{code}");
+        }
+    }
+
+    #[test]
+    fn a_linked_restore_rolls_back_and_recovers_with_its_marker_outside_the_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (location, folder) = linked_project(folders.path());
+        write_linked_meta(&location.id, "#112233");
+        let store = Store::open(crate::paths::checkpoint_store_dir(&location.id).unwrap()).unwrap();
+        let root = publish_linked(&store, &location, b"checkpoint source", 10);
+        fs::write(folder.join("main.tex"), b"current source").unwrap();
+
+        let error = super::restore_linked_checkpoint_into(
+            &store,
+            &root,
+            &location,
+            RestoreFault::CrashAfterRollbackTransactionCleanup,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("injected restore crash"), "{error}");
+        assert!(location.restore_marker().is_file());
+        assert!(!folder.join(".oleafly").exists());
+        assert!(crate::worktree_lock::ProjectWorktreeLock::shared(&location.id).is_err());
+
+        assert!(super::recover_interrupted_restore_lock_held(&location.id).unwrap());
+        assert_eq!(
+            fs::read(folder.join("main.tex")).unwrap(),
+            b"current source"
+        );
+        assert!(!location.restore_marker().exists());
+        assert!(!folder.join(".oleafly").exists());
+        crate::worktree_lock::ProjectWorktreeLock::shared(&location.id).unwrap();
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
@@ -2395,7 +3509,7 @@ mod tests {
         let transaction = store.root().join(super::RESTORE_TRANSACTION);
         super::create_private_directory(&transaction).unwrap();
         fs::write(transaction.join("recovery-evidence"), b"keep me").unwrap();
-        super::write_restore_pending_marker(&project).unwrap();
+        super::write_restore_pending_marker(&project.join(".oleafly")).unwrap();
         drop(store);
 
         let error = checkpoint_reset_sync("paper").unwrap_err();
@@ -2446,6 +3560,7 @@ mod tests {
                 bytes: 7,
                 content_hash: "abc".into(),
                 stored: true,
+                folder_settings: false,
             })
             .unwrap(),
             serde_json::json!({
@@ -2593,7 +3708,7 @@ mod tests {
             },
         )
         .unwrap();
-        super::write_restore_pending_marker(&project).unwrap();
+        super::write_restore_pending_marker(&project.join(".oleafly")).unwrap();
         fs::rename(
             project.join("project.json"),
             transaction

@@ -37,6 +37,7 @@ import {
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -130,7 +131,7 @@ export function ProjectImportDialog({
   }, [open, view, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
   const reportError = (error: unknown) => {
-    const detail = error instanceof Error ? error.message : typeof error === "string" ? error : t(($) => $.library.import.failed);
+    const detail = error instanceof Error || typeof error === "string" ? describeError(error) : t(($) => $.library.import.failed);
     setErrorMessage(detail);
     void logError("project import", error);
   };

@@ -30,6 +30,12 @@ import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type The
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
+import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
+import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
+import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
+import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
+import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
+import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
   editorUndo,
@@ -44,6 +50,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
+import { CopyIntoLibraryDialog } from "@/components/library/CopyIntoLibraryDialog";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
@@ -55,7 +62,7 @@ import {
   LanguageServiceRuntimeUnavailable,
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { Library } from "@/components/library/Library";
-import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
+import { bootSplashHeld, dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
@@ -68,8 +75,11 @@ import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import {
+  automaticCompileAllowed,
   openCompileHydrated,
+  type OpenCompileRetries,
   resetOpenCompileMarker,
+  settleOpenCompile,
   shouldCompileOnOpen,
 } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
@@ -104,6 +114,8 @@ import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
+import { OpenFolderStopDialog, useOpenFolderIntake } from "@/components/layout/OpenFolderGuards";
+import { QuickActionOffer } from "@/components/layout/QuickActionOffer";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
   CHECKPOINT_PUBLICATION_EVENT,
@@ -265,6 +277,7 @@ function AppContent() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
+  const mainDecision = useFilesStore((state) => state.mainDecision);
   const mainDocumentLoaded = useFilesStore(
     (state) => state.files[state.mainDoc] !== undefined,
   );
@@ -341,6 +354,8 @@ function AppContent() {
   // reveal. The computer_use tool is only exposed when the browser flag is on.
   useEffect(() => registerBrowserCuaSurface(), []);
 
+  useOpenFolderIntake();
+
   const SIDEBAR_DEFAULT_PX = 340;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
@@ -403,7 +418,7 @@ function AppContent() {
     // React owns the screen from here: retire the inline HTML splash and
     // stamp the boot milestones the BootProgress card reports against.
     markBootStage("react-mounted");
-    dismissBootSplash();
+    if (!bootSplashHeld()) dismissBootSplash();
     void refreshProjects();
     void useGithubStore.getState().refresh();
     markBootStage("stores-ready");
@@ -741,11 +756,16 @@ function AppContent() {
   const tree = useFilesStore((s) => s.tree);
   const openCompiledRef = useRef<string | null>(null);
   const openCompileInFlightRef = useRef<string | null>(null);
+  const openCompileRetriesRef = useRef<OpenCompileRetries | null>(null);
   const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
   useEffect(() => {
     void openCompileEpoch;
     void mainDocumentLoaded;
     openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
+    openCompileRetriesRef.current = resetOpenCompileMarker(
+      projectId,
+      openCompileRetriesRef.current,
+    );
     const hydrated = openCompileHydrated(
       projectLoading,
       projectId,
@@ -761,6 +781,7 @@ function AppContent() {
     }
     if (
       openCompileInFlightRef.current !== null ||
+      !automaticCompileAllowed(mainDecision) ||
       !shouldCompileOnOpen(
         projectId,
         tree.length > 0,
@@ -803,23 +824,27 @@ function AppContent() {
       const analysis =
         useProjectAnalysisStore.getState().snapshot.identity;
       const compile = useCompileStore.getState();
-      const stillSameHydratedRevision =
-        files.projectId === requestedProjectId &&
-        files.mainDoc === requestedMainDocument &&
-        !files.loading &&
-        analysis.projectId === requestedProjectId &&
-        analysis.projectRevision === requestedProjectRevision;
-      const attempt = compile.lastAttemptIdentity;
-      const attemptStartedForRevision =
-        stillSameHydratedRevision &&
-        attempt?.projectId === requestedProjectId &&
-        attempt.mainDocument === requestedMainDocument &&
-        attempt.projectRevision === requestedProjectRevision;
-      const currentArtifact =
-        stillSameHydratedRevision &&
-        isCompileCheckpointCurrent(compile.lastCompileCheckpoint);
-
-      if (attemptStartedForRevision || currentArtifact) {
+      const settlement = settleOpenCompile(
+        {
+          projectId: requestedProjectId,
+          mainDocument: requestedMainDocument,
+          projectRevision: requestedProjectRevision,
+        },
+        {
+          projectId: files.projectId,
+          mainDocument: files.mainDoc,
+          loading: files.loading,
+          analysisProjectId: analysis.projectId,
+          analysisProjectRevision: analysis.projectRevision,
+          attempt: compile.lastAttemptIdentity,
+          hasCurrentArtifact: isCompileCheckpointCurrent(
+            compile.lastCompileCheckpoint,
+          ),
+        },
+        openCompileRetriesRef.current,
+      );
+      openCompileRetriesRef.current = settlement.retries;
+      if (settlement.compiled) {
         openCompiledRef.current = requestedProjectId;
       }
       if (
@@ -839,6 +864,7 @@ function AppContent() {
     compileCheckpoint,
     compileStatus,
     engineLoaded,
+    mainDecision,
     mainDocument,
     mainDocumentLoaded,
     openCompileEpoch,
@@ -855,6 +881,7 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
+        <CopyIntoLibraryDialog />
         <Suspense fallback={null}>
           {homePage === "pdf-import" && <PdfImportView />}
           {homePage === "equation" && <EquationToolView />}
@@ -875,6 +902,8 @@ function AppContent() {
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
+        <OpenFolderStopDialog />
+        <QuickActionOffer />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -901,6 +930,8 @@ function AppContent() {
               (see globals.css). */}
           <TopToolbar />
         <BackendProtocolBanner />
+        <FolderUnavailableBanner />
+        <OpenedFolderBanners />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}
@@ -1105,12 +1136,16 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
+        <CopyIntoLibraryDialog />
         <AssistantOutputsBridge />
         <ExternalToolApprovals />
         <EnginePickerModal />
+        <MainDocumentPicker />
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
+        <OpenFolderStopDialog />
+        <QuickActionOffer />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -1194,6 +1229,9 @@ export default function App() {
         <LanguageServiceRuntimeBoundary />
       </ErrorBoundary>
       <AutoCompileKeeper />
+      <ProjectAvailabilityKeeper />
+      <OpenFolderKeeper />
+      <FolderWatchKeeper />
       <AppContent />
     </>
   );

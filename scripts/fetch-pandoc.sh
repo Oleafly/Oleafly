@@ -144,6 +144,7 @@ fetch() {
     echo "✓ $out"
     return
   fi
+  rm -f "$out"
   cp "$executable" "$out"
   chmod +x "$out"
   if [[ "$(uname)" == "Darwin" ]]; then

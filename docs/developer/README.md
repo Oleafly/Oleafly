@@ -61,7 +61,8 @@ cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 ```
 
 Commands run against the current directory. Pass `-C <path>` to point at
-another project. Run `oleaflyc --help` for the full command list.
+another project. `oleaflyc .` opens the current folder in the desktop app. Run
+`oleaflyc --help` for the full command list.
 
 ## Contribute
 

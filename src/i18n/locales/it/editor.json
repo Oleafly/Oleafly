@@ -171,7 +171,9 @@
     "binaryFile": "File binario. Nessuna anteprima disponibile.",
     "managedFileReadOnly": "{{file}} è gestito da Oleafly ed è in sola lettura qui. Le impostazioni del progetto si cambiano da Oleafly stesso, non modificando questo file.",
     "noFileOpen": "Nessun file aperto.",
-    "noFileOpenHint": "Scegli un file dall'albero per iniziare a scrivere."
+    "noFileOpenHint": "Scegli un file dall'albero per iniziare a scrivere.",
+    "linkedFileReadOnly": "{{file}} rimanda a un file fuori da questa cartella, quindi non puoi modificarlo qui. Modificalo dove si trova, per esempio in Zotero.",
+    "diffOnDisk": "Su disco"
   },
   "projectInfo": {
     "trigger": "Informazioni sul progetto",
@@ -209,6 +211,8 @@
     "spellLanguageAppSetting": "Usa l'impostazione dell'app",
     "spellLanguageAriaLabel": "Lingua del controllo ortografico per questo progetto",
     "spellLanguageHint": "Vale solo per questo progetto. Scarica altre lingue nelle impostazioni.",
+    "spellLanguageFolderHint": "Salvata nel project.json di questa cartella, quindi vale per chiunque la apra. Scarica altre lingue nelle impostazioni.",
+    "spellLanguageReadOnly": "Questa cartella è di sola lettura, quindi la lingua nel suo project.json non può essere cambiata.",
     "spellLanguageFailed": "Impossibile cambiare la lingua del controllo ortografico.",
     "notChecked": "Non controllato",
     "dictionaryMissing": "{{name}} non è scaricato, quindi l’ortografia non viene controllata. Scaricalo nelle Impostazioni o scegli un’altra lingua.",
@@ -333,7 +337,8 @@
     "splitView": "Vista affiancata",
     "unifiedView": "Vista unificata",
     "loading": "Caricamento del diff…",
-    "previewTooLarge": "File troppo grande per l'anteprima di un diff."
+    "previewTooLarge": "File troppo grande per l'anteprima di un diff.",
+    "diskHeading": "Su disco ↔ Le tue modifiche"
   },
   "hotkeys": {
     "title": "Scorciatoie da tastiera",
@@ -431,6 +436,12 @@
       "sourceSize": "Dimensione dei sorgenti",
       "reclaimable": "Recuperabile"
     },
+    "capture": {
+      "paused": "I checkpoint sono in pausa perché questa cartella è troppo grande. Un checkpoint può contenere al massimo {{files}} file o {{size}}.",
+      "skipped_one": "{{formattedCount}} file di questa cartella non è nei checkpoint. Oleafly esclude collegamenti, file molto grandi, file presenti solo nel cloud e nomi che non funzionano su tutti i sistemi.",
+      "skipped_many": "{{formattedCount}} file di questa cartella non sono nei checkpoint. Oleafly esclude collegamenti, file molto grandi, file presenti solo nel cloud e nomi che non funzionano su tutti i sistemi.",
+      "skipped_other": "{{formattedCount}} file di questa cartella non sono nei checkpoint. Oleafly esclude collegamenti, file molto grandi, file presenti solo nel cloud e nomi che non funzionano su tutti i sistemi."
+    },
     "catalog": {
       "formatVersion": "Versione del formato",
       "lineage": "Discendenza",
@@ -463,7 +474,8 @@
       "showFor": "Mostra i file di {{version}}",
       "hideFor": "Nascondi i file di {{version}}",
       "show": "Mostra i file",
-      "hide": "Nascondi i file"
+      "hide": "Nascondi i file",
+      "folderSettings": "Impostazioni di Oleafly per questa cartella"
     },
     "entry": {
       "labelInput": "Etichetta del checkpoint",
@@ -1031,5 +1043,13 @@
     "label": "Posizione nel documento",
     "goTo": "Vai a {{title}}",
     "untitled": "Senza titolo"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} è cambiato sul disco mentre avevi modifiche non salvate.",
+    "compare": "Confronta",
+    "keepMine": "Mantieni la mia versione",
+    "reload": "Ricarica",
+    "failed": "Oleafly non è riuscito ad aggiornare {{file}}. Riprova.",
+    "tabMark": "Cambiato sul disco. Apri questa scheda per scegliere quale versione tenere."
   }
 }

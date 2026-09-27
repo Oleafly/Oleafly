@@ -171,7 +171,9 @@
     "binaryFile": "Binair bestand. Geen voorbeeld beschikbaar.",
     "managedFileReadOnly": "{{file}} wordt door Oleafly beheerd en is hier alleen-lezen. Projectinstellingen wijzig je via Oleafly zelf, niet door dit bestand te bewerken.",
     "noFileOpen": "Geen bestand geopend.",
-    "noFileOpenHint": "Kies een bestand uit de boom om te beginnen met bewerken."
+    "noFileOpenHint": "Kies een bestand uit de boom om te beginnen met bewerken.",
+    "linkedFileReadOnly": "{{file}} verwijst naar een bestand buiten deze map, dus je kunt het hier niet bewerken. Wijzig het waar het staat, bijvoorbeeld in Zotero.",
+    "diffOnDisk": "Op schijf"
   },
   "projectInfo": {
     "trigger": "Projectinfo",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "De app-instelling gebruiken",
     "spellLanguageAriaLabel": "Taal voor de spellingcontrole in dit project",
     "spellLanguageHint": "Geldt alleen voor dit project. Download meer talen bij Instellingen.",
+    "spellLanguageFolderHint": "Opgeslagen in de project.json van deze map, dus het geldt voor iedereen die de map opent. Download meer talen bij Instellingen.",
+    "spellLanguageReadOnly": "Deze map is alleen-lezen, dus de taal in de project.json kan niet worden gewijzigd.",
     "spellLanguageFailed": "Kon de taal voor de spellingcontrole niet wijzigen.",
     "notChecked": "Niet gecontroleerd",
     "dictionaryMissing": "{{name}} is niet gedownload, dus de spelling wordt niet gecontroleerd. Download het in Instellingen of kies een andere taal.",
@@ -330,7 +334,8 @@
     "splitView": "Gesplitste weergave",
     "unifiedView": "Gecombineerde weergave",
     "loading": "Diff laden…",
-    "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld."
+    "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld.",
+    "diskHeading": "Op schijf ↔ Jouw wijzigingen"
   },
   "hotkeys": {
     "title": "Sneltoetsen",
@@ -426,6 +431,11 @@
       "sourceSize": "Grootte van de broncode",
       "reclaimable": "Terug te winnen"
     },
+    "capture": {
+      "paused": "Checkpoints zijn gepauzeerd omdat deze map te groot is. Een checkpoint kan maximaal {{files}} bestanden of {{size}} bevatten.",
+      "skipped_one": "{{formattedCount}} bestand in deze map zit niet in de checkpoints. Links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken, neemt Oleafly niet op.",
+      "skipped_other": "{{formattedCount}} bestanden in deze map zitten niet in de checkpoints. Links, zeer grote bestanden, bestanden die alleen in de cloud staan en namen die niet op elk systeem werken, neemt Oleafly niet op."
+    },
     "catalog": {
       "formatVersion": "Formaatversie",
       "lineage": "Herkomst",
@@ -458,7 +468,8 @@
       "showFor": "Bestanden voor {{version}} tonen",
       "hideFor": "Bestanden voor {{version}} verbergen",
       "show": "Bestanden tonen",
-      "hide": "Bestanden verbergen"
+      "hide": "Bestanden verbergen",
+      "folderSettings": "Oleafly-instellingen voor deze map"
     },
     "entry": {
       "labelInput": "Checkpointlabel",
@@ -1022,5 +1033,13 @@
     "label": "Positie in het document",
     "goTo": "Naar {{title}}",
     "untitled": "Naamloos"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} is op schijf gewijzigd terwijl je niet-opgeslagen wijzigingen had.",
+    "compare": "Vergelijken",
+    "keepMine": "Mijn versie houden",
+    "reload": "Opnieuw laden",
+    "failed": "Oleafly kon {{file}} niet bijwerken. Probeer het opnieuw.",
+    "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je wilt houden."
   }
 }

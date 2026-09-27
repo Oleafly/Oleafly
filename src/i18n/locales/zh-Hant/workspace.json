@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> 已經存在。可使用 <suggestion>{{suggestion}}</suggestion> 同時保留兩個檔案，或取代現有的目標檔案。除非你選擇「取代」，否則 Oleafly 不會取代它。",
       "replace": "取代",
       "title": "這個名稱已被使用",
-      "unchanged": "來源與目標路徑都維持不變。"
+      "unchanged": "來源與目標路徑都維持不變。",
+      "renameFolderBody": "<destination>{{destination}}</destination> 是既有的資料夾。可使用 <suggestion>{{suggestion}}</suggestion> 同時保留兩者。在原位置開啟的資料夾中，Oleafly 絕不會取代整個資料夾。"
     },
     "createFailed": "無法建立「{{path}}」。",
     "deleteFailed": "無法刪除「{{path}}」。",
@@ -41,7 +42,16 @@
     "setMain": "設為主要文件",
     "title": "檔案總管",
     "treeAriaLabel": "檔案總管檔案樹",
-    "setMainFailed": "無法將「{{path}}」設為主要文件。"
+    "setMainFailed": "無法將「{{path}}」設為主要文件。",
+    "listingStopped": "僅顯示前 {{limit}} 個項目。此資料夾的其餘內容未列出。",
+    "unreadable": "無存取權限",
+    "unreadableHint": "Oleafly 沒有開啟此項目的權限。",
+    "confirmTrash": "要將 {{path}} 移到垃圾桶嗎？",
+    "confirmTrashWindows": "要將 {{path}} 移到資源回收筒嗎？",
+    "confirmPermanentDelete": "Oleafly 無法將 {{path}} 移到垃圾桶。要改為永久刪除嗎？此操作無法復原。",
+    "confirmPermanentDeleteWindows": "Oleafly 無法將 {{path}} 移到資源回收筒。要改為永久刪除嗎？此操作無法復原。",
+    "linkedReadOnly": "連結到此資料夾以外的檔案，因此為唯讀。",
+    "partialFolder": "此資料夾中的部分項目未列出。"
   },
   "explorer": {
     "resizeSections": "調整 {{first}} 與 {{second}} 的大小"

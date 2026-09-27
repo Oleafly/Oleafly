@@ -134,6 +134,8 @@ pub struct EngineCompileSpec {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EngineEnvironment {
     variables: Vec<(String, String)>,
+    scratch: Option<std::sync::Arc<oleafly_core::EngineScratch>>,
+    project_root: Option<PathBuf>,
 }
 
 impl EngineEnvironment {
@@ -141,7 +143,29 @@ impl EngineEnvironment {
         let variables = source_date_epoch
             .map(|value| vec![("SOURCE_DATE_EPOCH".into(), value.to_string())])
             .unwrap_or_default();
-        Self { variables }
+        Self {
+            variables,
+            ..Self::default()
+        }
+    }
+
+    fn with_variable(mut self, name: &str, value: String) -> Self {
+        self.variables.push((name.to_owned(), value));
+        self
+    }
+
+    fn in_scratch(mut self, scratch: oleafly_core::EngineScratch, project_root: &Path) -> Self {
+        let value = scratch.path().to_string_lossy().into_owned();
+        for name in oleafly_core::TEMP_DIRECTORY_VARIABLES {
+            self.variables.push((name.to_owned(), value.clone()));
+        }
+        self.scratch = Some(std::sync::Arc::new(scratch));
+        self.project_root = Some(project_root.to_owned());
+        self
+    }
+
+    fn path_excluded_root<'a>(&'a self, working_dir: &'a Path) -> &'a Path {
+        self.project_root.as_deref().unwrap_or(working_dir)
     }
 }
 
@@ -511,18 +535,31 @@ fn pythontex_tool_for_latexmk(latexmk: &Path) -> Option<PathBuf> {
     candidate.is_file().then_some(candidate)
 }
 
-fn pythontex_job_arg(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<String, String> {
-    let relative = out_dir
-        .strip_prefix(project_dir)
-        .map_err(|_| "PythonTeX output must stay inside the project directory".to_string())?;
-    Ok(relative.join(stem).to_string_lossy().into_owned())
+fn pythontex_job_arg(
+    project_dir: &Path,
+    out_dir: &Path,
+    stem: &str,
+    owned_output: bool,
+) -> Result<String, String> {
+    if let Ok(relative) = out_dir.strip_prefix(project_dir) {
+        return Ok(relative.join(stem).to_string_lossy().into_owned());
+    }
+    if owned_output {
+        return Ok(out_dir.join(stem).to_string_lossy().into_owned());
+    }
+    Err("PythonTeX output must stay inside the project directory".to_string())
 }
 
-fn pythontex_args(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<Vec<String>, String> {
+fn pythontex_args(
+    project_dir: &Path,
+    out_dir: &Path,
+    stem: &str,
+    owned_output: bool,
+) -> Result<Vec<String>, String> {
     Ok(vec![
         "--error-exit-code".into(),
         "true".into(),
-        pythontex_job_arg(project_dir, out_dir, stem)?,
+        pythontex_job_arg(project_dir, out_dir, stem, owned_output)?,
     ])
 }
 
@@ -566,6 +603,59 @@ fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     Ok(format!("./{value}"))
 }
 
+fn latexmk_absolute_path_text(path: &Path, windows: bool) -> Option<String> {
+    path.to_str()?;
+    let plain = crate::project_availability::without_verbatim_prefix(path);
+    let text = plain.to_str()?;
+    let text = if windows {
+        text.replace('\\', "/")
+    } else {
+        text.to_owned()
+    };
+    let rooted = if windows {
+        let bytes = text.as_bytes();
+        bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/'
+    } else {
+        text.starts_with('/')
+    };
+    let shell_safe = !text.chars().any(|character| {
+        character.is_control()
+            || matches!(character, '"' | '`' | '$' | '\\')
+            || (windows && matches!(character, '%' | '!'))
+    });
+    (rooted && shell_safe && !text.split('/').any(|part| part == "..")).then_some(text)
+}
+
+fn latexmk_absolute_path_arg(path: &Path) -> Result<String, String> {
+    latexmk_absolute_path_text(path, cfg!(windows))
+        .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
+}
+
+fn windows_network_path(path: &Path) -> bool {
+    crate::project_availability::without_verbatim_prefix(path)
+        .to_string_lossy()
+        .starts_with(r"\\")
+}
+
+fn latexmk_path_arg(
+    project_dir: &Path,
+    path: &Path,
+    owned: Option<&Path>,
+    role: &str,
+) -> Result<String, String> {
+    if let Ok(relative) = path.strip_prefix(project_dir) {
+        return latexmk_relative_path_arg(relative);
+    }
+    match owned {
+        Some(owned) if path.starts_with(owned) && !owned.starts_with(project_dir) => {
+            latexmk_absolute_path_arg(path)
+        }
+        _ => Err(format!(
+            "latexmk {role} must stay inside the project directory"
+        )),
+    }
+}
+
 fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
     match (allow, distribution_kind) {
         (true, _) => "-shell-escape",
@@ -574,6 +664,7 @@ fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
     }
 }
 
+#[cfg(test)]
 fn latexmk_args(
     out_dir: &Path,
     entry: &Path,
@@ -583,6 +674,25 @@ fn latexmk_args(
     distribution_kind: &str,
 ) -> Result<Vec<String>, String> {
     let out_dir = latexmk_relative_path_arg(out_dir)?;
+    let entry = latexmk_relative_path_arg(entry)?;
+    Ok(latexmk_args_from(
+        out_dir,
+        entry,
+        stem,
+        flavor,
+        options,
+        distribution_kind,
+    ))
+}
+
+fn latexmk_args_from(
+    out_dir: String,
+    entry: String,
+    stem: &str,
+    flavor: LatexmkFlavor,
+    options: CompileOptions,
+    distribution_kind: &str,
+) -> Vec<String> {
     let mut args: Vec<String> = vec![
         "-norc".into(),
         shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
@@ -604,8 +714,33 @@ fn latexmk_args(
     }
     // `options.fast` is intentionally ignored: deciding how many passes to run
     // is latexmk's whole job, and `-outdir` reuse already makes warm runs fast.
-    args.push(latexmk_relative_path_arg(entry)?);
-    Ok(args)
+    args.push(entry);
+    args
+}
+
+fn latexmk_invocation(
+    project_dir: &Path,
+    out_dir: &Path,
+    input_path: &Path,
+    stem: &str,
+    flavor: LatexmkFlavor,
+    options: CompileOptions,
+    distribution_kind: &str,
+) -> Result<(Vec<String>, EngineEnvironment), String> {
+    let owned = options.external_build.then_some(out_dir);
+    if owned.is_some() && cfg!(windows) && windows_network_path(project_dir) {
+        return Err(crate::app_error::AppError::new("tex.latexmk_network_folder").into());
+    }
+    let entry_arg = latexmk_path_arg(project_dir, input_path, owned, "input")?;
+    let out_arg = latexmk_path_arg(project_dir, out_dir, owned, "output")?;
+    let environment = if out_dir.starts_with(project_dir) {
+        EngineEnvironment::inherited(options.source_date_epoch)
+    } else {
+        EngineEnvironment::inherited(options.source_date_epoch)
+            .with_variable("TEXMFOUTPUT", out_arg.clone())
+    };
+    let args = latexmk_args_from(out_arg, entry_arg, stem, flavor, options, distribution_kind);
+    Ok((args, environment))
 }
 
 impl DocumentEngine for LatexmkEngine {
@@ -689,21 +824,16 @@ impl DocumentEngine for LatexmkEngine {
         };
         let source_head = read_source_head(&input_path);
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
-        let entry_path = input_path
-            .strip_prefix(project_dir)
-            .map_err(|_| "latexmk input must stay inside the project directory".to_string())?;
-        let relative_out_dir = out_dir
-            .strip_prefix(project_dir)
-            .map_err(|_| "latexmk output must stay inside the project directory".to_string())?;
-        let artifacts = self.artifacts(out_dir, target);
-        let mut args = latexmk_args(
-            relative_out_dir,
-            entry_path,
+        let (mut args, environment) = latexmk_invocation(
+            project_dir,
+            out_dir,
+            &input_path,
             stem,
             flavor,
             options,
             &crate::tex_distro::distribution_kind_for_tool(&latexmk),
         )?;
+        let artifacts = self.artifacts(out_dir, target);
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
         // while replaying the previous run's error. Force one full rebuild
@@ -718,7 +848,7 @@ impl DocumentEngine for LatexmkEngine {
             input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: EngineEnvironment::inherited(options.source_date_epoch),
+            environment,
         })
     }
 
@@ -933,15 +1063,12 @@ impl DocumentEngine for MarkdownEngine {
         let tectonic = find_bundled_tectonic().ok_or_else(||
             "Oleafly's bundled Tectonic PDF engine could not be located. Reinstall Oleafly, then compile again.".to_string()
         )?;
-        markdown_compile_spec(
-            self,
-            out_dir,
-            project_dir,
-            main_document,
-            PathBuf::from(pandoc),
+        let tools = MarkdownTools {
+            pandoc: PathBuf::from(pandoc),
             tectonic,
-            options,
-        )
+            scratch: pandoc_scratch(&pandoc_scratch_bases(out_dir))?,
+        };
+        markdown_compile_spec(self, out_dir, project_dir, main_document, tools, options)
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
@@ -1005,15 +1132,42 @@ fn tectonic_sidecar_candidates(
     candidates
 }
 
+fn pandoc_scratch_bases(out_dir: &Path) -> oleafly_core::EngineScratchBases {
+    let owned = crate::paths::oleafly_root()
+        .ok()
+        .map(|root| root.join(oleafly_core::ENGINE_TEMP_DIR));
+    oleafly_core::EngineScratchBases::new(owned, out_dir)
+}
+
+fn pandoc_scratch(
+    bases: &oleafly_core::EngineScratchBases,
+) -> Result<oleafly_core::EngineScratch, String> {
+    oleafly_core::EngineScratch::create(bases).map_err(pandoc_scratch_error)
+}
+
+fn pandoc_scratch_error(error: std::io::Error) -> String {
+    format!("Oleafly could not create a temporary folder for Pandoc: {error}")
+}
+
+struct MarkdownTools {
+    pandoc: PathBuf,
+    tectonic: PathBuf,
+    scratch: oleafly_core::EngineScratch,
+}
+
 fn markdown_compile_spec(
     engine: &MarkdownEngine,
     out_dir: &Path,
     project_dir: &Path,
     main_document: &str,
-    pandoc: PathBuf,
-    tectonic: PathBuf,
+    tools: MarkdownTools,
     options: CompileOptions,
 ) -> Result<EngineCompileSpec, String> {
+    let MarkdownTools {
+        pandoc,
+        tectonic,
+        scratch,
+    } = tools;
     let target = CompileTarget::Main { main_document };
     let input = project_dir.join(main_document);
     let artifacts = engine.artifacts(out_dir, target);
@@ -1021,14 +1175,23 @@ fn markdown_compile_spec(
         .pdf
         .as_ref()
         .ok_or_else(|| "Markdown PDF artifact was not declared".to_string())?;
+    let project = oleafly_core::plain_path(project_dir);
+    let project_text = project.to_string_lossy();
+    let resources = scratch
+        .pandoc_resource_path(&project)
+        .map_err(pandoc_scratch_error)?;
     let mut args = vec![
+        resources.argument.to_string_lossy().into_owned(),
         "--from=markdown".into(),
         "--standalone".into(),
-        format!("--resource-path={}", project_dir.to_string_lossy()),
         format!("--pdf-engine={}", tectonic.to_string_lossy()),
         "--pdf-engine-opt=--bundle".into(),
         format!("--pdf-engine-opt={}", tex_bundle_url()),
-        format!("--output={}", output.to_string_lossy()),
+        format!("--pdf-engine-opt=-Zsearch-path={project_text}"),
+        format!(
+            "--output={}",
+            oleafly_core::plain_path(output).to_string_lossy()
+        ),
         "--sandbox".into(),
         "--citeproc".into(),
     ];
@@ -1036,16 +1199,23 @@ fn markdown_compile_spec(
     args.extend(
         bibliographies
             .into_iter()
-            .map(|path| format!("--bibliography={path}")),
+            .map(|path| format!("--bibliography={}", project.join(path).to_string_lossy())),
     );
-    args.extend(["--".into(), input.to_string_lossy().into_owned()]);
+    args.extend([
+        "--".into(),
+        project.join(main_document).to_string_lossy().into_owned(),
+    ]);
+    let mut environment = EngineEnvironment::inherited(options.source_date_epoch);
+    if let Some((name, value)) = resources.variable {
+        environment = environment.with_variable(name, value.to_string_lossy().into_owned());
+    }
     Ok(EngineCompileSpec {
         executable: EngineExecutable::ExternalPath(pandoc),
         args,
         input: EngineInput::Direct(input),
         artifacts,
-        working_dir: project_dir.to_owned(),
-        environment: EngineEnvironment::inherited(options.source_date_epoch),
+        working_dir: scratch.path().to_owned(),
+        environment: environment.in_scratch(scratch, project_dir),
     })
 }
 
@@ -1072,6 +1242,7 @@ fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
                 && path
                     .extension()
                     .is_some_and(|extension| extension.eq_ignore_ascii_case("bib"))
+                && !crate::cloud_files::path_is_placeholder(&path)
             {
                 let relative = path
                     .strip_prefix(root)
@@ -1213,6 +1384,7 @@ pub struct CompileOptions {
     pub latex_flavor: Option<LatexmkFlavor>,
     pub allow_shell_escape: bool,
     pub source_date_epoch: Option<u64>,
+    pub external_build: bool,
 }
 
 pub struct CompileRequest<'a> {
@@ -1365,7 +1537,12 @@ async fn run_pythontex_recovery(
     pythontex: &Path,
 ) -> Result<(String, Option<String>), String> {
     let stem = crate::paths::ENTRY_STEM;
-    let helper_args = pythontex_args(&spec.working_dir, &spec.artifacts.output_dir, stem)?;
+    let helper_args = pythontex_args(
+        &spec.working_dir,
+        &spec.artifacts.output_dir,
+        stem,
+        request.options.external_build,
+    )?;
     let mut notes = format!(
         "\n[Oleafly] Running PythonTeX ({}) on {stem}...\n",
         pythontex.display()
@@ -1671,7 +1848,7 @@ async fn finish_compile(
     if let Some(main_document) =
         image_check_main_document(request.engine.id(), request.target, ok, stopped)
     {
-        explain_image_failures(&spec.working_dir, main_document, &mut log, &mut errors).await;
+        explain_image_failures(request.project_dir, main_document, &mut log, &mut errors).await;
     }
     let root_file = match request.target {
         CompileTarget::Main { main_document } => Some(main_document.to_string()),
@@ -1681,6 +1858,7 @@ async fn finish_compile(
         request.engine.id(),
         log,
         root_file,
+        request.project_dir.to_owned(),
         spec.working_dir.clone(),
         errors,
     )
@@ -1766,6 +1944,7 @@ async fn parse_log_diagnostics(
     log: String,
     root_file: Option<String>,
     project_dir: PathBuf,
+    log_dir: PathBuf,
     mut errors: Vec<CompileError>,
 ) -> Result<ParsedCompileLog, String> {
     let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
@@ -1777,6 +1956,13 @@ async fn parse_log_diagnostics(
             Some(root) => oleafly_core::parse_latex_log(&log, Some(root)),
             None => Vec::new(),
         };
+        rebase_log_files(
+            &project_dir,
+            &log_dir,
+            root_file.as_deref(),
+            &mut errors,
+            &mut diagnostics,
+        );
         resolve_extensionless_inputs(&project_dir, &mut errors, &mut diagnostics);
         (log, diagnostics, errors)
     })
@@ -1794,6 +1980,42 @@ fn with_tex_extension(project_dir: &Path, file: &str) -> Option<String> {
         .join(format!("{relative}.tex"))
         .is_file()
         .then(|| format!("{file}.tex"))
+}
+
+fn rebase_log_files(
+    project_dir: &Path,
+    log_dir: &Path,
+    root_file: Option<&str>,
+    errors: &mut [CompileError],
+    diagnostics: &mut [oleafly_core::LogDiagnostic],
+) {
+    let Some(base) = log_dir
+        .strip_prefix(project_dir)
+        .ok()
+        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+        .filter(|base| !base.is_empty())
+    else {
+        return;
+    };
+    let rebase = |file: &mut Option<String>| {
+        let Some(name) = file.as_deref() else {
+            return;
+        };
+        if Some(name) == root_file || Path::new(name).is_absolute() {
+            return;
+        }
+        let mut relative = name;
+        while let Some(rest) = relative.strip_prefix("./") {
+            relative = rest;
+        }
+        *file = Some(format!("{base}/{relative}"));
+    };
+    for error in errors.iter_mut() {
+        rebase(&mut error.file);
+    }
+    for diagnostic in diagnostics.iter_mut() {
+        rebase(&mut diagnostic.file);
+    }
 }
 
 fn resolve_extensionless_inputs(
@@ -2546,7 +2768,10 @@ async fn run_supervised_process_with_environment(
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let is_luatex = is_luatex_invocation(path, args);
-    let path_env = crate::biber_toolchain::compile_path_env_for(path, working_dir);
+    let path_env = crate::biber_toolchain::compile_path_env_for(
+        path,
+        environment.path_excluded_root(working_dir),
+    );
     let mut command = tokio::process::Command::new(path);
     command.no_console();
     command
@@ -2870,6 +3095,69 @@ fn tectonic_args(
     args
 }
 
+pub(crate) fn place_in_compile_directory(
+    engine: DocumentEngineId,
+    spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> Result<EngineCompileSpec, String> {
+    match engine {
+        DocumentEngineId::Latex => Ok(search_compile_directory_first(
+            spec,
+            project_dir,
+            compile_dir,
+        )),
+        DocumentEngineId::Latexmk => {
+            run_latexmk_from_compile_directory(spec, project_dir, compile_dir)
+        }
+        _ => Ok(spec),
+    }
+}
+
+fn run_latexmk_from_compile_directory(
+    mut spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> Result<EngineCompileSpec, String> {
+    let EngineInput::Direct(input) = &spec.input else {
+        return Ok(spec);
+    };
+    let Ok(entry) = input.strip_prefix(compile_dir) else {
+        return Ok(spec);
+    };
+    if !compile_dir.starts_with(project_dir) || spec.artifacts.output_dir.starts_with(project_dir) {
+        return Ok(spec);
+    }
+    let from_root = latexmk_path_arg(project_dir, input, None, "input")?;
+    let from_compile_dir = latexmk_relative_path_arg(entry)?;
+    let Some(last) = spec.args.last_mut().filter(|last| **last == from_root) else {
+        return Ok(spec);
+    };
+    *last = from_compile_dir;
+    spec.working_dir = compile_dir.to_owned();
+    Ok(spec)
+}
+
+pub(crate) fn search_compile_directory_first(
+    mut spec: EngineCompileSpec,
+    project_dir: &Path,
+    compile_dir: &Path,
+) -> EngineCompileSpec {
+    let project = format!("search-path={}", project_dir.to_string_lossy());
+    if let Some(position) = spec.args.iter().position(|argument| *argument == project) {
+        if position > 0 && spec.args[position - 1] == "-Z" {
+            spec.args.splice(
+                position - 1..position - 1,
+                [
+                    "-Z".to_string(),
+                    format!("search-path={}", compile_dir.to_string_lossy()),
+                ],
+            );
+        }
+    }
+    spec
+}
+
 fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
     vec![
         "--color".into(),
@@ -3157,16 +3445,19 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     out
 }
 
-pub fn compiled_pdf_path(
+pub fn existing_compiled_pdf_path(
     project_id: &str,
     metadata_name: &str,
     main_document: &str,
-) -> Result<PathBuf, String> {
+) -> Result<Option<PathBuf>, String> {
     let engine = engine_for(metadata_name, main_document)?;
-    let build = crate::paths::build_dir(project_id)?;
+    let Some(build) = crate::paths::existing_build_dir(project_id)? else {
+        return Ok(None);
+    };
     engine
         .artifacts(&build, CompileTarget::Main { main_document })
         .pdf
+        .map(Some)
         .ok_or_else(|| {
             format!(
                 "engine `{}` does not produce PDF output",
@@ -3178,6 +3469,27 @@ pub fn compiled_pdf_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bibliography_discovery_leaves_cloud_placeholders_alone() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        std::fs::create_dir(root.join("refs")).unwrap();
+        std::fs::write(root.join("refs/local.bib"), "@misc{a}").unwrap();
+        std::fs::write(root.join("refs/evicted.bib"), "@misc{b}").unwrap();
+        crate::cloud_files::test_support::mark(&root.join("refs/evicted.bib"));
+
+        assert_eq!(discover_bibliographies(root).unwrap(), ["refs/local.bib"]);
+    }
+
+    #[test]
+    fn tex_program_magic_never_names_an_arbitrary_program() {
+        assert_eq!(detect_tex_program_magic("% !TeX program = /bin/sh\n"), None);
+        assert_eq!(
+            detect_tex_program_magic("% !TeX program = lualatex --shell-escape\n"),
+            None
+        );
+    }
 
     fn joined(dir: &str, name: &str) -> String {
         Path::new(dir).join(name).to_string_lossy().into_owned()
@@ -3503,6 +3815,61 @@ mod tests {
             diagnostics[0].file.as_deref(),
             Some("./kapitoly/\u{fa}vod.tex")
         );
+    }
+
+    #[test]
+    fn log_files_of_a_nested_latexmk_run_are_named_from_the_project_root() {
+        let project = latexmk_test_home().join("repo");
+        let error = |file: &str| CompileError {
+            line: Some(3),
+            file: Some(file.to_string()),
+            message: "Undefined control sequence.".into(),
+            kind: "error".into(),
+            explanation: None,
+        };
+        let absolute = latexmk_test_home().join("texmf").join("article.cls");
+        let absolute = absolute.to_string_lossy().into_owned();
+        let mut errors = vec![
+            error("./sections/intro.tex"),
+            error("main.tex"),
+            error("paper/main.tex"),
+            error(&absolute),
+        ];
+        let mut diagnostics = oleafly_core::parse_latex_log(
+            "(./main.tex (./sections/intro.tex\n! Undefined control sequence.\nl.3 \\bad\n\n))",
+            Some("paper/main.tex"),
+        );
+        rebase_log_files(
+            &project,
+            &project.join("paper"),
+            Some("paper/main.tex"),
+            &mut errors,
+            &mut diagnostics,
+        );
+        let files: Vec<_> = errors.iter().map(|error| error.file.as_deref()).collect();
+        assert_eq!(
+            files,
+            [
+                Some("paper/sections/intro.tex"),
+                Some("paper/main.tex"),
+                Some("paper/main.tex"),
+                Some(absolute.as_str()),
+            ]
+        );
+        assert_eq!(
+            diagnostics[0].file.as_deref(),
+            Some("paper/sections/intro.tex")
+        );
+
+        let mut untouched = vec![error("./sections/intro.tex")];
+        rebase_log_files(
+            &project,
+            &project,
+            Some("main.tex"),
+            &mut untouched,
+            &mut [],
+        );
+        assert_eq!(untouched[0].file.as_deref(), Some("./sections/intro.tex"));
     }
 
     #[test]
@@ -3918,6 +4285,42 @@ mod tests {
         assert!(engine_for("unknown", "main.typ").is_err());
         assert!(engine_for("xetex", "main.md").is_err());
         assert!(engine_for("typst", "main.tex").is_err());
+    }
+
+    #[test]
+    fn a_nested_compile_directory_is_searched_before_the_project_root() {
+        let engine = engine_for("xetex", "paper/main.tex").unwrap();
+        let spec = engine
+            .compile_spec(
+                Path::new("/build"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "paper/main.tex",
+                },
+                CompileOptions::default(),
+            )
+            .unwrap();
+        let untouched = spec.args.clone();
+        let nested = search_compile_directory_first(
+            spec.clone(),
+            Path::new("/project"),
+            Path::new("/project/paper"),
+        );
+        assert_eq!(nested.args.len(), untouched.len() + 2);
+        assert_eq!(
+            nested.args[nested.args.len() - 5..],
+            [
+                "-Z".to_string(),
+                "search-path=/project/paper".to_string(),
+                "-Z".to_string(),
+                "search-path=/project".to_string(),
+                joined("/build", "_oleafly_entry.tex"),
+            ]
+        );
+        assert_eq!(nested.working_dir, spec.working_dir);
+        let elsewhere =
+            search_compile_directory_first(spec, Path::new("/other"), Path::new("/other/paper"));
+        assert_eq!(elsewhere.args, untouched);
     }
 
     #[test]
@@ -4461,15 +4864,75 @@ mod tests {
         );
     }
 
+    fn test_scratch(bases: &Path) -> oleafly_core::EngineScratch {
+        oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+            system: bases.to_path_buf(),
+            owned: None,
+            build: bases.join("build"),
+        })
+        .unwrap()
+    }
+
+    fn temp_variables(spec: &EngineCompileSpec) -> Vec<(&str, &str)> {
+        spec.environment
+            .variables
+            .iter()
+            .filter(|(name, _)| oleafly_core::TEMP_DIRECTORY_VARIABLES.contains(&name.as_str()))
+            .map(|(name, value)| (name.as_str(), value.as_str()))
+            .collect()
+    }
+
+    fn resource_variable(spec: &EngineCompileSpec) -> Option<&str> {
+        spec.environment
+            .variables
+            .iter()
+            .find(|(name, _)| name == oleafly_core::PANDOC_RESOURCE_PATH_VARIABLE)
+            .map(|(_, value)| value.as_str())
+    }
+
+    #[cfg(unix)]
+    fn defaults_argument(spec: &EngineCompileSpec) -> Option<PathBuf> {
+        spec.args
+            .first()
+            .and_then(|arg| arg.strip_prefix("--defaults="))
+            .map(PathBuf::from)
+    }
+
+    fn markdown_spec_with(
+        out: &Path,
+        project: &Path,
+        scratch: oleafly_core::EngineScratch,
+    ) -> EngineCompileSpec {
+        markdown_compile_spec(
+            &MARKDOWN_ENGINE,
+            out,
+            project,
+            "main.md",
+            MarkdownTools {
+                pandoc: PathBuf::from("/pandoc"),
+                tectonic: PathBuf::from("/tectonic"),
+                scratch,
+            },
+            CompileOptions::default(),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn markdown_compile_is_direct_and_uses_declared_artifacts() {
+        let bases = tempfile::tempdir().unwrap();
+        let scratch = test_scratch(bases.path());
+        let scratch_path = scratch.path().to_path_buf();
         let spec = markdown_compile_spec(
             &MARKDOWN_ENGINE,
             Path::new("/build"),
             Path::new("/project"),
             "chapters/main.md",
-            PathBuf::from("/cache/pandoc"),
-            PathBuf::from("/app/tectonic"),
+            MarkdownTools {
+                pandoc: PathBuf::from("/cache/pandoc"),
+                tectonic: PathBuf::from("/app/tectonic"),
+                scratch,
+            },
             CompileOptions::default(),
         )
         .unwrap();
@@ -4486,15 +4949,25 @@ mod tests {
             Some(PathBuf::from("/build/_oleafly_entry.pdf"))
         );
         assert_eq!(spec.artifacts.log, None);
+        assert_eq!(spec.working_dir, scratch_path);
+        assert_eq!(
+            spec.environment.path_excluded_root(&spec.working_dir),
+            Path::new("/project")
+        );
+        assert_eq!(
+            EngineEnvironment::default().path_excluded_root(Path::new("/project")),
+            Path::new("/project")
+        );
         assert_eq!(
             spec.args,
             [
+                "--resource-path=/project",
                 "--from=markdown",
                 "--standalone",
-                "--resource-path=/project",
                 "--pdf-engine=/app/tectonic",
                 "--pdf-engine-opt=--bundle",
                 format!("--pdf-engine-opt={}", tex_bundle_url()).as_str(),
+                "--pdf-engine-opt=-Zsearch-path=/project",
                 format!("--output={}", joined("/build", "_oleafly_entry.pdf")).as_str(),
                 "--sandbox",
                 "--citeproc",
@@ -4502,6 +4975,20 @@ mod tests {
                 joined("/project", "chapters/main.md").as_str(),
             ]
         );
+        let retry = args_without_bundle(&spec.args);
+        assert_eq!(retry[0], "--resource-path=/project");
+        assert!(retry
+            .iter()
+            .any(|arg| arg == "--pdf-engine-opt=-Zsearch-path=/project"));
+        assert_eq!(resource_variable(&spec), None);
+        let scratch_text = scratch_path.to_string_lossy().into_owned();
+        assert_eq!(
+            temp_variables(&spec),
+            ["TMP", "TEMP", "TMPDIR"].map(|name| (name, scratch_text.as_str()))
+        );
+        assert!(scratch_path.is_dir());
+        drop(spec);
+        assert!(!scratch_path.exists());
     }
 
     #[test]
@@ -4519,35 +5006,719 @@ mod tests {
         .unwrap();
         #[cfg(unix)]
         std::os::unix::fs::symlink(dir.join("references.bib"), dir.join("linked.bib")).unwrap();
-        let engine = MarkdownEngine;
-        let spec = markdown_compile_spec(
-            &engine,
-            &dir.join("build"),
-            &dir,
-            "main.md",
-            PathBuf::from("/pandoc"),
-            PathBuf::from("/tectonic"),
-            CompileOptions::default(),
-        )
-        .unwrap();
+        let bases = tempfile::tempdir().unwrap();
+        let spec = markdown_spec_with(&dir.join("build"), &dir, test_scratch(bases.path()));
         assert!(spec.args.iter().any(|arg| arg == "--citeproc"));
-        assert!(spec
-            .args
-            .iter()
-            .any(|arg| arg == "--bibliography=references.bib"));
         let bibliography_args: Vec<_> = spec
             .args
             .iter()
             .filter(|arg| arg.starts_with("--bibliography="))
+            .cloned()
             .collect();
         assert_eq!(
             bibliography_args,
             [
-                "--bibliography=references.bib",
-                "--bibliography=sources/refs.bib"
+                format!(
+                    "--bibliography={}",
+                    dir.join("references.bib").to_string_lossy()
+                ),
+                format!(
+                    "--bibliography={}",
+                    dir.join("sources/refs.bib").to_string_lossy()
+                ),
             ]
         );
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn markdown_pandoc_scratch_folder_is_fresh_safe_for_tex_and_outside_the_project() {
+        let base = tempfile::Builder::new()
+            .prefix("oleafly-pandoc-temp-")
+            .tempdir()
+            .unwrap();
+        let project = base.path().join("folders").join("Paper #2 {50% & more}");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("main.md"), "# Notes\n").unwrap();
+        let out = base
+            .path()
+            .join("data")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let production = pandoc_scratch_bases(&out);
+        assert_eq!(production.build, out);
+        assert_eq!(production.system, std::env::temp_dir());
+        assert!(production
+            .owned
+            .as_deref()
+            .is_some_and(|owned| owned.ends_with(oleafly_core::ENGINE_TEMP_DIR)));
+        let root = oleafly_core::plain_path(&base.path().canonicalize().unwrap());
+        let system = base.path().join("system tmp");
+        std::fs::create_dir_all(&system).unwrap();
+        let owned = base.path().join("data").join(oleafly_core::ENGINE_TEMP_DIR);
+        let bases = oleafly_core::EngineScratchBases {
+            system: system.clone(),
+            owned: Some(owned),
+            build: out.clone(),
+        };
+        let expected_parent = oleafly_core::tex_safe_path(&root)
+            .then(|| oleafly_core::plain_path(&system.canonicalize().unwrap()));
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let spec = |scratch| {
+            markdown_compile_spec(
+                &MARKDOWN_ENGINE,
+                &out,
+                &project,
+                "main.md",
+                MarkdownTools {
+                    pandoc: PathBuf::from("/pandoc"),
+                    tectonic: PathBuf::from("/tectonic"),
+                    scratch,
+                },
+                CompileOptions {
+                    source_date_epoch: Some(1_700_000_000),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let first = spec(pandoc_scratch(&bases).unwrap());
+        let second = spec(pandoc_scratch(&bases).unwrap());
+        assert_eq!(
+            first.environment.variables[0],
+            ("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string())
+        );
+        let first_scratch = PathBuf::from(temp_variables(&first)[0].1);
+        let second_scratch = PathBuf::from(temp_variables(&second)[0].1);
+        assert_ne!(first_scratch, second_scratch);
+        assert_eq!(first.working_dir, first_scratch);
+        assert_eq!(second.working_dir, second_scratch);
+        assert_eq!(
+            first.environment.path_excluded_root(&first.working_dir),
+            project
+        );
+        let canonical_project = project.canonicalize().unwrap();
+        for (name, value) in temp_variables(&first) {
+            let value = Path::new(value);
+            assert_eq!(value, first_scratch, "{name}");
+            assert!(value.is_dir(), "{name}");
+            assert!(value.starts_with(&root), "{}", value.display());
+            match &expected_parent {
+                Some(parent) => {
+                    assert_eq!(value.parent(), Some(parent.as_path()));
+                    assert!(oleafly_core::tex_safe_path(value), "{}", value.display());
+                }
+                None => assert!(value.to_string_lossy().ends_with('~')),
+            }
+            assert!(!value.starts_with(&project), "{name}");
+            assert!(!value.starts_with(&canonical_project), "{name}");
+        }
+        drop(first);
+        assert!(!first_scratch.exists());
+        assert!(second_scratch.is_dir());
+        drop(second);
+        assert!(!second_scratch.exists());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+    }
+
+    #[test]
+    fn markdown_arguments_do_not_depend_on_which_scratch_base_was_safe() {
+        let base = tempfile::tempdir().unwrap();
+        let project = base.path().join("Paper #2");
+        std::fs::create_dir_all(project.join("sources")).unwrap();
+        std::fs::write(project.join("main.md"), "See [@demo].").unwrap();
+        std::fs::write(project.join("sources/refs.bib"), "@misc{demo}").unwrap();
+        let system = base.path().join("tmp #1");
+        std::fs::create_dir(&system).unwrap();
+        let out = base.path().join("build 50%");
+        let unsafe_scratch =
+            oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+                system: system.clone(),
+                owned: Some(base.path().join("data {x}").join("engine-tmp")),
+                build: out.clone(),
+            })
+            .unwrap();
+        let unsafe_path = unsafe_scratch.path().to_path_buf();
+        assert!(unsafe_path.to_string_lossy().ends_with('~'));
+        let safe_bases = tempfile::tempdir().unwrap();
+        let safe = markdown_spec_with(&out, &project, test_scratch(safe_bases.path()));
+        let fallback = markdown_spec_with(&out, &project, unsafe_scratch);
+        assert_eq!(fallback.args, safe.args);
+        assert_eq!(fallback.working_dir, unsafe_path);
+        assert_eq!(
+            fallback
+                .environment
+                .path_excluded_root(&fallback.working_dir),
+            project
+        );
+        assert!(safe.args.contains(&format!(
+            "--bibliography={}",
+            project.join("sources/refs.bib").to_string_lossy()
+        )));
+        let scratch_text = unsafe_path.to_string_lossy().into_owned();
+        assert_eq!(
+            temp_variables(&fallback),
+            ["TMP", "TEMP", "TMPDIR"].map(|name| (name, scratch_text.as_str()))
+        );
+        assert_eq!(std::fs::read_dir(&system).unwrap().count(), 0);
+        drop(fallback);
+        assert!(!unsafe_path.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn markdown_hands_pandoc_project_paths_without_the_verbatim_prefix() {
+        let base = tempfile::tempdir().unwrap();
+        let project = std::fs::canonicalize(base.path()).unwrap().join("Paper");
+        std::fs::create_dir_all(project.join("sources")).unwrap();
+        std::fs::write(project.join("main.md"), "See [@demo].").unwrap();
+        std::fs::write(project.join("sources").join("refs.bib"), "@misc{demo}").unwrap();
+        assert!(project.to_string_lossy().starts_with(r"\\?\"));
+        let bases = tempfile::tempdir().unwrap();
+        let out = project.join(".oleafly").join("build");
+        let spec = markdown_spec_with(&out, &project, test_scratch(bases.path()));
+        let plain = oleafly_core::plain_path(&project);
+        let plain_text = plain.to_string_lossy();
+        assert!(plain_text.starts_with(|letter: char| letter.is_ascii_alphabetic()));
+        assert_eq!(resource_variable(&spec), None);
+        for expected in [
+            format!("--resource-path={plain_text}"),
+            format!("--pdf-engine-opt=-Zsearch-path={plain_text}"),
+            format!(
+                "--bibliography={}",
+                plain.join("sources/refs.bib").to_string_lossy()
+            ),
+            format!(
+                "--output={}",
+                oleafly_core::plain_path(&out)
+                    .join("_oleafly_entry.pdf")
+                    .to_string_lossy()
+            ),
+            plain.join("main.md").to_string_lossy().into_owned(),
+        ] {
+            assert!(spec.args.contains(&expected), "{expected} {:?}", spec.args);
+        }
+        assert!(
+            spec.args.iter().all(|arg| !arg.contains(r"\\?\")),
+            "{:?}",
+            spec.args
+        );
+    }
+
+    #[cfg(unix)]
+    const FAKE_TECTONIC: &str = r#"#!/bin/sh
+outdir=
+search=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --outdir) outdir=$2; shift ;;
+    -Zsearch-path=*) search=${1#-Zsearch-path=} ;;
+  esac
+  shift
+done
+cat > "$outdir/texput.tex"
+cp "$outdir/texput.tex" '{record}.tex'
+pwd -P > '{record}.cwd'
+(cd "$outdir" && pwd -P) > '{record}.outdir'
+printf '%s\n' "$outdir" > '{record}.outdir-argument'
+printf '%s\n' "$TMP" "$TEMP" "$TMPDIR" > '{record}.env'
+found() {
+  case $1 in
+    /*) [ -f "$1" ] ;;
+    *) [ -f "$1" ] || { [ -n "$search" ] && [ -f "$search/$1" ]; } ;;
+  esac
+}
+grep -oE '\\includegraphics(\[[^]]*\])?\{[^}]*\}' "$outdir/texput.tex" | sed 's/.*{//; s/}$//' > '{record}.images'
+while IFS= read -r image; do
+  if printf '%s' "$image" | grep -q '[#%^{}~&$\\]'; then
+    echo "unsafe image path: $image" >&2
+    exit 1
+  fi
+  if ! found "$image"; then
+    echo "missing image: $image" >&2
+    exit 1
+  fi
+done < '{record}.images'
+grep -oE '\\input\{[^}]*\}' "$outdir/texput.tex" | sed 's/.*{//; s/}$//' > '{record}.inputs'
+while IFS= read -r input; do
+  if ! found "$input" && ! found "$input.tex"; then
+    echo "missing input: $input" >&2
+    exit 1
+  fi
+done < '{record}.inputs'
+printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
+"#;
+
+    #[cfg(unix)]
+    const ONE_PIXEL_PNG: [u8; 70] = [
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240,
+        31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+
+    #[cfg(unix)]
+    const MARKER_CSL: &str = r#"<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0">
+  <info><title>Marker</title><id>marker</id><updated>2026-01-01T00:00:00+00:00</updated></info>
+  <citation><layout prefix="[CSLMARK " suffix="]" delimiter=", "><text variable="citation-number"/></layout></citation>
+  <bibliography><layout><text variable="title"/></layout></bibliography>
+</style>
+"#;
+
+    #[cfg(unix)]
+    struct RealPandocRun {
+        base: PathBuf,
+        _directory: tempfile::TempDir,
+        pandoc: PathBuf,
+        tectonic: PathBuf,
+        record: PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl RealPandocRun {
+        fn new() -> Option<Self> {
+            let triple = crate::biber_toolchain::host_triple_guess()?;
+            let pandoc = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("binaries")
+                .join(format!("pandoc-{triple}"));
+            if !pandoc.is_file() {
+                return None;
+            }
+            let directory = tempfile::Builder::new()
+                .prefix("oleafly-real-pandoc-")
+                .tempdir()
+                .unwrap();
+            let base = directory.path().canonicalize().unwrap();
+            let bin = base.join("bin");
+            std::fs::create_dir_all(&bin).unwrap();
+            let record = base.join("tectonic-run");
+            let tectonic = bin.join("tectonic");
+            Self::script(
+                &tectonic,
+                &FAKE_TECTONIC.replace("{record}", &record.to_string_lossy()),
+            );
+            Some(Self {
+                base,
+                _directory: directory,
+                pandoc,
+                tectonic,
+                record,
+            })
+        }
+
+        fn script(path: &Path, content: &str) {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::write(path, content).unwrap();
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        fn file(project: &Path, relative: &str, content: &[u8]) {
+            let path = project.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, content).unwrap();
+        }
+
+        fn project(&self, name: &str) -> PathBuf {
+            let project = self.base.join("folders").join(name);
+            Self::file(
+                &project,
+                "main.md",
+                concat!(
+                    "---\n",
+                    "title: Notes\n",
+                    "csl: styles/marker.csl\n",
+                    "header-includes:\n",
+                    "  - \\input{macros}\n",
+                    "  - \\input{tex/extra}\n",
+                    "---\n\n",
+                    "\\MACROTEXT{} and \\EXTRATEXT{}.\n\n",
+                    "As @knuth shows.\n\n",
+                    "![Root](root.png)\n\n",
+                    "![A plot](figs/plot.png)\n\n",
+                    "\\includegraphics{figs/raw.png}\n",
+                )
+                .as_bytes(),
+            );
+            for image in ["root.png", "figs/plot.png", "figs/raw.png"] {
+                Self::file(&project, image, &ONE_PIXEL_PNG);
+            }
+            Self::file(&project, "macros.tex", b"\\newcommand{\\MACROTEXT}{M}\n");
+            Self::file(&project, "tex/extra.tex", b"\\newcommand{\\EXTRATEXT}{E}\n");
+            Self::file(
+                &project,
+                "sources/refs.bib",
+                b"@book{knuth, author={Donald Knuth}, title={KnuthTitle}, year={1984}}\n",
+            );
+            Self::file(&project, "styles/marker.csl", MARKER_CSL.as_bytes());
+            project
+        }
+
+        fn spec(
+            &self,
+            out: &Path,
+            project: &Path,
+            scratch: oleafly_core::EngineScratch,
+        ) -> EngineCompileSpec {
+            markdown_compile_spec(
+                &MARKDOWN_ENGINE,
+                out,
+                project,
+                "main.md",
+                MarkdownTools {
+                    pandoc: self.pandoc.clone(),
+                    tectonic: self.tectonic.clone(),
+                    scratch,
+                },
+                CompileOptions::default(),
+            )
+            .unwrap()
+        }
+
+        fn scratch(&self, out: &Path) -> oleafly_core::EngineScratch {
+            let system = self.base.join("tmp");
+            std::fs::create_dir_all(&system).unwrap();
+            pandoc_scratch(&oleafly_core::EngineScratchBases {
+                system,
+                owned: Some(self.base.join("data").join(oleafly_core::ENGINE_TEMP_DIR)),
+                build: out.to_path_buf(),
+            })
+            .unwrap()
+        }
+
+        async fn run(&self, spec: &EngineCompileSpec, inherited: &[(&str, String)]) {
+            let EngineExecutable::ExternalPath(pandoc) = &spec.executable else {
+                panic!("{:?}", spec.executable);
+            };
+            let mut environment = spec.environment.clone();
+            environment.variables = inherited
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), value.clone()))
+                .chain(spec.environment.variables.iter().cloned())
+                .collect();
+            let (log, code) = run_supervised_process_with_environment(
+                pandoc,
+                &spec.args,
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &environment,
+            )
+            .await
+            .unwrap();
+            assert_eq!(code, Some(0), "{log}");
+        }
+
+        fn recorded(&self, kind: &str) -> String {
+            std::fs::read_to_string(format!("{}.{kind}", self.record.display())).unwrap()
+        }
+
+        fn assert_everything_resolved(&self, scratch: &Path) {
+            let images = self.recorded("images");
+            let images: Vec<_> = images.lines().collect();
+            assert_eq!(images.len(), 3, "{images:?}");
+            assert!(images.contains(&"figs/raw.png"), "{images:?}");
+            let media: Vec<_> = images
+                .iter()
+                .filter(|image| **image != "figs/raw.png")
+                .collect();
+            for image in &media {
+                let image = Path::new(image);
+                assert!(
+                    image.is_relative() || image.starts_with(scratch),
+                    "{}",
+                    image.display()
+                );
+            }
+            assert!(media.iter().any(|image| image.ends_with("/root.png")));
+            assert!(media.iter().any(|image| image.ends_with("/figs/plot.png")));
+            assert_eq!(
+                self.recorded("inputs").lines().collect::<Vec<_>>(),
+                ["macros", "tex/extra"]
+            );
+            let tex = self.recorded("tex");
+            assert!(tex.contains("CSLMARK"), "{tex}");
+            assert!(tex.contains("KnuthTitle"), "{tex}");
+            assert_eq!(Path::new(self.recorded("cwd").trim_end()), scratch);
+            assert!(Path::new(self.recorded("outdir").trim_end()).starts_with(scratch));
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_keeps_its_scratch_folder_out_of_the_project_when_the_inherited_temp_path_has_a_tilde(
+    ) {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Bob's notes");
+        let out = run
+            .base
+            .join("data")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let inherited_temp = run.base.join("oleafly~tmp");
+        std::fs::create_dir_all(&inherited_temp).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        let inherited = oleafly_core::TEMP_DIRECTORY_VARIABLES
+            .map(|name| (name, inherited_temp.to_string_lossy().into_owned()));
+        run.run(&spec, &inherited).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_absolute());
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        assert_eq!(std::fs::read_dir(&inherited_temp).unwrap().count(), 0);
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_compiles_a_project_whose_folder_name_tex_cannot_read() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Paper #2 {50% & more}");
+        let out = project.join(".oleafly").join("build");
+        std::fs::create_dir_all(&out).unwrap();
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        assert!(!scratch.starts_with(&project));
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        drop(spec);
+        assert!(!scratch.exists());
+        std::fs::remove_file(out.join(format!("{}.pdf", crate::paths::ENTRY_STEM))).unwrap();
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project)
+                .into_iter()
+                .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                .collect::<Vec<_>>(),
+            before
+                .into_iter()
+                .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(std::fs::read_dir(&out).unwrap().count(), 0);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_uses_relative_media_paths_when_no_temp_folder_is_safe_for_tex() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Paper #2 {50% & more}");
+        let system = run.base.join("tmp #1");
+        std::fs::create_dir_all(&system).unwrap();
+        let out = run.base.join("linked 50%").join("build");
+        let created = oleafly_core::EngineScratch::create(&oleafly_core::EngineScratchBases {
+            system: system.clone(),
+            owned: Some(run.base.join("data {x}").join("engine-tmp")),
+            build: out.clone(),
+        })
+        .unwrap();
+        let scratch = created.path().to_path_buf();
+        assert!(scratch.to_string_lossy().ends_with('~'));
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let spec = run.spec(&out, &project, created);
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_relative());
+        assert!(!run.recorded("tex").contains(&*run.base.to_string_lossy()));
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        assert_eq!(std::fs::read_dir(&system).unwrap().count(), 0);
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_with_a_cygwin_uname_on_the_path_writes_nothing_into_the_project() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Cygwin notes");
+        let cygwin = run.base.join("cygwin").join("bin");
+        std::fs::create_dir_all(&cygwin).unwrap();
+        RealPandocRun::script(&cygwin.join("uname"), "#!/bin/sh\necho Cygwin\n");
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        let path = format!(
+            "{}:{}",
+            cygwin.display(),
+            std::env::var("PATH").unwrap_or_default()
+        );
+        run.run(&spec, &[("PATH", path)]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(Path::new(run.recorded("outdir-argument").trim_end()).is_relative());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_reads_a_yaml_bibliography_and_style_through_the_resource_path() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.base.join("folders").join("Yaml {refs}");
+        RealPandocRun::file(
+            &project,
+            "main.md",
+            b"---\nbibliography: refs/refs.json\ncsl: styles/marker.csl\n---\n\nAs @lamport shows.\n",
+        );
+        RealPandocRun::file(
+            &project,
+            "refs/refs.json",
+            br#"[{"id": "lamport", "type": "book", "title": "LamportTitle", "issued": {"date-parts": [[1986]]}}]"#,
+        );
+        RealPandocRun::file(&project, "styles/marker.csl", MARKER_CSL.as_bytes());
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let spec = run.spec(&out, &project, created);
+        assert!(!spec
+            .args
+            .iter()
+            .any(|arg| arg.starts_with("--bibliography=")));
+        run.run(&spec, &[]).await;
+        let tex = run.recorded("tex");
+        assert!(tex.contains("CSLMARK"), "{tex}");
+        assert!(tex.contains("LamportTitle"), "{tex}");
+        assert_eq!(Path::new(run.recorded("cwd").trim_end()), scratch);
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_finds_project_files_when_the_folder_name_has_a_path_separator_or_a_variable(
+    ) {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        for (index, name) in [
+            "Thesis 2024:25",
+            "Notes ${HOME} x",
+            "Draft 1:2 ${HOME} $x ${.} ${USERDATA} ${OLEAFLY_UNDEFINED}",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let project = run.project(name);
+            let out = if index == 0 {
+                run.base.join("data").join("build")
+            } else {
+                project.join(".oleafly").join("build")
+            };
+            let outside_the_build =
+                |snapshot: Vec<(String, u64, Option<std::time::SystemTime>)>| {
+                    snapshot
+                        .into_iter()
+                        .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+                        .collect::<Vec<_>>()
+                };
+            std::fs::create_dir_all(&out).unwrap();
+            let before = crate::linked_registry::folder_snapshot_for_test(&project);
+            let created = run.scratch(&out);
+            let scratch = created.path().canonicalize().unwrap();
+            let spec = run.spec(&out, &project, created);
+            let defaults = defaults_argument(&spec);
+            assert_eq!(
+                defaults.as_deref().and_then(Path::parent),
+                name.contains(':').then_some(scratch.as_path()),
+                "{name}"
+            );
+            assert_eq!(
+                resource_variable(&spec),
+                (name.contains(':') && name.contains("${"))
+                    .then(|| project.to_string_lossy())
+                    .as_deref(),
+                "{name}"
+            );
+            run.run(&spec, &[]).await;
+            run.assert_everything_resolved(&scratch);
+            let pdf = out.join(format!("{}.pdf", crate::paths::ENTRY_STEM));
+            assert!(pdf.is_file(), "{name}");
+            std::fs::remove_file(pdf).unwrap();
+            drop(spec);
+            assert!(!scratch.exists(), "{name}");
+            assert_eq!(
+                outside_the_build(crate::linked_registry::folder_snapshot_for_test(&project)),
+                outside_the_build(before),
+                "{name}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_never_runs_a_program_from_the_project_folder() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.project("Tools inside");
+        let tools = project.join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+        let ran = run.base.join("project-uname-ran");
+        RealPandocRun::script(
+            &tools.join("uname"),
+            &format!("#!/bin/sh\ntouch '{}'\necho Cygwin\n", ran.display()),
+        );
+        let pandoc = tools.join("pandoc");
+        std::os::unix::fs::symlink(&run.pandoc, &pandoc).unwrap();
+        let out = run.base.join("data").join("build");
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let created = run.scratch(&out);
+        let scratch = created.path().canonicalize().unwrap();
+        let mut spec = run.spec(&out, &project, created);
+        spec.executable = EngineExecutable::ExternalPath(pandoc);
+        run.run(&spec, &[]).await;
+        run.assert_everything_resolved(&scratch);
+        assert!(!ran.exists());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+        drop(spec);
+        assert!(!scratch.exists());
     }
 
     #[test]
@@ -4919,6 +6090,662 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_writes_an_owned_external_build_directory_by_absolute_path() {
+        let project = Path::new("/Users/ada/Bob's Thèse v2");
+        let out =
+            Path::new("/Users/ada/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build");
+        let owned = Some(out);
+        assert_eq!(
+            latexmk_path_arg(project, &project.join("main.tex"), owned, "input").unwrap(),
+            "./main.tex"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, out, owned, "output").unwrap(),
+            out.to_str().unwrap()
+        );
+        let figure = out.join("_figure.tex");
+        assert_eq!(
+            latexmk_path_arg(project, &figure, owned, "input").unwrap(),
+            figure.to_str().unwrap()
+        );
+        assert_eq!(
+            latexmk_path_arg(project, out, None, "output").unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, Path::new("/elsewhere/build"), owned, "output").unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        assert_eq!(
+            latexmk_path_arg(project, Path::new("/elsewhere/main.tex"), owned, "input")
+                .unwrap_err(),
+            "latexmk input must stay inside the project directory"
+        );
+        let args = latexmk_args_from(
+            out.to_str().unwrap().to_owned(),
+            "./main.tex".into(),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        );
+        assert!(args.contains(&format!("-outdir={}", out.display())));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+    }
+
+    fn latexmk_test_home() -> PathBuf {
+        if cfg!(windows) {
+            PathBuf::from(r"C:\Users\ada")
+        } else {
+            PathBuf::from("/Users/ada")
+        }
+    }
+
+    #[test]
+    fn latexmk_library_builds_keep_relative_paths_and_the_inherited_environment() {
+        let project = latexmk_test_home()
+            .join("Oleafly")
+            .join("projects")
+            .join("paper");
+        let options = CompileOptions {
+            source_date_epoch: Some(1_700_000_000),
+            ..Default::default()
+        };
+        let build = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &build,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            options,
+            "texlive",
+        )
+        .unwrap();
+        assert_eq!(
+            args,
+            latexmk_args(
+                Path::new(".oleafly/build"),
+                Path::new("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                options,
+                "texlive",
+            )
+            .unwrap()
+        );
+        assert!(args.contains(&"-outdir=./.oleafly/build".to_string()));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+        assert_eq!(
+            environment.variables,
+            vec![("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string())]
+        );
+
+        let figures = project.join(".oleafly").join("figbuild");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &figures,
+            &figures.join("_figure.tex"),
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&"-outdir=./.oleafly/figbuild".to_string()));
+        assert_eq!(args.last().unwrap(), "./.oleafly/figbuild/_figure.tex");
+        assert!(environment.variables.is_empty());
+    }
+
+    #[test]
+    fn latexmk_linked_builds_name_the_owned_directory_in_outdir_and_texmfoutput() {
+        let home = latexmk_test_home();
+        let project = home.join("Bob's Thèse v2");
+        let build = home
+            .join(".oleafly")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let absolute = build.to_str().unwrap().replace('\\', "/");
+        let options = CompileOptions {
+            external_build: true,
+            source_date_epoch: Some(1_700_000_000),
+            ..Default::default()
+        };
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &build,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            options,
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&format!("-outdir={absolute}")));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+        assert_eq!(
+            environment.variables,
+            vec![
+                ("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string()),
+                ("TEXMFOUTPUT".to_string(), absolute.clone()),
+            ]
+        );
+
+        let scratch = home.join("tmp").join("oleafly-figure-abc123");
+        let scratch_text = scratch.to_str().unwrap().replace('\\', "/");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &scratch,
+            &scratch.join("_figure.tex"),
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        )
+        .unwrap();
+        assert!(args.contains(&format!("-outdir={scratch_text}")));
+        assert_eq!(args.last().unwrap(), &format!("{scratch_text}/_figure.tex"));
+        assert_eq!(
+            environment.variables,
+            vec![("TEXMFOUTPUT".to_string(), scratch_text)]
+        );
+
+        assert_eq!(
+            latexmk_invocation(
+                &project,
+                &build,
+                &project.join("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                CompileOptions::default(),
+                "texlive",
+            )
+            .unwrap_err(),
+            "latexmk output must stay inside the project directory"
+        );
+        if cfg!(windows) {
+            let share = PathBuf::from(r"\\server\share\thesis");
+            let refusal = latexmk_invocation(
+                &share,
+                &build,
+                &share.join("main.tex"),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                options,
+                "texlive",
+            )
+            .unwrap_err();
+            assert!(
+                refusal.contains("\"code\":\"tex.latexmk_network_folder\""),
+                "{refusal}"
+            );
+        }
+    }
+
+    fn latexmk_spec_for_test(
+        project: &Path,
+        build: &Path,
+        main_document: &str,
+    ) -> EngineCompileSpec {
+        let input = project.join(main_document);
+        let (args, environment) = latexmk_invocation(
+            project,
+            build,
+            &input,
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions {
+                external_build: true,
+                ..Default::default()
+            },
+            "texlive",
+        )
+        .unwrap();
+        EngineCompileSpec {
+            executable: EngineExecutable::ExternalPath(PathBuf::from("latexmk")),
+            args,
+            input: EngineInput::Direct(input),
+            artifacts: LATEX_ENGINE.artifacts(build, CompileTarget::Main { main_document }),
+            working_dir: project.to_owned(),
+            environment,
+        }
+    }
+
+    #[test]
+    fn a_nested_compile_directory_becomes_the_latexmk_working_directory() {
+        let home = latexmk_test_home();
+        let project = home.join("repo");
+        let paper = project.join("paper");
+        let build = home
+            .join(".oleafly")
+            .join("linked")
+            .join("linked-0123456789abcdef0123456789abcdef")
+            .join("build");
+        let absolute = build.to_str().unwrap().replace('\\', "/");
+        let spec = latexmk_spec_for_test(&project, &build, "paper/main.tex");
+        assert_eq!(spec.args.last().unwrap(), "./paper/main.tex");
+        let placed =
+            place_in_compile_directory(DocumentEngineId::Latexmk, spec.clone(), &project, &paper)
+                .unwrap();
+        assert_eq!(placed.working_dir, paper);
+        assert_eq!(placed.args.last().unwrap(), "./main.tex");
+        assert!(placed.args.contains(&format!("-outdir={absolute}")));
+        assert_eq!(placed.args.len(), spec.args.len());
+        assert_eq!(placed.environment, spec.environment);
+
+        let outside = latexmk_spec_for_test(&project, &build, "top.tex");
+        let kept = place_in_compile_directory(
+            DocumentEngineId::Latexmk,
+            outside.clone(),
+            &project,
+            &paper,
+        )
+        .unwrap();
+        assert_eq!(
+            (kept.working_dir, kept.args),
+            (outside.working_dir, outside.args)
+        );
+
+        let in_tree = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &in_tree,
+            &paper.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        let library = EngineCompileSpec {
+            args,
+            environment,
+            artifacts: LATEX_ENGINE.artifacts(
+                &in_tree,
+                CompileTarget::Main {
+                    main_document: "paper/main.tex",
+                },
+            ),
+            ..spec
+        };
+        let kept = place_in_compile_directory(
+            DocumentEngineId::Latexmk,
+            library.clone(),
+            &project,
+            &paper,
+        )
+        .unwrap();
+        assert_eq!(
+            (kept.working_dir, kept.args),
+            (library.working_dir, library.args)
+        );
+    }
+
+    #[test]
+    fn latexmk_absolute_paths_refuse_what_latexmk_would_hand_to_a_shell() {
+        for safe in [
+            "/Users/ada/.oleafly/linked/linked-x/build",
+            "/Users/O'Brien/Jürgen Müller/論文/a#b%c~d&e{f}^g;h(i)[j],k:l!m",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(safe), false).as_deref(),
+                Some(safe)
+            );
+        }
+        for unsafe_path in [
+            "/Users/a\"b/build",
+            "/Users/a`b/build",
+            "/Users/a$b/build",
+            "/Users/a\\b/build",
+            "/Users/a\nb/build",
+            "relative/build",
+            "/Users/ada/../build",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(unsafe_path), false),
+                None,
+                "{unsafe_path:?}"
+            );
+        }
+        assert_eq!(
+            latexmk_absolute_path_text(
+                Path::new(r"\\?\C:\Users\ada\.oleafly\linked\x\build"),
+                true
+            )
+            .as_deref(),
+            Some("C:/Users/ada/.oleafly/linked/x/build")
+        );
+        for refused in [
+            r"\\?\UNC\server\share\build",
+            r"\\server\share\build",
+            r"C:\Users\100%\build",
+            r"C:\Users\a!b\build",
+        ] {
+            assert_eq!(
+                latexmk_absolute_path_text(Path::new(refused), true),
+                None,
+                "{refused}"
+            );
+        }
+        assert!(windows_network_path(Path::new(
+            r"\\?\UNC\server\share\thesis"
+        )));
+        assert!(windows_network_path(Path::new(r"\\server\share\thesis")));
+        assert!(!windows_network_path(Path::new(r"\\?\C:\thesis")));
+    }
+
+    #[cfg(unix)]
+    fn write_real_tex_fixture(project: &Path, biber: bool) {
+        std::fs::create_dir_all(project.join("sections")).unwrap();
+        std::fs::create_dir_all(project.join("chapters")).unwrap();
+        std::fs::write(
+            project.join("refs.bib"),
+            "@book{knuth,\n  author = {Donald E. Knuth},\n  title = {The TeXbook},\n  publisher = {Addison-Wesley},\n  year = {1984}\n}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.join("sections").join("intro.tex"),
+            "Intro text.\\index{section}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.join("chapters").join("one.tex"),
+            "Chapter one \\cite{knuth}.\\index{chapter}\n",
+        )
+        .unwrap();
+        let main = if biber {
+            "\\documentclass{article}\n\\usepackage[backend=biber]{biblatex}\n\\addbibresource{refs.bib}\n\\usepackage{imakeidx}\n\\makeindex\n\\begin{document}\nHello \\cite{knuth}\\index{hello}.\n\\input{sections/intro}\n\\include{chapters/one}\n\\printbibliography\n\\printindex\n\\end{document}\n"
+        } else {
+            "\\documentclass{article}\n\\usepackage{makeidx}\n\\makeindex\n\\begin{document}\nHello \\cite{knuth}\\index{hello}.\n\\input{sections/intro}\n\\include{chapters/one}\n\\bibliographystyle{plain}\n\\bibliography{refs}\n\\printindex\n\\end{document}\n"
+        };
+        std::fs::write(project.join("main.tex"), main).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_builds_a_nested_main_from_its_own_folder() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let biber_works = crate::tex_distro::find_tex_tool("biber").is_some_and(|biber| {
+            std::process::Command::new(biber)
+                .arg("--version")
+                .output()
+                .is_ok_and(|output| output.status.success())
+        });
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let base = scratch.path().canonicalize().unwrap();
+        let project = base.join("folders").join("Bob's repo");
+        let paper = project.join("paper");
+        let out = base.join(".oleafly/linked/linked-0123456789abcdef0123456789abcdef/build");
+        for (flavor, biber) in [
+            (LatexmkFlavor::Pdflatex, false),
+            (LatexmkFlavor::Xelatex, false),
+            (LatexmkFlavor::Lualatex, false),
+            (LatexmkFlavor::Pdflatex, true),
+        ] {
+            if biber && !biber_works {
+                continue;
+            }
+            let _ = std::fs::remove_dir_all(&project);
+            let _ = std::fs::remove_dir_all(&out);
+            write_real_tex_fixture(&paper, biber);
+            std::fs::create_dir_all(&out).unwrap();
+            let before = crate::linked_registry::folder_snapshot_for_test(&project);
+            let spec = LATEXMK_ENGINE
+                .compile_spec(
+                    &out,
+                    &project,
+                    CompileTarget::Main {
+                        main_document: "paper/main.tex",
+                    },
+                    CompileOptions {
+                        latex_flavor: Some(flavor),
+                        external_build: true,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+            let spec =
+                place_in_compile_directory(DocumentEngineId::Latexmk, spec, &project, &paper)
+                    .unwrap();
+            let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+                unreachable!()
+            };
+            let (log, code) = run_supervised_process_with_environment(
+                latexmk,
+                &spec.args,
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &spec.environment,
+            )
+            .await
+            .unwrap();
+            let case = format!("{flavor:?} biber={biber}");
+            assert_eq!(code, Some(0), "{case}\n{log}");
+            assert!(out.join("_oleafly_entry.pdf").is_file(), "{case}");
+            assert!(
+                std::fs::read_to_string(out.join("_oleafly_entry.bbl"))
+                    .unwrap()
+                    .contains("Knuth"),
+                "{case}"
+            );
+            assert!(out.join("chapters").join("one.aux").is_file(), "{case}");
+            assert_eq!(
+                crate::linked_registry::folder_snapshot_for_test(&project),
+                before,
+                "{case}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_builds_linked_folders_in_an_owned_external_directory() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let biber_works = crate::tex_distro::find_tex_tool("biber").is_some_and(|biber| {
+            std::process::Command::new(biber)
+                .arg("--version")
+                .output()
+                .is_ok_and(|output| output.status.success())
+        });
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let base = scratch.path().canonicalize().unwrap();
+        let cases = [
+            (
+                "Bob's Thèse v2",
+                ".oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+            (
+                "論文 #1 50% ~draft & notes",
+                "Home Dir/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+            (
+                "thesis",
+                "O'Brien Jürgen/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build",
+            ),
+        ];
+        for (folder, build) in cases {
+            for flavor in [
+                LatexmkFlavor::Pdflatex,
+                LatexmkFlavor::Xelatex,
+                LatexmkFlavor::Lualatex,
+            ] {
+                for biber in [false, true] {
+                    if biber && !biber_works {
+                        continue;
+                    }
+                    let project = base.join("folders").join(folder);
+                    let out = base.join(build);
+                    let _ = std::fs::remove_dir_all(&project);
+                    let _ = std::fs::remove_dir_all(&out);
+                    write_real_tex_fixture(&project, biber);
+                    std::fs::create_dir_all(&out).unwrap();
+                    let before = crate::linked_registry::folder_snapshot_for_test(&project);
+                    let spec = LATEXMK_ENGINE
+                        .compile_spec(
+                            &out,
+                            &project,
+                            CompileTarget::Main {
+                                main_document: "main.tex",
+                            },
+                            CompileOptions {
+                                latex_flavor: Some(flavor),
+                                external_build: true,
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
+                    assert!(spec
+                        .environment
+                        .variables
+                        .iter()
+                        .any(|(name, value)| name == "TEXMFOUTPUT" && Path::new(value) == out));
+                    let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+                        unreachable!()
+                    };
+                    let (log, code) = run_supervised_process_with_environment(
+                        latexmk,
+                        &spec.args,
+                        &spec.working_dir,
+                        None,
+                        COMPILE_TIMEOUT,
+                        None,
+                        &spec.environment,
+                    )
+                    .await
+                    .unwrap();
+                    let case = format!("{folder} -> {build} {flavor:?} biber={biber}");
+                    assert_eq!(code, Some(0), "{case}\n{log}");
+                    assert!(out.join("_oleafly_entry.pdf").is_file(), "{case}");
+                    assert!(
+                        std::fs::read_to_string(out.join("_oleafly_entry.bbl"))
+                            .unwrap()
+                            .contains("Knuth"),
+                        "{case}"
+                    );
+                    assert!(
+                        std::fs::read_to_string(out.join("_oleafly_entry.ind"))
+                            .unwrap()
+                            .contains("hello"),
+                        "{case}"
+                    );
+                    assert!(out.join("chapters").join("one.aux").is_file(), "{case}");
+                    assert!(
+                        !std::fs::read_to_string(out.join("_oleafly_entry.log"))
+                            .unwrap()
+                            .contains("undefined"),
+                        "{case}"
+                    );
+                    assert_eq!(
+                        crate::linked_registry::folder_snapshot_for_test(&project),
+                        before,
+                        "{case}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_compiles_a_linked_figure_from_a_private_scratch_folder() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let folders = tempfile::Builder::new()
+            .prefix("oleafly-real-tex-")
+            .tempdir()
+            .unwrap();
+        let project = folders
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("Bob's Thèse v2");
+        write_real_tex_fixture(&project, false);
+        let before = crate::linked_registry::folder_snapshot_for_test(&project);
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-figure-")
+            .tempdir_in(std::env::temp_dir().canonicalize().unwrap())
+            .unwrap();
+        let source = scratch.path().join("_figure.tex");
+        std::fs::write(
+            &source,
+            "\\documentclass{standalone}\n\\begin{document}\nFigure \\input{sections/intro}\n\\end{document}\n",
+        )
+        .unwrap();
+        let spec = LATEXMK_ENGINE
+            .compile_spec(
+                scratch.path(),
+                &project,
+                CompileTarget::Isolated {
+                    source_path: &source,
+                    output_stem: "_figure",
+                },
+                CompileOptions {
+                    external_build: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        let EngineExecutable::ExternalPath(latexmk) = &spec.executable else {
+            unreachable!()
+        };
+        let (log, code) = run_supervised_process_with_environment(
+            latexmk,
+            &spec.args,
+            &spec.working_dir,
+            None,
+            COMPILE_TIMEOUT,
+            None,
+            &spec.environment,
+        )
+        .await
+        .unwrap();
+        assert_eq!(code, Some(0), "{log}");
+        assert!(scratch.path().join("_figure.pdf").is_file());
+        assert_eq!(
+            crate::linked_registry::folder_snapshot_for_test(&project),
+            before
+        );
+    }
+
+    #[test]
+    fn latexmk_refusals_have_english_messages() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        for key in ["latexmk_build_path", "latexmk_network_folder"] {
+            assert!(
+                catalog["tex"][key]
+                    .as_str()
+                    .is_some_and(|text| !text.is_empty()),
+                "{key}"
+            );
+        }
+    }
+
     #[test]
     fn pythontex_helper_is_exactly_scoped_to_a_current_project_job() {
         let root = std::env::temp_dir().join(format!(
@@ -4948,7 +6775,7 @@ mod tests {
             &code
         ));
 
-        let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM).unwrap();
+        let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM, false).unwrap();
         assert_eq!(&args[..2], ["--error-exit-code", "true"]);
         assert_eq!(
             Path::new(&args[2]),
@@ -4956,7 +6783,11 @@ mod tests {
                 .join("build")
                 .join(crate::paths::ENTRY_STEM)
         );
-        assert!(pythontex_args(&project, &root.join("outside"), "job").is_err());
+        assert!(pythontex_args(&project, &root.join("outside"), "job", false).is_err());
+        assert_eq!(
+            pythontex_args(&project, &root.join("outside"), "job", true).unwrap()[2],
+            root.join("outside").join("job").to_string_lossy()
+        );
 
         let latexmk = bin.join(crate::tex_distro::exe("latexmk"));
         let pythontex = bin.join(crate::tex_distro::exe("pythontex"));
@@ -5040,6 +6871,7 @@ mod tests {
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
                 PathBuf::new(),
+                PathBuf::new(),
                 Vec::new(),
             )
             .await
@@ -5056,6 +6888,7 @@ mod tests {
             DIAGNOSTIC_LOG.to_string(),
             None,
             PathBuf::new(),
+            PathBuf::new(),
             Vec::new(),
         )
         .await
@@ -5071,6 +6904,7 @@ mod tests {
                 engine,
                 DIAGNOSTIC_LOG.to_string(),
                 Some("main.tex".to_string()),
+                PathBuf::new(),
                 PathBuf::new(),
                 Vec::new(),
             )
@@ -5100,6 +6934,7 @@ mod tests {
             DocumentEngineId::Latex,
             String::new(),
             Some("main.tex".to_string()),
+            PathBuf::new(),
             PathBuf::new(),
             Vec::new(),
         )
@@ -5299,6 +7134,7 @@ mod tests {
                 latex_flavor: None,
                 allow_shell_escape: false,
                 source_date_epoch: None,
+                external_build: false,
             },
         );
         let before = crate::biber_toolchain::bbl_stamp(&build, stem);

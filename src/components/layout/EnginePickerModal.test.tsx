@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useFolderAccessStore } from "@/store/folder-access";
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -157,5 +158,26 @@ describe("EnginePickerModal", () => {
     await waitFor(() => expect(mocks.setEngine).toHaveBeenCalled());
     expect(mocks.close).not.toHaveBeenCalled();
     expect(mocks.recompile).not.toHaveBeenCalled();
+  });
+});
+
+describe("EnginePickerModal in a folder that is not trusted yet", () => {
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("explains that system TeX needs trust and holds the switch", () => {
+    useFolderAccessStore.getState().reset("project-1");
+    useFolderAccessStore.setState({
+      loaded: true,
+      trust: { trusted: false, source: null, parent: null, repository: null },
+    });
+    render(<EnginePickerModal />);
+    expect(screen.getByTestId("trust-required-notice")).toHaveTextContent(
+      "Trust this folder to compile with latexmk.",
+    );
+    expect(screen.getByTestId("engine-picker-use-system")).toBeDisabled();
+    expect(screen.getByTestId("engine-picker-shell-escape")).toBeDisabled();
+    expect(screen.getByTestId("engine-picker-keep-tectonic")).not.toBeDisabled();
   });
 });

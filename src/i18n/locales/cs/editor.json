@@ -171,7 +171,9 @@
     "binaryFile": "Binární soubor. Náhled není k dispozici.",
     "managedFileReadOnly": "{{file}} spravuje Oleafly a je tu jen ke čtení. Nastavení projektu se mění přímo v Oleafly, ne úpravou tohoto souboru.",
     "noFileOpen": "Není otevřený žádný soubor.",
-    "noFileOpenHint": "Vyberte ve stromu soubor a začněte psát."
+    "noFileOpenHint": "Vyberte ve stromu soubor a začněte psát.",
+    "linkedFileReadOnly": "{{file}} odkazuje na soubor mimo tuto složku, proto ho tu nelze upravit. Změňte ho tam, kde je uložený, například v Zotero.",
+    "diffOnDisk": "Na disku"
   },
   "projectInfo": {
     "trigger": "Informace o projektu",
@@ -211,6 +213,8 @@
     "spellLanguageAppSetting": "Použít nastavení aplikace",
     "spellLanguageAriaLabel": "Jazyk kontroly pravopisu pro tento projekt",
     "spellLanguageHint": "Platí jen pro tento projekt. Další jazyky stáhnete v Nastavení.",
+    "spellLanguageFolderHint": "Uloženo v souboru project.json této složky, takže platí pro každého, kdo složku otevře. Další jazyky stáhnete v Nastavení.",
+    "spellLanguageReadOnly": "Tato složka je jen pro čtení, takže jazyk v jejím souboru project.json nejde změnit.",
     "spellLanguageFailed": "Jazyk kontroly pravopisu se nepodařilo změnit.",
     "notChecked": "Nezkontrolováno",
     "dictionaryMissing": "Slovník „{{name}}“ není stažený, takže se pravopis nekontroluje. Stáhněte ho v Nastavení nebo zvolte jiný jazyk.",
@@ -336,7 +340,8 @@
     "splitView": "Vedle sebe",
     "unifiedView": "V jednom sloupci",
     "loading": "Načítá se porovnání…",
-    "previewTooLarge": "Soubor je příliš velký na náhled rozdílů."
+    "previewTooLarge": "Soubor je příliš velký na náhled rozdílů.",
+    "diskHeading": "Na disku ↔ Vaše úpravy"
   },
   "hotkeys": {
     "title": "Klávesové zkratky",
@@ -436,6 +441,13 @@
       "sourceSize": "Velikost zdroje",
       "reclaimable": "Uvolnitelné"
     },
+    "capture": {
+      "paused": "Záchytné body jsou pozastavené, protože tato složka je příliš velká. Záchytný bod pojme nejvýše {{files}} souborů nebo {{size}}.",
+      "skipped_one": "{{formattedCount}} soubor v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_few": "{{formattedCount}} soubory v této složce nejsou v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_many": "{{formattedCount}} souboru v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech.",
+      "skipped_other": "{{formattedCount}} souborů v této složce není v záchytných bodech. Oleafly vynechává odkazy, velmi velké soubory, soubory jen v cloudu a názvy, které nefungují ve všech systémech."
+    },
     "catalog": {
       "formatVersion": "Verze formátu",
       "lineage": "Původ",
@@ -468,7 +480,8 @@
       "showFor": "Zobrazit soubory pro {{version}}",
       "hideFor": "Skrýt soubory pro {{version}}",
       "show": "Zobrazit soubory",
-      "hide": "Skrýt soubory"
+      "hide": "Skrýt soubory",
+      "folderSettings": "Nastavení Oleafly pro tuto složku"
     },
     "entry": {
       "labelInput": "Popisek záchytného bodu",
@@ -1040,5 +1053,13 @@
     "label": "Umístění v dokumentu",
     "goTo": "Přejít na {{title}}",
     "untitled": "Bez názvu"
+  },
+  "changedOnDisk": {
+    "message": "Soubor {{file}} se na disku změnil, zatímco jste měli neuložené úpravy.",
+    "compare": "Porovnat",
+    "keepMine": "Ponechat moji verzi",
+    "reload": "Načíst znovu",
+    "failed": "Oleafly nedokázal aktualizovat {{file}}. Zkuste to znovu.",
+    "tabMark": "Změněno na disku. Otevřete tuto kartu a vyberte, kterou verzi ponechat."
   }
 }

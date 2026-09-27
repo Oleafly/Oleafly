@@ -1367,6 +1367,35 @@
     "description": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden.",
     "label": "Instellingen resetten"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} staat in je PATH zodra je uitlogt en weer inlogt. Open daarna een nieuwe terminal.",
+    "checking": "Controleren…",
+    "description": "Typ <code>oleafly .</code> in een terminal om die map in Oleafly te openen.",
+    "install": "Installeren",
+    "installing": "Installeren…",
+    "loadFailed": "De terminalopdracht kon niet worden gecontroleerd.",
+    "notOnPath": {
+      "file": "{{directory}} staat nog niet in je PATH. Voeg deze regel toe aan {{file}} en open een nieuwe terminal:",
+      "run": "{{directory}} staat nog niet in je PATH. Voer dit één keer uit en open een nieuwe terminal:"
+    },
+    "removing": "Verwijderen…",
+    "result": {
+      "copied": "Opdracht gekopieerd naar {{path}}.",
+      "linked": "{{path}} verwijst nu naar deze kopie van Oleafly.",
+      "removed": "{{path}} verwijderd."
+    },
+    "state": {
+      "installed": "Geïnstalleerd in {{path}}.",
+      "moveApp": "Verplaats Oleafly eerst naar de map Programma's en installeer de opdracht daarna hier.",
+      "notInstalled": "Voegt oleafly toe aan {{directory}}.",
+      "occupied": "{{path}} bestaat al en is niet door Oleafly gemaakt, dus het blijft zoals het is.",
+      "outdated": "{{path}} verwijst nog naar een oudere kopie van Oleafly. Werk het bij om deze kopie te gebruiken.",
+      "packaged": "Geïnstalleerd in {{path}} door je Oleafly-pakket.",
+      "unavailable": "Deze kopie van Oleafly bevat de opdracht niet."
+    },
+    "title": "Terminalopdracht",
+    "update": "Bijwerken"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"
+      },
+      "openFolder": {
+        "label": "Map openen",
+        "description": "Open een map van je computer als project."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Hoofdletters"
       },
       "unbound": "Niet ingesteld"
+    }
+  },
+  "systemIntegration": {
+    "title": "Systeemintegratie",
+    "description": "Open mappen in Oleafly vanuit je bestandsbeheerder.",
+    "checking": "Controleren…",
+    "loadFailed": "De instellingen van de bestandsbeheerder konden niet worden gecontroleerd.",
+    "state": {
+      "installed": "Geïnstalleerd",
+      "notInstalled": "Niet geïnstalleerd",
+      "needsAttention": "Aandacht nodig"
+    },
+    "actions": {
+      "install": "Installeren",
+      "repair": "Herstellen"
+    },
+    "failed": {
+      "install": "Installeren is mislukt. Probeer het opnieuw.",
+      "remove": "Verwijderen is mislukt. Probeer het opnieuw."
+    },
+    "packaged": "Geïnstalleerd met het Oleafly-pakket.",
+    "quickAction": {
+      "label": "Snelle taken in Finder",
+      "description": "Voegt Openen in Oleafly toe aan het menu Voorzieningen als je in Finder met de rechtermuisknop op een map klikt.",
+      "menuHint": "Nog niet onder Snelle taken. Klik met de rechtermuisknop op een map, kies Snelle taken › Pas aan en schakel {{title}} in."
+    },
+    "explorerMenu": {
+      "label": "Rechtsklikmenu in Verkenner",
+      "description": "Klik met de rechtermuisknop op een map, of op een lege plek erin, en kies Openen met Oleafly. In Windows 11 staat het onder Meer opties weergeven.",
+      "toggle": "Openen met Oleafly tonen in Verkenner"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Voegt Openen met Oleafly toe als je in Dolphin met de rechtermuisknop op een map klikt."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Voegt Openen met Oleafly toe als je in Nemo met de rechtermuisknop op een map klikt."
+    },
+    "nautilus": {
+      "label": "Bestanden",
+      "description": "Voegt Openen met Oleafly toe aan het menu Scripts als je in GNOME Bestanden met de rechtermuisknop op een map klikt."
+    },
+    "folderOpenWith": {
+      "label": "Menu Openen met voor mappen",
+      "description": "Toont Oleafly onder Openen met voor mappen. Je standaard bestandsbeheerder blijft hetzelfde."
+    },
+    "attention": {
+      "outdated": "Deze is verouderd of macOS heeft hem geblokkeerd. Herstel hem om hem terug te zetten.",
+      "elsewhere": "Het menu opent een andere kopie van Oleafly. Herstel het om deze kopie te gebruiken.",
+      "moved": "Dit verwijst naar een kopie van Oleafly die is verplaatst. Herstel het om deze kopie te gebruiken.",
+      "noDefaultFileManager": "Je systeem heeft geen standaard bestandsbeheerder voor mappen, dus dit item kan elke map in Oleafly openen. Verwijder het."
     }
   }
 }

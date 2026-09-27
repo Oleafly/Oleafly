@@ -15,7 +15,8 @@ import {
   getProjectEngine,
   importOverleafProjectCmd,
   importPathsIntoProject as apiImportPathsIntoProject,
-  listFiles,
+  existingProjectFiles,
+  listFileTree,
   listProjects,
   readFileContent,
   renameFile as apiRenameFile,
@@ -23,13 +24,18 @@ import {
   projectTexStatus,
   recordProjectTexSpec,
   renameProjectCmd,
+  projectManifestHome,
+  saveProjectSettingsToFolder,
   setMainDocCmd,
   setProjectEngineCmd,
   setProjectShellEscapeCmd,
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
+  type FileTreeListing,
   type GitPullResult,
+  type MainDecision,
+  type ManifestHome,
   type ProjectInfo,
   type ProjectMeta,
   type ProjectStateChanged,
@@ -41,10 +47,13 @@ import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
+import { SaveFlushError, type SaveFailure } from "@/store/save-flush-error";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { dismissEngineHint, engineHintDismissed } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
@@ -53,13 +62,21 @@ import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { isManagedProjectPath } from "@/lib/project-paths";
+import { isManagedProjectPath, isReadOnlyProjectPath } from "@/lib/project-paths";
+import { mainDocumentMissing } from "@/lib/main-document";
+import {
+  projectFolderAvailable,
+  reportLocationError,
+  useProjectAvailabilityStore,
+} from "@/store/project-availability";
 import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
+
+export { SaveFlushError, type SaveFailure };
 
 // CodeMirror's document model is LF-based on every platform. Canonicalize
 // backend text before publishing it to the shared store so Windows CRLF files
@@ -78,10 +95,15 @@ async function readCanonicalFileContent(
 interface DiskSnapshot {
   hash: string;
   crlf: boolean;
+  length: number;
 }
 
 function diskSnapshotOf(raw: string): DiskSnapshot {
-  return { hash: diskHash(raw), crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw) };
+  return {
+    hash: diskHash(raw),
+    crlf: raw.includes("\r\n") && !/(?<!\r)\n/u.test(raw),
+    length: raw.length,
+  };
 }
 
 function crlfBytes(content: string): string {
@@ -179,6 +201,8 @@ async function checkTexPinStatus(
   logTexPinStatus(status, gap);
 }
 
+export const FOLDER_LISTING_LIMIT = 20_000;
+
 const MUTATION_CONFLICT = "mutation conflict at generation";
 const DISK_CONFLICT = "file changed on disk";
 const UNSUPPORTED_ENCODING = "unsupported text encoding";
@@ -250,6 +274,7 @@ export function reportFileSaveFailure(
   explicit = false,
 ): void {
   void logError(scope, error);
+  if (reportLocationError(projectId, error)) return;
   if (isMutationConflict(error)) return;
   if (useFilesStore.getState().projectId !== projectId) return;
   if (isDiskConflict(error)) {
@@ -274,6 +299,12 @@ export function reportFileSaveFailure(
 }
 
 function reportDiskConflict(projectId: string, path: string, explicit: boolean): void {
+  const state = useFilesStore.getState();
+  if (state.manifestHome !== "library") {
+    noteChangedOnDisk(projectId, path);
+    if (explicit && state.activePath !== path) reportBackgroundDiskConflict(projectId, path);
+    return;
+  }
   const key = writeKey(projectId, path);
   if (diskConflicts.get(key)?.warned && !explicit) return;
   diskConflicts.set(key, {
@@ -293,6 +324,43 @@ function reportDiskConflict(projectId: string, path: string, explicit: boolean):
       true,
     ),
   });
+}
+
+function reportBackgroundDiskConflict(projectId: string, path: string): void {
+  const key = writeKey(projectId, path);
+  const toastId = toast.errorUnique(
+    `disk-conflict:${key}`,
+    i18n.t(($) => $.core.project.changedOnDiskElsewhere, { path }),
+    {
+      label: i18n.t(($) => $.common.actions.open),
+      onClick: () => {
+        if (useFilesStore.getState().projectId !== projectId) return;
+        void useFilesStore
+          .getState()
+          .openFile(path)
+          .catch((error) => reportFileOpenFailure(projectId, path, error));
+      },
+    },
+    true,
+  );
+  diskConflicts.set(key, { ...diskConflicts.get(key), warned: true, toastId });
+}
+
+function sameTreeEntries(left: readonly FileEntry[], right: readonly FileEntry[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((entry, index) => {
+      const other = right[index];
+      return (
+        entry.path === other.path &&
+        entry.is_dir === other.is_dir &&
+        Boolean(entry.unreadable) === Boolean(other.unreadable) &&
+        Boolean(entry.placeholder) === Boolean(other.placeholder) &&
+        Boolean(entry.read_only) === Boolean(other.read_only) &&
+        Boolean(entry.partial) === Boolean(other.partial)
+      );
+    })
+  );
 }
 
 function reportFileOpenFailure(projectId: string, path: string, error: unknown): void {
@@ -339,25 +407,10 @@ export interface SaveOptions {
   overwrite?: boolean;
 }
 
-export interface SaveFailure {
-  path: string;
-  reason: string;
-}
-
 export interface SaveBlockedState {
   action: "close" | "switch";
   targetProjectId: string | null;
   failures: SaveFailure[];
-}
-
-export class SaveFlushError extends Error {
-  readonly failures: SaveFailure[];
-
-  constructor(failures: SaveFailure[]) {
-    super(failures.map((failure) => `${failure.path}: ${failure.reason}`).join("\n"));
-    this.name = "SaveFlushError";
-    this.failures = failures;
-  }
 }
 
 const describeFailure = (error: unknown): string =>
@@ -370,11 +423,14 @@ interface FilesStore {
   // project (hides doc-only tools like Insert diagram).
   projectKind: string;
   projectDictionaryLocale: string | null;
+  manifestHome: ManifestHome;
   mainDoc: string;
+  mainDecision: MainDecision;
   engine: DocumentEngineDescriptor;
   engineLoaded: boolean;
   engineError: EngineErrorCode | null;
   tree: FileEntry[];
+  treeTruncated: boolean;
   files: Record<string, FileState>;
   openTabs: string[];
   // Open-order stamp per file tab, shared with diff tabs so the editor renders
@@ -386,6 +442,7 @@ interface FilesStore {
   loading: boolean;
   docVersion: number;
   saveBlocked: SaveBlockedState | null;
+  changedOnDisk: string[];
 
   refreshProjects: () => Promise<void>;
   openProject: (id: string, shouldContinue?: () => boolean) => Promise<void>;
@@ -404,26 +461,30 @@ interface FilesStore {
   createTypstProject: (name: string) => Promise<void>;
   createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
+  refreshManifestHome: () => Promise<void>;
+  saveSettingsToFolder: () => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (expectedProjectId: string, oid: string) => Promise<void>;
   pullFromGit: (expectedProjectId: string) => Promise<GitPullResult>;
   discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
-  refreshTree: () => Promise<void>;
+  refreshTree: (options?: { keepUnchanged?: boolean }) => Promise<boolean>;
+  resumeAutosave: (projectId: string) => void;
   openFile: (path: string) => Promise<void>;
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => void;
+  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
   reloadFromDisk: (path: string) => Promise<void>;
+  keepLocalVersion: (path: string) => Promise<void>;
   createFile: (
     path: string,
     isDir: boolean,
     conflictStrategy?: FileConflictStrategy,
   ) => Promise<void>;
-  deleteEntry: (path: string) => Promise<void>;
+  deleteEntry: (path: string, options?: { permanent?: boolean }) => Promise<void>;
   renameEntry: (from: string, to: string, conflictStrategy?: FileConflictStrategy) => Promise<string>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
   importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
@@ -441,6 +502,7 @@ interface FilesStore {
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
   setEngine: (engine: string, flavor?: TexFlavor | null) => Promise<void>;
+  refreshEngine: () => Promise<void>;
   setShellEscape: (allow: boolean) => Promise<void>;
 }
 
@@ -505,10 +567,58 @@ function rememberDiskSnapshot(projectId: string, path: string, snapshot: DiskSna
   diskSnapshots.set(writeKey(projectId, path), snapshot);
 }
 
+function savedTextLength(content: string, crlf: boolean): number {
+  if (!crlf) return content.length;
+  let breaks = 0;
+  for (let index = content.indexOf("\n"); index !== -1; index = content.indexOf("\n", index + 1)) {
+    breaks++;
+  }
+  return content.length + breaks;
+}
+
+function matchesSavedDiskText(projectId: string | null, path: string, content: string): boolean {
+  if (!projectId) return false;
+  const key = writeKey(projectId, path);
+  const snapshot = diskSnapshots.get(key);
+  if (!snapshot || pendingWrites.has(key) || diskConflicts.has(key)) return false;
+  if (savedTextLength(content, snapshot.crlf) !== snapshot.length) return false;
+  return diskHash(snapshot.crlf ? crlfBytes(content) : content) === snapshot.hash;
+}
+
 function settleDiskConflict(key: string): void {
   const toastId = diskConflicts.get(key)?.toastId;
   if (typeof toastId === "number") toast.dismiss(toastId);
   diskConflicts.delete(key);
+  const { projectId, changedOnDisk } = useFilesStore.getState();
+  if (!projectId || !key.startsWith(`${projectId}\0`)) return;
+  const path = key.slice(projectId.length + 1);
+  if (changedOnDisk.includes(path)) {
+    useFilesStore.setState({ changedOnDisk: changedOnDisk.filter((entry) => entry !== path) });
+  }
+}
+
+function noteChangedOnDisk(projectId: string, path: string): void {
+  const key = writeKey(projectId, path);
+  diskConflicts.set(key, { ...diskConflicts.get(key), warned: true });
+  const state = useFilesStore.getState();
+  if (state.projectId !== projectId || state.changedOnDisk.includes(path)) return;
+  useFilesStore.setState({ changedOnDisk: [...state.changedOnDisk, path] });
+}
+
+export async function detectDiskChange(projectId: string, path: string): Promise<boolean> {
+  const key = writeKey(projectId, path);
+  if (!diskSnapshots.has(key) || pendingWrites.has(key)) return false;
+  let raw: string;
+  try {
+    raw = await readFileContent(projectId, path);
+  } catch {
+    return false;
+  }
+  const current = useFilesStore.getState();
+  if (current.projectId !== projectId || !current.files[path]?.dirty) return false;
+  if (pendingWrites.has(key) || diskHash(raw) === diskSnapshots.get(key)?.hash) return false;
+  noteChangedOnDisk(projectId, path);
+  return true;
 }
 
 function projectKeysWhere(
@@ -581,6 +691,19 @@ async function refreshMutationGeneration(projectId: string): Promise<number> {
   return rememberMutationGeneration(projectId, generation);
 }
 
+function touchesRootManifest(paths: readonly string[]): boolean {
+  return paths.some((path) => path.toLowerCase() === "project.json");
+}
+
+async function loadManifestHome(projectId: string): Promise<ManifestHome> {
+  try {
+    return (await projectManifestHome(projectId)) ?? "library";
+  } catch (error) {
+    void logError("load project settings location", error);
+    return "library";
+  }
+}
+
 function enqueueWrite(
   projectId: string,
   path: string,
@@ -604,8 +727,9 @@ function enqueueWrite(
       const result = expectedHash === undefined
         ? await writeFileContent(projectId, path, bytes, expectedGeneration)
         : await writeFileContent(projectId, path, bytes, expectedGeneration, expectedHash);
-      diskSnapshots.set(key, { hash: diskHash(bytes), crlf });
+      diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
       settleDiskConflict(key);
+      if (touchesRootManifest([path])) void useFilesStore.getState().refreshManifestHome();
       return rememberMutationGeneration(
         projectId,
         Number.isSafeInteger(result?.generation) ? result.generation : expectedGeneration,
@@ -639,10 +763,11 @@ async function drainProjectWrites(projectId: string, assertCurrent: () => void =
 
 function scheduleAutosave(get: () => FilesStore) {
   stopAutosaveTimer();
-  if (pendingSaves.size === 0) return;
+  if (pendingSaves.size === 0 || !projectFolderAvailable(get().projectId)) return;
   autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
     const projectId = get().projectId;
+    if (!projectFolderAvailable(projectId)) return;
     const paths = [...pendingSaves];
     for (const path of paths) pendingSaves.delete(path);
     for (const path of paths) {
@@ -690,6 +815,14 @@ function requeueDirtyPaths(projectId: string, get: () => FilesStore): void {
 
 async function flushDirtyBuffers(projectId: string, get: () => FilesStore, assertCurrent: () => void = () => {}): Promise<void> {
   stopAutosaveTimer();
+  if (!projectFolderAvailable(projectId)) {
+    const reason = i18n.t(($) => $.core.folderUnavailable.saveReason);
+    const failures = Object.entries(get().files)
+      .filter(([, file]) => file.dirty)
+      .map(([path]) => ({ path, reason }));
+    if (failures.length > 0) throw new SaveFlushError(failures);
+    return;
+  }
 
   // A save can finish while the user is still editing. Loop until the current
   // project has no dirty snapshots left, then the caller may safely reset it.
@@ -853,8 +986,10 @@ async function loadCompatibilityInputs(
 ) {
   const mainPath = meta.main_doc || "main.tex";
   const depth = (path: string) => path.split("/").length;
+  const readable = (entry: FileEntry) =>
+    !entry.is_dir && (!entry.placeholder || get().files[entry.path] !== undefined);
   const texPaths = tree
-    .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
+    .filter((entry) => readable(entry) && isTexSourcePath(entry.path))
     .map((entry) => entry.path)
     .sort((left, right) => {
       if (left === mainPath) return -1;
@@ -870,7 +1005,7 @@ async function loadCompatibilityInputs(
     if (content) texFiles.push({ path, content });
   }
   const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
-    tree.some((entry) => !entry.is_dir && entry.path === name),
+    tree.some((entry) => readable(entry) && entry.path === name),
   );
   const latexmkrc = rcName ? await readCompatibilityInput(id, rcName) : null;
   return { texFiles, latexmkrc };
@@ -925,6 +1060,21 @@ function rememberCompatibilityFindings(
 
 type FilesSet = StoreApi<FilesStore>["setState"];
 type FilesGet = StoreApi<FilesStore>["getState"];
+
+type SaveBlockedListener = (blocked: SaveBlockedState, left: boolean) => void;
+
+const saveBlockedListeners = new Set<SaveBlockedListener>();
+
+export function onSaveBlockedSettled(listener: SaveBlockedListener): () => void {
+  saveBlockedListeners.add(listener);
+  return () => {
+    saveBlockedListeners.delete(listener);
+  };
+}
+
+function settleSaveBlocked(blocked: SaveBlockedState, left: boolean): void {
+  for (const listener of saveBlockedListeners) listener(blocked, left);
+}
 
 function reportSaveBlocked(
   error: unknown,
@@ -993,6 +1143,7 @@ function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesS
   cancelProofreading("visual");
   resetMutationGeneration(id);
   useSettingsStore.getState().closeDocks();
+  useProjectAvailabilityStore.getState().reset(id);
   set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
   const revision = lastProjectStateRevision;
   let reopenQueued = false;
@@ -1015,26 +1166,36 @@ async function loadOpenedProject(
   set: FilesSet,
   get: FilesGet,
 ): Promise<void> {
-  const [meta, generation] = await Promise.all([getProject(id), projectMutationGeneration(id)]);
+  const [meta, generation, manifestHome] = await Promise.all([
+    getProject(id),
+    projectMutationGeneration(id),
+    loadManifestHome(id),
+  ]);
   if (superseded()) return;
   rememberMutationGeneration(id, generation);
   const activation = mcpSetActiveProject(id).catch(() => {});
-  const [tree, engine] = await Promise.all([
-    listFiles(id),
+  const [listing, engine] = await Promise.all([
+    listFileTree(id),
     loadOpenedProjectEngine(id, () => seq === openSeq),
   ]);
   if (superseded()) return;
+  const tree = listing.entries;
   set({
     projectName: meta.name,
     projectKind: meta.kind ?? "",
     projectDictionaryLocale: meta.dictionary_locale ?? null,
+    manifestHome,
     mainDoc: meta.main_doc,
     tree,
+    treeTruncated: listing.truncated,
     ...engine.state,
   });
   if (engine.failure !== null) void logError("load document engine", engine.failure);
   await preloadBibliographies(id, tree, superseded, set);
-  await get().openFile(meta.main_doc || "main.tex");
+  const mainDocument = meta.main_doc || "main.tex";
+  if (!mainDocumentMissing({ projectId: id, manifestHome, tree, mainDoc: mainDocument })) {
+    await get().openFile(mainDocument);
+  }
   if (superseded()) return;
   await activation;
   if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
@@ -1075,7 +1236,9 @@ async function preloadBibliographies(
   superseded: () => boolean,
   set: FilesSet,
 ): Promise<void> {
-  const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
+  const bibliographies = tree.filter(
+    (entry) => !entry.is_dir && !entry.placeholder && entry.path.endsWith(".bib"),
+  );
   for (const bibliography of bibliographies) {
     try {
       const { content, snapshot } = await readDiskText(id, bibliography.path);
@@ -1128,6 +1291,14 @@ interface ReloadedProjectFiles {
   loaded: Map<string, string>;
   snapshots: Map<string, DiskSnapshot>;
   attempted: Set<string>;
+}
+
+interface ProjectFileReconciliation {
+  captured: Record<string, FileState>;
+  filePaths: ReadonlySet<string>;
+  reloaded: ReloadedProjectFiles;
+  removedDirty: string[];
+  adopted: string[];
 }
 
 const BINARY_RELOAD_EXTENSIONS = new Set([
@@ -1200,7 +1371,7 @@ function isBinaryReloadPath(path: string): boolean {
 async function loadChangedProjectFiles(
   projectId: string,
   captured: Record<string, FileState>,
-  filePaths: Set<string>,
+  filePaths: ReadonlySet<string>,
 ): Promise<ReloadedProjectFiles> {
   const loaded = new Map<string, string>();
   const snapshots = new Map<string, DiskSnapshot>();
@@ -1221,14 +1392,29 @@ async function loadChangedProjectFiles(
   return { loaded, snapshots, attempted };
 }
 
+async function presentFilePaths(
+  projectId: string,
+  listing: FileTreeListing,
+  captured: Record<string, FileState>,
+  get: FilesGet,
+): Promise<Set<string>> {
+  const filePaths = new Set(
+    listing.entries.filter((entry) => !entry.is_dir).map((entry) => entry.path),
+  );
+  if (!listing.truncated && get().manifestHome === "library") return filePaths;
+  const unlisted = [...new Set([...Object.keys(captured), ...Object.keys(get().files)])].filter(
+    (path) => !filePaths.has(path),
+  );
+  if (unlisted.length === 0) return filePaths;
+  const present = await existingProjectFiles(projectId, unlisted).catch(() => unlisted);
+  for (const path of present) filePaths.add(path);
+  return filePaths;
+}
+
 function reconcileProjectFile(
   path: string,
   current: FileState,
-  captured: Record<string, FileState>,
-  filePaths: Set<string>,
-  reloaded: ReloadedProjectFiles,
-  removedDirty: string[],
-  adopted: string[],
+  { captured, filePaths, reloaded, removedDirty, adopted }: ProjectFileReconciliation,
 ): FileState | undefined {
   if (!filePaths.has(path)) {
     if (current.dirty) removedDirty.push(path);
@@ -1248,26 +1434,14 @@ function reconciledProjectState(
   state: FilesStore,
   metadata: ProjectMetadataState,
   tree: FileEntry[],
-  captured: Record<string, FileState>,
-  reloaded: ReloadedProjectFiles,
-  removedDirty: string[],
-  adopted: string[],
+  reconciliation: ProjectFileReconciliation,
 ): Partial<FilesStore> {
-  const filePaths = new Set(tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
   const files: Record<string, FileState> = {};
   for (const [path, current] of Object.entries(state.files)) {
-    const file = reconcileProjectFile(
-      path,
-      current,
-      captured,
-      filePaths,
-      reloaded,
-      removedDirty,
-      adopted,
-    );
+    const file = reconcileProjectFile(path, current, reconciliation);
     if (file) files[path] = file;
   }
-  const retained = (path: string) => filePaths.has(path) || files[path]?.dirty;
+  const retained = (path: string) => reconciliation.filePaths.has(path) || files[path]?.dirty;
   const openTabs = state.openTabs.filter(retained);
   return {
     ...metadata,
@@ -1362,17 +1536,21 @@ const EMPTY_PROJECT_STATE = {
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  manifestHome: "library",
   mainDoc: "main.tex",
+  mainDecision: "auto",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
   engineError: null,
   tree: [],
+  treeTruncated: false,
   files: {},
   openTabs: [],
   tabOrder: {},
   activePath: null,
   loading: false,
   saveBlocked: null,
+  changedOnDisk: [],
 } satisfies Partial<FilesStore>;
 
 export const useFilesStore = create<FilesStore>((set, get) => ({
@@ -1380,11 +1558,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectName: "",
   projectKind: "",
   projectDictionaryLocale: null,
+  manifestHome: "library",
   mainDoc: "main.tex",
+  mainDecision: "auto",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
   engineError: null,
   tree: [],
+  treeTruncated: false,
   files: {},
   openTabs: [],
   tabOrder: {},
@@ -1394,6 +1575,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   loading: false,
   docVersion: 0,
   saveBlocked: null,
+  changedOnDisk: [],
 
   refreshProjects: async () => {
     // Single-flight: the app shell and the library both ask for the list on
@@ -1442,10 +1624,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();
+    useProjectAvailabilityStore.getState().reset(null);
     set(EMPTY_PROJECT_STATE);
   }),
 
-  dismissSaveBlocked: () => set({ saveBlocked: null }),
+  dismissSaveBlocked: () => {
+    const blocked = get().saveBlocked;
+    set({ saveBlocked: null });
+    if (blocked) settleSaveBlocked(blocked, false);
+  },
 
   discardUnsavedAndLeave: async () => {
     const blocked = get().saveBlocked;
@@ -1459,10 +1646,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return { files, saveBlocked: null };
     });
     for (const { path } of blocked.failures) pendingSaves.delete(path);
-    if (blocked.action === "switch" && blocked.targetProjectId) {
-      await get().openProject(blocked.targetProjectId);
-    } else {
-      await get().closeProject();
+    try {
+      if (blocked.action === "switch" && blocked.targetProjectId) {
+        await get().openProject(blocked.targetProjectId);
+      } else {
+        await get().closeProject();
+      }
+    } finally {
+      settleSaveBlocked(blocked, true);
     }
   },
 
@@ -1501,6 +1692,30 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshProjects();
   },
 
+  refreshManifestHome: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const manifestHome = await loadManifestHome(projectId);
+    if (get().projectId === projectId) set({ manifestHome });
+  },
+
+  saveSettingsToFolder: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    try {
+      await saveProjectSettingsToFolder(projectId);
+    } catch (error) {
+      notifyError(
+        "save project settings to folder",
+        error,
+        decodeAppError(error) ? undefined : i18n.t(($) => $.errors.project.settings_write_failed),
+      );
+      return;
+    }
+    await get().refreshManifestHome();
+    toast.success(i18n.t(($) => $.shell.commands.saveSettingsToFolder.saved));
+  },
+
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
     await get().refreshProjects();
@@ -1515,11 +1730,33 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return id;
   },
 
-  refreshTree: async () => {
+  refreshTree: async (options) => {
     const { projectId } = get();
-    if (!projectId) return;
-    const tree = await listFiles(projectId);
-    if (get().projectId === projectId) set({ tree });
+    if (!projectId || !projectFolderAvailable(projectId)) return false;
+    let listing: Awaited<ReturnType<typeof listFileTree>>;
+    try {
+      listing = await listFileTree(projectId);
+    } catch (error) {
+      if (reportLocationError(projectId, error)) return false;
+      throw error;
+    }
+    const current = get();
+    if (current.projectId !== projectId) return false;
+    if (
+      options?.keepUnchanged &&
+      current.treeTruncated === listing.truncated &&
+      sameTreeEntries(current.tree, listing.entries)
+    ) {
+      return false;
+    }
+    set({ tree: listing.entries, treeTruncated: listing.truncated });
+    return true;
+  },
+
+  resumeAutosave: (projectId) => {
+    if (get().projectId !== projectId || !projectFolderAvailable(projectId)) return;
+    requeueDirtyPaths(projectId, get);
+    scheduleAutosave(get);
   },
 
   openFile: async (path) => {
@@ -1594,19 +1831,28 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   setContent: (path, content, opts) => {
-    if (isManagedProjectPath(path)) return;
+    const { projectId, manifestHome, tree } = get();
+    if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
+    if (get().files[path]?.content === content) return true;
+    const saved = matchesSavedDiskText(projectId, path, content);
     set((s) => ({
       files: {
         ...s.files,
-        [path]: { content, dirty: true, edits: (s.files[path]?.edits ?? 0) + 1 },
+        [path]: { content, dirty: !saved, edits: (s.files[path]?.edits ?? 0) + 1 },
       },
       docVersion: opts?.bumpVersion ? s.docVersion + 1 : s.docVersion,
     }));
-    // Debounce a save of THIS file. Track every edited path so the single timer
-    // flushes them all, instead of only whichever tab happens to be active when
-    // it fires (which silently lost edits to background tabs).
-    pendingSaves.add(path);
+    if (saved) {
+      pendingSaves.delete(path);
+      if (projectId) settleSaveFailure(projectId, path, get().files);
+    } else {
+      // Debounce a save of THIS file. Track every edited path so the single timer
+      // flushes them all, instead of only whichever tab happens to be active when
+      // it fires (which silently lost edits to background tabs).
+      pendingSaves.add(path);
+    }
     scheduleAutosave(get);
+    return true;
   },
 
   bumpDocVersion: () => set((s) => ({ docVersion: s.docVersion + 1 })),
@@ -1675,6 +1921,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     settleSaveFailure(projectId, path, get().files);
   },
 
+  keepLocalVersion: async (path) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const key = writeKey(projectId, path);
+    diskConflicts.set(key, { ...diskConflicts.get(key), warned: true });
+    await get().saveFile(path, { overwrite: true });
+    if (get().projectId === projectId && !get().files[path]?.dirty) settleDiskConflict(key);
+  },
+
   createFile: async (path, isDir, conflictStrategy = "error") => {
     const { projectId } = get();
     if (!projectId) return;
@@ -1684,12 +1939,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       rememberMutationGeneration(projectId, result.generation);
     }
     await get().refreshTree();
+    if (touchesRootManifest([result.path])) await get().refreshManifestHome();
     if (get().projectId !== projectId) return;
     // keep_both may have diverted to a sibling name; open what was created.
     if (!isDir) await get().openFile(result.path);
   },
 
-  deleteEntry: (path) => enqueueProjectTransition(async () => {
+  deleteEntry: (path, options) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
 
@@ -1705,7 +1961,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (get().projectId !== projectId) return;
 
       const expectedGeneration = await refreshMutationGeneration(projectId);
-      const result = await apiDeleteFile(projectId, path, expectedGeneration);
+      const result = await apiDeleteFile(
+        projectId,
+        path,
+        expectedGeneration,
+        options?.permanent,
+      );
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }
@@ -1715,6 +1976,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
       forgetDiskStateUnder(projectId, isDeletedPath);
       await get().refreshTree();
+      if (touchesRootManifest([path])) await get().refreshManifestHome();
       await reopenMainDocAfterDelete(get, projectId, isDeletedPath);
     } finally {
       if (!deleted) restoreDiscardedSaves(get, projectId, discardedPending);
@@ -1820,8 +2082,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       if (get().projectId === projectId) await get().refreshTree();
+      if (result?.path && touchesRootManifest([result.path])) await get().refreshManifestHome();
     } catch (e) {
-      notifyError("copy file", e, i18n.t(($) => $.core.project.copyFailed, { path }));
+      notifyError(
+        "copy file",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.core.project.copyFailed, { path }),
+      );
     }
   }),
 
@@ -1858,8 +2125,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       if (get().projectId === projectId) await get().refreshTree();
+      if (touchesRootManifest(result?.paths ?? [])) await get().refreshManifestHome();
     } catch (e) {
-      notifyError("import files", e, i18n.t(($) => $.core.project.importFailed));
+      notifyError(
+        "import files",
+        e,
+        decodeAppError(e) ? undefined : i18n.t(($) => $.core.project.importFailed),
+      );
     }
   }),
 
@@ -1936,6 +2208,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   writeProjectFile: async (projectId, path, content) => {
+    if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
@@ -1949,7 +2222,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       bytes,
       expectedGeneration,
     );
-    rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf });
+    rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);
@@ -2222,23 +2495,35 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const metadata = projectMetadataState(event);
     if (!event.filesChanged) {
       if (projectRevisionIsCurrent(projectId, revision, get)) set(metadata);
+      if (get().manifestHome !== "library") await get().refreshManifestHome();
       return true;
     }
     fileReloadRevision++;
     const captured = get().files;
     try {
-      const tree = await listFiles(projectId);
+      const listing = await listFileTree(projectId);
+      const tree = listing.entries;
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
-      const filePaths = new Set(
-        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
-      );
+      const filePaths = await presentFilePaths(projectId, listing, captured, get);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
+      const manifestHome = await loadManifestHome(projectId);
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const removedDirty: string[] = [];
       const adopted: string[] = [];
       set((state) => {
         if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
-        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty, adopted);
+        return {
+          ...reconciledProjectState(state, metadata, tree, {
+            captured,
+            filePaths,
+            reloaded,
+            removedDirty,
+            adopted,
+          }),
+          treeTruncated: listing.truncated,
+          manifestHome,
+        };
       });
       rememberAdoptedSnapshots(projectId, adopted, reloaded.snapshots);
       restoreRemovedDirtyFiles(removedDirty, get);
@@ -2286,7 +2571,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       // its source identity immediately while capabilities remain fail-closed;
       // otherwise an old compile could still match `mainDoc` during the engine
       // descriptor request and repopulate the cleared preview.
-      set({ mainDoc: meta.main_doc });
+      set({ mainDoc: meta.main_doc, mainDecision: "auto" });
       const engine = await fetchProjectEngineQuietly(projectId, current);
       if (!current()) return;
       set({ mainDoc: meta.main_doc, engine, engineLoaded: true, engineError: null });
@@ -2335,6 +2620,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       void logError("set compile engine", error);
       throw error;
     }
+  },
+
+  refreshEngine: async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const seq = ++mainDocSeq;
+    await reloadUnchangedEngine(
+      projectId,
+      () => seq === mainDocSeq && get().projectId === projectId,
+      set,
+    );
   },
 
   setShellEscape: async (allow) => {
@@ -2426,6 +2722,17 @@ export async function runWithEditorMutationLease<T>(
   }
 }
 
+export function collectOpenBuffersForCopy(projectId: string): { path: string; content: string }[] {
+  const state = useFilesStore.getState();
+  if (state.projectId !== projectId) return [];
+  return Object.entries(state.files)
+    .filter(([path]) => !isManagedProjectPath(path, state.manifestHome))
+    .map(([path, file]) => {
+      const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
+      return { path, content: crlf ? crlfBytes(file.content) : file.content };
+    });
+}
+
 export function useActiveContent(): string {
   return useFilesStore((s) =>
     s.activePath ? s.files[s.activePath]?.content ?? "" : ""
@@ -2437,6 +2744,7 @@ export function useActiveContent(): string {
 function flushPendingSaves() {
   stopAutosaveTimer();
   const state = useFilesStore.getState();
+  if (!projectFolderAvailable(state.projectId)) return;
   const paths = Object.entries(state.files)
     .filter(([, file]) => file.dirty)
     .map(([path]) => path);

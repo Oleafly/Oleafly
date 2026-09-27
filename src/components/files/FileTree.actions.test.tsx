@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
   pickOpenPath: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, isTauri: () => false }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: async (command: string, args?: unknown) =>
+    command === "list_file_tree"
+      ? { entries: await mocks.invoke("list_files", args), truncated: false }
+      : mocks.invoke(command, args),
+  isTauri: () => false,
+}));
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ setFocus: vi.fn() }),
 }));
@@ -702,6 +708,23 @@ describe("FileTree toolbar", () => {
     );
   });
 
+  it("shows the read-only folder message instead of the generic create failure", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "notes.tex" },
+      detail: null,
+    })}`;
+    backend({ create_file: new Error(refused) });
+    render(<FileTree />);
+
+    fireEvent.click(screen.getByRole("button", { name: files.newFileAriaLabel }));
+    await typeNewName("notes.tex");
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("create file", expect.anything(), undefined),
+    );
+  });
+
   it("imports into the selected folder from the toolbar menu", async () => {
     render(<FileTree />);
 
@@ -994,6 +1017,28 @@ describe("FileTree row actions", () => {
     fireEvent.click(within(menu).getByText(enCommon.actions.open));
 
     await waitFor(() => expect(useFilesStore.getState().activePath).toBe("main.tex"));
+  });
+
+  it("says why when a read-only folder refuses the main document change", async () => {
+    backend({
+      set_main_doc: new Error(
+        `@oleafly/error:${JSON.stringify({
+          code: "project.folder_read_only",
+          params: { name: "project.json" },
+          detail: null,
+        })}`,
+      ),
+    });
+    render(<FileTree />);
+
+    fireEvent.click(screen.getByText("chapters"));
+    openRowMenu("intro.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.setMain));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledOnce());
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
   });
 
   it("reports a main document change the backend refused, once", async () => {

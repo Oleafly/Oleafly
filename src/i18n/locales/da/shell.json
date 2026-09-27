@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Kompiler igen"
     },
+    "saveSettingsToFolder": {
+      "keywords": "gem projektindstillinger mappe project.json del hoveddokument motor save project settings folder share main document engine",
+      "label": "Gem projektindstillinger i denne mappe",
+      "saved": "Projektindstillingerne er gemt i project.json i denne mappe."
+    },
     "section": {
       "label": "Afsnit"
     },
@@ -214,6 +219,10 @@
         "titleCase": "stort begyndelsesbogstav tekst title case capitalize",
         "uppercase": "store bogstaver tekst uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Åbn mappe…",
+      "keywords": "åbn mappe katalog eksisterende lokale filer disk open folder directory existing local files"
     }
   },
   "community": {
@@ -260,6 +269,7 @@
     "texRootBroken": "% !TEX root i {{file}} peger på en fil, der mangler ({{target}})",
     "texRootLabel": "TEX-rod",
     "texRootName": "rod: {{name}}",
+    "texRootNotTex": "% !TEX root i {{file}} peger på {{target}}, som ikke er en LaTeX-fil",
     "texRootOverride": "rod: {{path}} (sat af % !TEX root i {{file}})"
   },
   "datePicker": {
@@ -361,6 +371,25 @@
     },
     "title": "Noget gik galt"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Denne mappe er ikke tilgængelig.",
+      "body": "Tilslut drevet igen, eller find mappen. Dine åbne filer bliver her, og Oleafly gemmer eller kompilerer ikke, før mappen er tilbage."
+    },
+    "replaced": {
+      "title": "Denne mappe er blevet erstattet.",
+      "body": "Der ligger nu en anden mappe på dens plads. Oleafly er holdt op med at gemme, så intet derinde bliver overskrevet."
+    },
+    "permissionDenied": {
+      "title": "Oleafly kan ikke åbne denne mappe.",
+      "body": "Tjek mappens tilladelser, og prøv igen. Dine åbne filer bliver her."
+    },
+    "locate": "Find",
+    "useThisFolder": "Brug denne mappe",
+    "saveCopy": "Gem en kopi",
+    "tryAgain": "Prøv igen",
+    "savedCopy": "Dine åbne filer blev gemt i {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub-handlinger",
@@ -419,6 +448,68 @@
     },
     "tryCommand": "Prøv en kommando",
     "unknownCommand": "Ukendt kommando. Skriv / for at se de kommandoer, der findes."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Hvilket dokument skal Oleafly kompilere?",
+      "askDescription": "Denne mappe har mere end ét dokument. Vælg hoveddokumentet. Du kan ændre det senere.",
+      "listLabel": "Dokumenter i denne mappe",
+      "open": "Åbn",
+      "browse": "Gennemse bare filerne",
+      "bestMatch": "Bedste match",
+      "empty": "Oleafly fandt ingen dokumenter her. Højreklik på en fil i filtræet, og klik på Vælg som hoveddokument.",
+      "truncated": "Mappen er stor, så Oleafly stoppede tidligt med at lede. Nogle dokumenter er måske ikke med på listen.",
+      "openFailed": "Kunne ikke gøre {{path}} til hoveddokument."
+    },
+    "kind": {
+      "document": "Dokument",
+      "book": "Bog",
+      "presentation": "Præsentation",
+      "poster": "Plakat",
+      "standalone": "Selvstændig figur",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Andet"
+    },
+    "reason": {
+      "declared": "Markeret som hovedfil",
+      "top_level": "I den øverste mappe",
+      "named_main": "Hedder main",
+      "named_after_folder": "Opkaldt efter sin mappe",
+      "includes_files": "Inkluderer andre filer",
+      "has_bibliography": "Har en litteraturliste",
+      "no_begin_document": "Har ingen \\begin{document}",
+      "standalone_figure": "Selvstændig figur",
+      "placeholder": "Ikke hentet endnu"
+    },
+    "noMain": "Intet hoveddokument endnu. Vælg en fil, og klik på Vælg som hoveddokument.",
+    "trust": {
+      "banner": "Oleafly har begrænset nogle funktioner i denne mappe. Vil du stole på den og slå Git, terminal, agenter og shell escape til?",
+      "trustFolder": "Stol på denne mappe",
+      "trustParent": "Stol på den overordnede mappe",
+      "trustRepository": "Stol på repositoryet",
+      "hide": "Skjul",
+      "terminal": "Git-hooks og repositoryindstillinger er slået fra i denne terminal, indtil du stoler på mappen.",
+      "terminalReopen": "Denne terminal startede, før du stolede på mappen. Genåbn den for at slå Git-hooks til.",
+      "reopenTerminal": "Genåbn terminal",
+      "failed": "Kunne ikke stole på denne mappe."
+    },
+    "readOnly": {
+      "banner": "Denne mappe er skrivebeskyttet. Du kan kompilere, men ændringer kan ikke gemmes.",
+      "copy": "Kopiér til biblioteket",
+      "copied": "Oleafly har kopieret mappen til dit bibliotek. Du redigerer nu kopien."
+    },
+    "sync": {
+      "syncsWith": "Synkroniseres med {{service}}",
+      "cloudStorage": "Synkroniseres med en cloudtjeneste",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drev",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Søg på tværs af projektets filer.",
@@ -542,6 +633,8 @@
         "calculating": "Beregner lagerforbrug…",
         "desktopOnly": "Oplysninger om lagerplads findes i skrivebordsappen.",
         "error": "Oplysningerne om lagerplads kunne ikke beregnes.",
+        "linkedFolders_one": "{{size}} byggefiler og indstillinger for {{count}} åbnet mappe",
+        "linkedFolders_other": "{{size}} byggefiler og indstillinger for {{count}} åbnede mapper",
         "refresh": "Opdater lagerforbruget",
         "stats": {
           "appData": "Appdata",
@@ -785,7 +878,8 @@
     "loadingCore": "Indlæser Oleafly Core",
     "loadingHarness": "Indlæser Oleafly Harness",
     "loadingParsers": "Indlæser Oleafly Parsers",
-    "starting": "Starter Oleafly"
+    "starting": "Starter Oleafly",
+    "opening": "Åbner {{name}}…"
   },
   "theme": {
     "dark": "Mørkt",
@@ -919,5 +1013,30 @@
   "windows": {
     "preview": "Forhåndsvisning: {{title}}",
     "update": "Oleafly-opdatering"
+  },
+  "openFolder": {
+    "confirmTitle": "Vil du stoppe og åbne {{name}}?",
+    "confirmCompile": "{{project}} kompileres stadig. Hvis du åbner {{name}}, stopper kompileringen. Dine ændringer gemmes først.",
+    "confirmAssistant": "Assistenten arbejder stadig i {{project}}. Hvis du åbner {{name}}, stopper svaret. Dine ændringer gemmes først.",
+    "confirmBoth": "{{project}} kompileres stadig, og assistenten arbejder stadig. Hvis du åbner {{name}}, stopper begge dele. Dine ændringer gemmes først.",
+    "confirmAction": "Stop og åbn",
+    "chooseSubfolder": "Vælg en undermappe",
+    "refusedTitle": "Kunne ikke åbne {{name}}",
+    "refused": "Kunne ikke åbne {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Åbn Anonymitet og sikkerhed i Systemindstillinger, gå til Filer og mapper, og slå Oleafly til. Hvis Oleafly ikke står på listen, så tilføj det under Fuld diskadgang, og prøv igen.",
+      "windows": "Tjek fanen Sikkerhed under mappens Egenskaber for at sikre, at din konto kan læse den, og prøv igen.",
+      "linux": "Tjek, at din konto kan læse denne mappe, og prøv igen."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Åbn mapper fra Finder",
+    "body": "Føj Åbn i Oleafly til Finder. Den virker fra menuen Tjenester med det samme og fra Hurtige kommandoer, når du har slået den til.",
+    "add": "Føj til Finder",
+    "notNow": "Ikke nu",
+    "added": "Tilføjet. Den ligger nu i menuen Tjenester i Finder. Hvis du også vil bruge den fra Hurtige kommandoer, skal du højreklikke på en mappe og slå den til under Hurtige kommandoer › Tilpas.",
+    "addedInQuickActions": "Tilføjet. Højreklik på en mappe, så finder du den under Hurtige kommandoer.",
+    "failed": "Kunne ikke tilføje den. Du kan prøve igen under Indstillinger › Generelt."
   }
 }

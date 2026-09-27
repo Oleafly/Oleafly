@@ -1383,6 +1383,35 @@
     "description": "Restaura las preferencias de {{sectionName}} a sus valores predeterminados.",
     "label": "Restablecer los ajustes"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} estará en tu PATH cuando cierres sesión y vuelvas a entrar. Después, abre un terminal nuevo.",
+    "checking": "Comprobando…",
+    "description": "Escribe <code>oleafly .</code> en un terminal para abrir esa carpeta en Oleafly.",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "loadFailed": "No se pudo comprobar el comando de terminal.",
+    "notOnPath": {
+      "file": "{{directory}} aún no está en tu PATH. Añade esta línea a {{file}} y abre un terminal nuevo:",
+      "run": "{{directory}} aún no está en tu PATH. Ejecuta esto una vez y abre un terminal nuevo:"
+    },
+    "removing": "Quitando…",
+    "result": {
+      "copied": "Se copió el comando en {{path}}.",
+      "linked": "{{path}} ahora apunta a esta copia de Oleafly.",
+      "removed": "Se quitó {{path}}."
+    },
+    "state": {
+      "installed": "Instalado en {{path}}.",
+      "moveApp": "Primero mueve Oleafly a la carpeta Aplicaciones y luego instala el comando aquí.",
+      "notInstalled": "Añade oleafly a {{directory}}.",
+      "occupied": "{{path}} ya existe y no lo creó Oleafly, así que se queda como está.",
+      "outdated": "{{path}} todavía apunta a una copia anterior de Oleafly. Actualízalo para usar esta copia.",
+      "packaged": "Instalado en {{path}} por tu paquete de Oleafly.",
+      "unavailable": "Esta copia de Oleafly no incluye el comando."
+    },
+    "title": "Comando de terminal",
+    "update": "Actualizar"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1416,6 +1445,10 @@
       "toggleTerminal": {
         "description": "Muestra u oculta el terminal del proyecto.",
         "label": "Alternar el terminal"
+      },
+      "openFolder": {
+        "label": "Abrir carpeta",
+        "description": "Abre una carpeta de tu ordenador como proyecto."
       }
     },
     "application": {
@@ -1491,6 +1524,58 @@
         "uppercase": "Mayúsculas"
       },
       "unbound": "Sin asignar"
+    }
+  },
+  "systemIntegration": {
+    "title": "Integración con el sistema",
+    "description": "Abre carpetas en Oleafly desde tu gestor de archivos.",
+    "checking": "Comprobando…",
+    "loadFailed": "No se pudo comprobar la configuración del gestor de archivos.",
+    "state": {
+      "installed": "Instalado",
+      "notInstalled": "No instalado",
+      "needsAttention": "Requiere atención"
+    },
+    "actions": {
+      "install": "Instalar",
+      "repair": "Reparar"
+    },
+    "failed": {
+      "install": "No se pudo instalar. Inténtalo de nuevo.",
+      "remove": "No se pudo quitar. Inténtalo de nuevo."
+    },
+    "packaged": "Instalado con el paquete de Oleafly.",
+    "quickAction": {
+      "label": "Acciones rápidas del Finder",
+      "description": "Añade Abrir en Oleafly al menú Servicios al hacer clic derecho en una carpeta en el Finder.",
+      "menuHint": "Aún no está en Acciones rápidas. Haz clic derecho en una carpeta, elige Acciones rápidas › Personalizar y activa {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Menú contextual del Explorador de archivos",
+      "description": "Haz clic derecho en una carpeta, o en un espacio vacío dentro de ella, y elige Abrir con Oleafly. En Windows 11 está en Mostrar más opciones.",
+      "toggle": "Mostrar Abrir con Oleafly en el Explorador de archivos"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Añade Abrir con Oleafly al hacer clic derecho en una carpeta en Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Añade Abrir con Oleafly al hacer clic derecho en una carpeta en Nemo."
+    },
+    "nautilus": {
+      "label": "Archivos",
+      "description": "Añade Abrir con Oleafly al menú Scripts al hacer clic derecho en una carpeta en Archivos de GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menú Abrir con para carpetas",
+      "description": "Muestra Oleafly en Abrir con para las carpetas. Tu gestor de archivos predeterminado no cambia."
+    },
+    "attention": {
+      "outdated": "Está desactualizado o macOS lo bloqueó. Repáralo para recuperarlo.",
+      "elsewhere": "El menú abre otra copia de Oleafly. Repáralo para usar esta.",
+      "moved": "Apunta a una copia de Oleafly que se movió. Repáralo para usar esta.",
+      "noDefaultFileManager": "Tu sistema no tiene un gestor de archivos predeterminado para carpetas, así que esta entrada podría abrir todas las carpetas en Oleafly. Quítala."
     }
   }
 }

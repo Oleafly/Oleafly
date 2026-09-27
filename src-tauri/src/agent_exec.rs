@@ -548,6 +548,7 @@ fn authorize_approved(
         return Err("the agent run id was empty".to_string());
     }
     validate_execution_owner(state, agent_state, request.run_id)?;
+    crate::trust::require_trusted(request.project_id, crate::trust::Capability::RunCommand)?;
     let (_, decision) =
         crate::approvals::policy_for(request.root, request.project_id, "run_command")?;
     if decision == Some(crate::approvals::ToolDecision::Deny) {
@@ -786,6 +787,7 @@ async fn execute_command_for_owner(
     approval_token: &str,
 ) -> Result<ExecResult, String> {
     validate_execution_owner(state, agent_state, request.run_id)?;
+    crate::trust::require_trusted(request.project_id, crate::trust::Capability::RunCommand)?;
     execute_command(
         state,
         request.root,
@@ -852,6 +854,39 @@ mod tests {
         assert!(result.timed_out);
         assert_eq!(result.status, "Stopped: timed out");
         assert!(!cwd.join("finished").exists());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn restricted_folder_never_mints_or_runs_a_command() {
+        let root = test_root("restricted-folder");
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let owner = "external:00000000-0000-4000-8000-00000000000b";
+        state.register_external_owner(owner).unwrap();
+        let _restricted = crate::trust::testing::restrict("restricted-exec-proj");
+        let request = || ExecRequest {
+            root: &root,
+            project_id: "restricted-exec-proj",
+            cwd: &cwd,
+            command: "touch restricted-marker",
+            run_id: owner,
+        };
+        let minted = authorize_approved(&state, &agent_state, request());
+        let token = state
+            .authorize("restricted-exec-proj", "touch restricted-marker", owner)
+            .unwrap();
+        let ran = execute_command_for_owner(&agent_state, &state, request(), &token).await;
+        let marker = cwd.join("restricted-marker").exists();
+        std::fs::remove_dir_all(&root).ok();
+        let minted = minted.unwrap_err();
+        assert!(
+            minted.contains("\"code\":\"trust.run_command\""),
+            "{minted}"
+        );
+        let ran = ran.err().unwrap();
+        assert!(ran.contains("\"code\":\"trust.run_command\""), "{ran}");
+        assert!(!marker);
     }
 
     #[test]

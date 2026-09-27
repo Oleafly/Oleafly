@@ -2,10 +2,13 @@
 
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitWorkspaceSnapshot } from "@oleafly/backend-port";
 import { SOURCE_CONTROL_SHOW_GRAPH_EVENT } from "@/lib/source-control-events";
 import { SourceControl } from "./SourceControl";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { useFolderAccessStore } from "@/store/folder-access";
 
 const mocks = vi.hoisted(() => ({
   gitWorkspaceSnapshot: vi.fn(),
@@ -181,6 +184,156 @@ beforeEach(() => {
     mocks.gitAbortMerge.mockResolvedValue({ projectState });
     mocks.gitStashPush.mockResolvedValue(projectState);
     mocks.gitStashPop.mockResolvedValue(projectState);
+});
+
+describe("SourceControl in a folder that is not trusted yet", () => {
+  const grant = vi.fn();
+
+  function restrict(trust: Record<string, unknown>) {
+    useFolderAccessStore.getState().reset("project-1");
+    useFolderAccessStore.setState({
+      loaded: true,
+      trust: trust as never,
+      grant,
+    });
+  }
+
+  beforeEach(() => {
+    grant.mockReset();
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("says why Git is off, offers trust and runs no git command", async () => {
+    restrict({ trusted: false, source: null, parent: null, repository: null });
+    render(<SourceControl />);
+    expect(screen.getByText(enErrors.trust.git)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: enShell.openedFolder.trust.trustFolder }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await act(async () => {});
+    expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("turns Source Control on as soon as the folder is trusted", async () => {
+    restrict({ trusted: false, source: null, parent: null, repository: null });
+    grant.mockImplementation(async () => {
+      useFolderAccessStore.setState({
+        trust: { trusted: true, source: "folder", parent: null, repository: null },
+      });
+      return true;
+    });
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    await user.click(screen.getByRole("button", { name: enShell.openedFolder.trust.trustFolder }));
+    expect(grant).toHaveBeenCalledWith("folder");
+    expect(await screen.findByText("library.bib")).toBeInTheDocument();
+    expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledWith("project-1");
+  });
+
+  const untrusted = { trusted: false, source: null, parent: null, repository: null };
+  const trusted = { trusted: true, source: "folder", parent: null, repository: null };
+  const refusal = '@oleafly/error:{"code":"trust.git","params":{}}';
+
+  it("waits for the folder's trust before asking Git, so trusting it leaves no error behind", async () => {
+    useFolderAccessStore.getState().reset("project-1");
+    let folderTrusted = false;
+    mocks.gitWorkspaceSnapshot.mockReset();
+    mocks.gitWorkspaceSnapshot.mockImplementation(async () => {
+      if (!folderTrusted) throw refusal;
+      return snapshot();
+    });
+    render(<SourceControl />);
+    await act(async () => {});
+    expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+    act(() => useFolderAccessStore.setState({ loaded: true, trust: untrusted as never }));
+    await act(async () => {});
+    expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+    folderTrusted = true;
+    act(() => useFolderAccessStore.setState({ trust: trusted as never }));
+    expect(await screen.findByText("library.bib")).toBeInTheDocument();
+    expect(screen.queryAllByRole("alert")).toEqual([]);
+  });
+
+  it("loads the repository when trusting the folder also announces a Git change", async () => {
+    restrict(untrusted);
+    mocks.gitWorkspaceSnapshot.mockReset();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot());
+    const stop = useFolderAccessStore.subscribe((state, previous) => {
+      if (state.trust?.trusted === true && previous.trust?.trusted === false) {
+        window.dispatchEvent(new Event("oleafly:git-changed"));
+      }
+    });
+    try {
+      render(<SourceControl />);
+      await act(async () => {});
+      expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+      await act(async () => {
+        useFolderAccessStore.setState({ trust: trusted as never });
+      });
+      expect(await screen.findByText("library.bib")).toBeInTheDocument();
+      expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledWith("project-1");
+    } finally {
+      stop();
+    }
+  });
+
+  it("drops a refusal that lands after the folder lost trust", async () => {
+    restrict(trusted);
+    let refuse: (error: unknown) => void = () => {};
+    mocks.gitWorkspaceSnapshot.mockReset();
+    mocks.gitWorkspaceSnapshot.mockReturnValueOnce(
+      new Promise<GitWorkspaceSnapshot>((_resolve, reject) => {
+        refuse = reject;
+      }),
+    );
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot());
+    render(<SourceControl />);
+    await waitFor(() => expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(1));
+    act(() => useFolderAccessStore.setState({ trust: untrusted as never }));
+    await act(async () => refuse(refusal));
+    act(() => useFolderAccessStore.setState({ trust: trusted as never }));
+    expect(await screen.findByText("library.bib")).toBeInTheDocument();
+    expect(screen.queryAllByRole("alert")).toEqual([]);
+  });
+
+  it("does not run a queued refresh after the folder lost trust", async () => {
+    restrict(trusted);
+    const pending = deferred<GitWorkspaceSnapshot>();
+    mocks.gitWorkspaceSnapshot.mockReset();
+    mocks.gitWorkspaceSnapshot.mockReturnValueOnce(pending.promise);
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot());
+    render(<SourceControl />);
+    await waitFor(() => expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(1));
+    act(() => window.dispatchEvent(new Event("oleafly:git-changed")));
+    act(() => useFolderAccessStore.setState({ trust: untrusted as never }));
+    await act(async () => pending.resolve(snapshot()));
+    await act(async () => {});
+    expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("source-control-restricted")).toBeInTheDocument();
+  });
+
+  it("asks to trust the enclosing repository once the folder itself is trusted", async () => {
+    restrict({
+      trusted: true,
+      source: "folder",
+      parent: null,
+      repository: { name: "lab-papers", trusted: false },
+    });
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    expect(
+      screen.getByText(enErrors.trust.repository.replace("{{name}}", "lab-papers")),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: enShell.openedFolder.trust.trustRepository }),
+    );
+    expect(grant).toHaveBeenCalledWith("repository");
+    expect(mocks.gitWorkspaceSnapshot).not.toHaveBeenCalled();
+  });
 });
 
 describe("SourceControl", () => {
@@ -681,6 +834,17 @@ describe("SourceControl", () => {
     expect(await screen.findByText("main.tex")).toBeInTheDocument();
   });
 
+  it("explains a refused snapshot instead of printing the error envelope", async () => {
+    mocks.gitWorkspaceSnapshot.mockRejectedValue(
+      '@oleafly/error:{"code":"trust.git","params":{},"detail":null}',
+    );
+    render(<SourceControl />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Trust this folder to use Source Control.");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+  });
+
   it("opens and unstages all staged paths", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);
@@ -814,6 +978,21 @@ describe("SourceControl", () => {
     await waitFor(() =>
       expect(mocks.gitInitialize).toHaveBeenCalledWith("project-1"),
     );
+  });
+
+  it("explains why Source Control did not start inside another repository", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    mocks.gitInitialize.mockRejectedValue(
+      '@oleafly/error:{"code":"git.nested_repository","params":{}}',
+    );
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("inside another Git repository");
+    expect(alert).not.toHaveTextContent("@oleafly/error");
   });
 
   it("keeps remote-only actions disabled when no remote is configured", async () => {
@@ -1094,6 +1273,16 @@ describe("SourceControl", () => {
       expect(mocks.publishDialog).toHaveBeenLastCalledWith(
         expect.objectContaining({ open: false, projectId: "project-2" }),
       ),
+    );
+  });
+
+  it("tells the publish dialog which repository the project already pushes to", async () => {
+    render(<SourceControl />);
+
+    await screen.findByText("library.bib");
+
+    expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentRemote: "https://github.com/oleafly/research.git" }),
     );
   });
 

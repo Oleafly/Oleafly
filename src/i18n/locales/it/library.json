@@ -36,7 +36,6 @@
     "appIconAlt": "Icona dell'app Oleafly",
     "welcomeTitle": "Benvenuto in Oleafly",
     "welcomeDescription": "Scrivi, compila e correggi in LaTeX, Typst e Markdown. Gestisci le citazioni, rivedi i PDF, tieni traccia delle modifiche con Git e lavora con i modelli AI che preferisci.",
-    "createFirstProject": "Crea un nuovo progetto",
     "loading": "Lettura della tua libreria…",
     "noBookmarksTitle": "Ancora nessun segnalibro",
     "noBookmarksDescription": "Passa sopra un libro e fai clic sul suo segnalibro per aggiungerlo.",
@@ -69,8 +68,15 @@
       "anyTime": "Sempre",
       "last7Days": "Ultimi 7 giorni",
       "last30Days": "Ultimi 30 giorni",
-      "lastYear": "Ultimo anno"
-    }
+      "lastYear": "Ultimo anno",
+      "location": "Posizione",
+      "locationAll": "Tutti i progetti",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "Progetti esterni"
+    },
+    "openFolder": "Apri cartella",
+    "openFolderShortcut": "Apri cartella ({{shortcut}})",
+    "createFirstProject": "Crea un nuovo progetto"
   },
   "projects": {
     "open": "Apri {{name}}",
@@ -84,7 +90,7 @@
     "actions": "Azioni per {{name}}",
     "details": "Dettagli del progetto",
     "exportHistory": "Cronologia delle esportazioni",
-    "changeColor": "Cambia il colore del progetto",
+    "changeColor": "Colore del progetto",
     "fork": "Duplica il progetto",
     "delete": "Elimina il progetto",
     "favoriteAdd": "Aggiungi ai preferiti",
@@ -96,7 +102,8 @@
     "kind": {
       "document": "documento",
       "image": "immagine",
-      "diagram": "diagramma"
+      "diagram": "diagramma",
+      "external": "esterno"
     },
     "preview": {
       "title": "Anteprima PDF: {{name}}",
@@ -378,7 +385,9 @@
     "nameRequired": "Inserisci il nome di un repository.",
     "published": "Pubblicato su {{repository}}.",
     "linked": "Collegato a {{remote}} e push eseguito.",
-    "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}"
+    "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}",
+    "replaceRemotePrompt": "Questo progetto è collegato a {{remote}}. Vuoi sostituire il collegamento?",
+    "replaceRemote": "Sostituisci collegamento"
   },
   "deadlines": {
     "title": "Scadenze delle conferenze",
@@ -467,6 +476,75 @@
       "sourcesTitle": "Fonti",
       "sourcesBody": "I dati uniscono l'archivio aperto ccf-deadlines con i siti ufficiali delle conferenze seguiti da Oleafly.",
       "confirm": "Conferma ogni data sul sito ufficiale della conferenza prima di inviare."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nuovo progetto",
+    "newProjectDescription": "Parti da un modello o da una pagina vuota.",
+    "openFolderTitle": "Apri una cartella",
+    "openFolderDescription": "Lavora sui file che hai già sul computer. Restano dove sono."
+  },
+  "openFolder": {
+    "dismiss": "Chiudi"
+  },
+  "folder": {
+    "state": {
+      "missing": "Cartella mancante",
+      "offline": "Unità non collegata",
+      "replaced": "Cartella sostituita",
+      "permissionDenied": "Nessun permesso"
+    },
+    "menu": {
+      "showInFinder": "Mostra nel Finder",
+      "showInExplorer": "Mostra in Esplora file",
+      "showInFileManager": "Mostra nel gestore file",
+      "copyToLibrary": "Copia nella libreria",
+      "remove": "Rimuovi da Oleafly"
+    },
+    "remove": {
+      "title": "Vuoi rimuovere “{{name}}” da Oleafly?",
+      "description": "I tuoi file restano dove sono. Oleafly elimina i propri file di compilazione per questa cartella e ne reimposta l'affidabilità, le approvazioni e le cartelle collegate. Riapri la cartella entro 30 giorni per recuperare le chat e la cronologia. Il resto andrà configurato di nuovo.",
+      "confirm": "Rimuovi da Oleafly",
+      "done": "“{{name}}” è stato rimosso da Oleafly. I file sono ancora nella cartella.",
+      "failed": "Impossibile rimuovere “{{name}}” da Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Impossibile trovare “{{name}}”",
+        "body": "Si trovava in <path>{{path}}</path> e potrebbe essere stata spostata o eliminata. Individuala per conservare chat e cronologia."
+      },
+      "offline": {
+        "title": "“{{name}}” si trova su un'unità non collegata",
+        "body": "Collega l'unità o la condivisione di rete che contiene <path>{{path}}</path>, poi riprova."
+      },
+      "replaced": {
+        "title": "“{{name}}” è stata sostituita",
+        "body": "La cartella in <path>{{path}}</path> non è quella che avevi aperto. Usala solo se ti fidi. Quando cambi cartella, Oleafly revoca l'affidabilità e le approvazioni."
+      },
+      "permissionDenied": {
+        "title": "Oleafly non riesce ad aprire “{{name}}”",
+        "bodyMac": "Consenti a Oleafly di usare questa cartella in Impostazioni di Sistema › Privacy e sicurezza › File e cartelle, poi riprova.",
+        "bodyOther": "Il tuo account non può leggere <path>{{path}}</path>. Controlla i permessi della cartella, poi riprova."
+      },
+      "back": {
+        "title": "“{{name}}” è di nuovo disponibile",
+        "body": "Oleafly può di nuovo raggiungere <path>{{path}}</path>."
+      },
+      "locate": "Individua",
+      "tryAgain": "Riprova",
+      "useThisFolder": "Usa questa cartella",
+      "checking": "Controllo in corso",
+      "still": "Oleafly non riesce ancora a raggiungerla."
+    },
+    "copy": {
+      "title": "Copia “{{name}}” nella tua libreria",
+      "description": "Oleafly copia i file in un nuovo progetto della libreria e lascia la cartella dov'è. La cronologia Git viene copiata, ma gli hook Git e i file di compilazione no.",
+      "counting": "Conteggio dei file…",
+      "copying": "Copia dei file…",
+      "count": "{{done}} di {{total}}",
+      "done": "“{{name}}” ora è nella tua libreria.",
+      "doneLeftOut": "“{{name}}” ora è nella tua libreria. I collegamenti a file altrove e le cartelle annidate troppo in profondità non sono stati copiati.",
+      "failed": "Impossibile copiare “{{name}}” nella tua libreria."
     }
   }
 }

@@ -16,6 +16,17 @@ describe("formatToolOutput", () => {
     expect(formatToolOutput({ error: "file not found" })).toBe("Error: file not found");
   });
 
+  it("shows a coded tool error as its sentence, not the raw envelope", () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "main.tex" },
+      detail: null,
+    })}`;
+    expect(formatToolOutput({ error: refused })).toBe(
+      "Error: Oleafly can't make this change because main.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+  });
+
   it("pretty-prints structured payloads without a content field", () => {
     const out = formatToolOutput({ files: [{ path: "a.tex" }] });
     expect(out).toContain('"a.tex"');

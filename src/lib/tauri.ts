@@ -1,6 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
+import type { OpenedFolder } from "@/lib/folder-detection";
 
 export interface McpRegistrySearchRequest {
   query: string;
@@ -64,6 +65,7 @@ import type {
   FigureCacheResult,
   FileConflictStrategy,
   FileEntry,
+  FileTreeListing,
   FileMutationResult,
   GitCommit,
   GitWorktreeOperationResult,
@@ -75,7 +77,9 @@ import type {
   GitPullResult,
   ImportPathsResult,
   InitialState,
+  PendingOpenRequest,
   LibraryStorageSummary,
+  ManifestHome,
   McpConnectionInfo,
   McpAgentServer,
   McpManagedServer,
@@ -87,6 +91,8 @@ import type {
   PackInfo,
   Persona,
   Prerequisite,
+  ProjectAvailability,
+  ProjectAvailabilityReport,
   ProjectInfo,
   ProjectMeta,
   ProjectSourcesRequest,
@@ -185,6 +191,9 @@ export const getProjectEngine = (projectId: string) =>
 
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
+
+export const readBuildArtifact = (projectId: string, name: string) =>
+  invoke<string | null>("read_build_artifact", { projectId, name });
 
 
 /** Null means the persisted record is missing or stale: compile normally. */
@@ -303,18 +312,41 @@ export const readProjectBytes = (projectId: string, relPath: string) =>
 export const projectMutationGeneration = (projectId: string) =>
   invoke<number>("project_mutation_generation", { projectId });
 
+type ProjectWriteFailureListener = (projectId: string) => void;
+
+const projectWriteFailureListeners = new Set<ProjectWriteFailureListener>();
+
+export function onProjectWriteFailure(listener: ProjectWriteFailureListener): () => void {
+  projectWriteFailureListeners.add(listener);
+  return () => {
+    projectWriteFailureListeners.delete(listener);
+  };
+}
+
+async function projectWrite<T>(projectId: string, request: Promise<T>): Promise<T> {
+  try {
+    return await request;
+  } catch (error) {
+    for (const listener of projectWriteFailureListeners) listener(projectId);
+    throw error;
+  }
+}
+
 export const writeProjectBytes = (
   projectId: string,
   relPath: string,
   dataBase64: string,
   expectedGeneration?: number,
 ) =>
-  invoke<FileMutationResult>("write_project_bytes", {
+  projectWrite(
     projectId,
-    relPath,
-    dataBase64,
-    expectedGeneration,
-  });
+    invoke<FileMutationResult>("write_project_bytes", {
+      projectId,
+      relPath,
+      dataBase64,
+      expectedGeneration,
+    }),
+  );
 
 // Used for absolute paths from a save dialog.
 export const writeBytesFile = (dest: string, dataBase64: string) =>
@@ -332,6 +364,18 @@ export const saveProjectChats = (projectId: string, json: string) =>
 
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
+
+export const listFileTree = (projectId: string) =>
+  invoke<FileTreeListing>("list_file_tree", { projectId });
+
+export const existingProjectFiles = (projectId: string, paths: string[]) =>
+  invoke<string[]>("existing_project_files", { projectId, paths });
+
+export const watchProjectFolder = (projectId: string) =>
+  invoke<number | null>("watch_project_folder", { projectId });
+
+export const unwatchProjectFolder = (projectId: string, token: number) =>
+  invoke<boolean>("unwatch_project_folder", { projectId, token });
 
 export const readFileContent = (projectId: string, path: string, allowMissing = false) =>
   invoke<string>("read_file", { projectId, path, ...(allowMissing ? { allowMissing: true } : {}) });
@@ -358,13 +402,16 @@ export const writeFileContent = (
   expectedGeneration?: number,
   expectedHash?: string,
 ) =>
-  invoke<FileMutationResult>("write_file", {
+  projectWrite(
     projectId,
-    path,
-    content,
-    expectedGeneration,
-    ...(expectedHash ? { expectedHash } : {}),
-  });
+    invoke<FileMutationResult>("write_file", {
+      projectId,
+      path,
+      content,
+      expectedGeneration,
+      ...(expectedHash ? { expectedHash } : {}),
+    }),
+  );
 
 export async function createFile(
   projectId: string,
@@ -373,19 +420,35 @@ export async function createFile(
   conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
 ): Promise<{ path: string; generation: number }> {
-  const result = await invoke<CreateFileResult>("create_file", {
+  const result = await projectWrite(
     projectId,
-    path,
-    isDir,
-    conflictStrategy,
-    expectedGeneration,
-  });
+    invoke<CreateFileResult>("create_file", {
+      projectId,
+      path,
+      isDir,
+      conflictStrategy,
+      expectedGeneration,
+    }),
+  );
   if (result.status === "conflict") throw new FileConflictError(result);
   return { path: result.path, generation: result.generation };
 }
 
-export const deleteFile = (projectId: string, path: string, expectedGeneration?: number) =>
-  invoke<FileMutationResult>("delete_file", { projectId, path, expectedGeneration });
+export const deleteFile = (
+  projectId: string,
+  path: string,
+  expectedGeneration?: number,
+  permanent?: boolean,
+) =>
+  projectWrite(
+    projectId,
+    invoke<FileMutationResult>("delete_file", {
+      projectId,
+      path,
+      expectedGeneration,
+      ...(permanent ? { permanent: true } : {}),
+    }),
+  );
 
 export class FileConflictError extends Error {
   readonly destination: string;
@@ -409,13 +472,16 @@ export async function renameFile(
   conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
 ): Promise<string> {
-  const result = await invoke<RenameFileResult>("rename_file", {
+  const result = await projectWrite(
     projectId,
-    from,
-    to,
-    conflictStrategy,
-    expectedGeneration,
-  });
+    invoke<RenameFileResult>("rename_file", {
+      projectId,
+      from,
+      to,
+      conflictStrategy,
+      expectedGeneration,
+    }),
+  );
   if (result.status === "conflict") throw new FileConflictError(result);
   return result.path;
 }
@@ -426,7 +492,11 @@ export const copyFile = (
   from: string,
   to: string,
   expectedGeneration?: number,
-) => invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration });
+) =>
+  projectWrite(
+    projectId,
+    invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration }),
+  );
 
 
 export const importPathsIntoProject = (
@@ -435,19 +505,26 @@ export const importPathsIntoProject = (
   sourcePaths: string[],
   expectedGeneration?: number,
 ) =>
-  invoke<ImportPathsResult>("import_paths_into_project", {
+  projectWrite(
     projectId,
-    destDir,
-    sourcePaths,
-    expectedGeneration,
-  });
+    invoke<ImportPathsResult>("import_paths_into_project", {
+      projectId,
+      destDir,
+      sourcePaths,
+      expectedGeneration,
+    }),
+  );
 
 export const saveFileBase64 = (
   projectId: string,
   path: string,
   data: string,
   expectedGeneration?: number,
-) => invoke<FileMutationResult>("save_file_base64", { projectId, path, data, expectedGeneration });
+) =>
+  projectWrite(
+    projectId,
+    invoke<FileMutationResult>("save_file_base64", { projectId, path, data, expectedGeneration }),
+  );
 
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
@@ -542,6 +619,9 @@ export const setProjectDictionaryLocaleCmd = (
 ) =>
   invoke<ProjectMeta>("set_project_dictionary_locale", { projectId, locale });
 
+export const resetProjectDictionaryLocaleOnDeviceCmd = (projectId: string) =>
+  invoke<ProjectMeta>("reset_project_dictionary_locale_on_device", { projectId });
+
 export const setProjectShellEscapeCmd = (
   projectId: string,
   allowShellEscape: boolean,
@@ -560,7 +640,16 @@ export const openDevtools = () => invoke<void>("open_devtools");
 export const getProject = (projectId: string) =>
   invoke<ProjectMeta>("get_project", { projectId });
 
+export const projectManifestHome = (projectId: string) =>
+  invoke<ManifestHome>("project_manifest_home", { projectId });
+
+export const saveProjectSettingsToFolder = (projectId: string) =>
+  invoke<ProjectMeta>("save_project_settings_to_folder", { projectId });
+
 export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
+
+export const probeProjectAvailability = (projectIds: string[]) =>
+  invoke<ProjectAvailabilityReport[]>("probe_project_availability", { projectIds });
 
 export const libraryStorageSummary = () =>
   invoke<LibraryStorageSummary>("library_storage_summary");
@@ -785,6 +874,9 @@ export const gitInitialize = (projectId: string) =>
 export const gitPreparePublish = (projectId: string, message: string) =>
   invoke<boolean>("git_prepare_publish", { projectId, message });
 
+export const gitPublishPreflight = (projectId: string) =>
+  invoke<void>("git_publish_preflight", { projectId });
+
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
 
@@ -796,6 +888,125 @@ export const exportPdf = (projectId: string, dest: string) =>
 
 export const revealInDir = (path: string) =>
   invoke<void>("reveal_in_dir", { path });
+
+export const revealProject = (projectId: string, path?: string | null) =>
+  invoke<void>("reveal_project", { projectId, path: path ?? null });
+
+export interface CopyIntoLibraryProgress {
+  phase: "counting" | "copying";
+  entriesDone: number;
+  entriesTotal: number;
+  bytesDone: number;
+  bytesTotal: number;
+}
+
+export interface CopiedIntoLibrary {
+  projectId: string;
+  leftOut: number;
+}
+
+export async function copyLinkedIntoLibrary(
+  projectId: string,
+  operationId: string,
+  onProgress: (progress: CopyIntoLibraryProgress) => void,
+): Promise<CopiedIntoLibrary> {
+  const channel = new Channel<CopyIntoLibraryProgress>();
+  channel.onmessage = onProgress;
+  try {
+    return await invoke<CopiedIntoLibrary>("copy_linked_into_library", {
+      projectId,
+      operationId,
+      onProgress: channel,
+    });
+  } finally {
+    channel.onmessage = () => {};
+  }
+}
+
+export const cancelCopyIntoLibrary = (operationId: string) =>
+  invoke<boolean>("cancel_copy_into_library", { operationId });
+
+export const removeLinkedProject = (projectId: string) =>
+  invoke<void>("remove_linked_project", { projectId });
+
+export interface ProjectAvailabilityEvent {
+  projectId: string;
+  availability: ProjectAvailability;
+  locationGeneration: number;
+  relocated: boolean;
+  grantsReset: boolean;
+}
+export type LocateFolderOutcome = "cancelled" | "declined" | "rebound";
+export interface BufferCopyFile {
+  path: string;
+  content: string;
+}
+export interface SavedBufferCopy {
+  folder: string;
+  written: number;
+}
+export const locateProjectFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("locate_project_folder", { projectId });
+export const adoptReplacedFolder = (projectId: string) =>
+  invoke<LocateFolderOutcome>("adopt_replaced_folder", { projectId });
+export const saveOpenBuffersCopy = (projectId: string, name: string, files: BufferCopyFile[]) =>
+  invoke<SavedBufferCopy | null>("save_open_buffers_copy", { projectId, name, files });
+
+export interface OpenRequestPreview {
+  project_id: string | null;
+  display_name: string;
+}
+export const pendingOpenRequests = () =>
+  invoke<PendingOpenRequest[]>("pending_open_requests");
+export const beginOpenSession = () => invoke<number>("begin_open_session");
+export const prepareOpenRequest = (token: string, session: number | null) =>
+  invoke<OpenRequestPreview>("prepare_open_request", { token, session });
+export const discardOpenRequest = (token: string, session: number | null) =>
+  invoke<void>("discard_open_request", { token, session });
+export const openFolderRequest = (token: string, session: number | null) =>
+  invoke<OpenedFolder>("open_folder_request", { token, session });
+export const pickOpenFolder = (browse: string | null = null) =>
+  invoke<PendingOpenRequest | null>("pick_open_folder", { browse });
+export const debugInjectOpenRequest = (path: string) =>
+  invoke<PendingOpenRequest>("debug_inject_open_request", { path });
+export const debugAnswerNextConfirmation = (answer: boolean) =>
+  invoke<void>("debug_answer_next_confirmation", { answer });
+export type SystemIntegrationItemId =
+  | "quick_action"
+  | "explorer_menu"
+  | "dolphin"
+  | "nemo"
+  | "nautilus"
+  | "folder_open_with";
+export type SystemIntegrationState = "installed" | "not_installed" | "needs_attention";
+export type SystemIntegrationAttention =
+  | "outdated"
+  | "elsewhere"
+  | "moved"
+  | "no_default_file_manager";
+export interface SystemIntegrationItem {
+  id: SystemIntegrationItemId;
+  state: SystemIntegrationState;
+  packaged: boolean;
+  attention: SystemIntegrationAttention | null;
+  quick_actions_menu: boolean | null;
+  menu_title: string | null;
+}
+export interface SystemIntegrationStatus {
+  platform: "macos" | "windows" | "linux" | "other";
+  items: SystemIntegrationItem[];
+}
+export const systemIntegrationStatus = () =>
+  invoke<SystemIntegrationStatus>("system_integration_status");
+export const setSystemIntegration = (item: SystemIntegrationItemId, enabled: boolean) =>
+  invoke<SystemIntegrationItem>("system_integration_set", { item, enabled });
+export const claimQuickActionOffer = () => invoke<boolean>("claim_quick_action_offer");
+export interface RecentProjectEntry {
+  id: string;
+  name: string;
+}
+export const setRecentProjects = (projects: RecentProjectEntry[]) =>
+  invoke<void>("set_recent_projects", { projects });
 
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });
@@ -1152,8 +1363,8 @@ export const discordCommunityStats = () =>
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
 
-export const gitSetRemote = (projectId: string, url: string) =>
-  invoke<void>("git_set_remote", { projectId, url });
+export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
+  invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
 export const gitRemoveRemote = (projectId: string) =>
   invoke<void>("git_remove_remote", { projectId });
 export const gitGetRemote = (projectId: string) =>
@@ -1320,6 +1531,34 @@ export const approvalsModeGet = (projectId: string) =>
   invoke<ApprovalMode>("approvals_mode_get", { projectId });
 export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
   invoke<void>("approvals_mode_set", { projectId, mode });
+
+export type ProjectTrust = {
+  trusted: boolean;
+  source: "library" | "folder" | "parent_folder" | null;
+  parent: string | null;
+  repository: { name: string; trusted: boolean } | null;
+};
+export type TrustScope = "folder" | "parent" | "repository";
+export const projectTrustState = (projectId: string) =>
+  invoke<ProjectTrust>("project_trust_state", { projectId });
+export const trustFolder = (projectId: string, scope: TrustScope) =>
+  invoke<ProjectTrust>("trust_folder", { projectId, scope });
+export const revokeFolderTrust = (projectId: string) =>
+  invoke<ProjectTrust>("revoke_folder_trust", { projectId });
+
+export type SyncService =
+  | "icloud_drive"
+  | "one_drive"
+  | "dropbox"
+  | "google_drive"
+  | "box"
+  | "cloud_storage";
+export type FolderStatus = {
+  read_only: boolean;
+  synced_with: SyncService | null;
+};
+export const projectFolderStatus = (projectId: string) =>
+  invoke<FolderStatus | null>("project_folder_status", { projectId });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

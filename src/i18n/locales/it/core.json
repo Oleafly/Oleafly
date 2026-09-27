@@ -46,7 +46,8 @@
     "projectChangedRetry": "Il progetto è cambiato durante l'importazione della citazione. Riprova nel progetto originale.",
     "readFailed": "Impossibile leggere {{path}}: {{detail}}",
     "unrecognizedFile": "Tipo di file non riconosciuto: {{name}}",
-    "writeFailed": "Impossibile scrivere {{path}}: {{detail}}"
+    "writeFailed": "Impossibile scrivere {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} rimanda a un file fuori da questa cartella, quindi Oleafly non può aggiungervi nulla. Aggiungi il riferimento in Zotero o dove viene gestito quel file."
   },
   "citeOleafly": {
     "added": "Voce Oleafly aggiunta a {{path}}. Citala con {{markup}}.",
@@ -383,7 +384,8 @@
     "changedOnDisk": "\"{{path}}\" è stato modificato fuori da Oleafly. Ricaricalo, oppure salva di nuovo per mantenere la tua versione.",
     "openFileEncoding": "Impossibile aprire \"{{path}}\" perché non è un file di testo UTF-8. Se è testo, salvalo in UTF-8 e riaprilo.",
     "openFileFailed": "Impossibile aprire \"{{path}}\". Consulta il registro dell’app per i dettagli.",
-    "reloadFromDisk": "Ricarica"
+    "reloadFromDisk": "Ricarica",
+    "changedOnDiskElsewhere": "{{path}} è cambiato sul disco, quindi Oleafly non l'ha salvato. Aprilo per scegliere quale versione tenere."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analisi non riuscita: {{message}}",
@@ -591,5 +593,9 @@
   "checkpoint": {
     "storageUnavailable": "Impossibile salvare un checkpoint. Il disco è pieno o non è possibile scrivere nella cartella dei checkpoint. Libera spazio o controlla i permessi della cartella, poi compila di nuovo.",
     "incompleteCapture": "Impossibile salvare gli ultimi checkpoint perché non è stato possibile leggere alcuni file del progetto. Controlla i loro permessi, poi compila di nuovo."
+  },
+  "folderUnavailable": {
+    "compile": "La compilazione è in pausa finché la cartella del progetto non torna disponibile.",
+    "saveReason": "la cartella del progetto non è disponibile"
   }
 }

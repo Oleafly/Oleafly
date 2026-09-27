@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <Property Id="OLEAFLY_FOLDER_VERB" Secure="yes">
+      <RegistrySearch Id="OleaflyFolderVerbSearch" Root="HKCU" Key="Software\Classes\Directory\shell\Oleafly\command" Type="raw" />
+    </Property>
+    <Property Id="OLEAFLY_BACKGROUND_VERB" Secure="yes">
+      <RegistrySearch Id="OleaflyBackgroundVerbSearch" Root="HKCU" Key="Software\Classes\Directory\Background\shell\Oleafly\command" Type="raw" />
+    </Property>
+
+    <SetProperty Id="OLEAFLY_OWN_VERB" Value="&quot;[INSTALLDIR]oleafly.exe&quot; --open-folder &quot;%V&quot;" After="CostFinalize" Sequence="execute" />
+
+    <SetProperty Id="RemoveOleaflyFolderVerb" Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Classes\Directory\shell\Oleafly&quot; /f" Before="RemoveOleaflyFolderVerb" Sequence="execute" />
+    <CustomAction Id="RemoveOleaflyFolderVerb" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <SetProperty Id="RemoveOleaflyBackgroundVerb" Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Classes\Directory\Background\shell\Oleafly&quot; /f" Before="RemoveOleaflyBackgroundVerb" Sequence="execute" />
+    <CustomAction Id="RemoveOleaflyBackgroundVerb" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RemoveOleaflyFolderVerb" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_FOLDER_VERB ~= OLEAFLY_OWN_VERB</Custom>
+      <Custom Action="RemoveOleaflyBackgroundVerb" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_BACKGROUND_VERB ~= OLEAFLY_OWN_VERB</Custom>
+    </InstallExecuteSequence>
+
+    <ComponentGroup Id="OleaflyExplorerMenu" />
+  </Fragment>
+</Wix>

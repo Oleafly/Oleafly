@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新编译"
     },
+    "saveSettingsToFolder": {
+      "keywords": "保存 项目设置 文件夹 project.json 共享 主文档",
+      "label": "将项目设置保存到此文件夹",
+      "saved": "项目设置已保存到此文件夹的 project.json 中。"
+    },
     "section": {
       "label": "章节"
     },
@@ -213,6 +218,10 @@
         "titleCase": "标题大小写 首字母大写 文本",
         "uppercase": "大写 大小写 文本"
       }
+    },
+    "openFolder": {
+      "label": "打开文件夹…",
+      "keywords": "打开 文件夹 目录 现有 本地 文件 磁盘"
     }
   },
   "community": {
@@ -259,6 +268,7 @@
     "texRootBroken": "{{file}} 中的 % !TEX root 指向一个不存在的文件（{{target}}）。",
     "texRootLabel": "TEX 根文件",
     "texRootName": "根文件：{{name}}",
+    "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 文件。",
     "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。"
   },
   "datePicker": {
@@ -359,6 +369,25 @@
     },
     "title": "出错了"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此文件夹不可用。",
+      "body": "请重新连接驱动器或找到该文件夹。打开的文件会保留在这里，在文件夹恢复之前，Oleafly 不会保存或编译。"
+    },
+    "replaced": {
+      "title": "此文件夹已被替换。",
+      "body": "原位置现在是另一个文件夹。Oleafly 已停止保存，以免覆盖其中的内容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 无法打开此文件夹。",
+      "body": "请检查文件夹的权限，然后重试。打开的文件会保留在这里。"
+    },
+    "locate": "定位",
+    "useThisFolder": "使用此文件夹",
+    "saveCopy": "保存副本",
+    "tryAgain": "重试",
+    "savedCopy": "已将打开的文件保存到 {{folder}}。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
     "actions": "GitHub 操作",
@@ -417,6 +446,68 @@
     },
     "tryCommand": "试试命令",
     "unknownCommand": "未知命令。输入 / 查看可用命令。"
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly 应该编译哪个文档？",
+      "askDescription": "此文件夹中有多个文档。请选择主文档，之后可以更改。",
+      "listLabel": "此文件夹中的文档",
+      "open": "打开",
+      "browse": "仅浏览文件",
+      "bestMatch": "最佳匹配",
+      "empty": "Oleafly 在这里没有找到文档。请在文件树中右键点击一个文件，然后选择“设为主文档”。",
+      "truncated": "此文件夹较大，Oleafly 提前停止了查找。部分文档可能没有列出。",
+      "openFailed": "无法将 {{path}} 设为主文档。"
+    },
+    "kind": {
+      "document": "文档",
+      "book": "书籍",
+      "presentation": "演示文稿",
+      "poster": "海报",
+      "standalone": "独立图形",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "其他"
+    },
+    "reason": {
+      "declared": "已标记为主文件",
+      "top_level": "位于顶层文件夹",
+      "named_main": "名为 main",
+      "named_after_folder": "与所在文件夹同名",
+      "includes_files": "包含其他文件",
+      "has_bibliography": "带有参考文献",
+      "no_begin_document": "没有 \\begin{document}",
+      "standalone_figure": "独立图形",
+      "placeholder": "尚未下载"
+    },
+    "noMain": "还没有主文档。请选择一个文件，然后选择“设为主文档”。",
+    "trust": {
+      "banner": "Oleafly 限制了此文件夹中的部分功能。要信任它并开启 Git、终端、代理和 shell escape 吗？",
+      "trustFolder": "信任此文件夹",
+      "trustParent": "信任上级文件夹",
+      "trustRepository": "信任此仓库",
+      "hide": "隐藏",
+      "terminal": "在你信任此文件夹之前，此终端中的 Git 钩子和仓库设置处于关闭状态。",
+      "terminalReopen": "此终端在你信任文件夹之前启动。重新打开它即可启用 Git 钩子。",
+      "reopenTerminal": "重新打开终端",
+      "failed": "无法信任此文件夹。"
+    },
+    "readOnly": {
+      "banner": "此文件夹为只读。你可以编译，但无法保存修改。",
+      "copy": "复制到库",
+      "copied": "Oleafly 已将此文件夹复制到你的库。你现在编辑的是副本。"
+    },
+    "sync": {
+      "syncsWith": "与 {{service}} 同步",
+      "cloudStorage": "与云服务同步",
+      "services": {
+        "icloud_drive": "iCloud 云盘",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google 云端硬盘",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "在本项目的所有文件中搜索。",
@@ -531,6 +622,7 @@
         "calculating": "正在计算存储用量…",
         "desktopOnly": "存储详情仅可在桌面应用中查看。",
         "error": "无法计算存储详情。",
+        "linkedFolders_other": "{{count}} 个已打开文件夹的构建输出和设置共占用 {{size}}。",
         "refresh": "刷新存储用量",
         "stats": {
           "appData": "应用数据",
@@ -767,7 +859,8 @@
     "loadingCore": "正在加载 Oleafly Core",
     "loadingHarness": "正在加载 Oleafly Harness",
     "loadingParsers": "正在加载 Oleafly Parsers",
-    "starting": "正在启动 Oleafly"
+    "starting": "正在启动 Oleafly",
+    "opening": "正在打开 {{name}}…"
   },
   "theme": {
     "dark": "深色",
@@ -901,5 +994,30 @@
   "windows": {
     "preview": "预览：{{title}}",
     "update": "Oleafly 更新"
+  },
+  "openFolder": {
+    "confirmTitle": "停止并打开 {{name}}？",
+    "confirmCompile": "{{project}} 仍在编译。打开 {{name}} 会停止编译。你的更改会先保存。",
+    "confirmAssistant": "助手仍在 {{project}} 中工作。打开 {{name}} 会停止它的回复。你的更改会先保存。",
+    "confirmBoth": "{{project}} 仍在编译，助手也仍在工作。打开 {{name}} 会同时停止两者。你的更改会先保存。",
+    "confirmAction": "停止并打开",
+    "chooseSubfolder": "选择子文件夹",
+    "refusedTitle": "无法打开 {{name}}",
+    "refused": "无法打开 {{name}}。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "请在“系统设置”中打开“隐私与安全性”，再进入“文件和文件夹”，为 Oleafly 打开访问权限。如果列表中没有 Oleafly，请将它添加到“完全磁盘访问权限”，然后重试。",
+      "windows": "请在文件夹“属性”的“安全”选项卡中确认你的账户可以读取它，然后重试。",
+      "linux": "请确认你的账户可以读取此文件夹，然后重试。"
+    }
+  },
+  "quickActionOffer": {
+    "title": "从 Finder 打开文件夹",
+    "body": "将“在 Oleafly 中打开”添加到 Finder。它立即可在“服务”菜单中使用，打开后也可在“快速操作”中使用。",
+    "add": "添加到 Finder",
+    "notNow": "以后再说",
+    "added": "已添加。现在可以从 Finder 的“服务”菜单使用它。如需在“快速操作”中使用，请右键点按文件夹，然后在“快速操作” › “自定义”中将其打开。",
+    "addedInQuickActions": "已添加。右键点按文件夹，即可在“快速操作”中找到它。",
+    "failed": "无法添加。你可以在“设置” › “通用”中重试。"
   }
 }

@@ -170,6 +170,11 @@
     "recompile": {
       "label": "Recompiler"
     },
+    "saveSettingsToFolder": {
+      "keywords": "enregistrer paramètres projet dossier project.json partager document principal",
+      "label": "Enregistrer les paramètres du projet dans ce dossier",
+      "saved": "Les paramètres du projet ont été enregistrés dans le fichier project.json de ce dossier."
+    },
     "section": {
       "label": "Section"
     },
@@ -215,6 +220,10 @@
         "titleCase": "capitales initiales casse texte",
         "uppercase": "majuscules casse texte"
       }
+    },
+    "openFolder": {
+      "label": "Ouvrir un dossier…",
+      "keywords": "ouvrir dossier répertoire existant local fichiers disque"
     }
   },
   "community": {
@@ -261,6 +270,7 @@
     "texRootBroken": "Le % !TEX root de {{file}} pointe vers un fichier absent ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "racine : {{name}}",
+    "texRootNotTex": "Le % !TEX root de {{file}} pointe vers {{target}}, qui n'est pas un fichier LaTeX",
     "texRootOverride": "racine : {{path}} (définie par % !TEX root dans {{file}})"
   },
   "datePicker": {
@@ -363,6 +373,25 @@
     },
     "title": "Une erreur est survenue"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Ce dossier n'est pas disponible.",
+      "body": "Reconnectez le disque ou retrouvez le dossier. Vos fichiers ouverts restent ici, et Oleafly n'enregistre ni ne compile tant que le dossier n'est pas revenu."
+    },
+    "replaced": {
+      "title": "Ce dossier a été remplacé.",
+      "body": "Un autre dossier se trouve désormais à sa place. Oleafly a cessé d'enregistrer pour ne rien y écraser."
+    },
+    "permissionDenied": {
+      "title": "Oleafly ne peut pas ouvrir ce dossier.",
+      "body": "Vérifiez les autorisations du dossier, puis réessayez. Vos fichiers ouverts restent ici."
+    },
+    "locate": "Localiser",
+    "useThisFolder": "Utiliser ce dossier",
+    "saveCopy": "Enregistrer une copie",
+    "tryAgain": "Réessayer",
+    "savedCopy": "Vos fichiers ouverts ont été enregistrés dans {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub : {{login}}",
     "actions": "Actions GitHub",
@@ -421,6 +450,68 @@
     },
     "tryCommand": "Essayez une commande",
     "unknownCommand": "Commande inconnue. Tapez / pour voir les commandes disponibles."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Quel document Oleafly doit-il compiler ?",
+      "askDescription": "Ce dossier contient plusieurs documents. Choisissez le document principal. Vous pourrez le changer plus tard.",
+      "listLabel": "Documents de ce dossier",
+      "open": "Ouvrir",
+      "browse": "Parcourir les fichiers",
+      "bestMatch": "Meilleur choix",
+      "empty": "Oleafly n'a trouvé aucun document ici. Faites un clic droit sur un fichier dans l'arborescence et choisissez Définir comme document principal.",
+      "truncated": "Ce dossier est volumineux, Oleafly a donc arrêté de chercher plus tôt. Certains documents peuvent manquer dans la liste.",
+      "openFailed": "Impossible de définir {{path}} comme document principal."
+    },
+    "kind": {
+      "document": "Document",
+      "book": "Livre",
+      "presentation": "Présentation",
+      "poster": "Poster",
+      "standalone": "Figure autonome",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Autre"
+    },
+    "reason": {
+      "declared": "Désigné comme fichier principal",
+      "top_level": "Dans le dossier racine",
+      "named_main": "Nommé main",
+      "named_after_folder": "Porte le nom de son dossier",
+      "includes_files": "Inclut d'autres fichiers",
+      "has_bibliography": "Contient une bibliographie",
+      "no_begin_document": "Sans \\begin{document}",
+      "standalone_figure": "Figure autonome",
+      "placeholder": "Pas encore téléchargé"
+    },
+    "noMain": "Pas encore de document principal. Choisissez un fichier puis Définir comme document principal.",
+    "trust": {
+      "banner": "Oleafly a limité certaines fonctions dans ce dossier. Faire confiance à ce dossier pour activer Git, le terminal, les agents et le shell escape ?",
+      "trustFolder": "Faire confiance à ce dossier",
+      "trustParent": "Faire confiance au dossier parent",
+      "trustRepository": "Faire confiance au dépôt",
+      "hide": "Masquer",
+      "terminal": "Les hooks Git et les réglages du dépôt sont désactivés dans ce terminal tant que vous ne faites pas confiance au dossier.",
+      "terminalReopen": "Ce terminal a démarré avant que vous fassiez confiance au dossier. Rouvrez-le pour activer les hooks Git.",
+      "reopenTerminal": "Rouvrir le terminal",
+      "failed": "Impossible de faire confiance à ce dossier."
+    },
+    "readOnly": {
+      "banner": "Ce dossier est en lecture seule. Vous pouvez compiler, mais les modifications ne peuvent pas être enregistrées.",
+      "copy": "Copier dans la bibliothèque",
+      "copied": "Oleafly a copié ce dossier dans votre bibliothèque. Vous modifiez maintenant la copie."
+    },
+    "sync": {
+      "syncsWith": "Synchronisé avec {{service}}",
+      "cloudStorage": "Synchronisé avec un service cloud",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Recherchez dans les fichiers de ce projet.",
@@ -553,6 +644,9 @@
         "calculating": "Calcul de l'espace utilisé…",
         "desktopOnly": "Les détails de stockage sont disponibles dans l'application de bureau.",
         "error": "Les détails de stockage n'ont pas pu être calculés.",
+        "linkedFolders_one": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossier ouvert",
+        "linkedFolders_many": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
+        "linkedFolders_other": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
         "refresh": "Actualiser l'espace utilisé",
         "stats": {
           "appData": "Données de l'application",
@@ -803,7 +897,8 @@
     "loadingCore": "Chargement d'Oleafly Core",
     "loadingHarness": "Chargement d'Oleafly Harness",
     "loadingParsers": "Chargement d'Oleafly Parsers",
-    "starting": "Démarrage d'Oleafly"
+    "starting": "Démarrage d'Oleafly",
+    "opening": "Ouverture de {{name}}…"
   },
   "theme": {
     "dark": "Sombre",
@@ -937,5 +1032,30 @@
   "windows": {
     "preview": "Aperçu : {{title}}",
     "update": "Mise à jour d'Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Arrêter et ouvrir {{name}} ?",
+    "confirmCompile": "{{project}} est encore en cours de compilation. Ouvrir {{name}} arrête la compilation. Vos modifications sont d'abord enregistrées.",
+    "confirmAssistant": "L'assistant travaille encore dans {{project}}. Ouvrir {{name}} arrête sa réponse. Vos modifications sont d'abord enregistrées.",
+    "confirmBoth": "{{project}} est encore en cours de compilation et l'assistant travaille encore. Ouvrir {{name}} arrête les deux. Vos modifications sont d'abord enregistrées.",
+    "confirmAction": "Arrêter et ouvrir",
+    "chooseSubfolder": "Choisir un sous-dossier",
+    "refusedTitle": "Impossible d'ouvrir {{name}}",
+    "refused": "Impossible d'ouvrir {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Dans Réglages Système, ouvrez Confidentialité et sécurité, puis Fichiers et dossiers, et activez Oleafly. Si Oleafly n'y figure pas, ajoutez-le dans Accès complet au disque, puis réessayez.",
+      "windows": "Vérifiez dans l'onglet Sécurité des Propriétés du dossier que votre compte peut le lire, puis réessayez.",
+      "linux": "Vérifiez que votre compte peut lire ce dossier, puis réessayez."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Ouvrir des dossiers depuis le Finder",
+    "body": "Ajoutez Ouvrir dans Oleafly au Finder. Elle marche tout de suite depuis le menu Services, et depuis Actions rapides une fois activée.",
+    "add": "Ajouter au Finder",
+    "notNow": "Plus tard",
+    "added": "C'est fait. Elle se trouve maintenant dans le menu Services du Finder. Pour l'utiliser aussi depuis Actions rapides, faites un clic droit sur un dossier et activez-la dans Actions rapides › Personnaliser.",
+    "addedInQuickActions": "C'est fait. Faites un clic droit sur un dossier et vous la trouverez dans Actions rapides.",
+    "failed": "Impossible de l'ajouter. Vous pouvez réessayer dans Paramètres › Général."
   }
 }

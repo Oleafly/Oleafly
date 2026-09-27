@@ -1399,6 +1399,35 @@
     "description": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty.",
     "label": "Obnovit nastavení"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} bude v PATH, až se odhlásíte a znovu přihlásíte. Pak otevřete nový terminál.",
+    "checking": "Kontroluje se…",
+    "description": "Napište v terminálu <code>oleafly .</code> a složka se otevře v Oleafly.",
+    "install": "Nainstalovat",
+    "installing": "Instaluje se…",
+    "loadFailed": "Stav příkazu pro terminál se nepodařilo zjistit.",
+    "notOnPath": {
+      "file": "{{directory}} zatím není v PATH. Přidejte tento řádek do {{file}} a otevřete nový terminál:",
+      "run": "{{directory}} zatím není v PATH. Jednou spusťte tento příkaz a otevřete nový terminál:"
+    },
+    "removing": "Odebírá se…",
+    "result": {
+      "copied": "Příkaz byl zkopírován do {{path}}.",
+      "linked": "{{path}} teď odkazuje na tuto kopii Oleafly.",
+      "removed": "{{path}} byl odebrán."
+    },
+    "state": {
+      "installed": "Nainstalováno v {{path}}.",
+      "moveApp": "Nejprve přesuňte Oleafly do složky Aplikace a pak zde příkaz nainstalujte.",
+      "notInstalled": "Přidá oleafly do {{directory}}.",
+      "occupied": "{{path}} už existuje a nevytvořil ho Oleafly, proto zůstane beze změny.",
+      "outdated": "{{path}} stále odkazuje na starší kopii Oleafly. Aktualizujte ho, aby používal tuto kopii.",
+      "packaged": "Nainstalováno v {{path}} balíčkem Oleafly.",
+      "unavailable": "Tato kopie Oleafly příkaz neobsahuje."
+    },
+    "title": "Příkaz pro terminál",
+    "update": "Aktualizovat"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1432,6 +1461,10 @@
       "toggleTerminal": {
         "description": "Zobrazit nebo skrýt terminál projektu.",
         "label": "Přepnout terminál"
+      },
+      "openFolder": {
+        "label": "Otevřít složku",
+        "description": "Otevřít složku z počítače jako projekt."
       }
     },
     "application": {
@@ -1507,6 +1540,58 @@
         "uppercase": "Velká písmena"
       },
       "unbound": "Nenastaveno"
+    }
+  },
+  "systemIntegration": {
+    "title": "Integrace se systémem",
+    "description": "Otevírejte složky v Oleafly přímo ze správce souborů.",
+    "checking": "Kontroluje se…",
+    "loadFailed": "Nastavení správce souborů se nepodařilo zkontrolovat.",
+    "state": {
+      "installed": "Nainstalováno",
+      "notInstalled": "Nenainstalováno",
+      "needsAttention": "Vyžaduje pozornost"
+    },
+    "actions": {
+      "install": "Nainstalovat",
+      "repair": "Opravit"
+    },
+    "failed": {
+      "install": "Instalace se nezdařila. Zkuste to znovu.",
+      "remove": "Odebrání se nezdařilo. Zkuste to znovu."
+    },
+    "packaged": "Nainstalováno s balíčkem Oleafly.",
+    "quickAction": {
+      "label": "Rychlé akce ve Finderu",
+      "description": "Přidá Otevřít v Oleafly do nabídky Služby, když ve Finderu kliknete pravým tlačítkem na složku.",
+      "menuHint": "V nabídce Rychlé akce zatím není. Klikněte pravým tlačítkem na složku, vyberte Rychlé akce › Vlastní a zapněte {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Místní nabídka Průzkumníka souborů",
+      "description": "Klikněte pravým tlačítkem na složku nebo na prázdné místo v ní a vyberte Otevřít v aplikaci Oleafly. Ve Windows 11 ji najdete pod Zobrazit další možnosti.",
+      "toggle": "Zobrazovat Otevřít v aplikaci Oleafly v Průzkumníkovi souborů"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Přidá Otevřít v aplikaci Oleafly, když v Dolphinu kliknete pravým tlačítkem na složku."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Přidá Otevřít v aplikaci Oleafly, když v Nemo kliknete pravým tlačítkem na složku."
+    },
+    "nautilus": {
+      "label": "Soubory",
+      "description": "Přidá Otevřít v aplikaci Oleafly do nabídky Skripty, když v Souborech GNOME kliknete pravým tlačítkem na složku."
+    },
+    "folderOpenWith": {
+      "label": "Nabídka Otevřít pomocí pro složky",
+      "description": "Zobrazí Oleafly v nabídce Otevřít pomocí pro složky. Váš výchozí správce souborů zůstane stejný."
+    },
+    "attention": {
+      "outdated": "Je zastaralá nebo ji zablokoval macOS. Opravou ji obnovíte.",
+      "elsewhere": "Nabídka otevírá jinou kopii Oleafly. Opravte ji, abyste používali tuto.",
+      "moved": "Odkazuje na kopii Oleafly, která byla přesunuta. Opravte ji, abyste používali tuto.",
+      "noDefaultFileManager": "Váš systém nemá výchozího správce souborů pro složky, takže by tato položka mohla otevírat každou složku v Oleafly. Odeberte ji."
     }
   }
 }

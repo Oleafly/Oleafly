@@ -1,0 +1,21 @@
+[
+  { "text": "% !TEX root = ../main.tex\n\\section{Intro}\n", "root": "../main.tex", "program": null },
+  { "text": "% !tex ROOT=main.tex\n", "root": "main.tex", "program": null },
+  { "text": "%!TEX root=x.tex\n", "root": "x.tex", "program": null },
+  { "text": "  % !TeX root = indented.tex\n", "root": "indented.tex", "program": null },
+  { "text": "% TeX root = no-bang.tex\n", "root": "no-bang.tex", "program": null },
+  { "text": "% ! TeX root = spaced-bang.tex\n", "root": "spaced-bang.tex", "program": null },
+  { "text": "%!TeX  root  =  wide.tex  \n", "root": "wide.tex", "program": null },
+  { "text": "% !TEX root = crlf.tex\r\n\\relax\r\n", "root": "crlf.tex", "program": null },
+  { "text": "% !TEX root = \n% !TEX root = second.tex\n", "root": "second.tex", "program": null },
+  { "text": "% !TEX root = first.tex\n% !TEX root = second.tex\n", "root": "first.tex", "program": null },
+  { "text": "% !TEX program = lualatex\n\\relax\n", "root": null, "program": "lualatex" },
+  { "text": "% !TeX TS-program = pdflatex\n", "root": null, "program": null },
+  { "text": "% !TeX rootfile = wrong.tex\n", "root": null, "program": null },
+  { "text": "%% !TeX root = doubled.tex\n", "root": null, "program": null },
+  { "text": "%!TeXroot=joined.tex\n", "root": null, "program": null },
+  { "text": "\\documentclass{article} % !TeX root = trailing.tex\n", "root": null, "program": null },
+  { "text": "\\documentclass{article}\n", "root": null, "program": null },
+  { "text": "l\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\n% !TEX root = fiftieth.tex\n", "root": "fiftieth.tex", "program": null },
+  { "text": "l\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\nl\n% !TEX root = late.tex\n", "root": null, "program": null }
+]

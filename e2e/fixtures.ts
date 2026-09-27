@@ -297,6 +297,9 @@ function createNativeTest(dismissTours: boolean) {
           localStorage.setItem("oleafly:compile:mode", "normal");
           localStorage.setItem("oleafly.appFontSize", "16");
           localStorage.setItem("oleafly.appFont", "");
+          localStorage.setItem("oleafly.dictionary.locale", "en_US");
+          localStorage.setItem("oleafly.spellcheck", "1");
+          localStorage.setItem("oleafly.harper", "1");
           localStorage.setItem("oleafly.assistant-runtime.v1", '{"state":{"runtime":"built-in"},"version":0}');
           return true;
         })()`);

@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly-sovelluksen kuvake",
     "welcomeTitle": "Tervetuloa Oleaflyyn",
     "welcomeDescription": "Kirjoita, käännä ja oikolue LaTeX-, Typst- ja Markdown-dokumentteja. Hallitse viittauksia, tarkista PDF-tiedostoja, seuraa muutoksia Git-versionhallinnassa ja työskentele valitsemiesi tekoälymallien kanssa.",
-    "createFirstProject": "Luo uusi projekti",
     "loading": "Luetaan kirjastoa…",
     "noBookmarksTitle": "Ei vielä kirjanmerkkejä",
     "noBookmarksDescription": "Vie osoitin kirjan päälle ja napsauta sen kirjanmerkkiä.",
@@ -68,8 +67,15 @@
       "anyTime": "Mikä tahansa aika",
       "last7Days": "Viimeiset 7 päivää",
       "last30Days": "Viimeiset 30 päivää",
-      "lastYear": "Viimeinen vuosi"
-    }
+      "lastYear": "Viimeinen vuosi",
+      "location": "Sijainti",
+      "locationAll": "Kaikki projektit",
+      "locationLibrary": "Oleaflyssä",
+      "locationExternal": "Ulkoiset projektit"
+    },
+    "openFolder": "Avaa kansio",
+    "openFolderShortcut": "Avaa kansio ({{shortcut}})",
+    "createFirstProject": "Luo uusi projekti"
   },
   "projects": {
     "open": "Avaa {{name}}",
@@ -83,7 +89,7 @@
     "actions": "Toiminnot kohteelle {{name}}",
     "details": "Projektin tiedot",
     "exportHistory": "Vientihistoria",
-    "changeColor": "Vaihda projektin väri",
+    "changeColor": "Projektin väri",
     "fork": "Haaroita projekti",
     "delete": "Poista projekti",
     "favoriteAdd": "Lisää suosikkeihin",
@@ -95,7 +101,8 @@
     "kind": {
       "document": "dokumentti",
       "image": "kuva",
-      "diagram": "kaavio"
+      "diagram": "kaavio",
+      "external": "ulkoinen"
     },
     "preview": {
       "title": "PDF-esikatselu: {{name}}",
@@ -371,7 +378,9 @@
     "nameRequired": "Anna repositorion nimi.",
     "published": "Julkaistiin kohteeseen {{repository}}.",
     "linked": "Linkitettiin ja työnnettiin kohteeseen {{remote}}.",
-    "pushNeedsPull": "Linkitettiin kohteeseen {{remote}}, mutta työntö vaatii ensin noudon: {{detail}}"
+    "pushNeedsPull": "Linkitettiin kohteeseen {{remote}}, mutta työntö vaatii ensin noudon: {{detail}}",
+    "replaceRemotePrompt": "Tämä projekti on linkitetty kohteeseen {{remote}}. Korvataanko linkki?",
+    "replaceRemote": "Korvaa linkki"
   },
   "deadlines": {
     "title": "Konferenssien määräajat",
@@ -458,6 +467,75 @@
       "sourcesTitle": "Lähteet",
       "sourcesBody": "Tiedot yhdistävät avoimen ccf-deadlines-aineiston ja Oleaflyn seuraamat konferenssien viralliset sivustot.",
       "confirm": "Varmista jokainen päivämäärä konferenssin virallisilta sivuilta ennen jättämistä."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Uusi projekti",
+    "newProjectDescription": "Aloita mallipohjasta tai tyhjältä sivulta.",
+    "openFolderTitle": "Avaa kansio",
+    "openFolderDescription": "Työskentele tiedostoilla, jotka ovat jo tietokoneellasi. Ne pysyvät paikoillaan."
+  },
+  "openFolder": {
+    "dismiss": "Sulje"
+  },
+  "folder": {
+    "state": {
+      "missing": "Kansio puuttuu",
+      "offline": "Asemaa ei ole liitetty",
+      "replaced": "Kansio on korvattu",
+      "permissionDenied": "Ei käyttöoikeutta"
+    },
+    "menu": {
+      "showInFinder": "Näytä Finderissa",
+      "showInExplorer": "Näytä Resurssienhallinnassa",
+      "showInFileManager": "Näytä tiedostonhallinnassa",
+      "copyToLibrary": "Kopioi kirjastoon",
+      "remove": "Poista Oleaflystä"
+    },
+    "remove": {
+      "title": "Poistetaanko ”{{name}}” Oleaflystä?",
+      "description": "Tiedostosi pysyvät paikoillaan. Oleafly poistaa tämän kansion käännöstiedostot ja nollaa sen luottamuksen, hyväksynnät ja linkitetyt kansiot. Avaa kansio uudelleen 30 päivän kuluessa, niin saat sen keskustelut ja historian takaisin. Muut asetukset pitää tehdä uudelleen.",
+      "confirm": "Poista Oleaflystä",
+      "done": "”{{name}}” poistettiin Oleaflystä. Sen tiedostot ovat yhä kansiossa.",
+      "failed": "Kohdetta ”{{name}}” ei voitu poistaa Oleaflystä."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Kohdetta ”{{name}}” ei löydy",
+        "body": "Se oli sijainnissa <path>{{path}}</path>, ja se on ehkä siirretty tai poistettu. Etsi se, niin sen keskustelut ja historia säilyvät."
+      },
+      "offline": {
+        "title": "”{{name}}” on asemalla, jota ei ole liitetty",
+        "body": "Liitä asema tai yhdistä verkkojako, jolla <path>{{path}}</path> on, ja yritä uudelleen."
+      },
+      "replaced": {
+        "title": "”{{name}}” on korvattu",
+        "body": "Sijainnissa <path>{{path}}</path> oleva kansio ei ole se, jonka avasit aiemmin. Käytä sitä vain, jos luotat siihen. Kun vaihdat, Oleafly poistaa luottamuksen ja hyväksynnät käytöstä."
+      },
+      "permissionDenied": {
+        "title": "Oleafly ei voi avata kohdetta ”{{name}}”",
+        "bodyMac": "Salli Oleaflyn käyttää tätä kansiota kohdassa Järjestelmäasetukset › Yksityisyys ja suojaus › Tiedostot ja kansiot ja yritä uudelleen.",
+        "bodyOther": "Tilisi ei voi lukea sijaintia <path>{{path}}</path>. Tarkista kansion käyttöoikeudet ja yritä uudelleen."
+      },
+      "back": {
+        "title": "”{{name}}” on taas käytettävissä",
+        "body": "Oleafly saa taas yhteyden kohteeseen <path>{{path}}</path>."
+      },
+      "locate": "Etsi",
+      "tryAgain": "Yritä uudelleen",
+      "useThisFolder": "Käytä tätä kansiota",
+      "checking": "Tarkistetaan",
+      "still": "Oleafly ei vieläkään tavoita kansiota."
+    },
+    "copy": {
+      "title": "Kopioi ”{{name}}” kirjastoosi",
+      "description": "Oleafly kopioi tiedostot uuteen kirjastoprojektiin ja jättää kansion paikalleen. Git-historia kopioituu mukana, mutta Git-koukut ja käännöstiedostot eivät.",
+      "counting": "Lasketaan tiedostoja…",
+      "copying": "Kopioidaan tiedostoja…",
+      "count": "{{done}}/{{total}}",
+      "done": "”{{name}}” on nyt kirjastossasi.",
+      "doneLeftOut": "”{{name}}” on nyt kirjastossasi. Muualle osoittavia linkkejä ja liian syvälle sisäkkäisiä kansioita ei kopioitu.",
+      "failed": "Kohdetta ”{{name}}” ei voitu kopioida kirjastoosi."
     }
   }
 }

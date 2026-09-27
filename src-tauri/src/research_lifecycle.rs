@@ -7,25 +7,30 @@ pub fn lifecycle_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     let started = Arc::new(AtomicBool::new(false));
     let settled = Arc::new(AtomicBool::new(false));
     tauri::plugin::Builder::new("research-lifecycle")
-        .on_event(move |app, event| {
-            let tauri::RunEvent::ExitRequested { api, code, .. } = event else {
-                return;
-            };
-            if settled.load(Ordering::Acquire) || !crate::quit_gate::flush_confirmed() {
-                return;
+        .on_event(move |app, event| match event {
+            tauri::RunEvent::ExitRequested { api, code, .. } => {
+                if settled.load(Ordering::Acquire) || !crate::quit_gate::flush_confirmed() {
+                    return;
+                }
+                api.prevent_exit();
+                if started.swap(true, Ordering::AcqRel) {
+                    return;
+                }
+                let app = app.clone();
+                let settled = settled.clone();
+                let code = code.unwrap_or(0);
+                tauri::async_runtime::spawn(async move {
+                    shutdown(&app).await;
+                    settled.store(true, Ordering::Release);
+                    app.exit(code);
+                });
             }
-            api.prevent_exit();
-            if started.swap(true, Ordering::AcqRel) {
-                return;
+            tauri::RunEvent::Exit => {
+                if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
+                    tasks.disown_on_exit();
+                }
             }
-            let app = app.clone();
-            let settled = settled.clone();
-            let code = code.unwrap_or(0);
-            tauri::async_runtime::spawn(async move {
-                shutdown(&app).await;
-                settled.store(true, Ordering::Release);
-                app.exit(code);
-            });
+            _ => {}
         })
         .build()
 }

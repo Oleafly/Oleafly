@@ -171,7 +171,9 @@
     "binaryFile": "バイナリファイルです。プレビューはできません。",
     "managedFileReadOnly": "{{file}} は Oleafly が管理しているため、ここでは読み取り専用です。プロジェクトの設定は、このファイルを編集するのではなく Oleafly 上で変更してください。",
     "noFileOpen": "ファイルが開かれていません。",
-    "noFileOpenHint": "ツリーからファイルを選ぶと編集を始められます。"
+    "noFileOpenHint": "ツリーからファイルを選ぶと編集を始められます。",
+    "linkedFileReadOnly": "{{file}} はこのフォルダ外のファイルへのリンクのため、ここでは編集できません。Zotero など、ファイルがある場所で変更してください。",
+    "diffOnDisk": "ディスク上"
   },
   "projectInfo": {
     "trigger": "プロジェクト情報",
@@ -205,6 +207,8 @@
     "spellLanguageAppSetting": "アプリの設定を使う",
     "spellLanguageAriaLabel": "このプロジェクトのスペルチェック言語",
     "spellLanguageHint": "このプロジェクトにのみ適用されます。ほかの言語は設定からダウンロードできます。",
+    "spellLanguageFolderHint": "このフォルダの project.json に保存されるため、フォルダを開くすべての人に適用されます。ほかの言語は設定からダウンロードできます。",
+    "spellLanguageReadOnly": "このフォルダは読み取り専用のため、project.json の言語は変更できません。",
     "spellLanguageFailed": "スペルチェックの言語を変更できませんでした。",
     "notChecked": "未チェック",
     "dictionaryMissing": "{{name}} がダウンロードされていないため、スペルはチェックされません。設定でダウンロードするか、別の言語を選んでください。",
@@ -327,7 +331,8 @@
     "splitView": "並べて表示",
     "unifiedView": "1 列で表示",
     "loading": "差分を読み込み中…",
-    "previewTooLarge": "ファイルが大きすぎるため、差分をプレビューできません。"
+    "previewTooLarge": "ファイルが大きすぎるため、差分をプレビューできません。",
+    "diskHeading": "ディスク上 ↔ 自分の編集"
   },
   "hotkeys": {
     "title": "キーボードショートカット",
@@ -421,6 +426,10 @@
       "sourceSize": "ソースの合計サイズ",
       "reclaimable": "解放できる容量"
     },
+    "capture": {
+      "paused": "このフォルダは大きすぎるため、チェックポイントを一時停止しています。1 つのチェックポイントに保存できるのは最大 {{files}} 件のファイルまたは {{size}} です。",
+      "skipped_other": "このフォルダの {{formattedCount}} 件のファイルはチェックポイントに含まれていません。Oleafly はリンク、非常に大きなファイル、クラウドにしかないファイル、一部のシステムで使えない名前のファイルを除外します。"
+    },
     "catalog": {
       "formatVersion": "フォーマットのバージョン",
       "lineage": "系統 ID",
@@ -453,7 +462,8 @@
       "showFor": "{{version}} のファイルを表示",
       "hideFor": "{{version}} のファイルを隠す",
       "show": "ファイルを表示",
-      "hide": "ファイルを隠す"
+      "hide": "ファイルを隠す",
+      "folderSettings": "このフォルダの Oleafly 設定"
     },
     "entry": {
       "labelInput": "チェックポイントのラベル",
@@ -1013,5 +1023,13 @@
     "label": "文書内の位置",
     "goTo": "{{title}} へ移動",
     "untitled": "無題"
+  },
+  "changedOnDisk": {
+    "message": "未保存の編集がある間に {{file}} がディスク上で変更されました。",
+    "compare": "比較",
+    "keepMine": "自分の版を残す",
+    "reload": "再読み込み",
+    "failed": "Oleafly は {{file}} を更新できませんでした。もう一度お試しください。",
+    "tabMark": "ディスク上で変更されました。このタブを開いて、残す版を選んでください。"
   }
 }

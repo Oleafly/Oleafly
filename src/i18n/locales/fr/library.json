@@ -36,7 +36,6 @@
     "appIconAlt": "Icône de l'application Oleafly",
     "welcomeTitle": "Bienvenue dans Oleafly",
     "welcomeDescription": "Rédigez, compilez et relisez du LaTeX, du Typst et du Markdown. Gérez vos citations, relisez vos PDF, suivez vos modifications dans Git et travaillez avec les modèles d'IA de votre choix.",
-    "createFirstProject": "Créer un projet",
     "loading": "Lecture de votre bibliothèque…",
     "noBookmarksTitle": "Aucun favori pour l'instant",
     "noBookmarksDescription": "Survolez un livre et cliquez sur son marque-page pour en ajouter un.",
@@ -69,8 +68,15 @@
       "anyTime": "À tout moment",
       "last7Days": "7 derniers jours",
       "last30Days": "30 derniers jours",
-      "lastYear": "Dernière année"
-    }
+      "lastYear": "Dernière année",
+      "location": "Emplacement",
+      "locationAll": "Tous les projets",
+      "locationLibrary": "Dans Oleafly",
+      "locationExternal": "Projets externes"
+    },
+    "openFolder": "Ouvrir un dossier",
+    "openFolderShortcut": "Ouvrir un dossier ({{shortcut}})",
+    "createFirstProject": "Créer un projet"
   },
   "projects": {
     "open": "Ouvrir {{name}}",
@@ -84,7 +90,7 @@
     "actions": "Actions pour {{name}}",
     "details": "Détails du projet",
     "exportHistory": "Historique des exports",
-    "changeColor": "Changer la couleur du projet",
+    "changeColor": "Couleur du projet",
     "fork": "Dupliquer le projet",
     "delete": "Supprimer le projet",
     "favoriteAdd": "Ajouter aux favoris",
@@ -96,7 +102,8 @@
     "kind": {
       "document": "document",
       "image": "image",
-      "diagram": "diagramme"
+      "diagram": "diagramme",
+      "external": "externe"
     },
     "preview": {
       "title": "Aperçu PDF : {{name}}",
@@ -378,7 +385,9 @@
     "nameRequired": "Saisissez un nom de dépôt.",
     "published": "Publié sur {{repository}}.",
     "linked": "Lié et poussé vers {{remote}}.",
-    "pushNeedsPull": "Lié à {{remote}}, mais le push exige d'abord un pull : {{detail}}"
+    "pushNeedsPull": "Lié à {{remote}}, mais le push exige d'abord un pull : {{detail}}",
+    "replaceRemotePrompt": "Ce projet est lié à {{remote}}. Remplacer ce lien ?",
+    "replaceRemote": "Remplacer le lien"
   },
   "deadlines": {
     "title": "Échéances de conférences",
@@ -467,6 +476,75 @@
       "sourcesTitle": "Sources",
       "sourcesBody": "Les fiches combinent le jeu de données ouvert ccf-deadlines et les sites officiels des conférences suivis par Oleafly.",
       "confirm": "Vérifiez chaque date sur le site officiel de la conférence avant de soumettre."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nouveau projet",
+    "newProjectDescription": "Partez d'un modèle ou d'une page blanche.",
+    "openFolderTitle": "Ouvrir un dossier",
+    "openFolderDescription": "Travaillez sur des fichiers déjà présents sur votre ordinateur. Ils restent là où ils sont."
+  },
+  "openFolder": {
+    "dismiss": "Fermer"
+  },
+  "folder": {
+    "state": {
+      "missing": "Dossier introuvable",
+      "offline": "Disque non connecté",
+      "replaced": "Dossier remplacé",
+      "permissionDenied": "Accès refusé"
+    },
+    "menu": {
+      "showInFinder": "Afficher dans le Finder",
+      "showInExplorer": "Afficher dans l'Explorateur de fichiers",
+      "showInFileManager": "Afficher dans le gestionnaire de fichiers",
+      "copyToLibrary": "Copier dans la bibliothèque",
+      "remove": "Retirer d'Oleafly"
+    },
+    "remove": {
+      "title": "Retirer « {{name}} » d'Oleafly ?",
+      "description": "Vos fichiers restent où ils sont. Oleafly supprime ses fichiers de compilation pour ce dossier et réinitialise sa confiance, ses autorisations et ses dossiers liés. Rouvrez le dossier dans les 30 jours pour retrouver ses discussions et son historique. Le reste sera à reconfigurer.",
+      "confirm": "Retirer d'Oleafly",
+      "done": "« {{name}} » a été retiré d'Oleafly. Ses fichiers sont toujours dans le dossier.",
+      "failed": "Impossible de retirer « {{name}} » d'Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Impossible de trouver « {{name}} »",
+        "body": "Il se trouvait dans <path>{{path}}</path> et a peut-être été déplacé ou supprimé. Localisez-le pour garder ses discussions et son historique."
+      },
+      "offline": {
+        "title": "« {{name}} » se trouve sur un disque qui n'est pas connecté",
+        "body": "Connectez le disque ou le partage réseau qui contient <path>{{path}}</path>, puis réessayez."
+      },
+      "replaced": {
+        "title": "« {{name}} » a été remplacé",
+        "body": "Le dossier situé dans <path>{{path}}</path> n'est pas celui que vous aviez ouvert. Utilisez-le seulement si vous lui faites confiance. Oleafly désactive la confiance et les autorisations lors du changement."
+      },
+      "permissionDenied": {
+        "title": "Oleafly ne peut pas ouvrir « {{name}} »",
+        "bodyMac": "Autorisez Oleafly à utiliser ce dossier dans Réglages Système › Confidentialité et sécurité › Fichiers et dossiers, puis réessayez.",
+        "bodyOther": "Votre compte ne peut pas lire <path>{{path}}</path>. Vérifiez les autorisations du dossier, puis réessayez."
+      },
+      "back": {
+        "title": "« {{name}} » est de retour",
+        "body": "Oleafly peut de nouveau accéder à <path>{{path}}</path>."
+      },
+      "locate": "Localiser",
+      "tryAgain": "Réessayer",
+      "useThisFolder": "Utiliser ce dossier",
+      "checking": "Vérification en cours",
+      "still": "Oleafly ne peut toujours pas y accéder."
+    },
+    "copy": {
+      "title": "Copier « {{name}} » dans votre bibliothèque",
+      "description": "Oleafly copie les fichiers dans un nouveau projet de la bibliothèque et laisse le dossier où il est. L'historique Git est conservé, mais pas les hooks Git ni les fichiers de compilation.",
+      "counting": "Comptage des fichiers…",
+      "copying": "Copie des fichiers…",
+      "count": "{{done}} sur {{total}}",
+      "done": "« {{name}} » est maintenant dans votre bibliothèque.",
+      "doneLeftOut": "« {{name}} » est maintenant dans votre bibliothèque. Les liens vers des fichiers situés ailleurs et les dossiers trop profondément imbriqués n'ont pas été copiés.",
+      "failed": "Impossible de copier « {{name}} » dans votre bibliothèque."
     }
   }
 }

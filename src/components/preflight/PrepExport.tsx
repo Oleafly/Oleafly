@@ -9,6 +9,8 @@ import { useEngineStore } from "@/store/engine";
 import { compileTaggedAndVerify } from "@/features/latex-engine";
 import { pathUsesEngineSource } from "@/lib/document-engine";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { readOnlyEditMessage } from "@/lib/read-only-files";
+import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { canPrepareAccessible, gateDocument, prepGate } from "./prep-capability";
 import { renderMessage, type PreflightTranslate } from "./message";
@@ -59,6 +61,11 @@ export function PrepExport() {
 
   const apply = () => {
     if (!latexSource || !result || !activePath) return;
+    const readOnly = readOnlyEditMessage(activePath);
+    if (readOnly) {
+      toast.error(readOnly);
+      return;
+    }
     useFilesStore.getState().setContent(activePath, result.output);
     setApplied(true);
     void usePreflightStore.getState().run();

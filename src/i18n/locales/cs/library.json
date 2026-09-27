@@ -37,7 +37,6 @@
     "appIconAlt": "Ikona aplikace Oleafly",
     "welcomeTitle": "Vítejte v Oleafly",
     "welcomeDescription": "Pište, kompilujte a korigujte v LaTeXu, Typstu a Markdownu. Spravujte citace, procházejte PDF, sledujte změny v Gitu a pracujte s modely AI, které si zvolíte.",
-    "createFirstProject": "Vytvořit nový projekt",
     "loading": "Načítá se vaše knihovna…",
     "noBookmarksTitle": "Zatím žádné záložky",
     "noBookmarksDescription": "Najeďte na knihu a kliknutím na záložku ji přidáte.",
@@ -70,8 +69,15 @@
       "anyTime": "Kdykoli",
       "last7Days": "Posledních 7 dní",
       "last30Days": "Posledních 30 dní",
-      "lastYear": "Poslední rok"
-    }
+      "lastYear": "Poslední rok",
+      "location": "Umístění",
+      "locationAll": "Všechny projekty",
+      "locationLibrary": "V Oleafly",
+      "locationExternal": "Externí projekty"
+    },
+    "openFolder": "Otevřít složku",
+    "openFolderShortcut": "Otevřít složku ({{shortcut}})",
+    "createFirstProject": "Vytvořit nový projekt"
   },
   "projects": {
     "open": "Otevřít {{name}}",
@@ -85,7 +91,7 @@
     "actions": "Akce pro {{name}}",
     "details": "Podrobnosti projektu",
     "exportHistory": "Historie exportů",
-    "changeColor": "Změnit barvu projektu",
+    "changeColor": "Barva projektu",
     "fork": "Rozvětvit projekt",
     "delete": "Smazat projekt",
     "favoriteAdd": "Přidat mezi oblíbené",
@@ -97,7 +103,8 @@
     "kind": {
       "document": "dokument",
       "image": "obrázek",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "externí"
     },
     "preview": {
       "title": "Náhled PDF: {{name}}",
@@ -385,7 +392,9 @@
     "nameRequired": "Zadejte název repozitáře.",
     "published": "Publikováno do {{repository}}.",
     "linked": "Propojeno a odesláno do {{remote}}.",
-    "pushNeedsPull": "Propojeno s {{remote}}, ale odeslání vyžaduje nejdřív stažení: {{detail}}"
+    "pushNeedsPull": "Propojeno s {{remote}}, ale odeslání vyžaduje nejdřív stažení: {{detail}}",
+    "replaceRemotePrompt": "Tento projekt je propojen s {{remote}}. Nahradit toto propojení?",
+    "replaceRemote": "Nahradit propojení"
   },
   "deadlines": {
     "title": "Termíny konferencí",
@@ -476,6 +485,75 @@
       "sourcesTitle": "Zdroje",
       "sourcesBody": "Záznamy kombinují otevřenou datovou sadu ccf-deadlines s oficiálními weby konferencí, které Oleafly sleduje.",
       "confirm": "Před odesláním si každé datum ověřte na oficiálním webu konference."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nový projekt",
+    "newProjectDescription": "Začněte šablonou nebo prázdnou stránkou.",
+    "openFolderTitle": "Otevřít složku",
+    "openFolderDescription": "Pracujte se soubory, které už máte v počítači. Zůstanou tam, kde jsou."
+  },
+  "openFolder": {
+    "dismiss": "Zavřít"
+  },
+  "folder": {
+    "state": {
+      "missing": "Složka chybí",
+      "offline": "Disk není připojen",
+      "replaced": "Složka byla nahrazena",
+      "permissionDenied": "Chybí oprávnění"
+    },
+    "menu": {
+      "showInFinder": "Zobrazit ve Finderu",
+      "showInExplorer": "Zobrazit v Průzkumníku souborů",
+      "showInFileManager": "Zobrazit ve správci souborů",
+      "copyToLibrary": "Zkopírovat do knihovny",
+      "remove": "Odebrat z Oleafly"
+    },
+    "remove": {
+      "title": "Odebrat „{{name}}“ z Oleafly?",
+      "description": "Vaše soubory zůstanou, kde jsou. Oleafly smaže své soubory sestavení pro tuto složku a zruší její důvěru, schválení a propojené složky. Když složku do 30 dnů znovu otevřete, získáte zpět její chaty a historii. Zbytek bude potřeba nastavit znovu.",
+      "confirm": "Odebrat z Oleafly",
+      "done": "Složka „{{name}}“ byla odebrána z Oleafly. Soubory zůstaly ve složce.",
+      "failed": "Složku „{{name}}“ se nepodařilo odebrat z Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "„{{name}}“ nelze najít",
+        "body": "Složka byla v <path>{{path}}</path> a mohla být přesunuta nebo smazána. Najděte ji, abyste zachovali její chaty a historii."
+      },
+      "offline": {
+        "title": "„{{name}}“ je na disku, který není připojen",
+        "body": "Připojte disk nebo síťové úložiště s <path>{{path}}</path> a zkuste to znovu."
+      },
+      "replaced": {
+        "title": "Složka „{{name}}“ byla nahrazena",
+        "body": "Složka v <path>{{path}}</path> není ta, kterou jste otevřeli dříve. Použijte ji, jen pokud jí důvěřujete. Oleafly při změně vypne důvěru a schválení."
+      },
+      "permissionDenied": {
+        "title": "Oleafly nemůže otevřít „{{name}}“",
+        "bodyMac": "Povolte Oleafly přístup k této složce v Nastavení systému › Soukromí a zabezpečení › Soubory a složky a zkuste to znovu.",
+        "bodyOther": "Váš účet nemůže číst <path>{{path}}</path>. Zkontrolujte oprávnění složky a zkuste to znovu."
+      },
+      "back": {
+        "title": "„{{name}}“ je zpět",
+        "body": "Oleafly má k <path>{{path}}</path> opět přístup."
+      },
+      "locate": "Najít",
+      "tryAgain": "Zkusit znovu",
+      "useThisFolder": "Použít tuto složku",
+      "checking": "Kontroluje se",
+      "still": "Oleafly se ke složce stále nedostane."
+    },
+    "copy": {
+      "title": "Zkopírovat „{{name}}“ do knihovny",
+      "description": "Oleafly zkopíruje soubory do nového projektu v knihovně a složku nechá na místě. Historie Gitu se zkopíruje, hooky Gitu a soubory sestavení ne.",
+      "counting": "Počítají se soubory…",
+      "copying": "Kopírují se soubory…",
+      "count": "{{done}} z {{total}}",
+      "done": "„{{name}}“ je teď ve vaší knihovně.",
+      "doneLeftOut": "„{{name}}“ je teď ve vaší knihovně. Odkazy na soubory jinde a příliš hluboko vnořené složky se nezkopírovaly.",
+      "failed": "Složku „{{name}}“ se nepodařilo zkopírovat do knihovny."
     }
   }
 }

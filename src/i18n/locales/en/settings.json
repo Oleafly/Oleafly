@@ -1367,6 +1367,35 @@
     "description": "Restore {{sectionName}} preferences to their defaults.",
     "label": "Reset settings"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} will be on your PATH once you sign out and back in. Then open a new terminal.",
+    "checking": "Checking…",
+    "description": "Type <code>oleafly .</code> in a terminal to open that folder in Oleafly.",
+    "install": "Install",
+    "installing": "Installing…",
+    "loadFailed": "Couldn't check the terminal command.",
+    "notOnPath": {
+      "file": "{{directory}} isn't on your PATH yet. Add this line to {{file}}, then open a new terminal:",
+      "run": "{{directory}} isn't on your PATH yet. Run this once, then open a new terminal:"
+    },
+    "removing": "Removing…",
+    "result": {
+      "copied": "Copied the command to {{path}}.",
+      "linked": "Linked {{path}} to this copy of Oleafly.",
+      "removed": "Removed {{path}}."
+    },
+    "state": {
+      "installed": "Installed at {{path}}.",
+      "moveApp": "Move Oleafly to your Applications folder first, then install the command here.",
+      "notInstalled": "Adds oleafly to {{directory}}.",
+      "occupied": "{{path}} already exists and wasn't made by Oleafly, so it stays as it is.",
+      "outdated": "{{path}} still points to an older copy of Oleafly. Update it to use this copy.",
+      "packaged": "Installed at {{path}} by your Oleafly package.",
+      "unavailable": "This copy of Oleafly doesn't include the command."
+    },
+    "title": "Terminal command",
+    "update": "Update"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Show or hide the project terminal.",
         "label": "Toggle terminal"
+      },
+      "openFolder": {
+        "label": "Open folder",
+        "description": "Open a folder from your computer as a project."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Uppercase"
       },
       "unbound": "Not set"
+    }
+  },
+  "systemIntegration": {
+    "title": "System integration",
+    "description": "Open folders in Oleafly from your file manager.",
+    "checking": "Checking…",
+    "loadFailed": "Couldn't check your file manager setup.",
+    "state": {
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "needsAttention": "Needs attention"
+    },
+    "actions": {
+      "install": "Install",
+      "repair": "Repair"
+    },
+    "failed": {
+      "install": "Couldn't install it. Try again.",
+      "remove": "Couldn't remove it. Try again."
+    },
+    "packaged": "Installed with the Oleafly package.",
+    "quickAction": {
+      "label": "Finder Quick Actions",
+      "description": "Adds Open in Oleafly to the Services menu when you right-click a folder in Finder.",
+      "menuHint": "Not in Quick Actions yet. Right-click a folder, choose Quick Actions › Customize and turn on {{title}}."
+    },
+    "explorerMenu": {
+      "label": "File Explorer right-click menu",
+      "description": "Right-click a folder, or empty space inside one, and choose Open with Oleafly. On Windows 11 it's under Show more options.",
+      "toggle": "Show Open with Oleafly in File Explorer"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Adds Open with Oleafly when you right-click a folder in Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Adds Open with Oleafly when you right-click a folder in Nemo."
+    },
+    "nautilus": {
+      "label": "Files",
+      "description": "Adds Open with Oleafly to the Scripts menu when you right-click a folder in GNOME Files."
+    },
+    "folderOpenWith": {
+      "label": "Open With menu for folders",
+      "description": "Lists Oleafly under Open With for folders. Your default file manager stays the same."
+    },
+    "attention": {
+      "outdated": "It's out of date or macOS blocked it. Repair it to put it back.",
+      "elsewhere": "The menu opens another copy of Oleafly. Repair it to use this one.",
+      "moved": "It points to a copy of Oleafly that moved. Repair it to use this one.",
+      "noDefaultFileManager": "Your system has no default file manager for folders, so this entry could open every folder in Oleafly. Remove it."
     }
   }
 }

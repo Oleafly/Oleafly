@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> はすでに存在します。<suggestion>{{suggestion}}</suggestion> という名前にして両方を残すか、移動先のファイルを置き換えてください。「置き換える」を選ばない限り、Oleafly が置き換えることはありません。",
       "replace": "置き換える",
       "title": "その名前はすでに使われています",
-      "unchanged": "元のパスと移動先のパスは変更されていません。"
+      "unchanged": "元のパスと移動先のパスは変更されていません。",
+      "renameFolderBody": "<destination>{{destination}}</destination> は既存のフォルダです。<suggestion>{{suggestion}}</suggestion> という名前にして両方を残してください。元の場所で開いたフォルダでは、Oleafly がフォルダ全体を置き換えることはありません。"
     },
     "createFailed": "「{{path}}」を作成できませんでした。",
     "deleteFailed": "「{{path}}」を削除できませんでした。",
@@ -41,7 +42,16 @@
     "setMain": "メイン文書に設定",
     "title": "エクスプローラー",
     "treeAriaLabel": "エクスプローラーのファイルツリー",
-    "setMainFailed": "「{{path}}」をメイン文書にできませんでした。"
+    "setMainFailed": "「{{path}}」をメイン文書にできませんでした。",
+    "listingStopped": "最初の {{limit}} 項目を表示しています。このフォルダの残りは一覧に含まれていません。",
+    "unreadable": "アクセス不可",
+    "unreadableHint": "Oleafly にはこの項目を開く権限がありません。",
+    "confirmTrash": "{{path}} をごみ箱に移動しますか？",
+    "confirmTrashWindows": "{{path}} をごみ箱に移動しますか？",
+    "confirmPermanentDelete": "Oleafly は {{path}} をごみ箱に移動できませんでした。代わりに完全に削除しますか？この操作は取り消せません。",
+    "confirmPermanentDeleteWindows": "Oleafly は {{path}} をごみ箱に移動できませんでした。代わりに完全に削除しますか？この操作は取り消せません。",
+    "linkedReadOnly": "このフォルダ外のファイルへのリンクのため、読み取り専用です。",
+    "partialFolder": "このフォルダの項目の一部は一覧に含まれていません。"
   },
   "explorer": {
     "resizeSections": "{{first}} と {{second}} のサイズを変更"

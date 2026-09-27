@@ -31,6 +31,7 @@ import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
 import { BridgeInstallCard } from "./AgentReadiness";
+import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
 
@@ -44,7 +45,7 @@ function canReconnect(session: AcpSession): boolean {
 }
 
 export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: string }>) {
-  const { t } = useTranslation(["common", "ai"]);
+  const { t } = useTranslation(["common", "ai", "errors"]);
   const researchChatActions = useResearchChatActions(projectId);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
@@ -309,6 +310,11 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const statusBanners = () => (
     <>
+<TrustRequiredNotice
+  projectId={projectId}
+  reason={t(($) => $.errors.trust.agents)}
+  className="mx-3 my-2"
+/>
 {(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
 {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
   <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>

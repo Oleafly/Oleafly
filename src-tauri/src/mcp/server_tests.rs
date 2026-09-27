@@ -2,13 +2,14 @@ use super::{
     acquire_request_slot, activate_renderer_lease_at, admission_is_current,
     advance_published_epoch, authorized, bounded_activity_tool_name, claim_unexpected_serve_exit,
     clear_renderer_registry, collect_body_limited, collect_body_limited_with_timeout,
-    combine_cleanup_error, constant_time_eq, effective_policy, host_allowed, json,
-    mark_renderer_expiration_revoked_at, native_completion_is_reportable, oneshot, origin_allowed,
-    publication_candidate, remove_discovery_file_at, renderer_session_is_fresh_at,
-    renew_renderer_lease_at, serve_exit_is_current, signal_completion_before_cleanup,
-    tool_disabled_by_read_only, tool_route, watch, Arc, AtomicBool, Body, Bytes, Duration, Instant,
-    McpState, Mutex, Ordering, ServeInstance, StatusCode, ToolMeta, ToolRoute,
-    MAX_ACTIVITY_TOOL_NAME_CHARS, MAX_AUTHENTICATED_REQUESTS, RENDERER_LEASE_TTL,
+    combine_cleanup_error, constant_time_eq, effective_policy, forward_route, host_allowed, json,
+    json_tool_error, linked_exposure_refusal, mark_renderer_expiration_revoked_at,
+    native_completion_is_reportable, oneshot, origin_allowed, publication_candidate,
+    remove_discovery_file_at, renderer_session_is_fresh_at, renew_renderer_lease_at,
+    serve_exit_is_current, signal_completion_before_cleanup, tool_disabled_by_read_only,
+    tool_route, watch, Arc, AtomicBool, Body, Bytes, Duration, Instant, McpState, Mutex, Ordering,
+    ServeInstance, StatusCode, ToolMeta, ToolRoute, MAX_ACTIVITY_TOOL_NAME_CHARS,
+    MAX_AUTHENTICATED_REQUESTS, RENDERER_LEASE_TTL,
 };
 #[cfg(unix)]
 use super::{write_discovery_file_at, Value};
@@ -399,4 +400,78 @@ fn discovery_file_is_owner_only_and_atomically_replaced() {
 
     std::fs::remove_file(&path).expect("remove test discovery file");
     std::fs::remove_dir(directory).expect("remove test directory");
+}
+
+#[test]
+fn linked_folders_are_read_only_and_restricted_folders_are_closed_to_mcp_clients() {
+    use crate::trust::McpExposure;
+    assert_eq!(
+        linked_exposure_refusal(McpExposure::Full, "write_file"),
+        None
+    );
+    assert!(linked_exposure_refusal(McpExposure::ReadOnly, "write_file").is_some());
+    assert!(linked_exposure_refusal(McpExposure::ReadOnly, "run_command").is_some());
+    assert_eq!(
+        linked_exposure_refusal(McpExposure::ReadOnly, "read_file"),
+        None
+    );
+    for name in ["read_file", "list_files", "write_file"] {
+        assert!(
+            linked_exposure_refusal(McpExposure::Closed, name).is_some(),
+            "{name}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn forwarded_calls_for_a_restricted_open_folder_are_refused_before_routing() {
+    let _restricted = crate::trust::testing::restrict("mcp-forward-restricted-project");
+    let state = McpState::default();
+    *state.active_project.lock().await = Some("mcp-forward-restricted-project".into());
+    let policy = Some(("ask".to_string(), false));
+    for name in ["read_file", "list_files", "write_file"] {
+        assert_eq!(
+            forward_route(&state, 0, name, policy.clone()).await,
+            Err("This folder is not trusted in Oleafly, so MCP clients cannot use it."),
+            "{name}"
+        );
+    }
+    *state.active_project.lock().await = Some("mcp-forward-trusted-project".into());
+    assert_eq!(
+        forward_route(&state, 0, "read_file", policy.clone()).await,
+        Ok(ToolRoute::Native)
+    );
+    assert_eq!(
+        forward_route(&state, 0, "write_file", policy).await,
+        Ok(ToolRoute::RejectNoRenderer)
+    );
+}
+
+#[tokio::test]
+async fn native_tool_errors_reach_the_client_in_english() {
+    let coded: String = crate::app_error::AppError::new("project.folder_read_only")
+        .param("name", "notes.tex")
+        .into();
+
+    let response = json_tool_error(json!(7), &coded);
+    let body = collect_body_limited(response.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let reply: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(reply["id"], 7);
+    assert_eq!(reply["result"]["isError"], true);
+    assert_eq!(
+        reply["result"]["content"][0]["text"],
+        "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there."
+    );
+    let plain = json_tool_error(json!(8), "project resolution failed");
+    let body = collect_body_limited(plain.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let reply: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        reply["result"]["content"][0]["text"],
+        "project resolution failed"
+    );
 }

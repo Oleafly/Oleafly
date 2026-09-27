@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, isTauri: () => false }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: async (command: string, args?: unknown) =>
+    command === "list_file_tree"
+      ? { entries: await mocks.invoke("list_files", args), truncated: false }
+      : mocks.invoke(command, args),
+  isTauri: () => false,
+}));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: vi.fn() }) }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: vi.fn(async () => null) }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));

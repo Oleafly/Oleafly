@@ -58,6 +58,8 @@ import { FileIcon } from "@/components/files/fileIcon";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
+import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
+import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { SidebarSection } from "@/components/layout/SidebarSection";
@@ -66,6 +68,7 @@ import {
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
 } from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
+import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 
@@ -107,8 +110,19 @@ type Confirmation = {
 } | null;
 
 export function SourceControl() {
-  const { t } = useTranslation(["common", "shell"]);
+  const { t } = useTranslation(["common", "shell", "errors"]);
   const projectId = useFilesStore((s) => s.projectId);
+  const folderRestricted = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
+  const lockedRepository = useFolderAccessStore((s) =>
+    s.projectId === projectId && s.trust?.trusted && s.trust.repository?.trusted === false
+      ? s.trust.repository.name
+      : null,
+  );
+  const trusting = useFolderAccessStore((s) => s.trusting);
+  const grantTrust = useFolderAccessStore((s) => s.grant);
+  const trustPending = useFolderAccessStore((s) => s.projectId === projectId && !s.loaded);
+  const gitLocked = folderRestricted || lockedRepository !== null;
+  const refreshBlocked = gitLocked || trustPending;
   const projectName = useFilesStore((s) => s.projectName);
   const openFile = useFilesStore((s) => s.openFile);
   const refreshTree = useFilesStore((s) => s.refreshTree);
@@ -181,7 +195,13 @@ export function SourceControl() {
     [],
   );
   const refreshOnce = useCallback(async () => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    if (
+      !projectId ||
+      refreshBlocked ||
+      useFilesStore.getState().projectId !== projectId ||
+      !projectFolderAvailable(projectId)
+    )
+      return;
     const request = ++refreshRequest.current;
     try {
       const [next, needsCredentialCleanup] = await Promise.all([
@@ -197,13 +217,18 @@ export function SourceControl() {
       setCredentialCleanupRequired(next.initialized && needsCredentialCleanup);
       void useGitStatusStore.getState().refresh(projectId);
     } catch (error) {
+      if (reportLocationError(projectId, error)) return;
       if (
         request === refreshRequest.current &&
         useFilesStore.getState().projectId === projectId
       )
-        setNotice({ ok: false, text: String(error) });
+        setNotice({ ok: false, text: describeError(error) });
     }
-  }, [projectId]);
+  }, [projectId, refreshBlocked]);
+  const refreshOnceRef = useRef(refreshOnce);
+  useLayoutEffect(() => {
+    refreshOnceRef.current = refreshOnce;
+  }, [refreshOnce]);
   const refresh = useCallback(async () => {
     if (!projectId || useFilesStore.getState().projectId !== projectId) return;
     const pending = pendingRefresh.current;
@@ -223,21 +248,34 @@ export function SourceControl() {
     };
     pendingRefresh.current = operation;
     operation.promise = (async () => {
-      do {
-        operation.queued = false;
-        await refreshOnce();
-      } while (operation.queued && pendingRefresh.current === operation);
-    })().finally(() => {
-      if (pendingRefresh.current === operation) pendingRefresh.current = null;
-    });
+      try {
+        do {
+          operation.queued = false;
+          await refreshOnceRef.current();
+        } while (operation.queued && pendingRefresh.current === operation);
+      } finally {
+        if (pendingRefresh.current === operation) pendingRefresh.current = null;
+      }
+    })();
     return operation.promise;
-  }, [projectId, refreshOnce]);
+  }, [projectId]);
   useEffect(() => {
     void refresh();
     const changed = () => void refresh();
     window.addEventListener("oleafly:git-changed", changed);
     return () => window.removeEventListener("oleafly:git-changed", changed);
   }, [refresh]);
+  const lockSeen = useRef({ projectId, gitLocked, refreshBlocked });
+  useEffect(() => {
+    const seen = lockSeen.current;
+    lockSeen.current = { projectId, gitLocked, refreshBlocked };
+    if (seen.projectId !== projectId) return;
+    if (seen.gitLocked !== gitLocked) {
+      refreshRequest.current += 1;
+      setNotice(null);
+    }
+    if (seen.refreshBlocked && !refreshBlocked) void refresh();
+  }, [gitLocked, projectId, refresh, refreshBlocked]);
   useEffect(() => {
     const showGraph = () => {
       consumeSourceControlGraphRequest();
@@ -265,7 +303,7 @@ export function SourceControl() {
         }
         return result;
       } catch (error) {
-        if (current(action)) setNotice({ ok: false, text: String(error) });
+        if (current(action)) setNotice({ ok: false, text: describeError(error) });
         return undefined;
       } finally {
         if (activeMutation.current === action) {
@@ -343,7 +381,7 @@ export function SourceControl() {
       await openFile(path);
       clearActiveDiff();
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const openChange = (change: GitFileChange) =>
@@ -476,7 +514,7 @@ export function SourceControl() {
         text: t(($) => $.shell.sourceControl.linkCopied),
       });
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const unlinkRemote = () =>
@@ -529,7 +567,7 @@ export function SourceControl() {
         1500,
       );
     } catch (error) {
-      setNotice({ ok: false, text: String(error) });
+      setNotice({ ok: false, text: describeError(error) });
     }
   };
   const restoreGraphCommit = async () => {
@@ -710,6 +748,35 @@ export function SourceControl() {
       void submit("commit");
     }
   };
+  if (projectId && gitLocked)
+    return (
+      <div className="flex h-full flex-col bg-sidebar">
+        <Header branch="" remote={null} busy={busy} onRefresh={refresh} />
+        <div
+          data-testid="source-control-restricted"
+          className="flex flex-1 flex-col items-center justify-center gap-3 px-5 text-center"
+        >
+          <ShieldAlert aria-hidden className="size-6 text-muted-foreground/60" />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {lockedRepository === null
+              ? t(($) => $.errors.trust.git)
+              : t(($) => $.errors.trust.repository, { name: lockedRepository })}
+          </p>
+          <Button
+            size="sm"
+            disabled={trusting !== null}
+            onClick={() => void grantTrust(lockedRepository === null ? "folder" : "repository")}
+          >
+            {trusting !== null ? (
+              <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" />
+            ) : null}
+            {lockedRepository === null
+              ? t(($) => $.shell.openedFolder.trust.trustFolder)
+              : t(($) => $.shell.openedFolder.trust.trustRepository)}
+          </Button>
+        </div>
+      </div>
+    );
   if (!projectId || snapshot === null)
     return (
       <div className="flex h-full flex-col bg-sidebar">
@@ -771,6 +838,17 @@ export function SourceControl() {
           >
             {t(($) => $.shell.sourceControl.publish)}
           </Button>
+          {notice ? (
+            <p
+              role={notice.ok ? undefined : "alert"}
+              className={cn(
+                "text-[11px]",
+                notice.ok ? "text-muted-foreground" : "text-destructive",
+              )}
+            >
+              {notice.text}
+            </p>
+          ) : null}
         </div>
         <PublishToGitHubDialog
           open={publishOpen}
@@ -1229,6 +1307,7 @@ export function SourceControl() {
         onClose={() => setPublishOpen(false)}
         projectId={projectId}
         projectName={projectName}
+        currentRemote={remote}
         onPublished={() => {
           void refresh();
         }}

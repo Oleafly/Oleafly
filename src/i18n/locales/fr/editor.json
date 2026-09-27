@@ -171,7 +171,9 @@
     "binaryFile": "Fichier binaire. Aucun aperçu disponible.",
     "managedFileReadOnly": "{{file}} est géré par Oleafly et reste en lecture seule ici. Les réglages du projet se modifient depuis Oleafly, pas en éditant ce fichier.",
     "noFileOpen": "Aucun fichier ouvert.",
-    "noFileOpenHint": "Choisissez un fichier dans l'arborescence pour commencer à écrire."
+    "noFileOpenHint": "Choisissez un fichier dans l'arborescence pour commencer à écrire.",
+    "linkedFileReadOnly": "{{file}} renvoie vers un fichier situé hors de ce dossier, vous ne pouvez donc pas le modifier ici. Modifiez-le là où il se trouve, par exemple dans Zotero.",
+    "diffOnDisk": "Sur le disque"
   },
   "projectInfo": {
     "trigger": "Infos du projet",
@@ -209,6 +211,8 @@
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",
     "spellLanguageHint": "Ne s'applique qu'à ce projet. Téléchargez d'autres langues dans les Paramètres.",
+    "spellLanguageFolderHint": "Enregistrée dans le project.json de ce dossier, elle s'applique donc à toute personne qui l'ouvre. Téléchargez d'autres langues dans les Paramètres.",
+    "spellLanguageReadOnly": "Ce dossier est en lecture seule, la langue de son project.json ne peut donc pas être modifiée.",
     "spellLanguageFailed": "Impossible de changer la langue de correction orthographique.",
     "notChecked": "Non vérifié",
     "dictionaryMissing": "{{name}} n’est pas téléchargé, l’orthographe n’est donc pas vérifiée. Téléchargez-le dans les Réglages ou choisissez une autre langue.",
@@ -333,7 +337,8 @@
     "splitView": "Vue partagée",
     "unifiedView": "Vue unifiée",
     "loading": "Chargement de la comparaison…",
-    "previewTooLarge": "Fichier trop volumineux pour prévisualiser une comparaison."
+    "previewTooLarge": "Fichier trop volumineux pour prévisualiser une comparaison.",
+    "diskHeading": "Sur le disque ↔ Vos modifications"
   },
   "hotkeys": {
     "title": "Raccourcis clavier",
@@ -431,6 +436,12 @@
       "sourceSize": "Taille des sources",
       "reclaimable": "Récupérable"
     },
+    "capture": {
+      "paused": "Les points de contrôle sont en pause, car ce dossier est trop volumineux. Un point de contrôle peut contenir au maximum {{files}} fichiers ou {{size}}.",
+      "skipped_one": "{{formattedCount}} fichier de ce dossier n'est pas dans les points de contrôle. Oleafly ignore les liens, les fichiers très volumineux, les fichiers disponibles uniquement dans le cloud et les noms qui ne fonctionnent pas sur tous les systèmes.",
+      "skipped_many": "{{formattedCount}} fichiers de ce dossier ne sont pas dans les points de contrôle. Oleafly ignore les liens, les fichiers très volumineux, les fichiers disponibles uniquement dans le cloud et les noms qui ne fonctionnent pas sur tous les systèmes.",
+      "skipped_other": "{{formattedCount}} fichiers de ce dossier ne sont pas dans les points de contrôle. Oleafly ignore les liens, les fichiers très volumineux, les fichiers disponibles uniquement dans le cloud et les noms qui ne fonctionnent pas sur tous les systèmes."
+    },
     "catalog": {
       "formatVersion": "Version du format",
       "lineage": "Filiation",
@@ -463,7 +474,8 @@
       "showFor": "Afficher les fichiers de {{version}}",
       "hideFor": "Masquer les fichiers de {{version}}",
       "show": "Afficher les fichiers",
-      "hide": "Masquer les fichiers"
+      "hide": "Masquer les fichiers",
+      "folderSettings": "Réglages Oleafly de ce dossier"
     },
     "entry": {
       "labelInput": "Libellé du point de contrôle",
@@ -1031,5 +1043,13 @@
     "label": "Emplacement dans le document",
     "goTo": "Aller à {{title}}",
     "untitled": "Sans titre"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} a été modifié sur le disque alors que vous aviez des modifications non enregistrées.",
+    "compare": "Comparer",
+    "keepMine": "Garder ma version",
+    "reload": "Recharger",
+    "failed": "Oleafly n'a pas pu mettre à jour {{file}}. Réessayez.",
+    "tabMark": "Modifié sur le disque. Ouvrez cet onglet pour choisir la version à garder."
   }
 }

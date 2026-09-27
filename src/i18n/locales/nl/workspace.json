@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> bestaat al. Houd beide bestanden met <suggestion>{{suggestion}}</suggestion>, of vervang de bestaande bestemming. Oleafly vervangt die alleen als je Vervangen kiest.",
       "replace": "Vervangen",
       "title": "Die naam is al in gebruik",
-      "unchanged": "Het oorspronkelijke pad en het bestemmingspad zijn ongewijzigd gebleven."
+      "unchanged": "Het oorspronkelijke pad en het bestemmingspad zijn ongewijzigd gebleven.",
+      "renameFolderBody": "<destination>{{destination}}</destination> is een bestaande map. Houd ze allebei met <suggestion>{{suggestion}}</suggestion>. In een map die je op zijn eigen locatie hebt geopend, vervangt Oleafly nooit een hele map."
     },
     "createFailed": "Kon \"{{path}}\" niet aanmaken.",
     "deleteFailed": "Kon \"{{path}}\" niet verwijderen.",
@@ -41,7 +42,16 @@
     "setMain": "Instellen als hoofddocument",
     "title": "Verkenner",
     "treeAriaLabel": "Bestandsboom van de verkenner",
-    "setMainFailed": "Kon \"{{path}}\" niet als hoofddocument instellen."
+    "setMainFailed": "Kon \"{{path}}\" niet als hoofddocument instellen.",
+    "listingStopped": "De eerste {{limit}} items worden getoond. De rest van deze map staat niet in de lijst.",
+    "unreadable": "Geen toegang",
+    "unreadableHint": "Oleafly heeft geen toestemming om dit te openen.",
+    "confirmTrash": "{{path}} naar de Prullenmand verplaatsen?",
+    "confirmTrashWindows": "{{path}} naar de Prullenbak verplaatsen?",
+    "confirmPermanentDelete": "Oleafly kon {{path}} niet naar de Prullenmand verplaatsen. In plaats daarvan definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "confirmPermanentDeleteWindows": "Oleafly kon {{path}} niet naar de Prullenbak verplaatsen. In plaats daarvan definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "linkedReadOnly": "Verwijst naar een bestand buiten deze map en is daarom alleen-lezen.",
+    "partialFolder": "Niet alle items in deze map staan in de lijst."
   },
   "explorer": {
     "resizeSections": "Formaat van {{first}} en {{second}} wijzigen"

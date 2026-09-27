@@ -35,7 +35,6 @@
     "appIconAlt": "App-pictogram van Oleafly",
     "welcomeTitle": "Welkom bij Oleafly",
     "welcomeDescription": "Schrijf, compileer en proeflees LaTeX, Typst en Markdown. Beheer citaties, bekijk PDF's, volg wijzigingen in Git en werk met de AI-modellen die jij kiest.",
-    "createFirstProject": "Nieuw project maken",
     "loading": "Je bibliotheek lezen…",
     "noBookmarksTitle": "Nog geen bladwijzers",
     "noBookmarksDescription": "Beweeg over een boek en klik op de bladwijzer om er een toe te voegen.",
@@ -68,8 +67,15 @@
       "anyTime": "Alle tijden",
       "last7Days": "Laatste 7 dagen",
       "last30Days": "Laatste 30 dagen",
-      "lastYear": "Laatste jaar"
-    }
+      "lastYear": "Laatste jaar",
+      "location": "Locatie",
+      "locationAll": "Alle projecten",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "Externe projecten"
+    },
+    "openFolder": "Map openen",
+    "openFolderShortcut": "Map openen ({{shortcut}})",
+    "createFirstProject": "Nieuw project maken"
   },
   "projects": {
     "open": "{{name}} openen",
@@ -83,7 +89,7 @@
     "actions": "Acties voor {{name}}",
     "details": "Projectgegevens",
     "exportHistory": "Exportgeschiedenis",
-    "changeColor": "Projectkleur wijzigen",
+    "changeColor": "Projectkleur",
     "fork": "Project forken",
     "delete": "Project verwijderen",
     "favoriteAdd": "Aan favorieten toevoegen",
@@ -95,7 +101,8 @@
     "kind": {
       "document": "document",
       "image": "afbeelding",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "extern"
     },
     "preview": {
       "title": "PDF-voorbeeld: {{name}}",
@@ -371,7 +378,9 @@
     "nameRequired": "Vul een repositorynaam in.",
     "published": "Gepubliceerd naar {{repository}}.",
     "linked": "Gekoppeld aan {{remote}} en gepusht.",
-    "pushNeedsPull": "Gekoppeld aan {{remote}}, maar pushen vereist eerst een pull: {{detail}}"
+    "pushNeedsPull": "Gekoppeld aan {{remote}}, maar pushen vereist eerst een pull: {{detail}}",
+    "replaceRemotePrompt": "Dit project is gekoppeld aan {{remote}}. Die koppeling vervangen?",
+    "replaceRemote": "Koppeling vervangen"
   },
   "deadlines": {
     "title": "Conferentiedeadlines",
@@ -458,6 +467,75 @@
       "sourcesTitle": "Bronnen",
       "sourcesBody": "De records combineren de open ccf-deadlines-dataset met officiële conferentiewebsites die Oleafly bijhoudt.",
       "confirm": "Controleer elke datum op de officiële website van de conferentie voordat je inzendt."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nieuw project",
+    "newProjectDescription": "Begin met een sjabloon of een lege pagina.",
+    "openFolderTitle": "Een map openen",
+    "openFolderDescription": "Werk aan bestanden die al op je computer staan. Ze blijven waar ze zijn."
+  },
+  "openFolder": {
+    "dismiss": "Sluiten"
+  },
+  "folder": {
+    "state": {
+      "missing": "Map ontbreekt",
+      "offline": "Schijf niet aangesloten",
+      "replaced": "Map vervangen",
+      "permissionDenied": "Geen toestemming"
+    },
+    "menu": {
+      "showInFinder": "Tonen in Finder",
+      "showInExplorer": "Tonen in Verkenner",
+      "showInFileManager": "Tonen in de bestandsbeheerder",
+      "copyToLibrary": "Naar bibliotheek kopiëren",
+      "remove": "Uit Oleafly verwijderen"
+    },
+    "remove": {
+      "title": "“{{name}}” uit Oleafly verwijderen?",
+      "description": "Je bestanden blijven waar ze zijn. Oleafly verwijdert zijn buildbestanden voor deze map en reset het vertrouwen, de goedkeuringen en de gekoppelde mappen. Open de map binnen 30 dagen opnieuw om de chats en geschiedenis terug te krijgen. De rest moet je opnieuw instellen.",
+      "confirm": "Uit Oleafly verwijderen",
+      "done": "“{{name}}” is uit Oleafly verwijderd. De bestanden staan nog in de map.",
+      "failed": "Kan “{{name}}” niet uit Oleafly verwijderen."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Kan “{{name}}” niet vinden",
+        "body": "De map stond op <path>{{path}}</path> en is misschien verplaatst of verwijderd. Zoek hem op om de chats en geschiedenis te bewaren."
+      },
+      "offline": {
+        "title": "“{{name}}” staat op een schijf die niet is aangesloten",
+        "body": "Sluit de schijf aan of maak verbinding met de netwerkshare waarop <path>{{path}}</path> staat, en probeer het opnieuw."
+      },
+      "replaced": {
+        "title": "“{{name}}” is vervangen",
+        "body": "De map op <path>{{path}}</path> is niet de map die je eerder opende. Gebruik hem alleen als je hem vertrouwt. Bij het wisselen zet Oleafly vertrouwen en goedkeuringen uit."
+      },
+      "permissionDenied": {
+        "title": "Oleafly kan “{{name}}” niet openen",
+        "bodyMac": "Geef Oleafly toegang tot deze map in Systeeminstellingen › Privacy en beveiliging › Bestanden en mappen en probeer het opnieuw.",
+        "bodyOther": "Je account kan <path>{{path}}</path> niet lezen. Controleer de rechten van de map en probeer het opnieuw."
+      },
+      "back": {
+        "title": "“{{name}}” is terug",
+        "body": "Oleafly kan <path>{{path}}</path> weer bereiken."
+      },
+      "locate": "Zoeken",
+      "tryAgain": "Opnieuw proberen",
+      "useThisFolder": "Deze map gebruiken",
+      "checking": "Controleren",
+      "still": "Oleafly kan de map nog steeds niet bereiken."
+    },
+    "copy": {
+      "title": "“{{name}}” naar je bibliotheek kopiëren",
+      "description": "Oleafly kopieert de bestanden naar een nieuw bibliotheekproject en laat de map waar hij is. De Git-geschiedenis gaat mee, maar Git-hooks en buildbestanden niet.",
+      "counting": "Bestanden tellen…",
+      "copying": "Bestanden kopiëren…",
+      "count": "{{done}} van {{total}}",
+      "done": "“{{name}}” staat nu in je bibliotheek.",
+      "doneLeftOut": "“{{name}}” staat nu in je bibliotheek. Koppelingen naar bestanden elders en te diep geneste mappen zijn niet gekopieerd.",
+      "failed": "Kan “{{name}}” niet naar je bibliotheek kopiëren."
     }
   }
 }

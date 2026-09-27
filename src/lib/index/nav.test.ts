@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorView } from "@codemirror/view";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { useFolderAccessStore } from "@/store/folder-access";
 import type { Sym } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -28,6 +30,8 @@ const mocks = vi.hoisted(() => ({
 const filesState = {
   projectId: "project-1" as string | null,
   activePath: "main.tex" as string | null,
+  manifestHome: "library" as string,
+  tree: [] as Array<{ path: string; is_dir: boolean; read_only?: boolean }>,
   files: {} as Record<string, { content: string; dirty: boolean }>,
   setContent: mocks.setContent,
   writeProjectFile: mocks.writeProjectFile,
@@ -133,8 +137,11 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.writeProjectFile.mockResolvedValue(undefined);
   mocks.rebuildFromDisk.mockResolvedValue(undefined);
+  mocks.setContent.mockReturnValue(true);
   filesState.projectId = "project-1";
   filesState.activePath = "main.tex";
+  filesState.manifestHome = "library";
+  filesState.tree = [];
   filesState.files = {};
   indexState.texts = { "chapters/intro.tex": "See \\ref{fig:old}.\n" };
   indexState.intelligenceState = { status: "not_run", stale: false };
@@ -250,6 +257,105 @@ describe("applyRename", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       'Renamed to "fig:new" (2 edits in 1 file)',
     );
+  });
+});
+
+describe("applyRename in a file that links outside the folder", () => {
+  const LINKED = { path: "refs.bib", is_dir: false, read_only: true };
+  const KEY: Sym = { ...SYMBOL, kind: "bibentry", name: "old2020", file: "refs.bib" } as Sym;
+
+  beforeEach(() => {
+    filesState.manifestHome = "folder";
+    filesState.tree = [{ path: "main.tex", is_dir: false }, LINKED];
+    indexState.texts = {
+      "main.tex": "See \\cite{old2020}.\n",
+      "refs.bib": "@misc{old2020,}\n",
+    };
+  });
+
+  it("does not count a linked bibliography it could not change", async () => {
+    filesState.files = { "refs.bib": { content: "@misc{old2020,}\n", dirty: false } };
+    mocks.setContent.mockImplementation((path: string) => path !== "refs.bib");
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "main.tex", from: 10, to: 17, newText: "new2021" },
+        { file: "refs.bib", from: 6, to: 13, newText: "new2021" },
+      ],
+    });
+    filesState.activePath = "chapters/intro.tex";
+
+    await applyRename(view, KEY, "new2021");
+
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "new2021" in 1 of 2 files. Could not write refs.bib.',
+    );
+  });
+
+  it("leaves an open linked bibliography untouched in the editor", async () => {
+    filesState.activePath = "refs.bib";
+    filesState.files = { "refs.bib": { content: "@misc{old2020,}\n", dirty: false } };
+    const editor = { dispatch: vi.fn() } as unknown as EditorView;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "refs.bib", from: 6, to: 13, newText: "new2021" }],
+    });
+
+    await applyRename(editor, KEY, "new2021");
+
+    expect(editor.dispatch).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "new2021" in 0 of 1 files. Could not write refs.bib.',
+    );
+  });
+});
+
+describe("renaming in a read-only folder", () => {
+  beforeEach(() => {
+    useFolderAccessStore.setState({
+      projectId: "project-1",
+      status: { read_only: true, synced_with: null },
+    });
+  });
+
+  afterEach(() => {
+    useFolderAccessStore.getState().reset(null);
+  });
+
+  it("does not open the rename box and says the folder is read-only", () => {
+    const label = { kind: "label", name: "fig:x", file: "main.tex" };
+    mocks.indexSymbolAt.mockReturnValue(label);
+    mocks.definitionFor.mockReturnValue(label);
+
+    expect(startRename(editorView())).toBe(true);
+    expect(mocks.openRename).not.toHaveBeenCalled();
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+      NAVIGATION_LOOKUP_TOAST_KEY,
+      enShell.openedFolder.readOnly.banner,
+    );
+  });
+
+  it("changes no file and says the folder is read-only", async () => {
+    const editor = { dispatch: vi.fn() } as unknown as EditorView;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "main.tex", from: 5, to: 12, newText: "fig:new" },
+        { file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" },
+      ],
+    });
+
+    await expect(applyRename(editor, SYMBOL, "fig:new")).resolves.toBe("skipped");
+
+    expect(editor.dispatch).not.toHaveBeenCalled();
+    expect(mocks.setContent).not.toHaveBeenCalled();
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(enShell.openedFolder.readOnly.banner);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
 

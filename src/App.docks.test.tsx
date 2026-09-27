@@ -10,6 +10,7 @@ const appState = vi.hoisted(() => {
     engineLoaded: false,
     loading: false,
     mainDoc: "main.tex",
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     activePath: "main.tex" as string | null,
     files: { "main.tex": { content: "", dirty: false } } as Record<
       string,
@@ -59,6 +60,22 @@ const codeMirrorMocks = vi.hoisted(() => ({
   findFromDOM: vi.fn<(dom: HTMLElement) => unknown>(() => null),
   redo: vi.fn(() => true),
   undo: vi.fn(() => true),
+}));
+
+const openCompileMocks = vi.hoisted(() => ({
+  automaticCompileAllowed: vi.fn((decision: string) => decision === "auto"),
+  openCompileHydrated: vi.fn(() => false),
+  resetOpenCompileMarker: vi.fn<(projectId: string | null, marker: unknown) => unknown>(
+    () => null,
+  ),
+  settleOpenCompile: vi.fn<
+    (
+      request: unknown,
+      observed: unknown,
+      retries: unknown,
+    ) => { compiled: boolean; retries: { projectId: string; used: number } | null }
+  >(() => ({ compiled: true, retries: null })),
+  shouldCompileOnOpen: vi.fn(() => false),
 }));
 vi.mock("@codemirror/view", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@codemirror/view")>();
@@ -233,8 +250,15 @@ vi.mock("@/components/ai/ExternalToolApprovals", () => ({
 }));
 vi.mock("@/components/layout/AboutModal", () => ({ AboutModal: () => null }));
 vi.mock("@/components/layout/EnginePickerModal", () => ({ EnginePickerModal: () => null }));
+vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
+vi.mock("@/components/open-folder/OpenedFolderBanners", () => ({ OpenedFolderBanners: () => null }));
+vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/TinytexGuards", () => ({ TinytexGuards: () => null }));
 vi.mock("@/components/layout/QuitGuard", () => ({ QuitGuard: () => null }));
+vi.mock("@/components/layout/OpenFolderGuards", () => ({
+  OpenFolderStopDialog: () => null,
+  useOpenFolderIntake: () => {},
+}));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
@@ -255,6 +279,7 @@ vi.mock("@/components/tools/LiteratureSearchToolView", () => ({
   LiteratureSearchToolView: () => null,
 }));
 vi.mock("@/lib/boot-telemetry", () => ({
+  bootSplashHeld: () => false,
   dismissBootSplash: vi.fn(),
   markBootStage: vi.fn(),
 }));
@@ -290,11 +315,7 @@ vi.mock("@/lib/agent-item-effects", () => ({
     return () => appState.computerUseListeners.delete(listener);
   },
 }));
-vi.mock("@/lib/open-compile", () => ({
-  openCompileHydrated: () => false,
-  resetOpenCompileMarker: () => null,
-  shouldCompileOnOpen: () => false,
-}));
+vi.mock("@/lib/open-compile", () => openCompileMocks);
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
 vi.mock("@/lib/updater", () => ({
   checkForUpdatesOnStartup: vi.fn(async () => {}),
@@ -355,6 +376,13 @@ describe("project dock layout", () => {
     appState.computerUseListeners.clear();
     appState.menuListeners.clear();
     appState.tauri = false;
+    appState.files.mainDecision = "auto";
+    appState.compile.recompile.mockClear();
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValue(false);
+    openCompileMocks.resetOpenCompileMarker.mockReset().mockReturnValue(null);
+    openCompileMocks.settleOpenCompile
+      .mockReset()
+      .mockReturnValue({ compiled: true, retries: null });
     editorControllerMocks.editorRedo.mockClear();
     editorControllerMocks.editorUndo.mockClear();
     editorControllerMocks.editorVimRedo.mockClear();
@@ -848,5 +876,62 @@ describe("project dock layout", () => {
     expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorUndo).toHaveBeenCalledOnce();
     expect(editorControllerMocks.editorRedo).toHaveBeenCalledOnce();
+  });
+
+  it("holds the on-open compile until the folder's main document is decided", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+
+    appState.files.mainDecision = "ask";
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValueOnce(true).mockReturnValue(false);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+
+    appState.files.mainDecision = "auto";
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValueOnce(true).mockReturnValue(false);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
+  });
+
+  it("carries the on-open retry count into the next settle and stops after it", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+
+    const retry = { projectId: "project-1", used: 1 };
+    openCompileMocks.resetOpenCompileMarker.mockImplementation((projectId, marker) =>
+      projectId === null ? null : marker,
+    );
+    openCompileMocks.shouldCompileOnOpen
+      .mockReset()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false);
+    openCompileMocks.settleOpenCompile
+      .mockReset()
+      .mockReturnValueOnce({ compiled: false, retries: retry })
+      .mockReturnValue({ compiled: true, retries: null });
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(appState.compile.recompile).toHaveBeenCalledTimes(2);
+    expect(openCompileMocks.settleOpenCompile).toHaveBeenCalledTimes(2);
+    expect(openCompileMocks.settleOpenCompile.mock.calls[0]?.[2]).toBeNull();
+    expect(openCompileMocks.settleOpenCompile.mock.calls[1]?.[2]).toBe(retry);
   });
 });

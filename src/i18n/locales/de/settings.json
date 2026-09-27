@@ -1367,6 +1367,35 @@
     "description": "Setzt die Einstellungen für {{sectionName}} auf die Standards zurück.",
     "label": "Einstellungen zurücksetzen"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} ist in Ihrem PATH, sobald Sie sich ab- und wieder anmelden. Öffnen Sie danach ein neues Terminal.",
+    "checking": "Wird geprüft…",
+    "description": "Geben Sie <code>oleafly .</code> in einem Terminal ein, um diesen Ordner in Oleafly zu öffnen.",
+    "install": "Installieren",
+    "installing": "Wird installiert…",
+    "loadFailed": "Der Terminalbefehl konnte nicht geprüft werden.",
+    "notOnPath": {
+      "file": "{{directory}} ist noch nicht in Ihrem PATH. Fügen Sie diese Zeile zu {{file}} hinzu und öffnen Sie dann ein neues Terminal:",
+      "run": "{{directory}} ist noch nicht in Ihrem PATH. Führen Sie dies einmal aus und öffnen Sie dann ein neues Terminal:"
+    },
+    "removing": "Wird entfernt…",
+    "result": {
+      "copied": "Der Befehl wurde nach {{path}} kopiert.",
+      "linked": "{{path}} verweist jetzt auf diese Kopie von Oleafly.",
+      "removed": "{{path}} wurde entfernt."
+    },
+    "state": {
+      "installed": "Installiert in {{path}}.",
+      "moveApp": "Verschieben Sie Oleafly zuerst in den Ordner „Programme“ und installieren Sie den Befehl dann hier.",
+      "notInstalled": "Fügt oleafly zu {{directory}} hinzu.",
+      "occupied": "{{path}} existiert bereits und stammt nicht von Oleafly, deshalb bleibt es unverändert.",
+      "outdated": "{{path}} verweist noch auf eine ältere Kopie von Oleafly. Aktualisieren Sie den Befehl, damit er diese Kopie verwendet.",
+      "packaged": "Von Ihrem Oleafly-Paket unter {{path}} installiert.",
+      "unavailable": "Diese Kopie von Oleafly enthält den Befehl nicht."
+    },
+    "title": "Terminalbefehl",
+    "update": "Aktualisieren"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Das Terminal des Projekts ein- oder ausblenden.",
         "label": "Terminal ein- oder ausblenden"
+      },
+      "openFolder": {
+        "label": "Ordner öffnen",
+        "description": "Einen Ordner von Ihrem Computer als Projekt öffnen."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Großbuchstaben"
       },
       "unbound": "Nicht belegt"
+    }
+  },
+  "systemIntegration": {
+    "title": "Systemintegration",
+    "description": "Ordner direkt aus dem Dateimanager in Oleafly öffnen.",
+    "checking": "Wird geprüft…",
+    "loadFailed": "Die Einrichtung des Dateimanagers konnte nicht geprüft werden.",
+    "state": {
+      "installed": "Installiert",
+      "notInstalled": "Nicht installiert",
+      "needsAttention": "Handlungsbedarf"
+    },
+    "actions": {
+      "install": "Installieren",
+      "repair": "Reparieren"
+    },
+    "failed": {
+      "install": "Die Installation ist fehlgeschlagen. Versuchen Sie es erneut.",
+      "remove": "Das Entfernen ist fehlgeschlagen. Versuchen Sie es erneut."
+    },
+    "packaged": "Mit dem Oleafly-Paket installiert.",
+    "quickAction": {
+      "label": "Schnellaktionen im Finder",
+      "description": "Fügt „In Oleafly öffnen“ zum Menü „Dienste“ hinzu, wenn Sie im Finder mit der rechten Maustaste auf einen Ordner klicken.",
+      "menuHint": "Noch nicht unter Schnellaktionen. Klicken Sie mit der rechten Maustaste auf einen Ordner, wählen Sie Schnellaktionen › Anpassen und aktivieren Sie {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Kontextmenü im Datei-Explorer",
+      "description": "Klicken Sie mit der rechten Maustaste auf einen Ordner oder auf eine freie Stelle darin und wählen Sie Mit Oleafly öffnen. Unter Windows 11 finden Sie den Eintrag unter Weitere Optionen anzeigen.",
+      "toggle": "„Mit Oleafly öffnen“ im Datei-Explorer anzeigen"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Fügt Mit Oleafly öffnen hinzu, wenn Sie in Dolphin mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Fügt Mit Oleafly öffnen hinzu, wenn Sie in Nemo mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "nautilus": {
+      "label": "Dateien",
+      "description": "Fügt Mit Oleafly öffnen zum Menü Skripte hinzu, wenn Sie in GNOME Dateien mit der rechten Maustaste auf einen Ordner klicken."
+    },
+    "folderOpenWith": {
+      "label": "Menü Öffnen mit für Ordner",
+      "description": "Zeigt Oleafly unter Öffnen mit für Ordner an. Ihr Standard-Dateimanager bleibt unverändert."
+    },
+    "attention": {
+      "outdated": "Der Eintrag ist veraltet oder wurde von macOS blockiert. Reparieren Sie ihn, um ihn wiederherzustellen.",
+      "elsewhere": "Das Menü öffnet eine andere Oleafly-Kopie. Reparieren Sie es, um diese Kopie zu verwenden.",
+      "moved": "Der Eintrag verweist auf eine Oleafly-Kopie, die verschoben wurde. Reparieren Sie ihn, um diese Kopie zu verwenden.",
+      "noDefaultFileManager": "Ihr System hat keinen Standard-Dateimanager für Ordner, daher könnte dieser Eintrag jeden Ordner in Oleafly öffnen. Entfernen Sie ihn."
     }
   }
 }

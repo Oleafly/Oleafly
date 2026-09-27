@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> finns redan. Behåll båda filerna genom att använda <suggestion>{{suggestion}}</suggestion>, eller ersätt målfilen. Oleafly ersätter den inte om du inte väljer Ersätt.",
       "replace": "Ersätt",
       "title": "Namnet används redan",
-      "unchanged": "Sökvägarna till originalet och målet lämnades oförändrade."
+      "unchanged": "Sökvägarna till originalet och målet lämnades oförändrade.",
+      "renameFolderBody": "<destination>{{destination}}</destination> är en befintlig mapp. Behåll båda genom att använda <suggestion>{{suggestion}}</suggestion>. I en mapp som du har öppnat där den ligger ersätter Oleafly aldrig en hel mapp."
     },
     "createFailed": "Det gick inte att skapa \"{{path}}\".",
     "deleteFailed": "Det gick inte att radera \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Ange som huvuddokument",
     "title": "Utforskaren",
     "treeAriaLabel": "Filträd i utforskaren",
-    "setMainFailed": "Det gick inte att ange \"{{path}}\" som huvuddokument."
+    "setMainFailed": "Det gick inte att ange \"{{path}}\" som huvuddokument.",
+    "listingStopped": "De första {{limit}} objekten visas. Resten av mappen listas inte.",
+    "unreadable": "Ingen åtkomst",
+    "unreadableHint": "Oleafly har inte behörighet att öppna det här.",
+    "confirmTrash": "Vill du flytta {{path}} till papperskorgen?",
+    "confirmTrashWindows": "Vill du flytta {{path}} till papperskorgen?",
+    "confirmPermanentDelete": "Oleafly kunde inte flytta {{path}} till papperskorgen. Vill du radera den permanent i stället? Det går inte att ångra.",
+    "confirmPermanentDeleteWindows": "Oleafly kunde inte flytta {{path}} till papperskorgen. Vill du radera den permanent i stället? Det går inte att ångra.",
+    "linkedReadOnly": "Länkar till en fil utanför mappen och är därför skrivskyddad.",
+    "partialFolder": "Alla objekt i den här mappen listas inte."
   },
   "explorer": {
     "resizeSections": "Ändra storlek på {{first}} och {{second}}"

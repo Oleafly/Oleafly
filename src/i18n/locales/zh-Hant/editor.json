@@ -171,7 +171,9 @@
     "binaryFile": "二進位檔案。無法預覽。",
     "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在這裡是唯讀的。專案設定要透過 Oleafly 本身修改，而不是編輯這個檔案。",
     "noFileOpen": "未開啟任何檔案。",
-    "noFileOpenHint": "從檔案樹選一個檔案即可開始編輯。"
+    "noFileOpenHint": "從檔案樹選一個檔案即可開始編輯。",
+    "linkedFileReadOnly": "{{file}} 連結到此資料夾以外的檔案，因此無法在這裡編輯。請到檔案所在的位置修改，例如在 Zotero 中。",
+    "diffOnDisk": "磁碟上"
   },
   "projectInfo": {
     "trigger": "專案資訊",
@@ -205,6 +207,8 @@
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",
     "spellLanguageHint": "只會套用到這個專案。可在設定中下載更多語言。",
+    "spellLanguageFolderHint": "儲存在這個資料夾的 project.json 中，因此會套用到每位開啟此資料夾的人。可在設定中下載更多語言。",
+    "spellLanguageReadOnly": "這個資料夾為唯讀，因此無法變更其 project.json 中的語言。",
     "spellLanguageFailed": "無法變更拼字檢查語言。",
     "notChecked": "未檢查",
     "dictionaryMissing": "{{name}} 尚未下載，因此不會檢查拼字。請在設定中下載，或選擇其他語言。",
@@ -327,7 +331,8 @@
     "splitView": "分割檢視",
     "unifiedView": "單欄檢視",
     "loading": "載入差異中…",
-    "previewTooLarge": "檔案太大，無法預覽差異。"
+    "previewTooLarge": "檔案太大，無法預覽差異。",
+    "diskHeading": "磁碟上 ↔ 你的編輯"
   },
   "hotkeys": {
     "title": "鍵盤快捷鍵",
@@ -421,6 +426,10 @@
       "sourceSize": "原始檔大小",
       "reclaimable": "可回收"
     },
+    "capture": {
+      "paused": "此資料夾太大，檢查點已暫停。一個檢查點最多可容納 {{files}} 個檔案或 {{size}}。",
+      "skipped_other": "此資料夾中有 {{formattedCount}} 個檔案不在檢查點中。Oleafly 會略過連結、超大檔案、僅存於雲端的檔案，以及並非所有系統都支援的檔名。"
+    },
     "catalog": {
       "formatVersion": "格式版本",
       "lineage": "來源識別碼",
@@ -453,7 +462,8 @@
       "showFor": "顯示 {{version}} 的檔案",
       "hideFor": "隱藏 {{version}} 的檔案",
       "show": "顯示檔案",
-      "hide": "隱藏檔案"
+      "hide": "隱藏檔案",
+      "folderSettings": "此資料夾的 Oleafly 設定"
     },
     "entry": {
       "labelInput": "檢查點標籤",
@@ -1013,5 +1023,13 @@
     "label": "文件中的位置",
     "goTo": "前往 {{title}}",
     "untitled": "未命名"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} 已在磁碟上變更，而你還有尚未儲存的編輯。",
+    "compare": "比較",
+    "keepMine": "保留我的版本",
+    "reload": "重新載入",
+    "failed": "Oleafly 無法更新 {{file}}。請再試一次。",
+    "tabMark": "已在磁碟上變更。開啟此分頁以選擇要保留的版本。"
   }
 }

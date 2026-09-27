@@ -1367,6 +1367,35 @@
     "description": "Palauta osion {{sectionName}} asetukset oletuksiin.",
     "label": "Palauta asetukset"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} tulee PATH-muuttujaasi, kun kirjaudut ulos ja takaisin sisään. Avaa sen jälkeen uusi pääte.",
+    "checking": "Tarkistetaan…",
+    "description": "Kirjoita päätteeseen <code>oleafly .</code>, niin kansio avautuu Oleaflyssä.",
+    "install": "Asenna",
+    "installing": "Asennetaan…",
+    "loadFailed": "Päätekomennon tilaa ei voitu tarkistaa.",
+    "notOnPath": {
+      "file": "{{directory}} ei ole vielä PATH-muuttujassasi. Lisää tämä rivi tiedostoon {{file}} ja avaa uusi pääte:",
+      "run": "{{directory}} ei ole vielä PATH-muuttujassasi. Suorita tämä kerran ja avaa uusi pääte:"
+    },
+    "removing": "Poistetaan…",
+    "result": {
+      "copied": "Komento kopioitiin kohteeseen {{path}}.",
+      "linked": "{{path}} osoittaa nyt tähän Oleaflyn kopioon.",
+      "removed": "{{path}} poistettiin."
+    },
+    "state": {
+      "installed": "Asennettu: {{path}}.",
+      "moveApp": "Siirrä Oleafly ensin Ohjelmat-kansioon ja asenna komento sitten täällä.",
+      "notInstalled": "Lisää oleafly-komennon kansioon {{directory}}.",
+      "occupied": "{{path}} on jo olemassa, eikä Oleafly luonut sitä, joten sitä ei muuteta.",
+      "outdated": "{{path}} osoittaa yhä Oleaflyn vanhempaan kopioon. Päivitä se käyttämään tätä kopiota.",
+      "packaged": "Asennettu Oleafly-paketin mukana: {{path}}.",
+      "unavailable": "Tässä Oleaflyn kopiossa ei ole komentoa."
+    },
+    "title": "Päätekomento",
+    "update": "Päivitä"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"
+      },
+      "openFolder": {
+        "label": "Avaa kansio",
+        "description": "Avaa tietokoneen kansio projektina."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Isot kirjaimet"
       },
       "unbound": "Ei asetettu"
+    }
+  },
+  "systemIntegration": {
+    "title": "Järjestelmäintegraatio",
+    "description": "Avaa kansioita Oleaflyssä suoraan tiedostonhallinnasta.",
+    "checking": "Tarkistetaan…",
+    "loadFailed": "Tiedostonhallinnan asetuksia ei voitu tarkistaa.",
+    "state": {
+      "installed": "Asennettu",
+      "notInstalled": "Ei asennettu",
+      "needsAttention": "Vaatii huomiota"
+    },
+    "actions": {
+      "install": "Asenna",
+      "repair": "Korjaa"
+    },
+    "failed": {
+      "install": "Asennus epäonnistui. Yritä uudelleen.",
+      "remove": "Poistaminen epäonnistui. Yritä uudelleen."
+    },
+    "packaged": "Asennettu Oleafly-paketin mukana.",
+    "quickAction": {
+      "label": "Pikatoiminnot Finderissa",
+      "description": "Lisää Avaa sovelluksessa Oleafly -komennon Palvelut-valikkoon, kun napsautat kansiota Finderissa hiiren oikealla.",
+      "menuHint": "Ei vielä Pikatoiminnot-valikossa. Napsauta kansiota hiiren oikealla, valitse Pikatoiminnot › Muokkaa ja ota {{title}} käyttöön."
+    },
+    "explorerMenu": {
+      "label": "Resurssienhallinnan pikavalikko",
+      "description": "Napsauta kansiota tai sen sisällä olevaa tyhjää kohtaa hiiren oikealla ja valitse Avaa sovelluksella Oleafly. Windows 11:ssä se on kohdassa Näytä lisää vaihtoehtoja.",
+      "toggle": "Näytä Avaa sovelluksella Oleafly Resurssienhallinnassa"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Lisää Avaa sovelluksella Oleafly, kun napsautat kansiota hiiren oikealla Dolphinissa."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Lisää Avaa sovelluksella Oleafly, kun napsautat kansiota hiiren oikealla Nemossa."
+    },
+    "nautilus": {
+      "label": "Tiedostot",
+      "description": "Lisää Avaa sovelluksella Oleafly Skriptit-valikkoon, kun napsautat kansiota hiiren oikealla GNOME Tiedostoissa."
+    },
+    "folderOpenWith": {
+      "label": "Avaa sovelluksella -valikko kansioille",
+      "description": "Näyttää Oleaflyn kansioiden Avaa sovelluksella -valikossa. Oletustiedostonhallintasi pysyy samana."
+    },
+    "attention": {
+      "outdated": "Se on vanhentunut tai macOS esti sen. Korjaa se palauttaaksesi sen.",
+      "elsewhere": "Valikko avaa toisen Oleafly-kopion. Korjaa se käyttääksesi tätä.",
+      "moved": "Se osoittaa Oleafly-kopioon, joka on siirretty. Korjaa se käyttääksesi tätä.",
+      "noDefaultFileManager": "Järjestelmässäsi ei ole kansioiden oletustiedostonhallintaa, joten tämä merkintä voisi avata jokaisen kansion Oleaflyssä. Poista se."
     }
   }
 }

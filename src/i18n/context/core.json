@@ -118,7 +118,8 @@
     "transparent": "Colour-picker option that clears the colour instead of choosing one"
   },
   "project": {
-    "autosaveFailed": "Sticky error after a save fails, from autosave or an explicit save. The unsaved text is still open in the editor"
+    "autosaveFailed": "Sticky error after a save fails, from autosave or an explicit save. The unsaved text is still open in the editor",
+    "changedOnDiskElsewhere": "Error toast after a save the user asked for is blocked because a file in another tab changed on disk while it had unsaved edits. Its button opens that file"
   },
   "checkpoint": {
     "storageUnavailable": "Shown once after a compile when the automatic version checkpoint could not be written to disk",
@@ -126,5 +127,8 @@
   },
   "missingPackages": {
     "userTree": "{{path}} is a folder path. The personal TeX tree is the per-user package folder, as opposed to the machine-wide one"
+  },
+  "citation": {
+    "linkedBibliography": "Error when a citation cannot be added because the project's .bib file is a link to a file outside the opened folder, such as a Zotero Better BibTeX export"
   }
 }

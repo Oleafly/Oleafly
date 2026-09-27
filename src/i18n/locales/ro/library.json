@@ -36,7 +36,6 @@
     "appIconAlt": "Pictograma aplicației Oleafly",
     "welcomeTitle": "Bun venit în Oleafly",
     "welcomeDescription": "Scrie, compilează și corectează LaTeX, Typst și Markdown. Gestionează citările, verifică fișiere PDF, urmărește modificările în Git și lucrează cu modelele AI pe care le alegi.",
-    "createFirstProject": "Creează un proiect nou",
     "loading": "Se citește biblioteca ta…",
     "noBookmarksTitle": "Încă nu ai semne de carte",
     "noBookmarksDescription": "Treci cu mouse-ul peste o carte și apasă pe semnul ei de carte ca să adaugi unul.",
@@ -69,8 +68,15 @@
       "anyTime": "Oricând",
       "last7Days": "Ultimele 7 zile",
       "last30Days": "Ultimele 30 de zile",
-      "lastYear": "Ultimul an"
-    }
+      "lastYear": "Ultimul an",
+      "location": "Locație",
+      "locationAll": "Toate proiectele",
+      "locationLibrary": "În Oleafly",
+      "locationExternal": "Proiecte externe"
+    },
+    "openFolder": "Deschide un folder",
+    "openFolderShortcut": "Deschide un folder ({{shortcut}})",
+    "createFirstProject": "Creează un proiect nou"
   },
   "projects": {
     "open": "Deschide {{name}}",
@@ -84,7 +90,7 @@
     "actions": "Acțiuni pentru {{name}}",
     "details": "Detaliile proiectului",
     "exportHistory": "Istoricul exporturilor",
-    "changeColor": "Schimbă culoarea proiectului",
+    "changeColor": "Culoarea proiectului",
     "fork": "Bifurcă proiectul",
     "delete": "Șterge proiectul",
     "favoriteAdd": "Adaugă la favorite",
@@ -96,7 +102,8 @@
     "kind": {
       "document": "document",
       "image": "imagine",
-      "diagram": "diagramă"
+      "diagram": "diagramă",
+      "external": "extern"
     },
     "preview": {
       "title": "Previzualizare PDF: {{name}}",
@@ -378,7 +385,9 @@
     "nameRequired": "Introdu un nume de depozit.",
     "published": "Publicat în {{repository}}.",
     "linked": "Legat de {{remote}} și trimis.",
-    "pushNeedsPull": "Legat de {{remote}}, dar trimiterea are nevoie întâi de o aducere: {{detail}}"
+    "pushNeedsPull": "Legat de {{remote}}, dar trimiterea are nevoie întâi de o aducere: {{detail}}",
+    "replaceRemotePrompt": "Acest proiect este legat de {{remote}}. Înlocuiești această legătură?",
+    "replaceRemote": "Înlocuiește legătura"
   },
   "deadlines": {
     "title": "Termene limită pentru conferințe",
@@ -467,6 +476,75 @@
       "sourcesTitle": "Surse",
       "sourcesBody": "Înregistrările combină setul de date deschis ccf-deadlines cu site-urile oficiale ale conferințelor urmărite de Oleafly.",
       "confirm": "Confirmă fiecare dată pe site-ul oficial al conferinței înainte să trimiți."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Proiect nou",
+    "newProjectDescription": "Pornește de la un șablon sau de la o pagină goală.",
+    "openFolderTitle": "Deschide un folder",
+    "openFolderDescription": "Lucrează cu fișiere care sunt deja pe computer. Rămân unde sunt."
+  },
+  "openFolder": {
+    "dismiss": "Închide"
+  },
+  "folder": {
+    "state": {
+      "missing": "Folder lipsă",
+      "offline": "Unitate neconectată",
+      "replaced": "Folder înlocuit",
+      "permissionDenied": "Fără permisiune"
+    },
+    "menu": {
+      "showInFinder": "Afișează în Finder",
+      "showInExplorer": "Afișează în Explorer",
+      "showInFileManager": "Afișează în managerul de fișiere",
+      "copyToLibrary": "Copiază în bibliotecă",
+      "remove": "Elimină din Oleafly"
+    },
+    "remove": {
+      "title": "Elimini „{{name}}” din Oleafly?",
+      "description": "Fișierele tale rămân unde sunt. Oleafly șterge fișierele de compilare făcute pentru acest folder și îi resetează încrederea, aprobările și folderele asociate. Deschide folderul din nou în 30 de zile ca să-i recuperezi conversațiile și istoricul. Restul va trebui configurat din nou.",
+      "confirm": "Elimină din Oleafly",
+      "done": "„{{name}}” a fost eliminat din Oleafly. Fișierele sunt tot în folder.",
+      "failed": "„{{name}}” nu a putut fi eliminat din Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "„{{name}}” nu poate fi găsit",
+        "body": "Era în <path>{{path}}</path> și poate a fost mutat sau șters. Localizează-l ca să-i păstrezi conversațiile și istoricul."
+      },
+      "offline": {
+        "title": "„{{name}}” este pe o unitate care nu e conectată",
+        "body": "Conectează unitatea sau partajarea de rețea care conține <path>{{path}}</path>, apoi încearcă din nou."
+      },
+      "replaced": {
+        "title": "„{{name}}” a fost înlocuit",
+        "body": "Folderul din <path>{{path}}</path> nu este cel pe care l-ai deschis înainte. Folosește-l doar dacă ai încredere în el. La schimbare, Oleafly dezactivează încrederea și aprobările."
+      },
+      "permissionDenied": {
+        "title": "Oleafly nu poate deschide „{{name}}”",
+        "bodyMac": "Permite-i lui Oleafly să folosească acest folder în Configurări sistem › Confidențialitate și securitate › Fișiere și dosare, apoi încearcă din nou.",
+        "bodyOther": "Contul tău nu poate citi <path>{{path}}</path>. Verifică permisiunile folderului, apoi încearcă din nou."
+      },
+      "back": {
+        "title": "„{{name}}” este din nou disponibil",
+        "body": "Oleafly poate accesa din nou <path>{{path}}</path>."
+      },
+      "locate": "Localizează",
+      "tryAgain": "Încearcă din nou",
+      "useThisFolder": "Folosește acest folder",
+      "checking": "Se verifică",
+      "still": "Oleafly tot nu poate ajunge la el."
+    },
+    "copy": {
+      "title": "Copiază „{{name}}” în biblioteca ta",
+      "description": "Oleafly copiază fișierele într-un proiect nou din bibliotecă și lasă folderul unde este. Istoricul Git vine odată cu ele, dar hookurile Git și fișierele de compilare nu.",
+      "counting": "Se numără fișierele…",
+      "copying": "Se copiază fișierele…",
+      "count": "{{done}} din {{total}}",
+      "done": "„{{name}}” este acum în biblioteca ta.",
+      "doneLeftOut": "„{{name}}” este acum în biblioteca ta. Linkurile către fișiere din alte locuri și folderele imbricate prea adânc nu au fost copiate.",
+      "failed": "„{{name}}” nu a putut fi copiat în biblioteca ta."
     }
   }
 }

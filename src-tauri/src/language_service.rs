@@ -703,7 +703,7 @@ pub async fn language_service_start(
         kind: request.kind,
         generation: registry.generation,
     };
-    let spawned = spawn_sidecar(&launch.executable, &launch.args, &workspace_root)?;
+    let spawned = spawn_sidecar(&launch)?;
     let (outbound, outbound_rx) = mpsc::channel(OUTBOUND_QUEUE_DEPTH);
     let (stop, stop_rx) = watch::channel(false);
     let (status, _) = watch::channel(LanguageServiceStatus::Running);
@@ -1153,6 +1153,15 @@ fn resolve_project_workspace(project_id: &str) -> Result<PathBuf, LanguageServic
             "invalid project id",
         )
     })?;
+    let kind = crate::project_location::kind_of(project_id).map_err(|_| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::InvalidWorkspace,
+            "project folder link is damaged",
+        )
+    })?;
+    if kind == crate::project_location::ProjectKind::Linked {
+        return resolve_linked_workspace(project_id);
+    }
     let projects_root = paths::projects_root()
         .and_then(|root| {
             root.canonicalize()
@@ -1233,20 +1242,45 @@ fn resolve_project_workspace(project_id: &str) -> Result<PathBuf, LanguageServic
     Ok(resolved)
 }
 
+fn resolve_linked_workspace(project_id: &str) -> Result<PathBuf, LanguageServiceError> {
+    use crate::project_location::{LocateError, ProjectKind};
+    let invalid = |message: &str| {
+        LanguageServiceError::new(LanguageServiceErrorCode::InvalidWorkspace, message)
+    };
+    let location = crate::project_location::locate(project_id).map_err(|error| {
+        invalid(match error {
+            LocateError::NotFound(_) => "project is unknown",
+            LocateError::Unavailable { .. } => "project folder is unavailable",
+            LocateError::Replaced { .. } => "project folder was replaced",
+            LocateError::PermissionDenied { .. } => "project folder cannot be read",
+            LocateError::Invalid(_) => "project folder link is damaged",
+        })
+    })?;
+    if location.kind != ProjectKind::Linked {
+        return Err(invalid(
+            "resolved project workspace changed during validation",
+        ));
+    }
+    crate::project::read_meta(project_id)
+        .map_err(|_| invalid("project metadata is invalid or unreadable"))?;
+    Ok(location.root)
+}
+
 fn spawn_sidecar(
-    executable: &Path,
-    args: &[String],
-    workspace_root: &Path,
+    launch: &server_runtime::ServerLaunch,
 ) -> Result<SpawnedSession, LanguageServiceError> {
-    let mut command = tokio::process::Command::new(executable);
+    let mut command = tokio::process::Command::new(&launch.executable);
     command
         .no_console()
-        .args(args)
-        .current_dir(workspace_root)
+        .args(&launch.args)
+        .current_dir(&launch.working_directory)
         .kill_on_drop(true)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(search_path) = &launch.search_path {
+        command.env("PATH", search_path);
+    }
     isolate_process_tree(&mut command);
     let mut child = command.spawn().map_err(|error| {
         LanguageServiceError::new(
@@ -2460,6 +2494,33 @@ mod tests {
     }
 
     #[test]
+    fn project_workspace_resolution_accepts_a_linked_folder_without_project_json() {
+        let _env_guard = paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        fs::create_dir(&data).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let folder = directory.path().join("thesis");
+        fs::create_dir(&folder).unwrap();
+        fs::write(folder.join("main.tex"), b"\\documentclass{article}").unwrap();
+        let linked = crate::linked_registry::register_folder_for_test(&folder);
+
+        assert_eq!(
+            resolve_project_workspace(&linked.id).unwrap(),
+            fs::canonicalize(&folder).unwrap()
+        );
+        assert!(!folder.join("project.json").exists());
+        assert!(!folder.join(".oleafly").exists());
+
+        fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(
+            resolve_project_workspace(&linked.id).unwrap_err().code,
+            LanguageServiceErrorCode::InvalidWorkspace
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
     fn project_workspace_resolution_rejects_traversal_and_unknown_projects() {
         let _env_guard = paths::data_dir_env_lock();
         let previous_data_dir = std::env::var_os("OLEAFLY_DATA_DIR");
@@ -2680,7 +2741,13 @@ mod tests {
     fn spawn_failures_do_not_expose_the_executable_path() {
         let secret_name = "private-token-in-executable-path";
         let executable = std::env::temp_dir().join(secret_name);
-        let error = match spawn_sidecar(&executable, &[], Path::new(".")) {
+        let launch = server_runtime::ServerLaunch {
+            executable: executable.clone(),
+            args: Vec::new(),
+            search_path: None,
+            working_directory: PathBuf::from("."),
+        };
+        let error = match spawn_sidecar(&launch) {
             Ok(_) => panic!("nonexistent executable unexpectedly spawned"),
             Err(error) => error,
         };
@@ -2692,9 +2759,13 @@ mod tests {
     #[cfg(windows)]
     #[tokio::test]
     async fn spawned_language_server_resumes_after_job_assignment() {
-        let args = vec!["/D".into(), "/S".into(), "/C".into(), "exit 0".into()];
-        let spawned = spawn_sidecar(Path::new("cmd.exe"), &args, Path::new("."))
-            .expect("spawn contained language server");
+        let launch = server_runtime::ServerLaunch {
+            executable: PathBuf::from("cmd.exe"),
+            args: vec!["/D".into(), "/S".into(), "/C".into(), "exit 0".into()],
+            search_path: None,
+            working_directory: PathBuf::from("."),
+        };
+        let spawned = spawn_sidecar(&launch).expect("spawn contained language server");
         let SpawnedSession {
             mut child,
             stdin,
@@ -2738,12 +2809,16 @@ mod tests {
                 .is_ok_and(|status| status.success())
         }
 
-        let args = vec![
-            "-c".into(),
-            "sleep 30 </dev/null >/dev/null 2>/dev/null & printf '%s' \"$!\"".into(),
-        ];
-        let spawned =
-            spawn_sidecar(Path::new("/bin/sh"), &args, Path::new(".")).expect("spawn shell leader");
+        let launch = server_runtime::ServerLaunch {
+            executable: PathBuf::from("/bin/sh"),
+            args: vec![
+                "-c".into(),
+                "sleep 30 </dev/null >/dev/null 2>/dev/null & printf '%s' \"$!\"".into(),
+            ],
+            search_path: None,
+            working_directory: PathBuf::from("."),
+        };
+        let spawned = spawn_sidecar(&launch).expect("spawn shell leader");
         let SpawnedSession {
             mut child,
             stdin,

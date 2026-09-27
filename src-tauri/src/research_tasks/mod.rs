@@ -129,6 +129,12 @@ impl ResearchTaskState {
         *lock(&self.inner.app) = Some(app);
     }
 
+    pub fn disown_on_exit(&self) {
+        if let Ok(store) = self.store() {
+            let _ = store.disown_current();
+        }
+    }
+
     pub async fn recover(&self, app_state: &crate::state::AppState) -> Result<(), String> {
         let store = self.store()?;
         let mut failures = Vec::new();
@@ -766,6 +772,7 @@ pub async fn research_task_create(
     blocking_task_command(&state, move |state| {
         crate::paths::validate_project_id(&draft.project_id)?;
         crate::paths::project_dir(&draft.project_id)?;
+        crate::trust::require_trusted(&draft.project_id, crate::trust::Capability::ResearchTasks)?;
         ensure_skills_available(&draft.project_id, &draft.skill_ids)?;
         let task = state.store()?.create(draft)?;
         state.emit_task(&task);
@@ -788,6 +795,15 @@ pub async fn research_task_edit(
     .await
 }
 
+fn request_task_start(state: &ResearchTaskState, task_id: &str) -> Result<(), String> {
+    let store = state.store()?;
+    let current = store.require(task_id)?;
+    crate::trust::require_trusted(&current.project_id, crate::trust::Capability::ResearchTasks)?;
+    state.runtime_for(&current.runtime_id, &current.agent_id)?;
+    state.emit_task(&store.request_start(task_id)?);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn research_task_start(
     app: tauri::AppHandle,
@@ -797,11 +813,7 @@ pub async fn research_task_start(
     state.attach_app(app);
     let requested_id = task_id.clone();
     blocking_task_command(&state, move |state| {
-        let store = state.store()?;
-        let current = store.require(&requested_id)?;
-        state.runtime_for(&current.runtime_id, &current.agent_id)?;
-        state.emit_task(&store.request_start(&requested_id)?);
-        Ok(())
+        request_task_start(state, &requested_id)
     })
     .await?;
     state.launch_ready().await?;
@@ -878,7 +890,12 @@ pub async fn research_task_retry(
     task_id: String,
 ) -> Result<ResearchTask, String> {
     blocking_task_command(&state, move |state| {
-        let task = state.store()?.retry(&task_id)?;
+        let store = state.store()?;
+        crate::trust::require_trusted(
+            &store.require(&task_id)?.project_id,
+            crate::trust::Capability::ResearchTasks,
+        )?;
+        let task = store.retry(&task_id)?;
         state.emit_task(&task);
         Ok(task)
     })
@@ -1025,7 +1042,10 @@ pub async fn research_task_delete(
         }
         store.delete(&task_id)?;
         let workspace_root = isolation::task_workspace_root(store.root(), &task_id);
-        let project_root = crate::paths::project_dir(&task.project_id).ok();
+        let project_root = crate::project_location::locate(&task.project_id)
+            .ok()
+            .filter(|location| location.kind == crate::project_location::ProjectKind::Library)
+            .map(|location| location.root);
         isolation::purge_task_workspaces(project_root.as_deref(), &workspace_root);
         Ok(())
     })
@@ -1070,6 +1090,145 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(error, "storage failed");
+    }
+
+    #[test]
+    fn restricted_projects_cannot_queue_retry_or_isolate_research_tasks() {
+        use tauri::Manager as _;
+        let _env = crate::paths::data_dir_env_lock();
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+        let project = crate::paths::create_project_dir("restricted-paper").unwrap();
+        std::fs::write(project.join("main.tex"), "source").unwrap();
+        let app = tauri::test::mock_builder()
+            .manage(ResearchTaskState::for_test(temp.path().join("tasks"), 1))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let draft = ResearchTaskDraft {
+            project_id: "restricted-paper".into(),
+            title: "Review".into(),
+            prompt: "Check".into(),
+            runtime_id: "fixture".into(),
+            agent_id: "fixture-agent".into(),
+            model_id: "fixture-model".into(),
+            skill_ids: Vec::new(),
+            dependency_ids: Vec::new(),
+        };
+        tauri::async_runtime::block_on(async {
+            let state = || app.state::<ResearchTaskState>();
+            let queued = research_task_create(state(), draft.clone()).await.unwrap();
+            let waiting = research_task_create(state(), draft.clone()).await.unwrap();
+            let _restricted = crate::trust::testing::restrict("restricted-paper");
+            let start = request_task_start(&state(), &waiting.id).unwrap_err();
+            assert!(
+                start.contains("\"code\":\"trust.research_tasks\""),
+                "{start}"
+            );
+            assert_eq!(
+                state()
+                    .store()
+                    .unwrap()
+                    .require(&waiting.id)
+                    .unwrap()
+                    .status,
+                waiting.status
+            );
+            let refused = research_task_create(state(), draft).await.unwrap_err();
+            assert!(
+                refused.contains("\"code\":\"trust.research_tasks\""),
+                "{refused}"
+            );
+            let store = state().store().unwrap();
+            store.request_cancel(&queued.id).unwrap();
+            let retry = research_task_retry(state(), queued.id.clone())
+                .await
+                .unwrap_err();
+            assert!(retry.contains("trust.research_tasks"), "{retry}");
+            let task = store.require(&queued.id).unwrap();
+            let isolation =
+                isolation::prepare(&store, &task, &CancellationToken::new()).unwrap_err();
+            assert!(isolation.contains("trust.research_tasks"), "{isolation}");
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn linked_projects_isolate_from_a_snapshot_and_leave_the_folder_repository_alone() {
+        use tauri::Manager as _;
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (id, folder) = fixture.link("paper");
+        std::fs::write(folder.join("main.tex"), "manuscript").unwrap();
+        let away = fixture.folders.path().join("away");
+        let git = |args: &[&str]| {
+            let mut command = std::process::Command::new("git");
+            crate::git::clear_inherited_git_env(&mut command);
+            let output = command
+                .current_dir(&folder)
+                .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        git(&["init", "--quiet"]);
+        git(&["add", "main.tex"]);
+        git(&["commit", "--quiet", "-m", "base"]);
+        git(&[
+            "worktree",
+            "add",
+            "--quiet",
+            "--detach",
+            away.to_str().unwrap(),
+        ]);
+        std::fs::remove_dir_all(&away).unwrap();
+        let registrations = folder.join(".git").join("worktrees");
+        let registered = || {
+            std::fs::read_dir(&registrations)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect::<Vec<_>>()
+        };
+        let user_worktrees = registered();
+        assert_eq!(user_worktrees.len(), 1);
+        fixture.trust(&id, crate::trust::TrustScope::Folder);
+        let tasks = tempfile::tempdir().unwrap();
+        let app = tauri::test::mock_builder()
+            .manage(ResearchTaskState::for_test(tasks.path().join("tasks"), 1))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let draft = ResearchTaskDraft {
+            project_id: id.clone(),
+            title: "Review".into(),
+            prompt: "Check".into(),
+            runtime_id: "fixture".into(),
+            agent_id: "fixture-agent".into(),
+            model_id: "fixture-model".into(),
+            skill_ids: Vec::new(),
+            dependency_ids: Vec::new(),
+        };
+        tauri::async_runtime::block_on(async {
+            let state = || app.state::<ResearchTaskState>();
+            let task = research_task_create(state(), draft).await.unwrap();
+            let store = state().store().unwrap();
+            let isolation = isolation::prepare(&store, &task, &CancellationToken::new()).unwrap();
+            assert_eq!(isolation.kind, model::TaskIsolationKind::StagedProject);
+            assert_eq!(
+                std::fs::read_to_string(
+                    std::path::Path::new(&isolation.execution_root).join("main.tex")
+                )
+                .unwrap(),
+                "manuscript"
+            );
+            assert_eq!(registered(), user_worktrees);
+            research_task_delete(state(), task.id.clone())
+                .await
+                .unwrap();
+        });
+        assert_eq!(registered(), user_worktrees);
     }
 
     #[test]

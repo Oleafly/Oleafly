@@ -46,7 +46,8 @@
     "projectChangedRetry": "Prosjektet ble endret under importen av siteringer. Prøv igjen i det opprinnelige prosjektet.",
     "readFailed": "Kunne ikke lese {{path}}: {{detail}}",
     "unrecognizedFile": "Ukjent filtype: {{name}}",
-    "writeFailed": "Kunne ikke skrive {{path}}: {{detail}}"
+    "writeFailed": "Kunne ikke skrive {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} lenker til en fil utenfor mappen, så Oleafly kan ikke legge til noe i den. Legg til referansen i Zotero eller der filen ellers vedlikeholdes."
   },
   "citeOleafly": {
     "added": "La Oleafly-oppføringen inn i {{path}}. Siter den med {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "«{{path}}» ble endret utenfor Oleafly. Last inn filen på nytt, eller lagre igjen for å beholde din versjon.",
     "openFileEncoding": "«{{path}}» kan ikke åpnes fordi det ikke er en UTF-8-tekstfil. Hvis det er tekst, lagrer du den som UTF-8 og åpner den på nytt.",
     "openFileFailed": "Kunne ikke åpne «{{path}}». Se appens logg for detaljer.",
-    "reloadFromDisk": "Last inn på nytt"
+    "reloadFromDisk": "Last inn på nytt",
+    "changedOnDiskElsewhere": "{{path}} ble endret på disken, så Oleafly lagret den ikke. Åpne den for å velge hvilken versjon du vil beholde."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysen mislyktes: {{message}}",
@@ -575,5 +577,9 @@
   "checkpoint": {
     "storageUnavailable": "Kunne ikke lagre et sjekkpunkt. Disken er full, eller det går ikke å skrive til sjekkpunktmappen. Frigjør plass eller sjekk mappetillatelsene, og kompiler deretter på nytt.",
     "incompleteCapture": "Kunne ikke lagre de siste sjekkpunktene fordi noen prosjektfiler ikke kunne leses. Sjekk tillatelsene deres, og kompiler deretter på nytt."
+  },
+  "folderUnavailable": {
+    "compile": "Kompilering er satt på pause til prosjektmappen er tilbake.",
+    "saveReason": "prosjektmappen er ikke tilgjengelig"
   }
 }

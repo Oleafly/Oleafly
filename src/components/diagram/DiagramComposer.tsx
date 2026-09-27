@@ -30,7 +30,7 @@ import {
 } from "@/lib/tauri";
 import { completeText } from "@/lib/agent-backend";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
-import { describeError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
@@ -111,20 +111,32 @@ async function fixWithAi(code: string, logTail: string): Promise<string> {
     .trim();
 }
 
+function describedWriteFailure(error: unknown): unknown {
+  return decodeAppError(error) ? new Error(describeError(error)) : error;
+}
+
 const HOST: DiagramHost = {
   compileIsolated: (projectId, source) =>
     compileIsolated(projectId, source, useSettingsStore.getState().offline),
   readIsolatedPdf,
   pdfToPng: pdfPageToPng,
   listFiles,
-  writeFileContent,
-  writeProjectBytes,
+  writeFileContent: (projectId, path, content) =>
+    writeFileContent(projectId, path, content).catch((error: unknown) => {
+      throw describedWriteFailure(error);
+    }),
+  writeProjectBytes: (projectId, relPath, dataBase64) =>
+    writeProjectBytes(projectId, relPath, dataBase64).catch((error: unknown) => {
+      throw describedWriteFailure(error);
+    }),
   insertAtCursor,
   getMainDoc: () => useFilesStore.getState().mainDoc,
   applyExternalWrite: (projectId, path, content) =>
     useFilesStore.getState().applyExternalWrite(projectId, path, content),
   saveActive: () => useFilesStore.getState().saveActive(),
-  refreshTree: () => useFilesStore.getState().refreshTree(),
+  refreshTree: async () => {
+    await useFilesStore.getState().refreshTree();
+  },
   createImageProject,
   createDiagramProject,
   refreshProjects: () => useFilesStore.getState().refreshProjects(),

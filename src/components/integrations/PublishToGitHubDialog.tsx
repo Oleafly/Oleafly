@@ -16,12 +16,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGithubStore } from "@/store/github";
-import { gitPreparePublish, gitPush, gitSetRemote } from "@/lib/tauri";
+import { gitPreparePublish, gitPublishPreflight, gitPush, gitSetRemote } from "@/lib/tauri";
 import {
   githubCreateRepo,
   githubListRepos,
   type GitHubRepo,
 } from "@/lib/github";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -40,17 +41,27 @@ type PublishActionToken = {
   request: number;
 };
 
+function linkRemote(projectId: string, url: string) {
+  return gitSetRemote(projectId, url);
+}
+
+function replaceRemote(projectId: string, url: string) {
+  return gitSetRemote(projectId, url, { replace: true });
+}
+
 export function PublishToGitHubDialog({
   open,
   onClose,
   projectId,
   projectName,
+  currentRemote = null,
   onPublished,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string | null;
   projectName: string;
+  currentRemote?: string | null;
   onPublished: (remoteUrl: string) => void;
 }) {
   const { t } = useTranslation(["common", "library"]);
@@ -68,6 +79,7 @@ export function PublishToGitHubDialog({
   const [query, setQuery] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<"new" | "existing" | null>(null);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
   const reposRequest = useRef(0);
@@ -119,6 +131,7 @@ export function PublishToGitHubDialog({
     setBusy(false);
     setMsg(null);
     setSelected(null);
+    setReplaceTarget(null);
     setRepoName(slug(projectName || "oleafly-project"));
     setIsPrivate(true);
     setRepos([]);
@@ -182,41 +195,54 @@ export function PublishToGitHubDialog({
     }, 900);
   };
 
-  const publishNew = async () => {
+  const publishNew = async (replace = false) => {
     if (!projectId) return;
+    if (currentRemote && !replace) {
+      setMsg(null);
+      setReplaceTarget("new");
+      return;
+    }
+    setReplaceTarget(null);
     const action = beginAction(projectId);
     if (!action || !isCurrentAction(action)) return;
     const name = slug(repoName.trim() || projectName || "oleafly-project");
     if (!name) return note(action, false, t(($) => $.library.github.nameRequired));
     setBusy(true);
     try {
+      await gitPublishPreflight(action.projectId);
       const repo = await githubCreateRepo(name, isPrivate);
       // A brand-new project may have no commits yet; the remote itself stays
       // clean since auth is handled by gitPush's credential helper, not a
       // token embedded in .git/config.
       await gitPreparePublish(action.projectId, "Initial commit");
-      await gitSetRemote(action.projectId, repo.clone_url);
+      await (replace ? replaceRemote : linkRemote)(action.projectId, repo.clone_url);
       await gitPush(action.projectId);
       if (!isCurrentAction(action)) return;
       note(action, true, t(($) => $.library.github.published, { repository: repo.full_name }));
       onPublished(repo.clone_url);
       scheduleClose(action);
     } catch (e) {
-      note(action, false, String(e));
+      note(action, false, describeError(e));
     } finally {
       if (isCurrentAction(action)) setBusy(false);
     }
   };
 
-  const publishExisting = async () => {
+  const publishExisting = async (replace = false) => {
     if (!projectId || !selected) return;
+    const remoteUrl = selected;
+    if (currentRemote && currentRemote !== remoteUrl && !replace) {
+      setMsg(null);
+      setReplaceTarget("existing");
+      return;
+    }
+    setReplaceTarget(null);
     const action = beginAction(projectId);
     if (!action || !isCurrentAction(action)) return;
-    const remoteUrl = selected;
     setBusy(true);
     try {
       await gitPreparePublish(action.projectId, "Initial commit");
-      await gitSetRemote(action.projectId, remoteUrl);
+      await (replace ? replaceRemote : linkRemote)(action.projectId, remoteUrl);
       // An existing remote may already contain commits. Let the push report
       // when its history must be pulled and reconciled first.
       try {
@@ -239,7 +265,7 @@ export function PublishToGitHubDialog({
       onPublished(remoteUrl);
       scheduleClose(action);
     } catch (e) {
-      note(action, false, String(e));
+      note(action, false, describeError(e));
     } finally {
       if (isCurrentAction(action)) setBusy(false);
     }
@@ -330,7 +356,10 @@ export function PublishToGitHubDialog({
           <>
             <Tabs
               value={tab}
-              onValueChange={(value) => setTab(value as "new" | "existing")}
+              onValueChange={(value) => {
+                setReplaceTarget(null);
+                setTab(value as "new" | "existing");
+              }}
               className="shrink-0"
             >
               <div className="flex justify-center px-4 py-2">
@@ -426,6 +455,24 @@ export function PublishToGitHubDialog({
               )}
             </div>
 
+            {replaceTarget && currentRemote && !renderIdentityChanged ? (
+              <div className="shrink-0 border-t p-3 text-xs">
+                <p>{t(($) => $.library.github.replaceRemotePrompt, { remote: currentRemote })}</p>
+                <div className="mt-2 flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setReplaceTarget(null)}>
+                    {t(($) => $.common.actions.cancel)}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      void (replaceTarget === "new" ? publishNew(true) : publishExisting(true))
+                    }
+                  >
+                    {t(($) => $.library.github.replaceRemote)}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {visibleMessage && (
               <div
                 className={cn(

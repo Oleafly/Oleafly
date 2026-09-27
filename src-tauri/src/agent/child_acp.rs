@@ -64,10 +64,13 @@ impl AcpChild {
     }
 
     async fn connect(&self) -> Result<String, String> {
-        let bridge = crate::research_mcp::start(
-            self.app.clone(),
-            self.project_id.clone(),
-            Some(self.project_path.clone()),
+        let bridge = crate::acp::admit_agent_bridge(
+            &self.project_id,
+            crate::research_mcp::start(
+                self.app.clone(),
+                self.project_id.clone(),
+                Some(self.project_path.clone()),
+            ),
         )
         .await?;
         let servers = vec![bridge.mcp_server()];

@@ -5,13 +5,14 @@ abstract: "A free, local-first desktop workspace for writing research papers in 
 type: software
 authors:
   - family-names: Venkateshmurthy
-    given-names: Prajwal S
+    given-names: "Prajwal S."
+    orcid: "https://orcid.org/0009-0004-8830-0725"
   - name: "The Oleafly contributors"
 repository-code: "https://github.com/Oleafly/Oleafly"
 url: "https://oleafly.com/"
 license: AGPL-3.0-or-later
-version: 0.4.2
-date-released: 2026-09-20
+version: 0.4.3
+date-released: 2026-09-27
 keywords:
   - latex
   - typst

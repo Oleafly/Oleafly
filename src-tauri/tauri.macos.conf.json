@@ -1,0 +1,13 @@
+{
+  "bundle": {
+    "fileAssociations": [
+      {
+        "ext": [],
+        "name": "Folder",
+        "contentTypes": ["public.folder"],
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ]
+  }
+}

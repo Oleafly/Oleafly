@@ -2800,7 +2800,7 @@ fn normalize_newlines(text: String) -> String {
 
 fn read_whole_file(project_id: &str, path: &str) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
-    let resolved = crate::sandbox::resolve(project_id, path)?;
+    let resolved = crate::sandbox::resolve_readable(project_id, path)?;
     std::fs::read(&resolved)
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
         .map_err(|error| error.to_string())

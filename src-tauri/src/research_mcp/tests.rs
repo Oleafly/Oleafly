@@ -626,3 +626,16 @@ fn the_stdio_bridge_carries_real_tool_calls_and_reports_an_unreachable_server() 
             || reply["error"]["code"].is_number()
     );
 }
+
+#[test]
+fn restricted_projects_get_no_research_bridge() {
+    let _env = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let project = crate::paths::create_project_dir("restricted-bridge").unwrap();
+    assert_eq!(super::admit("restricted-bridge").unwrap(), project);
+    let _restricted = crate::trust::testing::restrict("restricted-bridge");
+    let error = super::admit("restricted-bridge").unwrap_err();
+    assert!(error.contains("\"code\":\"trust.mcp\""), "{error}");
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}

@@ -216,6 +216,17 @@ describe("Sidebar", () => {
     );
   });
 
+  it("keeps the collapsed Structure header clear of the window's bottom edge", async () => {
+    render(<FilesPanel />);
+    const stack = screen.getByTestId("explorer-stack");
+    const structure = await screen.findByTestId("project-structure");
+    expect(structure).toHaveAttribute("aria-expanded", "false");
+    expect(stack).toHaveClass("pb-2.5");
+    fireEvent.click(structure);
+    await waitFor(() => expect(structure).toHaveAttribute("aria-expanded", "true"));
+    expect(stack).not.toHaveClass("pb-2.5");
+  });
+
   it("falls back to the files panel for an unknown rail tab", async () => {
     useSettingsStore.setState({ railTab: "nope" } as unknown as ReturnType<
       typeof useSettingsStore.getState

@@ -115,12 +115,12 @@ function openBufferOverrides(
 async function retrieveByReadingEachFile(
   projectId: string,
   files: Record<string, { content: string; dirty: boolean }>,
-  tree: { path: string; is_dir: boolean }[],
+  tree: { path: string; is_dir: boolean; placeholder?: boolean }[],
   tokens: string[],
   topK: number,
 ): Promise<RagChunk[]> {
   const paths = tree
-    .filter((f) => !f.is_dir && INDEXABLE.test(f.path))
+    .filter((f) => !f.is_dir && INDEXABLE.test(f.path) && (!f.placeholder || files[f.path]))
     .map((f) => f.path)
     .slice(0, MAX_FILES);
 

@@ -299,6 +299,18 @@ where
     ))
 }
 
+pub(crate) fn deliver_renderer_result(
+    state: &McpState,
+    call_id: u64,
+    mut result: Value,
+    renderer_session: u64,
+) {
+    crate::app_error::english_tool_result(&mut result);
+    if let Some(call) = take_pending_result(state, call_id, renderer_session) {
+        let _ = call.sender.send(PendingReply::Result(result));
+    }
+}
+
 pub(crate) fn take_pending_result(
     state: &McpState,
     call_id: u64,
@@ -448,8 +460,9 @@ use request::mcp_post;
 #[cfg(test)]
 use request::{
     authorized, bounded_activity_tool_name, collect_body_limited,
-    collect_body_limited_with_timeout, constant_time_eq, effective_policy, host_allowed,
-    origin_allowed, tool_disabled_by_read_only, tool_route, ToolRoute,
+    collect_body_limited_with_timeout, constant_time_eq, effective_policy, forward_route,
+    host_allowed, json_tool_error, linked_exposure_refusal, origin_allowed,
+    tool_disabled_by_read_only, tool_route, ToolRoute,
 };
 #[path = "server_lifecycle.rs"]
 mod lifecycle;

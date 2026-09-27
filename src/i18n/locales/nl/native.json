@@ -15,7 +15,11 @@
     "selectAll": "Alles selecteren",
     "view": "Beeld",
     "toggleTerminal": "Terminal tonen of verbergen",
-    "toggleBrowser": "Browser tonen of verbergen"
+    "toggleBrowser": "Browser tonen of verbergen",
+    "file": "Archief",
+    "openFolder": "Map openen…",
+    "openRecent": "Open recent",
+    "noRecent": "Geen recente projecten"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Kies een spreadsheet om te importeren",
       "filter": "Spreadsheets"
+    },
+    "trustFolder": {
+      "title": "Deze map vertrouwen?",
+      "message": "Oleafly schakelt Git, de terminal, agents en LaTeX-tools in voor {{name}}. Vertrouw alleen mappen waarvan je de inhoud kent.",
+      "messageParent": "Oleafly vertrouwt {{name}} en elke map daarin, ook mappen die je later opent.",
+      "messageRepository": "Oleafly voert Git uit in {{name}} met de eigen instellingen en hooks van de repository.",
+      "confirm": "Vertrouwen"
+    },
+    "restrictedWrite": {
+      "title": "Deze wijziging toestaan?",
+      "message": "De assistent wil {{path}} wijzigen. Zulke bestanden kunnen programma's uitvoeren, en deze map wordt nog niet vertrouwd.",
+      "confirm": "Toestaan"
+    },
+    "restrictedNetwork": {
+      "title": "Dit verzoek toestaan?",
+      "message": "De assistent wil {{tool}} gebruiken, dat tekst naar een onlinedienst stuurt. Deze map wordt nog niet vertrouwd.",
+      "confirm": "Toestaan"
+    },
+    "locateFolder": {
+      "title": "Projectmap zoeken"
+    },
+    "rebindFolder": {
+      "title": "Een andere map gebruiken?",
+      "message": "{{name}} is niet de map die Oleafly voor dit project had. Als je deze gebruikt, slaat Oleafly je niet-opgeslagen wijzigingen erin op en sluit het de terminals en agentsessies van dit project. Alles wat daarin draait, stopt. Daarnaast vertrouwt Oleafly de map niet meer, zet het volledige toegang uit, reset het de goedkeuringen van de assistent en ontkoppelt het de onderzoeksmappen. Chats en geschiedenis blijven bewaard.",
+      "confirm": "Deze map gebruiken"
+    },
+    "saveCopy": {
+      "title": "Kies waar je een kopie wilt opslaan",
+      "folderSuffix": "kopie"
+    },
+    "openFolder": {
+      "title": "Een map openen",
+      "inside": "Kies een map in {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "De bevestiging voor volledige toegang is weggeklikt.",
     "fullAccessDeclined": "Volledige toegang is niet ingeschakeld.",
     "approvalDialogClosed": "Het systeemvenster voor goedkeuring is onverwacht gesloten."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Openen in Oleafly",
+    "openWithOleafly": "Openen met Oleafly"
   }
 }

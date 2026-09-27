@@ -1367,6 +1367,35 @@
     "description": "Återställ inställningarna för {{sectionName}} till standard.",
     "label": "Återställ inställningar"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} finns i din PATH när du har loggat ut och in igen. Öppna sedan en ny terminal.",
+    "checking": "Kontrollerar…",
+    "description": "Skriv <code>oleafly .</code> i en terminal för att öppna mappen i Oleafly.",
+    "install": "Installera",
+    "installing": "Installerar…",
+    "loadFailed": "Det gick inte att kontrollera terminalkommandot.",
+    "notOnPath": {
+      "file": "{{directory}} finns inte i din PATH ännu. Lägg till den här raden i {{file}} och öppna sedan en ny terminal:",
+      "run": "{{directory}} finns inte i din PATH ännu. Kör det här en gång och öppna sedan en ny terminal:"
+    },
+    "removing": "Tar bort…",
+    "result": {
+      "copied": "Kommandot kopierades till {{path}}.",
+      "linked": "{{path}} pekar nu på den här kopian av Oleafly.",
+      "removed": "{{path}} togs bort."
+    },
+    "state": {
+      "installed": "Installerat i {{path}}.",
+      "moveApp": "Flytta först Oleafly till mappen Program och installera sedan kommandot här.",
+      "notInstalled": "Lägger till oleafly i {{directory}}.",
+      "occupied": "{{path}} finns redan och skapades inte av Oleafly, så det lämnas som det är.",
+      "outdated": "{{path}} pekar fortfarande på en äldre kopia av Oleafly. Uppdatera det så att det använder den här kopian.",
+      "packaged": "Installerat i {{path}} av ditt Oleafly-paket.",
+      "unavailable": "Den här kopian av Oleafly innehåller inte kommandot."
+    },
+    "title": "Terminalkommando",
+    "update": "Uppdatera"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Visa eller dölj projektets terminal.",
         "label": "Visa eller dölj terminalen"
+      },
+      "openFolder": {
+        "label": "Öppna mapp",
+        "description": "Öppna en mapp från datorn som ett projekt."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Versaler"
       },
       "unbound": "Inte angiven"
+    }
+  },
+  "systemIntegration": {
+    "title": "Systemintegration",
+    "description": "Öppna mappar i Oleafly direkt från filhanteraren.",
+    "checking": "Kontrollerar…",
+    "loadFailed": "Det gick inte att kontrollera filhanterarens inställningar.",
+    "state": {
+      "installed": "Installerad",
+      "notInstalled": "Inte installerad",
+      "needsAttention": "Behöver åtgärdas"
+    },
+    "actions": {
+      "install": "Installera",
+      "repair": "Reparera"
+    },
+    "failed": {
+      "install": "Det gick inte att installera. Försök igen.",
+      "remove": "Det gick inte att ta bort. Försök igen."
+    },
+    "packaged": "Installerad med Oleafly-paketet.",
+    "quickAction": {
+      "label": "Snabbåtgärder i Finder",
+      "description": "Lägger till Öppna i Oleafly i menyn Tjänster när du högerklickar på en mapp i Finder.",
+      "menuHint": "Inte under Snabbåtgärder än. Högerklicka på en mapp, välj Snabbåtgärder › Anpassa och slå på {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Högerklicksmeny i Utforskaren",
+      "description": "Högerklicka på en mapp, eller på ett tomt område i den, och välj Öppna med Oleafly. I Windows 11 finns den under Visa fler alternativ.",
+      "toggle": "Visa Öppna med Oleafly i Utforskaren"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Lägger till Öppna med Oleafly när du högerklickar på en mapp i Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Lägger till Öppna med Oleafly när du högerklickar på en mapp i Nemo."
+    },
+    "nautilus": {
+      "label": "Filer",
+      "description": "Lägger till Öppna med Oleafly i menyn Skript när du högerklickar på en mapp i GNOME Filer."
+    },
+    "folderOpenWith": {
+      "label": "Menyn Öppna med för mappar",
+      "description": "Visar Oleafly under Öppna med för mappar. Din standardfilhanterare förblir densamma."
+    },
+    "attention": {
+      "outdated": "Den är inaktuell eller blockerad av macOS. Reparera den för att få tillbaka den.",
+      "elsewhere": "Menyn öppnar en annan kopia av Oleafly. Reparera den för att använda den här.",
+      "moved": "Den pekar på en kopia av Oleafly som har flyttats. Reparera den för att använda den här.",
+      "noDefaultFileManager": "Systemet har ingen standardfilhanterare för mappar, så den här posten kan öppna alla mappar i Oleafly. Ta bort den."
     }
   }
 }

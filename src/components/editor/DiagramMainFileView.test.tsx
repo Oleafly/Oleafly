@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.read, writeFileContent: mocks.write,
   projectMutationGeneration: vi.fn(async () => 0), mcpSetActiveProject: vi.fn(async () => {}),
-  listFiles: vi.fn(async () => []), gitShow: vi.fn(async () => ""),
+  listFiles: vi.fn(async () => []), listFileTree: vi.fn(async () => ({ entries: [], truncated: false })), gitShow: vi.fn(async () => ""),
 }));
 vi.mock("@/components/diagram/diagram-kit", () => ({ KIT: {} }));
 vi.mock("@oleafly/diagram", async () => {

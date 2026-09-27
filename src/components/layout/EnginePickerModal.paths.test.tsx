@@ -295,6 +295,22 @@ describe("EnginePickerModal states", () => {
     await waitFor(() => expect(mocks.setEngine).toHaveBeenCalledWith("xetex"));
   });
 
+  it("says why when a read-only folder refuses the switch", async () => {
+    mocks.setEngine.mockRejectedValue(`@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "project.json" },
+      detail: null,
+    })}`);
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() =>
+      expect(mocks.errorUnique).toHaveBeenCalledExactlyOnceWith(
+        "engine-switch:project-1",
+        "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+      ),
+    );
+  });
+
   it("reports a failed switch back", async () => {
     mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
     mocks.setEngine.mockRejectedValue(new Error("locked"));

@@ -6,9 +6,12 @@ import {
   BookmarkX,
   Check,
   Clock3,
+  CopyPlus,
   Eye,
   FileText,
   FolderInput,
+  FolderMinus,
+  FolderOpen,
   GitFork,
   History,
   Info,
@@ -16,7 +19,6 @@ import {
   List,
   Loader2,
   Palette,
-  Plus,
   Search,
   SearchX,
   SlidersHorizontal,
@@ -79,6 +81,7 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
+import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import {
@@ -93,16 +96,40 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn, isWindows } from "@/lib/utils";
+import { cn, isMac, isWindows } from "@/lib/utils";
 import {
   recycleProject,
   duplicateProject,
   readCompiledPdf,
+  removeLinkedProject,
+  revealProject,
+  type ProjectAvailability,
   type ProjectInfo,
 } from "@/lib/tauri";
+import {
+  folderAvailability,
+  folderDisplayPath,
+  folderUnavailable,
+  isFolderProject,
+  projectInScope,
+  projectUpdatedAt,
+  sortByActivity,
+  type LibraryScope,
+} from "@/lib/library-projects";
+import {
+  FolderStateLine,
+  asUnavailable,
+  type UnavailableFolder,
+} from "@/components/library/folder-state";
+import { FolderUnavailableDialog } from "@/components/library/FolderUnavailableDialog";
+import { copyIntoLibrary } from "@/store/copy-into-library";
+import { useLibraryAvailabilityStore } from "@/store/library-availability";
 import { formatNumber } from "@/lib/intl";
 import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
+import { LibraryStartChoices } from "@/components/library/LibraryStartChoices";
+import { OpenFolderButton } from "@/components/library/OpenFolderButton";
+import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -111,6 +138,7 @@ const thumbInflight = new Set<string>();
 
 type ProjectFilters = {
   metadata: string;
+  location: LibraryScope;
   engine: "all" | "tectonic" | "typst" | "markdown";
   kind: "all" | "document" | "image" | "diagram";
   bookmark: "all" | "yes" | "no";
@@ -121,6 +149,7 @@ type ProjectFilters = {
 
 const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
   metadata: "",
+  location: "all",
   engine: "all",
   kind: "all",
   bookmark: "all",
@@ -174,6 +203,7 @@ function projectMetadataText(project: ProjectInfo) {
   return [
     project.id,
     project.name,
+    folderDisplayPath(project) ?? "",
     project.engine,
     projectEngineLabel(project.engine, project.main_doc),
     project.kind,
@@ -208,7 +238,9 @@ function projectPassesFilters(
   project: ProjectInfo,
   filters: ProjectFilters,
   favs: readonly string[],
+  updatedAt: number,
 ) {
+  if (!projectInScope(project, filters.location)) return false;
   if (project.recovery_pending) return true;
   const bookmarked = favs.includes(project.id);
   if (!projectMatchesText(project, filters.metadata)) return false;
@@ -220,7 +252,7 @@ function projectPassesFilters(
   if (filters.preview === "yes" && !project.has_preview) return false;
   if (filters.preview === "no" && project.has_preview) return false;
   if (!isWithinDays(project.created_at, filters.created)) return false;
-  return isWithinDays(project.updated_at, filters.modified);
+  return isWithinDays(updatedAt, filters.modified);
 }
 
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
@@ -238,24 +270,96 @@ function projectKindLabel(t: Translate, kind: string | undefined): string {
   }
 }
 
+function projectTypeLabel(t: Translate, project: ProjectInfo): string {
+  if (isFolderProject(project)) return t(($) => $.library.projects.kind.external);
+  return projectKindLabel(t, project.kind);
+}
+
+function projectCardLabels(t: Translate, project: ProjectInfo, updatedAt: number) {
+  if (project.recovery_pending) {
+    return {
+      date: t(($) => $.library.projects.openToRecover),
+      engine: t(($) => $.library.projects.recoveryRequired),
+      kind: t(($) => $.library.projects.openToRecover),
+      openLabel: t(($) => $.library.projects.openToRecoverNamed, { name: project.name }),
+    };
+  }
+  return {
+    date: projectModifiedLabel(updatedAt),
+    engine: projectEngineLabel(project.engine, project.main_doc),
+    kind: projectTypeLabel(t, project),
+    openLabel: undefined,
+  };
+}
+
+function projectRowColumns(t: Translate, project: ProjectInfo, updatedAt: number) {
+  if (project.recovery_pending) {
+    return {
+      kind: t(($) => $.library.projects.recoveryShort),
+      engine: t(($) => $.library.projects.recoveryMetadata),
+      activity: t(($) => $.library.projects.recoveryModified),
+    };
+  }
+  return {
+    kind: projectTypeLabel(t, project),
+    engine: projectEngineLabel(project.engine, project.main_doc),
+    activity: projectModifiedLabel(updatedAt),
+  };
+}
+
+function ProjectRowCaption({
+  project,
+  folderState,
+}: Readonly<{
+  project: ProjectInfo;
+  folderState: UnavailableFolder | null;
+}>) {
+  const { t } = useTranslation(["common", "library"]);
+  if (project.recovery_pending) {
+    return (
+      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+        {t(($) => $.library.projects.openToRecover)}
+      </span>
+    );
+  }
+  const caption = `${projectEngineLabel(project.engine, project.main_doc)} · ${projectTypeLabel(t, project)}`;
+  if (folderState) {
+    return (
+      <span className="mt-1 block min-w-0 text-xs lg:hidden">
+        <FolderStateLine state={folderState} className="sm:hidden" />
+        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
+          {caption}
+        </span>
+      </span>
+    );
+  }
+  return (
+    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+      {caption}
+    </span>
+  );
+}
+
 function FilterSelect({
   name,
   label,
   value,
   options,
   onChange,
+  className,
 }: Readonly<{
   name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  className?: string;
 }>) {
   const id = `project-filter-${name}`;
   return (
     <label
       htmlFor={id}
-      className="flex min-w-0 flex-col gap-1 text-xs font-medium"
+      className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium", className)}
     >
       {label}
       <Select value={value} onValueChange={onChange}>
@@ -315,6 +419,40 @@ export function Library() {
     id: string;
     name: string;
   } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<ProjectInfo | null>(null);
+  const [unavailableTarget, setUnavailableTarget] = useState<{
+    project: ProjectInfo;
+    state: UnavailableFolder;
+  } | null>(null);
+  const checkedFolders = useLibraryAvailabilityStore((s) => s.checked);
+  const modifiedFolders = useLibraryAvailabilityStore((s) => s.modified);
+  const checkFolders = useLibraryAvailabilityStore((s) => s.check);
+  const folderKey = useMemo(
+    () => projects.filter(isFolderProject).map((project) => project.id).join("\n"),
+    [projects],
+  );
+  const hasFolders = folderKey.length > 0;
+  if (!hasFolders && filters.location !== "all") {
+    setFilters((current) => ({ ...current, location: "all" }));
+  }
+  const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
+    folderAvailability(project, checkedFolders);
+  const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
+  const coverColor = (project: ProjectInfo) =>
+    projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR);
+  const revealLabel = () => {
+    if (isMac) return t(($) => $.library.folder.menu.showInFinder);
+    if (isWindows) return t(($) => $.library.folder.menu.showInExplorer);
+    return t(($) => $.library.folder.menu.showInFileManager);
+  };
+  const openFromLibrary = (project: ProjectInfo) => {
+    const state = asUnavailable(availabilityOf(project));
+    if (state) {
+      window.setTimeout(() => setUnavailableTarget({ project, state }), 0);
+      return;
+    }
+    void openProject(project.id);
+  };
   const currentDetailsProject =
     detailsProject && projects.find((project) => project.id === detailsProject.id) || detailsProject;
   const currentHistoryProject =
@@ -379,6 +517,55 @@ export function Library() {
         </Item>
       );
     }
+    const colorSub = (
+      <Sub>
+        <SubTrigger>
+          <Palette className="mr-2 size-4" /> {t(($) => $.library.projects.changeColor)}
+        </SubTrigger>
+        <SubContent className="w-44">
+          {BOOK_COLOR_OPTIONS.map((c) => {
+            const active = coverColor(p) === c.hex;
+            return (
+              <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
+                <span
+                  className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
+                  style={{ background: c.hex }}
+                />
+                {colorLabels[c.name] ?? c.name}
+                {active && <Check className="ml-auto size-3.5" />}
+              </Item>
+            );
+          })}
+        </SubContent>
+      </Sub>
+    );
+    if (isFolderProject(p)) {
+      const reachable = !folderUnavailable(availabilityOf(p));
+      return (
+        <>
+          <Item onClick={() => openFromLibrary(p)}>
+            <FileText className="mr-2 size-4" /> {t(($) => $.library.projects.openProject)}
+          </Item>
+          <Item
+            disabled={!reachable}
+            onClick={() => {
+              void revealProject(p.id).catch((error: unknown) =>
+                notifyError("reveal folder", error),
+              );
+            }}
+          >
+            <FolderOpen className="mr-2 size-4" /> {revealLabel()}
+          </Item>
+          <Item disabled={!reachable} onClick={() => void copyIntoLibrary(p.id, p.name)}>
+            <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}
+          </Item>
+          {colorSub}
+          <Item onClick={() => window.setTimeout(() => setRemoveTarget(p), 0)}>
+            <FolderMinus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.remove)}
+          </Item>
+        </>
+      );
+    }
     return (
       <>
         <Item onClick={() => void openProject(p.id)}>
@@ -390,27 +577,7 @@ export function Library() {
         <Item onClick={() => window.setTimeout(() => setHistoryProject(p), 0)}>
           <History className="mr-2 size-4" /> {t(($) => $.library.projects.exportHistory)}
         </Item>
-        <Sub>
-          <SubTrigger>
-            <Palette className="mr-2 size-4" /> {t(($) => $.library.projects.changeColor)}
-          </SubTrigger>
-          <SubContent className="w-44">
-            {BOOK_COLOR_OPTIONS.map((c) => {
-              const active =
-                (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
-              return (
-                <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
-                  <span
-                    className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
-                    style={{ background: c.hex }}
-                  />
-                  {colorLabels[c.name] ?? c.name}
-                  {active && <Check className="ml-auto size-3.5" />}
-                </Item>
-              );
-            })}
-          </SubContent>
-        </Sub>
+        {colorSub}
         <Item
           onClick={() => {
             setForkName(t(($) => $.library.projects.forkDialog.copySuffix, { name: p.name }));
@@ -445,10 +612,18 @@ export function Library() {
     try {
       await recycleProject(target.id);
     } catch (error) {
+      const typed = decodeAppError(error);
+      if (typed?.code === PROJECT_NOT_FOUND) {
+        await refreshProjects().catch((refreshError: unknown) => {
+          void logError("refresh projects after delete", refreshError);
+        });
+      }
       notifyError(
         "delete project",
         error,
-        t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
+        typed
+          ? undefined
+          : t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
       );
       return;
     }
@@ -460,6 +635,29 @@ export function Library() {
     toast.success(
       t(($) => $.library.projects.deleteDialog.moved, { name: target.name }),
     );
+  };
+  const confirmFolderRemoval = async () => {
+    const target = removeTarget;
+    if (!target) return;
+    setRemoveTarget(null);
+    try {
+      await removeLinkedProject(target.id);
+    } catch (error) {
+      notifyError(
+        "remove folder from library",
+        error,
+        decodeAppError(error)
+          ? undefined
+          : t(($) => $.library.folder.remove.failed, { name: target.name }),
+      );
+      return;
+    }
+    try {
+      await refreshProjects();
+    } catch (error) {
+      void logError("refresh projects after removing a folder", error);
+    }
+    toast.success(t(($) => $.library.folder.remove.done, { name: target.name }));
   };
   const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
     useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
@@ -513,8 +711,19 @@ export function Library() {
   const bookmarkIsOnlyActiveFilter =
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
-    () => projects.filter((project) => projectPassesFilters(project, filters, favs)),
-    [projects, favs, filters],
+    () =>
+      sortByActivity(
+        projects.filter((project) =>
+          projectPassesFilters(
+            project,
+            filters,
+            favs,
+            projectUpdatedAt(project, modifiedFolders),
+          ),
+        ),
+        modifiedFolders,
+      ),
+    [projects, favs, filters, modifiedFolders],
   );
 
   // Returning to the library refetches, so externally created or edited
@@ -528,6 +737,22 @@ export function Library() {
     if (projectsLoaded) markBootStage("projects-loaded");
   }, [projectsLoaded]);
 
+  useEffect(() => {
+    if (page !== "library" || !projectsLoaded || !folderKey) return;
+    const ids = folderKey.split("\n");
+    let timer = 0;
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => void checkFolders(ids), 0);
+    });
+    const recheck = () => void checkFolders(ids);
+    window.addEventListener("focus", recheck);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [page, projectsLoaded, folderKey, checkFolders]);
+
   const submitFork = async () => {
     if (!forkTarget || forkBusyRef.current) return;
     forkBusyRef.current = true;
@@ -540,7 +765,11 @@ export function Library() {
       await refreshProjects();
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
-      notifyError("fork project", e, t(($) => $.library.projects.forkDialog.failed));
+      notifyError(
+        "fork project",
+        e,
+        decodeAppError(e) ? undefined : t(($) => $.library.projects.forkDialog.failed),
+      );
     } finally {
       forkBusyRef.current = false;
       setForkBusy(false);
@@ -594,34 +823,22 @@ export function Library() {
       data-testid="project-grid"
       className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
     >
-      {visibleProjects.map((p) => (
+      {visibleProjects.map((p) => {
+        const folderState = asUnavailable(availabilityOf(p));
+        const labels = projectCardLabels(t, p, updatedAtOf(p));
+        return (
         <ContextMenu key={p.id}>
           <ContextMenuTrigger asChild>
             <div className="flex justify-center">
               <Book
                 title={p.name}
-                color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
-                date={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecover)
-                    : projectModifiedLabel(p.updated_at)
-                }
-                engine={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.recoveryRequired)
-                    : projectEngineLabel(p.engine, p.main_doc)
-                }
+                color={coverColor(p)}
+                date={folderState ? <FolderStateLine state={folderState} /> : labels.date}
+                engine={labels.engine}
                 forkedFrom={p.forked_from}
-                kind={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecover)
-                    : projectKindLabel(t, p.kind)
-                }
-                openLabel={
-                  p.recovery_pending
-                    ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                    : undefined
-                }
+                dimmed={folderState !== null}
+                kind={labels.kind}
+                openLabel={labels.openLabel}
                 starred={favs.includes(p.id)}
                 onStarToggle={
                   p.recovery_pending ? undefined : () => toggleFav(p.id)
@@ -648,14 +865,14 @@ export function Library() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 }
-                onClick={() => void openProject(p.id)}
+                onClick={() => openFromLibrary(p)}
                 onPreviewRequest={
-                  p.recovery_pending
+                  p.recovery_pending || folderState
                     ? undefined
                     : () => hoverPreview && loadThumb(p.id, p.updated_at)
                 }
                 preview={
-                  !p.recovery_pending && hoverPreview
+                  !p.recovery_pending && !folderState && hoverPreview
                     ? thumbs[p.id]
                     : undefined
                 }
@@ -672,7 +889,8 @@ export function Library() {
             })}
           </ContextMenuContent>
         </ContextMenu>
-      ))}
+        );
+      })}
     </div>
     ) : (
     <div data-testid="project-list" className="border-b border-border/70">
@@ -688,7 +906,9 @@ export function Library() {
       </div>
       {visibleProjects.map((p) => {
         const recoveryPending = p.recovery_pending;
-        const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
+        const color = coverColor(p);
+        const folderState = asUnavailable(availabilityOf(p));
+        const columns = projectRowColumns(t, p, updatedAtOf(p));
         const starred = favs.includes(p.id);
         const forkSource = p.forked_from
           ? projects.find((project) => project.id === p.forked_from)?.name ??
@@ -759,7 +979,7 @@ export function Library() {
             >
               <button
                 type="button"
-                disabled={!p.has_preview}
+                disabled={!p.has_preview || folderState !== null}
                 onClick={() => void openProjectPreview(p)}
                 aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
@@ -801,9 +1021,9 @@ export function Library() {
                       ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
                       : t(($) => $.library.projects.open, { name: p.name })
                   }
-                  onClick={() => void openProject(p.id)}
+                  onClick={() => openFromLibrary(p)}
                   onMouseEnter={() => {
-                    if (recoveryPending || !hoverPreview) return;
+                    if (recoveryPending || folderState || !hoverPreview) return;
                     setPreviewProjectId(p.id);
                     loadThumb(p.id, p.updated_at);
                   }}
@@ -813,7 +1033,7 @@ export function Library() {
                     )
                   }
                   onFocus={() => {
-                    if (recoveryPending || !hoverPreview) return;
+                    if (recoveryPending || folderState || !hoverPreview) return;
                     setPreviewProjectId(p.id);
                     loadThumb(p.id, p.updated_at);
                   }}
@@ -826,7 +1046,10 @@ export function Library() {
                 >
                   <span
                     aria-hidden="true"
-                    className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm"
+                    className={cn(
+                      "relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
+                      folderState && "opacity-60 grayscale",
+                    )}
                     style={{ backgroundColor: color }}
                   >
                     {hoverPreview &&
@@ -845,31 +1068,17 @@ export function Library() {
                     <span className="block truncate text-sm font-medium text-foreground">
                       {p.name}
                     </span>
-                    {recoveryPending ? (
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
-                        {t(($) => $.library.projects.openToRecover)}
-                      </span>
-                    ) : (
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-                        {projectEngineLabel(p.engine, p.main_doc)} · {projectKindLabel(t, p.kind)}
-                      </span>
-                    )}
+                    <ProjectRowCaption project={p} folderState={folderState} />
                   </span>
                 </button>
                 <span className="hidden text-xs capitalize text-muted-foreground lg:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryShort)
-                    : projectKindLabel(t, p.kind)}
+                  {columns.kind}
                 </span>
                 <span className="hidden text-xs text-muted-foreground lg:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryMetadata)
-                    : projectEngineLabel(p.engine, p.main_doc)}
+                  {columns.engine}
                 </span>
-                <span className="hidden text-xs text-muted-foreground sm:block">
-                  {recoveryPending
-                    ? t(($) => $.library.projects.recoveryModified)
-                    : projectModifiedLabel(p.updated_at)}
+                <span className="hidden min-w-0 text-xs text-muted-foreground sm:block">
+                  {folderState ? <FolderStateLine state={folderState} /> : columns.activity}
                 </span>
                 {renderProjectRowActions()}
               </div>
@@ -1128,17 +1337,8 @@ export function Library() {
             {t(($) => $.library.home.welcomeDescription)}
           </EmptyDescription>
         </EmptyHeader>
-        <EmptyContent className="max-w-2xl">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button
-              data-testid="create-first-project"
-              data-tour="new-project"
-              className="bg-primary text-white hover:bg-primary"
-              onClick={() => setNewProjectOpen(true)}
-            >
-              <Plus className="size-4" /> {t(($) => $.library.home.createFirstProject)}
-            </Button>
-          </div>
+        <EmptyContent className="max-w-2xl items-center">
+          <LibraryStartChoices onNewProject={() => setNewProjectOpen(true)} />
         </EmptyContent>
       </Empty>
       ) : (
@@ -1230,6 +1430,7 @@ export function Library() {
       data-tauri-drag-region
       className="flex shrink-0 items-center gap-1.5"
     >
+    {projects.length > 0 ? <OpenFolderButton className="order-2" /> : null}
     {projects.length > 0 ? (
       <div className="order-2">
         <ProjectImportMenu
@@ -1244,7 +1445,7 @@ export function Library() {
               aria-label={t(($) => $.library.home.import)}
               className={cn(
                 HOME_DOCK_GLASS_SURFACE,
-                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
+                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground focus-visible:!bg-accent focus-visible:text-foreground dark:!bg-background/65 dark:shadow-sm dark:focus-visible:!bg-accent/60",
               )}
             >
               {busy ? (
@@ -1305,6 +1506,25 @@ export function Library() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
+            {hasFolders ? (
+              <FilterSelect
+                name="location"
+                className="col-span-2"
+                label={t(($) => $.library.home.filters.location)}
+                value={filters.location}
+                onChange={(location) =>
+                  setFilters((current) => ({
+                    ...current,
+                    location: location as ProjectFilters["location"],
+                  }))
+                }
+                options={[
+                  { value: "all", label: t(($) => $.library.home.filters.locationAll) },
+                  { value: "library", label: t(($) => $.library.home.filters.locationLibrary) },
+                  { value: "external", label: t(($) => $.library.home.filters.locationExternal) },
+                ]}
+              />
+            ) : null}
             <FilterSelect
               name="engine"
               label={t(($) => $.library.home.filters.engine)}
@@ -1474,6 +1694,7 @@ export function Library() {
           )}
         >
           {renderFirstRunWelcome()}
+          {projects.length > 0 ? <OpenFolderNotice className="mb-5" /> : null}
           {renderNoMatchesEmpty()}
           {renderProjectCollection()}
         </div>
@@ -1546,6 +1767,34 @@ export function Library() {
         destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmProjectDeletion()}
+      />
+      <ConfirmationDialog
+        open={removeTarget !== null}
+        title={t(($) => $.library.folder.remove.title, { name: removeTarget?.name ?? "" })}
+        description={t(($) => $.library.folder.remove.description)}
+        confirmLabel={t(($) => $.library.folder.remove.confirm)}
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={() => void confirmFolderRemoval()}
+      />
+      <FolderUnavailableDialog
+        key={unavailableTarget?.project.id ?? "closed"}
+        project={unavailableTarget?.project ?? null}
+        availability={unavailableTarget?.state ?? "missing"}
+        reachable={
+          unavailableTarget !== null && availabilityOf(unavailableTarget.project) === "ok"
+        }
+        onClose={() => {
+          setUnavailableTarget(null);
+          releasePointerLock();
+        }}
+        onOpen={(projectId) => {
+          setUnavailableTarget(null);
+          void openProject(projectId);
+        }}
+        onRemove={(project) => {
+          setUnavailableTarget(null);
+          window.setTimeout(() => setRemoveTarget(project), 0);
+        }}
       />
     </div>
   );

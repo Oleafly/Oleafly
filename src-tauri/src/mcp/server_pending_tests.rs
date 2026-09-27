@@ -185,3 +185,59 @@ fn stop_invalidation_fails_every_pending_call() {
     assert!(matches!(second.try_recv(), Ok(PendingReply::ServerStopped)));
     assert!(lock_pending(&state).is_empty());
 }
+
+const READ_ONLY_NOTES: &str = "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.";
+
+fn read_only_notes() -> String {
+    crate::app_error::AppError::new("project.folder_read_only")
+        .param("name", "notes.tex")
+        .into()
+}
+
+fn delivered(result: Value) -> Value {
+    use tauri::Manager as _;
+    let app = tauri::test::mock_app();
+    app.manage(McpState::default());
+    let state = app.state::<McpState>();
+    state.epoch.store(5, Ordering::Release);
+    activate_test_renderer(&state, 50);
+    let (mut receiver, registration) =
+        register_pending(&state, 5, 50, |_| Ok(()), None).expect("pending call");
+    tauri::async_runtime::block_on(crate::mcp::mcp_tool_result(
+        app.handle().clone(),
+        registration.call_id,
+        result,
+        50,
+    ))
+    .expect("the renderer result was accepted");
+    match receiver.try_recv() {
+        Ok(PendingReply::Result(value)) => value,
+        _ => panic!("the renderer result was not delivered"),
+    }
+}
+
+#[test]
+fn renderer_tool_errors_reach_the_client_in_english() {
+    let text = json!({ "error": read_only_notes() }).to_string();
+
+    let value = delivered(json!({
+        "content": [{ "type": "text", "text": text }],
+        "isError": true,
+    }));
+
+    let text = value["content"][0]["text"].as_str().unwrap();
+    let parsed: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(parsed["error"], READ_ONLY_NOTES);
+    assert!(!text.contains(crate::app_error::PREFIX));
+}
+
+#[test]
+fn successful_renderer_results_keep_file_contents_byte_for_byte() {
+    let document = json!({ "error": read_only_notes() }).to_string();
+    let text = json!({ "path": "data.json", "content": document }).to_string();
+    let result = json!({ "content": [{ "type": "text", "text": text }] });
+
+    assert_eq!(delivered(result.clone()), result);
+    let raw = json!({ "content": [{ "type": "text", "text": document }] });
+    assert_eq!(delivered(raw.clone()), raw);
+}

@@ -1383,6 +1383,35 @@
     "description": "Readu preferințele din {{sectionName}} la valorile implicite.",
     "label": "Resetează setările"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} va fi în PATH după ce te deconectezi și te conectezi din nou. Apoi deschide un terminal nou.",
+    "checking": "Se verifică…",
+    "description": "Scrie <code>oleafly .</code> într-un terminal ca să deschizi folderul în Oleafly.",
+    "install": "Instalează",
+    "installing": "Se instalează…",
+    "loadFailed": "Comanda de terminal nu a putut fi verificată.",
+    "notOnPath": {
+      "file": "{{directory}} nu este încă în PATH. Adaugă această linie în {{file}}, apoi deschide un terminal nou:",
+      "run": "{{directory}} nu este încă în PATH. Rulează asta o dată, apoi deschide un terminal nou:"
+    },
+    "removing": "Se elimină…",
+    "result": {
+      "copied": "Comanda a fost copiată în {{path}}.",
+      "linked": "{{path}} indică acum această copie a Oleafly.",
+      "removed": "{{path}} a fost eliminat."
+    },
+    "state": {
+      "installed": "Instalată în {{path}}.",
+      "moveApp": "Mută mai întâi Oleafly în folderul Aplicații, apoi instalează comanda aici.",
+      "notInstalled": "Adaugă oleafly în {{directory}}.",
+      "occupied": "{{path}} există deja și nu a fost creat de Oleafly, așa că rămâne cum este.",
+      "outdated": "{{path}} indică încă o copie mai veche a Oleafly. Actualizeaz-o ca să folosească această copie.",
+      "packaged": "Instalată în {{path}} de pachetul Oleafly.",
+      "unavailable": "Această copie a Oleafly nu include comanda."
+    },
+    "title": "Comandă de terminal",
+    "update": "Actualizează"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1416,6 +1445,10 @@
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"
+      },
+      "openFolder": {
+        "label": "Deschide un folder",
+        "description": "Deschide un folder de pe computer ca proiect."
       }
     },
     "application": {
@@ -1491,6 +1524,58 @@
         "uppercase": "Litere mari"
       },
       "unbound": "Nesetată"
+    }
+  },
+  "systemIntegration": {
+    "title": "Integrare cu sistemul",
+    "description": "Deschide foldere în Oleafly direct din managerul de fișiere.",
+    "checking": "Se verifică…",
+    "loadFailed": "Nu s-a putut verifica configurarea managerului de fișiere.",
+    "state": {
+      "installed": "Instalat",
+      "notInstalled": "Neinstalat",
+      "needsAttention": "Necesită atenție"
+    },
+    "actions": {
+      "install": "Instalează",
+      "repair": "Repară"
+    },
+    "failed": {
+      "install": "Nu s-a putut instala. Încearcă din nou.",
+      "remove": "Nu s-a putut elimina. Încearcă din nou."
+    },
+    "packaged": "Instalat împreună cu pachetul Oleafly.",
+    "quickAction": {
+      "label": "Acțiuni rapide în Finder",
+      "description": "Adaugă Deschide în Oleafly în meniul Servicii când faci clic dreapta pe un folder în Finder.",
+      "menuHint": "Nu apare încă în Acțiuni rapide. Fă clic dreapta pe un folder, alege Acțiuni rapide › Personalizare și activează {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Meniul contextual din Explorer",
+      "description": "Fă clic dreapta pe un folder sau pe un spațiu gol din el și alege Deschide cu Oleafly. În Windows 11 se află sub Afișați mai multe opțiuni.",
+      "toggle": "Afișează Deschide cu Oleafly în Explorer"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Adaugă Deschide cu Oleafly când faci clic dreapta pe un folder în Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Adaugă Deschide cu Oleafly când faci clic dreapta pe un folder în Nemo."
+    },
+    "nautilus": {
+      "label": "Fișiere",
+      "description": "Adaugă Deschide cu Oleafly în meniul Scripturi când faci clic dreapta pe un folder în Fișiere GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Meniul Deschide cu pentru foldere",
+      "description": "Afișează Oleafly în Deschide cu pentru foldere. Managerul de fișiere implicit rămâne același."
+    },
+    "attention": {
+      "outdated": "Este învechită sau macOS a blocat-o. Repar-o ca să o readuci.",
+      "elsewhere": "Meniul deschide o altă copie Oleafly. Repară-l ca să folosești aceasta.",
+      "moved": "Indică o copie Oleafly care a fost mutată. Repar-o ca să folosești aceasta.",
+      "noDefaultFileManager": "Sistemul nu are un manager de fișiere implicit pentru foldere, așa că această intrare ar putea deschide orice folder în Oleafly. Elimin-o."
     }
   }
 }

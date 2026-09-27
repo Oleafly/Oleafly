@@ -14,11 +14,20 @@ const mocks = vi.hoisted(() => ({
   loadMessage: undefined as string | undefined,
   outlineItems: [] as unknown[],
   lastProps: null as Record<string, unknown> | null,
+  saveFileBase64: vi.fn(),
+  notifyError: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
   readCompiledPdf: mocks.readCompiledPdf,
+  saveFileBase64: mocks.saveFileBase64,
+  uint8ToBase64: vi.fn(() => "Bwc="),
   appendAppLog: vi.fn(async () => {}),
+}));
+
+vi.mock("@/lib/toast", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  notifyError: mocks.notifyError,
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -92,6 +101,8 @@ async function renderHarness() {
 beforeEach(() => {
   window.history.replaceState({}, "", "/?view=preview&project=alpha");
   mocks.readCompiledPdf.mockReset();
+  mocks.saveFileBase64.mockReset();
+  mocks.notifyError.mockReset();
   mocks.gotoPage.mockReset();
   mocks.activateOutlineItem.mockReset();
   mocks.findNext.mockReset();
@@ -247,5 +258,40 @@ describe("detached preview toolbar", () => {
     expect(submit).toBeDisabled();
     await user.type(field, "secret");
     expect(submit).toBeEnabled();
+  });
+});
+
+describe("detached preview save to project", () => {
+  it("lets a read-only folder refusal explain itself instead of the generic failure", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "document.pdf" },
+      detail: null,
+    })}`;
+    mocks.saveFileBase64.mockRejectedValue(refused);
+    await renderHarness();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByLabelText(enPreview.actions.savePdf));
+    await screen.findByLabelText(enPreview.save.nameLabel);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(mocks.saveFileBase64).toHaveBeenCalledWith("alpha", "document.pdf", "Bwc=");
+    expect(mocks.notifyError).toHaveBeenCalledWith("save to project", refused, undefined);
+  });
+
+  it("keeps the generic failure for other save errors", async () => {
+    const failure = new Error("disk full");
+    mocks.saveFileBase64.mockRejectedValue(failure);
+    await renderHarness();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByLabelText(enPreview.actions.savePdf));
+    await screen.findByLabelText(enPreview.save.nameLabel);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(mocks.notifyError).toHaveBeenCalledWith("save to project", failure, enPreview.save.failed);
   });
 });

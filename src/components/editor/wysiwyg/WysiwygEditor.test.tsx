@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/core";
 import { documentContextForPreamble, WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
+import { useFolderAccessStore } from "@/store/folder-access";
 import {
   flushWysiwygPendingEdits,
   getWysiwygDocumentContext,
@@ -482,6 +483,65 @@ it("blocks visual commands while leased and flushes edits made before acquisitio
     mounted.unmount();
     useFilesStore.setState({ projectId: null });
   }
+});
+
+describe("Visual mode in a read-only folder", () => {
+  function setFolderReadOnly(readOnly: boolean): void {
+    useFolderAccessStore.setState({
+      projectId: "read-only-project",
+      status: { read_only: readOnly, synced_with: null },
+    });
+  }
+
+  beforeEach(() => {
+    lastEditor = null;
+    useFilesStore.setState({
+      projectId: "read-only-project",
+      activePath: "main.tex",
+      files: { "main.tex": { content: LATEX_A, dirty: false } },
+    });
+  });
+
+  it("is not editable and keeps the file clean while the folder is read-only", () => {
+    setFolderReadOnly(true);
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    try {
+      expect(editor.isEditable).toBe(false);
+      act(() => {
+        editor.commands.insertContentAt(editor.state.doc.content.size, " Blocked");
+        flushWysiwygPendingEdits();
+      });
+      expect(editor.getText()).not.toContain("Blocked");
+      act(() => acquireEditorMutationLease("read-only-project").release());
+      expect(editor.isEditable).toBe(false);
+      expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: LATEX_A, dirty: false });
+    } finally {
+      mounted.unmount();
+      useFolderAccessStore.getState().reset(null);
+      useFilesStore.setState({ projectId: null });
+    }
+  });
+
+  it("becomes editable once the folder is writable", () => {
+    setFolderReadOnly(true);
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    try {
+      act(() => setFolderReadOnly(false));
+      expect(editor.isEditable).toBe(true);
+      act(() => {
+        editor.commands.insertContentAt(editor.state.doc.content.size, " Typed");
+        flushWysiwygPendingEdits();
+      });
+      expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ dirty: true });
+      expect(useFilesStore.getState().files["main.tex"].content).toContain("Typed");
+    } finally {
+      mounted.unmount();
+      useFolderAccessStore.getState().reset(null);
+      useFilesStore.setState({ projectId: null });
+    }
+  });
 });
 
 describe("WysiwygEditor native nodes", () => {

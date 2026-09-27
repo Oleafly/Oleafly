@@ -158,6 +158,24 @@ describe("TopToolbar title", () => {
     expect(renameProject).not.toHaveBeenCalled();
   });
 
+  it("lets a coded rename failure explain itself", async () => {
+    const failure = `@oleafly/error:${JSON.stringify({
+      code: "project.linked_missing",
+      params: { folder: "Retrieval study" },
+      detail: null,
+    })}`;
+    renameProject.mockRejectedValueOnce(failure);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("project-title"));
+    const field = await screen.findByLabelText(toolbar.projectName);
+    await user.clear(field);
+    await user.type(field, "Clash{Enter}");
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("rename project", failure, undefined),
+    );
+  });
+
   it("keeps the old name when the rename fails", async () => {
     const failure = new Error("project rename task failed: taken");
     renameProject.mockRejectedValueOnce(failure);
@@ -414,6 +432,20 @@ describe("TopToolbar fork dialog", () => {
         toolbar.forkFailed,
       ),
     );
+  });
+
+  it("explains why the backend refused a fork", async () => {
+    const refusal = `@oleafly/error:${JSON.stringify({ code: "project.linked_not_duplicable", params: {}, detail: null })}`;
+    mocks.duplicateProject.mockRejectedValueOnce(refusal as never);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("workspace-menu"));
+    await user.click(forkButton());
+    await user.click(await screen.findByRole("button", { name: toolbar.fork }));
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith("fork project", refusal, undefined),
+    );
+    expect(openProject).not.toHaveBeenCalled();
   });
 
   it("closes the fork dialog from the backdrop", async () => {

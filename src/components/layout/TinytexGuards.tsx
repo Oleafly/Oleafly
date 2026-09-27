@@ -6,6 +6,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { cancelQuitFlush, confirmQuitDuringInstall } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
+import { claimInstallQuitRequests, INSTALL_QUIT_BLOCKED } from "@/lib/quit-flush";
 
 /**
  * Two guards around a running TinyTeX install:
@@ -27,14 +28,16 @@ export function TinytexGuards() {
 
   useEffect(() => {
     if (!isTauri()) return;
+    const release = claimInstallQuitRequests();
     let disposed = false;
     let unlisten: (() => void) | null = null;
-    void listen("tinytex-quit-blocked", () => setQuitAsked(true)).then((stop) => {
+    void listen(INSTALL_QUIT_BLOCKED, () => setQuitAsked(true)).then((stop) => {
       if (disposed) stop();
       else unlisten = stop;
     });
     return () => {
       disposed = true;
+      release();
       unlisten?.();
     };
   }, []);

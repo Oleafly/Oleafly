@@ -34,7 +34,8 @@
   },
   "shell": {
     "diffIndex": "Git index side of a diff tab, shown in parentheses after the file name",
-    "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name"
+    "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name",
+    "diffOnDisk": "Suffix on a comparison tab whose left side is the file as saved on disk"
   },
   "log": {
     "open": "Jumps to the source line of a compile error",
@@ -76,6 +77,14 @@
     "maintenance": {
       "reset": "Deletes every checkpoint for the project",
       "keepLatest": "Deletes every checkpoint except the newest one"
+    },
+    "capture": {
+      "paused": "Checkpoints panel line for a folder opened in place whose files exceed the checkpoint budget; files is a formatted file count and size a formatted byte size",
+      "skipped_one": "Checkpoints panel line counting files a folder checkpoint left out (links, files over 25 MB, cloud placeholders, names that are not portable)",
+      "skipped_other": "Checkpoints panel line counting files a folder checkpoint left out (links, files over 25 MB, cloud placeholders, names that are not portable)"
+    },
+    "files": {
+      "folderSettings": "Shown in a checkpoint's file list instead of the internal path that stores this device's settings for a folder opened in place"
     }
   },
   "table": {
@@ -164,6 +173,14 @@
     }
   },
   "projectInfo": {
-    "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info"
+    "spellLanguageFailed": "Error after picking a different spell-check language for the project in Project info",
+    "spellLanguageFolderHint": "Note under the spell-check language picker in Project info when the opened folder has its own project.json, which records the choice for everyone who opens the folder",
+    "spellLanguageReadOnly": "Note that replaces the hint when that folder is read-only, so the picker is disabled"
+  },
+  "changedOnDisk": {
+    "keepMine": "Button that saves the user's unsaved version over the newer file on disk",
+    "reload": "Button that discards the unsaved edits and loads the newer file from disk",
+    "compare": "Button that opens a side-by-side comparison of the file on disk and the unsaved edits",
+    "tabMark": "Tooltip and screen reader label on an editor tab whose file changed on disk while it had unsaved edits"
   }
 }

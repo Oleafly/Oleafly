@@ -46,7 +46,8 @@
     "projectChangedRetry": "Projekti muuttui viittausten tuonnin aikana. Yritä uudelleen alkuperäisessä projektissa.",
     "readFailed": "Kohdetta {{path}} ei voitu lukea: {{detail}}",
     "unrecognizedFile": "Tunnistamaton tiedostotyyppi: {{name}}",
-    "writeFailed": "Kohteeseen {{path}} ei voitu kirjoittaa: {{detail}}"
+    "writeFailed": "Kohteeseen {{path}} ei voitu kirjoittaa: {{detail}}",
+    "linkedBibliography": "{{path}} on linkki tämän kansion ulkopuoliseen tiedostoon, joten Oleafly ei voi lisätä siihen mitään. Lisää viite Zoterossa tai siellä, missä tiedostoa ylläpidetään."
   },
   "citeOleafly": {
     "added": "Oleafly-viite lisättiin tiedostoon {{path}}. Viittaa siihen merkinnällä {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "Tiedostoa ”{{path}}” muutettiin Oleaflyn ulkopuolella. Lataa se uudelleen tai tallenna uudelleen säilyttääksesi oman versiosi.",
     "openFileEncoding": "Tiedostoa ”{{path}}” ei voi avata, koska se ei ole UTF-8-tekstitiedosto. Jos se on tekstiä, tallenna se UTF-8-muodossa ja avaa se uudelleen.",
     "openFileFailed": "Tiedostoa ”{{path}}” ei voitu avata. Katso lisätiedot sovelluksen lokista.",
-    "reloadFromDisk": "Lataa uudelleen"
+    "reloadFromDisk": "Lataa uudelleen",
+    "changedOnDiskElsewhere": "{{path}} muuttui levyllä, joten Oleafly ei tallentanut sitä. Avaa se ja valitse, kumman version pidät."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analyysi epäonnistui: {{message}}",
@@ -575,5 +577,9 @@
   "checkpoint": {
     "storageUnavailable": "Tarkistuspistettä ei voitu tallentaa. Levy on täynnä tai tarkistuspisteiden kansioon ei voi kirjoittaa. Vapauta tilaa tai tarkista kansion käyttöoikeudet ja käännä sitten uudelleen.",
     "incompleteCapture": "Viimeisimpiä tarkistuspisteitä ei voitu tallentaa, koska joitakin projektin tiedostoja ei voitu lukea. Tarkista niiden käyttöoikeudet ja käännä sitten uudelleen."
+  },
+  "folderUnavailable": {
+    "compile": "Kääntäminen on keskeytetty, kunnes projektikansio on taas saatavilla.",
+    "saveReason": "projektikansio ei ole käytettävissä"
   }
 }

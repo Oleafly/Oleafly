@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> gibt es bereits. Behalten Sie beide Dateien mit <suggestion>{{suggestion}}</suggestion> oder ersetzen Sie das vorhandene Ziel. Oleafly ersetzt es nur, wenn Sie Ersetzen wählen.",
       "replace": "Ersetzen",
       "title": "Dieser Name ist schon vergeben",
-      "unchanged": "Ursprungs- und Zielpfad blieben unverändert."
+      "unchanged": "Ursprungs- und Zielpfad blieben unverändert.",
+      "renameFolderBody": "<destination>{{destination}}</destination> ist ein vorhandener Ordner. Behalten Sie beide, indem Sie <suggestion>{{suggestion}}</suggestion> verwenden. In einem direkt am Speicherort geöffneten Ordner ersetzt Oleafly nie einen ganzen Ordner."
     },
     "createFailed": "„{{path}}“ konnte nicht erstellt werden.",
     "deleteFailed": "„{{path}}“ konnte nicht gelöscht werden.",
@@ -41,7 +42,16 @@
     "setMain": "Als Hauptdokument festlegen",
     "title": "Explorer",
     "treeAriaLabel": "Dateibaum im Explorer",
-    "setMainFailed": "„{{path}}“ konnte nicht als Hauptdokument festgelegt werden."
+    "setMainFailed": "„{{path}}“ konnte nicht als Hauptdokument festgelegt werden.",
+    "listingStopped": "Die ersten {{limit}} Einträge werden angezeigt. Der Rest dieses Ordners wird nicht aufgelistet.",
+    "unreadable": "Kein Zugriff",
+    "unreadableHint": "Oleafly hat keine Berechtigung, dies zu öffnen.",
+    "confirmTrash": "{{path}} in den Papierkorb verschieben?",
+    "confirmTrashWindows": "{{path}} in den Papierkorb verschieben?",
+    "confirmPermanentDelete": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Stattdessen endgültig löschen? Das lässt sich nicht rückgängig machen.",
+    "confirmPermanentDeleteWindows": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Stattdessen endgültig löschen? Das lässt sich nicht rückgängig machen.",
+    "linkedReadOnly": "Verweist auf eine Datei außerhalb dieses Ordners und ist daher schreibgeschützt.",
+    "partialFolder": "Einige Einträge in diesem Ordner werden nicht aufgelistet."
   },
   "explorer": {
     "resizeSections": "{{first}} und {{second}} in der Größe ändern"

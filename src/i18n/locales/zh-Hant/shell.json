@@ -168,6 +168,11 @@
     "recompile": {
       "label": "重新編譯"
     },
+    "saveSettingsToFolder": {
+      "keywords": "儲存 專案設定 資料夾 project.json 共用 主要文件",
+      "label": "將專案設定儲存到此資料夾",
+      "saved": "專案設定已儲存到此資料夾的 project.json 中。"
+    },
     "section": {
       "label": "章節"
     },
@@ -213,6 +218,10 @@
         "titleCase": "標題大小寫 首字母大寫 文字 title case capitalize text",
         "uppercase": "大寫 大小寫 文字 uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "開啟資料夾…",
+      "keywords": "開啟 資料夾 目錄 現有 本機 檔案 磁碟"
     }
   },
   "community": {
@@ -259,6 +268,7 @@
     "texRootBroken": "{{file}} 中的 % !TEX root 指向不存在的檔案（{{target}}）",
     "texRootLabel": "TEX 根檔案",
     "texRootName": "根檔案：{{name}}",
+    "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 檔案",
     "texRootOverride": "根檔案：{{path}}（由 {{file}} 中的 % !TEX root 設定）"
   },
   "datePicker": {
@@ -359,6 +369,25 @@
     },
     "title": "發生錯誤"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "此資料夾無法使用。",
+      "body": "請重新連接磁碟機或找到該資料夾。開啟的檔案會保留在這裡，在資料夾恢復之前，Oleafly 不會儲存或編譯。"
+    },
+    "replaced": {
+      "title": "此資料夾已被取代。",
+      "body": "原位置現在是另一個資料夾。Oleafly 已停止儲存，以免覆寫其中的內容。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly 無法開啟此資料夾。",
+      "body": "請檢查資料夾的權限，然後再試一次。開啟的檔案會保留在這裡。"
+    },
+    "locate": "定位",
+    "useThisFolder": "使用此資料夾",
+    "saveCopy": "儲存副本",
+    "tryAgain": "再試一次",
+    "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub：{{login}}",
     "actions": "GitHub 操作",
@@ -417,6 +446,68 @@
     },
     "tryCommand": "試試指令",
     "unknownCommand": "未知的指令。輸入 / 可查看可用的指令。"
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly 要編譯哪一份文件？",
+      "askDescription": "這個資料夾有多份文件。請選擇主要文件，之後可以再變更。",
+      "listLabel": "這個資料夾中的文件",
+      "open": "開啟",
+      "browse": "只瀏覽檔案",
+      "bestMatch": "最佳選擇",
+      "empty": "Oleafly 在這裡找不到文件。請在檔案樹中以右鍵按一下檔案，然後選擇「設為主要文件」。",
+      "truncated": "這個資料夾很大，所以 Oleafly 提早停止尋找。部分文件可能沒有列出。",
+      "openFailed": "無法將 {{path}} 設為主要文件。"
+    },
+    "kind": {
+      "document": "文件",
+      "book": "書籍",
+      "presentation": "簡報",
+      "poster": "海報",
+      "standalone": "獨立圖形",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "其他"
+    },
+    "reason": {
+      "declared": "已標示為主要檔案",
+      "top_level": "位於最上層資料夾",
+      "named_main": "名稱為 main",
+      "named_after_folder": "與所在資料夾同名",
+      "includes_files": "引入其他檔案",
+      "has_bibliography": "含有參考文獻",
+      "no_begin_document": "沒有 \\begin{document}",
+      "standalone_figure": "獨立圖形",
+      "placeholder": "尚未下載"
+    },
+    "noMain": "還沒有主要文件。請選擇一個檔案，然後選擇「設為主要文件」。",
+    "trust": {
+      "banner": "Oleafly 已限制這個資料夾中的部分功能。要信任它並開啟 Git、終端機、代理程式和 shell escape 嗎？",
+      "trustFolder": "信任這個資料夾",
+      "trustParent": "信任上層資料夾",
+      "trustRepository": "信任這個儲存庫",
+      "hide": "隱藏",
+      "terminal": "在你信任這個資料夾前，這個終端機中的 Git 掛鉤與儲存庫設定都會關閉。",
+      "terminalReopen": "這個終端機是在你信任資料夾之前啟動的。重新開啟它即可啟用 Git 掛鉤。",
+      "reopenTerminal": "重新開啟終端機",
+      "failed": "無法信任這個資料夾。"
+    },
+    "readOnly": {
+      "banner": "這個資料夾為唯讀。你可以編譯，但無法儲存編輯內容。",
+      "copy": "複製到專案庫",
+      "copied": "Oleafly 已將這個資料夾複製到你的專案庫。你現在編輯的是副本。"
+    },
+    "sync": {
+      "syncsWith": "與 {{service}} 同步",
+      "cloudStorage": "與雲端服務同步",
+      "services": {
+        "icloud_drive": "iCloud 雲碟",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google 雲端硬碟",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "搜尋這個專案的所有檔案。",
@@ -531,6 +622,7 @@
         "calculating": "正在計算儲存空間用量…",
         "desktopOnly": "儲存空間詳情只能在桌面應用程式中查看。",
         "error": "無法計算儲存空間詳情。",
+        "linkedFolders_other": "{{count}} 個已開啟資料夾的建置輸出與設定共 {{size}}",
         "refresh": "重新整理儲存空間用量",
         "stats": {
           "appData": "應用程式資料",
@@ -767,7 +859,8 @@
     "loadingCore": "正在載入 Oleafly Core",
     "loadingHarness": "正在載入 Oleafly Harness",
     "loadingParsers": "正在載入 Oleafly Parsers",
-    "starting": "正在啟動 Oleafly"
+    "starting": "正在啟動 Oleafly",
+    "opening": "正在開啟 {{name}}…"
   },
   "theme": {
     "dark": "深色",
@@ -901,5 +994,30 @@
   "windows": {
     "preview": "預覽：{{title}}",
     "update": "Oleafly 更新"
+  },
+  "openFolder": {
+    "confirmTitle": "停止並開啟 {{name}}？",
+    "confirmCompile": "{{project}} 仍在編譯。開啟 {{name}} 會停止編譯。你的變更會先儲存。",
+    "confirmAssistant": "助理仍在 {{project}} 中工作。開啟 {{name}} 會停止它的回覆。你的變更會先儲存。",
+    "confirmBoth": "{{project}} 仍在編譯，助理也仍在工作。開啟 {{name}} 會同時停止兩者。你的變更會先儲存。",
+    "confirmAction": "停止並開啟",
+    "chooseSubfolder": "選擇子資料夾",
+    "refusedTitle": "無法開啟 {{name}}",
+    "refused": "無法開啟 {{name}}。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "請在「系統設定」中開啟「隱私權與安全性」，再進入「檔案與檔案夾」，為 Oleafly 開啟取用權限。如果列表中沒有 Oleafly，請將它加入「完整磁碟取用權限」，然後再試一次。",
+      "windows": "請在資料夾「內容」的「安全性」分頁中確認你的帳戶可以讀取它，然後再試一次。",
+      "linux": "請確認你的帳戶可以讀取此資料夾，然後再試一次。"
+    }
+  },
+  "quickActionOffer": {
+    "title": "從 Finder 開啟資料夾",
+    "body": "將「在 Oleafly 中開啟」加入 Finder。它可立即在「服務」選單中使用，開啟後也可在「快速動作」中使用。",
+    "add": "加入 Finder",
+    "notNow": "以後再說",
+    "added": "已加入。現在可以從 Finder 的「服務」選單使用它。若也要在「快速動作」中使用，請以右鍵按一下資料夾，然後在「快速動作」›「自訂」中開啟它。",
+    "addedInQuickActions": "已加入。以右鍵按一下資料夾，即可在「快速動作」中找到它。",
+    "failed": "無法加入。你可以在「設定」›「一般」中再試一次。"
   }
 }

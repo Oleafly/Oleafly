@@ -15,7 +15,11 @@
     "selectAll": "Valitse kaikki",
     "view": "Näytä",
     "toggleTerminal": "Näytä tai piilota pääte",
-    "toggleBrowser": "Näytä tai piilota selain"
+    "toggleBrowser": "Näytä tai piilota selain",
+    "file": "Arkisto",
+    "openFolder": "Avaa kansio…",
+    "openRecent": "Avaa viimeaikainen",
+    "noRecent": "Ei viimeaikaisia projekteja"
   },
   "window": {
     "browser": "Oleafly-selain",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Valitse tuotava taulukkolaskentatiedosto",
       "filter": "Taulukkolaskentatiedostot"
+    },
+    "trustFolder": {
+      "title": "Luotetaanko tähän kansioon?",
+      "message": "Oleafly ottaa käyttöön Gitin, päätteen, agentit ja LaTeX-työkalut kansiolle {{name}}. Luota vain kansioihin, joiden sisällön tunnet.",
+      "messageParent": "Oleafly luottaa kansioon {{name}} ja jokaiseen sen sisällä olevaan kansioon, myös niihin, jotka avaat myöhemmin.",
+      "messageRepository": "Oleafly suorittaa Gitiä kansiossa {{name}} repositorion omilla asetuksilla ja koukuilla.",
+      "confirm": "Luota"
+    },
+    "restrictedWrite": {
+      "title": "Sallitaanko tämä muutos?",
+      "message": "Avustaja haluaa muuttaa tiedostoa {{path}}. Tällaiset tiedostot voivat suorittaa ohjelmia, eikä tähän kansioon vielä luoteta.",
+      "confirm": "Salli"
+    },
+    "restrictedNetwork": {
+      "title": "Sallitaanko tämä pyyntö?",
+      "message": "Avustaja haluaa käyttää työkalua {{tool}}, joka lähettää tekstiä verkkopalveluun. Tähän kansioon ei vielä luoteta.",
+      "confirm": "Salli"
+    },
+    "locateFolder": {
+      "title": "Etsi projektikansio"
+    },
+    "rebindFolder": {
+      "title": "Käytetäänkö toista kansiota?",
+      "message": "{{name}} ei ole kansio, joka Oleaflyllä oli tälle projektille. Jos käytät sitä, Oleafly tallentaa tallentamattomat muutoksesi siihen ja sulkee tämän projektin päätteet ja agenttien istunnot. Kaikki niissä käynnissä oleva pysähtyy. Lisäksi Oleafly lakkaa luottamasta kansioon, poistaa täyden käyttöoikeuden käytöstä, nollaa avustajan hyväksynnät ja poistaa tutkimuskansioiden linkitykset. Keskustelut ja historia säilyvät.",
+      "confirm": "Käytä tätä kansiota"
+    },
+    "saveCopy": {
+      "title": "Valitse, minne kopio tallennetaan",
+      "folderSuffix": "kopio"
+    },
+    "openFolder": {
+      "title": "Avaa kansio",
+      "inside": "Valitse kansio kohteesta {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "Täyden käyttöoikeuden vahvistus ohitettiin.",
     "fullAccessDeclined": "Täyttä käyttöoikeutta ei otettu käyttöön.",
     "approvalDialogClosed": "Järjestelmän hyväksyntäikkuna sulkeutui odottamatta."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Avaa sovelluksessa Oleafly",
+    "openWithOleafly": "Avaa sovelluksella Oleafly"
   }
 }

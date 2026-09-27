@@ -171,7 +171,9 @@
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
     "managedFileReadOnly": "{{file}} styres af Oleafly og er skrivebeskyttet her. Projektindstillinger ændres i Oleafly selv, ikke ved at redigere denne fil.",
     "noFileOpen": "Ingen fil er åben.",
-    "noFileOpenHint": "Vælg en fil i træet for at begynde at redigere."
+    "noFileOpenHint": "Vælg en fil i træet for at begynde at redigere.",
+    "linkedFileReadOnly": "{{file}} linker til en fil uden for mappen, så du kan ikke redigere den her. Ret den der, hvor den ligger, for eksempel i Zotero.",
+    "diffOnDisk": "På disken"
   },
   "projectInfo": {
     "trigger": "Projektoplysninger",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "Brug appens indstilling",
     "spellLanguageAriaLabel": "Sprog til stavekontrol i dette projekt",
     "spellLanguageHint": "Gælder kun dette projekt. Download flere sprog under Indstillinger.",
+    "spellLanguageFolderHint": "Gemt i mappens project.json, så det gælder for alle, der åbner mappen. Download flere sprog under Indstillinger.",
+    "spellLanguageReadOnly": "Denne mappe er skrivebeskyttet, så sproget i dens project.json kan ikke ændres.",
     "spellLanguageFailed": "Kunne ikke ændre sproget til stavekontrol.",
     "notChecked": "Ikke kontrolleret",
     "dictionaryMissing": "{{name}} er ikke hentet, så stavningen kontrolleres ikke. Hent den i Indstillinger, eller vælg et andet sprog.",
@@ -330,7 +334,8 @@
     "splitView": "Delt visning",
     "unifiedView": "Samlet visning",
     "loading": "Indlæser forskellen…",
-    "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel."
+    "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel.",
+    "diskHeading": "På disken ↔ Dine ændringer"
   },
   "hotkeys": {
     "title": "Tastaturgenveje",
@@ -426,6 +431,11 @@
       "sourceSize": "Kildernes størrelse",
       "reclaimable": "Kan frigøres"
     },
+    "capture": {
+      "paused": "Kontrolpunkter er sat på pause, fordi mappen er for stor. Et kontrolpunkt kan højst rumme {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i denne mappe er ikke med i kontrolpunkterne. Oleafly udelader links, meget store filer, filer, der kun ligger i skyen, og navne, der ikke virker på alle systemer.",
+      "skipped_other": "{{formattedCount}} filer i denne mappe er ikke med i kontrolpunkterne. Oleafly udelader links, meget store filer, filer, der kun ligger i skyen, og navne, der ikke virker på alle systemer."
+    },
     "catalog": {
       "formatVersion": "Formatversion",
       "lineage": "Slægtskab",
@@ -458,7 +468,8 @@
       "showFor": "Vis filer for {{version}}",
       "hideFor": "Skjul filer for {{version}}",
       "show": "Vis filer",
-      "hide": "Skjul filer"
+      "hide": "Skjul filer",
+      "folderSettings": "Oleafly-indstillinger for denne mappe"
     },
     "entry": {
       "labelInput": "Navn på kontrolpunktet",
@@ -1022,5 +1033,13 @@
     "label": "Placering i dokumentet",
     "goTo": "Gå til {{title}}",
     "untitled": "Uden titel"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} blev ændret på disken, mens du havde ændringer, der ikke var gemt.",
+    "compare": "Sammenlign",
+    "keepMine": "Behold min",
+    "reload": "Genindlæs",
+    "failed": "Oleafly kunne ikke opdatere {{file}}. Prøv igen.",
+    "tabMark": "Ændret på disken. Åbn fanen for at vælge, hvilken version du vil beholde."
   }
 }

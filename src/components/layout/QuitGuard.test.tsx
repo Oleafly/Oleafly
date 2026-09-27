@@ -84,11 +84,37 @@ describe("QuitGuard", () => {
     await screen.findByText(/could not be saved/i);
     expect(screen.getByRole("alertdialog").parentElement).toHaveClass("pointer-events-auto");
     expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
 
     fireEvent.click(screen.getByRole("button", { name: /stay/i }));
-    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(2));
     expect(screen.queryByText(/could not be saved/i)).toBeNull();
     expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+  });
+
+  it("answers the quit gate as soon as the flush fails so a later close asks again", async () => {
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await screen.findByText(/could not be saved/i);
+
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+    expect(screen.getByText(/could not be saved/i)).toBeInTheDocument();
+  });
+
+  it("logs a failed answer to the quit gate without a toast", async () => {
+    const failure = new Error("ipc closed");
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    mocks.cancelQuitFlush.mockRejectedValue(failure);
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await screen.findByText(/could not be saved/i);
+
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith(expect.any(String), failure));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
   it("logs a failed cancel after the user stays instead of showing an error", async () => {

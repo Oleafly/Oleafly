@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> already exists. Keep both files using <suggestion>{{suggestion}}</suggestion>, or replace the existing destination. Oleafly will not replace it unless you choose Replace.",
       "replace": "Replace",
       "title": "That name is already in use",
-      "unchanged": "The original and destination paths were left unchanged."
+      "unchanged": "The original and destination paths were left unchanged.",
+      "renameFolderBody": "<destination>{{destination}}</destination> is an existing folder. Keep both by using <suggestion>{{suggestion}}</suggestion>. In a folder you opened in place, Oleafly never replaces a whole folder."
     },
     "createFailed": "Could not create \"{{path}}\".",
     "deleteFailed": "Could not delete \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Set as main document",
     "title": "Explorer",
     "treeAriaLabel": "Explorer file tree",
-    "setMainFailed": "Could not make \"{{path}}\" the main document."
+    "setMainFailed": "Could not make \"{{path}}\" the main document.",
+    "listingStopped": "Showing the first {{limit}} items. The rest of this folder isn't listed.",
+    "unreadable": "No access",
+    "unreadableHint": "Oleafly doesn't have permission to open this.",
+    "confirmTrash": "Move {{path}} to the Trash?",
+    "confirmTrashWindows": "Move {{path}} to the Recycle Bin?",
+    "confirmPermanentDelete": "Oleafly couldn't move {{path}} to the Trash. Delete it permanently instead? You can't undo this.",
+    "confirmPermanentDeleteWindows": "Oleafly couldn't move {{path}} to the Recycle Bin. Delete it permanently instead? You can't undo this.",
+    "linkedReadOnly": "Links to a file outside this folder, so it's read-only.",
+    "partialFolder": "Some items in this folder aren't listed."
   },
   "explorer": {
     "resizeSections": "Resize {{first}} and {{second}}"

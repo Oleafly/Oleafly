@@ -2786,7 +2786,8 @@ where
     let server = load_enabled_server(repository, request.server)?;
     let policy = agent_tool_policy(root, request.project_id, &server.name, request.tool_handle)?;
     ensure_agent_tool_policy_allowed(policy)?;
-    if agent_tool_policy_needs_confirmation(policy) {
+    if agent_tool_policy_needs_confirmation(policy) || !crate::trust::is_trusted(request.project_id)
+    {
         let message =
             agent_tool_confirmation_message(&server.name, request.tool_handle, request.arguments);
         if !confirm(message).await? {
@@ -3914,6 +3915,55 @@ mod tests {
             replay,
             "MCP tool approval is invalid or has already been used."
         );
+    }
+
+    #[tokio::test]
+    async fn restricted_folders_confirm_agent_tools_even_under_full_access() {
+        let (_directory, repository) = disk_repository();
+        persist_server(&repository, stdio_server("search-server"));
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "restricted-mcp-project",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let _restricted = crate::trust::testing::restrict("restricted-mcp-project");
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let callable = agent_tool_name("local-search", "search");
+        let generation = register_agent_run(
+            &agent_state,
+            "run-restricted",
+            "restricted-mcp-project",
+            [callable],
+        );
+        let arguments = serde_json::json!({"query": "rust"});
+        let asked = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counter = asked.clone();
+        let declined = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "restricted-mcp-project",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-restricted",
+            },
+            move |_| {
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                async { Ok(false) }
+            },
+        )
+        .await
+        .unwrap_err();
+        crate::agent::finish_active_request_for_test(&agent_state, "run-restricted", generation);
+        assert_eq!(declined, "MCP tool approval was declined.");
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
     }
 
     #[tokio::test]

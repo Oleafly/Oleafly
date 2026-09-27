@@ -46,7 +46,8 @@
     "projectChangedRetry": "인용을 가져오는 동안 프로젝트가 바뀌었습니다. 원래 프로젝트에서 다시 시도하세요.",
     "readFailed": "{{path}}을(를) 읽지 못했습니다: {{detail}}",
     "unrecognizedFile": "인식할 수 없는 파일 형식: {{name}}",
-    "writeFailed": "{{path}}에 쓰지 못했습니다: {{detail}}"
+    "writeFailed": "{{path}}에 쓰지 못했습니다: {{detail}}",
+    "linkedBibliography": "{{path}}은(는) 이 폴더 밖의 파일로 연결되어 있어 Oleafly가 내용을 추가할 수 없습니다. Zotero처럼 파일을 관리하는 곳에서 참고문헌을 추가하세요."
   },
   "citeOleafly": {
     "added": "{{path}}에 Oleafly 항목을 추가했습니다. {{markup}}으로 인용하세요.",
@@ -365,7 +366,8 @@
     "changedOnDisk": "\"{{path}}\" 파일이 Oleafly 밖에서 변경되었습니다. 다시 불러오거나, 내 버전을 유지하려면 다시 저장하세요.",
     "openFileEncoding": "\"{{path}}\" 파일은 UTF-8 텍스트 파일이 아니어서 열 수 없습니다. 텍스트 파일이라면 UTF-8로 저장한 뒤 다시 여세요.",
     "openFileFailed": "\"{{path}}\" 파일을 열 수 없습니다. 자세한 내용은 앱 로그를 확인하세요.",
-    "reloadFromDisk": "다시 불러오기"
+    "reloadFromDisk": "다시 불러오기",
+    "changedOnDiskElsewhere": "{{path}}이(가) 디스크에서 바뀌어 Oleafly가 저장하지 않았습니다. 파일을 열어 남길 버전을 고르세요."
   },
   "projectDiagnostics": {
     "analysisFailed": "분석에 실패했습니다: {{message}}",
@@ -559,5 +561,9 @@
   "checkpoint": {
     "storageUnavailable": "체크포인트를 저장하지 못했습니다. 디스크가 가득 찼거나 체크포인트 폴더에 쓸 수 없습니다. 공간을 확보하거나 폴더 권한을 확인한 뒤 다시 컴파일하세요.",
     "incompleteCapture": "일부 프로젝트 파일을 읽지 못해 최근 체크포인트를 저장하지 못했습니다. 파일 권한을 확인한 뒤 다시 컴파일하세요."
+  },
+  "folderUnavailable": {
+    "compile": "프로젝트 폴더를 다시 사용할 수 있을 때까지 컴파일이 일시 중지됩니다.",
+    "saveReason": "프로젝트 폴더를 사용할 수 없음"
   }
 }

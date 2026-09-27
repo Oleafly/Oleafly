@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> finnes allerede. Behold begge filene ved å bruke <suggestion>{{suggestion}}</suggestion>, eller erstatt filen som ligger der. Oleafly erstatter den ikke med mindre du velger Erstatt.",
       "replace": "Erstatt",
       "title": "Navnet er allerede i bruk",
-      "unchanged": "Både den opprinnelige stien og målstien ble stående uendret."
+      "unchanged": "Både den opprinnelige stien og målstien ble stående uendret.",
+      "renameFolderBody": "<destination>{{destination}}</destination> er en mappe som finnes fra før. Behold begge ved å bruke <suggestion>{{suggestion}}</suggestion>. I en mappe du har åpnet der den ligger, erstatter Oleafly aldri en hel mappe."
     },
     "createFailed": "Kunne ikke opprette \"{{path}}\".",
     "deleteFailed": "Kunne ikke slette \"{{path}}\".",
@@ -41,7 +42,16 @@
     "setMain": "Bruk som hoveddokument",
     "title": "Utforsker",
     "treeAriaLabel": "Filtreet i utforskeren",
-    "setMainFailed": "Kunne ikke bruke \"{{path}}\" som hoveddokument."
+    "setMainFailed": "Kunne ikke bruke \"{{path}}\" som hoveddokument.",
+    "listingStopped": "Viser de første {{limit}} elementene. Resten av mappen vises ikke.",
+    "unreadable": "Ingen tilgang",
+    "unreadableHint": "Oleafly har ikke tillatelse til å åpne dette.",
+    "confirmTrash": "Flytte {{path}} til papirkurven?",
+    "confirmTrashWindows": "Flytte {{path}} til papirkurven?",
+    "confirmPermanentDelete": "Oleafly kunne ikke flytte {{path}} til papirkurven. Slette den permanent i stedet? Dette kan ikke angres.",
+    "confirmPermanentDeleteWindows": "Oleafly kunne ikke flytte {{path}} til papirkurven. Slette den permanent i stedet? Dette kan ikke angres.",
+    "linkedReadOnly": "Lenker til en fil utenfor mappen og er derfor skrivebeskyttet.",
+    "partialFolder": "Ikke alle elementene i denne mappen vises."
   },
   "explorer": {
     "resizeSections": "Endre størrelse på {{first}} og {{second}}"

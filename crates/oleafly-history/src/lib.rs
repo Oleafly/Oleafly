@@ -6,7 +6,7 @@
 //! separate operation that is only valid after the compiler has consumed that
 //! tree and Oleafly has validated its output.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Read, Seek, Write};
@@ -206,21 +206,120 @@ impl fmt::Display for SnapshotRoot {
     }
 }
 
+pub const DETACHED_MANIFEST_PATH: &str = ".oleafly-manifest.json";
+const IN_PROJECT_MANIFEST_PATH: &str = "project.json";
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ManifestLayout {
+    #[default]
+    InProject,
+    Detached,
+}
+
+impl ManifestLayout {
+    pub fn manifest_path(self) -> &'static str {
+        match self {
+            Self::InProject => IN_PROJECT_MANIFEST_PATH,
+            Self::Detached => DETACHED_MANIFEST_PATH,
+        }
+    }
+
+    fn is_in_project(&self) -> bool {
+        matches!(self, Self::InProject)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProjectManifestBytes<'a> {
+    InProject(&'a [u8]),
+    Detached(Option<&'a [u8]>),
+}
+
+pub fn portable_fold(path: &str) -> String {
+    path.nfc().flat_map(char::to_lowercase).collect()
+}
+
+pub fn conflicting_portable_paths<'a>(
+    paths: impl IntoIterator<Item = &'a str>,
+) -> BTreeSet<String> {
+    let mut ordered = paths
+        .into_iter()
+        .map(|path| (portable_fold(path), path))
+        .collect::<Vec<_>>();
+    ordered.sort();
+    let mut kept_files = HashSet::new();
+    let mut kept_directories = HashSet::new();
+    let mut dropped = BTreeSet::new();
+    for (folded, path) in ordered {
+        let ancestors = folded
+            .match_indices('/')
+            .map(|(index, _)| folded[..index].to_string())
+            .collect::<Vec<_>>();
+        let clashes = kept_files.contains(&folded)
+            || kept_directories.contains(&folded)
+            || ancestors
+                .iter()
+                .any(|ancestor| kept_files.contains(ancestor));
+        if clashes {
+            dropped.insert(path.to_string());
+            continue;
+        }
+        kept_directories.extend(ancestors);
+        kept_files.insert(folded);
+    }
+    dropped
+}
+
 /// One project-local regular file eligible for a sealed candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaptureInput {
     relative_path: String,
+    detached_source: Option<PathBuf>,
 }
 
 impl CaptureInput {
     pub fn explicit(relative_path: impl Into<String>) -> Result<Self> {
         let relative_path = relative_path.into();
         validate_portable_relative_path(&relative_path)?;
-        Ok(Self { relative_path })
+        Ok(Self {
+            relative_path,
+            detached_source: None,
+        })
+    }
+
+    pub fn detached_manifest(source: impl Into<PathBuf>) -> Self {
+        Self {
+            relative_path: DETACHED_MANIFEST_PATH.to_string(),
+            detached_source: Some(source.into()),
+        }
     }
 
     pub fn relative_path(&self) -> &str {
         &self.relative_path
+    }
+
+    fn containment(&self, project_root: &Path) -> Result<(PathBuf, String)> {
+        let Some(source) = &self.detached_source else {
+            return Ok((project_root.to_path_buf(), self.relative_path.clone()));
+        };
+        let parent = source
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .ok_or_else(|| {
+                HistoryError::InvalidInput("the detached project manifest has no folder".into())
+            })?
+            .canonicalize()?;
+        let name = source
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .filter(|name| validate_portable_relative_path(name).is_ok())
+            .ok_or_else(|| {
+                HistoryError::InvalidInput(
+                    "the detached project manifest name is not portable".into(),
+                )
+            })?;
+        Ok((parent, name.to_string()))
     }
 }
 
@@ -366,6 +465,7 @@ pub struct Materialization {
     pub file_count: u64,
     pub logical_bytes: u64,
     pub omitted: Vec<String>,
+    pub layout: ManifestLayout,
 }
 
 /// Work performed by a complete integrity verification pass.
@@ -989,7 +1089,49 @@ impl Store {
         ensure_publication_active(gate)?;
         let store_locks = self.acquire_exclusive_locks()?;
         ensure_publication_active(gate)?;
-        self.stage_candidate_locked_controlled(project_root.as_ref(), inputs, store_locks, gate)
+        self.stage_candidate_locked_controlled(
+            project_root.as_ref(),
+            inputs,
+            store_locks,
+            ManifestLayout::InProject,
+            gate,
+        )
+    }
+
+    pub fn stage_detached_candidate(
+        &self,
+        project_root: impl AsRef<Path>,
+        inputs: &[CaptureInput],
+    ) -> Result<Candidate> {
+        self.stage_detached_candidate_controlled(project_root, inputs, &UncancelledPublication)
+    }
+
+    pub fn stage_detached_candidate_controlled(
+        &self,
+        project_root: impl AsRef<Path>,
+        inputs: &[CaptureInput],
+        gate: &dyn PublicationGate,
+    ) -> Result<Candidate> {
+        ensure_publication_active(gate)?;
+        let store_locks = self.acquire_exclusive_locks()?;
+        ensure_publication_active(gate)?;
+        self.stage_candidate_locked_controlled(
+            project_root.as_ref(),
+            inputs,
+            store_locks,
+            ManifestLayout::Detached,
+            gate,
+        )
+    }
+
+    pub fn checkpoint_layout(&self, root: &SnapshotRoot) -> Result<Option<ManifestLayout>> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let connection = self.connection()?;
+        match load_visible_manifest(&connection, root) {
+            Ok(manifest) => Ok(Some(manifest.layout)),
+            Err(HistoryError::CheckpointNotFound(_)) => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     fn stage_candidate_locked(
@@ -997,11 +1139,13 @@ impl Store {
         project_root: &Path,
         inputs: &[CaptureInput],
         store_locks: StoreLocks,
+        layout: ManifestLayout,
     ) -> Result<Candidate> {
         self.stage_candidate_locked_controlled(
             project_root,
             inputs,
             store_locks,
+            layout,
             &UncancelledPublication,
         )
     }
@@ -1011,6 +1155,7 @@ impl Store {
         project_root: &Path,
         inputs: &[CaptureInput],
         store_locks: StoreLocks,
+        layout: ManifestLayout,
         gate: &dyn PublicationGate,
     ) -> Result<Candidate> {
         ensure_publication_active(gate)?;
@@ -1028,12 +1173,7 @@ impl Store {
                 .iter()
                 .map(|input| input.relative_path.as_str()),
         )?;
-        if !sorted_inputs
-            .iter()
-            .any(|input| input.relative_path == "project.json")
-        {
-            return Err(HistoryError::MissingProjectManifest);
-        }
+        validate_input_layout(&sorted_inputs, layout)?;
 
         let staging_dir = create_candidate_directory(&self.root.join("staging"))?;
         let sealed_root = staging_dir.join("sealed");
@@ -1048,6 +1188,7 @@ impl Store {
             &sealed_root,
             &staged_pack,
             store_locks,
+            layout,
             gate,
         );
         if result.is_err() {
@@ -1065,6 +1206,7 @@ impl Store {
         sealed_root: &Path,
         staged_pack: &Path,
         store_locks: StoreLocks,
+        layout: ManifestLayout,
         gate: &dyn PublicationGate,
     ) -> Result<Candidate> {
         ensure_publication_active(gate)?;
@@ -1090,8 +1232,9 @@ impl Store {
 
         for input in inputs {
             ensure_publication_active(gate)?;
-            let source = canonical_project_root.join(path_from_portable(&input.relative_path));
-            validate_unsymlinked_regular_file(canonical_project_root, &input.relative_path)?;
+            let (containment, contained_path) = input.containment(canonical_project_root)?;
+            let source = containment.join(path_from_portable(&contained_path));
+            validate_unsymlinked_regular_file(&containment, &contained_path)?;
             let mut source_options = OpenOptions::new();
             source_options.read(true);
             let source_file = open_with_no_follow(&mut source_options, &source)?;
@@ -1110,8 +1253,14 @@ impl Store {
                     input.relative_path
                 )));
             }
+            if input.detached_source.is_some() && opened_metadata.len() > MAX_PROJECT_MANIFEST_BYTES
+            {
+                return Err(HistoryError::InvalidInput(
+                    "the detached project manifest exceeds the import limit".into(),
+                ));
+            }
             let canonical_source = source.canonicalize()?;
-            if !canonical_source.starts_with(canonical_project_root) {
+            if !canonical_source.starts_with(&containment) {
                 return Err(HistoryError::InvalidInput(format!(
                     "proven input {} resolves outside the project",
                     input.relative_path
@@ -1216,6 +1365,7 @@ impl Store {
         let manifest = Manifest {
             format_version: FORMAT_VERSION,
             files: manifest_files,
+            layout,
         };
         let snapshot_root = compute_snapshot_root(&manifest)?;
         let manifest_json = serde_json::to_vec(&manifest)?;
@@ -1816,6 +1966,7 @@ impl Store {
             file_count,
             logical_bytes,
             omitted,
+            layout: manifest.layout,
         })
     }
 
@@ -2085,7 +2236,15 @@ impl Store {
                 remaining -= count as u64;
             }
             verify_file_digest(manifest_file, manifest_file.logical_size, &hasher)?;
-            inputs.push(CaptureInput::explicit(manifest_file.path.clone())?);
+            inputs.push(
+                if metadata.manifest.layout == ManifestLayout::Detached
+                    && manifest_file.path == DETACHED_MANIFEST_PATH
+                {
+                    CaptureInput::detached_manifest(path.clone())
+                } else {
+                    CaptureInput::explicit(manifest_file.path.clone())?
+                },
+            );
         }
         let mut trailing = [0_u8; 1];
         if reader.read(&mut trailing)? != 0 {
@@ -2095,7 +2254,12 @@ impl Store {
         }
         sync_directory(&source_root)?;
 
-        let candidate = self.stage_candidate_locked(&source_root, &inputs, store_locks)?;
+        let candidate = self.stage_candidate_locked(
+            &source_root,
+            &inputs,
+            store_locks,
+            metadata.manifest.layout,
+        )?;
         if candidate.snapshot_root() != &expected_root {
             return Err(HistoryError::Corrupt(format!(
                 "portable checkpoint restaged as {}, expected {expected_root}",
@@ -2171,7 +2335,7 @@ impl Store {
     ) -> Result<HistoryImportSummary>
     where
         R: Read,
-        F: FnMut(&str, &str, &[u8]) -> std::result::Result<(), String>,
+        F: FnMut(&str, &str, ProjectManifestBytes<'_>) -> std::result::Result<(), String>,
     {
         let _store_locks = self.acquire_exclusive_locks()?;
         remove_stale_staging(&self.root)?;
@@ -2238,10 +2402,16 @@ impl Store {
                 &mut new_chunks,
                 remaining,
             )?;
+            let manifest_bytes = match checkpoint.manifest.layout {
+                ManifestLayout::InProject => {
+                    ProjectManifestBytes::InProject(project_json.as_deref().unwrap_or_default())
+                }
+                ManifestLayout::Detached => ProjectManifestBytes::Detached(project_json.as_deref()),
+            };
             validate_project(
                 &checkpoint.evidence.engine,
                 &checkpoint.evidence.main_document,
-                &project_json,
+                manifest_bytes,
             )
             .map_err(|error| {
                 HistoryError::InvalidInput(format!(
@@ -2399,7 +2569,7 @@ impl Store {
         staged_hashes: &mut HashSet<String>,
         new_chunks: &mut Vec<StagedChunk>,
         remaining: ImportBudget,
-    ) -> Result<(ImportedCheckpoint, Vec<u8>)> {
+    ) -> Result<(ImportedCheckpoint, Option<Vec<u8>>)> {
         let (metadata, metadata_bytes) = read_portable_checkpoint_metadata(reader)?;
         if metadata_bytes > remaining.metadata_bytes {
             return Err(HistoryError::InvalidInput(
@@ -2449,19 +2619,16 @@ impl Store {
                 "portable history contains too many chunk references".into(),
             ));
         }
-        let project_manifest = metadata
-            .manifest
-            .files
-            .iter()
-            .find(|file| file.path == "project.json")
-            .ok_or(HistoryError::MissingProjectManifest)?;
-        if project_manifest.logical_size > MAX_PROJECT_MANIFEST_BYTES {
+        let manifest_path = metadata.manifest.layout.manifest_path();
+        let project_manifest = project_manifest_entry(&metadata.manifest)?;
+        if project_manifest.is_some_and(|file| file.logical_size > MAX_PROJECT_MANIFEST_BYTES) {
             return Err(HistoryError::InvalidInput(
                 "portable project.json exceeds the import limit".into(),
             ));
         }
 
-        let mut project_json = Vec::with_capacity(project_manifest.logical_size as usize);
+        let mut project_json =
+            project_manifest.map(|file| Vec::with_capacity(file.logical_size as usize));
         for file in &metadata.manifest.files {
             if !file.stored {
                 continue;
@@ -2485,8 +2652,10 @@ impl Store {
                     )));
                 }
                 file_hasher.update(&raw);
-                if file.path == "project.json" {
-                    project_json.extend_from_slice(&raw);
+                if file.path == manifest_path {
+                    if let Some(bytes) = project_json.as_mut() {
+                        bytes.extend_from_slice(&raw);
+                    }
                 }
                 file_bytes = file_bytes
                     .checked_add(raw.len() as u64)
@@ -2703,6 +2872,8 @@ impl Store {
 struct Manifest {
     format_version: u32,
     files: Vec<ManifestFile>,
+    #[serde(default, skip_serializing_if = "ManifestLayout::is_in_project")]
+    layout: ManifestLayout,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -2860,12 +3031,9 @@ fn portable_checkpoint_view<'a>(
             checkpoint.snapshot_root
         )));
     }
-    let project_manifest = manifest
-        .files
-        .iter()
-        .find(|file| file.path == "project.json")
-        .ok_or(HistoryError::MissingProjectManifest)?;
-    if project_manifest.logical_size > MAX_PROJECT_MANIFEST_BYTES {
+    if project_manifest_entry(manifest)?
+        .is_some_and(|file| file.logical_size > MAX_PROJECT_MANIFEST_BYTES)
+    {
         return Err(HistoryError::InvalidInput(
             "portable project.json exceeds the import limit".into(),
         ));
@@ -3200,6 +3368,9 @@ fn compute_snapshot_root(manifest: &Manifest) -> Result<SnapshotRoot> {
             hasher.update(chunk_hash.as_bytes());
             hasher.update(&chunk.raw_len.to_le_bytes());
         }
+    }
+    if manifest.layout == ManifestLayout::Detached {
+        hash_length_prefixed(&mut hasher, b"layout:detached");
     }
     Ok(SnapshotRoot(ContentHash::from_bytes(
         *hasher.finalize().as_bytes(),
@@ -3637,8 +3808,9 @@ fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
         ));
     }
     validate_portable_path_set(manifest.files.iter().map(|file| file.path.as_str()))?;
+    let manifest_path = manifest.layout.manifest_path();
     let mut previous: Option<&str> = None;
-    let mut has_project_json = false;
+    let mut has_project_manifest = false;
     for file in &manifest.files {
         validate_portable_relative_path(&file.path)?;
         if previous.is_some_and(|path| path >= file.path.as_str()) {
@@ -3647,7 +3819,7 @@ fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
             ));
         }
         previous = Some(&file.path);
-        has_project_json |= file.path == "project.json";
+        has_project_manifest |= file.path == manifest_path;
         if !file.stored {
             if manifest.format_version < UNSTORED_MANIFEST_VERSION {
                 return Err(HistoryError::Corrupt(format!(
@@ -3655,10 +3827,10 @@ fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
                     file.path, manifest.format_version
                 )));
             }
-            if file.path == "project.json" {
-                return Err(HistoryError::InvalidInput(
-                    "project.json must always retain its checkpoint bytes".into(),
-                ));
+            if file.path == manifest_path {
+                return Err(HistoryError::InvalidInput(format!(
+                    "{manifest_path} must always retain its checkpoint bytes"
+                )));
             }
             if !file.chunks.is_empty() {
                 return Err(HistoryError::Corrupt(format!(
@@ -3683,10 +3855,47 @@ fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
         }
         ContentHash::from_hex(&file.content_hash)?;
     }
-    if !has_project_json {
+    if !has_project_manifest && manifest.layout == ManifestLayout::InProject {
         return Err(HistoryError::MissingProjectManifest);
     }
     Ok(())
+}
+
+fn validate_input_layout(inputs: &[CaptureInput], layout: ManifestLayout) -> Result<()> {
+    match layout {
+        ManifestLayout::InProject => {
+            if inputs.iter().any(|input| input.detached_source.is_some()) {
+                return Err(HistoryError::InvalidInput(
+                    "a detached project manifest needs the detached layout".into(),
+                ));
+            }
+            if !inputs
+                .iter()
+                .any(|input| input.relative_path == IN_PROJECT_MANIFEST_PATH)
+            {
+                return Err(HistoryError::MissingProjectManifest);
+            }
+        }
+        ManifestLayout::Detached => {
+            if inputs.iter().any(|input| {
+                (input.relative_path == DETACHED_MANIFEST_PATH) != input.detached_source.is_some()
+            }) {
+                return Err(HistoryError::InvalidInput(format!(
+                    "{DETACHED_MANIFEST_PATH} is reserved for the detached project manifest"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn project_manifest_entry(manifest: &Manifest) -> Result<Option<&ManifestFile>> {
+    let path = manifest.layout.manifest_path();
+    let entry = manifest.files.iter().find(|file| file.path == path);
+    if entry.is_none() && manifest.layout == ManifestLayout::InProject {
+        return Err(HistoryError::MissingProjectManifest);
+    }
+    Ok(entry)
 }
 
 fn read_portable_checkpoint_metadata<R: Read>(reader: &mut R) -> Result<(PortableCheckpoint, u64)> {
@@ -4363,7 +4572,7 @@ fn validate_portable_path_set<'a>(paths: impl IntoIterator<Item = &'a str>) -> R
     let mut ordered = Vec::new();
     for path in paths {
         validate_portable_relative_path(path)?;
-        let folded = path.nfc().flat_map(char::to_lowercase).collect::<String>();
+        let folded = portable_fold(path);
         if !casefolded.insert(folded.clone()) {
             return Err(HistoryError::InvalidInput(format!(
                 "portable project paths collide after case folding: {path}"
@@ -4714,6 +4923,7 @@ mod tests {
         let legacy = Manifest {
             format_version: 1,
             files: manifest.files.clone(),
+            layout: ManifestLayout::InProject,
         };
         let legacy_root = compute_snapshot_root(&legacy).unwrap();
         assert_ne!(legacy_root, *root);
@@ -5076,6 +5286,7 @@ mod tests {
                     chunks: Vec::new(),
                 },
             ],
+            layout: ManifestLayout::InProject,
         };
         let mut unstored = stored.clone();
         unstored.files[0].stored = false;
@@ -5124,6 +5335,7 @@ mod tests {
                     chunks: Vec::new(),
                 },
             ],
+            layout: ManifestLayout::InProject,
         };
 
         let error = verify_archive_manifest(&manifest).unwrap_err();
@@ -5209,6 +5421,7 @@ mod tests {
                     chunks: Vec::new(),
                 },
             ],
+            layout: ManifestLayout::InProject,
         };
         let snapshot_root = compute_snapshot_root(&manifest).unwrap();
         let output_hash = ContentHash::digest(b"output");
@@ -5649,6 +5862,7 @@ mod tests {
                     chunks: Vec::new(),
                 },
             ],
+            layout: ManifestLayout::InProject,
         };
         let root = compute_snapshot_root(&manifest).unwrap();
         let metadata = PortableCheckpoint {

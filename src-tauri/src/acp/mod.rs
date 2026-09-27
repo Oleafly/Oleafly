@@ -13,6 +13,14 @@ pub use types::*;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
+pub(crate) async fn admit_agent_bridge<T>(
+    project_id: &str,
+    bridge: impl std::future::Future<Output = Result<T, String>>,
+) -> Result<T, String> {
+    crate::trust::require_trusted(project_id, crate::trust::Capability::ExternalAgents)?;
+    bridge.await
+}
+
 pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
     let runtime = AcpRuntime::new(crate::paths::oleafly_root()?.join("acp"))?;
     let mut events = runtime.subscribe();

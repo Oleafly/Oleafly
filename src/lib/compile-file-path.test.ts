@@ -54,4 +54,20 @@ describe("resolveCompilePath", () => {
     expect(resolve("/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls")).toBeNull();
     expect(resolve("")).toBeNull();
   });
+
+  it("never maps generated files in an out-of-folder build onto project sources", () => {
+    const resolve = compilePathResolver(["main.tex", "chapters/one.tex", "build/notes.tex"]);
+    const build = "/Users/me/.oleafly/linked/linked-0123456789abcdef0123456789abcdef/build";
+    expect(resolve(`${build}/_oleafly_entry.tex`)).toBeNull();
+    expect(resolve(`${build}/_oleafly_entry.bbl`)).toBeNull();
+    expect(resolve(`${build}/chapters/one.aux`)).toBeNull();
+    expect(resolve("C:/Users/me/.oleafly/linked/linked-0123/build/_oleafly_entry.tex")).toBeNull();
+  });
+
+  it("maps absolute paths inside a folder opened in place by their project suffix", () => {
+    const resolve = compilePathResolver(["main.tex", "chapters/one.tex"]);
+    expect(resolve("/Users/me/Bob's Thèse, v2/./main.tex")).toBe("main.tex");
+    expect(resolve("/Users/me/Bob's Thèse, v2/chapters/one")).toBe("chapters/one.tex");
+    expect(resolve("C:\\Users\\me\\Thesis 50%\\chapters\\one.tex")).toBe("chapters/one.tex");
+  });
 });

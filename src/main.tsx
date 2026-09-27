@@ -11,8 +11,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
+import { logError } from "@/lib/log";
+import { installQuitFallback } from "@/lib/quit-flush";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
-import { getSnapshotConfig, hydrateFromSnapshot } from "@/lib/initial-state";
+import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
+import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
 import { readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
@@ -172,9 +175,11 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
 async function bootstrap(): Promise<void> {
   const view = currentWindowView();
   if (view === "main") {
+    void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
     await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
     await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);
     useSettingsStore.setState({ uiLocalePreference: readCachedPreference() });
+    prepareColdOpen(getSnapshotPendingOpen());
   } else {
     await initializeDesktopI18n();
   }

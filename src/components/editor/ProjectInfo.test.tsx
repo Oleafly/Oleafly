@@ -7,6 +7,8 @@ import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enIntelligence from "@/i18n/locales/en/intelligence.json" with { type: "json" };
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { useFilesStore } from "@/store/files";
+import { useFolderAccessStore } from "@/store/folder-access";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { ProjectInfoButton, ProjectInfoContent } from "./ProjectInfo";
@@ -193,5 +195,45 @@ describe("ProjectInfoContent", () => {
     });
     expect(screen.queryByTestId("language-service-setup")).toBeNull();
     expect(screen.queryByTestId("project-info-setup-marker")).toBeNull();
+  });
+});
+
+describe("ProjectInfoContent for a synced folder", () => {
+  function synced(service: string | null, projectId = "linked-a") {
+    useFilesStore.setState({ projectId: "linked-a", activePath: null });
+    useFolderAccessStore.getState().reset(projectId);
+    useFolderAccessStore.setState({
+      loaded: true,
+      status: { read_only: false, synced_with: service as never },
+    });
+  }
+
+  it("names the sync service in one quiet line", () => {
+    synced("icloud_drive");
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    expect(screen.getByTestId("project-sync-note")).toHaveTextContent(
+      enShell.openedFolder.sync.syncsWith.replace(
+        "{{service}}",
+        enShell.openedFolder.sync.services.icloud_drive,
+      ),
+    );
+  });
+
+  it("falls back to a general line for other providers", () => {
+    synced("cloud_storage");
+    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    expect(screen.getByTestId("project-sync-note")).toHaveTextContent(
+      enShell.openedFolder.sync.cloudStorage,
+    );
+  });
+
+  it("says nothing for a folder that does not sync or belongs to another project", () => {
+    synced(null);
+    const { rerender } = render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    expect(screen.queryByTestId("project-sync-note")).not.toBeInTheDocument();
+    synced("dropbox", "linked-b");
+    rerender(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+    expect(screen.queryByTestId("project-sync-note")).not.toBeInTheDocument();
+    useFolderAccessStore.getState().reset(null);
   });
 });

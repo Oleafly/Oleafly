@@ -13,6 +13,8 @@ use super::isolation::hash_file;
 use super::isolation::normalized_relative;
 use super::model::{ResearchTask, TaskFileChange, TaskFileChangeKind};
 use super::store::TaskStore;
+use crate::folder_write::{Folder, WriteFailure};
+use crate::project_location::ProjectKind;
 
 const MAX_APPLY_PLAN_BYTES: usize = 1024 * 1024;
 
@@ -121,7 +123,7 @@ fn apply_review_with_fault(
         ) {
             let rollback = rollback(project_root, &journal, &plan);
             return Err(match rollback {
-                Ok(()) => error,
+                Ok(()) => refused(task, project_root, &plan.changes[index].path, error),
                 Err(rollback_error) => {
                     format!("{error} The apply rollback also stopped: {rollback_error}")
                 }
@@ -291,12 +293,20 @@ fn validate_outputs(execution_files: &RootFiles, changes: &[TaskFileChange]) -> 
     Ok(())
 }
 
+fn refused(task: &ResearchTask, project_root: &Path, path: &str, failure: WriteFailure) -> String {
+    if !failure.read_only() {
+        return failure.into();
+    }
+    let kind = crate::project_location::kind_of(&task.project_id).unwrap_or(ProjectKind::Library);
+    Folder::new(kind, project_root).describe(&project_root.join(path), path, failure, String::from)
+}
+
 fn apply_one(
     project_files: &RootFiles,
     execution_files: &RootFiles,
     journal: &Path,
     change: &TaskFileChange,
-) -> Result<(), String> {
+) -> Result<(), WriteFailure> {
     let relative = normalized_relative(&change.path)?;
     match change.kind {
         TaskFileChangeKind::Deleted => {
@@ -306,12 +316,14 @@ fn apply_one(
             let incoming_root = journal.join("incoming");
             create_real_directories(&incoming_root)?;
             let incoming_files = RootFiles::open(&incoming_root)?;
-            execution_files.copy_to(
-                &relative,
-                &incoming_files,
-                &relative,
-                change.after_sha256.as_deref(),
-            )?;
+            execution_files
+                .copy_to(
+                    &relative,
+                    &incoming_files,
+                    &relative,
+                    change.after_sha256.as_deref(),
+                )
+                .map_err(String::from)?;
             incoming_files.copy_to(
                 &relative,
                 project_files,
@@ -381,7 +393,7 @@ impl RootFiles {
         Ok(Self { directory })
     }
 
-    fn parent(&self, path: &Path, create: bool) -> Result<Option<(Dir, PathBuf)>, String> {
+    fn parent(&self, path: &Path, create: bool) -> Result<Option<(Dir, PathBuf)>, WriteFailure> {
         let components = path.components().collect::<Vec<_>>();
         let (name, parents) = components
             .split_last()
@@ -400,7 +412,10 @@ impl RootFiles {
                     Ok(()) => {}
                     Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
                     Err(error) => {
-                        return Err(format!("could not create a task file directory: {error}"))
+                        return Err(WriteFailure::io(
+                            "could not create a task file directory",
+                            error,
+                        ))
                     }
                 }
             }
@@ -455,7 +470,7 @@ impl RootFiles {
         destination_root: &RootFiles,
         destination: &Path,
         expected: Option<&str>,
-    ) -> Result<(), String> {
+    ) -> Result<(), WriteFailure> {
         let (source_directory, source_name) = self
             .parent(source, false)?
             .ok_or_else(|| "A reviewed task source file is missing.".to_string())?;
@@ -482,7 +497,9 @@ impl RootFiles {
             }
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(format!("could not inspect a task destination: {error}")),
+            Err(error) => {
+                return Err(format!("could not inspect a task destination: {error}").into())
+            }
         }
         let staging = format!(".task-apply-{:032x}", rand::random::<u128>());
         let mut write_options = OpenOptions::new();
@@ -490,10 +507,10 @@ impl RootFiles {
             .write(true)
             .create_new(true)
             .follow(FollowSymlinks::No);
-        let result: Result<(), String> = (|| {
+        let result: Result<(), WriteFailure> = (|| {
             let mut output = destination_directory
                 .open_with(&staging, &write_options)
-                .map_err(|error| format!("could not create a task staging file: {error}"))?;
+                .map_err(|error| WriteFailure::io("could not create a task staging file", error))?;
             std::io::copy(&mut input, &mut output)
                 .map_err(|error| format!("could not copy a task file: {error}"))?;
             output
@@ -514,7 +531,7 @@ impl RootFiles {
             }
             destination_directory
                 .rename(&staging, &destination_directory, &destination_name)
-                .map_err(|error| format!("could not install a task file: {error}"))?;
+                .map_err(|error| WriteFailure::io("could not install a task file", error))?;
             Ok(())
         })();
         if result.is_err() {
@@ -549,7 +566,7 @@ impl RootFiles {
         Ok(Some(format!("{:x}", hasher.finalize())))
     }
 
-    fn remove(&self, path: &Path) -> Result<(), String> {
+    fn remove(&self, path: &Path) -> Result<(), WriteFailure> {
         let (directory, name) = self
             .parent(path, false)?
             .ok_or_else(|| "A reviewed task deletion is already missing.".to_string())?;
@@ -561,7 +578,7 @@ impl RootFiles {
         }
         directory
             .remove_file(name)
-            .map_err(|error| format!("could not delete a reviewed task file: {error}"))
+            .map_err(|error| WriteFailure::io("could not delete a reviewed task file", error))
     }
 }
 
@@ -717,6 +734,78 @@ mod tests {
             started_at: Some(now_ms()),
             finished_at: Some(now_ms()),
         }
+    }
+
+    #[cfg(unix)]
+    struct Unlocked(PathBuf);
+
+    #[cfg(unix)]
+    impl Drop for Unlocked {
+        fn drop(&mut self) {
+            use std::os::unix::fs::PermissionsExt as _;
+            let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o755));
+        }
+    }
+
+    #[cfg(unix)]
+    fn locked(folder: &Path) -> Option<Unlocked> {
+        use std::os::unix::fs::PermissionsExt as _;
+        fs::set_permissions(folder, fs::Permissions::from_mode(0o555)).unwrap();
+        let guard = Unlocked(folder.to_path_buf());
+        if fs::File::create(folder.join(".probe")).is_ok() {
+            let _ = fs::remove_file(folder.join(".probe"));
+            return None;
+        }
+        Some(guard)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn applying_into_a_read_only_linked_folder_names_the_file_without_os_text() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let temp = tempfile::tempdir().unwrap();
+        fs::create_dir(temp.path().join("data")).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+        let folder = temp.path().join("thesis");
+        let execution = temp.path().join("execution");
+        let library = temp.path().join("library");
+        for root in [&folder, &execution, &library] {
+            fs::create_dir(root).unwrap();
+            fs::write(root.join("main.tex"), "base").unwrap();
+        }
+        fs::write(execution.join("main.tex"), "task result").unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let folder = folder.canonicalize().unwrap();
+        let mut linked = task(&folder, &execution, "base", "task result");
+        linked.project_id = record.id;
+        let unlinked = task(&library, &execution, "base", "task result");
+        let linked_store = TaskStore::new(temp.path().join("linked-store")).unwrap();
+        let library_store = TaskStore::new(temp.path().join("library-store")).unwrap();
+        let (Some(_folder_lock), Some(_library_lock)) = (locked(&folder), locked(&library)) else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+            return;
+        };
+
+        let refused =
+            apply_review(&linked_store, &linked, &folder, &["main.tex".into()]).unwrap_err();
+        let kept =
+            apply_review(&library_store, &unlinked, &library, &["main.tex".into()]).unwrap_err();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        let json: serde_json::Value = serde_json::from_str(
+            refused
+                .strip_prefix(crate::app_error::PREFIX)
+                .unwrap_or_else(|| panic!("not a coded error: {refused}")),
+        )
+        .unwrap();
+        assert_eq!(json["code"], crate::folder_write::READ_ONLY);
+        assert_eq!(json["params"]["name"], "main.tex");
+        assert!(json["detail"].is_null());
+        assert!(
+            kept.starts_with("could not create a task staging file: "),
+            "{kept}"
+        );
+        assert_eq!(fs::read_to_string(folder.join("main.tex")).unwrap(), "base");
     }
 
     #[test]

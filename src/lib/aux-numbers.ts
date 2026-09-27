@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Resolved reference numbers from LaTeX .aux files.
 //
-// After a successful compile the build directory (.oleafly/build) contains the
+// After a successful compile the build directory contains the
 // entry aux file with `\newlabel{name}{{number}{page}...}` records (plus any
 // `\@input{child.aux}` includes). This module parses them into a cache keyed
 // by the compile identity (projectId, mainDocument, outputId) so hovers and
@@ -10,7 +10,7 @@
 // project/main-document stores, and every failure keeps the old cache silently.
 // ---------------------------------------------------------------------------
 
-import { readFileContent } from "@/lib/tauri";
+import { readBuildArtifact } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -20,7 +20,6 @@ export interface LabelNumber {
   page: string;
 }
 
-const BUILD_DIR = ".oleafly/build";
 const ENTRY_AUX = "_oleafly_entry.aux";
 /** Cap on parsed aux input, per file chain and per single parse call. */
 const MAX_AUX_CHARS = 1024 * 1024;
@@ -142,9 +141,9 @@ async function readAuxFile(
   name: string,
 ): Promise<string | null> {
   try {
-    return await readFileContent(projectId, `${BUILD_DIR}/${name}`);
+    return await readBuildArtifact(projectId, name);
   } catch {
-    return null; // a missing child aux is not fatal
+    return null;
   }
 }
 

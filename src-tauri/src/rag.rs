@@ -153,7 +153,7 @@ fn walk_indexable(
             }
             continue;
         }
-        if !is_indexable(&name) {
+        if !is_indexable(&name) || crate::cloud_files::path_is_placeholder(&path) {
             continue;
         }
         if out.scanned_files >= limits.scanned_files {
@@ -722,6 +722,16 @@ mod tests {
         write(&tree, ".oleafly/build/main.tex", b"build");
         write(&tree, ".git/objects/head.tex", b"git");
         assert_eq!(walk_paths(&tree), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn the_walk_never_reads_a_cloud_placeholder() {
+        let tree = tree();
+        write(&tree, "main.tex", b"main");
+        write(&tree, "chapters/evicted.tex", b"only in the cloud");
+        crate::cloud_files::test_support::mark(&tree.root.join("chapters/evicted.tex"));
+
+        assert_eq!(walk_paths(&tree), ["main.tex"]);
     }
 
     #[test]

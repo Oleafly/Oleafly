@@ -2,15 +2,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { applyLocale } from "@/i18n";
+import deCore from "@/i18n/locales/de/core.json" with { type: "json" };
+import deErrors from "@/i18n/locales/de/errors.json" with { type: "json" };
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { useFilesStore } from "@/store/files";
 import { SaveBlockedDialog } from "./SaveBlockedDialog";
 
 const reason = "project.json is managed by Oleafly and cannot be changed as a project file";
 
-afterEach(() => {
+afterEach(async () => {
   useFilesStore.setState({ saveBlocked: null });
   vi.restoreAllMocks();
+  await applyLocale("en");
 });
 
 describe("SaveBlockedDialog", () => {
@@ -47,6 +51,30 @@ describe("SaveBlockedDialog", () => {
       screen.getByRole("button", { name: enCore.project.saveBlockedDiscard }),
     );
     expect(discard).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a coded save failure as its sentence in the interface language", async () => {
+    await applyLocale("de");
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "figures/notes.tex" },
+      detail: null,
+    })}`;
+    useFilesStore.setState({
+      saveBlocked: {
+        action: "close",
+        targetProjectId: null,
+        failures: [{ path: "figures/notes.tex", reason: refused }],
+      },
+    });
+    render(<SaveBlockedDialog />);
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(deCore.project.saveBlockedTitle);
+    expect(dialog).toHaveTextContent(
+      deErrors.project.folder_read_only.replace("{{name}}", "figures/notes.tex"),
+    );
+    expect(dialog).not.toHaveTextContent("@oleafly/error");
   });
 
   it("lists every file when more than one failed", async () => {

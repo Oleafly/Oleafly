@@ -1367,6 +1367,35 @@
     "description": "Gendan indstillingerne under {{sectionName}} til standarderne.",
     "label": "Nulstil indstillinger"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} bliver føjet til din PATH, når du har logget ud og ind igen. Åbn derefter en ny terminal.",
+    "checking": "Tjekker…",
+    "description": "Skriv <code>oleafly .</code> i en terminal for at åbne mappen i Oleafly.",
+    "install": "Installer",
+    "installing": "Installerer…",
+    "loadFailed": "Kunne ikke tjekke terminalkommandoen.",
+    "notOnPath": {
+      "file": "{{directory}} er ikke i din PATH endnu. Tilføj denne linje til {{file}}, og åbn en ny terminal:",
+      "run": "{{directory}} er ikke i din PATH endnu. Kør dette én gang, og åbn en ny terminal:"
+    },
+    "removing": "Fjerner…",
+    "result": {
+      "copied": "Kommandoen er kopieret til {{path}}.",
+      "linked": "{{path}} peger nu på denne kopi af Oleafly.",
+      "removed": "{{path}} er fjernet."
+    },
+    "state": {
+      "installed": "Installeret i {{path}}.",
+      "moveApp": "Flyt først Oleafly til mappen Programmer, og installer så kommandoen her.",
+      "notInstalled": "Tilføjer oleafly til {{directory}}.",
+      "occupied": "{{path}} findes allerede og er ikke lavet af Oleafly, så den bliver ikke ændret.",
+      "outdated": "{{path}} peger stadig på en ældre kopi af Oleafly. Opdater den, så den bruger denne kopi.",
+      "packaged": "Installeret i {{path}} af din Oleafly-pakke.",
+      "unavailable": "Denne kopi af Oleafly indeholder ikke kommandoen."
+    },
+    "title": "Terminalkommando",
+    "update": "Opdater"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Vis eller skjul projektets terminal.",
         "label": "Vis eller skjul terminalen"
+      },
+      "openFolder": {
+        "label": "Åbn mappe",
+        "description": "Åbn en mappe fra din computer som et projekt."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Store bogstaver"
       },
       "unbound": "Ikke angivet"
+    }
+  },
+  "systemIntegration": {
+    "title": "Systemintegration",
+    "description": "Åbn mapper i Oleafly direkte fra din filhåndtering.",
+    "checking": "Tjekker…",
+    "loadFailed": "Kunne ikke kontrollere opsætningen af filhåndteringen.",
+    "state": {
+      "installed": "Installeret",
+      "notInstalled": "Ikke installeret",
+      "needsAttention": "Kræver opmærksomhed"
+    },
+    "actions": {
+      "install": "Installer",
+      "repair": "Reparer"
+    },
+    "failed": {
+      "install": "Kunne ikke installere. Prøv igen.",
+      "remove": "Kunne ikke fjerne. Prøv igen."
+    },
+    "packaged": "Installeret med Oleafly-pakken.",
+    "quickAction": {
+      "label": "Hurtige kommandoer i Finder",
+      "description": "Føjer Åbn i Oleafly til menuen Tjenester, når du højreklikker på en mappe i Finder.",
+      "menuHint": "Ikke under Hurtige kommandoer endnu. Højreklik på en mappe, vælg Hurtige kommandoer › Tilpas, og slå {{title}} til."
+    },
+    "explorerMenu": {
+      "label": "Højrekliksmenu i Stifinder",
+      "description": "Højreklik på en mappe eller et tomt område i den, og vælg Åbn med Oleafly. I Windows 11 ligger den under Vis flere indstillinger.",
+      "toggle": "Vis Åbn med Oleafly i Stifinder"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Tilføjer Åbn med Oleafly, når du højreklikker på en mappe i Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Tilføjer Åbn med Oleafly, når du højreklikker på en mappe i Nemo."
+    },
+    "nautilus": {
+      "label": "Filer",
+      "description": "Tilføjer Åbn med Oleafly til menuen Scripts, når du højreklikker på en mappe i GNOME Filer."
+    },
+    "folderOpenWith": {
+      "label": "Menuen Åbn med for mapper",
+      "description": "Viser Oleafly under Åbn med for mapper. Din standardfilhåndtering forbliver den samme."
+    },
+    "attention": {
+      "outdated": "Den er forældet, eller macOS har blokeret den. Reparer den for at få den tilbage.",
+      "elsewhere": "Menuen åbner en anden kopi af Oleafly. Reparer den for at bruge denne.",
+      "moved": "Den peger på en kopi af Oleafly, der er flyttet. Reparer den for at bruge denne.",
+      "noDefaultFileManager": "Dit system har ingen standardfilhåndtering for mapper, så denne post kan åbne alle mapper i Oleafly. Fjern den."
     }
   }
 }

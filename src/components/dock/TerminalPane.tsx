@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
+import { decodeAppError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
@@ -78,6 +79,7 @@ export interface TerminalPaneProps {
   active?: boolean;
   autoStart?: boolean;
   onExit?: () => void;
+  onStarted?: () => void;
 }
 
 const MAX_HIDDEN_OUTPUT_CHARS = 256_000;
@@ -107,6 +109,7 @@ export function TerminalPane({
   active = true,
   autoStart = false,
   onExit,
+  onStarted,
 }: Readonly<TerminalPaneProps>) {
   const { t } = useTranslation(["workspace"]);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -121,11 +124,17 @@ export function TerminalPane({
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
+  const autoStartRef = useRef(autoStart);
   const onExitRef = useRef(onExit);
   visibleRef.current = visible;
+  autoStartRef.current = autoStart;
   onExitRef.current = onExit;
+  const onStartedRef = useRef(onStarted);
+  onStartedRef.current = onStarted;
   const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
-  const shouldStart = visible || autoStart || startWithProject;
+  const [backgroundRefusedFor, setBackgroundRefusedFor] = useState<string | null>(null);
+  const backgroundStartRefused = backgroundRefusedFor === projectId;
+  const shouldStart = visible || autoStart || (startWithProject && !backgroundStartRefused);
   const [booted, setBooted] = useState(false);
   const [ended, setEnded] = useState(false);
   const [activated, setActivated] = useState(shouldStart);
@@ -290,6 +299,7 @@ export function TerminalPane({
         projectId,
         cols: openedCols,
         rows: openedRows,
+        autostart: !visibleRef.current && !autoStartRef.current,
         channel,
       })
       .then((id) => {
@@ -314,6 +324,7 @@ export function TerminalPane({
         resizerRef.current = resizer;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
+        onStartedRef.current?.();
         if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
           resizer.request(terminal.cols, terminal.rows);
         }
@@ -323,6 +334,11 @@ export function TerminalPane({
         recordTerminalEvent(`open:error:${String(error)}`);
         pendingInput.length = 0;
         if (disposed || sessionExited) return;
+        if (decodeAppError(error)?.code === "trust.terminal") {
+          setBackgroundRefusedFor(projectId);
+          setActivated(false);
+          return;
+        }
         setBooted(true);
         writeTerminalError(terminal, i18n.t(($) => $.workspace.terminal.errors.start), error, outputWritten);
       });

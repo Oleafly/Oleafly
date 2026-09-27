@@ -18,3 +18,4 @@ strip = true
 [patch.crates-io]
 tauri-plugin-playwright = { path = "vendor/tauri-plugin-playwright" }
 portable-pty = { path = "vendor/portable-pty" }
+tauri-plugin-single-instance = { path = "vendor/tauri-plugin-single-instance" }

@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompiluj ponownie"
     },
+    "saveSettingsToFolder": {
+      "keywords": "zapisz ustawienia projektu folder project.json udostępnij dokument główny",
+      "label": "Zapisz ustawienia projektu w tym folderze",
+      "saved": "Ustawienia projektu zapisano w pliku project.json w tym folderze."
+    },
     "section": {
       "label": "Sekcja"
     },
@@ -216,6 +221,10 @@
         "titleCase": "wielkie pierwsze litery kapitalizacja tekst",
         "uppercase": "wielkie litery wielkość tekst"
       }
+    },
+    "openFolder": {
+      "label": "Otwórz folder…",
+      "keywords": "otwórz folder katalog istniejący lokalny pliki dysk"
     }
   },
   "community": {
@@ -262,6 +271,7 @@
     "texRootBroken": "% !TEX root w pliku {{file}} wskazuje na brakujący plik ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root w pliku {{file}} wskazuje na {{target}}, który nie jest plikiem LaTeX",
     "texRootOverride": "root: {{path}} (ustawione przez % !TEX root w {{file}})"
   },
   "datePicker": {
@@ -365,6 +375,25 @@
     },
     "title": "Coś poszło nie tak"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Ten folder jest niedostępny.",
+      "body": "Podłącz ponownie dysk lub znajdź folder. Otwarte pliki zostają tutaj, a Oleafly nie będzie zapisywać ani kompilować, dopóki folder nie wróci."
+    },
+    "replaced": {
+      "title": "Ten folder został zastąpiony.",
+      "body": "W jego miejscu jest teraz inny folder. Oleafly przestał zapisywać, aby niczego tam nie nadpisać."
+    },
+    "permissionDenied": {
+      "title": "Oleafly nie może otworzyć tego folderu.",
+      "body": "Sprawdź uprawnienia folderu i spróbuj ponownie. Otwarte pliki zostają tutaj."
+    },
+    "locate": "Wskaż folder",
+    "useThisFolder": "Użyj tego folderu",
+    "saveCopy": "Zapisz kopię",
+    "tryAgain": "Spróbuj ponownie",
+    "savedCopy": "Otwarte pliki zapisano w {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Działania GitHub",
@@ -423,6 +452,68 @@
     },
     "tryCommand": "Wypróbuj polecenie",
     "unknownCommand": "Nieznane polecenie. Wpisz /, aby zobaczyć dostępne polecenia."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Który dokument ma skompilować Oleafly?",
+      "askDescription": "Ten folder zawiera więcej niż jeden dokument. Wybierz główny. Możesz go później zmienić.",
+      "listLabel": "Dokumenty w tym folderze",
+      "open": "Otwórz",
+      "browse": "Tylko przeglądaj pliki",
+      "bestMatch": "Najlepsze dopasowanie",
+      "empty": "Oleafly nie znalazł tu żadnych dokumentów. Kliknij plik prawym przyciskiem w drzewie plików i wybierz Ustaw jako dokument główny.",
+      "truncated": "Ten folder jest duży, więc Oleafly wcześniej przerwał wyszukiwanie. Niektórych dokumentów może brakować na liście.",
+      "openFailed": "Nie udało się ustawić {{path}} jako dokumentu głównego."
+    },
+    "kind": {
+      "document": "Dokument",
+      "book": "Książka",
+      "presentation": "Prezentacja",
+      "poster": "Plakat",
+      "standalone": "Samodzielna ilustracja",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Inne"
+    },
+    "reason": {
+      "declared": "Oznaczony jako plik główny",
+      "top_level": "W folderze najwyższego poziomu",
+      "named_main": "Nazywa się main",
+      "named_after_folder": "Ma taką samą nazwę jak folder",
+      "includes_files": "Dołącza inne pliki",
+      "has_bibliography": "Ma bibliografię",
+      "no_begin_document": "Brak \\begin{document}",
+      "standalone_figure": "Samodzielna ilustracja",
+      "placeholder": "Jeszcze nie pobrany"
+    },
+    "noMain": "Nie ma jeszcze dokumentu głównego. Wybierz plik i kliknij Ustaw jako dokument główny.",
+    "trust": {
+      "banner": "Oleafly ograniczył niektóre funkcje w tym folderze. Zaufać mu, aby włączyć Git, terminal, agentów i shell escape?",
+      "trustFolder": "Zaufaj temu folderowi",
+      "trustParent": "Zaufaj folderowi nadrzędnemu",
+      "trustRepository": "Zaufaj repozytorium",
+      "hide": "Ukryj",
+      "terminal": "Hooki Git i ustawienia repozytorium są wyłączone w tym terminalu, dopóki nie zaufasz folderowi.",
+      "terminalReopen": "Ten terminal uruchomiono, zanim folder został uznany za zaufany. Otwórz go ponownie, aby włączyć hooki Git.",
+      "reopenTerminal": "Otwórz terminal ponownie",
+      "failed": "Nie udało się zaufać temu folderowi."
+    },
+    "readOnly": {
+      "banner": "Ten folder jest tylko do odczytu. Możesz kompilować, ale nie da się zapisać zmian.",
+      "copy": "Skopiuj do biblioteki",
+      "copied": "Oleafly skopiował ten folder do Twojej biblioteki. Edytujesz teraz kopię."
+    },
+    "sync": {
+      "syncsWith": "Synchronizacja z usługą {{service}}",
+      "cloudStorage": "Synchronizacja z usługą w chmurze",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Dysk Google",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Szukaj we wszystkich plikach tego projektu.",
@@ -564,6 +655,10 @@
         "calculating": "Obliczanie zajętości miejsca…",
         "desktopOnly": "Szczegóły przechowywania są dostępne w aplikacji desktopowej.",
         "error": "Nie udało się obliczyć szczegółów przechowywania.",
+        "linkedFolders_one": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
+        "linkedFolders_few": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_many": "{{size}} danych kompilacji i ustawień dla {{count}} otwartych folderów",
+        "linkedFolders_other": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
         "refresh": "Odśwież zajętość miejsca",
         "stats": {
           "appData": "Dane aplikacji",
@@ -821,7 +916,8 @@
     "loadingCore": "Wczytywanie Oleafly Core",
     "loadingHarness": "Wczytywanie Oleafly Harness",
     "loadingParsers": "Wczytywanie Oleafly Parsers",
-    "starting": "Uruchamianie Oleafly"
+    "starting": "Uruchamianie Oleafly",
+    "opening": "Otwieranie {{name}}…"
   },
   "theme": {
     "dark": "Ciemny",
@@ -955,5 +1051,30 @@
   "windows": {
     "preview": "Podgląd: {{title}}",
     "update": "Aktualizacja Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Zatrzymać i otworzyć {{name}}?",
+    "confirmCompile": "{{project}} wciąż się kompiluje. Otwarcie {{name}} zatrzyma kompilację. Twoje zmiany zostaną najpierw zapisane.",
+    "confirmAssistant": "Asystent wciąż pracuje w {{project}}. Otwarcie {{name}} zatrzyma jego odpowiedź. Twoje zmiany zostaną najpierw zapisane.",
+    "confirmBoth": "{{project}} wciąż się kompiluje, a asystent wciąż pracuje. Otwarcie {{name}} zatrzyma jedno i drugie. Twoje zmiany zostaną najpierw zapisane.",
+    "confirmAction": "Zatrzymaj i otwórz",
+    "chooseSubfolder": "Wybierz podfolder",
+    "refusedTitle": "Nie udało się otworzyć {{name}}",
+    "refused": "Nie udało się otworzyć {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "W Ustawieniach systemowych otwórz Prywatność i ochrona, a potem Pliki i foldery, i włącz Oleafly. Jeśli Oleafly nie ma na liście, dodaj go w sekcji Pełny dostęp do dysku i spróbuj ponownie.",
+      "windows": "Na karcie Zabezpieczenia we Właściwościach folderu sprawdź, czy Twoje konto może go odczytać, i spróbuj ponownie.",
+      "linux": "Sprawdź, czy Twoje konto może odczytać ten folder, i spróbuj ponownie."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Otwieraj foldery z Findera",
+    "body": "Dodaj Otwórz w Oleafly do Findera. Od razu działa z menu Usługi, a z menu Szybkie czynności po włączeniu.",
+    "add": "Dodaj do Findera",
+    "notNow": "Nie teraz",
+    "added": "Dodano. Polecenie jest już w menu Usługi w Finderze. Aby używać go też z menu Szybkie czynności, kliknij folder prawym przyciskiem i włącz je w menu Szybkie czynności › Dostosuj.",
+    "addedInQuickActions": "Dodano. Kliknij folder prawym przyciskiem, a znajdziesz polecenie w menu Szybkie czynności.",
+    "failed": "Nie udało się dodać. Możesz spróbować ponownie w sekcji Ustawienia › Ogólne."
   }
 }

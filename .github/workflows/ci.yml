@@ -132,6 +132,12 @@ jobs:
       - name: Test the Tauri version check
         run: pnpm tauri-versions:test
 
+      - name: Test the Linux app binary lookup
+        run: bash scripts/ci/find-linux-app-binary.test.sh
+
+      - name: Test the installer change check
+        run: bash scripts/ci/installer-changes.test.sh
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
@@ -323,7 +329,7 @@ jobs:
 
       - name: Test
         if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --all-targets --no-fail-fast
 
       - name: Format check
         run: cargo fmt --all -- --check
@@ -373,7 +379,7 @@ jobs:
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --all-targets --no-fail-fast
 
       - name: Lint all native Windows targets
         run: cargo clippy --workspace --all-targets -- -D warnings
@@ -484,7 +490,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-macos-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-macos-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/tauri.macos.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -620,7 +626,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-linux-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-linux-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/tauri.linux.conf.json', 'src-tauri/linux/**', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -740,7 +746,21 @@ jobs:
           grep -E '/(bin|sbin)/' deb-contents.txt || echo "(none matched /bin/)"
           echo "--- libexec, resources, sidecars (first 25) ---"
           grep -E '/lib/' deb-contents.txt | sed -n '1,25p' || echo "(none matched /lib/)"
+          echo "--- desktop entries ---"
+          grep -E 'usr/share/applications/' deb-contents.txt || echo "(none matched usr/share/applications/)"
+          dpkg-deb --fsys-tarfile oleafly-e2e-linux.deb | tar -xOf - --wildcards '*usr/share/applications/*.desktop' || echo "(could not read the desktop entry)"
           echo "--- $(wc -l < deb-contents.txt) entries total ---"
+          echo "--- desktop entries and file manager actions ---"
+          grep -E '[.](desktop|nemo_action)$' deb-contents.txt || echo "(none matched)"
+          rm -rf deb-root
+          mkdir -p deb-root
+          dpkg-deb -x oleafly-e2e-linux.deb deb-root || echo "(could not unpack the package)"
+          for entry in deb-root/usr/share/applications/*.desktop deb-root/usr/share/kio/servicemenus/*.desktop deb-root/usr/share/nemo/actions/*.nemo_action; do
+            [ -f "$entry" ] || continue
+            echo "${entry#deb-root}:"
+            grep -E '^(Type|Exec|MimeType)=' "$entry" || echo "(no Type, Exec or MimeType line)"
+          done
+          rm -rf deb-root
 
       - name: Save the packed app to the cache
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -932,30 +952,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
           pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
-          # Match the app by NAME, never by position. The package installs the
-          # engine sidecars beside the app - /usr/bin holds tectonic,
-          # tectonic-biber, pandoc, typst and oleafly - so "the first executable in
-          # /usr/bin" is tectonic, and the suite duly launched tectonic as the
-          # app and got "required arguments were not provided". The Debian
-          # package name and the app binary name are both derived from
-          # productName, so match on that and fail loudly rather than guess.
           # Every filter is guarded: an unmatched grep returns 1 under pipefail.
           dpkg -L "$pkg" > installed-files.txt
           echo "--- executables installed by $pkg ---"
           grep -E '^/usr/bin/.' installed-files.txt || echo "(none)"
-          app_bin=""
-          while IFS= read -r candidate; do
-            case "$candidate" in /usr/bin/*) ;; *) continue ;; esac
-            [ -f "$candidate" ] && [ -x "$candidate" ] || continue
-            base="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
-            if [ "$base" = "$(printf '%s' "$pkg" | tr '[:upper:]' '[:lower:]')" ]; then
-              app_bin="$candidate"
-              break
-            fi
-          done < installed-files.txt
-          if [ -z "$app_bin" ]; then
-            echo "package $pkg installed no executable named '$pkg' in /usr/bin" >&2
+          echo "--- desktop entries installed by $pkg ---"
+          grep -E '^/usr/share/applications/.' installed-files.txt || echo "(none)"
+          if ! app_bin="$(bash scripts/ci/find-linux-app-binary.sh installed-files.txt)"; then
             cat installed-files.txt >&2
+            exit 1
+          fi
+          cli_bin="$(dirname "$app_bin")/oleafly-cli"
+          if [ ! -x "$cli_bin" ]; then
+            echo "package $pkg installed no command-line tool beside $app_bin" >&2
+            exit 1
+          fi
+          "$cli_bin" --version
+          command_bin="$(dirname "$app_bin")/oleafly"
+          if [ ! -x "$command_bin" ]; then
+            echo "package $pkg installed no oleafly command beside $app_bin" >&2
+            exit 1
+          fi
+          command_version="$("$command_bin" --version)"
+          echo "$command_bin --version: $command_version"
+          if [ "$command_version" != "$("$cli_bin" --version)" ]; then
+            echo "$command_bin does not hand its arguments to $cli_bin" >&2
             exit 1
           fi
           echo "app binary: $app_bin"
@@ -1105,8 +1126,18 @@ jobs:
     needs: [frontend, rust]
     runs-on: windows-2022
     timeout-minutes: 45
+    outputs:
+      installers: ${{ steps.installer-changes.outputs.run }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check whether the installers changed
+        id: installer-changes
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash scripts/ci/installer-changes.sh "$EVENT" "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -1127,7 +1158,7 @@ jobs:
       - name: Compute the packaged app cache key
         id: e2e-app-key
         shell: bash
-        run: echo "key=e2e-app-windows-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-windows-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/windows/**', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -1380,5 +1411,61 @@ jobs:
             e2e-artifacts/**/error-context.md
             e2e-artifacts/**/trace.zip
             e2e-artifacts/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  installers-windows:
+    name: Installers (Windows)
+    needs: e2e-build-windows
+    if: needs.e2e-build-windows.outputs.installers == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+
+      - name: Download the app build
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-app-windows
+
+      - name: Unpack the app build into the target directory
+        shell: bash
+        run: bash scripts/ci/unpack-windows-e2e-app.sh oleafly-e2e-windows.tar.gz src-tauri/target/debug
+
+      - name: Bundle the NSIS and MSI installers
+        shell: bash
+        run: |
+          printf '%s\n' '{"bundle":{"externalBin":[],"resources":[]}}' > src-tauri/tauri.installer-check.conf.json
+          pnpm tauri bundle --debug --features e2e-testing --bundles nsis,msi --config src-tauri/tauri.e2e.conf.json --config src-tauri/tauri.installer-check.conf.json
+
+      - name: Install and uninstall both installers
+        timeout-minutes: 20
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows-installer-check.ps1 -BundleDir src-tauri/target/debug/bundle -LogDir installer-check-logs
+
+      - name: Upload the installer logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-check-windows
+          path: |
+            installer-check-logs/**
+            src-tauri/target/debug/wix/x64/main.wxs
+            src-tauri/target/debug/nsis/x64/installer.nsi
           retention-days: 7
           if-no-files-found: ignore

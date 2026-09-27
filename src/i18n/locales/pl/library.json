@@ -37,7 +37,6 @@
     "appIconAlt": "Ikona aplikacji Oleafly",
     "welcomeTitle": "Witamy w Oleafly",
     "welcomeDescription": "Pisz, kompiluj i sprawdzaj teksty w LaTeX, Typst i Markdown. Zarządzaj cytowaniami, przeglądaj pliki PDF, śledź zmiany w Git i pracuj z wybranymi przez siebie modelami AI.",
-    "createFirstProject": "Utwórz nowy projekt",
     "loading": "Wczytywanie biblioteki…",
     "noBookmarksTitle": "Nie ma jeszcze zakładek",
     "noBookmarksDescription": "Najedź na książkę i kliknij jej zakładkę, aby ją dodać.",
@@ -70,8 +69,15 @@
       "anyTime": "Dowolny czas",
       "last7Days": "Ostatnie 7 dni",
       "last30Days": "Ostatnie 30 dni",
-      "lastYear": "Ostatni rok"
-    }
+      "lastYear": "Ostatni rok",
+      "location": "Lokalizacja",
+      "locationAll": "Wszystkie projekty",
+      "locationLibrary": "W Oleafly",
+      "locationExternal": "Projekty zewnętrzne"
+    },
+    "openFolder": "Otwórz folder",
+    "openFolderShortcut": "Otwórz folder ({{shortcut}})",
+    "createFirstProject": "Utwórz nowy projekt"
   },
   "projects": {
     "open": "Otwórz {{name}}",
@@ -85,7 +91,7 @@
     "actions": "Działania dla {{name}}",
     "details": "Szczegóły projektu",
     "exportHistory": "Historia eksportów",
-    "changeColor": "Zmień kolor projektu",
+    "changeColor": "Kolor projektu",
     "fork": "Rozgałęź projekt",
     "delete": "Usuń projekt",
     "favoriteAdd": "Dodaj do ulubionych",
@@ -97,7 +103,8 @@
     "kind": {
       "document": "dokument",
       "image": "obraz",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "zewnętrzny"
     },
     "preview": {
       "title": "Podgląd PDF: {{name}}",
@@ -385,7 +392,9 @@
     "nameRequired": "Wpisz nazwę repozytorium.",
     "published": "Opublikowano w {{repository}}.",
     "linked": "Powiązano i wypchnięto do {{remote}}.",
-    "pushNeedsPull": "Powiązano z {{remote}}, ale wypchnięcie wymaga najpierw pobrania zmian: {{detail}}"
+    "pushNeedsPull": "Powiązano z {{remote}}, ale wypchnięcie wymaga najpierw pobrania zmian: {{detail}}",
+    "replaceRemotePrompt": "Ten projekt jest powiązany z {{remote}}. Zastąpić to powiązanie?",
+    "replaceRemote": "Zastąp powiązanie"
   },
   "deadlines": {
     "title": "Terminy konferencji",
@@ -476,6 +485,75 @@
       "sourcesTitle": "Źródła",
       "sourcesBody": "Rekordy łączą otwarty zbiór danych ccf-deadlines z oficjalnymi stronami konferencji śledzonymi przez Oleafly.",
       "confirm": "Przed wysłaniem zgłoszenia potwierdź każdą datę na oficjalnej stronie konferencji."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nowy projekt",
+    "newProjectDescription": "Zacznij od szablonu lub pustej strony.",
+    "openFolderTitle": "Otwórz folder",
+    "openFolderDescription": "Pracuj na plikach, które już masz na komputerze. Zostają tam, gdzie są."
+  },
+  "openFolder": {
+    "dismiss": "Zamknij"
+  },
+  "folder": {
+    "state": {
+      "missing": "Brak folderu",
+      "offline": "Dysk niepodłączony",
+      "replaced": "Folder zastąpiony",
+      "permissionDenied": "Brak uprawnień"
+    },
+    "menu": {
+      "showInFinder": "Pokaż w Finderze",
+      "showInExplorer": "Pokaż w Eksploratorze plików",
+      "showInFileManager": "Pokaż w menedżerze plików",
+      "copyToLibrary": "Skopiuj do biblioteki",
+      "remove": "Usuń z Oleafly"
+    },
+    "remove": {
+      "title": "Usunąć „{{name}}” z Oleafly?",
+      "description": "Twoje pliki zostają na miejscu. Oleafly usuwa swoje pliki kompilacji dla tego folderu i resetuje jego zaufanie, zgody i powiązane foldery. Otwórz folder ponownie w ciągu 30 dni, aby odzyskać jego czaty i historię. Resztę trzeba będzie skonfigurować od nowa.",
+      "confirm": "Usuń z Oleafly",
+      "done": "Usunięto „{{name}}” z Oleafly. Pliki nadal są w folderze.",
+      "failed": "Nie udało się usunąć „{{name}}” z Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Nie można znaleźć „{{name}}”",
+        "body": "Folder był w <path>{{path}}</path> i mógł zostać przeniesiony lub usunięty. Wskaż go, aby zachować jego czaty i historię."
+      },
+      "offline": {
+        "title": "„{{name}}” jest na dysku, który nie jest podłączony",
+        "body": "Podłącz dysk lub udział sieciowy z <path>{{path}}</path> i spróbuj ponownie."
+      },
+      "replaced": {
+        "title": "Folder „{{name}}” został zastąpiony",
+        "body": "Folder w <path>{{path}}</path> to nie ten, który był otwarty wcześniej. Używaj go tylko wtedy, gdy mu ufasz. Po zmianie Oleafly wyłącza zaufanie i zgody."
+      },
+      "permissionDenied": {
+        "title": "Oleafly nie może otworzyć „{{name}}”",
+        "bodyMac": "Zezwól Oleafly na dostęp do tego folderu w Ustawieniach systemowych › Prywatność i ochrona › Pliki i foldery, a potem spróbuj ponownie.",
+        "bodyOther": "Twoje konto nie może odczytać <path>{{path}}</path>. Sprawdź uprawnienia folderu i spróbuj ponownie."
+      },
+      "back": {
+        "title": "Znów masz dostęp do „{{name}}”",
+        "body": "Oleafly może znów odczytać <path>{{path}}</path>."
+      },
+      "locate": "Wskaż folder",
+      "tryAgain": "Spróbuj ponownie",
+      "useThisFolder": "Użyj tego folderu",
+      "checking": "Sprawdzanie",
+      "still": "Oleafly nadal nie ma do niego dostępu."
+    },
+    "copy": {
+      "title": "Skopiuj „{{name}}” do biblioteki",
+      "description": "Oleafly kopiuje pliki do nowego projektu w bibliotece i zostawia folder na miejscu. Historia Git jest kopiowana, ale hooki Git i pliki kompilacji nie.",
+      "counting": "Liczenie plików…",
+      "copying": "Kopiowanie plików…",
+      "count": "{{done}} z {{total}}",
+      "done": "„{{name}}” jest teraz w bibliotece.",
+      "doneLeftOut": "„{{name}}” jest teraz w bibliotece. Nie skopiowano linków do plików w innych miejscach ani folderów zagnieżdżonych zbyt głęboko.",
+      "failed": "Nie udało się skopiować „{{name}}” do biblioteki."
     }
   }
 }

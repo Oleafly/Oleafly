@@ -69,6 +69,31 @@
       "action": "Heading over a single thing the search bar can do right now"
     }
   },
+  "openedFolder": {
+    "kind": {
+      "standalone": "Kind of document: a LaTeX file that uses the standalone class, usually one figure"
+    },
+    "picker": {
+      "bestMatch": "Badge on the document the app thinks is the main one",
+      "browse": "Secondary button: close the chooser without picking a document and look at the files"
+    },
+    "reason": {
+      "named_main": "Reason shown under a file: its name is main. Keep main verbatim",
+      "top_level": "Reason shown under a file: it sits in the opened folder itself, not in a subfolder"
+    },
+    "trust": {
+      "banner": "Banner above the editor in a folder that isn't trusted yet. The second sentence is a yes-or-no question that the Trust buttons after it answer, so end it with your language's question mark",
+      "hide": "Accessible name of the close button that hides the trust banner until the app restarts",
+      "reopenTerminal": "Menu action on a terminal tab strip. It closes the shell of the current terminal and starts a new one in the same tab",
+      "terminalReopen": "Shown on a terminal whose shell started while the folder was not trusted. Git hooks stay off in that shell until it is reopened",
+      "trustParent": "Button that trusts the folder that contains this one, and everything inside it. No ellipsis at the end"
+    }
+  },
+  "quickActionOffer": {
+    "body": "Text of the one-time offer card, before the user adds the Finder Quick Action. macOS lists it in the Services menu right away, and in the Quick Actions menu only after the user turns it on. Use the exact names Finder shows in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
+    "added": "Confirmation in the one-time offer card after the user adds the Finder Quick Action while it is still off in the Quick Actions menu, or when macOS cannot tell. macOS lists it in the Services menu right away, and in the Quick Actions menu only after the user turns it on in Quick Actions › Customize. Use the exact names Finder shows in your language, without the trailing ellipsis Finder puts after Customize. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
+    "addedInQuickActions": "Confirmation in the one-time offer card after the user adds the Finder Quick Action when macOS already shows it in the Quick Actions menu, because the user turned it on for an earlier install. Do not tell the user to turn it on. Use the exact name Finder shows for the Quick Actions menu in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it."
+  },
   "renameDialog": {
     "symbolKinds": {
       "atuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",

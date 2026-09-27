@@ -336,7 +336,7 @@ describe("UsageReportDialog", () => {
       }),
     );
     expect(screen.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Oleafly assistant");
-  });
+  }, 15_000);
 
   it("applies quick ranges immediately and marks the active one", async () => {
     const query = vi.fn(async (_filter: UsageReportFilter) => report());

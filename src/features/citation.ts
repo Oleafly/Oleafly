@@ -25,7 +25,9 @@ import { parseRis } from "@/lib/citation/ris";
 import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
 import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
+import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
@@ -189,6 +191,7 @@ export function selectCitationBibliography(
   mainContent: string,
   bibPaths: string[],
   declaringFile = "",
+  fallback = "references.bib",
 ): string {
   const declarations = citationBibliographyDeclarations(profile, mainContent);
   for (const declaration of declarations) {
@@ -204,24 +207,38 @@ export function selectCitationBibliography(
     const resolved = resolveDeclaredBib(declaration.raw, bibPaths, declaration.engine === "latex");
     if (resolved) return resolved;
   }
-  return bibPaths[0] ?? "references.bib";
+  return bibPaths[0] ?? fallback;
 }
 
-function pickTargetBib(files: ReturnType<typeof useFilesStore.getState>, source?: string): { path: string; content: string } {
+function linkedBibliographyMessage(path: string): string {
+  return i18n.t(($) => $.core.citation.linkedBibliography, { path });
+}
+
+function pickTargetBib(
+  files: ReturnType<typeof useFilesStore.getState>,
+  source?: string,
+): { path: string; content: string; readOnly: boolean } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
   const effectiveMain = resolveEffectiveMainDoc().mainDoc;
   const declaringFile = source !== undefined ? files.mainDoc : effectiveMain;
   const mainContent = source ?? files.files[effectiveMain]?.content ?? "";
-  const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
+  const bibFiles = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib"));
+  const writable = bibFiles.filter((f) => !f.read_only).map((f) => f.path);
+  const linked = bibFiles.find((f) => f.read_only)?.path;
 
   const path = selectCitationBibliography(
     files.engine.capabilities.formatting_profile,
     mainContent,
-    bibPaths,
+    writable,
     declaringFile,
+    linked,
   );
-  return { path, content: files.files[path]?.content ?? "" };
+  return {
+    path,
+    content: files.files[path]?.content ?? "",
+    readOnly: isReadOnlyLink(path, files.tree),
+  };
 }
 
 function assertCitationProject(projectId: string | null): void {
@@ -260,7 +277,7 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
 }
 
 export async function bibliographyTargetForProject(): Promise<
-  { path: string; exists: boolean; content: string } | null
+  { path: string; exists: boolean; content: string; readOnly: boolean } | null
 > {
   const files = useFilesStore.getState();
   if (!files.projectId) return null;
@@ -268,7 +285,12 @@ export async function bibliographyTargetForProject(): Promise<
   const exists = files.tree.some(
     (entry) => !entry.is_dir && entry.path === loaded.target.path,
   );
-  return { path: loaded.target.path, exists, content: loaded.content };
+  return {
+    path: loaded.target.path,
+    exists,
+    content: loaded.content,
+    readOnly: loaded.target.readOnly,
+  };
 }
 
 type CitationFiles = ReturnType<typeof useFilesStore.getState>;
@@ -302,7 +324,7 @@ async function writeCitationTarget(
   newContent: string,
 ): Promise<string | null> {
   if (files.files[targetPath] !== undefined) {
-    files.setContent(targetPath, newContent);
+    if (!files.setContent(targetPath, newContent)) return linkedBibliographyMessage(targetPath);
     // Persist now instead of waiting for the autosave debounce, so a compile
     // (which reads from disk) resolves the new \cite immediately.
     try {
@@ -337,8 +359,7 @@ async function writeBibliographyDeclaration(
   next: string,
   currentMainLoaded: boolean,
 ): Promise<void> {
-  if (currentMainLoaded) {
-    files.setContent(mainPath, next);
+  if (currentMainLoaded && files.setContent(mainPath, next)) {
     await useFilesStore.getState().saveFile(mainPath);
     return;
   }
@@ -393,6 +414,9 @@ function dedupeImportedEntries(
 }
 
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    return { error: readOnlyFolderMessage() };
+  }
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: i18n.t(($) => $.core.citation.parseFailed) };
 
@@ -409,6 +433,8 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     insertCite(existing);
     return { key: existing };
   }
+
+  if (target.readOnly) return { error: linkedBibliographyMessage(target.path) };
 
   const key = generateCiteKey(parsed.fields, existingBibKeys(content));
   const entry = setKey(bibtex.trim(), key);
@@ -440,6 +466,9 @@ export interface BatchImportResult {
 // \cite{} at the cursor - a bulk import is a library, not a citation action.
 export async function addCitations(entries: ParsedBib[]): Promise<BatchImportResult> {
   if (!entries.length) return { imported: 0, duplicates: 0, errors: [] };
+  if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
+    return { imported: 0, duplicates: 0, errors: [readOnlyFolderMessage()] };
+  }
 
   const files = useFilesStore.getState();
   const id = files.projectId;
@@ -455,6 +484,14 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   );
 
   if (!newBlocks.length) return { imported: 0, duplicates, errors: [], bibPath: target.path };
+  if (target.readOnly) {
+    return {
+      imported: 0,
+      duplicates,
+      errors: [linkedBibliographyMessage(target.path)],
+      bibPath: target.path,
+    };
+  }
 
   const newContent = appendBibEntries(content, newBlocks);
 

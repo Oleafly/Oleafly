@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFilesStore } from "@/store/files";
 import type { VisualProofreadingIssue } from "./proofreading";
 
@@ -290,6 +291,37 @@ describe("WysiwygEditor proofreading popover", () => {
       ),
     );
     expect(proofreading.suggest).not.toHaveBeenCalled();
+  });
+
+  it("offers only the ignore options while the document cannot be edited", () => {
+    useFilesStore.setState({ projectId: "project" });
+    render(<WysiwygEditor wysiwyg={true} />);
+    const lease = acquireEditorMutationLease("project");
+    try {
+      act(() =>
+        proofreading.listener?.(
+          issueWith({ suggestions: [{ kind: 0, text: "Hallo" }] }),
+        ),
+      );
+      const panel = screen.getByRole("dialog", { name: visual.proofreadingPanel });
+      expect(panel).toHaveTextContent("Consider a shorter word.");
+      expect(screen.queryByText(visual.suggestedFixes)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(visual.suggestionReplaceText.replace("{{text}}", "Hallo")),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(visual.ignoreInProject)).toBeInTheDocument();
+      expect(screen.getByText(visual.ignoreEverywhere)).toBeInTheDocument();
+
+      act(() =>
+        proofreading.listener?.(
+          issueWith({ id: "issue-2", word: "papiru", suggestionsDeferred: true }),
+        ),
+      );
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(visual.findingSuggestions);
+      expect(proofreading.suggest).not.toHaveBeenCalled();
+    } finally {
+      lease.release();
+    }
   });
 
   it("drops the panel when the finding no longer matches the document", () => {

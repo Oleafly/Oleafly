@@ -10,7 +10,8 @@
       "renameBody": "<destination>{{destination}}</destination> уже существует. Сохраните оба файла, используя имя <suggestion>{{suggestion}}</suggestion>, или замените файл в месте назначения. Oleafly не заменит его, пока вы не выберете «Заменить».",
       "replace": "Заменить",
       "title": "Это имя уже занято",
-      "unchanged": "Исходный путь и путь назначения остались без изменений."
+      "unchanged": "Исходный путь и путь назначения остались без изменений.",
+      "renameFolderBody": "Папка <destination>{{destination}}</destination> уже существует. Сохраните обе, используя имя <suggestion>{{suggestion}}</suggestion>. В папке, открытой на своём месте, Oleafly никогда не заменяет папку целиком."
     },
     "createFailed": "Не удалось создать «{{path}}».",
     "deleteFailed": "Не удалось удалить «{{path}}».",
@@ -41,7 +42,16 @@
     "setMain": "Сделать главным документом",
     "title": "Проводник",
     "treeAriaLabel": "Дерево файлов проводника",
-    "setMainFailed": "Не удалось сделать «{{path}}» главным документом."
+    "setMainFailed": "Не удалось сделать «{{path}}» главным документом.",
+    "listingStopped": "Показаны первые {{limit}} элементов. Остальное содержимое папки не показано.",
+    "unreadable": "Нет доступа",
+    "unreadableHint": "У Oleafly нет прав на открытие этого элемента.",
+    "confirmTrash": "Переместить {{path}} в Корзину?",
+    "confirmTrashWindows": "Переместить {{path}} в Корзину?",
+    "confirmPermanentDelete": "Oleafly не удалось переместить {{path}} в Корзину. Удалить навсегда? Отменить это действие нельзя.",
+    "confirmPermanentDeleteWindows": "Oleafly не удалось переместить {{path}} в Корзину. Удалить навсегда? Отменить это действие нельзя.",
+    "linkedReadOnly": "Ссылается на файл вне этой папки, поэтому доступен только для чтения.",
+    "partialFolder": "Показаны не все элементы этой папки."
   },
   "explorer": {
     "resizeSections": "Изменить размер: {{first}} и {{second}}"

@@ -396,3 +396,463 @@ fn the_public_name_is_oleafly_everywhere_a_user_can_see_it() {
         );
     }
 }
+
+fn write_tree(root: &std::path::Path, files: &[(&str, &str)]) {
+    for (path, content) in files {
+        let file = root.join(path);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, content).unwrap();
+    }
+}
+
+const ARTICLE: &str = "\\documentclass{article}\n\\begin{document}\nText.\n\\end{document}\n";
+
+fn mentions(log: &str, path: &str) -> bool {
+    log.contains(path) || log.contains(&path.replace('/', "\\"))
+}
+
+#[test]
+fn build_without_a_project_json_uses_the_detected_main_document() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    write_tree(
+        project.path(),
+        &[
+            ("README.md", "# Repository\n"),
+            (
+                "paper/main.tex",
+                "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+            ),
+            ("paper/sections/intro.tex", "Intro.\n"),
+        ],
+    );
+    let machine = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .output()
+        .unwrap();
+    assert!(
+        machine.status.success(),
+        "{}",
+        String::from_utf8_lossy(&machine.stderr)
+    );
+    assert!(machine.stderr.is_empty());
+    let value = json(&machine);
+    assert!(value["build"]["log"]
+        .as_str()
+        .is_some_and(|log| mentions(log, "paper/main.tex")));
+    assert!(!project.path().join("project.json").exists());
+
+    let human = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg("build")
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .output()
+        .unwrap();
+    assert!(human.status.success());
+    assert!(String::from_utf8_lossy(&human.stderr)
+        .contains("No Oleafly project.json here, so building paper/main.tex"));
+
+    let ambiguous = TempDir::new().unwrap();
+    write_tree(
+        ambiguous.path(),
+        &[("paper.tex", ARTICLE), ("response.tex", ARTICLE)],
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(ambiguous.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(3));
+    let value = json(&output);
+    assert_eq!(value["error"]["kind"], "invalid_input");
+    assert!(value["error"]["message"]
+        .as_str()
+        .is_some_and(|message| message.contains("paper.tex, response.tex")));
+    assert!(!ambiguous.path().join("project.json").exists());
+    assert!(!ambiguous.path().join(".oleafly").exists());
+}
+
+#[test]
+fn build_follows_the_main_document_the_desktop_app_chose() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    write_tree(
+        project.path(),
+        &[("paper.tex", ARTICLE), ("notes/draft.tex", ARTICLE)],
+    );
+    let id = format!("linked-{}", "0".repeat(32));
+    let canonical = project.path().canonicalize().unwrap();
+    write_tree(
+        &data.path().join("linked").join(&id),
+        &[
+            (
+                "link.json",
+                &serde_json::json!({
+                    "version": 1,
+                    "id": id,
+                    "canonical_path": canonical,
+                })
+                .to_string(),
+            ),
+            (
+                "project.json",
+                r#"{"name":"Draft","main_doc":"notes/draft.tex","engine":"xetex"}"#,
+            ),
+        ],
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(json(&output)["build"]["log"]
+        .as_str()
+        .is_some_and(|log| mentions(log, "notes/draft.tex")));
+}
+
+#[test]
+fn a_foreign_project_json_is_left_alone_and_the_paper_still_builds() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let foreign = r#"{"name":"site","targets":{"build":{"executor":"nx:run-commands"}}}"#;
+    write_tree(
+        project.path(),
+        &[("project.json", foreign), ("docs/paper/main.tex", ARTICLE)],
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("project.json")).unwrap(),
+        foreign
+    );
+    let info = run(&["--json", "project", "info"], Some(project.path()));
+    assert_eq!(info.status.code(), Some(3));
+    assert_eq!(json(&info)["error"]["kind"], "not_initialized");
+}
+
+#[test]
+fn latexmk_builds_a_nested_main_from_its_own_folder() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let project = TempDir::new().unwrap();
+    write_tree(
+        project.path(),
+        &[
+            (
+                "paper/main.tex",
+                "\\documentclass{article}\n\\begin{document}\n\\input{sections/intro}\n\\end{document}\n",
+            ),
+            ("paper/sections/intro.tex", "Intro.\n"),
+        ],
+    );
+    let init = run(
+        &["--json", "init", "--engine", "latexmk"],
+        Some(project.path()),
+    );
+    assert!(init.status.success());
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(project.path().join("project.json")).unwrap())
+            .unwrap();
+    assert_eq!(manifest["main_doc"], "paper/main.tex");
+    assert_eq!(manifest["compile_dir"], "paper");
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("PATH", "")
+        .env("OLEAFLY_LATEXMK", &compiler)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value = json(&output);
+    assert!(value["build"]["log"]
+        .as_str()
+        .is_some_and(|log| log.contains("fixture-ok:./main.tex")));
+    assert!(project
+        .path()
+        .join(".oleafly/build/_oleafly_entry.pdf")
+        .is_file());
+    assert!(!project.path().join("paper/.oleafly").exists());
+
+    let mut moved = manifest.clone();
+    moved["main_doc"] = "main.tex".into();
+    std::fs::write(project.path().join("project.json"), moved.to_string()).unwrap();
+    std::fs::write(project.path().join("main.tex"), ARTICLE).unwrap();
+    let stale = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "build"])
+        .current_dir(project.path())
+        .env("PATH", "")
+        .env("OLEAFLY_LATEXMK", &compiler)
+        .output()
+        .unwrap();
+    assert_eq!(stale.status.code(), Some(3));
+    let value = json(&stale);
+    assert_eq!(value["error"]["kind"], "invalid_manifest");
+    assert!(value["error"]["message"]
+        .as_str()
+        .is_some_and(|message| message.contains("compile_dir `paper`")));
+}
+
+#[test]
+fn clean_and_doctor_accept_a_folder_that_build_detected() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    write_tree(
+        project.path(),
+        &[("README.md", "# Repository\n"), ("paper.tex", ARTICLE)],
+    );
+    let oleaflyc = |arguments: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(arguments)
+            .current_dir(project.path())
+            .env("OLEAFLY_TECTONIC", &compiler)
+            .env("OLEAFLY_DATA_DIR", data.path())
+            .output()
+            .unwrap()
+    };
+    let build = oleaflyc(&["--json", "build"]);
+    assert!(
+        build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let output = project.path().join(".oleafly/build");
+    assert!(output.is_dir());
+
+    let doctor = oleaflyc(&["--json", "doctor"]);
+    assert!(
+        doctor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&doctor.stdout)
+    );
+    let report = json(&doctor);
+    let check = |name: &str| {
+        report["report"]["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|check| check["name"] == name)
+            .unwrap_or_else(|| panic!("no {name} check in {report}"))
+            .clone()
+    };
+    assert_eq!(check("manifest")["status"], "warning");
+    assert!(check("manifest")["message"]
+        .as_str()
+        .is_some_and(|message| message.contains("paper.tex")));
+    assert_eq!(check("main_document")["status"], "pass");
+
+    let clean = oleaflyc(&["--json", "clean"]);
+    assert!(
+        clean.status.success(),
+        "{}",
+        String::from_utf8_lossy(&clean.stdout)
+    );
+    let value = json(&clean);
+    assert_eq!(value["removed"], true);
+    assert!(value["build_directory"]
+        .as_str()
+        .is_some_and(|path| mentions(path, ".oleafly/build")));
+    assert!(!output.exists());
+    assert!(!project.path().join("project.json").exists());
+
+    let again = oleaflyc(&["clean"]);
+    assert!(again.status.success());
+    assert!(String::from_utf8_lossy(&again.stdout).contains("already clean"));
+}
+
+#[cfg(unix)]
+fn recording_app(directory: &std::path::Path) -> (PathBuf, PathBuf) {
+    use std::os::unix::fs::PermissionsExt;
+    let app = directory.join("recording app");
+    let record = directory.join("launched.txt");
+    std::fs::write(
+        &app,
+        format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}.partial'\nmv '{}.partial' '{}'\n",
+            record.display(),
+            record.display(),
+            record.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&app, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (app, record)
+}
+
+#[cfg(unix)]
+fn launched(record: &std::path::Path) -> Vec<String> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !record.exists() {
+        assert!(Instant::now() < deadline, "the app was never launched");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    std::fs::read_to_string(record)
+        .unwrap()
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+#[cfg(unix)]
+#[test]
+fn a_bare_dot_hands_the_current_folder_to_the_app() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    let thesis = root.path().join("my thesis").join("論文");
+    std::fs::create_dir_all(&thesis).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(&thesis)
+        .env("OLEAFLY_APP", &app)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty(), "a successful open prints nothing");
+    let canonical = thesis.canonicalize().unwrap();
+    assert_eq!(
+        launched(&record),
+        vec!["--open-folder".to_string(), canonical.display().to_string()]
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn open_without_a_path_opens_the_current_folder_and_reports_json() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("build")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "open"])
+        .current_dir(root.path().join("build"))
+        .env("OLEAFLY_APP", &app)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let canonical = root.path().join("build").canonicalize().unwrap();
+    let value = json(&output);
+    assert_eq!(value["ok"], true);
+    assert_eq!(value["command"], "open");
+    assert_eq!(value["folder"], canonical.display().to_string());
+    assert_eq!(launched(&record)[1], canonical.display().to_string());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_folder_named_like_a_command_opens_through_open_or_a_path() {
+    let tools = TempDir::new().unwrap();
+    let (app, record) = recording_app(tools.path());
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("build")).unwrap();
+    let canonical = root.path().join("build").canonicalize().unwrap();
+    for arguments in [vec!["open", "build"], vec!["./build"]] {
+        let _ = std::fs::remove_file(&record);
+        let output = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(&arguments)
+            .current_dir(root.path())
+            .env("OLEAFLY_APP", &app)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(launched(&record)[1], canonical.display().to_string());
+    }
+}
+
+#[test]
+fn a_bare_folder_name_is_still_a_command_error_with_a_tip() {
+    let root = TempDir::new().unwrap();
+    std::fs::create_dir(root.path().join("thesis")).unwrap();
+    let output = run(&["thesis"], Some(root.path()));
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("unrecognized subcommand"), "{stderr}");
+    assert!(stderr.contains("oleafly ./thesis"), "{stderr}");
+
+    let output = run(&["nothing-here"], Some(root.path()));
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!stderr.contains("oleafly ./"), "{stderr}");
+}
+
+#[test]
+fn open_refuses_missing_folders_files_and_a_missing_app() {
+    let root = TempDir::new().unwrap();
+    std::fs::write(root.path().join("paper.tex"), ARTICLE).unwrap();
+
+    let missing = run(&["open", "nowhere"], Some(root.path()));
+    assert_eq!(missing.status.code(), Some(3));
+    assert!(String::from_utf8_lossy(&missing.stderr).contains("nowhere"));
+
+    let file = run(&["--json", "open", "paper.tex"], Some(root.path()));
+    assert_eq!(file.status.code(), Some(3));
+    let value = json(&file);
+    assert_eq!(value["ok"], false);
+    assert_eq!(value["command"], "open");
+    assert_eq!(value["error"]["kind"], "invalid_input");
+
+    let app = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(root.path())
+        .env("OLEAFLY_APP", root.path().join("Missing.app"))
+        .output()
+        .unwrap();
+    assert_eq!(app.status.code(), Some(4));
+    assert!(String::from_utf8_lossy(&app.stderr).contains("OLEAFLY_APP"));
+
+    let itself = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .arg(".")
+        .current_dir(root.path())
+        .env("OLEAFLY_APP", env!("CARGO_BIN_EXE_oleaflyc"))
+        .output()
+        .unwrap();
+    assert_eq!(itself.status.code(), Some(4));
+    let stderr = String::from_utf8_lossy(&itself.stderr);
+    assert!(stderr.contains("that's this command"), "{stderr}");
+}

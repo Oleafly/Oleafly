@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { decodeAppError, describeError } from "@/lib/app-error";
 
 export interface McpLogEntry {
   id: number;
@@ -128,7 +129,7 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
 
 function summarizeMcpObject(raw: object, isError?: boolean): string {
   const o = raw as Record<string, unknown>;
-  if (typeof o.error === "string") return o.error;
+  if (typeof o.error === "string") return decodeAppError(o.error) ? describeError(o.error) : o.error;
   try {
     const s = JSON.stringify(raw);
     return s.length > 160 ? `${s.slice(0, 157)}…` : s;
@@ -137,10 +138,26 @@ function summarizeMcpObject(raw: object, isError?: boolean): string {
   }
 }
 
+function codedErrorText(text: string): string | null {
+  if (decodeAppError(text)) return describeError(text);
+  try {
+    const parsed: unknown = JSON.parse(text);
+    const error = parsed && typeof parsed === "object" ? (parsed as { error?: unknown }).error : undefined;
+    return typeof error === "string" && decodeAppError(error) ? describeError(error) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function summarizeMcpError(error: unknown): string {
+  return decodeAppError(error) ? describeError(error) : String(error);
+}
+
 export function summarizeMcpResult(raw: unknown, isError?: boolean): string {
   if (raw == null) return isError ? "error" : "ok";
   if (typeof raw === "string") {
-    return raw.length > 160 ? `${raw.slice(0, 157)}…` : raw;
+    const text = (isError ? codedErrorText(raw) : null) ?? raw;
+    return text.length > 160 ? `${text.slice(0, 157)}…` : text;
   }
   if (typeof raw === "object") return summarizeMcpObject(raw, isError);
   return String(raw as string | number | bigint | boolean | symbol);

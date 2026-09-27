@@ -24,3 +24,6 @@ src-tauri/resources/templates/**/*.typ text eol=lf
 src-tauri/resources/templates/**/*.bib text eol=lf
 src-tauri/resources/templates/**/*.md text eol=lf
 src-tauri/resources/templates/**/*.json text eol=lf
+src-tauri/linux/** text eol=lf
+src-tauri/windows/*.nsh text eol=lf
+src-tauri/windows/*.wxs text eol=lf

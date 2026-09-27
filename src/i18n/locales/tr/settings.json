@@ -1367,6 +1367,35 @@
     "description": "{{sectionName}} tercihlerini varsayılanlarına döndürür.",
     "label": "Ayarları sıfırla"
   },
+  "shellCommand": {
+    "afterSignIn": "Oturumu kapatıp yeniden açtığınızda {{directory}} PATH içinde olacak. Ardından yeni bir terminal açın.",
+    "checking": "Denetleniyor…",
+    "description": "O klasörü Oleafly'de açmak için terminale <code>oleafly .</code> yazın.",
+    "install": "Kur",
+    "installing": "Kuruluyor…",
+    "loadFailed": "Terminal komutu denetlenemedi.",
+    "notOnPath": {
+      "file": "{{directory}} henüz PATH içinde değil. Bu satırı {{file}} dosyasına ekleyin, ardından yeni bir terminal açın:",
+      "run": "{{directory}} henüz PATH içinde değil. Bunu bir kez çalıştırın, ardından yeni bir terminal açın:"
+    },
+    "removing": "Kaldırılıyor…",
+    "result": {
+      "copied": "Komut {{path}} konumuna kopyalandı.",
+      "linked": "{{path}} artık Oleafly'nin bu kopyasını gösteriyor.",
+      "removed": "{{path}} kaldırıldı."
+    },
+    "state": {
+      "installed": "{{path}} konumunda kurulu.",
+      "moveApp": "Önce Oleafly'yi Uygulamalar klasörüne taşıyın, ardından komutu buradan kurun.",
+      "notInstalled": "oleafly komutunu {{directory}} konumuna ekler.",
+      "occupied": "{{path}} zaten var ve Oleafly tarafından oluşturulmadı, bu yüzden olduğu gibi kalacak.",
+      "outdated": "{{path}} hâlâ Oleafly'nin eski bir kopyasını gösteriyor. Bu kopyayı kullanması için güncelleyin.",
+      "packaged": "Oleafly paketiniz tarafından {{path}} konumuna kuruldu.",
+      "unavailable": "Oleafly'nin bu kopyası komutu içermiyor."
+    },
+    "title": "Terminal komutu",
+    "update": "Güncelle"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1400,6 +1429,10 @@
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"
+      },
+      "openFolder": {
+        "label": "Klasör aç",
+        "description": "Bilgisayarınızdaki bir klasörü proje olarak açın."
       }
     },
     "application": {
@@ -1475,6 +1508,58 @@
         "uppercase": "Büyük harf"
       },
       "unbound": "Atanmadı"
+    }
+  },
+  "systemIntegration": {
+    "title": "Sistem entegrasyonu",
+    "description": "Klasörleri dosya yöneticinizden doğrudan Oleafly'de açın.",
+    "checking": "Denetleniyor…",
+    "loadFailed": "Dosya yöneticisi kurulumu denetlenemedi.",
+    "state": {
+      "installed": "Kurulu",
+      "notInstalled": "Kurulu değil",
+      "needsAttention": "Dikkat gerektiriyor"
+    },
+    "actions": {
+      "install": "Kur",
+      "repair": "Onar"
+    },
+    "failed": {
+      "install": "Kurulamadı. Yeniden deneyin.",
+      "remove": "Kaldırılamadı. Yeniden deneyin."
+    },
+    "packaged": "Oleafly paketiyle birlikte kuruldu.",
+    "quickAction": {
+      "label": "Finder'da Hızlı Eylemler",
+      "description": "Finder'da bir klasöre sağ tıkladığınızda Servisler menüsüne Oleafly'de aç komutunu ekler.",
+      "menuHint": "Henüz Hızlı Eylemler'de değil. Bir klasöre sağ tıklayın, Hızlı Eylemler › Özelleştir'i seçin ve {{title}} seçeneğini açın."
+    },
+    "explorerMenu": {
+      "label": "Dosya Gezgini sağ tık menüsü",
+      "description": "Bir klasöre ya da içindeki boş bir alana sağ tıklayın ve Oleafly ile aç'ı seçin. Windows 11'de bu seçenek Daha fazla seçenek göster altındadır.",
+      "toggle": "Dosya Gezgini'nde Oleafly ile aç'ı göster"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Dolphin'de bir klasöre sağ tıkladığınızda Oleafly ile aç seçeneğini ekler."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Nemo'da bir klasöre sağ tıkladığınızda Oleafly ile aç seçeneğini ekler."
+    },
+    "nautilus": {
+      "label": "Dosyalar",
+      "description": "GNOME Dosyalar'da bir klasöre sağ tıkladığınızda Betikler menüsüne Oleafly ile aç seçeneğini ekler."
+    },
+    "folderOpenWith": {
+      "label": "Klasörler için Birlikte Aç menüsü",
+      "description": "Oleafly'yi klasörler için Birlikte Aç menüsünde gösterir. Varsayılan dosya yöneticiniz değişmez."
+    },
+    "attention": {
+      "outdated": "Güncel değil ya da macOS tarafından engellendi. Geri getirmek için onarın.",
+      "elsewhere": "Menü başka bir Oleafly kopyasını açıyor. Bu kopyayı kullanmak için onarın.",
+      "moved": "Taşınmış bir Oleafly kopyasını gösteriyor. Bu kopyayı kullanmak için onarın.",
+      "noDefaultFileManager": "Sisteminizde klasörler için varsayılan bir dosya yöneticisi yok, bu yüzden bu kayıt her klasörü Oleafly'de açabilir. Kaldırın."
     }
   }
 }

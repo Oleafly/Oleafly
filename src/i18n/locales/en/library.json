@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly app icon",
     "welcomeTitle": "Welcome to Oleafly",
     "welcomeDescription": "Write, compile, and proofread LaTeX, Typst, and Markdown. Manage citations, review PDFs, track changes in Git, and work with the AI models you choose.",
-    "createFirstProject": "Create new project",
     "loading": "Reading your library…",
     "noBookmarksTitle": "No bookmarks yet",
     "noBookmarksDescription": "Hover a book and click its bookmark to add one.",
@@ -68,8 +67,15 @@
       "anyTime": "Any time",
       "last7Days": "Last 7 days",
       "last30Days": "Last 30 days",
-      "lastYear": "Last year"
-    }
+      "lastYear": "Last year",
+      "location": "Location",
+      "locationAll": "All projects",
+      "locationLibrary": "In Oleafly",
+      "locationExternal": "External projects"
+    },
+    "openFolder": "Open folder",
+    "openFolderShortcut": "Open folder ({{shortcut}})",
+    "createFirstProject": "Create new project"
   },
   "projects": {
     "open": "Open {{name}}",
@@ -83,7 +89,7 @@
     "actions": "Actions for {{name}}",
     "details": "Project details",
     "exportHistory": "Export history",
-    "changeColor": "Change project color",
+    "changeColor": "Project color",
     "fork": "Fork project",
     "delete": "Delete project",
     "favoriteAdd": "Add to favorites",
@@ -95,7 +101,8 @@
     "kind": {
       "document": "document",
       "image": "image",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "external"
     },
     "preview": {
       "title": "PDF preview: {{name}}",
@@ -371,7 +378,9 @@
     "nameRequired": "Enter a repository name.",
     "published": "Published to {{repository}}.",
     "linked": "Linked and pushed to {{remote}}.",
-    "pushNeedsPull": "Linked to {{remote}}, but push needs a pull first: {{detail}}"
+    "pushNeedsPull": "Linked to {{remote}}, but push needs a pull first: {{detail}}",
+    "replaceRemotePrompt": "This project is linked to {{remote}}. Replace that link?",
+    "replaceRemote": "Replace link"
   },
   "deadlines": {
     "title": "Conference Deadlines",
@@ -458,6 +467,75 @@
       "sourcesTitle": "Sources",
       "sourcesBody": "Records combine the open ccf-deadlines dataset with official conference websites tracked by Oleafly.",
       "confirm": "Confirm every date on the official conference website before submitting."
+    }
+  },
+  "start": {
+    "newProjectTitle": "New project",
+    "newProjectDescription": "Start from a template or a blank page.",
+    "openFolderTitle": "Open a folder",
+    "openFolderDescription": "Work on files already on your computer. They stay where they are."
+  },
+  "openFolder": {
+    "dismiss": "Dismiss"
+  },
+  "folder": {
+    "state": {
+      "missing": "Folder missing",
+      "offline": "Drive not connected",
+      "replaced": "Folder replaced",
+      "permissionDenied": "No permission"
+    },
+    "menu": {
+      "showInFinder": "Show in Finder",
+      "showInExplorer": "Show in File Explorer",
+      "showInFileManager": "Show in file manager",
+      "copyToLibrary": "Copy into library",
+      "remove": "Remove from Oleafly"
+    },
+    "remove": {
+      "title": "Remove “{{name}}” from Oleafly?",
+      "description": "Your files stay where they are. Oleafly deletes its build files for this folder and resets its trust, approvals and linked folders. Open the folder again within 30 days to get its chats and history back. You'll need to set up the rest again.",
+      "confirm": "Remove from Oleafly",
+      "done": "Removed “{{name}}” from Oleafly. Its files are still in the folder.",
+      "failed": "Couldn't remove “{{name}}” from Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "Can't find “{{name}}”",
+        "body": "It was at <path>{{path}}</path> and might have been moved or deleted. Locate it to keep its chats and history."
+      },
+      "offline": {
+        "title": "“{{name}}” is on a drive that isn't connected",
+        "body": "Connect the drive or network share that holds <path>{{path}}</path>, then try again."
+      },
+      "replaced": {
+        "title": "“{{name}}” was replaced",
+        "body": "The folder at <path>{{path}}</path> isn't the one you opened before. Use it only if you trust it. Oleafly turns off trust and approvals when you switch."
+      },
+      "permissionDenied": {
+        "title": "Oleafly can't open “{{name}}”",
+        "bodyMac": "Allow Oleafly to use this folder in System Settings › Privacy & Security › Files and Folders, then try again.",
+        "bodyOther": "Your account can't read <path>{{path}}</path>. Check the folder's permissions, then try again."
+      },
+      "back": {
+        "title": "“{{name}}” is back",
+        "body": "Oleafly can reach <path>{{path}}</path> again."
+      },
+      "locate": "Locate",
+      "tryAgain": "Try again",
+      "useThisFolder": "Use this folder",
+      "checking": "Checking",
+      "still": "Oleafly still can't reach it."
+    },
+    "copy": {
+      "title": "Copy “{{name}}” into your library",
+      "description": "Oleafly copies the files into a new library project and leaves the folder where it is. Git history comes along, but Git hooks and build files are left out.",
+      "counting": "Counting files…",
+      "copying": "Copying files…",
+      "count": "{{done}} of {{total}}",
+      "done": "“{{name}}” is now in your library.",
+      "doneLeftOut": "“{{name}}” is now in your library. Links to files elsewhere and folders nested too deeply weren't copied.",
+      "failed": "Couldn't copy “{{name}}” into your library."
     }
   }
 }

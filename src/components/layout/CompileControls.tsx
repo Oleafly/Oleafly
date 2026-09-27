@@ -7,6 +7,7 @@ import {
   Loader2,
   Play,
   RefreshCw,
+  ShieldAlert,
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
@@ -28,11 +29,14 @@ import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { mainDocumentMissing } from "@/lib/main-document";
+import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { decodeAppError, describeError } from "@/lib/app-error";
 
 function basename(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -48,7 +52,7 @@ function TexRootIndicator() {
   const { t } = useTranslation(["shell"]);
   // Flattened so the shallow comparison only re-renders when the effective
   // root, its provenance, or the broken-target details really change.
-  const [mainDoc, overriddenBy, brokenIn, brokenTarget] = useFilesStore(
+  const [mainDoc, overriddenBy, brokenIn, brokenTarget, brokenReason] = useFilesStore(
     useShallow(() => {
       const effective = resolveEffectiveMainDoc();
       return [
@@ -56,17 +60,20 @@ function TexRootIndicator() {
         effective.overriddenBy,
         effective.brokenRoot?.declaredIn ?? null,
         effective.brokenRoot?.target ?? null,
+        effective.brokenRoot?.reason ?? null,
       ] as const;
     }),
   );
 
   if (brokenIn !== null) {
+    const details = { file: brokenIn, target: brokenTarget };
     return (
       <Tooltip
-        label={t(($) => $.shell.compile.texRootBroken, {
-          file: brokenIn,
-          target: brokenTarget,
-        })}
+        label={
+          brokenReason === "not_tex"
+            ? t(($) => $.shell.compile.texRootNotTex, details)
+            : t(($) => $.shell.compile.texRootBroken, details)
+        }
       >
         <span
           data-testid="tex-root-broken"
@@ -129,10 +136,17 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const compileRevision = useCompileStore(
     (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
   );
+  const { t } = useTranslation(["shell"]);
+  const noMainDocument = useFilesStore(mainDocumentMissing);
+  const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
+  const grantTrust = useFolderAccessStore((s) => s.grant);
   return <>
     <TexRootIndicator />
     <CompileControlsView
       iconOnly={iconOnly}
+      blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
+      systemTexLocked={systemTexLocked}
+      onTrustForSystemTex={() => void grantTrust("folder")}
       engine={engine}
       engineLoaded={engineLoaded}
       setEngine={setEngine}
@@ -163,13 +177,18 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
     "checkSyntaxBeforeCompile" | "setCheckSyntaxBeforeCompile" | "stopOnFirstError" | "setStopOnFirstError" | "stopCompile"> & {
       compileRevision: number;
       iconOnly?: boolean;
+      blockedReason?: string | null;
+      systemTexLocked?: boolean;
+      onTrustForSystemTex?: () => void;
       recompile: (options?: { fromScratch?: boolean }) => unknown;
     };
 
 export function CompileControlsView({
-  engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false
+  engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false,
+  blockedReason = null, systemTexLocked = false, onTrustForSystemTex,
 }: Readonly<CompileControlsViewProps>) {
-  const { t } = useTranslation(["shell"]);
+  const { t } = useTranslation(["shell", "errors"]);
+  const blocked = blockedReason !== null;
   const compiling = status === "compiling";
   const hasCompileResult = status === "success" || status === "error";
   const compileLabel = hasCompileResult
@@ -184,11 +203,14 @@ export function CompileControlsView({
   return (
   <ButtonGroup data-tour="project-compile" className="shrink-0">
     <Tooltip
-      label={t(($) => $.shell.compile.runTooltip, {
-        action: compileLabel,
-        engine: engine.label,
-        shortcut: shortcut("⌘↵"),
-      })}
+      label={
+        blockedReason ??
+        t(($) => $.shell.compile.runTooltip, {
+          action: compileLabel,
+          engine: engine.label,
+          shortcut: shortcut("⌘↵"),
+        })
+      }
     >
       <Button
         data-testid="compile-button"
@@ -201,15 +223,18 @@ export function CompileControlsView({
         variant="ghost"
         size="sm"
         className={cn(
-          "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
+          "rounded-md bg-primary text-white shadow-sm hover:bg-primary hover:text-white",
           "h-7 gap-1.5 px-2.5",
           // Set here rather than by ButtonGroup: the tooltip wrapper sits
           // between the group and this button.
           "rounded-r-none",
+          blocked && "cursor-not-allowed opacity-50",
         )}
-        disabled={compiling || !engineLoaded}
+        disabled={!blocked && (compiling || !engineLoaded)}
+        aria-disabled={blocked || undefined}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
+          if (blocked) return;
           void recompile();
         }}
         aria-label={compileLabel}
@@ -226,7 +251,7 @@ export function CompileControlsView({
           variant="ghost"
           size="sm"
           className={cn(
-            "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary",
+            "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary hover:text-white data-[state=open]:text-white",
             "h-7 border-l border-white/25 px-1.5",
           )}
           // Openable while compiling, otherwise "Stop compilation" inside is
@@ -330,7 +355,9 @@ export function CompileControlsView({
                   if (!projectId) return;
                   toast.errorUnique(
                     engineSwitchToastKey(projectId),
-                    t(($) => $.shell.enginePicker.switchFailed),
+                    decodeAppError(error)
+                      ? describeError(error)
+                      : t(($) => $.shell.enginePicker.switchFailed),
                   );
                 });
               }}
@@ -342,28 +369,28 @@ export function CompileControlsView({
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto">
+              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto" disabled={systemTexLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.auto}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex">
+              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex" disabled={systemTexLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.pdflatex}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex">
+              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex" disabled={systemTexLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.xelatex}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex">
+              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex" disabled={systemTexLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.lualatex}
@@ -371,6 +398,16 @@ export function CompileControlsView({
                 />
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
+            {systemTexLocked && (
+              <DropdownMenuItem
+                data-testid="compiler-trust"
+                className="items-start gap-2 text-xs text-muted-foreground"
+                onSelect={() => onTrustForSystemTex?.()}
+              >
+                <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="whitespace-normal">{t(($) => $.errors.trust.system_tex)}</span>
+              </DropdownMenuItem>
+            )}
           </>
         )}
 
@@ -398,7 +435,7 @@ export function CompileControlsView({
           {t(($) => $.shell.compile.stop)}
         </DropdownMenuItem>
         <DropdownMenuItem
-          disabled={compiling || !engineLoaded}
+          disabled={blocked || compiling || !engineLoaded}
           onSelect={() => {
             void recompile({ fromScratch: true });
           }}

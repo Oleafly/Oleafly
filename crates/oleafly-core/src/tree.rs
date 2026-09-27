@@ -12,6 +12,53 @@ pub fn is_generated_directory(name: &OsStr) -> bool {
         .any(|ignored| name == OsStr::new(ignored))
 }
 
+pub fn is_skipped_scan_directory(name: &OsStr) -> bool {
+    let Some(name) = name.to_str() else {
+        return false;
+    };
+    name.starts_with('.')
+        || matches!(
+            name,
+            "node_modules" | "target" | "build" | "out" | "__MACOSX" | "svg-inkscape"
+        )
+        || name.starts_with("_minted")
+        || name.starts_with("pythontex-files-")
+}
+
+const SF_DATALESS: u32 = 0x4000_0000;
+const FILE_ATTRIBUTE_OFFLINE: u32 = 0x0000_1000;
+const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x0004_0000;
+const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
+
+pub fn is_dataless_flags(flags: u32) -> bool {
+    flags & SF_DATALESS != 0
+}
+
+pub fn is_placeholder_attributes(attributes: u32) -> bool {
+    attributes
+        & (FILE_ATTRIBUTE_OFFLINE
+            | FILE_ATTRIBUTE_RECALL_ON_OPEN
+            | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS)
+        != 0
+}
+
+#[cfg(target_os = "macos")]
+pub fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
+    use std::os::macos::fs::MetadataExt;
+    is_dataless_flags(metadata.st_flags())
+}
+
+#[cfg(windows)]
+pub fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    is_placeholder_attributes(metadata.file_attributes())
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn is_cloud_placeholder(_metadata: &std::fs::Metadata) -> bool {
+    false
+}
+
 pub fn slash_path(path: &Path) -> String {
     path.components()
         .map(|component| component.as_os_str().to_string_lossy())
@@ -84,6 +131,47 @@ mod tests {
         .unwrap();
 
         assert_eq!(seen, vec!["chapters/one.tex".to_string()]);
+    }
+
+    #[test]
+    fn scans_skip_dot_generated_and_dependency_directories() {
+        for skipped in [
+            ".git",
+            ".venv",
+            ".oleafly",
+            "node_modules",
+            "target",
+            "build",
+            "out",
+            "__MACOSX",
+            "_minted-paper",
+            "pythontex-files-paper",
+            "svg-inkscape",
+        ] {
+            assert!(is_skipped_scan_directory(OsStr::new(skipped)), "{skipped}");
+        }
+        for kept in ["chapters", "paper", "Build-notes", "outline", "figures"] {
+            assert!(!is_skipped_scan_directory(OsStr::new(kept)), "{kept}");
+        }
+    }
+
+    #[test]
+    fn cloud_placeholder_bits_match_the_platform_constants() {
+        assert!(is_dataless_flags(0x4000_0000));
+        assert!(!is_dataless_flags(0x0000_0020));
+        for attributes in [0x0000_1000, 0x0004_0000, 0x0040_0000, 0x0040_0020] {
+            assert!(is_placeholder_attributes(attributes), "{attributes:#x}");
+        }
+        assert!(!is_placeholder_attributes(0x0000_0020));
+        assert!(!is_placeholder_attributes(0x0000_0400));
+    }
+
+    #[test]
+    fn a_local_file_is_not_a_cloud_placeholder() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("main.tex");
+        std::fs::write(&file, "local").unwrap();
+        assert!(!is_cloud_placeholder(&std::fs::metadata(&file).unwrap()));
     }
 
     #[test]

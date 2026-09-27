@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { gitStatus } from "@/lib/tauri";
+import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 
 interface GitStatusState {
   count: number;
@@ -18,10 +19,12 @@ export const useGitStatusStore = create<GitStatusState>((set) => ({
       set({ count: 0 });
       return;
     }
+    if (!projectFolderAvailable(projectId)) return;
     try {
       const changes = await gitStatus(projectId);
       if (seq === refreshSeq) set({ count: changes.length });
-    } catch {
+    } catch (error) {
+      if (reportLocationError(projectId, error)) return;
       if (seq === refreshSeq) set({ count: 0 });
     }
   },

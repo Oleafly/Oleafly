@@ -171,6 +171,11 @@
     "recompile": {
       "label": "Kompilovat znovu"
     },
+    "saveSettingsToFolder": {
+      "keywords": "uložit nastavení projektu složka project.json sdílet hlavní dokument",
+      "label": "Uložit nastavení projektu do této složky",
+      "saved": "Nastavení projektu bylo uloženo do souboru project.json v této složce."
+    },
     "section": {
       "label": "Sekce"
     },
@@ -216,6 +221,10 @@
         "titleCase": "první velká písmena text",
         "uppercase": "velká písmena velikost text"
       }
+    },
+    "openFolder": {
+      "label": "Otevřít složku…",
+      "keywords": "otevřít složka adresář existující místní soubory disk"
     }
   },
   "community": {
@@ -262,6 +271,7 @@
     "texRootBroken": "% !TEX root v {{file}} odkazuje na chybějící soubor ({{target}})",
     "texRootLabel": "TEX root",
     "texRootName": "kořen: {{name}}",
+    "texRootNotTex": "% !TEX root v {{file}} odkazuje na {{target}}, což není soubor LaTeX",
     "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})"
   },
   "datePicker": {
@@ -365,6 +375,25 @@
     },
     "title": "Něco se pokazilo"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Tato složka není dostupná.",
+      "body": "Znovu připojte disk nebo složku najděte. Otevřené soubory tu zůstávají a Oleafly nebude ukládat ani kompilovat, dokud se složka nevrátí."
+    },
+    "replaced": {
+      "title": "Tato složka byla nahrazena.",
+      "body": "Na jejím místě je teď jiná složka. Oleafly přestal ukládat, aby tam nic nepřepsal."
+    },
+    "permissionDenied": {
+      "title": "Oleafly tuto složku nemůže otevřít.",
+      "body": "Zkontrolujte oprávnění složky a zkuste to znovu. Otevřené soubory tu zůstávají."
+    },
+    "locate": "Najít",
+    "useThisFolder": "Použít tuto složku",
+    "saveCopy": "Uložit kopii",
+    "tryAgain": "Zkusit znovu",
+    "savedCopy": "Otevřené soubory byly uloženy do {{folder}}."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "Akce GitHub",
@@ -423,6 +452,68 @@
     },
     "tryCommand": "Zkuste příkaz",
     "unknownCommand": "Neznámý příkaz. Napište / a uvidíte dostupné příkazy."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Který dokument má Oleafly kompilovat?",
+      "askDescription": "Tato složka obsahuje více dokumentů. Vyberte hlavní. Později ho můžete změnit.",
+      "listLabel": "Dokumenty v této složce",
+      "open": "Otevřít",
+      "browse": "Jen procházet soubory",
+      "bestMatch": "Nejlepší shoda",
+      "empty": "Oleafly tu nenašel žádné dokumenty. Klikněte pravým tlačítkem na soubor ve stromu souborů a zvolte Nastavit jako hlavní dokument.",
+      "truncated": "Tato složka je velká, a tak Oleafly přestal hledat dříve. Některé dokumenty nemusí být v seznamu.",
+      "openFailed": "{{path}} se nepodařilo nastavit jako hlavní dokument."
+    },
+    "kind": {
+      "document": "Dokument",
+      "book": "Kniha",
+      "presentation": "Prezentace",
+      "poster": "Plakát",
+      "standalone": "Samostatný obrázek",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Jiné"
+    },
+    "reason": {
+      "declared": "Označen jako hlavní soubor",
+      "top_level": "V kořenové složce",
+      "named_main": "Jmenuje se main",
+      "named_after_folder": "Pojmenován podle své složky",
+      "includes_files": "Vkládá další soubory",
+      "has_bibliography": "Obsahuje bibliografii",
+      "no_begin_document": "Bez \\begin{document}",
+      "standalone_figure": "Samostatný obrázek",
+      "placeholder": "Ještě není stažen"
+    },
+    "noMain": "Zatím tu není hlavní dokument. Vyberte soubor a zvolte Nastavit jako hlavní dokument.",
+    "trust": {
+      "banner": "Oleafly v této složce omezil některé funkce. Důvěřovat této složce a zapnout Git, terminál, agenty a shell escape?",
+      "trustFolder": "Důvěřovat této složce",
+      "trustParent": "Důvěřovat nadřazené složce",
+      "trustRepository": "Důvěřovat repozitáři",
+      "hide": "Skrýt",
+      "terminal": "Hooky Gitu a nastavení repozitáře jsou v tomto terminálu vypnuté, dokud složce nebudete důvěřovat.",
+      "terminalReopen": "Tento terminál se spustil dřív, než jste složce začali důvěřovat. Otevřete ho znovu, aby se zapnuly hooky Gitu.",
+      "reopenTerminal": "Znovu otevřít terminál",
+      "failed": "Složku se nepodařilo označit jako důvěryhodnou."
+    },
+    "readOnly": {
+      "banner": "Tato složka je jen pro čtení. Můžete kompilovat, ale úpravy nepůjde uložit.",
+      "copy": "Zkopírovat do knihovny",
+      "copied": "Oleafly zkopíroval tuto složku do vaší knihovny. Teď upravujete kopii."
+    },
+    "sync": {
+      "syncsWith": "Synchronizuje se se službou {{service}}",
+      "cloudStorage": "Synchronizuje se s cloudovou službou",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Disk Google",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Hledejte napříč soubory tohoto projektu.",
@@ -564,6 +655,10 @@
         "calculating": "Počítá se využití úložiště…",
         "desktopOnly": "Podrobnosti o úložišti jsou k dispozici v desktopové aplikaci.",
         "error": "Podrobnosti o úložišti se nepodařilo spočítat.",
+        "linkedFolders_one": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřenou složku",
+        "linkedFolders_few": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_many": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřené složky",
+        "linkedFolders_other": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřených složek",
         "refresh": "Obnovit využití úložiště",
         "stats": {
           "appData": "Data aplikace",
@@ -821,7 +916,8 @@
     "loadingCore": "Načítá se Oleafly Core",
     "loadingHarness": "Načítá se Oleafly Harness",
     "loadingParsers": "Načítají se Oleafly Parsers",
-    "starting": "Spouští se Oleafly"
+    "starting": "Spouští se Oleafly",
+    "opening": "Otevírá se {{name}}…"
   },
   "theme": {
     "dark": "Tmavý",
@@ -955,5 +1051,30 @@
   "windows": {
     "preview": "Náhled: {{title}}",
     "update": "Aktualizace Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Zastavit a otevřít {{name}}?",
+    "confirmCompile": "{{project}} se stále kompiluje. Otevřením {{name}} se kompilace zastaví. Vaše změny se nejdřív uloží.",
+    "confirmAssistant": "Asistent v {{project}} stále pracuje. Otevřením {{name}} se jeho odpověď zastaví. Vaše změny se nejdřív uloží.",
+    "confirmBoth": "{{project}} se stále kompiluje a asistent stále pracuje. Otevřením {{name}} se zastaví obojí. Vaše změny se nejdřív uloží.",
+    "confirmAction": "Zastavit a otevřít",
+    "chooseSubfolder": "Vybrat podsložku",
+    "refusedTitle": "{{name}} se nepodařilo otevřít",
+    "refused": "{{name}} se nepodařilo otevřít. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "V Nastavení systému otevřete Soukromí a zabezpečení, potom Soubory a složky, a zapněte Oleafly. Pokud tam Oleafly není, přidejte ho v části Přístup k celému disku a zkuste to znovu.",
+      "windows": "Na kartě Zabezpečení ve Vlastnostech složky ověřte, že ji váš účet může číst, a zkuste to znovu.",
+      "linux": "Ověřte, že váš účet může tuto složku číst, a zkuste to znovu."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Otevírejte složky z Finderu",
+    "body": "Přidejte Otevřít v Oleafly do Finderu. Z nabídky Služby funguje hned, z nabídky Rychlé akce až po zapnutí.",
+    "add": "Přidat do Finderu",
+    "notNow": "Teď ne",
+    "added": "Přidáno. Teď ji najdete v nabídce Služby ve Finderu. Pokud ji chcete používat i z nabídky Rychlé akce, klikněte pravým tlačítkem na složku a zapněte ji v nabídce Rychlé akce › Vlastní.",
+    "addedInQuickActions": "Přidáno. Klikněte pravým tlačítkem na složku a najdete ji v nabídce Rychlé akce.",
+    "failed": "Přidání se nezdařilo. Můžete to zkusit znovu v Nastavení › Obecné."
   }
 }

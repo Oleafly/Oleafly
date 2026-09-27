@@ -171,7 +171,9 @@
     "binaryFile": "Fișier binar. Nu există previzualizare.",
     "managedFileReadOnly": "{{file}} este gestionat de Oleafly și nu poate fi modificat aici. Setările proiectului se schimbă din Oleafly, nu prin editarea acestui fișier.",
     "noFileOpen": "Niciun fișier deschis.",
-    "noFileOpenHint": "Alege un fișier din arbore ca să începi să editezi."
+    "noFileOpenHint": "Alege un fișier din arbore ca să începi să editezi.",
+    "linkedFileReadOnly": "{{file}} trimite la un fișier din afara acestui folder, așa că nu îl poți edita aici. Modifică-l acolo unde se află, de exemplu în Zotero.",
+    "diffOnDisk": "Pe disc"
   },
   "projectInfo": {
     "trigger": "Informații despre proiect",
@@ -209,6 +211,8 @@
     "spellLanguageAppSetting": "Folosește setarea aplicației",
     "spellLanguageAriaLabel": "Limba verificării ortografice pentru acest proiect",
     "spellLanguageHint": "Se aplică doar acestui proiect. Descarcă mai multe limbi din Setări.",
+    "spellLanguageFolderHint": "Se salvează în project.json al acestui folder, deci se aplică oricui deschide folderul. Descarcă mai multe limbi din Setări.",
+    "spellLanguageReadOnly": "Acest folder este doar în citire, așa că limba din project.json nu poate fi schimbată.",
     "spellLanguageFailed": "Limba verificării ortografice nu a putut fi schimbată.",
     "notChecked": "Neverificat",
     "dictionaryMissing": "{{name}} nu este descărcat, așa că ortografia nu este verificată. Descarcă-l din Setări sau alege altă limbă.",
@@ -333,7 +337,8 @@
     "splitView": "Vizualizare alăturată",
     "unifiedView": "Vizualizare unificată",
     "loading": "Se încarcă comparația…",
-    "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație."
+    "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație.",
+    "diskHeading": "Pe disc ↔ Modificările tale"
   },
   "hotkeys": {
     "title": "Scurtături de tastatură",
@@ -431,6 +436,12 @@
       "sourceSize": "Dimensiunea surselor",
       "reclaimable": "Recuperabil"
     },
+    "capture": {
+      "paused": "Punctele de control sunt în pauză, deoarece acest folder este prea mare. Un punct de control poate conține cel mult {{files}} fișiere sau {{size}}.",
+      "skipped_one": "{{formattedCount}} fișier din acest folder nu este în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele.",
+      "skipped_few": "{{formattedCount}} fișiere din acest folder nu sunt în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele.",
+      "skipped_other": "{{formattedCount}} de fișiere din acest folder nu sunt în punctele de control. Oleafly omite linkurile, fișierele foarte mari, fișierele aflate doar în cloud și numele care nu funcționează pe toate sistemele."
+    },
     "catalog": {
       "formatVersion": "Versiunea formatului",
       "lineage": "Descendență",
@@ -463,7 +474,8 @@
       "showFor": "Arată fișierele pentru {{version}}",
       "hideFor": "Ascunde fișierele pentru {{version}}",
       "show": "Arată fișierele",
-      "hide": "Ascunde fișierele"
+      "hide": "Ascunde fișierele",
+      "folderSettings": "Setările Oleafly pentru acest folder"
     },
     "entry": {
       "labelInput": "Eticheta punctului de control",
@@ -1031,5 +1043,13 @@
     "label": "Poziția în document",
     "goTo": "Mergi la {{title}}",
     "untitled": "Fără titlu"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} s-a schimbat pe disc în timp ce aveai modificări nesalvate.",
+    "compare": "Compară",
+    "keepMine": "Păstrează versiunea mea",
+    "reload": "Reîncarcă",
+    "failed": "Oleafly nu a putut actualiza {{file}}. Încearcă din nou.",
+    "tabMark": "Schimbat pe disc. Deschide această filă ca să alegi ce versiune păstrezi."
   }
 }

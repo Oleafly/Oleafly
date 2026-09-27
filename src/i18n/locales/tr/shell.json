@@ -169,6 +169,11 @@
     "recompile": {
       "label": "Yeniden derle"
     },
+    "saveSettingsToFolder": {
+      "keywords": "proje ayarları kaydet klasör project.json paylaş ana belge",
+      "label": "Proje ayarlarını bu klasöre kaydet",
+      "saved": "Proje ayarları bu klasördeki project.json dosyasına kaydedildi."
+    },
     "section": {
       "label": "Alt bölüm"
     },
@@ -214,6 +219,10 @@
         "titleCase": "her sözcük büyük harf title case capitalize text",
         "uppercase": "büyük harf metin uppercase case text"
       }
+    },
+    "openFolder": {
+      "label": "Klasör aç…",
+      "keywords": "aç klasör dizin mevcut yerel dosyalar disk"
     }
   },
   "community": {
@@ -260,6 +269,7 @@
     "texRootBroken": "{{file}} içindeki % !TEX root eksik bir dosyayı gösteriyor ({{target}})",
     "texRootLabel": "TEX kökü",
     "texRootName": "kök: {{name}}",
+    "texRootNotTex": "{{file}} içindeki % !TEX root, LaTeX dosyası olmayan {{target}} dosyasını gösteriyor",
     "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)"
   },
   "datePicker": {
@@ -361,6 +371,25 @@
     },
     "title": "Bir sorun oluştu"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Bu klasör kullanılamıyor.",
+      "body": "Sürücüyü yeniden bağlayın veya klasörü bulun. Açık dosyalarınız burada kalır ve klasör geri gelene kadar Oleafly kaydetmez ya da derlemez."
+    },
+    "replaced": {
+      "title": "Bu klasör değiştirildi.",
+      "body": "Artık onun yerinde farklı bir klasör var. Oleafly oradaki hiçbir şeyin üzerine yazmamak için kaydetmeyi durdurdu."
+    },
+    "permissionDenied": {
+      "title": "Oleafly bu klasörü açamıyor.",
+      "body": "Klasörün izinlerini kontrol edip yeniden deneyin. Açık dosyalarınız burada kalır."
+    },
+    "locate": "Bul",
+    "useThisFolder": "Bu klasörü kullan",
+    "saveCopy": "Kopya kaydet",
+    "tryAgain": "Yeniden deneyin",
+    "savedCopy": "Açık dosyalarınız {{folder}} konumuna kaydedildi."
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub eylemleri",
@@ -419,6 +448,68 @@
     },
     "tryCommand": "Bir komut deneyin",
     "unknownCommand": "Bilinmeyen komut. Kullanılabilir komutları görmek için / yazın."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly hangi belgeyi derlesin?",
+      "askDescription": "Bu klasörde birden fazla belge var. Ana belgeyi seçin. Daha sonra değiştirebilirsiniz.",
+      "listLabel": "Bu klasördeki belgeler",
+      "open": "Aç",
+      "browse": "Yalnızca dosyalara göz at",
+      "bestMatch": "En iyi eşleşme",
+      "empty": "Oleafly burada belge bulamadı. Dosya ağacında bir dosyaya sağ tıklayıp Ana belge olarak ayarla seçeneğini seçin.",
+      "truncated": "Bu klasör büyük olduğu için Oleafly aramayı erken bıraktı. Bazı belgeler listede olmayabilir.",
+      "openFailed": "{{path}} ana belge yapılamadı."
+    },
+    "kind": {
+      "document": "Belge",
+      "book": "Kitap",
+      "presentation": "Sunum",
+      "poster": "Poster",
+      "standalone": "Bağımsız şekil",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "Diğer"
+    },
+    "reason": {
+      "declared": "Ana dosya olarak işaretli",
+      "top_level": "En üst klasörde",
+      "named_main": "Adı main",
+      "named_after_folder": "Klasörüyle aynı adı taşıyor",
+      "includes_files": "Başka dosyaları içeriyor",
+      "has_bibliography": "Kaynakçası var",
+      "no_begin_document": "\\begin{document} yok",
+      "standalone_figure": "Bağımsız şekil",
+      "placeholder": "Henüz indirilmedi"
+    },
+    "noMain": "Henüz ana belge yok. Bir dosya seçip Ana belge olarak ayarla seçeneğini seçin.",
+    "trust": {
+      "banner": "Oleafly bu klasörde bazı özellikleri sınırladı. Git, terminal, ajanlar ve shell escape özelliklerini açmak için klasöre güvenilsin mi?",
+      "trustFolder": "Bu klasöre güven",
+      "trustParent": "Üst klasöre güven",
+      "trustRepository": "Depoya güven",
+      "hide": "Gizle",
+      "terminal": "Klasöre güvenene kadar bu terminalde Git kancaları ve depo ayarları kapalı.",
+      "terminalReopen": "Bu terminal, klasöre güvenmeden önce başlatıldı. Git kancalarını açmak için terminali yeniden açın.",
+      "reopenTerminal": "Terminali yeniden aç",
+      "failed": "Bu klasöre güvenilemedi."
+    },
+    "readOnly": {
+      "banner": "Bu klasör salt okunur. Derleyebilirsiniz ama düzenlemeler kaydedilemez.",
+      "copy": "Kitaplığa kopyala",
+      "copied": "Oleafly bu klasörü kitaplığınıza kopyaladı. Şu anda kopyayı düzenliyorsunuz."
+    },
+    "sync": {
+      "syncsWith": "{{service}} ile eşitleniyor",
+      "cloudStorage": "Bir bulut hizmetiyle eşitleniyor",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "Bu projenin dosyalarında arayın.",
@@ -542,6 +633,8 @@
         "calculating": "Depolama kullanımı hesaplanıyor…",
         "desktopOnly": "Depolama ayrıntıları masaüstü uygulamasında görülebilir.",
         "error": "Depolama ayrıntıları hesaplanamadı.",
+        "linkedFolders_one": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
+        "linkedFolders_other": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
         "refresh": "Depolama kullanımını yenile",
         "stats": {
           "appData": "Uygulama verileri",
@@ -785,7 +878,8 @@
     "loadingCore": "Oleafly Core yükleniyor",
     "loadingHarness": "Oleafly Harness yükleniyor",
     "loadingParsers": "Oleafly Parsers yükleniyor",
-    "starting": "Oleafly açılıyor"
+    "starting": "Oleafly açılıyor",
+    "opening": "{{name}} açılıyor…"
   },
   "theme": {
     "dark": "Koyu",
@@ -919,5 +1013,30 @@
   "windows": {
     "preview": "Önizleme: {{title}}",
     "update": "Oleafly Güncellemesi"
+  },
+  "openFolder": {
+    "confirmTitle": "Durdurup {{name}} açılsın mı?",
+    "confirmCompile": "{{project}} hâlâ derleniyor. {{name}} açılırsa derleme durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmAssistant": "Asistan hâlâ {{project}} içinde çalışıyor. {{name}} açılırsa yanıtı durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmBoth": "{{project}} hâlâ derleniyor ve asistan hâlâ çalışıyor. {{name}} açılırsa ikisi de durur. Değişiklikleriniz önce kaydedilir.",
+    "confirmAction": "Durdur ve aç",
+    "chooseSubfolder": "Alt klasör seç",
+    "refusedTitle": "{{name}} açılamadı",
+    "refused": "{{name}} açılamadı. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Sistem Ayarları'nda Gizlilik ve Güvenlik'i, ardından Dosyalar ve Klasörler'i açıp Oleafly'yi etkinleştirin. Oleafly listede yoksa Tam Disk Erişimi bölümüne ekleyip yeniden deneyin.",
+      "windows": "Klasörün Özellikler penceresindeki Güvenlik sekmesinden hesabınızın klasörü okuyabildiğini kontrol edip yeniden deneyin.",
+      "linux": "Hesabınızın bu klasörü okuyabildiğini kontrol edip yeniden deneyin."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Klasörleri Finder'dan açın",
+    "body": "Oleafly'de aç komutunu Finder'a ekleyin. Servisler menüsünden hemen, Hızlı Eylemler'den ise siz açtıktan sonra çalışır.",
+    "add": "Finder'a ekle",
+    "notNow": "Şimdi değil",
+    "added": "Eklendi. Artık Finder'ın Servisler menüsünde. Hızlı Eylemler'den de kullanmak için bir klasöre sağ tıklayın ve Hızlı Eylemler › Özelleştir'de açın.",
+    "addedInQuickActions": "Eklendi. Bir klasöre sağ tıklayın, komutu Hızlı Eylemler'de bulabilirsiniz.",
+    "failed": "Eklenemedi. Ayarlar › Genel bölümünden yeniden deneyebilirsiniz."
   }
 }

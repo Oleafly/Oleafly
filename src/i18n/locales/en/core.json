@@ -46,7 +46,8 @@
     "projectChangedRetry": "The project changed during citation import. Try again in the original project.",
     "readFailed": "Could not read {{path}}: {{detail}}",
     "unrecognizedFile": "Unrecognized file type: {{name}}",
-    "writeFailed": "Could not write {{path}}: {{detail}}"
+    "writeFailed": "Could not write {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} links to a file outside this folder, so Oleafly can't add to it. Add the reference in Zotero or wherever that file is kept."
   },
   "citeOleafly": {
     "added": "Added the Oleafly entry to {{path}}. Cite it with {{markup}}.",
@@ -374,7 +375,8 @@
     "changedOnDisk": "\"{{path}}\" changed outside Oleafly. Reload it, or save again to keep your version.",
     "openFileEncoding": "Could not open \"{{path}}\" because it is not a UTF-8 text file. If it is text, save it as UTF-8 and open it again.",
     "openFileFailed": "Could not open \"{{path}}\". See the app log for details.",
-    "reloadFromDisk": "Reload"
+    "reloadFromDisk": "Reload",
+    "changedOnDiskElsewhere": "{{path}} changed on disk, so Oleafly didn't save it. Open it to pick which version to keep."
   },
   "projectDiagnostics": {
     "analysisFailed": "Analysis failed: {{message}}",
@@ -575,5 +577,9 @@
   "checkpoint": {
     "storageUnavailable": "Couldn't save a checkpoint. The disk is full or the checkpoint folder can't be written to. Free some space or check the folder permissions, then compile again.",
     "incompleteCapture": "Couldn't save the last few checkpoints because some project files could not be read. Check their permissions, then compile again."
+  },
+  "folderUnavailable": {
+    "compile": "Compiling is paused until the project folder is back.",
+    "saveReason": "the project folder isn't available"
   }
 }

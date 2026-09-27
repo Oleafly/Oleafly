@@ -1,8 +1,8 @@
 use crate::process;
 use oleafly_core::{
-    image_failure_evidence, image_failure_notes, place_image_findings, slash_path,
-    walk_source_tree, Engine, Error, ErrorKind, ImageFinding, PreparedBuild, Result,
-    Utf8StreamDecoder, Workspace,
+    image_failure_evidence, image_failure_notes, place_image_findings, plain_path, slash_path,
+    walk_source_tree, Engine, EngineScratch, EngineScratchBases, Error, ErrorKind, ImageFinding,
+    PreparedBuild, Result, Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -192,7 +192,8 @@ impl NativeCompiler {
         let (mut log, exit_code) = run_command(
             &command.executable,
             &command.arguments,
-            build.project_root(),
+            &command.working_directory,
+            &command.environment,
             self.timeout,
             &self.log,
         )
@@ -269,6 +270,17 @@ impl NativeCompiler {
     }
 
     fn command(&self, build: &PreparedBuild, options: BuildOptions) -> Result<BuildCommand> {
+        let owned = crate::desktop_link::data_root().map(|root| root.join(ENGINE_TEMP_DIR));
+        let scratch_bases = EngineScratchBases::new(owned, build.build_directory());
+        self.command_with(build, options, &scratch_bases)
+    }
+
+    fn command_with(
+        &self,
+        build: &PreparedBuild,
+        options: BuildOptions,
+        scratch_bases: &EngineScratchBases,
+    ) -> Result<BuildCommand> {
         let executable = self
             .tools
             .for_engine(build.engine())
@@ -279,6 +291,8 @@ impl NativeCompiler {
         }
         let output = build.build_directory().join(format!("{OUTPUT_STEM}.pdf"));
         let mut compiler_alias = None;
+        let mut scratch = None;
+        let mut resource_variable = None;
         let (arguments, produced_output) = match build.engine() {
             Engine::Tectonic => {
                 let stem = build
@@ -305,16 +319,36 @@ impl NativeCompiler {
                 reject_project_local_tool(tectonic, build.project_root())?;
                 let (engine_path, alias) = pandoc_engine_path(tectonic)?;
                 compiler_alias = alias;
+                let created = EngineScratch::create(scratch_bases)?;
+                let resources = created.pandoc_resource_path(&plain_path(build.project_root()))?;
+                resource_variable = resources.variable;
+                scratch = Some(created);
                 (
-                    markdown_arguments(build, &output, &engine_path)?,
+                    markdown_arguments(build, &output, &engine_path, resources.argument)?,
                     output.clone(),
                 )
             }
         };
+        let working_directory = match (&scratch, build.engine()) {
+            (Some(scratch), _) => scratch.path(),
+            (None, Engine::Latexmk) => build.compile_directory(),
+            (None, _) => build.project_root(),
+        }
+        .to_path_buf();
+        let environment = scratch.as_ref().map_or_else(Vec::new, |scratch| {
+            TEMP_DIRECTORY_VARIABLES
+                .iter()
+                .map(|name| (*name, scratch.path().as_os_str().to_owned()))
+                .chain(resource_variable)
+                .collect()
+        });
         Ok(BuildCommand {
             executable,
             arguments,
             produced_output,
+            working_directory,
+            environment,
+            _scratch: scratch,
             _compiler_alias: compiler_alias,
         })
     }
@@ -324,6 +358,9 @@ struct BuildCommand {
     executable: PathBuf,
     arguments: Vec<OsString>,
     produced_output: PathBuf,
+    working_directory: PathBuf,
+    environment: Vec<(&'static str, OsString)>,
+    _scratch: Option<EngineScratch>,
     _compiler_alias: Option<CompilerAlias>,
 }
 
@@ -617,13 +654,11 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
             )),
         },
     )?;
-    let output = build
-        .build_directory()
-        .strip_prefix(build.project_root())
-        .map_err(|_| Error::new(ErrorKind::UnsafePath, "build directory escaped the project"))?;
+    let output = relative_to(build.compile_directory(), build.build_directory())
+        .ok_or_else(|| Error::new(ErrorKind::UnsafePath, "build directory escaped the project"))?;
     let input = build
         .source_path()
-        .strip_prefix(build.project_root())
+        .strip_prefix(build.compile_directory())
         .map_err(|_| Error::new(ErrorKind::UnsafePath, "main document escaped the project"))?;
     let mut arguments: Vec<OsString> = vec![
         "-norc".into(),
@@ -631,7 +666,7 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
         flavor.into(),
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
-        format!("-outdir=./{}", slash_path(output)).into(),
+        format!("-outdir={}", dotted(&output)).into(),
         format!("-jobname={OUTPUT_STEM}").into(),
     ];
     if options.halt_on_error {
@@ -644,6 +679,36 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
     }
     arguments.push(format!("./{}", slash_path(input)).into());
     Ok(arguments)
+}
+
+fn relative_to(base: &Path, target: &Path) -> Option<PathBuf> {
+    let base: Vec<_> = base.components().collect();
+    let target: Vec<_> = target.components().collect();
+    let shared = base
+        .iter()
+        .zip(&target)
+        .take_while(|(left, right)| left == right)
+        .count();
+    if shared == 0 {
+        return None;
+    }
+    let mut relative = PathBuf::new();
+    for _ in shared..base.len() {
+        relative.push("..");
+    }
+    for component in &target[shared..] {
+        relative.push(component);
+    }
+    Some(relative)
+}
+
+fn dotted(path: &Path) -> String {
+    let path = slash_path(path);
+    if path.starts_with("..") {
+        path
+    } else {
+        format!("./{path}")
+    }
 }
 
 fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
@@ -694,22 +759,28 @@ fn markdown_arguments(
     build: &PreparedBuild,
     output: &Path,
     tectonic: &Path,
+    resource_path: OsString,
 ) -> Result<Vec<OsString>> {
+    let project = plain_path(build.project_root());
     let mut arguments: Vec<OsString> = vec![
+        resource_path,
         "--from=markdown".into(),
         "--standalone".into(),
-        format!("--resource-path={}", build.project_root().display()).into(),
         format!("--pdf-engine={}", tectonic.display()).into(),
-        format!("--output={}", output.display()).into(),
+        format!("--pdf-engine-opt=-Zsearch-path={}", project.display()).into(),
+        format!("--output={}", plain_path(output).display()).into(),
     ];
     let bibliographies = discover_bibliographies(build.project_root())?;
     if !bibliographies.is_empty() {
         arguments.push("--citeproc".into());
     }
     for bibliography in bibliographies {
-        arguments.push(format!("--bibliography={}", bibliography.display()).into());
+        arguments.push(format!("--bibliography={}", project.join(bibliography).display()).into());
     }
-    arguments.extend(["--".into(), build.source_path().as_os_str().to_owned()]);
+    arguments.extend([
+        "--".into(),
+        plain_path(build.source_path()).into_os_string(),
+    ]);
     Ok(arguments)
 }
 
@@ -732,6 +803,7 @@ async fn run_command(
     executable: &Path,
     arguments: &[OsString],
     working_directory: &Path,
+    environment: &[(&str, OsString)],
     timeout: Duration,
     sink: &CompilerLog,
 ) -> Result<(String, Option<i32>)> {
@@ -749,6 +821,9 @@ async fn run_command(
         .kill_on_drop(true);
     if let Some(path) = compiler_path(executable)? {
         command.env("PATH", path);
+    }
+    for (name, value) in environment {
+        command.env(name, value);
     }
     process::isolate(&mut command);
     let mut child = command.spawn().map_err(|error| {
@@ -1238,11 +1313,22 @@ mod tests {
         )
         .unwrap();
         let markdown_build = markdown_workspace.prepare_build().unwrap();
-        let markdown_command = compiler.command(&markdown_build, options).unwrap();
+        let markdown_command = compiler
+            .command_with(
+                &markdown_build,
+                options,
+                &injected_scratch_bases(
+                    markdown_directory.path(),
+                    markdown_build.build_directory(),
+                ),
+            )
+            .unwrap();
         let markdown_arguments = arguments(&markdown_command);
         assert_eq!(markdown_command.executable, pandoc);
         assert!(markdown_arguments.iter().any(|value| value == "--citeproc"));
-        let bibliography = PathBuf::from("references").join("library.bib");
+        let bibliography = plain_path(markdown_build.project_root())
+            .join("references")
+            .join("library.bib");
         assert!(markdown_arguments
             .iter()
             .any(|value| value == &format!("--bibliography={}", bibliography.display())));
@@ -1273,6 +1359,609 @@ mod tests {
         assert_eq!(tools.required_for_engine(Engine::Latexmk).len(), 1);
         assert_eq!(tools.required_for_engine(Engine::Typst).len(), 1);
         assert_eq!(tools.required_for_engine(Engine::Markdown).len(), 2);
+    }
+
+    fn snapshot(root: &Path) -> Vec<(PathBuf, u64, Option<std::time::SystemTime>)> {
+        fn visit(
+            root: &Path,
+            path: &Path,
+            out: &mut Vec<(PathBuf, u64, Option<std::time::SystemTime>)>,
+        ) {
+            let metadata = std::fs::symlink_metadata(path).unwrap();
+            out.push((
+                path.strip_prefix(root).unwrap().to_path_buf(),
+                metadata.len(),
+                metadata.modified().ok(),
+            ));
+            if metadata.is_dir() {
+                for entry in std::fs::read_dir(path).unwrap() {
+                    visit(root, &entry.unwrap().path(), out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        visit(root, root, &mut out);
+        out.sort();
+        out
+    }
+
+    fn outside_the_build_directory(
+        entries: Vec<(PathBuf, u64, Option<std::time::SystemTime>)>,
+    ) -> Vec<(PathBuf, u64, Option<std::time::SystemTime>)> {
+        entries
+            .into_iter()
+            .filter(|(path, _, _)| !path.starts_with(".oleafly"))
+            .collect()
+    }
+
+    fn record(executable: &Path) -> BTreeMap<String, String> {
+        std::fs::read_to_string(executable.with_extension("record"))
+            .unwrap()
+            .lines()
+            .filter_map(|line| line.split_once('='))
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect()
+    }
+
+    fn assert_everything_resolved(recorded: &BTreeMap<String, String>) {
+        for (name, expected) in [
+            ("images", "3"),
+            ("images_in_scratch", "2"),
+            ("images_from_search_path", "1"),
+            ("inputs", "2"),
+            ("inputs_from_search_path", "2"),
+            ("citation", "true"),
+            ("csl", "true"),
+            ("cwd_is_tmp", "true"),
+        ] {
+            assert_eq!(recorded[name], expected, "{name}: {recorded:?}");
+        }
+    }
+
+    fn project_file(project: &Path, relative: &str, content: &[u8]) {
+        let path = project.join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn markdown_project(root: &Path, name: &str) -> PathBuf {
+        const ONE_PIXEL_PNG: [u8; 70] = [
+            137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1,
+            8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207,
+            192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66,
+            96, 130,
+        ];
+        const MARKER_CSL: &str = concat!(
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            "<style xmlns=\"http://purl.org/net/xbiblio/csl\" class=\"in-text\" version=\"1.0\">\n",
+            "<info><title>Marker</title><id>marker</id>",
+            "<updated>2026-01-01T00:00:00+00:00</updated></info>\n",
+            "<citation><layout prefix=\"[CSLMARK \" suffix=\"]\">",
+            "<text variable=\"citation-number\"/></layout></citation>\n",
+            "<bibliography><layout><text variable=\"title\"/></layout></bibliography>\n",
+            "</style>\n",
+        );
+        let project = root.join(name);
+        project_file(
+            &project,
+            "main.md",
+            concat!(
+                "---\n",
+                "title: Notes\n",
+                "csl: styles/marker.csl\n",
+                "header-includes:\n",
+                "  - \\input{macros}\n",
+                "  - \\input{tex/extra}\n",
+                "---\n\n",
+                "\\MACROTEXT{} and \\EXTRATEXT{}.\n\n",
+                "As @knuth shows.\n\n",
+                "![Root](root.png)\n\n",
+                "![A plot](figs/plot.png)\n\n",
+                "\\includegraphics{figs/raw.png}\n",
+            )
+            .as_bytes(),
+        );
+        for image in ["root.png", "figs/plot.png", "figs/raw.png"] {
+            project_file(&project, image, &ONE_PIXEL_PNG);
+        }
+        project_file(&project, "macros.tex", b"\\newcommand{\\MACROTEXT}{M}\n");
+        project_file(&project, "tex/extra.tex", b"\\newcommand{\\EXTRATEXT}{E}\n");
+        project_file(
+            &project,
+            "sources/refs.bib",
+            b"@book{knuth, author={Donald Knuth}, title={KnuthTitle}, year={1984}}\n",
+        );
+        project_file(&project, "styles/marker.csl", MARKER_CSL.as_bytes());
+        project
+    }
+
+    fn external_build(root: &Path, name: &str) -> PathBuf {
+        let directory = root.join(name);
+        std::fs::create_dir_all(&directory).unwrap();
+        directory
+    }
+
+    fn markdown_manifest() -> ProjectManifest {
+        ProjectManifest {
+            name: "Pandoc temp".into(),
+            main_doc: "main.md".into(),
+            engine: Engine::Markdown.manifest_name().into(),
+            ..ProjectManifest::default()
+        }
+    }
+
+    fn real_pandoc() -> Option<PathBuf> {
+        let pandoc = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../src-tauri/binaries")
+            .join(format!(
+                "pandoc-{}{}",
+                option_env!("OLEAFLY_BUILD_TARGET")?,
+                std::env::consts::EXE_SUFFIX
+            ));
+        pandoc.is_file().then(|| pandoc.canonicalize().unwrap())
+    }
+
+    fn injected_scratch_bases(root: &Path, build: &Path) -> EngineScratchBases {
+        let system = root.join("system tmp");
+        std::fs::create_dir_all(&system).unwrap();
+        EngineScratchBases {
+            system,
+            owned: Some(root.join("data").join(ENGINE_TEMP_DIR)),
+            build: build.to_path_buf(),
+        }
+    }
+
+    fn hostile_scratch_bases(root: &Path) -> (PathBuf, EngineScratchBases) {
+        let system = root.join("tmp #1");
+        std::fs::create_dir_all(&system).unwrap();
+        let bases = EngineScratchBases {
+            system: system.clone(),
+            owned: Some(root.join("data {x}").join(ENGINE_TEMP_DIR)),
+            build: root.join("build 50%"),
+        };
+        (system, bases)
+    }
+
+    fn fake_markdown_compiler(directory: &Path) -> NativeCompiler {
+        let tectonic = directory.join(executable_name("tectonic"));
+        let pandoc = directory.join(executable_name("pandoc"));
+        let typst = directory.join(executable_name("typst"));
+        for tool in [&tectonic, &pandoc, &typst] {
+            std::fs::write(tool, "tool").unwrap();
+        }
+        NativeCompiler::new(BuildTools {
+            tectonic: Some(tectonic),
+            pandoc: Some(pandoc),
+            typst: Some(typst),
+            ..BuildTools::default()
+        })
+    }
+
+    #[test]
+    fn markdown_commands_run_pandoc_from_a_fresh_scratch_folder_with_project_paths() {
+        let tools_directory = TempDir::new().unwrap();
+        let compiler = fake_markdown_compiler(tools_directory.path());
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(root.path(), "Paper #2 {50% & more}");
+        let workspace = Workspace::from_manifest_with_build(
+            &project,
+            markdown_manifest(),
+            oleafly_core::BuildLocation::External(external_build(root.path(), "build")),
+        )
+        .unwrap();
+        let before = snapshot(&project);
+        let build = workspace.prepare_build().unwrap();
+        let injected = plain_path(&root.path().canonicalize().unwrap());
+        let safe_bases = injected_scratch_bases(root.path(), build.build_directory());
+        let expected_parent = oleafly_core::tex_safe_path(&injected)
+            .then(|| plain_path(&safe_bases.system.canonicalize().unwrap()));
+        let first = compiler
+            .command_with(&build, BuildOptions::default(), &safe_bases)
+            .unwrap();
+        let second = compiler
+            .command_with(&build, BuildOptions::default(), &safe_bases)
+            .unwrap();
+        let scratch = |command: &BuildCommand| PathBuf::from(&command.environment[0].1);
+        assert_ne!(scratch(&first), scratch(&second));
+        assert_eq!(
+            first.environment,
+            TEMP_DIRECTORY_VARIABLES.map(|name| (name, scratch(&first).into_os_string()))
+        );
+        assert_eq!(first.working_directory, scratch(&first));
+        let project_root = plain_path(build.project_root());
+        let first_arguments = arguments(&first);
+        assert_eq!(
+            first_arguments[0],
+            format!("--resource-path={}", project_root.display())
+        );
+        for expected in [
+            format!("--pdf-engine-opt=-Zsearch-path={}", project_root.display()),
+            format!(
+                "--bibliography={}",
+                project_root.join("sources").join("refs.bib").display()
+            ),
+            project_root.join("main.md").display().to_string(),
+        ] {
+            assert!(
+                first_arguments.contains(&expected),
+                "{expected} {first_arguments:?}"
+            );
+        }
+        let first_scratch = scratch(&first);
+        assert!(first_scratch.is_dir());
+        assert!(first_scratch.starts_with(&injected));
+        match &expected_parent {
+            Some(parent) => {
+                assert_eq!(first_scratch.parent(), Some(parent.as_path()));
+                assert!(oleafly_core::tex_safe_path(&first_scratch));
+            }
+            None => assert!(first_scratch.to_string_lossy().ends_with('~')),
+        }
+        assert!(!first_scratch.starts_with(&project));
+        assert!(!first_scratch.starts_with(project.canonicalize().unwrap()));
+        drop(first);
+        assert!(!first_scratch.exists());
+
+        let (system, bases) = hostile_scratch_bases(root.path());
+        let fallback = compiler
+            .command_with(&build, BuildOptions::default(), &bases)
+            .unwrap();
+        let fallback_scratch = scratch(&fallback);
+        assert!(fallback_scratch.to_string_lossy().ends_with('~'));
+        assert_eq!(fallback.working_directory, fallback_scratch);
+        assert_eq!(arguments(&fallback), first_arguments);
+        assert!(std::fs::read_dir(&system).unwrap().next().is_none());
+        drop(fallback);
+        assert!(!fallback_scratch.exists());
+        assert_eq!(snapshot(&project), before);
+
+        let typst_directory = TempDir::new().unwrap();
+        let typst_build = workspace_for_engine(&typst_directory, Engine::Typst, None)
+            .prepare_build()
+            .unwrap();
+        let typst_command = compiler
+            .command(&typst_build, BuildOptions::default())
+            .unwrap();
+        assert!(typst_command.environment.is_empty());
+        assert_eq!(typst_command.working_directory, typst_build.project_root());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn markdown_commands_hand_pandoc_project_paths_without_the_verbatim_prefix() {
+        let tools_directory = TempDir::new().unwrap();
+        let compiler = fake_markdown_compiler(tools_directory.path());
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(root.path(), "Paper");
+        let workspace = Workspace::from_manifest(&project, markdown_manifest()).unwrap();
+        let build = workspace.prepare_build().unwrap();
+        assert!(build.project_root().to_string_lossy().starts_with(r"\\?\"));
+        let command = compiler
+            .command_with(
+                &build,
+                BuildOptions::default(),
+                &injected_scratch_bases(root.path(), build.build_directory()),
+            )
+            .unwrap();
+        let plain = plain_path(build.project_root());
+        assert!(plain
+            .to_string_lossy()
+            .starts_with(|letter: char| letter.is_ascii_alphabetic()));
+        let arguments = arguments(&command);
+        for expected in [
+            format!("--resource-path={}", plain.display()),
+            format!("--pdf-engine-opt=-Zsearch-path={}", plain.display()),
+            format!(
+                "--bibliography={}",
+                plain.join("sources").join("refs.bib").display()
+            ),
+            format!(
+                "--output={}",
+                plain
+                    .join(".oleafly")
+                    .join("build")
+                    .join(format!("{OUTPUT_STEM}.pdf"))
+                    .display()
+            ),
+            plain.join("main.md").display().to_string(),
+        ] {
+            assert!(arguments.contains(&expected), "{expected} {arguments:?}");
+        }
+        assert!(
+            arguments.iter().all(|argument| !argument.contains(r"\\?\")),
+            "{arguments:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn markdown_builds_hand_pandoc_a_scratch_temp_folder_and_remove_it_afterwards() {
+        let tools = TempDir::new().unwrap();
+        let pandoc =
+            crate::support::rust_fixture(tools.path(), "pandoc_recorder.rs", "pandoc", None);
+        let tectonic = tools.path().join(executable_name("tectonic"));
+        std::fs::write(&tectonic, "tool").unwrap();
+        let compiler = NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc.clone()),
+            tectonic: Some(tectonic),
+            ..BuildTools::default()
+        });
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(
+            root.path(),
+            if cfg!(windows) {
+                "Bob's notes; ${HOME}"
+            } else {
+                "Bob's notes: ${HOME}"
+            },
+        );
+        let workspace = Workspace::from_manifest_with_build(
+            &project,
+            markdown_manifest(),
+            oleafly_core::BuildLocation::External(external_build(root.path(), "build")),
+        )
+        .unwrap();
+        let before = snapshot(&project);
+        let result = compiler
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(result.ok, "{}", result.log);
+        let recorded = record(&pandoc);
+        let scratch = PathBuf::from(&recorded["TMP"]);
+        for name in TEMP_DIRECTORY_VARIABLES {
+            assert_eq!(recorded[name], recorded["TMP"], "{name}");
+            assert_eq!(recorded[&format!("{name}_EXISTS")], "true", "{name}");
+        }
+        assert_eq!(recorded["cwd_is_tmp"], "true");
+        assert_eq!(
+            recorded["defaults"],
+            r#"{"resource-path":["${OLEAFLY_PANDOC_RESOURCE_PATH}"]}"#
+        );
+        assert_eq!(
+            PathBuf::from(&recorded["resource_path"]),
+            plain_path(&project.canonicalize().unwrap())
+        );
+        assert!(scratch
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("oleafly-engine-"));
+        assert!(!scratch.exists());
+        assert!(!scratch.starts_with(project.canonicalize().unwrap()));
+        assert_eq!(snapshot(&project), before);
+    }
+
+    #[tokio::test]
+    async fn real_pandoc_builds_markdown_in_a_folder_whose_name_tex_cannot_read() {
+        let Some(pandoc) = real_pandoc() else {
+            return;
+        };
+        let tools = TempDir::new().unwrap();
+        let tectonic =
+            crate::support::rust_fixture(tools.path(), "tex_checker.rs", "tectonic", None);
+        let compiler = NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc),
+            tectonic: Some(tectonic.clone()),
+            ..BuildTools::default()
+        });
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(root.path(), "Paper #2 {50% & more}");
+        let in_tree = Workspace::from_manifest(&project, markdown_manifest()).unwrap();
+        in_tree.prepare_build().unwrap();
+        let before = snapshot(&project);
+        let external = Workspace::from_manifest_with_build(
+            &project,
+            markdown_manifest(),
+            oleafly_core::BuildLocation::External(external_build(root.path(), "build")),
+        )
+        .unwrap();
+        for workspace in [&external, &in_tree] {
+            let result = compiler
+                .build(workspace, BuildOptions::default())
+                .await
+                .unwrap();
+            assert!(result.ok, "{}", result.log);
+            assert!(result.output.is_some_and(|output| output.is_file()));
+            let recorded = record(&tectonic);
+            assert_everything_resolved(&recorded);
+            assert_eq!(recorded["outdir_relative"], "false");
+            let scratch = PathBuf::from(&recorded["TMP"]);
+            assert!(scratch
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("oleafly-engine-"));
+            assert!(Path::new(&recorded["outdir"]).starts_with(&scratch));
+            assert!(!scratch.exists());
+        }
+        assert_eq!(
+            outside_the_build_directory(snapshot(&project)),
+            outside_the_build_directory(before)
+        );
+    }
+
+    async fn run_markdown_command(
+        command: &BuildCommand,
+        extra: Option<(&'static str, OsString)>,
+    ) -> (String, Option<i32>) {
+        let mut environment = command.environment.clone();
+        environment.extend(extra);
+        run_command(
+            &command.executable,
+            &command.arguments,
+            &command.working_directory,
+            &environment,
+            Duration::from_secs(60),
+            &CompilerLog::default(),
+        )
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn real_pandoc_uses_relative_media_paths_when_no_temp_folder_is_safe_for_tex() {
+        let Some(pandoc) = real_pandoc() else {
+            return;
+        };
+        let tools = TempDir::new().unwrap();
+        let tectonic =
+            crate::support::rust_fixture(tools.path(), "tex_checker.rs", "tectonic", None);
+        let compiler = NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc),
+            tectonic: Some(tectonic.clone()),
+            ..BuildTools::default()
+        });
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(root.path(), "Paper #2 {50% & more}");
+        let workspace = Workspace::from_manifest_with_build(
+            &project,
+            markdown_manifest(),
+            oleafly_core::BuildLocation::External(external_build(root.path(), "linked 50%")),
+        )
+        .unwrap();
+        let before = snapshot(&project);
+        let build = workspace.prepare_build().unwrap();
+        let (system, bases) = hostile_scratch_bases(root.path());
+        let command = compiler
+            .command_with(&build, BuildOptions::default(), &bases)
+            .unwrap();
+        let scratch = command.working_directory.clone();
+        assert!(scratch.to_string_lossy().ends_with('~'));
+        let (log, code) = run_markdown_command(&command, None).await;
+        assert_eq!(code, Some(0), "{log}");
+        let recorded = record(&tectonic);
+        assert_everything_resolved(&recorded);
+        assert_eq!(recorded["outdir_relative"], "true");
+        assert!(Path::new(&recorded["outdir"])
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("media-"));
+        assert!(build
+            .build_directory()
+            .join(format!("{OUTPUT_STEM}.pdf"))
+            .is_file());
+        assert!(std::fs::read_dir(&system).unwrap().next().is_none());
+        assert_eq!(snapshot(&project), before);
+        drop(command);
+        assert!(!scratch.exists());
+    }
+
+    #[tokio::test]
+    async fn real_pandoc_with_a_cygwin_uname_on_the_path_writes_nothing_into_the_project() {
+        let Some(pandoc) = real_pandoc() else {
+            return;
+        };
+        let tools = TempDir::new().unwrap();
+        let tectonic =
+            crate::support::rust_fixture(tools.path(), "tex_checker.rs", "tectonic", None);
+        let cygwin = TempDir::new().unwrap();
+        crate::support::rust_fixture(cygwin.path(), "cygwin_uname.rs", "uname", None);
+        let compiler = NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc),
+            tectonic: Some(tectonic.clone()),
+            ..BuildTools::default()
+        });
+        let root = TempDir::new().unwrap();
+        let project = markdown_project(root.path(), "Cygwin notes");
+        let workspace = Workspace::from_manifest_with_build(
+            &project,
+            markdown_manifest(),
+            oleafly_core::BuildLocation::External(external_build(root.path(), "build")),
+        )
+        .unwrap();
+        let before = snapshot(&project);
+        let build = workspace.prepare_build().unwrap();
+        let command = compiler
+            .command_with(
+                &build,
+                BuildOptions::default(),
+                &injected_scratch_bases(root.path(), build.build_directory()),
+            )
+            .unwrap();
+        let scratch = command.working_directory.clone();
+        let inherited = std::env::var_os("PATH").unwrap_or_default();
+        let path = std::env::join_paths(
+            std::iter::once(cygwin.path().to_path_buf()).chain(std::env::split_paths(&inherited)),
+        )
+        .unwrap();
+        let (log, code) = run_markdown_command(&command, Some(("PATH", path))).await;
+        assert_eq!(code, Some(0), "{log}");
+        let recorded = record(&tectonic);
+        assert_everything_resolved(&recorded);
+        assert_eq!(recorded["outdir_relative"], "true");
+        assert_eq!(snapshot(&project), before);
+        drop(command);
+        assert!(!scratch.exists());
+    }
+
+    async fn assert_real_pandoc_finds_project_files_in(names: &[&str]) {
+        let Some(pandoc) = real_pandoc() else {
+            return;
+        };
+        let tools = TempDir::new().unwrap();
+        let tectonic =
+            crate::support::rust_fixture(tools.path(), "tex_checker.rs", "tectonic", None);
+        let compiler = NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc),
+            tectonic: Some(tectonic.clone()),
+            ..BuildTools::default()
+        });
+        let root = TempDir::new().unwrap();
+        for name in names {
+            let project = markdown_project(root.path(), name);
+            let workspace = Workspace::from_manifest(&project, markdown_manifest()).unwrap();
+            let build = workspace.prepare_build().unwrap();
+            let before = snapshot(&project);
+            let command = compiler
+                .command_with(
+                    &build,
+                    BuildOptions::default(),
+                    &injected_scratch_bases(root.path(), build.build_directory()),
+                )
+                .unwrap();
+            let scratch = command.working_directory.clone();
+            let (log, code) = run_markdown_command(&command, None).await;
+            assert_eq!(code, Some(0), "{name}: {log}");
+            assert!(!log.contains("Could not fetch resource"), "{name}: {log}");
+            assert_everything_resolved(&record(&tectonic));
+            assert!(
+                build
+                    .build_directory()
+                    .join(format!("{OUTPUT_STEM}.pdf"))
+                    .is_file(),
+                "{name}"
+            );
+            drop(command);
+            assert!(!scratch.exists(), "{name}");
+            assert_eq!(
+                outside_the_build_directory(snapshot(&project)),
+                outside_the_build_directory(before),
+                "{name}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_finds_project_files_when_the_folder_name_has_a_colon_or_a_variable() {
+        assert_real_pandoc_finds_project_files_in(&[
+            "Thesis 2024:25",
+            "Notes ${HOME} x",
+            "Draft 1:2 ${HOME} $x ${.} ${USERDATA} ${OLEAFLY_UNDEFINED}",
+        ])
+        .await;
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn real_pandoc_finds_project_files_when_the_folder_name_has_a_semicolon_or_a_variable() {
+        assert_real_pandoc_finds_project_files_in(&[
+            "Smith; Jones",
+            "Notes ${USERPROFILE} x",
+            "Draft 1;2 ${HOME} $x ${.} ${USERDATA} ${OLEAFLY_UNDEFINED}",
+        ])
+        .await;
     }
 
     #[test]
@@ -1575,6 +2264,7 @@ mod tests {
             &executable,
             &arguments,
             working_directory.path(),
+            &[],
             Duration::from_secs(5),
             &sink,
         )
@@ -1604,6 +2294,7 @@ mod tests {
             Path::new("node"),
             &arguments,
             directory.path(),
+            &[],
             Duration::from_millis(250),
             &CompilerLog::default(),
         )
@@ -1622,6 +2313,7 @@ mod tests {
             Path::new("node"),
             &arguments,
             directory.path(),
+            &[],
             Duration::from_secs(5),
             &CompilerLog::default(),
         )
@@ -1640,6 +2332,7 @@ mod tests {
             &shell,
             &arguments,
             Path::new("/"),
+            &[],
             Duration::from_millis(50),
             &CompilerLog::default(),
         )
@@ -1647,5 +2340,66 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.kind(), ErrorKind::Build);
         assert!(error.to_string().contains("timed out"));
+    }
+
+    #[test]
+    fn latexmk_runs_in_the_compile_directory_and_writes_to_the_build_directory() {
+        let tools_directory = TempDir::new().unwrap();
+        let latexmk = tools_directory.path().join(executable_name("latexmk"));
+        std::fs::write(&latexmk, "tool").unwrap();
+        let compiler = NativeCompiler::new(BuildTools {
+            latexmk: Some(latexmk),
+            ..BuildTools::default()
+        });
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir(directory.path().join("paper")).unwrap();
+        std::fs::write(directory.path().join("paper/main.tex"), "document").unwrap();
+        let manifest = ProjectManifest {
+            main_doc: "paper/main.tex".into(),
+            engine: "latexmk".into(),
+            tex_flavor: Some("pdflatex".into()),
+            ..ProjectManifest::default()
+        };
+        let root = Workspace::from_manifest(directory.path(), manifest.clone()).unwrap();
+        let root_command = compiler
+            .command(&root.prepare_build().unwrap(), BuildOptions::default())
+            .unwrap();
+        let root_arguments = arguments(&root_command);
+        assert!(root_arguments.contains(&"-outdir=./.oleafly/build".to_string()));
+        assert_eq!(root_arguments.last().unwrap(), "./paper/main.tex");
+        assert_eq!(root_command.working_directory, root.root());
+
+        let nested = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                compile_dir: Some("paper".into()),
+                ..manifest
+            },
+        )
+        .unwrap();
+        let nested_command = compiler
+            .command(&nested.prepare_build().unwrap(), BuildOptions::default())
+            .unwrap();
+        let nested_arguments = arguments(&nested_command);
+        assert!(nested_arguments.contains(&"-outdir=../.oleafly/build".to_string()));
+        assert_eq!(nested_arguments.last().unwrap(), "./main.tex");
+        assert_eq!(
+            nested_command.working_directory,
+            nested.root().join("paper")
+        );
+    }
+
+    #[test]
+    fn relative_paths_climb_out_of_the_compile_directory() {
+        assert_eq!(
+            relative_to(Path::new("/p/paper/sub"), Path::new("/p/.oleafly/build")),
+            Some(PathBuf::from("../../.oleafly/build"))
+        );
+        assert_eq!(
+            relative_to(Path::new("/p"), Path::new("/p/.oleafly/build")),
+            Some(PathBuf::from(".oleafly/build"))
+        );
+        assert_eq!(dotted(Path::new(".oleafly/build")), "./.oleafly/build");
+        assert_eq!(dotted(Path::new("../.oleafly/build")), "../.oleafly/build");
     }
 }

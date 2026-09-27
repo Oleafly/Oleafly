@@ -171,7 +171,9 @@
     "binaryFile": "Binär fil. Ingen förhandsvisning är tillgänglig.",
     "managedFileReadOnly": "{{file}} hanteras av Oleafly och är skrivskyddad här. Projektinställningar ändras via Oleafly, inte genom att redigera den här filen.",
     "noFileOpen": "Ingen fil är öppen.",
-    "noFileOpenHint": "Välj en fil i trädet för att börja redigera."
+    "noFileOpenHint": "Välj en fil i trädet för att börja redigera.",
+    "linkedFileReadOnly": "{{file}} länkar till en fil utanför mappen, så du kan inte redigera den här. Ändra den där den finns, till exempel i Zotero.",
+    "diffOnDisk": "På disken"
   },
   "projectInfo": {
     "trigger": "Projektinfo",
@@ -207,6 +209,8 @@
     "spellLanguageAppSetting": "Använd appens inställning",
     "spellLanguageAriaLabel": "Språk för stavningskontroll i det här projektet",
     "spellLanguageHint": "Gäller bara det här projektet. Ladda ner fler språk i Inställningar.",
+    "spellLanguageFolderHint": "Sparas i mappens project.json, så det gäller alla som öppnar mappen. Ladda ner fler språk i Inställningar.",
+    "spellLanguageReadOnly": "Den här mappen är skrivskyddad, så språket i dess project.json kan inte ändras.",
     "spellLanguageFailed": "Det gick inte att byta språk för stavningskontroll.",
     "notChecked": "Inte kontrollerad",
     "dictionaryMissing": "{{name}} är inte nedladdad, så stavningen kontrolleras inte. Ladda ned den i Inställningar eller välj ett annat språk.",
@@ -330,7 +334,8 @@
     "splitView": "Delad vy",
     "unifiedView": "Sammanslagen vy",
     "loading": "Läser in jämförelsen…",
-    "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse."
+    "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse.",
+    "diskHeading": "På disken ↔ Dina ändringar"
   },
   "hotkeys": {
     "title": "Kortkommandon",
@@ -426,6 +431,11 @@
       "sourceSize": "Källkodens storlek",
       "reclaimable": "Går att frigöra"
     },
+    "capture": {
+      "paused": "Kontrollpunkter är pausade eftersom den här mappen är för stor. En kontrollpunkt kan rymma högst {{files}} filer eller {{size}}.",
+      "skipped_one": "{{formattedCount}} fil i den här mappen finns inte i kontrollpunkterna. Oleafly utelämnar länkar, mycket stora filer, filer som bara finns i molnet och namn som inte fungerar i alla system.",
+      "skipped_other": "{{formattedCount}} filer i den här mappen finns inte i kontrollpunkterna. Oleafly utelämnar länkar, mycket stora filer, filer som bara finns i molnet och namn som inte fungerar i alla system."
+    },
     "catalog": {
       "formatVersion": "Formatversion",
       "lineage": "Härkomst",
@@ -458,7 +468,8 @@
       "showFor": "Visa filer för {{version}}",
       "hideFor": "Dölj filer för {{version}}",
       "show": "Visa filer",
-      "hide": "Dölj filer"
+      "hide": "Dölj filer",
+      "folderSettings": "Oleafly-inställningar för den här mappen"
     },
     "entry": {
       "labelInput": "Etikett för kontrollpunkten",
@@ -1022,5 +1033,13 @@
     "label": "Plats i dokumentet",
     "goTo": "Gå till {{title}}",
     "untitled": "Namnlöst"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} ändrades på disken medan du hade osparade ändringar.",
+    "compare": "Jämför",
+    "keepMine": "Behåll min",
+    "reload": "Läs in igen",
+    "failed": "Oleafly kunde inte uppdatera {{file}}. Försök igen.",
+    "tabMark": "Ändrad på disken. Öppna fliken för att välja vilken version du vill behålla."
   }
 }

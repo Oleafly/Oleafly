@@ -15,7 +15,11 @@
     "selectAll": "Vælg alt",
     "view": "Vis",
     "toggleTerminal": "Vis eller skjul terminalen",
-    "toggleBrowser": "Vis eller skjul browseren"
+    "toggleBrowser": "Vis eller skjul browseren",
+    "file": "Arkiv",
+    "openFolder": "Åbn mappe…",
+    "openRecent": "Åbn seneste",
+    "noRecent": "Ingen seneste projekter"
   },
   "window": {
     "browser": "Oleafly-browser",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Vælg et regneark, der skal importeres",
       "filter": "Regneark"
+    },
+    "trustFolder": {
+      "title": "Vil du stole på denne mappe?",
+      "message": "Oleafly slår Git, terminalen, agenter og LaTeX-værktøjer til for {{name}}. Stol kun på mapper, hvis indhold du kender.",
+      "messageParent": "Oleafly stoler på {{name}} og alle mapper i den, også dem du åbner senere.",
+      "messageRepository": "Oleafly kører Git i {{name}} med repositoryets egne indstillinger og hooks.",
+      "confirm": "Stol på"
+    },
+    "restrictedWrite": {
+      "title": "Vil du tillade denne ændring?",
+      "message": "Assistenten vil ændre {{path}}. Filer som denne kan køre programmer, og denne mappe er endnu ikke betroet.",
+      "confirm": "Tillad"
+    },
+    "restrictedNetwork": {
+      "title": "Vil du tillade denne forespørgsel?",
+      "message": "Assistenten vil bruge {{tool}}, som sender tekst til en onlinetjeneste. Denne mappe er endnu ikke betroet.",
+      "confirm": "Tillad"
+    },
+    "locateFolder": {
+      "title": "Find projektmappen"
+    },
+    "rebindFolder": {
+      "title": "Vil du bruge en anden mappe?",
+      "message": "{{name}} er ikke den mappe, Oleafly havde til dette projekt. Hvis du bruger den, gemmer Oleafly dine ikke-gemte ændringer i den og lukker projektets terminaler og agentsessioner. Alt, der kører i dem, stopper. Oleafly holder også op med at stole på mappen, slår fuld adgang fra, nulstiller assistentens godkendelser og fjerner tilknytningen til forskningsmapper. Chats og historik bevares.",
+      "confirm": "Brug denne mappe"
+    },
+    "saveCopy": {
+      "title": "Vælg, hvor kopien skal gemmes",
+      "folderSuffix": "kopi"
+    },
+    "openFolder": {
+      "title": "Åbn en mappe",
+      "inside": "Vælg en mappe i {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "Bekræftelsen af fuld adgang blev lukket.",
     "fullAccessDeclined": "Fuld adgang blev ikke aktiveret.",
     "approvalDialogClosed": "Systemets godkendelsesdialog blev lukket uventet."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Åbn i Oleafly",
+    "openWithOleafly": "Åbn med Oleafly"
   }
 }

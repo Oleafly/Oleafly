@@ -33,7 +33,7 @@ export function BackendProtocolBanner() {
     <div
       role="alert"
       data-testid="backend-protocol-banner"
-      className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
+      className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/30 bg-[color-mix(in_srgb,var(--color-amber-500)_10%,var(--background))] px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
     >
       <AlertTriangle className="size-3.5 shrink-0" />
       <span>{t(($) => $.shell.backendProtocol.mismatch)}</span>

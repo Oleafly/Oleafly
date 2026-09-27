@@ -69,6 +69,7 @@ checksum() {
 write_stub() {
   local target="$1"
   local out="$BIN_DIR/tectonic-biber-$target"
+  rm -f "$out"
   cat > "$out" <<'STUB'
 #!/bin/sh
 echo "Oleafly: pinned Biber 2.17 is not available for this platform (no upstream aarch64 Linux binary)." >&2
@@ -191,6 +192,7 @@ fetch() {
     echo "✓ $out"
     return
   fi
+  rm -f "$out"
   cp "$bin" "$out"
   chmod +x "$out" 2>/dev/null || true
   if [[ "$(uname)" == "Darwin" ]]; then

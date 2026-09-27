@@ -171,7 +171,9 @@
     "binaryFile": "Arquivo binário. Nenhuma prévia disponível.",
     "managedFileReadOnly": "{{file}} é gerenciado pelo Oleafly e fica somente leitura aqui. As configurações do projeto mudam pelo próprio Oleafly, não editando este arquivo.",
     "noFileOpen": "Nenhum arquivo aberto.",
-    "noFileOpenHint": "Escolha um arquivo na árvore para começar a editar."
+    "noFileOpenHint": "Escolha um arquivo na árvore para começar a editar.",
+    "linkedFileReadOnly": "{{file}} aponta para um arquivo fora desta pasta, então você não pode editá-lo aqui. Altere-o onde ele está, por exemplo no Zotero.",
+    "diffOnDisk": "No disco"
   },
   "projectInfo": {
     "trigger": "Informações do projeto",
@@ -209,6 +211,8 @@
     "spellLanguageAppSetting": "Usar a configuração do aplicativo",
     "spellLanguageAriaLabel": "Idioma da verificação ortográfica deste projeto",
     "spellLanguageHint": "Vale só para este projeto. Baixe mais idiomas em Configurações.",
+    "spellLanguageFolderHint": "Salvo no project.json desta pasta, então vale para todos que abrirem a pasta. Baixe mais idiomas em Configurações.",
+    "spellLanguageReadOnly": "Esta pasta é somente leitura, então o idioma do project.json dela não pode ser alterado.",
     "spellLanguageFailed": "Não foi possível alterar o idioma da verificação ortográfica.",
     "notChecked": "Não verificado",
     "dictionaryMissing": "{{name}} não foi baixado, então a ortografia não é verificada. Baixe-o nas Configurações ou escolha outro idioma.",
@@ -333,7 +337,8 @@
     "splitView": "Lado a lado",
     "unifiedView": "Coluna única",
     "loading": "Carregando a comparação…",
-    "previewTooLarge": "Arquivo grande demais para uma prévia da comparação."
+    "previewTooLarge": "Arquivo grande demais para uma prévia da comparação.",
+    "diskHeading": "No disco ↔ Suas edições"
   },
   "hotkeys": {
     "title": "Atalhos de teclado",
@@ -431,6 +436,12 @@
       "sourceSize": "Tamanho do código-fonte",
       "reclaimable": "Recuperável"
     },
+    "capture": {
+      "paused": "Os pontos de verificação estão pausados porque esta pasta é grande demais. Um ponto de verificação pode guardar no máximo {{files}} arquivos ou {{size}}.",
+      "skipped_one": "{{formattedCount}} arquivo desta pasta não está nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas.",
+      "skipped_many": "{{formattedCount}} arquivos desta pasta não estão nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas.",
+      "skipped_other": "{{formattedCount}} arquivos desta pasta não estão nos pontos de verificação. O Oleafly deixa de fora links, arquivos muito grandes, arquivos que estão só na nuvem e nomes que não funcionam em todos os sistemas."
+    },
     "catalog": {
       "formatVersion": "Versão do formato",
       "lineage": "Linhagem",
@@ -463,7 +474,8 @@
       "showFor": "Mostrar os arquivos de {{version}}",
       "hideFor": "Ocultar os arquivos de {{version}}",
       "show": "Mostrar arquivos",
-      "hide": "Ocultar arquivos"
+      "hide": "Ocultar arquivos",
+      "folderSettings": "Configurações do Oleafly para esta pasta"
     },
     "entry": {
       "labelInput": "Rótulo do ponto de verificação",
@@ -1031,5 +1043,13 @@
     "label": "Local no documento",
     "goTo": "Ir para {{title}}",
     "untitled": "Sem título"
+  },
+  "changedOnDisk": {
+    "message": "{{file}} mudou no disco enquanto você tinha edições não salvas.",
+    "compare": "Comparar",
+    "keepMine": "Manter minha versão",
+    "reload": "Recarregar",
+    "failed": "O Oleafly não conseguiu atualizar {{file}}. Tente de novo.",
+    "tabMark": "Mudou no disco. Abra esta aba para escolher qual versão manter."
   }
 }

@@ -46,7 +46,8 @@
     "projectChangedRetry": "O projeto mudou durante a importação da citação. Tente de novo no projeto original.",
     "readFailed": "Não foi possível ler {{path}}: {{detail}}",
     "unrecognizedFile": "Tipo de arquivo não reconhecido: {{name}}",
-    "writeFailed": "Não foi possível gravar {{path}}: {{detail}}"
+    "writeFailed": "Não foi possível gravar {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} aponta para um arquivo fora desta pasta, então o Oleafly não pode adicionar nada a ele. Adicione a referência no Zotero ou onde esse arquivo é mantido."
   },
   "citeOleafly": {
     "added": "Entrada do Oleafly adicionada a {{path}}. Cite com {{markup}}.",
@@ -383,7 +384,8 @@
     "changedOnDisk": "\"{{path}}\" foi alterado fora do Oleafly. Recarregue o arquivo ou salve de novo para manter a sua versão.",
     "openFileEncoding": "Não foi possível abrir \"{{path}}\" porque ele não é um arquivo de texto UTF-8. Se for texto, salve-o em UTF-8 e abra de novo.",
     "openFileFailed": "Não foi possível abrir \"{{path}}\". Veja o log do app para mais detalhes.",
-    "reloadFromDisk": "Recarregar"
+    "reloadFromDisk": "Recarregar",
+    "changedOnDiskElsewhere": "{{path}} mudou no disco, então o Oleafly não o salvou. Abra-o para escolher qual versão manter."
   },
   "projectDiagnostics": {
     "analysisFailed": "A análise falhou: {{message}}",
@@ -591,5 +593,9 @@
   "checkpoint": {
     "storageUnavailable": "Não foi possível salvar um ponto de verificação. O disco está cheio ou não é possível gravar na pasta de pontos de verificação. Libere espaço ou confira as permissões da pasta e compile de novo.",
     "incompleteCapture": "Não foi possível salvar os últimos pontos de verificação porque alguns arquivos do projeto não puderam ser lidos. Confira as permissões deles e compile de novo."
+  },
+  "folderUnavailable": {
+    "compile": "A compilação está pausada até a pasta do projeto voltar.",
+    "saveReason": "a pasta do projeto não está disponível"
   }
 }

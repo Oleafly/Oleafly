@@ -17,6 +17,10 @@ vi.mock("@/lib/tauri", () => ({
   writeFileContent: mocks.write,
   projectMutationGeneration: mocks.generation,
   listFiles: mocks.list,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.list(projectId),
+    truncated: false,
+  }),
   gitShow: vi.fn(async () => "Before"),
   mcpSetActiveProject: vi.fn(async () => {}),
 }));

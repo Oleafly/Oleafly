@@ -196,6 +196,18 @@ function applyOversizedFiles(
   }
 }
 
+function skipPlaceholderFiles(
+  paths: readonly string[],
+  requested: ReadonlySet<string>,
+  seen: Set<string>,
+): void {
+  for (const path of paths) {
+    if (!requested.has(path) || seen.has(path)) continue;
+    forget(path);
+    seen.add(path);
+  }
+}
+
 async function readThroughBatch(
   binding: BatchBinding,
   projectId: string,
@@ -218,6 +230,7 @@ async function readThroughBatch(
   applyUnchangedFiles(result.unchanged, requested, seen, into, missing);
   applyUnreadableFiles(result.unreadable, requested, seen, into);
   applyOversizedFiles(result.oversized ?? [], requested, seen, missing);
+  skipPlaceholderFiles(result.placeholders ?? [], requested, seen);
   for (const path of paths) {
     if (!seen.has(path) && !into.unreadable.has(path)) missing.push(path);
   }

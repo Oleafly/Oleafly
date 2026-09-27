@@ -15,7 +15,11 @@
     "selectAll": "Vybrat vše",
     "view": "Zobrazit",
     "toggleTerminal": "Přepnout terminál",
-    "toggleBrowser": "Přepnout prohlížeč"
+    "toggleBrowser": "Přepnout prohlížeč",
+    "file": "Soubor",
+    "openFolder": "Otevřít složku…",
+    "openRecent": "Otevřít nedávné",
+    "noRecent": "Žádné nedávné projekty"
   },
   "window": {
     "browser": "Prohlížeč Oleafly",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Vyberte tabulku k importu",
       "filter": "Tabulkové soubory"
+    },
+    "trustFolder": {
+      "title": "Důvěřovat této složce?",
+      "message": "Oleafly pro {{name}} zapne Git, terminál, agenty a nástroje LaTeXu. Důvěřujte jen složkám, jejichž obsah znáte.",
+      "messageParent": "Oleafly bude důvěřovat složce {{name}} a všem složkám v ní, včetně těch, které otevřete později.",
+      "messageRepository": "Oleafly bude v {{name}} spouštět Git s vlastním nastavením a hooky repozitáře.",
+      "confirm": "Důvěřovat"
+    },
+    "restrictedWrite": {
+      "title": "Povolit tuto změnu?",
+      "message": "Asistent chce změnit {{path}}. Soubory tohoto typu mohou spouštět programy a této složce zatím nedůvěřujete.",
+      "confirm": "Povolit"
+    },
+    "restrictedNetwork": {
+      "title": "Povolit tento požadavek?",
+      "message": "Asistent chce použít {{tool}}, který odesílá text online službě. Této složce zatím nedůvěřujete.",
+      "confirm": "Povolit"
+    },
+    "locateFolder": {
+      "title": "Najít složku projektu"
+    },
+    "rebindFolder": {
+      "title": "Použít jinou složku?",
+      "message": "{{name}} není složka, kterou Oleafly pro tento projekt měl. Pokud ji použijete, Oleafly do ní uloží vaše neuložené změny a zavře terminály a relace agentů tohoto projektu. Vše, co v nich běží, se ukončí. Oleafly také přestane složce důvěřovat, vypne úplný přístup, obnoví schválení asistenta a odpojí výzkumné složky. Chaty a historie zůstanou zachovány.",
+      "confirm": "Použít tuto složku"
+    },
+    "saveCopy": {
+      "title": "Vyberte, kam uložit kopii",
+      "folderSuffix": "kopie"
+    },
+    "openFolder": {
+      "title": "Otevřít složku",
+      "inside": "Vyberte složku v {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "Potvrzení úplného přístupu bylo zavřeno.",
     "fullAccessDeclined": "Úplný přístup nebyl povolen.",
     "approvalDialogClosed": "Nativní dialog schválení se neočekávaně zavřel."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Otevřít v Oleafly",
+    "openWithOleafly": "Otevřít v aplikaci Oleafly"
   }
 }

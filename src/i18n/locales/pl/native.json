@@ -15,7 +15,11 @@
     "selectAll": "Zaznacz wszystko",
     "view": "Widok",
     "toggleTerminal": "Przełącz terminal",
-    "toggleBrowser": "Przełącz przeglądarkę"
+    "toggleBrowser": "Przełącz przeglądarkę",
+    "file": "Plik",
+    "openFolder": "Otwórz folder…",
+    "openRecent": "Otwórz ostatnie",
+    "noRecent": "Brak ostatnich projektów"
   },
   "window": {
     "browser": "Przeglądarka Oleafly",
@@ -41,6 +45,39 @@
     "tableImport": {
       "title": "Wybierz arkusz kalkulacyjny do zaimportowania",
       "filter": "Arkusze kalkulacyjne"
+    },
+    "trustFolder": {
+      "title": "Zaufać temu folderowi?",
+      "message": "Oleafly włączy Git, terminal, agentów i narzędzia LaTeX dla {{name}}. Ufaj tylko folderom, których zawartość znasz.",
+      "messageParent": "Oleafly zaufa folderowi {{name}} i każdemu folderowi w nim, także tym, które otworzysz później.",
+      "messageRepository": "Oleafly będzie uruchamiać Git w {{name}} z własnymi ustawieniami i hookami repozytorium.",
+      "confirm": "Zaufaj"
+    },
+    "restrictedWrite": {
+      "title": "Zezwolić na tę zmianę?",
+      "message": "Asystent chce zmienić {{path}}. Pliki tego typu mogą uruchamiać programy, a ten folder nie jest jeszcze zaufany.",
+      "confirm": "Zezwól"
+    },
+    "restrictedNetwork": {
+      "title": "Zezwolić na to żądanie?",
+      "message": "Asystent chce użyć narzędzia {{tool}}, które wysyła tekst do usługi online. Ten folder nie jest jeszcze zaufany.",
+      "confirm": "Zezwól"
+    },
+    "locateFolder": {
+      "title": "Znajdź folder projektu"
+    },
+    "rebindFolder": {
+      "title": "Użyć innego folderu?",
+      "message": "{{name}} to nie jest folder, który Oleafly miał dla tego projektu. Jeśli go użyjesz, Oleafly zapisze w nim niezapisane zmiany i zamknie terminale oraz sesje agentów tego projektu. Wszystko, co w nich działa, zostanie zatrzymane. Oleafly przestanie też ufać folderowi, wyłączy pełny dostęp, zresetuje zgody asystenta i odłączy foldery badawcze. Czaty i historia zostaną zachowane.",
+      "confirm": "Użyj tego folderu"
+    },
+    "saveCopy": {
+      "title": "Wybierz, gdzie zapisać kopię",
+      "folderSuffix": "kopia"
+    },
+    "openFolder": {
+      "title": "Otwórz folder",
+      "inside": "Wybierz folder w {{name}}"
     }
   },
   "errors": {
@@ -50,5 +87,9 @@
     "fullAccessDismissed": "Potwierdzenie pełnego dostępu zostało zamknięte.",
     "fullAccessDeclined": "Pełny dostęp nie został włączony.",
     "approvalDialogClosed": "Natywne okno zatwierdzania zostało nieoczekiwanie zamknięte."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Otwórz w Oleafly",
+    "openWithOleafly": "Otwórz w programie Oleafly"
   }
 }

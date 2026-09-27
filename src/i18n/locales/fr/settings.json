@@ -1383,6 +1383,35 @@
     "description": "Rétablir les préférences {{sectionName}} à leurs valeurs par défaut.",
     "label": "Réinitialiser les paramètres"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} sera dans votre PATH après une déconnexion puis une reconnexion. Ouvrez ensuite un nouveau terminal.",
+    "checking": "Vérification…",
+    "description": "Tapez <code>oleafly .</code> dans un terminal pour ouvrir ce dossier dans Oleafly.",
+    "install": "Installer",
+    "installing": "Installation…",
+    "loadFailed": "Impossible de vérifier la commande de terminal.",
+    "notOnPath": {
+      "file": "{{directory}} n'est pas encore dans votre PATH. Ajoutez cette ligne à {{file}}, puis ouvrez un nouveau terminal :",
+      "run": "{{directory}} n'est pas encore dans votre PATH. Exécutez ceci une fois, puis ouvrez un nouveau terminal :"
+    },
+    "removing": "Suppression…",
+    "result": {
+      "copied": "Commande copiée dans {{path}}.",
+      "linked": "{{path}} pointe maintenant vers cette copie d'Oleafly.",
+      "removed": "{{path}} a été supprimé."
+    },
+    "state": {
+      "installed": "Installée dans {{path}}.",
+      "moveApp": "Déplacez d'abord Oleafly dans le dossier Applications, puis installez la commande ici.",
+      "notInstalled": "Ajoute oleafly à {{directory}}.",
+      "occupied": "{{path}} existe déjà et n'a pas été créé par Oleafly, il reste donc tel quel.",
+      "outdated": "{{path}} pointe encore vers une ancienne copie d'Oleafly. Mettez-la à jour pour utiliser cette copie.",
+      "packaged": "Installée dans {{path}} par votre paquet Oleafly.",
+      "unavailable": "Cette copie d'Oleafly n'inclut pas la commande."
+    },
+    "title": "Commande de terminal",
+    "update": "Mettre à jour"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1416,6 +1445,10 @@
       "toggleTerminal": {
         "description": "Afficher ou masquer le terminal du projet.",
         "label": "Afficher ou masquer le terminal"
+      },
+      "openFolder": {
+        "label": "Ouvrir un dossier",
+        "description": "Ouvrir un dossier de votre ordinateur comme projet."
       }
     },
     "application": {
@@ -1491,6 +1524,58 @@
         "uppercase": "Majuscules"
       },
       "unbound": "Non défini"
+    }
+  },
+  "systemIntegration": {
+    "title": "Intégration au système",
+    "description": "Ouvrez des dossiers dans Oleafly depuis votre gestionnaire de fichiers.",
+    "checking": "Vérification…",
+    "loadFailed": "Impossible de vérifier la configuration du gestionnaire de fichiers.",
+    "state": {
+      "installed": "Installé",
+      "notInstalled": "Non installé",
+      "needsAttention": "À vérifier"
+    },
+    "actions": {
+      "install": "Installer",
+      "repair": "Réparer"
+    },
+    "failed": {
+      "install": "Impossible de l'installer. Réessayez.",
+      "remove": "Impossible de le supprimer. Réessayez."
+    },
+    "packaged": "Installé avec le paquet Oleafly.",
+    "quickAction": {
+      "label": "Actions rapides du Finder",
+      "description": "Ajoute Ouvrir dans Oleafly au menu Services quand vous faites un clic droit sur un dossier dans le Finder.",
+      "menuHint": "Pas encore dans Actions rapides. Faites un clic droit sur un dossier, choisissez Actions rapides › Personnaliser et activez {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Menu contextuel de l'Explorateur de fichiers",
+      "description": "Faites un clic droit sur un dossier, ou sur un espace vide à l'intérieur, et choisissez Ouvrir avec Oleafly. Sous Windows 11, l'option se trouve dans Afficher d'autres options.",
+      "toggle": "Afficher Ouvrir avec Oleafly dans l'Explorateur de fichiers"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Ajoute Ouvrir avec Oleafly quand vous faites un clic droit sur un dossier dans Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Ajoute Ouvrir avec Oleafly quand vous faites un clic droit sur un dossier dans Nemo."
+    },
+    "nautilus": {
+      "label": "Fichiers",
+      "description": "Ajoute Ouvrir avec Oleafly au menu Scripts quand vous faites un clic droit sur un dossier dans Fichiers de GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Ouvrir avec pour les dossiers",
+      "description": "Affiche Oleafly dans Ouvrir avec pour les dossiers. Votre gestionnaire de fichiers par défaut ne change pas."
+    },
+    "attention": {
+      "outdated": "Cette entrée est obsolète ou macOS l'a bloquée. Réparez-la pour la rétablir.",
+      "elsewhere": "Le menu ouvre une autre copie d'Oleafly. Réparez-le pour utiliser celle-ci.",
+      "moved": "Cette entrée pointe vers une copie d'Oleafly qui a été déplacée. Réparez-la pour utiliser celle-ci.",
+      "noDefaultFileManager": "Votre système n'a pas de gestionnaire de fichiers par défaut pour les dossiers, cette entrée pourrait donc ouvrir tous les dossiers dans Oleafly. Supprimez-la."
     }
   }
 }

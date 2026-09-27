@@ -35,7 +35,6 @@
     "appIconAlt": "Oleafly-appikon",
     "welcomeTitle": "Velkommen til Oleafly",
     "welcomeDescription": "Skriv, kompiler og korrekturlæs LaTeX, Typst og Markdown. Hold styr på citationer, gennemgå PDF-filer, følg ændringer i Git, og arbejd med de AI-modeller, du selv vælger.",
-    "createFirstProject": "Opret nyt projekt",
     "loading": "Læser dit bibliotek…",
     "noBookmarksTitle": "Ingen bogmærker endnu",
     "noBookmarksDescription": "Hold musen over en bog, og klik på dens bogmærke for at tilføje et.",
@@ -68,8 +67,15 @@
       "anyTime": "Når som helst",
       "last7Days": "Sidste 7 dage",
       "last30Days": "Sidste 30 dage",
-      "lastYear": "Sidste år"
-    }
+      "lastYear": "Sidste år",
+      "location": "Placering",
+      "locationAll": "Alle projekter",
+      "locationLibrary": "I Oleafly",
+      "locationExternal": "Eksterne projekter"
+    },
+    "openFolder": "Åbn mappe",
+    "openFolderShortcut": "Åbn mappe ({{shortcut}})",
+    "createFirstProject": "Opret nyt projekt"
   },
   "projects": {
     "open": "Åbn {{name}}",
@@ -83,7 +89,7 @@
     "actions": "Handlinger for {{name}}",
     "details": "Projektoplysninger",
     "exportHistory": "Eksporthistorik",
-    "changeColor": "Skift projektfarve",
+    "changeColor": "Projektfarve",
     "fork": "Forgren projektet",
     "delete": "Slet projektet",
     "favoriteAdd": "Føj til favoritter",
@@ -95,7 +101,8 @@
     "kind": {
       "document": "dokument",
       "image": "billede",
-      "diagram": "diagram"
+      "diagram": "diagram",
+      "external": "ekstern"
     },
     "preview": {
       "title": "PDF-forhåndsvisning: {{name}}",
@@ -371,7 +378,9 @@
     "nameRequired": "Skriv et navn til repositoryet.",
     "published": "Udgivet på {{repository}}.",
     "linked": "Tilknyttet og pushet til {{remote}}.",
-    "pushNeedsPull": "Tilknyttet {{remote}}, men der skal pulles, før der kan pushes: {{detail}}"
+    "pushNeedsPull": "Tilknyttet {{remote}}, men der skal pulles, før der kan pushes: {{detail}}",
+    "replaceRemotePrompt": "Projektet er tilknyttet {{remote}}. Vil du erstatte tilknytningen?",
+    "replaceRemote": "Erstat tilknytning"
   },
   "deadlines": {
     "title": "Konferencefrister",
@@ -458,6 +467,75 @@
       "sourcesTitle": "Kilder",
       "sourcesBody": "Oplysningerne kombinerer det åbne datasæt ccf-deadlines med officielle konferencehjemmesider, som Oleafly følger.",
       "confirm": "Bekræft hver enkelt dato på konferencens officielle hjemmeside, før du indsender."
+    }
+  },
+  "start": {
+    "newProjectTitle": "Nyt projekt",
+    "newProjectDescription": "Start med en skabelon eller en tom side.",
+    "openFolderTitle": "Åbn en mappe",
+    "openFolderDescription": "Arbejd med filer, der allerede ligger på din computer. De bliver, hvor de er."
+  },
+  "openFolder": {
+    "dismiss": "Luk"
+  },
+  "folder": {
+    "state": {
+      "missing": "Mappen mangler",
+      "offline": "Drevet er ikke tilsluttet",
+      "replaced": "Mappen er erstattet",
+      "permissionDenied": "Ingen tilladelse"
+    },
+    "menu": {
+      "showInFinder": "Vis i Finder",
+      "showInExplorer": "Vis i Stifinder",
+      "showInFileManager": "Vis i filhåndteringen",
+      "copyToLibrary": "Kopiér til biblioteket",
+      "remove": "Fjern fra Oleafly"
+    },
+    "remove": {
+      "title": "Vil du fjerne »{{name}}« fra Oleafly?",
+      "description": "Dine filer bliver, hvor de er. Oleafly sletter sine byggefiler for mappen og nulstiller dens tillid, godkendelser og tilknyttede mapper. Åbn mappen igen inden for 30 dage for at få dens chats og historik tilbage. Resten skal du sætte op igen.",
+      "confirm": "Fjern fra Oleafly",
+      "done": "»{{name}}« er fjernet fra Oleafly. Filerne ligger stadig i mappen.",
+      "failed": "»{{name}}« kunne ikke fjernes fra Oleafly."
+    },
+    "unavailable": {
+      "missing": {
+        "title": "»{{name}}« kan ikke findes",
+        "body": "Mappen lå i <path>{{path}}</path> og er måske blevet flyttet eller slettet. Find den for at beholde dens chats og historik."
+      },
+      "offline": {
+        "title": "»{{name}}« ligger på et drev, der ikke er tilsluttet",
+        "body": "Tilslut drevet eller netværksdrevet, hvor <path>{{path}}</path> ligger, og prøv igen."
+      },
+      "replaced": {
+        "title": "»{{name}}« er blevet erstattet",
+        "body": "Mappen i <path>{{path}}</path> er ikke den, du åbnede før. Brug den kun, hvis du stoler på den. Oleafly slår tillid og godkendelser fra, når du skifter."
+      },
+      "permissionDenied": {
+        "title": "Oleafly kan ikke åbne »{{name}}«",
+        "bodyMac": "Giv Oleafly adgang til mappen under Systemindstillinger › Anonymitet og sikkerhed › Filer og mapper, og prøv igen.",
+        "bodyOther": "Din konto kan ikke læse <path>{{path}}</path>. Tjek mappens tilladelser, og prøv igen."
+      },
+      "back": {
+        "title": "»{{name}}« er tilbage",
+        "body": "Oleafly kan nå <path>{{path}}</path> igen."
+      },
+      "locate": "Find",
+      "tryAgain": "Prøv igen",
+      "useThisFolder": "Brug denne mappe",
+      "checking": "Tjekker",
+      "still": "Oleafly kan stadig ikke nå mappen."
+    },
+    "copy": {
+      "title": "Kopiér »{{name}}« til dit bibliotek",
+      "description": "Oleafly kopierer filerne til et nyt biblioteksprojekt og lader mappen blive, hvor den er. Git-historikken kommer med, men Git-hooks og byggefiler kommer ikke med.",
+      "counting": "Tæller filer…",
+      "copying": "Kopierer filer…",
+      "count": "{{done}} af {{total}}",
+      "done": "»{{name}}« er nu i dit bibliotek.",
+      "doneLeftOut": "»{{name}}« er nu i dit bibliotek. Links til filer andre steder og mapper, der ligger for dybt, blev ikke kopieret.",
+      "failed": "»{{name}}« kunne ikke kopieres til dit bibliotek."
     }
   }
 }

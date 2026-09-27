@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { applyLocale } from "@/i18n";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { ProjectIndex } from "@/lib/index/types";
 
 // Mock the Tauri command layer and the stores the tools reach into.
@@ -20,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   },
   filesState: {
     projectId: "proj" as string | null,
+    mainDecision: "auto" as "auto" | "ask" | "no_main",
     files: {} as Record<string, { content: string; dirty: boolean }>,
     applyExternalWrite: vi.fn(() => true),
     applyExternalDelete: vi.fn(() => true),
@@ -27,6 +30,8 @@ const mocks = vi.hoisted(() => ({
     prepareExternalMutation: vi.fn(async () => 0),
     recordMutationGeneration: vi.fn(),
     refreshTree: vi.fn(),
+    setMainDoc: vi.fn(async (_path: string) => {}),
+    mainDoc: "main.tex",
   },
   compileState: { recompile: vi.fn(), log: "", pdfBytes: null as Uint8Array | null },
   indexState: { index: null as ProjectIndex | null, rebuildFromDisk: vi.fn() },
@@ -43,6 +48,7 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
 import { createOleaflyTools } from "./ai-tools";
+import { useFolderAccessStore } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 
 beforeEach(() => {
@@ -67,7 +73,9 @@ beforeEach(() => {
     timed_out: false,
   });
   mocks.filesState.projectId = "proj";
+  mocks.filesState.mainDecision = "auto";
   mocks.filesState.files = {};
+  mocks.compileState.recompile.mockReset();
 });
 
 describe("ai-tools: destructive edits require approval (U1)", () => {
@@ -335,6 +343,21 @@ describe("ai-tools: command approval", () => {
     ).not.toMatch(/confirmed with the user|requires user approval/i);
   });
 
+  it("hands a read-only folder refusal from set_main_doc to the backend as the exact coded error", async () => {
+    const refused = `@oleafly/error:${JSON.stringify({
+      code: "project.folder_read_only",
+      params: { name: "project.json" },
+      detail: null,
+    })}`;
+    mocks.filesState.setMainDoc.mockRejectedValueOnce(refused);
+    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
+
+    const result = await tools.set_main_doc.execute({ path: "thesis.tex" });
+
+    expect(mocks.filesState.setMainDoc).toHaveBeenCalledWith("thesis.tex");
+    expect(result).toEqual({ error: refused });
+  });
+
   it("omits computer_use entirely when the web browser is disabled", () => {
     useSettingsStore.getState().setWebBrowser(false);
     const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
@@ -485,5 +508,51 @@ describe("ai-tools: Typst project map", () => {
       inputGraph: [{ from: "main.typ", to: "chapter.typ" }],
       ambiguousTypstAtUses: ["main", "source"],
     });
+  });
+});
+
+describe("ai-tools: compile and main document detection", () => {
+  it.each(["auto", "ask"] as const)(
+    "runs the agent's compile while detection says %s",
+    async (decision) => {
+      mocks.filesState.mainDecision = decision;
+      mocks.compileState.recompile.mockResolvedValue({
+        ok: true,
+        errors: [],
+        has_pdf: true,
+        log: "Output written on main.pdf.",
+      });
+      const tools = createOleaflyTools({ confirm: async () => true });
+      const res = await tools.compile.execute({});
+      expect(mocks.compileState.recompile).toHaveBeenCalledWith({ origin: "agent" });
+      expect(res).toMatchObject({ success: true, has_pdf: true });
+    },
+  );
+
+  it("tells the agent why it cannot compile a folder with no main document", async () => {
+    mocks.filesState.mainDecision = "no_main";
+    const tools = createOleaflyTools({ confirm: async () => true });
+    const res = await tools.compile.execute({});
+    expect(mocks.compileState.recompile).not.toHaveBeenCalled();
+    expect(res).toEqual({ error: expect.stringContaining("no main document") });
+    expect(res).toEqual({ error: expect.stringContaining("Set as main") });
+  });
+});
+
+describe("ai-tools: read-only folders", () => {
+  const banner = enShell.openedFolder.readOnly.banner;
+
+  afterEach(async () => {
+    useFolderAccessStore.getState().reset(null);
+    await applyLocale("en");
+  });
+
+  it("tells the model in English, before touching disk, that a read-only folder refuses writes", async () => {
+    await applyLocale("de");
+    useFolderAccessStore.setState({ projectId: "proj", status: { read_only: true, synced_with: null } });
+    const tools = createOleaflyTools({ confirm: vi.fn().mockResolvedValue(true) });
+    const res = await tools.create_file.execute({ path: "notes.tex" });
+    expect(mocks.api.createFile).not.toHaveBeenCalled();
+    expect(res).toEqual({ error: `Error: ${banner}` });
   });
 });

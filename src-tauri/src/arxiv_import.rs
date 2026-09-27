@@ -463,7 +463,15 @@ pub async fn extract_arxiv_source(
             .map_err(|error| format!("Could not prepare the source preview: {error}"))?;
         unpack_source_archive(&bytes, directory.path(), MAX_AD_HOC_SOURCE_BYTES)?;
         let source_files = collect_source_files(directory.path())?;
-        let main_index = main_source_index(&source_files)
+        let detection = oleafly_core::detect_main_document(
+            directory.path(),
+            &oleafly_core::DetectOptions::default(),
+        )
+        .map_err(|error| format!("Could not inspect the source archive: {error}"))?;
+        let main_index = detection
+            .best_of(oleafly_core::SourceFamily::Latex)
+            .and_then(|main| source_files.iter().position(|file| file.path == main))
+            .or_else(|| main_source_index(&source_files))
             .ok_or_else(|| "The source archive does not contain a .tex document.".to_string())?;
         let main_file = source_files[main_index].path.clone();
         let main_source = String::from_utf8_lossy(&source_files[main_index].bytes).into_owned();
@@ -500,48 +508,54 @@ pub async fn import_arxiv_eprint(name: Option<String>, arxiv_id: String) -> Resu
         .filter(|candidate| !candidate.trim().is_empty())
         .unwrap_or(fallback_name);
     let bytes = download_eprint(&id).await?;
-    let unpack = move || -> Result<String, String> {
-        if bytes.starts_with(b"%PDF") {
-            return Err(format!(
-                "arXiv only publishes a PDF for {id}, so there is no LaTeX source to import."
-            ));
-        }
-        if !bytes.starts_with(&[0x1f, 0x8b]) {
-            return Err("the e-print is not a gzip archive, so it cannot be unpacked.".into());
-        }
-        let root = crate::paths::projects_root()?;
-        let staging =
-            crate::project::create_unique_temporary_directory(&root, ".oleafly-arxiv-import")?;
-        let result = (|| -> Result<usize, String> {
-            match extract_tar_gz(&bytes, &staging) {
-                Ok(count) => Ok(count),
-                Err(TarExtractionError::NotTar(_)) => {
-                    // Fall back only when the decompressed stream is not a
-                    // tarball at all. A damaged tar must not be imported as
-                    // text after leaving a partially extracted tree behind.
-                    write_gzipped_source_limited(
-                        &bytes,
-                        &staging.join("main.tex"),
-                        MAX_EPRINT_TOTAL_BYTES,
-                    )?;
-                    Ok(1)
-                }
-                Err(error) => Err(error.message()),
-            }
-        })();
-        if let Err(error) = result {
-            let _ = std::fs::remove_dir_all(&staging);
-            return Err(error);
-        }
-        let staging_str = staging.to_string_lossy().into_owned();
-        let imported =
-            crate::project::import_project_directory_blocking(Some(project_name), &staging_str);
-        let _ = std::fs::remove_dir_all(&staging);
-        imported
-    };
-    tauri::async_runtime::spawn_blocking(unpack)
+    tauri::async_runtime::spawn_blocking(move || import_eprint_bytes(project_name, &id, &bytes))
         .await
         .map_err(|e| e.to_string())?
+}
+
+fn import_eprint_bytes(project_name: String, id: &str, bytes: &[u8]) -> Result<String, String> {
+    if bytes.starts_with(b"%PDF") {
+        return Err(format!(
+            "arXiv only publishes a PDF for {id}, so there is no LaTeX source to import."
+        ));
+    }
+    if !bytes.starts_with(&[0x1f, 0x8b]) {
+        return Err("the e-print is not a gzip archive, so it cannot be unpacked.".into());
+    }
+    let root = crate::paths::projects_root()?;
+    let staging =
+        crate::project::create_unique_temporary_directory(&root, ".oleafly-arxiv-import")?;
+    let result = (|| -> Result<usize, String> {
+        match extract_tar_gz(bytes, &staging) {
+            Ok(count) => Ok(count),
+            Err(TarExtractionError::NotTar(_)) => {
+                write_gzipped_source_limited(
+                    bytes,
+                    &staging.join("main.tex"),
+                    MAX_EPRINT_TOTAL_BYTES,
+                )?;
+                Ok(1)
+            }
+            Err(error) => Err(error.message()),
+        }
+    })();
+    if let Err(error) = result {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    let staging_str = staging.to_string_lossy().into_owned();
+    let imported = crate::project::import_project_directory_blocking(
+        Some(project_name),
+        &staging_str,
+        previewed_main_document,
+    );
+    let _ = std::fs::remove_dir_all(&staging);
+    imported
+}
+
+fn previewed_main_document(directory: &Path) -> Option<String> {
+    let files = collect_source_files(directory).ok()?;
+    main_source_index(&files).map(|index| files[index].path.clone())
 }
 
 #[cfg(test)]
@@ -715,6 +729,97 @@ mod tests {
         assert_eq!(
             STANDARD.decode(&result.files[0].data_base64).unwrap(),
             b"image"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_arxiv_readme_names_the_previewed_main_document() {
+        let archive = source_archive(&[
+            (
+                "ms.tex",
+                b"\\documentclass{article}\\begin{document}Paper\\end{document}",
+            ),
+            (
+                "response.tex",
+                b"\\documentclass{article}\\begin{document}Reply\\end{document}",
+            ),
+            (
+                "00README.json",
+                br#"{"sources":[{"filename":"ms.tex","usage":"toplevel"}]}"#,
+            ),
+        ]);
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(archive)),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "ms.tex");
+        assert!(result.main_source.contains("Paper"));
+    }
+
+    #[tokio::test]
+    async fn a_plain_tex_submission_is_still_previewed() {
+        let mut gzip = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gzip.write_all(b"\\input harvmac\n\\Title{Plain}\n\\bye\n")
+            .unwrap();
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(gzip.finish().unwrap())),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "main.tex");
+        assert!(result.main_source.contains("Plain"));
+    }
+
+    #[tokio::test]
+    async fn a_plain_tex_source_split_across_files_is_still_previewed() {
+        let archive = source_archive(&[
+            ("defs.tex", b"\\def\\version{2}\n"),
+            (
+                "paper.tex",
+                b"\\input harvmac\n\\input defs\n\\Title{Plain}\n\\bye\n",
+            ),
+        ]);
+        let result = extract_arxiv_source(ArxivSourceRequest {
+            arxiv_id: None,
+            data_base64: Some(STANDARD.encode(archive)),
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.main_file, "paper.tex");
+        assert!(result.main_source.contains("Plain"));
+    }
+
+    #[test]
+    fn a_plain_tex_eprint_imports_on_the_file_the_preview_shows() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let mut gzip = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gzip.write_all(b"\\input harvmac\n\\Title{Plain}\n\\bye\n")
+            .unwrap();
+        let single = import_eprint_bytes("Plain".into(), "hep-th/9901001", &gzip.finish().unwrap());
+        let split = import_eprint_bytes(
+            "Split".into(),
+            "hep-th/9901002",
+            &source_archive(&[
+                ("defs.tex", b"\\def\\version{2}\n"),
+                (
+                    "paper.tex",
+                    b"\\input harvmac\n\\input defs\n\\Title{Plain}\n\\bye\n",
+                ),
+            ]),
+        );
+        let mains = [single, split].map(|imported| {
+            imported
+                .and_then(|project| crate::project::read_meta(&project).map(|meta| meta.main_doc))
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        assert_eq!(
+            mains,
+            [Ok("main.tex".to_string()), Ok("paper.tex".to_string())]
         );
     }
 

@@ -7,6 +7,7 @@ import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { decodeAppError } from "@/lib/app-error";
 import { usePdfPosition } from "@/lib/use-pdf-position";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
@@ -420,7 +421,11 @@ export function PreviewWindow({
       setSaveOpen(false);
       toast.success(t(($) => $.preview.save.pdfSaved));
     } catch (error) {
-      notifyError("save to project", error, t(($) => $.preview.save.failed));
+      notifyError(
+        "save to project",
+        error,
+        decodeAppError(error) ? undefined : t(($) => $.preview.save.failed),
+      );
     } finally {
       setSaving(false);
     }
@@ -1304,6 +1309,9 @@ export function PreviewWindow({
           setCheckSyntaxBeforeCompile={(value) => { void command({ action: "syntax-check", value }); }}
           stopOnFirstError={workspace?.stopOnFirstError ?? false}
           setStopOnFirstError={(value) => { void command({ action: "stop-on-error", value }); }}
+          blockedReason={workspace?.noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
+          systemTexLocked={workspace?.systemTexLocked ?? false}
+          onTrustForSystemTex={() => { void command({ action: "trust-folder" }); }}
         />
         <Button size="sm" variant="ghost" className="ml-auto" data-testid="preview-reattach"
           onClick={() => void getCurrentWindow().close()}>{t(($) => $.ai.shell.dockBack)}</Button>

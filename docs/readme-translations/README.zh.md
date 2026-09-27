@@ -586,10 +586,10 @@ Oleafly 由 [Prajwal Murthy](https://github.com/prajwal-svm) 和贡献者共同�
 
 ```bibtex
 @software{oleafly,
-  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first desktop workspace for research writing},
   year    = {2026},
-  version = {0.4.2},
+  version = {0.4.3},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

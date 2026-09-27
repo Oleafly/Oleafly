@@ -46,7 +46,8 @@
     "projectChangedRetry": "引用匯入期間專案有變動。請在原專案中重試。",
     "readFailed": "無法讀取 {{path}}：{{detail}}",
     "unrecognizedFile": "無法辨識的檔案類型：{{name}}",
-    "writeFailed": "無法寫入 {{path}}：{{detail}}"
+    "writeFailed": "無法寫入 {{path}}：{{detail}}",
+    "linkedBibliography": "{{path}} 連結到此資料夾以外的檔案，因此 Oleafly 無法在其中新增內容。請在 Zotero 或管理該檔案的地方新增這筆文獻。"
   },
   "citeOleafly": {
     "added": "已將 Oleafly 條目新增至 {{path}}。請用 {{markup}} 引用。",
@@ -365,7 +366,8 @@
     "changedOnDisk": "「{{path}}」已在 Oleafly 以外被修改。請重新載入，或再次儲存以保留你的版本。",
     "openFileEncoding": "無法開啟「{{path}}」，因為它不是 UTF-8 文字檔。如果是文字檔，請以 UTF-8 儲存後再重新開啟。",
     "openFileFailed": "無法開啟「{{path}}」。詳情請查看應用程式記錄。",
-    "reloadFromDisk": "重新載入"
+    "reloadFromDisk": "重新載入",
+    "changedOnDiskElsewhere": "{{path}} 已在磁碟上變更，因此 Oleafly 沒有儲存它。請開啟該檔案，選擇要保留的版本。"
   },
   "projectDiagnostics": {
     "analysisFailed": "分析失敗：{{message}}",
@@ -559,5 +561,9 @@
   "checkpoint": {
     "storageUnavailable": "無法儲存檢查點。磁碟已滿，或檢查點資料夾無法寫入。請釋放一些空間或檢查資料夾權限，然後重新編譯。",
     "incompleteCapture": "由於部分專案檔案無法讀取，最近的幾個檢查點未能儲存。請檢查這些檔案的權限，然後重新編譯。"
+  },
+  "folderUnavailable": {
+    "compile": "編譯已暫停，直到專案資料夾恢復。",
+    "saveReason": "專案資料夾無法使用"
   }
 }

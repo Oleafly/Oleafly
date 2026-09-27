@@ -34,6 +34,56 @@ describe("app errors", () => {
     expect(decodeAppError(`${APP_ERROR_PREFIX}not json`)).toBeNull();
   });
 
+  it("names the capability a restricted folder is missing, in every locale", async () => {
+    const codes = [
+      "trust.git",
+      "trust.repository",
+      "trust.terminal",
+      "trust.agents",
+      "trust.mcp",
+      "trust.research_tasks",
+      "trust.run_command",
+      "trust.full_access",
+      "trust.system_tex",
+      "trust.shell_escape",
+      "trust.broad_folder",
+      "trust.declined",
+      "trust.unavailable",
+    ];
+    const fallback = describeError(encoded({ code: "trust.nope", params: {}, detail: null }));
+    for (const locale of ["en", "zh-Hans", "de", "ja"] as const) {
+      await applyLocale(locale);
+      for (const code of codes) {
+        const message = describeError(encoded({ code, params: { name: "thesis" }, detail: null }));
+        expect(message, `${locale} ${code}`).not.toBe(fallback);
+        expect(message, `${locale} ${code}`).not.toMatch(/errors:|\{\{/);
+      }
+    }
+    await applyLocale("en");
+    expect(
+      describeError(encoded({ code: "trust.repository", params: { name: "papers" }, detail: null })),
+    ).toBe("Trust the papers repository to use Source Control here.");
+  });
+
+  it("names the file a read-only opened folder refused, without OS text", async () => {
+    const value = encoded({
+      code: "project.folder_read_only",
+      params: { name: "figures/plot.png" },
+      detail: null,
+    });
+    expect(describeError(value)).toBe(
+      "Oleafly can't make this change because figures/plot.png or its folder is read-only. Copy the folder you opened into your library and edit it there.",
+    );
+    await applyLocale("de");
+    expect(describeError(value)).toBe(
+      "Oleafly kann diese Änderung nicht vornehmen, weil figures/plot.png oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
+    );
+    await applyLocale("ja");
+    const japanese = describeError(value);
+    expect(japanese).toContain("figures/plot.png");
+    expect(japanese).not.toMatch(/errors:|\{\{|os error/);
+  });
+
   it("follows the active locale", async () => {
     await applyLocale("zh-Hans");
     const message = describeError(encoded({ code: "project.name_empty", params: {}, detail: null }));

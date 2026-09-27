@@ -42,9 +42,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
+  projectManifestHome: vi.fn(async () => "library"),
   getProjectEngine: mocks.getProjectEngine,
   projectMutationGeneration: mocks.projectMutationGeneration,
   listFiles: mocks.listFiles,
+  listFileTree: async (projectId: string) => ({
+    entries: await mocks.listFiles(projectId),
+    truncated: false,
+  }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   createFile: mocks.createFile,
@@ -102,7 +107,7 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 
 import { useFilesStore } from "@/store/files";
-import { addCitations } from "./citation";
+import { addCitation, addCitations } from "./citation";
 
 const MARKDOWN_ENGINE: DocumentEngineDescriptor = {
   ...LATEX_ENGINE,
@@ -281,5 +286,86 @@ describe("LaTeX bibliography targeting", () => {
     useLatexProject("\\documentclass{article}\n");
 
     expect((await addCitations([ENTRY])).bibPath).toBe("other.bib");
+  });
+});
+
+describe("a bibliography linked from outside the folder", () => {
+  const ZOTERO = "@article{kept2020,\n  title = {Kept},\n  doi = {10.1000/kept}\n}\n";
+  const LINKED_TREE = [
+    { path: "main.tex", is_dir: false },
+    { path: "refs.bib", is_dir: false, read_only: true },
+  ];
+
+  const useLinkedProject = (source: string, tree = LINKED_TREE) => {
+    mocks.listFiles.mockImplementation(async () => tree);
+    mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
+      path === "refs.bib" ? ZOTERO : "",
+    );
+    mocks.getEditorView.mockReturnValue({});
+    useFilesStore.setState({
+      manifestHome: "folder",
+      mainDoc: "main.tex",
+      activePath: "main.tex",
+      engine: LATEX_ENGINE,
+      tree,
+      files: {
+        "main.tex": { content: source, dirty: false },
+        "refs.bib": { content: ZOTERO, dirty: false },
+      },
+    });
+  };
+
+  it("imports nothing into it and says where the entries belong", async () => {
+    useLinkedProject("\\bibliography{refs}\n");
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result.imported).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain("refs.bib");
+    expect(result.errors[0]).toContain("Zotero");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["refs.bib"]?.content).toBe(ZOTERO);
+  });
+
+  it("does not cite a new entry it could not store", async () => {
+    useLinkedProject("\\bibliography{refs}\n");
+
+    const result = await addCitation(
+      "@article{fresh,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}",
+    );
+
+    expect(result).toEqual({ error: expect.stringContaining("refs.bib") });
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("still cites an entry the linked bibliography already holds", async () => {
+    useLinkedProject("\\bibliography{refs}\n");
+
+    const result = await addCitation("@article{fresh,\n  doi = {10.1000/kept}\n}");
+
+    expect(result).toEqual({ key: "kept2020" });
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("\\cite{kept2020}");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("writes into a bibliography of its own when the document declares that one", async () => {
+    const tree = [...LINKED_TREE, { path: "local.bib", is_dir: false }];
+    useLinkedProject("\\addbibresource{local.bib}\n\\addbibresource{refs.bib}\n", tree);
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result).toMatchObject({ imported: 1, errors: [], bibPath: "local.bib" });
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[1])).toEqual(["local.bib"]);
+  });
+
+  it("never falls back to creating a new bibliography next to the linked one", async () => {
+    useLinkedProject("\\documentclass{article}\n");
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result.errors[0]).toContain("refs.bib");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 });

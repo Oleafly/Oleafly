@@ -1383,6 +1383,35 @@
     "description": "Restaura as preferências de {{sectionName}} aos padrões.",
     "label": "Redefinir configurações"
   },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} estará no seu PATH depois que você sair e entrar de novo na sessão. Em seguida, abra um novo terminal.",
+    "checking": "Verificando…",
+    "description": "Digite <code>oleafly .</code> em um terminal para abrir essa pasta no Oleafly.",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "loadFailed": "Não foi possível verificar o comando de terminal.",
+    "notOnPath": {
+      "file": "{{directory}} ainda não está no seu PATH. Adicione esta linha a {{file}} e abra um novo terminal:",
+      "run": "{{directory}} ainda não está no seu PATH. Execute isto uma vez e abra um novo terminal:"
+    },
+    "removing": "Removendo…",
+    "result": {
+      "copied": "O comando foi copiado para {{path}}.",
+      "linked": "{{path}} agora aponta para esta cópia do Oleafly.",
+      "removed": "{{path}} foi removido."
+    },
+    "state": {
+      "installed": "Instalado em {{path}}.",
+      "moveApp": "Primeiro mova o Oleafly para a pasta Aplicativos e depois instale o comando aqui.",
+      "notInstalled": "Adiciona o oleafly a {{directory}}.",
+      "occupied": "{{path}} já existe e não foi criado pelo Oleafly, então fica como está.",
+      "outdated": "{{path}} ainda aponta para uma cópia mais antiga do Oleafly. Atualize para usar esta cópia.",
+      "packaged": "Instalado em {{path}} pelo seu pacote do Oleafly.",
+      "unavailable": "Esta cópia do Oleafly não inclui o comando."
+    },
+    "title": "Comando de terminal",
+    "update": "Atualizar"
+  },
   "shortcuts": {
     "actions": {
       "commandPalette": {
@@ -1416,6 +1445,10 @@
       "toggleTerminal": {
         "description": "Mostre ou oculte o terminal do projeto.",
         "label": "Alternar o terminal"
+      },
+      "openFolder": {
+        "label": "Abrir pasta",
+        "description": "Abra uma pasta do seu computador como projeto."
       }
     },
     "application": {
@@ -1491,6 +1524,58 @@
         "uppercase": "Maiúsculas"
       },
       "unbound": "Não definido"
+    }
+  },
+  "systemIntegration": {
+    "title": "Integração com o sistema",
+    "description": "Abra pastas no Oleafly a partir do seu gerenciador de arquivos.",
+    "checking": "Verificando…",
+    "loadFailed": "Não foi possível verificar a configuração do gerenciador de arquivos.",
+    "state": {
+      "installed": "Instalado",
+      "notInstalled": "Não instalado",
+      "needsAttention": "Precisa de atenção"
+    },
+    "actions": {
+      "install": "Instalar",
+      "repair": "Reparar"
+    },
+    "failed": {
+      "install": "Não foi possível instalar. Tente de novo.",
+      "remove": "Não foi possível remover. Tente de novo."
+    },
+    "packaged": "Instalado com o pacote do Oleafly.",
+    "quickAction": {
+      "label": "Ações Rápidas do Finder",
+      "description": "Adiciona Abrir no Oleafly ao menu Serviços quando você clica com o botão direito em uma pasta no Finder.",
+      "menuHint": "Ainda não está em Ações Rápidas. Clique com o botão direito em uma pasta, escolha Ações Rápidas › Personalizar e ative {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Menu de contexto do Explorador de Arquivos",
+      "description": "Clique com o botão direito em uma pasta, ou em um espaço vazio dentro dela, e escolha Abrir com o Oleafly. No Windows 11, fica em Mostrar mais opções.",
+      "toggle": "Mostrar Abrir com o Oleafly no Explorador de Arquivos"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Adiciona Abrir com o Oleafly quando você clica com o botão direito em uma pasta no Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Adiciona Abrir com o Oleafly quando você clica com o botão direito em uma pasta no Nemo."
+    },
+    "nautilus": {
+      "label": "Arquivos",
+      "description": "Adiciona Abrir com o Oleafly ao menu Scripts quando você clica com o botão direito em uma pasta no Arquivos do GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Abrir com para pastas",
+      "description": "Mostra o Oleafly em Abrir com para pastas. Seu gerenciador de arquivos padrão continua o mesmo."
+    },
+    "attention": {
+      "outdated": "Está desatualizada ou o macOS a bloqueou. Repare para restaurá-la.",
+      "elsewhere": "O menu abre outra cópia do Oleafly. Repare para usar esta.",
+      "moved": "Aponta para uma cópia do Oleafly que foi movida. Repare para usar esta.",
+      "noDefaultFileManager": "Seu sistema não tem um gerenciador de arquivos padrão para pastas, então esta entrada poderia abrir todas as pastas no Oleafly. Remova-a."
     }
   }
 }

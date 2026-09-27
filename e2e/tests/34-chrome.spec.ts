@@ -144,7 +144,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
           && fillerSize < 0.2
           && !!stack
           && !!structure
-          && Math.abs(stack.bottom - structure.bottom) < 1;
+          && Math.abs(stack.bottom - Number.parseFloat(getComputedStyle(document.querySelector('[data-testid="explorer-stack"]')).paddingBottom) - structure.bottom) < 1;
       })()`,
       5_000,
     );
@@ -196,14 +196,18 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     await waitForFillerReclaimed();
     const initialStructureGeometry = await tauriPage.evaluate<{
       bottomGap: number;
+      bottomPadding: number;
       height: number;
     }>(`(() => {
-      const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
+      const stackElement = document.querySelector('[data-testid="explorer-stack"]');
+      const stack = stackElement?.getBoundingClientRect();
       const structure = document.getElementById("project-structure-v")?.getBoundingClientRect();
-      if (!stack || !structure) throw new Error("Explorer structure geometry is missing");
-      return { bottomGap: Math.abs(stack.bottom - structure.bottom), height: structure.height };
+      if (!stackElement || !stack || !structure) throw new Error("Explorer structure geometry is missing");
+      const bottomPadding = Number.parseFloat(getComputedStyle(stackElement).paddingBottom) || 0;
+      return { bottomGap: stack.bottom - structure.bottom, bottomPadding, height: structure.height };
     })()`);
-    expect(initialStructureGeometry.bottomGap).toBeLessThan(1);
+    expect(initialStructureGeometry.bottomPadding).toBeGreaterThan(8);
+    expect(Math.abs(initialStructureGeometry.bottomGap - initialStructureGeometry.bottomPadding)).toBeLessThan(1);
     // WebView device-pixel rounding can report the 32px collapsed header just
     // below 31 CSS px; keep the guard focused on actual clipping.
     expect(initialStructureGeometry.height).toBeGreaterThanOrEqual(30.5);

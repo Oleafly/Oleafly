@@ -12,7 +12,10 @@ export type BootStage =
   | "projects-loaded";
 
 const PREFIX = "boot:";
+const SPLASH_HOLD_LIMIT_MS = 20_000;
 const reported = new Set<BootStage>();
+let splashHeld = false;
+let splashHoldTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Index into the splash narration list (index.html): real boot progress
 // advances the stage text immediately instead of waiting on the 1s fallback.
@@ -38,7 +41,7 @@ export function markBootStage(stage: BootStage): void {
     /* performance API unavailable: telemetry is best-effort */
   }
   const splashIndex = SPLASH_STAGE_INDEX[stage];
-  if (splashIndex !== undefined) {
+  if (splashIndex !== undefined && !splashHeld) {
     window.__oleaflySplashStage?.(splashIndex);
   }
   if (stage === "projects-loaded") {
@@ -102,4 +105,31 @@ export function dismissBootSplash(): void {
     window.__oleaflySplashTimer = undefined;
   }
   document.getElementById("oleafly-splash")?.remove();
+}
+
+export function holdBootSplash(message: string): void {
+  const splash = document.getElementById("oleafly-splash");
+  if (!splash) return;
+  if (window.__oleaflySplashTimer !== undefined) {
+    clearInterval(window.__oleaflySplashTimer);
+    window.__oleaflySplashTimer = undefined;
+  }
+  const stage = document.getElementById("oleafly-splash-stage");
+  if (stage) stage.textContent = message;
+  splash.setAttribute("aria-label", message);
+  splashHeld = true;
+  clearTimeout(splashHoldTimer);
+  splashHoldTimer = setTimeout(releaseBootSplash, SPLASH_HOLD_LIMIT_MS);
+}
+
+export function bootSplashHeld(): boolean {
+  return splashHeld;
+}
+
+export function releaseBootSplash(): void {
+  if (!splashHeld) return;
+  splashHeld = false;
+  clearTimeout(splashHoldTimer);
+  splashHoldTimer = undefined;
+  dismissBootSplash();
 }

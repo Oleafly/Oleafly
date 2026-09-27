@@ -168,6 +168,11 @@
     "recompile": {
       "label": "再コンパイル"
     },
+    "saveSettingsToFolder": {
+      "keywords": "プロジェクト 設定 保存 フォルダ project.json 共有 メイン文書",
+      "label": "プロジェクト設定をこのフォルダに保存",
+      "saved": "プロジェクト設定をこのフォルダの project.json に保存しました。"
+    },
     "section": {
       "label": "節"
     },
@@ -213,6 +218,10 @@
         "titleCase": "各単語の先頭を大文字 テキスト",
         "uppercase": "大文字 大文字小文字 テキスト"
       }
+    },
+    "openFolder": {
+      "label": "フォルダを開く…",
+      "keywords": "開く フォルダ ディレクトリ 既存 ローカル ファイル ディスク"
     }
   },
   "community": {
@@ -259,6 +268,7 @@
     "texRootBroken": "{{file}} の % !TEX root が存在しないファイル（{{target}}）を指しています",
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
+    "texRootNotTex": "{{file}} の % !TEX root が、LaTeX ファイルではない {{target}} を指しています",
     "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）"
   },
   "datePicker": {
@@ -359,6 +369,25 @@
     },
     "title": "問題が発生しました"
   },
+  "folderUnavailable": {
+    "missing": {
+      "title": "このフォルダは使用できません。",
+      "body": "ドライブを接続し直すか、フォルダを探してください。開いているファイルはここに残ります。フォルダが再び使えるようになるまで、Oleafly は保存もコンパイルも行いません。"
+    },
+    "replaced": {
+      "title": "このフォルダは置き換えられました。",
+      "body": "元の場所に別のフォルダがあります。そこにあるものを上書きしないよう、Oleafly は保存を停止しました。"
+    },
+    "permissionDenied": {
+      "title": "Oleafly はこのフォルダを開けません。",
+      "body": "フォルダのアクセス権を確認して、もう一度お試しください。開いているファイルはここに残ります。"
+    },
+    "locate": "場所を指定",
+    "useThisFolder": "このフォルダを使用",
+    "saveCopy": "コピーを保存",
+    "tryAgain": "再試行",
+    "savedCopy": "開いているファイルを {{folder}} に保存しました。"
+  },
   "githubMenu": {
     "accountAriaLabel": "GitHub: {{login}}",
     "actions": "GitHub の操作",
@@ -417,6 +446,68 @@
     },
     "tryCommand": "コマンドを試す",
     "unknownCommand": "不明なコマンドです。/ を入力すると使えるコマンドが表示されます。"
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly でどの文書をコンパイルしますか？",
+      "askDescription": "このフォルダには複数の文書があります。メインの文書を選んでください。あとで変更できます。",
+      "listLabel": "このフォルダ内の文書",
+      "open": "開く",
+      "browse": "ファイルを見るだけ",
+      "bestMatch": "最適な候補",
+      "empty": "Oleafly はここで文書を見つけられませんでした。ファイルツリーでファイルを右クリックし、「メイン文書に設定」を選んでください。",
+      "truncated": "このフォルダは大きいため、Oleafly は途中で検索を止めました。一覧に表示されない文書があるかもしれません。",
+      "openFailed": "{{path}} をメイン文書にできませんでした。"
+    },
+    "kind": {
+      "document": "文書",
+      "book": "書籍",
+      "presentation": "プレゼンテーション",
+      "poster": "ポスター",
+      "standalone": "単体の図",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "unknown": "その他"
+    },
+    "reason": {
+      "declared": "メインファイルとして指定",
+      "top_level": "最上位フォルダにある",
+      "named_main": "名前が main",
+      "named_after_folder": "フォルダ名と同じ名前",
+      "includes_files": "他のファイルを読み込む",
+      "has_bibliography": "参考文献がある",
+      "no_begin_document": "\\begin{document} がない",
+      "standalone_figure": "単体の図",
+      "placeholder": "未ダウンロード"
+    },
+    "noMain": "メイン文書はまだありません。ファイルを選び、「メイン文書に設定」を選んでください。",
+    "trust": {
+      "banner": "Oleafly はこのフォルダで一部の機能を制限しました。このフォルダを信頼して、Git、ターミナル、エージェント、shell escape を使えるようにしますか？",
+      "trustFolder": "このフォルダを信頼",
+      "trustParent": "親フォルダを信頼",
+      "trustRepository": "リポジトリを信頼",
+      "hide": "隠す",
+      "terminal": "フォルダを信頼するまで、このターミナルでは Git フックとリポジトリの設定が無効です。",
+      "terminalReopen": "このターミナルはフォルダを信頼する前に起動しました。Git フックを有効にするには、開き直してください。",
+      "reopenTerminal": "ターミナルを開き直す",
+      "failed": "このフォルダを信頼できませんでした。"
+    },
+    "readOnly": {
+      "banner": "このフォルダは読み取り専用です。コンパイルはできますが、編集内容は保存できません。",
+      "copy": "ライブラリにコピー",
+      "copied": "Oleafly がこのフォルダをライブラリにコピーしました。現在はコピーを編集しています。"
+    },
+    "sync": {
+      "syncsWith": "{{service}} と同期中",
+      "cloudStorage": "クラウドサービスと同期中",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google ドライブ",
+        "box": "Box"
+      }
+    }
   },
   "projectSearch": {
     "hint": "このプロジェクトのファイル全体を検索します。",
@@ -531,6 +622,7 @@
         "calculating": "使用容量を計算中…",
         "desktopOnly": "保存領域の詳細はデスクトップアプリで確認できます。",
         "error": "保存領域の詳細を計算できませんでした。",
+        "linkedFolders_other": "開いたフォルダ {{count}} 件のビルド出力と設定で {{size}}",
         "refresh": "使用容量を更新",
         "stats": {
           "appData": "アプリのデータ",
@@ -767,7 +859,8 @@
     "loadingCore": "Oleafly Core を読み込んでいます",
     "loadingHarness": "Oleafly Harness を読み込んでいます",
     "loadingParsers": "Oleafly Parsers を読み込んでいます",
-    "starting": "Oleafly を起動しています"
+    "starting": "Oleafly を起動しています",
+    "opening": "{{name}} を開いています…"
   },
   "theme": {
     "dark": "ダーク",
@@ -901,5 +994,30 @@
   "windows": {
     "preview": "プレビュー: {{title}}",
     "update": "Oleafly のアップデート"
+  },
+  "openFolder": {
+    "confirmTitle": "停止して {{name}} を開きますか？",
+    "confirmCompile": "{{project}} はまだコンパイル中です。{{name}} を開くとコンパイルは停止します。変更は先に保存されます。",
+    "confirmAssistant": "アシスタントはまだ {{project}} で作業中です。{{name}} を開くと応答は停止します。変更は先に保存されます。",
+    "confirmBoth": "{{project}} はまだコンパイル中で、アシスタントも作業中です。{{name}} を開くと両方とも停止します。変更は先に保存されます。",
+    "confirmAction": "停止して開く",
+    "chooseSubfolder": "サブフォルダを選択",
+    "refusedTitle": "{{name}} を開けませんでした",
+    "refused": "{{name}} を開けませんでした。{{reason}}",
+    "reasonWithHint": "{{reason}}{{hint}}",
+    "permissionHint": {
+      "mac": "システム設定の「プライバシーとセキュリティ」で「ファイルとフォルダ」を開き、Oleafly をオンにしてください。Oleafly が一覧にない場合は「フルディスクアクセス」に追加してから、もう一度お試しください。",
+      "windows": "フォルダのプロパティの「セキュリティ」タブで、お使いのアカウントに読み取り権限があることを確認してから、もう一度お試しください。",
+      "linux": "お使いのアカウントにこのフォルダの読み取り権限があることを確認してから、もう一度お試しください。"
+    }
+  },
+  "quickActionOffer": {
+    "title": "Finder からフォルダを開く",
+    "body": "Finder に「Oleafly で開く」を追加します。「サービス」メニューからはすぐに使え、「クイックアクション」からはオンにすると使えます。",
+    "add": "Finder に追加",
+    "notNow": "後で",
+    "added": "追加しました。Finder の「サービス」メニューから使えます。「クイックアクション」でも使うには、フォルダを右クリックし、「クイックアクション」›「カスタマイズ」でオンにしてください。",
+    "addedInQuickActions": "追加しました。フォルダを右クリックすると「クイックアクション」に表示されます。",
+    "failed": "追加できませんでした。「設定」›「一般」からもう一度お試しください。"
   }
 }

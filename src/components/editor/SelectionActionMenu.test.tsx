@@ -16,10 +16,11 @@ import { SelectionActionMenu } from "./SelectionActionMenu";
 
 const actions = en.selectionActions;
 
-function editorView(overrides: Record<string, unknown> = {}) {
+function editorView(overrides: Record<string, unknown> = {}, readOnly = false) {
   return {
     hasFocus: true,
     state: {
+      readOnly,
       selection: { main: { from: 2, to: 9, head: 9 } },
       sliceDoc: () => "selected",
     },
@@ -103,6 +104,33 @@ describe("SelectionActionMenu", () => {
 
     expect(handoff.handoffToAssistant).toHaveBeenCalledOnce();
     expect(seen[0].detail.target).toBe("agent");
+    window.removeEventListener("oleafly:ai-selection-action", listener);
+  });
+
+  it("offers no rewrite on a read-only view", () => {
+    controller.getEditorView.mockReturnValue(editorView({}, true));
+    const { container } = render(<SelectionActionMenu />);
+    act(() => {
+      window.dispatchEvent(new Event("mouseup"));
+    });
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText(actions.askAi)).not.toBeInTheDocument();
+  });
+
+  it("never hands a rewrite to the assistant once the view turned read-only", () => {
+    const seen: CustomEvent[] = [];
+    const listener = (event: Event) => seen.push(event as CustomEvent);
+    window.addEventListener("oleafly:ai-selection-action", listener);
+    openMenu();
+    controller.getEditorView.mockReturnValue(editorView({}, true));
+    session.openInlineEditWithInstruction.mockReturnValue(false);
+
+    fireEvent.click(screen.getByText(actions.improveWriting));
+
+    expect(session.openInlineEditWithInstruction).not.toHaveBeenCalled();
+    expect(handoff.handoffToAssistant).not.toHaveBeenCalled();
+    expect(seen).toEqual([]);
+    expect(screen.queryByText(actions.improveWriting)).not.toBeInTheDocument();
     window.removeEventListener("oleafly:ai-selection-action", listener);
   });
 });
