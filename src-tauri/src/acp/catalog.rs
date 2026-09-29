@@ -26,6 +26,9 @@ pub struct RegistryEntry {
     pub version: String,
     pub definition: Option<AgentDefinition>,
     pub reason: Option<String>,
+    /// The built-in agent this registry entry corresponds to, when known.
+    #[serde(default)]
+    pub builtin_id: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -1113,6 +1116,8 @@ async fn cli_status(definition: &AgentDefinition, probe: bool) -> Option<CliStat
         path: path.map(|value| value.to_string_lossy().into_owned()),
         version,
         sign_in_command: vendor.sign_in_command.into(),
+        source: None,
+        rejected: Vec::new(),
     })
 }
 
@@ -1220,6 +1225,8 @@ pub async fn status(root: &Path, definition: AgentDefinition, probe: bool) -> Ag
         task_unavailable_reason: task_unavailable_reason(&definition),
         cli,
         bridge_shared_with_cli,
+        program_override: None,
+        cli_required: false,
         definition,
     }
 }
@@ -1733,8 +1740,8 @@ pub async fn registry_search(query: &str) -> Result<Vec<RegistryEntry>, String> 
         let version = agent["version"].as_str().unwrap_or_default().to_owned();
         let definition: Result<AgentDefinition, String> = serde_json::from_value(json!({"id":id,"name":name,"description":description,"version":version,"distribution":agent["distribution"]})).map_err(|_| "This registry distribution uses fields Oleafly does not support.".into()).and_then(|definition| { validate(&definition)?; Ok(definition) });
         match definition {
-            Ok(definition) => { let reason = install_reason(&definition); RegistryEntry { id, name, description, version, definition: Some(definition), reason } },
-            Err(reason) => RegistryEntry { id, name, description, version, definition: None, reason: Some(reason) },
+            Ok(definition) => { let reason = install_reason(&definition); RegistryEntry { id, name, description, version, definition: Some(definition), reason, builtin_id: None } },
+            Err(reason) => RegistryEntry { id, name, description, version, definition: None, reason: Some(reason), builtin_id: None },
         }
     }).collect())
 }

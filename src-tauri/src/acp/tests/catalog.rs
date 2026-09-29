@@ -250,6 +250,8 @@ fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() 
         path: Some(format!("/usr/local/bin/{command}")),
         version: None,
         sign_in_command: command.into(),
+        source: None,
+        rejected: Vec::new(),
     };
     assert_eq!(
         sign_in_hint(&by_id("opencode"), Some(&installed("opencode"))),

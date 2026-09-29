@@ -597,6 +597,8 @@ fn rebinding_project_paths_skips_task_sessions_and_other_projects() {
         auth_methods: Vec::new(),
         error: None,
         last_sequence: 0,
+        start_revision: None,
+        start_dirty: None,
     };
     let own = record("p", None);
     let task = record("p", Some("task"));
@@ -703,6 +705,8 @@ fn reopening_storage_recovers_running_status_without_erasing_events() {
         auth_methods: Vec::new(),
         error: None,
         last_sequence: 1,
+        start_revision: None,
+        start_dirty: None,
     };
     store.save(&session).unwrap();
     let event = AcpEvent {
@@ -1425,6 +1429,8 @@ async fn restricted_folders_never_start_or_resume_external_agents() {
         auth_methods: Vec::new(),
         error: None,
         last_sequence: 0,
+        start_revision: None,
+        start_dirty: None,
     };
     Store::open(&temp.path().join("acp"))
         .unwrap()

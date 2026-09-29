@@ -382,6 +382,8 @@ impl AcpRuntime {
             auth_methods: Vec::new(),
             error: None,
             last_sequence: 0,
+            start_revision: None,
+            start_dirty: None,
         };
         self.connect(
             record,
@@ -1429,6 +1431,9 @@ impl AcpRuntime {
                 })
                 .unwrap_or_default(),
             expires_at: now_ms() + PERMISSION_TIMEOUT_MS,
+            kind: None,
+            locations: Vec::new(),
+            diffs: Vec::new(),
         };
         let delegate = session
             .delegate

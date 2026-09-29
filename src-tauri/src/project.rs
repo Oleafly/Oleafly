@@ -2156,7 +2156,7 @@ async fn write_project_file(
     .map_err(|e| format!("file write task failed: {e}"))?
 }
 
-fn write_project_bytes(
+pub(crate) fn write_project_bytes(
     project_id: &str,
     target: &Path,
     path: &str,

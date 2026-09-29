@@ -16,7 +16,8 @@ impl Store {
             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, updated_at INTEGER NOT NULL, record TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS acp_sessions_project ON sessions(project_id, updated_at DESC);
             CREATE TABLE IF NOT EXISTS events (session_id TEXT NOT NULL REFERENCES sessions(id), sequence INTEGER NOT NULL, event TEXT NOT NULL, PRIMARY KEY(session_id,sequence));
-            CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, definition TEXT NOT NULL);").map_err(|e| e.to_string())?;
+            CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, definition TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS agent_programs (id TEXT PRIMARY KEY, path TEXT NOT NULL);").map_err(|e| e.to_string())?;
         let store = Self { db: Mutex::new(db) };
         let mut after = None;
         loop {

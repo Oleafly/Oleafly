@@ -1790,6 +1790,21 @@ fn git_head_oid_sync(project_id: String) -> Result<Option<String>, String> {
     Ok(if s.is_empty() { None } else { Some(s) })
 }
 
+/// Whether a usable `git` program is installed. Contract stub: the cached
+/// probe arrives with the implementation.
+#[allow(dead_code)]
+pub(crate) fn git_available() -> bool {
+    true
+}
+
+/// The HEAD commit of the repository at `root` and whether the working tree has
+/// uncommitted changes. `None` when Git is missing, `root` is not a repository
+/// root, or HEAD is unborn. Contract stub: the implementation arrives later.
+#[allow(dead_code)]
+pub(crate) fn head_state(_root: &Path) -> Option<(String, bool)> {
+    None
+}
+
 /// Whether the repo has a HEAD commit yet (false on a fresh repo).
 fn has_head(root: &PathBuf) -> bool {
     run_git(root, &["rev-parse", "--verify", "--quiet", "HEAD"])

@@ -265,9 +265,96 @@ fn idle(record: &crate::linked_registry::LinkRecord, caches: &[PathBuf], now: Sy
         .is_ok_and(|elapsed| elapsed >= LINKED_BUILD_IDLE_LIMIT)
 }
 
+/// File-name patterns for TeX build output that tools write next to the
+/// sources when they compile outside Oleafly. `*` matches any run of
+/// characters. `.bbl` is deliberately absent: arXiv e-prints ship it as their
+/// only bibliography source.
+#[allow(dead_code)]
+pub(crate) const BUILD_ARTIFACT_PATTERNS: &[&str] = &[
+    "*.aux",
+    "*.log",
+    "*.out",
+    "*.toc",
+    "*.blg",
+    "*.bcf",
+    "*.run.xml",
+    "*.fls",
+    "*.fdb_latexmk",
+    "*.synctex.gz",
+    "*.synctex(busy)",
+    "*.nav",
+    "*.snm",
+    "*.vrb",
+    "*.lof",
+    "*.lot",
+    "*.idx",
+    "*.ilg",
+    "*.ind",
+    "*.xdv",
+];
+
+/// Whether the project-relative path is TeX build output: a
+/// [`BUILD_ARTIFACT_PATTERNS`] match, or `<stem>.pdf` when `<stem>.tex` exists
+/// in the same folder (`has_sibling` answers for a project-relative path).
+#[allow(dead_code)]
+pub(crate) fn is_build_artifact(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let (folder, name) = match normalized.rsplit_once('/') {
+        Some((folder, name)) => (Some(folder), name),
+        None => (None, normalized.as_str()),
+    };
+    let lower = name.to_ascii_lowercase();
+    if BUILD_ARTIFACT_PATTERNS.iter().any(|pattern| {
+        pattern
+            .strip_prefix('*')
+            .is_some_and(|suffix| lower.ends_with(suffix))
+    }) {
+        return true;
+    }
+    let Some(stem) = name
+        .len()
+        .checked_sub(4)
+        .filter(|_| lower.ends_with(".pdf"))
+        .map(|end| &name[..end])
+    else {
+        return false;
+    };
+    let tex = match folder {
+        Some(folder) => format!("{folder}/{stem}.tex"),
+        None => format!("{stem}.tex"),
+    };
+    has_sibling(&tex)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn build_artifacts_match_patterns_and_pdfs_beside_their_source() {
+        let sources = ["main.tex", "chapters/intro.tex"];
+        let has = |path: &str| sources.contains(&path);
+        for path in [
+            "main.aux",
+            "main.LOG",
+            "chapters/intro.synctex.gz",
+            "main.fdb_latexmk",
+            "main.pdf",
+            "chapters\\intro.pdf",
+        ] {
+            assert!(is_build_artifact(path, has), "{path} is build output");
+        }
+        for path in [
+            "main.tex",
+            "refs.bib",
+            "main.bbl",
+            "figures/plot.pdf",
+            "intro.pdf",
+            "notes.md",
+        ] {
+            assert!(!is_build_artifact(path, has), "{path} is not build output");
+        }
+    }
 
     #[test]
     fn cache_directories_are_tagged_once() {

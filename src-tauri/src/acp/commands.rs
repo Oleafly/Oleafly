@@ -1,7 +1,7 @@
 use super::{catalog::RegistryEntry, AcpRuntime};
 use super::{
-    AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord, SessionSnapshot,
-    StartSession,
+    AcpEvent, AgentCheck, AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord,
+    SessionSnapshot, StartSession,
 };
 use std::sync::Arc;
 use tauri::{AppHandle, State, WebviewWindow};
@@ -137,9 +137,12 @@ pub async fn acp_prompt(
     session_id: String,
     text: String,
     images: Option<Vec<ImagePrompt>>,
+    skill_id: Option<String>,
 ) -> Result<SessionSnapshot, String> {
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, window.label()).await?;
+    // Contract stub: the skill block arrives with the runtime implementation.
+    let _ = skill_id;
     runtime
         .prompt(&session_id, text, images.unwrap_or_default())
         .await
@@ -260,4 +263,67 @@ pub fn acp_events(
 ) -> Result<EventPage, String> {
     check_project(&runtime, &session_id, &project_id)?;
     runtime.events(&session_id, after, limit.unwrap_or(200))
+}
+
+const NOT_IMPLEMENTED: &str = "Not implemented.";
+
+/// Tests an agent program without saving it: the chosen `path`, or the
+/// program Oleafly resolves today when `path` is `None`.
+#[tauri::command]
+pub async fn acp_check_agent(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    path: Option<String>,
+) -> Result<AgentCheck, String> {
+    let _ = (window, runtime, agent_id, path);
+    Err(NOT_IMPLEMENTED.into())
+}
+
+/// Opens a native file dialog for choosing an agent program and returns the
+/// chosen path, or `None` when the dialog was cancelled.
+#[tauri::command]
+pub async fn acp_pick_agent_program(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+) -> Result<Option<String>, String> {
+    let _ = (window, runtime, agent_id);
+    Err(NOT_IMPLEMENTED.into())
+}
+
+/// Saves (or clears with `None`) the program the user chose for an agent.
+#[tauri::command]
+pub async fn acp_set_agent_program(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    path: Option<String>,
+) -> Result<AgentStatus, String> {
+    let _ = (window, runtime, agent_id, path);
+    Err(NOT_IMPLEMENTED.into())
+}
+
+/// Writes a conversation as pretty JSON (`{ session, events }`) to `path`.
+#[tauri::command]
+pub async fn acp_session_export(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    path: String,
+) -> Result<(), String> {
+    check_project(&runtime, &session_id, &project_id)?;
+    let _ = path;
+    Err(NOT_IMPLEMENTED.into())
+}
+
+/// Every stored event of a conversation, oldest first.
+#[tauri::command]
+pub async fn acp_session_events_all(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+) -> Result<Vec<AcpEvent>, String> {
+    check_project(&runtime, &session_id, &project_id)?;
+    Err(NOT_IMPLEMENTED.into())
 }
