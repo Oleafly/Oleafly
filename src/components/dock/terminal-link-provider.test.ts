@@ -91,6 +91,13 @@ describe("createTerminalLinkProvider", () => {
     expect(wide.range).toEqual({ start: { x: 4, y: 1 }, end: { x: 12, y: 1 } });
   });
 
+  it("maps a glyph written as two UTF-16 units to its one cell", async () => {
+    const term = await termWith("𝒙 main.tex:3:1", 40);
+    const [link] = (await linksAt(createTerminalLinkProvider(term, actions()), 1)) ?? [];
+    expect(link.range).toEqual({ start: { x: 3, y: 1 }, end: { x: 14, y: 1 } });
+    expect(link.text).toBe("main.tex:3:1");
+  });
+
   it("joins a wide glyph that wrapped early without the empty cell it left", async () => {
     // At 10 columns 明 does not fit in the last cell, so xterm leaves it empty
     // and wraps: "a 图表/说 " + "明书.tex:3" + ":".

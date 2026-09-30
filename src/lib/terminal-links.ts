@@ -33,7 +33,7 @@ const MESSAGE_LINE = /^(?:error|warning):\s+([^:\s][^:]*:\d{1,8}(?::\d{1,8})?)(?
 const WORD_START = /(?<!\S)\S/g;
 // Bounds the resolver calls per hovered line; no file name has this many words.
 const MAX_PATH_WORDS = 12;
-const ABSOLUTE = /^(?:[/\\~]|[A-Za-z]:[/\\]|file:)/i;
+const ABSOLUTE = /^(?:[/\\~]|[a-z]:[/\\]|file:)/i;
 // Typst packages (`@preview/...`) and shell or Windows variables live outside
 // the project just as absolute paths do.
 const OUTSIDE_PROJECT = /^[@$%]/;

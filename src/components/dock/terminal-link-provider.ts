@@ -62,17 +62,10 @@ function contentEnd(line: IBufferLine, cell: IBufferCell): number {
  * cell each UTF-16 unit came from. Wide glyphs take two cells, so string
  * indices cannot stand in for columns.
  */
-function logicalLine(buffer: IBuffer, row: number): { text: string; cells: CellPosition[] } | null {
+function logicalLine(buffer: IBuffer, row: number): LogicalLine | null {
   if (!buffer.getLine(row)) return null;
-  let first = row;
-  while (first > 0 && row - first < MAX_WRAPPED_ROWS - 1 && buffer.getLine(first)?.isWrapped) {
-    first -= 1;
-  }
-  let last = row;
-  while (last - first < MAX_WRAPPED_ROWS - 1 && buffer.getLine(last + 1)?.isWrapped) last += 1;
-
-  let text = "";
-  const cells: CellPosition[] = [];
+  const { first, last } = wrappedRows(buffer, row);
+  const logical: LogicalLine = { text: "", cells: [] };
   const cell = buffer.getNullCell();
   for (let y = first; y <= last; y += 1) {
     const line = buffer.getLine(y);
@@ -80,16 +73,39 @@ function logicalLine(buffer: IBuffer, row: number): { text: string; cells: CellP
     // A wide glyph that does not fit in the last column wraps and leaves that
     // cell empty; as a space it would split the path across the rows.
     const end = y < last ? contentEnd(line, cell) : line.length;
-    for (let x = 0; x < end; x += 1) {
-      if (!line.getCell(x, cell)) break;
-      const width = cell.getWidth();
-      if (width === 0) continue; // right half of a wide glyph
-      const chars = cell.getChars() || " ";
-      text += chars;
-      for (let unit = 0; unit < chars.length; unit += 1) cells.push({ x: x + 1, y: y + 1, width });
-    }
+    appendRow(logical, line, y, end, cell);
   }
-  return { text, cells };
+  return logical;
+}
+
+interface LogicalLine {
+  text: string;
+  cells: CellPosition[];
+}
+
+/** The first and last rows of the wrapped line that holds `row`. */
+function wrappedRows(buffer: IBuffer, row: number): { first: number; last: number } {
+  let first = row;
+  while (first > 0 && row - first < MAX_WRAPPED_ROWS - 1 && buffer.getLine(first)?.isWrapped) {
+    first -= 1;
+  }
+  let last = row;
+  while (last - first < MAX_WRAPPED_ROWS - 1 && buffer.getLine(last + 1)?.isWrapped) last += 1;
+  return { first, last };
+}
+
+/** Adds the first `end` cells of row `y` to `logical`. */
+function appendRow(logical: LogicalLine, line: IBufferLine, y: number, end: number, cell: IBufferCell) {
+  for (let x = 0; x < end; x += 1) {
+    if (!line.getCell(x, cell)) break;
+    const width = cell.getWidth();
+    if (width === 0) continue; // right half of a wide glyph
+    const chars = cell.getChars() || " ";
+    logical.text += chars;
+    // One position per UTF-16 unit, since match offsets index the string.
+    const position = { x: x + 1, y: y + 1, width };
+    logical.cells.push(...Array.from({ length: chars.length }, () => position));
+  }
 }
 
 function locationLabel({ path, line, column }: TerminalFileTarget): string {
