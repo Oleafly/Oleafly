@@ -1298,25 +1298,65 @@ pub(crate) async fn program_version(
         .arg("--version")
         .current_dir(probe.path())
         .envs(env.iter().map(|(name, value)| (name, value)));
-    let output = bounded_command(command, limit).await?;
+    let output = run_bounded(command, limit).await.map_err(|failure| {
+        failure.version_message(
+            &program
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy(),
+        )
+    })?;
     parse_cli_version(&output).ok_or_else(|| "It didn't report a version.".to_string())
 }
 
 const STATUS_VERSION_LIMIT: Duration = Duration::from_secs(5);
 
 /// The sign-in command as the user would type it: the bare command when a
-/// terminal finds it by name, otherwise with the CLI's quoted full path.
+/// terminal finds it by name, otherwise started by the CLI's full path.
 pub(crate) fn sign_in_command_text(sign_in: &str, path: Option<&Path>, reachable: bool) -> String {
-    match path {
-        Some(path) if !reachable => {
-            let rest = sign_in
-                .split_once(' ')
-                .map(|(_, rest)| format!(" {rest}"))
-                .unwrap_or_default();
-            format!("\"{}\"{rest}", path.display())
+    sign_in_command_for(sign_in, path, reachable, cfg!(windows))
+}
+
+/// [`sign_in_command_text`] for PowerShell when `windows` is set (the shell of
+/// Oleafly's terminal and of Windows Terminal), otherwise for a POSIX shell.
+/// Matches `signInCommandLine` in `AgentReadiness.tsx`, which starts the same
+/// CLI in the in-app terminal.
+pub(crate) fn sign_in_command_for(
+    sign_in: &str,
+    path: Option<&Path>,
+    reachable: bool,
+    windows: bool,
+) -> String {
+    let Some(path) = path.filter(|_| !reachable) else {
+        return sign_in.to_string();
+    };
+    let rest = sign_in
+        .split_once(' ')
+        .map(|(_, rest)| format!(" {rest}"))
+        .unwrap_or_default();
+    format!("{}{rest}", shell_program(&path.to_string_lossy(), windows))
+}
+
+/// A program path as a shell starts it. PowerShell reads a quoted path on its
+/// own as a string, so it needs the call operator; its single quotes (any of
+/// `'‘’‚‛`) are escaped by doubling. A POSIX shell gets a single-quoted path,
+/// with each `'` closed, escaped and reopened.
+fn shell_program(path: &str, windows: bool) -> String {
+    if windows {
+        let mut quoted = String::with_capacity(path.len() + 4);
+        for character in path.chars() {
+            if matches!(
+                character,
+                '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}'
+            ) {
+                quoted.push(character);
+            }
+            quoted.push(character);
         }
-        _ => sign_in.to_string(),
+        return format!("& '{quoted}'");
     }
+    format!("'{}'", path.replace('\'', r"'\''"))
 }
 
 fn rejected_candidates(rejected: &[Rejected]) -> Vec<RejectedCandidate> {
@@ -1418,7 +1458,7 @@ pub(crate) async fn node_version(root: &Path, node: &Path) -> Option<NodeVersion
         Ok(probe) => {
             let mut command = tokio::process::Command::new(node);
             command.arg("--version").current_dir(probe.path());
-            bounded_command(command, STATUS_VERSION_LIMIT)
+            run_bounded(command, STATUS_VERSION_LIMIT)
                 .await
                 .ok()
                 .and_then(|output| parse_node_version(&output))
@@ -1747,9 +1787,16 @@ fn trailing_lines(text: &str) -> PipeCapture {
     buffer.finish()
 }
 
-/// At most eight lines: the line naming the error and the `code` line when
-/// the tail no longer shows them, then the last lines of output.
+/// What a failed installation reports for this output.
+#[cfg(test)]
 fn command_failure_message(stdout: &PipeCapture, stderr: &PipeCapture) -> String {
+    CommandFailure::Failed(failure_lines(stdout, stderr)).install_message()
+}
+
+/// At most eight lines: the line naming the error and the `code` line when
+/// the tail no longer shows them, then the last lines of output. None when
+/// the command printed nothing.
+fn failure_lines(stdout: &PipeCapture, stderr: &PipeCapture) -> Option<String> {
     let tail: Vec<&String> = stdout.tail.iter().chain(stderr.tail.iter()).collect();
     let mut candidates: Vec<&String> = Vec::new();
     for line in [&stderr.salient, &stdout.salient, &stderr.code, &stdout.code]
@@ -1778,13 +1825,10 @@ fn command_failure_message(stdout: &PipeCapture, stderr: &PipeCapture) -> String
         .chain(tail[tail.len().saturating_sub(room)..].iter().copied())
         .map(String::as_str)
         .collect();
-    if lines.is_empty() {
-        return INSTALL_FAILED.into();
-    }
-    lines.join("\n")
+    (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-fn read_bounded_pipe<R>(mut pipe: R) -> tokio::task::JoinHandle<Result<PipeCapture, String>>
+fn read_bounded_pipe<R>(mut pipe: R) -> tokio::task::JoinHandle<Result<PipeCapture, &'static str>>
 where
     R: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
@@ -1797,7 +1841,7 @@ where
             let count = pipe
                 .read(&mut buffer)
                 .await
-                .map_err(|_| "The installer output could not be read.")?;
+                .map_err(|_| "The command's output could not be read.")?;
             if count == 0 {
                 break;
             }
@@ -1806,17 +1850,66 @@ where
             bytes.extend_from_slice(&chunk[..count.min(remaining)]);
             trailing.push(chunk);
         }
-        Ok::<_, String>(PipeCapture {
+        Ok::<_, &'static str>(PipeCapture {
             head: String::from_utf8_lossy(&bytes).into_owned(),
             ..trailing.finish()
         })
     })
 }
 
+/// Why a bounded command gave no output to use.
+#[derive(Debug)]
+enum CommandFailure {
+    /// It could not be started: the error kind and the program.
+    NotStarted(String),
+    /// Oleafly could not contain the process or read its output.
+    Lost(&'static str),
+    /// It ran past its time limit and was stopped.
+    TimedOut,
+    /// It exited with an error: [`failure_lines`], None when it printed nothing.
+    Failed(Option<String>),
+}
+
+impl CommandFailure {
+    fn install_message(self) -> String {
+        match self {
+            Self::NotStarted(what) => {
+                format!("The installation command could not be started ({what}).")
+            }
+            Self::Lost(message) => message.into(),
+            Self::TimedOut => "The installation timed out and was stopped.".into(),
+            Self::Failed(lines) => lines.unwrap_or_else(|| INSTALL_FAILED.into()),
+        }
+    }
+
+    /// The same failure for `<file> --version`.
+    fn version_message(self, file: &str) -> String {
+        match self {
+            Self::NotStarted(what) => format!("Oleafly couldn't start {file} ({what})."),
+            Self::Lost(message) => message.into(),
+            Self::TimedOut => format!("{file} --version didn't finish in time and was stopped."),
+            Self::Failed(lines) => lines
+                .unwrap_or_else(|| format!("{file} --version failed without printing anything.")),
+        }
+    }
+}
+
+/// An installer run: its output, or why it failed in installer wording.
 async fn bounded_command(
-    mut command: tokio::process::Command,
+    command: tokio::process::Command,
     duration: Duration,
 ) -> Result<String, String> {
+    run_bounded(command, duration)
+        .await
+        .map_err(CommandFailure::install_message)
+}
+
+/// Runs a command with no input, contained, for at most `duration`, and
+/// returns the first 64 KiB of its output.
+async fn run_bounded(
+    mut command: tokio::process::Command,
+    duration: Duration,
+) -> Result<String, CommandFailure> {
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -1825,26 +1918,28 @@ async fn bounded_command(
     crate::proc::isolate_process_tree(&mut command);
     let program = command.as_std().get_program().to_owned();
     let mut child = command.spawn().map_err(|error| {
-        format!(
-            "The installation command could not be started ({:?}: {}).",
+        CommandFailure::NotStarted(format!(
+            "{:?}: {}",
             error.kind(),
             Path::new(&program).display()
-        )
+        ))
     })?;
-    let guard =
-        crate::proc::contain_process_tree(child.id().ok_or("The installer has no process ID.")?)
-            .map_err(|_| "The installer process could not be contained.")?;
+    let lost = CommandFailure::Lost;
+    let guard = crate::proc::contain_process_tree(
+        child.id().ok_or(lost("The command has no process ID."))?,
+    )
+    .map_err(|_| lost("The command's processes could not be contained."))?;
     let read = read_bounded_pipe(
         child
             .stdout
             .take()
-            .ok_or("The installer has no output stream.")?,
+            .ok_or(lost("The command has no output stream."))?,
     );
     let read_errors = read_bounded_pipe(
         child
             .stderr
             .take()
-            .ok_or("The installer has no error stream.")?,
+            .ok_or(lost("The command has no error stream."))?,
     );
     let exit = tokio::time::timeout(duration, child.wait()).await;
     drop(guard);
@@ -1854,17 +1949,19 @@ async fn bounded_command(
             let _ = child.kill().await;
             read.abort();
             read_errors.abort();
-            return Err("The installation timed out and was stopped.".into());
+            return Err(CommandFailure::TimedOut);
         }
     };
     let output = read
         .await
-        .map_err(|_| "The installer stopped unexpectedly.")??;
+        .map_err(|_| lost("Oleafly stopped reading the command's output unexpectedly."))?
+        .map_err(lost)?;
     let errors = read_errors
         .await
-        .unwrap_or_else(|_| Ok(PipeCapture::default()))?;
+        .unwrap_or_else(|_| Ok(PipeCapture::default()))
+        .map_err(lost)?;
     if !success {
-        return Err(command_failure_message(&output, &errors));
+        return Err(CommandFailure::Failed(failure_lines(&output, &errors)));
     }
     Ok(output.head)
 }

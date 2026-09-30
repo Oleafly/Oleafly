@@ -264,9 +264,9 @@ fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() 
     assert_eq!(
         sign_in_hint(
             &by_id("pi"),
-            Some(&installed("pi", r#""D:\Tools\Agents\Pi\pi.cmd""#))
+            Some(&installed("pi", r"& 'D:\Tools\Agents\Pi\pi.cmd'"))
         ),
-        r#"Run "D:\Tools\Agents\Pi\pi.cmd" in your terminal and sign in with /login, then reconnect."#
+        r"Run & 'D:\Tools\Agents\Pi\pi.cmd' in your terminal and sign in with /login, then reconnect."
     );
     assert_eq!(
         sign_in_hint(&by_id("pi"), None),
@@ -933,6 +933,110 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .await
         .unwrap_err()
         .contains("timed out and was stopped"));
+}
+
+/// A CLI stand-in for `--version` probes: a shell script on unix, a batch
+/// file (started through cmd.exe, as a bridge would) on Windows.
+fn version_probe_cli(folder: &Path, stem: &str, unix: &str, windows: &str) -> Located {
+    #[cfg(windows)]
+    {
+        let _ = unix;
+        let path = folder.join(format!("{stem}.cmd"));
+        std::fs::write(&path, format!("@echo off\r\n{windows}\r\n")).unwrap();
+        Located {
+            path,
+            kind: ProgramKind::Script,
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = windows;
+        let path = folder.join(stem);
+        std::fs::write(&path, format!("#!/bin/sh\n{unix}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        Located {
+            path,
+            kind: ProgramKind::Native,
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let env = locator::child_env(&[], &[]);
+    let no_install_wording = |message: &str| {
+        let lower = message.to_lowercase();
+        assert!(
+            !lower.contains("installation") && !lower.contains("installer"),
+            "a --version probe reported installer wording: {message}"
+        );
+    };
+
+    let silent = version_probe_cli(temp.path(), "silent-cli", "exit 3", "exit /b 3");
+    let name = silent
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let error = program_version(&root, &silent, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains(&format!("{name} --version")), "{error}");
+
+    let slow = version_probe_cli(
+        temp.path(),
+        "slow-cli",
+        "sleep 20",
+        "ping -n 21 127.0.0.1 >nul",
+    );
+    let name = slow
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let error = program_version(&root, &slow, &env, Duration::from_millis(500))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains(&format!("{name} --version")), "{error}");
+    assert!(error.contains("in time"), "{error}");
+
+    let missing = Located {
+        path: temp.path().join(if cfg!(windows) {
+            "missing-cli.exe"
+        } else {
+            "missing-cli"
+        }),
+        kind: ProgramKind::Native,
+    };
+    let error = program_version(&root, &missing, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains("missing-cli"), "{error}");
+
+    // What the CLI printed is still the detail when it printed anything.
+    let loud = version_probe_cli(
+        temp.path(),
+        "loud-cli",
+        "echo 'node: not found' >&2; exit 127",
+        "echo 'node' is not recognized 1>&2\r\nexit /b 9009",
+    );
+    let error = program_version(&root, &loud, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    let printed = if cfg!(windows) {
+        "'node' is not recognized"
+    } else {
+        "node: not found"
+    };
+    assert_eq!(error.trim(), printed);
 }
 
 #[cfg(unix)]
@@ -1789,23 +1893,74 @@ async fn status_reports_the_chosen_program_its_source_and_whether_the_cli_is_req
 
 #[test]
 fn sign_in_commands_quote_a_cli_a_terminal_cannot_find_by_name() {
+    for windows in [false, true] {
+        assert_eq!(
+            sign_in_command_for(
+                "claude auth login",
+                Some(Path::new("/x/claude")),
+                true,
+                windows
+            ),
+            "claude auth login"
+        );
+        assert_eq!(sign_in_command_for("pi", None, false, windows), "pi");
+    }
+
+    // POSIX shells: a single-quoted path, so spaces, `$` and backticks stay
+    // literal; a quote in the path closes, escapes and reopens.
     assert_eq!(
-        sign_in_command_text("claude auth login", Some(Path::new("/x/claude")), true),
-        "claude auth login"
-    );
-    assert_eq!(
-        sign_in_command_text(
+        sign_in_command_for(
             "claude auth login",
             Some(Path::new("/my tools/claude")),
+            false,
             false
         ),
-        "\"/my tools/claude\" auth login"
+        "'/my tools/claude' auth login"
     );
     assert_eq!(
-        sign_in_command_text("pi", Some(Path::new("/x/pi")), false),
-        "\"/x/pi\""
+        sign_in_command_for("pi", Some(Path::new("/x/$HOME/pi")), false, false),
+        "'/x/$HOME/pi'"
     );
-    assert_eq!(sign_in_command_text("pi", None, false), "pi");
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new("/Users/o'brien/bin/pi")), false, false),
+        r"'/Users/o'\''brien/bin/pi'"
+    );
+
+    // PowerShell (the Windows terminal): a quoted path on its own is only a
+    // string, so it needs the call operator; quotes in the path are doubled.
+    assert_eq!(
+        sign_in_command_for(
+            "claude auth login",
+            Some(Path::new(r"C:\Users\Ada\.local\bin\claude.exe")),
+            false,
+            true
+        ),
+        r"& 'C:\Users\Ada\.local\bin\claude.exe' auth login"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new(r"D:\tools\pi\pi.cmd")), false, true),
+        r"& 'D:\tools\pi\pi.cmd'"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new(r"D:\O'Brien\pi.cmd")), false, true),
+        r"& 'D:\O''Brien\pi.cmd'"
+    );
+    assert_eq!(
+        sign_in_command_for(
+            "pi",
+            Some(Path::new("D:\\O\u{2019}Brien\\pi.cmd")),
+            false,
+            true
+        ),
+        "& 'D:\\O\u{2019}\u{2019}Brien\\pi.cmd'"
+    );
+
+    // The command shown to the user is the form for this computer's shell.
+    let path = Path::new("/my tools/claude");
+    assert_eq!(
+        sign_in_command_text("claude auth login", Some(path), false),
+        sign_in_command_for("claude auth login", Some(path), false, cfg!(windows))
+    );
 }
 
 #[test]
