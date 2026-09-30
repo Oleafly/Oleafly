@@ -23,6 +23,7 @@
       "onPath": "The bridge was found on the system PATH rather than installed by Oleafly"
     },
     "agentReported": "Labels the CLI agent's own raw diagnostic output, which is interpolated verbatim",
+    "updateTooLarge": "Muted note under a CLI agent's tool call when the agent sent one update over 1 MiB (usually a whole-file diff) that was not kept, so the tool shows no output. {{size}} is a formatted size such as 1.2 MB",
     "agentToolFallback": "Stands in for a CLI agent tool that reported no name",
     "imageAttachmentName": "Name shown on an image chip when the image itself carries no filename",
     "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose",

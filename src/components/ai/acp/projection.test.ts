@@ -177,4 +177,45 @@ describe("ACP conversation projection", () => {
     ], false);
     expect(rows[0].msg.skill).toEqual({ id: "oleafly-verify-claims", name: "Verify claims" });
   });
+
+  it("finishes a tool whose last update was too large and says why its output is missing", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Tidy the bibliography" }),
+      event(2, "tool_call", { toolCallId: "edit", title: "Edit refs.bib", kind: "edit", status: "in_progress" }),
+      event(3, "tool_call_update", { sessionUpdate: "tool_call_update", toolCallId: "edit", status: "completed", truncated: true }),
+      event(4, "diagnostics", { droppedUpdate: { bytes: 1258291 } }),
+      chunk(5, "Done."),
+      event(6, "turn_complete", { stopReason: "end_turn" }),
+    ], false);
+    expect(rows).toHaveLength(4);
+    expect(rows[1].msg.toolCalls?.[0]).toMatchObject({ name: "Edit refs.bib", status: "done" });
+    expect(rows[2].msg.content).toBe("");
+    expect(rows[2].msg.notices).toEqual([
+      "Part of the agent's output was too large to show (1.2 MB).",
+    ]);
+    expect(rows[3].msg.content).toBe("Done.");
+  });
+
+  it("explains a dropped update saved before tool calls kept their status", () => {
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "edit", title: "Edit refs.bib", status: "in_progress" }),
+      event(2, "diagnostics", { droppedUpdate: { bytes: 3 * 1024 * 1024 } }),
+      event(3, "turn_complete", { stopReason: "end_turn" }),
+    ], false);
+    expect(rows).toHaveLength(2);
+    expect(rows[1].msg.notices).toEqual([
+      "Part of the agent's output was too large to show (3 MB).",
+    ]);
+  });
+
+  it("does not split an answer around diagnostics that show nothing", () => {
+    const rows = projectAcpEvents([
+      chunk(1, "The first half"),
+      event(2, "diagnostics", { stderr: "" }),
+      event(3, "diagnostics", { droppedUpdate: { bytes: "many" } }),
+      chunk(4, " and the second half."),
+    ], false);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.content).toBe("The first half and the second half.");
+  });
 });

@@ -4,6 +4,7 @@ import type { ChatMessage, ToolDiff, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { i18n } from "@/i18n";
 import { splitAgentNotices } from "@/lib/chat-activity";
+import { formatBytes } from "@/lib/format-bytes";
 
 type Data = Record<string, unknown>;
 type Row = { id: string; turn: string | null; kind: string; msg: ChatMessage; raw?: string };
@@ -177,7 +178,8 @@ function planContent(entries: readonly unknown[]): string {
     .join("\n");
 }
 
-function applyDiagnostics(state: ProjectionState, event: AcpEvent) {
+/** Adds the row a diagnostics event explains itself with; false when it shows nothing. */
+function applyDiagnostics(state: ProjectionState, event: AcpEvent): boolean {
   const detail = text(event.data.stderr);
   if (detail) {
     appendRow(
@@ -188,7 +190,19 @@ function applyDiagnostics(state: ProjectionState, event: AcpEvent) {
         i18n.t(($) => $.ai.acp.agentReported, { detail: value }),
       ),
     );
+    return true;
   }
+  // The runtime skipped an update over 1 MiB (a whole-file diff, say).
+  const dropped = object(event.data.droppedUpdate).bytes;
+  if (typeof dropped === "number" && Number.isFinite(dropped) && dropped > 0) {
+    appendRow(state, event, "notice", {
+      role: "assistant",
+      content: "",
+      notices: [i18n.t(($) => $.ai.acp.updateTooLarge, { size: formatBytes(dropped) })],
+    });
+    return true;
+  }
+  return false;
 }
 
 function failRunningTools(row: Row) {
@@ -277,10 +291,7 @@ function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
     appendRow(state, event, "plan", { role: "assistant", content: planContent(data.entries) });
     return true;
   }
-  if (event.kind === "diagnostics") {
-    applyDiagnostics(state, event);
-    return true;
-  }
+  if (event.kind === "diagnostics") return applyDiagnostics(state, event);
   if (event.kind === "turn_complete" || event.kind === "status") applyTurnEnd(state, event);
   return true;
 }
