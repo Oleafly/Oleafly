@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk kan de buildmap van Oleafly op deze computer niet gebruiken, omdat het pad tekens bevat die latexmk niet accepteert. Zet dit project om naar Tectonic om het te compileren.",
     "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly kon de bibliografie {{name}} niet lezen. Kijk of er een beschadigd item in staat en exporteer daarna opnieuw."
+  },
   "github": {
     "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",
     "sign_in_cancelled": "De autorisatie bij GitHub is geannuleerd.",

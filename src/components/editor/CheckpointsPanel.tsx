@@ -49,6 +49,7 @@ import {
   type CheckpointStoreStats,
   type CheckpointSummary,
 } from "@/lib/checkpoints";
+import { PrivatePath } from "@/components/ui/private";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
@@ -217,7 +218,7 @@ function StoreSummary({ stats }: Readonly<{ stats: CheckpointStoreStats }>) {
 function CatalogFacts({ inspection }: Readonly<{ inspection: CheckpointStoreInspection }>) {
   const { t } = useTranslation(["common", "editor"]);
   const counts = inspection.table_counts;
-  const facts: [string, string][] = [
+  const facts: [string, ReactNode][] = [
     [t(($) => $.editor.checkpoints.catalog.formatVersion), formatNumber(inspection.format_version)],
     [
       t(($) => $.editor.checkpoints.catalog.lineage),
@@ -225,7 +226,11 @@ function CatalogFacts({ inspection }: Readonly<{ inspection: CheckpointStoreInsp
     ],
     [
       t(($) => $.editor.checkpoints.catalog.catalogFile),
-      inspection.catalog_path || t(($) => $.editor.checkpoints.catalog.catalogFileMissing),
+      inspection.catalog_path ? (
+        <PrivatePath key="catalog-file" path={inspection.catalog_path} />
+      ) : (
+        t(($) => $.editor.checkpoints.catalog.catalogFileMissing)
+      ),
     ],
     [t(($) => $.editor.checkpoints.catalog.checkpoints), formatNumber(counts.checkpoints)],
     [t(($) => $.editor.checkpoints.catalog.manifests), formatNumber(counts.manifests)],
@@ -1378,7 +1383,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       <>
         <div className="flex items-start gap-2">
           <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-            {storePath}
+            <PrivatePath path={storePath} />
           </code>
           <Button
             type="button"

@@ -1,33 +1,11 @@
 import { type EditorView, WidgetType } from "@codemirror/view";
-import { type MathRenderResult, renderMathExpression } from "../../math-render";
+import { type MathRenderResult, renderMathSource } from "../../math-render";
 import { placeSelectionInsideBlock } from "../selection";
 
-const ENVIRONMENT_SOURCE = /^\\begin\{([^{}]+)\}([\s\S]*)\\end\{\1\}$/u;
-const NEEDS_ALIGNMENT = /(?:^|[^\\])(?:&|\\\\)/u;
-const NUMBERED_ENVIRONMENTS = new Set(["equation", "align", "gather", "alignat", "flalign", "multline", "eqnarray"]);
-
-const LABELS = /\\label\{[^{}]*\}/gu;
-
-function withoutLabels(source: string): string {
-  return source.replace(LABELS, "");
-}
-
-function unnumbered(source: string): string {
-  const environment = ENVIRONMENT_SOURCE.exec(source);
-  if (!environment || !NUMBERED_ENVIRONMENTS.has(environment[1])) return source;
-  return String.raw`\begin{${environment[1]}*}${environment[2]}\end{${environment[1]}*}`;
-}
-
+// Labels, references and environments KaTeX lacks are handled by the shared
+// renderer, so the tooltip, this widget and the hover card agree.
 export function renderVisualMath(source: string, display: boolean): MathRenderResult {
-  const cleaned = withoutLabels(source);
-  const direct = renderMathExpression(unnumbered(cleaned), display);
-  if (direct.status === "ready") return direct;
-  const environment = ENVIRONMENT_SOURCE.exec(cleaned);
-  const body = environment?.[2].trim();
-  if (!body) return direct;
-  const wrapped = NEEDS_ALIGNMENT.test(body) ? String.raw`\begin{aligned}${body}\end{aligned}` : body;
-  const fallback = renderMathExpression(wrapped, display);
-  return fallback.status === "ready" ? fallback : direct;
+  return renderMathSource(source, display);
 }
 
 export function replaceWithMarkup(element: HTMLElement, html: string): void {

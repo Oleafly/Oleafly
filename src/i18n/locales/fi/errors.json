@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk ei voi käyttää Oleaflyn käännöskansiota tällä tietokoneella, koska sen polussa on merkkejä, joita latexmk ei hyväksy. Vaihda projektin kääntäjäksi Tectonic, niin voit kääntää sen.",
     "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly ei voinut lukea lähdeluettelotiedostoa {{name}}. Tarkista, onko siinä virheellinen merkintä, ja vie sitten uudelleen."
+  },
   "github": {
     "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",
     "sign_in_cancelled": "GitHub-valtuutus peruutettiin.",

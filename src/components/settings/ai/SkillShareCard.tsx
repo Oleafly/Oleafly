@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Switch } from "@/components/ui/switch";
 import { describeError } from "@/lib/app-error";
+import { PrivatePath } from "@/components/ui/private";
 import { formatNumber } from "@/lib/intl";
 import { skillsShareSync, skillsShareTargets, type SkillShareTarget } from "@/lib/tauri";
 
@@ -107,7 +108,7 @@ export function SkillShareCard() {
             >
               <div className="min-w-0">
                 <span className="font-medium">{target.label}</span>
-                <span className="ml-1.5 text-muted-foreground">{target.root}</span>
+                <PrivatePath className="ml-1.5 text-muted-foreground" path={target.root} />
               </div>
               <span className="shrink-0 text-muted-foreground">{statusFor(target)}</span>
             </li>

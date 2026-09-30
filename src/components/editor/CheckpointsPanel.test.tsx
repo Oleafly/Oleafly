@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 
 const mocks = vi.hoisted(() => ({
   checkpointDelete: vi.fn(),
@@ -170,6 +171,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  resetDisplayHomes();
 });
 
 describe("CheckpointsPanel timeline", () => {
@@ -936,6 +938,29 @@ describe("CheckpointsPanel store inspection", () => {
     await screen.findByText("/data/checkpoints/project");
     await user.click(screen.getByRole("button", { name: /^Show in / }));
 
+    expect(mocks.checkpointRevealStore).toHaveBeenCalledWith("project");
+  });
+
+  it("shows the store and catalog paths under the home folder with ~", async () => {
+    const store = "/Users/ada/.oleafly/checkpoints/project";
+    setDisplayHomes(["/Users/ada"]);
+    mocks.checkpointInspect.mockResolvedValue({
+      ...inspection,
+      store_path: store,
+      catalog_path: `${store}/catalog.sqlite`,
+    });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    expect(await screen.findByText("~/.oleafly/checkpoints/project")).toBeInTheDocument();
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+    expect(screen.getByText("~/.oleafly/checkpoints/project/catalog.sqlite")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("/Users/ada");
+
+    await user.click(screen.getByRole("button", { name: /^Show in / }));
     expect(mocks.checkpointRevealStore).toHaveBeenCalledWith("project");
   });
 });

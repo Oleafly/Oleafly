@@ -82,6 +82,7 @@ import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
+import { PrivatePath } from "@/components/ui/private";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import {
@@ -1303,9 +1304,10 @@ export function Library() {
                       {item.format || t(($) => $.library.projects.exportsDialog.fallbackFormat)}
                     </span>
                   </div>
-                  <span className="break-all font-mono text-xs text-muted-foreground">
-                    {item.path}
-                  </span>
+                  <PrivatePath
+                    className="break-all font-mono text-xs text-muted-foreground"
+                    path={item.path}
+                  />
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock3 className="size-3" />
                     {projectDateTime(item.date)}
@@ -1394,6 +1396,7 @@ export function Library() {
         <Input
           type="search"
           aria-label={t(($) => $.library.home.searchLabel)}
+          data-private-placeholder=""
           placeholder={t(($) => $.library.home.searchPlaceholder, {
             count: projects.length,
             total: formatNumber(projects.length),

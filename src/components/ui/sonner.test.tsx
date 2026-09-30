@@ -19,6 +19,8 @@ vi.mock("sonner", () => ({
 import { Toaster } from "./sonner";
 import { toast } from "@/lib/toast";
 import { useToastStore } from "@/store/toast";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const KEEP_MESSAGE = "Keep me";
 const CHOOSE_MESSAGE = "Choose a compatible engine";
@@ -27,6 +29,7 @@ const CHOOSE_ENGINE = "Choose an engine";
 const COMPILING = "Compiling…";
 const ADDED_ENTRY = "Added the entry to refs.bib";
 const UNDO = "Undo";
+const SAVED_UNDER_HOME = "Saved usage report to /Users/ada/Downloads/usage.json";
 
 interface ShownOptions {
   id: number;
@@ -45,6 +48,49 @@ function lastShown(mock: typeof mocks.error): [ReactNode, ShownOptions] {
 beforeEach(() => {
   useToastStore.getState().reset();
   vi.clearAllMocks();
+});
+
+describe("Toaster display", () => {
+  it("shows home paths in a message as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast.success(SAVED_UNDER_HOME);
+      });
+      const { container } = render(<span>{lastShown(mocks.success)[0]}</span>);
+      expect(container.textContent).toBe("Saved usage report to ~/Downloads/usage.json");
+    } finally {
+      resetDisplayHomes();
+    }
+  });
+
+  it("blurs the path in a message while personal details are hidden", () => {
+    setDisplayHomes(["/Users/ada"]);
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast.success(SAVED_UNDER_HOME);
+      });
+      const { container } = render(<span>{lastShown(mocks.success)[0]}</span>);
+      expect(container.querySelector("[data-private]")).toBeNull();
+
+      act(() => usePersonalDetailsStore.getState().setHidden(true));
+      expect(container.querySelector("[data-private]")?.textContent).toBe("~/Downloads/usage.json");
+      expect(container.textContent).toBe("Saved usage report to ~/Downloads/usage.json");
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+      resetDisplayHomes();
+    }
+  });
+
+  it("keeps a message with nothing personal as plain text", () => {
+    render(<Toaster />);
+    act(() => {
+      toast.info(KEEP_MESSAGE);
+    });
+    expect(lastShown(mocks.info)[0]).toBe(KEEP_MESSAGE);
+  });
 });
 
 describe("Toaster keyed updates", () => {

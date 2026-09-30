@@ -713,7 +713,10 @@
     "noResponse": "Aucune réponse n'est arrivée pour ce message. Le flux a été interrompu. Renvoyez-le ou démarrez une nouvelle discussion.",
     "scrollToBottom": "Aller en bas",
     "projectSubtitle": "Travail sur « {{project}} »",
-    "noOutput": "Le modèle n'a renvoyé aucune sortie. Vérifiez Paramètres → Assistant IA."
+    "noOutput": "Le modèle n'a renvoyé aucune sortie. Vérifiez Paramètres → Assistant IA.",
+    "planMissing": "Aucun plan à approuver pour l'instant. Demandez-en un à l'assistant, ou désactivez Plan.",
+    "planUnchanged": "Le plan n'a pas changé.",
+    "usePlanFromReply": "Utiliser comme plan"
   },
   "followUps": {
     "steered": "Injecté dans le tour en cours : {{summary}}",

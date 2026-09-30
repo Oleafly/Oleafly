@@ -166,16 +166,20 @@ type Probed = (ProjectAvailability, Option<u64>);
 
 type Probe = Arc<dyn Fn(&str) -> Probed + Send + Sync>;
 
+/// `path` for display, with a leading `home` shown as `~`. The one format
+/// the backend uses for home-relative paths (linked folders, the shell
+/// command row); the UI mirrors it in `src/lib/display-path.ts`.
 pub(crate) fn abbreviated_display_path(path: &Path, home: Option<&Path>) -> String {
     let shown = without_verbatim_prefix(path);
     let home = home.map(without_verbatim_prefix);
     if let Some(rest) = home.and_then(|home| shown.strip_prefix(home).ok()) {
         let mut out = String::from("~");
         for component in rest.components() {
-            if let Component::Normal(part) = component {
-                out.push(std::path::MAIN_SEPARATOR);
-                out.push_str(&part.to_string_lossy());
+            if matches!(component, Component::Prefix(_) | Component::RootDir) {
+                continue;
             }
+            out.push(std::path::MAIN_SEPARATOR);
+            out.push_str(&component.as_os_str().to_string_lossy());
         }
         return out;
     }
@@ -196,6 +200,86 @@ pub(crate) fn without_verbatim_prefix(path: &Path) -> PathBuf {
 pub(crate) fn display_home() -> Option<PathBuf> {
     let home = crate::paths::home_dir().ok()?;
     Some(home.canonicalize().unwrap_or(home))
+}
+
+/// Every spelling of the home folder that a path sent to the UI can start
+/// with, so the UI can show it as `~`. Oleafly joins its own paths onto
+/// `paths::home_dir()` (`$HOME` before `USERPROFILE`). On Windows, `$HOME`
+/// set by Git, MSYS or Emacs can differ from the profile folder that Windows
+/// builds %APPDATA%, Documents and TEMP under, so USERPROFILE is listed too.
+/// TEMP often starts at the profile's 8.3 short name
+/// (`C:\Users\JOHNSM~1\AppData\Local\Temp`), so each root's short form is
+/// listed when it differs. Some paths are canonicalized first, so each root's
+/// canonical form is listed as well when a symlink or junction makes it
+/// differ.
+pub(crate) fn display_homes() -> Vec<String> {
+    let profile = if cfg!(windows) {
+        std::env::var_os("USERPROFILE").map(PathBuf::from)
+    } else {
+        None
+    };
+    let roots: Vec<PathBuf> = crate::paths::home_dir()
+        .ok()
+        .into_iter()
+        .chain(profile)
+        .collect();
+    home_spellings(&roots)
+}
+
+fn home_spellings(roots: &[PathBuf]) -> Vec<String> {
+    let mut spellings: Vec<PathBuf> = Vec::new();
+    for root in roots.iter().filter(|root| !root.as_os_str().is_empty()) {
+        let canonical = root
+            .canonicalize()
+            .ok()
+            .map(|path| without_verbatim_prefix(&path));
+        let short = short_spelling(root).map(|path| without_verbatim_prefix(&path));
+        for spelling in std::iter::once(without_verbatim_prefix(root))
+            .chain(canonical)
+            .chain(short)
+        {
+            if !spellings.contains(&spelling) {
+                spellings.push(spelling);
+            }
+        }
+    }
+    spellings
+        .into_iter()
+        .map(|spelling| spelling.to_string_lossy().into_owned())
+        .collect()
+}
+
+/// The 8.3 spelling of an existing `path` (`C:\Users\JOHNSM~1`). A volume
+/// with short names turned off gives the path back unchanged.
+#[cfg(windows)]
+pub(crate) fn short_spelling(path: &Path) -> Option<PathBuf> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
+
+    let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut output = vec![0u16; 260];
+    // A second try is enough unless the folder is renamed in between.
+    for _ in 0..3 {
+        let capacity = u32::try_from(output.len()).ok()?;
+        // Writes at most `capacity` units; returns the length written, or the
+        // size needed (terminator included) when the buffer is too small.
+        let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), capacity) };
+        let written = usize::try_from(written).ok()?;
+        if written == 0 {
+            return None;
+        }
+        if written < output.len() {
+            output.truncate(written);
+            return Some(PathBuf::from(std::ffi::OsString::from_wide(&output)));
+        }
+        output.resize(written, 0);
+    }
+    None
+}
+
+#[cfg(not(windows))]
+pub(crate) fn short_spelling(_path: &Path) -> Option<PathBuf> {
+    None
 }
 
 fn availability_of(
@@ -400,6 +484,107 @@ mod tests {
             abbreviated_display_path(Path::new("/Users/adam/paper"), Some(home)),
             "/Users/adam/paper"
         );
+        assert_eq!(
+            abbreviated_display_path(Path::new("/Users/ada/a/../b"), Some(home)),
+            "~/a/../b"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn display_homes_list_the_home_as_given_and_its_canonical_form() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real-home");
+        std::fs::create_dir(&real).unwrap();
+        let link = dir.path().join("home-link");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let canonical = real.canonicalize().unwrap();
+
+        assert_eq!(
+            home_spellings(std::slice::from_ref(&link)),
+            vec![
+                link.to_string_lossy().into_owned(),
+                canonical.to_string_lossy().into_owned()
+            ]
+        );
+        assert_eq!(
+            home_spellings(std::slice::from_ref(&canonical)),
+            vec![canonical.to_string_lossy().into_owned()]
+        );
+        assert_eq!(
+            home_spellings(&[PathBuf::from("/no/such/home")]),
+            vec!["/no/such/home".to_string()]
+        );
+    }
+
+    #[test]
+    fn display_homes_list_every_home_root_once() {
+        // Windows: `$HOME` (Git, MSYS, Emacs) and the USERPROFILE folder that
+        // %APPDATA%, Documents and TEMP live under can differ.
+        let dir = tempfile::tempdir().unwrap();
+        // Canonical already, so each root adds only its 8.3 short form, and
+        // only on Windows when the temp folder or user name is long
+        // (C:\Users\RUNNER~1\AppData\Local\Temp on CI).
+        let folder = |name: &str| {
+            let path = dir.path().join(name);
+            std::fs::create_dir(&path).unwrap();
+            without_verbatim_prefix(&path.canonicalize().unwrap())
+        };
+        let home = folder("home");
+        let profile = folder("profile");
+        let text = |path: &Path| path.to_string_lossy().into_owned();
+        let spellings = |path: &Path| {
+            let mut all = vec![text(path)];
+            if let Some(short) = short_spelling(path)
+                .map(|short| without_verbatim_prefix(&short))
+                .filter(|short| short.as_path() != path)
+            {
+                all.push(text(&short));
+            }
+            all
+        };
+
+        assert_eq!(
+            home_spellings(&[home.clone(), profile.clone()]),
+            [spellings(&home), spellings(&profile)].concat()
+        );
+        assert_eq!(
+            home_spellings(&[home.clone(), home.clone()]),
+            spellings(&home)
+        );
+        assert_eq!(
+            home_spellings(&[PathBuf::new(), home.clone()]),
+            spellings(&home)
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn display_homes_list_the_short_spelling_of_a_windows_profile() {
+        // TEMP often starts at the profile's 8.3 name (C:\Users\RUNNER~1\…),
+        // which matches neither USERPROFILE nor its canonical form.
+        let dir = tempfile::tempdir().unwrap();
+        let long = dir.path().join("profile with a long name");
+        std::fs::create_dir(&long).unwrap();
+        let long = without_verbatim_prefix(&long.canonicalize().unwrap());
+        let short = short_spelling(&long).expect("the folder exists");
+        let text = |path: &Path| path.to_string_lossy().into_owned();
+
+        assert_eq!(
+            short.canonicalize().unwrap(),
+            long.canonicalize().unwrap(),
+            "the short spelling names the same folder"
+        );
+        assert!(text(&short).len() <= text(&long).len());
+        // A volume with 8.3 names turned off gives the long path back, and it
+        // is listed once.
+        let expected = if short == long {
+            vec![text(&long)]
+        } else {
+            vec![text(&long), text(&short)]
+        };
+        assert_eq!(home_spellings(std::slice::from_ref(&long)), expected);
+        assert!(short_spelling(&long.join("missing")).is_none());
     }
 
     #[cfg(windows)]

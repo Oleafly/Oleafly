@@ -104,4 +104,73 @@ describe("lazy legacy project index", () => {
     );
     expect(plan.edits).toHaveLength(2);
   });
+
+  it("keeps LaTeX and Typst labels apart for lookup and rename", () => {
+    const index = lazyLegacyIndex(
+      snapshot({
+        "paper.tex": String.raw`\label{eq:mae}
+See \eqref{eq:mae}.`,
+        "paper.typ": "$ x $ <eq:mae>\n= Other <eq:rmse>\nSee @eq:mae.\n",
+      }),
+    );
+    const latexLabel = index.defs.find(
+      (symbol) => symbol.kind === "label" && symbol.file === "paper.tex",
+    ) as NonNullable<(typeof index.defs)[number]>;
+    const plan = index.renamePlan(latexLabel, "eq:new");
+    expect(plan.edits.map((edit) => edit.file)).toEqual([
+      "paper.tex",
+      "paper.tex",
+    ]);
+    expect(index.renamePlan(latexLabel, "eq:rmse").collision).toBe(false);
+
+    const typstUse = index.uses.find(
+      (symbol) => symbol.name === "eq:mae" && symbol.file === "paper.typ",
+    ) as NonNullable<(typeof index.uses)[number]>;
+    expect(index.definitionFor(typstUse)?.file).toBe("paper.typ");
+  });
+
+  it("follows a Markdown file#anchor link into a LaTeX or Typst label", () => {
+    const index = lazyLegacyIndex(
+      snapshot({
+        "paper.tex": String.raw`\section{Results}\label{sec:results} See \ref{sec:results}.
+\label{eq:mae}`,
+        "paper.typ": "$ x $ <eq:mae>\n",
+        "notes.md":
+          "See [results](paper.tex#sec:results) and [error](paper.typ#eq:mae).\n",
+        "other.md": "# Other\n\nSee [x](#sec:results).\n",
+      }),
+    );
+    const label = (name: string, file: string) =>
+      index.defs.find(
+        (symbol) =>
+          symbol.kind === "label" && symbol.name === name && symbol.file === file,
+      ) as NonNullable<(typeof index.defs)[number]>;
+    const link = (name: string) =>
+      index.uses.find(
+        (symbol) => symbol.name === name && symbol.file === "notes.md",
+      ) as NonNullable<(typeof index.uses)[number]>;
+
+    const results = label("sec:results", "paper.tex");
+    expect(index.definitionFor(link("sec:results"))).toBe(results);
+    // The local link in other.md points at other.md, not at paper.tex.
+    expect(index.renamePlan(results, "sec:new").edits.map((edit) => edit.file)).toEqual([
+      "notes.md",
+      "paper.tex",
+      "paper.tex",
+    ]);
+    expect(index.allReferences(results).map((symbol) => symbol.file)).toContain(
+      "notes.md",
+    );
+
+    const typstLabel = label("eq:mae", "paper.typ");
+    expect(index.definitionFor(link("eq:mae"))).toBe(typstLabel);
+    expect(
+      index.renamePlan(typstLabel, "eq:new").edits.map((edit) => edit.file),
+    ).toEqual(["notes.md", "paper.typ"]);
+    expect(
+      index
+        .renamePlan(label("eq:mae", "paper.tex"), "eq:new")
+        .edits.map((edit) => edit.file),
+    ).toEqual(["paper.tex"]);
+  });
 });

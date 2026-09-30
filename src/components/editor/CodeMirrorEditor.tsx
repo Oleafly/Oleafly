@@ -25,6 +25,7 @@ import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
 import { cursorSignalExtension } from "./cm/cursor-signal";
+import { recompileShortcutBinding } from "./cm/recompile-shortcut";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
@@ -284,6 +285,9 @@ const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
+  // First, so it runs before defaultKeymap's Mod-Enter (insertBlankLine): the
+  // recompile chord belongs to App.tsx and must not edit the document.
+  recompileShortcutBinding,
   {
     key: "Enter",
     run: (view) => {

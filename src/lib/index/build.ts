@@ -1,5 +1,7 @@
 import type { DefKind, Edit, FileSymbols, ProjectIndex, RenamePlan, Sym, UseKind } from "./types";
 import { parseFile, maskComments } from "./parse-file";
+import { labelScope, referenceTargetFile } from "@/lib/project-intelligence/resolution";
+import { engineForPath } from "@/lib/project-intelligence/source";
 
 const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
 const isDefKind = (k: string): k is DefKind => DEF_KINDS.has(k);
@@ -129,6 +131,51 @@ function collectMacroUses(
   }
 }
 
+// Citation keys come from .bib files that every engine reads, and file symbols
+// are project paths, so neither is scoped. Every other name belongs to the
+// engine of the file it appears in: a LaTeX \ref cannot reach a Typst <label>,
+// so looking one up or renaming it must never touch the other. Labels use the
+// same scopes as the project-intelligence resolver, which also keeps a
+// Markdown anchor to its own file.
+function nameScope(kind: DefKind, file: string): string {
+  if (kind === "bibentry" || kind === "file") return "";
+  if (kind === "label") return labelScope(engineForPath(file), file);
+  return engineForPath(file) ?? "";
+}
+
+interface NameTarget {
+  scope: string;
+  // The one file the definition must be in, or null for any file in scope.
+  file: string | null;
+}
+
+/**
+ * Where a symbol's name lives when it is looked up as `kind`. A definition
+ * pins its own file. A `file#anchor` reference, such as a Markdown
+ * `[results](paper.tex#sec:results)`, takes the scope of the file it names
+ * and pins that file; any other use takes the scope of the file it sits in.
+ */
+export function nameTarget(kind: DefKind, sym: Sym): NameTarget {
+  if (isDefKind(sym.kind)) {
+    return { scope: nameScope(kind, sym.file), file: sym.file };
+  }
+  const targetFile = kind === "label" ? referenceTargetFile(sym.target) : null;
+  if (targetFile !== null) {
+    return { scope: nameScope(kind, targetFile), file: targetFile };
+  }
+  return { scope: nameScope(kind, sym.file), file: null };
+}
+
+function sameTarget(a: NameTarget, b: NameTarget): boolean {
+  return (
+    a.scope === b.scope && (a.file === null || b.file === null || a.file === b.file)
+  );
+}
+
+function defKey(kind: DefKind, scope: string, name: string): string {
+  return `${kind}:${scope}:${name}`;
+}
+
 /**
  * Hydrates the closure-based compatibility index from immutable symbols.
  * Project-scale parsers can run in a worker and use this inexpensive main-
@@ -140,11 +187,29 @@ export function indexFromSymbols(
 ): ProjectIndex {
   const defs = [...definitionSymbols];
   const uses = [...useSymbols];
-  const defByKindName = new Map<string, Sym>();
+  const defsByKey = new Map<string, Sym[]>();
   for (const d of defs) {
-    const key = `${d.kind}:${d.name}`;
-    if (!defByKindName.has(key)) defByKindName.set(key, d);
+    const key = defKey(d.kind as DefKind, nameScope(d.kind as DefKind, d.file), d.name);
+    const sameKey = defsByKey.get(key);
+    if (sameKey) sameKey.push(d);
+    else defsByKey.set(key, [d]);
   }
+  const lookup = (kind: DefKind, from: Sym, name = from.name): Sym | null => {
+    const { scope, file } = nameTarget(kind, from);
+    const candidates = defsByKey.get(defKey(kind, scope, name)) ?? [];
+    return (file === null ? candidates[0] : candidates.find((d) => d.file === file)) ?? null;
+  };
+  // The uses of `kind` named `name` that point at the same thing as `origin`.
+  const usesOf = (kind: DefKind, name: string, origin: Sym): Sym[] => {
+    const useKinds = DEF_TO_USES[kind] ?? [];
+    const target = nameTarget(kind, origin);
+    return uses.filter(
+      (u) =>
+        useKinds.includes(u.kind as UseKind) &&
+        u.name === name &&
+        sameTarget(nameTarget(kind, u), target),
+    );
+  };
 
   const symbolAt = (file: string, offset: number): Sym | null => {
     let best: Sym | null = null;
@@ -159,15 +224,11 @@ export function indexFromSymbols(
 
   const definitionFor = (sym: Sym): Sym | null => {
     if (isDefKind(sym.kind)) return sym;
-    if (sym.kind === "inputedge") return defByKindName.get(`file:${sym.target ?? sym.name}`) ?? null;
-    if (sym.kind === "atuse") {
-      return defByKindName.get(`label:${sym.name}`) ?? defByKindName.get(`bibentry:${sym.name}`) ?? null;
-    }
-    if (sym.kind === "envuse") {
-      return defByKindName.get(`theorem:${sym.name}`) ?? defByKindName.get(`environment:${sym.name}`) ?? null;
-    }
+    if (sym.kind === "inputedge") return lookup("file", sym, sym.target ?? sym.name);
+    if (sym.kind === "atuse") return lookup("label", sym) ?? lookup("bibentry", sym);
+    if (sym.kind === "envuse") return lookup("theorem", sym) ?? lookup("environment", sym);
     const dk = USE_TO_DEF[sym.kind];
-    return dk ? defByKindName.get(`${dk}:${sym.name}`) ?? null : null;
+    return dk ? lookup(dk, sym) : null;
   };
 
   const references = (name: string, kind: UseKind): Sym[] => uses.filter((u) => u.kind === kind && u.name === name);
@@ -176,10 +237,10 @@ export function indexFromSymbols(
     const def = isDefKind(sym.kind) ? sym : definitionFor(sym);
     const kind: DefKind | null = (def?.kind as DefKind) ?? null;
     const name = def?.name ?? sym.name;
-    const useKinds = kind ? DEF_TO_USES[kind] ?? [] : [];
     const out: Sym[] = [];
     if (def && def.to > def.from) out.push(def);
-    for (const u of uses) if (useKinds.includes(u.kind as UseKind) && u.name === name) out.push(u);
+    if (!kind) return out;
+    out.push(...usesOf(kind, name, def ?? sym));
     return out;
   };
 
@@ -188,18 +249,19 @@ export function indexFromSymbols(
     const def = isDefKind(sym.kind) ? sym : definitionFor(sym);
     const kind: DefKind = (def?.kind as DefKind) ?? "label";
     const name = def?.name ?? sym.name;
+    const origin = def ?? sym;
 
-    const collision = defs.some((d) => d.kind === kind && d.name === newName && d !== def);
+    const originScope = nameTarget(kind, origin).scope;
+    const collision = defs.some(
+      (d) => d.kind === kind && d.name === newName && d !== def && nameScope(kind, d.file) === originScope,
+    );
 
     const edits: Edit[] = [];
     if (def && def.nameTo > def.nameFrom) {
       edits.push({ file: def.file, from: def.nameFrom, to: def.nameTo, newText: newName });
     }
-    const useKinds = DEF_TO_USES[kind] ?? [];
-    for (const u of uses) {
-      if (useKinds.includes(u.kind as UseKind) && u.name === name) {
-        edits.push({ file: u.file, from: u.nameFrom, to: u.nameTo, newText: newName });
-      }
+    for (const u of usesOf(kind, name, origin)) {
+      edits.push({ file: u.file, from: u.nameFrom, to: u.nameTo, newText: newName });
     }
     // Apply high-offset-first within each file so earlier edits don't shift later ones.
     edits.sort((a, b) => (a.file === b.file ? b.from - a.from : a.file.localeCompare(b.file)));

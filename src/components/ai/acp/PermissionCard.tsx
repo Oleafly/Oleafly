@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AiChrome } from "@/components/ai/AiChrome";
 import type { AcpPermission } from "@/lib/acp";
+import { useDisplayText } from "@/lib/display-path";
+import { PrivateText } from "@/components/ui/private";
 
 function optionIcon(kind: string) {
   return kind.startsWith("reject") ? (
@@ -23,6 +25,9 @@ export function PermissionCard({
   onChoose: (id: string, option: string | null) => Promise<void>;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  // The agent writes its own title, often with absolute paths. Display only:
+  // the answer goes back by request id.
+  const displayText = useDisplayText();
   const [busy, setBusy] = useState(false);
   const [expired, setExpired] = useState(request.expiresAt <= Date.now());
   useEffect(() => {
@@ -49,7 +54,9 @@ export function PermissionCard({
                 ? t(($) => $.ai.acp.permission.namedHeadline, { agent: agentName })
                 : t(($) => $.ai.acp.permission.headline)}
             </p>
-            <p className="text-[13px] leading-snug text-muted-foreground">{request.title}</p>
+            <p className="text-[13px] leading-snug text-muted-foreground">
+              <PrivateText text={displayText(request.title)} />
+            </p>
           </div>
         </div>
         {expired ? (

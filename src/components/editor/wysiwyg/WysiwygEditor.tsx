@@ -45,6 +45,7 @@ import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
+import { isRecompileShortcut } from "@/components/editor/cm/recompile-shortcut";
 import {
   getWysiwygProjectSessionGeneration,
   setWysiwygDocumentContext,
@@ -634,6 +635,10 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
       handlePaste: PASTE_HANDLERS.handlePaste,
       handleDrop: PASTE_HANDLERS.handleDrop,
       handleKeyDown: (_view, event) => {
+        // The recompile chord belongs to App.tsx. Claiming it here runs before
+        // the HardBreak keymap (Mod-Enter), so it no longer adds a line break;
+        // ProseMirror only calls preventDefault, so App still compiles.
+        if (isRecompileShortcut(event)) return true;
         if (!(event.metaKey || event.ctrlKey)) return false;
         const key = event.key.toLowerCase();
         if (key === "z" && !event.shiftKey) {

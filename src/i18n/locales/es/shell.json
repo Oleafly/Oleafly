@@ -64,7 +64,11 @@
     "setHomePage": "Definir como página de inicio"
   },
   "changelog": {
-    "installed": "Tienes esta versión"
+    "installed": "Tienes esta versión",
+    "sectionItems_one": "{{count}} cambio",
+    "sectionItems_many": "{{count}} cambios",
+    "sectionItems_other": "{{count}} cambios",
+    "showNotes": "Mostrar notas"
   },
   "citeOleafly": {
     "description": "No se encontró ningún archivo de bibliografía en este proyecto, así que no se cambió nada. Copia la entrada de abajo en tu bibliografía, o vuelve a encontrarla más tarde en Ajustes, Ayuda y Acerca de.",
@@ -167,6 +171,9 @@
       "online": "Modo con conexión (permite descargar paquetes)"
     },
     "openTool": "Abrir {{name}}",
+    "personalDetails": {
+      "keywords": "modo captura de pantalla, captura, privacidad, desenfocar, datos personales, rutas, nombre de cuenta"
+    },
     "recompile": {
       "label": "Recompilar"
     },
@@ -513,6 +520,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Ocultar datos personales",
+    "show": "Mostrar datos personales"
+  },
   "projectSearch": {
     "hint": "Busca en todos los archivos de este proyecto.",
     "noResults": "Sin resultados.",
@@ -766,6 +777,26 @@
       "help": "Ayuda y Acerca de",
       "integrations": "Integraciones",
       "shortcuts": "Atajos de teclado"
+    },
+    "search": {
+      "empty": "Ningún ajuste coincide.",
+      "keywords": {
+        "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
+        "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
+        "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
+        "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",
+        "downloads": "paquetes, fuentes, diccionarios, archivos sin conexión",
+        "engine": "compilador, compilar, LaTeX, TeX, Typst, Markdown, pandoc, compilación, PDF",
+        "experimentation": "experimentos, laboratorio, beta, funciones experimentales, funciones anticipadas",
+        "general": "preferencias, idioma, configuración regional, revisión ortográfica, ortografía, erratas, sin conexión, tutoriales, comando de terminal",
+        "help": "acerca de, versión, actualizaciones, registro de cambios, novedades, documentación, soporte, ayuda, comunidad, Discord, licencia, informe de fallos",
+        "integrations": "Zotero, GitHub, MCP, citas, cuentas, conexiones",
+        "shortcuts": "atajos de teclado, atajos, combinaciones de teclas, teclas, teclado"
+      },
+      "label": "Buscar en ajustes",
+      "results_one": "{{count}} sección coincide",
+      "results_many": "{{count}} secciones coinciden",
+      "results_other": "{{count}} secciones coinciden"
     },
     "sectionsNav": "Secciones de ajustes",
     "title": "Ajustes",

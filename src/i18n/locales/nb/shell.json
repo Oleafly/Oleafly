@@ -63,7 +63,10 @@
     "setHomePage": "Bruk som startside"
   },
   "changelog": {
-    "installed": "Du har denne versjonen"
+    "installed": "Du har denne versjonen",
+    "sectionItems_one": "{{count}} endring",
+    "sectionItems_other": "{{count}} endringer",
+    "showNotes": "Vis utgivelsesnotater"
   },
   "citeOleafly": {
     "description": "Fant ingen litteraturfil i dette prosjektet, så ingenting ble endret. Kopier oppføringen nedenfor inn i litteraturlisten din, eller finn den igjen senere under Innstillinger, Hjelp og om.",
@@ -166,6 +169,9 @@
       "online": "Tilkoblet modus (tillat henting av pakker)"
     },
     "openTool": "Åpne {{name}}",
+    "personalDetails": {
+      "keywords": "skjermbildemodus, skjermbilde, personvern, uskarphet, sløring, stier, kontonavn"
+    },
     "recompile": {
       "label": "Kompiler på nytt"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Skjul personlige opplysninger",
+    "show": "Vis personlige opplysninger"
+  },
   "projectSearch": {
     "hint": "Søk på tvers av filene i dette prosjektet.",
     "noResults": "Ingen treff.",
@@ -750,6 +760,25 @@
       "help": "Hjelp og om",
       "integrations": "Integrasjoner",
       "shortcuts": "Hurtigtaster"
+    },
+    "search": {
+      "empty": "Ingen innstillinger passer.",
+      "keywords": {
+        "ai": "assistent, chat, modeller, leverandører, API-nøkler, agenter, ledetekster, prompter, budsjett, MCP-servere",
+        "appearance": "tema, mørk modus, lys modus, farge, skrift, skrifttyper, tekststørrelse, zoom, oppsett",
+        "data": "sikkerhetskopi, bibliotekmappe, prosjektmappe, lagring, lagringsplass, diskplass, papirkurv, slette prosjekter, sjekkpunkter",
+        "dictionary": "stavemåte, rettskriving, egne ord, ignorerte ord, korrektur, grammatikkregler",
+        "downloads": "pakker, skrifter, ordlister, ordbøker, frakoblede filer",
+        "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, bygg, bygging, PDF",
+        "experimentation": "lab, beta, eksperimenter, tidlige funksjoner",
+        "general": "innstillinger, språk, region, stavekontroll, stavemåte, skrivefeil, frakoblet, omvisninger, terminalkommando",
+        "help": "om, versjon, oppdateringer, endringslogg, hva er nytt, dokumentasjon, støtte, hjelp, fellesskap, Discord, lisens, krasjrapport",
+        "integrations": "Zotero, GitHub, MCP, siteringer, kontoer, tilkoblinger",
+        "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier"
+      },
+      "label": "Søk i innstillingene",
+      "results_one": "{{count}} seksjon passer",
+      "results_other": "{{count}} seksjoner passer"
     },
     "sectionsNav": "Innstillingsseksjoner",
     "title": "Innstillinger",

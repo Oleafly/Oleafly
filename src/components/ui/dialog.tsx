@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { focusPastPersonalDetails } from "@/components/ui/private";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -34,12 +35,18 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string;
     closeDisabled?: boolean;
   }
->(({ className, overlayClassName, closeDisabled, children, ...props }, ref) => {
+>(({ className, overlayClassName, closeDisabled, children, onOpenAutoFocus, ...props }, ref) => {
   return (
     <DialogPortal>
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
+        // A dialog that picks its own first focus keeps it; otherwise opening
+        // must not land on a personal value, which focus would reveal.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (!event.defaultPrevented) focusPastPersonalDetails(event);
+        }}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-background p-6 text-foreground shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           "data-[state=closed]:pointer-events-none",

@@ -55,15 +55,72 @@ pub fn biber_for_child(program: &Path, path_env: &std::ffi::OsStr) -> Option<Pat
     choose_child_biber(program, path_env, find_tectonic_biber)
 }
 
+/// What a supervised child needs so that the Biber it runs can start.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChildBiber {
+    /// The folder PAR::Packer unpacks into (`PAR_GLOBAL_TMPDIR`).
+    pub unpack_dir: PathBuf,
+    /// A folder holding a thin copy of a universal macOS Biber, which has to
+    /// come first on the child's PATH.
+    pub thin_dir: Option<PathBuf>,
+}
+
+impl ChildBiber {
+    /// The child's PATH with the thin Biber folder, if any, in front.
+    pub fn path_env(&self, path_env: &std::ffi::OsStr) -> std::ffi::OsString {
+        let Some(thin_dir) = &self.thin_dir else {
+            return path_env.to_os_string();
+        };
+        let rest = std::env::split_paths(path_env).filter(|dir| dir != thin_dir);
+        std::env::join_paths(std::iter::once(thin_dir.clone()).chain(rest))
+            .unwrap_or_else(|_| path_env.to_os_string())
+    }
+}
+
+/// Prepare the Biber a child will run. This reads and may copy a large file,
+/// so async callers should run it on a blocking thread.
+pub fn prepare_child_biber(
+    data_root: &Path,
+    program: &Path,
+    path_env: &std::ffi::OsStr,
+) -> Option<ChildBiber> {
+    let biber = biber_for_child(program, path_env)?;
+    prepare_biber_for(data_root, program, &biber)
+}
+
+fn prepare_biber_for(data_root: &Path, program: &Path, biber: &Path) -> Option<ChildBiber> {
+    let unpack_dir = prepare_unpack_dir(data_root, biber)?;
+    // Only latexmk runs the system Biber it finds on PATH. Every other child
+    // runs the thin, packaged tectonic-biber, and putting a TeX Live Biber in
+    // front of it would swap a start failure for a version mismatch.
+    let thin_dir = if is_latexmk(program) {
+        runnable_biber_dir(data_root, biber)
+    } else {
+        None
+    };
+    Some(ChildBiber {
+        unpack_dir,
+        thin_dir,
+    })
+}
+
+fn program_stem(program: &Path) -> String {
+    program
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default()
+}
+
+fn is_latexmk(program: &Path) -> bool {
+    program_stem(program) == "latexmk"
+}
+
 fn choose_child_biber(
     program: &Path,
     path_env: &std::ffi::OsStr,
     bundled: impl FnOnce() -> Option<PathBuf>,
 ) -> Option<PathBuf> {
-    let name = program
-        .file_stem()
-        .map(|stem| stem.to_string_lossy().to_ascii_lowercase())
-        .unwrap_or_default();
+    let name = program_stem(program);
     if name == "biber" || name.starts_with("tectonic-biber") {
         return Some(program.to_path_buf());
     }
@@ -71,6 +128,193 @@ fn choose_child_biber(
         return first_biber_on(path_env);
     }
     bundled().or_else(|| first_biber_on(path_env))
+}
+
+/// Subfolder of a Biber's unpack folder that holds the thin copy of a
+/// universal macOS Biber.
+const THIN_BIBER_DIR: &str = "bin";
+
+const THIN_BIBER_NAME: &str = "biber";
+
+const FAT_MAGIC: u32 = 0xcafe_babe;
+
+const FAT_MAGIC_64: u32 = 0xcafe_babf;
+
+const FAT_ARCH_LEN: usize = 20;
+
+const FAT_ARCH_64_LEN: usize = 32;
+
+/// Real universal binaries hold a handful of slices. The cap also rules out
+/// Java class files, which share `0xcafebabe` and keep their class-file
+/// version (45 or more) where a universal binary keeps its slice count.
+const MAX_FAT_SLICES: u32 = 16;
+
+const FAT_HEADER_MAX: u64 = 8 + MAX_FAT_SLICES as u64 * FAT_ARCH_64_LEN as u64;
+
+const CPU_TYPE_X86_64: u32 = 0x0100_0007;
+
+const CPU_TYPE_ARM64: u32 = 0x0100_000c;
+
+const CPU_SUBTYPE_MASK: u32 = 0xff00_0000;
+
+const CPU_SUBTYPE_ARM64E: u32 = 2;
+
+const CPU_SUBTYPE_X86_64_H: u32 = 8;
+
+/// Where one architecture's slice sits inside a universal (fat) Mach-O file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FatSlice {
+    offset: u64,
+    size: u64,
+}
+
+fn host_cpu_type() -> Option<u32> {
+    match std::env::consts::ARCH {
+        "aarch64" => Some(CPU_TYPE_ARM64),
+        "x86_64" => Some(CPU_TYPE_X86_64),
+        _ => None,
+    }
+}
+
+/// A universal (fat) Biber does not start on current macOS. Biber is packed
+/// with PAR::Packer, and the loader of a universal build runs
+/// `/usr/bin/lipo <self> -extract_family <arch>` at every start. The lipo in
+/// recent Xcode rejects that flag, and a Mac without developer tools has no
+/// lipo to run at all. TeX Live's Biber and the one in Oleafly's managed
+/// TinyTeX are both universal.
+///
+/// This copies the host's slice out of the universal file byte for byte (the
+/// same bytes `lipo -thin` writes) into the Biber's own unpack folder, so
+/// pruning keeps it while that Biber is in use and removes it after an update.
+/// It returns the folder holding the copy, or None for a thin Biber and on
+/// other systems.
+fn runnable_biber_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
+    let cpu_type = host_cpu_type()?;
+    match extract_host_slice(data_root, biber, cpu_type) {
+        Ok(dir) => dir,
+        Err(error) => {
+            let message = format!(
+                "Could not copy the {} part out of the universal Biber at {}: {error}",
+                std::env::consts::ARCH,
+                biber.display()
+            );
+            eprintln!("biber: {message}");
+            let _ = crate::project::append_app_log(message);
+            None
+        }
+    }
+}
+
+fn extract_host_slice(
+    data_root: &Path,
+    biber: &Path,
+    cpu_type: u32,
+) -> std::io::Result<Option<PathBuf>> {
+    use std::io::{Read, Seek};
+    let mut source = std::fs::File::open(biber)?;
+    let file_len = source.metadata()?.len();
+    let mut header = Vec::new();
+    source
+        .by_ref()
+        .take(FAT_HEADER_MAX)
+        .read_to_end(&mut header)?;
+    let Some(slice) = fat_slice_for(&header, file_len, cpu_type) else {
+        return Ok(None);
+    };
+    let Some(unpack_dir) = unpack_dir_for(data_root, biber) else {
+        return Ok(None);
+    };
+    let dir = unpack_dir.join(THIN_BIBER_DIR);
+    let thin = dir.join(THIN_BIBER_NAME);
+    if std::fs::metadata(&thin).is_ok_and(|meta| meta.is_file() && meta.len() == slice.size) {
+        return Ok(Some(dir));
+    }
+    std::fs::create_dir_all(&dir)?;
+    // Two compiles can race here, so each writes its own temporary file and
+    // renames it into place; the rename replaces the file atomically.
+    let mut staged = tempfile::Builder::new()
+        .prefix(".biber-")
+        .tempfile_in(&dir)?;
+    source.seek(std::io::SeekFrom::Start(slice.offset))?;
+    let copied = std::io::copy(&mut source.take(slice.size), staged.as_file_mut())?;
+    if copied != slice.size {
+        return Err(std::io::ErrorKind::UnexpectedEof.into());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        staged
+            .as_file()
+            .set_permissions(std::fs::Permissions::from_mode(0o755))?;
+    }
+    staged.persist(&thin).map_err(|error| error.error)?;
+    Ok(Some(dir))
+}
+
+/// Find the slice built for `cpu_type` in the header of a universal Mach-O
+/// file. Returns None for thin binaries, for anything that is not a
+/// well-formed universal header, and when no slice matches.
+fn fat_slice_for(header: &[u8], file_len: u64, cpu_type: u32) -> Option<FatSlice> {
+    let entry_len = match be_u32(header, 0)? {
+        FAT_MAGIC => FAT_ARCH_LEN,
+        FAT_MAGIC_64 => FAT_ARCH_64_LEN,
+        _ => return None,
+    };
+    let count = be_u32(header, 4)?;
+    if count == 0 || count > MAX_FAT_SLICES {
+        return None;
+    }
+    let table_end = 8 + count as usize * entry_len;
+    if header.len() < table_end {
+        return None;
+    }
+    let mut specialised = None;
+    for entry in (8..table_end).step_by(entry_len) {
+        if be_u32(header, entry)? != cpu_type {
+            continue;
+        }
+        let (offset, size) = if entry_len == FAT_ARCH_64_LEN {
+            (be_u64(header, entry + 8)?, be_u64(header, entry + 16)?)
+        } else {
+            (
+                u64::from(be_u32(header, entry + 8)?),
+                u64::from(be_u32(header, entry + 12)?),
+            )
+        };
+        if size == 0 || offset < table_end as u64 || offset.checked_add(size)? > file_len {
+            return None;
+        }
+        let slice = FatSlice { offset, size };
+        let subtype = be_u32(header, entry + 4)? & !CPU_SUBTYPE_MASK;
+        if is_specialised_subtype(cpu_type, subtype) {
+            specialised.get_or_insert(slice);
+        } else {
+            return Some(slice);
+        }
+    }
+    specialised
+}
+
+/// arm64e and x86_64h slices only run on some Macs (arm64e not at all outside
+/// Apple's own binaries), so the plain slice wins when both are present.
+fn is_specialised_subtype(cpu_type: u32, subtype: u32) -> bool {
+    matches!(
+        (cpu_type, subtype),
+        (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64E) | (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H)
+    )
+}
+
+fn be_u32(bytes: &[u8], at: usize) -> Option<u32> {
+    let word = bytes.get(at..at.checked_add(4)?)?;
+    Some(u32::from_be_bytes(word.try_into().ok()?))
+}
+
+fn be_u64(bytes: &[u8], at: usize) -> Option<u64> {
+    let word = bytes.get(at..at.checked_add(8)?)?;
+    Some(u64::from_be_bytes(word.try_into().ok()?))
 }
 
 fn first_biber_on(path_env: &std::ffi::OsStr) -> Option<PathBuf> {
@@ -866,6 +1110,324 @@ mod tests {
                 Some(system.clone())
             );
         }
+    }
+
+    const INTEL: &[u8] = b"#!/bin/sh\necho x86_64\n";
+    const APPLE: &[u8] = b"#!/bin/sh\necho arm64\n";
+
+    struct Slice<'a> {
+        cpu_type: u32,
+        subtype: u32,
+        offset: u64,
+        bytes: &'a [u8],
+    }
+
+    fn slice(cpu_type: u32, subtype: u32, offset: u64, bytes: &[u8]) -> Slice<'_> {
+        Slice {
+            cpu_type,
+            subtype,
+            offset,
+            bytes,
+        }
+    }
+
+    fn fat_header(magic: u32, count: u32, slices: &[Slice<'_>]) -> Vec<u8> {
+        let mut header = Vec::new();
+        header.extend_from_slice(&magic.to_be_bytes());
+        header.extend_from_slice(&count.to_be_bytes());
+        for slice in slices {
+            header.extend_from_slice(&slice.cpu_type.to_be_bytes());
+            header.extend_from_slice(&slice.subtype.to_be_bytes());
+            let size = slice.bytes.len() as u64;
+            if magic == FAT_MAGIC_64 {
+                header.extend_from_slice(&slice.offset.to_be_bytes());
+                header.extend_from_slice(&size.to_be_bytes());
+                header.extend_from_slice(&12u32.to_be_bytes());
+                header.extend_from_slice(&0u32.to_be_bytes());
+            } else {
+                header.extend_from_slice(&(slice.offset as u32).to_be_bytes());
+                header.extend_from_slice(&(size as u32).to_be_bytes());
+                header.extend_from_slice(&12u32.to_be_bytes());
+            }
+        }
+        header
+    }
+
+    fn universal(magic: u32, slices: &[Slice<'_>]) -> Vec<u8> {
+        let mut file = fat_header(magic, slices.len() as u32, slices);
+        for slice in slices {
+            file.resize(slice.offset as usize, 0);
+            file.extend_from_slice(slice.bytes);
+        }
+        file
+    }
+
+    fn intel_and_apple() -> [Slice<'static>; 2] {
+        [
+            slice(CPU_TYPE_X86_64, 3, 4096, INTEL),
+            slice(CPU_TYPE_ARM64, 0, 8192, APPLE),
+        ]
+    }
+
+    fn slice_in(file: &[u8], cpu_type: u32) -> Option<FatSlice> {
+        fat_slice_for(file, file.len() as u64, cpu_type)
+    }
+
+    #[test]
+    fn a_universal_header_names_the_slice_for_each_cpu() {
+        for magic in [FAT_MAGIC, FAT_MAGIC_64] {
+            let file = universal(magic, &intel_and_apple());
+            assert_eq!(
+                slice_in(&file, CPU_TYPE_X86_64),
+                Some(FatSlice {
+                    offset: 4096,
+                    size: INTEL.len() as u64
+                }),
+                "{magic:#x}"
+            );
+            let apple = slice_in(&file, CPU_TYPE_ARM64).unwrap();
+            assert_eq!(
+                &file[apple.offset as usize..(apple.offset + apple.size) as usize],
+                APPLE
+            );
+        }
+    }
+
+    #[test]
+    fn the_64_bit_header_reads_offsets_past_four_gigabytes() {
+        let far = (1u64 << 32) + 4096;
+        let header = fat_header(
+            FAT_MAGIC_64,
+            2,
+            &[
+                slice(CPU_TYPE_X86_64, 3, 4096, INTEL),
+                slice(CPU_TYPE_ARM64, 0, far, APPLE),
+            ],
+        );
+        let file_len = far + APPLE.len() as u64;
+        assert_eq!(
+            fat_slice_for(&header, file_len, CPU_TYPE_ARM64),
+            Some(FatSlice {
+                offset: far,
+                size: APPLE.len() as u64
+            })
+        );
+        assert_eq!(fat_slice_for(&header, file_len - 1, CPU_TYPE_ARM64), None);
+    }
+
+    #[test]
+    fn slice_counts_outside_one_to_sixteen_are_not_universal_binaries() {
+        for magic in [FAT_MAGIC, FAT_MAGIC_64] {
+            let empty = fat_header(magic, 0, &[]);
+            assert_eq!(fat_slice_for(&empty, 1 << 20, CPU_TYPE_ARM64), None);
+
+            let mut many = fat_header(magic, 17, &[]);
+            for index in 0..17 {
+                let one = slice(CPU_TYPE_ARM64, 0, 8192 + index * 64, APPLE);
+                many.extend_from_slice(&fat_header(magic, 1, &[one])[8..]);
+            }
+            assert_eq!(fat_slice_for(&many, 1 << 20, CPU_TYPE_ARM64), None);
+
+            let promised = fat_header(magic, 2, &[slice(CPU_TYPE_ARM64, 0, 8192, APPLE)]);
+            assert_eq!(fat_slice_for(&promised, 1 << 20, CPU_TYPE_ARM64), None);
+        }
+        let java_class = [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34, 0x00, 0x1d];
+        assert_eq!(slice_in(&java_class, CPU_TYPE_ARM64), None);
+    }
+
+    #[test]
+    fn a_universal_binary_without_the_host_cpu_has_no_slice() {
+        let intel_only = universal(FAT_MAGIC, &[slice(CPU_TYPE_X86_64, 3, 4096, INTEL)]);
+        assert!(slice_in(&intel_only, CPU_TYPE_X86_64).is_some());
+        assert_eq!(slice_in(&intel_only, CPU_TYPE_ARM64), None);
+        let both = universal(FAT_MAGIC_64, &intel_and_apple());
+        assert_eq!(slice_in(&both, 0x0000_0007), None);
+    }
+
+    #[test]
+    fn thin_and_short_files_are_not_universal() {
+        let mut thin_arm64 = vec![0xcf, 0xfa, 0xed, 0xfe, 0x0c, 0x00, 0x00, 0x01];
+        thin_arm64.resize(4096, 0);
+        let files: [&[u8]; 5] = [
+            &thin_arm64,
+            APPLE,
+            b"",
+            &[0xca, 0xfe, 0xba],
+            &[0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00],
+        ];
+        for bytes in files {
+            assert_eq!(slice_in(bytes, CPU_TYPE_ARM64), None, "{bytes:?}");
+        }
+    }
+
+    #[test]
+    fn slices_outside_the_file_or_inside_the_header_are_rejected() {
+        let file = universal(FAT_MAGIC, &intel_and_apple());
+        assert_eq!(
+            fat_slice_for(&file, file.len() as u64 - 1, CPU_TYPE_ARM64),
+            None
+        );
+        for bad in [
+            slice(CPU_TYPE_ARM64, 0, 16, APPLE),
+            slice(CPU_TYPE_ARM64, 0, 8192, b""),
+            slice(CPU_TYPE_ARM64, 0, u64::MAX - 4, APPLE),
+        ] {
+            let header = fat_header(FAT_MAGIC_64, 1, &[bad]);
+            assert_eq!(fat_slice_for(&header, u64::MAX, CPU_TYPE_ARM64), None);
+        }
+    }
+
+    #[test]
+    fn the_plain_slice_wins_over_arm64e_and_x86_64h() {
+        let ptrauth_abi = 0x8000_0000;
+        let file = universal(
+            FAT_MAGIC,
+            &[
+                slice(
+                    CPU_TYPE_ARM64,
+                    CPU_SUBTYPE_ARM64E | ptrauth_abi,
+                    4096,
+                    b"arm64e",
+                ),
+                slice(CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H, 8192, b"x86_64h"),
+                slice(CPU_TYPE_ARM64, 0, 12288, APPLE),
+                slice(CPU_TYPE_X86_64, 3, 16384, INTEL),
+            ],
+        );
+        assert_eq!(slice_in(&file, CPU_TYPE_ARM64).unwrap().offset, 12288);
+        assert_eq!(slice_in(&file, CPU_TYPE_X86_64).unwrap().offset, 16384);
+
+        let only_arm64e = universal(
+            FAT_MAGIC,
+            &[slice(CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64E, 4096, b"arm64e")],
+        );
+        assert_eq!(slice_in(&only_arm64e, CPU_TYPE_ARM64).unwrap().offset, 4096);
+    }
+
+    #[test]
+    fn the_host_slice_is_copied_once_into_the_unpack_folder() {
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let texbin = directory.path().join("texbin");
+        std::fs::create_dir_all(&texbin).unwrap();
+        let biber = texbin.join("biber");
+        std::fs::write(&biber, universal(FAT_MAGIC, &intel_and_apple())).unwrap();
+
+        let dir = extract_host_slice(&data, &biber, CPU_TYPE_ARM64)
+            .unwrap()
+            .expect("a slice for arm64");
+
+        assert_eq!(dir, unpack_dir_for(&data, &biber).unwrap().join("bin"));
+        let thin = dir.join("biber");
+        assert_eq!(std::fs::read(&thin).unwrap(), APPLE);
+        assert_eq!(listing(&dir), vec![std::ffi::OsString::from("biber")]);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&thin).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o755);
+        }
+
+        let long_ago = std::time::SystemTime::now() - UNUSED_GRACE;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&thin)
+            .unwrap()
+            .set_modified(long_ago)
+            .unwrap();
+        assert_eq!(
+            extract_host_slice(&data, &biber, CPU_TYPE_ARM64).unwrap(),
+            Some(dir.clone())
+        );
+        let modified = std::fs::metadata(&thin).unwrap().modified().unwrap();
+        assert_eq!(modified, long_ago);
+
+        std::fs::write(&thin, &APPLE[..4]).unwrap();
+        extract_host_slice(&data, &biber, CPU_TYPE_ARM64).unwrap();
+        assert_eq!(std::fs::read(&thin).unwrap(), APPLE);
+        assert_eq!(listing(&dir), vec![std::ffi::OsString::from("biber")]);
+    }
+
+    #[test]
+    fn a_thin_biber_gets_no_copy() {
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let thin = fake_biber(&directory.path().join("app"), "tectonic-biber", 11);
+        let intel_only = directory.path().join("biber");
+        std::fs::write(
+            &intel_only,
+            universal(FAT_MAGIC, &[slice(CPU_TYPE_X86_64, 3, 4096, INTEL)]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            extract_host_slice(&data, &thin, CPU_TYPE_ARM64).unwrap(),
+            None
+        );
+        assert_eq!(
+            extract_host_slice(&data, &intel_only, CPU_TYPE_ARM64).unwrap(),
+            None
+        );
+        assert!(!data.exists());
+        assert!(
+            extract_host_slice(&data, &directory.path().join("missing"), CPU_TYPE_ARM64).is_err()
+        );
+    }
+
+    #[test]
+    fn only_latexmk_children_put_a_thin_biber_first_on_path() {
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let texbin = directory.path().join("texbin");
+        std::fs::create_dir_all(&texbin).unwrap();
+        let biber = texbin.join("biber");
+        std::fs::write(&biber, universal(FAT_MAGIC_64, &intel_and_apple())).unwrap();
+        let unpack_dir = unpack_dir_for(&data, &biber).unwrap();
+        let thin_dir = unpack_dir.join("bin");
+
+        for program in ["tectonic", "pandoc", "sh", "biber"] {
+            assert_eq!(
+                prepare_biber_for(&data, Path::new(program), &biber),
+                Some(ChildBiber {
+                    unpack_dir: unpack_dir.clone(),
+                    thin_dir: None,
+                }),
+                "{program}"
+            );
+        }
+        assert!(!thin_dir.exists());
+
+        let latexmk = prepare_biber_for(&data, &texbin.join("latexmk"), &biber).unwrap();
+        let runs_thin = cfg!(target_os = "macos") && host_cpu_type().is_some();
+        assert_eq!(latexmk.unpack_dir, unpack_dir);
+        assert_eq!(latexmk.thin_dir.is_some(), runs_thin);
+        assert_eq!(thin_dir.join("biber").is_file(), runs_thin);
+        if let Some(dir) = &latexmk.thin_dir {
+            assert_eq!(dir, &thin_dir);
+        }
+    }
+
+    #[test]
+    fn the_thin_biber_folder_goes_first_on_the_child_path() {
+        let directory = tempfile::tempdir().unwrap();
+        let thin = directory.path().join("bin");
+        let texbin = directory.path().join("texbin");
+        let usr = directory.path().join("usr");
+        let inherited = std::env::join_paths([texbin.clone(), thin.clone(), usr.clone()]).unwrap();
+        let without = ChildBiber {
+            unpack_dir: directory.path().to_path_buf(),
+            thin_dir: None,
+        };
+        let with = ChildBiber {
+            thin_dir: Some(thin.clone()),
+            ..without.clone()
+        };
+
+        assert_eq!(without.path_env(&inherited), inherited);
+        assert_eq!(
+            std::env::split_paths(&with.path_env(&inherited)).collect::<Vec<_>>(),
+            vec![thin, texbin, usr]
+        );
     }
 
     #[test]

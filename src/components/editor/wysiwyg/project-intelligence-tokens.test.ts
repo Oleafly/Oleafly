@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/i18n/locales/en/intelligence.json" with { type: "json" };
+import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
+import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
 import type {
   ProjectDefinition,
   ProjectIntelligenceSnapshot,
@@ -141,5 +143,39 @@ describe("visual project intelligence tokens", () => {
     ) as { key: string; resolution: string }[];
     expect(states.map((state) => state.key)).toEqual(["knuth1984", "missing2020"]);
     expect(states.map((state) => state.resolution)).toEqual(["resolved", "unresolved"]);
+  });
+
+  it("does not call a Markdown reference duplicate because LaTeX and Typst share a label name", () => {
+    const sources: Record<string, string> = {
+      "paper.tex": String.raw`\section{Results}\label{sec:results}`,
+      "paper.typ": "= Results <sec:results>\n",
+      "a.md": "# Local {#sec:local}\n\nSee \\ref{sec:results} and \\ref{sec:local}.\n",
+    };
+    const snapshot = assembleProjectIntelligence({
+      identity: { projectId: "labels", projectRevision: 1, requestGeneration: 1 },
+      files: Object.fromEntries(
+        Object.entries(sources).map(([file, source]) => [
+          file,
+          analyzeProjectFile(file, source, 1),
+        ]),
+      ),
+      knownFiles: Object.keys(sources).sort(),
+      mainDocument: "paper.tex",
+      stats: {
+        fileCount: 3,
+        characterCount: 0,
+        parsedFileCount: 3,
+        reusedFileCount: 0,
+        durationMs: 0,
+      },
+    });
+
+    const results = rawInlineTokenAttributes(snapshot, "a.md", "\\ref{sec:results}");
+    expect(results?.class).not.toContain("is-duplicate");
+    expect(results?.title).not.toContain(token.stateDuplicate);
+
+    // A Markdown anchor in the same file still resolves.
+    const local = rawInlineTokenAttributes(snapshot, "a.md", "\\ref{sec:local}");
+    expect(local?.class).toContain("is-resolved");
   });
 });

@@ -268,6 +268,128 @@ describe("preflight store", () => {
     });
   });
 
+  it("keeps LaTeX, Typst and Markdown labels apart", async () => {
+    seedProject();
+    useIndexStore.setState((state) => ({
+      index: {
+        ...(state.index as NonNullable<typeof state.index>),
+        defs: [
+          symbol("label", "eq:mae", "main.tex"),
+          symbol("label", "eq:mae", "paper.typ"),
+          symbol("label", "typst-only", "paper.typ"),
+          symbol("label", "fig:plot", "main.tex"),
+          // Markdown heading ids are scoped to their own file.
+          symbol("label", "introduction", "a.md"),
+          symbol("label", "introduction", "b.md"),
+        ],
+        uses: [
+          symbol("ref", "eq:mae", "chapter.tex"),
+          symbol("ref", "eq:mae", "paper.typ"),
+          symbol("ref", "fig:plot", "paper.typ"),
+        ],
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.duplicateLabels).toEqual([]);
+    // The project is LaTeX, so a label only Typst defines cannot satisfy one
+    // of its \ref commands.
+    expect(refs.definedLabels).toEqual(["eq:mae", "fig:plot"]);
+    // A Typst @fig:plot does not reference the LaTeX figure.
+    expect(refs.unreferencedLabels).toEqual([
+      { label: "fig:plot", file: "main.tex" },
+    ]);
+  });
+
+  it("counts a Markdown file#anchor link as a reference to the label it names", async () => {
+    seedProject();
+    const link = (name: string, target: string) => ({
+      ...symbol("ref", name, "notes.md"),
+      target,
+    });
+    useIndexStore.setState((state) => ({
+      index: {
+        ...(state.index as NonNullable<typeof state.index>),
+        defs: [
+          symbol("label", "fig:plot", "main.tex"),
+          symbol("label", "fig:plot", "paper.typ"),
+          symbol("label", "eq:mae", "paper.typ"),
+          symbol("label", "tab:data", "main.tex"),
+        ],
+        uses: [
+          link("fig:plot", "main.tex#fig:plot"),
+          link("eq:mae", "paper.typ#eq:mae"),
+          // Names a file that does not define the label.
+          link("tab:data", "chapter.tex#tab:data"),
+        ],
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.unreferencedLabels).toEqual([
+      { label: "fig:plot", file: "paper.typ" },
+      { label: "tab:data", file: "main.tex" },
+    ]);
+  });
+
+  it.each(["notes.md", "refs.bib", "paper.typ"])(
+    "checks the LaTeX sources against LaTeX labels while %s is open",
+    async (activePath) => {
+      seedProject();
+      useFilesStore.setState({ activePath });
+      useIndexStore.setState((state) => ({
+        index: {
+          ...(state.index as NonNullable<typeof state.index>),
+          defs: [
+            symbol("label", "fig:plot", "main.tex"),
+            symbol("label", "typst-only", "paper.typ"),
+            symbol("label", "introduction", "notes.md"),
+            symbol("label", "summary", "other.md"),
+            symbol("label", "eq:mae", "chapter.tex"),
+          ],
+          uses: [],
+        },
+      }));
+
+      await usePreflightStore.getState().run();
+
+      const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+      // The refs rules lint the project's .tex files whatever tab is open, so
+      // a \ref there reaches the LaTeX labels and nothing else.
+      expect(refs.definedLabels).toEqual(["fig:plot", "eq:mae"]);
+      expect(
+        runRefsRules("See \\ref{fig:plot}.", refs, { file: "chapter.tex" }).map((f) => f.id),
+      ).not.toContain("refs-undefined-ref");
+    },
+  );
+
+  it("does not call one heading id in two Markdown files a duplicate", async () => {
+    seedProject();
+    useIndexStore.setState((state) => ({
+      index: {
+        ...(state.index as NonNullable<typeof state.index>),
+        defs: [
+          symbol("label", "introduction", "a.md"),
+          symbol("label", "introduction", "b.md"),
+          symbol("label", "sec:intro", "main.tex"),
+          symbol("label", "sec:intro", "other.tex"),
+        ],
+        uses: [],
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.duplicateLabels).toEqual([
+      { label: "sec:intro", files: ["main.tex", "other.tex"] },
+    ]);
+  });
+
   it.each([
     [
       "does not call the bibliography loaded when the declared file is missing",

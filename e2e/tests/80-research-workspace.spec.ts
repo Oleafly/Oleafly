@@ -20,6 +20,10 @@ import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 let server: MockAiServer;
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+}
+
 test.beforeAll(async () => {
   server = await startMockAiServer();
 });
@@ -230,7 +234,12 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
     }
     await setNextImportPaths(tauriPage, [fixtureRoot]);
     await tauriPage.click('[aria-label="Choose folder"]');
-    await expect(tauriPage.locator("#new-research-root-path")).toHaveValue(fixtureRoot);
+    // The field shows a folder under home as ~ (C:\Users\<name>\AppData\Local\Temp
+    // on Windows, a home TMPDIR on macOS), so match the folder's own name. The
+    // link below still uses the real path: browsing its files proves it.
+    await expect(tauriPage.locator("#new-research-root-path")).toHaveValue(
+      new RegExp(`(?:^|[\\\\/])${escapeRegExp(basename(fixtureRoot))}$`),
+    );
     await tauriPage.fill("#new-research-root-label", "Study evidence");
     await chooseSelectOption(tauriPage, "#new-research-root-role", "References");
     await tauriPage.click('[data-testid="research-root-submit"]');

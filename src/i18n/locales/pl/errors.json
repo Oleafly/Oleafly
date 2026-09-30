@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk nie może użyć folderu kompilacji Oleafly na tym komputerze, ponieważ jego ścieżka zawiera znaki, których latexmk nie akceptuje. Przełącz ten projekt na Tectonic, aby go skompilować.",
     "latexmk_network_folder": "latexmk nie może skompilować folderu w udziale sieciowym. Przełącz ten projekt na Tectonic albo skopiuj folder na ten komputer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly nie mógł odczytać bibliografii {{name}}. Sprawdź, czy nie ma w niej uszkodzonego wpisu, a potem wyeksportuj ponownie."
+  },
   "github": {
     "sign_in_expired": "Kod logowania wygasł. Spróbuj ponownie.",
     "sign_in_cancelled": "Autoryzacja w GitHub została anulowana.",

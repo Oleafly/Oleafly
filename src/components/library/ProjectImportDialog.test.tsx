@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const githubState = { status: "connected" as string, refresh: vi.fn() };
@@ -52,6 +52,7 @@ import {
   importSelectedFile,
 } from "@/features/project-import";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import { ProjectImportDialog } from "./ProjectImportDialog";
 
 beforeEach(() => {
@@ -89,6 +90,23 @@ describe("ProjectImportDialog", () => {
         expect.objectContaining({ full_name: "oleafly/paper" }),
       ),
     );
+  });
+
+  it("marks each repository name for screenshot mode, inside its import button", async () => {
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(<ProjectImportDialog open onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("project-import-github"));
+      const name = await screen.findByText("oleafly/paper");
+      expect(name).toHaveAttribute("data-private");
+      // The button is the focus stop; focusing it reveals the name.
+      expect(name).not.toHaveAttribute("tabindex");
+      expect(name.closest("button")).toBe(
+        screen.getByTestId("project-import-repository-oleafly/paper"),
+      );
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+    }
   });
 
   it("returns from the GitHub step to the sources", async () => {

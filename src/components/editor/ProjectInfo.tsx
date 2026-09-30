@@ -5,6 +5,7 @@ import type { DictionaryInfo } from "@oleafly/backend-port";
 import type { ProofreadingDiagnostic, ProofreadingSurface } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
+import { Private } from "@/components/ui/private";
 import {
   Select,
   SelectContent,
@@ -65,11 +66,15 @@ function StatRow({
   label,
   value,
   indent,
+  personal,
 }: Readonly<{
   label: string;
   value: number | string;
   indent?: boolean;
+  /** Screenshot mode blurs it (word and character counts). */
+  personal?: boolean;
 }>) {
+  const shown = typeof value === "number" ? formatNumber(value) : value;
   return (
     <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
       <span
@@ -81,7 +86,7 @@ function StatRow({
         {label}
       </span>
       <span className="shrink-0 font-mono text-xs tabular-nums text-foreground">
-        {typeof value === "number" ? formatNumber(value) : value}
+        {personal ? <Private>{shown}</Private> : shown}
       </span>
     </div>
   );
@@ -488,18 +493,18 @@ export function ProjectInfoContent({
         <>
           <SectionLabel>{t(($) => $.editor.projectInfo.document)}</SectionLabel>
           <div className="divide-y divide-border/60">
-            <StatRow label={t(($) => $.editor.projectInfo.words)} value={stats.words} />
-            <StatRow indent label={t(($) => $.editor.projectInfo.inText)} value={stats.wordsInText} />
-            <StatRow indent label={t(($) => $.editor.projectInfo.inHeaders)} value={stats.wordsInHeaders} />
-            <StatRow indent label={t(($) => $.editor.projectInfo.outsideText)} value={stats.wordsOutsideText} />
+            <StatRow personal label={t(($) => $.editor.projectInfo.words)} value={stats.words} />
+            <StatRow personal indent label={t(($) => $.editor.projectInfo.inText)} value={stats.wordsInText} />
+            <StatRow personal indent label={t(($) => $.editor.projectInfo.inHeaders)} value={stats.wordsInHeaders} />
+            <StatRow personal indent label={t(($) => $.editor.projectInfo.outsideText)} value={stats.wordsOutsideText} />
             <StatRow label={t(($) => $.editor.projectInfo.headers)} value={stats.headers} />
             <StatRow label={t(($) => $.editor.projectInfo.figures)} value={stats.figures} />
             <StatRow label={t(($) => $.editor.projectInfo.mathInline)} value={stats.mathInline} />
             <StatRow label={t(($) => $.editor.projectInfo.mathDisplayed)} value={stats.mathDisplayed} />
-            <StatRow label={t(($) => $.editor.projectInfo.characters)} value={stats.characters} />
+            <StatRow personal label={t(($) => $.editor.projectInfo.characters)} value={stats.characters} />
             <StatRow label={t(($) => $.editor.projectInfo.lines)} value={stats.lines} />
             {snapshot.selectionWords !== null ? (
-              <StatRow label={t(($) => $.editor.projectInfo.selection)} value={snapshot.selectionWords} />
+              <StatRow personal label={t(($) => $.editor.projectInfo.selection)} value={snapshot.selectionWords} />
             ) : null}
           </div>
           {snapshot.unreadable.length > 0 ? (

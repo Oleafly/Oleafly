@@ -128,6 +128,7 @@ import {
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
 } from "@/lib/native-dock-shortcuts";
+import { startPersonalDetailsMenuBridge } from "@/lib/personal-details-menu";
 import type { ProjectStateChanged } from "@/lib/tauri";
 import {
   assistantMinimumWidth,
@@ -468,6 +469,19 @@ function AppContent() {
     let disposed = false;
     let stop: (() => void) | undefined;
     void startNativeDockShortcutBridge().then((cleanup) => {
+      if (disposed) cleanup();
+      else stop = cleanup;
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void startPersonalDetailsMenuBridge().then((cleanup) => {
       if (disposed) cleanup();
       else stop = cleanup;
     });

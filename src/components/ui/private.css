@@ -1,0 +1,65 @@
+/*
+ * Screenshot mode (src/store/personal-details.ts, src/components/ui/private.tsx).
+ * Personal values get a light blur. Hover shows one clearly, and so does
+ * keyboard focus, which adds a background tint instead of a focus line.
+ */
+[data-private] {
+  transition: filter 120ms ease-out;
+}
+
+html[data-hide-personal-details] [data-private] {
+  filter: blur(4px);
+}
+
+html[data-hide-personal-details] [data-private]:hover,
+html[data-hide-personal-details] [data-private]:focus-visible,
+html[data-hide-personal-details] [data-private-group]:focus-visible [data-private],
+html[data-hide-personal-details] :is(a, button, [role="button"], [role="menuitem"]):focus-visible [data-private] {
+  filter: none;
+}
+
+/*
+ * These rules are not in a Tailwind layer, so they win over its utilities.
+ * The tint is therefore a background image drawn over the element's own
+ * background (a user bubble keeps its colour), never a background colour.
+ */
+html[data-hide-personal-details] [data-private]:focus-visible {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--primary) 14%, transparent),
+    color-mix(in srgb, var(--primary) 14%, transparent)
+  );
+  border-radius: 0.25rem;
+}
+
+/*
+ * A block keeps its own corners. Its tint takes the text colour, so it shows
+ * on any fill: white text lightens a coloured bubble, dark text darkens a
+ * pale card, and the text stays readable either way.
+ */
+html[data-hide-personal-details] [data-private-group]:focus-visible {
+  background-image: linear-gradient(
+    color-mix(in srgb, currentColor 12%, transparent),
+    color-mix(in srgb, currentColor 12%, transparent)
+  );
+}
+
+/*
+ * Inside a text field a filter would blur the whole box, so the text itself is
+ * drawn as a soft shadow: the value of a path field, or a count in a
+ * placeholder. Hover or focus shows it.
+ */
+html[data-hide-personal-details] [data-private-field]:not(:hover, :focus) {
+  color: transparent;
+  text-shadow: 0 0 4px var(--foreground);
+}
+html[data-hide-personal-details] [data-private-field]:not(:hover, :focus)::placeholder,
+html[data-hide-personal-details] [data-private-placeholder]:not(:hover, :focus)::placeholder {
+  color: transparent;
+  text-shadow: 0 0 4px var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-private] {
+    transition: none;
+  }
+}

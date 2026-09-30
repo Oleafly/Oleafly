@@ -713,7 +713,10 @@
     "noResponse": "Nu a sosit niciun răspuns la acest mesaj. Fluxul a fost întrerupt. Trimite-l din nou sau începe o conversație nouă.",
     "scrollToBottom": "Derulează la sfârșit",
     "projectSubtitle": "Lucrează la „{{project}}”",
-    "noOutput": "Modelul nu a returnat nimic. Verifică Setări → Asistentul AI."
+    "noOutput": "Modelul nu a returnat nimic. Verifică Setări → Asistentul AI.",
+    "planMissing": "Încă nu există un plan de aprobat. Cere-i asistentului un plan sau oprește Plan.",
+    "planUnchanged": "Planul nu s-a schimbat.",
+    "usePlanFromReply": "Folosește asta ca plan"
   },
   "followUps": {
     "steered": "Direcționat în rularea curentă: {{summary}}",

@@ -88,6 +88,8 @@ const mocks = vi.hoisted(() => ({
       onApprove: () => void;
       onRevise: () => void;
     };
+    panelMaxHeight?: number;
+    onPinnedChange?: (pinned: boolean) => void;
   }>,
   textareaProps: null as null | {
     onChange: (event: { target: { value: string } }) => void;
@@ -419,6 +421,8 @@ let planModeHint: typeof import("./ChatCore").planModeHint;
 let blockedModelMessage: typeof import("./ChatCore").blockedModelMessage;
 let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PROMPT;
 let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
+let PLAN_MODE_TEXT_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_TEXT_PLANNING_PROMPT;
+let PLAN_MODE_TEXT_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_TEXT_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
 let useAssistantRuntimeStore: typeof import("@/store/assistant-runtime").useAssistantRuntimeStore;
@@ -496,6 +500,8 @@ beforeAll(async () => {
     planModeHint,
     PLAN_MODE_PLANNING_PROMPT,
     PLAN_MODE_REVISION_LINE,
+    PLAN_MODE_TEXT_PLANNING_PROMPT,
+    PLAN_MODE_TEXT_REVISION_LINE,
     steerRunAlreadyEnded,
   } = await import("./ChatCore"));
   ({ APP_ERROR_PREFIX } = await import("@/lib/app-error"));
@@ -2598,7 +2604,20 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(activeChatRun()).toBeNull());
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
     expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(lastAssistantContent()).toBe("Planned");
+    expect(await rendered.findByTestId("plan-note")).toHaveTextContent(
+      enAi.conversation.planMissing,
+    );
+    expect(rendered.queryByRole("button", { name: enAi.conversation.usePlanFromReply })).toBeNull();
   });
+
+  function lastAssistantContent() {
+    return useChatsStore
+      .getState()
+      .byId("chat-1")
+      ?.messages.filter((message) => message.role === "assistant")
+      .at(-1)?.content;
+  }
 
   const PLAN_TODOS = [
     { id: "intro", content: "Rename the intro section in main.tex", status: "pending" as const },
@@ -2886,6 +2905,483 @@ describe("ChatCore agent turns", () => {
     expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy();
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
     expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+  });
+
+  function recordResizeObservers() {
+    const original = globalThis.ResizeObserver;
+    const records: Array<{ callback: ResizeObserverCallback; targets: Set<Element> }> = [];
+    class RecordingResizeObserver {
+      private readonly record: { callback: ResizeObserverCallback; targets: Set<Element> };
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback, targets: new Set() };
+        records.push(this.record);
+      }
+      observe(target: Element) {
+        this.record.targets.add(target);
+      }
+      unobserve(target: Element) {
+        this.record.targets.delete(target);
+      }
+      disconnect() {
+        this.record.targets.clear();
+      }
+    }
+    globalThis.ResizeObserver = RecordingResizeObserver as unknown as typeof ResizeObserver;
+    return {
+      resize(target: Element) {
+        for (const record of records) {
+          if (!record.targets.has(target)) continue;
+          record.callback([{ target } as ResizeObserverEntry], {} as ResizeObserver);
+        }
+      },
+      restore() {
+        globalThis.ResizeObserver = original;
+      },
+    };
+  }
+
+  it("reserves the pinned plan card's height below the reply so the card never covers its end", async () => {
+    const observers = recordResizeObservers();
+    try {
+      const rendered = await renderChat();
+      await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+      act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+      await act(async () => finishRun(0, "Here is the plan."));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting", busy: false }),
+      );
+      const overlay = rendered.getByTestId("agent-status-pill").parentElement as HTMLElement;
+      const scroller = overlay.parentElement?.querySelector<HTMLElement>(":scope > .overflow-auto");
+      expect(scroller).toBeTruthy();
+      Object.defineProperty(overlay, "offsetHeight", { configurable: true, value: 220 });
+      act(() => observers.resize(overlay));
+      // A card opened by hovering floats over the reply and keeps the pill's usual room.
+      expect(scroller?.style.paddingBottom).toBe("");
+
+      act(() => mocks.planProps.at(-1)?.onPinnedChange?.(true));
+      await waitFor(() =>
+        expect(Number.parseFloat(scroller?.style.paddingBottom ?? "")).toBeGreaterThanOrEqual(228),
+      );
+
+      act(() => mocks.planProps.at(-1)?.onPinnedChange?.(false));
+      await waitFor(() => expect(scroller?.style.paddingBottom).toBe(""));
+    } finally {
+      observers.restore();
+    }
+  });
+
+  it("caps the plan card against a short chat panel so the reply end stays in view", async () => {
+    const observers = recordResizeObservers();
+    try {
+      const rendered = await renderChat();
+      await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+      act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+      await act(async () => finishRun(0, "Here is the plan."));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting" }),
+      );
+      const overlay = rendered.getByTestId("agent-status-pill").parentElement as HTMLElement;
+      const scroller = overlay.parentElement?.querySelector<HTMLElement>(":scope > .overflow-auto");
+      if (!scroller) throw new Error("chat scroller not found");
+
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 320 });
+      act(() => observers.resize(scroller));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.panelMaxHeight).toBeLessThanOrEqual(160),
+      );
+
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 900 });
+      act(() => observers.resize(scroller));
+      await waitFor(() => expect(mocks.planProps.at(-1)?.panelMaxHeight).toBe(288));
+    } finally {
+      observers.restore();
+    }
+  });
+
+  const USE_PLAN = { name: enAi.conversation.usePlanFromReply };
+
+  function lastAssistantMessage() {
+    return useChatsStore
+      .getState()
+      .byId("chat-1")
+      ?.messages.filter((message) => message.role === "assistant")
+      .at(-1);
+  }
+
+  function planContents() {
+    return useAgentTodoStore
+      .getState()
+      .todosForChat("chat-1")
+      .map((todo) => todo.content);
+  }
+
+  it("makes the reply's numbered list the plan only when the user picks it", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+    const reply =
+      "Here is the plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex\n\nApprove it and I will start.";
+    await act(async () => finishRun(0, reply));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    // Nothing becomes a plan on its own.
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(planContents()).toEqual([]);
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planMissing);
+    expect(note.closest('[data-message-role="assistant"]')).not.toBeNull();
+    // The note is not part of the reply, so the model never reads it back.
+    expect(lastAssistantContent()).toBe(reply);
+
+    fireEvent.click(within(note).getByRole("button", USE_PLAN));
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(
+      useAgentTodoStore
+        .getState()
+        .todosForChat("chat-1")
+        .map((todo) => [todo.content, todo.status]),
+    ).toEqual([
+      ["Rename the intro section in main.tex", "pending"],
+      ["Tighten the abstract in main.tex", "pending"],
+    ]);
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Approve plan" })).toBeTruthy());
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+    expect(lastAssistantMessage()?.planNote).toBeUndefined();
+    expect(lastAssistantContent()).toBe(reply);
+
+    fireEvent.click(rendered.getByRole("button", { name: "Approve plan" }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(mocks.runs[1].options.system).toContain(
+      "Plan mode: the user approved this plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+    );
+    await act(async () => finishRun(1, "Done."));
+  });
+
+  it("reads the list from an earlier step of the planning turn", async () => {
+    const rendered = await renderChat();
+    const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+    act(() => {
+      planning.handlers.onText(
+        "Plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+      );
+      planning.handlers.onStep?.(1);
+    });
+    await act(async () => finishRun(0, "Approve to continue."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    fireEvent.click(await rendered.findByRole("button", USE_PLAN));
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(planContents()).toEqual([
+      "Rename the intro section in main.tex",
+      "Tighten the abstract in main.tex",
+    ]);
+  });
+
+  it("does not offer a list the user steered away from", async () => {
+    const rendered = await renderChat();
+    const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+    act(() => {
+      planning.handlers.onText(
+        "Plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+      );
+      planning.handlers.onStep?.(1);
+    });
+    await act(async () => {
+      planning.handlers.onSteered?.("Only the abstract");
+    });
+    await act(async () => finishRun(0, "I will only tighten the abstract."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planMissing);
+    expect(within(note).queryByRole("button")).toBeNull();
+    expect(lastAssistantContent()).toBe("I will only tighten the abstract.");
+    expect(lastAssistantMessage()?.planNote).toEqual({ kind: "missing", steps: [] });
+    const assistants =
+      useChatsStore
+        .getState()
+        .byId("chat-1")
+        ?.messages.filter((message) => message.role === "assistant") ?? [];
+    expect(assistants).toHaveLength(2);
+    expect(assistants[0].planNote).toBeUndefined();
+  });
+
+  it("folds the description under each item into its step", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+    await act(async () =>
+      finishRun(
+        0,
+        "Here is the plan:\n\n1. **Rename the intro**\n   Change the heading to Background.\n\n2. **Tighten the abstract**\n   Cut it to about 150 words.",
+      ),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    fireEvent.click(await rendered.findByRole("button", USE_PLAN));
+    expect(planContents()).toEqual([
+      "Rename the intro: Change the heading to Background.",
+      "Tighten the abstract: Cut it to about 150 words.",
+    ]);
+  });
+
+  it("leaves a clarifying question without a plan note", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Tidy the paper");
+    await act(async () => finishRun(0, "Which section should I start with?"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(lastAssistantContent()).toBe("Which section should I start with?");
+    expect(lastAssistantMessage()?.planNote).toBeUndefined();
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+  });
+
+  it("offers a list above a closing question without making it a plan", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Improve the intro");
+    await act(async () =>
+      finishRun(
+        0,
+        "I can do this two ways:\n1. Rewrite the intro from scratch\n2. Only tighten the existing intro\n\nWhich would you like?",
+      ),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(planContents()).toEqual([]);
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planMissing);
+    expect(within(note).getByRole("button", USE_PLAN)).toBeTruthy();
+  });
+
+  it("shows the note without a button when the only list is in a code block", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Fix the list in main.tex");
+    await act(async () =>
+      finishRun(0, "The list in main.tex reads:\n\n```latex\n1. First\n2. Second\n```"),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planMissing);
+    expect(within(note).queryByRole("button")).toBeNull();
+    expect(lastAssistantMessage()?.planNote).toEqual({ kind: "missing", steps: [] });
+  });
+
+  it("offers the button only while Plan mode is on", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Rename the intro");
+    await act(async () => finishRun(0, "Plan:\n1. Rename the intro section in main.tex"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(await rendered.findByRole("button", USE_PLAN)).toBeTruthy();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Plan mode" }));
+    expect(rendered.queryByRole("button", USE_PLAN)).toBeNull();
+    expect(rendered.getByTestId("plan-note")).toHaveTextContent(enAi.conversation.planMissing);
+  });
+
+  it("keeps the plan through a revision without update_todos until the user picks the new list", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a two-step edit");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+
+    changeComposer("Skip the abstract");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () => finishRun(1, "Should I also shorten the title?"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todosForChat("chat-1")).toEqual(PLAN_TODOS);
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+
+    await waitFor(() =>
+      expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy(),
+    );
+    changeComposer("Only the intro");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(3));
+    await act(async () =>
+      finishRun(2, "Dropped the abstract step.\n\nPlan:\n1. Rename the intro section in main.tex"),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todosForChat("chat-1")).toEqual(PLAN_TODOS);
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planUnchanged);
+
+    fireEvent.click(within(note).getByRole("button", USE_PLAN));
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(planContents()).toEqual(["Rename the intro section in main.tex"]);
+    await waitFor(() => expect(rendered.queryByTestId("plan-note")).toBeNull());
+  });
+
+  it("keeps every step when a revision reply lists only the changed step", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a two-step edit");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+
+    changeComposer("Cut the abstract to 100 words");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () =>
+      finishRun(
+        1,
+        "I've updated step 2 as you asked:\n2. Tighten the abstract to 100 words\n\nThe rest of the plan is unchanged.",
+      ),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todosForChat("chat-1")).toEqual(PLAN_TODOS);
+    const note = await rendered.findByTestId("plan-note");
+    expect(note).toHaveTextContent(enAi.conversation.planUnchanged);
+    expect(within(note).queryByRole("button")).toBeNull();
+  });
+
+  it("gives a model without tool calling a text-only planning prompt and the button for its list", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [
+          {
+            id: "gpt-4o",
+            name: "GPT-4o",
+            enabled: true,
+            source: "fetched",
+            trust: "trusted",
+            metadata: {
+              name: "GPT-4o",
+              inputModalities: ["text"],
+              outputModalities: ["text"],
+              toolCall: false,
+              reasoning: false,
+              attachment: false,
+              structuredOutput: false,
+              status: "active",
+            },
+          },
+        ],
+      },
+      ai_model_probes: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    const rendered = await renderChat();
+    const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+
+    expect(planning.tools).toEqual({});
+    expect(planning.system).toContain(PLAN_MODE_TEXT_PLANNING_PROMPT);
+    expect(planning.system).not.toContain(PLAN_MODE_PLANNING_PROMPT);
+    expect(PLAN_MODE_TEXT_PLANNING_PROMPT).not.toContain("update_todos");
+    expect(PLAN_MODE_TEXT_PLANNING_PROMPT).toContain("numbered list");
+    expect(PLAN_MODE_TEXT_PLANNING_PROMPT).toContain('"Plan:"');
+    expect(PLAN_MODE_TEXT_REVISION_LINE).toContain('"Plan:"');
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain('"Plan:"');
+    // The button takes the last numbered list, so the plan goes last.
+    expect(PLAN_MODE_TEXT_PLANNING_PROMPT).toContain("summary without another numbered list");
+    expect(PLAN_MODE_TEXT_REVISION_LINE.indexOf("what changed")).toBeLessThan(
+      PLAN_MODE_TEXT_REVISION_LINE.indexOf('"Plan:"'),
+    );
+
+    await act(async () =>
+      finishRun(
+        0,
+        "Plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+      ),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    fireEvent.click(await rendered.findByRole("button", USE_PLAN));
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Approve plan" })).toBeTruthy());
+  });
+
+  it("asks for a text plan when update_todos is turned off, and drops the checklist line after approval", async () => {
+    useAiToolSettingsStore.setState({ enabledByName: { update_todos: false } });
+    const rendered = await renderChat();
+    const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+
+    expect(planning.tools).toHaveProperty("read_file");
+    expect(planning.tools).not.toHaveProperty("update_todos");
+    expect(planning.system).toContain(PLAN_MODE_TEXT_PLANNING_PROMPT);
+    expect(planning.system).not.toContain(PLAN_MODE_PLANNING_PROMPT);
+
+    await act(async () =>
+      finishRun(
+        0,
+        "Plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+      ),
+    );
+    fireEvent.click(await rendered.findByRole("button", USE_PLAN));
+    await waitFor(() =>
+      expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting", busy: false }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Approve plan" }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    const execution = mocks.runs[1].options;
+    expect(execution.system).toContain(
+      "Plan mode: the user approved this plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+    );
+    expect(execution.system).not.toContain("Keep the checklist current with update_todos");
+
+    // Nothing can tick the items off without update_todos, so a clean run
+    // settles them instead of leaving "Step 0 of 2" up after the work is done.
+    await act(async () => finishRun(1, "All done."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(
+      useAgentTodoStore
+        .getState()
+        .todosForChat("chat-1")
+        .map((todo) => todo.status),
+    ).toEqual(["completed", "completed"]);
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+    await waitFor(() => expect(rendered.getByTestId("agent-run-summary")).toBeTruthy());
+  });
+
+  it("leaves the checklist open when an execution run without update_todos is stopped", async () => {
+    useAiToolSettingsStore.setState({ enabledByName: { update_todos: false } });
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+    await act(async () =>
+      finishRun(
+        0,
+        "Plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+      ),
+    );
+    fireEvent.click(await rendered.findByRole("button", USE_PLAN));
+    await waitFor(() =>
+      expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting", busy: false }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Approve plan" }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () =>
+      mocks.runs[1].resolve({
+        text: "",
+        usage: { input: 0, output: 0 },
+        steps: 1,
+        stopped_at_cap: true,
+        error: null,
+      }),
+    );
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(
+      useAgentTodoStore
+        .getState()
+        .todosForChat("chat-1")
+        .map((todo) => todo.status),
+    ).toEqual(["pending", "pending"]);
   });
 
   it("downgrades a persisted approved plan to planning when no run is live", async () => {

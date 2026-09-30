@@ -7,6 +7,7 @@ import {
   assembleProjectIntelligence,
   unreadableFileIntelligence,
 } from "./assemble";
+import { mergeLanguageServiceIntelligence } from "./merge-language-service";
 import { citationCompletions } from "./selectors";
 import { fileIntelligenceFor } from "./file-view";
 import {
@@ -66,6 +67,16 @@ function uses(
 ) {
   return value.uses.filter((use) => use.kind === kind);
 }
+
+// One LaTeX and one Typst document that happen to use the same label names.
+// Neither compiler can see the other's labels.
+const MIXED_ENGINE_LABELS = {
+  "paper.tex": String.raw`\section{Results}\label{sec:results}
+\begin{equation}\label{eq:mae}x\end{equation}
+See \eqref{eq:mae} and \ref{sec:results}.`,
+  "paper.typ":
+    "= Results <sec:results>\n$ x $ <eq:mae>\nSee @eq:mae and @sec:results.\n= Other <typst-only>\n",
+};
 
 describe("Phase 3 project intelligence acceptance", () => {
   it("keeps malformed repeated unclosed TeX groups near-linear and explicitly partial", () => {
@@ -326,6 +337,143 @@ Dvo\v{r}\'ak \výsledek \αβ`,
       code: "unresolved-target",
       location: duplicateFileTarget.hierarchy.edges[0].location,
     });
+  });
+
+  it("keeps LaTeX and Typst labels in separate namespaces", () => {
+    const value = snapshot(MIXED_ENGINE_LABELS);
+
+    expect(value.diagnostics).toEqual([]);
+    const byId = new Map(
+      value.definitions.map((definition) => [definition.id, definition]),
+    );
+    const references = uses(value, "reference");
+    expect(references).toHaveLength(4);
+    for (const use of references) {
+      expect(use.resolution).toBe("resolved");
+      expect(use.definitionIds).toHaveLength(1);
+      expect(byId.get(use.definitionIds[0])?.location.file).toBe(
+        use.location.file,
+      );
+    }
+  });
+
+  it("still reports a label defined twice by the same engine", () => {
+    const value = snapshot({
+      "a.typ": "= A <same>\n@same\n",
+      "b.typ": "= B <same>\n",
+      "c.tex": String.raw`\label{same}`,
+    });
+
+    expect(
+      value.diagnostics
+        .filter((diagnostic) => diagnostic.code === "duplicate-definition")
+        .map((diagnostic) => diagnostic.location.file),
+    ).toEqual(["a.typ", "a.typ", "b.typ"]);
+  });
+
+  it("keeps engine scoping when language-service results are merged", () => {
+    const mixed = snapshot(MIXED_ENGINE_LABELS);
+    const mergedMixed = mergeLanguageServiceIntelligence(mixed, {
+      identity: mixed.identity,
+      definitions: [],
+      uses: [],
+    });
+    expect(
+      uses(mergedMixed, "reference").map((use) => [
+        use.location.file,
+        use.name,
+        use.resolution,
+        use.definitionIds.length,
+      ]),
+    ).toEqual(
+      uses(mixed, "reference").map((use) => [
+        use.location.file,
+        use.name,
+        "resolved",
+        1,
+      ]),
+    );
+  });
+
+  it("keeps a Markdown anchor link file-scoped after language-service results are merged", () => {
+    // Markdown anchors belong to their own file, so a same-named heading in
+    // another Markdown file or a LaTeX label never makes the link ambiguous.
+    const anchors = snapshot({
+      "a.md": "# Introduction\n\nSee [x](#introduction).\n",
+      "b.md": "# Introduction\n",
+      "paper.tex": String.raw`\label{introduction}`,
+    });
+    const local = uses(anchors, "reference").find(
+      (use) => use.location.file === "a.md",
+    );
+    expect(local).toMatchObject({ resolution: "resolved" });
+    const link = uses(
+      mergeLanguageServiceIntelligence(anchors, {
+        identity: anchors.identity,
+        definitions: [],
+        uses: [],
+      }),
+      "reference",
+    ).find((use) => use.location.file === "a.md");
+    expect(link).toMatchObject({ resolution: "resolved" });
+    expect(link?.definitionIds).toHaveLength(1);
+  });
+
+  it("does not count another engine's label in the active-file fallback", () => {
+    const accepted = snapshot(MIXED_ENGINE_LABELS);
+    try {
+      useFilesStore.setState({
+        projectId: "project",
+        activePath: "paper.tex",
+        tree: [
+          { path: "paper.tex", is_dir: false },
+          { path: "paper.typ", is_dir: false },
+        ],
+        files: {},
+      });
+      useIndexStore.setState({
+        texts: { ...MIXED_ENGINE_LABELS },
+        intelligenceState: {
+          status: "running",
+          identity: {
+            projectId: "project",
+            projectRevision: 2,
+            requestGeneration: 2,
+          },
+          data: accepted,
+          stale: true,
+          currentFileFallbackAllowed: true,
+        },
+      });
+
+      expect(
+        currentFileReferenceDiagnostics(
+          "paper.tex",
+          `${MIXED_ENGINE_LABELS["paper.tex"]}\n`,
+        ),
+      ).toEqual([]);
+      expect(
+        currentFileReferenceDiagnostics(
+          "paper.typ",
+          `${MIXED_ENGINE_LABELS["paper.typ"]}\n`,
+        ),
+      ).toEqual([]);
+      // A label only the other engine defines stays unresolved here.
+      const onlyTypst = currentFileReferenceDiagnostics(
+        "paper.tex",
+        String.raw`\ref{typst-only}`,
+      );
+      expect(onlyTypst).toHaveLength(1);
+      expect(onlyTypst[0].message).toContain("typst-only");
+    } finally {
+      useIndexStore.getState().reset();
+      useFilesStore.setState({
+        projectId: null,
+        activePath: null,
+        tree: [],
+        files: {},
+      });
+    }
   });
 
   it("resolves a bibliography the way the compiler does, from the project root", () => {

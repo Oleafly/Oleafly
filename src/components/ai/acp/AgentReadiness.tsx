@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { acpError, acpInstall, acpReadiness, acpReadinessLabel, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { useDisplayPath } from "@/lib/display-path";
+import { PrivateText } from "@/components/ui/private";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 
@@ -53,6 +55,9 @@ export function BridgeInstallCard({
   onError?: (message: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  // readinessDetail shows the CLI path with ~; this re-renders the card once
+  // the home folder is known.
+  useDisplayPath();
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);
   const busy = installing === agent.definition.id;
@@ -66,7 +71,7 @@ export function BridgeInstallCard({
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium leading-snug">{agent.definition.name}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {readinessDetail(agent, readiness)}
+            <PrivateText text={readinessDetail(agent, readiness)} />
           </p>
         </div>
         <ReadinessBadge readiness={readiness} />

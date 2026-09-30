@@ -123,6 +123,11 @@ const PANDOC_WRITERS: Record<TargetFormat, string> = {
 const PANDOC_STANDALONE = ["--standalone"];
 const PANDOC_HTML = ["--standalone", "--embed-resources", "--mathml"];
 const PANDOC_EXTRACT_MEDIA = ["--standalone", "--extract-media=assets"];
+/** Citations stay natbib commands and the bibliography files come along. */
+const PANDOC_NATBIB = ["--standalone", "--natbib"];
+/** Rendered exports resolve citations against the project's bibliography. */
+const PANDOC_CITEPROC = ["--citeproc"];
+const PANDOC_HTML_CITEPROC = [...PANDOC_HTML, ...PANDOC_CITEPROC];
 
 function pandocRoutes(
   source: keyof typeof PANDOC_READERS,
@@ -172,8 +177,8 @@ export const REGISTRY: readonly ConversionRoute[] = [
     surface: "Export menu",
   },
   ...pandocRoutes("latex", [
-    ["latex-to-docx", "Word (.docx)", "Pandoc writes editable Word math instead of flattening equations into images.", "docx", "existing", undefined, { surface: "Export menu, Tools page" }],
-    ["latex-to-html", "HTML (MathML)", "Standalone HTML with MathML equations for accessible reading.", "html", "existing", "G11", { flags: PANDOC_HTML, surface: "Export menu, Tools page" }],
+    ["latex-to-docx", "Word (.docx)", "Pandoc writes editable Word math instead of flattening equations into images.", "docx", "existing", undefined, { flags: PANDOC_CITEPROC, surface: "Export menu, Tools page" }],
+    ["latex-to-html", "HTML (MathML)", "Standalone HTML with MathML equations for accessible reading.", "html", "existing", "G11", { flags: PANDOC_HTML_CITEPROC, surface: "Export menu, Tools page" }],
     ["latex-to-markdown", "Markdown (.md)", "Pandoc keeps math in dollar delimiters.", "markdown", "existing", undefined, { surface: "Export menu, Tools page" }],
     ["latex-to-typst", "Typst (.typ)", "Pandoc writes Typst source, followed by a compatibility fixup.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Export menu, Tools page" }],
   ], { direction: "export" }),
@@ -193,11 +198,11 @@ export const REGISTRY: readonly ConversionRoute[] = [
   // --- Markdown -----------------------------------------------------------
   ...pandocRoutes("markdown", [
     ["markdown-to-pdf", "PDF", "Pandoc compiles through the bundled Tectonic engine with citeproc.", "pdf", "existing", undefined, { plan: false }],
-    ["markdown-to-docx", "Word (.docx)", "Pandoc writer.", "docx", "existing"],
-    ["markdown-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations.", "html", "existing", undefined, { flags: PANDOC_HTML }],
+    ["markdown-to-docx", "Word (.docx)", "Pandoc writer.", "docx", "existing", undefined, { flags: PANDOC_CITEPROC }],
+    ["markdown-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations.", "html", "existing", undefined, { flags: PANDOC_HTML_CITEPROC }],
   ], { direction: "export" }),
   ...pandocRoutes("markdown", [
-    ["markdown-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Markdown project.", "latex", "existing", undefined, { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
+    ["markdown-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Markdown project.", "latex", "existing", undefined, { flags: PANDOC_NATBIB, surface: "Tools page, Import dialog, Export menu" }],
     ["markdown-to-typst", "Typst (.typ)", "Convert directly, import as a Typst project, or export from a Markdown project.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
   ], { direction: "import", extensions: ["md", "markdown"] }),
 
@@ -214,12 +219,12 @@ export const REGISTRY: readonly ConversionRoute[] = [
     surface: "Export menu",
   },
   ...pandocRoutes("typst", [
-    ["typst-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Typst project.", "latex", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
+    ["typst-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Typst project.", "latex", "available", "G10", { flags: PANDOC_NATBIB, surface: "Tools page, Import dialog, Export menu" }],
     ["typst-to-markdown", "Markdown (.md)", "Pandoc's markdown writer; import as a Markdown project or export .md.", "markdown", "available", "G28", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
   ], { direction: "import", extensions: ["typ"] }),
   ...pandocRoutes("typst", [
-    ["typst-to-html", "HTML (MathML)", "Standalone HTML export from a Typst project.", "html", "available", "G28", { flags: PANDOC_HTML }],
-    ["typst-to-docx", "Word (.docx)", "Pandoc reads Typst directly and writes a .docx with OMML equations.", "docx", "available", "G28"],
+    ["typst-to-html", "HTML (MathML)", "Standalone HTML export from a Typst project.", "html", "available", "G28", { flags: PANDOC_HTML_CITEPROC }],
+    ["typst-to-docx", "Word (.docx)", "Pandoc reads Typst directly and writes a .docx with OMML equations.", "docx", "available", "G28", { flags: PANDOC_CITEPROC }],
   ], { direction: "export" }),
 
   // --- Word ---------------------------------------------------------------

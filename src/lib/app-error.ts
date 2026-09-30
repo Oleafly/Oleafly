@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { displayText } from "@/lib/display-path";
 
 export const APP_ERROR_PREFIX = "@oleafly/error:";
 export const PROJECT_NOT_FOUND = "project.not_found";
@@ -46,7 +47,12 @@ export function decodeAppError(value: unknown): AppError | null {
   }
 }
 
+/** A backend or runtime error as a sentence to show, with home paths as `~`. */
 export function describeError(value: unknown): string {
+  return displayText(errorSentence(value));
+}
+
+function errorSentence(value: unknown): string {
   const app = decodeAppError(value);
   if (app) {
     const key = `errors:${app.code}`;

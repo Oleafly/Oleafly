@@ -1,10 +1,12 @@
-import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
+import { lastNumberedList, planTodos, replyEndsWithQuestion } from "./plan-from-reply";
+import { PlanNote } from "./PlanNote";
 import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
@@ -138,7 +140,12 @@ import {
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
+import {
+  useChatsStore,
+  type ChatMessage,
+  type ChatPlanNote,
+  type StoredChat,
+} from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
@@ -207,6 +214,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover } from "@/components/ui/popover";
+import { Private } from "@/components/ui/private";
 import {
   cancelChatRun,
   ChatRunIsolation,
@@ -351,23 +359,45 @@ export function planModeHint(): string {
 
 export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
 export const PLAN_MODE_PLANNING_PROMPT =
-  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
+  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. If you cannot call update_todos, write a line that says \"Plan:\" and then the plan as one numbered list instead. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
 export const PLAN_MODE_REVISION_LINE =
   "The user asked for changes to the current plan. Apply the feedback by calling update_todos with the revised numbered plan as pending items, reply with a short summary of what changed, then stop and wait for approval again.";
+// For a turn without update_todos (a model without tool calling, or the tool
+// turned off): the note under the reply lets the user make its last numbered
+// list the plan (plan-from-reply.ts), so ask for one list, written last.
+export const PLAN_MODE_TEXT_PLANNING_PROMPT =
+  "Plan mode: this is a planning turn. Do not edit files, compile, or run commands yet. Write a line that says \"Plan:\", then the plan as one numbered list, one item per file or section to touch, each item on its own line starting with its number. Then add a short summary without another numbered list, stop, and wait for the user to approve the plan. Do not start the work. If you need the user to choose something before you can plan, ask the question and stop without writing a plan. Mention that the user can turn Plan off to work without a plan.";
+export const PLAN_MODE_TEXT_REVISION_LINE =
+  "The user asked for changes to the current plan. Say briefly what changed, then write a line that says \"Plan:\" and the full revised plan as one numbered list, then stop and wait for approval again.";
 
 export type PlanTurn = "planning" | "revision" | "execution";
 
-export function planModeExecutionPrompt(todos: readonly AgentTodo[]): string {
+export function planModeExecutionPrompt(
+  todos: readonly AgentTodo[],
+  checklistTool = true,
+): string {
   const items = todos
     .filter((todo) => todo.status !== "cancelled")
     .map((todo, index) => `${index + 1}. ${todo.content}`);
-  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order. Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done. Stay within the approved plan and tell the user if something needs to change.`;
+  const checklistLine = checklistTool
+    ? " Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done."
+    : "";
+  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order.${checklistLine} Stay within the approved plan and tell the user if something needs to change.`;
 }
 
-export function planTurnPrompt(turn: PlanTurn, todos: readonly AgentTodo[]): string {
-  if (turn === "execution") return planModeExecutionPrompt(todos);
-  if (turn === "revision") return `${PLAN_MODE_PLANNING_PROMPT}\n${PLAN_MODE_REVISION_LINE}`;
-  return PLAN_MODE_PLANNING_PROMPT;
+/** `checklistTool` says whether update_todos is offered in this turn. */
+export function planTurnPrompt(
+  turn: PlanTurn,
+  todos: readonly AgentTodo[],
+  checklistTool = true,
+): string {
+  if (turn === "execution") return planModeExecutionPrompt(todos, checklistTool);
+  const planning = checklistTool ? PLAN_MODE_PLANNING_PROMPT : PLAN_MODE_TEXT_PLANNING_PROMPT;
+  if (turn === "revision") {
+    const revision = checklistTool ? PLAN_MODE_REVISION_LINE : PLAN_MODE_TEXT_REVISION_LINE;
+    return `${planning}\n${revision}`;
+  }
+  return planning;
 }
 
 export function resolveResponseInstructions(
@@ -569,6 +599,29 @@ export async function mentionAttachments(
 }
 
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
+
+// The status pill floats over the bottom of the message scroller (bottom-2).
+// The scroller keeps pb-12 for the pill alone; while its card is pinned open
+// it reserves the overlay's measured height plus the offset and a small gap.
+const STATUS_PILL_ROOM_PX = 48;
+const STATUS_OVERLAY_OFFSET_PX = 8;
+const STATUS_CARD_GAP_PX = 12;
+// Card height cap: max-h-72 at most, never below a usable 96px, and in a
+// short chat small enough that the pill, its gaps and ~120px of the reply
+// stay visible above the composer.
+const STATUS_CARD_MAX_PX = 288;
+const STATUS_CARD_MIN_PX = 96;
+const STATUS_CARD_CHROME_PX = 56;
+const REPLY_MIN_VISIBLE_PX = 120;
+const NO_STATUS_OVERLAY_BOX = { overlay: 0, scroller: 0 };
+
+function statusCardMaxHeight(scrollerHeight: number): number | undefined {
+  if (scrollerHeight <= 0) return undefined;
+  return Math.max(
+    STATUS_CARD_MIN_PX,
+    Math.min(STATUS_CARD_MAX_PX, scrollerHeight - REPLY_MIN_VISIBLE_PX - STATUS_CARD_CHROME_PX),
+  );
+}
 
 type ModelNotice = { providerId: string; modelId: string } & (
   | { kind: "checking" }
@@ -2073,6 +2126,7 @@ export function ChatCore() {
     const clientTurnId = crypto.randomUUID();
     let turnThreadId: string | null = null;
     let turnSetupError: unknown = null;
+    let planTodosAtStart: readonly AgentTodo[] | null = null;
     if (runChatId) {
       try {
         turnThreadId = await useAgentTurnsStore
@@ -2092,6 +2146,10 @@ export function ChatCore() {
         useAgentTodoStore.getState().beginTurn(runChatId, {
           keep: planTurn === "revision" || planTurn === "execution",
         });
+        // The checklist this planning turn starts from. update_todos always
+        // stores a new array, so an identical reference at the end means the
+        // model never wrote one.
+        if (planGated) planTodosAtStart = useAgentTodoStore.getState().todosForChat(runChatId);
       } catch (error) {
         turnSetupError = error;
       }
@@ -2163,6 +2221,8 @@ USER_CUSTOM_INSTRUCTIONS`
     let tools: ToolSet = enabledTools;
     if (chatOnly) tools = {};
     else if (planGated) tools = planModeTools(enabledTools);
+    // Without update_todos the model cannot write or tick off a checklist.
+    const checklistTool = "update_todos" in tools;
     const runSkillCatalog =
       !chatOnly && isToolEnabled(enabledToolsForRun, "load_skill")
         ? skillCatalogPrompt(runSkills)
@@ -2234,6 +2294,7 @@ ${sandboxedCustom}`;
       ? `\n\n${planTurnPrompt(
           planTurn,
           runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
+          checklistTool,
         )}`
       : "";
     const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${skillCatalogBlock}${requestedSkillSuffix}\n\n${approvalPostureLine(runApprovalMode)}${planTurnBlock}`;
@@ -2268,6 +2329,11 @@ ${sandboxedCustom}`;
     };
 
     let planApproved = false;
+    // The whole reply across steps, for reading a plan the model wrote as
+    // text. outcome.text only holds the last step.
+    let runReplyText = "";
+    let runReplyStepStart = 0;
+    let runStoppedAtCap = false;
     let activeAssistantId = assistantMsg.id;
     try {
       if (turnSetupError) throw turnSetupError;
@@ -2348,6 +2414,9 @@ ${sandboxedCustom}`;
         };
         activeAssistantId = nextAssistant.id;
         stepContent = "";
+        // The plan note lands on the new bubble, so only its text counts.
+        runReplyText = "";
+        runReplyStepStart = 0;
         stepBlocks = [];
         reasoningStartedAt = null;
         const next = [...messagesRef.current, steeredUser, nextAssistant];
@@ -2498,6 +2567,9 @@ ${sandboxedCustom}`;
           onThinking: (label) => setRunThinking(label),
           onStep: (step) => {
             usageSteps = step + 1;
+            // Each step's text starts a new paragraph for the plan reader.
+            if (runReplyText && !runReplyText.endsWith("\n\n")) runReplyText += "\n\n";
+            runReplyStepStart = runReplyText.length;
             if (runRequestId && runIsCurrent()) markRunSteerable(runRequestId);
             updateRunLast((m) => {
               stepContent = m.content ?? "";
@@ -2507,14 +2579,17 @@ ${sandboxedCustom}`;
           },
           onRetry: (attempt, max) => {
             setRunThinking(`Connection issue, retrying (${attempt}/${max})…`);
+            runReplyText = runReplyText.slice(0, runReplyStepStart);
             updateRunLast((m) => ({
               ...m,
               content: stepContent,
               reasoningBlocks: stepBlocks,
             }));
           },
-          onText: (chunk) =>
-            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+          onText: (chunk) => {
+            runReplyText += chunk;
+            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk }));
+          },
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
@@ -2632,6 +2707,7 @@ ${sandboxedCustom}`;
 
       usageSteps = outcome.steps;
       runEndedCleanly = !outcome.error && !ac.signal.aborted;
+      runStoppedAtCap = outcome.stopped_at_cap;
       if (runChatId) {
         useAgentTurnsStore.getState().finishTurn(runChatId, outcome.stopped_at_cap);
       }
@@ -2684,6 +2760,46 @@ ${sandboxedCustom}`;
       await commitTracking;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
+      }
+      // A planning turn that wrote no checklist gets a note under the reply.
+      // Nothing becomes a plan on its own: the note offers the reply's last
+      // numbered list, and the user picks it. A clarifying question with no
+      // list gets no note, since the user answers it.
+      if (runChatId && planTodosAtStart && runEndedCleanly && !runStoppedAtCap) {
+        const checklist = useAgentTodoStore.getState().todosForChat(runChatId);
+        const modelWroteChecklist = checklist !== planTodosAtStart && checklist.length > 0;
+        const steps = modelWroteChecklist ? null : lastNumberedList(runReplyText);
+        if (steps && (steps.length > 0 || !replyEndsWithQuestion(runReplyText))) {
+          const planNote: ChatPlanNote = {
+            kind: checklist.length > 0 ? "unchanged" : "missing",
+            steps,
+          };
+          // Same tier as the streamed text, so it lands on the finished reply.
+          updateRunLastText((m) => ({ ...m, planNote }));
+        }
+      }
+      // An approved plan run without update_todos had no way to tick items
+      // off, so a clean finish settles them. Otherwise the pill would keep
+      // showing "Step 0 of N" after the work is done.
+      if (
+        runChatId &&
+        planTurn === "execution" &&
+        !checklistTool &&
+        runEndedCleanly &&
+        !runStoppedAtCap
+      ) {
+        const todoStore = useAgentTodoStore.getState();
+        if (todoStore.activeChatId === runChatId) {
+          todoStore.setTodos(
+            todoStore
+              .todosForChat(runChatId)
+              .map((todo) =>
+                todo.status === "pending" || todo.status === "in_progress"
+                  ? { ...todo, status: "completed" }
+                  : todo,
+              ),
+          );
+        }
       }
       if (runChatId) {
         useAgentTodoStore
@@ -2784,6 +2900,28 @@ ${sandboxedCustom}`;
     requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
   }, []);
 
+  // "Use this as the plan": the reply's numbered list becomes the plan,
+  // awaiting approval like one written with update_todos.
+  const adoptReplyPlan = useCallback(
+    (message: ChatMessage) => {
+      const steps = message.planNote?.steps ?? [];
+      if (!activeChatId || !message.id || steps.length === 0) return;
+      if (streaming || activeChatRun()) return;
+      const todoStore = useAgentTodoStore.getState();
+      if ((todoStore.activeChatId ?? todoStore.viewChatId) !== activeChatId) return;
+      todoStore.setTodos(planTodos(steps));
+      usePlanApprovalStore.getState().setStatus(activeChatId, "awaiting");
+      setMessages((current) => {
+        const next = current.map((item) =>
+          item.id === message.id ? { ...item, planNote: undefined } : item,
+        );
+        useChatsStore.getState().saveMessages(activeChatId, next);
+        return next;
+      });
+    },
+    [activeChatId, setMessages, streaming],
+  );
+
   let lastAssistantIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "assistant") {
@@ -2817,6 +2955,54 @@ ${sandboxedCustom}`;
     (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || agentFilesChanged);
   const agentRunSummaryVisible =
     !agentStatusActive && (agentTodosActive.length > 0 || agentFilesChanged);
+
+  // Measure the status overlay (pill plus any open card) and the scroller, so
+  // a pinned card never covers the end of the reply. A callback ref follows
+  // the overlay through remounts, for example when the chat block re-renders.
+  const [statusCardPinned, setStatusCardPinned] = useState(false);
+  const [statusOverlayBox, setStatusOverlayBox] = useState(NO_STATUS_OVERLAY_BOX);
+  const statusOverlayRef = useCallback((overlay: HTMLDivElement | null) => {
+    if (!overlay) return;
+    const measure = () => {
+      const next = {
+        overlay: overlay.offsetHeight,
+        scroller: scrollRef.current?.clientHeight ?? 0,
+      };
+      setStatusOverlayBox((previous) =>
+        previous.overlay === next.overlay && previous.scroller === next.scroller
+          ? previous
+          : next,
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      return () => setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(overlay);
+    if (scrollRef.current) observer.observe(scrollRef.current);
+    return () => {
+      observer.disconnect();
+      setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
+    };
+  }, []);
+  // Only a pinned card (auto-pinned when a plan awaits approval, or clicked)
+  // gets reserved room; a hover card floats, so the reply does not jump.
+  const statusCardRoom =
+    agentStatusPillVisible && statusCardPinned && statusOverlayBox.overlay > 0
+      ? Math.max(
+          STATUS_PILL_ROOM_PX,
+          statusOverlayBox.overlay + STATUS_OVERLAY_OFFSET_PX + STATUS_CARD_GAP_PX,
+        )
+      : 0;
+  // The card opens after the message scroll effect has run, so pin the view
+  // to the bottom again once the room is added.
+  useLayoutEffect(() => {
+    if (statusCardRoom === 0 || !nearBottomRef.current) return;
+    const scroller = scrollRef.current;
+    scroller?.scrollTo({ top: scroller.scrollHeight });
+  }, [statusCardRoom]);
+
   let lastUserIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "user") {
@@ -3062,15 +3248,19 @@ ${sandboxedCustom}`;
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.input)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.input === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.input)}
+                              {runUsage.input === null ? (
+                                t(($) => $.common.state.unknown)
+                              ) : (
+                                <Private>{formatNumber(runUsage.input)}</Private>
+                              )}
                             </dd>
                             <dt>{t(($) => $.ai.usage.output)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.output === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.output)}
+                              {runUsage.output === null ? (
+                                t(($) => $.common.state.unknown)
+                              ) : (
+                                <Private>{formatNumber(runUsage.output)}</Private>
+                              )}
                             </dd>
                           </dl>
                         </section>
@@ -3089,7 +3279,9 @@ ${sandboxedCustom}`;
                             <dt>{t(($) => $.ai.usage.steps)}</dt>
                             <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.tokens)}</dt>
-                            <dd className="text-right tabular-nums">{formatNumber(chatTotal)}</dd>
+                            <dd className="text-right tabular-nums">
+                              <Private>{formatNumber(chatTotal)}</Private>
+                            </dd>
                           </dl>
                         </section>
                       )}
@@ -3195,6 +3387,7 @@ ${sandboxedCustom}`;
               agentStatusPillVisible ? "pb-12" : "pb-3",
               showMinimap ? "pl-10 pr-3" : "px-3",
             )}
+            style={statusCardRoom > 0 ? { paddingBottom: statusCardRoom } : undefined}
           >
             {messages.length === 0 ? (
               <div className="flex min-h-full flex-col items-center justify-center px-1">
@@ -3235,6 +3428,19 @@ ${sandboxedCustom}`;
                     nearBottomRef={nearBottomRef}
                     renderExtras={({ live, isLatestAssistant, msg }) => (
                       <>
+                        {msg.role === "assistant" && msg.planNote && !live && (
+                          <PlanNote
+                            note={msg.planNote}
+                            onUse={
+                              isLatestAssistant &&
+                              planMode &&
+                              !streaming &&
+                              msg.planNote.steps.length > 0
+                                ? () => adoptReplyPlan(msg)
+                                : undefined
+                            }
+                          />
+                        )}
                         {msg.role === "assistant" &&
                           isLatestAssistant &&
                           !live &&
@@ -3320,7 +3526,10 @@ ${sandboxedCustom}`;
             />
           </div>
             {agentStatusPillVisible && (
-              <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
+              <div
+                ref={statusOverlayRef}
+                className="pointer-events-none absolute inset-x-3 bottom-2 z-20"
+              >
                 <AgentStatusPill
                   todos={agentTodos}
                   turn={agentFileChangeTurn}
@@ -3334,6 +3543,8 @@ ${sandboxedCustom}`;
                           onRevise: revisePlan,
                         }
                   }
+                  panelMaxHeight={statusCardMaxHeight(statusOverlayBox.scroller)}
+                  onPinnedChange={setStatusCardPinned}
                 />
               </div>
             )}

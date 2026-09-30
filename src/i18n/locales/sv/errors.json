@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk kan inte använda Oleaflys byggmapp på den här datorn eftersom sökvägen innehåller tecken som latexmk inte godtar. Byt projektet till Tectonic för att kompilera det.",
     "latexmk_network_folder": "latexmk kan inte kompilera en mapp på en nätverksresurs. Byt projektet till Tectonic eller kopiera mappen till den här datorn."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly kunde inte läsa bibliografin {{name}}. Leta efter en trasig post i den och exportera sedan igen."
+  },
   "github": {
     "sign_in_expired": "Inloggningskoden har gått ut. Försök igen.",
     "sign_in_cancelled": "Behörigheten till GitHub avbröts.",

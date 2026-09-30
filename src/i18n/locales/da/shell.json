@@ -63,7 +63,10 @@
     "setHomePage": "Vælg som startside"
   },
   "changelog": {
-    "installed": "Du har denne version"
+    "installed": "Du har denne version",
+    "sectionItems_one": "{{count}} ændring",
+    "sectionItems_other": "{{count}} ændringer",
+    "showNotes": "Vis noter"
   },
   "citeOleafly": {
     "description": "Der blev ikke fundet nogen litteraturfil i dette projekt, så intet blev ændret. Kopier posten nedenfor ind i din litteraturliste, eller find den igen senere under Indstillinger, Hjælp og Om.",
@@ -166,6 +169,9 @@
       "online": "Onlinetilstand (tillad hentning af pakker)"
     },
     "openTool": "Åbn {{name}}",
+    "personalDetails": {
+      "keywords": "skærmbilledtilstand, skærmbillede, privatliv, sløring, personlige oplysninger, stier, kontonavn"
+    },
     "recompile": {
       "label": "Kompiler igen"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Skjul personlige oplysninger",
+    "show": "Vis personlige oplysninger"
+  },
   "projectSearch": {
     "hint": "Søg på tværs af projektets filer.",
     "noResults": "Ingen resultater.",
@@ -750,6 +760,25 @@
       "help": "Hjælp og Om",
       "integrations": "Integrationer",
       "shortcuts": "Tastaturgenveje"
+    },
+    "search": {
+      "empty": "Ingen indstillinger matcher.",
+      "keywords": {
+        "ai": "assistent, chat, modeller, udbydere, API-nøgler, agenter, prompter, budget, MCP-servere",
+        "appearance": "tema, udseende, mørk tilstand, lys tilstand, farve, farver, skrifttyper, tekststørrelse, zoom, layout",
+        "data": "backup, sikkerhedskopi, biblioteksmappe, projektmappe, lagerplads, diskplads, papirkurv, slet projekter, kontrolpunkter",
+        "dictionary": "stavning, egne ord, ignorerede ord, korrektur, grammatikregler",
+        "downloads": "pakker, skrifttyper, ordbøger, offlinefiler",
+        "engine": "compiler, kompilering, LaTeX, TeX, Typst, Markdown, pandoc, byg, PDF",
+        "experimentation": "eksperimenter, laboratorium, beta, tidlige funktioner",
+        "general": "præferencer, sprog, landestandard, stavekontrol, stavning, tastefejl, offline, rundvisninger, terminalkommando",
+        "help": "om, version, opdateringer, ændringslog, nyheder, dokumentation, support, hjælp, fællesskab, Discord, licens, nedbrudsrapport",
+        "integrations": "Zotero, GitHub, MCP, citationer, konti, forbindelser",
+        "shortcuts": "tastaturgenveje, genvejstaster, genveje, taster, tastatur"
+      },
+      "label": "Søg i indstillinger",
+      "results_one": "{{count}} afsnit matcher",
+      "results_other": "{{count}} afsnit matcher"
     },
     "sectionsNav": "Afsnit i indstillinger",
     "title": "Indstillinger",

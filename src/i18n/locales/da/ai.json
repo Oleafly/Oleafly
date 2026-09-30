@@ -703,7 +703,10 @@
     "noResponse": "Der kom intet svar på denne besked. Strømmen blev afbrudt. Send den igen, eller start en ny chat.",
     "scrollToBottom": "Rul til bunden",
     "projectSubtitle": "Arbejder på \"{{project}}\"",
-    "noOutput": "Modellen gav intet resultat. Se Indstillinger → AI-assistent."
+    "noOutput": "Modellen gav intet resultat. Se Indstillinger → AI-assistent.",
+    "planMissing": "Der er ingen plan at godkende endnu. Bed assistenten om en, eller slå Plan fra.",
+    "planUnchanged": "Planen er uændret.",
+    "usePlanFromReply": "Brug dette som plan"
   },
   "followUps": {
     "steered": "Styret ind i den igangværende tur: {{summary}}",

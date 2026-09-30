@@ -8,6 +8,8 @@ import {
   Crosshair,
   Download,
   Eraser,
+  Eye,
+  EyeOff,
   FileJson,
   FolderOpen,
   FolderPlus,
@@ -37,6 +39,8 @@ import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
+import { togglePersonalDetails, usePersonalDetailsStore } from "@/store/personal-details";
+import { personalDetailsLabel } from "@/components/layout/PersonalDetailsToggle";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
 import { clearBuildCache } from "@/lib/tauri";
@@ -108,6 +112,7 @@ const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true)
 const ENGLISH_KEYWORDS = {
   createProject: "new project create template gallery",
   theme: "theme dark light appearance mode",
+  personalDetails: "screenshot privacy blur hide show personal details paths account name",
   generateFigure: "figure diagram draw tikz plot chart illustration",
   diagramComposer: "diagram figure tikz composer draw canvas",
   tools: "tools latex pdf equation bibtex table lab search deadlines gallery",
@@ -674,5 +679,20 @@ export function registerPaletteCommands() {
       const s = useSettingsStore.getState();
       s.setOffline(!s.offline);
     },
+  });
+  palette({
+    id: "palette.personal-details",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => personalDetailsLabel(usePersonalDetailsStore.getState().hidden),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.personalDetails.keywords)} ${ENGLISH_KEYWORDS.personalDetails}`,
+    icon: () =>
+      usePersonalDetailsStore.getState().hidden ? (
+        <Eye className="size-4" />
+      ) : (
+        <EyeOff className="size-4" />
+      ),
+    order: 540,
+    run: togglePersonalDetails,
   });
 }

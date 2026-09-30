@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const mocks = vi.hoisted(() => ({
   libraryRoot: vi.fn(),
@@ -295,5 +296,37 @@ describe("Settings Data Storage recycle bin", () => {
     await screen.findByRole("heading", { name: "Recycle Bin" });
     await screen.findByText(/across the Oleafly data folder/);
     expect(screen.queryByText(/opened folder/)).not.toBeInTheDocument();
+  });
+
+  it("marks the library folder, sizes and counts for screenshot mode", async () => {
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(<SettingsModal />);
+      const total = await screen.findByText("23 B");
+      expect(total).toHaveAttribute("data-private");
+      expect(total.parentElement).toHaveTextContent(/23 B across the Oleafly data folder/);
+      expect(screen.getByText("/tmp/.oleafly/projects")).toHaveAttribute("data-private");
+      const projects = screen.getByText("Projects", { selector: "dt" }).parentElement;
+      expect(projects?.querySelectorAll("[data-private]")).toHaveLength(2);
+    } finally {
+      usePersonalDetailsStore.getState().setHidden(false);
+    }
+  });
+
+  it("marks the size of each recycled project and the inaccessible count for screenshot mode", async () => {
+    mocks.libraryStorageSummary.mockResolvedValue({ ...storageSummary, unreadable_entries: 3 });
+    mocks.listRecycledProjects.mockResolvedValue([{ ...recycledProject, size_bytes: 2048 }]);
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(<SettingsModal />);
+      const size = await screen.findByText("2 KB");
+      expect(size).toHaveAttribute("data-private");
+      expect(size.parentElement).toHaveTextContent(/^Deleted .+ · 2 KB$/);
+      const count = await screen.findByText("3");
+      expect(count).toHaveAttribute("data-private");
+      expect(count.parentElement).toHaveTextContent("3 inaccessible items were excluded.");
+    } finally {
+      usePersonalDetailsStore.getState().setHidden(false);
+    }
   });
 });

@@ -855,6 +855,48 @@ describe("AgentStatusPill", () => {
     expect(screen.queryByRole("button", { name: "Approve plan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Revise" })).toBeNull();
   });
+
+  it("reports a pinned panel so the chat can make room for it, but not a hover", () => {
+    const onPinnedChange = vi.fn();
+    const { rerender, unmount } = render(
+      <AgentStatusPill todos={PILL_TODOS} turn={null} onPinnedChange={onPinnedChange} />,
+    );
+    const pill = screen.getByTestId("agent-status-pill");
+
+    fireEvent.mouseEnter(pill);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+    expect(onPinnedChange).not.toHaveBeenCalledWith(true);
+
+    fireEvent.click(pill);
+    expect(onPinnedChange).toHaveBeenLastCalledWith(true);
+    fireEvent.click(pill);
+    expect(onPinnedChange).toHaveBeenLastCalledWith(false);
+
+    rerender(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={null}
+        approval={AWAITING}
+        onPinnedChange={onPinnedChange}
+      />,
+    );
+    expect(onPinnedChange).toHaveBeenLastCalledWith(true);
+
+    unmount();
+    expect(onPinnedChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("lays the panel out above the pill in its own box and honours a height cap", () => {
+    render(
+      <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} panelMaxHeight={120} />,
+    );
+    const panel = screen.getByTestId("agent-todos");
+    expect(panel.style.maxHeight).toBe("120px");
+    expect(panel.parentElement).not.toHaveClass("absolute");
+    const root = panel.parentElement?.parentElement;
+    expect(root).toHaveClass("flex-col-reverse");
+    expect(root?.firstElementChild).toBe(screen.getByTestId("agent-status-pill"));
+  });
 });
 
 describe("AgentRunSummary", () => {

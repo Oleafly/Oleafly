@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
+import { displayText, personalParts } from "@/lib/display-path";
+import { PrivateText } from "@/components/ui/private";
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;
@@ -10,7 +12,7 @@ function sonnerFor(kind: Toast["kind"]) {
   return sonnerToast.info;
 }
 
-function RepeatedTitle({ message, count }: Readonly<{ message: string; count: number }>) {
+function RepeatedTitle({ message, count }: Readonly<{ message: ReactNode; count: number }>) {
   const { t } = useTranslation(["common"]);
   return (
     <span>
@@ -22,8 +24,17 @@ function RepeatedTitle({ message, count }: Readonly<{ message: string; count: nu
   );
 }
 
+// Toasts often carry a saved file or an error that names a folder, so home
+// paths in the message are shortened like every other displayed path. A
+// message that names a path stays live, so screenshot mode can blur it.
 function titleFor(toast: Toast) {
-  return toast.count > 1 ? <RepeatedTitle message={toast.message} count={toast.count} /> : toast.message;
+  const text = displayText(toast.message);
+  const message = personalParts(text).some((part) => part.personal) ? (
+    <PrivateText text={text} focusable={false} />
+  ) : (
+    text
+  );
+  return toast.count > 1 ? <RepeatedTitle message={message} count={toast.count} /> : message;
 }
 
 function actionFor(toast: Toast) {

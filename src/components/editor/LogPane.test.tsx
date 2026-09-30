@@ -23,6 +23,8 @@ vi.mock("@oleafly/latex", async (importOriginal) => {
   };
 });
 
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import { LogPane } from "./LogPane";
 
 if (!Element.prototype.scrollIntoView) {
@@ -258,6 +260,104 @@ describe("LogPane", () => {
     render(<LogPane />);
     fireEvent.click(screen.getByLabelText("Go to code location"));
     expect(openFileAndGotoLine).toHaveBeenCalledWith("main.tex", 42);
+  });
+
+  it("shows home paths in the log as ~ but copies the real log", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    setDisplayHomes(["/Users/ada"]);
+    const sty = "/Users/ada/.oleafly/tinytex/texmf-dist/tex/latex/base/article.cls";
+    const log = [
+      "This is pdfTeX, Version 3.14",
+      `(./main.tex (${sty}`,
+      "! Undefined control sequence.",
+      "l.42 \\notacommand",
+      "",
+      "))",
+    ].join("\n");
+    setCompileState({
+      status: "error",
+      log,
+      errors: [
+        { line: 42, file: sty, message: `Undefined control sequence in ${sty}.`, kind: "error", explanation: null },
+      ],
+    });
+    try {
+      render(<LogPane />);
+      fireEvent.click(screen.getByText("Raw logs"));
+      const shown = "~/.oleafly/tinytex/texmf-dist/tex/latex/base/article.cls";
+      expect(document.body.textContent).toContain(shown);
+      expect(document.body.textContent).not.toContain("/Users/ada");
+      fireEvent.click(screen.getByText("Copy log"));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(log));
+    } finally {
+      resetDisplayHomes();
+    }
+  });
+
+  it("blurs every path in the log and error card while personal details are hidden", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    setDisplayHomes(["/Users/ada"]);
+    const sty = "/Users/ada/.oleafly/tinytex/texmf-dist/tex/latex/base/article.cls";
+    const log = [
+      "This is pdfTeX, Version 3.14",
+      `(./main.tex (${sty}`,
+      "(/usr/local/texlive/2024/texmf-dist/tex/latex/base/size10.clo)",
+      "! Undefined control sequence.",
+      "l.42 \\notacommand",
+      "",
+      "))",
+    ].join("\n");
+    setCompileState({
+      status: "error",
+      log,
+      errors: [
+        { line: 42, file: sty, message: `Undefined control sequence in ${sty}.`, kind: "error", explanation: null },
+      ],
+    });
+    act(() => usePersonalDetailsStore.getState().setHidden(true));
+    try {
+      render(<LogPane />);
+      fireEvent.click(screen.getByText("Raw logs"));
+      const marked = [...document.querySelectorAll("[data-private]")].map((node) => node.textContent);
+      expect(marked).toContain("~/.oleafly/tinytex/texmf-dist/tex/latex/base/article.cls");
+      expect(marked).toContain("/usr/local/texlive/2024/texmf-dist/tex/latex/base/size10.clo");
+      // The log text itself is unchanged, and one focus stop reveals the block.
+      expect(document.body.textContent).toContain("Undefined control sequence.");
+      const rawLog = document.querySelector("pre[data-private-group]");
+      expect(rawLog).toHaveAttribute("tabindex", "0");
+      fireEvent.click(screen.getByText("Copy log"));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(log));
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+      resetDisplayHomes();
+    }
+  });
+
+  it("adds no focus stops for log blocks with nothing personal in them", () => {
+    setDisplayHomes(["/Users/ada"]);
+    setCompileState({
+      status: "error",
+      log: ERROR_LOG,
+      errors: [
+        { line: 42, file: "main.tex", message: "Undefined control sequence.", kind: "error", explanation: null },
+      ],
+    });
+    act(() => usePersonalDetailsStore.getState().setHidden(true));
+    try {
+      render(<LogPane />);
+      fireEvent.click(screen.getByText("Raw logs"));
+      const blocks = [...document.querySelectorAll("pre")];
+      expect(blocks.length).toBeGreaterThan(0);
+      for (const block of blocks) {
+        expect(block).not.toHaveAttribute("data-private-group");
+        expect(block).not.toHaveAttribute("tabindex");
+      }
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+      resetDisplayHomes();
+    }
   });
 
   it("still shows Copy log (on the raw logs section) for a failed compile", () => {

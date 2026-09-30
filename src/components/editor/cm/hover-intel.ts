@@ -5,7 +5,7 @@ import {
   hoverTooltip,
   type DecorationSet,
 } from "@codemirror/view";
-import { renderMathExpression } from "@oleafly/editor/math-render";
+import { renderMathSource } from "@oleafly/editor/math-render";
 import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import {
@@ -24,7 +24,7 @@ import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { loadAssetThumbnail, THUMBNAIL_TARGET_RE } from "./hover-asset";
-import { enclosingMathEnvironment } from "./hover-math";
+import { enclosingMathEnvironment, enclosingMathSource } from "./hover-math";
 
 function isUse(symbol: ProjectSymbol): symbol is ProjectUse {
   return "definitionIds" in symbol;
@@ -155,7 +155,7 @@ function definitionDetail(
 }
 
 interface HoverExtras {
-  /** Display-math body rendered under the card (resolved label in math). */
+  /** LaTeX source of the display math around a resolved label, rendered under the card. */
   math?: string;
   /** Project-relative image/PDF path thumbnailed under the card. */
   assetPath?: string;
@@ -163,7 +163,7 @@ interface HoverExtras {
   aux?: LabelNumber;
 }
 
-function mathBodyForDefinition(
+function mathSourceForDefinition(
   definition: ProjectDefinition,
 ): string | undefined {
   if (definition.kind !== "label" && definition.kind !== "anchor") {
@@ -171,8 +171,8 @@ function mathBodyForDefinition(
   }
   const text = useIndexStore.getState().texts[definition.location.file];
   if (!text) return undefined;
-  return enclosingMathEnvironment(text, definition.location.range.from)
-    ?.body;
+  const math = enclosingMathEnvironment(text, definition.location.range.from);
+  return math?.body.trim() ? enclosingMathSource(math) : undefined;
 }
 
 export function kindNoun(kind: string): string {
@@ -265,7 +265,7 @@ function describeUse(
     }),
     detail: definitionDetail(definition, texts),
     extras: {
-      math: mathBodyForDefinition(definition),
+      math: mathSourceForDefinition(definition),
       aux: auxNumberFor(definition.name) ?? undefined,
     },
   };
@@ -312,11 +312,11 @@ export function projectHoverCard(view: EditorView, position: number) {
       title.textContent = info.title;
       const extras = info.extras;
       if (extras?.math) {
-        const rendered = renderMathExpression(extras.math, true);
+        const rendered = renderMathSource(extras.math, true);
         if (rendered.status === "ready") {
           const math = dom.appendChild(document.createElement("div"));
           math.className = "cm-code-hover-math";
-          // renderMathExpression output is KaTeX HTML already sanitized
+          // renderMathSource output is KaTeX HTML already sanitized
           // against SAFE_KATEX_ELEMENTS with trust disabled.
           math.innerHTML = rendered.html;
         }

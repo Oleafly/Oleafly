@@ -426,6 +426,16 @@ $$`}
     await waitFor(() => expect(code?.querySelector(".tok-keyword")).toHaveTextContent("const"));
   });
 
+  it("strikes through only on a double tilde", async () => {
+    // Single tildes are paths (~/a) and LaTeX spaces (Fig.~\ref), not markup.
+    const { container } = render(
+      <Markdown>{'Edited ~/a.tex; backup at "~/b.tex". Fig.~\\ref{a} and Table~\\ref{b}. ~~gone~~'}</Markdown>,
+    );
+    await waitFor(() => expect(container.querySelector("del")).toHaveTextContent("gone"));
+    expect(container.querySelectorAll("del")).toHaveLength(1);
+    expect(container).toHaveTextContent('Edited ~/a.tex; backup at "~/b.tex". Fig.~\\ref{a} and Table~\\ref{b}.');
+  });
+
   it("does not render raw HTML", () => {
     const { container } = render(<Markdown>{"<script>alert('no')</script>"}</Markdown>);
 

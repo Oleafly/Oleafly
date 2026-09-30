@@ -50,7 +50,7 @@ Pandoc writes editable Word math instead of flattening equations into images.
 - **Engine:** pandoc
 - **Status:** existing
 - **Surface:** Export menu, Tools page
-- **Pandoc route:** `--from=latex --to=docx`
+- **Pandoc route:** `--from=latex --to=docx --citeproc`
 
 ### latex-to-html
 
@@ -61,7 +61,7 @@ Standalone HTML with MathML equations for accessible reading.
 - **Status:** existing
 - **Surface:** Export menu, Tools page
 - **Gap:** G11
-- **Pandoc route:** `--from=latex --to=html5 --standalone --embed-resources --mathml`
+- **Pandoc route:** `--from=latex --to=html5 --standalone --embed-resources --mathml --citeproc`
 
 ### latex-to-markdown
 
@@ -113,7 +113,7 @@ Pandoc writer.
 - **Engine:** pandoc
 - **Status:** existing
 - **Surface:** Export menu
-- **Pandoc route:** `--from=markdown --to=docx`
+- **Pandoc route:** `--from=markdown --to=docx --citeproc`
 
 ### markdown-to-html
 
@@ -123,7 +123,7 @@ Standalone self-contained HTML with MathML equations.
 - **Engine:** pandoc
 - **Status:** existing
 - **Surface:** Export menu
-- **Pandoc route:** `--from=markdown --to=html5 --standalone --embed-resources --mathml`
+- **Pandoc route:** `--from=markdown --to=html5 --standalone --embed-resources --mathml --citeproc`
 
 ### markdown-to-latex
 
@@ -133,7 +133,7 @@ Convert directly, import as a LaTeX project, or export from a Markdown project.
 - **Engine:** pandoc
 - **Status:** existing
 - **Surface:** Tools page, Import dialog, Export menu
-- **Pandoc route:** `--from=markdown --to=latex --standalone`
+- **Pandoc route:** `--from=markdown --to=latex --standalone --natbib`
 
 ### markdown-to-typst
 
@@ -166,7 +166,7 @@ Convert directly, import as a LaTeX project, or export from a Typst project.
 - **Status:** available
 - **Surface:** Tools page, Import dialog, Export menu
 - **Gap:** G10
-- **Pandoc route:** `--from=typst --to=latex --standalone`
+- **Pandoc route:** `--from=typst --to=latex --standalone --natbib`
 
 ### typst-to-markdown
 
@@ -188,7 +188,7 @@ Standalone HTML export from a Typst project.
 - **Status:** available
 - **Surface:** Export menu
 - **Gap:** G28
-- **Pandoc route:** `--from=typst --to=html5 --standalone --embed-resources --mathml`
+- **Pandoc route:** `--from=typst --to=html5 --standalone --embed-resources --mathml --citeproc`
 
 ### typst-to-docx
 
@@ -199,7 +199,7 @@ Pandoc reads Typst directly and writes a .docx with OMML equations.
 - **Status:** available
 - **Surface:** Export menu
 - **Gap:** G28
-- **Pandoc route:** `--from=typst --to=docx`
+- **Pandoc route:** `--from=typst --to=docx --citeproc`
 
 ## Word (.docx)
 

@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk bu bilgisayarda Oleafly'nin derleme klasörünü kullanamıyor, çünkü klasörün yolunda latexmk'nin kabul etmediği karakterler var. Derlemek için bu projeyi Tectonic'e geçirin.",
     "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly {{name}} kaynakçasını okuyamadı. Bozuk bir girdi olup olmadığını denetleyin, ardından yeniden dışa aktarın."
+  },
   "github": {
     "sign_in_expired": "Oturum açma kodunun süresi doldu. Yeniden deneyin.",
     "sign_in_cancelled": "GitHub yetkilendirmesi iptal edildi.",

@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Tooltip } from "@/components/ui/tooltip";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { useDisplayText, usePersonalParts } from "@/lib/display-path";
+import {
+  PrivateText,
+  renderPersonalParts,
+  useHidePersonalDetails,
+  usePrivateGroup,
+} from "@/components/ui/private";
 
 function easeInOutQuad(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -64,8 +71,15 @@ function inline(line: string): ReactNode[] {
   return out;
 }
 
+// Display only: TeX logs name every package file by its absolute path, so home
+// paths are shortened here while the copy buttons keep the real text. In
+// screenshot mode every path in a line is marked for the blur.
 function LogText({ text }: Readonly<{ text: string }>) {
-  const lines = text.replaceAll("\r", "").split("\n");
+  const displayText = useDisplayText();
+  const hidden = useHidePersonalDetails();
+  const personalParts = usePersonalParts();
+  const shown = useMemo(() => displayText(text), [displayText, text]);
+  const lines = shown.replaceAll("\r", "").split("\n");
   let depth = 0;
   return (
     <>
@@ -76,22 +90,26 @@ function LogText({ text }: Readonly<{ text: string }>) {
         const closes = (ln.match(/\)/g) || []).length;
         depth = Math.max(0, depth + opens - closes);
         const indent = Math.min(lineDepth, 8) * 12;
+        const parts = hidden ? personalParts(ln) : null;
+        const marked = parts?.some((part) => part.personal) ? parts : null;
+        const content = (format: (value: string) => ReactNode = (value) => value) =>
+          marked ? renderPersonalParts(marked, format) : format(ln);
 
         let body: ReactNode;
-        if (cat === "error") body = <span className="text-red-500 font-semibold">{ln}</span>;
-        else if (cat === "warn") body = <span className="text-red-400">{ln}</span>;
+        if (cat === "error") body = <span className="text-red-500 font-semibold">{content()}</span>;
+        else if (cat === "warn") body = <span className="text-red-400">{content()}</span>;
         else if (cat === "lineref") {
-          const m = /^(l\.\d+)(?!\d)(.*)$/.exec(ln);
+          const m = marked ? null : /^(l\.\d+)(?!\d)(.*)$/.exec(ln);
           body = m ? (
             <>
               <span className="font-semibold text-primary">{m[1]}</span>
               <span className="text-amber-600 dark:text-amber-400">{m[2]}</span>
             </>
-          ) : <span className="text-primary">{ln}</span>;
+          ) : <span className="text-primary">{content()}</span>;
         } else if (cat === "register") {
-          body = <span className="text-muted-foreground/40">{inline(ln)}</span>;
+          body = <span className="text-muted-foreground/40">{content(inline)}</span>;
         } else {
-          body = <span className="text-muted-foreground">{inline(ln)}</span>;
+          body = <span className="text-muted-foreground">{content(inline)}</span>;
         }
 
         // Errors/refs flush-left to stand out.
@@ -130,10 +148,13 @@ const LogNavigation = createContext(openFileAndGotoLine);
 
 function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const displayText = useDisplayText();
   const openLocation = useContext(LogNavigation);
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
+  // A focus stop only for an excerpt with a path or name in it to reveal.
+  const privateGroup = usePrivateGroup(excerpt);
   const collapsible = Boolean(excerpt);
   const title = err.explanation ?? err.message;
   let location = "";
@@ -182,8 +203,14 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-medium leading-snug text-foreground">{title}</span>
-            {location && <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">{location}</span>}
+            <span className="block text-[13px] font-medium leading-snug text-foreground">
+              <PrivateText text={displayText(title)} focusable={false} />
+            </span>
+            {location && (
+              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">
+                <PrivateText text={displayText(location)} focusable={false} />
+              </span>
+            )}
           </span>
         </button>
         <Tooltip
@@ -215,7 +242,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
       </div>
       {expanded && excerpt && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre {...privateGroup} className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
             <LogText text={excerpt} />
           </pre>
         </div>
@@ -234,6 +261,8 @@ const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
 function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
   const openLocation = useContext(LogNavigation);
   const { t } = useTranslation(["common", "editor"]);
+  const displayText = useDisplayText();
+  const privateGroup = usePrivateGroup(d.errorContext ?? "");
   const hasLocation = d.file != null && d.line != null;
   let location = "";
   if (d.file) {
@@ -251,7 +280,7 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
         />
         <span className="min-w-0 flex-1">
           <span className="block whitespace-pre-wrap break-words text-[13px] font-medium leading-snug text-foreground">
-            {d.message}
+            <PrivateText text={displayText(d.message)} />
           </span>
           {hasLocation ? (
             <Tooltip label={t(($) => $.editor.log.goToLocation)} side="top">
@@ -260,20 +289,22 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
                 onClick={() => void openLocation(d.file, d.line as number)}
                 className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {location}
+                <PrivateText text={displayText(location)} focusable={false} />
                 <ArrowUpRight className="size-3" />
               </button>
             </Tooltip>
           ) : (
             location && (
-              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">{location}</span>
+              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">
+                <PrivateText text={displayText(location)} />
+              </span>
             )
           )}
         </span>
       </div>
       {d.errorContext && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre {...privateGroup} className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
             <LogText text={d.errorContext} />
           </pre>
         </div>
@@ -313,6 +344,8 @@ function DiagnosticGroup({ label, items }: Readonly<{ label: string; items: LogD
 function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [open, setOpen] = useState(defaultOpen);
+  // A closed section renders no log, so there is nothing to scan.
+  const privateGroup = usePrivateGroup(open ? log : "");
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -350,7 +383,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
         </button>
       </div>
       {open && (
-        <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
+        <pre {...privateGroup} className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
           <LogText text={log} />
         </pre>
       )}

@@ -63,7 +63,10 @@
     "setHomePage": "Set as home page"
   },
   "changelog": {
-    "installed": "You're on this version"
+    "installed": "You're on this version",
+    "sectionItems_one": "{{count}} change",
+    "sectionItems_other": "{{count}} changes",
+    "showNotes": "Show notes"
   },
   "citeOleafly": {
     "description": "No bibliography file was found in this project, so nothing was changed. Copy the entry below into your bibliography, or find it again later under Settings, Help & About.",
@@ -166,6 +169,9 @@
       "online": "Online mode (allow package fetch)"
     },
     "openTool": "Open {{name}}",
+    "personalDetails": {
+      "keywords": "screenshot mode, privacy, blur, paths, account name"
+    },
     "recompile": {
       "label": "Recompile"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Hide personal details",
+    "show": "Show personal details"
+  },
   "projectSearch": {
     "hint": "Search across this project's files.",
     "noResults": "No results.",
@@ -750,6 +760,25 @@
       "help": "Help & About",
       "integrations": "Integrations",
       "shortcuts": "Keyboard Shortcuts"
+    },
+    "search": {
+      "empty": "No settings match.",
+      "keywords": {
+        "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
+        "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
+        "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
+        "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",
+        "downloads": "packages, fonts, dictionaries, offline files",
+        "engine": "compiler, LaTeX, TeX, Typst, Markdown, pandoc, build, PDF",
+        "experimentation": "labs, beta, early features",
+        "general": "preferences, locale, spell check, spelling, typos, offline, tours, terminal command",
+        "help": "about, version, updates, changelog, what's new, documentation, support, community, Discord, license, crash report",
+        "integrations": "Zotero, GitHub, MCP, citations, accounts, connections",
+        "shortcuts": "keybindings, hotkeys, keys, keyboard"
+      },
+      "label": "Search settings",
+      "results_one": "{{count}} section matches",
+      "results_other": "{{count}} sections match"
     },
     "sectionsNav": "Settings sections",
     "title": "Settings",

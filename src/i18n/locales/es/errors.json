@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk no puede usar la carpeta de compilación de Oleafly en este equipo porque su ruta contiene caracteres que latexmk no acepta. Cambia este proyecto a Tectonic para compilarlo.",
     "latexmk_network_folder": "latexmk no puede compilar una carpeta en un recurso compartido de red. Cambia este proyecto a Tectonic o copia la carpeta a este equipo."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly no pudo leer el archivo de bibliografía {{name}}. Revisa si tiene alguna entrada dañada y vuelve a exportar."
+  },
   "github": {
     "sign_in_expired": "El código de inicio de sesión caducó. Inténtalo de nuevo.",
     "sign_in_cancelled": "Se canceló la autorización de GitHub.",

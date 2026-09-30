@@ -9,6 +9,7 @@ import { formatDate, formatNumber } from "@/lib/intl";
 import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { Private, PrivateText } from "@/components/ui/private";
 
 // FTS5 special characters would error inside MATCH; quote each term instead.
 function ftsQuery(raw: string): string {
@@ -83,6 +84,10 @@ export function ChatHistoryModal({
         const stale =
           chat.headOid && currentHead && chat.headOid !== currentHead;
         const isActive = chat.id === activeId;
+        const tokenTotal = chat.usage ? chat.usage.inputTokens + chat.usage.outputTokens : 0;
+        const tokens = tokenTotal > 0 ? formatNumber(tokenTotal) : null;
+        const usd = chat.usage?.estimatedUsd ?? 0;
+        const cost = usd > 0 ? formatUsd(usd) : null;
         return (
           <div
             key={chat.id}
@@ -113,15 +118,23 @@ export function ChatHistoryModal({
               <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
                 {relativeTime(chat.updatedAt)} ·{" "}
                 {t(($) => $.ai.history.messages, { count: chat.messages.length })}
-                {chat.usage &&
-                chat.usage.inputTokens + chat.usage.outputTokens > 0
-                  ? ` · ${t(($) => $.ai.history.tokens, {
-                      amount: formatNumber(chat.usage.inputTokens + chat.usage.outputTokens),
-                    })}`
-                  : ""}
-                {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
-                  ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
-                  : ""}
+                {tokens ? (
+                  <>
+                    {" · "}
+                    {/* The row button is the focus stop; focusing it reveals these. */}
+                    <PrivateText
+                      text={t(($) => $.ai.history.tokens, { amount: tokens })}
+                      values={[tokens]}
+                      focusable={false}
+                    />
+                  </>
+                ) : null}
+                {cost ? (
+                  <>
+                    {" · "}
+                    <Private focusable={false}>{cost}</Private>
+                  </>
+                ) : null}
               </div>
             </button>
             {confirmId === chat.id ? (

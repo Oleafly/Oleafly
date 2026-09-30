@@ -65,7 +65,12 @@
     "setHomePage": "Ustaw jako stronę główną"
   },
   "changelog": {
-    "installed": "Masz tę wersję"
+    "installed": "Masz tę wersję",
+    "sectionItems_one": "{{count}} zmiana",
+    "sectionItems_few": "{{count}} zmiany",
+    "sectionItems_many": "{{count}} zmian",
+    "sectionItems_other": "{{count}} zmiany",
+    "showNotes": "Pokaż informacje o wydaniu"
   },
   "citeOleafly": {
     "description": "W tym projekcie nie znaleziono pliku bibliografii, więc nic nie zostało zmienione. Skopiuj poniższą pozycję do swojej bibliografii albo znajdź ją później w Ustawieniach, w sekcji Pomoc i informacje.",
@@ -168,6 +173,9 @@
       "online": "Tryb online (pobieranie pakietów dozwolone)"
     },
     "openTool": "Otwórz {{name}}",
+    "personalDetails": {
+      "keywords": "tryb zrzutu ekranu, zrzut ekranu, prywatność, rozmycie, ścieżki, nazwa konta"
+    },
     "recompile": {
       "label": "Kompiluj ponownie"
     },
@@ -515,6 +523,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Ukryj dane osobowe",
+    "show": "Pokaż dane osobowe"
+  },
   "projectSearch": {
     "hint": "Szukaj we wszystkich plikach tego projektu.",
     "noResults": "Brak wyników.",
@@ -782,6 +794,27 @@
       "help": "Pomoc i informacje",
       "integrations": "Integracje",
       "shortcuts": "Skróty klawiaturowe"
+    },
+    "search": {
+      "empty": "Brak pasujących ustawień.",
+      "keywords": {
+        "ai": "asystent, czat, modele, dostawcy, klucze API, agenci, prompty, budżet, serwery MCP",
+        "appearance": "motyw, tryb ciemny, tryb jasny, kolor, czcionki, rozmiar tekstu, powiększenie, zoom, układ",
+        "data": "kopia zapasowa, folder biblioteki, folder projektów, przechowywanie, miejsce na dysku, kosz, usuwanie projektów, punkty kontrolne",
+        "dictionary": "pisownia, ortografia, własne słowa, ignorowane słowa, korekta, reguły gramatyczne",
+        "downloads": "pakiety, czcionki, słowniki, pliki offline",
+        "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, kompilacja, PDF",
+        "experimentation": "laboratorium, beta, wczesne funkcje, eksperymentalne",
+        "general": "preferencje, język, region, sprawdzanie pisowni, pisownia, literówki, offline, samouczki, polecenie terminala",
+        "help": "o programie, wersja, aktualizacje, lista zmian, co nowego, dokumentacja, pomoc, wsparcie, społeczność, Discord, licencja, raport o awarii",
+        "integrations": "Zotero, GitHub, MCP, cytowania, konta, połączenia",
+        "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura"
+      },
+      "label": "Szukaj w ustawieniach",
+      "results_one": "{{count}} sekcja pasuje",
+      "results_few": "{{count}} sekcje pasują",
+      "results_many": "{{count}} sekcji pasuje",
+      "results_other": "{{count}} sekcji pasuje"
     },
     "sectionsNav": "Sekcje ustawień",
     "title": "Ustawienia",

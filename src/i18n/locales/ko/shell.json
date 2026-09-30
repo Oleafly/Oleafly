@@ -62,7 +62,9 @@
     "setHomePage": "홈 페이지로 지정"
   },
   "changelog": {
-    "installed": "현재 쓰고 있는 버전입니다"
+    "installed": "현재 쓰고 있는 버전입니다",
+    "sectionItems_other": "변경 사항 {{count}}개",
+    "showNotes": "릴리스 노트 보기"
   },
   "citeOleafly": {
     "description": "이 프로젝트에서 참고문헌 파일을 찾지 못해 아무것도 바꾸지 않았습니다. 아래 항목을 참고문헌에 복사하거나, 나중에 설정의 도움말 및 정보에서 다시 찾으세요.",
@@ -165,6 +167,9 @@
       "online": "온라인 모드(패키지 내려받기 허용)"
     },
     "openTool": "{{name}} 열기",
+    "personalDetails": {
+      "keywords": "스크린샷 모드, 화면 캡처, 개인정보, 프라이버시, 흐림, 블러, 경로, 계정 이름"
+    },
     "recompile": {
       "label": "다시 컴파일"
     },
@@ -509,6 +514,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "개인정보 숨기기",
+    "show": "개인정보 표시"
+  },
   "projectSearch": {
     "hint": "이 프로젝트의 파일 전체에서 검색합니다.",
     "noResults": "결과가 없습니다.",
@@ -734,6 +743,24 @@
       "help": "도움말 및 정보",
       "integrations": "연동",
       "shortcuts": "키보드 단축키"
+    },
+    "search": {
+      "empty": "일치하는 설정이 없습니다.",
+      "keywords": {
+        "ai": "어시스턴트, 채팅, 모델, 제공자, API 키, 에이전트, 프롬프트, 예산, MCP 서버",
+        "appearance": "테마, 다크 모드, 라이트 모드, 어두운 모드, 밝은 모드, 색상, 글꼴, 폰트, 글자 크기, 확대, 레이아웃",
+        "data": "백업, 라이브러리 폴더, 프로젝트 폴더, 저장 공간, 디스크 공간, 휴지통, 프로젝트 삭제, 체크포인트",
+        "dictionary": "맞춤법, 사용자 단어, 무시할 단어, 교정, 문법 규칙",
+        "downloads": "패키지, 글꼴, 사전, 오프라인 파일",
+        "engine": "컴파일러, LaTeX, TeX, Typst, Markdown, pandoc, 빌드, PDF",
+        "experimentation": "실험실, 랩, 베타, 미리 보기 기능",
+        "general": "환경 설정, 언어, 지역, 맞춤법 검사, 맞춤법, 오타, 오프라인, 둘러보기, 터미널 명령",
+        "help": "정보, 버전, 업데이트, 변경 내역, 새로운 기능, 문서, 지원, 커뮤니티, Discord, 라이선스, 충돌 보고서",
+        "integrations": "Zotero, GitHub, MCP, 인용, 계정, 연결, 연동",
+        "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드"
+      },
+      "label": "설정 검색",
+      "results_other": "섹션 {{count}}개가 일치합니다"
     },
     "sectionsNav": "설정 항목",
     "title": "설정",

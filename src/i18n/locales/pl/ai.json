@@ -723,7 +723,10 @@
     "noResponse": "Na tę wiadomość nie nadeszła odpowiedź. Strumień został przerwany. Wyślij ją ponownie albo rozpocznij nowy czat.",
     "scrollToBottom": "Przewiń na dół",
     "projectSubtitle": "Praca nad projektem \"{{project}}\"",
-    "noOutput": "Model nie zwrócił żadnych danych. Sprawdź Ustawienia → Asystent AI."
+    "noOutput": "Model nie zwrócił żadnych danych. Sprawdź Ustawienia → Asystent AI.",
+    "planMissing": "Nie ma jeszcze planu do zatwierdzenia. Poproś asystenta o plan albo wyłącz Plan.",
+    "planUnchanged": "Plan się nie zmienił.",
+    "usePlanFromReply": "Użyj tego jako planu"
   },
   "followUps": {
     "steered": "Skierowano do trwającej tury: {{summary}}",

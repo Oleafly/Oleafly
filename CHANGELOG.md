@@ -7,8 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Settings has a search box. Type a word such as "theme", "Zotero" or
+  "spelling" and the list narrows to the sections and settings that match;
+  pick one to jump to it.
+- A small eye button in the toolbar, also in the command palette and the View
+  menu, blurs personal details for screenshots: your home folder in paths,
+  account names, commit authors, and sizes and totals. Hover or focus a
+  blurred item to read it. It lasts until you quit.
+- When a model in Plan mode answers without a plan, a note says so. If the
+  reply has a numbered list, "Use this as the plan" turns it into the plan
+  card for you to approve.
+
+### Changed
+
+- Paths inside your home folder show as `~/…` in Settings, version history,
+  engine and agent details, and in chat.
+- What's new folds long release notes: older releases start closed, and big
+  sections of the newest show a count you can open.
+
 ### Fixed
 
+- Cmd+Enter (Ctrl+Enter on Windows and Linux) compiles without also inserting
+  a blank line or a line break in the editor.
+- Word, HTML, EPUB and PowerPoint exports keep citations and list the
+  references from the bibliography the document names. `\eqref` shows the
+  equation number from the last compile instead of `[label]`.
+- Importing Markdown into a LaTeX project turns `[@key]` citations into
+  `\citep` and `\citet` and copies the bibliography into the project, so
+  References is no longer empty. The Markdown to LaTeX converter in Tools does
+  the same.
+- A Typst file and a LaTeX file in the same project no longer share labels, so
+  a label used in both no longer shows as "defined 2 times", and renaming one
+  doesn't rename the other.
+- The math preview renders equations that contain `\label`, `\nonumber` or
+  `\notag`, and shows `\ref` and `\eqref` as placeholders instead of an
+  error.
+- On macOS, Biber from TeX Live or Oleafly's own TinyTeX failed to start with
+  recent Xcode tools, so pdfLaTeX projects with a bibliography didn't compile.
+  Oleafly now runs the copy of Biber built for your Mac's processor.
+- The plan approval card no longer covers the end of the assistant's reply.
 - On macOS, Oleafly no longer shrinks into the top-left quarter of the
   screen in full screen after the Mac wakes from sleep, which happened
   mostly with a Retina external display (#169). macOS now keeps the page the

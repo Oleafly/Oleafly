@@ -1,3 +1,7 @@
+import {
+  definitionCandidatesForUse,
+  definitionsByKey,
+} from "./resolution";
 import { stableId } from "./source";
 import type {
   ExternalProjectIntelligence,
@@ -84,34 +88,9 @@ function deduplicateDefinitions(
   );
 }
 
-function definitionCandidates(
-  use: ProjectUse,
-  definitionsByKey: ReadonlyMap<
-    string,
-    readonly ProjectDefinition[]
-  >,
-): readonly ProjectDefinition[] {
-  if (use.kind === "reference") {
-    return definitionsByKey.get(`reference:${use.name}`) ?? [];
-  }
-  if (use.kind === "citation") {
-    return definitionsByKey.get(`citation:${use.name}`) ?? [];
-  }
-  if (use.kind === "macro") {
-    return definitionsByKey.get(`macro:${use.name}`) ?? [];
-  }
-  if (use.kind === "environment") {
-    return definitionsByKey.get(`environment:${use.name}`) ?? [];
-  }
-  return [];
-}
-
 function resolveAgainstMergedDefinitions(
   use: ProjectUse,
-  definitionsByKey: ReadonlyMap<
-    string,
-    readonly ProjectDefinition[]
-  >,
+  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
 ): ProjectUse {
   if (
     use.kind !== "reference" &&
@@ -121,7 +100,7 @@ function resolveAgainstMergedDefinitions(
   ) {
     return use;
   }
-  const candidates = definitionCandidates(use, definitionsByKey);
+  const candidates = definitionCandidatesForUse(use, byKey);
   if (candidates.length === 0) return use;
   return {
     ...use,
@@ -137,27 +116,9 @@ function deduplicateUses(
   definitions: readonly ProjectDefinition[],
 ): ProjectUse[] {
   const signatures = new Set(local.map(useSignature));
-  const definitionsByKey = new Map<string, ProjectDefinition[]>();
-  for (const definition of definitions) {
-    const nonReferenceNamespace =
-      definition.kind === "bibentry" ? "citation" : definition.kind;
-    const namespace =
-      definition.kind === "label" || definition.kind === "anchor"
-        ? "reference"
-        : nonReferenceNamespace;
-    if (
-      namespace !== "reference" &&
-      namespace !== "citation" &&
-      namespace !== "macro" &&
-      namespace !== "environment"
-    ) {
-      continue;
-    }
-    const key = `${namespace}:${definition.name}`;
-    const values = definitionsByKey.get(key);
-    if (values) values.push(definition);
-    else definitionsByKey.set(key, [definition]);
-  }
+  // The assembler's own keys, so a merge keeps the engine and file scoping
+  // each use was first resolved with.
+  const byKey = definitionsByKey(definitions);
   return [
     ...local,
     ...external.filter((use) => {
@@ -168,7 +129,7 @@ function deduplicateUses(
     }),
   ]
     .map((use) =>
-      resolveAgainstMergedDefinitions(use, definitionsByKey),
+      resolveAgainstMergedDefinitions(use, byKey),
     )
     .sort(
       (left, right) =>

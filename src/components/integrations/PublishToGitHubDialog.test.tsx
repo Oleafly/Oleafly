@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGithubStore } from "@/store/github";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import { PublishToGitHubDialog } from "./PublishToGitHubDialog";
 
 function deferred<T>() {
@@ -251,6 +252,44 @@ describe("PublishToGitHubDialog", () => {
       vi.advanceTimersByTime(1000);
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks repository names and the account in the result for screenshot mode", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    useGithubStore.setState({
+      status: "connected",
+      user: { login: "prajwal" },
+    } as unknown as ReturnType<typeof useGithubStore.getState>);
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(
+        <PublishToGitHubDialog
+          open
+          onClose={vi.fn()}
+          projectId="project-1"
+          projectName="Research notes"
+          onPublished={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole("tab", { name: "Link existing" }));
+      const name = await screen.findByText("prajwal/research-notes");
+      expect(name).toHaveAttribute("data-private");
+      // The row button is the focus stop; focusing it reveals the name.
+      expect(name).not.toHaveAttribute("tabindex");
+      expect(name.closest("button")).not.toBeNull();
+
+      await user.click(name);
+      await user.click(screen.getByRole("button", { name: "Link and push" }));
+      const result = await screen.findByText(/Linked and pushed to/);
+      const marked = [...result.querySelectorAll("[data-private]")].map((node) => node.textContent);
+      expect(marked).toEqual(["prajwal"]);
+      expect(result).toHaveTextContent(`Linked and pushed to ${createdRepo.clone_url}`);
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+      useGithubStore.setState({ user: null });
+    }
   });
 
   it("records the remote but asks for a pull when the first push is rejected", async () => {

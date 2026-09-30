@@ -34,8 +34,7 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
-import { editorTheme } from "@/components/editor/cm/theme";
-import { latexLanguage } from "@/components/editor/cm/latex";
+import { diagramCodeExtensions } from "@/components/diagram/code-extensions";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -171,7 +170,7 @@ export function DiagramComposer() {
   const open = useHomeViewStore((s) => s.page === "diagram-composer");
   const goTo = useHomeViewStore((s) => s.goTo);
   const fullscreen = useFullscreen();
-  const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
+  const codeExtensions = useMemo(diagramCodeExtensions, []);
   const kit = useMemo<DiagramKit>(
     () => ({
       ...KIT,

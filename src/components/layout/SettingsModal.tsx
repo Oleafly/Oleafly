@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -44,10 +44,12 @@ import {
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { reportCrashToGithub } from "@/lib/crash-report";
+import { useDisplayPath } from "@/lib/display-path";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Private, PrivateText } from "@/components/ui/private";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
@@ -117,6 +119,14 @@ import {
   SettingsSwitchIndicator,
   SettingsToggleRow,
 } from "@/components/settings/SettingsToggleRow";
+import {
+  SETTINGS_SEARCH_HIT_CLASSES,
+  SettingsSearchField,
+  SettingsSearchRows,
+  SettingsSearchStatus,
+  useSettingsSearch,
+} from "@/components/settings/SettingsSearch";
+import type { SettingsSearchSection } from "@/components/settings/settings-search";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import {
   githubGetPublicRepoStats,
@@ -127,19 +137,7 @@ const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
 );
 
-type Section =
-  | "appearance"
-  | "general"
-  | "dictionary"
-  | "data"
-  | "ai"
-  | "engine"
-  | "downloads"
-  | "integrations"
-  | "shortcuts"
-  | "experimentation"
-  | "developer"
-  | "help";
+type Section = SettingsSearchSection;
 
 type DeveloperSettingsModule = typeof import("@/developer/DeveloperSettings");
 
@@ -286,6 +284,7 @@ export function SettingsModal() {
   const [developerSettings, setDeveloperSettings] =
     useState<DeveloperSettingsModule | null>(null);
   const [libRoot, setLibRoot] = useState("");
+  const displayPath = useDisplayPath();
   const [storageSummary, setStorageSummary] =
     useState<LibraryStorageSummary | null>(null);
   const [storageLoading, setStorageLoading] = useState(false);
@@ -328,6 +327,22 @@ export function SettingsModal() {
     open,
     closeSettings,
   );
+  const settingsBodyRef = useRef<HTMLDivElement>(null);
+  const sectionListId = useId();
+  const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
+  const search = useSettingsSearch({
+    open,
+    resetKey: settingsInitialSection,
+    sections: navigation,
+    currentSection: section,
+    onSelectSection: setSection,
+    suspended: settingsTourActive,
+    containerRef: settingsBodyRef,
+  });
+  const searchRows = new Map(search.hits?.map((hit) => [hit.id, hit.rows]));
+  const visibleNavigation = search.hits
+    ? navigation.filter((item) => searchRows.has(item.id))
+    : navigation;
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -525,6 +540,7 @@ export function SettingsModal() {
               label: t(($) => $.shell.settings.data.storage.stats.projects),
               value: formatNumber(storageSummary.project_count),
               detail: formatBytes(storageSummary.projects_bytes),
+              personalDetail: true,
             },
             {
               id: "files",
@@ -533,18 +549,21 @@ export function SettingsModal() {
               detail: t(($) => $.shell.settings.data.storage.stats.folders, {
                 count: storageSummary.directory_count,
               }),
+              personalDetail: true,
             },
             {
               id: "images",
               label: t(($) => $.shell.settings.data.storage.stats.images),
               value: formatNumber(storageSummary.image_count),
               detail: formatBytes(storageSummary.image_bytes),
+              personalDetail: true,
             },
             {
               id: "pdfs",
               label: t(($) => $.shell.settings.data.storage.stats.pdfs),
               value: formatNumber(storageSummary.pdf_count),
               detail: formatBytes(storageSummary.pdf_bytes),
+              personalDetail: true,
             },
             {
               id: "sources",
@@ -574,10 +593,10 @@ export function SettingsModal() {
             <div key={item.id} className="min-w-0 bg-card px-3 py-3">
               <dt className="text-muted-foreground">{item.label}</dt>
               <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                {item.value}
+                <Private>{item.value}</Private>
               </dd>
               <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                {item.detail}
+                {"personalDetail" in item ? <Private>{item.detail}</Private> : item.detail}
               </dd>
             </div>
           ))}
@@ -626,10 +645,13 @@ export function SettingsModal() {
                   {project.name}
                 </p>
                 <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                  {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
-                    date: formatDateTime(project.deleted_at * 1000),
-                    size: formatBytes(project.size_bytes),
-                  })}
+                  <PrivateText
+                    text={t(($) => $.shell.settings.data.recycleBin.deletedAt, {
+                      date: formatDateTime(project.deleted_at * 1000),
+                      size: formatBytes(project.size_bytes),
+                    })}
+                    values={[formatBytes(project.size_bytes)]}
+                  />
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
@@ -704,7 +726,10 @@ export function SettingsModal() {
   );
 
   const renderSettingsBody = () => (
-    <div className="flex-1 overflow-auto p-5">
+    <div
+      ref={settingsBodyRef}
+      className={cn("flex-1 overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
+    >
       {section === "appearance" && <AppearanceSection />}
 
       {renderGeneralSection()}
@@ -747,11 +772,16 @@ export function SettingsModal() {
               {t(($) => $.shell.settings.data.storage.title)}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {storageSummary
-                ? t(($) => $.shell.settings.data.storage.total, {
+              {storageSummary ? (
+                <PrivateText
+                  text={t(($) => $.shell.settings.data.storage.total, {
                     size: formatBytes(storageSummary.total_bytes),
-                  })
-                : t(($) => $.shell.settings.data.storage.subtitle)}
+                  })}
+                  values={[formatBytes(storageSummary.total_bytes)]}
+                />
+              ) : (
+                t(($) => $.shell.settings.data.storage.subtitle)
+              )}
             </p>
           </div>
         </div>
@@ -779,17 +809,26 @@ export function SettingsModal() {
       {renderStorageSummary()}
       {storageSummary && storageSummary.linked_folder_count > 0 ? (
         <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-          {t(($) => $.shell.settings.data.storage.linkedFolders, {
-            count: storageSummary.linked_folder_count,
-            size: formatBytes(storageSummary.linked_folders_bytes),
-          })}
+          <PrivateText
+            text={t(($) => $.shell.settings.data.storage.linkedFolders, {
+              count: storageSummary.linked_folder_count,
+              size: formatBytes(storageSummary.linked_folders_bytes),
+            })}
+            values={[
+              formatBytes(storageSummary.linked_folders_bytes),
+              String(storageSummary.linked_folder_count),
+            ]}
+          />
         </p>
       ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
         <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
-          {t(($) => $.shell.settings.data.storage.unreadable, {
-            count: storageSummary.unreadable_entries,
-          })}
+          <PrivateText
+            text={t(($) => $.shell.settings.data.storage.unreadable, {
+              count: storageSummary.unreadable_entries,
+            })}
+            values={[String(storageSummary.unreadable_entries)]}
+          />
         </p>
       ) : null}
     </section>
@@ -812,7 +851,7 @@ export function SettingsModal() {
         </p>
         <div className="flex items-center gap-2">
           <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-            {libRoot || "~/.oleafly/projects"}
+            <Private>{libRoot ? displayPath(libRoot) : "~/.oleafly/projects"}</Private>
           </code>
           {import.meta.env.DEV && isTauri() && libRoot ? (
             <Tooltip label={t(($) => $.shell.settings.data.reveal)}>
@@ -1228,7 +1267,6 @@ export function SettingsModal() {
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
-        data-modal-initial-focus
         aria-modal="true"
         aria-label={t(($) => $.shell.settings.title)}
         className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
@@ -1244,14 +1282,19 @@ export function SettingsModal() {
           >
             {t(($) => $.shell.settings.title)}
           </div>
+          <SettingsSearchField
+            value={search.query}
+            onChange={search.setQuery}
+            controls={sectionListId}
+          />
           <div
             data-testid="settings-section-scroll"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
-            <div className="flex flex-col gap-0.5">
-            {navigation.map(({ id, label, icon: Icon }) => (
+            <div id={sectionListId} className="flex flex-col gap-0.5">
+            {visibleNavigation.map(({ id, label, icon: Icon }) => (
+            <Fragment key={id}>
             <button
-              key={id}
               type="button"
               aria-current={section === id ? "page" : undefined}
               data-testid={`settings-section-${id}`}
@@ -1266,8 +1309,15 @@ export function SettingsModal() {
               <Icon className="size-4 shrink-0" aria-hidden />
               {label}
             </button>
+            <SettingsSearchRows
+              label={label}
+              rows={searchRows.get(id) ?? []}
+              onReveal={(row) => search.revealRow(id, row)}
+            />
+            </Fragment>
             ))}
             </div>
+            <SettingsSearchStatus count={search.hits ? search.hits.length : null} />
           </div>
           <div className="mt-2 shrink-0 border-t pt-3">
             <DiscordJoinButton />

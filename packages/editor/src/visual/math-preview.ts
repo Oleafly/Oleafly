@@ -9,7 +9,7 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView } from "@codemirror/view";
 import { hasMouseDownEffect, pointerSelectionTracking, selectionAtMouseDown } from "./selection";
-import { renderMathExpression } from "../math-render";
+import { renderMathSource } from "../math-render";
 import { type MathSourceFormat, scanMathExpressions } from "../math-source";
 import { editorMessage } from "../messages";
 
@@ -137,7 +137,7 @@ function overlaps(left: { from: number; to: number }, right: { from: number; to:
 }
 
 function paintMath(output: HTMLElement, target: MathPreviewTarget) {
-  const result = renderMathExpression(target.body, target.display);
+  const result = renderMathSource(target.body, target.display);
   if (result.status !== "ready") {
     const error = document.createElement("span");
     error.className = "ofl-visual-math-tooltip-error";

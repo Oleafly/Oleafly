@@ -11,6 +11,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
+import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
@@ -174,6 +175,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
 
 async function bootstrap(): Promise<void> {
   const view = currentWindowView();
+  // Fetched early so the first paint already shows home paths as ~/…
+  void loadDisplayHomes();
   if (view === "main") {
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
     await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);

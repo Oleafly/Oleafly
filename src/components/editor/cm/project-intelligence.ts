@@ -46,7 +46,12 @@ import {
   requestPackageCatalogs,
 } from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
+import {
+  definitionCandidatesForUse,
+  definitionsByKey,
+} from "@/lib/project-intelligence/resolution";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
+import { engineForPath } from "@/lib/project-intelligence/source";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
@@ -215,6 +220,14 @@ function isNfc(text: string): boolean {
   return text === text.normalize("NFC");
 }
 
+// Labels, anchors and headings are only reachable from a document compiled by
+// the same engine: a LaTeX \ref cannot see a Typst <label>, nor the reverse.
+const ENGINE_SCOPED_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
+  "label",
+  "anchor",
+  "section",
+]);
+
 function definitionOptions(
   snapshot: ProjectIntelligenceSnapshot,
   guard: CompletionGuard,
@@ -223,9 +236,12 @@ function definitionOptions(
   includeEnvironmentArguments = false,
 ): Completion[] {
   const normalizedQuery = completionKey(query);
+  const engine = engineForPath(guard.path);
   const candidates = snapshot.definitions.filter(
     (definition) =>
       kinds.has(definition.kind) &&
+      (!ENGINE_SCOPED_KINDS.has(definition.kind) ||
+        definition.engine === engine) &&
       (!normalizedQuery ||
         completionKey(definition.name).includes(normalizedQuery)),
   );
@@ -1072,142 +1088,39 @@ function exceedsFallbackSyntaxBudget(text: string): boolean {
   return false;
 }
 
-interface DefinitionCountIndex {
-  readonly total: ReadonlyMap<string, number>;
-  readonly byFile: ReadonlyMap<string, ReadonlyMap<string, number>>;
-}
-
-interface FallbackLookup {
-  readonly references: DefinitionCountIndex;
-  readonly citations: DefinitionCountIndex;
-}
+type DefinitionsByKey = ReadonlyMap<string, readonly ProjectDefinition[]>;
 
 const fallbackLookupCache = new WeakMap<
   ProjectIntelligenceSnapshot,
-  FallbackLookup
+  DefinitionsByKey
 >();
-
-function definitionCountIndex(
-  snapshot: ProjectIntelligenceSnapshot,
-  kind: "reference" | "citation",
-): DefinitionCountIndex {
-  const total = new Map<string, number>();
-  const byFile = new Map<string, Map<string, number>>();
-  for (const definition of snapshot.definitions) {
-    const accepted =
-      kind === "citation"
-        ? definition.kind === "bibentry"
-        : definition.kind === "label" ||
-          definition.kind === "anchor";
-    if (!accepted) continue;
-    const fileCounts =
-      byFile.get(definition.location.file) ?? new Map<string, number>();
-    fileCounts.set(
-      definition.name,
-      (fileCounts.get(definition.name) ?? 0) + 1,
-    );
-    byFile.set(definition.location.file, fileCounts);
-    // Pandoc anchors are file-scoped. They remain in byFile for local and
-    // explicit cross-file links, but never enter the global reference pool.
-    if (
-      kind === "reference" &&
-      definition.engine === "markdown" &&
-      definition.kind === "anchor"
-    ) {
-      continue;
-    }
-    total.set(
-      definition.name,
-      (total.get(definition.name) ?? 0) + 1,
-    );
-  }
-  return { total, byFile };
-}
 
 function fallbackLookup(
   snapshot: ProjectIntelligenceSnapshot,
-): FallbackLookup {
+): DefinitionsByKey {
   const cached = fallbackLookupCache.get(snapshot);
   if (cached) return cached;
-  const lookup = {
-    references: definitionCountIndex(snapshot, "reference"),
-    citations: definitionCountIndex(snapshot, "citation"),
-  };
+  const lookup = definitionsByKey(snapshot.definitions);
   fallbackLookupCache.set(snapshot, lookup);
   return lookup;
 }
 
-function countExceptFile(
-  index: DefinitionCountIndex,
-  key: string,
+/**
+ * How many definitions `use` would resolve to once the worker catches up:
+ * the current file's fresh definitions stand in for the snapshot's stale copy
+ * of that file. The keys are the worker's own, so a LaTeX \ref never counts a
+ * Typst label and a Markdown anchor link stays inside its file.
+ */
+function candidateCount(
+  use: ProjectUse,
   path: string,
+  current: DefinitionsByKey,
+  project: DefinitionsByKey,
 ): number {
-  return Math.max(
-    0,
-    (index.total.get(key) ?? 0) -
-      (index.byFile.get(path)?.get(key) ?? 0),
-  );
-}
-
-function countCurrentDefinitions(
-  definitions: readonly ProjectDefinition[],
-  key: string,
-  kind: "reference" | "citation",
-): number {
-  return definitions.filter(
-    (definition) =>
-      definition.name === key &&
-      (kind === "citation"
-        ? definition.kind === "bibentry"
-        : definition.kind === "label" ||
-          definition.kind === "anchor"),
+  const elsewhere = definitionCandidatesForUse(use, project).filter(
+    (definition) => definition.location.file !== path,
   ).length;
-}
-
-function referenceCount(
-  use: ProjectUse,
-  path: string,
-  definitions: readonly ProjectDefinition[],
-  lookup: FallbackLookup,
-): number {
-  if (use.target?.includes("#")) {
-    const [targetFile, targetName] = use.target.split("#", 2);
-    if (targetFile === path) {
-      return countCurrentDefinitions(
-        definitions,
-        targetName || use.name,
-        "reference",
-      );
-    }
-    return (
-      lookup.references.byFile
-        .get(targetFile)
-        ?.get(targetName || use.name) ?? 0
-    );
-  }
-  if (use.engine === "markdown") {
-    return countCurrentDefinitions(
-      definitions,
-      use.name,
-      "reference",
-    );
-  }
-  return (
-    countExceptFile(lookup.references, use.name, path) +
-    countCurrentDefinitions(definitions, use.name, "reference")
-  );
-}
-
-function citationCount(
-  use: ProjectUse,
-  path: string,
-  definitions: readonly ProjectDefinition[],
-  lookup: FallbackLookup,
-): number {
-  return (
-    countExceptFile(lookup.citations, use.name, path) +
-    countCurrentDefinitions(definitions, use.name, "citation")
-  );
+  return definitionCandidatesForUse(use, current).length + elsewhere;
 }
 
 function referenceNoun(use: ProjectUse): string {
@@ -1223,19 +1136,11 @@ function referenceNoun(use: ProjectUse): string {
 function referenceDiagnosticFor(
   use: ProjectUse,
   path: string,
-  definitions: readonly ProjectDefinition[],
-  lookup: FallbackLookup,
+  current: DefinitionsByKey,
+  project: DefinitionsByKey,
 ): Diagnostic | null {
   if (use.kind !== "reference" && use.kind !== "citation") return null;
-  const references =
-    use.kind === "reference"
-      ? referenceCount(use, path, definitions, lookup)
-      : 0;
-  const citations =
-    use.kind === "citation" || use.syntax === "typst-at"
-      ? citationCount(use, path, definitions, lookup)
-      : 0;
-  const candidates = references + citations;
+  const candidates = candidateCount(use, path, current, project);
   if (candidates === 1) return null;
   const noun = referenceNoun(use);
   return {
@@ -1301,14 +1206,15 @@ export function currentFileReferenceDiagnostics(
     // failure must never turn into guessed or unmasked findings.
     return [];
   }
-  const lookup = fallbackLookup(snapshot);
+  const project = fallbackLookup(snapshot);
+  const current = definitionsByKey(currentFile.definitions);
   const diagnostics: Diagnostic[] = [];
   for (const use of currentFile.uses) {
     const diagnostic = referenceDiagnosticFor(
       use,
       path,
-      currentFile.definitions,
-      lookup,
+      current,
+      project,
     );
     if (diagnostic) diagnostics.push(diagnostic);
   }

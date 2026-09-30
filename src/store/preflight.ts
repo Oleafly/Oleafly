@@ -15,6 +15,10 @@ import {
   resolveBibliographyPath,
 } from "@oleafly/latex";
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
+import { nameTarget } from "@/lib/index/build";
+import type { Sym } from "@/lib/index/types";
+import { labelScope } from "@/lib/project-intelligence/resolution";
+import { engineForPath } from "@/lib/project-intelligence/source";
 import { parseEntry } from "@/lib/citation/bibtex";
 import { i18n } from "@/i18n";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
@@ -111,22 +115,43 @@ function collectLabelFacts(index: ReturnType<typeof useIndexStore.getState>["ind
   duplicateLabels: { label: string; files: string[] }[];
   unreferencedLabels: { label: string; file: string }[];
 } {
-  const labelFiles = new Map<string, Set<string>>();
-  const referencedLabels = new Set(index?.uses.filter((use) => use.kind === "ref").map((use) => use.name) ?? []);
-  for (const definition of index?.defs.filter((definition) => definition.kind === "label") ?? []) {
-    const filesForLabel = labelFiles.get(definition.name) ?? new Set<string>();
-    filesForLabel.add(definition.file);
-    labelFiles.set(definition.name, filesForLabel);
+  const labelFiles = new Map<string, { label: string; files: Set<string> }>();
+  // A reference counts for the label it points at, the way rename resolves it:
+  // same engine, and for a `file#anchor` link, only a label in the named file.
+  const referenceKey = (scope: string, file: string | null, name: string) =>
+    `${scope}\0${file === null ? "*" : `=${file}`}\0${name}`;
+  const referencedLabels = new Set<string>();
+  for (const use of index?.uses ?? []) {
+    if (use.kind !== "ref") continue;
+    const { scope, file } = nameTarget("label", use);
+    referencedLabels.add(referenceKey(scope, file, use.name));
   }
-  const duplicateLabels = [...labelFiles]
-    .filter(([, definingFiles]) => definingFiles.size > 1)
-    .map(([label, definingFiles]) => ({ label, files: [...definingFiles] }));
+  const isReferenced = (definition: Sym) => {
+    const { scope } = nameTarget("label", definition);
+    return (
+      referencedLabels.has(referenceKey(scope, null, definition.name)) ||
+      referencedLabels.has(referenceKey(scope, definition.file, definition.name))
+    );
+  };
+  for (const definition of index?.defs ?? []) {
+    if (definition.kind !== "label") continue;
+    // Labels are pooled the way rename and resolution pool them: one pool per
+    // engine, so a LaTeX and a Typst label may share a name, and a Markdown
+    // anchor in its own file's pool, so one heading in two files is no clash.
+    const key = `${nameTarget("label", definition).scope}\0${definition.name}`;
+    const entry = labelFiles.get(key) ?? { label: definition.name, files: new Set<string>() };
+    entry.files.add(definition.file);
+    labelFiles.set(key, entry);
+  }
+  const duplicateLabels = [...labelFiles.values()]
+    .filter((entry) => entry.files.size > 1)
+    .map((entry) => ({ label: entry.label, files: [...entry.files] }));
   const unreferencedLabels = (index?.defs ?? [])
     .filter(
       (definition) =>
         definition.kind === "label" &&
         /^(?:fig|figure|tab|table|eq|equation)[:._-]/i.test(definition.name) &&
-        !referencedLabels.has(definition.name),
+        !isReferenced(definition),
     )
     .map((definition) => ({ label: definition.name, file: definition.file }));
   return { duplicateLabels, unreferencedLabels };
@@ -137,7 +162,16 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
   // runRefsRules also re-scans the active source for its own labels, so a just-
   // typed label resolves even before the debounced index catches up.
   const index = useIndexStore.getState().index;
-  const definedLabels = index ? index.defs.filter((d) => d.kind === "label").map((d) => d.name) : [];
+  // The refs rules lint the project's LaTeX sources whatever tab is open, so a
+  // \ref reaches the labels in the main document's pool. A main document of
+  // no known engine keeps every label rather than flag each \ref.
+  const mainEngine = engineForPath(files.mainDoc);
+  const mainScope = mainEngine ? labelScope(mainEngine, files.mainDoc) : null;
+  const definedLabels = index
+    ? index.defs
+        .filter((d) => d.kind === "label" && (mainScope === null || nameTarget("label", d).scope === mainScope))
+        .map((d) => d.name)
+    : [];
   const bibKeys = index ? index.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [];
   // Duplicate detection needs DOIs, which the index does not store, so parse the
   // loaded .bib files for those.

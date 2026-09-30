@@ -52,6 +52,9 @@
     "latexmk_build_path": "Oleafly 在這台電腦上的建置資料夾路徑含有 latexmk 不接受的字元，因此 latexmk 無法使用它。請將此專案切換為 Tectonic 來編譯。",
     "latexmk_network_folder": "latexmk 無法編譯網路共用上的資料夾。請將此專案切換為 Tectonic，或將資料夾複製到這台電腦。"
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly 無法讀取參考文獻 {{name}}。請檢查其中是否有損壞的條目，然後重新匯出。"
+  },
   "github": {
     "sign_in_expired": "登入碼已過期。請再試一次。",
     "sign_in_cancelled": "GitHub 授權已取消。",

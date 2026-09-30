@@ -63,7 +63,10 @@
     "setHomePage": "Als Startseite festlegen"
   },
   "changelog": {
-    "installed": "Sie nutzen diese Version"
+    "installed": "Sie nutzen diese Version",
+    "sectionItems_one": "{{count}} Änderung",
+    "sectionItems_other": "{{count}} Änderungen",
+    "showNotes": "Hinweise anzeigen"
   },
   "citeOleafly": {
     "description": "In diesem Projekt wurde keine Bibliografiedatei gefunden, deshalb wurde nichts geändert. Kopieren Sie den Eintrag unten in Ihr Literaturverzeichnis oder finden Sie ihn später unter Einstellungen, Hilfe & Über wieder.",
@@ -166,6 +169,9 @@
       "online": "Online-Modus (Pakete dürfen geladen werden)"
     },
     "openTool": "{{name}} öffnen",
+    "personalDetails": {
+      "keywords": "Screenshot-Modus, Bildschirmfoto, Datenschutz, Privatsphäre, unscharf, persönliche Daten, Pfade, Kontoname"
+    },
     "recompile": {
       "label": "Neu kompilieren"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Persönliche Daten ausblenden",
+    "show": "Persönliche Daten einblenden"
+  },
   "projectSearch": {
     "hint": "Durchsucht die Dateien dieses Projekts.",
     "noResults": "Keine Treffer.",
@@ -750,6 +760,25 @@
       "help": "Hilfe & Über",
       "integrations": "Integrationen",
       "shortcuts": "Tastenkürzel"
+    },
+    "search": {
+      "empty": "Keine passenden Einstellungen.",
+      "keywords": {
+        "ai": "Assistent, Chat, Modelle, Anbieter, API-Schlüssel, Agenten, Prompts, Budget, MCP-Server",
+        "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout",
+        "data": "Backup, Sicherung, Bibliotheksordner, Projektordner, Speicher, Speicherplatz, Papierkorb, Projekte löschen, Checkpoints",
+        "dictionary": "Rechtschreibung, eigene Wörter, ignorierte Wörter, Korrektur, Korrekturlesen, Grammatikregeln",
+        "downloads": "Pakete, Schriftarten, Wörterbücher, Offline-Dateien",
+        "engine": "Compiler, kompilieren, LaTeX, TeX, Typst, Markdown, pandoc, Build, PDF",
+        "experimentation": "Experimente, Labs, Beta, experimentell, frühe Funktionen",
+        "general": "Einstellungen, Sprache, Gebietsschema, Rechtschreibprüfung, Rechtschreibung, Tippfehler, offline, Touren, Terminalbefehl",
+        "help": "Über, Version, Updates, Änderungsprotokoll, Was ist neu, Dokumentation, Support, Hilfe, Community, Discord, Lizenz, Absturzbericht",
+        "integrations": "Zotero, GitHub, MCP, Zitationen, Zitate, Konten, Verbindungen",
+        "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur"
+      },
+      "label": "Einstellungen durchsuchen",
+      "results_one": "{{count}} Bereich passt",
+      "results_other": "{{count}} Bereiche passen"
     },
     "sectionsNav": "Bereiche der Einstellungen",
     "title": "Einstellungen",

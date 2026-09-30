@@ -723,7 +723,10 @@
     "noResponse": "Na tuto zprávu nepřišla žádná odpověď. Přenos byl přerušen. Odešlete ji znovu, nebo začněte nový chat.",
     "scrollToBottom": "Přejít dolů",
     "projectSubtitle": "Pracuje se na projektu „{{project}}“",
-    "noOutput": "Model nevrátil žádný výstup. Zkontrolujte Nastavení → Asistent AI."
+    "noOutput": "Model nevrátil žádný výstup. Zkontrolujte Nastavení → Asistent AI.",
+    "planMissing": "Zatím není žádný plán ke schválení. Požádejte o něj asistenta, nebo vypněte režim plánu.",
+    "planUnchanged": "Plán se nezměnil.",
+    "usePlanFromReply": "Použít jako plán"
   },
   "followUps": {
     "steered": "Nasměrováno do probíhajícího tahu: {{summary}}",

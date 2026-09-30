@@ -28,7 +28,10 @@ const asset = vi.hoisted(() => ({
   loadAssetThumbnail: vi.fn(async () => "data:image/png;base64,AA"),
 }));
 const math = vi.hoisted(() => ({
-  renderMathExpression: vi.fn(() => ({ status: "ready", html: "<span>x</span>" })),
+  renderMathSource: vi.fn(() => ({ status: "ready", html: "<span>x</span>" })),
+}));
+const enclosing = vi.hoisted(() => ({
+  enclosingMathEnvironment: vi.fn(() => ({ body: "x = 1", environment: "equation" })),
 }));
 
 vi.mock("@/lib/project-intelligence/current", () => intelligence);
@@ -39,8 +42,9 @@ vi.mock("./hover-asset", () => ({
   ...asset,
   THUMBNAIL_TARGET_RE: /\.(png|jpe?g|gif|webp|bmp|svg|pdf)$/i,
 }));
-vi.mock("./hover-math", () => ({
-  enclosingMathEnvironment: vi.fn(() => ({ body: "x = 1" })),
+vi.mock("./hover-math", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./hover-math")>()),
+  ...enclosing,
 }));
 
 import { hoverIntel, kindNoun, projectHoverCard } from "./hover-intel";
@@ -164,10 +168,26 @@ describe("projectHoverCard", () => {
       hover.definition.replace("{{kind}}", kinds.label).replace("{{name}}", "fig:one"),
     );
     expect(node.querySelector(".cm-code-hover-math")?.innerHTML).toBe("<span>x</span>");
+    expect(math.renderMathSource).toHaveBeenCalledWith("\\begin{equation}x = 1\\end{equation}", true);
     expect(node.querySelector(".cm-code-hover-detail")?.textContent).toContain("Figure one");
     expect(node.querySelector(".cm-code-hover-detail")?.textContent).toContain("intro.tex:4");
     expect(node.querySelector(".cm-code-hover-aux")?.textContent).toBe(
       hover.auxNumber.replace("{{number}}", "1.2").replace("{{page}}", "7"),
+    );
+  });
+
+  it("renders the whole environment around a label, not only its rows", () => {
+    selectors.definitionsForUse.mockReturnValue([definition()]);
+    enclosing.enclosingMathEnvironment.mockReturnValueOnce({
+      body: "a &= b \\label{fig:one} \\\\ c &= d",
+      environment: "align",
+    });
+
+    dom(use());
+
+    expect(math.renderMathSource).toHaveBeenCalledWith(
+      "\\begin{align}a &= b \\label{fig:one} \\\\ c &= d\\end{align}",
+      true,
     );
   });
 

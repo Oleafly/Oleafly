@@ -31,6 +31,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
+import { PrivatePath, PrivateText } from "@/components/ui/private";
 import {
   acpError,
   acpInstall,
@@ -259,7 +260,7 @@ function AgentCard({
               <h4 className="text-sm font-medium">{agent.definition.name}</h4>
             </span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              {readinessDetail(agent, readiness)}
+              <PrivateText text={readinessDetail(agent, readiness)} focusable={false} />
             </span>
           </span>
         </button>
@@ -280,8 +281,9 @@ function AgentCard({
                     {t(($) => $.settings.ai.agents.cliPathLabel)}
                   </dt>
                   <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
-                    {cli.path ??
-                      t(($) => $.settings.ai.agents.cliNotOnPath, {
+                    {cli.path
+                      ? <PrivatePath path={cli.path} />
+                      : t(($) => $.settings.ai.agents.cliNotOnPath, {
                         command: cli.command,
                       })}
                   </dd>
@@ -326,8 +328,9 @@ function AgentCard({
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
-                  {agent.executable ??
-                    t(($) => $.settings.ai.agents.bridgeUnresolved)}
+                  {agent.executable
+                    ? <PrivatePath path={agent.executable} />
+                    : t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
               <div className="min-w-0">

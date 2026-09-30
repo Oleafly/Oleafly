@@ -7,6 +7,8 @@
 //! flags sent from the webview. The two tables are kept in sync by
 //! `conversion_routes_cover_the_registry_matrix` below.
 
+use std::path::{Path, PathBuf};
+
 /// Everything needed to turn one imported file into a new project.
 pub(crate) struct ImportPlan {
     /// Name the source bytes are staged under inside the import directory.
@@ -29,6 +31,82 @@ pub(crate) struct AdHocPlan {
     pub args: Vec<String>,
     pub binary_output: bool,
     pub media_type: &'static str,
+    /// Stage `export-references.lua` beside the source (rendered targets).
+    pub references_filter: bool,
+    /// Markdown or Typst into LaTeX or Typst: the output names the source's
+    /// bibliography, so `add_bibliographies` points it at local file names.
+    pub local_bibliography: bool,
+}
+
+impl AdHocPlan {
+    /// Point `\bibliography` at `names` instead of the paths the source gave.
+    pub fn add_bibliographies(&mut self, names: &[String]) {
+        add_bibliography_args(&mut self.args, names);
+    }
+}
+
+/// The argument that drops the source's own bibliography entry.
+pub(crate) const NO_BIBLIOGRAPHY: &str = "--metadata=bibliography=false";
+
+/// Adds `--bibliography=<name>` for each of `names` before the `--`
+/// separator. With no names, the source's own bibliography entry is
+/// dropped, so a path from the source machine is never written out.
+fn add_bibliography_args(args: &mut Vec<String>, names: &[String]) {
+    let separator = args
+        .iter()
+        .position(|argument| argument == "--")
+        .unwrap_or(args.len());
+    let extra: Vec<String> = if names.is_empty() {
+        vec![NO_BIBLIOGRAPHY.into()]
+    } else {
+        names
+            .iter()
+            .map(|name| format!("--bibliography={name}"))
+            .collect()
+    };
+    args.splice(separator..separator, extra);
+}
+
+/// LaTeX output from Markdown or Typst keeps citations as natbib commands
+/// (`\citep`, `\citet`) and writes `\bibliography`. Without this pandoc
+/// prints `[@key]` as literal text.
+fn writes_natbib(reader: &str, writer: &str) -> bool {
+    writer == "latex" && matches!(reader, "markdown" | "typst")
+}
+
+/// Whether the output names the bibliography a Markdown or Typst source
+/// gave (`\bibliography`, `#bibliography`), which then has to be pinned.
+fn writes_source_bibliography(reader: &str, writer: &str) -> bool {
+    matches!(reader, "markdown" | "typst") && matches!(writer, "latex" | "typst")
+}
+
+/// Removes the `bibliography: false` line that dropping a bibliography leaves
+/// in Markdown front matter, and the front matter itself when nothing else
+/// is in it.
+pub(crate) fn drop_false_bibliography(markdown: &str) -> String {
+    let mut lines = markdown.split_inclusive('\n');
+    let Some(opening) = lines.next().filter(|line| line.trim_end() == "---") else {
+        return markdown.to_string();
+    };
+    let mut kept = Vec::new();
+    let mut closing = None;
+    for line in lines.by_ref() {
+        if matches!(line.trim_end(), "---" | "...") {
+            closing = Some(line);
+            break;
+        }
+        if line.trim_end() != "bibliography: false" {
+            kept.push(line);
+        }
+    }
+    let Some(closing) = closing else {
+        return markdown.to_string();
+    };
+    let body: String = lines.collect();
+    if kept.is_empty() {
+        return body.trim_start_matches(['\r', '\n']).to_string();
+    }
+    format!("{opening}{}{closing}{body}", kept.concat())
 }
 
 /// Build a deterministic converter plan for the text/document routes exposed
@@ -89,6 +167,17 @@ pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
     if source == "docx" || source == "html" {
         args.push("--extract-media=assets".into());
     }
+    if writes_natbib(reader, writer) {
+        args.push("--natbib".into());
+    }
+    // LaTeX into Word or HTML: citations and \ref numbers become text.
+    let references_filter = source == "latex" && matches!(target, "docx" | "html");
+    if references_filter {
+        args.extend([
+            format!("--lua-filter={}", crate::pandoc_citations::FILTER_NAME),
+            "--citeproc".into(),
+        ]);
+    }
     args.extend([
         "-o".into(),
         output_name.into(),
@@ -101,6 +190,8 @@ pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
         args,
         binary_output,
         media_type,
+        references_filter,
+        local_bibliography: writes_source_bibliography(reader, writer),
     })
 }
 
@@ -143,6 +234,9 @@ pub(crate) fn import_plan(extension: &str, target: &str) -> Option<ImportPlan> {
     if extension == "docx" || extension == "html" || extension == "htm" {
         args.push("--extract-media=assets".into());
     }
+    if writes_natbib(reader, writer) {
+        args.push("--natbib".into());
+    }
     args.extend(["-o".into(), main_doc.to_string()]);
     args.extend(["--".into(), source_name_for(extension).to_string()]);
     Some(ImportPlan {
@@ -151,6 +245,14 @@ pub(crate) fn import_plan(extension: &str, target: &str) -> Option<ImportPlan> {
         main_doc,
         engine,
     })
+}
+
+impl ImportPlan {
+    /// Point the new project's bibliography at the copied files `names`.
+    /// With none, the source's own entry is dropped.
+    pub fn add_bibliographies(&mut self, names: &[String]) {
+        add_bibliography_args(&mut self.args, names);
+    }
 }
 
 fn source_name_for(extension: &str) -> &'static str {
@@ -185,10 +287,158 @@ pub(crate) fn export_needs_standalone(format: &str) -> bool {
     matches!(format, "typst" | "tex")
 }
 
+/// Formats whose writers turn citations and cross-references into text.
+/// The Markdown, Typst and LaTeX writers keep `[@key]`, `@key` and `\cite`
+/// as markup, so they skip citeproc.
+pub(crate) fn export_renders_citations(format: &str) -> bool {
+    matches!(format, "docx" | "html" | "epub" | "pptx" | "txt")
+}
+
+/// Where pandoc reads an export from.
+pub(crate) struct ExportSource {
+    /// The main document's path from the project root, as pandoc receives it.
+    pub file_name: String,
+    /// Pandoc's `--resource-path`: the main document's folder, then the
+    /// project root, as the compile searches them.
+    pub resource_path: String,
+}
+
+/// Citation inputs for an export.
+pub(crate) struct ExportCitations<'a> {
+    /// `export-references.lua`, which settles the bibliography and the
+    /// cross-references before citeproc runs (rendered formats only).
+    pub filter: Option<&'a Path>,
+    /// Bibliographies the source's own compile passes explicitly (the
+    /// Markdown engine's discovered .bib files).
+    pub bibliographies: &'a [PathBuf],
+}
+
+/// The pandoc reader an export's main document goes through.
+fn export_reader(file_name: &str) -> &'static str {
+    let extension = Path::new(file_name)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    pandoc_reader(&extension).unwrap_or("latex")
+}
+
+/// The pandoc argv for one export. `None` means `format` is not an export
+/// format.
+pub(crate) fn export_args(
+    format: &str,
+    source: &ExportSource,
+    output: &str,
+    citations: Option<&ExportCitations<'_>>,
+) -> Option<Vec<String>> {
+    let (writer, _) = export_writer(format)?;
+    let mut args = vec![format!("--to={writer}"), "-o".into(), output.into()];
+    if !source.resource_path.is_empty() {
+        args.push(format!("--resource-path={}", source.resource_path));
+    }
+    if export_needs_standalone(format) {
+        args.push("--standalone".into());
+    }
+    match format {
+        "pptx" => args.extend(["--slide-level".into(), "2".into()]),
+        "html" => args.extend([
+            "--standalone".into(),
+            "--embed-resources".into(),
+            "--mathml".into(),
+        ]),
+        "epub" => args.push("--toc".into()),
+        _ => {}
+    }
+    let renders = export_renders_citations(format);
+    let natbib = writes_natbib(export_reader(&source.file_name), writer);
+    if natbib {
+        args.push("--natbib".into());
+    }
+    if let Some(citations) = citations.filter(|_| renders || natbib) {
+        args.extend(
+            citations
+                .bibliographies
+                .iter()
+                .map(|path| format!("--bibliography={}", path.to_string_lossy())),
+        );
+        // Filters and citeproc run in command-line order: the filter settles
+        // the bibliography first.
+        if let Some(filter) = citations.filter.filter(|_| renders) {
+            args.push(format!("--lua-filter={}", filter.to_string_lossy()));
+            args.push("--citeproc".into());
+        }
+    }
+    args.extend(["--".into(), source.file_name.clone()]);
+    Some(args)
+}
+
 /// Pandoc's Typst writer emits `font: (),`, which current Typst rejects.
 /// Substitute a real font stack until upstream stops emitting the empty list.
+/// A References heading right before `#bibliography(...)` becomes the
+/// bibliography's title, since Typst adds its own heading.
 pub(crate) fn fixup_typst_source(source: &str) -> String {
-    source.replace("font: (),", "font: (\"New Computer Modern\",),")
+    let fixed = source.replace("font: (),", "font: (\"New Computer Modern\",),");
+    title_bibliography_from_heading(&fixed).unwrap_or(fixed)
+}
+
+/// The index just past the `)` that closes a call opened before `open`.
+fn typst_call_end(text: &str, open: usize) -> Option<usize> {
+    let mut depth = 1_usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (offset, character) in text[open..].char_indices() {
+        if in_string {
+            match character {
+                _ if escaped => escaped = false,
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match character {
+            '"' => in_string = true,
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(open + offset);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn title_bibliography_from_heading(source: &str) -> Option<String> {
+    let call = source.find("#bibliography(")?;
+    let open = call + "#bibliography(".len();
+    let close = typst_call_end(source, open)?;
+    if source[open..close].contains("title:") {
+        return None;
+    }
+    let mut before = source[..call].trim_end();
+    // pandoc labels the heading: `= References` then `<references>`.
+    if let Some(line_start) = before.rfind('\n') {
+        let last = before[line_start + 1..].trim();
+        if last.starts_with('<') && last.ends_with('>') {
+            before = before[..line_start].trim_end();
+        }
+    }
+    let line_start = before.rfind('\n').map_or(0, |at| at + 1);
+    let heading = before[line_start..].trim();
+    let title = heading.trim_start_matches('=');
+    if title.len() == heading.len() || !title.starts_with(' ') || title.trim().is_empty() {
+        return None;
+    }
+    Some(format!(
+        "{}{}, title: [{}]{}",
+        &source[..line_start],
+        &source[call..close],
+        title.trim(),
+        &source[close..]
+    ))
 }
 
 #[cfg(test)]
@@ -256,6 +506,205 @@ mod tests {
         assert!(!fixed.contains("font: (),"));
         // Idempotent.
         assert_eq!(fixed, fixup_typst_source(&fixed));
+    }
+
+    #[test]
+    fn rendered_exports_resolve_citations_and_cross_references() {
+        let source = ExportSource {
+            file_name: "main.tex".into(),
+            resource_path: ".".into(),
+        };
+        let filter = Path::new("/tmp/export-references.lua");
+        let bibliographies = [PathBuf::from("/p/refs.bib")];
+        let citations = ExportCitations {
+            filter: Some(filter),
+            bibliographies: &bibliographies,
+        };
+        for format in ["docx", "html", "epub", "pptx", "txt"] {
+            let args = export_args(format, &source, "out", Some(&citations)).unwrap();
+            let filter_at = args
+                .iter()
+                .position(|arg| arg == "--lua-filter=/tmp/export-references.lua")
+                .unwrap_or_else(|| panic!("{format} export has no references filter"));
+            let citeproc_at = args
+                .iter()
+                .position(|arg| arg == "--citeproc")
+                .unwrap_or_else(|| panic!("{format} export does not run citeproc"));
+            assert!(
+                filter_at < citeproc_at,
+                "the filter settles the bibliography before citeproc reads it"
+            );
+            assert!(args.contains(&"--bibliography=/p/refs.bib".to_string()));
+            assert!(args.contains(&"--resource-path=.".to_string()));
+            assert_eq!(args.last().unwrap(), "main.tex");
+        }
+        for format in ["md", "typst", "tex"] {
+            let args = export_args(format, &source, "out", Some(&citations)).unwrap();
+            assert!(
+                !args.iter().any(|arg| arg == "--citeproc"
+                    || arg == "--natbib"
+                    || arg.starts_with("--lua-filter")
+                    || arg.starts_with("--bibliography")),
+                "{format} keeps citations as markup"
+            );
+        }
+        // Markdown and Typst into LaTeX write natbib commands, not `[@key]`.
+        for main in ["main.md", "notes/main.markdown", "main.typ"] {
+            let source = ExportSource {
+                file_name: main.into(),
+                resource_path: ".".into(),
+            };
+            let relative = [PathBuf::from("refs.bib")];
+            let args = export_args(
+                "tex",
+                &source,
+                "out.tex",
+                Some(&ExportCitations {
+                    filter: None,
+                    bibliographies: &relative,
+                }),
+            )
+            .unwrap();
+            assert!(args.contains(&"--natbib".to_string()), "{main}");
+            assert!(
+                args.contains(&"--bibliography=refs.bib".to_string()),
+                "{main}"
+            );
+            assert!(!args.contains(&"--citeproc".to_string()), "{main}");
+            let word = export_args("docx", &source, "out.docx", None).unwrap();
+            assert!(!word.contains(&"--natbib".to_string()), "{main}");
+        }
+    }
+
+    #[test]
+    fn markdown_and_typst_to_latex_write_natbib_citations() {
+        for (extension, target, natbib) in [
+            ("md", "latex", true),
+            ("markdown", "latex", true),
+            ("typ", "latex", true),
+            ("md", "typst", false),
+            ("typ", "markdown", false),
+            ("docx", "latex", false),
+            ("html", "latex", false),
+        ] {
+            let plan = import_plan(extension, target).unwrap();
+            let separator = plan.args.iter().position(|arg| arg == "--").unwrap();
+            assert_eq!(
+                plan.args[..separator].contains(&"--natbib".to_string()),
+                natbib,
+                "{extension} -> {target}"
+            );
+        }
+        for (source, target, natbib) in [
+            ("markdown", "latex", true),
+            ("typst", "latex", true),
+            ("markdown", "typst", false),
+            ("html", "latex", false),
+            ("docx", "latex", false),
+        ] {
+            let plan = ad_hoc_plan(source, target).unwrap();
+            let separator = plan.args.iter().position(|arg| arg == "--").unwrap();
+            assert_eq!(
+                plan.args[..separator].contains(&"--natbib".to_string()),
+                natbib,
+                "ad-hoc {source} -> {target}"
+            );
+        }
+    }
+
+    #[test]
+    fn ad_hoc_rendered_targets_keep_citations_and_references_readable() {
+        for target in ["docx", "html"] {
+            let plan = ad_hoc_plan("latex", target).unwrap();
+            let filter_at = plan
+                .args
+                .iter()
+                .position(|arg| arg == "--lua-filter=export-references.lua")
+                .unwrap_or_else(|| panic!("latex -> {target} has no references filter"));
+            let citeproc_at = plan
+                .args
+                .iter()
+                .position(|arg| arg == "--citeproc")
+                .unwrap_or_else(|| panic!("latex -> {target} does not run citeproc"));
+            assert!(filter_at < citeproc_at);
+            assert!(plan.references_filter);
+        }
+        let markdown = ad_hoc_plan("latex", "markdown").unwrap();
+        assert!(!markdown.args.contains(&"--citeproc".to_string()));
+        assert!(!markdown.references_filter);
+    }
+
+    #[test]
+    fn imports_point_the_bibliography_at_local_files() {
+        let mut plan = import_plan("md", "latex").unwrap();
+        plan.add_bibliographies(&["My-Library.bib".into(), "refs.bib".into()]);
+        let separator = plan.args.iter().position(|arg| arg == "--").unwrap();
+        assert_eq!(
+            plan.args[separator - 2..separator],
+            ["--bibliography=My-Library.bib", "--bibliography=refs.bib"]
+        );
+        let mut none = import_plan("md", "latex").unwrap();
+        none.add_bibliographies(&[]);
+        assert!(none
+            .args
+            .contains(&"--metadata=bibliography=false".to_string()));
+        assert_eq!(none.args.last().unwrap(), "source.md");
+    }
+
+    #[test]
+    fn ad_hoc_markdown_and_typst_outputs_pin_the_bibliography() {
+        for (source, target, pinned) in [
+            ("markdown", "latex", true),
+            ("markdown", "typst", true),
+            ("typst", "latex", true),
+            ("latex", "markdown", false),
+            ("latex", "docx", false),
+            ("docx", "latex", false),
+        ] {
+            assert_eq!(
+                ad_hoc_plan(source, target).unwrap().local_bibliography,
+                pinned,
+                "{source} -> {target}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_dropped_bibliography_leaves_no_front_matter_entry() {
+        assert_eq!(
+            drop_false_bibliography("---\nbibliography: false\n---\n\n# Method\n"),
+            "# Method\n"
+        );
+        assert_eq!(
+            drop_false_bibliography(
+                "---\r\nbibliography: false\r\ntitle: Paper\r\n---\r\n\r\nText\r\n"
+            ),
+            "---\r\ntitle: Paper\r\n---\r\n\r\nText\r\n"
+        );
+        for untouched in [
+            "# Method\n\nbibliography: false\n",
+            "---\nbibliography: refs.bib\n---\n\nText\n",
+            "---\nbibliography: false\n",
+        ] {
+            assert_eq!(drop_false_bibliography(untouched), untouched);
+        }
+    }
+
+    #[test]
+    fn typst_bibliography_keeps_one_heading() {
+        let source =
+            "See @smith2020.\n\n= References\n<references>\n\n\n#bibliography((\"refs.bib\"))\n";
+        let fixed = fixup_typst_source(source);
+        assert!(
+            fixed.contains("#bibliography((\"refs.bib\"), title: [References])"),
+            "{fixed}"
+        );
+        assert!(!fixed.contains("= References"), "{fixed}");
+        assert_eq!(fixed, fixup_typst_source(&fixed));
+        // A heading with body text after it is a real section, not the
+        // bibliography's title.
+        let kept = "= References\n\nSome text.\n\n#bibliography(\"refs.bib\")\n";
+        assert_eq!(fixup_typst_source(kept), kept);
     }
 
     #[test]

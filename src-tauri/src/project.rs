@@ -5960,8 +5960,9 @@ pub async fn export_document(
     if meta.main_doc != main_doc && !is_tex_root_override(&project_id, &meta, &main_doc) {
         return Err("The main document changed. Reopen the export menu and try again.".into());
     }
-    let writer = validate_conversion_export(&meta, &format, &dest)?;
-    let root = paths::project_dir(&project_id)?;
+    validate_conversion_export(&meta, &format, &dest)?;
+    let location = crate::project_location::locate(&project_id).map_err(String::from)?;
+    let root = location.root.clone();
     resolve_export_main_document(&project_id, &main_doc)?;
     require_export_destination_outside_project(&root, &dest)?;
     let found = tauri::async_runtime::spawn_blocking(find_pandoc)
@@ -5973,35 +5974,23 @@ pub async fn export_document(
     };
     let transaction = AtomicFile::for_export(&dest)?;
     let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
-    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest.clone()];
-    if crate::conversion::export_needs_standalone(&format) {
-        args.push("--standalone".into());
-    }
-    match format.as_str() {
-        "pptx" => {
-            args.extend(["--slide-level".into(), "2".into()]);
-        }
-        "html" => {
-            args.extend([
-                "--standalone".into(),
-                "--embed-resources".into(),
-                "--mathml".into(),
-            ]);
-        }
-        "epub" => {
-            args.push("--toc".into());
-        }
-        _ => {}
-    }
-    args.extend(["--".into(), main_doc]);
-    let (log, code) =
-        crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &root).await?;
-    if code != Some(0) {
-        return Err(format!("pandoc failed: {}", log.trim()));
-    }
-    if format == "typst" {
-        apply_typst_fixup(Path::new(&staged_dest))?;
-    }
+    let build_dir = crate::paths::existing_build_dir(&project_id).ok().flatten();
+    let staging_dir = crate::conversion::export_renders_citations(&format)
+        .then(|| export_staging_dir(&location))
+        .flatten();
+    run_export_pandoc(
+        Path::new(&pandoc),
+        ExportJob {
+            root: &root,
+            build_dir,
+            main_doc: &main_doc,
+            format: &format,
+            output: &staged_dest,
+            staging_dir,
+            temp_dir: None,
+        },
+    )
+    .await?;
     transaction.commit()?;
     drop(worktree);
     if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
@@ -6033,6 +6022,166 @@ pub async fn export_document(
         }
         write_meta(&project_id, &meta)
     });
+    Ok(())
+}
+
+/// One pandoc export of a project's main document into `output`.
+struct ExportJob<'a> {
+    root: &'a Path,
+    /// The project's build folder, which holds the last compile's .aux files.
+    build_dir: Option<PathBuf>,
+    main_doc: &'a str,
+    format: &'a str,
+    output: &'a str,
+    /// Where the citation filter is staged: the project's data area (see
+    /// `export_staging_dir`).
+    staging_dir: Option<PathBuf>,
+    /// The temporary folder the citation filter falls back to when pandoc
+    /// cannot reach the staging folder by a plain ASCII relative path (see
+    /// `prepare_export_filter`); `None` is the system's.
+    temp_dir: Option<&'a Path>,
+}
+
+/// The folder an export stages its citation filter in: `.oleafly/` in a
+/// library project, the linked state area for a linked folder, so nothing
+/// appears among the user's files. `None` when it cannot be made.
+fn export_staging_dir(location: &crate::project_location::ProjectLocation) -> Option<PathBuf> {
+    paths::state_subdirectory(location, crate::pandoc_citations::STAGING_DIR).ok()
+}
+
+/// The folders an export reads from, as the compile searches them: the main
+/// document's folder first, then the project root. Returns pandoc's
+/// `--resource-path` and the matching `TEXINPUTS` for `\input`.
+///
+/// The two lists are parsed differently. Pandoc splits `--resource-path`
+/// with the platform's separator (';' on Windows), so it holds absolute
+/// folders. Its LaTeX reader splits `TEXINPUTS` on ':' on every platform,
+/// which would cut a Windows drive letter off, so that value holds folders
+/// relative to the project root, where pandoc runs: "paper:." for
+/// paper/main.tex and "." for a main document at the root.
+///
+/// Project roots are canonical, so on Windows they start with `\\?\`.
+/// Windows does not read a '/' in such a path as a separator, and pandoc
+/// and the citation filter join names like 'bib/refs.bib' onto these
+/// folders, so they are passed without the prefix.
+fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
+    let root = crate::project_availability::without_verbatim_prefix(root);
+    let main_dir = root
+        .join(main_doc)
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| root.clone());
+    let mut dirs = vec![main_dir.clone()];
+    if main_dir != root {
+        dirs.push(root.clone());
+    }
+    // A folder name holding the separator cannot be listed; read from the
+    // project root as before.
+    let resource_path = std::env::join_paths(&dirs)
+        .map(|joined| joined.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| ".".into());
+    let relative = main_dir.strip_prefix(&root).ok().and_then(|relative| {
+        relative
+            .components()
+            .map(|component| match component {
+                std::path::Component::Normal(part) => part.to_str(),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+    });
+    let texinputs = match relative {
+        Some(parts) if !parts.is_empty() && parts.iter().all(|part| !part.contains(':')) => {
+            format!("{}:.", parts.join("/"))
+        }
+        _ => ".".into(),
+    };
+    (resource_path, texinputs)
+}
+
+fn is_markdown_document(main_doc: &str) -> bool {
+    Path::new(main_doc)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("md") || extension.eq_ignore_ascii_case("markdown")
+        })
+}
+
+/// Runs pandoc for one export. Split from the command so tests can drive it
+/// with a real pandoc and a project folder on disk.
+async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<(), String> {
+    let (resource_path, texinputs) = export_search_path(job.root, job.main_doc);
+    let source = crate::conversion::ExportSource {
+        file_name: job.main_doc.to_string(),
+        resource_path,
+    };
+    let renders = crate::conversion::export_renders_citations(job.format);
+    // The staged filter must outlive the pandoc process.
+    let (filter, bibliographies) = {
+        let root = job.root.to_path_buf();
+        let main_doc = job.main_doc.to_string();
+        let build_dir = job.build_dir.clone();
+        let staging_dir = job.staging_dir.clone();
+        let format = job.format.to_string();
+        let temp_dir = job
+            .temp_dir
+            .map_or_else(std::env::temp_dir, Path::to_path_buf);
+        tauri::async_runtime::spawn_blocking(move || -> Result<_, String> {
+            let filter = renders
+                .then(|| {
+                    crate::pandoc_citations::prepare_export_filter(
+                        &root,
+                        &main_doc,
+                        build_dir.as_deref(),
+                        staging_dir.as_deref(),
+                        &temp_dir,
+                    )
+                })
+                .transpose()?;
+            // The Markdown compile passes every project .bib; so does its
+            // export. A .tex export names them from the project root.
+            let bibliographies: Vec<PathBuf> = if is_markdown_document(&main_doc) {
+                crate::document_engine::discover_bibliographies(&root)?
+                    .into_iter()
+                    .map(|relative| {
+                        if format == "tex" {
+                            PathBuf::from(relative)
+                        } else {
+                            root.join(relative)
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            Ok((filter, bibliographies))
+        })
+        .await
+        .map_err(|error| error.to_string())??
+    };
+    let citations = crate::conversion::ExportCitations {
+        filter: filter
+            .as_ref()
+            .map(crate::pandoc_citations::ExportFilter::argument),
+        bibliographies: &bibliographies,
+    };
+    let args = crate::conversion::export_args(job.format, &source, job.output, Some(&citations))
+        .ok_or_else(|| format!("unsupported export format: {}", job.format))?;
+    // Set even for a root main document, so a TEXINPUTS the app inherited
+    // from the user's shell does not change what the export reads.
+    let variables = vec![("TEXINPUTS".to_string(), texinputs)];
+    let outcome = crate::document_engine::run_supervised_external_with_variables(
+        pandoc, &args, job.root, &variables,
+    )
+    .await;
+    drop(filter);
+    let (log, code) = outcome?;
+    if code != Some(0) {
+        return Err(crate::pandoc_citations::export_failure(&log, job.root));
+    }
+    if job.format == "typst" {
+        apply_typst_fixup(Path::new(job.output))?;
+    }
     Ok(())
 }
 
@@ -6128,11 +6277,15 @@ async fn create_project_from_pandoc_source(
     name: String,
     plan: crate::conversion::ImportPlan,
     bytes: Vec<u8>,
+    bibliographies: crate::pandoc_citations::ImportBibliographies,
 ) -> Result<String, String> {
     let source_name = plan.source_name.to_string();
     let main_doc = plan.main_doc.to_string();
     let engine = plan.engine.to_string();
     let args = plan.args;
+    let dropped_bibliography = args
+        .iter()
+        .any(|argument| argument == crate::conversion::NO_BIBLIOGRAPHY);
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
@@ -6145,6 +6298,10 @@ async fn create_project_from_pandoc_source(
     let result: Result<(), String> = async {
         atomic_write(&staging.join(&source_name), &bytes)
             .map_err(|e| format!("failed to write {source_name}: {e}"))?;
+        for (file_name, contents) in &bibliographies.files {
+            atomic_write(&staging.join(file_name), contents)
+                .map_err(|e| format!("failed to write {file_name}: {e}"))?;
+        }
         let (log, code) =
             crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
                 .await?;
@@ -6154,6 +6311,14 @@ async fn create_project_from_pandoc_source(
         let _ = std::fs::remove_file(staging.join(&source_name));
         if main_doc.ends_with(".typ") {
             apply_typst_fixup(&staging.join(&main_doc))?;
+        }
+        if dropped_bibliography && main_doc.ends_with(".md") {
+            drop_false_bibliography_in(&staging.join(&main_doc))?;
+        }
+        if let Some(note) =
+            crate::pandoc_citations::missing_bibliographies_note(&main_doc, &bibliographies.missing)
+        {
+            add_import_note(&staging.join(&main_doc), &note)?;
         }
         write_meta_at(
             &staging.join("project.json"),
@@ -6193,6 +6358,33 @@ async fn create_project_from_pandoc_source(
     Ok(project_id)
 }
 
+/// Puts `note` at the top of a converted document, or at the end of a
+/// Markdown one so its front matter stays first.
+fn add_import_note(path: &Path, note: &str) -> Result<(), String> {
+    let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let is_markdown = path
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("md"));
+    let noted = if is_markdown {
+        format!("{source}{note}")
+    } else {
+        format!("{note}{source}")
+    };
+    atomic_write(path, noted.as_bytes()).map_err(|e| e.to_string())
+}
+
+/// Removes the `bibliography: false` entry an import wrote into Markdown
+/// front matter when it dropped the source's bibliography.
+fn drop_false_bibliography_in(path: &Path) -> Result<(), String> {
+    let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let fixed = crate::conversion::drop_false_bibliography(&source);
+    if fixed != source {
+        atomic_write(path, fixed.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Rewrite a generated Typst file in place, patching pandoc output bugs.
 fn apply_typst_fixup(path: &Path) -> Result<(), String> {
     let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
@@ -6210,7 +6402,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
     let bytes = decode_docx_base64(&data_base64)?;
     let plan =
         crate::conversion::import_plan("docx", "latex").expect("docx -> latex route is registered");
-    create_project_from_pandoc_source(name, plan, bytes).await
+    create_project_from_pandoc_source(name, plan, bytes, Default::default()).await
 }
 
 /// Import a user-selected Word, Markdown, HTML, or Typst file as a new
@@ -6240,7 +6432,7 @@ pub async fn import_document(path: String, target: Option<String>) -> Result<Str
         .map_err(|e| e.to_string())?
         .map_err(|e| format!("failed to read {path}: {e}"))?;
     let target_kind = target.as_deref().unwrap_or("latex").to_ascii_lowercase();
-    let plan = crate::conversion::import_plan(&extension, &target_kind).ok_or_else(|| {
+    let mut plan = crate::conversion::import_plan(&extension, &target_kind).ok_or_else(|| {
         format!(
             "Converting .{extension} to a {target_kind} project is not supported. \
              Choose a .docx, .md, .markdown, .html, .htm, or .typ file."
@@ -6249,7 +6441,25 @@ pub async fn import_document(path: String, target: Option<String>) -> Result<Str
     if extension == "docx" {
         validate_docx_bytes(&bytes)?;
     }
-    create_project_from_pandoc_source(name, plan, bytes).await
+    // Markdown and Typst name their bibliographies; copy them in beside the
+    // new main document so the project compiles on its own.
+    let bibliographies = match crate::pandoc_citations::BibliographySource::for_reader(&extension) {
+        Some(kind) => {
+            let text = String::from_utf8_lossy(&bytes).into_owned();
+            let source = source.clone();
+            let bibliographies = tauri::async_runtime::spawn_blocking(move || {
+                crate::pandoc_citations::collect_import_bibliographies(kind, &source, &text)
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+            // Pinned whatever Rust found: pandoc reads front matter the YAML
+            // reader here may miss, and would write the path it names.
+            plan.add_bibliographies(&bibliographies.local_names());
+            bibliographies
+        }
+        None => Default::default(),
+    };
+    create_project_from_pandoc_source(name, plan, bytes, bibliographies).await
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -13211,6 +13421,944 @@ mod tests {
         assert!(args.contains(&"--standalone".to_string()));
         assert!(args.windows(2).any(|pair| pair == ["-o", "main.tex"]));
         assert_eq!(args.last().unwrap(), "source.md");
+    }
+
+    const SMITH_BIB: &str = "@article{smith2020,\n  author = {Smith, John},\n  title = {A Title},\n  journal = {Journal},\n  year = {2020}\n}\n";
+    const JONES_BIB: &str = "@article{jones2021,\n  author = {Jones, Kate},\n  title = {Another Title},\n  journal = {Journal},\n  year = {2021}\n}\n";
+
+    fn pandoc_for_tests() -> Option<std::path::PathBuf> {
+        let pandoc = super::find_pandoc().map(std::path::PathBuf::from);
+        if pandoc.is_none() {
+            eprintln!("Pandoc sidecar is not staged; skipping executable conversion check");
+        }
+        pandoc
+    }
+
+    /// The visible text of a .docx, tags removed and whitespace collapsed.
+    fn docx_text(path: &Path) -> String {
+        use std::io::Read as _;
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+        let mut xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        let mut text = String::new();
+        let mut in_tag = false;
+        for character in xml.chars() {
+            match character {
+                '<' => {
+                    in_tag = true;
+                    text.push(' ');
+                }
+                '>' => in_tag = false,
+                _ if !in_tag => text.push(character),
+                _ => {}
+            }
+        }
+        let text = text
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace('\u{a0}', " ");
+        text.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    fn export_docx(
+        pandoc: &Path,
+        root: &Path,
+        build_dir: Option<std::path::PathBuf>,
+        main_doc: &str,
+    ) -> Result<String, String> {
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            pandoc,
+            super::ExportJob {
+                root,
+                build_dir,
+                main_doc,
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: None,
+                temp_dir: None,
+            },
+        ))?;
+        Ok(docx_text(&staged))
+    }
+
+    /// The names directly inside `folder`, sorted.
+    fn top_level_names(folder: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(folder)
+            .map(|entries| {
+                entries
+                    .flatten()
+                    .map(|entry| entry.file_name().to_string_lossy().into_owned())
+                    .collect()
+            })
+            .unwrap_or_default();
+        names.sort();
+        names
+    }
+
+    /// Runs `work` and returns what it returned, with the names that
+    /// appeared directly inside each of `folders` while it ran.
+    fn new_names_while<T>(
+        folders: &[&Path],
+        work: impl FnOnce() -> T,
+    ) -> (T, Vec<std::collections::BTreeSet<String>>) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let before: Vec<Vec<String>> = folders
+            .iter()
+            .map(|folder| top_level_names(folder))
+            .collect();
+        let done = AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            let watcher = scope.spawn(|| {
+                let mut appeared = vec![std::collections::BTreeSet::new(); folders.len()];
+                while !done.load(Ordering::Acquire) {
+                    for (index, folder) in folders.iter().enumerate() {
+                        for name in top_level_names(folder) {
+                            if !before[index].contains(&name) {
+                                appeared[index].insert(name);
+                            }
+                        }
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                appeared
+            });
+            let result = work();
+            done.store(true, Ordering::Release);
+            (result, watcher.join().unwrap())
+        })
+    }
+
+    /// Whether an export's filter folder was among `names`.
+    fn holds_a_filter_folder(names: &std::collections::BTreeSet<String>) -> bool {
+        names.iter().any(|name| name.starts_with("oleafly-export-"))
+    }
+
+    #[test]
+    fn docx_export_keeps_citations_and_numbers_equation_refs() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        let paper = project.path().join("paper");
+        std::fs::create_dir_all(paper.join("sections")).unwrap();
+        std::fs::write(
+            paper.join("main.tex"),
+            "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{biblatex}\n\\addbibresource{refs.bib}\n\\begin{document}\n\\section{Method}\\label{sec:method}\nWe follow the comparison by \\cite{smith2020}.\n\\input{sections/intro}\n\\begin{equation}\\label{eq:mae}\nMAE = \\frac{1}{n}\\sum_i |y_i - \\hat y_i|\n\\end{equation}\nEquation \\eqref{eq:mae} and Section~\\ref{sec:method}.\n\\printbibliography\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            paper.join("sections/intro.tex"),
+            "Text from an included section.\n",
+        )
+        .unwrap();
+        std::fs::write(paper.join("refs.bib"), SMITH_BIB).unwrap();
+        let build = tempfile::tempdir().unwrap();
+        std::fs::write(
+            build.path().join(crate::paths::ENTRY_TEX),
+            "\\input{\\detokenize{paper/main.tex}}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            build.path().join("_oleafly_entry.aux"),
+            "\\relax\n\\newlabel{sec:method}{{2}{3}{Method}{section.2}{}}\n\\newlabel{eq:mae}{{2.1}{3}{}{equation.2.1}{}}\n",
+        )
+        .unwrap();
+
+        let text = export_docx(
+            &pandoc,
+            project.path(),
+            Some(build.path().to_path_buf()),
+            "paper/main.tex",
+        )
+        .unwrap();
+
+        assert!(!text.contains("comparison by ."), "{text}");
+        assert!(text.contains("comparison by (Smith 2020)"), "{text}");
+        assert!(text.contains("Equation (2.1) and Section 2"), "{text}");
+        assert!(!text.contains("[eq:mae]"), "{text}");
+        assert!(!text.contains("\\label"), "{text}");
+        assert!(text.contains("Text from an included section."), "{text}");
+        assert!(
+            text.contains("A Title"),
+            "the reference list is filled: {text}"
+        );
+    }
+
+    #[test]
+    fn docx_export_without_a_compile_falls_back_to_project_bibliographies() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{natbib}\n\\begin{document}\nSee \\citet{smith2020} and \\citep{jones2021}.\n\\begin{equation}\\label{eq:mae} a = b \\end{equation}\nEquation \\eqref{eq:mae}.\n\\bibliographystyle{plainnat}\n\\bibliography{typo}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(project.path().join("refs.bib"), SMITH_BIB).unwrap();
+        std::fs::write(project.path().join("more.bib"), JONES_BIB).unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.tex").unwrap();
+
+        assert!(text.contains("See Smith (2020) and (Jones 2021)"), "{text}");
+        assert!(text.contains("Equation (eq:mae)"), "{text}");
+        assert!(!text.contains("[eq:mae]"), "{text}");
+    }
+
+    #[test]
+    fn docx_export_names_an_unreadable_bibliography() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\nSee \\cite{smith2020}.\n\\bibliography{refs}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("refs.bib"),
+            "@article{smith2020, author={Smith, title={A}, year=2020}\n",
+        )
+        .unwrap();
+
+        let error = export_docx(&pandoc, project.path(), None, "main.tex").unwrap_err();
+
+        assert!(error.contains("export.bibliography_unreadable"), "{error}");
+        assert!(error.contains("refs.bib"), "{error}");
+        assert_eq!(
+            crate::app_error::english(&error)
+                .map(|message| message
+                    .starts_with("Oleafly couldn't read the bibliography refs.bib.")),
+            Some(true),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn docx_export_of_a_markdown_project_uses_the_project_bibliographies() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("bib")).unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "# Method\n\nWe follow prior work [@smith2020].\n\n# References\n",
+        )
+        .unwrap();
+        std::fs::write(project.path().join("bib/refs.bib"), SMITH_BIB).unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.md").unwrap();
+
+        assert!(text.contains("We follow prior work (Smith 2020)"), "{text}");
+        assert!(!text.contains("@smith2020"), "{text}");
+    }
+
+    #[test]
+    fn tex_export_of_a_markdown_project_writes_natbib_citations() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "# Method\n\nWe follow prior work [@smith2020].\n",
+        )
+        .unwrap();
+        std::fs::write(project.path().join("refs.bib"), SMITH_BIB).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.tex");
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root: project.path(),
+                build_dir: None,
+                main_doc: "main.md",
+                format: "tex",
+                output: &staged.to_string_lossy(),
+                staging_dir: None,
+                temp_dir: None,
+            },
+        ))
+        .unwrap();
+        let tex = std::fs::read_to_string(&staged).unwrap();
+
+        assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+        assert!(tex.contains("\\bibliography{refs.bib}"), "{tex}");
+        assert!(!tex.contains("{[}@"), "{tex}");
+    }
+
+    #[test]
+    fn export_texinputs_lists_root_relative_folders_split_on_colons() {
+        // Pandoc splits TEXINPUTS on ':' on every platform and runs from the
+        // project root, so the value must hold root-relative folders only:
+        // no drive letter, no ';', and '.' (the root) last.
+        let root = std::env::temp_dir().join("oleafly-texinputs");
+        for (main_doc, expected) in [
+            ("paper/main.tex", "paper:."),
+            ("a/b/main.tex", "a/b:."),
+            ("main.tex", "."),
+        ] {
+            let (_, texinputs) = super::export_search_path(&root, main_doc);
+            assert_eq!(texinputs, expected, "{main_doc}");
+            assert!(!texinputs.contains(';'), "{texinputs}");
+        }
+        #[cfg(unix)]
+        {
+            // A folder whose name holds ':' cannot be listed; the root stays.
+            let (_, texinputs) = super::export_search_path(&root, "odd:name/main.tex");
+            assert_eq!(texinputs, ".");
+        }
+        // --resource-path is split with the platform's own separator, so it
+        // keeps absolute folders: the main document's first, then the root.
+        let (resource_path, _) = super::export_search_path(&root, "paper/main.tex");
+        let expected = std::env::join_paths([root.join("paper"), root.clone()]).unwrap();
+        assert_eq!(resource_path, expected.to_string_lossy());
+    }
+
+    #[test]
+    fn export_resource_path_drops_the_verbatim_prefix() {
+        // Project roots are canonical, so on Windows they start with `\\?\`.
+        // Windows does not read a '/' that pandoc or the citation filter
+        // appends to such a folder as a separator, so the file is not found.
+        let mut roots = vec![(
+            Path::new(r"\\?\UNC\server\share\proj").to_path_buf(),
+            Path::new(r"\\server\share\proj").to_path_buf(),
+        )];
+        if cfg!(windows) {
+            roots.push((
+                Path::new(r"\\?\C:\Users\x\proj").to_path_buf(),
+                Path::new(r"C:\Users\x\proj").to_path_buf(),
+            ));
+        }
+        for (root, plain) in roots {
+            let (resource_path, texinputs) = super::export_search_path(&root, "paper/main.tex");
+            let folders: Vec<_> = std::env::split_paths(&resource_path).collect();
+            assert_eq!(folders, [plain.join("paper"), plain.clone()], "{root:?}");
+            assert!(!resource_path.contains(r"\\?\"), "{resource_path}");
+            assert_eq!(texinputs, "paper:.");
+            let (resource_path, _) = super::export_search_path(&root, "main.tex");
+            assert_eq!(resource_path, plain.to_string_lossy(), "{root:?}");
+        }
+    }
+
+    #[test]
+    fn docx_export_of_a_root_main_document_keeps_included_text() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("sections")).unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\nOpening.\n\\input{sections/intro}\n\\include{sections/outro}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("sections/intro.tex"),
+            "Text from the introduction.\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("sections/outro.tex"),
+            "Text from the closing section.\n",
+        )
+        .unwrap();
+
+        let text = export_docx(&pandoc, project.path(), None, "main.tex").unwrap();
+
+        assert!(text.contains("Text from the introduction."), "{text}");
+        assert!(text.contains("Text from the closing section."), "{text}");
+    }
+
+    #[test]
+    fn docx_export_without_citations_ignores_stray_bibliographies() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        const BROKEN_BIB: &str = "@article{old, author={Smith, title={A}, year=2020}\n";
+        // A LaTeX paper that cites nothing, with a half-edited backup .bib at
+        // the root. Nothing is cited, so no bibliography is read.
+        let latex = tempfile::tempdir().unwrap();
+        std::fs::write(
+            latex.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\nA paper without citations.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(latex.path().join("old-backup.bib"), BROKEN_BIB).unwrap();
+        let text = export_docx(&pandoc, latex.path(), None, "main.tex").unwrap();
+        assert!(text.contains("A paper without citations."), "{text}");
+
+        // Even one it declares: with nothing cited, the list stays empty.
+        std::fs::write(
+            latex.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\nStill no citations.\n\\bibliography{old-backup}\n\\end{document}\n",
+        )
+        .unwrap();
+        let text = export_docx(&pandoc, latex.path(), None, "main.tex").unwrap();
+        assert!(text.contains("Still no citations."), "{text}");
+
+        // A Markdown project passes every project .bib; same rule.
+        let markdown = tempfile::tempdir().unwrap();
+        std::fs::write(
+            markdown.path().join("main.md"),
+            "# Notes\n\nNo citations here.\n",
+        )
+        .unwrap();
+        std::fs::write(markdown.path().join("old-backup.bib"), BROKEN_BIB).unwrap();
+        let text = export_docx(&pandoc, markdown.path(), None, "main.md").unwrap();
+        assert!(text.contains("No citations here."), "{text}");
+    }
+
+    #[test]
+    fn docx_export_from_a_non_ascii_folder_reads_its_bibliography_and_numbers() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        // Both the project and the temporary folder sit under names outside
+        // CP1252, as they do under C:\Users\<name> for a Japanese profile on
+        // an English Windows. Pandoc opens a Lua filter through the ANSI code
+        // page there, so the Windows job fails if the filter is handed to
+        // pandoc by its absolute path in that temporary folder.
+        let outer = tempfile::tempdir().unwrap();
+        let root = outer.path().join("Übung 論文");
+        let scratch = outer.path().join("論文");
+        std::fs::create_dir_all(root.join("paper")).unwrap();
+        std::fs::create_dir_all(&scratch).unwrap();
+        write_cited_paper(&root);
+        let build = tempfile::tempdir().unwrap();
+        std::fs::write(
+            build.path().join(crate::paths::ENTRY_TEX),
+            "\\input{\\detokenize{paper/main.tex}}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            build.path().join("_oleafly_entry.aux"),
+            "\\relax\n\\newlabel{eq:mae}{{3.2}{3}{}{equation.3.2}{}}\n",
+        )
+        .unwrap();
+        let location =
+            crate::project_location::ProjectLocation::library_at("export-test", root.clone());
+        let staging = super::export_staging_dir(&location).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+        let before = top_level_names(&root);
+
+        let (exported, appeared) = new_names_while(&[&root, &staging, &scratch], || {
+            tauri::async_runtime::block_on(super::run_export_pandoc(
+                &pandoc,
+                super::ExportJob {
+                    root: &root,
+                    build_dir: Some(build.path().to_path_buf()),
+                    main_doc: "paper/main.tex",
+                    format: "docx",
+                    output: &staged.to_string_lossy(),
+                    staging_dir: Some(staging.clone()),
+                    temp_dir: Some(&scratch),
+                },
+            ))
+        });
+        exported.unwrap();
+        let text = docx_text(&staged);
+
+        assert!(text.contains("We follow (Smith 2020)"), "{text}");
+        assert!(text.contains("A Title"), "{text}");
+        assert!(text.contains("Equation (3.2)"), "{text}");
+        // The filter is staged under .oleafly, never beside the user's files
+        // or in the temporary folder, and its folder is gone once pandoc
+        // exits.
+        assert!(appeared[0].is_empty(), "{appeared:?}");
+        assert!(holds_a_filter_folder(&appeared[1]), "{appeared:?}");
+        assert!(appeared[2].is_empty(), "{appeared:?}");
+        assert_eq!(before, [".oleafly", "paper"]);
+        assert_eq!(top_level_names(&root), before);
+        assert!(top_level_names(&staging).is_empty());
+        assert!(top_level_names(&scratch).is_empty());
+    }
+
+    /// A paper under `root/paper` that cites smith2020 from its own refs.bib
+    /// and refers to a numbered equation.
+    fn write_cited_paper(root: &Path) {
+        std::fs::write(
+            root.join("paper/main.tex"),
+            "\\documentclass{article}\n\\usepackage{amsmath}\n\\begin{document}\nWe follow \\cite{smith2020}.\n\\begin{equation}\\label{eq:mae} a = b \\end{equation}\nEquation \\eqref{eq:mae}.\n\\bibliography{refs}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("paper/refs.bib"), SMITH_BIB).unwrap();
+    }
+
+    #[test]
+    fn docx_export_from_a_linked_folder_stages_nothing_in_it() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let folders = tempfile::tempdir().unwrap();
+        let folder = folders.path().join("Übung 論文");
+        std::fs::create_dir_all(folder.join("paper")).unwrap();
+        write_cited_paper(&folder);
+        let scratch = folders.path().join("論文");
+        std::fs::create_dir_all(&scratch).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let location = crate::project_location::locate(&record.id).unwrap();
+        let staging = super::export_staging_dir(&location).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+        let before = top_level_names(&location.root);
+
+        let (exported, appeared) = new_names_while(&[&location.root, &staging, &scratch], || {
+            tauri::async_runtime::block_on(super::run_export_pandoc(
+                &pandoc,
+                super::ExportJob {
+                    root: &location.root,
+                    build_dir: None,
+                    main_doc: "paper/main.tex",
+                    format: "docx",
+                    output: &staged.to_string_lossy(),
+                    staging_dir: Some(staging.clone()),
+                    temp_dir: Some(&scratch),
+                },
+            ))
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        exported.unwrap();
+        let text = docx_text(&staged);
+
+        assert!(text.contains("We follow (Smith 2020)"), "{text}");
+        assert!(
+            staging.starts_with(data.path().canonicalize().unwrap()),
+            "{staging:?}"
+        );
+        // Pandoc found the filter in the state area by a relative path.
+        assert!(appeared[0].is_empty(), "{appeared:?}");
+        assert!(holds_a_filter_folder(&appeared[1]), "{appeared:?}");
+        assert!(appeared[2].is_empty(), "{appeared:?}");
+        assert_eq!(before, ["paper"]);
+        assert_eq!(top_level_names(&location.root), before);
+        assert!(top_level_names(&staging).is_empty());
+        assert!(top_level_names(&scratch).is_empty());
+    }
+
+    #[test]
+    fn docx_export_from_a_canonical_root_reads_a_bibliography_in_a_subfolder() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        // Project roots are canonical: on Windows they carry the `\\?\`
+        // prefix. The bibliography sits in a subfolder, where the fallback
+        // (files beside the main document or at the root) does not look, so
+        // only the declared path can find it.
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path().canonicalize().unwrap();
+        std::fs::create_dir_all(root.join("paper").join("bib")).unwrap();
+        std::fs::write(
+            root.join("paper").join("main.tex"),
+            "\\documentclass{article}\n\\usepackage{biblatex}\n\\addbibresource{bib/refs.bib}\n\\begin{document}\nWe follow \\cite{smith2020}.\n\\printbibliography\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("paper").join("bib").join("refs.bib"), SMITH_BIB).unwrap();
+        let location =
+            crate::project_location::ProjectLocation::library_at("export-test", root.clone());
+        let staging = super::export_staging_dir(&location).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root: &root,
+                build_dir: None,
+                main_doc: "paper/main.tex",
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: Some(staging),
+                temp_dir: None,
+            },
+        ))
+        .unwrap();
+        let text = docx_text(&staged);
+
+        assert!(text.contains("We follow (Smith 2020)"), "{text}");
+        assert!(
+            text.contains("A Title"),
+            "the reference list is filled: {text}"
+        );
+    }
+
+    #[test]
+    fn docx_export_reads_same_named_fallback_bibliographies_from_both_folders() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        // Citeproc looks a relative bibliography up from the main document's
+        // folder first, so a root refs.bib named "refs.bib" would read the
+        // paper's own refs.bib a second time.
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::create_dir_all(root.join("paper")).unwrap();
+        std::fs::write(
+            root.join("paper/main.tex"),
+            "\\documentclass{article}\n\\usepackage{natbib}\n\\begin{document}\nSee \\citet{smith2020} and \\citep{jones2021}.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("paper/refs.bib"), JONES_BIB).unwrap();
+        std::fs::write(root.join("refs.bib"), SMITH_BIB).unwrap();
+        let location =
+            crate::project_location::ProjectLocation::library_at("export-test", root.to_path_buf());
+        let staging = super::export_staging_dir(&location).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root,
+                build_dir: None,
+                main_doc: "paper/main.tex",
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: Some(staging),
+                temp_dir: None,
+            },
+        ))
+        .unwrap();
+        let text = docx_text(&staged);
+
+        assert!(text.contains("See Smith (2020) and (Jones 2021)"), "{text}");
+    }
+
+    #[test]
+    fn docx_export_names_an_unreadable_fallback_bibliography_from_the_root() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::create_dir_all(root.join("paper")).unwrap();
+        std::fs::write(
+            root.join("paper/main.tex"),
+            "\\documentclass{article}\n\\begin{document}\nSee \\cite{smith2020}.\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("paper/broken.bib"),
+            "@article{smith2020, author={Smith, title={A}, year=2020}\n",
+        )
+        .unwrap();
+        let location =
+            crate::project_location::ProjectLocation::library_at("export-test", root.to_path_buf());
+        let staging = super::export_staging_dir(&location).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+
+        let error = tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root,
+                build_dir: None,
+                main_doc: "paper/main.tex",
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: Some(staging),
+                temp_dir: None,
+            },
+        ))
+        .unwrap_err();
+
+        assert_eq!(
+            crate::app_error::english(&error).map(|message| message
+                .starts_with("Oleafly couldn't read the bibliography paper/broken.bib.")),
+            Some(true),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn export_staging_lives_in_the_project_data_area() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let library = tempfile::tempdir().unwrap();
+        let location = crate::project_location::ProjectLocation::library_at(
+            "export-test",
+            library.path().to_path_buf(),
+        );
+        let staging = super::export_staging_dir(&location).unwrap();
+        assert_eq!(
+            staging,
+            library
+                .path()
+                .canonicalize()
+                .unwrap()
+                .join(".oleafly")
+                .join(crate::pandoc_citations::STAGING_DIR)
+        );
+
+        let folders = tempfile::tempdir().unwrap();
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir(&folder).unwrap();
+        let record = crate::linked_registry::register_folder_for_test(&folder);
+        let linked = crate::project_location::locate(&record.id).unwrap();
+        let staging = super::export_staging_dir(&linked).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(
+            staging.starts_with(data.path().canonicalize().unwrap()),
+            "{staging:?}"
+        );
+        assert!(staging.is_dir());
+        assert!(top_level_names(&folder).is_empty());
+    }
+
+    /// Imports `source` into a fresh data folder and returns the new
+    /// project's folder (kept alive by the returned guard).
+    fn import_into_new_project(
+        source: &Path,
+        target: &str,
+    ) -> (tempfile::TempDir, std::path::PathBuf) {
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let id = tauri::async_runtime::block_on(super::import_document(
+            source.to_string_lossy().into_owned(),
+            Some(target.into()),
+        ))
+        .unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        (data, dir)
+    }
+
+    #[test]
+    fn markdown_import_to_latex_keeps_citations_and_copies_the_bibliography() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let paper = sources.path().join("paper.md");
+        std::fs::write(
+            &paper,
+            "# Method\n\nWe follow prior work [@smith2020] and compare with @jones2021.\n\n# References\n",
+        )
+        .unwrap();
+        std::fs::write(
+            sources.path().join("refs.bib"),
+            format!("{SMITH_BIB}\n{JONES_BIB}"),
+        )
+        .unwrap();
+
+        let (_data, dir) = import_into_new_project(&paper, "latex");
+        let tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(!tex.contains("{[}@"), "{tex}");
+        assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+        assert!(tex.contains("\\citet{jones2021}"), "{tex}");
+        assert!(tex.contains("\\bibliography{refs.bib}"), "{tex}");
+        assert!(dir.join("refs.bib").is_file());
+    }
+
+    #[test]
+    fn markdown_import_copies_named_bibliographies_under_local_names() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let zotero = tempfile::tempdir().unwrap();
+        let library = zotero.path().join("My Library.bib");
+        std::fs::write(&library, SMITH_BIB).unwrap();
+        // A sibling .bib is not copied when the front matter names its own.
+        std::fs::write(sources.path().join("unrelated.bib"), JONES_BIB).unwrap();
+        let paper = sources.path().join("paper.md");
+        std::fs::write(
+            &paper,
+            format!(
+                "---\ntitle: Paper\nbibliography:\n  - \"{}\"\n  - ~/oleafly-missing-folder/lost.bib\n---\n\nWe follow prior work [@smith2020].\n",
+                library.to_string_lossy().replace('\\', "/")
+            ),
+        )
+        .unwrap();
+
+        let (_data, dir) = import_into_new_project(&paper, "latex");
+        let tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+        assert!(tex.contains("\\bibliography{My-Library.bib}"), "{tex}");
+        assert!(dir.join("My-Library.bib").is_file());
+        assert!(!dir.join("unrelated.bib").exists());
+        let zotero_path = zotero.path().to_string_lossy().replace('\\', "/");
+        assert!(!tex.contains(&zotero_path), "{tex}");
+        assert!(!tex.contains("textasciitilde"), "{tex}");
+        assert!(!tex.contains("oleafly-missing-folder"), "{tex}");
+        assert!(
+            tex.contains("lost.bib"),
+            "the note names the missing file: {tex}"
+        );
+    }
+
+    #[test]
+    fn markdown_import_with_late_front_matter_never_writes_a_home_path() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        // Pandoc reads all three front matters; none names a file this
+        // machine has, and there is no .bib beside the source. The last one
+        // is indented with a tab, which the Rust YAML reader rejects.
+        for (text, noted) in [
+            ("\n---\nbibliography: \"/Users/someone/Zotero/My Library.bib\"\n---\n\nSee [@smith2020].\n", true),
+            ("Intro.\n\n---\nbibliography: \"/Users/someone/Zotero/My Library.bib\"\n---\n\nSee [@smith2020].\n", true),
+            ("---\nbibliography:\n\t- \"/Users/someone/Zotero/My Library.bib\"\n---\n\nSee [@smith2020].\n", false),
+        ] {
+            let sources = tempfile::tempdir().unwrap();
+            let paper = sources.path().join("paper.md");
+            std::fs::write(&paper, text).unwrap();
+
+            let (_data, dir) = import_into_new_project(&paper, "latex");
+            let tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+
+            assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+            assert!(!tex.contains("/Users"), "{tex}");
+            assert!(!tex.contains("Zotero"), "{tex}");
+            assert!(!tex.contains("\\bibliography{"), "{tex}");
+            assert_eq!(
+                tex.contains("% Oleafly couldn't copy these bibliography files into the project: My Library.bib."),
+                noted,
+                "{tex}"
+            );
+        }
+    }
+
+    #[test]
+    fn typst_import_to_markdown_adds_no_empty_bibliography_entry() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let paper = sources.path().join("paper.typ");
+        std::fs::write(&paper, "= Method\n\nPlain text, no citations.\n").unwrap();
+
+        let (_data, dir) = import_into_new_project(&paper, "markdown");
+        let markdown = std::fs::read_to_string(dir.join("main.md")).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(markdown.contains("Plain text, no citations."), "{markdown}");
+        assert!(!markdown.contains("bibliography"), "{markdown}");
+        assert!(!markdown.starts_with("---"), "{markdown}");
+    }
+
+    #[test]
+    fn typst_import_to_latex_keeps_citations_and_copies_the_bibliography() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let paper = sources.path().join("paper.typ");
+        std::fs::write(
+            &paper,
+            "= Method\n\nSee @smith2020 and #cite(<jones2021>).\n\n#bibliography(\"refs.bib\")\n",
+        )
+        .unwrap();
+        std::fs::write(
+            sources.path().join("refs.bib"),
+            format!("{SMITH_BIB}\n{JONES_BIB}"),
+        )
+        .unwrap();
+
+        let (_data, dir) = import_into_new_project(&paper, "latex");
+        let tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+        assert!(tex.contains("\\citep{jones2021}"), "{tex}");
+        assert!(tex.contains("\\bibliography{refs.bib}"), "{tex}");
+        assert!(dir.join("refs.bib").is_file());
+    }
+
+    #[test]
+    fn typst_import_names_a_yaml_bibliography_it_cannot_copy() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let paper = sources.path().join("paper.typ");
+        std::fs::write(
+            &paper,
+            "= Method\n\nSee @smith2020.\n\n#bibliography(\"works.yml\", style: \"apa\")\n",
+        )
+        .unwrap();
+        std::fs::write(
+            sources.path().join("works.yml"),
+            "smith2020:\n  type: article\n  title: A Title\n",
+        )
+        .unwrap();
+        let folder = sources.path().to_string_lossy().replace('\\', "/");
+
+        for (target, main_doc, note) in [
+            (
+                "latex",
+                "main.tex",
+                "% Oleafly couldn't copy these bibliography files into the project: works.yml.",
+            ),
+            (
+                "markdown",
+                "main.md",
+                "<!-- Oleafly couldn't copy these bibliography files into the project: works.yml.",
+            ),
+        ] {
+            let (_data, dir) = import_into_new_project(&paper, target);
+            let text = std::fs::read_to_string(dir.join(main_doc)).unwrap();
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+
+            assert!(text.contains(note), "{target}: {text}");
+            assert!(!text.contains(&folder), "{target}: {text}");
+            assert!(!text.contains("bibliography: false"), "{target}: {text}");
+            assert!(!dir.join("works.yml").exists(), "{target}");
+        }
+    }
+
+    #[test]
+    fn markdown_import_to_typst_keeps_one_references_heading() {
+        let Some(_pandoc) = pandoc_for_tests() else {
+            return;
+        };
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let sources = tempfile::tempdir().unwrap();
+        let paper = sources.path().join("paper.md");
+        std::fs::write(
+            &paper,
+            "# Method\n\nWe follow prior work [@smith2020].\n\n# References\n",
+        )
+        .unwrap();
+        std::fs::write(sources.path().join("refs.bib"), SMITH_BIB).unwrap();
+
+        let (_data, dir) = import_into_new_project(&paper, "typst");
+        let typ = std::fs::read_to_string(dir.join("main.typ")).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(typ.contains("@smith2020"), "{typ}");
+        assert!(
+            typ.contains("#bibliography((\"refs.bib\"), title: [References])"),
+            "{typ}"
+        );
+        assert!(!typ.contains("= References"), "{typ}");
+        assert!(dir.join("refs.bib").is_file());
     }
 
     #[test]

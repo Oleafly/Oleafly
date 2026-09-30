@@ -4,6 +4,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { Check, ChevronDown, ChevronRight, Copy, Github, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { Private, PrivateText } from "@/components/ui/private";
 import { Input } from "@/components/ui/input";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { gitAutoInitEnabled } from "@/components/settings/gitAutoInit";
@@ -326,6 +327,7 @@ export function GitHubSection() {
             <img
               src={ghUser.avatar_url}
               alt=""
+              data-private=""
               className="size-8 rounded-full object-cover"
             />
           ) : (
@@ -335,12 +337,18 @@ export function GitHubSection() {
           )}
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">
-              {t(($) => $.settings.github.account.handle, {
-                login: ghUser?.login ?? "GitHub",
-              })}
+              <Private>
+                {t(($) => $.settings.github.account.handle, {
+                  login: ghUser?.login ?? "GitHub",
+                })}
+              </Private>
             </div>
             <div className="text-xs text-muted-foreground">
-              {ghUser?.name ? ghUser.name : t(($) => $.settings.github.account.connected)}
+              {ghUser?.name ? (
+                <Private>{ghUser.name}</Private>
+              ) : (
+                t(($) => $.settings.github.account.connected)
+              )}
             </div>
           </div>
           <Button
@@ -368,9 +376,14 @@ export function GitHubSection() {
               : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
           }
         >
-          {msg.kind === "connected"
-            ? t(($) => $.settings.github.notice.connected, { login: msg.login })
-            : t(($) => $.settings.github.notice.disconnected)}
+          {msg.kind === "connected" ? (
+            <PrivateText
+              text={t(($) => $.settings.github.notice.connected, { login: msg.login })}
+              values={[msg.login]}
+            />
+          ) : (
+            t(($) => $.settings.github.notice.disconnected)
+          )}
         </div>
       )}
     </div>

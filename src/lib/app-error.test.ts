@@ -1,12 +1,23 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { applyLocale } from "@/i18n";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { APP_ERROR_PREFIX, decodeAppError, describeError } from "./app-error";
 
 const encoded = (payload: unknown) => `${APP_ERROR_PREFIX}${JSON.stringify(payload)}`;
 
 describe("app errors", () => {
   afterEach(async () => {
+    resetDisplayHomes();
     await applyLocale("en");
+  });
+
+  it("shows home paths in error text as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    expect(
+      describeError(new Error('failed to create projects root "/Users/ada/.oleafly/projects": denied')),
+    ).toBe('failed to create projects root "~/.oleafly/projects": denied');
+    const value = encoded({ code: "compile.failed", params: {}, detail: "cannot read /Users/ada/a.tex" });
+    expect(describeError(value)).toContain("(cannot read ~/a.tex)");
   });
 
   it("decodes the envelope and localizes known codes", () => {

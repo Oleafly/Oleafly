@@ -17,6 +17,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { agent, deferred, session } from "@/components/ai/acp/tests/ui-fixtures";
 import { initializeI18n } from "@/i18n";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { AcpAgentsTab } from "./AcpAgentsTab";
@@ -50,6 +51,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   cleanup();
+  resetDisplayHomes();
   await new Promise((resolve) => setImmediate(resolve));
 });
 afterAll(restore);
@@ -341,17 +343,19 @@ describe("ACP agent setup acceptance", () => {
         cli: { command: "claude", displayName: "Claude Code", path: "/Users/researcher/.local/bin/claude", version: "2.1.258", signInCommand: "claude auth login" },
       }),
     ];
+    setDisplayHomes(["/Users/researcher"]);
     const ui = render(<AcpAgentsTab projectId="paper" />);
     const card = await ui.findByTestId("acp-agent-card-claude");
     expect(card).toHaveTextContent("Bridge needed");
-    expect(card).toHaveTextContent("Claude Code 2.1.258 found at /Users/researcher/.local/bin/claude");
+    expect(card).toHaveTextContent("Claude Code 2.1.258 found at ~/.local/bin/claude");
     expect(card).not.toHaveTextContent("Not installed");
     fireEvent.click(within(card).getByRole("button", { expanded: false }));
     const cliDetails = within(card).getByRole("region", {
       name: copy.cliTitle,
     });
     expect(cliDetails).toHaveTextContent(copy.cliPathLabel);
-    expect(cliDetails).toHaveTextContent("/Users/researcher/.local/bin/claude");
+    expect(cliDetails).toHaveTextContent("~/.local/bin/claude");
+    expect(card).not.toHaveTextContent("/Users/researcher");
     expect(cliDetails).toHaveTextContent(copy.versionLabel);
     expect(cliDetails).toHaveTextContent("2.1.258");
     expect(cliDetails).toHaveTextContent(copy.signInCommandLabel);

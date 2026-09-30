@@ -713,7 +713,10 @@
     "noResponse": "Nenhuma resposta chegou para esta mensagem. O fluxo foi interrompido. Envie de novo ou comece uma nova conversa.",
     "scrollToBottom": "Rolar para o fim",
     "projectSubtitle": "Trabalhando em \"{{project}}\"",
-    "noOutput": "O modelo não devolveu saída alguma. Confira em Configurações → Assistente de IA."
+    "noOutput": "O modelo não devolveu saída alguma. Confira em Configurações → Assistente de IA.",
+    "planMissing": "Ainda não há um plano para aprovar. Peça um ao assistente ou desligue o Plano.",
+    "planUnchanged": "O plano não mudou.",
+    "usePlanFromReply": "Usar isto como plano"
   },
   "followUps": {
     "steered": "Redirecionado para o turno em andamento: {{summary}}",

@@ -42,6 +42,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useDisplayPath } from "@/lib/display-path";
+import { PrivatePath } from "@/components/ui/private";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { revealInDir } from "@/lib/tauri";
 import { isMac } from "@/lib/utils";
@@ -124,6 +126,7 @@ function LinkFolderDialog({
   onSubmit: (values: { path: string; label: string; role: ResearchRootRole }) => void;
 }>) {
   const { t } = useTranslation(["common", "researchTools"]);
+  const displayPath = useDisplayPath();
   const [path, setPath] = useState("");
   const [label, setLabel] = useState("");
   const [role, setRole] = useState<ResearchRootRole>("data");
@@ -170,8 +173,9 @@ function LinkFolderDialog({
             <div className="flex gap-2">
               <Input
                 id="new-research-root-path"
-                value={path}
+                value={displayPath(path)}
                 readOnly
+                data-private-field=""
                 placeholder={t(($) => $.researchTools.roots.dialog.folderPlaceholder)}
                 className="font-mono text-xs"
               />
@@ -273,6 +277,7 @@ function RootCard({
   onUnlink: () => void;
 }>) {
   const { t } = useTranslation(["common", "researchTools"]);
+  const displayPath = useDisplayPath();
   const [files, setFiles] = useState<ResearchRootFileEntry[] | null>(null);
   const [selected, setSelected] = useState<ResearchRootFileContent | null>(null);
   const [busy, setBusy] = useState(false);
@@ -347,9 +352,9 @@ function RootCard({
             </Badge>
             <HealthBadge health={health} />
           </div>
-          <Tooltip label={root.canonicalPath} wide className="mt-2 block min-w-0 max-w-full">
+          <Tooltip label={displayPath(root.canonicalPath)} wide className="mt-2 block min-w-0 max-w-full">
             <code className="block w-full truncate text-xs text-muted-foreground">
-              {root.canonicalPath}
+              <PrivatePath path={root.canonicalPath} />
             </code>
           </Tooltip>
           <div className="mt-2">

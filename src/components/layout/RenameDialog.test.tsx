@@ -18,6 +18,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { useIndexStore } from "@/store/project-index";
 import { useRenameStore } from "@/store/rename";
+import { buildIndex } from "@/lib/index/build";
 import type { Sym } from "@/lib/index/types";
 import { RenameDialog } from "./RenameDialog";
 
@@ -97,6 +98,34 @@ describe("RenameDialog", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(copy.commit)).toBeDisabled();
+  });
+
+  it("lets a LaTeX label take a name that only a Typst label uses", async () => {
+    const index = buildIndex({
+      "paper.tex": "\\label{eq:mae}\nSee \\eqref{eq:mae}.",
+      "paper.typ": "$ x $ <eq:mae>\n= Other <eq:rmse>\nSee @eq:mae and @eq:rmse.",
+    });
+    const latexLabel = index.defs.find(
+      (symbol) => symbol.kind === "label" && symbol.file === "paper.tex",
+    ) as Sym;
+    useIndexStore.setState({ index } as unknown as ReturnType<typeof useIndexStore.getState>);
+    useRenameStore.setState({ sym: latexLabel });
+    render(<RenameDialog />);
+    const user = userEvent.setup();
+    const field = screen.getByLabelText(copy.newName);
+    await user.clear(field);
+    await user.type(field, "eq:rmse");
+    expect(
+      await screen.findByText(
+        copy.planSummary_other
+          .replace("{{count}}", "2")
+          .replace(
+            /\$t\(shell:renameDialog\.planFiles.*\)/,
+            copy.planFiles_one.replace("{{count}}", "1"),
+          ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(copy.commit)).toBeEnabled();
   });
 
   it("applies the rename on enter", async () => {

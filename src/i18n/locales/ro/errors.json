@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk nu poate folosi folderul de compilare Oleafly pe acest computer, deoarece calea lui conține caractere pe care latexmk nu le acceptă. Comută acest proiect pe Tectonic ca să-l poți compila.",
     "latexmk_network_folder": "latexmk nu poate compila un folder aflat pe o partajare de rețea. Comută acest proiect pe Tectonic sau copiază folderul pe acest computer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly nu a putut citi bibliografia {{name}}. Verifică dacă are o intrare defectă, apoi exportă din nou."
+  },
   "github": {
     "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",
     "sign_in_cancelled": "Autorizarea GitHub a fost anulată.",

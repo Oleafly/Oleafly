@@ -150,13 +150,35 @@ fn collect_media(root: &Path, output: &Path) -> Result<Vec<AdHocArtifact>, Strin
 fn stage_conversion_workspace(
     input: Vec<u8>,
     source_name: &'static str,
+    references_filter: bool,
 ) -> Result<(tempfile::TempDir, PathBuf), String> {
     let temporary = tempfile::tempdir()
         .map_err(|error| format!("Could not prepare the conversion workspace: {error}"))?;
     let root = temporary.path().to_path_buf();
     std::fs::write(root.join(source_name), input)
         .map_err(|error| format!("Could not stage the source document: {error}"))?;
+    if references_filter {
+        crate::pandoc_citations::stage_filter(&root)?;
+    }
     Ok((temporary, root))
+}
+
+/// Points the output's bibliography at local names: the converter has only
+/// the text, and a path from this machine must not end up in the result.
+/// The entry is pinned even when Rust reads no bibliography in the source:
+/// pandoc accepts front matter the YAML reader here may not, and would
+/// otherwise write the path it found.
+fn localize_bibliographies(plan: &mut crate::conversion::AdHocPlan, source: &str, input: &[u8]) {
+    let Some(kind) = crate::pandoc_citations::BibliographySource::for_reader(source) else {
+        return;
+    };
+    if !plan.local_bibliography {
+        return;
+    }
+    let declared =
+        crate::pandoc_citations::declared_bibliographies(kind, &String::from_utf8_lossy(input));
+    let names = crate::pandoc_citations::unique_local_names(declared.iter().map(String::as_str));
+    plan.add_bibliographies(&names);
 }
 
 fn finish_conversion(
@@ -211,7 +233,7 @@ async fn discard_conversion_workspace(temporary: tempfile::TempDir) {
 pub async fn convert_ad_hoc(
     request: AdHocConversionRequest,
 ) -> Result<AdHocConversionResult, String> {
-    let plan =
+    let mut plan =
         crate::conversion::ad_hoc_plan(&request.source, &request.target).ok_or_else(|| {
             format!(
                 "{} to {} is not an available ad-hoc conversion.",
@@ -219,9 +241,11 @@ pub async fn convert_ad_hoc(
             )
         })?;
     let target_is_typst = request.target == "typst";
+    let source_kind = request.source.clone();
     let input = tauri::async_runtime::spawn_blocking(move || decode_input(&request))
         .await
         .map_err(|error| error.to_string())??;
+    localize_bibliographies(&mut plan, &source_kind, &input);
     let pandoc = tauri::async_runtime::spawn_blocking(crate::project::find_pandoc)
         .await
         .map_err(|error| error.to_string())?
@@ -230,8 +254,9 @@ pub async fn convert_ad_hoc(
         })?;
 
     let source_name = plan.source_name;
+    let references_filter = plan.references_filter;
     let (temporary, root) = tauri::async_runtime::spawn_blocking(move || {
-        stage_conversion_workspace(input, source_name)
+        stage_conversion_workspace(input, source_name, references_filter)
     })
     .await
     .map_err(|error| error.to_string())??;
@@ -455,6 +480,74 @@ mod tests {
             .text
             .as_deref()
             .is_some_and(|text| text.contains("compact example")));
+    }
+
+    #[tokio::test]
+    async fn tools_converter_keeps_citations_and_local_bibliography_names() {
+        if crate::project::find_pandoc().is_none() {
+            eprintln!("Pandoc sidecar is not staged; skipping executable conversion check");
+            return;
+        }
+        let latex = convert_ad_hoc(AdHocConversionRequest {
+            source: "markdown".into(),
+            target: "latex".into(),
+            text: Some(
+                "---\nbibliography: \"/Users/someone/Zotero/My Library.bib\"\n---\n\nWe follow [@smith2020] and @jones2021.\n".into(),
+            ),
+            data_base64: None,
+        })
+        .await
+        .unwrap();
+        let tex = latex.text.unwrap();
+        assert!(tex.contains("\\citep{smith2020}"), "{tex}");
+        assert!(tex.contains("\\citet{jones2021}"), "{tex}");
+        assert!(tex.contains("\\bibliography{My-Library.bib}"), "{tex}");
+        assert!(!tex.contains("/Users/someone"), "{tex}");
+
+        // Front matter after a blank line, or with nothing Rust can read,
+        // still never puts a path from this machine into the result.
+        for (target, text) in [
+            (
+                "latex",
+                "\n---\nbibliography: \"/Users/someone/Zotero/My Library.bib\"\n---\n\nSee [@smith2020].\n",
+            ),
+            (
+                "typst",
+                "\n---\nbibliography: \"/Users/someone/Zotero/My Library.bib\"\n---\n\nSee [@smith2020].\n",
+            ),
+            (
+                "latex",
+                // Pandoc accepts the tab here; the Rust YAML reader does not.
+                "---\nbibliography:\n\t- /Users/someone/a.bib\n---\n\nSee [@smith2020].\n",
+            ),
+        ] {
+            let converted = convert_ad_hoc(AdHocConversionRequest {
+                source: "markdown".into(),
+                target: target.into(),
+                text: Some(text.into()),
+                data_base64: None,
+            })
+            .await
+            .unwrap();
+            let output = converted.text.unwrap();
+            assert!(!output.contains("/Users/someone"), "{target}: {output}");
+        }
+
+        let html = convert_ad_hoc(AdHocConversionRequest {
+            source: "latex".into(),
+            target: "html".into(),
+            text: Some(
+                "\\documentclass{article}\\usepackage{amsmath}\\begin{document}\nWe follow \\cite{smith2020}.\n\\begin{equation}\\label{eq:a} a = b \\end{equation}\nSee \\eqref{eq:a}.\n\\end{document}\n".into(),
+            ),
+            data_base64: None,
+        })
+        .await
+        .unwrap();
+        let html = html.text.unwrap();
+        assert!(html.contains("data-cites=\"smith2020\""), "{html}");
+        assert!(html.contains("smith2020?"), "{html}");
+        assert!(html.contains("See (eq:a)."), "{html}");
+        assert!(!html.contains("[eq:a]"), "{html}");
     }
 
     #[tokio::test]

@@ -5,6 +5,8 @@ import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
 import { TexPackagesSection } from "./TexPackagesSection";
 import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
+import { useDisplayPath } from "@/lib/display-path";
+import { PrivatePath } from "@/components/ui/private";
 import { ensurePandoc } from "@/features/pandoc";
 import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
@@ -22,18 +24,16 @@ const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
 // Plain-sentence summary of what a detected distribution ships and where
 // Oleafly runs it from, for the info icon on each row.
-function distroTooltip(distro: TexDistribution): string {
+function distroTooltip(distro: TexDistribution, binDir: string): string {
   const tools = [distro.latexmk && "latexmk", distro.tlmgr && "tlmgr"].filter(
     (tool): tool is string => typeof tool === "string",
   );
   return tools.length > 0
     ? i18n.t(($) => $.settings.engine.distributions.rowTooltip, {
         tools: formatList(tools),
-        binDir: distro.bin_dir,
+        binDir,
       })
-    : i18n.t(($) => $.settings.engine.distributions.rowTooltipNoTools, {
-        binDir: distro.bin_dir,
-      });
+    : i18n.t(($) => $.settings.engine.distributions.rowTooltipNoTools, { binDir });
 }
 
 /**
@@ -121,6 +121,7 @@ function MarkdownEngineTab() {
 
 export function EngineSection() {
   const { t } = useTranslation(["common", "settings"]);
+  const displayPath = useDisplayPath();
   const { info, installing, progress, refresh, refreshPackages, install, remove } =
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
@@ -244,7 +245,7 @@ export function EngineSection() {
                 {t(($) => $.settings.engine.choices[choiceId].detail)}
               </p>
               {choiceId === "latexmk" && info?.latexmk && (
-                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">{info.latexmk}</p>
+                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><PrivatePath focusable={false} path={info.latexmk} /></p>
               )}
             </button>
           );
@@ -275,7 +276,7 @@ export function EngineSection() {
             <div className="flex items-center gap-2">
               <HardDrive className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm">{distro.label}</span>
-              <Tooltip wide side="right" label={distroTooltip(distro)}>
+              <Tooltip wide side="right" label={distroTooltip(distro, displayPath(distro.bin_dir))}>
                 <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
               </Tooltip>
               {distro.latexmk && (
@@ -298,7 +299,7 @@ export function EngineSection() {
                 </button>
               )}
             </div>
-            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">{distro.bin_dir}</p>
+            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><PrivatePath path={distro.bin_dir} /></p>
           </div>
         ))}
         {!distros.some((d) => d.kind === "oleafly-tinytex") && (
