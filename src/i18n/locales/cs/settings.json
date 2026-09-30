@@ -743,6 +743,25 @@
       }
     }
   },
+  "changed": {
+    "empty": "Zatím jste nezměnili žádné nastavení.",
+    "intro": "Nastavení, která jste změnili oproti výchozím hodnotám.",
+    "marker": "Změněno",
+    "reset": "Obnovit nastavení {{label}}",
+    "resetTooltip": "Obnovit výchozí hodnotu",
+    "show": "Zobrazit",
+    "showAriaLabel": "Zobrazit nastavení {{label}}",
+    "values": {
+      "added": "Přidáno: {{items}}",
+      "addedAndRemoved": "Přidáno: {{added}}; odebráno: {{removed}}",
+      "custom": "Vlastní",
+      "more_one": "{{count}} další",
+      "more_few": "{{count}} další",
+      "more_many": "{{count}} dalšího",
+      "more_other": "{{count}} dalších",
+      "removed": "Odebráno: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly jej uloží na pozadí a jen tehdy, když se zdroj změnil.",

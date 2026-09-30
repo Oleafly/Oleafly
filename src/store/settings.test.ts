@@ -3,6 +3,7 @@ import {
   BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
   DEFAULT_TERMINAL_FONT_FAMILY,
+  PREF_DEFAULTS,
   TERMINAL_COLOR_THEMES,
   fileTreePathIsHidden,
   resolveTerminalColorTheme,
@@ -306,6 +307,25 @@ describe("useSettingsStore layout presets", () => {
 });
 
 describe("useSettingsStore reset", () => {
+  it("restores every PREF_DEFAULTS value after resetToDefaults", () => {
+    const changed = Object.fromEntries(
+      Object.entries(PREF_DEFAULTS).map(([key, value]) => {
+        if (typeof value === "boolean") return [key, !value];
+        if (typeof value === "number") return [key, value + 1];
+        if (typeof value === "string") return [key, "x"];
+        return [key, ["x"]];
+      }),
+    );
+    useSettingsStore.setState(changed);
+
+    useSettingsStore.getState().resetToDefaults();
+
+    const state = useSettingsStore.getState();
+    for (const [key, value] of Object.entries(PREF_DEFAULTS)) {
+      expect(state[key as keyof typeof state], key).toEqual(value);
+    }
+  });
+
   it("restores and persists every editor-behavior default", () => {
     const settings = useSettingsStore.getState();
     settings.setEditorAutocomplete(false);
@@ -318,6 +338,8 @@ describe("useSettingsStore reset", () => {
     settings.setEditorTabSize(2);
     settings.setEditorLineWrap(false);
     settings.setEditorLineHeight("wide");
+    settings.setEditorMathPreview(false);
+    settings.setEditorStickyScroll(false);
 
     expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("0");
     expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("0");
@@ -340,7 +362,11 @@ describe("useSettingsStore reset", () => {
       editorTabSize: 4,
       editorLineWrap: true,
       editorLineHeight: "normal",
+      editorMathPreview: true,
+      editorStickyScroll: true,
     });
+    expect(localStorage.getItem("oleafly.editor.mathPreview")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.stickyScroll")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.autocomplete")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("1");
@@ -455,6 +481,21 @@ describe("file tree visibility settings", () => {
     expect(useSettingsStore.getState().hiddenFilePatterns).not.toContain(
       "*.generated.tex",
     );
+  });
+
+  it("replaces, trims, dedupes and persists hidden file patterns", () => {
+    useSettingsStore
+      .getState()
+      .setHiddenFilePatterns([" *.aux ", "*.log", "*.aux", "", "  "]);
+
+    expect(useSettingsStore.getState().hiddenFilePatterns).toEqual([
+      "*.aux",
+      "*.log",
+    ]);
+    expect(localStorage.getItem("oleafly.fileTree.hiddenPatterns")).toBe(
+      JSON.stringify(["*.aux", "*.log"]),
+    );
+    useSettingsStore.getState().resetToDefaults();
   });
 });
 

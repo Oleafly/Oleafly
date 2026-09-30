@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useDictionary } from "@/lib/dictionary";
 import { useSettingsStore } from "@/store/settings";
+import { ChangedSettingsProvider } from "./changed-settings";
 import { ProofreadingDictionarySection } from "./ProofreadingDictionarySection";
+
+vi.mock("@/lib/theme", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/theme")>()),
+  useTheme: () => ({
+    preference: "system",
+    theme: "dark",
+    setPreference: vi.fn(),
+    toggleTheme: vi.fn(),
+  }),
+}));
 
 describe("Dictionary reset", () => {
   beforeEach(() => {
@@ -54,5 +65,34 @@ describe("Dictionary reset", () => {
     expect(useSettingsStore.getState().dictionaryLocale).toBe("fr_FR");
     expect(localStorage.getItem("oleafly.dictionary.locale")).toBe("fr_FR");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      heading: enSettings.proofreading.profileRules.title,
+      resetLabel: enSettings.proofreading.profileRules.title,
+    },
+    {
+      heading: enSettings.proofreading.turnedOff.title,
+      resetLabel: enSettings.proofreading.turnedOff.listAriaLabel,
+    },
+  ])("puts the $heading Reset at the right edge of its header", ({ heading, resetLabel }) => {
+    useSettingsStore.getState().setHarperDisabledRules(["AnA"]);
+    useSettingsStore.getState().setHarperEnabledRules(["Hedging"]);
+    render(
+      <ChangedSettingsProvider>
+        <ProofreadingDictionarySection />
+      </ChangedSettingsProvider>,
+    );
+    const reset = screen.getByRole("button", {
+      name: enSettings.changed.reset.replace("{{label}}", resetLabel),
+    });
+    const header = screen.getByRole("heading", {
+      name: `${heading} ${enSettings.changed.marker}`,
+    }).parentElement;
+    if (!header) throw new Error(`${heading} header is missing`);
+
+    const item = [...header.children].find((child) => child.contains(reset));
+    expect(item).toHaveClass("ml-auto");
   });
 });

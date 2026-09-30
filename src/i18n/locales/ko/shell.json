@@ -725,6 +725,8 @@
     "nav": {
       "ai": "AI 어시스턴트",
       "appearance": "모양",
+      "changed": "변경한 설정",
+      "changedCount_other": "{{count}}개 변경됨",
       "data": "데이터 저장",
       "dictionary": "사전",
       "downloads": "다운로드",

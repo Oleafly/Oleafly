@@ -738,6 +738,24 @@
       }
     }
   },
+  "changed": {
+    "empty": "Você não alterou nenhuma configuração.",
+    "intro": "Configurações que você alterou em relação ao padrão.",
+    "marker": "Alterada",
+    "reset": "Redefinir {{label}}",
+    "resetTooltip": "Restaurar o padrão",
+    "show": "Mostrar",
+    "showAriaLabel": "Mostrar {{label}}",
+    "values": {
+      "added": "Adicionados: {{items}}",
+      "addedAndRemoved": "Adicionados: {{added}}; removidos: {{removed}}",
+      "custom": "Personalizado",
+      "more_one": "mais {{count}}",
+      "more_many": "mais {{count}}",
+      "more_other": "mais {{count}}",
+      "removed": "Removidos: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "O Oleafly salva em segundo plano e só quando o código muda.",

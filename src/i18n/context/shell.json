@@ -123,6 +123,9 @@
         "dismissed": "A tour the user closed without finishing",
         "pending": "A tour the user has not started"
       }
+    },
+    "nav": {
+      "changed": "Settings section that lists every setting whose value differs from its default"
     }
   },
   "sourceControl": {

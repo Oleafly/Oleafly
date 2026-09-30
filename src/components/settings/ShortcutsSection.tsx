@@ -1,10 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/store/settings";
+import {
+  editorKeyChanged,
+  settingById,
+  shortcutBindingChanged,
+} from "@/store/settings-schema";
 import {
   bindingFromEvent,
   reservedShortcutAction,
@@ -23,6 +30,8 @@ import {
   useEditorKeymapStore,
   type EditorKeyId,
 } from "@/store/editor-keymap";
+import { moveFocusToRowControl, settingIdFromScrollTarget } from "./reveal-setting";
+import { ChangedMarker, SETTING_ROW_HIGHLIGHT } from "./SettingRow";
 
 function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -158,6 +167,9 @@ function EditorKeyRows() {
   const resetKey = useEditorKeymapStore((state) => state.resetKey);
   const appBindings = useShortcutStore((state) => state.bindings);
   const [editing, setEditing] = useState<EditorKeyId | null>(null);
+  // One id per row for the changed marker, which the key button names in its
+  // aria-describedby.
+  const markerIdBase = useId();
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
 
@@ -232,14 +244,23 @@ function EditorKeyRows() {
         const label = actionLabel(definition.id);
         const current = keys[definition.id];
         const tokens = editorKeyTokens(current);
+        const changed = editorKeyChanged(definition.id, current);
+        const markerId = `${markerIdBase}-${definition.id}`;
         return (
           <div
             key={definition.id}
             data-testid={`editor-key-row-${definition.id}`}
-            className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+            data-setting-id={`editorKey.${definition.id}`}
+            className={cn(
+              "flex items-center justify-between gap-4 rounded-lg border bg-card p-3",
+              SETTING_ROW_HIGHLIGHT,
+            )}
           >
             <div className="min-w-0">
-              <p className="text-sm font-medium">{label}</p>
+              <p className="text-sm font-medium">
+                {label}
+                {changed && <ChangedMarker id={markerId} />}
+              </p>
               {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
               {active && !error && (
                 <p className="mt-1 text-xs text-primary">
@@ -249,11 +270,29 @@ function EditorKeyRows() {
                 </p>
               )}
             </div>
+            {/* Reset comes first, so the key button keeps its place when it appears. */}
             <div className="flex shrink-0 items-center gap-2">
+              {changed && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  data-setting-reset
+                  aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                    action: label,
+                  })}
+                  onClick={(event) => {
+                    moveFocusToRowControl(event.currentTarget);
+                    resetKey(definition.id);
+                  }}
+                >
+                  <RotateCcw data-icon="inline-start" />
+                </Button>
+              )}
               <button
                 type="button"
                 ref={active ? captureRef : undefined}
                 onKeyDown={active ? capture : undefined}
+                aria-describedby={changed ? markerId : undefined}
                 aria-label={
                   active
                     ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
@@ -285,16 +324,6 @@ function EditorKeyRows() {
                   </span>
                 )}
               </button>
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
-                  action: label,
-                })}
-                onClick={() => resetKey(definition.id)}
-              >
-                <RotateCcw data-icon="inline-start" />
-              </Button>
             </div>
           </div>
         );
@@ -311,8 +340,15 @@ export function ShortcutsSection() {
   const resetAll = useShortcutStore((state) => state.resetAll);
   const resetEditorKeys = useEditorKeymapStore((state) => state.resetAll);
   const [editing, setEditing] = useState<ShortcutId | null>(null);
+  const markerIdBase = useId();
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
+  // A jump from Changed settings to an editor key opens the Editor tab.
+  const [tab, setTab] = useState(() => {
+    const target = settingIdFromScrollTarget(useSettingsStore.getState().settingsScrollTarget);
+    const definition = target ? settingById(target) : undefined;
+    return definition?.section === "shortcuts" && definition.tab ? definition.tab : "application";
+  });
 
   useDismissOnPointerDown(editing !== null, captureRef, () => {
     setEditing(null);
@@ -373,7 +409,7 @@ export function ShortcutsSection() {
           {t(($) => $.settings.shortcuts.intro)}
         </p>
       </div>
-      <Tabs defaultValue="application" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="application" data-testid="shortcuts-tab-application">
             {t(($) => $.settings.shortcuts.tabs.application)}
@@ -396,13 +432,22 @@ export function ShortcutsSection() {
         {SHORTCUT_DEFINITIONS.map((definition) => {
           const active = editing === definition.id;
           const label = actionLabel(definition.id);
+          const changed = shortcutBindingChanged(definition.id, bindings[definition.id]);
+          const markerId = `${markerIdBase}-${definition.id}`;
           return (
             <div
               key={definition.id}
-              className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+              data-setting-id={`shortcut.${definition.id}`}
+              className={cn(
+                "flex items-center justify-between gap-4 rounded-lg border bg-card p-3",
+                SETTING_ROW_HIGHLIGHT,
+              )}
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium">{label}</p>
+                <p className="text-sm font-medium">
+                  {label}
+                  {changed && <ChangedMarker id={markerId} />}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {t(($) => $.settings.shortcuts.actions[definition.id].description)}
                 </p>
@@ -413,11 +458,29 @@ export function ShortcutsSection() {
                   </p>
                 )}
               </div>
+              {/* Reset comes first, so the shortcut button keeps its place when it appears. */}
               <div className="flex shrink-0 items-center gap-2">
+                {changed && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    data-setting-reset
+                    aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                      action: label,
+                    })}
+                    onClick={(event) => {
+                      moveFocusToRowControl(event.currentTarget);
+                      resetBinding(definition.id);
+                    }}
+                  >
+                    <RotateCcw data-icon="inline-start" />
+                  </Button>
+                )}
                 <button
                   type="button"
                   ref={active ? captureRef : undefined}
                   onKeyDown={active ? capture : undefined}
+                  aria-describedby={changed ? markerId : undefined}
                   aria-label={
                     active
                       ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
@@ -442,16 +505,6 @@ export function ShortcutsSection() {
                     <ShortcutKeys binding={bindings[definition.id]} />
                   )}
                 </button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
-                    action: label,
-                  })}
-                  onClick={() => resetBinding(definition.id)}
-                >
-                  <RotateCcw data-icon="inline-start" />
-                </Button>
               </div>
             </div>
           );

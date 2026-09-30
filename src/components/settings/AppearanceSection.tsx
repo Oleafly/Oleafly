@@ -35,6 +35,12 @@ import {
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import {
+  ChangedSettingMarker,
+  ResetSettingButton,
+  SETTING_ROW_HIGHLIGHT,
+  SettingRow,
+} from "@/components/settings/SettingRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
@@ -67,13 +73,12 @@ function AppAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.dock.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.dock.description)}
-        </div>
+      <SettingRow
+        settingId="dockPlacement"
+        layout="stacked"
+        label={t(($) => $.settings.appearance.app.dock.label)}
+        description={t(($) => $.settings.appearance.app.dock.description)}
+      >
         <div className="grid grid-cols-3 gap-2">
           {(
             [
@@ -112,15 +117,14 @@ function AppAppearanceTab() {
             );
           })}
         </div>
-      </div>
+      </SettingRow>
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.bgPattern.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.bgPattern.description)}
-        </div>
+      <SettingRow
+        settingId="bgPattern"
+        layout="stacked"
+        label={t(($) => $.settings.appearance.app.bgPattern.label)}
+        description={t(($) => $.settings.appearance.app.bgPattern.description)}
+      >
         <div className="grid grid-cols-3 gap-2">
           {(
             [
@@ -154,15 +158,14 @@ function AppAppearanceTab() {
             );
           })}
         </div>
-      </div>
+      </SettingRow>
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.accent.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.accent.description)}
-        </div>
+      <SettingRow
+        settingId="accentColor"
+        layout="stacked"
+        label={t(($) => $.settings.appearance.app.accent.label)}
+        description={t(($) => $.settings.appearance.app.accent.description)}
+      >
         <div className="flex flex-wrap items-center gap-2">
           {ACCENTS.map((accent) => {
             const active = accentColor === accent.color;
@@ -189,37 +192,28 @@ function AppAppearanceTab() {
             );
           })}
         </div>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-appearance"
-        className="rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="theme"
+        layout="stacked"
+        testId="settings-row-appearance"
+        label={t(($) => $.settings.appearance.app.theme.label)}
+        description={t(($) => $.settings.appearance.app.theme.description)}
       >
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.theme.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.theme.description)}
-        </div>
         <ThemeSegmentedControl
           preference={preference}
           onChange={setPreference}
           testIdPrefix="settings-appearance"
         />
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-app-font-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="appFontSize"
+        testId="settings-row-app-font-size"
+        label={t(($) => $.settings.appearance.app.fontSize.label)}
+        description={t(($) => $.settings.appearance.app.fontSize.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.app.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.app.fontSize.description)}
-          </div>
-        </div>
         <Select
           value={String(appFontSize)}
           onValueChange={(value) => setAppFontSize(Number(value))}
@@ -235,20 +229,14 @@ function AppAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-app-font"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="appFontFamily"
+        testId="settings-row-app-font"
+        label={t(($) => $.settings.appearance.app.font.label)}
+        description={t(($) => $.settings.appearance.app.font.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.app.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.app.font.description)}
-          </div>
-        </div>
         <Select
           value={appFontFamily || "__default__"}
           onValueChange={(value) =>
@@ -269,7 +257,7 @@ function AppAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
       <ThemeCustomization />
     </div>
   );
@@ -334,18 +322,12 @@ function EditorAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div
-        data-testid="settings-row-editor-font-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorFontSize"
+        testId="settings-row-editor-font-size"
+        label={t(($) => $.settings.appearance.editor.fontSize.label)}
+        description={t(($) => $.settings.appearance.editor.fontSize.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.fontSize.description)}
-          </div>
-        </div>
         <Select
           value={String(editorFontSize)}
           onValueChange={(value) => setEditorFontSize(Number(value))}
@@ -361,20 +343,14 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-editor-font"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorFontFamily"
+        testId="settings-row-editor-font"
+        label={t(($) => $.settings.appearance.editor.font.label)}
+        description={t(($) => $.settings.appearance.editor.font.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.font.description)}
-          </div>
-        </div>
         <Select
           value={editorFontFamily || "__default__"}
           onValueChange={(value) =>
@@ -395,20 +371,14 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-editor-theme"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorTheme"
+        testId="settings-row-editor-theme"
+        label={t(($) => $.settings.appearance.editor.theme.label)}
+        description={t(($) => $.settings.appearance.editor.theme.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.theme.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.theme.description)}
-          </div>
-        </div>
         <Select
           value={editorTheme}
           onValueChange={(value) => setEditorTheme(value as typeof editorTheme)}
@@ -427,20 +397,14 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-editor-keymap"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorKeymap"
+        testId="settings-row-editor-keymap"
+        label={t(($) => $.settings.appearance.editor.keymap.label)}
+        description={t(($) => $.settings.appearance.editor.keymap.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.keymap.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.keymap.description)}
-          </div>
-        </div>
         <Select
           value={editorKeymap}
           onValueChange={(value) => setEditorKeymap(value as typeof editorKeymap)}
@@ -456,20 +420,14 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-editor-tab-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorTabSize"
+        testId="settings-row-editor-tab-size"
+        label={t(($) => $.settings.appearance.editor.tabSize.label)}
+        description={t(($) => $.settings.appearance.editor.tabSize.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.tabSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.tabSize.description)}
-          </div>
-        </div>
         <Select
           value={String(editorTabSize)}
           onValueChange={(value) => setEditorTabSize(Number(value))}
@@ -485,20 +443,14 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-editor-line-height"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="editorLineHeight"
+        testId="settings-row-editor-line-height"
+        label={t(($) => $.settings.appearance.editor.lineHeight.label)}
+        description={t(($) => $.settings.appearance.editor.lineHeight.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.lineHeight.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.lineHeight.description)}
-          </div>
-        </div>
         <Select
           value={editorLineHeight}
           onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
@@ -514,57 +466,66 @@ function EditorAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
       <SettingsToggleRow
+        settingId="editorLineWrap"
         label={t(($) => $.settings.appearance.editor.lineWrap.label)}
         description={t(($) => $.settings.appearance.editor.lineWrap.description)}
         checked={editorLineWrap}
         onChange={setEditorLineWrap}
       />
       <SettingsToggleRow
+        settingId="editorAutocomplete"
         label={t(($) => $.settings.appearance.editor.autocomplete.label)}
         description={t(($) => $.settings.appearance.editor.autocomplete.description)}
         checked={editorAutocomplete}
         onChange={setEditorAutocomplete}
       />
       <SettingsToggleRow
+        settingId="editorAutoCloseBrackets"
         label={t(($) => $.settings.appearance.editor.autoCloseBrackets.label)}
         description={t(($) => $.settings.appearance.editor.autoCloseBrackets.description)}
         checked={editorAutoCloseBrackets}
         onChange={setEditorAutoCloseBrackets}
       />
       <SettingsToggleRow
+        settingId="editorAutoCloseMath"
         label={t(($) => $.settings.appearance.editor.autoCloseMath.label)}
         description={t(($) => $.settings.appearance.editor.autoCloseMath.description)}
         checked={editorAutoCloseMath}
         onChange={setEditorAutoCloseMath}
       />
       <SettingsToggleRow
+        settingId="editorAutoCloseEnvironments"
         label={t(($) => $.settings.appearance.editor.autoCloseEnvironments.label)}
         description={t(($) => $.settings.appearance.editor.autoCloseEnvironments.description)}
         checked={editorAutoCloseEnvironments}
         onChange={setEditorAutoCloseEnvironments}
       />
       <SettingsToggleRow
+        settingId="editorGhostCompletion"
         label={t(($) => $.settings.appearance.editor.ghostCompletion.label)}
         description={t(($) => $.settings.appearance.editor.ghostCompletion.description)}
         checked={editorGhostCompletion}
         onChange={setEditorGhostCompletion}
       />
       <SettingsToggleRow
+        settingId="editorNonBlinkingCursor"
         label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
         description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
         checked={editorNonBlinkingCursor}
         onChange={setEditorNonBlinkingCursor}
       />
       <SettingsToggleRow
+        settingId="editorStickyScroll"
         label={t(($) => $.settings.appearance.editor.stickyScroll.label)}
         description={t(($) => $.settings.appearance.editor.stickyScroll.description)}
         checked={editorStickyScroll}
         onChange={setEditorStickyScroll}
       />
       <SettingsToggleRow
+        settingId="editorMathPreview"
         label={t(($) => $.settings.appearance.editor.mathPreview.label)}
         description={t(($) => $.settings.appearance.editor.mathPreview.description)}
         checked={editorMathPreview}
@@ -655,15 +616,11 @@ function TerminalAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontSize.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalFontSize"
+        label={t(($) => $.settings.appearance.terminal.fontSize.label)}
+        description={t(($) => $.settings.appearance.terminal.fontSize.description)}
+      >
         <Select
           value={String(terminalFontSize)}
           onValueChange={(value) => setTerminalFontSize(Number(value))}
@@ -682,17 +639,13 @@ function TerminalAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.font.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalFontFamily"
+        label={t(($) => $.settings.appearance.terminal.font.label)}
+        description={t(($) => $.settings.appearance.terminal.font.description)}
+      >
         <Select value={terminalFontFamily} onValueChange={setTerminalFontFamily}>
           <SelectTrigger
             className="w-[168px]"
@@ -708,17 +661,13 @@ function TerminalAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontWeight.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontWeight.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalFontWeight"
+        label={t(($) => $.settings.appearance.terminal.fontWeight.label)}
+        description={t(($) => $.settings.appearance.terminal.fontWeight.description)}
+      >
         <Select
           value={String(terminalFontWeight)}
           onValueChange={(value) => setTerminalFontWeight(Number(value))}
@@ -737,17 +686,13 @@ function TerminalAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontWeightBold.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalFontWeightBold"
+        label={t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+        description={t(($) => $.settings.appearance.terminal.fontWeightBold.description)}
+      >
         <Select
           value={String(terminalFontWeightBold)}
           onValueChange={(value) => setTerminalFontWeightBold(Number(value))}
@@ -766,17 +711,13 @@ function TerminalAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.cursorStyle.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.cursorStyle.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalCursorStyle"
+        label={t(($) => $.settings.appearance.terminal.cursorStyle.label)}
+        description={t(($) => $.settings.appearance.terminal.cursorStyle.description)}
+      >
         <Select
           value={terminalCursorStyle}
           onValueChange={(value) =>
@@ -801,9 +742,10 @@ function TerminalAppearanceTab() {
             </SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
       <SettingsToggleRow
+        settingId="terminalCursorBlink"
         label={t(($) => $.settings.appearance.terminal.cursorBlink.label)}
         description={t(($) => $.settings.appearance.terminal.cursorBlink.description)}
         checked={terminalCursorBlink}
@@ -811,21 +753,18 @@ function TerminalAppearanceTab() {
       />
 
       <SettingsToggleRow
+        settingId="terminalStartWithProject"
         label={t(($) => $.settings.appearance.terminal.startWithProject.label)}
         description={t(($) => $.settings.appearance.terminal.startWithProject.description)}
         checked={terminalStartWithProject}
         onChange={setTerminalStartWithProject}
       />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.colorTheme.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.colorTheme.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="terminalColorTheme"
+        label={t(($) => $.settings.appearance.terminal.colorTheme.label)}
+        description={t(($) => $.settings.appearance.terminal.colorTheme.description)}
+      >
         <Select
           value={terminalColorTheme}
           onValueChange={(value) =>
@@ -846,7 +785,7 @@ function TerminalAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
       <div className="rounded-lg border bg-card p-3">
         <div className="text-sm font-medium">
@@ -858,43 +797,79 @@ function TerminalAppearanceTab() {
             : t(($) => $.settings.appearance.terminal.colors.description)}
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.background)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.backgroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalBackground}
-              onChange={(event) => setTerminalBackground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+          <div
+            data-setting-id="terminalBackground"
+            className={cn("flex items-center gap-1 rounded-md", SETTING_ROW_HIGHLIGHT)}
+          >
+            <label className="flex flex-1 items-center justify-between gap-2 text-xs">
+              <span>
+                {t(($) => $.settings.appearance.terminal.colors.background)}
+                <ChangedSettingMarker id="terminalBackground" />
+              </span>
+              <input
+                type="color"
+                aria-label={t(
+                  ($) => $.settings.appearance.terminal.colors.backgroundAriaLabel,
+                )}
+                disabled={followsAppTheme}
+                value={terminalBackground}
+                onChange={(event) => setTerminalBackground(event.target.value)}
+                className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </label>
+            <ResetSettingButton
+              id="terminalBackground"
+              label={t(($) => $.settings.appearance.terminal.colors.backgroundAriaLabel)}
             />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.foreground)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.foregroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalForeground}
-              onChange={(event) => setTerminalForeground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+          </div>
+          <div
+            data-setting-id="terminalForeground"
+            className={cn("flex items-center gap-1 rounded-md", SETTING_ROW_HIGHLIGHT)}
+          >
+            <label className="flex flex-1 items-center justify-between gap-2 text-xs">
+              <span>
+                {t(($) => $.settings.appearance.terminal.colors.foreground)}
+                <ChangedSettingMarker id="terminalForeground" />
+              </span>
+              <input
+                type="color"
+                aria-label={t(
+                  ($) => $.settings.appearance.terminal.colors.foregroundAriaLabel,
+                )}
+                disabled={followsAppTheme}
+                value={terminalForeground}
+                onChange={(event) => setTerminalForeground(event.target.value)}
+                className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </label>
+            <ResetSettingButton
+              id="terminalForeground"
+              label={t(($) => $.settings.appearance.terminal.colors.foregroundAriaLabel)}
             />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.cursor)}</span>
-            <input
-              type="color"
-              aria-label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
-              disabled={followsAppTheme}
-              value={terminalCursorColor}
-              onChange={(event) => setTerminalCursorColor(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+          </div>
+          <div
+            data-setting-id="terminalCursorColor"
+            className={cn("flex items-center gap-1 rounded-md", SETTING_ROW_HIGHLIGHT)}
+          >
+            <label className="flex flex-1 items-center justify-between gap-2 text-xs">
+              <span>
+                {t(($) => $.settings.appearance.terminal.colors.cursor)}
+                <ChangedSettingMarker id="terminalCursorColor" />
+              </span>
+              <input
+                type="color"
+                aria-label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
+                disabled={followsAppTheme}
+                value={terminalCursorColor}
+                onChange={(event) => setTerminalCursorColor(event.target.value)}
+                className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </label>
+            <ResetSettingButton
+              id="terminalCursorColor"
+              label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
             />
-          </label>
+          </div>
         </div>
       </div>
     </div>
@@ -927,15 +902,11 @@ function BrowserAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.browser.searchEngine.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.browser.searchEngine.description)}
-          </div>
-        </div>
+      <SettingRow
+        settingId="browserSearchEngine"
+        label={t(($) => $.settings.appearance.browser.searchEngine.label)}
+        description={t(($) => $.settings.appearance.browser.searchEngine.description)}
+      >
         <Select
           value={browserSearchEngine}
           onValueChange={(value) =>
@@ -966,15 +937,15 @@ function BrowserAppearanceTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div className="rounded-lg border bg-card p-3">
-        <label htmlFor="browser-home-page" className="text-sm font-medium">
-          {t(($) => $.settings.appearance.browser.homePage.label)}
-        </label>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.browser.homePage.description)}
-        </div>
+      <SettingRow
+        settingId="browserHomePage"
+        layout="stacked"
+        labelFor="browser-home-page"
+        label={t(($) => $.settings.appearance.browser.homePage.label)}
+        description={t(($) => $.settings.appearance.browser.homePage.description)}
+      >
         <Input
           id="browser-home-page"
           aria-label={t(($) => $.settings.appearance.browser.homePage.ariaLabel)}
@@ -988,7 +959,7 @@ function BrowserAppearanceTab() {
           }}
           placeholder={"https://www.google.com/"}
         />
-      </div>
+      </SettingRow>
 
       <BrowserCookieImport />
     </div>
@@ -1009,18 +980,21 @@ function PdfPreviewTab() {
   return (
     <div className="space-y-3">
       <SettingsToggleRow
+        settingId="pdfDarkMode"
         label={t(($) => $.settings.appearance.preview.darkMode.label)}
         description={t(($) => $.settings.appearance.preview.darkMode.description)}
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
       />
       <SettingsToggleRow
+        settingId="pdfZoomShortcuts"
         label={t(($) => $.settings.appearance.preview.zoomShortcuts.label)}
         description={t(($) => $.settings.appearance.preview.zoomShortcuts.description)}
         checked={pdfZoomShortcuts}
         onChange={setPdfZoomShortcuts}
       />
       <SettingsToggleRow
+        settingId="hoverPreview"
         label={t(($) => $.settings.appearance.preview.hoverPreview.label)}
         description={t(($) => $.settings.appearance.preview.hoverPreview.description)}
         checked={hoverPreview}
@@ -1059,18 +1033,12 @@ function FileManagementTab() {
 
   return (
     <div className="space-y-3">
-      <div
-        data-testid="settings-row-default-home-view"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="homeProjectLayout"
+        testId="settings-row-default-home-view"
+        label={t(($) => $.settings.appearance.files.homeView.label)}
+        description={t(($) => $.settings.appearance.files.homeView.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.files.homeView.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.files.homeView.description)}
-          </div>
-        </div>
         <Select
           value={homeProjectLayout}
           onValueChange={(value) =>
@@ -1092,20 +1060,14 @@ function FileManagementTab() {
             </SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
-      <div
-        data-testid="settings-row-open-projects-in"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      <SettingRow
+        settingId="defaultView"
+        testId="settings-row-open-projects-in"
+        label={t(($) => $.settings.appearance.files.openIn.label)}
+        description={t(($) => $.settings.appearance.files.openIn.description)}
       >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.files.openIn.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.files.openIn.description)}
-          </div>
-        </div>
         <Select
           value={defaultView}
           onValueChange={(value) => setDefaultView(value as typeof defaultView)}
@@ -1121,19 +1083,32 @@ function FileManagementTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </SettingRow>
 
       <SettingsToggleRow
+        settingId="openInTree"
         label={t(($) => $.settings.appearance.files.showTree.label)}
         description={t(($) => $.settings.appearance.files.showTree.description)}
         checked={openInTree}
         onChange={setOpenInTree}
       />
 
-      <section className="rounded-lg border bg-card p-4" aria-labelledby="hidden-files-heading">
-        <h3 id="hidden-files-heading" className="text-sm font-medium">
-          {t(($) => $.settings.appearance.files.hidden.title)}
-        </h3>
+      <section
+        data-setting-id="hiddenFilePatterns"
+        className={cn("rounded-lg border bg-card p-4", SETTING_ROW_HIGHLIGHT)}
+        aria-labelledby="hidden-files-heading"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h3 id="hidden-files-heading" className="text-sm font-medium">
+            {t(($) => $.settings.appearance.files.hidden.title)}
+            <ChangedSettingMarker id="hiddenFilePatterns" />
+          </h3>
+          <ResetSettingButton
+            id="hiddenFilePatterns"
+            label={t(($) => $.settings.appearance.files.hidden.title)}
+            className="-mr-1 -mt-1"
+          />
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
           {t(($) => $.settings.appearance.files.hidden.description)}
         </p>

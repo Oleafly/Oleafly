@@ -3,6 +3,7 @@ import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
 
 const SETTINGS_SECTIONS = new Set([
+  "changed",
   "general",
   "appearance",
   "dictionary",
@@ -897,6 +898,7 @@ interface SettingsState {
   pdfZoomShortcuts: boolean;
   setPdfZoomShortcuts: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
+  setHiddenFilePatterns: (patterns: readonly string[]) => void;
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
   accentColor: string;
@@ -966,7 +968,7 @@ function readEditorLineHeight(): EditorLineHeight {
 
 const initialEditorKeymap = readEditorKeymap();
 
-const PREF_DEFAULTS = {
+export const PREF_DEFAULTS = {
   editorKeymap: "default" as EditorKeymapMode,
   vim: false,
   editorTabSize: 4,
@@ -1430,6 +1432,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   hiddenFilePatterns: readHiddenFilePatterns(
     ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),
   ),
+  setHiddenFilePatterns: (patterns) => {
+    const hiddenFilePatterns = [
+      ...new Set(patterns.map((pattern) => pattern.trim()).filter(Boolean)),
+    ];
+    saveLs("oleafly.fileTree.hiddenPatterns", JSON.stringify(hiddenFilePatterns));
+    set({ hiddenFilePatterns });
+  },
   addHiddenFilePattern: (rawPattern) => {
     const pattern = rawPattern.trim();
     if (!pattern) return;
@@ -1625,6 +1634,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
       editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
       editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,
+      editorMathPreview: PREF_DEFAULTS.editorMathPreview,
       terminalFontSize: PREF_DEFAULTS.terminalFontSize,
       terminalFontFamily: PREF_DEFAULTS.terminalFontFamily,
       terminalFontWeight: PREF_DEFAULTS.terminalFontWeight,

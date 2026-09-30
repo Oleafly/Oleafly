@@ -741,6 +741,9 @@
     "nav": {
       "ai": "AI Assistant",
       "appearance": "Appearance",
+      "changed": "Changed settings",
+      "changedCount_one": "{{count}} changed",
+      "changedCount_other": "{{count}} changed",
       "data": "Data Storage",
       "dictionary": "Dictionary",
       "downloads": "Downloads",

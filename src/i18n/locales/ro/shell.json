@@ -757,6 +757,10 @@
     "nav": {
       "ai": "Asistentul AI",
       "appearance": "Aspect",
+      "changed": "Setări modificate",
+      "changedCount_one": "{{count}} setare modificată",
+      "changedCount_few": "{{count}} setări modificate",
+      "changedCount_other": "{{count}} de setări modificate",
       "data": "Stocarea datelor",
       "dictionary": "Dicționar",
       "downloads": "Descărcări",

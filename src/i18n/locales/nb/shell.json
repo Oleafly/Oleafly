@@ -741,6 +741,9 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Utseende",
+      "changed": "Endrede innstillinger",
+      "changedCount_one": "{{count}} endret",
+      "changedCount_other": "{{count}} endret",
       "data": "Datalagring",
       "dictionary": "Ordliste",
       "downloads": "Nedlastinger",

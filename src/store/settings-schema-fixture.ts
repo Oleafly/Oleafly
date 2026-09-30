@@ -1,0 +1,70 @@
+import { ACCENTS, APP_FONTS, EDITOR_FONTS, TERMINAL_FONTS } from "./settings";
+import { EDITOR_KEY_DEFINITIONS } from "./editor-keymap";
+import { SHORTCUT_DEFINITIONS } from "./shortcuts";
+
+// Test data shared by the schema and Settings dialog tests.
+
+export const ALTERNATE_SHORTCUT = { key: "F9", mod: true, alt: true };
+
+/** One non-default value per setting id, used to change each entry in turn. */
+export const SETTING_ALTERNATES: Record<string, unknown> = {
+  uiLocalePreference: "de",
+  spellcheck: false,
+  harper: false,
+  grammarDialect: "british",
+  dictionaryLocale: "en_GB",
+  showRegionalism: false,
+  showWordChoice: false,
+  dockPlacement: "right",
+  bgPattern: "grid",
+  accentColor: ACCENTS[1].color,
+  theme: "dark",
+  appFontSize: 18,
+  appFontFamily: APP_FONTS[1].value,
+  editorFontSize: 15,
+  editorFontFamily: EDITOR_FONTS[1].value,
+  editorTheme: "dracula",
+  editorKeymap: "emacs",
+  editorTabSize: 2,
+  editorLineHeight: "wide",
+  editorLineWrap: false,
+  editorAutocomplete: false,
+  editorAutoCloseBrackets: false,
+  editorAutoCloseMath: false,
+  editorAutoCloseEnvironments: false,
+  editorGhostCompletion: false,
+  editorNonBlinkingCursor: true,
+  editorStickyScroll: false,
+  editorMathPreview: false,
+  terminalFontSize: 16,
+  terminalFontFamily: TERMINAL_FONTS[1].value,
+  terminalFontWeight: 600,
+  terminalFontWeightBold: 800,
+  terminalCursorStyle: "bar",
+  terminalCursorBlink: false,
+  terminalStartWithProject: false,
+  terminalColorTheme: "dracula",
+  terminalBackground: "#000000",
+  terminalForeground: "#123456",
+  terminalCursorColor: "#abcdef",
+  pdfDarkMode: true,
+  pdfZoomShortcuts: false,
+  hoverPreview: false,
+  browserSearchEngine: "duckduckgo",
+  browserHomePage: "https://example.com/",
+  homeProjectLayout: "list",
+  defaultView: "editor-preview",
+  openInTree: false,
+  hiddenFilePatterns: ["*.aux"],
+  harperDisabledRules: ["AnA"],
+  harperEnabledRules: ["LongSentences"],
+  defaultLatexEngine: "latexmk",
+  latexTools: true,
+  webBrowser: true,
+  ...Object.fromEntries(
+    SHORTCUT_DEFINITIONS.map(({ id }) => [`shortcut.${id}`, ALTERNATE_SHORTCUT]),
+  ),
+  ...Object.fromEntries(
+    EDITOR_KEY_DEFINITIONS.map(({ id }) => [`editorKey.${id}`, "Alt-F9"]),
+  ),
+};

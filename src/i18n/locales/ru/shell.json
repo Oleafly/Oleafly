@@ -773,6 +773,11 @@
     "nav": {
       "ai": "ИИ-ассистент",
       "appearance": "Внешний вид",
+      "changed": "Изменённые настройки",
+      "changedCount_one": "{{count}} изменена",
+      "changedCount_few": "{{count}} изменены",
+      "changedCount_many": "{{count}} изменено",
+      "changedCount_other": "{{count}} изменено",
       "data": "Хранение данных",
       "dictionary": "Словарь",
       "downloads": "Загрузки",

@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import {
+  ChangedSettingMarker,
+  ResetSettingButton,
+  SETTING_ROW_HIGHLIGHT,
+} from "@/components/settings/SettingRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/i18n";
 import { formatList, formatNumber } from "@/lib/intl";
@@ -203,9 +208,14 @@ export function EngineSection() {
       </TabsContent>
 
       <TabsContent value="latex" className="flex flex-col gap-5">
+      <div
+        data-setting-id="defaultLatexEngine"
+        className={cn("flex flex-col gap-5 rounded-lg", SETTING_ROW_HIGHLIGHT)}
+      >
       <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.settings.engine.defaultEngine.heading)}
+          <ChangedSettingMarker id="defaultLatexEngine" />
         </h3>
         <Tooltip
           wide
@@ -214,6 +224,12 @@ export function EngineSection() {
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
+        <ResetSettingButton
+          id="defaultLatexEngine"
+          label={t(($) => $.settings.engine.defaultEngine.heading)}
+          className="-my-1.5"
+          wrapperClassName="ml-auto"
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -249,6 +265,7 @@ export function EngineSection() {
             </button>
           );
         })}
+      </div>
       </div>
 
       <div className="flex items-center gap-1.5">

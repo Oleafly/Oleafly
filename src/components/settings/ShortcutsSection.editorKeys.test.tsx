@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { EDITOR_KEY_DEFAULTS, useEditorKeymapStore } from "@/store/editor-keymap";
+import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
+import { settingScrollTarget } from "./reveal-setting";
 import { ShortcutsSection } from "./ShortcutsSection";
 
 const labels = enSettings.shortcuts.editorKeys.labels;
@@ -138,6 +140,56 @@ describe("ShortcutsSection editor keys", () => {
     expect(useEditorKeymapStore.getState().keys.deleteLine).toBe(
       EDITOR_KEY_DEFAULTS.deleteLine,
     );
+  });
+
+  it("announces the changed state on the key button", async () => {
+    render(<ShortcutsSection />);
+    await openEditorTab();
+    const capture = () => within(rowFor("deleteLine")).getByRole("button", { name: /^Edit / });
+    expect(capture()).not.toHaveAccessibleDescription();
+
+    act(() => useEditorKeymapStore.getState().setKey("deleteLine", "Alt-F9"));
+    expect(capture()).toHaveAccessibleDescription(enSettings.changed.marker);
+
+    fireEvent.click(within(rowFor("deleteLine")).getByRole("button", { name: /^Reset / }));
+    expect(capture()).not.toHaveAccessibleDescription();
+  });
+
+  it("keeps the key button in place when the row Reset appears", async () => {
+    render(<ShortcutsSection />);
+    await openEditorTab();
+    const capture = within(rowFor("deleteLine")).getByRole("button", { name: /^Edit / });
+    expect(capture.parentElement?.lastElementChild).toBe(capture);
+
+    act(() => useEditorKeymapStore.getState().setKey("deleteLine", "Alt-F9"));
+
+    const moved = within(rowFor("deleteLine")).getByRole("button", { name: /^Edit / });
+    expect(moved.parentElement?.lastElementChild).toBe(moved);
+  });
+
+  it("moves keyboard focus to the key button after a row reset", async () => {
+    useEditorKeymapStore.getState().setKey("deleteLine", "Alt-F9");
+    render(<ShortcutsSection />);
+    await openEditorTab();
+    const reset = within(rowFor("deleteLine")).getByRole("button", { name: /^Reset / });
+
+    reset.focus();
+    fireEvent.click(reset);
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(rowFor("deleteLine")).getByRole("button", { name: /^Edit / }),
+      ),
+    );
+  });
+
+  it("opens the Editor tab when a setting target points at an editor key", () => {
+    useSettingsStore.getState().setSettingsScrollTarget(settingScrollTarget("editorKey.deleteLine"));
+    render(<ShortcutsSection />);
+
+    expect(screen.getByTestId("shortcuts-tab-editor")).toHaveAttribute("aria-selected", "true");
+    expect(rowFor("deleteLine")).toHaveAttribute("data-setting-id", "editorKey.deleteLine");
+    useSettingsStore.getState().setSettingsScrollTarget(null);
   });
 
   it("restores both application shortcuts and editor keys from the reset control", () => {

@@ -728,6 +728,22 @@
       }
     }
   },
+  "changed": {
+    "empty": "你尚未更改任何设置。",
+    "intro": "这里列出你已更改默认值的设置。",
+    "marker": "已更改",
+    "reset": "重置 {{label}}",
+    "resetTooltip": "重置为默认值",
+    "show": "显示",
+    "showAriaLabel": "显示 {{label}}",
+    "values": {
+      "added": "已添加：{{items}}",
+      "addedAndRemoved": "已添加：{{added}}；已移除：{{removed}}",
+      "custom": "自定义",
+      "more_other": "还有 {{count}} 项",
+      "removed": "已移除：{{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly 会在后台保存检查点，且仅在源码发生变化时保存。",

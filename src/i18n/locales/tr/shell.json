@@ -741,6 +741,9 @@
     "nav": {
       "ai": "Yapay Zeka Asistanı",
       "appearance": "Görünüm",
+      "changed": "Değiştirilen Ayarlar",
+      "changedCount_one": "{{count}} ayar değiştirildi",
+      "changedCount_other": "{{count}} ayar değiştirildi",
       "data": "Veri Depolama",
       "dictionary": "Sözlük",
       "downloads": "İndirilenler",

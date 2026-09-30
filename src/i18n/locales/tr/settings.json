@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Henüz hiçbir ayarı değiştirmediniz.",
+    "intro": "Varsayılan değerlerinden değiştirdiğiniz ayarlar.",
+    "marker": "Değiştirildi",
+    "reset": "{{label}} ayarını sıfırla",
+    "resetTooltip": "Varsayılana sıfırla",
+    "show": "Göster",
+    "showAriaLabel": "{{label}} ayarını göster",
+    "values": {
+      "added": "Eklendi: {{items}}",
+      "addedAndRemoved": "Eklendi: {{added}}; kaldırıldı: {{removed}}",
+      "custom": "Özel",
+      "more_one": "{{count}} öğe daha",
+      "more_other": "{{count}} öğe daha",
+      "removed": "Kaldırıldı: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly bunu arka planda ve yalnızca kaynak değiştiğinde kaydeder.",

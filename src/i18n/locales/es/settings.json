@@ -738,6 +738,24 @@
       }
     }
   },
+  "changed": {
+    "empty": "No has cambiado ningún ajuste.",
+    "intro": "Ajustes que has cambiado respecto a sus valores predeterminados.",
+    "marker": "Modificado",
+    "reset": "Restablecer {{label}}",
+    "resetTooltip": "Restablecer el valor predeterminado",
+    "show": "Mostrar",
+    "showAriaLabel": "Mostrar {{label}}",
+    "values": {
+      "added": "Añadido: {{items}}",
+      "addedAndRemoved": "Añadido: {{added}}; quitado: {{removed}}",
+      "custom": "Personalizado",
+      "more_one": "{{count}} más",
+      "more_many": "{{count}} más",
+      "more_other": "{{count}} más",
+      "removed": "Quitado: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly lo guarda en segundo plano y solo cuando el código ha cambiado.",

@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Je hebt nog geen instellingen gewijzigd.",
+    "intro": "Instellingen die je hebt gewijzigd ten opzichte van de standaardwaarden.",
+    "marker": "Gewijzigd",
+    "reset": "{{label}} resetten",
+    "resetTooltip": "Terugzetten naar standaardwaarde",
+    "show": "Tonen",
+    "showAriaLabel": "{{label}} tonen",
+    "values": {
+      "added": "{{items}} toegevoegd",
+      "addedAndRemoved": "{{added}} toegevoegd; {{removed}} verwijderd",
+      "custom": "Aangepast",
+      "more_one": "nog {{count}}",
+      "more_other": "nog {{count}}",
+      "removed": "{{items}} verwijderd"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly slaat het op de achtergrond op, en alleen als de broncode is gewijzigd.",

@@ -728,6 +728,22 @@
       }
     }
   },
+  "changed": {
+    "empty": "你尚未變更任何設定。",
+    "intro": "這裡列出你已變更預設值的設定。",
+    "marker": "已變更",
+    "reset": "重設 {{label}}",
+    "resetTooltip": "重設為預設值",
+    "show": "顯示",
+    "showAriaLabel": "顯示 {{label}}",
+    "values": {
+      "added": "已新增：{{items}}",
+      "addedAndRemoved": "已新增：{{added}}；已移除：{{removed}}",
+      "custom": "自訂",
+      "more_other": "還有 {{count}} 項",
+      "removed": "已移除：{{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly 只會在原始碼有變更時於背景儲存。",

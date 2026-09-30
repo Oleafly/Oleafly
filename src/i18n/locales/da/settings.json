@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Du har ikke ændret nogen indstillinger.",
+    "intro": "Indstillinger, du har ændret fra standarden.",
+    "marker": "Ændret",
+    "reset": "Nulstil {{label}}",
+    "resetTooltip": "Nulstil til standard",
+    "show": "Vis",
+    "showAriaLabel": "Vis {{label}}",
+    "values": {
+      "added": "Tilføjet: {{items}}",
+      "addedAndRemoved": "Tilføjet: {{added}}; fjernet: {{removed}}",
+      "custom": "Egen værdi",
+      "more_one": "{{count}} mere",
+      "more_other": "{{count}} flere",
+      "removed": "Fjernet: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly gemmer det i baggrunden og kun, når kildekoden er ændret.",

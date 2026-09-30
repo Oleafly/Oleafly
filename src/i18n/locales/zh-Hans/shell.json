@@ -725,6 +725,8 @@
     "nav": {
       "ai": "AI 助手",
       "appearance": "外观",
+      "changed": "已更改的设置",
+      "changedCount_other": "已更改 {{count}} 项",
       "data": "数据存储",
       "dictionary": "词典",
       "downloads": "下载",

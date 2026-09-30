@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Du har inte ändrat några inställningar.",
+    "intro": "Inställningar som du har ändrat från standard.",
+    "marker": "Ändrad",
+    "reset": "Återställ {{label}}",
+    "resetTooltip": "Återställ till standard",
+    "show": "Visa",
+    "showAriaLabel": "Visa {{label}}",
+    "values": {
+      "added": "Tillagt: {{items}}",
+      "addedAndRemoved": "Tillagt: {{added}}; borttaget: {{removed}}",
+      "custom": "Eget värde",
+      "more_one": "{{count}} till",
+      "more_other": "{{count}} till",
+      "removed": "Borttaget: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly sparar den i bakgrunden och bara när källkoden har ändrats.",

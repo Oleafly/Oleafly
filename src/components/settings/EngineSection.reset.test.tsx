@@ -8,7 +8,17 @@ import { useEngineStore } from "@/store/engine";
 import { useSettingsStore } from "@/store/settings";
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false }));
+vi.mock("@/lib/theme", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/theme")>()),
+  useTheme: () => ({
+    preference: "system",
+    theme: "dark",
+    setPreference: vi.fn(),
+    toggleTheme: vi.fn(),
+  }),
+}));
 
+import { ChangedSettingsProvider } from "./changed-settings";
 import { EngineSection } from "./EngineSection";
 
 const engineInfo: EngineInfo = {
@@ -68,5 +78,25 @@ describe("Engines reset", () => {
     expect(useSettingsStore.getState().accentColor).toBe("#db2777");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("puts the default engine Reset at the right edge of its header", () => {
+    useSettingsStore.getState().setDefaultLatexEngine("latexmk");
+    render(
+      <ChangedSettingsProvider>
+        <EngineSection />
+      </ChangedSettingsProvider>,
+    );
+    const heading = enSettings.engine.defaultEngine.heading;
+    const reset = screen.getByRole("button", {
+      name: enSettings.changed.reset.replace("{{label}}", heading),
+    });
+    const header = screen.getByRole("heading", {
+      name: `${heading} ${enSettings.changed.marker}`,
+    }).parentElement;
+    if (!header) throw new Error("default engine header is missing");
+
+    const item = [...header.children].find((child) => child.contains(reset));
+    expect(item).toHaveClass("ml-auto");
   });
 });

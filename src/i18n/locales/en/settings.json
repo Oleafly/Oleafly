@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "You haven't changed any settings.",
+    "intro": "Settings you've changed from their defaults.",
+    "marker": "Changed",
+    "reset": "Reset {{label}}",
+    "resetTooltip": "Reset to default",
+    "show": "Show",
+    "showAriaLabel": "Show {{label}}",
+    "values": {
+      "added": "Added {{items}}",
+      "addedAndRemoved": "Added {{added}}; removed {{removed}}",
+      "custom": "Custom",
+      "more_one": "{{count}} more",
+      "more_other": "{{count}} more",
+      "removed": "Removed {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly saves it in the background and only when the source changed.",

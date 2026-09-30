@@ -741,6 +741,9 @@
     "nav": {
       "ai": "KI-Assistent",
       "appearance": "Darstellung",
+      "changed": "Geänderte Einstellungen",
+      "changedCount_one": "{{count}} geändert",
+      "changedCount_other": "{{count}} geändert",
       "data": "Datenspeicher",
       "dictionary": "Wörterbuch",
       "downloads": "Downloads",

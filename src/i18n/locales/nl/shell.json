@@ -741,6 +741,9 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Weergave",
+      "changed": "Gewijzigde instellingen",
+      "changedCount_one": "{{count}} gewijzigd",
+      "changedCount_other": "{{count}} gewijzigd",
       "data": "Gegevensopslag",
       "dictionary": "Woordenboek",
       "downloads": "Downloads",

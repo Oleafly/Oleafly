@@ -738,6 +738,24 @@
       }
     }
   },
+  "changed": {
+    "empty": "Non hai modificato nessuna impostazione.",
+    "intro": "Impostazioni che hai modificato rispetto ai valori predefiniti.",
+    "marker": "Modificata",
+    "reset": "Reimposta {{label}}",
+    "resetTooltip": "Ripristina il valore predefinito",
+    "show": "Mostra",
+    "showAriaLabel": "Mostra {{label}}",
+    "values": {
+      "added": "Aggiunti: {{items}}",
+      "addedAndRemoved": "Aggiunti: {{added}}; rimossi: {{removed}}",
+      "custom": "Personalizzato",
+      "more_one": "altro {{count}}",
+      "more_many": "altri {{count}}",
+      "more_other": "altri {{count}}",
+      "removed": "Rimossi: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly lo salva in background e solo quando il sorgente è cambiato.",

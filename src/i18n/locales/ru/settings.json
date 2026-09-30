@@ -743,6 +743,25 @@
       }
     }
   },
+  "changed": {
+    "empty": "Вы не изменили ни одной настройки.",
+    "intro": "Настройки, которые вы изменили относительно значений по умолчанию.",
+    "marker": "Изменена",
+    "reset": "Сбросить «{{label}}»",
+    "resetTooltip": "Сбросить к значению по умолчанию",
+    "show": "Показать",
+    "showAriaLabel": "Показать «{{label}}»",
+    "values": {
+      "added": "Добавлено: {{items}}",
+      "addedAndRemoved": "Добавлено: {{added}}; удалено: {{removed}}",
+      "custom": "Своё значение",
+      "more_one": "ещё {{count}}",
+      "more_few": "ещё {{count}}",
+      "more_many": "ещё {{count}}",
+      "more_other": "ещё {{count}}",
+      "removed": "Удалено: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly сохраняет её в фоне и только тогда, когда исходник изменился.",

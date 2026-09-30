@@ -17,6 +17,11 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import {
+  ChangedSettingMarker,
+  ResetSettingButton,
+  SETTING_ROW_HIGHLIGHT,
+} from "@/components/settings/SettingRow";
 import { Switch } from "@/components/ui/switch";
 import {
   Tabs,
@@ -31,6 +36,7 @@ import {
   useDictionary,
 } from "@/lib/dictionary";
 import { formatNumber } from "@/lib/intl";
+import { cn } from "@/lib/utils";
 import {
   ACADEMIC_PROFILE_RULES,
 } from "@/lib/proofreading/lint-profile";
@@ -213,7 +219,10 @@ function ProfileRules() {
   };
 
   return (
-    <div className="space-y-2">
+    <div
+      data-setting-id="harperEnabledRules"
+      className={cn("space-y-2 rounded-md", SETTING_ROW_HIGHLIGHT)}
+    >
       <div>
         <div className="flex items-center gap-1.5">
           <h5
@@ -221,8 +230,15 @@ function ProfileRules() {
             className="text-xs font-medium text-foreground"
           >
             {t(($) => $.settings.proofreading.profileRules.title)}
+            <ChangedSettingMarker id="harperEnabledRules" />
           </h5>
           <HelpTip label={t(($) => $.settings.proofreading.profileRules.help)} />
+          <ResetSettingButton
+            id="harperEnabledRules"
+            label={t(($) => $.settings.proofreading.profileRules.title)}
+            className="-my-1.5"
+            wrapperClassName="ml-auto"
+          />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           {t(($) => $.settings.proofreading.profileRules.description)}
@@ -279,7 +295,8 @@ function TurnedOffFindings({
 
   return (
     <section
-      className="space-y-3 rounded-lg border bg-background p-3"
+      data-setting-id="harperDisabledRules"
+      className={cn("space-y-3 rounded-lg border bg-background p-3", SETTING_ROW_HIGHLIGHT)}
       aria-labelledby="proofreading-turned-off"
     >
       <div>
@@ -289,8 +306,15 @@ function TurnedOffFindings({
             className="text-xs font-medium text-foreground"
           >
             {t(($) => $.settings.proofreading.turnedOff.title)}
+            <ChangedSettingMarker id="harperDisabledRules" />
           </h4>
           <HelpTip label={t(($) => $.settings.proofreading.turnedOff.help)} />
+          <ResetSettingButton
+            id="harperDisabledRules"
+            label={t(($) => $.settings.proofreading.turnedOff.listAriaLabel)}
+            className="-my-1.5"
+            wrapperClassName="ml-auto"
+          />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           {t(($) => $.settings.proofreading.turnedOff.description)}

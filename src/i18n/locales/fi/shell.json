@@ -741,6 +741,9 @@
     "nav": {
       "ai": "Tekoälyavustaja",
       "appearance": "Ulkoasu",
+      "changed": "Muutetut asetukset",
+      "changedCount_one": "{{count}} muutettu",
+      "changedCount_other": "{{count}} muutettua",
       "data": "Tietojen tallennus",
       "dictionary": "Sanakirja",
       "downloads": "Lataukset",

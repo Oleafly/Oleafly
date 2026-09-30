@@ -179,6 +179,16 @@
       }
     }
   },
+  "changed": {
+    "marker": "Screen reader text after a setting's name when its value differs from the default",
+    "show": "Button that opens the settings section holding this setting and moves to its control",
+    "values": {
+      "added": "Value of a list setting: the items the user added to the default list, for example file patterns",
+      "addedAndRemoved": "Value of a list setting: the items the user added to and removed from the default list",
+      "more_other": "Last entry in a shortened list of items, counting the items not shown",
+      "removed": "Value of a list setting: the items the user removed from the default list"
+    }
+  },
   "citations": {
     "connected": "Badge showing that a credential is stored for this search source.",
     "openAlex": {

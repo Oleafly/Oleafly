@@ -773,6 +773,11 @@
     "nav": {
       "ai": "Asystent AI",
       "appearance": "Wygląd",
+      "changed": "Zmienione ustawienia",
+      "changedCount_one": "{{count}} zmienione",
+      "changedCount_few": "{{count}} zmienione",
+      "changedCount_many": "{{count}} zmienionych",
+      "changedCount_other": "{{count}} zmienionego",
       "data": "Przechowywanie danych",
       "dictionary": "Słownik",
       "downloads": "Pobrane",

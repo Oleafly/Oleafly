@@ -738,6 +738,24 @@
       }
     }
   },
+  "changed": {
+    "empty": "Vous n'avez modifié aucun paramètre.",
+    "intro": "Paramètres que vous avez modifiés par rapport à leur valeur par défaut.",
+    "marker": "Modifié",
+    "reset": "Réinitialiser {{label}}",
+    "resetTooltip": "Rétablir la valeur par défaut",
+    "show": "Afficher",
+    "showAriaLabel": "Afficher {{label}}",
+    "values": {
+      "added": "Ajoutés : {{items}}",
+      "addedAndRemoved": "Ajoutés : {{added}} ; retirés : {{removed}}",
+      "custom": "Personnalisé",
+      "more_one": "{{count}} autre",
+      "more_many": "{{count}} autres",
+      "more_other": "{{count}} autres",
+      "removed": "Retirés : {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly l'enregistre en arrière-plan, et seulement si le source a changé.",

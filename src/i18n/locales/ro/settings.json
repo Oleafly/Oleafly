@@ -738,6 +738,24 @@
       }
     }
   },
+  "changed": {
+    "empty": "Nu ai modificat nicio setare.",
+    "intro": "Setările pe care le-ai modificat față de valorile implicite.",
+    "marker": "Modificată",
+    "reset": "Resetează {{label}}",
+    "resetTooltip": "Resetează la valoarea implicită",
+    "show": "Arată",
+    "showAriaLabel": "Arată {{label}}",
+    "values": {
+      "added": "Adăugate: {{items}}",
+      "addedAndRemoved": "Adăugate: {{added}}; eliminate: {{removed}}",
+      "custom": "Personalizat",
+      "more_one": "încă {{count}}",
+      "more_few": "încă {{count}}",
+      "more_other": "încă {{count}}",
+      "removed": "Eliminate: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly îl salvează în fundal și numai dacă sursa s-a schimbat.",

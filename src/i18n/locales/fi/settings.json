@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Et ole muuttanut yhtään asetusta.",
+    "intro": "Asetukset, joita olet muuttanut oletuksista.",
+    "marker": "Muutettu",
+    "reset": "Palauta {{label}}",
+    "resetTooltip": "Palauta oletus",
+    "show": "Näytä",
+    "showAriaLabel": "Näytä {{label}}",
+    "values": {
+      "added": "Lisätty: {{items}}",
+      "addedAndRemoved": "Lisätty: {{added}}; poistettu: {{removed}}",
+      "custom": "Mukautettu",
+      "more_one": "{{count}} muu",
+      "more_other": "{{count}} muuta",
+      "removed": "Poistettu: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly tallentaa sen taustalla ja vain, jos lähdekoodi muuttui.",

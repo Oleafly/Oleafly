@@ -743,6 +743,25 @@
       }
     }
   },
+  "changed": {
+    "empty": "Ви ще не змінили жодного налаштування.",
+    "intro": "Налаштування, які ви змінили порівняно з типовими.",
+    "marker": "Змінено",
+    "reset": "Скинути {{label}}",
+    "resetTooltip": "Скинути до типового",
+    "show": "Показати",
+    "showAriaLabel": "Показати {{label}}",
+    "values": {
+      "added": "Додано: {{items}}",
+      "addedAndRemoved": "Додано: {{added}}; вилучено: {{removed}}",
+      "custom": "Власне значення",
+      "more_one": "ще {{count}}",
+      "more_few": "ще {{count}}",
+      "more_many": "ще {{count}}",
+      "more_other": "ще {{count}}",
+      "removed": "Вилучено: {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly зберігає її у фоні і лише тоді, коли код змінився.",

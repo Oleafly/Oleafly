@@ -757,6 +757,10 @@
     "nav": {
       "ai": "Assistente AI",
       "appearance": "Aspetto",
+      "changed": "Impostazioni modificate",
+      "changedCount_one": "{{count}} modificata",
+      "changedCount_many": "{{count}} modificate",
+      "changedCount_other": "{{count}} modificate",
       "data": "Archiviazione dati",
       "dictionary": "Dizionario",
       "downloads": "Download",

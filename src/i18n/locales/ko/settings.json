@@ -728,6 +728,22 @@
       }
     }
   },
+  "changed": {
+    "empty": "변경한 설정이 없습니다.",
+    "intro": "기본값에서 변경한 설정입니다.",
+    "marker": "변경됨",
+    "reset": "{{label}} 초기화",
+    "resetTooltip": "기본값으로 초기화",
+    "show": "보기",
+    "showAriaLabel": "{{label}} 보기",
+    "values": {
+      "added": "{{items}} 추가",
+      "addedAndRemoved": "{{added}} 추가, {{removed}} 제거",
+      "custom": "사용자 지정",
+      "more_other": "외 {{count}}개",
+      "removed": "{{items}} 제거"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly가 백그라운드에서, 소스가 바뀐 경우에만 저장합니다.",

@@ -773,6 +773,11 @@
     "nav": {
       "ai": "Асистент ШІ",
       "appearance": "Зовнішній вигляд",
+      "changed": "Змінені налаштування",
+      "changedCount_one": "{{count}} зміна",
+      "changedCount_few": "{{count}} зміни",
+      "changedCount_many": "{{count}} змін",
+      "changedCount_other": "{{count}} зміни",
       "data": "Сховище даних",
       "dictionary": "Словник",
       "downloads": "Завантаження",

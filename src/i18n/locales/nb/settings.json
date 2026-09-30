@@ -733,6 +733,23 @@
       }
     }
   },
+  "changed": {
+    "empty": "Du har ikke endret noen innstillinger.",
+    "intro": "Innstillinger du har endret fra standard.",
+    "marker": "Endret",
+    "reset": "Tilbakestill {{label}}",
+    "resetTooltip": "Tilbakestill til standard",
+    "show": "Vis",
+    "showAriaLabel": "Vis {{label}}",
+    "values": {
+      "added": "Lagt til {{items}}",
+      "addedAndRemoved": "Lagt til {{added}}; fjernet {{removed}}",
+      "custom": "Egendefinert",
+      "more_one": "{{count}} til",
+      "more_other": "{{count}} til",
+      "removed": "Fjernet {{items}}"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly lagrer det i bakgrunnen, og bare når kildekoden er endret.",

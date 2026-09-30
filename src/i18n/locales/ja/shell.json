@@ -725,6 +725,8 @@
     "nav": {
       "ai": "AI アシスタント",
       "appearance": "外観",
+      "changed": "変更した設定",
+      "changedCount_other": "{{count}} 件の変更",
       "data": "データの保存",
       "dictionary": "辞書",
       "downloads": "ダウンロード",

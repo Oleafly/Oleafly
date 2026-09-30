@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -15,6 +15,7 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  CircleDot,
   Cloud,
   Compass,
   Copy,
@@ -46,6 +47,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -117,6 +119,18 @@ import {
   SettingsSwitchIndicator,
   SettingsToggleRow,
 } from "@/components/settings/SettingsToggleRow";
+import { SettingRow } from "@/components/settings/SettingRow";
+import { ChangedSettingsSection } from "@/components/settings/ChangedSettingsSection";
+import {
+  ChangedSettingsContext,
+  useChangedSettingsState,
+} from "@/components/settings/changed-settings";
+import {
+  revealSettingRow,
+  settingIdFromScrollTarget,
+  settingScrollTarget,
+} from "@/components/settings/reveal-setting";
+import { settingById, type SettingId } from "@/store/settings-schema";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import {
   githubGetPublicRepoStats,
@@ -128,6 +142,7 @@ const ChangelogDialog = lazy(() =>
 );
 
 type Section =
+  | "changed"
   | "appearance"
   | "general"
   | "dictionary"
@@ -154,6 +169,13 @@ const useLibraryBulkActions = create<LibraryBulkActions>(() => ({
 }));
 
 const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
+  {
+    id: "changed",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.changed);
+    },
+    icon: CircleDot,
+  },
   {
     id: "general",
     get label() {
@@ -274,6 +296,10 @@ export function SettingsModal() {
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
+  const settingsScrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
+  const changedSettings = useChangedSettingsState();
+  const changedCounts: Partial<Record<string, number>> = changedSettings.counts;
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
@@ -348,6 +374,21 @@ export function SettingsModal() {
     setSection(next);
     libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
+
+  // A jump from Changed settings: reveal the row a frame after its section
+  // renders. A section switch reschedules the frame, so the row is there.
+  useEffect(() => {
+    void section;
+    const id = settingIdFromScrollTarget(settingsScrollTarget);
+    if (!open || !id) return;
+    // A row hidden behind a toggle that is off reveals that toggle instead.
+    const gate = settingById(id)?.revealVia;
+    const frame = requestAnimationFrame(() => {
+      if (!revealSettingRow(bodyRef.current, id) && gate) revealSettingRow(bodyRef.current, gate);
+      useSettingsStore.getState().setSettingsScrollTarget(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, section, settingsScrollTarget]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -494,6 +535,20 @@ export function SettingsModal() {
   };
 
   if (!open) return null;
+
+  const jumpToSetting = (id: SettingId) => {
+    const definition = settingById(id);
+    if (!definition) return;
+    const settings = useSettingsStore.getState();
+    if (definition.section === "appearance") {
+      settings.setSettingsInitialAppearanceTab(definition.tab ?? null);
+    }
+    settings.setSettingsScrollTarget(settingScrollTarget(id));
+    setSection(definition.section);
+  };
+
+  const navCount = (id: Section) =>
+    id === "changed" ? changedSettings.total : (changedCounts[id] ?? 0);
 
   const renderStorageSummary = () => {
     if (storageError) {
@@ -684,12 +739,14 @@ export function SettingsModal() {
           <span>{t(($) => $.shell.settings.experimentation.warning)}</span>
         </div>
         <SettingsToggleRow
+          settingId="latexTools"
           label={t(($) => $.shell.settings.experimentation.latexTools.label)}
           description={t(($) => $.shell.settings.experimentation.latexTools.description)}
           checked={latexTools}
           onChange={setLatexTools}
         />
         <SettingsToggleRow
+          settingId="webBrowser"
           label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
           description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
           checked={webBrowser}
@@ -704,7 +761,9 @@ export function SettingsModal() {
   );
 
   const renderSettingsBody = () => (
-    <div className="flex-1 overflow-auto p-5">
+    <div ref={bodyRef} className="flex-1 overflow-auto p-5">
+      {section === "changed" && <ChangedSettingsSection onShow={jumpToSetting} />}
+
       {section === "appearance" && <AppearanceSection />}
 
       {renderGeneralSection()}
@@ -964,14 +1023,12 @@ export function SettingsModal() {
 
   const renderGeneralSection = () => (
     section === "general" && (
-      <div className="space-y-2 [&>[role=switch]]:bg-card">
-        <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-          <div>
-            <div className="text-sm font-medium">{t(($) => $.settings.language.label)}</div>
-            <div className="text-xs text-muted-foreground">
-              {t(($) => $.settings.language.description)}
-            </div>
-          </div>
+      <div className="space-y-2">
+        <SettingRow
+          settingId="uiLocalePreference"
+          label={t(($) => $.settings.language.label)}
+          description={t(($) => $.settings.language.description)}
+        >
           <Select
             value={uiLocalePreference}
             onValueChange={(value) => {
@@ -994,17 +1051,19 @@ export function SettingsModal() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </SettingRow>
         <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           {t(($) => $.settings.language.note)}
         </div>
         <SettingsToggleRow
+          settingId="spellcheck"
           label={t(($) => $.shell.settings.general.spellcheck.label)}
           description={t(($) => $.shell.settings.general.spellcheck.description)}
           checked={spellcheck}
           onChange={toggleSpellcheck}
         />
         <SettingsToggleRow
+          settingId="harper"
           label={t(($) => $.shell.settings.general.harper.label)}
           description={t(($) => $.shell.settings.general.harper.description)}
           checked={harper}
@@ -1025,18 +1084,12 @@ export function SettingsModal() {
         )}
         {harper && (
           <>
-            <div
-              data-testid="settings-row-grammar-dialect"
-              className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+            <SettingRow
+              settingId="grammarDialect"
+              testId="settings-row-grammar-dialect"
+              label={t(($) => $.shell.settings.general.dialect.label)}
+              description={t(($) => $.shell.settings.general.dialect.description)}
             >
-              <div>
-                <div className="text-sm font-medium">
-                  {t(($) => $.shell.settings.general.dialect.label)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t(($) => $.shell.settings.general.dialect.description)}
-                </div>
-              </div>
               <Select
                 value={grammarDialect}
                 onValueChange={(value) =>
@@ -1057,14 +1110,16 @@ export function SettingsModal() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </SettingRow>
             <SettingsToggleRow
+              settingId="showRegionalism"
               label={t(($) => $.shell.settings.general.regionalism.label)}
               description={t(($) => $.shell.settings.general.regionalism.description)}
               checked={showRegionalism}
               onChange={setShowRegionalism}
             />
             <SettingsToggleRow
+              settingId="showWordChoice"
               label={t(($) => $.shell.settings.general.wordChoice.label)}
               description={t(($) => $.shell.settings.general.wordChoice.description)}
               checked={showWordChoice}
@@ -1073,17 +1128,13 @@ export function SettingsModal() {
           </>
         )}
         {spellcheck && (
-          <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-            <div>
-              <div className="text-sm font-medium">
-                {t(($) => $.shell.settings.general.dictionary.label)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t(($) => $.shell.settings.general.dictionary.description)}
-              </div>
-            </div>
+          <SettingRow
+            settingId="dictionaryLocale"
+            label={t(($) => $.shell.settings.general.dictionary.label)}
+            description={t(($) => $.shell.settings.general.dictionary.description)}
+          >
             <DictionaryLocalePicker />
-          </div>
+          </SettingRow>
         )}
         <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           {t(($) => $.shell.settings.general.proofreadingNote)}
@@ -1215,6 +1266,7 @@ export function SettingsModal() {
   );
 
   return (
+    <ChangedSettingsContext.Provider value={changedSettings}>
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
     >
@@ -1236,7 +1288,7 @@ export function SettingsModal() {
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
           data-tour="settings-navigation-panel"
-          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
+          className="flex min-h-0 w-56 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
         >
           <div
             data-tour="settings-navigation"
@@ -1249,7 +1301,9 @@ export function SettingsModal() {
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
             <div className="flex flex-col gap-0.5">
-            {navigation.map(({ id, label, icon: Icon }) => (
+            {navigation.map(({ id, label, icon: Icon }) => {
+            const count = navCount(id);
+            return (
             <button
               key={id}
               type="button"
@@ -1264,9 +1318,28 @@ export function SettingsModal() {
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
+              {/* A long label truncates rather than pushing the count out of view. */}
+              <span className="relative flex min-w-0 flex-1 items-center gap-1.5">
+                <span className="truncate">{label}</span>
+                {count > 0 && (
+                  <>
+                    <Badge
+                      aria-hidden
+                      variant="default"
+                      className="ml-auto min-w-5 px-1.5 text-[10px] tabular-nums"
+                    >
+                      {formatNumber(count)}
+                    </Badge>
+                    {" "}
+                    <span className="sr-only">
+                      {t(($) => $.shell.settings.nav.changedCount, { count })}
+                    </span>
+                  </>
+                )}
+              </span>
             </button>
-            ))}
+            );
+            })}
             </div>
           </div>
           <div className="mt-2 shrink-0 border-t pt-3">
@@ -1357,6 +1430,7 @@ export function SettingsModal() {
         onConfirm={() => void deleteAllProjects()}
       />
     </div>
+    </ChangedSettingsContext.Provider>
   );
 }
 

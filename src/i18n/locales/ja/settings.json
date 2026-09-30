@@ -728,6 +728,22 @@
       }
     }
   },
+  "changed": {
+    "empty": "変更した設定はありません。",
+    "intro": "既定から変更した設定です。",
+    "marker": "変更済み",
+    "reset": "{{label}} をリセット",
+    "resetTooltip": "既定に戻す",
+    "show": "表示",
+    "showAriaLabel": "{{label}} を表示",
+    "values": {
+      "added": "{{items}} を追加",
+      "addedAndRemoved": "{{added}} を追加、{{removed}} を削除",
+      "custom": "カスタム",
+      "more_other": "ほか {{count}} 件",
+      "removed": "{{items}} を削除"
+    }
+  },
   "checkpoints": {
     "afterCompile": {
       "description": "Oleafly はバックグラウンドで、ソースが変わったときだけ保存します。",

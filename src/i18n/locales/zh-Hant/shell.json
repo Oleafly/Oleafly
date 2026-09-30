@@ -725,6 +725,8 @@
     "nav": {
       "ai": "AI 助理",
       "appearance": "外觀",
+      "changed": "已變更的設定",
+      "changedCount_other": "已變更 {{count}} 項",
       "data": "資料儲存",
       "dictionary": "字典",
       "downloads": "下載",

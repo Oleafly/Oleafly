@@ -773,6 +773,11 @@
     "nav": {
       "ai": "Asistent AI",
       "appearance": "Vzhled",
+      "changed": "Změněná nastavení",
+      "changedCount_one": "{{count}} změněné nastavení",
+      "changedCount_few": "{{count}} změněná nastavení",
+      "changedCount_many": "{{count}} změněného nastavení",
+      "changedCount_other": "{{count}} změněných nastavení",
       "data": "Úložiště dat",
       "dictionary": "Slovník",
       "downloads": "Stahování",
