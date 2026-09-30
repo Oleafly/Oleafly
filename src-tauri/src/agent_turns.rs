@@ -207,6 +207,7 @@ impl From<WalkStop> for TurnUnavailable {
         match stop {
             WalkStop::TooManyFiles => Self::TooManyFiles,
             WalkStop::Timeout => Self::Timeout,
+            WalkStop::RootUnreadable => Self::Error,
         }
     }
 }
@@ -303,6 +304,59 @@ fn close_turn(project_id: &str, snapshot_id: &str) -> Option<(BTreeSet<String>, 
     Some((turn.app_writes, turn.overlapped))
 }
 
+/// Lets the caller of [`begin_for`] give up on a copy still being taken on
+/// another thread. The turn is registered as open only while its caller still
+/// waits: once the caller gives up, a copy that has not registered never does
+/// and one that has is closed again, so an abandoned copy can never mark
+/// later turns as overlapped.
+#[derive(Default)]
+pub(crate) struct BeginTicket {
+    state: Mutex<TicketState>,
+}
+
+#[derive(Default)]
+enum TicketState {
+    #[default]
+    Waiting,
+    Opened {
+        project_id: String,
+        snapshot_id: String,
+    },
+    Abandoned,
+}
+
+impl BeginTicket {
+    fn state(&self) -> MutexGuard<'_, TicketState> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Registers the turn unless the caller has given up.
+    fn open(&self, project_id: &str, snapshot_id: &str) -> bool {
+        let mut state = self.state();
+        if matches!(*state, TicketState::Abandoned) {
+            return false;
+        }
+        open_turn(project_id, snapshot_id);
+        *state = TicketState::Opened {
+            project_id: project_id.to_owned(),
+            snapshot_id: snapshot_id.to_owned(),
+        };
+        true
+    }
+
+    /// The caller stopped waiting for the copy. Never blocks on the disk.
+    pub(crate) fn abandon(&self) {
+        let mut state = self.state();
+        if let TicketState::Opened {
+            project_id,
+            snapshot_id,
+        } = std::mem::replace(&mut *state, TicketState::Abandoned)
+        {
+            close_turn(&project_id, &snapshot_id);
+        }
+    }
+}
+
 fn open_snapshot_ids(project_id: &str) -> BTreeSet<String> {
     open_turns()
         .get(project_id)
@@ -385,17 +439,51 @@ fn same_stat(size: u64, mtime: Option<i64>, stat: &FileStat) -> bool {
     size == stat.size && mtime.is_some() && mtime == stat.mtime
 }
 
+fn is_manifest_name(name: &str) -> bool {
+    name.eq_ignore_ascii_case(crate::project_location::MANIFEST_FILE)
+}
+
+/// Whether the root `project.json` is Oleafly's own manifest right now.
+fn manifest_is_managed(location: &crate::project_location::ProjectLocation) -> bool {
+    crate::project_manifest::location_root_file_is_managed(
+        location,
+        crate::project_location::MANIFEST_FILE,
+    )
+}
+
 // ---------------------------------------------------------------------------
 // begin
 
 /// Takes the before-turn copy. Never fails the caller's turn: problems come
 /// back as `unavailable`.
 pub(crate) fn begin(project_id: &str, label: &str) -> TurnBegin {
-    begin_with(project_id, label, &Limits::DEFAULT, now_ms())
+    begin_for(project_id, label, &BeginTicket::default())
 }
 
+/// [`begin`] for a caller that may stop waiting; see [`BeginTicket`].
+pub(crate) fn begin_for(project_id: &str, label: &str, ticket: &BeginTicket) -> TurnBegin {
+    turn_begin(take_before(
+        project_id,
+        label,
+        &Limits::DEFAULT,
+        now_ms(),
+        ticket,
+    ))
+}
+
+#[cfg(test)]
 pub(crate) fn begin_with(project_id: &str, label: &str, limits: &Limits, now_ms: u64) -> TurnBegin {
-    match take_before(project_id, label, limits, now_ms) {
+    turn_begin(take_before(
+        project_id,
+        label,
+        limits,
+        now_ms,
+        &BeginTicket::default(),
+    ))
+}
+
+fn turn_begin(taken: Result<String, TurnUnavailable>) -> TurnBegin {
+    match taken {
         Ok(snapshot_id) => TurnBegin {
             snapshot_id: Some(snapshot_id),
             unavailable: None,
@@ -412,6 +500,7 @@ fn take_before(
     label: &str,
     limits: &Limits,
     now_ms: u64,
+    ticket: &BeginTicket,
 ) -> Result<String, TurnUnavailable> {
     let deadline = Instant::now() + limits.budget;
     let location = crate::project_location::locate(project_id).map_err(|error| {
@@ -431,9 +520,10 @@ fn take_before(
         &open_snapshot_ids(project_id),
     );
     let started_ns = now_ns();
-    let managed =
-        |name: &str| crate::project_manifest::location_root_file_is_managed(&location, name);
-    let tree = walk::walk(&location.root, &managed, limits.max_files, deadline)?;
+    let manifest_managed = manifest_is_managed(&location);
+    let managed = |name: &str| manifest_managed && is_manifest_name(name);
+    let walk::Walked { tree, folders } =
+        walk::walk(&location.root, &managed, limits.max_files, deadline)?;
     let has_file = |path: &str| matches!(tree.get(path), Some(Entry::File(_)));
 
     let mut before = BTreeMap::new();
@@ -572,6 +662,8 @@ fn take_before(
         created_ms: now_ms,
         started_ns,
         before,
+        folders,
+        manifest_managed: Some(manifest_managed),
         finish: None,
     };
     store.save_snapshot(&snapshot).map_err(|error| {
@@ -580,7 +672,11 @@ fn take_before(
     })?;
     // Registered while the worktree is still read-locked, so no save can land
     // between the copy and the registration unnoticed.
-    open_turn(project_id, &snapshot.id);
+    if !ticket.open(project_id, &snapshot.id) {
+        // Nobody waits for this copy any more; the turn runs without Undo.
+        store.remove_snapshot(&snapshot.id);
+        return Err(TurnUnavailable::Timeout);
+    }
     Ok(snapshot.id)
 }
 
@@ -663,6 +759,7 @@ fn compare_turn(
         Ok(done) => done,
         Err(code) => {
             snapshot.before.clear();
+            snapshot.folders.clear();
             snapshot.finish = Some(FinishRecord {
                 unavailable: Some(code),
                 ..FinishRecord::default()
@@ -676,6 +773,7 @@ fn compare_turn(
     }
     let changes = payload(snapshot_id, &record);
     snapshot.before.clear();
+    snapshot.folders.clear();
     snapshot.finish = Some(record);
     store.save_snapshot(&snapshot).map_err(|error| {
         log(format!("Could not save a turn for Undo: {error}"));
@@ -707,13 +805,29 @@ impl Comparison<'_> {
         also_edited: &BTreeSet<String>,
         overlapped: bool,
     ) -> Result<(FinishRecord, Index), TurnUnavailable> {
-        let managed =
-            |name: &str| crate::project_manifest::location_root_file_is_managed(location, name);
-        let tree = walk::walk(self.root, &managed, self.limits.max_files, self.deadline)?;
         let before = &self.snapshot.before;
+        let manifest_left_out = match self.snapshot.manifest_managed {
+            // Left out of the copy, so it stays out even when the turn broke
+            // it: listing it as added would let Undo delete it.
+            Some(true) => true,
+            // Kept in the copy and compared like any file. One that only
+            // appeared during the turn as Oleafly's own manifest (saving the
+            // settings to the folder writes it) is Oleafly's, as above.
+            Some(false) => {
+                !before.keys().any(|path| is_manifest_name(path)) && manifest_is_managed(location)
+            }
+            None => manifest_is_managed(location),
+        };
+        let managed = |name: &str| manifest_left_out && is_manifest_name(name);
+        let tree = walk::walk(self.root, &managed, self.limits.max_files, self.deadline)?.tree;
         let unreadable_before: BTreeSet<&str> = before
             .iter()
             .filter(|(_, entry)| entry.skip == Some(TurnSkipReason::Unreadable))
+            .map(|(path, _)| path.as_str())
+            .collect();
+        let unreadable_after: BTreeSet<&str> = tree
+            .iter()
+            .filter(|(_, entry)| matches!(entry, Entry::Unreadable))
             .map(|(path, _)| path.as_str())
             .collect();
         let has_file = |path: &str| {
@@ -739,6 +853,15 @@ impl Comparison<'_> {
             }
             let old = before.get(path.as_str());
             let new = tree.get(path.as_str());
+            // A file inside a folder that could not be read after the turn
+            // may well still be there.
+            if old.is_some()
+                && new.is_none()
+                && ancestors(path).any(|folder| unreadable_after.contains(folder))
+            {
+                skip(path, TurnSkipReason::Unreadable);
+                continue;
+            }
             let build = match old {
                 Some(entry) => entry.build,
                 None => {
@@ -889,7 +1012,9 @@ impl Comparison<'_> {
         for (position, change) in changes.iter_mut().enumerate() {
             change.index = u32::try_from(position).unwrap_or(u32::MAX);
         }
-        let before_dirs: BTreeSet<&str> = before.keys().flat_map(|path| ancestors(path)).collect();
+        let before_dirs: BTreeSet<&str> = (self.snapshot.folders.iter().map(String::as_str))
+            .chain(before.keys().flat_map(|path| ancestors(path)))
+            .collect();
         let created_dirs = changes
             .iter()
             .filter(|change| change.change == TurnChangeKind::Added && !change.build)
@@ -1087,28 +1212,71 @@ fn payload(snapshot_id: &str, record: &FinishRecord) -> TurnChanges {
 #[derive(Debug, PartialEq, Eq)]
 enum Disk {
     Absent,
-    File { size: u64, mtime: Option<i64> },
+    File {
+        size: u64,
+        mtime: Option<i64>,
+    },
+    /// No entry of this exact name, but a case-insensitive disk resolved it
+    /// to one whose name differs only in letter case (after a case-only
+    /// rename, the only copy of the file). Counts as no file of this name,
+    /// and is never written over or removed under it.
+    OtherName,
     Other,
 }
 
-fn disk_at(target: &Path) -> Disk {
-    match std::fs::symlink_metadata(target) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Disk::Absent,
-        Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => Disk::File {
+fn disk_at(target: &Path, relative: &str) -> Disk {
+    let metadata = match std::fs::symlink_metadata(target) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Disk::Absent,
+        Err(_) => return Disk::Other,
+    };
+    if metadata.file_type().is_symlink() {
+        Disk::Other
+    } else if spelled_in_other_case(target, relative) {
+        Disk::OtherName
+    } else if metadata.is_file() {
+        Disk::File {
             size: metadata.len(),
             mtime: walk::mtime_ns(&metadata),
-        },
-        _ => Disk::Other,
+        }
+    } else {
+        Disk::Other
     }
 }
 
-/// Whether the disk holds `side` at `target` (`None` = no file).
-fn disk_holds(target: &Path, relative: &str, side: Option<&Side>, index: &Index) -> bool {
-    let disk = disk_at(target);
-    let Some(side) = side else {
-        return disk == Disk::Absent;
+/// Whether a case-insensitive disk found `target` under a name that differs
+/// from `relative` only in letter case (compared by its trailing path parts).
+fn spelled_in_other_case(target: &Path, relative: &str) -> bool {
+    let Ok(real) = std::fs::canonicalize(target) else {
+        return false;
     };
-    let Disk::File { size, mtime } = disk else {
+    let found: Vec<_> = real.components().collect();
+    let wanted: Vec<&str> = relative.split('/').collect();
+    let Some(first) = found.len().checked_sub(wanted.len()) else {
+        return false;
+    };
+    let mut other_case = false;
+    for (found, wanted) in found[first..].iter().zip(&wanted) {
+        let Some(found) = found.as_os_str().to_str() else {
+            return false;
+        };
+        if found == *wanted {
+            continue;
+        }
+        if found.to_lowercase() != wanted.to_lowercase() {
+            return false;
+        }
+        other_case = true;
+    }
+    other_case
+}
+
+/// Whether `disk` holds `side` at `target` (`None` = no file of that name).
+fn holds(disk: &Disk, target: &Path, relative: &str, side: Option<&Side>, index: &Index) -> bool {
+    let Some(side) = side else {
+        return matches!(disk, Disk::Absent | Disk::OtherName);
+    };
+    let Disk::File { size, mtime } = *disk else {
         return false;
     };
     if size != side.size {
@@ -1130,9 +1298,10 @@ fn file_state(root: &Path, change: &StoredChange, index: &Index) -> TurnFileStat
     let Ok(target) = crate::sandbox::resolve_within(root, &change.path) else {
         return TurnFileState::Edited;
     };
-    if disk_holds(&target, &change.path, change.after.as_ref(), index) {
+    let disk = disk_at(&target, &change.path);
+    if holds(&disk, &target, &change.path, change.after.as_ref(), index) {
         TurnFileState::Applied
-    } else if !change.build && disk_holds(&target, &change.path, change.before.as_ref(), index) {
+    } else if !change.build && holds(&disk, &target, &change.path, change.before.as_ref(), index) {
         TurnFileState::Undone
     } else {
         TurnFileState::Edited
@@ -1422,11 +1591,14 @@ fn apply_changes(
             applied.skipped.push(skip(TurnRevertSkipReason::Edited));
             continue;
         };
-        if disk_holds(&target, &change.path, to, &index) {
+        let disk = disk_at(&target, &change.path);
+        if holds(&disk, &target, &change.path, to, &index) {
             applied.reverted.push(change.index);
             continue;
         }
-        if !disk_holds(&target, &change.path, from, &index) {
+        // A name spelled in another case is a different file of the turn
+        // (a case-only rename): writing here would overwrite it.
+        if disk == Disk::OtherName || !holds(&disk, &target, &change.path, from, &index) {
             applied.skipped.push(skip(TurnRevertSkipReason::Edited));
             continue;
         }

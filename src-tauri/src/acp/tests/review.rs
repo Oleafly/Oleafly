@@ -45,7 +45,7 @@ fn hooks(
 ) -> ReviewHooks {
     let (on_begin, on_finish, on_head) = (calls.clone(), calls.clone(), calls.clone());
     ReviewHooks {
-        turn_begin: Arc::new(move |project, label| {
+        turn_begin: Arc::new(move |project, label, _ticket| {
             std::thread::sleep(begin_delay);
             on_begin
                 .begins
@@ -370,6 +370,129 @@ async fn cancelling_while_the_copy_is_taken_never_sends_the_prompt() {
     let snapshot = harness.runtime.snapshot(&harness.id()).await.unwrap();
     assert_eq!(snapshot.session.status, SessionStatus::Ready);
     harness.runtime.close(&harness.id()).await.unwrap();
+}
+
+/// A begin hook that waits for the test before taking a real copy, and
+/// reports what the copy returned once it is done.
+struct LateCopy {
+    review: ReviewHooks,
+    release: std::sync::mpsc::Sender<()>,
+    done: std::sync::mpsc::Receiver<TurnBegin>,
+}
+
+fn late_copy() -> LateCopy {
+    let (release, gate) = std::sync::mpsc::channel::<()>();
+    let (report, done) = std::sync::mpsc::channel::<TurnBegin>();
+    let gate = Mutex::new(gate);
+    let review = ReviewHooks {
+        turn_begin: Arc::new(move |project, label, ticket| {
+            gate.lock().unwrap().recv().unwrap();
+            let begin = crate::agent_turns::begin_for(project, label, ticket);
+            report.send(begin.clone()).unwrap();
+            begin
+        }),
+        ..ReviewHooks::inert()
+    };
+    LateCopy {
+        review,
+        release,
+        done,
+    }
+}
+
+impl LateCopy {
+    /// Lets the copy run to the end and returns what it produced.
+    fn finish_late(&self) -> TurnBegin {
+        self.release.send(()).unwrap();
+        self.done.recv_timeout(Duration::from_secs(60)).unwrap()
+    }
+}
+
+fn next_turn_overlapped(project: &str, root: &std::path::Path, content: &str) -> bool {
+    let next = crate::agent_turns::begin(project, "Next agent");
+    std::fs::write(root.join("main.tex"), content).unwrap();
+    let changes = crate::agent_turns::finish(project, next.snapshot_id.as_deref().unwrap(), None);
+    assert_eq!(changes.files.len(), 1);
+    changes.overlapped
+}
+
+/// A private data folder for tests that take real before-turn copies.
+struct DataDir {
+    _data: tempfile::TempDir,
+    _env: std::sync::MutexGuard<'static, ()>,
+}
+
+impl DataDir {
+    fn new() -> Self {
+        let env = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        Self {
+            _data: data,
+            _env: env,
+        }
+    }
+}
+
+impl Drop for DataDir {
+    fn drop(&mut self) {
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+}
+
+#[tokio::test]
+async fn a_copy_that_outlives_the_deadline_never_marks_later_turns_overlapped() {
+    let _data = DataDir::new();
+    let project = "review-late-copy";
+    let root = crate::paths::create_project_dir(project).unwrap();
+    std::fs::write(root.join("main.tex"), "one").unwrap();
+
+    // The runtime stops waiting at the deadline.
+    let copy = late_copy();
+    let began = review::begin_turn_within(
+        &copy.review,
+        project,
+        "Slow agent",
+        Duration::from_millis(50),
+    )
+    .await;
+    assert_eq!(began.unavailable, Some(TurnUnavailable::Timeout));
+    let late = copy.finish_late();
+    assert_eq!(late.snapshot_id, None, "a copy nobody waits for is dropped");
+    assert_eq!(late.unavailable, Some(TurnUnavailable::Timeout));
+    let overlapped = next_turn_overlapped(project, &root, "two");
+
+    // The turn future is dropped while it waits.
+    let copy = late_copy();
+    let dropped = tokio::time::timeout(
+        Duration::from_millis(50),
+        review::begin_turn_within(
+            &copy.review,
+            project,
+            "Slow agent",
+            Duration::from_secs(600),
+        ),
+    )
+    .await;
+    assert!(dropped.is_err());
+    assert_eq!(copy.finish_late().snapshot_id, None);
+    let overlapped_after_drop = next_turn_overlapped(project, &root, "three");
+
+    // A copy that finishes in time is still registered as an open turn.
+    let copy = late_copy();
+    copy.release.send(()).unwrap();
+    let began =
+        review::begin_turn_within(&copy.review, project, "Agent", Duration::from_secs(60)).await;
+    let snapshot = began.snapshot_id.unwrap();
+    let other = crate::agent_turns::begin(project, "Other agent");
+    let first = crate::agent_turns::finish(project, &snapshot, None);
+    crate::agent_turns::finish(project, other.snapshot_id.as_deref().unwrap(), None);
+    assert!(!overlapped, "the late copy left its turn open");
+    assert!(
+        !overlapped_after_drop,
+        "the dropped copy left its turn open"
+    );
+    assert!(first.overlapped, "a live turn still sees another turn");
 }
 
 // ---- transcript and frame safety ------------------------------------------

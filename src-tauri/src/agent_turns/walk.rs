@@ -1,8 +1,9 @@
 //! Lists a project's files for a turn: every regular file with its size,
 //! modification time and cloud-placeholder state, plus symbolic links and
-//! folders or files that could not be read. Nothing here reads content.
+//! folders or files that could not be read, and every folder visited.
+//! Nothing here reads content.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::time::{Instant, UNIX_EPOCH};
 
@@ -29,32 +30,49 @@ pub(super) enum Entry {
 pub(super) enum WalkStop {
     TooManyFiles,
     Timeout,
+    /// The project folder itself could not be listed in full.
+    RootUnreadable,
 }
 
 /// Project-relative, `/`-separated paths.
 pub(super) type Tree = BTreeMap<String, Entry>;
 
+pub(super) struct Walked {
+    pub(super) tree: Tree,
+    /// Every folder visited, readable or not.
+    pub(super) folders: BTreeSet<String>,
+}
+
 /// Walks `root`. `managed_root_file` names root-level files Oleafly manages
 /// itself (the library manifest), which are left out.
+///
+/// A folder whose listing fails, even part way, is recorded as unreadable so
+/// nothing under it is taken as added or deleted; for the project folder
+/// itself the walk stops.
 pub(super) fn walk(
     root: &Path,
     managed_root_file: &dyn Fn(&str) -> bool,
     max_files: usize,
     deadline: Instant,
-) -> Result<Tree, WalkStop> {
+) -> Result<Walked, WalkStop> {
     let mut walker = Walker {
         tree: Tree::new(),
+        folders: BTreeSet::new(),
         files: 0,
         max_files,
         deadline,
         managed_root_file,
     };
     walker.visit(root, "", 0)?;
-    Ok(walker.tree)
+    Ok(Walked {
+        tree: walker.tree,
+        folders: walker.folders,
+    })
 }
 
 struct Walker<'a> {
     tree: Tree,
+    folders: BTreeSet<String>,
     files: usize,
     max_files: usize,
     deadline: Instant,
@@ -66,17 +84,19 @@ impl Walker<'_> {
         if Instant::now() >= self.deadline {
             return Err(WalkStop::Timeout);
         }
-        let entries = match std::fs::read_dir(directory) {
-            Ok(entries) => entries,
-            Err(_) => {
-                if !prefix.is_empty() {
-                    self.tree.insert(prefix.to_owned(), Entry::Unreadable);
-                }
-                return Ok(());
-            }
+        if !prefix.is_empty() {
+            self.folders.insert(prefix.to_owned());
+        }
+        let Ok(entries) = std::fs::read_dir(directory) else {
+            return self.unreadable(prefix);
         };
         for entry in entries {
-            let Ok(entry) = entry else { continue };
+            let entry = entry.and_then(|entry| test_listing_error(prefix).map_or(Ok(entry), Err));
+            let Ok(entry) = entry else {
+                // Nothing after the error can be trusted to be listed, so
+                // the whole folder counts as unreadable.
+                return self.unreadable(prefix);
+            };
             let file_name = entry.file_name();
             let Some(name) = file_name.to_str() else {
                 // A name that is not valid Unicode cannot be addressed by a
@@ -115,6 +135,14 @@ impl Walker<'_> {
                 self.tree.insert(relative, entry);
             }
         }
+        Ok(())
+    }
+
+    fn unreadable(&mut self, prefix: &str) -> Result<(), WalkStop> {
+        if prefix.is_empty() {
+            return Err(WalkStop::RootUnreadable);
+        }
+        self.tree.insert(prefix.to_owned(), Entry::Unreadable);
         Ok(())
     }
 }
@@ -185,4 +213,32 @@ fn test_placeholder(name: &str) -> bool {
 #[cfg(not(test))]
 fn test_placeholder(_name: &str) -> bool {
     false
+}
+
+#[cfg(test)]
+static TEST_LISTING_ERRORS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+/// Tests cannot make a folder listing fail part way; they name folders (`""`
+/// is the project folder) whose listing fails at its first entry.
+#[cfg(test)]
+pub(super) fn set_test_listing_errors(folders: &[&str]) {
+    *TEST_LISTING_ERRORS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+        folders.iter().map(|folder| (*folder).to_owned()).collect();
+}
+
+#[cfg(test)]
+fn test_listing_error(prefix: &str) -> Option<std::io::Error> {
+    TEST_LISTING_ERRORS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .iter()
+        .any(|folder| folder == prefix)
+        .then(|| std::io::Error::other("test listing error"))
+}
+
+#[cfg(not(test))]
+fn test_listing_error(_prefix: &str) -> Option<std::io::Error> {
+    None
 }

@@ -136,6 +136,15 @@ pub(super) struct Snapshot {
     /// Emptied once the turn is finished; `finish` keeps what Undo needs.
     #[serde(default)]
     pub(super) before: BTreeMap<String, BeforeEntry>,
+    /// Every folder the walk found when the turn began, so Undo never
+    /// removes one that was already there. Emptied with `before`.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub(super) folders: BTreeSet<String>,
+    /// Whether the root `project.json` was Oleafly's own manifest when the
+    /// turn began, and so left out of the turn. Decided once: a turn that
+    /// breaks the manifest must not turn it into a file the turn added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) manifest_managed: Option<bool>,
     #[serde(default)]
     pub(super) finish: Option<FinishRecord>,
 }
@@ -422,6 +431,10 @@ impl Store {
             .filter(|snapshot| snapshot.id == id)
     }
 
+    pub(super) fn remove_snapshot(&self, id: &str) {
+        let _ = std::fs::remove_file(self.snapshot_path(id));
+    }
+
     pub(super) fn save_snapshot(&self, snapshot: &Snapshot) -> Result<(), String> {
         let bytes = serde_json::to_vec(snapshot)
             .map_err(|error| format!("could not encode a turn: {error}"))?;
@@ -443,7 +456,9 @@ impl Store {
 
     /// Keeps the newest `keep_newest` snapshots, every snapshot younger than
     /// `keep_age_ms` and every id in `protect`; deletes the rest and every
-    /// blob no remaining snapshot or index entry uses. Returns the bytes the
+    /// blob no remaining snapshot or index entry uses. A kept snapshot that
+    /// cannot be read now is never deleted, and while one exists no blob is
+    /// swept, since its content could be any of them. Returns the bytes the
     /// remaining blobs take.
     pub(super) fn retain(
         &self,
@@ -471,15 +486,18 @@ impl Store {
         }
         snapshots.sort_by(|left, right| right.cmp(left));
         let mut referenced = HashSet::new();
+        let mut references_known = true;
         for (rank, (created, id)) in snapshots.iter().enumerate() {
             let keep = rank < keep_newest
                 || now_ms.saturating_sub(*created) < keep_age_ms
                 || protect.contains(id);
-            match self.load_snapshot(id).filter(|_| keep) {
+            if !keep {
+                self.remove_snapshot(id);
+                continue;
+            }
+            match self.load_snapshot(id) {
                 Some(snapshot) => snapshot.referenced(&mut referenced),
-                None => {
-                    let _ = std::fs::remove_file(self.snapshot_path(id));
-                }
+                None => references_known = false,
             }
         }
         referenced.extend(
@@ -499,9 +517,10 @@ impl Store {
             let mut empty = true;
             for blob in blobs.flatten() {
                 let name = blob.file_name();
-                let keep = name
-                    .to_str()
-                    .is_some_and(|name| is_sha256(name) && referenced.contains(name));
+                let keep = !references_known
+                    || name
+                        .to_str()
+                        .is_some_and(|name| is_sha256(name) && referenced.contains(name));
                 if keep {
                     empty = false;
                     total += blob.metadata().map(|metadata| metadata.len()).unwrap_or(0);

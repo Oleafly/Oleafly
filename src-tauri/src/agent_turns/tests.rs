@@ -23,6 +23,7 @@ impl Project {
         // document to reconcile the project's settings.
         std::fs::write(root.join("main.tex"), "\\documentclass{article}").unwrap();
         walk::set_test_placeholders(&[]);
+        walk::set_test_listing_errors(&[]);
         Self {
             id: id.to_owned(),
             root,
@@ -42,6 +43,7 @@ impl Project {
         std::fs::create_dir(&folder).unwrap();
         let record = crate::linked_registry::register_folder_for_test(&folder);
         walk::set_test_placeholders(&[]);
+        walk::set_test_listing_errors(&[]);
         Self {
             id: record.id,
             root: folder.canonicalize().unwrap(),
@@ -115,6 +117,7 @@ impl Project {
 impl Drop for Project {
     fn drop(&mut self) {
         walk::set_test_placeholders(&[]);
+        walk::set_test_listing_errors(&[]);
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }
@@ -920,4 +923,270 @@ fn relative_paths_are_normalized_like_the_walk() {
     assert!(valid_snapshot_id("0001234567890-0a1b2c3d"));
     assert!(!valid_snapshot_id("../x"));
     assert!(!valid_snapshot_id(""));
+}
+
+fn skipped_paths(changes: &TurnChanges) -> Vec<(&str, TurnSkipReason)> {
+    let mut skipped: Vec<(&str, TurnSkipReason)> = changes
+        .skipped
+        .iter()
+        .map(|skipped| (skipped.path.as_str(), skipped.reason))
+        .collect();
+    skipped.sort_by(|left, right| left.0.cmp(right.0));
+    skipped
+}
+
+#[tokio::test]
+async fn a_linked_manifest_keeps_the_role_it_had_when_the_turn_began() {
+    let project = Project::linked();
+    project.write("main.tex", "\\documentclass{article}");
+    let manifest = r#"{"main_doc":"main.tex"}"#;
+    project.write("project.json", manifest);
+    let snapshot = project.begin();
+    // The turn breaks the Oleafly manifest, so it no longer reads as one.
+    let broken = r#"{"main_doc":"main.tex","engine":"pdflatex"}"#;
+    project.write("project.json", broken);
+    project.write("main.tex", "\\documentclass{report}");
+    let changes = project.finish(&snapshot);
+    assert_eq!(listed(&changes), [("main.tex", Modified)]);
+    let app = app();
+    let undone = apply(&app, &project, &snapshot, None, Direction::Undo).await;
+    assert_eq!(undone.reverted, [0]);
+    assert_eq!(
+        project.read("project.json"),
+        broken,
+        "never deleted by Undo"
+    );
+
+    // A foreign project.json the turn turns into a manifest is compared like
+    // any other file, not listed as deleted.
+    let snapshot = project.begin();
+    project.write("project.json", manifest);
+    let changes = project.finish(&snapshot);
+    assert_eq!(listed(&changes), [("project.json", Modified)]);
+    let undone = apply(&app, &project, &snapshot, None, Direction::Undo).await;
+    assert_eq!(undone.reverted, [0]);
+    assert_eq!(project.read("project.json"), broken);
+
+    // A manifest that only appears during the turn is Oleafly's own (saving
+    // the settings to the folder writes one), so Undo leaves it alone.
+    project.remove("project.json");
+    let snapshot = project.begin();
+    project.write("project.json", manifest);
+    let changes = project.finish(&snapshot);
+    assert!(changes.files.is_empty(), "{:?}", changes.files);
+}
+
+#[tokio::test]
+async fn a_folder_that_was_empty_before_the_turn_survives_undo() {
+    let project = Project::new("turns-empty-folder");
+    std::fs::create_dir(project.root.join("figures")).unwrap();
+    let snapshot = project.begin();
+    project.write("figures/plot.png", [0x89, b'P', b'N', b'G']);
+    project.write("new/deep/file.tex", "new");
+    let changes = project.finish(&snapshot);
+    assert_eq!(
+        listed(&changes),
+        [("figures/plot.png", Added), ("new/deep/file.tex", Added)]
+    );
+    let undone = apply(&app(), &project, &snapshot, None, Direction::Undo).await;
+    assert_eq!(undone.reverted, [0, 1]);
+    assert!(!project.exists("figures/plot.png"));
+    assert!(
+        project.root.join("figures").is_dir(),
+        "the folder made before the turn is kept"
+    );
+    assert!(!project.exists("new"), "the folders the turn made are gone");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn files_in_a_folder_unreadable_at_finish_are_never_listed_as_deleted() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let project = Project::new("turns-unreadable-after");
+    project.write("main.tex", "before");
+    project.write("chapters/a.tex", "chapter a");
+    let snapshot = project.begin();
+    project.write("main.tex", "after");
+    let chapters = project.root.join("chapters");
+    std::fs::set_permissions(&chapters, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let blocked = std::fs::read_dir(&chapters).is_err();
+    let changes = finish(&project.id, &snapshot, None);
+    std::fs::set_permissions(&chapters, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if !blocked {
+        // Running with permissions that read every folder.
+        return;
+    }
+    assert_eq!(changes.unavailable, None);
+    assert_eq!(listed(&changes), [("main.tex", Modified)]);
+    assert_eq!(
+        skipped_paths(&changes),
+        [
+            ("chapters", TurnSkipReason::Unreadable),
+            ("chapters/a.tex", TurnSkipReason::Unreadable)
+        ]
+    );
+    let app = app();
+    apply(&app, &project, &snapshot, None, Direction::Undo).await;
+    apply(&app, &project, &snapshot, None, Direction::Redo).await;
+    assert_eq!(project.read("main.tex"), "after");
+    assert_eq!(project.read("chapters/a.tex"), "chapter a");
+}
+
+#[tokio::test]
+async fn a_folder_listing_that_fails_part_way_is_never_undone_as_added_or_deleted() {
+    let project = Project::new("turns-listing-error");
+    project.write("sections/a.tex", "mine");
+    walk::set_test_listing_errors(&["sections"]);
+    let snapshot = project.begin();
+    walk::set_test_listing_errors(&[]);
+    project.write("main.tex", "changed");
+    let changes = project.finish(&snapshot);
+    assert_eq!(listed(&changes), [("main.tex", Modified)]);
+    assert!(
+        skipped_paths(&changes).contains(&("sections/a.tex", TurnSkipReason::Unreadable)),
+        "{:?}",
+        changes.skipped
+    );
+    let app = app();
+    apply(&app, &project, &snapshot, None, Direction::Undo).await;
+    assert_eq!(project.read("sections/a.tex"), "mine");
+
+    // The same at finish: the file is not listed as deleted.
+    let snapshot = project.begin();
+    project.write("main.tex", "changed again");
+    walk::set_test_listing_errors(&["sections"]);
+    let changes = project.finish(&snapshot);
+    walk::set_test_listing_errors(&[]);
+    assert_eq!(listed(&changes), [("main.tex", Modified)]);
+    apply(&app, &project, &snapshot, None, Direction::Undo).await;
+    apply(&app, &project, &snapshot, None, Direction::Redo).await;
+    assert_eq!(project.read("sections/a.tex"), "mine");
+
+    // When the project folder itself cannot be listed, Undo is unavailable.
+    walk::set_test_listing_errors(&[""]);
+    let began = begin_with(&project.id, "Test agent", &Limits::DEFAULT, now_ms());
+    assert_eq!(began.unavailable, Some(TurnUnavailable::Error));
+    walk::set_test_listing_errors(&[]);
+    let snapshot = project.begin();
+    walk::set_test_listing_errors(&[""]);
+    let late = finish(&project.id, &snapshot, None);
+    walk::set_test_listing_errors(&[]);
+    assert_eq!(late.unavailable, Some(TurnUnavailable::Error));
+}
+
+#[tokio::test]
+async fn single_rows_of_a_case_only_rename_never_touch_the_other_name() {
+    let project = Project::new("turns-case-rows");
+    project.write("Intro.tex", "intro text");
+    let snapshot = project.begin();
+    std::fs::rename(
+        project.root.join("Intro.tex"),
+        project.root.join("intro.tex"),
+    )
+    .unwrap();
+    let insensitive = project.exists("INTRO.TEX");
+    let changes = project.finish(&snapshot);
+    assert_eq!(
+        listed(&changes),
+        [("Intro.tex", Deleted), ("intro.tex", Added)]
+    );
+    assert_eq!(
+        states(&status(&project.id, &snapshot).unwrap()),
+        [TurnFileState::Applied, TurnFileState::Applied]
+    );
+    let app = app();
+    // Redo of the deleted old name must not delete the file under its new
+    // name.
+    apply(&app, &project, &snapshot, Some(vec![0]), Direction::Redo).await;
+    assert_eq!(project.names("intro.tex"), ["intro.tex"]);
+    assert_eq!(project.read("intro.tex"), "intro text");
+    if insensitive {
+        // Bringing the old name back alone would overwrite the new one.
+        let undone = apply(&app, &project, &snapshot, Some(vec![0]), Direction::Undo).await;
+        assert!(undone.reverted.is_empty());
+        assert_eq!(
+            undone.skipped,
+            [TurnRevertSkipped {
+                index: 0,
+                reason: TurnRevertSkipReason::Edited
+            }]
+        );
+        assert_eq!(project.names("intro.tex"), ["intro.tex"]);
+    }
+    // The card's Undo all with explicit rows.
+    let undone = apply(&app, &project, &snapshot, Some(vec![0, 1]), Direction::Undo).await;
+    assert_eq!(undone.reverted, [0, 1]);
+    assert_eq!(project.names("intro.tex"), ["Intro.tex"]);
+    assert_eq!(
+        states(&status(&project.id, &snapshot).unwrap()),
+        [TurnFileState::Undone, TurnFileState::Undone]
+    );
+    // Undo of the added new name must not delete the file under its old name.
+    apply(&app, &project, &snapshot, Some(vec![1]), Direction::Undo).await;
+    assert_eq!(project.names("intro.tex"), ["Intro.tex"]);
+    if insensitive {
+        let redone = apply(&app, &project, &snapshot, Some(vec![1]), Direction::Redo).await;
+        assert!(redone.reverted.is_empty());
+        assert_eq!(project.names("intro.tex"), ["Intro.tex"]);
+    }
+    let redone = apply(&app, &project, &snapshot, Some(vec![0, 1]), Direction::Redo).await;
+    assert_eq!(redone.reverted, [0, 1]);
+    assert_eq!(project.names("intro.tex"), ["intro.tex"]);
+    assert_eq!(project.read("intro.tex"), "intro text");
+}
+
+#[tokio::test]
+async fn retention_keeps_a_turn_it_cannot_read_for_a_moment() {
+    let project = Project::new("turns-retention-unreadable");
+    project.write("main.tex", "v1");
+    let snapshot = project.begin();
+    project.write("main.tex", "v2");
+    project.finish(&snapshot);
+    let file = project
+        .store()
+        .join("snapshots")
+        .join(format!("{snapshot}.json"));
+    let saved = std::fs::read(&file).unwrap();
+    std::fs::write(&file, b"{ not yet readable").unwrap();
+    project.begin();
+    assert!(file.exists(), "a turn retention keeps is never deleted");
+    std::fs::write(&file, &saved).unwrap();
+    assert!(!status(&project.id, &snapshot).unwrap().expired);
+    let undone = apply(&app(), &project, &snapshot, None, Direction::Undo).await;
+    assert_eq!(undone.reverted, [0]);
+    assert_eq!(project.read("main.tex"), "v1");
+}
+
+#[test]
+fn an_abandoned_copy_never_keeps_its_turn_open() {
+    let project = Project::new("turns-abandoned-begin");
+    project.write("main.tex", "one");
+    let snapshots = || {
+        std::fs::read_dir(project.store().join("snapshots"))
+            .map(|entries| entries.count())
+            .unwrap_or(0)
+    };
+
+    // Given up before the copy was registered: it never is, and its copy is
+    // not kept.
+    let ticket = BeginTicket::default();
+    ticket.abandon();
+    let late = begin_for(&project.id, "Test agent", &ticket);
+    assert_eq!(late.snapshot_id, None);
+    assert_eq!(late.unavailable, Some(TurnUnavailable::Timeout));
+    assert!(open_turns().get(&project.id).is_none());
+    assert_eq!(snapshots(), 0);
+
+    // Given up after it was registered: the turn is closed again.
+    let ticket = BeginTicket::default();
+    assert!(begin_for(&project.id, "Test agent", &ticket)
+        .snapshot_id
+        .is_some());
+    assert!(open_turns().get(&project.id).is_some());
+    ticket.abandon();
+    assert!(open_turns().get(&project.id).is_none());
+
+    let next = project.begin();
+    project.write("main.tex", "two");
+    assert!(!project.finish(&next).overlapped);
 }
