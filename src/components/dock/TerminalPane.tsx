@@ -78,6 +78,8 @@ export interface TerminalPaneProps {
   visible?: boolean;
   active?: boolean;
   autoStart?: boolean;
+  /** Typed into the shell once, as soon as the first session starts. */
+  initialInput?: string;
   onExit?: () => void;
   onStarted?: () => void;
 }
@@ -108,6 +110,7 @@ export function TerminalPane({
   visible = true,
   active = true,
   autoStart = false,
+  initialInput,
   onExit,
   onStarted,
 }: Readonly<TerminalPaneProps>) {
@@ -131,6 +134,8 @@ export function TerminalPane({
   onExitRef.current = onExit;
   const onStartedRef = useRef(onStarted);
   onStartedRef.current = onStarted;
+  const initialInputRef = useRef(initialInput);
+  const initialInputSentRef = useRef(false);
   const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
   const [backgroundRefusedFor, setBackgroundRefusedFor] = useState<string | null>(null);
   const backgroundStartRefused = backgroundRefusedFor === projectId;
@@ -322,7 +327,12 @@ export function TerminalPane({
           },
         );
         resizerRef.current = resizer;
+        // Terminal replies queued during start-up (ConPTY's DA1 answer) go first.
         for (const data of pendingInput.splice(0)) writeInput(id, data);
+        if (initialInputRef.current && !initialInputSentRef.current) {
+          initialInputSentRef.current = true;
+          writeInput(id, initialInputRef.current);
+        }
         setBooted(true);
         onStartedRef.current?.();
         if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {

@@ -12,11 +12,13 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import type { AddCustomProviderDialogProps } from "./ai/AddCustomProviderDialog";
 import type { ProvidersTabProps } from "./ai/ProvidersTab";
+import type { AcpAgentsTabProps } from "./ai/AcpAgentsTab";
 import { AISection } from "./AISection";
 
 const captured = vi.hoisted(() => ({
   providersTab: null as ProvidersTabProps | null,
   dialog: null as AddCustomProviderDialogProps | null,
+  agentsTab: [] as AcpAgentsTabProps[],
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -46,6 +48,12 @@ vi.mock("./ai/PersonasTab", () => ({
 }));
 vi.mock("./ai/SkillsTab", () => ({
   SkillsTab: () => <div>{"Skill settings"}</div>,
+}));
+vi.mock("./ai/AcpAgentsTab", () => ({
+  AcpAgentsTab: (props: AcpAgentsTabProps) => {
+    captured.agentsTab.push(props);
+    return <div>{"Agent settings"}</div>;
+  },
 }));
 vi.mock("./ai/AddCustomProviderDialog", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ai/AddCustomProviderDialog")>()),
@@ -184,6 +192,7 @@ function resetHarness() {
   listedModels = [];
   captured.providersTab = null;
   captured.dialog = null;
+  captured.agentsTab = [];
   mockInvoke.mockReset().mockImplementation(async (command, args) => {
     if (command === "get_config") {
       return configFixture;
@@ -345,6 +354,28 @@ describe("AISection", () => {
       await screen.findByRole("heading", { name: enSettings.mcp.servers.title }),
     ).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
+  });
+
+  it("opens the Agents tab on the agent a per-agent link names, and again for a repeat link", async () => {
+    useFilesStore.setState({ projectId: "paper" });
+    useSettingsStore.setState({ settingsScrollTarget: "ai-agents:pi" });
+    renderSection();
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: enSettings.ai.section.tabs.agents })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+    await screen.findByText("Agent settings");
+    const first = captured.agentsTab.at(-1);
+    expect(first).toMatchObject({ projectId: "paper", focusAgentId: "pi" });
+    expect(first?.focusToken).toBeGreaterThan(0);
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
+
+    act(() => useSettingsStore.setState({ settingsScrollTarget: "ai-agents:pi" }));
+    await waitFor(() => expect(captured.agentsTab.at(-1)?.focusToken).toBeGreaterThan(first?.focusToken ?? 0));
+    expect(captured.agentsTab.at(-1)?.focusAgentId).toBe("pi");
   });
 
   it("resets only AI Assistant preferences after confirmation", async () => {

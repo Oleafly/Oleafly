@@ -390,6 +390,36 @@ describe("TerminalPane", () => {
     });
   });
 
+  it("types the initial command once, after queued terminal replies, when the session opens", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    const view = render(<TerminalPane projectId="project-1" visible initialInput={"'/usr/local/bin/pi'\r"} />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => expect(terminal.dataHandler).not.toBeNull());
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything());
+    });
+    terminal.dataHandler?.("\x1b[?1;2c");
+    await Promise.resolve();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_write", expect.anything());
+
+    open.resolve("term-1");
+
+    await waitFor(() => {
+      const writes = mocks.invoke.mock.calls
+        .filter(([command]) => command === "term_write")
+        .map(([, payload]) => (payload as { data: string }).data);
+      expect(writes).toEqual(["\x1b[?1;2c", "'/usr/local/bin/pi'\r"]);
+    });
+    view.rerender(<TerminalPane projectId="project-1" projectName="Paper" visible={false} initialInput={"'/usr/local/bin/pi'\r"} />);
+    view.rerender(<TerminalPane projectId="project-1" projectName="Paper" visible initialInput={"'/usr/local/bin/pi'\r"} />);
+    expect(
+      mocks.invoke.mock.calls.filter(([command]) => command === "term_write"),
+    ).toHaveLength(2);
+  });
+
   it("drops queued input when the pane is torn down before term_open resolves", async () => {
     const open = deferred<string>();
     mocks.invoke.mockImplementation((command: string) =>

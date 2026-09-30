@@ -25,7 +25,18 @@
     "agentReported": "Labels the CLI agent's own raw diagnostic output, which is interpolated verbatim",
     "agentToolFallback": "Stands in for a CLI agent tool that reported no name",
     "imageAttachmentName": "Name shown on an image chip when the image itself carries no filename",
-    "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose"
+    "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose",
+    "setup": {
+      "rejected": {
+        "powershellScript": "One-line agent status when the only file found is a PowerShell script; {{file}} is a file name and {{name}} the command name, so pi.cmd and pi.exe stay literal"
+      },
+      "foundOnComputer": "Agent status line: the agent program was found by searching this computer",
+      "bridgeSourceFound": "Value of the Source row: the bridge was found on this computer rather than installed by Oleafly",
+      "setUp": "Button that opens Agent setup in Settings on this agent's card",
+      "backgroundTasks": "Muted line about isolated background research tasks, separate from the agent's setup steps",
+      "builtIn": "Label on a registry search result that is already one of Oleafly's built-in agents",
+      "showAgent": "Button that scrolls to and expands the built-in agent's card"
+    }
   },
   "approval": {
     "reject": "Declines one pending assistant action",

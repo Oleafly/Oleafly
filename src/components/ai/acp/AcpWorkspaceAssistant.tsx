@@ -17,7 +17,7 @@ import { useResearchChatActions } from "@/components/ai/use-research-chat-action
 import { MessageList } from "@/components/ai/MessageList";
 import {
   acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
-  acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpSession,
+  acpReconnect, acpSetModel, acpUsable, type AcpAgentStatus, type AcpImage, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
@@ -30,7 +30,8 @@ import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
-import { BridgeInstallCard } from "./AgentReadiness";
+import { BridgeInstallCard, openAgentSignInTerminal } from "./AgentReadiness";
+import { terminalLimitMessage } from "@/store/terminals";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
@@ -104,7 +105,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const open = openId ? state.sessions[openId] : undefined;
     if (!openId || !open || open.agentId === nextAgentId) return;
     const ready = state.catalog.some(
-      (value) => value.definition.id === nextAgentId && value.installed,
+      (value) => value.definition.id === nextAgentId && acpUsable(value),
     );
     void perform(async () => {
       if (ready) {
@@ -155,7 +156,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
-    const preferred = catalog.find((agent) => agent.installed) ?? catalog[0];
+    const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
 
@@ -227,7 +228,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const canSend = session?.status === "ready" && !busy && (!!draft.trim() || images.length > 0);
   const composerDisabled = session?.status !== "ready" || sending;
-  const canStart = !!selectedAgent?.installed && !busy && !running;
+  const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
   const start = () => void perform(async () => {
     if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
   });
@@ -319,7 +320,12 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
   <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
   <div className="flex flex-wrap gap-2">
-    {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); })}>{method.name}</Button>)}
+    {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => {
+      // A terminal method signs in interactively: run the located CLI in the project terminal.
+      const cliPath = method.kind === "terminal" ? catalog.find((agent) => agent.definition.id === session.agentId)?.cli?.path : null;
+      if (cliPath) { if (!openAgentSignInTerminal(projectId, cliPath)) setError(terminalLimitMessage()); return; }
+      void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); });
+    }}>{method.name}</Button>)}
     <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnectAfterSignIn)}</Button>
   </div>
 </div>}

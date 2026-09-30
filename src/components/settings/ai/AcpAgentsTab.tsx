@@ -40,11 +40,14 @@ import {
   acpRemoveAgent,
   type AcpAgentStatus,
   type AcpDefinition,
+  type AcpReadiness,
   type AcpRegistryEntry,
 } from "@/lib/acp";
+import { AgentProgramField, CopyDetailsButton, programPlacement } from "./AgentProgramField";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
+import { i18n } from "@/i18n";
 
 const example = JSON.stringify(
   {
@@ -153,37 +156,53 @@ function Section({
 function RegistryResult({
   entry,
   registered,
+  builtIn,
   busy,
   onRegister,
+  onShow,
 }: Readonly<{
   entry: AcpRegistryEntry;
   registered: boolean;
+  /** The entry is one of Oleafly's built-in agents, which is already on the list. */
+  builtIn: boolean;
   busy: boolean;
   onRegister: (definition: AcpDefinition) => void;
+  onShow: () => void;
 }>) {
-  const { t } = useTranslation(["settings"]);
+  const { t } = useTranslation(["settings", "ai"]);
   const [shown, setShown] = useState(false);
   return (
     <article className="space-y-2 rounded-md border bg-background p-3">
       <h4 className="text-sm font-medium">
         {entry.name} <span className="font-normal text-muted-foreground">{entry.version}</span>
+        {builtIn && (
+          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle text-[10px] font-medium text-muted-foreground">
+            {t(($) => $.ai.acp.setup.builtIn)}
+          </span>
+        )}
       </h4>
       <p className="text-xs text-muted-foreground">{entry.description}</p>
-      {entry.reason && <p className="text-xs text-muted-foreground">{entry.reason}</p>}
+      {entry.reason && !builtIn && <p className="text-xs text-muted-foreground">{entry.reason}</p>}
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={busy || !entry.definition || registered}
-          onClick={() => {
-            if (entry.definition) onRegister(entry.definition);
-          }}
-        >
-          {registered
-            ? t(($) => $.settings.ai.agents.registry.registered)
-            : t(($) => $.settings.ai.agents.registry.register)}
-        </Button>
+        {builtIn ? (
+          <Button type="button" variant="outline" size="sm" onClick={onShow}>
+            {t(($) => $.ai.acp.setup.showAgent)}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy || !entry.definition || registered}
+            onClick={() => {
+              if (entry.definition) onRegister(entry.definition);
+            }}
+          >
+            {registered
+              ? t(($) => $.settings.ai.agents.registry.registered)
+              : t(($) => $.settings.ai.agents.registry.register)}
+          </Button>
+        )}
         {entry.definition && (
           <Button
             type="button"
@@ -207,42 +226,100 @@ function RegistryResult({
   );
 }
 
+/** The one setup step for a card, before any sign-in hint. */
+function nextStepText(
+  agent: AcpAgentStatus,
+  readiness: AcpReadiness,
+  installStep: string,
+  installBlocked: string,
+): string | null {
+  if (readiness === "bridge-missing") return agent.canInstall ? installStep : agent.reason ?? installBlocked;
+  if (readiness === "cli-missing" && agent.cli) {
+    return i18n.t(($) => $.ai.acp.setup.cliMissingNextStep, { cli: agent.cli.displayName });
+  }
+  return agent.reason ?? agent.signInHint;
+}
+
 function AgentCard({
   agent,
   projectId,
   busy,
+  focusToken = 0,
+  retestToken = 0,
   onInstall,
   onRemove,
   onOpenTerminal,
+  onStatus,
 }: Readonly<{
   agent: AcpAgentStatus;
   projectId?: string | null;
   busy: string | null;
+  /** Changes when this card should expand and scroll into view. */
+  focusToken?: number;
+  /** Changes after this agent's bridge was installed. */
+  retestToken?: number;
   onInstall: (definition: AcpDefinition, opener: HTMLButtonElement) => void;
   onRemove: (agentId: string) => void;
   onOpenTerminal: () => void;
+  onStatus: (status: AcpAgentStatus) => void;
 }>) {
-  const { t } = useTranslation(["common", "settings"]);
+  const { t } = useTranslation(["common", "settings", "ai"]);
   const [open, setOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
   const readiness = acpReadiness(agent);
   const cli = agent.cli;
+  const id = agent.definition.id;
   const installing = busy === "install";
+  const placement = programPlacement(agent);
   const bridgeActionAvailable =
     !agent.bridgeSharedWithCli && (!agent.installed || !agent.managed);
-  const nextStep =
-    agent.taskUnavailableReason ??
-    (readiness === "bridge-missing"
-      ? t(($) => $.settings.ai.agents.installBridgeNextStep)
-      : agent.reason ?? agent.signInHint);
-  const cliTitleId = `acp-agent-${agent.definition.id}-cli-title`;
-  const nextStepTitleId = `acp-agent-${agent.definition.id}-next-step-title`;
+  const installBlocked = bridgeActionAvailable && !agent.canInstall
+    ? agent.reason ?? t(($) => $.ai.acp.setup.installUnavailable)
+    : null;
+  const nextStep = nextStepText(
+    agent,
+    readiness,
+    t(($) => $.settings.ai.agents.installBridgeNextStep),
+    t(($) => $.ai.acp.setup.installUnavailable),
+  );
+  const cliTitleId = `acp-agent-${id}-cli-title`;
+  const nextStepTitleId = `acp-agent-${id}-next-step-title`;
+  const installReasonId = `acp-agent-${id}-install-reason`;
+
+  useEffect(() => {
+    if (!focusToken) return;
+    setOpen(true);
+    const frame = window.requestAnimationFrame(() => {
+      cardRef.current?.scrollIntoView({ block: "start" });
+      toggleRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusToken]);
+
+  const programField = (fieldPlacement: "main" | "bridge") => (
+    <AgentProgramField
+      agent={agent}
+      placement={fieldPlacement}
+      disabled={!!busy}
+      retestToken={retestToken}
+      onStatus={onStatus}
+      onInstallBridge={
+        bridgeActionAvailable ? (opener) => onInstall(agent.definition, opener) : undefined
+      }
+      onOpenTerminal={projectId ? onOpenTerminal : undefined}
+    />
+  );
+
   return (
     <div
-      data-testid={`acp-agent-card-${agent.definition.id}`}
-      className="rounded-lg border bg-card transition-colors"
+      ref={cardRef}
+      data-testid={`acp-agent-card-${id}`}
+      className="scroll-mt-2 rounded-lg border bg-card transition-colors"
     >
       <div className="flex items-start gap-2 p-3">
         <button
+          ref={toggleRef}
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
@@ -255,10 +332,10 @@ function AgentCard({
           )}
           <span className="min-w-0 flex-1">
             <span className="inline-flex items-center gap-1.5 font-medium">
-              <AgentLogo agentId={agent.definition.id} size={18} />
+              <AgentLogo agentId={id} size={18} />
               <h4 className="text-sm font-medium">{agent.definition.name}</h4>
             </span>
-            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+            <span className="mt-0.5 block break-words text-xs leading-relaxed text-muted-foreground">
               {readinessDetail(agent, readiness)}
             </span>
           </span>
@@ -269,38 +346,50 @@ function AgentCard({
       </div>
       {open && (
         <div className="space-y-4 border-t border-border/70 px-4 py-4">
+          {!cli && placement === "main" && programField("main")}
           {cli && (
             <section aria-labelledby={cliTitleId} className="space-y-3">
               <h5 id={cliTitleId} className="text-xs font-semibold text-foreground">
                 {t(($) => $.settings.ai.agents.cliTitle)}
               </h5>
-              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0">
-                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t(($) => $.settings.ai.agents.cliPathLabel)}
-                  </dt>
-                  <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
-                    {cli.path ??
-                      t(($) => $.settings.ai.agents.cliNotOnPath, {
-                        command: cli.command,
-                      })}
-                  </dd>
+              {placement === "main" ? (
+                <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  {programField("main")}
+                  <dl className="min-w-24">
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t(($) => $.settings.ai.agents.versionLabel)}
+                    </dt>
+                    <dd className="mt-1 text-xs tabular-nums text-foreground">
+                      {cli.version ?? t(($) => $.settings.ai.agents.notReported)}
+                    </dd>
+                  </dl>
                 </div>
-                <div className="min-w-24">
-                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t(($) => $.settings.ai.agents.versionLabel)}
-                  </dt>
-                  <dd className="mt-1 text-xs tabular-nums text-foreground">
-                    {cli.version ?? t(($) => $.settings.ai.agents.notReported)}
-                  </dd>
-                </div>
-              </dl>
+              ) : (
+                <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="min-w-0">
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t(($) => $.settings.ai.agents.cliPathLabel)}
+                    </dt>
+                    <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                      {cli.path ?? t(($) => $.settings.ai.agents.program.notFound)}
+                    </dd>
+                  </div>
+                  <div className="min-w-24">
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t(($) => $.settings.ai.agents.versionLabel)}
+                    </dt>
+                    <dd className="mt-1 text-xs tabular-nums text-foreground">
+                      {cli.version ?? t(($) => $.settings.ai.agents.notReported)}
+                    </dd>
+                  </div>
+                </dl>
+              )}
               <div className="space-y-1.5">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.signInCommandLabel)}
                 </p>
                 <div
-                  data-testid={`acp-agent-sign-in-command-${agent.definition.id}`}
+                  data-testid={`acp-agent-sign-in-command-${id}`}
                   className="flex min-h-12 items-center gap-2 rounded-md border bg-background px-3 py-2.5"
                 >
                   <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-foreground">
@@ -315,7 +404,7 @@ function AgentCard({
             </section>
           )}
           <CollapsibleSection
-            id={`acp-agent-bridge-details-${agent.definition.id}`}
+            id={`acp-agent-bridge-details-${id}`}
             title={t(($) => $.settings.ai.agents.bridgeTitle)}
             headingLevel="h4"
             className="bg-background/40"
@@ -355,8 +444,11 @@ function AgentCard({
                 </dd>
               </div>
             </dl>
+            {placement === "bridge" && (
+              <div className="border-t border-border/70 pt-3">{programField("bridge")}</div>
+            )}
           </CollapsibleSection>
-          {(nextStep || bridgeActionAvailable || (projectId && cli)) && (
+          {(nextStep || bridgeActionAvailable || (projectId && cli) || agent.taskUnavailableReason) && (
             <section
               aria-labelledby={nextStepTitleId}
               className="space-y-2.5 border-t border-border/70 pt-4"
@@ -368,7 +460,10 @@ function AgentCard({
                 {t(($) => $.settings.ai.agents.nextStepTitle)}
               </h5>
               {nextStep && (
-                <p className="text-xs leading-relaxed text-foreground/85">
+                <p
+                  id={nextStep === installBlocked ? installReasonId : undefined}
+                  className="text-xs leading-relaxed text-foreground/85"
+                >
                   {nextStep}
                 </p>
               )}
@@ -377,8 +472,9 @@ function AgentCard({
                   <Button
                     type="button"
                     size="sm"
-                    data-testid={`acp-agent-install-${agent.definition.id}`}
+                    data-testid={`acp-agent-install-${id}`}
                     disabled={!!busy || !agent.canInstall}
+                    aria-describedby={installBlocked ? installReasonId : undefined}
                     onClick={(event) =>
                       onInstall(agent.definition, event.currentTarget)
                     }
@@ -405,6 +501,16 @@ function AgentCard({
                   </Button>
                 )}
               </div>
+              {installBlocked && installBlocked !== nextStep && (
+                <p id={installReasonId} className="text-[11px] leading-relaxed text-muted-foreground">
+                  {installBlocked}
+                </p>
+              )}
+              {agent.taskUnavailableReason && (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {t(($) => $.ai.acp.setup.backgroundTasks, { reason: agent.taskUnavailableReason })}
+                </p>
+              )}
             </section>
           )}
           {!agent.definition.builtin && (
@@ -414,7 +520,7 @@ function AgentCard({
                 variant="ghost"
                 size="sm"
                 disabled={!!busy}
-                onClick={() => onRemove(agent.definition.id)}
+                onClick={() => onRemove(id)}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
@@ -496,7 +602,24 @@ function AgentCatalogEmptyState({
   );
 }
 
-export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null }>) {
+export interface AcpAgentsTabProps {
+  projectId?: string | null;
+  /** An agent whose card should expand and scroll into view (a settings deep link). */
+  focusAgentId?: string | null;
+  /** Changes on every deep link, so the same agent can be requested again. */
+  focusToken?: number;
+}
+
+/** Puts one agent's fresh status into the shared catalog without a full re-check. */
+function applyAgentStatus(status: AcpAgentStatus) {
+  useAcpSessionsStore.setState((state) => ({
+    catalog: state.catalog.map((agent) =>
+      agent.definition.id === status.definition.id ? status : agent,
+    ),
+  }));
+}
+
+export function AcpAgentsTab({ projectId, focusAgentId, focusToken = 0 }: Readonly<AcpAgentsTabProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
@@ -509,6 +632,9 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
   const reviewOpener = useRef<HTMLElement | null>(null);
+  const [focus, setFocus] = useState<{ id: string; token: number } | null>(null);
+  const focusSeq = useRef(0);
+  const [retest, setRetest] = useState<Record<string, number>>({});
   const mounted = useRef(true);
   const catalogCheckRequest = useRef(0);
   const reviewing = review !== null;
@@ -516,6 +642,13 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+  const focusAgent = useCallback((agentId: string) => {
+    focusSeq.current += 1;
+    setFocus({ id: agentId, token: focusSeq.current });
+  }, []);
+  useEffect(() => {
+    if (focusAgentId && focusToken) focusAgent(focusAgentId);
+  }, [focusAgent, focusAgentId, focusToken]);
   useEffect(() => {
     if (!reviewing) return;
     const id = appModalCoordinator.add(reviewOpener.current);
@@ -637,7 +770,7 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
         </div>
       </div>
       {error && !review && (
-        <p role="alert" className="rounded-md border border-destructive/40 p-2 text-xs text-destructive">
+        <p role="alert" className="whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive">
           {error}
         </p>
       )}
@@ -686,6 +819,9 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
                 agent={agent}
                 projectId={projectId}
                 busy={busy}
+                focusToken={focus?.id === agent.definition.id ? focus.token : 0}
+                retestToken={retest[agent.definition.id] ?? 0}
+                onStatus={applyAgentStatus}
                 onInstall={(definition, opener) => {
                   reviewOpener.current = opener;
                   setError(null);
@@ -762,7 +898,14 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
                 entry={entry}
                 busy={!!busy}
                 registered={catalog.some((agent) => agent.definition.id === entry.id)}
+                builtIn={
+                  !!entry.builtinId &&
+                  catalog.some((agent) => agent.definition.id === entry.builtinId && agent.definition.builtin)
+                }
                 onRegister={(value) => void register(JSON.stringify(value))}
+                onShow={() => {
+                  if (entry.builtinId) focusAgent(entry.builtinId);
+                }}
               />
             ))}
           </div>
@@ -852,9 +995,15 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
             </div>
           </dl>
           {error && (
-            <p role="alert" className="rounded-md border border-destructive/40 p-2 text-xs text-destructive">
-              {error}
-            </p>
+            <div className="space-y-2">
+              <p
+                role="alert"
+                className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive"
+              >
+                {error}
+              </p>
+              <CopyDetailsButton text={error} />
+            </div>
           )}
           <DialogFooter>
             <Button
@@ -882,6 +1031,7 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
                     t(($) => $.settings.ai.agents.notice.installed, { name: review.name }),
                   );
                   setReview(null);
+                  setRetest((value) => ({ ...value, [review.id]: (value[review.id] ?? 0) + 1 }));
                 })
               }
             >
