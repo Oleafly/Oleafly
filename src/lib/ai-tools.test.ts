@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
     refreshTree: vi.fn(),
     setMainDoc: vi.fn(async (_path: string) => {}),
     mainDoc: "main.tex",
+    activePath: null as string | null,
   },
   compileState: { recompile: vi.fn(), log: "", pdfBytes: null as Uint8Array | null },
   indexState: { index: null as ProjectIndex | null, rebuildFromDisk: vi.fn() },
@@ -47,7 +48,7 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 // pdf-image pulls in pdfjs-dist (needs DOMMatrix), so mock it out of the graph.
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
-import { createOleaflyTools } from "./ai-tools";
+import { createFigureTools, createOleaflyTools } from "./ai-tools";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 
@@ -75,6 +76,7 @@ beforeEach(() => {
   mocks.filesState.projectId = "proj";
   mocks.filesState.mainDecision = "auto";
   mocks.filesState.files = {};
+  mocks.filesState.activePath = null;
   mocks.compileState.recompile.mockReset();
 });
 
@@ -554,5 +556,22 @@ describe("ai-tools: read-only folders", () => {
     const res = await tools.create_file.execute({ path: "notes.tex" });
     expect(mocks.api.createFile).not.toHaveBeenCalled();
     expect(res).toEqual({ error: `Error: ${banner}` });
+  });
+});
+
+describe("ai-tools: insert_figure", () => {
+  it("reports the open document it inserted into, so the turn claims it as the assistant's", async () => {
+    mocks.filesState.activePath = "chapters/results.tex";
+    mocks.api.readFileContent.mockResolvedValue("\\begin{document}\n\\end{document}\n");
+    mocks.api.writeFileContent.mockResolvedValue({ generation: 1 });
+    const tools = createFigureTools();
+    const res = await tools.insert_figure.execute({ code: "\\draw (0,0);", raw: true });
+    expect(mocks.api.writeFileContent).toHaveBeenCalledWith(
+      "proj",
+      "chapters/results.tex",
+      expect.stringContaining("\\draw (0,0);"),
+      0,
+    );
+    expect(res).toEqual({ success: true, path: "chapters/results.tex" });
   });
 });

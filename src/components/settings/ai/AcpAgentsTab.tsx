@@ -608,6 +608,12 @@ export interface AcpAgentsTabProps {
   focusAgentId?: string | null;
   /** Changes on every deep link, so the same agent can be requested again. */
   focusToken?: number;
+  /**
+   * Called with `focusToken` once the card focus is applied. The host drops the
+   * link then, so remounting this tab (the tab is unmounted while another AI
+   * tab is shown) does not expand, scroll and focus the card again.
+   */
+  onFocusHandled?: (token: number) => void;
 }
 
 /** Puts one agent's fresh status into the shared catalog without a full re-check. */
@@ -619,7 +625,12 @@ function applyAgentStatus(status: AcpAgentStatus) {
   }));
 }
 
-export function AcpAgentsTab({ projectId, focusAgentId, focusToken = 0 }: Readonly<AcpAgentsTabProps>) {
+export function AcpAgentsTab({
+  projectId,
+  focusAgentId,
+  focusToken = 0,
+  onFocusHandled,
+}: Readonly<AcpAgentsTabProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
@@ -646,8 +657,12 @@ export function AcpAgentsTab({ projectId, focusAgentId, focusToken = 0 }: Readon
     focusSeq.current += 1;
     setFocus({ id: agentId, token: focusSeq.current });
   }, []);
+  const onFocusHandledRef = useRef(onFocusHandled);
+  onFocusHandledRef.current = onFocusHandled;
   useEffect(() => {
-    if (focusAgentId && focusToken) focusAgent(focusAgentId);
+    if (!focusAgentId || !focusToken) return;
+    focusAgent(focusAgentId);
+    onFocusHandledRef.current?.(focusToken);
   }, [focusAgent, focusAgentId, focusToken]);
   useEffect(() => {
     if (!reviewing) return;

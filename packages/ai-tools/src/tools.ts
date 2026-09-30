@@ -115,6 +115,8 @@ export interface AiToolsHost {
     text: string,
     mutationAllowed?: () => boolean,
   ): boolean | Promise<boolean>;
+  // Project-relative path of the document insertAtCursor and replaceRange edit.
+  insertTargetPath?(projectId: string): string | null;
   // Agent plan checklist (update_todos / get_todos).
   getAgentTodos(): { id: string; content: string; status: string }[];
   setAgentTodos(todos: { id: string; content: string; status: string }[]): void;
@@ -1355,6 +1357,7 @@ export function createFigureTools(
     insertAtCursor,
     replaceRange,
   } = host;
+  const insertTargetPath = (projectId: string) => host.insertTargetPath?.(projectId) ?? null;
   const { pid, mutationAllowed, prepareMutation } = mutationGuards(host, opts?.mutationAllowed);
 
   const tools: Record<string, RawToolDef> = {
@@ -1479,10 +1482,12 @@ export function createFigureTools(
           return { error: String(e) };
         }
         const target = getFigureInsertTarget();
+        const documentPath = insertTargetPath(id);
         const inserted = target
           ? await replaceRange(id, target.from, target.to, latex, mutationAllowed)
           : await insertAtCursor(id, latex, mutationAllowed);
         if (!inserted) return { error: "No editable document is open" };
+        let figure: string | null = null;
         try {
           if (png) {
             const name = slugifyFigureName(caption || label || "figure");
@@ -1493,12 +1498,18 @@ export function createFigureTools(
               pngDataUrlToBase64(png),
               expectedGeneration,
             );
+            figure = `figures/${name}.png`;
             await host.refreshTree(id);
           }
         } catch {
           /* saving the raster copy is optional; the LaTeX is already inserted */
         }
-        return { success: true };
+        // The paths this call wrote, so the assistant's turn claims them as its own.
+        return {
+          success: true,
+          ...(documentPath ? { path: documentPath } : {}),
+          ...(figure ? { figure } : {}),
+        };
       },
     },
 

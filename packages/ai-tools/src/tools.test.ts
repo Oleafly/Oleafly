@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createOleaflyTools, type AiToolsHost, type RevealLocationResult } from "./tools";
+import { createFigureTools, createOleaflyTools, type AiToolsHost, type RevealLocationResult } from "./tools";
 
 function makeHost(
   revealLocation?: (target: {
@@ -116,5 +116,57 @@ describe("show_location tool", () => {
     expect(await tools.show_location.execute({ page: 1 })).toMatchObject({
       error: expect.stringContaining("viewer gone"),
     });
+  });
+});
+
+describe("insert_figure tool", () => {
+  function figureHost(overrides: Partial<AiToolsHost> = {}): AiToolsHost {
+    return {
+      getProjectId: () => "proj",
+      prepareExternalMutation: vi.fn(async () => 3),
+      getLastFigurePreview: () => ({ pdfBytes: new Uint8Array([1]) }),
+      pdfToPng: vi.fn(async () => "data:image/png;base64,AAAA"),
+      getFigureInsertTarget: () => null,
+      insertAtCursor: vi.fn(async () => true),
+      replaceRange: vi.fn(async () => true),
+      writeProjectBytes: vi.fn(async () => ({})),
+      refreshTree: vi.fn(async () => {}),
+      insertTargetPath: () => "chapters/results.tex",
+      ...overrides,
+    } as unknown as AiToolsHost;
+  }
+
+  it("names the document it edited and the PNG it saved, so the turn can claim both", async () => {
+    const host = figureHost();
+    const tools = createFigureTools(host);
+
+    const result = await tools.insert_figure.execute({ code: String.raw`\draw (0,0);`, caption: "Loss curve" });
+
+    expect(host.insertAtCursor).toHaveBeenCalled();
+    expect(host.writeProjectBytes).toHaveBeenCalledWith("proj", "figures/loss-curve.png", "AAAA", 3);
+    expect(result).toEqual({
+      success: true,
+      path: "chapters/results.tex",
+      figure: "figures/loss-curve.png",
+    });
+  });
+
+  it("leaves out the PNG when there was no preview to save", async () => {
+    const host = figureHost({ getLastFigurePreview: () => null });
+    const tools = createFigureTools(host);
+
+    const result = await tools.insert_figure.execute({ code: String.raw`\draw (0,0);` });
+
+    expect(host.writeProjectBytes).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, path: "chapters/results.tex" });
+  });
+
+  it("leaves out the PNG when saving it failed", async () => {
+    const host = figureHost({ writeProjectBytes: vi.fn(async () => { throw new Error("disk full"); }) });
+    const tools = createFigureTools(host);
+
+    const result = await tools.insert_figure.execute({ code: String.raw`\draw (0,0);`, label: "fig:a" });
+
+    expect(result).toEqual({ success: true, path: "chapters/results.tex" });
   });
 });

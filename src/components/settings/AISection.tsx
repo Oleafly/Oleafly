@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -192,7 +192,13 @@ export function AISection() {
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const projectId = useFilesStore((s) => s.projectId);
   // The CLI agent card a deep link asked for; the token re-triggers a repeat link.
+  // The Agents tab clears it once applied, so coming back to the tab later does
+  // not follow the link again.
   const [agentFocus, setAgentFocus] = useState<{ id: string; token: number } | null>(null);
+  const agentFocusSeq = useRef(0);
+  const agentFocusHandled = useCallback((token: number) => {
+    setAgentFocus((current) => (current?.token === token ? null : current));
+  }, []);
   useEffect(() => {
     const destination = aiSettingsDestination(scrollTarget);
     if (!destination) return;
@@ -200,7 +206,10 @@ export function AISection() {
     setTab(destination.tab);
     setScrollTarget(null);
     const agentId = destination.agentId;
-    if (agentId) setAgentFocus((current) => ({ id: agentId, token: (current?.token ?? 0) + 1 }));
+    if (agentId) {
+      agentFocusSeq.current += 1;
+      setAgentFocus({ id: agentId, token: agentFocusSeq.current });
+    }
     const elementId = destination.elementId;
     if (elementId) {
       window.requestAnimationFrame(() => {
@@ -758,6 +767,7 @@ export function AISection() {
               projectId={projectId ?? undefined}
               focusAgentId={agentFocus?.id}
               focusToken={agentFocus?.token}
+              onFocusHandled={agentFocusHandled}
             />
           </Suspense>
         </TabsContent>

@@ -638,4 +638,15 @@ describe("CLI agent program setup", () => {
     expect(scrollIntoView.mock.contexts.at(-1)).toBe(card);
     scrollIntoView.mockRestore();
   });
+
+  it("reports a deep link as handled once, so the host can drop it", async () => {
+    vi.mocked(acpCatalog).mockResolvedValueOnce([agent(), pi()]);
+    const onFocusHandled = vi.fn();
+    const ui = render(<AcpAgentsTab focusAgentId="pi" focusToken={3} onFocusHandled={onFocusHandled} />);
+    await ui.findByTestId("acp-agent-card-pi");
+    expect(onFocusHandled).toHaveBeenCalledExactlyOnceWith(3);
+    ui.rerender(<AcpAgentsTab focusAgentId="pi" focusToken={3} onFocusHandled={() => onFocusHandled("new callback")} />);
+    await act(async () => {});
+    expect(onFocusHandled).toHaveBeenCalledTimes(1);
+  });
 });

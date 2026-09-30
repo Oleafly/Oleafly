@@ -378,6 +378,29 @@ describe("AISection", () => {
     expect(captured.agentsTab.at(-1)?.focusAgentId).toBe("pi");
   });
 
+  it("does not focus the linked agent again when the user comes back to the Agents tab", async () => {
+    const user = userEvent.setup();
+    useFilesStore.setState({ projectId: "paper" });
+    useSettingsStore.setState({ settingsScrollTarget: "ai-agents:pi" });
+    renderSection();
+
+    await screen.findByText("Agent settings");
+    const linked = captured.agentsTab.at(-1);
+    expect(linked).toMatchObject({ focusAgentId: "pi" });
+    act(() => linked?.onFocusHandled?.(linked.focusToken ?? 0));
+
+    await user.click(screen.getByRole("tab", { name: enSettings.ai.section.tabs.providers }));
+    await screen.findByText("Provider settings");
+    captured.agentsTab = [];
+    await user.click(screen.getByRole("tab", { name: enSettings.ai.section.tabs.agents }));
+    await screen.findByText("Agent settings");
+    expect(captured.agentsTab.length).toBeGreaterThan(0);
+    for (const props of captured.agentsTab) {
+      expect(props.focusAgentId ?? null).toBeNull();
+      expect(props.focusToken ?? 0).toBe(0);
+    }
+  });
+
   it("resets only AI Assistant preferences after confirmation", async () => {
     const user = userEvent.setup();
     useSettingsStore.getState().setLatexTools(true);

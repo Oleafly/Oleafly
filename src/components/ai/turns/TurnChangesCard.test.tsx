@@ -304,6 +304,69 @@ describe("TurnChangesCard", () => {
     expect(within(card()).getByRole("button", { name: "Redo main.tex" })).toBeInTheDocument();
   });
 
+  it("reaches the files beyond the list with Undo all and then Redo all", async () => {
+    // Index 2 and 3 are the unlisted files (moreFiles = 2).
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([0, 1, 2, 3]));
+    vi.mocked(agentTurnRedo).mockResolvedValue(result([0, 1, 2, 3]));
+    vi.mocked(agentTurnStatus)
+      .mockResolvedValueOnce({ expired: false, files: [] })
+      .mockResolvedValueOnce({ expired: false, files: [{ index: 0, state: "undone" }, { index: 1, state: "undone" }] })
+      .mockResolvedValue({ expired: false, files: [{ index: 0, state: "applied" }, { index: 1, state: "applied" }] });
+    render(<TurnChangesCard projectId="paper" changes={changes({ moreFiles: 2 })} />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+    await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledWith("paper", "snap-1", null, 7));
+    const redoAll = await within(card()).findByRole("button", { name: "Redo all" });
+    fireEvent.click(redoAll);
+    await waitFor(() => expect(agentTurnRedo).toHaveBeenCalledWith("paper", "snap-1", null, 7));
+    expect(await within(card()).findByRole("button", { name: "Undo all" })).toBeInTheDocument();
+  });
+
+  it("keeps Redo all while only unlisted files are undone", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([2, 3], [{ index: 0, reason: "edited" }, { index: 1, reason: "edited" }]));
+    vi.mocked(agentTurnStatus)
+      .mockResolvedValueOnce({ expired: false, files: [] })
+      .mockResolvedValue({ expired: false, files: [{ index: 0, state: "edited" }, { index: 1, state: "edited" }] });
+    render(<TurnChangesCard projectId="paper" changes={changes({ moreFiles: 2 })} />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+    await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledWith("paper", "snap-1", null, 7));
+    expect(await within(card()).findByRole("button", { name: "Redo all" })).toBeInTheDocument();
+  });
+
+  it("still undoes the unlisted files after one listed file was undone", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValueOnce(result([0])).mockResolvedValue(result([0, 1, 2]));
+    render(<TurnChangesCard projectId="paper" changes={changes({ moreFiles: 1 })} />);
+    await expand();
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo main.tex" }));
+    await within(card()).findByRole("button", { name: "Redo main.tex" });
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+    await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledTimes(2));
+    expect(agentTurnRevert).toHaveBeenLastCalledWith("paper", "snap-1", null, 7);
+  });
+
+  it("lists only the uncommitted files for Undo all when unlisted files exist", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([1]));
+    render(
+      <TurnChangesCard
+        projectId="paper"
+        changes={{ ...changes({ moreFiles: 3 }), committed: { "main.tex": "abc1234def" } }}
+      />,
+    );
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+    await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledWith("paper", "snap-1", [1], 7));
+  });
+
+  it("never sends null while a committed file exists, even an unlisted one", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([0, 1]));
+    render(
+      <TurnChangesCard
+        projectId="paper"
+        changes={{ ...changes({ moreFiles: 3 }), committed: { "chapters/late.tex": "abc1234def" } }}
+      />,
+    );
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+    await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledWith("paper", "snap-1", [0, 1], 7));
+  });
+
   it("mentions files beyond the list and files that could not be copied", async () => {
     render(
       <TurnChangesCard

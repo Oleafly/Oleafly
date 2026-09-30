@@ -76,25 +76,40 @@ interface HeaderAction {
 /**
  * Undo all covers every changed source file except files the user also edited,
  * files the assistant committed and files already changed again. `null` asks
- * the backend for all of them (including files beyond the listed ones); it is
- * only safe while nothing has been undone or committed yet.
+ * the backend for all of them, including files beyond the listed ones
+ * (`moreFiles`), which no row can reach. The backend skips files the user also
+ * edited, counts files already in the target state as done and leaves files
+ * changed again alone, so `null` is safe in both directions as long as nothing
+ * was committed. With committed files only the listed, uncommitted ones go.
  */
 function headerActionFor(
   changes: ChatTurnChanges,
   source: readonly TurnChange[],
-  stateOf: (file: TurnChange) => TurnFileState,
+  states: Readonly<Record<number, TurnFileState>>,
   undoable: boolean,
 ): HeaderAction | null {
   if (!undoable || changes.overlapped) return null;
+  const stateOf = (file: TurnChange): TurnFileState => states[file.index] ?? "applied";
   const committed = changes.committed ?? {};
   const eligible = source.filter(
     (file) => !file.alsoEditedHere && !committed[file.path] && stateOf(file) !== "edited",
   );
   const toUndo = eligible.filter((file) => stateOf(file) === "applied");
   const toRedo = eligible.filter((file) => stateOf(file) === "undone");
+  const anyCommitted = Object.keys(committed).length > 0;
+  if (changes.moreFiles > 0 && !anyCommitted) {
+    // Unlisted files have no status row; Undo and Redo report them by index.
+    const listed = new Set(changes.files.map((file) => file.index));
+    const unlistedUndone = Object.entries(states).some(
+      ([index, state]) => state === "undone" && !listed.has(Number(index)),
+    );
+    if (toUndo.length === 0 && (toRedo.length > 0 || unlistedUndone)) {
+      return { action: "redo", indices: null };
+    }
+    return { action: "undo", indices: null };
+  }
   const anyUndone = source.some((file) => stateOf(file) === "undone");
-  const anyCommitted = source.some((file) => committed[file.path]);
-  if (toUndo.length > 0 || (changes.moreFiles > 0 && !anyUndone)) {
+  if (toUndo.length > 0) {
     return {
       action: "undo",
       indices: anyUndone || anyCommitted ? toUndo.map((file) => file.index) : null,
@@ -280,7 +295,7 @@ export function TurnChangesCard({
   const total = source.length + changes.moreFiles;
   const committed = changes.committed ?? {};
   const stateOf = (file: TurnChange): TurnFileState => review.states[file.index] ?? "applied";
-  const header = headerActionFor(changes, source, stateOf, undoable);
+  const header = headerActionFor(changes, source, review.states, undoable);
   const totals = lineTotals(source);
   const status = outcomeText(review.outcome);
   const failed = review.outcome?.failed ? review.outcome.action : null;

@@ -3433,6 +3433,101 @@ describe("ChatCore agent turns", () => {
     expect(saved?.turnChanges).toMatchObject({ snapshotId: "snap-1", files: [{ path: "main.tex" }, { path: "refs.bib" }] });
   });
 
+  it("claims the document and PNG insert_figure wrote, and saves the editor before comparing", async () => {
+    const rendered = await renderChat();
+    const projectId = useFilesStore.getState().projectId;
+    submit(rendered, "Add the loss figure");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "figure-1",
+        name: "insert_figure",
+        args: { code: String.raw`\draw (0,0);`, caption: "Loss curve" },
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "figure-1",
+        output: { success: true, path: "chapters/results.tex", figure: "figures/loss-curve.png" },
+      });
+    });
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["chapters/results.tex", "figures/loss-curve.png"]));
+    await act(async () => finishRun(0, "Inserted."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(mocks.agentTurnFinish).toHaveBeenCalled());
+
+    expect(mocks.agentTurnFinish).toHaveBeenCalledExactlyOnceWith(projectId, "snap-1", [
+      "chapters/results.tex",
+      "figures/loss-curve.png",
+    ]);
+    expect(mocks.flushOpenFilesToDisk).toHaveBeenLastCalledWith(projectId, "save after assistant run");
+    const savedAfter = mocks.flushOpenFilesToDisk.mock.invocationCallOrder.at(-1) ?? 0;
+    expect(savedAfter).toBeGreaterThan(mocks.runAgentHarness.mock.invocationCallOrder[0]);
+    expect(savedAfter).toBeLessThan(mocks.agentTurnFinish.mock.invocationCallOrder[0]);
+  });
+
+  it("still compares the turn when saving open files after the run fails", async () => {
+    mocks.flushOpenFilesToDisk.mockResolvedValueOnce(undefined).mockRejectedValue(new Error("disk full"));
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["main.tex"]));
+    const rendered = await renderChat();
+    submit(rendered, "Edit the intro");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Edited."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(await rendered.findByTestId("turn-changes")).toHaveTextContent("Changed 1 file");
+    expect(mocks.agentTurnFinish).toHaveBeenCalledOnce();
+  });
+
+  it("finishes a turn an earlier load of this window left open before the next one begins", async () => {
+    const storageKey = "oleafly.open-built-in-turns";
+    window.sessionStorage.clear();
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify([{ projectId: "project-before-reload", snapshotId: "snap-left", page: "earlier-page" }]),
+    );
+    const rendered = await renderChat();
+    await waitFor(() =>
+      expect(mocks.agentTurnFinish).toHaveBeenCalledWith("project-before-reload", "snap-left"),
+    );
+    expect(window.sessionStorage.getItem(storageKey)).toBeNull();
+
+    const projectId = useFilesStore.getState().projectId;
+    submit(rendered, "Edit the intro");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    // Recorded while the run is open, so a reload now leaves a trace to close.
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey) ?? "[]")).toEqual([
+      expect.objectContaining({ projectId, snapshotId: "snap-1" }),
+    ]);
+    await act(async () => finishRun(0, "Edited."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(mocks.agentTurnFinish).toHaveBeenCalledWith(projectId, "snap-1", []));
+    expect(window.sessionStorage.getItem(storageKey)).toBeNull();
+    expect(mocks.agentTurnFinish).toHaveBeenCalledTimes(2);
+  });
+
+  it("closes a leftover turn before taking the next before-turn copy", async () => {
+    const storageKey = "oleafly.open-built-in-turns";
+    window.sessionStorage.clear();
+    const leftover = deferred<unknown>();
+    mocks.agentTurnFinish.mockImplementation((_project: string, snapshotId: string) =>
+      snapshotId === "snap-left"
+        ? leftover.promise
+        : Promise.resolve(turnChangesFor([])),
+    );
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify([{ projectId: "project-before-reload", snapshotId: "snap-left", page: "earlier-page" }]),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "Edit the intro");
+    await waitFor(() => expect(mocks.flushOpenFilesToDisk).toHaveBeenCalled());
+    await act(async () => {});
+    expect(mocks.agentTurnBegin).not.toHaveBeenCalled();
+    await act(async () => leftover.resolve(turnChangesFor([])));
+    await waitFor(() => expect(mocks.agentTurnBegin).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Edited."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+  });
+
   it("shows no card when the run changed nothing", async () => {
     const rendered = await renderChat();
     submit(rendered, "Explain the method");
@@ -3654,6 +3749,61 @@ describe("ChatCore agent turns", () => {
     fireEvent.click(within(card).getByRole("button", { name: "Review" }));
     expect(card).toHaveTextContent("Committed in head-2");
     expect(within(card).queryByRole("button", { name: "Undo notes.md" })).toBeNull();
+  });
+
+  it("keeps a commit for a file past the listed ones, so Undo all never asks for every file", async () => {
+    mocks.gitHeadOid.mockResolvedValueOnce("head-0").mockResolvedValue("head-2");
+    mocks.gitShow.mockResolvedValue("new\n");
+    const rendered = await renderChat();
+    act(() => {
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "old\n", dirty: false } },
+      }));
+    });
+    submit(rendered, "Edit and commit");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-1",
+        name: "write_file",
+        args: { path: "notes.md", content: "new\n" },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "new\n", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-1",
+        output: { success: true, path: "notes.md" },
+      });
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "commit-1",
+        name: "run_command",
+        args: { command: "git add notes.md && git commit -m update" },
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "commit-1",
+        output: {
+          exec: true,
+          command: "git add notes.md && git commit -m update",
+          output: "",
+          exit_code: 0,
+          status: "Success",
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+      expect(turn?.commits).toContainEqual({ id: "head-2", files: ["notes.md"] });
+    });
+    // notes.md is one of the unlisted files.
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["main.tex"], { moreFiles: 1 }));
+    await act(async () => finishRun(0, "Committed"));
+    await rendered.findByTestId("turn-changes");
+    expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges?.committed).toEqual({
+      "notes.md": "head-2",
+    });
   });
 
   it("stays quiet when the user cancels the Full access confirmation", async () => {
