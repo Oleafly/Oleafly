@@ -1,10 +1,10 @@
 use super::{catalog::RegistryEntry, AcpRuntime};
 use super::{
-    AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord, SessionSnapshot,
-    StartSession,
+    AcpEvent, AgentCheck, AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord,
+    SessionSnapshot, StartSession,
 };
 use std::sync::Arc;
-use tauri::{AppHandle, State, WebviewWindow};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 fn check_project(
     runtime: &AcpRuntime,
@@ -70,6 +70,7 @@ pub async fn acp_start(
     let _startup = runtime.begin_startup()?;
     let generation = runtime.owner_generation(window.label());
     let project_path = crate::paths::project_dir(&project_id)?;
+    super::runtime::note_launch_root(&project_path);
     let bridge = super::admit_agent_bridge(
         &project_id,
         crate::research_mcp::start(app, project_id.clone(), None),
@@ -106,9 +107,11 @@ pub async fn acp_reconnect(
     if record.task_id.is_some() {
         return Err("Resume delegated work from its research task.".into());
     }
-    let root = crate::paths::project_dir(&project_id)?
+    let original = crate::paths::project_dir(&project_id)?;
+    let root = original
         .canonicalize()
         .map_err(|_| "The project could not be resolved.")?;
+    super::runtime::note_launch_root(&original);
     if root != std::path::Path::new(&record.project_path) {
         return Err("The saved session uses a different project directory.".into());
     }
@@ -137,11 +140,26 @@ pub async fn acp_prompt(
     session_id: String,
     text: String,
     images: Option<Vec<ImagePrompt>>,
+    skill_id: Option<String>,
 ) -> Result<SessionSnapshot, String> {
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, window.label()).await?;
+    let skill = match skill_id.filter(|id| !id.trim().is_empty()) {
+        Some(skill_id) => {
+            let app = window.app_handle().clone();
+            let project = project_id.clone();
+            Some(
+                tauri::async_runtime::spawn_blocking(move || {
+                    super::skill_block::prompt_skill(&app, &project, &skill_id)
+                })
+                .await
+                .map_err(|e| e.to_string())??,
+            )
+        }
+        None => None,
+    };
     runtime
-        .prompt(&session_id, text, images.unwrap_or_default())
+        .prompt_with_skill(&session_id, text, images.unwrap_or_default(), skill)
         .await
 }
 
@@ -260,4 +278,121 @@ pub fn acp_events(
 ) -> Result<EventPage, String> {
     check_project(&runtime, &session_id, &project_id)?;
     runtime.events(&session_id, after, limit.unwrap_or(200))
+}
+
+/// Tests an agent program without saving it: the chosen `path`, or the
+/// program Oleafly resolves today when `path` is `None`.
+#[tauri::command]
+pub async fn acp_check_agent(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    path: Option<String>,
+) -> Result<AgentCheck, String> {
+    super::setup::require_main_window(window.label())?;
+    runtime
+        .agent_definition(&agent_id)
+        .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
+    let candidate = path
+        .map(|path| path.trim().to_string())
+        .map(std::path::PathBuf::from);
+    runtime.check_agent(&agent_id, candidate).await
+}
+
+/// Opens a native file dialog for choosing an agent program and returns the
+/// chosen path, or `None` when the dialog was cancelled.
+#[tauri::command]
+pub async fn acp_pick_agent_program(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+) -> Result<Option<String>, String> {
+    super::setup::require_main_window(window.label())?;
+    let definition = runtime
+        .agent_definition(&agent_id)
+        .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
+    let status = runtime.agent_status(&agent_id, false).await?;
+    let start = status
+        .program_override
+        .clone()
+        .or_else(|| status.cli.as_ref().and_then(|cli| cli.path.clone()))
+        .or_else(|| status.executable.clone())
+        .and_then(|path| {
+            std::path::Path::new(&path)
+                .parent()
+                .map(std::path::Path::to_path_buf)
+        });
+    let picked = super::setup::pick_program(window.app_handle(), &definition, start).await?;
+    if let Some(path) = &picked {
+        super::setup::remember_pick(&agent_id, path);
+    }
+    Ok(picked.map(|path| path.to_string_lossy().into_owned()))
+}
+
+/// Saves (or clears with `None`) the program the user chose for an agent.
+#[tauri::command]
+pub async fn acp_set_agent_program(
+    window: WebviewWindow,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    path: Option<String>,
+) -> Result<AgentStatus, String> {
+    super::setup::require_main_window(window.label())?;
+    let definition = runtime
+        .agent_definition(&agent_id)
+        .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
+    let Some(path) = path else {
+        runtime.save_agent_program(&agent_id, None)?;
+        return runtime.agent_status(&agent_id, false).await;
+    };
+    let path = std::path::PathBuf::from(path.trim());
+    let located = {
+        let definition = definition.clone();
+        super::catalog::blocking(move || super::setup::inspect_choice(&definition, &path))
+            .await?
+            .map_err(|code| String::from(super::setup::program_error(code)))?
+    };
+    if !super::setup::was_picked(&agent_id, &located.path)
+        && !super::setup::confirm_program(window.app_handle(), &definition, &located.path).await?
+    {
+        return Err(super::setup::program_error("declined").into());
+    }
+    runtime.save_agent_program(&agent_id, Some(&located.path))?;
+    runtime.agent_status(&agent_id, false).await
+}
+
+/// Writes a conversation as pretty JSON (`{ session, events }`) to `path`,
+/// an absolute path from a save dialog.
+#[tauri::command]
+pub async fn acp_session_export(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    state: State<'_, crate::state::AppState>,
+    project_id: String,
+    session_id: String,
+    path: String,
+) -> Result<(), String> {
+    check_project(&runtime, &session_id, &project_id)?;
+    let exporter = runtime.inner().clone();
+    let destination = path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        exporter.export_session(&session_id, &destination)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    crate::commands::allow_reveal_export(&path, &state).await;
+    Ok(())
+}
+
+/// Every stored event of a conversation, oldest first.
+#[tauri::command]
+pub async fn acp_session_events_all(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+) -> Result<Vec<AcpEvent>, String> {
+    check_project(&runtime, &session_id, &project_id)?;
+    let reader = runtime.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || reader.events_all(&session_id))
+        .await
+        .map_err(|e| e.to_string())?
 }

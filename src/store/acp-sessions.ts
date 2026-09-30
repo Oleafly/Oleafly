@@ -6,7 +6,9 @@ import {
 } from "@/lib/acp";
 
 export interface AcpAttachment { id: string; name: string; image: AcpImage }
-export interface AcpComposer { agentId: string | null; draft: string; images: AcpAttachment[] }
+/** A skill sent with the next message; shown as a removable chip. */
+export interface AcpComposerSkill { id: string; name: string }
+export interface AcpComposer { agentId: string | null; draft: string; images: AcpAttachment[]; skill?: AcpComposerSkill | null }
 
 export const EMPTY_COMPOSER: AcpComposer = { agentId: null, draft: "", images: [] };
 

@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} har brug for tilladelse",
       "headline": "Agenten har brug for tilladelse",
       "expired": "Forespørgslen er udløbet. Bed agenten om at prøve igen.",
-      "dismiss": "Luk"
+      "dismiss": "Luk",
+      "diff": {
+        "showChange": "Vis ændringen",
+        "hideChange": "Skjul ændringen",
+        "large": "Stor ændring i {{path}}. Gennemgå den efter turen.",
+        "label": "Foreslået ændring i {{path}}",
+        "loading": "Indlæser ændringen…"
+      }
     },
     "readiness": {
       "managedBridge": "Bro {{version}} er installeret af Oleafly.",
-      "bridgeOnPath": "Broen blev fundet i PATH.",
       "bridgeMissingWithCli": "{{cli}} blev fundet i {{path}}. Installer ACP-broen {{version}} for at oprette forbindelse.",
       "bridgeMissing": "Installer ACP-broen {{version}} for at forbinde denne agent.",
-      "cliMissing": "{{cli}} findes ikke i din PATH. Installer den, og kør så {{command}}.",
       "cliNotFound": "Agentens kommandolinjeværktøj blev ikke fundet.",
       "unavailable": "Denne agent kan ikke køre på denne computer."
     },
     "bridgeSource": {
       "notInstalled": "Ikke installeret",
-      "managed": "Styret af Oleafly",
-      "onPath": "I PATH"
+      "managed": "Styret af Oleafly"
     },
     "installing": "Installerer",
     "installBridge": "Installer broen",
@@ -503,8 +507,50 @@
     "terminalCommand": "Agenten kører en kommando i terminalen.",
     "agentToolFallback": "Agentværktøj",
     "agentReported": "Agenten meldte: {{detail}}",
+    "updateTooLarge": "En del af agentens output var for stort til at blive vist ({{size}}).",
     "imageAttachmentName": "Billede {{index}}",
-    "agentImage": "[Agenten returnerede et billede.]"
+    "agentImage": "[Agenten returnerede et billede.]",
+    "setup": {
+      "cliNotFound": "Oleafly kunne ikke finde {{cli}} på denne computer.",
+      "rejected": {
+        "powershellScript": "Fandt {{file}}, men PowerShell-scripts kan ikke startes. Vælg {{name}}.cmd eller {{name}}.exe.",
+        "script": "Fandt {{file}}, men Oleafly kan ikke starte den direkte. Vælg {{name}}.exe.",
+        "isDirectory": "Fandt en mappe med navnet {{file}}. Vælg programfilen til {{name}}.",
+        "notExecutable": "Fandt {{file}}, men det er ikke et program, Oleafly kan starte.",
+        "guiProgram": "Fandt {{file}}, men det er en skrivebordsapp. Vælg kommandolinjeværktøjet til {{name}}.",
+        "networkPath": "Fandt {{file}} på en netværksplacering. Vælg en kopi på denne computer."
+      },
+      "foundOnComputer": "Fundet på denne computer.",
+      "usingChosen": "Bruger det program, du har valgt.",
+      "bridgeSourceFound": "Fundet på denne computer",
+      "setUp": "Sæt {{name}} op",
+      "backgroundTasks": "Baggrundsopgaver: {{reason}}",
+      "cliMissingNextStep": "Installer {{cli}}, eller vælg, hvor det er installeret.",
+      "installUnavailable": "Oleafly kan ikke installere denne bro på denne computer.",
+      "builtIn": "Indbygget",
+      "showAgent": "Vis"
+    },
+    "export": {
+      "menuItem": "Eksporter samtalen…",
+      "saved": "Samtalen er eksporteret",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Samtale",
+      "project": "Projekt",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Valgt af agenten",
+      "startRevision": "Startet ved commit",
+      "uncommitted": "{{revision}} med ændringer, der ikke er committet",
+      "started": "Startet",
+      "updated": "Senest opdateret",
+      "you": "Dig",
+      "skill": "Færdighed: {{name}}",
+      "tool": "Værktøj: {{name}}",
+      "changedFiles": "Ændrede filer",
+      "moreFiles_one": "og {{count}} fil mere",
+      "moreFiles_other": "og {{count}} filer mere"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI-agent",
@@ -731,5 +777,65 @@
     "preSubmission": "Gør det klar til indsendelse",
     "slides": "Lav artiklen om til et oplæg",
     "recompile": "Kompiler igen, og se efter fejl"
+  },
+  "turnChanges": {
+    "ariaLabel": "Filer, der blev ændret i denne tur",
+    "changed_one": "{{count}} fil ændret",
+    "changed_other": "{{count}} filer ændret",
+    "buildOnly": "Byggefiler opdateret",
+    "review": "Gennemgå",
+    "undoAll": "Fortryd alle",
+    "redoAll": "Gentag alle",
+    "undo": "Fortryd",
+    "redo": "Gentag",
+    "undoFile": "Fortryd {{path}}",
+    "redoFile": "Gentag {{path}}",
+    "kind": {
+      "added": "Tilføjet",
+      "modified": "Ændret",
+      "deleted": "Slettet"
+    },
+    "undone": "Fortrudt",
+    "editedAfter": "Ændret efter denne tur",
+    "alsoEdited": "Du redigerede også denne fil under turen",
+    "committed": "Committet i {{commit}}",
+    "buildFiles": "Byggefiler opdateret",
+    "moreFiles_one": "{{count}} fil mere er ikke vist",
+    "moreFiles_other": "{{count}} filer mere er ikke vist",
+    "skipped_one": "{{count}} fil kunne ikke kopieres før turen, så den kan ikke fortrydes.",
+    "skipped_other": "{{count}} filer kunne ikke kopieres før turen, så de kan ikke fortrydes.",
+    "overlapped": "En anden agent ændrede filer samtidig. Fortryd filerne én ad gangen.",
+    "expired": "Denne tur kan ikke længere fortrydes.",
+    "waitForRun": "Du kan fortryde, når agenten er færdig.",
+    "unavailable": {
+      "tooLarge": "Denne tur kan ikke fortrydes: projektet er for stort til at blive kopieret.",
+      "tooManyFiles": "Denne tur kan ikke fortrydes: projektet har for mange filer.",
+      "timeout": "Denne tur kan ikke fortrydes: det tog for lang tid at kopiere projektet.",
+      "error": "Denne tur kan ikke fortrydes: projektet kunne ikke kopieres."
+    },
+    "previewLoading": "Indlæser ændringen…",
+    "previewFailed": "Ændringen kunne ikke indlæses.",
+    "binary": "Filen er ikke tekst, så ændringen kan ikke vises.",
+    "tooLarge": "Ændringen er for stor til at blive vist her.",
+    "diffLabel": "Ændring i {{path}}",
+    "undid_one": "Fortrød ændringen i {{count}} fil.",
+    "undid_other": "Fortrød ændringerne i {{count}} filer.",
+    "redid_one": "Gentog ændringen i {{count}} fil.",
+    "redid_other": "Gentog ændringerne i {{count}} filer.",
+    "skippedEdited": "Nogle filer blev ændret efter denne tur, så Oleafly lod dem være.",
+    "skippedFailed": "Nogle filer kunne ikke skrives.",
+    "undoFailed": "Ændringerne kunne ikke fortrydes. Gem dit arbejde, og prøv igen.",
+    "redoFailed": "Ændringerne kunne ikke gentages. Gem dit arbejde, og prøv igen."
+  },
+  "presets": {
+    "literatureSweep": "Litteratursøgning",
+    "relatedWork": "Beslægtet arbejde",
+    "citationAudit": "Tjek af citationer",
+    "manuscriptReview": "Gennemgang af manuskript",
+    "reproducibilityAudit": "Tjek af reproducerbarhed",
+    "figureAudit": "Tjek af figurer",
+    "gitReview": "Git-gennemgang",
+    "referenceCleanup": "Oprydning i referencer",
+    "removeSkill": "Fjern færdigheden {{name}}"
   }
 }

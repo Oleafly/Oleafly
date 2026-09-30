@@ -78,6 +78,13 @@
     "openFolder": {
       "title": "Bir klasör aç",
       "inside": "{{name}} içinde bir klasör seçin"
+    },
+    "agentProgram": {
+      "title": "Bu program kullanılsın mı?",
+      "message": "{{name}} ajanını her kullandığınızda Oleafly {{path}} programını başlatacak. Yalnızca güvendiğiniz programları seçin.",
+      "confirm": "Programı kullan",
+      "pickTitle": "{{name}} için programı seçin",
+      "filter": "Programlar"
     }
   },
   "errors": {

@@ -72,6 +72,12 @@ pub struct AgentStatus {
     pub task_unavailable_reason: Option<String>,
     pub cli: Option<CliStatus>,
     pub bridge_shared_with_cli: bool,
+    /// The program the user chose for this agent, when set.
+    #[serde(default)]
+    pub program_override: Option<String>,
+    /// The bridge cannot work without the vendor CLI (Pi).
+    #[serde(default)]
+    pub cli_required: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -82,6 +88,35 @@ pub struct CliStatus {
     pub path: Option<String>,
     pub version: Option<String>,
     pub sign_in_command: String,
+    /// "auto" when found by searching, "override" when chosen by the user.
+    #[serde(default)]
+    pub source: Option<String>,
+    /// Files with the right name that cannot be started, with the reason.
+    #[serde(default)]
+    pub rejected: Vec<RejectedCandidate>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RejectedCandidate {
+    pub path: String,
+    /// Snake-case reason code, e.g. "unsupported_script".
+    pub reason: String,
+}
+
+/// Result of the agent "Test" check.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCheck {
+    pub ok: bool,
+    /// "ready" | "not_found" | "is_directory" | "unsupported_script" | "not_executable"
+    /// | "gui_program" | "interpreter" | "network_path" | "cli_missing" | "bridge_missing"
+    /// | "node_missing" | "node_too_old" | "start_failed" | "timeout" | "exited" | "not_acp"
+    pub code: String,
+    pub detail: Option<String>,
+    pub program: Option<String>,
+    pub version: Option<String>,
+    pub agent_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -121,6 +156,9 @@ pub struct AuthMethod {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    /// The ACP auth method `type` (for example "terminal"), when reported.
+    #[serde(default)]
+    pub kind: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -220,6 +258,12 @@ pub struct SessionRecord {
     pub auth_methods: Vec<AuthMethod>,
     pub error: Option<String>,
     pub last_sequence: u64,
+    /// HEAD commit when the session started, when the project is a Git repository.
+    #[serde(default)]
+    pub start_revision: Option<String>,
+    /// Whether the working tree had uncommitted changes when the session started.
+    #[serde(default)]
+    pub start_dirty: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -240,6 +284,24 @@ pub struct PermissionRequest {
     pub tool_call_id: Option<String>,
     pub options: Vec<PermissionOption>,
     pub expires_at: u64,
+    /// The ACP tool kind (for example "edit"), when reported.
+    #[serde(default)]
+    pub kind: Option<String>,
+    /// Target paths, project-relative when inside the project.
+    #[serde(default)]
+    pub locations: Vec<String>,
+    /// The proposed file changes, redacted and size-capped.
+    #[serde(default)]
+    pub diffs: Vec<PermissionDiff>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionDiff {
+    pub path: String,
+    pub old_text: Option<String>,
+    pub new_text: Option<String>,
+    pub truncated: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

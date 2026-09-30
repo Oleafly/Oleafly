@@ -797,6 +797,15 @@
     "enterTitle": "コミットのタイトルを入力",
     "finishMergeToCommit": "コミットする前にマージを完了してください。",
     "fetch": "フェッチ",
+    "gitMissing": {
+      "copied": "コピーしました",
+      "copyCommand": "コマンドをコピー",
+      "download": "Git for Windows をダウンロード",
+      "linux": "ソース管理には Git が必要です。パッケージマネージャで git パッケージをインストールしてから、このパネルを更新してください。",
+      "mac": "ソース管理には Git が必要です。Terminal アプリでこのコマンドを実行して、Git を含む Apple のコマンドラインツールをインストールしてから、このパネルを更新してください。",
+      "title": "Git がインストールされていません",
+      "windows": "ソース管理には Git が必要です。Git for Windows をインストールしてから、Oleafly を再起動してください。"
+    },
     "graph": "グラフ",
     "commitCount_other": "{{count}} 件のコミット",
     "initialize": "リポジトリを初期化",

@@ -797,6 +797,15 @@
     "enterTitle": "輸入提交標題",
     "finishMergeToCommit": "請先完成合併再提交。",
     "fetch": "擷取",
+    "gitMissing": {
+      "copied": "已複製",
+      "copyCommand": "複製指令",
+      "download": "下載 Git for Windows",
+      "linux": "原始檔控制需要 Git。請使用套件管理員安裝 git 套件，然後重新整理這個面板。",
+      "mac": "原始檔控制需要 Git。請在 Terminal 應用程式中執行這個指令，安裝包含 Git 的 Apple 命令列工具，然後重新整理這個面板。",
+      "title": "未安裝 Git",
+      "windows": "原始檔控制需要 Git。請安裝 Git for Windows，然後重新啟動 Oleafly。"
+    },
     "graph": "分支圖",
     "commitCount_other": "{{count}} 個提交",
     "initialize": "初始化儲存庫",

@@ -829,6 +829,15 @@
     "enterTitle": "Saisissez un titre de commit",
     "finishMergeToCommit": "Terminez la fusion avant de valider.",
     "fetch": "Récupérer",
+    "gitMissing": {
+      "copied": "Copié",
+      "copyCommand": "Copier la commande",
+      "download": "Télécharger Git for Windows",
+      "linux": "Le contrôle de version a besoin de Git. Installez le paquet git avec votre gestionnaire de paquets, puis actualisez ce panneau.",
+      "mac": "Le contrôle de version a besoin de Git. Lancez cette commande dans Terminal pour installer les outils en ligne de commande d'Apple, qui incluent Git, puis actualisez ce panneau.",
+      "title": "Git n'est pas installé",
+      "windows": "Le contrôle de version a besoin de Git. Installez Git for Windows, puis redémarrez Oleafly."
+    },
     "graph": "Graphe",
     "commitCount_one": "{{count}} commit",
     "commitCount_many": "{{count}} commits",

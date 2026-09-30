@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { i18n } from "@/i18n";
-import { acpCatalog } from "@/lib/acp";
+import { acpCatalog, acpUsable } from "@/lib/acp";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 
 interface ProviderGroup {
@@ -25,7 +25,7 @@ export function useAgentTargets(projectId: string | null, groups: readonly Provi
     retry: false,
   });
   return useMemo<DelegationTarget[]>(() => [
-    ...(catalog.data ?? []).filter((agent) => agent.installed).map((agent) => ({
+    ...(catalog.data ?? []).filter((agent) => acpUsable(agent)).map((agent) => ({
       id: agent.definition.id,
       label: agent.definition.name,
       detail: i18n.t(($) => $.ai.agents.cliDetail),

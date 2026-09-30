@@ -777,6 +777,8 @@ export interface GitWorkspaceSnapshot {
     conflicts: GitConflict[];
     branches: string[];
     commits: GitCommit[];
+    /** False when no usable `git` program is installed. */
+    gitAvailable?: boolean;
 }
 export interface GitWorktreeOperationResult {
     message: string;

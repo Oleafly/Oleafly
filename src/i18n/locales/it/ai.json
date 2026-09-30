@@ -443,21 +443,25 @@
       "namedHeadline": "{{agent}} ha bisogno di un permesso",
       "headline": "L'agente ha bisogno di un permesso",
       "expired": "Questa richiesta è scaduta. Chiedi all'agente di riprovare.",
-      "dismiss": "Ignora"
+      "dismiss": "Ignora",
+      "diff": {
+        "showChange": "Mostra la modifica",
+        "hideChange": "Nascondi la modifica",
+        "large": "Modifica estesa al file {{path}}. Rivedila dopo il turno.",
+        "label": "Modifica proposta al file {{path}}",
+        "loading": "Caricamento della modifica…"
+      }
     },
     "readiness": {
       "managedBridge": "Bridge {{version}} installato da Oleafly.",
-      "bridgeOnPath": "Bridge trovato nel PATH.",
       "bridgeMissingWithCli": "{{cli}} trovato in {{path}}. Installa il bridge ACP {{version}} per collegarti.",
       "bridgeMissing": "Installa il bridge ACP {{version}} per collegare questo agente.",
-      "cliMissing": "{{cli}} non è nel tuo PATH. Installalo, poi esegui {{command}}.",
       "cliNotFound": "Lo strumento da riga di comando di questo agente non è stato trovato.",
       "unavailable": "Questo agente non può funzionare su questo computer."
     },
     "bridgeSource": {
       "notInstalled": "Non installato",
-      "managed": "Gestito da Oleafly",
-      "onPath": "Nel PATH"
+      "managed": "Gestito da Oleafly"
     },
     "installing": "Installazione",
     "installBridge": "Installa il bridge",
@@ -510,8 +514,51 @@
     "terminalCommand": "L'agente sta eseguendo un comando nel terminale.",
     "agentToolFallback": "Strumento dell'agente",
     "agentReported": "L'agente ha riportato: {{detail}}",
+    "updateTooLarge": "Una parte dell'output dell'agente era troppo grande per essere mostrata ({{size}}).",
     "imageAttachmentName": "Immagine {{index}}",
-    "agentImage": "[L'agente ha restituito un'immagine.]"
+    "agentImage": "[L'agente ha restituito un'immagine.]",
+    "setup": {
+      "cliNotFound": "Oleafly non ha trovato {{cli}} su questo computer.",
+      "rejected": {
+        "powershellScript": "Trovato {{file}}, ma gli script PowerShell non si possono avviare. Scegli {{name}}.cmd o {{name}}.exe.",
+        "script": "Trovato {{file}}, ma Oleafly non può avviarlo direttamente. Scegli {{name}}.exe.",
+        "isDirectory": "Trovata una cartella chiamata {{file}}. Scegli il file del programma {{name}}.",
+        "notExecutable": "Trovato {{file}}, ma non è un programma che Oleafly può avviare.",
+        "guiProgram": "Trovato {{file}}, ma è un'app desktop. Scegli lo strumento da riga di comando {{name}}.",
+        "networkPath": "Trovato {{file}} in una posizione di rete. Scegli una copia su questo computer."
+      },
+      "foundOnComputer": "Trovato su questo computer.",
+      "usingChosen": "In uso il programma che hai scelto.",
+      "bridgeSourceFound": "Trovato su questo computer",
+      "setUp": "Configura {{name}}",
+      "backgroundTasks": "Attività in background: {{reason}}",
+      "cliMissingNextStep": "Installa {{cli}} oppure scegli dove è installato.",
+      "installUnavailable": "Oleafly non può installare questo bridge su questo computer.",
+      "builtIn": "Integrato",
+      "showAgent": "Mostra"
+    },
+    "export": {
+      "menuItem": "Esporta la conversazione…",
+      "saved": "Conversazione esportata",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Conversazione",
+      "project": "Progetto",
+      "agent": "Agente",
+      "model": "Modello",
+      "modelManaged": "Scelto dall'agente",
+      "startRevision": "Commit di partenza",
+      "uncommitted": "{{revision}} con modifiche senza commit",
+      "started": "Inizio",
+      "updated": "Ultimo aggiornamento",
+      "you": "Tu",
+      "skill": "Skill: {{name}}",
+      "tool": "Strumento: {{name}}",
+      "changedFiles": "File modificati",
+      "moreFiles_one": "e {{count}} altro file",
+      "moreFiles_many": "e altri {{count}} file",
+      "moreFiles_other": "e altri {{count}} file"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agente da riga di comando",
@@ -741,5 +788,70 @@
     "preSubmission": "Preparalo per l'invio",
     "slides": "Trasforma questo articolo in una presentazione",
     "recompile": "Ricompila e controlla se ci sono errori"
+  },
+  "turnChanges": {
+    "ariaLabel": "File modificati in questo turno",
+    "changed_one": "{{count}} file modificato",
+    "changed_many": "{{count}} file modificati",
+    "changed_other": "{{count}} file modificati",
+    "buildOnly": "File di compilazione aggiornati",
+    "review": "Rivedi",
+    "undoAll": "Annulla tutto",
+    "redoAll": "Ripeti tutto",
+    "undo": "Annulla",
+    "redo": "Ripeti",
+    "undoFile": "Annulla {{path}}",
+    "redoFile": "Ripeti {{path}}",
+    "kind": {
+      "added": "Aggiunto",
+      "modified": "Modificato",
+      "deleted": "Eliminato"
+    },
+    "undone": "Annullato",
+    "editedAfter": "Modificato dopo questo turno",
+    "alsoEdited": "Hai modificato anche tu questo file durante il turno",
+    "committed": "Incluso nel commit {{commit}}",
+    "buildFiles": "File di compilazione aggiornati",
+    "moreFiles_one": "{{count}} altro file non è elencato",
+    "moreFiles_many": "Altri {{count}} file non sono elencati",
+    "moreFiles_other": "Altri {{count}} file non sono elencati",
+    "skipped_one": "Non è stato possibile copiare {{count}} file prima del turno, quindi Annulla non può riportarlo com'era.",
+    "skipped_many": "Non è stato possibile copiare {{count}} file prima del turno, quindi Annulla non può riportarli com'erano.",
+    "skipped_other": "Non è stato possibile copiare {{count}} file prima del turno, quindi Annulla non può riportarli com'erano.",
+    "overlapped": "Un altro agente ha modificato dei file nello stesso momento. Annulla le modifiche un file alla volta.",
+    "expired": "L'annullamento non è più disponibile per questo turno.",
+    "waitForRun": "L'annullamento sarà disponibile quando l'agente avrà finito.",
+    "unavailable": {
+      "tooLarge": "L'annullamento non è disponibile per questo turno: il progetto è troppo grande per essere copiato.",
+      "tooManyFiles": "L'annullamento non è disponibile per questo turno: il progetto ha troppi file.",
+      "timeout": "L'annullamento non è disponibile per questo turno: la copia del progetto ha richiesto troppo tempo.",
+      "error": "L'annullamento non è disponibile per questo turno: non è stato possibile copiare il progetto."
+    },
+    "previewLoading": "Caricamento della modifica…",
+    "previewFailed": "Non è stato possibile caricare questa modifica.",
+    "binary": "Questo file non è di testo, quindi la modifica non si può mostrare.",
+    "tooLarge": "Questa modifica è troppo grande per essere mostrata qui.",
+    "diffLabel": "Modifica al file {{path}}",
+    "undid_one": "Modifica annullata in {{count}} file.",
+    "undid_many": "Modifiche annullate in {{count}} file.",
+    "undid_other": "Modifiche annullate in {{count}} file.",
+    "redid_one": "Modifica riapplicata in {{count}} file.",
+    "redid_many": "Modifiche riapplicate in {{count}} file.",
+    "redid_other": "Modifiche riapplicate in {{count}} file.",
+    "skippedEdited": "Alcuni file sono cambiati dopo questo turno, quindi Oleafly non li ha toccati.",
+    "skippedFailed": "Non è stato possibile scrivere alcuni file.",
+    "undoFailed": "Non è stato possibile annullare le modifiche. Salva il tuo lavoro e riprova.",
+    "redoFailed": "Non è stato possibile riapplicare le modifiche. Salva il tuo lavoro e riprova."
+  },
+  "presets": {
+    "literatureSweep": "Ricognizione della letteratura",
+    "relatedWork": "Lavori correlati",
+    "citationAudit": "Verifica delle citazioni",
+    "manuscriptReview": "Revisione del manoscritto",
+    "reproducibilityAudit": "Verifica della riproducibilità",
+    "figureAudit": "Verifica delle figure",
+    "gitReview": "Revisione Git",
+    "referenceCleanup": "Pulizia dei riferimenti",
+    "removeSkill": "Rimuovi la skill {{name}}"
   }
 }

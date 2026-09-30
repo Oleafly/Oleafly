@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Check, Download, Loader2, TriangleAlert } from "lucide-react";
+import { Check, Download, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { acpError, acpInstall, acpReadiness, acpReadinessLabel, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
+import { isWindows } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { useSettingsStore } from "@/store/settings";
+import { useTerminalsStore } from "@/store/terminals";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 
@@ -43,6 +47,32 @@ export function useBridgeInstall() {
   return { installing, install };
 }
 
+/** A POSIX shell closes a single-quoted string, adds an escaped quote and reopens it. */
+const POSIX_ESCAPED_QUOTE = String.raw`'\''`;
+
+/**
+ * The shell line that starts a CLI by its absolute path: PowerShell on Windows
+ * (the in-app terminal's shell there), a POSIX shell elsewhere. The path is
+ * single-quoted so spaces, `$`, `%` and backticks stay literal.
+ */
+export function signInCommandLine(path: string, windows: boolean = isWindows): string {
+  if (windows) return `& '${path.replaceAll(/['‘’‚‛]/g, (quote) => quote + quote)}'`;
+  return `'${path.replaceAll("'", POSIX_ESCAPED_QUOTE)}'`;
+}
+
+/**
+ * Opens a project terminal that runs the agent's CLI, for agents that sign in
+ * interactively. Returns false when no terminal could be added (the tab limit).
+ */
+export function openAgentSignInTerminal(projectId: string, cliPath: string): boolean {
+  const terminals = useTerminalsStore.getState();
+  terminals.setProject(projectId);
+  const tab = useTerminalsStore.getState().addTerminal({ initialInput: `${signInCommandLine(cliPath)}\r` });
+  if (!tab) return false;
+  useSettingsStore.getState().setTerminalOpen(true);
+  return true;
+}
+
 export function BridgeInstallCard({
   agent,
   onInstalled,
@@ -56,6 +86,7 @@ export function BridgeInstallCard({
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);
   const busy = installing === agent.definition.id;
+  const canInstall = readiness === "bridge-missing" && agent.canInstall;
   return (
     <div
       data-testid={`acp-bridge-card-${agent.definition.id}`}
@@ -65,13 +96,13 @@ export function BridgeInstallCard({
         <AgentLogo agentId={agent.definition.id} size={18} />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium leading-snug">{agent.definition.name}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="break-words text-xs leading-relaxed text-muted-foreground">
             {readinessDetail(agent, readiness)}
           </p>
         </div>
         <ReadinessBadge readiness={readiness} />
       </div>
-      {readiness === "bridge-missing" && agent.canInstall && (
+      {canInstall ? (
         <Button
           type="button"
           size="sm"
@@ -86,9 +117,21 @@ export function BridgeInstallCard({
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
           {busy ? t(($) => $.ai.acp.installing) : t(($) => $.ai.acp.installBridge)}
         </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          data-testid={`acp-set-up-${agent.definition.id}`}
+          onClick={() => openCliAgentSettings(agent.definition.id)}
+        >
+          <Settings2 className="size-3.5" />
+          {t(($) => $.ai.acp.setup.setUp, { name: agent.definition.name })}
+        </Button>
       )}
-      {agent.signInHint && readiness !== "ready" && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
+      {readiness === "bridge-missing" && (agent.canInstall ? agent.signInHint : agent.reason) && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {agent.canInstall ? agent.signInHint : agent.reason}
+        </p>
       )}
     </div>
   );

@@ -341,6 +341,8 @@ mod tests {
             auth_methods: Vec::new(),
             error: None,
             last_sequence: 3,
+            start_revision: None,
+            start_dirty: None,
         }
     }
 

@@ -221,8 +221,8 @@
       "content": "Skonfigurowane rozmowy pokazują tutaj liczbę uruchomień, tokenów i szacowany koszt, jeśli są dostępne."
     },
     "restore": {
-      "title": "Przywróć stan projektu",
-      "content": "Po edycji wykonanej przez AI punkt kontrolny może przywrócić pliki projektu bez usuwania rozmowy."
+      "title": "Przegląd zmian agenta",
+      "content": "Gdy tura zmienia pliki, kliknij Przejrzyj, aby zobaczyć każdą zmianę. Cofnij wycofuje zmianę w pliku, a Ponów wprowadza ją ponownie."
     }
   },
   "diagram": {

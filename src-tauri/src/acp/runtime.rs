@@ -1,8 +1,11 @@
 use super::{
-    catalog,
-    protocol::{Connection, Incoming},
+    catalog, export, permission_view,
+    protocol::{Connection, Incoming, RpcError},
     redact::Redactor,
+    review::{self, ReviewHooks},
+    skill_block::PromptSkill,
     store::Store,
+    transcript,
     types::{
         new_id, now_ms, AcpEvent, AgentDefinition, AgentStatus, Capabilities, EventPage,
         ImagePrompt, PermissionRequest, SessionControls, SessionRecord, SessionSnapshot,
@@ -22,6 +25,9 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const PROMPT_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const PERMISSION_TIMEOUT_MS: u64 = 120_000;
 const CANCEL_GRACE: Duration = Duration::from_secs(10);
+/// How long a closed session stays registered while its last turn finishes
+/// (the before-turn copy's own hooks are bounded at 10 s each).
+const RELEASE_WAIT: Duration = Duration::from_secs(25);
 const MAX_SESSION_BYTES: usize = 64 * 1024 * 1024;
 
 struct PendingPermission {
@@ -34,6 +40,10 @@ struct LiveState {
     replaying: bool,
     cancelled: bool,
     bytes: usize,
+    /// Latest content of this turn's tool calls, joined to permission requests.
+    tool_calls: HashMap<String, permission_view::ToolCallView>,
+    /// The folder of the skill attached to the running turn.
+    skill_folder: Option<PathBuf>,
 }
 
 struct TaskTemp(PathBuf);
@@ -119,10 +129,18 @@ pub struct AcpRuntime {
     owner_epochs: Mutex<HashMap<String, u64>>,
     startup: Mutex<StartupState>,
     startup_count: watch::Sender<usize>,
+    review: ReviewHooks,
 }
 
 impl AcpRuntime {
     pub fn new(root: PathBuf) -> Result<Arc<Self>, String> {
+        Self::with_review_hooks(root, ReviewHooks::default())
+    }
+
+    pub(crate) fn with_review_hooks(
+        root: PathBuf,
+        review: ReviewHooks,
+    ) -> Result<Arc<Self>, String> {
         let store = Store::open(&root)?;
         let (events, _) = broadcast::channel(2048);
         Ok(Arc::new(Self {
@@ -136,6 +154,7 @@ impl AcpRuntime {
             owner_epochs: Mutex::new(HashMap::new()),
             startup: Mutex::new(StartupState::default()),
             startup_count: watch::channel(0).0,
+            review,
         }))
     }
 
@@ -206,6 +225,14 @@ impl AcpRuntime {
     pub fn events(&self, id: &str, after: u64, limit: usize) -> Result<EventPage, String> {
         self.store.events(id, after, limit)
     }
+    /// Every stored event of a conversation, oldest first.
+    pub fn events_all(&self, id: &str) -> Result<Vec<AcpEvent>, String> {
+        self.store.events_all(id)
+    }
+    /// Writes a saved conversation as pretty JSON to a path the user chose.
+    pub fn export_session(&self, id: &str, destination: &str) -> Result<(), String> {
+        export::write_export(&self.store, id, destination)
+    }
     pub fn list(&self, project_id: &str) -> Result<Vec<SessionRecord>, String> {
         self.store.list(Some(project_id), 200)
     }
@@ -236,11 +263,55 @@ impl AcpRuntime {
     }
 
     pub async fn catalog(&self, probe: bool) -> Result<Vec<AgentStatus>, String> {
-        let mut results = Vec::new();
-        for definition in catalog::builtins().into_iter().chain(self.store.agents()?) {
-            results.push(catalog::status(&self.root, definition, probe).await);
+        if probe {
+            crate::program_locator::refresh();
         }
-        Ok(results)
+        let programs = self.store.agent_programs()?;
+        let statuses = catalog::builtins()
+            .into_iter()
+            .chain(self.store.agents()?)
+            .map(|definition| {
+                let program = programs.get(&definition.id).cloned();
+                catalog::status_with(&self.root, definition, probe, program)
+            });
+        Ok(futures_util::future::join_all(statuses).await)
+    }
+
+    /// The status of one agent, with the program the user chose for it.
+    pub async fn agent_status(&self, id: &str, probe: bool) -> Result<AgentStatus, String> {
+        let definition = self.definition(id)?;
+        let program = self.store.agent_program(id)?;
+        Ok(catalog::status_with(&self.root, definition, probe, program).await)
+    }
+
+    /// The definition of a built-in or registered agent.
+    pub fn agent_definition(&self, id: &str) -> Result<AgentDefinition, String> {
+        self.definition(id)
+    }
+
+    /// Saves (or clears) the program the user chose for an agent. The path
+    /// was checked by the caller.
+    pub fn save_agent_program(&self, id: &str, path: Option<&Path>) -> Result<(), String> {
+        self.definition(id)?;
+        self.store.set_agent_program(
+            id,
+            path.map(|path| path.to_string_lossy().into_owned())
+                .as_deref(),
+        )
+    }
+
+    /// Tests an agent's programs without saving anything: `candidate`, or the
+    /// program Oleafly would use today. One check per agent at a time.
+    pub async fn check_agent(
+        &self,
+        id: &str,
+        candidate: Option<PathBuf>,
+    ) -> Result<super::AgentCheck, String> {
+        let definition = self.definition(id)?;
+        let _flight = super::setup::CheckFlight::enter(&format!("{}\n{id}", self.root.display()))?;
+        let _startup = self.begin_startup()?;
+        let saved = self.store.agent_program(id)?;
+        Ok(super::setup::check_agent(&self.root, &definition, candidate, saved).await)
     }
 
     pub fn register(&self, json: &str) -> Result<AgentDefinition, String> {
@@ -289,7 +360,8 @@ impl AcpRuntime {
         let result = catalog::install(&self.root, &definition).await;
         self.installing.lock().await.remove(id);
         result?;
-        Ok(catalog::status(&self.root, definition, true).await)
+        let program = self.store.agent_program(id)?;
+        Ok(catalog::status_with(&self.root, definition, true, program).await)
     }
 
     pub async fn registry_search(
@@ -362,6 +434,11 @@ impl AcpRuntime {
                 return Err(reason);
             }
         }
+        let (start_revision, start_dirty) = if options.task_id.is_none() {
+            review::start_revision(&self.review, &root).await
+        } else {
+            (None, None)
+        };
         let time = now_ms();
         let record = SessionRecord {
             id: new_id(),
@@ -382,6 +459,8 @@ impl AcpRuntime {
             auth_methods: Vec::new(),
             error: None,
             last_sequence: 0,
+            start_revision,
+            start_dirty,
         };
         self.connect(
             record,
@@ -424,9 +503,18 @@ impl AcpRuntime {
             if session.owner != owner {
                 return Err("This ACP session belongs to another window or task.".into());
             }
-            return Err("This ACP session is already connected.".into());
+            if !session.connection.is_closed() {
+                return Err("This ACP session is already connected.".into());
+            }
+            // The agent is gone but its last turn may still be saving events.
+            self.release_when_idle(&session).await;
+            if self.get_live(id).await.is_ok() {
+                return Err("This ACP session is already connected.".into());
+            }
         }
         let mut record = self.store.get(id)?;
+        // Continue after every saved event, even when the stored record lags.
+        record.last_sequence = record.last_sequence.max(self.store.last_sequence(id)?);
         crate::trust::require_trusted(
             &record.project_id,
             crate::trust::Capability::ExternalAgents,
@@ -460,18 +548,30 @@ impl AcpRuntime {
             return Err("The window or task closed while the agent was starting.".into());
         }
         let definition = self.definition(&record.agent_id)?;
+        let program = self.store.agent_program(&definition.id)?;
+        let chosen_launch =
+            program.is_some() && catalog::program_role(&definition) == catalog::ProgramRole::Launch;
         if let Some(required) = definition
             .distribution
             .npx
             .as_ref()
             .and_then(|v| v.node_major)
+            .filter(|_| !chosen_launch)
         {
-            catalog::check_node(required).await?;
+            catalog::check_node(&self.root, required).await?;
         }
         if !self.owner_is_current(owner.as_deref(), generation) {
             return Err("The window or task closed while the agent was starting.".into());
         }
-        let launch = catalog::resolve(&self.root, &definition)?;
+        let launch = {
+            let root = self.root.clone();
+            let definition = definition.clone();
+            catalog::blocking(move || {
+                catalog::plan(&root, &definition, program.as_deref().map(Path::new)).launch
+            })
+            .await??
+        };
+        let launch_root = launch_root_for(Path::new(&record.project_path));
         if mcp_servers.len() > 32
             || serde_json::to_vec(&mcp_servers)
                 .map_err(|e| e.to_string())?
@@ -512,30 +612,15 @@ impl AcpRuntime {
         } else {
             Redactor::new(&mcp_servers)
         };
-        let mut command = if let Some(paths) = &allowed_paths {
-            crate::agent::task_runtime::sandbox_task_command_with_reads(
-                &launch.executable,
-                &launch.args,
-                Path::new(&record.project_path),
-                paths,
-                &task_temp
-                    .as_ref()
-                    .ok_or("The task temporary directory is missing.")?
-                    .0,
-                true,
-                &super::task_launch::runtime_reads(&self.root, &definition, &launch),
-            )?
-        } else {
-            let mut command = tokio::process::Command::new(&launch.executable);
-            command.args(&launch.args);
-            command
-        };
-        command.current_dir(&record.project_path);
-        if let Some(hardening) =
-            crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
-        {
-            command.envs(hardening);
-        }
+        let command = build_agent_command(
+            &self.root,
+            &record,
+            &definition,
+            &launch,
+            &launch_root,
+            allowed_paths.as_deref(),
+            task_temp.as_ref().map(|temporary| temporary.0.as_path()),
+        )?;
         let id = record.id.clone();
         let bytes = self.store.byte_count(&id)?;
         let (connection, incoming) = Connection::spawn(command).await?;
@@ -550,6 +635,8 @@ impl AcpRuntime {
                 replaying: true,
                 cancelled: false,
                 bytes,
+                tool_calls: HashMap::new(),
+                skill_folder: None,
             }),
             connection,
             operation: AsyncMutex::new(()),
@@ -615,7 +702,10 @@ impl AcpRuntime {
                         .iter()
                         .take(12)
                         .filter_map(|value| {
-                            serde_json::from_value(session.redactor.value(value)).ok()
+                            let mut method: super::AuthMethod =
+                                serde_json::from_value(session.redactor.value(value)).ok()?;
+                            method.kind = auth_method_kind(value);
+                            Some(method)
                         })
                         .collect()
                 })
@@ -626,6 +716,9 @@ impl AcpRuntime {
 
     async fn establish(&self, session: &Arc<LiveSession>) -> Result<(), String> {
         let record = self.copy_record(session)?;
+        let cwd = launch_root_for(Path::new(&record.project_path))
+            .to_string_lossy()
+            .into_owned();
         let mcp_servers = session
             .mcp_servers
             .lock()
@@ -641,13 +734,10 @@ impl AcpRuntime {
             };
             (
                 method,
-                json!({"sessionId":native,"cwd":record.project_path,"mcpServers":mcp_servers}),
+                json!({"sessionId":native,"cwd":cwd,"mcpServers":mcp_servers}),
             )
         } else {
-            (
-                "session/new",
-                json!({"cwd":record.project_path,"mcpServers":mcp_servers}),
-            )
+            ("session/new", json!({"cwd":cwd,"mcpServers":mcp_servers}))
         };
         let result = session
             .connection
@@ -812,7 +902,21 @@ impl AcpRuntime {
         text: String,
         images: Vec<ImagePrompt>,
     ) -> Result<SessionSnapshot, String> {
-        if text.trim().is_empty() && images.is_empty() {
+        self.prompt_with_skill(id, text, images, None).await
+    }
+
+    /// Sends one turn. With `skill`, its instructions follow the user's text
+    /// as a second text block. Interactive turns are bracketed by a
+    /// before-turn copy so the changes the agent made can be reviewed.
+    pub async fn prompt_with_skill(
+        self: &Arc<Self>,
+        id: &str,
+        text: String,
+        images: Vec<ImagePrompt>,
+        skill: Option<PromptSkill>,
+    ) -> Result<SessionSnapshot, String> {
+        let has_text = !text.trim().is_empty();
+        if !has_text && images.is_empty() && skill.is_none() {
             return Err("Write a message before sending.".into());
         }
         if text.len() > 256 * 1024 || images.len() > 4 {
@@ -834,21 +938,7 @@ impl AcpRuntime {
         if !images.is_empty() && !record.capabilities.image {
             return Err("This agent does not accept images.".into());
         }
-        let mut prompt = vec![json!({"type":"text","text":text})];
-        for image in &images {
-            if !matches!(
-                image.mime_type.as_str(),
-                "image/png" | "image/jpeg" | "image/webp" | "image/gif"
-            ) || image.data.len() > 640 * 1024
-            {
-                return Err("Use a PNG, JPEG, WebP or GIF image smaller than 480 KiB.".into());
-            }
-            use base64::Engine;
-            base64::engine::general_purpose::STANDARD
-                .decode(&image.data)
-                .map_err(|_| "The image data is invalid.")?;
-            prompt.push(json!({"type":"image","mimeType":image.mime_type,"data":image.data}));
-        }
+        let prompt = prompt_blocks(&text, has_text, skill.as_ref(), &images)?;
         let params = json!({"sessionId":record.native_session_id,"prompt":prompt});
         if serde_json::to_vec(&params)
             .map_err(|e| e.to_string())?
@@ -866,21 +956,44 @@ impl AcpRuntime {
             state.record.status = SessionStatus::Running;
             state.record.error = None;
             state.cancelled = false;
+            state.tool_calls.clear();
+            state.skill_folder = skill.as_ref().and_then(|skill| skill.folder.clone());
             if state.record.last_sequence <= 1 {
-                state.record.title = session
-                    .redactor
-                    .text(text.trim())
-                    .chars()
-                    .take(80)
-                    .collect();
+                let title = turn_title(&text, has_text, skill.as_ref());
+                state.record.title = session.redactor.text(title).chars().take(80).collect();
             }
-            self.emit_locked(&session, &mut state, "user_message", json!({"text":text,"images":images.iter().map(|v| json!({"mimeType":v.mime_type})).collect::<Vec<_>>()}))?;
+            let mut user = json!({"text":text,"images":images.iter().map(|v| json!({"mimeType":v.mime_type})).collect::<Vec<_>>()});
+            if let Some(skill) = &skill {
+                user["skill"] = json!({"id":skill.id,"name":skill.name});
+            }
+            self.emit_locked(&session, &mut state, "user_message", user)?;
         }
-        let result = session
-            .connection
-            .request("session/prompt", params, PROMPT_TIMEOUT)
-            .await;
+        let turn_copy = if review::takes_turn_copy(
+            session.task_temp.is_some(),
+            record.parent_session_id.as_deref(),
+        ) {
+            let label = self
+                .definition(&record.agent_id)
+                .map(|definition| definition.name)
+                .unwrap_or_else(|_| record.agent_id.clone());
+            Some(review::begin_turn(&self.review, &record.project_id, &label).await)
+        } else {
+            None
+        };
+        let cancelled_during_copy = session.state.lock().is_ok_and(|state| state.cancelled);
+        let result = if cancelled_during_copy {
+            Err(RpcError::local("The turn was cancelled."))
+        } else {
+            session
+                .connection
+                .request("session/prompt", params, PROMPT_TIMEOUT)
+                .await
+        };
         self.expire_permissions(&session).await;
+        let changes = match &turn_copy {
+            Some(begin) => review::finish_turn(&self.review, &record.project_id, begin).await,
+            None => None,
+        };
         let closed = session.connection.is_closed();
         let live_status = if closed {
             SessionStatus::Disconnected
@@ -893,43 +1006,13 @@ impl AcpRuntime {
                 .state
                 .lock()
                 .map_err(|_| "The ACP session is unavailable.")?;
-            let (status, stop, message) = match &result {
-                Ok(value) if !state.cancelled => match value["stopReason"]
-                    .as_str()
-                    .filter(|reason| !reason.trim().is_empty())
-                {
-                    Some(reason) => (live_status.clone(), reason.to_owned(), None),
-                    None => (
-                        live_status.clone(),
-                        "error".into(),
-                        Some("The agent did not report how this turn ended.".into()),
-                    ),
-                },
-                _ if state.cancelled => (
-                    if closed {
-                        SessionStatus::Cancelled
-                    } else {
-                        live_status.clone()
-                    },
-                    "cancelled".into(),
-                    None,
-                ),
-                Err(error) if !closed && error.auth_required() => (
-                    SessionStatus::AuthRequired,
-                    "error".into(),
-                    Some(session.redactor.text(&error.to_string())),
-                ),
-                Err(error) => (
-                    live_status.clone(),
-                    "error".into(),
-                    Some(session.redactor.text(&error.to_string())),
-                ),
-                _ => (
-                    live_status.clone(),
-                    "error".into(),
-                    Some("The agent stopped before completing this turn.".into()),
-                ),
-            };
+            let (status, stop, message) = turn_outcome(
+                &result,
+                state.cancelled,
+                closed,
+                &live_status,
+                &session.redactor,
+            );
             if let Ok(value) = &result {
                 if let Some(usage) = prompt_usage(value) {
                     self.emit_locked(
@@ -940,7 +1023,14 @@ impl AcpRuntime {
                     )?;
                 }
             }
+            if let Some(changes) = changes.filter(review::worth_reporting) {
+                let data = review::turn_changes_event(state.record.turn_id.as_deref(), &changes);
+                // The card is extra information: failing to store it never
+                // fails the turn.
+                let _ = self.emit_locked(&session, &mut state, "turn_changes", data);
+            }
             let authenticating = status == SessionStatus::AuthRequired;
+            state.skill_folder = None;
             state.record.status = status;
             state.record.error = message.clone();
             error = message;
@@ -1021,7 +1111,15 @@ impl AcpRuntime {
                 json!({"status":"cancelled"}),
             )
         })();
-        self.release_live(&session).await;
+        if session.operation.try_lock().is_ok() {
+            self.release_live(&session).await;
+        } else {
+            // The turn is still finishing (its before-turn copy can take
+            // seconds): keep the session registered until it has saved its
+            // last events, so it cannot be reconnected underneath it.
+            let runtime = self.clone();
+            tokio::spawn(async move { runtime.release_when_idle(&session).await });
+        }
         cancelling.and(cancelled)
     }
 
@@ -1056,8 +1154,16 @@ impl AcpRuntime {
                 )?;
             }
         }
-        self.release_live(&session).await;
+        self.release_when_idle(&session).await;
         Ok(())
+    }
+
+    /// Releases a closed session once no turn, sign-in or model change still
+    /// holds it (bounded by [`RELEASE_WAIT`]), so a reconnect never builds a
+    /// second copy of the session while the old turn still appends events.
+    async fn release_when_idle(&self, session: &Arc<LiveSession>) {
+        let _idle = tokio::time::timeout(RELEASE_WAIT, session.operation.lock()).await;
+        self.release_live(session).await;
     }
 
     async fn release_live(&self, session: &Arc<LiveSession>) {
@@ -1256,11 +1362,19 @@ impl AcpRuntime {
         kind: &str,
         data: Value,
     ) -> Result<(), String> {
-        let data = session.redactor.value(&data);
+        // `turn_changes` is built by Oleafly from project paths; redacting it
+        // would mangle file names such as `sk-learn-results.csv`.
+        let data = if kind == "turn_changes" {
+            data
+        } else {
+            transcript::bound_event(session.redactor.value(&data))
+        };
         let bytes = serde_json::to_vec(&data).map_err(|e| e.to_string())?.len();
-        if bytes > 256 * 1024
-            || (state.bytes + bytes > MAX_SESSION_BYTES
-                && !matches!(kind, "turn_complete" | "status" | "permission_resolved"))
+        if state.bytes + bytes > MAX_SESSION_BYTES
+            && !matches!(
+                kind,
+                "turn_complete" | "status" | "permission_resolved" | "turn_changes"
+            )
         {
             session.connection.request_stop();
             return Err(
@@ -1327,12 +1441,16 @@ impl AcpRuntime {
                             break;
                         }
                     }
+                    Incoming::DroppedUpdate { bytes } => {
+                        runtime.note_dropped_update(&session, bytes)
+                    }
                     Incoming::Barrier(sender) => {
                         let _ = sender.send(());
                     }
                     Incoming::Disconnected => break,
                 }
             }
+            drop(incoming);
             if let Some(runtime) = weak.upgrade() {
                 runtime.expire_permissions(&session).await;
                 if let Ok(mut state) = session.state.lock() {
@@ -1351,9 +1469,29 @@ impl AcpRuntime {
                         );
                     }
                 }
-                runtime.release_live(&session).await;
+                runtime.release_when_idle(&session).await;
             }
         });
+    }
+
+    /// Records that an update too large to keep was skipped, so the transcript
+    /// shows why a tool call has no output.
+    fn note_dropped_update(&self, session: &LiveSession, bytes: usize) {
+        if let Ok(mut state) = session.state.lock() {
+            if !state.replaying
+                && matches!(
+                    state.record.status,
+                    SessionStatus::Running | SessionStatus::Cancelling
+                )
+            {
+                let _ = self.emit_locked(
+                    session,
+                    &mut state,
+                    "diagnostics",
+                    json!({"droppedUpdate":{"bytes":bytes}}),
+                );
+            }
+        }
     }
 
     async fn handle_message(
@@ -1376,7 +1514,10 @@ impl AcpRuntime {
                         self.emit_locked(session, &mut state, "usage", serde_json::to_value(usage).map_err(|e| e.to_string())?)?;
                     },
                     "agent_message_chunk" | "agent_thought_chunk" | "tool_call" | "tool_call_update" | "plan" | "available_commands_update" => {
-                        if matches!(state.record.status, SessionStatus::Running | SessionStatus::Cancelling) { self.emit_locked(session, &mut state, kind, update.clone())?; }
+                        if matches!(state.record.status, SessionStatus::Running | SessionStatus::Cancelling) {
+                            if matches!(kind, "tool_call" | "tool_call_update") { permission_view::track(&mut state.tool_calls, update); }
+                            self.emit_locked(session, &mut state, kind, update.clone())?;
+                        }
                     },
                     _ => {},
                 }
@@ -1395,14 +1536,43 @@ impl AcpRuntime {
     ) -> Result<(), String> {
         let params = &value["params"];
         let record = self.copy_record(session)?;
-        let allowed = (session.owner.is_some() || session.task_temp.is_some())
+        let (remembered, skill_folder) = {
+            let state = session
+                .state
+                .lock()
+                .map_err(|_| "The ACP session is unavailable.")?;
+            (
+                params["toolCall"]["toolCallId"]
+                    .as_str()
+                    .and_then(|id| state.tool_calls.get(id).cloned()),
+                state.skill_folder.clone(),
+            )
+        };
+        let in_turn = (session.owner.is_some() || session.task_temp.is_some())
             && record.status == SessionStatus::Running
-            && params["sessionId"].as_str() == record.native_session_id.as_deref()
+            && params["sessionId"].as_str() == record.native_session_id.as_deref();
+        let in_project = in_turn
             && permission_paths_allowed(Path::new(&record.project_path), &params["toolCall"]);
-        if !allowed {
+        // The skill block sends the agent to the skill's own folder, which is
+        // never inside the project: reading there is allowed for that turn.
+        let skill_read = in_turn
+            && !in_project
+            && skill_folder.as_deref().is_some_and(|folder| {
+                let kind = params["toolCall"]["kind"]
+                    .as_str()
+                    .or_else(|| remembered.as_ref().and_then(|call| call.kind.as_deref()));
+                skill_read_allowed(folder, kind, &params["toolCall"])
+            });
+        if !in_project && !skill_read {
             return session.connection.send(json!({"jsonrpc":"2.0","id":value["id"],"result":{"outcome":{"outcome":"cancelled"}}})).await.map_err(|e| e.to_string());
         }
         session.redactor.validate_metadata_ids(&params["options"])?;
+        let (kind, locations, diffs) = permission_view::permission_view(
+            Path::new(&record.project_path),
+            remembered.as_ref(),
+            &params["toolCall"],
+            &session.redactor,
+        );
         let request = PermissionRequest {
             id: new_id(),
             session_id: record.id.clone(),
@@ -1429,22 +1599,25 @@ impl AcpRuntime {
                 })
                 .unwrap_or_default(),
             expires_at: now_ms() + PERMISSION_TIMEOUT_MS,
+            kind,
+            locations,
+            diffs,
         };
         let delegate = session
             .delegate
             .lock()
             .map(|value| *value)
             .unwrap_or_default();
-        let automatic = session.task_temp.is_some() || delegate == PermissionDelegate::AutoAllow;
-        let auto_option = if automatic {
-            request
-                .options
-                .iter()
-                .find(|option| option.kind == "allow_once")
-                .map(|option| option.option_id.clone())
-        } else {
-            None
-        };
+        let allow_once = request
+            .options
+            .iter()
+            .find(|option| option.kind == "allow_once")
+            .map(|option| option.option_id.clone());
+        // A skill read without an "allow once" choice goes to the card.
+        let automatic = session.task_temp.is_some()
+            || delegate == PermissionDelegate::AutoAllow
+            || (skill_read && allow_once.is_some());
+        let auto_option = if automatic { allow_once } else { None };
         let permission_id = request.id.clone();
         {
             let mut state = session
@@ -1581,6 +1754,95 @@ fn state_controls(value: &Value) -> Value {
         .unwrap_or(Value::Null)
 }
 
+/// The `session/prompt` content blocks: the user's text, the skill's block
+/// and the images, each image checked before it is sent.
+fn prompt_blocks(
+    text: &str,
+    has_text: bool,
+    skill: Option<&PromptSkill>,
+    images: &[ImagePrompt],
+) -> Result<Vec<Value>, String> {
+    let mut prompt = Vec::new();
+    if has_text || skill.is_none() {
+        prompt.push(json!({"type":"text","text":text}));
+    }
+    if let Some(skill) = skill {
+        prompt.push(json!({"type":"text","text":skill.block}));
+    }
+    for image in images {
+        if !matches!(
+            image.mime_type.as_str(),
+            "image/png" | "image/jpeg" | "image/webp" | "image/gif"
+        ) || image.data.len() > 640 * 1024
+        {
+            return Err("Use a PNG, JPEG, WebP or GIF image smaller than 480 KiB.".into());
+        }
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD
+            .decode(&image.data)
+            .map_err(|_| "The image data is invalid.")?;
+        prompt.push(json!({"type":"image","mimeType":image.mime_type,"data":image.data}));
+    }
+    Ok(prompt)
+}
+
+/// The text a new session's title is made from.
+fn turn_title<'a>(text: &'a str, has_text: bool, skill: Option<&'a PromptSkill>) -> &'a str {
+    if has_text {
+        text.trim()
+    } else {
+        skill.map_or("", |skill| skill.name.as_str())
+    }
+}
+
+/// How a turn ended: the session's status, the stop reason and the error
+/// shown for it.
+fn turn_outcome(
+    result: &Result<Value, RpcError>,
+    cancelled: bool,
+    closed: bool,
+    live_status: &SessionStatus,
+    redactor: &Redactor,
+) -> (SessionStatus, String, Option<String>) {
+    match result {
+        Ok(value) if !cancelled => match value["stopReason"]
+            .as_str()
+            .filter(|reason| !reason.trim().is_empty())
+        {
+            Some(reason) => (live_status.clone(), reason.to_owned(), None),
+            None => (
+                live_status.clone(),
+                "error".into(),
+                Some("The agent did not report how this turn ended.".into()),
+            ),
+        },
+        _ if cancelled => (
+            if closed {
+                SessionStatus::Cancelled
+            } else {
+                live_status.clone()
+            },
+            "cancelled".into(),
+            None,
+        ),
+        Err(error) if !closed && error.auth_required() => (
+            SessionStatus::AuthRequired,
+            "error".into(),
+            Some(redactor.text(&error.to_string())),
+        ),
+        Err(error) => (
+            live_status.clone(),
+            "error".into(),
+            Some(redactor.text(&error.to_string())),
+        ),
+        _ => (
+            live_status.clone(),
+            "error".into(),
+            Some("The agent stopped before completing this turn.".into()),
+        ),
+    }
+}
+
 fn canonical_root(path: &Path) -> Result<PathBuf, String> {
     if !path.is_absolute() || path.components().any(|c| matches!(c, Component::ParentDir)) {
         return Err(
@@ -1594,6 +1856,182 @@ fn canonical_root(path: &Path) -> Result<PathBuf, String> {
         return Err("The ACP project root is not a directory.".into());
     }
     Ok(root)
+}
+
+/// The agent's process: sandboxed task launches keep the sandbox's own fixed
+/// environment; every other launch gets plain paths, the launch root as its
+/// working folder and the agent environment (search path, CLI hand-off).
+pub(super) fn build_agent_command(
+    acp_root: &Path,
+    record: &SessionRecord,
+    definition: &AgentDefinition,
+    launch: &catalog::Launch,
+    launch_root: &Path,
+    allowed_paths: Option<&[String]>,
+    task_temp: Option<&Path>,
+) -> Result<tokio::process::Command, String> {
+    let mut command = if let Some(paths) = allowed_paths {
+        let launch = launch.resolved_for_sandbox();
+        let mut command = crate::agent::task_runtime::sandbox_task_command_with_reads(
+            &launch.executable,
+            &launch.args,
+            Path::new(&record.project_path),
+            paths,
+            task_temp.ok_or("The task temporary directory is missing.")?,
+            true,
+            &super::task_launch::runtime_reads(acp_root, definition, &launch),
+        )?;
+        command.current_dir(&record.project_path);
+        command
+    } else {
+        if launch.batch {
+            crate::program_locator::script_launch_check(&launch.executable, launch_root)?;
+        } else if launch.needs_local_folder && crate::program_locator::network_folder(launch_root) {
+            return Err("This agent can't start from a network folder. Open the project from a drive letter, such as Z:, and try again.".into());
+        }
+        let mut command = tokio::process::Command::new(&launch.executable);
+        command
+            .args(&launch.args)
+            .current_dir(launch_root)
+            .envs(launch.env.iter().map(|(name, value)| (name, value)));
+        command
+    };
+    if let Some(hardening) =
+        crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
+    {
+        command.envs(hardening);
+    }
+    Ok(command)
+}
+
+/// The ACP auth method `type` (for example "terminal"), when it is a short
+/// plain word.
+fn auth_method_kind(value: &Value) -> Option<String> {
+    value["type"]
+        .as_str()
+        .filter(|kind| {
+            !kind.is_empty()
+                && kind.len() <= 40
+                && kind
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte))
+        })
+        .map(str::to_owned)
+}
+
+/// Canonical project roots mapped to the folder the agent is started in.
+static LAUNCH_ROOTS: Mutex<Option<HashMap<PathBuf, PathBuf>>> = Mutex::new(None);
+
+/// The folder an agent starts in for `canonical`: the user's own
+/// drive-letter path when it leads to the same folder (a mapped network
+/// drive stays `Z:\thesis` instead of `\\server\share\thesis`, which cmd.exe
+/// cannot use), otherwise [`default_launch_root`].
+pub(super) fn launch_root_from(original: Option<&Path>, canonical: &Path) -> PathBuf {
+    original
+        .filter(|original| original.is_absolute())
+        .filter(|original| original.canonicalize().is_ok_and(|real| real == canonical))
+        .map(crate::program_locator::child_path)
+        .filter(|root| !crate::program_locator::network_folder(root))
+        .unwrap_or_else(|| default_launch_root(canonical))
+}
+
+/// The canonical root as a plain path. Project paths are stored canonical,
+/// so a project opened from a mapped drive arrives as `\\server\share\...`;
+/// it is spelled through the mapped drive that leads to it when there is one.
+fn default_launch_root(canonical: &Path) -> PathBuf {
+    let plain = crate::program_locator::child_path(canonical);
+    if !crate::program_locator::network_folder(&plain) {
+        return plain;
+    }
+    path_through_alias(canonical, &mapped_network_drives()).unwrap_or(plain)
+}
+
+/// `canonical` spelled through the first alias whose canonical target is
+/// closest above it. Each alias is `(alias, canonical target)`.
+pub(crate) fn path_through_alias(
+    canonical: &Path,
+    aliases: &[(PathBuf, PathBuf)],
+) -> Option<PathBuf> {
+    aliases
+        .iter()
+        .rev()
+        .filter_map(|(alias, target)| {
+            let rest = canonical.strip_prefix(target).ok()?;
+            let path = if rest.as_os_str().is_empty() {
+                alias.clone()
+            } else {
+                alias.join(rest)
+            };
+            Some((target.components().count(), path))
+        })
+        .max_by_key(|(depth, _)| *depth)
+        .map(|(_, path)| path)
+}
+
+/// Mapped network drives as `(X:\, canonical target)`.
+#[cfg(windows)]
+fn mapped_network_drives() -> Vec<(PathBuf, PathBuf)> {
+    use std::os::windows::ffi::OsStrExt as _;
+    use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives};
+    const DRIVE_REMOTE: u32 = 4;
+    let present = unsafe { GetLogicalDrives() };
+    (0..26u8)
+        .filter(|index| present & (1 << index) != 0)
+        .filter_map(|index| {
+            let drive = PathBuf::from(format!("{}:\\", char::from(b'A' + index)));
+            let wide: Vec<u16> = drive
+                .as_os_str()
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect();
+            if unsafe { GetDriveTypeW(wide.as_ptr()) } != DRIVE_REMOTE {
+                return None;
+            }
+            let target = drive.canonicalize().ok()?;
+            Some((drive, target))
+        })
+        .collect()
+}
+
+#[cfg(not(windows))]
+fn mapped_network_drives() -> Vec<(PathBuf, PathBuf)> {
+    Vec::new()
+}
+
+/// Records the project folder as the user opened it, so agents start there
+/// (called where the project's own path is known: starting and resuming from
+/// a window).
+pub(super) fn note_launch_root(original: &Path) {
+    if let Ok(canonical) = original.canonicalize() {
+        register_launch_root(&canonical, &launch_root_from(Some(original), &canonical));
+    }
+}
+
+pub(super) fn register_launch_root(canonical: &Path, root: &Path) {
+    if let Ok(mut roots) = LAUNCH_ROOTS.lock() {
+        roots
+            .get_or_insert_with(HashMap::new)
+            .insert(canonical.to_path_buf(), root.to_path_buf());
+    }
+}
+
+/// The launch root recorded for a canonical project root, or
+/// [`default_launch_root`] when none was recorded (delegated and task
+/// sessions). A network root's lookup is remembered, since permission checks
+/// ask for it on every request.
+pub(super) fn launch_root_for(canonical: &Path) -> PathBuf {
+    if let Some(root) = LAUNCH_ROOTS
+        .lock()
+        .ok()
+        .and_then(|roots| roots.as_ref()?.get(canonical).cloned())
+    {
+        return root;
+    }
+    let root = default_launch_root(canonical);
+    if crate::program_locator::network_folder(&crate::program_locator::child_path(canonical)) {
+        register_launch_root(canonical, &root);
+    }
+    root
 }
 
 pub(super) fn equivalent_path_prefixes(
@@ -1626,64 +2064,89 @@ fn lexical_path_within(path: &Path, root: &Path) -> bool {
         })
 }
 
-pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
-    let paths = tool["locations"]
+/// Every path a permission request names: its locations and the usual path
+/// fields of its raw input.
+fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
+    tool["locations"]
         .as_array()
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(|value| value["path"].as_str())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    paths
         .into_iter()
+        .flatten()
+        .filter_map(|value| value["path"].as_str())
         .chain(
             ["path", "file_path", "filePath", "cwd", "directory"]
                 .iter()
                 .filter_map(|key| tool["rawInput"][key].as_str()),
         )
-        .all(|path| {
+}
+
+pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
+    let spelled = launch_root_for(root);
+    permission_paths(tool).all(|path| path_within(root, &spelled, Path::new(path)))
+}
+
+/// Whether a request only reads inside the skill folder attached to the
+/// turn (`folder` as the skill block names it): its kind is `read` or
+/// `search` and it names at least one path, every one absolute and really
+/// inside the folder (links out of it do not count).
+pub(super) fn skill_read_allowed(folder: &Path, kind: Option<&str>, tool: &Value) -> bool {
+    if !matches!(kind, Some("read" | "search")) {
+        return false;
+    }
+    let Ok(root) = folder.canonicalize() else {
+        return false;
+    };
+    let spelled = crate::program_locator::child_path(folder);
+    let mut paths = permission_paths(tool).peekable();
+    paths.peek().is_some()
+        && paths.all(|path| {
             let path = Path::new(path);
-            if path
-                .components()
-                .any(|part| matches!(part, Component::ParentDir))
-            {
-                return false;
-            }
-            let candidate = if path.is_absolute() {
-                path.to_path_buf()
-            } else {
-                root.join(path)
-            };
-            let mut existing = candidate.as_path();
-            while !existing.exists() {
-                let Some(parent) = existing.parent() else {
-                    return false;
-                };
-                existing = parent;
-            }
-            if !existing
-                .canonicalize()
-                .is_ok_and(|path| path.starts_with(root))
-            {
-                return false;
-            }
-            if lexical_path_within(&candidate, root) {
-                return true;
-            }
-            #[cfg(windows)]
-            {
-                let Some(expanded) = oleafly_core::long_path_name(existing) else {
-                    return false;
-                };
-                candidate
-                    .strip_prefix(existing)
-                    .is_ok_and(|suffix| lexical_path_within(&expanded.join(suffix), root))
-            }
-            #[cfg(not(windows))]
-            false
+            path.is_absolute() && path_within(&root, &spelled, path)
         })
+}
+
+/// Whether `path` (relative ones are joined to `root`) leads inside the
+/// canonical `root`, spelled either as `root` or as `spelled`.
+fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
+    if path
+        .components()
+        .any(|part| matches!(part, Component::ParentDir))
+    {
+        return false;
+    }
+    let candidate = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    let mut existing = candidate.as_path();
+    while !existing.exists() {
+        let Some(parent) = existing.parent() else {
+            return false;
+        };
+        existing = parent;
+    }
+    if !existing
+        .canonicalize()
+        .is_ok_and(|path| path.starts_with(root))
+    {
+        return false;
+    }
+    // The agent was started in the launch root (for example a mapped drive
+    // letter), so its paths may use that spelling.
+    if lexical_path_within(&candidate, root) || lexical_path_within(&candidate, spelled) {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        let Some(expanded) = oleafly_core::long_path_name(existing) else {
+            return false;
+        };
+        candidate
+            .strip_prefix(existing)
+            .is_ok_and(|suffix| lexical_path_within(&expanded.join(suffix), root))
+    }
+    #[cfg(not(windows))]
+    false
 }
 
 pub fn prompt_usage(value: &Value) -> Option<UsageCounters> {

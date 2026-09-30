@@ -221,8 +221,8 @@
       "content": "Las conversaciones configuradas muestran aquí el uso de ejecuciones, tokens y coste estimado cuando está disponible."
     },
     "restore": {
-      "title": "Restaurar el estado del proyecto",
-      "content": "Después de una edición de la IA, un punto de control puede restaurar los archivos del proyecto sin borrar la conversación."
+      "title": "Revisa los cambios del agente",
+      "content": "Cuando un turno cambia archivos, abre Revisar para ver cada cambio. Deshacer devuelve un archivo a como estaba y Rehacer vuelve a aplicar el cambio."
     }
   },
   "diagram": {

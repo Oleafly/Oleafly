@@ -78,6 +78,13 @@
     "openFolder": {
       "title": "フォルダを開く",
       "inside": "{{name}} 内のフォルダを選択"
+    },
+    "agentProgram": {
+      "title": "このプログラムを使用しますか？",
+      "message": "{{name}} を使うたびに、Oleafly は {{path}} を起動します。信頼できるプログラムだけを選んでください。",
+      "confirm": "プログラムを使用",
+      "pickTitle": "{{name}} のプログラムを選択",
+      "filter": "プログラム"
     }
   },
   "errors": {

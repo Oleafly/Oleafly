@@ -221,8 +221,8 @@
       "content": "Konfigurerade konversationer visar körningar, tokens och uppskattad kostnad här när uppgifterna finns."
     },
     "restore": {
-      "title": "Återställ projektets tillstånd",
-      "content": "Efter en AI-redigering kan en kontrollpunkt återställa projektfilerna utan att konversationen tas bort."
+      "title": "Granska agentens ändringar",
+      "content": "När en tur ändrar filer kan du öppna ”Granska” för att se varje ändring. ”Ångra” sätter tillbaka en fil och ”Gör om” tar tillbaka ändringen."
     }
   },
   "diagram": {

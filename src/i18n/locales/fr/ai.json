@@ -443,21 +443,25 @@
       "namedHeadline": "{{agent}} demande une autorisation",
       "headline": "L'agent demande une autorisation",
       "expired": "Cette demande a expiré. Demandez à l'agent de réessayer.",
-      "dismiss": "Fermer"
+      "dismiss": "Fermer",
+      "diff": {
+        "showChange": "Afficher la modification",
+        "hideChange": "Masquer la modification",
+        "large": "Modification importante du fichier {{path}}. Relisez-la après le tour.",
+        "label": "Modification proposée pour {{path}}",
+        "loading": "Chargement de la modification…"
+      }
     },
     "readiness": {
       "managedBridge": "Pont {{version}} installé par Oleafly.",
-      "bridgeOnPath": "Pont trouvé dans le PATH.",
       "bridgeMissingWithCli": "{{cli}} trouvé dans {{path}}. Installez le pont ACP {{version}} pour vous connecter.",
       "bridgeMissing": "Installez le pont ACP {{version}} pour connecter cet agent.",
-      "cliMissing": "{{cli}} n'est pas dans votre PATH. Installez-le, puis lancez {{command}}.",
       "cliNotFound": "L'outil en ligne de commande de cet agent est introuvable.",
       "unavailable": "Cet agent ne peut pas fonctionner sur cet ordinateur."
     },
     "bridgeSource": {
       "notInstalled": "Non installé",
-      "managed": "Géré par Oleafly",
-      "onPath": "Dans le PATH"
+      "managed": "Géré par Oleafly"
     },
     "installing": "Installation",
     "installBridge": "Installer le pont",
@@ -510,8 +514,51 @@
     "terminalCommand": "L'agent exécute une commande dans le terminal.",
     "agentToolFallback": "Outil de l'agent",
     "agentReported": "L'agent a signalé : {{detail}}",
+    "updateTooLarge": "Une partie de la sortie de l'agent était trop volumineuse pour être affichée ({{size}}).",
     "imageAttachmentName": "Image {{index}}",
-    "agentImage": "[L'agent a renvoyé une image.]"
+    "agentImage": "[L'agent a renvoyé une image.]",
+    "setup": {
+      "cliNotFound": "Oleafly n'a pas trouvé {{cli}} sur cet ordinateur.",
+      "rejected": {
+        "powershellScript": "Fichier {{file}} trouvé, mais les scripts PowerShell ne peuvent pas être lancés. Choisissez {{name}}.cmd ou {{name}}.exe.",
+        "script": "Fichier {{file}} trouvé, mais Oleafly ne peut pas le lancer directement. Choisissez {{name}}.exe.",
+        "isDirectory": "Un dossier nommé {{file}} a été trouvé. Choisissez le fichier du programme {{name}}.",
+        "notExecutable": "Fichier {{file}} trouvé, mais ce n'est pas un programme qu'Oleafly peut lancer.",
+        "guiProgram": "Fichier {{file}} trouvé, mais c'est une application de bureau. Choisissez l'outil en ligne de commande {{name}}.",
+        "networkPath": "Fichier {{file}} trouvé sur un emplacement réseau. Choisissez une copie sur cet ordinateur."
+      },
+      "foundOnComputer": "Trouvé sur cet ordinateur.",
+      "usingChosen": "Utilisation du programme que vous avez choisi.",
+      "bridgeSourceFound": "Trouvé sur cet ordinateur",
+      "setUp": "Configurer {{name}}",
+      "backgroundTasks": "Tâches en arrière-plan : {{reason}}",
+      "cliMissingNextStep": "Installez {{cli}} ou choisissez où il est installé.",
+      "installUnavailable": "Oleafly ne peut pas installer ce pont sur cet ordinateur.",
+      "builtIn": "Intégré",
+      "showAgent": "Afficher"
+    },
+    "export": {
+      "menuItem": "Exporter la conversation…",
+      "saved": "Conversation exportée",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Conversation",
+      "project": "Projet",
+      "agent": "Agent",
+      "model": "Modèle",
+      "modelManaged": "Choisi par l'agent",
+      "startRevision": "Commit de départ",
+      "uncommitted": "{{revision}} avec des modifications non validées",
+      "started": "Début",
+      "updated": "Dernière mise à jour",
+      "you": "Vous",
+      "skill": "Compétence : {{name}}",
+      "tool": "Outil : {{name}}",
+      "changedFiles": "Fichiers modifiés",
+      "moreFiles_one": "et {{count}} autre fichier",
+      "moreFiles_many": "et {{count}} autres fichiers",
+      "moreFiles_other": "et {{count}} autres fichiers"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agent CLI",
@@ -741,5 +788,70 @@
     "preSubmission": "Le préparer pour la soumission",
     "slides": "Transformer cet article en exposé",
     "recompile": "Recompiler et chercher les erreurs"
+  },
+  "turnChanges": {
+    "ariaLabel": "Fichiers modifiés pendant ce tour",
+    "changed_one": "{{count}} fichier modifié",
+    "changed_many": "{{count}} fichiers modifiés",
+    "changed_other": "{{count}} fichiers modifiés",
+    "buildOnly": "Fichiers de compilation mis à jour",
+    "review": "Relire",
+    "undoAll": "Tout annuler",
+    "redoAll": "Tout rétablir",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "undoFile": "Annuler {{path}}",
+    "redoFile": "Rétablir {{path}}",
+    "kind": {
+      "added": "Ajouté",
+      "modified": "Modifié",
+      "deleted": "Supprimé"
+    },
+    "undone": "Annulé",
+    "editedAfter": "Modifié après ce tour",
+    "alsoEdited": "Vous avez aussi modifié ce fichier pendant le tour",
+    "committed": "Validé dans {{commit}}",
+    "buildFiles": "Fichiers de compilation mis à jour",
+    "moreFiles_one": "{{count}} autre fichier n'est pas affiché",
+    "moreFiles_many": "{{count}} autres fichiers ne sont pas affichés",
+    "moreFiles_other": "{{count}} autres fichiers ne sont pas affichés",
+    "skipped_one": "{{count}} fichier n'a pas pu être copié avant le tour, donc Annuler ne peut pas le remettre comme avant.",
+    "skipped_many": "{{count}} fichiers n'ont pas pu être copiés avant le tour, donc Annuler ne peut pas les remettre comme avant.",
+    "skipped_other": "{{count}} fichiers n'ont pas pu être copiés avant le tour, donc Annuler ne peut pas les remettre comme avant.",
+    "overlapped": "Un autre agent a modifié des fichiers en même temps. Annulez les modifications fichier par fichier.",
+    "expired": "L'annulation n'est plus disponible pour ce tour.",
+    "waitForRun": "L'annulation sera disponible quand l'agent aura terminé.",
+    "unavailable": {
+      "tooLarge": "L'annulation n'est pas disponible pour ce tour : le projet est trop volumineux pour être copié.",
+      "tooManyFiles": "L'annulation n'est pas disponible pour ce tour : le projet contient trop de fichiers.",
+      "timeout": "L'annulation n'est pas disponible pour ce tour : la copie du projet a pris trop de temps.",
+      "error": "L'annulation n'est pas disponible pour ce tour : le projet n'a pas pu être copié."
+    },
+    "previewLoading": "Chargement de la modification…",
+    "previewFailed": "Impossible de charger cette modification.",
+    "binary": "Ce fichier n'est pas du texte, la modification ne peut donc pas être affichée.",
+    "tooLarge": "Cette modification est trop volumineuse pour être affichée ici.",
+    "diffLabel": "Modification du fichier {{path}}",
+    "undid_one": "Modification annulée dans {{count}} fichier.",
+    "undid_many": "Modifications annulées dans {{count}} fichiers.",
+    "undid_other": "Modifications annulées dans {{count}} fichiers.",
+    "redid_one": "Modification rétablie dans {{count}} fichier.",
+    "redid_many": "Modifications rétablies dans {{count}} fichiers.",
+    "redid_other": "Modifications rétablies dans {{count}} fichiers.",
+    "skippedEdited": "Certains fichiers ont changé après ce tour, Oleafly n'y a donc pas touché.",
+    "skippedFailed": "Certains fichiers n'ont pas pu être écrits.",
+    "undoFailed": "Impossible d'annuler les modifications. Enregistrez votre travail et réessayez.",
+    "redoFailed": "Impossible de rétablir les modifications. Enregistrez votre travail et réessayez."
+  },
+  "presets": {
+    "literatureSweep": "Exploration de la littérature",
+    "relatedWork": "Travaux voisins",
+    "citationAudit": "Audit des citations",
+    "manuscriptReview": "Relecture du manuscrit",
+    "reproducibilityAudit": "Audit de reproductibilité",
+    "figureAudit": "Audit des figures",
+    "gitReview": "Revue Git",
+    "referenceCleanup": "Nettoyage des références",
+    "removeSkill": "Retirer la compétence {{name}}"
   }
 }

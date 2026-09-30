@@ -78,6 +78,13 @@
     "openFolder": {
       "title": "Otevřít složku",
       "inside": "Vyberte složku v {{name}}"
+    },
+    "agentProgram": {
+      "title": "Použít tento program?",
+      "message": "Oleafly spustí {{path}} pokaždé, když použijete {{name}}. Vybírejte jen programy, kterým důvěřujete.",
+      "confirm": "Použít program",
+      "pickTitle": "Vyberte program pro {{name}}",
+      "filter": "Programy"
     }
   },
   "errors": {

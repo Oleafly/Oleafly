@@ -16,7 +16,8 @@ impl Store {
             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, updated_at INTEGER NOT NULL, record TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS acp_sessions_project ON sessions(project_id, updated_at DESC);
             CREATE TABLE IF NOT EXISTS events (session_id TEXT NOT NULL REFERENCES sessions(id), sequence INTEGER NOT NULL, event TEXT NOT NULL, PRIMARY KEY(session_id,sequence));
-            CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, definition TEXT NOT NULL);").map_err(|e| e.to_string())?;
+            CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, definition TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS agent_programs (id TEXT PRIMARY KEY, path TEXT NOT NULL);").map_err(|e| e.to_string())?;
         let store = Self { db: Mutex::new(db) };
         let mut after = None;
         loop {
@@ -122,6 +123,23 @@ impl Store {
         tx.commit().map_err(|e| e.to_string())
     }
 
+    /// The highest stored event sequence of a session (0 without events).
+    pub fn last_sequence(&self, id: &str) -> Result<u64, String> {
+        let sequence: Option<i64> = self
+            .db
+            .lock()
+            .map_err(|_| "ACP storage is unavailable.")?
+            .query_row(
+                "SELECT MAX(sequence) FROM events WHERE session_id=?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(sequence
+            .and_then(|value| u64::try_from(value).ok())
+            .unwrap_or(0))
+    }
+
     pub fn get(&self, id: &str) -> Result<SessionRecord, String> {
         let value: Option<String> = self
             .db
@@ -199,6 +217,22 @@ impl Store {
         Ok(EventPage { events, has_more })
     }
 
+    /// Every stored event of a session, oldest first.
+    pub fn events_all(&self, id: &str) -> Result<Vec<AcpEvent>, String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let mut statement = db
+            .prepare("SELECT event FROM events WHERE session_id=?1 ORDER BY sequence")
+            .map_err(|e| e.to_string())?;
+        let values = statement
+            .query_map([id], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        values
+            .map(|v| {
+                serde_json::from_str(&v.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+            })
+            .collect()
+    }
+
     pub fn agents(&self) -> Result<Vec<AgentDefinition>, String> {
         let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
         let mut statement = db
@@ -220,11 +254,51 @@ impl Store {
     }
 
     pub fn remove_agent(&self, id: &str) -> Result<(), String> {
+        let mut db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let tx = db.transaction().map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM agents WHERE id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM agent_programs WHERE id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())
+    }
+
+    /// Programs users chose for agents, by agent id.
+    pub fn agent_programs(&self) -> Result<std::collections::HashMap<String, String>, String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let mut statement = db
+            .prepare("SELECT id, path FROM agent_programs")
+            .map_err(|e| e.to_string())?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    }
+
+    pub fn agent_program(&self, id: &str) -> Result<Option<String>, String> {
         self.db
             .lock()
             .map_err(|_| "ACP storage is unavailable.")?
-            .execute("DELETE FROM agents WHERE id=?1", [id])
-            .map_err(|e| e.to_string())?;
+            .query_row("SELECT path FROM agent_programs WHERE id=?1", [id], |row| {
+                row.get(0)
+            })
+            .optional()
+            .map_err(|e| e.to_string())
+    }
+
+    /// Saves the program chosen for an agent, or forgets it with `None`.
+    pub fn set_agent_program(&self, id: &str, path: Option<&str>) -> Result<(), String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        match path {
+            Some(path) => db.execute(
+                "INSERT INTO agent_programs VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET path=excluded.path",
+                params![id, path],
+            ),
+            None => db.execute("DELETE FROM agent_programs WHERE id=?1", [id]),
+        }
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 }

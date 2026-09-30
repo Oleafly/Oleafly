@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Questo progetto è già collegato a {{remote}}.",
-    "nested_repository": "Questo progetto si trova dentro un altro repository Git, quindi Oleafly non ne crea uno separato qui."
+    "nested_repository": "Questo progetto si trova dentro un altro repository Git, quindi Oleafly non ne crea uno separato qui.",
+    "not_installed": "Git non è installato su questo computer. Installa Git, poi riprova."
   },
   "approvals": {
     "full_access_declined": "L'accesso completo non è stato abilitato."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Questa cronologia dei checkpoint proviene da un progetto della tua libreria Oleafly, quindi non può essere usata con una cartella aperta nella sua posizione.",
     "folder_history_for_library": "Questa cronologia dei checkpoint proviene da una cartella aperta nella sua posizione, quindi non può essere usata con un progetto della tua libreria Oleafly.",
     "restore_path_blocked": "Oleafly non può ripristinare {{path}} perché al suo posto c'è un collegamento o qualcos'altro che non è un file. Spostalo e riprova."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly non ha trovato quel programma.",
+      "is_directory": "Quella è una cartella. Scegli il file del programma al suo interno.",
+      "not_executable": "Quel file non si può avviare come programma.",
+      "unsupported_script": "Gli script PowerShell non si possono avviare. Scegli il file .cmd o .exe con lo stesso nome.",
+      "needs_exe": "Questo agente non può usare un file .cmd. Scegli il suo file .exe.",
+      "gui_program": "Quella è un'app desktop. Scegli il programma che esegui in un terminale.",
+      "interpreter": "Quel programma esegue altri programmi. Scegli il programma dell'agente vero e proprio.",
+      "network_path": "Scegli un programma su questo computer, non in una posizione di rete.",
+      "unknown_agent": "Oleafly non conosce questo agente.",
+      "declined": "Il programma non è stato cambiato.",
+      "check_running": "È già in corso una prova di questo agente.",
+      "main_window": "Cambia i programmi degli agenti dalla finestra principale."
+    }
   }
 }

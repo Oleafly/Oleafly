@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitWorkspaceSnapshot } from "@oleafly/backend-port";
 import { SOURCE_CONTROL_SHOW_GRAPH_EVENT } from "@/lib/source-control-events";
-import { SourceControl } from "./SourceControl";
+import { open } from "@tauri-apps/plugin-shell";
+import { GitMissingGuide, SourceControl } from "./SourceControl";
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFolderAccessStore } from "@/store/folder-access";
@@ -1318,4 +1319,94 @@ describe("SourceControl", () => {
       "Unlinked from GitHub.",
     );
   });
+});
+
+describe("SourceControl when Git is not installed", () => {
+  const missing = enShell.sourceControl.gitMissing;
+
+  it("explains that Git is missing instead of offering a setup that fails", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ initialized: false, gitAvailable: false, changes: [], commits: [] }),
+    );
+    render(<SourceControl />);
+
+    expect(await screen.findByText(missing.title)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: enShell.sourceControl.initialize }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: enShell.sourceControl.publish }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the same guidance for a project that already has a repository", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ initialized: true, gitAvailable: false, changes: [], commits: [] }),
+    );
+    render(<SourceControl />);
+
+    expect(await screen.findByText(missing.title)).toBeInTheDocument();
+    expect(screen.queryByText("main.tex")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: enShell.sourceControl.commit }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("checks again from the refresh button", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValueOnce(
+      snapshot({ initialized: true, gitAvailable: false, changes: [], commits: [] }),
+    );
+    render(<SourceControl />);
+    await screen.findByText(missing.title);
+
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
+
+    expect(await screen.findByText("library.bib")).toBeInTheDocument();
+    expect(screen.queryByText(missing.title)).not.toBeInTheDocument();
+  });
+});
+
+describe("GitMissingGuide", () => {
+  it("sends Windows users to Git for Windows", async () => {
+    const user = userEvent.setup();
+    render(<GitMissingGuide os="windows" />);
+
+    expect(screen.getByText(missing().windows)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: missing().download }));
+    expect(vi.mocked(open)).toHaveBeenCalledWith("https://git-scm.com/downloads/win");
+  });
+
+  it("gives macOS users the command that installs Apple's tools", async () => {
+    const user = userEvent.setup();
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const writeText = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      render(<GitMissingGuide os="mac" />);
+
+      expect(screen.getByText(missing().mac)).toBeInTheDocument();
+      expect(screen.getByText("xcode-select --install")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: missing().copyCommand }));
+      expect(writeText).toHaveBeenCalledWith("xcode-select --install");
+      expect(await screen.findByRole("button", { name: missing().copied })).toBeInTheDocument();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("points Linux users to their package manager with no extra button", () => {
+    render(<GitMissingGuide os="linux" />);
+
+    expect(screen.getByText(missing().linux)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  function missing() {
+    return enShell.sourceControl.gitMissing;
+  }
 });
