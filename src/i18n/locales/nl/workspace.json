@@ -194,6 +194,11 @@
       "start": "De shell kon niet starten"
     },
     "limitReached": "Sluit een terminal om er nog een te openen",
+    "links": {
+      "openFile": "{{modifier}}-klik om te openen",
+      "openUrl": "{{modifier}}-klik om in je browser te openen",
+      "openUrlFailed": "Kon de link niet openen."
+    },
     "newTerminal": "Nieuwe terminal",
     "settings": "Terminalinstellingen",
     "starting": "De projectshell starten…",

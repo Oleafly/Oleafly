@@ -62,7 +62,7 @@ import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { isManagedProjectPath, isReadOnlyProjectPath } from "@/lib/project-paths";
+import { isBinaryProjectPath, isManagedProjectPath, isReadOnlyProjectPath } from "@/lib/project-paths";
 import { mainDocumentMissing } from "@/lib/main-document";
 import {
   projectFolderAvailable,
@@ -1769,7 +1769,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     pendingFileOpens.set(key, requestSeq);
     // Binary files (PDFs/images) aren't readable as text - skip the text load
     // and just open the tab; the editor renders them via a binary viewer.
-    const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path);
+    const isBinary = isBinaryProjectPath(path);
     const superseded = () =>
       fileOpenSuperseded(projectId, epoch, key, requestSeq, get);
     const loadContent = async (): Promise<boolean> => {

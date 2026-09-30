@@ -190,6 +190,11 @@
       "start": "shell 无法启动。"
     },
     "limitReached": "关闭一个终端以打开另一个终端。",
+    "links": {
+      "openFile": "{{modifier}}+点击以打开",
+      "openUrl": "{{modifier}}+点击以在浏览器中打开",
+      "openUrlFailed": "无法打开链接。"
+    },
     "newTerminal": "新建终端",
     "settings": "终端设置",
     "starting": "正在启动项目 shell…",

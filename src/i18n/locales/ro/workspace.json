@@ -198,6 +198,11 @@
       "start": "Procesul shell nu a putut porni"
     },
     "limitReached": "Închide un terminal ca să poți deschide altul",
+    "links": {
+      "openFile": "{{modifier}}-clic pentru a deschide",
+      "openUrl": "{{modifier}}-clic pentru a deschide în browser",
+      "openUrlFailed": "Linkul nu a putut fi deschis."
+    },
     "newTerminal": "Terminal nou",
     "settings": "Setările terminalului",
     "starting": "Pornește shell-ul proiectului…",

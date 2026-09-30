@@ -28,7 +28,14 @@ const mocks = vi.hoisted(() => ({
     writeln: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
     dataHandler: ((data: string) => void) | null;
+    scrollHandler: (() => void) | null;
+    registerLinkProvider: ReturnType<typeof vi.fn>;
+    linkProviderDisposers: Array<ReturnType<typeof vi.fn>>;
   }>,
+  linkTooltip: null as null | {
+    hover: (info: { label: string; kind: "file" | "url" }, event: MouseEvent) => void;
+    leave: () => void;
+  },
   terminalColorThemes: {
     dark: {
       colors: {
@@ -127,9 +134,21 @@ vi.mock("@xterm/xterm", () => ({
     writeln = vi.fn();
     dispose = vi.fn();
     dataHandler: ((data: string) => void) | null = null;
+    scrollHandler: (() => void) | null = null;
+    buffer = { active: { getLine: () => undefined } };
+    linkProviderDisposers: Array<ReturnType<typeof vi.fn>> = [];
     onData = vi.fn((handler: (data: string) => void) => {
       this.dataHandler = handler;
       return { dispose: vi.fn() };
+    });
+    onScroll = vi.fn((handler: () => void) => {
+      this.scrollHandler = handler;
+      return { dispose: vi.fn() };
+    });
+    registerLinkProvider = vi.fn(() => {
+      const dispose = vi.fn();
+      this.linkProviderDisposers.push(dispose);
+      return { dispose };
     });
 
     constructor(options: Record<string, unknown>) {
@@ -158,6 +177,18 @@ vi.mock("@xterm/addon-webgl", () => ({
   WebglAddon: class {
     onContextLoss = vi.fn();
     dispose = vi.fn();
+  },
+}));
+
+// The real adapters reach the files store, which the partial settings mock
+// below cannot satisfy. Keep the tooltip callbacks so tests can drive them.
+vi.mock("./terminal-link-actions", () => ({
+  createTerminalLinkActions: (
+    _projectId: string,
+    tooltip: NonNullable<typeof mocks.linkTooltip>,
+  ) => {
+    mocks.linkTooltip = tooltip;
+    return { resolve: () => null, openFile: vi.fn(), openUrl: vi.fn(), ...tooltip };
   },
 }));
 
@@ -207,6 +238,7 @@ describe("TerminalPane", () => {
     mocks.terminals.length = 0;
     mocks.resizeObservers.length = 0;
     mocks.fitAddons.length = 0;
+    mocks.linkTooltip = null;
     mocks.settings.setTerminalOpen.mockReset();
     Object.assign(mocks.settings, {
       terminalOpen: true,
@@ -885,5 +917,77 @@ describe("TerminalPane", () => {
     expect(terminal.options.fontSize).toBe(18);
     expect(fit.fit).not.toHaveBeenCalled();
     expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
+  });
+
+  describe("links", () => {
+    it("registers one link provider per terminal and disposes it before the terminal", async () => {
+      const view = render(<TerminalPane projectId="project-1" visible />);
+      const terminal = mocks.terminals[0];
+      expect(terminal.registerLinkProvider).toHaveBeenCalledTimes(1);
+
+      view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+      view.rerender(<TerminalPane projectId="project-1" visible />);
+      expect(terminal.registerLinkProvider).toHaveBeenCalledTimes(1);
+
+      view.unmount();
+      const [dispose] = terminal.linkProviderDisposers;
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(dispose.mock.invocationCallOrder[0]).toBeLessThan(
+        terminal.dispose.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("sends OSC 8 links to the app's handler instead of xterm's confirm fallback", () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      const handler = mocks.terminals[0].options.linkHandler as {
+        activate: unknown;
+        allowNonHttpProtocols: boolean;
+      };
+      expect(handler).toMatchObject({ allowNonHttpProtocols: false });
+      expect(handler.activate).toEqual(expect.any(Function));
+    });
+
+    it("shows the location and the click hint on hover, and hides them on leave", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      const move = new MouseEvent("mousemove", { clientX: 40, clientY: 50 });
+
+      act(() => mocks.linkTooltip?.hover({ label: "chapters/intro.tex:12:4", kind: "file" }, move));
+      const tip = await screen.findByRole("tooltip");
+      expect(tip).toHaveTextContent("chapters/intro.tex:12:4");
+      expect(tip).toHaveTextContent(/(⌘|Ctrl)-click to open$/);
+
+      act(() => mocks.linkTooltip?.leave());
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("names the browser for a web link, including OSC 8 ones", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      const handler = mocks.terminals[0].options.linkHandler as {
+        hover: (event: MouseEvent, text: string) => void;
+      };
+
+      act(() => handler.hover(new MouseEvent("mousemove"), "https://typst.app/docs"));
+      const tip = await screen.findByRole("tooltip");
+      expect(tip).toHaveTextContent("https://typst.app/docs");
+      expect(tip).toHaveTextContent(/-click to open in your browser$/);
+    });
+
+    it("hides the tooltip when the output scrolls or the pane is hidden", async () => {
+      const view = render(<TerminalPane projectId="project-1" visible />);
+      const hover = () =>
+        act(() => mocks.linkTooltip?.hover({ label: "main.tex", kind: "file" }, new MouseEvent("mousemove")));
+
+      hover();
+      await screen.findByRole("tooltip");
+      act(() => mocks.terminals[0].scrollHandler?.());
+      expect(screen.queryByRole("tooltip")).toBeNull();
+
+      hover();
+      await screen.findByRole("tooltip");
+      view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      view.rerender(<TerminalPane projectId="project-1" visible />);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
   });
 });

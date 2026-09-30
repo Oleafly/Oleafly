@@ -202,6 +202,11 @@
       "start": "Prostředí shell se nepodařilo spustit"
     },
     "limitReached": "Zavřete některý terminál, abyste mohli otevřít další",
+    "links": {
+      "openFile": "{{modifier}}+kliknutím otevřete",
+      "openUrl": "{{modifier}}+kliknutím otevřete v prohlížeči",
+      "openUrlFailed": "Odkaz se nepodařilo otevřít."
+    },
     "newTerminal": "Nový terminál",
     "settings": "Nastavení terminálu",
     "starting": "Spouští se prostředí shell projektu…",

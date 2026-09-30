@@ -46,6 +46,7 @@ import {
   insertAtCursor,
   replaceRange as replaceRangeInEditor,
 } from "@/components/editor/cm/controller";
+import { openProjectLocation } from "@/lib/open-location";
 
 export type { ToolApprovalRequest, ConfirmFn } from "@oleafly/ai-tools";
 
@@ -145,41 +146,9 @@ function syncTexAvailable(): boolean {
   return useCompileStore.getState().pdfBytes !== null;
 }
 
-export const EDITOR_DOCUMENT_WAIT_MS = 4000;
-
-function inEditor(node: Element | null | undefined): boolean {
-  return !!node?.closest?.(".cm-editor");
-}
-
+// An AI jump must not pull the workspace open or take keyboard focus from the chat.
 export async function revealEditorLine(path: string, line: number): Promise<boolean> {
-  const files = useFilesStore.getState();
-  if (files.activePath !== path) {
-    await files.openFile(path);
-    if (useFilesStore.getState().activePath !== path) return false;
-  }
-  const { gotoLine, getEditorView, waitForEditorDocument } = await import(
-    "@/components/editor/cm/controller"
-  );
-  const controller = new AbortController();
-  const giveUp = setTimeout(() => controller.abort(), EDITOR_DOCUMENT_WAIT_MS);
-  let ready: unknown = null;
-  try {
-    ready = await waitForEditorDocument(path, controller.signal);
-  } finally {
-    clearTimeout(giveUp);
-  }
-  if (!ready) return false;
-  const restore =
-    typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null);
-  gotoLine(line);
-  if (typeof document === "undefined") return true;
-  if (restore && !inEditor(restore) && typeof restore.focus === "function") {
-    restore.focus({ preventScroll: true });
-  }
-  if (!inEditor(restore) && inEditor(document.activeElement)) {
-    getEditorView()?.contentDOM.blur();
-  }
-  return true;
+  return openProjectLocation({ path, line }, { keepFocus: true, showEditor: false });
 }
 
 async function showPreviewSurfaces(needsEditor: boolean, needsPdf: boolean): Promise<boolean> {

@@ -173,12 +173,14 @@ export function revealEditorRange(
   v.focus();
 }
 
-export function gotoLine(line: number) {
+/** `column` is 1-based, as compilers print it, and stops at the line end. */
+export function gotoLine(line: number, column?: number) {
   const v = getEditorView();
   if (!v) return;
   const n = Math.min(Math.max(1, line), v.state.doc.lines);
   const lineObj = v.state.doc.line(n);
-  revealEditorRange(v, lineObj.from);
+  const offset = column === undefined ? 0 : Math.min(Math.max(0, column - 1), lineObj.length);
+  revealEditorRange(v, lineObj.from + offset);
 }
 
 const WORD_CHARACTER = /[\p{L}\p{M}\p{N}\u200C\u200D]/u;

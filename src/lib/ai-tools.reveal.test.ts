@@ -40,7 +40,7 @@ vi.mock("@/lib/tauri", () => ({
   agentExecRegisterExternal: vi.fn(),
 }));
 vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => mocks.filesState, setState: vi.fn() },
+  useFilesStore: { getState: () => mocks.filesState, setState: vi.fn(), subscribe: () => () => {} },
 }));
 vi.mock("@/store/compile", () => ({
   useCompileStore: { getState: () => mocks.compileState },
