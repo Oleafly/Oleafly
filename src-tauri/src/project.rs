@@ -2175,6 +2175,7 @@ pub(crate) fn write_project_bytes(
     }
     if location.kind == ProjectKind::Library {
         atomic_write(target, bytes).map_err(failed)?;
+        crate::agent_turns::note_app_write(project_id, path);
         return Ok(true);
     }
     let backups = location.private_state_dir().join("save-backups");
@@ -2183,6 +2184,7 @@ pub(crate) fn write_project_bytes(
     })
     .map_err(|failure| folder.describe(target, path, failure, |failure| failed(failure.into())))?;
     crate::folder_watch::note_own_write(target);
+    crate::agent_turns::note_app_write(project_id, path);
     Ok(true)
 }
 
