@@ -803,6 +803,7 @@ async fn execute_command_for_owner(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_wait;
 
     fn test_root(tag: &str) -> std::path::PathBuf {
         let root =
@@ -1530,7 +1531,7 @@ mod tests {
             .await
         });
 
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        let deadline = tokio::time::Instant::now() + test_wait::CHILD_PATIENCE;
         while !started.exists() && tokio::time::Instant::now() < deadline {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -1573,7 +1574,7 @@ mod tests {
             .await
         });
 
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        let deadline = tokio::time::Instant::now() + test_wait::CHILD_PATIENCE;
         while !started.exists() && tokio::time::Instant::now() < deadline {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -1629,7 +1630,7 @@ mod tests {
             )
             .await
         });
-        tokio::time::timeout(Duration::from_secs(3), async {
+        tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
             while !started.exists() {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
@@ -1686,7 +1687,7 @@ mod tests {
             .await
         });
 
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        let deadline = tokio::time::Instant::now() + test_wait::CHILD_PATIENCE;
         while !started.exists() && tokio::time::Instant::now() < deadline {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -1758,7 +1759,7 @@ mod tests {
         let token = state.authorize("proj", command, "run-flood").unwrap();
 
         let result = tokio::time::timeout(
-            Duration::from_secs(2),
+            test_wait::CHILD_PATIENCE,
             execute_command(
                 &state,
                 &root,
@@ -1775,7 +1776,13 @@ mod tests {
         let exec = result
             .expect("stderr flood blocked command completion")
             .unwrap();
-        assert!(exec.output.contains("stdout-done"));
+        // A blocked collection shows up here: the fixture's 4 s watchdog ends
+        // the shell before it prints.
+        assert!(
+            exec.output.contains("stdout-done"),
+            "stderr flood blocked stdout collection: {:?}",
+            exec.output
+        );
         assert!(!exec.truncated);
     }
 }

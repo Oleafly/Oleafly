@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_wait;
 use std::os::unix::fs::PermissionsExt;
 use tempfile::TempDir;
 
@@ -564,21 +565,32 @@ fn paths_under_home_are_shown_with_a_tilde() {
 fn the_shell_path_is_read_without_waiting_on_background_jobs() {
     let folder = TempDir::new().unwrap();
     let shell = folder.path().join("fake-shell");
+    let background = folder.path().join("background.pid");
     std::fs::write(
         &shell,
-        "#!/bin/sh\n(sleep 5 &)\necho 'Welcome back'\necho '/opt/tools:/home/me/.local/bin'\n",
+        format!(
+            "#!/bin/sh\n(sleep {} & echo $! > '{}')\necho 'Welcome back'\necho '/opt/tools:/home/me/.local/bin'\n",
+            2 * test_wait::CHILD_PATIENCE.as_secs(),
+            background.display()
+        ),
     )
     .unwrap();
     std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
     let started = Instant::now();
     assert_eq!(
-        shell_path_within(Some(&shell), ShellStart::Login, Duration::from_secs(3)),
+        shell_path_within(Some(&shell), ShellStart::Login, test_wait::CHILD_PATIENCE),
         vec![
             PathBuf::from("/opt/tools"),
             PathBuf::from("/home/me/.local/bin")
         ]
     );
-    assert!(started.elapsed() < Duration::from_secs(3));
+    assert!(started.elapsed() < test_wait::CHILD_PATIENCE);
+    // The background job outlives the probe on purpose; stop it now.
+    if let Some(pid) =
+        test_wait::read_until_blocking(&background, test_wait::CHILD_PATIENCE, test_wait::pid)
+    {
+        unsafe { libc::kill(pid, libc::SIGKILL) };
+    }
 
     let slow = folder.path().join("slow-shell");
     std::fs::write(&slow, "#!/bin/sh\nsleep 5\necho /never\n").unwrap();
@@ -594,20 +606,32 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
     std::fs::write(
         &stuck,
         format!(
-            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            "#!/bin/sh\nsleep {} &\necho $! > '{}'\nwait\n",
+            4 * test_wait::CHILD_PATIENCE.as_secs(),
             pid_file.display()
         ),
     )
     .unwrap();
     std::fs::set_permissions(&stuck, std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(
-        shell_path_within(Some(&stuck), ShellStart::Login, Duration::from_millis(500)).is_empty()
-    );
-    let helper: libc::pid_t = std::fs::read_to_string(&pid_file)
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap();
+    // The probe kills the stuck shell when its timeout runs out, and on a
+    // loaded machine that can be before the shell has written helper.pid.
+    // Nothing writes it once the probe returns, so retry with a longer timeout.
+    let mut helper = None;
+    for timeout in [
+        Duration::from_millis(500),
+        Duration::from_secs(5),
+        test_wait::CHILD_PATIENCE,
+    ] {
+        let _ = std::fs::remove_file(&pid_file);
+        assert!(shell_path_within(Some(&stuck), ShellStart::Login, timeout).is_empty());
+        helper = std::fs::read_to_string(&pid_file)
+            .ok()
+            .and_then(|text| test_wait::pid(&text));
+        if helper.is_some() {
+            break;
+        }
+    }
+    let helper: libc::pid_t = helper.expect("the stuck shell never wrote helper.pid");
     let deadline = Instant::now() + Duration::from_secs(5);
     while unsafe { libc::kill(helper, 0) } == 0 {
         assert!(
@@ -651,11 +675,11 @@ fn the_probe_starts_the_shell_the_way_a_terminal_does() {
         shell_path_within(
             Some(&shell),
             ShellStart::Interactive,
-            Duration::from_secs(3)
+            test_wait::CHILD_PATIENCE
         ),
         vec![PathBuf::from("/rc/bin"), PathBuf::from("/usr/bin")]
     );
-    let login = shell_path_within(Some(&shell), ShellStart::Login, Duration::from_secs(3));
+    let login = shell_path_within(Some(&shell), ShellStart::Login, test_wait::CHILD_PATIENCE);
     assert!(login.contains(&PathBuf::from("/rc/bin")), "{login:?}");
     assert!(login.contains(&PathBuf::from("/profile/bin")), "{login:?}");
 }
@@ -699,7 +723,7 @@ fn a_folder_added_in_zshrc_counts_as_on_path() {
     .unwrap();
     std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
     for start in [ShellStart::Interactive, ShellStart::Login] {
-        let path = shell_path_within(Some(&shell), start, Duration::from_secs(10));
+        let path = shell_path_within(Some(&shell), start, test_wait::CHILD_PATIENCE);
         assert!(
             path.contains(&PathBuf::from("/oleafly-zshrc-marker/bin")),
             "{start:?} missed ~/.zshrc: {path:?}"

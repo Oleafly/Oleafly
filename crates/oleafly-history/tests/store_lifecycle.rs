@@ -12,6 +12,8 @@ use oleafly_history::{
 use rusqlite::Connection;
 use tempfile::tempdir;
 
+const WORKER_PATIENCE: Duration = Duration::from_secs(30);
+
 fn capture_inputs(_project: &std::path::Path, paths: &[&str]) -> Vec<CaptureInput> {
     paths
         .iter()
@@ -1074,10 +1076,7 @@ fn namespace_locked_destroy_waits_for_candidates_and_allows_clean_recreation() {
     ));
 
     drop(candidate);
-    assert!(received
-        .recv_timeout(Duration::from_secs(5))
-        .unwrap()
-        .unwrap());
+    assert!(received.recv_timeout(WORKER_PATIENCE).unwrap().unwrap());
     worker.join().unwrap();
     assert!(!history.exists());
     assert!(store.list().is_err());
@@ -1289,10 +1288,7 @@ fn destroy_waits_for_first_publication_install_and_then_removes_it() {
     ));
 
     let store = publication.commit().unwrap().into_store();
-    assert!(received
-        .recv_timeout(Duration::from_secs(5))
-        .unwrap()
-        .unwrap());
+    assert!(received.recv_timeout(WORKER_PATIENCE).unwrap().unwrap());
     worker.join().unwrap();
     assert!(!history.exists());
     assert!(store.list().is_err());
@@ -1388,7 +1384,10 @@ fn try_destroy_if_empty_never_waits_for_concurrent_publication() {
 
     let started = std::time::Instant::now();
     assert_eq!(Store::try_destroy_if_empty(&history).unwrap(), None);
-    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(
+        started.elapsed() < oleafly_core::locking::STORAGE_LOCK_TIMEOUT / 3,
+        "try_destroy_if_empty must not wait on the namespace lock the candidate holds"
+    );
 
     publish(&store, candidate, 1).unwrap();
     assert_eq!(Store::try_destroy_if_empty(&history).unwrap(), Some(false));

@@ -1,6 +1,7 @@
 use super::*;
 use crate::acp::types::BinaryDistribution;
 use crate::program_locator::{Located, ProgramKind};
+use crate::test_wait;
 use std::io::{Cursor, Write};
 
 fn binary_definition() -> AgentDefinition {
@@ -870,7 +871,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
     let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(&python);
     command.args(["-c", "import sys; sys.stdout.write('x' * 100000)"]);
-    let output = bounded_command(command, Duration::from_secs(5))
+    let output = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap();
     assert_eq!(output, "x".repeat(64 * 1024));
@@ -880,7 +881,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
         "-c",
         "import sys; sys.stdout.write('npm notice line\\n'); sys.stderr.write('npm error code E404\\nnpm error 404 Not Found\\n'); sys.exit(2)",
     ]);
-    let error = bounded_command(command, Duration::from_secs(5))
+    let error = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap_err();
     assert_eq!(
@@ -894,7 +895,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
 
     let mut command = tokio::process::Command::new(python);
     command.args(["-c", "import sys; sys.exit(2)"]);
-    let silent = bounded_command(command, Duration::from_secs(5))
+    let silent = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap_err();
     assert_eq!(silent, INSTALL_FAILED);
@@ -1130,8 +1131,10 @@ if (settings.fail) process.exit(2);
             ),
         );
         std::fs::write(root.join("outside"), b"outside fixture must stay unchanged").unwrap();
+        // The child test runs a whole fixture install, several Node processes
+        // in turn.
         let output = tokio::time::timeout(
-            Duration::from_secs(30),
+            test_wait::CHILD_PATIENCE * 4,
             tokio::process::Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",
@@ -1216,7 +1219,7 @@ if (settings.fail) process.exit(2);
         assert_eq!(launch.version.as_deref(), Some("1.2.3"));
         let mut command = tokio::process::Command::new(&launch.executable);
         command.args(&launch.args);
-        let output = bounded_command(command, Duration::from_secs(5))
+        let output = bounded_command(command, test_wait::CHILD_PATIENCE)
             .await
             .unwrap();
         (launch, output)

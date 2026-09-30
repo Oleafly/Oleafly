@@ -1976,17 +1976,15 @@ mod tests {
             .await
         });
         let pid_path = isolated.path().join("analysis/child.pid");
-        tokio::time::timeout(Duration::from_secs(5), async {
-            while !pid_path.is_file() {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
+        // The shell's `>` creates child.pid before printf writes to it, so wait
+        // for the pid itself, not for the file.
+        let pid = crate::test_wait::read_until(
+            &pid_path,
+            crate::test_wait::CHILD_PATIENCE,
+            crate::test_wait::pid,
+        )
         .await
-        .unwrap();
-        let pid = std::fs::read_to_string(&pid_path)
-            .unwrap()
-            .parse::<i32>()
-            .unwrap();
+        .expect("the command must record its background child's process id");
         token.cancel();
         let result = tokio::time::timeout(Duration::from_secs(5), task)
             .await
@@ -2058,7 +2056,7 @@ int main(void) {
     pid_t grandchild = fork();
     if (grandchild == 0) {
         close(0); close(1); close(2);
-        usleep(300000);
+        for (int tick = 0; tick < 6000 && access("analysis/release", F_OK) != 0; tick++) usleep(10000);
         int marker = open("analysis/survived", O_WRONLY | O_CREAT, 0600);
         if (marker >= 0) { write(marker, "survived", 8); close(marker); }
         _exit(0);
@@ -2095,10 +2093,21 @@ int main(void) {
             .unwrap()
             .parse::<i32>()
             .unwrap();
-        tokio::time::sleep(Duration::from_millis(450)).await;
+        // The grandchild writes its marker only once released, and release is
+        // created only after the command was reported finished.
+        std::fs::write(analysis.join("release"), "").unwrap();
+        let gone = tokio::time::timeout(crate::test_wait::CHILD_PATIENCE, async {
+            while unsafe { libc::kill(pid, 0) } == 0 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .is_ok();
         let survived = analysis.join("survived").exists();
-        unsafe {
-            libc::kill(pid, libc::SIGKILL);
+        if !gone {
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
         }
         assert_eq!(report, "-1 1 -1 1 78");
         assert!(

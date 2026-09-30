@@ -5,6 +5,7 @@ use super::{
     store::Store,
     types::*,
 };
+use crate::test_wait::{self, CHILD_PATIENCE};
 use serde_json::{json, Value};
 use std::{path::Path, sync::Arc, time::Duration};
 
@@ -320,18 +321,9 @@ async fn hanging_turn(
     let task_id = id.to_owned();
     let text = prompt.to_owned();
     let task = tokio::spawn(async move { task_runtime.prompt(&task_id, text, Vec::new()).await });
-    let pid = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            if let Ok(pid) = std::fs::read_to_string(pid_path) {
-                if let Ok(pid) = pid.parse::<i32>() {
-                    break pid;
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .unwrap();
+    let pid = test_wait::read_until(pid_path, CHILD_PATIENCE, test_wait::pid)
+        .await
+        .expect("the fixture never wrote its child's PID");
     (task, pid)
 }
 
@@ -1051,18 +1043,9 @@ async fn shutdown_reaps_an_agent_waiting_for_initialization() {
     let pid_path = temp.path().join("agent.pid");
     let pending = runtime.clone();
     let start = tokio::spawn(async move { pending.start(options).await });
-    let pid = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            if let Ok(contents) = std::fs::read_to_string(&pid_path) {
-                if let Ok(pid) = contents.parse::<u32>() {
-                    break pid;
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .unwrap();
+    let pid = test_wait::read_until(&pid_path, CHILD_PATIENCE, test_wait::pid)
+        .await
+        .expect("the fixture agent never wrote its PID");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -1077,7 +1060,7 @@ async fn shutdown_reaps_an_agent_waiting_for_initialization() {
     assert!(start.await.unwrap().is_err());
     #[cfg(unix)]
     tokio::time::timeout(Duration::from_secs(5), async {
-        while unsafe { libc::kill(pid as i32, 0) } == 0 {
+        while unsafe { libc::kill(pid, 0) } == 0 {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
@@ -1111,18 +1094,9 @@ async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fa
             .prompt(&prompt_id, "hang".into(), Vec::new())
             .await
     });
-    let pid = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            if let Ok(contents) = std::fs::read_to_string(&pid_path) {
-                if let Ok(pid) = contents.parse::<i32>() {
-                    break pid;
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .unwrap();
+    let pid = test_wait::read_until(&pid_path, CHILD_PATIENCE, test_wait::pid)
+        .await
+        .expect("the fixture never wrote its child's PID");
     let database = rusqlite::Connection::open(temp.path().join("acp/sessions.sqlite")).unwrap();
     database.execute_batch("CREATE TRIGGER reject_event BEFORE INSERT ON events BEGIN SELECT RAISE(FAIL, 'fixture journal unavailable'); END;").unwrap();
     let error = runtime.cancel(&id).await.unwrap_err();
@@ -1293,7 +1267,9 @@ async fn fixture_pid_paths_stay_in_the_harness_and_do_not_overwrite_files() {
                 .unwrap(),
             )
             .unwrap();
-        let started = tokio::time::timeout(Duration::from_secs(3), runtime.start(options)).await;
+        // A fixture that accepted the path would sleep at the barrier until the
+        // 60 s initialize timeout, so this deadline still reports it.
+        let started = tokio::time::timeout(CHILD_PATIENCE, runtime.start(options)).await;
         runtime.shutdown_all().await;
         assert!(started
             .expect("The fixture did not reject the PID path")
@@ -1314,7 +1290,7 @@ async fn fixture_pid_paths_reject_symlink_escapes() {
     let external = tempfile::tempdir().unwrap();
     let outside_pid = external.path().join("agent.pid");
     std::os::unix::fs::symlink(&outside_pid, temp.path().join("agent.pid")).unwrap();
-    let started = tokio::time::timeout(Duration::from_secs(3), runtime.start(options)).await;
+    let started = tokio::time::timeout(CHILD_PATIENCE, runtime.start(options)).await;
     runtime.shutdown_all().await;
     assert!(started
         .expect("The fixture followed the PID symlink")

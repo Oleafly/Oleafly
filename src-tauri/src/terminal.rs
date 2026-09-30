@@ -1061,6 +1061,7 @@ mod tests {
     }
 
     use super::*;
+    use crate::test_wait;
 
     #[test]
     #[cfg_attr(
@@ -1151,19 +1152,21 @@ mod tests {
         );
         let response = response.map(|body| body.deserialize::<()>().unwrap());
         let received_path = project.join("terminal-input.txt");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !std::fs::read_to_string(&received_path)
-            .is_ok_and(|received| received == "hello from the main webview")
-            && std::time::Instant::now() < deadline
-        {
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        let received = std::fs::read_to_string(&received_path);
+        let received = test_wait::read_until_blocking(
+            &received_path,
+            test_wait::CHILD_PATIENCE,
+            test_wait::exactly("hello from the main webview"),
+        );
+        let written = std::fs::read_to_string(&received_path);
 
         kill_terminal(&owner, &session_id).unwrap();
         std::fs::remove_dir_all(&root).ok();
         assert_eq!(response, Ok(()));
-        assert_eq!(received.unwrap(), "hello from the main webview");
+        assert_eq!(
+            received,
+            Some(()),
+            "the shell did not write the line it read: {written:?}"
+        );
     }
 
     #[cfg(unix)]
@@ -1198,7 +1201,7 @@ mod tests {
         .unwrap();
         // The contract is that the exit event arrives, not that it is the
         // first event; a pty may emit terminal noise before the shell dies.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
         let mut events = Vec::new();
         let exit_seen = loop {
             let remaining = deadline.saturating_duration_since(std::time::Instant::now());
@@ -1316,18 +1319,20 @@ mod tests {
 
         write_terminal(&owner, &session_id, "hello from the owner\n").unwrap();
         let received_path = project.join("terminal-input.txt");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !std::fs::read_to_string(&received_path)
-            .is_ok_and(|received| received == "hello from the owner")
-            && std::time::Instant::now() < deadline
-        {
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        let received = std::fs::read_to_string(received_path).unwrap();
+        let received = test_wait::read_until_blocking(
+            &received_path,
+            test_wait::CHILD_PATIENCE,
+            test_wait::exactly("hello from the owner"),
+        );
+        let written = std::fs::read_to_string(&received_path);
 
         kill_terminal(&owner, &session_id).unwrap();
         std::fs::remove_dir_all(&root).ok();
-        assert_eq!(received, "hello from the owner");
+        assert_eq!(
+            received,
+            Some(()),
+            "the shell did not write the line it read: {written:?}"
+        );
     }
 
     struct TerminalTestSession {
@@ -1380,7 +1385,7 @@ mod tests {
         events: &mut tokio::sync::mpsc::UnboundedReceiver<serde_json::Value>,
     ) {
         let mut output = String::new();
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
             while let Some(event) = events.recv().await {
                 if let Some(data) = event["data"].as_str() {
                     output.push_str(data);
@@ -1598,7 +1603,7 @@ mod tests {
         let shell = root.join("test-shell.sh");
         std::fs::write(
             &shell,
-            b"#!/bin/sh\ntrap '' HUP TERM\n( trap '' HUP TERM; sleep 0.35; touch descendant-marker ) &\nprintf '%s\\n' \"$!\" > descendant.pid\nsleep 10\n",
+            b"#!/bin/sh\ntrap '' HUP TERM\n( trap '' HUP TERM; i=0; until [ -e release ] || [ \"$i\" -ge 1200 ]; do i=$((i + 1)); sleep 0.05; done; touch descendant-marker ) &\nprintf '%s\\n' \"$!\" > descendant.pid\nsleep 10\n",
         )
         .unwrap();
         std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -1614,23 +1619,44 @@ mod tests {
         )
         .unwrap();
         let pid_path = project.join("descendant.pid");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !pid_path.exists() && std::time::Instant::now() < deadline {
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        let descendant_pid = std::fs::read_to_string(&pid_path).unwrap();
+        // The shell's `>` creates descendant.pid before printf writes to it, so
+        // wait for the pid itself, not for the file.
+        let descendant_pid =
+            test_wait::read_until_blocking(&pid_path, test_wait::CHILD_PATIENCE, test_wait::pid)
+                .expect("the shell never wrote its descendant's pid");
 
         kill_terminal(&owner, &session_id).unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        // kill_terminal leaves the kill to a cleanup thread. Release the
+        // descendant only once it is gone, or once it has outlived term_kill.
+        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
+        let mut descendant_gone = false;
+        while std::time::Instant::now() < deadline {
+            if unsafe { libc::kill(descendant_pid, 0) } != 0 {
+                descendant_gone = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        std::fs::write(project.join("release"), b"").unwrap();
+        if !descendant_gone {
+            // A descendant that outlived term_kill writes its marker once released.
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
         let marker_exists = project.join("descendant-marker").exists();
-        let _ = std::process::Command::new("kill")
-            .no_console()
-            .args(["-KILL", descendant_pid.trim()])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status();
+        if !descendant_gone {
+            let _ = std::process::Command::new("kill")
+                .no_console()
+                .args(["-KILL", &descendant_pid.to_string()])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
 
         std::fs::remove_dir_all(&root).ok();
+        assert!(
+            descendant_gone,
+            "term_kill left the background descendant running"
+        );
         assert!(!marker_exists);
     }
 

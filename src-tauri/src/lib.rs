@@ -109,6 +109,8 @@ mod system_integration;
 mod template_packs;
 mod templates;
 mod terminal;
+#[cfg(test)]
+mod test_wait;
 mod tex_distro;
 mod tinytex_archive;
 mod trust;

@@ -13898,6 +13898,7 @@ mod tests {
     #[test]
     fn pandoc_path_resolution_returns_canonical_supported_executable() {
         use super::find_pandoc_on_path;
+        use crate::test_wait;
         use std::os::unix::fs::PermissionsExt as _;
 
         let directory = tempfile::tempdir().unwrap();
@@ -13910,7 +13911,20 @@ mod tests {
         std::fs::set_permissions(&executable, permissions).unwrap();
         let path = std::env::join_paths([&bin]).unwrap();
 
-        let found = find_pandoc_on_path(Some(&path)).unwrap();
+        // The probe runs the script under a fixed 5 s timeout, and on Linux
+        // exec can fail with ETXTBSY while another test's fork still holds
+        // the write fd. Either reads as None, so retry until it is accepted.
+        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
+        let found = loop {
+            if let Some(found) = find_pandoc_on_path(Some(&path)) {
+                break found;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the fake pandoc was never accepted"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
 
         assert!(found.is_absolute());
         assert_eq!(found, executable.canonicalize().unwrap());
