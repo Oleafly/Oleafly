@@ -101,6 +101,8 @@ for line in sys.stdin:
         result(request, {"configOptions": [{"id": "model-selector", "name": "Model", "type": "select", "category": "model", "currentValue": params["value"], "options": [{"value": "fixture-model", "name": "Fixture model"}, {"value": "fixture-second", "name": "Second model"}]}]})
     elif method == "session/prompt":
         prompt = params["prompt"][0]["text"]
+        if "--record-prompt" in sys.argv:
+            (declared_root / "prompt.json").write_text(json.dumps(params["prompt"]))
         update("agent_thought_chunk", content={"type": "text", "text": "Checking the fixture."})
         update("tool_call", toolCallId="read-1", title="Read fixture", kind="read", status="in_progress", rawInput={"password": raw_input_marker})
         update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "Read complete."}}])
@@ -143,6 +145,19 @@ for line in sys.stdin:
         elif prompt.startswith("stop:"):
             update("agent_message_chunk", content={"type": "text", "text": "Partial saved answer"})
             result(request, {"stopReason": prompt.removeprefix("stop:")})
+        elif prompt == "large-output":
+            target = os.path.join(os.getcwd(), "refs.bib")
+            update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "r" * (300 * 1024)}}, {"type": "diff", "path": target, "oldText": "o" * (150 * 1024), "newText": "n" * (151 * 1024)}])
+            result(request, {"stopReason": "end_turn"})
+        elif prompt == "huge-update":
+            update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "h" * (3 * 1024 * 1024)}}])
+            update("agent_message_chunk", content={"type": "text", "text": "After the large update"})
+            result(request, {"stopReason": "end_turn"})
+        elif prompt == "permission-diff":
+            pending_prompt = request
+            target = os.path.join(os.getcwd(), "paper.tex")
+            update("tool_call", toolCallId="edit-1", title="Edit paper", kind="edit", status="pending", locations=[{"path": target}], content=[{"type": "diff", "path": target, "oldText": "Old sentence.\n", "newText": "New sentence.\npassword = " + raw_input_marker + "\n"}])
+            send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": "edit-1", "title": "Edit paper"}, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
         elif prompt == "paged-answer":
             for index in range(520):
                 update("agent_message_chunk", content={"type": "text", "text": str(index) + "|"})

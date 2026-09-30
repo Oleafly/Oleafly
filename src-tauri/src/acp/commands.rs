@@ -144,10 +144,22 @@ pub async fn acp_prompt(
 ) -> Result<SessionSnapshot, String> {
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, window.label()).await?;
-    // Contract stub: the skill block arrives with the runtime implementation.
-    let _ = skill_id;
+    let skill = match skill_id.filter(|id| !id.trim().is_empty()) {
+        Some(skill_id) => {
+            let app = window.app_handle().clone();
+            let project = project_id.clone();
+            Some(
+                tauri::async_runtime::spawn_blocking(move || {
+                    super::skill_block::prompt_skill(&app, &project, &skill_id)
+                })
+                .await
+                .map_err(|e| e.to_string())??,
+            )
+        }
+        None => None,
+    };
     runtime
-        .prompt(&session_id, text, images.unwrap_or_default())
+        .prompt_with_skill(&session_id, text, images.unwrap_or_default(), skill)
         .await
 }
 
@@ -351,17 +363,26 @@ pub async fn acp_set_agent_program(
     runtime.agent_status(&agent_id, false).await
 }
 
-/// Writes a conversation as pretty JSON (`{ session, events }`) to `path`.
+/// Writes a conversation as pretty JSON (`{ session, events }`) to `path`,
+/// an absolute path from a save dialog.
 #[tauri::command]
 pub async fn acp_session_export(
     runtime: State<'_, Arc<AcpRuntime>>,
+    state: State<'_, crate::state::AppState>,
     project_id: String,
     session_id: String,
     path: String,
 ) -> Result<(), String> {
     check_project(&runtime, &session_id, &project_id)?;
-    let _ = path;
-    Err(NOT_IMPLEMENTED.into())
+    let exporter = runtime.inner().clone();
+    let destination = path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        exporter.export_session(&session_id, &destination)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    crate::commands::allow_reveal_export(&path, &state).await;
+    Ok(())
 }
 
 /// Every stored event of a conversation, oldest first.
@@ -372,5 +393,8 @@ pub async fn acp_session_events_all(
     session_id: String,
 ) -> Result<Vec<AcpEvent>, String> {
     check_project(&runtime, &session_id, &project_id)?;
-    Err(NOT_IMPLEMENTED.into())
+    let reader = runtime.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || reader.events_all(&session_id))
+        .await
+        .map_err(|e| e.to_string())?
 }

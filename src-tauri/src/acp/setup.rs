@@ -405,7 +405,7 @@ async fn start_and_initialize(
                     let _ = done.send(());
                 }
                 Incoming::Disconnected => break,
-                Incoming::Message(_) => {}
+                Incoming::Message(_) | Incoming::DroppedUpdate { .. } => {}
             }
         }
     });

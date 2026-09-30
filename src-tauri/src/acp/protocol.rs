@@ -14,6 +14,9 @@ use tokio::{
 };
 
 pub const MAX_FRAME: usize = 1024 * 1024;
+/// Largest `session/update` notification that is read and then dropped rather
+/// than ending the connection. Pi sends a whole-file diff in one update.
+pub const MAX_DROPPED_UPDATE: usize = 16 * 1024 * 1024;
 const MAX_PENDING: usize = 32;
 const MAX_STDERR_TAIL: usize = 8 * 1024;
 const MAX_TAIL_LINES: usize = 20;
@@ -126,8 +129,22 @@ impl std::fmt::Display for RpcError {
 #[derive(Debug)]
 pub enum Incoming {
     Message(Value),
+    /// A `session/update` notification larger than [`MAX_FRAME`] was skipped.
+    DroppedUpdate {
+        bytes: usize,
+    },
     Barrier(oneshot::Sender<()>),
     Disconnected,
+}
+
+/// One newline-delimited message read from an agent.
+#[derive(Debug)]
+pub enum Frame {
+    Message(Value),
+    /// An oversized `session/update` notification that was read and dropped.
+    DroppedUpdate {
+        bytes: usize,
+    },
 }
 
 pub struct Connection {
@@ -146,7 +163,20 @@ async fn pump_agent_frames(
     stop: watch::Sender<bool>,
 ) {
     let mut reader = BufReader::new(stdout);
-    while let Ok(Some(value)) = read_frame(&mut reader).await {
+    while let Ok(Some(frame)) = read_agent_frame(&mut reader).await {
+        let value = match frame {
+            Frame::Message(value) => value,
+            Frame::DroppedUpdate { bytes } => {
+                if incoming
+                    .send(Incoming::DroppedUpdate { bytes })
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
+        };
         if value.get("method").is_none() {
             if let Some(id) = value["id"].as_u64() {
                 let sender = pending.lock().ok().and_then(|mut map| map.remove(&id));
@@ -181,9 +211,68 @@ async fn pump_agent_frames(
     let _ = stop.send(true);
 }
 
+/// Reads one message of at most [`MAX_FRAME`] bytes.
+#[cfg(test)]
 pub async fn read_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Value>, RpcError> {
+    match read_frame_bytes(reader, MAX_FRAME).await? {
+        Some(bytes) => parse_envelope(&bytes).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Reads the next agent message. A `session/update` notification between
+/// 1 MiB and 16 MiB is read in full and dropped; every other message over
+/// 1 MiB, and anything over 16 MiB, is an error.
+pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+) -> Result<Option<Frame>, RpcError> {
+    let Some(bytes) = read_frame_bytes(reader, MAX_DROPPED_UPDATE).await? else {
+        return Ok(None);
+    };
+    if bytes.len() <= MAX_FRAME {
+        return parse_envelope(&bytes).map(|value| Some(Frame::Message(value)));
+    }
+    if is_update_notification(&bytes) {
+        return Ok(Some(Frame::DroppedUpdate { bytes: bytes.len() }));
+    }
+    Err(RpcError::local(
+        "The agent sent an ACP message larger than 1 MiB.",
+    ))
+}
+
+/// Checks the envelope of an oversized frame without building its payload.
+fn is_update_notification(bytes: &[u8]) -> bool {
+    #[derive(serde::Deserialize)]
+    struct Envelope {
+        jsonrpc: Option<String>,
+        method: Option<String>,
+        id: Option<serde::de::IgnoredAny>,
+    }
+    serde_json::from_slice::<Envelope>(bytes).is_ok_and(|envelope| {
+        envelope.jsonrpc.as_deref() == Some("2.0")
+            && envelope.method.as_deref() == Some("session/update")
+            && envelope.id.is_none()
+    })
+}
+
+fn parse_envelope(bytes: &[u8]) -> Result<Value, RpcError> {
+    let value: Value = serde_json::from_slice(bytes)
+        .map_err(|_| RpcError::local("The agent sent invalid ACP JSON."))?;
+    if value["jsonrpc"] != "2.0" || !value.is_object() {
+        return Err(RpcError::local(
+            "The agent sent an invalid JSON-RPC envelope.",
+        ));
+    }
+    Ok(value)
+}
+
+/// Reads one non-blank line of at most `limit` bytes.
+async fn read_frame_bytes<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<Option<Vec<u8>>, RpcError> {
     let mut bytes = Vec::new();
     loop {
         let available = reader
@@ -199,10 +288,12 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
         }
         let newline = available.iter().position(|b| *b == b'\n');
         let count = newline.map(|v| v + 1).unwrap_or(available.len());
-        if bytes.len() + count > MAX_FRAME {
-            return Err(RpcError::local(
-                "The agent sent an ACP message larger than 1 MiB.",
-            ));
+        if bytes.len() + count > limit {
+            return Err(RpcError::local(if limit > MAX_FRAME {
+                "The agent sent an ACP message larger than 16 MiB."
+            } else {
+                "The agent sent an ACP message larger than 1 MiB."
+            }));
         }
         bytes.extend_from_slice(&available[..count]);
         reader.consume(count);
@@ -211,14 +302,7 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
                 bytes.clear();
                 continue;
             }
-            let value: Value = serde_json::from_slice(&bytes)
-                .map_err(|_| RpcError::local("The agent sent invalid ACP JSON."))?;
-            if value["jsonrpc"] != "2.0" || !value.is_object() {
-                return Err(RpcError::local(
-                    "The agent sent an invalid JSON-RPC envelope.",
-                ));
-            }
-            return Ok(Some(value));
+            return Ok(Some(bytes));
         }
     }
 }
