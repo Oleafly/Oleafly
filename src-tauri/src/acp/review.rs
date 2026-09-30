@@ -4,7 +4,7 @@
 //! protocol tests can observe the calls without writing into the user's data
 //! folder or needing Git.
 
-use crate::agent_turns::{TurnBegin, TurnChanges, TurnUnavailable};
+use crate::agent_turns::{BeginTicket, TurnBegin, TurnChanges, TurnUnavailable};
 use serde_json::{json, Value};
 use std::{path::Path, sync::Arc, time::Duration};
 
@@ -12,13 +12,13 @@ use std::{path::Path, sync::Arc, time::Duration};
 /// stuck copy can never hold a turn open.
 const HOOK_DEADLINE: Duration = Duration::from_secs(10);
 
-type BeginHook = dyn Fn(&str, &str) -> TurnBegin + Send + Sync;
+type BeginHook = dyn Fn(&str, &str, &BeginTicket) -> TurnBegin + Send + Sync;
 type FinishHook = dyn Fn(&str, &str) -> TurnChanges + Send + Sync;
 type HeadStateHook = dyn Fn(&Path) -> Option<(String, bool)> + Send + Sync;
 
 #[derive(Clone)]
 pub(crate) struct ReviewHooks {
-    /// `(project_id, label)`; see `agent_turns::begin`.
+    /// `(project_id, label, ticket)`; see `agent_turns::begin_for`.
     pub turn_begin: Arc<BeginHook>,
     /// `(project_id, snapshot_id)`; see `agent_turns::finish`.
     pub turn_finish: Arc<FinishHook>,
@@ -30,7 +30,7 @@ impl ReviewHooks {
     #[cfg_attr(test, allow(dead_code))]
     pub(crate) fn production() -> Self {
         Self {
-            turn_begin: Arc::new(crate::agent_turns::begin),
+            turn_begin: Arc::new(crate::agent_turns::begin_for),
             turn_finish: Arc::new(|project_id, snapshot_id| {
                 crate::agent_turns::finish(project_id, snapshot_id, None)
             }),
@@ -42,7 +42,7 @@ impl ReviewHooks {
     #[cfg(test)]
     pub(crate) fn inert() -> Self {
         Self {
-            turn_begin: Arc::new(|_, _| TurnBegin::default()),
+            turn_begin: Arc::new(|_, _, _| TurnBegin::default()),
             turn_finish: Arc::new(|_, _| TurnChanges::default()),
             head_state: Arc::new(|_| None),
         }
@@ -68,14 +68,49 @@ pub(super) fn takes_turn_copy(is_task: bool, parent_session_id: Option<&str>) ->
 }
 
 pub(super) async fn begin_turn(hooks: &ReviewHooks, project_id: &str, label: &str) -> TurnBegin {
+    begin_turn_within(hooks, project_id, label, HOOK_DEADLINE).await
+}
+
+/// Takes the before-turn copy, waiting at most `deadline`. The copy keeps
+/// running on its blocking thread when the wait ends early (a timeout, a
+/// failed task, or this future being dropped), so the wait gives up its
+/// ticket: that copy never leaves a turn open that nothing will finish.
+pub(super) async fn begin_turn_within(
+    hooks: &ReviewHooks,
+    project_id: &str,
+    label: &str,
+    deadline: Duration,
+) -> TurnBegin {
     let hook = hooks.turn_begin.clone();
     let project_id = project_id.to_owned();
     let label = label.to_owned();
-    let task = tokio::task::spawn_blocking(move || hook(&project_id, &label));
-    match tokio::time::timeout(HOOK_DEADLINE, task).await {
-        Ok(Ok(begin)) => begin,
+    let ticket = Arc::new(BeginTicket::default());
+    let waiting = AbandonUnlessKept(Some(ticket.clone()));
+    let task = tokio::task::spawn_blocking(move || hook(&project_id, &label, &ticket));
+    match tokio::time::timeout(deadline, task).await {
+        Ok(Ok(begin)) => {
+            waiting.keep();
+            begin
+        }
         Ok(Err(_)) => unavailable_begin(TurnUnavailable::Error),
         Err(_) => unavailable_begin(TurnUnavailable::Timeout),
+    }
+}
+
+/// Abandons the ticket when dropped, unless the copy's result was received.
+struct AbandonUnlessKept(Option<Arc<BeginTicket>>);
+
+impl AbandonUnlessKept {
+    fn keep(mut self) {
+        self.0 = None;
+    }
+}
+
+impl Drop for AbandonUnlessKept {
+    fn drop(&mut self) {
+        if let Some(ticket) = self.0.take() {
+            ticket.abandon();
+        }
     }
 }
 
