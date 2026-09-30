@@ -445,16 +445,18 @@ fn apply_terminal_env(cmd: &mut CommandBuilder) {
 
 fn default_shell() -> CommandBuilder {
     #[cfg(windows)]
-    {
-        CommandBuilder::new("powershell.exe")
-    }
+    let mut cmd = CommandBuilder::new("powershell.exe");
     #[cfg(not(windows))]
-    {
+    let mut cmd = {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
         let mut cmd = CommandBuilder::new(shell);
         cmd.arg("-l");
         cmd
-    }
+    };
+    // The same search path agents get, so a CLI Oleafly found (for example
+    // one installed after Oleafly started) also runs by name here.
+    cmd.env("PATH", crate::program_locator::child_search_path(&[], &[]));
+    cmd
 }
 
 fn project_shell(project_id: &str, root: &Path, autostart: bool) -> Result<CommandBuilder, String> {
@@ -1235,6 +1237,9 @@ mod tests {
         assert!(program.contains("sh") || program.contains("SHELL"));
         #[cfg(windows)]
         assert!(program.contains("powershell"));
+        let path = cmd.get_env("PATH").expect("the shell gets a search path");
+        assert!(!path.is_empty());
+        assert!(std::env::split_paths(path).all(|entry| !entry.as_os_str().is_empty()));
     }
 
     #[test]

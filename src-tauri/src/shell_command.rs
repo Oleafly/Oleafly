@@ -1,5 +1,5 @@
 #[cfg(unix)]
-mod unix;
+pub(crate) mod unix;
 
 use crate::app_error::AppError;
 

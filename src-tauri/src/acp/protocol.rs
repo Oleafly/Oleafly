@@ -233,8 +233,13 @@ impl Connection {
             .stderr(Stdio::piped())
             .kill_on_drop(true);
         crate::proc::isolate_process_tree(&mut command);
-        let mut child = command.spawn().map_err(|_| {
-            "The agent could not be started. Check its installation and executable permissions."
+        let program = command.as_std().get_program().to_owned();
+        let mut child = command.spawn().map_err(|error| {
+            format!(
+                "The agent could not be started. Check its installation and executable permissions. ({:?}: {})",
+                error.kind(),
+                std::path::Path::new(&program).display()
+            )
         })?;
         let pid = child.id().ok_or("The agent process has no ID.")?;
         let guard = match crate::proc::contain_process_tree(pid) {
