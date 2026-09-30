@@ -236,11 +236,55 @@ impl AcpRuntime {
     }
 
     pub async fn catalog(&self, probe: bool) -> Result<Vec<AgentStatus>, String> {
-        let mut results = Vec::new();
-        for definition in catalog::builtins().into_iter().chain(self.store.agents()?) {
-            results.push(catalog::status(&self.root, definition, probe).await);
+        if probe {
+            crate::program_locator::refresh();
         }
-        Ok(results)
+        let programs = self.store.agent_programs()?;
+        let statuses = catalog::builtins()
+            .into_iter()
+            .chain(self.store.agents()?)
+            .map(|definition| {
+                let program = programs.get(&definition.id).cloned();
+                catalog::status_with(&self.root, definition, probe, program)
+            });
+        Ok(futures_util::future::join_all(statuses).await)
+    }
+
+    /// The status of one agent, with the program the user chose for it.
+    pub async fn agent_status(&self, id: &str, probe: bool) -> Result<AgentStatus, String> {
+        let definition = self.definition(id)?;
+        let program = self.store.agent_program(id)?;
+        Ok(catalog::status_with(&self.root, definition, probe, program).await)
+    }
+
+    /// The definition of a built-in or registered agent.
+    pub fn agent_definition(&self, id: &str) -> Result<AgentDefinition, String> {
+        self.definition(id)
+    }
+
+    /// Saves (or clears) the program the user chose for an agent. The path
+    /// was checked by the caller.
+    pub fn save_agent_program(&self, id: &str, path: Option<&Path>) -> Result<(), String> {
+        self.definition(id)?;
+        self.store.set_agent_program(
+            id,
+            path.map(|path| path.to_string_lossy().into_owned())
+                .as_deref(),
+        )
+    }
+
+    /// Tests an agent's programs without saving anything: `candidate`, or the
+    /// program Oleafly would use today. One check per agent at a time.
+    pub async fn check_agent(
+        &self,
+        id: &str,
+        candidate: Option<PathBuf>,
+    ) -> Result<super::AgentCheck, String> {
+        let definition = self.definition(id)?;
+        let _flight = super::setup::CheckFlight::enter(&format!("{}\n{id}", self.root.display()))?;
+        let _startup = self.begin_startup()?;
+        let saved = self.store.agent_program(id)?;
+        Ok(super::setup::check_agent(&self.root, &definition, candidate, saved).await)
     }
 
     pub fn register(&self, json: &str) -> Result<AgentDefinition, String> {
@@ -289,7 +333,8 @@ impl AcpRuntime {
         let result = catalog::install(&self.root, &definition).await;
         self.installing.lock().await.remove(id);
         result?;
-        Ok(catalog::status(&self.root, definition, true).await)
+        let program = self.store.agent_program(id)?;
+        Ok(catalog::status_with(&self.root, definition, true, program).await)
     }
 
     pub async fn registry_search(
@@ -462,18 +507,30 @@ impl AcpRuntime {
             return Err("The window or task closed while the agent was starting.".into());
         }
         let definition = self.definition(&record.agent_id)?;
+        let program = self.store.agent_program(&definition.id)?;
+        let chosen_launch =
+            program.is_some() && catalog::program_role(&definition) == catalog::ProgramRole::Launch;
         if let Some(required) = definition
             .distribution
             .npx
             .as_ref()
             .and_then(|v| v.node_major)
+            .filter(|_| !chosen_launch)
         {
-            catalog::check_node(required).await?;
+            catalog::check_node(&self.root, required).await?;
         }
         if !self.owner_is_current(owner.as_deref(), generation) {
             return Err("The window or task closed while the agent was starting.".into());
         }
-        let launch = catalog::resolve(&self.root, &definition)?;
+        let launch = {
+            let root = self.root.clone();
+            let definition = definition.clone();
+            catalog::blocking(move || {
+                catalog::plan(&root, &definition, program.as_deref().map(Path::new)).launch
+            })
+            .await??
+        };
+        let launch_root = launch_root_for(Path::new(&record.project_path));
         if mcp_servers.len() > 32
             || serde_json::to_vec(&mcp_servers)
                 .map_err(|e| e.to_string())?
@@ -514,30 +571,15 @@ impl AcpRuntime {
         } else {
             Redactor::new(&mcp_servers)
         };
-        let mut command = if let Some(paths) = &allowed_paths {
-            crate::agent::task_runtime::sandbox_task_command_with_reads(
-                &launch.executable,
-                &launch.args,
-                Path::new(&record.project_path),
-                paths,
-                &task_temp
-                    .as_ref()
-                    .ok_or("The task temporary directory is missing.")?
-                    .0,
-                true,
-                &super::task_launch::runtime_reads(&self.root, &definition, &launch),
-            )?
-        } else {
-            let mut command = tokio::process::Command::new(&launch.executable);
-            command.args(&launch.args);
-            command
-        };
-        command.current_dir(&record.project_path);
-        if let Some(hardening) =
-            crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
-        {
-            command.envs(hardening);
-        }
+        let command = build_agent_command(
+            &self.root,
+            &record,
+            &definition,
+            &launch,
+            &launch_root,
+            allowed_paths.as_deref(),
+            task_temp.as_ref().map(|temporary| temporary.0.as_path()),
+        )?;
         let id = record.id.clone();
         let bytes = self.store.byte_count(&id)?;
         let (connection, incoming) = Connection::spawn(command).await?;
@@ -617,7 +659,10 @@ impl AcpRuntime {
                         .iter()
                         .take(12)
                         .filter_map(|value| {
-                            serde_json::from_value(session.redactor.value(value)).ok()
+                            let mut method: super::AuthMethod =
+                                serde_json::from_value(session.redactor.value(value)).ok()?;
+                            method.kind = auth_method_kind(value);
+                            Some(method)
                         })
                         .collect()
                 })
@@ -628,6 +673,9 @@ impl AcpRuntime {
 
     async fn establish(&self, session: &Arc<LiveSession>) -> Result<(), String> {
         let record = self.copy_record(session)?;
+        let cwd = launch_root_for(Path::new(&record.project_path))
+            .to_string_lossy()
+            .into_owned();
         let mcp_servers = session
             .mcp_servers
             .lock()
@@ -643,13 +691,10 @@ impl AcpRuntime {
             };
             (
                 method,
-                json!({"sessionId":native,"cwd":record.project_path,"mcpServers":mcp_servers}),
+                json!({"sessionId":native,"cwd":cwd,"mcpServers":mcp_servers}),
             )
         } else {
-            (
-                "session/new",
-                json!({"cwd":record.project_path,"mcpServers":mcp_servers}),
-            )
+            ("session/new", json!({"cwd":cwd,"mcpServers":mcp_servers}))
         };
         let result = session
             .connection
@@ -1601,6 +1646,109 @@ fn canonical_root(path: &Path) -> Result<PathBuf, String> {
     Ok(root)
 }
 
+/// The agent's process: sandboxed task launches keep the sandbox's own fixed
+/// environment; every other launch gets plain paths, the launch root as its
+/// working folder and the agent environment (search path, CLI hand-off).
+pub(super) fn build_agent_command(
+    acp_root: &Path,
+    record: &SessionRecord,
+    definition: &AgentDefinition,
+    launch: &catalog::Launch,
+    launch_root: &Path,
+    allowed_paths: Option<&[String]>,
+    task_temp: Option<&Path>,
+) -> Result<tokio::process::Command, String> {
+    let mut command = if let Some(paths) = allowed_paths {
+        let launch = launch.resolved_for_sandbox();
+        let mut command = crate::agent::task_runtime::sandbox_task_command_with_reads(
+            &launch.executable,
+            &launch.args,
+            Path::new(&record.project_path),
+            paths,
+            task_temp.ok_or("The task temporary directory is missing.")?,
+            true,
+            &super::task_launch::runtime_reads(acp_root, definition, &launch),
+        )?;
+        command.current_dir(&record.project_path);
+        command
+    } else {
+        if launch.batch {
+            crate::program_locator::script_launch_check(&launch.executable, launch_root)?;
+        } else if launch.needs_local_folder && crate::program_locator::network_folder(launch_root) {
+            return Err("This agent can't start from a network folder. Open the project from a drive letter, such as Z:, and try again.".into());
+        }
+        let mut command = tokio::process::Command::new(&launch.executable);
+        command
+            .args(&launch.args)
+            .current_dir(launch_root)
+            .envs(launch.env.iter().map(|(name, value)| (name, value)));
+        command
+    };
+    if let Some(hardening) =
+        crate::trust::git_restriction(&record.project_id, Path::new(&record.project_path))?
+    {
+        command.envs(hardening);
+    }
+    Ok(command)
+}
+
+/// The ACP auth method `type` (for example "terminal"), when it is a short
+/// plain word.
+fn auth_method_kind(value: &Value) -> Option<String> {
+    value["type"]
+        .as_str()
+        .filter(|kind| {
+            !kind.is_empty()
+                && kind.len() <= 40
+                && kind
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte))
+        })
+        .map(str::to_owned)
+}
+
+/// Canonical project roots mapped to the folder the agent is started in.
+static LAUNCH_ROOTS: Mutex<Option<HashMap<PathBuf, PathBuf>>> = Mutex::new(None);
+
+/// The folder an agent starts in for `canonical`: the user's own
+/// drive-letter path when it leads to the same folder (a mapped network
+/// drive stays `Z:\thesis` instead of `\\server\share\thesis`, which cmd.exe
+/// cannot use), otherwise the canonical root as a plain path.
+pub(super) fn launch_root_from(original: Option<&Path>, canonical: &Path) -> PathBuf {
+    original
+        .filter(|original| original.is_absolute())
+        .filter(|original| original.canonicalize().is_ok_and(|real| real == canonical))
+        .map(crate::program_locator::child_path)
+        .unwrap_or_else(|| crate::program_locator::child_path(canonical))
+}
+
+/// Records the project folder as the user opened it, so agents start there
+/// (called where the project's own path is known: starting and resuming from
+/// a window).
+pub(super) fn note_launch_root(original: &Path) {
+    if let Ok(canonical) = original.canonicalize() {
+        register_launch_root(&canonical, &launch_root_from(Some(original), &canonical));
+    }
+}
+
+pub(super) fn register_launch_root(canonical: &Path, root: &Path) {
+    if let Ok(mut roots) = LAUNCH_ROOTS.lock() {
+        roots
+            .get_or_insert_with(HashMap::new)
+            .insert(canonical.to_path_buf(), root.to_path_buf());
+    }
+}
+
+/// The launch root recorded for a canonical project root (the plain path
+/// when none was recorded).
+pub(super) fn launch_root_for(canonical: &Path) -> PathBuf {
+    LAUNCH_ROOTS
+        .lock()
+        .ok()
+        .and_then(|roots| roots.as_ref()?.get(canonical).cloned())
+        .unwrap_or_else(|| crate::program_locator::child_path(canonical))
+}
+
 pub(super) fn equivalent_path_prefixes(
     left: std::path::Prefix<'_>,
     right: std::path::Prefix<'_>,
@@ -1674,7 +1822,11 @@ pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
             {
                 return false;
             }
-            if lexical_path_within(&candidate, root) {
+            // The agent was started in the launch root (for example a mapped
+            // drive letter), so its paths may use that spelling.
+            if lexical_path_within(&candidate, root)
+                || lexical_path_within(&candidate, &launch_root_for(root))
+            {
                 return true;
             }
             #[cfg(windows)]

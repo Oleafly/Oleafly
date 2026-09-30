@@ -24,6 +24,8 @@ pub(crate) fn fixture_python() -> std::path::PathBuf {
     let python = python.expect("Python 3 is required for ACP protocol fixtures");
     #[cfg(target_os = "macos")]
     let python = python
+        .canonicalize()
+        .unwrap_or_else(|_| python.clone())
         .parent()
         .and_then(Path::parent)
         .map(|prefix| prefix.join("Resources/Python.app/Contents/MacOS/Python"))
@@ -1546,4 +1548,357 @@ fn an_agent_in_a_trusted_folder_of_an_untrusted_repository_runs_git_restricted()
         recorded[format!("GIT_CONFIG_VALUE_{start}")],
         json!("false")
     );
+}
+
+// --- Agent setup: plain launch paths, the Test check, chosen programs (#84) ---
+
+fn check_definition(root: &Path, extra: &[&str]) -> AgentDefinition {
+    let mut arguments = vec![String::new(), "--fixture-any-cwd".to_string()];
+    arguments.extend(extra.iter().map(|value| value.to_string()));
+    fixture_definition(arguments, root)
+}
+
+fn check_runtime(extra: &[&str]) -> (tempfile::TempDir, Arc<AcpRuntime>) {
+    let temp = fixture_temp();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&check_definition(temp.path(), extra)).unwrap())
+        .unwrap();
+    (temp, runtime)
+}
+
+#[tokio::test]
+async fn the_agent_check_starts_the_agent_in_an_empty_folder_and_reads_its_answer() {
+    let (temp, runtime) = check_runtime(&[]);
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert!(check.ok, "{check:?}");
+    assert_eq!(check.code, "ready");
+    assert_eq!(check.agent_name.as_deref(), Some("fixture"));
+    assert_eq!(check.version.as_deref(), Some("1.2.3"));
+    assert!(!check
+        .program
+        .as_deref()
+        .unwrap_or_default()
+        .starts_with(r"\\?\"));
+    let probes = temp.path().join("acp/probe");
+    assert_eq!(
+        std::fs::read_dir(&probes).map_or(0, |entries| entries.count()),
+        0,
+        "the check folder is removed"
+    );
+    assert!(runtime.list("fixture-project").unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn the_agent_check_reports_why_a_program_cannot_be_used() {
+    let (temp, runtime) = check_runtime(&[]);
+    let missing = temp.path().join("missing-agent");
+    let check = runtime
+        .check_agent("fixture-agent", Some(missing.clone()))
+        .await
+        .unwrap();
+    assert!(!check.ok);
+    assert_eq!(check.code, "not_found");
+    assert_eq!(
+        check.program.as_deref(),
+        Some(missing.to_string_lossy().as_ref())
+    );
+    let folder = runtime
+        .check_agent("fixture-agent", Some(temp.path().to_path_buf()))
+        .await
+        .unwrap();
+    assert_eq!(folder.code, "is_directory");
+    let python = runtime
+        .check_agent("fixture-agent", Some(fixture_python()))
+        .await
+        .unwrap();
+    assert_eq!(python.code, "interpreter");
+    assert!(runtime.check_agent("no-such-agent", None).await.is_err());
+}
+
+#[tokio::test]
+async fn the_agent_check_tells_a_crash_from_a_hang() {
+    let (_temp, runtime) = check_runtime(&["--stderr-crash"]);
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert_eq!(check.code, "exited", "{check:?}");
+    assert!(check.detail.unwrap_or_default().contains("missing runtime"));
+
+    let temp = fixture_temp();
+    let mut definition = check_definition(temp.path(), &["--initialize-barrier"]);
+    definition.distribution.command.as_mut().unwrap().args[2] = "agent.pid".into();
+    let started = std::time::Instant::now();
+    let check = super::setup::check_agent_within(
+        &temp.path().join("acp"),
+        &definition,
+        None,
+        None,
+        super::setup::CheckLimits {
+            version: Duration::from_secs(5),
+            initialize: Duration::from_secs(2),
+        },
+    )
+    .await;
+    assert_eq!(check.code, "timeout", "{check:?}");
+    assert!(started.elapsed() < Duration::from_secs(15));
+    #[cfg(unix)]
+    {
+        let pid: i32 = std::fs::read_to_string(temp.path().join("agent.pid"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while unsafe { libc::kill(pid, 0) } == 0 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the checked agent outlived its check"
+            );
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
+}
+
+#[test]
+fn only_one_check_runs_per_agent() {
+    let first = super::setup::CheckFlight::enter("flight-fixture").unwrap();
+    let error = super::setup::CheckFlight::enter("flight-fixture")
+        .err()
+        .unwrap();
+    assert!(error.contains("acp.program.check_running"), "{error}");
+    assert!(super::setup::CheckFlight::enter("other-flight-fixture").is_ok());
+    drop(first);
+    assert!(super::setup::CheckFlight::enter("flight-fixture").is_ok());
+}
+
+#[test]
+fn setup_commands_belong_to_the_main_window() {
+    assert!(super::setup::require_main_window("main").is_ok());
+    for label in ["preview", "update", "settings-popout"] {
+        assert!(super::setup::require_main_window(label)
+            .unwrap_err()
+            .contains("acp.program.main_window"));
+    }
+}
+
+#[test]
+fn chosen_programs_are_stored_per_agent_and_removed_with_the_agent() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Store::open(temp.path()).unwrap();
+    assert_eq!(store.agent_program("pi").unwrap(), None);
+    store.set_agent_program("pi", Some("/tools/pi")).unwrap();
+    store.set_agent_program("pi", Some("/tools/pi-2")).unwrap();
+    store
+        .set_agent_program("custom", Some("/tools/custom"))
+        .unwrap();
+    assert_eq!(
+        store.agent_program("pi").unwrap().as_deref(),
+        Some("/tools/pi-2")
+    );
+    assert_eq!(store.agent_programs().unwrap().len(), 2);
+    store.remove_agent("custom").unwrap();
+    assert_eq!(store.agent_program("custom").unwrap(), None);
+    store.set_agent_program("pi", None).unwrap();
+    assert!(store.agent_programs().unwrap().is_empty());
+}
+
+#[test]
+fn only_registered_agents_can_get_a_chosen_program() {
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    assert!(runtime
+        .save_agent_program("no-such-agent", Some(Path::new("/x")))
+        .is_err());
+    runtime
+        .save_agent_program("pi", Some(Path::new("/tools/pi")))
+        .unwrap();
+    assert!(runtime.agent_definition("pi").is_ok());
+}
+
+#[tokio::test]
+async fn a_chosen_program_replaces_the_command_an_agent_starts_with() {
+    let (temp, runtime) = check_runtime(&[]);
+    let missing = temp.path().join("gone-agent");
+    runtime
+        .save_agent_program("fixture-agent", Some(&missing))
+        .unwrap();
+    let status = runtime.agent_status("fixture-agent", false).await.unwrap();
+    assert_eq!(
+        status.program_override.as_deref(),
+        Some(missing.to_string_lossy().as_ref())
+    );
+    assert!(!status.installed);
+    assert!(status.reason.unwrap().contains("Choose it again"));
+    let check = runtime.check_agent("fixture-agent", None).await.unwrap();
+    assert_eq!(check.code, "not_found", "{check:?}");
+    runtime.save_agent_program("fixture-agent", None).unwrap();
+    assert!(
+        runtime
+            .agent_status("fixture-agent", false)
+            .await
+            .unwrap()
+            .installed
+    );
+}
+
+#[tokio::test]
+async fn sessions_start_in_the_plain_launch_root_with_the_agent_search_path() {
+    let (temp, runtime, snapshot) = runtime(vec![String::new(), "--record-launch".into()]).await;
+    let launch: Value =
+        serde_json::from_slice(&std::fs::read(temp.path().join("launch.json")).unwrap()).unwrap();
+    let cwd = launch["cwd"].as_str().unwrap();
+    assert!(!cwd.starts_with(r"\\?\"), "{cwd}");
+    assert!(Path::new(cwd).is_absolute());
+    assert_eq!(
+        Path::new(cwd).canonicalize().unwrap(),
+        Path::new(&snapshot.session.project_path)
+    );
+    assert!(!launch["processCwd"].as_str().unwrap().starts_with(r"\\?\"));
+    assert!(!launch["path"].as_str().unwrap().is_empty());
+    #[cfg(windows)]
+    assert_eq!(launch["noCwdSearch"], "1");
+    runtime.close(&snapshot.session.id).await.unwrap();
+}
+
+#[test]
+fn the_launch_root_is_the_users_own_path_when_it_leads_to_the_project() {
+    use super::runtime::launch_root_from;
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let canonical = project.canonicalize().unwrap();
+    let other = temp.path().join("other");
+    std::fs::create_dir(&other).unwrap();
+    assert_eq!(
+        launch_root_from(Some(&project), &canonical),
+        crate::program_locator::child_path(&project)
+    );
+    assert_eq!(
+        launch_root_from(Some(&other), &canonical),
+        crate::program_locator::child_path(&canonical)
+    );
+    assert_eq!(
+        launch_root_from(None, &canonical),
+        crate::program_locator::child_path(&canonical)
+    );
+    assert_eq!(
+        launch_root_from(Some(Path::new("relative")), &canonical),
+        crate::program_locator::child_path(&canonical)
+    );
+    assert!(!launch_root_from(None, &canonical)
+        .to_string_lossy()
+        .starts_with(r"\\?\"));
+}
+
+#[cfg(unix)]
+#[test]
+fn agent_paths_may_use_the_launch_root_spelling_but_no_other_alias() {
+    use super::runtime::register_launch_root;
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let root = project.canonicalize().unwrap();
+    let drive = temp.path().join("mapped-drive");
+    let other = temp.path().join("other-alias");
+    std::os::unix::fs::symlink(&project, &drive).unwrap();
+    std::os::unix::fs::symlink(&project, &other).unwrap();
+    let request = |path: &Path| json!({"locations":[{"path":path}]});
+    assert!(!permission_paths_allowed(
+        &root,
+        &request(&drive.join("new.tex"))
+    ));
+    assert_eq!(super::runtime::launch_root_for(&root), root);
+    super::runtime::note_launch_root(&drive);
+    assert_eq!(super::runtime::launch_root_for(&root), drive);
+    register_launch_root(&root, &drive);
+    assert!(permission_paths_allowed(
+        &root,
+        &request(&drive.join("new.tex"))
+    ));
+    assert!(permission_paths_allowed(
+        &root,
+        &request(&drive.join("chapters/new.tex"))
+    ));
+    assert!(!permission_paths_allowed(
+        &root,
+        &request(&other.join("new.tex"))
+    ));
+    assert!(!permission_paths_allowed(
+        &root,
+        &request(&drive.join("../outside.tex"))
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn sandboxed_task_launches_keep_the_sandbox_environment() {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    let scratch = temp.path().join("scratch");
+    std::fs::create_dir_all(&project).unwrap();
+    std::fs::create_dir_all(&scratch).unwrap();
+    let definition = fixture_definition(Vec::new(), temp.path());
+    let launch = catalog::Launch {
+        executable: fixture_python(),
+        args: vec!["-c".into(), "pass".into()],
+        env: vec![
+            ("PATH".into(), "/should/not/reach/the/sandbox".into()),
+            ("PI_ACP_PI_COMMAND".into(), "/outside/pi".into()),
+        ],
+        ..catalog::Launch::default()
+    };
+    let record = SessionRecord {
+        id: new_id(),
+        project_id: "sandbox-fixture".into(),
+        project_path: project
+            .canonicalize()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned(),
+        agent_id: definition.id.clone(),
+        agent_version: None,
+        native_session_id: None,
+        parent_session_id: None,
+        task_id: Some("task".into()),
+        title: String::new(),
+        status: SessionStatus::Connecting,
+        created_at: 0,
+        updated_at: 0,
+        turn_id: None,
+        capabilities: Capabilities::default(),
+        controls: SessionControls::default(),
+        auth_methods: Vec::new(),
+        error: None,
+        last_sequence: 0,
+        start_revision: None,
+        start_dirty: None,
+    };
+    let command = super::runtime::build_agent_command(
+        &temp.path().join("acp"),
+        &record,
+        &definition,
+        &launch,
+        &project,
+        Some(&["paper.tex".to_string()]),
+        Some(&scratch),
+    );
+    let command = match command {
+        Ok(command) => command,
+        // Linux runners without bubblewrap cannot build the sandbox at all.
+        Err(error) if error.contains("bubblewrap") => return,
+        Err(error) => panic!("{error}"),
+    };
+    let envs: Vec<(String, Option<String>)> = command
+        .as_std()
+        .get_envs()
+        .map(|(name, value)| {
+            (
+                name.to_string_lossy().into_owned(),
+                value.map(|value| value.to_string_lossy().into_owned()),
+            )
+        })
+        .collect();
+    assert!(envs.iter().all(|(name, _)| name != "PI_ACP_PI_COMMAND"));
+    assert!(envs
+        .iter()
+        .all(|(_, value)| value.as_deref() != Some("/should/not/reach/the/sandbox")));
 }

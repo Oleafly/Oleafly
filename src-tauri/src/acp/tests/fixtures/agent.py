@@ -15,7 +15,8 @@ def argument(name):
     return sys.argv[index]
 
 declared_root = Path(argument("--fixture-root") or "").resolve(strict=True)
-fixture_root = Path.cwd().resolve().parent
+# Agent checks start in an empty Oleafly-owned folder rather than the project.
+fixture_root = declared_root if "--fixture-any-cwd" in sys.argv else Path.cwd().resolve().parent
 if not fixture_root.name.startswith("oleafly-acp-fixture-") or not declared_root.samefile(fixture_root):
     raise ValueError("Use an ACP harness temporary directory")
 
@@ -78,6 +79,8 @@ for line in sys.stdin:
         servers = params.get("mcpServers", [])
         if "--record-mcp-servers" in sys.argv:
             (declared_root / "mcp-servers.json").write_text(json.dumps(servers))
+        if "--record-launch" in sys.argv:
+            (declared_root / "launch.json").write_text(json.dumps({"cwd": params.get("cwd"), "processCwd": os.getcwd(), "path": os.environ.get("PATH", ""), "noCwdSearch": os.environ.get("NoDefaultCurrentDirectoryInExePath")}))
         if servers and servers[0].get("headers"):
             credential = servers[0]["headers"][0]["value"].removeprefix("Bearer ")
         if not authenticated:

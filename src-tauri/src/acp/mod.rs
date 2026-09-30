@@ -3,6 +3,7 @@ pub mod commands;
 mod protocol;
 mod redact;
 mod runtime;
+mod setup;
 mod store;
 mod task_launch;
 pub mod types;

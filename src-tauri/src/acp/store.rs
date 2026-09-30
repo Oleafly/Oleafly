@@ -221,11 +221,51 @@ impl Store {
     }
 
     pub fn remove_agent(&self, id: &str) -> Result<(), String> {
+        let mut db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let tx = db.transaction().map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM agents WHERE id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM agent_programs WHERE id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())
+    }
+
+    /// Programs users chose for agents, by agent id.
+    pub fn agent_programs(&self) -> Result<std::collections::HashMap<String, String>, String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let mut statement = db
+            .prepare("SELECT id, path FROM agent_programs")
+            .map_err(|e| e.to_string())?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    }
+
+    pub fn agent_program(&self, id: &str) -> Result<Option<String>, String> {
         self.db
             .lock()
             .map_err(|_| "ACP storage is unavailable.")?
-            .execute("DELETE FROM agents WHERE id=?1", [id])
-            .map_err(|e| e.to_string())?;
+            .query_row("SELECT path FROM agent_programs WHERE id=?1", [id], |row| {
+                row.get(0)
+            })
+            .optional()
+            .map_err(|e| e.to_string())
+    }
+
+    /// Saves the program chosen for an agent, or forgets it with `None`.
+    pub fn set_agent_program(&self, id: &str, path: Option<&str>) -> Result<(), String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        match path {
+            Some(path) => db.execute(
+                "INSERT INTO agent_programs VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET path=excluded.path",
+                params![id, path],
+            ),
+            None => db.execute("DELETE FROM agent_programs WHERE id=?1", [id]),
+        }
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 }
