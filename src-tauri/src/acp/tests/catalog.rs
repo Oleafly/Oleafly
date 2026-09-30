@@ -1822,7 +1822,11 @@ fn a_chosen_cli_is_handed_to_the_bridge_and_the_bridge_stays_the_same() {
         .unwrap();
     assert_eq!(program_role(&pi), ProgramRole::Cli);
     let script = installed_fixture(temp.path(), &pi, true);
-    let chosen = temp.path().join("D Tools").join("pi-cli");
+    // Windows starts only programs with a program extension.
+    let chosen = temp
+        .path()
+        .join("D Tools")
+        .join(format!("pi-cli{}", std::env::consts::EXE_SUFFIX));
     std::fs::create_dir_all(chosen.parent().unwrap()).unwrap();
     native_file(&chosen);
     let plan = plan(temp.path(), &pi, Some(&chosen));
@@ -1862,7 +1866,9 @@ async fn status_reports_the_chosen_program_its_source_and_whether_the_cli_is_req
         .into_iter()
         .find(|agent| agent.id == "pi")
         .unwrap();
-    let chosen = temp.path().join("pi-cli");
+    let chosen = temp
+        .path()
+        .join(format!("pi-cli{}", std::env::consts::EXE_SUFFIX));
     native_file(&chosen);
     let status = status_with(
         temp.path(),

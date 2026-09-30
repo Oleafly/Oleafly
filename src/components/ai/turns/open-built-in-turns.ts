@@ -27,7 +27,7 @@ function pageIdentity(): string {
   const origin = typeof performance === "undefined" ? undefined : performance.timeOrigin;
   return typeof origin === "number" && Number.isFinite(origin)
     ? `t${origin}`
-    : `r${Math.random().toString(36).slice(2)}`;
+    : `r${crypto.randomUUID()}`;
 }
 
 function storage(): Storage | null {

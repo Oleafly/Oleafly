@@ -344,6 +344,10 @@ fn known_unix_folders_cover_version_managers_and_system_prefixes() {
     }
 }
 
+// nvm is the unix version manager; it keeps an alias in a file named
+// `lts/*`, which Windows can't create. nvm-windows is found through
+// NVM_SYMLINK instead.
+#[cfg(unix)]
 #[test]
 fn nvm_default_alias_resolves_to_the_newest_matching_install() {
     let temp = tempfile::tempdir().unwrap();
@@ -799,7 +803,9 @@ fn shim_targets_resolve_inside_the_shim_folder_and_pick_node() {
 
     let pnpm = temp.path().join("pnpm");
     file(&pnpm.join("global/5/node_modules/pi/cli.mjs"), "");
-    let named = temp.path().join("runtime/node.exe");
+    // Joined part by part: a `/` inside one part stays a `/` on Windows, and
+    // a shim names Node.js with backslashes.
+    let named = temp.path().join("runtime").join("node.exe");
     file(&named, "node");
     let text = format!(
         "@SETLOCAL\r\n@\"{}\"  \"%~dp0\\global\\5\\node_modules\\pi\\cli.mjs\" %*\r\n",

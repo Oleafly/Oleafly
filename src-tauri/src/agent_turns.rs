@@ -1660,8 +1660,10 @@ impl<'a> WritableWhileSaving<'a> {
             if !metadata.is_file() || !permissions.readonly() {
                 return false;
             }
+            // NOSONAR: only the file Undo is restoring, only while it is
+            // written; Drop sets the read-only flag again.
             #[allow(clippy::permissions_set_readonly_false)]
-            permissions.set_readonly(false);
+            permissions.set_readonly(false); // NOSONAR
             std::fs::set_permissions(target, permissions).is_ok()
         });
         Self { target, restore }
