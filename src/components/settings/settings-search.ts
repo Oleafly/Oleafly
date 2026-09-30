@@ -183,6 +183,8 @@ export function cleanCatalogText(value: string): string {
   return value
     .replace(/\{\{[^{}]*\}\}/g, " ")
     .replace(/<\/?[A-Za-z][\w-]*\s*\/?>/g, "")
+    // One pass can leave a tag behind ("<scr<b>ipt>"), so no "<" survives.
+    .replace(/</g, "")
     .replace(/\s+/g, " ")
     .trim();
 }

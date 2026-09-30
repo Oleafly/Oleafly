@@ -75,6 +75,7 @@ describe("settings search index", () => {
   it("ignores case, accents and markup", () => {
     expect(normalizeSearchText("  Thème   SOMBRE ")).toBe("theme sombre");
     expect(cleanCatalogText("Open <strong>{{name}}</strong> now")).toBe("Open now");
+    expect(cleanCatalogText("Settings > <scr<b>ipt>Shortcuts")).toBe("Settings > script>Shortcuts");
   });
 
   it("matches words from their start, so a short query does not match every section", () => {
