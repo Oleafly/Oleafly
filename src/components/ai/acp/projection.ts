@@ -1,5 +1,6 @@
 import type { AcpEvent } from "@/lib/acp";
-import type { ChatMessage, ToolEntry } from "@/store/chats";
+import { turnChangesFrom } from "@/lib/agent-turns";
+import type { ChatMessage, ToolDiff, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { i18n } from "@/i18n";
 import { splitAgentNotices } from "@/lib/chat-activity";
@@ -44,10 +45,30 @@ function toolOutput(data: Data): string {
   return data.content.map((entry: unknown) => {
     const value = object(entry);
     if (value.type === "content") return text(object(value.content).text);
-    if (value.type === "diff") return `${text(value.path)}\n${text(value.oldText)}\n→\n${text(value.newText)}`;
     if (value.type === "terminal") return i18n.t(($) => $.ai.acp.terminalCommand);
     return "";
   }).filter(Boolean).join("\n");
+}
+
+function optionalText(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+/** ACP `diff` blocks, kept whole so the tool card can show a real diff. */
+function toolDiffs(data: Data): ToolDiff[] | undefined {
+  if (!Array.isArray(data.content)) return undefined;
+  const diffs = data.content.flatMap((entry: unknown): ToolDiff[] => {
+    const value = object(entry);
+    if (value.type !== "diff" || !text(value.path)) return [];
+    const truncated = value.truncated === true;
+    return [{
+      path: text(value.path),
+      oldText: truncated ? null : optionalText(value.oldText),
+      newText: truncated ? null : optionalText(value.newText),
+      truncated,
+    }];
+  });
+  return diffs.length > 0 ? diffs : undefined;
 }
 
 function chunkText(content: Data): string {
@@ -135,7 +156,9 @@ function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
     name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
     status: toolStatus(data.status, previous?.status),
     output: data.content ? toolOutput(data) : previous?.output,
+    diffs: data.content ? toolDiffs(data) : previous?.diffs,
   };
+  if (!tool.diffs) delete tool.diffs;
   if (index === undefined) {
     state.tools.set(key, state.rows.length);
     appendRow(state, event, "tool", { role: "assistant", content: "", toolCalls: [tool] });
@@ -200,15 +223,49 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   }
 }
 
+function userSkill(value: unknown): ChatMessage["skill"] {
+  const skill = object(value);
+  const id = text(skill.id);
+  return id ? { id, name: text(skill.name) || id } : undefined;
+}
+
+/**
+ * Hangs a turn's file changes on the last assistant row of that turn (or the
+ * turn's last row when the agent said nothing). Never adds a row.
+ */
+function applyTurnChanges(state: ProjectionState, event: AcpEvent) {
+  const turnChanges = turnChangesFrom(event.data);
+  const turn = text(event.data.turnId) || event.turnId;
+  if (!turnChanges) return;
+  let target = -1;
+  for (let index = state.rows.length - 1; index >= 0; index--) {
+    const row = state.rows[index];
+    if (row.turn !== turn) continue;
+    if (target < 0) target = index;
+    if (row.msg.role === "assistant") {
+      target = index;
+      break;
+    }
+  }
+  if (target < 0) return;
+  state.rows[target].msg = { ...state.rows[target].msg, turnChanges };
+}
+
 function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
   const data = event.data;
   if (event.kind === "user_message") {
+    const skill = userSkill(data.skill);
     appendRow(state, event, "user", {
       role: "user",
       content: text(data.text),
       attachments: imageAttachments(data.images),
+      ...(skill ? { skill } : {}),
     });
     return true;
+  }
+  if (event.kind === "turn_changes") {
+    applyTurnChanges(state, event);
+    return false;
   }
   if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
     return applyChunk(state, event);

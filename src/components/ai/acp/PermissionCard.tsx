@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AiChrome } from "@/components/ai/AiChrome";
 import type { AcpPermission } from "@/lib/acp";
+import { ChangeList } from "./ChangeList";
 
 function optionIcon(kind: string) {
   return kind.startsWith("reject") ? (
@@ -83,6 +84,11 @@ export function PermissionCard({
             ))}
           </div>
         )}
+        <ChangeList
+          changes={request.diffs ?? []}
+          paths={request.locations ?? []}
+          className="border-t border-border/50 pt-2"
+        />
       </fieldset>
     </AiChrome>
   );

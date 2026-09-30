@@ -167,7 +167,7 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
       10_000,
     );
     await clickHeaderAction(page, "New conversation");
-    await expect(assistant).toContainText(`${fixture.agentId} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
     await work(fixture);
   } finally {
     try {
@@ -322,7 +322,7 @@ test("Stop reaps the child process of an agent that ignores cancellation", async
     const pids = fixturePids(fixture.pidFile);
     expect(pids.every(processAlive)).toBe(true);
     await tauriPage.click('button[aria-label="Stop"]');
-    await expect(assistant).toContainText(`${fixture.agentId} · cancelled`, { timeout: 60_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · cancelled`, { timeout: 60_000 });
     await waitHost(() => pids.every((pid) => !processAlive(pid)), "Stop left an ACP fixture process running");
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
     expect(stopped.session.status).toBe("cancelled");
@@ -343,7 +343,7 @@ test("Stop ends the turn and leaves a compliant agent connected", async ({ tauri
     await expect(assistant).toContainText("ACP fixture waiting for cancellation.", { timeout: 20_000 });
     await waitHost(() => fixturePids(fixture.pidFile).length === 2, "the fixture did not start its child process");
     await tauriPage.click('button[aria-label="Stop"]');
-    await expect(assistant).toContainText(`${fixture.agentId} · ready`, { timeout: 30_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ready`, { timeout: 30_000 });
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
     await expect(assistant.getByText("Reconnect to conversation", { exact: true })).toHaveCount(0);
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));

@@ -562,7 +562,7 @@ export const tourRegistry = {
       },
       {
         id: "ai-restore",
-        target: '[data-tour="ai-restore"]',
+        target: '[data-tour="ai-turn-changes"]',
         kind: "informational",
         title: () => i18n.t(($) => $.onboarding.ai.restore.title),
         content: () => i18n.t(($) => $.onboarding.ai.restore.content),

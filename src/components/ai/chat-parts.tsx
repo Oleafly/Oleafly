@@ -21,6 +21,7 @@ import {
   Info,
   Loader2,
   Paperclip,
+  Sparkles,
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -34,6 +35,7 @@ import {
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
+import { ChangeList } from "@/components/ai/acp/ChangeList";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
@@ -652,7 +654,14 @@ export function ToolBadge({
   expansionKey?: string;
   live?: boolean;
 }>) {
-  return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} live={live} />;
+  const card = <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} live={live} />;
+  if (!tc.diffs?.length) return card;
+  return (
+    <div className="flex flex-col gap-1">
+      {card}
+      <ChangeList testId="tool-diffs" changes={tc.diffs} className="rounded-md border bg-muted/30 px-2 py-1" />
+    </div>
+  );
 }
 
 export function formatToolOutput(output: unknown): string {
@@ -1343,6 +1352,15 @@ export const MessageItem = memo(function MessageItem({
           })}
         </div>
       )}
+      {msg.role === "user" && msg.skill ? (
+        <span
+          data-testid="user-skill-chip"
+          className="flex max-w-[85%] items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+        >
+          <Sparkles aria-hidden className="size-3 shrink-0" />
+          <span className="truncate">{msg.skill.name}</span>
+        </span>
+      ) : null}
       {msg.notices?.map((notice) => (
         <p
           key={notice}

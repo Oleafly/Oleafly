@@ -59,6 +59,11 @@ const mocks = vi.hoisted(() => ({
   gitLog: vi.fn(),
   gitShow: vi.fn(),
   gitStatus: vi.fn(),
+  flushOpenFilesToDisk: vi.fn(),
+  agentTurnBegin: vi.fn(),
+  agentTurnFinish: vi.fn(),
+  agentTurnStatus: vi.fn(),
+  agentTurnRevert: vi.fn(),
   checkProjectBudget: vi.fn(),
   buildWorkspaceContext: vi.fn(),
   retrieveProjectChunks: vi.fn(),
@@ -138,6 +143,19 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   mcpAgentToolsList: (...args: unknown[]) => mocks.mcpAgentToolsList(...args),
   mcpAgentToolAuthorize: (...args: unknown[]) => mocks.mcpAgentToolAuthorize(...args),
   mcpAgentToolCall: (...args: unknown[]) => mocks.mcpAgentToolCall(...args),
+}));
+
+vi.mock("@/lib/external-file-changes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/external-file-changes")>()),
+  flushOpenFilesToDisk: (...args: unknown[]) => mocks.flushOpenFilesToDisk(...args),
+}));
+
+vi.mock("@/lib/agent-turns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/agent-turns")>()),
+  agentTurnBegin: (...args: unknown[]) => mocks.agentTurnBegin(...args),
+  agentTurnFinish: (...args: unknown[]) => mocks.agentTurnFinish(...args),
+  agentTurnStatus: (...args: unknown[]) => mocks.agentTurnStatus(...args),
+  agentTurnRevert: (...args: unknown[]) => mocks.agentTurnRevert(...args),
 }));
 
 vi.mock("@/lib/ai-budget", () => ({
@@ -564,6 +582,18 @@ beforeEach(() => {
   mocks.gitLog.mockReset().mockResolvedValue([]);
   mocks.gitShow.mockReset().mockResolvedValue("");
   mocks.gitStatus.mockReset().mockResolvedValue([]);
+  mocks.flushOpenFilesToDisk.mockReset().mockResolvedValue(undefined);
+  mocks.agentTurnBegin.mockReset().mockResolvedValue({ snapshotId: "snap-1", unavailable: null });
+  mocks.agentTurnFinish.mockReset().mockResolvedValue({
+    snapshotId: "snap-1",
+    files: [],
+    moreFiles: 0,
+    skipped: [],
+    overlapped: false,
+    unavailable: null,
+  });
+  mocks.agentTurnStatus.mockReset().mockResolvedValue({ expired: false, files: [] });
+  mocks.agentTurnRevert.mockReset();
   mocks.checkProjectBudget.mockReset().mockResolvedValue("ok");
   mocks.buildWorkspaceContext.mockReset().mockResolvedValue("");
   mocks.retrieveProjectChunks.mockReset().mockResolvedValue([]);
@@ -663,6 +693,28 @@ beforeEach(() => {
   useChatGoalStore.setState({ goalsByProject: {}, loaded: {} });
   useAiToolSettingsStore.setState({ enabledByName: {} });
 });
+
+function turnChangesFor(paths: string[], overrides: Record<string, unknown> = {}) {
+  return {
+    snapshotId: "snap-1",
+    files: paths.map((path, index) => ({
+      index,
+      path,
+      change: "modified",
+      beforeSize: 1,
+      afterSize: 2,
+      added: 1,
+      removed: 1,
+      alsoEditedHere: false,
+      build: false,
+    })),
+    moreFiles: 0,
+    skipped: [],
+    overlapped: false,
+    unavailable: null,
+    ...overrides,
+  };
+}
 
 function finishRun(index: number, text: string) {
   const run = mocks.runs[index];
@@ -2697,7 +2749,7 @@ describe("ChatCore agent turns", () => {
     await waitFor(() =>
       expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "true"),
     );
-    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: true, turn: { chatId: "chat-1" } });
+    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: true, turn: null });
     expect(rendered.getByTestId("agent-run-summary").closest('[data-message-role="assistant"]'))
       .not.toBeNull();
   });
@@ -3337,13 +3389,92 @@ describe("ChatCore agent turns", () => {
     );
     expect(mocks.planProps.at(-1)?.approval).toBeUndefined();
     expect(rendered.queryByTestId("agent-run-summary")).toBeNull();
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["main.tex"]));
     await act(async () => finishRun(0, "Edited"));
     await waitFor(() => expect(activeChatRun()).toBeNull());
-    await waitFor(() =>
-      expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "false"),
+    expect(mocks.agentTurnFinish).toHaveBeenCalledWith(
+      useFilesStore.getState().projectId,
+      "snap-1",
+      ["main.tex"],
     );
-    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: false, turn: { chatId: "chat-1" } });
+    const card = await rendered.findByTestId("turn-changes");
+    expect(card).toHaveTextContent("Changed 1 file");
+    expect(card.closest('[data-message-role="assistant"]')).not.toBeNull();
+    expect(rendered.queryByTestId("agent-run-summary")).toBeNull();
     expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+  });
+
+  it("saves open files, takes the before-turn copy, then compares after the run", async () => {
+    const rendered = await renderChat();
+    const projectId = useFilesStore.getState().projectId;
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["main.tex", "refs.bib"]));
+    submit(rendered, "Tidy the bibliography");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.flushOpenFilesToDisk).toHaveBeenCalledWith(projectId, "save before assistant run");
+    expect(mocks.agentTurnBegin).toHaveBeenCalledWith(projectId, "Oleafly assistant");
+    const flushed = mocks.flushOpenFilesToDisk.mock.invocationCallOrder[0];
+    const begun = mocks.agentTurnBegin.mock.invocationCallOrder[0];
+    const ran = mocks.runAgentHarness.mock.invocationCallOrder[0];
+    expect(flushed).toBeLessThan(begun);
+    expect(begun).toBeLessThan(ran);
+    expect(mocks.agentTurnFinish).not.toHaveBeenCalled();
+
+    await act(async () => finishRun(0, "Tidied."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.agentTurnFinish).toHaveBeenCalledExactlyOnceWith(projectId, "snap-1", []);
+    expect(mocks.agentTurnFinish.mock.invocationCallOrder[0]).toBeGreaterThan(ran);
+
+    const card = await rendered.findByTestId("turn-changes");
+    expect(card).toHaveAttribute("data-tour", "ai-turn-changes");
+    expect(card).toHaveTextContent("Changed 2 files");
+    expect(rendered.container.querySelector('[data-tour-has-restore="true"]')).not.toBeNull();
+    const saved = useChatsStore.getState().byId("chat-1")?.messages.at(-1);
+    expect(saved?.turnChanges).toMatchObject({ snapshotId: "snap-1", files: [{ path: "main.tex" }, { path: "refs.bib" }] });
+  });
+
+  it("shows no card when the run changed nothing", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Explain the method");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "It works like this."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(mocks.agentTurnFinish).toHaveBeenCalled());
+    expect(rendered.queryByTestId("turn-changes")).toBeNull();
+    expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges).toBeUndefined();
+    expect(rendered.container.querySelector('[data-tour-has-restore="false"]')).not.toBeNull();
+  });
+
+  it("runs without Undo when open files cannot be saved first", async () => {
+    mocks.flushOpenFilesToDisk.mockRejectedValue(new Error("disk full"));
+    const rendered = await renderChat();
+    submit(rendered, "Edit the intro");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(mocks.agentTurnBegin).not.toHaveBeenCalled();
+    await act(async () => finishRun(0, "Edited."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.agentTurnFinish).not.toHaveBeenCalled();
+    expect(rendered.queryByTestId("turn-changes")).toBeNull();
+  });
+
+  it("says once per chat when Undo is not available", async () => {
+    mocks.agentTurnBegin.mockResolvedValue({ snapshotId: null, unavailable: "too_large" });
+    const rendered = await renderChat();
+    submit(rendered, "First edit");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "One."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    submit(rendered, "Second edit");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () => finishRun(1, "Two."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() =>
+      expect(rendered.getAllByTestId("turn-changes-unavailable")).toHaveLength(1),
+    );
+    expect(rendered.getByTestId("turn-changes-unavailable")).toHaveTextContent(
+      "Undo isn't available for this turn: the project is too large to copy.",
+    );
+    expect(mocks.agentTurnFinish).not.toHaveBeenCalled();
   });
 
   it("preserves create-file and compile output mirroring", async () => {
@@ -3516,7 +3647,13 @@ describe("ChatCore agent turns", () => {
       "head-2",
       "notes.md",
     );
+    mocks.agentTurnFinish.mockResolvedValue(turnChangesFor(["notes.md"]));
     await act(async () => finishRun(0, "Committed"));
+    const card = await rendered.findByTestId("turn-changes");
+    expect(within(card).queryByRole("button", { name: "Undo all" })).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Review" }));
+    expect(card).toHaveTextContent("Committed in head-2");
+    expect(within(card).queryByRole("button", { name: "Undo notes.md" })).toBeNull();
   });
 
   it("stays quiet when the user cancels the Full access confirmation", async () => {
