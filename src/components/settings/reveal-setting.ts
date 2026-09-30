@@ -36,8 +36,8 @@ export function revealSettingRow(container: ParentNode | null, id: string): bool
   const row = container?.querySelector<HTMLElement>(`[data-setting-id="${id}"]`);
   if (!row) return false;
   row.scrollIntoView?.({ block: "center" });
-  row.setAttribute("data-setting-highlight", "");
-  window.setTimeout(() => row.removeAttribute("data-setting-highlight"), HIGHLIGHT_MS);
+  row.dataset.settingHighlight = "";
+  window.setTimeout(() => delete row.dataset.settingHighlight, HIGHLIGHT_MS);
   settingControl(row)?.focus({ preventScroll: true });
   return true;
 }

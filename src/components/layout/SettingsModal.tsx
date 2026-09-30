@@ -375,14 +375,15 @@ export function SettingsModal() {
     libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
 
-  // A jump from Changed settings: reveal the row a frame after its section
-  // renders. A section switch reschedules the frame, so the row is there.
+  // A jump from Changed settings: reveal the row a frame after its own
+  // section renders, so the row is there.
   useEffect(() => {
-    void section;
     const id = settingIdFromScrollTarget(settingsScrollTarget);
     if (!open || !id) return;
+    const definition = settingById(id);
+    if (definition && definition.section !== section) return;
     // A row hidden behind a toggle that is off reveals that toggle instead.
-    const gate = settingById(id)?.revealVia;
+    const gate = definition?.revealVia;
     const frame = requestAnimationFrame(() => {
       if (!revealSettingRow(bodyRef.current, id) && gate) revealSettingRow(bodyRef.current, gate);
       useSettingsStore.getState().setSettingsScrollTarget(null);
