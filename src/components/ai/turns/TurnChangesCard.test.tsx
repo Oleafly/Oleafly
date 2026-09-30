@@ -189,7 +189,7 @@ describe("TurnChangesCard", () => {
     await waitFor(() => expect(agentTurnRevert).toHaveBeenCalledWith("paper", "snap-1", null, 7));
     await waitFor(() =>
       expect(within(card()).getByRole("status")).toHaveTextContent(
-        "Undid 1 file. Some files changed after this turn, so they were left as they are.",
+        "Undid 1 file. Some files changed after this turn, so Oleafly left them alone.",
       ),
     );
     await expand();

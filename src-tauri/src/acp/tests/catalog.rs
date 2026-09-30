@@ -658,7 +658,7 @@ async fn installed_commands_report_unmanaged_status_without_running_the_file() {
     std::fs::remove_file(executable).unwrap();
     let missing = status(temp.path(), definition, false).await;
     assert!(!missing.installed);
-    assert!(missing.reason.unwrap().contains("not installed"));
+    assert!(missing.reason.unwrap().contains("isn't installed"));
 }
 
 #[tokio::test]
