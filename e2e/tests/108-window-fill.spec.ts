@@ -105,9 +105,9 @@ async function expectLogicalSizeMatchesPage(page: Page) {
 }
 
 // The window asks for 1280x800 points at launch and gets as much as the
-// screen has room for. A CI runner's screen can leave less than 800 points of
-// height under the menu bar, the title bar and the Dock, and AppKit keeps a
-// window on screen, so the tests size the window from what it launched at.
+// screen has room for. A CI runner's screen can be 1024 points wide and leave
+// less than 800 points of height under the menu bar, the title bar and the
+// Dock, so the tests size the window from what it launched at.
 let launchSize: [number, number] | undefined;
 
 async function measureLaunchSize(page: Page): Promise<[number, number]> {
@@ -125,8 +125,8 @@ async function startSize(page: Page): Promise<[number, number]> {
   const even = (value: number) => value - (value % 2);
   const size: [number, number] = [even(Math.min(launchWidth, 1200)), even(Math.min(launchHeight, 800))];
   // The window's minimum content size is 900x600, and the tests take up to
-  // 200 points off the width and 40 off the height.
-  expect(size[0], "the screen needs room for a window 1100 points wide").toBeGreaterThanOrEqual(1100);
+  // 60 points off the width and 40 off the height.
+  expect(size[0], "the screen needs room for a window 960 points wide").toBeGreaterThanOrEqual(960);
   expect(size[1], "the screen needs room for a window 640 points tall").toBeGreaterThanOrEqual(640);
   return size;
 }
@@ -160,7 +160,7 @@ test("AppKit keeps the main webview filling its window as the window resizes", a
 
   // A resize through the Tauri window API ends with the page at the size
   // that was asked for.
-  await settleWindow(page, width - 200, height - 20);
+  await settleWindow(page, width - 60, height - 20);
   await expectLogicalSizeMatchesPage(page);
 });
 
@@ -194,15 +194,15 @@ test("a webview stuck at half the window's size is put back over the whole windo
   // amount as the window.
   await frameStep(page, "shrink");
   await expectViewport(page, width / 2, height / 2);
-  await resizeWindow(page, width - 100, height - 24);
-  await expectViewport(page, width - 100, height - 24);
+  await resizeWindow(page, width - 50, height - 24);
+  await expectViewport(page, width - 50, height - 24);
   expect(frameGap(await frameStep(page, "measure"))).toBeLessThanOrEqual(0.5);
   await expectLogicalSizeMatchesPage(page);
   await expect
     .poll(() => appLog(page))
     .toMatch(
       new RegExp(
-        `Webview frame corrected in the main window on resize: \\S+ at \\(0, \\d+\\) -> ${width - 100}x${height - 24} at \\(0, 0\\) points, backing scale \\d`,
+        `Webview frame corrected in the main window on resize: \\S+ at \\(0, \\d+\\) -> ${width - 50}x${height - 24} at \\(0, 0\\) points, backing scale \\d`,
       ),
     );
 });
