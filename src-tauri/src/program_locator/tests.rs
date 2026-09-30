@@ -538,6 +538,7 @@ const WINDOWS_PLATFORM: Platform = Platform {
     windows: true,
     macos: false,
 };
+#[cfg(unix)]
 const UNIX_PLATFORM: Platform = Platform {
     windows: false,
     macos: false,

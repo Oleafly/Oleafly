@@ -11,11 +11,7 @@ use crate::acp::{
 };
 use crate::agent_turns::{TurnBegin, TurnChange, TurnChangeKind, TurnChanges};
 use serde_json::{json, Value};
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::{path::Path, sync::Arc, time::Duration};
 
 struct Harness {
     temp: tempfile::TempDir,
@@ -447,7 +443,7 @@ fn a_network_root_is_spelled_through_the_drive_that_leads_to_it() {
     // A drive that maps a folder inside the project does not lead to it.
     assert_eq!(path_through_alias(&root, &[alias(&inside)]), None);
     assert_eq!(path_through_alias(&root, &[]), None);
-    let unrelated: PathBuf = temp.path().join("unrelated");
+    let unrelated = temp.path().join("unrelated");
     std::fs::create_dir(&unrelated).unwrap();
     assert_eq!(path_through_alias(&root, &[alias(&unrelated)]), None);
 }
