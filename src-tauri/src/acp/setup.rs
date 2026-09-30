@@ -192,9 +192,9 @@ fn node_text((major, minor, patch): catalog::NodeVersion) -> String {
 }
 
 /// The Test check: never saves anything. Steps: the chosen file's rules;
-/// `<cli> --version` for vendor CLIs (fatal when the bridge needs the CLI);
-/// Node.js for Pi's script CLI and for Node.js bridges; then a real start in
-/// an empty Oleafly-owned folder with the agent's environment, no tool
+/// Node.js for Pi's script CLI; `<cli> --version` for vendor CLIs (fatal when
+/// the bridge needs the CLI); Node.js for Node.js bridges; then a real start
+/// in an empty Oleafly-owned folder with the agent's environment, no tool
 /// servers, and `initialize` answered within the limit.
 pub(crate) async fn check_agent(
     root: &Path,
@@ -212,8 +212,6 @@ pub(crate) async fn check_agent_within(
     saved: Option<String>,
     limits: CheckLimits,
 ) -> AgentCheck {
-    let vendor = catalog::vendor_cli(definition);
-    let role = catalog::program_role(definition);
     let program = match candidate {
         Some(path) => {
             let checked = {
@@ -226,7 +224,7 @@ pub(crate) async fn check_agent_within(
                 Ok(Err("needs_exe")) => {
                     return failed(
                         "unsupported_script",
-                        refused_script_detail(vendor.as_ref()),
+                        refused_script_detail(catalog::vendor_cli(definition).as_ref()),
                         Some(&path),
                     );
                 }
@@ -246,6 +244,20 @@ pub(crate) async fn check_agent_within(
         Ok(plan) => plan,
         Err(error) => return failed("start_failed", Some(error), program.as_deref()),
     };
+    check_plan(root, definition, program, plan, limits).await
+}
+
+/// The Test check once the program is known and Oleafly has resolved what it
+/// would start.
+pub(crate) async fn check_plan(
+    root: &Path,
+    definition: &AgentDefinition,
+    program: Option<PathBuf>,
+    plan: Plan,
+    limits: CheckLimits,
+) -> AgentCheck {
+    let vendor = catalog::vendor_cli(definition);
+    let role = catalog::program_role(definition);
     let shown = shown_program(role, program.as_deref(), &plan);
     let shown = shown.as_deref();
     let env = match &plan.launch {
@@ -262,13 +274,8 @@ pub(crate) async fn check_agent_within(
     if let Some(vendor) = &vendor {
         match &plan.cli {
             Some(cli) => {
-                match catalog::program_version(root, &cli.located, &env, limits.version).await {
-                    Ok(found) => version = Some(found),
-                    Err(detail) if vendor.bridge_needs_cli => {
-                        return failed("cli_missing", Some(detail), shown)
-                    }
-                    Err(_) => {}
-                }
+                // A CLI that runs on Node.js fails its own `--version` when
+                // Node.js is missing or too old, so Node.js is checked first.
                 if vendor.bridge_needs_cli && runs_on_node(&cli.located) {
                     let Some(node) = plan.node.as_deref() else {
                         return failed("node_missing", None, shown);
@@ -290,6 +297,13 @@ pub(crate) async fn check_agent_within(
                         None => return failed("node_missing", None, shown),
                     }
                 }
+                match catalog::program_version(root, &cli.located, &env, limits.version).await {
+                    Ok(found) => version = Some(found),
+                    Err(detail) if vendor.bridge_needs_cli => {
+                        return failed("cli_missing", Some(detail), shown)
+                    }
+                    Err(_) => {}
+                }
             }
             None if vendor.bridge_needs_cli => {
                 let detail = plan
@@ -309,6 +323,11 @@ pub(crate) async fn check_agent_within(
         Err(error) => {
             let bridge = definition.distribution.npx.is_some()
                 && !(program.is_some() && role == ProgramRole::Launch);
+            // A Node.js bridge cannot start, or be installed, without
+            // Node.js: an installed one fails to resolve for that reason.
+            if bridge && plan.node.is_none() {
+                return failed("node_missing", None, shown);
+            }
             let code = if bridge {
                 "bridge_missing"
             } else {
@@ -506,3 +525,7 @@ pub(crate) async fn confirm_program(
     )
     .await
 }
+
+#[cfg(test)]
+#[path = "tests/setup.rs"]
+mod setup_tests;
