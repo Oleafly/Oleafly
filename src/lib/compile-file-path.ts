@@ -1,4 +1,4 @@
-function normalizeCompilePath(path: string): string {
+export function normalizeCompilePath(path: string): string {
   return path
     .replaceAll("\\", "/")
     .split("/")

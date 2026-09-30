@@ -1,5 +1,5 @@
 import { safePdfExternalUrl } from "@oleafly/preview/controller";
-import { compilePathResolver } from "@/lib/compile-file-path";
+import { compilePathResolver, normalizeCompilePath } from "@/lib/compile-file-path";
 
 /**
  * A link found in one line of terminal text. Offsets are UTF-16 indices into
@@ -13,8 +13,11 @@ const MAX_LINE = 10_000_000;
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"`]+/gi;
 const PYTHON_FRAME = /File "([^"\n]{1,4096})", line (\d{1,8})/g;
 const TOKEN = /\S+/g;
-// Bounded digit runs keep this linear even though it is tried at every colon.
-const LINE_SUFFIX = /:(\d{1,8})(?::(\d{1,8}))?$/;
+// The path ends at the first line number followed by a colon or the end, so
+// grep, git grep and rg results (`file:3:\section{Intro}`) keep the matched
+// text out of it. Bounded digit runs keep this linear even though it is tried
+// at every colon.
+const LOCATION = /:(\d{1,8})(?::(\d{1,8}))?(?=:|$)/;
 const EXTENSION = /\.[A-Za-z][A-Za-z0-9]*$/;
 // Where a tool starts its location line, the path may hold spaces: Typst's
 // `┌─ file:l:c` and pdflatex -file-line-error's `./file:l:`. Group 1 is the
@@ -76,13 +79,15 @@ function validLine(value: number): boolean {
 
 function fileMatch(text: string, start: number): TerminalLinkMatch | null {
   if (!text || text.startsWith("-") || text.includes("://")) return null;
-  const end = start + text.length;
-  const suffix = LINE_SUFFIX.exec(text);
-  if (!suffix) return looksLikePath(text) ? { kind: "file", start, end, path: text } : null;
-  const path = text.slice(0, suffix.index);
-  const line = Number(suffix[1]);
+  const location = LOCATION.exec(text);
+  if (!location) {
+    return looksLikePath(text) ? { kind: "file", start, end: start + text.length, path: text } : null;
+  }
+  const path = text.slice(0, location.index);
+  const line = Number(location[1]);
   if (!looksLikePath(path) || !validLine(line)) return null;
-  const column = suffix[2] === undefined ? 0 : Number(suffix[2]);
+  const column = location[2] === undefined ? 0 : Number(location[2]);
+  const end = start + location.index + location[0].length;
   return { kind: "file", start, end, path, line, ...(column >= 1 ? { column } : {}) };
 }
 
@@ -114,11 +119,11 @@ function messageLocation(
 
 /**
  * Finds file locations and web URLs in plain terminal text: `path:line[:col]`
- * (pdflatex, Tectonic, Typst, gcc), Python traceback frames, bare paths with a
- * slash or an extension, and http(s) URLs. It only reads the text; whether a
- * path names a project file is the resolver's call. `accept` settles the one
- * case the text cannot: whether the words before a path on an `error:` line
- * are part of it.
+ * (pdflatex, Tectonic, Typst, gcc, grep), Python traceback frames, bare paths
+ * with a slash or an extension, and http(s) URLs. It only reads the text;
+ * whether a path names a project file is the resolver's call. `accept` settles
+ * the one case the text cannot: whether the words before a path on an
+ * `error:` line are part of it.
  */
 export function findTerminalLinks(
   text: string,
@@ -158,23 +163,57 @@ export function isAbsoluteTerminalPath(path: string): boolean {
   return ABSOLUTE.test(path);
 }
 
+const RESOLVER_OPTIONS = { implicitTex: false, longerPaths: false };
+
+/**
+ * Windows and macOS ignore letter case, so tools print a path the way the
+ * source spelled it: `\input{Chapters/Intro}` compiles against
+ * chapters/intro.tex, and the error names `Chapters\Intro.tex`. Case is set
+ * aside only when the exact spelling names no file at all, and the folded name
+ * must belong to one file, so a Linux tree holding both Intro.tex and
+ * intro.tex links neither.
+ */
+function anyCaseResolver(files: readonly string[]): (path: string) => string | null {
+  const names = files.map(normalizeCompilePath);
+  const owners = new Map<string, string[]>();
+  files.forEach((file, index) => {
+    const key = names[index].toLowerCase();
+    const same = owners.get(key);
+    if (!same) owners.set(key, [file]);
+    else if (!same.includes(file)) same.push(file);
+  });
+  const resolve = compilePathResolver([...owners.keys()], RESOLVER_OPTIONS);
+  const spelledExactly = (path: string) => {
+    const wanted = normalizeCompilePath(path);
+    return names.some((name) => name === wanted || name.endsWith(`/${wanted}`));
+  };
+  return (path) => {
+    if (spelledExactly(path)) return null;
+    const key = resolve(path.toLowerCase());
+    const found = key === null ? undefined : owners.get(key);
+    return found?.length === 1 ? found[0] : null;
+  };
+}
+
 /**
  * Maps a relative terminal path onto one project file: an exact match, a
  * unique file ending in it, or a unique basename, after leading `./` and
- * `../`. Absolute paths, packages and variables get no answer, and neither do
- * unknown leading folders: the webview does not know the project root, so it
- * cannot tell this project's `main.tex` from `other-project/main.tex`.
- * `../name` gets only a root file of that exact name, never a namesake in a
- * folder: from the project root it lies outside the project.
+ * `../`, and failing those the same in any letter case. Absolute paths,
+ * packages and variables get no answer, and neither do unknown leading
+ * folders: the webview does not know the project root, so it cannot tell this
+ * project's `main.tex` from `other-project/main.tex`. `../name` gets only a
+ * root file of that exact name, never a namesake in a folder: from the project
+ * root it lies outside the project.
  */
 export function terminalPathResolver(
   files: readonly string[],
 ): (path: string) => string | null {
-  const resolve = compilePathResolver(files, { implicitTex: false, longerPaths: false });
+  const resolve = compilePathResolver(files, RESOLVER_OPTIONS);
+  const resolveAnyCase = anyCaseResolver(files);
   return (path) => {
     if (isAbsoluteTerminalPath(path) || OUTSIDE_PROJECT.test(path)) return null;
     const relative = path.replace(LEADING_RELATIVE, "");
-    const found = resolve(relative);
+    const found = resolve(relative) ?? resolveAnyCase(relative);
     // With no folder in `relative`, only an exact match has none in `found`.
     const namesake = found !== null && SEPARATOR.test(found) && !SEPARATOR.test(relative);
     return namesake && PARENT.test(path) ? null : found;

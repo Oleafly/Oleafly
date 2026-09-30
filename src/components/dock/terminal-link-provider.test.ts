@@ -8,6 +8,7 @@ vi.hoisted(() => {
 });
 
 import { Terminal, type ILink, type ILinkProvider } from "@xterm/xterm";
+import { terminalPathResolver } from "@/lib/terminal-links";
 import {
   createTerminalLinkHandler,
   createTerminalLinkProvider,
@@ -118,6 +119,25 @@ describe("createTerminalLinkProvider", () => {
 
     links[0].activate(click(true), links[0].text);
     expect(handlers.openFile).toHaveBeenCalledExactlyOnceWith({ path: "main.tex", line: 3, column: 5 });
+  });
+
+  it("links grep results and Windows paths spelled in another case", async () => {
+    const handlers = { ...actions(), resolve: vi.fn(terminalPathResolver(["main.tex", "chapters/intro.tex"])) };
+    const term = await termWith(
+      "chapters/intro.tex:3:\\section{Intro}\r\n.\\Chapters\\Intro.tex:5: Undefined control sequence.\r\n",
+      80,
+    );
+    const provider = createTerminalLinkProvider(term, handlers);
+
+    const [grep] = (await linksAt(provider, 1)) ?? [];
+    expect(grep.text).toBe("chapters/intro.tex:3");
+    grep.activate(click(true), grep.text);
+    expect(handlers.openFile).toHaveBeenLastCalledWith({ path: "chapters/intro.tex", line: 3 });
+
+    const [windows] = (await linksAt(provider, 2)) ?? [];
+    expect(windows.text).toBe(".\\Chapters\\Intro.tex:5");
+    windows.activate(click(true), windows.text);
+    expect(handlers.openFile).toHaveBeenLastCalledWith({ path: "chapters/intro.tex", line: 5 });
   });
 
   it("gives no link to a path that is not a project file", async () => {

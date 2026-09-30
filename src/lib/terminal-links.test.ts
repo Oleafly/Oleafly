@@ -109,6 +109,43 @@ describe("findTerminalLinks: compiler and tool output", () => {
   });
 });
 
+describe("findTerminalLinks: search results", () => {
+  it.each([
+    ["grep -rn in a folder", "chapters/intro.tex:3:\\section{Intro}", "chapters/intro.tex", 3, undefined],
+    ["git grep -n", "main.tex:12:\\begin{document}", "main.tex", 12, undefined],
+    ["grep on a comment", "main.tex:7:%TODO", "main.tex", 7, undefined],
+    ["grep on a brace", "refs.bib:2:{Smith2020,", "refs.bib", 2, undefined],
+    ["rg --vimgrep", "chapters/intro.tex:3:1:\\section{Intro}", "chapters/intro.tex", 3, 1],
+    ["findstr /n /s on Windows", "chapters\\intro.tex:3:\\section{Intro}", "chapters\\intro.tex", 3, undefined],
+    ["a match that ends in a number", 'src/data.json:4:"count":1', "src/data.json", 4, undefined],
+    ["a YAML match", "conf/app.yaml:3:port:8080", "conf/app.yaml", 3, undefined],
+  ])("links the file and line of %s", (_tool, text, path, line, column) => {
+    const link = only(text);
+    expect(link).toMatchObject({ kind: "file", path, line });
+    if (column === undefined) expect(link).not.toHaveProperty("column");
+    else expect(link).toMatchObject({ column });
+    expect(linkText(text, link)).toBe(column === undefined ? `${path}:${line}` : `${path}:${line}:${column}`);
+  });
+
+  it("gives an absolute search result no project file", () => {
+    const resolve = terminalPathResolver(["main.tex", "thesis/main.tex"]);
+    for (const [text, path] of [
+      ["/home/me/thesis/main.tex:3:\\input{x}", "/home/me/thesis/main.tex"],
+      ["C:\\Users\\me\\thesis\\main.tex:3:\\input{x}", "C:\\Users\\me\\thesis\\main.tex"],
+    ]) {
+      expect(findTerminalLinks(text).map(pathOf)).toEqual([path]);
+      expect(resolve(path)).toBeNull();
+    }
+  });
+
+  it("keeps the column of a package path with no ┌─ before it", () => {
+    const text = "@preview/cetz:0.2.2/src/draw.typ:12:3";
+    const link = only(text);
+    expect(link).toMatchObject({ path: "@preview/cetz:0.2.2/src/draw.typ", line: 12, column: 3 });
+    expect(linkText(text, link)).toBe(text);
+  });
+});
+
 describe("findTerminalLinks: paths with spaces", () => {
   it.each([
     ["Typst", "  ┌─ figures/old main.typ:3:1", "figures/old main.typ", 3, 1, "main.typ"],
@@ -210,6 +247,8 @@ describe("findTerminalLinks: text that is not a link", () => {
     "listening on localhost:8888",
     "bound 127.0.0.1:8080",
     "--output=foo.pdf",
+    "id:42:name",
+    "at 12:30:45:",
     "Done.",
     "",
   ])("finds nothing in %j", (text) => {
@@ -288,6 +327,73 @@ describe("terminalPathResolver", () => {
   it("does not link a folder", () => {
     expect(resolve("chapters")).toBeNull();
     expect(resolve("chapters/")).toBeNull();
+  });
+});
+
+describe("terminalPathResolver: letter case", () => {
+  // Windows and macOS ignore case, so `\input{Chapters/Intro}` compiles
+  // against chapters/intro.tex and the error names `Chapters\Intro.tex`.
+  const resolve = terminalPathResolver([
+    "main.tex",
+    "chapters/intro.tex",
+    "chapters/my intro.tex",
+    "figures/a.typ",
+    "kapitel/\u00fcber.tex",
+  ]);
+  const accept = (path: string) => resolve(path) !== null;
+
+  it("finds a file spelled in another case", () => {
+    expect(resolve("Chapters\\Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve(".\\Chapters\\Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve("CHAPTERS/INTRO.TEX")).toBe("chapters/intro.tex");
+    expect(resolve("Intro.tex")).toBe("chapters/intro.tex");
+    expect(resolve("Main.tex")).toBe("main.tex");
+    expect(resolve("Figures\\A.typ")).toBe("figures/a.typ");
+    expect(resolve("Kapitel/\u00dcber.tex")).toBe("kapitel/\u00fcber.tex");
+    // Decomposed, the way macOS file names often arrive.
+    expect(resolve("KAPITEL/U\u0308BER.TEX")).toBe("kapitel/\u00fcber.tex");
+  });
+
+  it.each([
+    ["pdflatex", ".\\Chapters\\Intro.tex:5: Undefined control sequence.", "chapters/intro.tex"],
+    ["a bare location", "Chapters\\Intro.tex:3: Undefined control sequence.", "chapters/intro.tex"],
+    ["Tectonic", "error: Chapters\\Intro.tex:3: Undefined control sequence", "chapters/intro.tex"],
+    ["Tectonic with a space", "error: Chapters\\My Intro.tex:3: Undefined control sequence", "chapters/my intro.tex"],
+    ["Typst", "  ┌─ Figures\\A.typ:3:1", "figures/a.typ"],
+  ])("links %s output on Windows that spells the path in another case", (_tool, text, target) => {
+    const links = findTerminalLinks(text, accept);
+    expect(links).toHaveLength(1);
+    expect(resolve(pathOf(links[0]) ?? "")).toBe(target);
+  });
+
+  it("prefers the exact spelling", () => {
+    const both = terminalPathResolver(["chapters/Intro.tex", "chapters/intro.tex"]);
+    expect(both("chapters/Intro.tex")).toBe("chapters/Intro.tex");
+    expect(both("chapters\\intro.tex")).toBe("chapters/intro.tex");
+  });
+
+  it("links nothing when the name in another case fits several files, as on Linux", () => {
+    const both = terminalPathResolver(["chapters/Intro.tex", "chapters/intro.tex"]);
+    expect(both("Chapters\\Intro.tex")).toBeNull();
+    expect(both("CHAPTERS/INTRO.TEX")).toBeNull();
+    expect(both("INTRO.tex")).toBeNull();
+    expect(terminalPathResolver(["a/Notes.md", "b/notes.md"])("NOTES.md")).toBeNull();
+  });
+
+  it("keeps an exact spelling that names several files unlinked", () => {
+    const tree = terminalPathResolver(["Notes.md", "a/notes.md", "b/notes.md"]);
+    expect(tree("notes.md")).toBeNull();
+    expect(tree("Notes.md")).toBe("Notes.md");
+  });
+
+  it("keeps the parent and outside-project rules", () => {
+    expect(resolve("..\\Intro.tex")).toBeNull();
+    expect(resolve("../INTRO.tex")).toBeNull();
+    expect(resolve("../Main.tex")).toBe("main.tex");
+    expect(resolve("Build/Old/Chapters/Intro.tex")).toBeNull();
+    expect(resolve("C:\\Thesis\\Chapters\\Intro.tex")).toBeNull();
+    expect(resolve("%USERPROFILE%\\Thesis\\Main.tex")).toBeNull();
+    expect(resolve("Chapters")).toBeNull();
   });
 });
 
