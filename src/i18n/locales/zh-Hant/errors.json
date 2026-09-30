@@ -62,7 +62,8 @@
   "git": {
     "remote_exists": "此專案已連結到 {{remote}}。",
     "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。",
-    "not_installed": "這台電腦上沒有安裝 Git。請安裝 Git，然後再試一次。"
+    "not_installed": "這台電腦上沒有安裝 Git。請安裝 Git，然後再試一次。",
+    "tracked_secret_files": "此專案的 Git 歷史記錄中有檔案可能包含金鑰或密碼，已停止發布：{{files}}"
   },
   "approvals": {
     "full_access_declined": "未啟用完整存取權。"

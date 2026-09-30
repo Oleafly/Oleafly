@@ -373,7 +373,12 @@
     "linked": "{{remote}} にリンクしてプッシュしました。",
     "pushNeedsPull": "{{remote}} にリンクしましたが、プッシュの前にプルが必要です: {{detail}}",
     "replaceRemotePrompt": "このプロジェクトは {{remote}} にリンクされています。このリンクを置き換えますか？",
-    "replaceRemote": "リンクを置き換える"
+    "replaceRemote": "リンクを置き換える",
+    "trackedSecretsPrompt_other": "次のファイルには鍵やパスワードが含まれている可能性があり、すでにこのプロジェクトの Git 履歴に入っています: {{files}}。公開するとこの履歴もアップロードされるため、GitHub にも送られます。",
+    "publishAnyway": "それでも公開",
+    "leftOutSecrets_other": "鍵やパスワードが含まれている可能性があるため除外しました: {{files}}。ファイルはプロジェクトフォルダーに残っています。公開するには、ソース管理でステージしてコミットしてください。",
+    "moreFiles_other": "{{files}} ほか {{more}} 件",
+    "nothingToPublish": "このプロジェクトにはまだコミットがないため、何もプッシュしていません。"
   },
   "deadlines": {
     "title": "国際会議の締め切り",

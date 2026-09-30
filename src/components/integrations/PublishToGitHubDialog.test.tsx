@@ -51,8 +51,10 @@ vi.mock("@/lib/github", async (importOriginal) => ({
 }));
 
 beforeEach(() => {
-  mocks.gitPreparePublish.mockReset().mockResolvedValue(true);
-  mocks.gitPublishPreflight.mockReset().mockResolvedValue(undefined);
+  mocks.gitPreparePublish
+    .mockReset()
+    .mockResolvedValue({ committed: true, hasCommit: true, leftOut: [] });
+  mocks.gitPublishPreflight.mockReset().mockResolvedValue({ trackedSecretFiles: [] });
   mocks.gitPush.mockReset().mockResolvedValue("Pushed");
   mocks.gitSetRemote.mockReset().mockResolvedValue(undefined);
   mocks.githubCreateRepo.mockReset().mockResolvedValue(createdRepo);
@@ -105,7 +107,9 @@ describe("PublishToGitHubDialog", () => {
       await Promise.resolve();
     });
 
-    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-a", "Initial commit");
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-a", "Initial commit", {
+      allowTrackedSecrets: [],
+    });
     expect(mocks.gitSetRemote).toHaveBeenCalledWith(
       "project-a",
       createdRepo.clone_url,
@@ -217,7 +221,9 @@ describe("PublishToGitHubDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Create and push" }));
 
-    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit");
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit", {
+      allowTrackedSecrets: [],
+    });
   });
 
   it("links the selected repository, pushes, and dismisses itself", async () => {
@@ -241,7 +247,9 @@ describe("PublishToGitHubDialog", () => {
     await user.click(screen.getByRole("button", { name: "Link and push" }));
 
     expect(await screen.findByText(/Linked and pushed to/)).toBeInTheDocument();
-    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit");
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit", {
+      allowTrackedSecrets: [],
+    });
     expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url);
     expect(mocks.gitPush).toHaveBeenCalledWith("project-1");
     expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
@@ -519,5 +527,269 @@ describe("PublishToGitHubDialog", () => {
 
     expect(screen.getByRole("button", { name: "Connect to GitHub" })).toBeInTheDocument();
     expect(mocks.githubListRepos).not.toHaveBeenCalled();
+  });
+
+  it("names secret-looking files in the history before creating a GitHub repository", async () => {
+    const user = userEvent.setup();
+    mocks.gitPublishPreflight.mockResolvedValue({
+      trackedSecretFiles: [".env", "deploy/server.pem"],
+    });
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(
+      await screen.findByText(/Git history: \.env and deploy\/server\.pem\./),
+    ).toBeInTheDocument();
+    expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Create and push" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("button", { name: "Publish anyway" })).toBeNull();
+    expect(screen.queryByText(/Git history/)).toBeNull();
+    expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+  });
+
+  it("publishes the listed history files only after Publish anyway", async () => {
+    const user = userEvent.setup();
+    mocks.gitPublishPreflight.mockResolvedValue({ trackedSecretFiles: [".env"] });
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+    expect(
+      await screen.findByText(
+        "This file may hold keys or passwords, and it is already in this project's Git history: .env. Publishing uploads that history, so GitHub would get it too.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Publish anyway" }));
+
+    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+    expect(mocks.githubCreateRepo).toHaveBeenCalledTimes(1);
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit", {
+      allowTrackedSecrets: [".env"],
+    });
+    expect(screen.queryByRole("button", { name: "Publish anyway" })).toBeNull();
+  });
+
+  it("names the files it left out and stays open", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mocks.gitPreparePublish.mockResolvedValue({
+      committed: true,
+      hasCommit: true,
+      leftOut: [".env", "keys/server.pem"],
+    });
+    const onClose = vi.fn();
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={onClose}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/Published to prajwal\/research-notes/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Left out because they may hold keys or passwords: .env and keys/server.pem.",
+    );
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("shortens a long list of left-out files", async () => {
+    const user = userEvent.setup();
+    mocks.gitPreparePublish.mockResolvedValue({
+      committed: true,
+      hasCommit: true,
+      leftOut: [".env", "a.pem", "b.pem", "c.pem", "d.pem", "e.pem", "f.pem"],
+    });
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    const note = await screen.findByRole("status");
+    expect(note).toHaveTextContent(".env, a.pem, b.pem, c.pem, d.pem and 2 more.");
+    expect(note).not.toHaveTextContent("e.pem");
+  });
+
+  it("checks the history before linking an existing repository", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitPublishPreflight.mockResolvedValue({ trackedSecretFiles: [".env"] });
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(await screen.findByRole("button", { name: "Publish anyway" })).toBeInTheDocument();
+    expect(mocks.gitPublishPreflight).toHaveBeenCalledWith("project-1");
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+    expect(mocks.gitSetRemote).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Publish anyway" }));
+
+    await waitFor(() =>
+      expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url),
+    );
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit", {
+      allowTrackedSecrets: [".env"],
+    });
+  });
+
+  it("drops the history question when another project opens", async () => {
+    const user = userEvent.setup();
+    mocks.gitPublishPreflight.mockResolvedValue({ trackedSecretFiles: [".env"] });
+    const view = render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+    expect(await screen.findByRole("button", { name: "Publish anyway" })).toBeInTheDocument();
+
+    view.rerender(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-2"
+        projectName="Other notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Publish anyway" })).toBeNull();
+    expect(screen.queryByText(/Git history/)).toBeNull();
+  });
+
+  it("pushes nothing when every file was left out", async () => {
+    const user = userEvent.setup();
+    mocks.gitPreparePublish.mockResolvedValue({
+      committed: false,
+      hasCommit: false,
+      leftOut: [".env"],
+    });
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(
+      await screen.findByText("Nothing was pushed because this project has no commits yet."),
+    ).toBeInTheDocument();
+    expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url);
+    expect(mocks.gitPush).not.toHaveBeenCalled();
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
+    expect(screen.getByRole("status")).toHaveTextContent(".env");
+  });
+
+  it("clears the left-out note from an earlier attempt", async () => {
+    const user = userEvent.setup();
+    mocks.gitPreparePublish.mockResolvedValueOnce({
+      committed: true,
+      hasCommit: true,
+      leftOut: [".env"],
+    });
+    mocks.gitPush.mockRejectedValueOnce(new Error("network is down"));
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+    expect(await screen.findByText(/network is down/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(".env");
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/Published to prajwal\/research-notes/)).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps the left-out note when the push needs a pull first", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitPreparePublish.mockResolvedValue({
+      committed: true,
+      hasCommit: true,
+      leftOut: [".env"],
+    });
+    mocks.gitPush.mockRejectedValue(new Error("fetch first"));
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(await screen.findByText(/push needs a pull first/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(".env");
   });
 });

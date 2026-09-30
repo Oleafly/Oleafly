@@ -68,6 +68,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrong size, Oleafly puts it back when the window is focused, resized or
   moves to a display with a different scale, and writes a line to the app
   log.
+- Publish to GitHub no longer commits and pushes files that look like keys or
+  passwords, such as `.env`, `*.pem`, SSH private keys or `credentials.json`.
+  They stay in the project folder, and the dialog names them. If a file with
+  such a name is already in the project's Git history, Oleafly asks before it
+  creates anything on GitHub. Templates like `.env.example`, public keys and
+  Keynote `.key` files are still published. The first "Create project" commit
+  now uses the same list, so a template, public key or Keynote file no longer
+  blocks it.
 
 ## [0.4.3] - 2026-09-27
 

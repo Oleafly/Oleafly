@@ -380,7 +380,15 @@
     "linked": "Koblet til og pushet til {{remote}}.",
     "pushNeedsPull": "Koblet til {{remote}}, men push krever en pull først: {{detail}}",
     "replaceRemotePrompt": "Dette prosjektet er koblet til {{remote}}. Vil du erstatte koblingen?",
-    "replaceRemote": "Erstatt kobling"
+    "replaceRemote": "Erstatt kobling",
+    "trackedSecretsPrompt_one": "Denne filen kan inneholde nøkler eller passord og ligger allerede i Git-historikken til prosjektet: {{files}}. Publisering laster opp historikken, så GitHub ville også fått den.",
+    "trackedSecretsPrompt_other": "Disse filene kan inneholde nøkler eller passord og ligger allerede i Git-historikken til prosjektet: {{files}}. Publisering laster opp historikken, så GitHub ville også fått dem.",
+    "publishAnyway": "Publiser likevel",
+    "leftOutSecrets_one": "Utelatt fordi den kan inneholde nøkler eller passord: {{files}}. Den ligger fortsatt i prosjektmappen. For å publisere den må du klargjøre og committe den i Versjonskontroll.",
+    "leftOutSecrets_other": "Utelatt fordi de kan inneholde nøkler eller passord: {{files}}. De ligger fortsatt i prosjektmappen. For å publisere en av dem må du klargjøre og committe den i Versjonskontroll.",
+    "moreFiles_one": "{{files}} og {{more}} til",
+    "moreFiles_other": "{{files}} og {{more}} til",
+    "nothingToPublish": "Ingenting ble pushet fordi prosjektet ikke har noen commiter ennå."
   },
   "deadlines": {
     "title": "Konferansefrister",

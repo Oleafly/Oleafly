@@ -380,7 +380,15 @@
     "linked": "{{remote}} bağlandı ve gönderildi.",
     "pushNeedsPull": "{{remote}} bağlandı, ancak gönderimden önce bir çekme gerekiyor: {{detail}}",
     "replaceRemotePrompt": "Bu proje {{remote}} ile bağlantılı. Bu bağlantı değiştirilsin mi?",
-    "replaceRemote": "Bağlantıyı değiştir"
+    "replaceRemote": "Bağlantıyı değiştir",
+    "trackedSecretsPrompt_one": "Bu dosya anahtar veya parola içerebilir ve bu projenin Git geçmişinde zaten var: {{files}}. Yayımlamak bu geçmişi karşıya yükler, bu yüzden GitHub da onu alır.",
+    "trackedSecretsPrompt_other": "Bu dosyalar anahtar veya parola içerebilir ve bu projenin Git geçmişinde zaten var: {{files}}. Yayımlamak bu geçmişi karşıya yükler, bu yüzden GitHub da onları alır.",
+    "publishAnyway": "Yine de yayımla",
+    "leftOutSecrets_one": "Anahtar veya parola içerebileceği için dışarıda bırakıldı: {{files}}. Dosya hâlâ proje klasöründe. Yayımlamak için Kaynak Denetimi'nde hazırlayıp işleyin.",
+    "leftOutSecrets_other": "Anahtar veya parola içerebilecekleri için dışarıda bırakıldı: {{files}}. Dosyalar hâlâ proje klasöründe. Birini yayımlamak için Kaynak Denetimi'nde hazırlayıp işleyin.",
+    "moreFiles_one": "{{files}} ve {{more}} dosya daha",
+    "moreFiles_other": "{{files}} ve {{more}} dosya daha",
+    "nothingToPublish": "Bu projede henüz işleme olmadığı için hiçbir şey gönderilmedi."
   },
   "deadlines": {
     "title": "Konferans son tarihleri",

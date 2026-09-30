@@ -36,3 +36,18 @@ export function formatRelativeTime(value: number, unit: Intl.RelativeTimeFormatU
 export function formatList(items: readonly string[], options?: Intl.ListFormatOptions): string {
   return new Intl.ListFormat(currentLocale(), options).format(items);
 }
+
+/**
+ * Names joined for a sentence in the active locale. Past `limit`, the first
+ * `limit` are joined without the final "and" and passed to `more` with the
+ * number left off, which adds the caller's own "and N more".
+ */
+export function formatNameList(
+  names: readonly string[],
+  more: (shown: string, rest: number) => string,
+  limit = 5,
+): string {
+  if (names.length <= limit) return formatList(names);
+  const shown = formatList(names.slice(0, limit), { type: "unit", style: "short" });
+  return more(shown, names.length - limit);
+}

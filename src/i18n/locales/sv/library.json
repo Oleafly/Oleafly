@@ -380,7 +380,15 @@
     "linked": "Länkat och pushat till {{remote}}.",
     "pushNeedsPull": "Länkat till {{remote}}, men push kräver en pull först: {{detail}}",
     "replaceRemotePrompt": "Projektet är länkat till {{remote}}. Vill du ersätta länken?",
-    "replaceRemote": "Ersätt länk"
+    "replaceRemote": "Ersätt länk",
+    "trackedSecretsPrompt_one": "Den här filen kan innehålla nycklar eller lösenord och finns redan i projektets Git-historik: {{files}}. När du publicerar laddas historiken upp, så GitHub skulle också få den.",
+    "trackedSecretsPrompt_other": "De här filerna kan innehålla nycklar eller lösenord och finns redan i projektets Git-historik: {{files}}. När du publicerar laddas historiken upp, så GitHub skulle också få dem.",
+    "publishAnyway": "Publicera ändå",
+    "leftOutSecrets_one": "Utelämnad eftersom den kan innehålla nycklar eller lösenord: {{files}}. Den finns kvar i projektmappen. Om du vill publicera den köar du den och checkar in den i Versionshantering.",
+    "leftOutSecrets_other": "Utelämnade eftersom de kan innehålla nycklar eller lösenord: {{files}}. De finns kvar i projektmappen. Om du vill publicera en av dem köar du den och checkar in den i Versionshantering.",
+    "moreFiles_one": "{{files}} och {{more}} till",
+    "moreFiles_other": "{{files}} och {{more}} till",
+    "nothingToPublish": "Inget pushades eftersom projektet inte har några incheckningar än."
   },
   "deadlines": {
     "title": "Konferensdeadlines",

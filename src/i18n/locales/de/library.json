@@ -380,7 +380,15 @@
     "linked": "Mit {{remote}} verknüpft und gepusht.",
     "pushNeedsPull": "Mit {{remote}} verknüpft, vor dem Push ist aber ein Pull nötig: {{detail}}",
     "replaceRemotePrompt": "Dieses Projekt ist mit {{remote}} verknüpft. Diese Verknüpfung ersetzen?",
-    "replaceRemote": "Verknüpfung ersetzen"
+    "replaceRemote": "Verknüpfung ersetzen",
+    "trackedSecretsPrompt_one": "Diese Datei kann Schlüssel oder Passwörter enthalten und ist bereits im Git-Verlauf dieses Projekts: {{files}}. Beim Veröffentlichen wird dieser Verlauf hochgeladen, GitHub würde sie also ebenfalls erhalten.",
+    "trackedSecretsPrompt_other": "Diese Dateien können Schlüssel oder Passwörter enthalten und sind bereits im Git-Verlauf dieses Projekts: {{files}}. Beim Veröffentlichen wird dieser Verlauf hochgeladen, GitHub würde sie also ebenfalls erhalten.",
+    "publishAnyway": "Trotzdem veröffentlichen",
+    "leftOutSecrets_one": "Ausgelassen, weil sie Schlüssel oder Passwörter enthalten kann: {{files}}. Die Datei liegt weiterhin im Projektordner. Um sie zu veröffentlichen, stellen Sie sie in der Versionsverwaltung bereit und committen Sie sie.",
+    "leftOutSecrets_other": "Ausgelassen, weil sie Schlüssel oder Passwörter enthalten können: {{files}}. Die Dateien liegen weiterhin im Projektordner. Um eine davon zu veröffentlichen, stellen Sie sie in der Versionsverwaltung bereit und committen Sie sie.",
+    "moreFiles_one": "{{files}} und {{more}} weitere",
+    "moreFiles_other": "{{files}} und {{more}} weitere",
+    "nothingToPublish": "Es wurde nichts gepusht, weil dieses Projekt noch keine Commits hat."
   },
   "deadlines": {
     "title": "Konferenzfristen",

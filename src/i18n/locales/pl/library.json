@@ -394,7 +394,21 @@
     "linked": "Powiązano i wypchnięto do {{remote}}.",
     "pushNeedsPull": "Powiązano z {{remote}}, ale wypchnięcie wymaga najpierw pobrania zmian: {{detail}}",
     "replaceRemotePrompt": "Ten projekt jest powiązany z {{remote}}. Zastąpić to powiązanie?",
-    "replaceRemote": "Zastąp powiązanie"
+    "replaceRemote": "Zastąp powiązanie",
+    "trackedSecretsPrompt_one": "Ten plik może zawierać klucze lub hasła i jest już w historii Git tego projektu: {{files}}. Publikacja wysyła tę historię, więc GitHub też by go otrzymał.",
+    "trackedSecretsPrompt_few": "Te pliki mogą zawierać klucze lub hasła i są już w historii Git tego projektu: {{files}}. Publikacja wysyła tę historię, więc GitHub też by je otrzymał.",
+    "trackedSecretsPrompt_many": "Te pliki mogą zawierać klucze lub hasła i są już w historii Git tego projektu: {{files}}. Publikacja wysyła tę historię, więc GitHub też by je otrzymał.",
+    "trackedSecretsPrompt_other": "Te pliki mogą zawierać klucze lub hasła i są już w historii Git tego projektu: {{files}}. Publikacja wysyła tę historię, więc GitHub też by je otrzymał.",
+    "publishAnyway": "Opublikuj mimo to",
+    "leftOutSecrets_one": "Pominięto, bo może zawierać klucze lub hasła: {{files}}. Plik nadal jest w folderze projektu. Aby go opublikować, dodaj go do poczekalni i zatwierdź w Kontroli wersji.",
+    "leftOutSecrets_few": "Pominięto, bo mogą zawierać klucze lub hasła: {{files}}. Pliki nadal są w folderze projektu. Aby opublikować jeden z nich, dodaj go do poczekalni i zatwierdź w Kontroli wersji.",
+    "leftOutSecrets_many": "Pominięto, bo mogą zawierać klucze lub hasła: {{files}}. Pliki nadal są w folderze projektu. Aby opublikować jeden z nich, dodaj go do poczekalni i zatwierdź w Kontroli wersji.",
+    "leftOutSecrets_other": "Pominięto, bo mogą zawierać klucze lub hasła: {{files}}. Pliki nadal są w folderze projektu. Aby opublikować jeden z nich, dodaj go do poczekalni i zatwierdź w Kontroli wersji.",
+    "moreFiles_one": "{{files}} i jeszcze {{more}} plik",
+    "moreFiles_few": "{{files}} i jeszcze {{more}} pliki",
+    "moreFiles_many": "{{files}} i jeszcze {{more}} plików",
+    "moreFiles_other": "{{files}} i jeszcze {{more}} pliku",
+    "nothingToPublish": "Nic nie zostało wypchnięte, bo ten projekt nie ma jeszcze żadnych commitów."
   },
   "deadlines": {
     "title": "Terminy konferencji",

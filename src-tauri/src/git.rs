@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::{OsStr, OsString};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -112,7 +112,7 @@ const GIT_IDENTITY_ENV: [&str; 6] = [
     "GIT_COMMITTER_DATE",
 ];
 
-pub(crate) const GIT_REPOSITORY_ENV: [&str; 15] = [
+pub(crate) const GIT_REPOSITORY_ENV: [&str; 16] = [
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_CONFIG",
     "GIT_CONFIG_PARAMETERS",
@@ -128,10 +128,26 @@ pub(crate) const GIT_REPOSITORY_ENV: [&str; 15] = [
     "GIT_PREFIX",
     "GIT_SHALLOW_FILE",
     "GIT_COMMON_DIR",
+    // Older Git, such as 2.34, still lists it in `rev-parse --local-env-vars`.
+    "GIT_INTERNAL_SUPER_PREFIX",
+];
+
+/// Variables that change how Git reads every pathspec. Publishing passes
+/// `:(exclude,literal)` pathspecs, which an inherited `GIT_LITERAL_PATHSPECS`
+/// would turn into plain file names.
+const GIT_PATHSPEC_ENV: [&str; 4] = [
+    "GIT_LITERAL_PATHSPECS",
+    "GIT_GLOB_PATHSPECS",
+    "GIT_NOGLOB_PATHSPECS",
+    "GIT_ICASE_PATHSPECS",
 ];
 
 pub(crate) fn clear_inherited_git_env(command: &mut Command) {
-    for variable in GIT_REPOSITORY_ENV.into_iter().chain(GIT_IDENTITY_ENV) {
+    for variable in GIT_REPOSITORY_ENV
+        .into_iter()
+        .chain(GIT_IDENTITY_ENV)
+        .chain(GIT_PATHSPEC_ENV)
+    {
         command.env_remove(variable);
     }
 }
@@ -149,6 +165,8 @@ fn run_configured_git_bounded(
     }
     let mut command = Command::new(&program);
     command.no_console().args(args).current_dir(root);
+    #[cfg(test)]
+    testing::apply_inherited_env(&mut command);
     clear_inherited_git_env(&mut command);
     command.env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
@@ -309,9 +327,36 @@ fn developer_tools_installed() -> bool {
 pub(crate) mod testing {
     use std::cell::RefCell;
     use std::ffi::OsString;
+    use std::process::Command;
 
     thread_local! {
         static PROGRAM: RefCell<Option<OsString>> = const { RefCell::new(None) };
+        static INHERITED: RefCell<Vec<(OsString, OsString)>> = const { RefCell::new(Vec::new()) };
+    }
+
+    /// Restores this thread's inherited Git variables when dropped.
+    pub(crate) struct InheritedEnvOverride(Vec<(OsString, OsString)>);
+
+    /// Start this thread's Git spawns with these variables, as if Oleafly had
+    /// inherited them, without touching the process environment. They are set
+    /// before the inherited Git variables are cleared.
+    pub(crate) fn inherit_git_env(variables: Vec<(OsString, OsString)>) -> InheritedEnvOverride {
+        InheritedEnvOverride(INHERITED.with(|slot| slot.replace(variables)))
+    }
+
+    pub(super) fn apply_inherited_env(command: &mut Command) {
+        INHERITED.with(|slot| {
+            for (name, value) in slot.borrow().iter() {
+                command.env(name, value);
+            }
+        });
+    }
+
+    impl Drop for InheritedEnvOverride {
+        fn drop(&mut self) {
+            let previous = std::mem::take(&mut self.0);
+            INHERITED.with(|slot| *slot.borrow_mut() = previous);
+        }
     }
 
     /// Restores this thread's Git program when dropped.
@@ -554,7 +599,7 @@ fn commit_baseline_with_limit(root: &Path, limit: u64) -> Result<Baseline, Strin
     let files = untracked_files(&root)?;
     let secrets: Vec<String> = files
         .iter()
-        .filter(|path| holds_secret(path))
+        .filter(|path| looks_like_secret(&root, path.as_os_str().as_encoded_bytes()))
         .map(|path| path.to_string_lossy().into_owned())
         .collect();
     if !secrets.is_empty() {
@@ -612,29 +657,184 @@ fn untracked_files(root: &PathBuf) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 
-/// Whether a project file, or a folder it sits in, has a name that usually
-/// holds keys, tokens or passwords: the names research tasks never copy
-/// (`.env*`, `*.pem`, `*.key`, `.npmrc`, `credentials.json` and so on), plus
-/// SSH and other private key files and login files.
-fn holds_secret(relative: &Path) -> bool {
-    relative.components().any(|component| {
-        let Component::Normal(name) = component else {
-            return false;
-        };
-        let name = name.to_string_lossy();
-        if crate::research_tasks::is_sensitive_component(&name) {
-            return true;
-        }
-        let lower = name.to_ascii_lowercase();
-        ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]
+/// Folders whose files are kept out wherever the folder sits in the project.
+const SECRET_FOLDERS: [&[u8]; 7] = [
+    b".private",
+    b"secrets",
+    b"credentials",
+    b".ssh",
+    b".gnupg",
+    b".aws",
+    b".kube",
+];
+
+/// File names that hold keys, tokens or passwords.
+const SECRET_NAMES: [&[u8]; 23] = [
+    b".env",
+    b".envrc",
+    b".renviron",
+    b".netrc",
+    b"_netrc",
+    b".pgpass",
+    b"pgpass.conf",
+    b".my.cnf",
+    b".htpasswd",
+    b".git-credentials",
+    b".npmrc",
+    b".pypirc",
+    b".s3cfg",
+    b"credentials",
+    b"credentials.json",
+    b"secrets",
+    b"secrets.json",
+    b"secrets.toml",
+    b"secrets.yaml",
+    b"secrets.yml",
+    b"kaggle.json",
+    b"application_default_credentials.json",
+    b"token.pickle",
+];
+
+/// Private keys, certificates with their keys, and password stores.
+const SECRET_EXTENSIONS: [&[u8]; 9] = [
+    b"pem",
+    b"key",
+    b"p12",
+    b"pfx",
+    b"p8",
+    b"ppk",
+    b"jks",
+    b"keystore",
+    b"kdbx",
+];
+
+/// SSH private key names. `<name>.pub` is the public half and is kept.
+const SSH_KEY_PREFIXES: [&[u8]; 4] = [b"id_rsa", b"id_dsa", b"id_ecdsa", b"id_ed25519"];
+
+/// How `.env` names with a suffix start, as in `.env.local`, `.env-prod` and
+/// `.env_test`.
+const ENV_PREFIXES: [&[u8]; 3] = [b".env.", b".env-", b".env_"];
+
+/// The last part of a `.env` name that marks a template without real values,
+/// as in `.env.example` or `example.env`.
+const ENV_TEMPLATES: [&[u8]; 6] = [
+    b"example",
+    b"sample",
+    b"template",
+    b"dist",
+    b"defaults",
+    b"schema",
+];
+
+/// How a zip archive, and so a single-file Keynote document, starts.
+const ZIP_SIGNATURE: &[u8; 4] = b"PK\x03\x04";
+
+/// What the name of a project path says about whether it holds a secret.
+#[derive(PartialEq)]
+enum NameVerdict {
+    Secret,
+    NotSecret,
+    /// A `.key` file, which is a key unless it is a Keynote document.
+    KeyFile,
+}
+
+/// Whether a project file looks like it holds keys, tokens or passwords, so
+/// publishing must not stage it. `relative` is the path inside `root` as Git
+/// lists it. Names are compared case-insensitively on every system, so `.ENV`
+/// and `Server.PEM` count, and a name that is not valid Unicode is still read.
+///
+/// - Any file inside a `.private`, `secrets`, `credentials`, `.ssh`, `.gnupg`,
+///   `.aws` or `.kube` folder, wherever that folder is.
+/// - The names in [`SECRET_NAMES`], such as `.env`, `.netrc` and
+///   `credentials.json`.
+/// - `.env.<anything>`, `.env-<anything>`, `.env_<anything>` and
+///   `<name>.env`, except templates whose last part is one of
+///   [`ENV_TEMPLATES`], such as `.env.example`.
+/// - `client_secret*.json`, and SSH keys named `id_rsa`, `id_ed25519` and so
+///   on, but not their `.pub` public keys.
+/// - The extensions in [`SECRET_EXTENSIONS`]. A `.key` file that starts with a
+///   zip signature is a Keynote presentation and is kept: PEM, DER, OpenSSH
+///   and PuTTY keys never start with it. Any other `.key` file, one that
+///   cannot be read, or a link counts.
+///
+/// Extension rules look only at the file name, so a `.env` virtualenv folder
+/// or a `talk.key` Keynote package folder never matches by itself.
+fn looks_like_secret(root: &Path, relative: &[u8]) -> bool {
+    match judge_name(relative) {
+        NameVerdict::Secret => true,
+        NameVerdict::NotSecret => false,
+        NameVerdict::KeyFile => !is_keynote_document(&root.join(path_from_git(relative))),
+    }
+}
+
+/// The name rules of [`looks_like_secret`]. Git separates folders with `/` on
+/// every system, so a path is judged the same everywhere.
+fn judge_name(relative: &[u8]) -> NameVerdict {
+    let names: Vec<Vec<u8>> = relative
+        .split(|byte| *byte == b'/')
+        .filter(|name| !name.is_empty())
+        .map(<[u8]>::to_ascii_lowercase)
+        .collect();
+    let Some((name, folders)) = names.split_last() else {
+        return NameVerdict::NotSecret;
+    };
+    if folders
+        .iter()
+        .any(|folder| SECRET_FOLDERS.contains(&folder.as_slice()))
+    {
+        return NameVerdict::Secret;
+    }
+    let extension = name
+        .iter()
+        .rposition(|byte| *byte == b'.')
+        .filter(|dot| *dot > 0)
+        .map(|dot| &name[dot + 1..]);
+    if has_secret_name(name, extension) {
+        return NameVerdict::Secret;
+    }
+    match extension {
+        Some(b"key") => NameVerdict::KeyFile,
+        Some(extension) if SECRET_EXTENSIONS.contains(&extension) => NameVerdict::Secret,
+        _ => NameVerdict::NotSecret,
+    }
+}
+
+/// The name rules of [`looks_like_secret`], on a lowercase file name.
+fn has_secret_name(name: &[u8], extension: Option<&[u8]>) -> bool {
+    let is_template = |stem: &[u8]| {
+        let last = stem.rsplit(|byte| *byte == b'.').next().unwrap_or(stem);
+        ENV_TEMPLATES.contains(&last)
+    };
+    if SECRET_NAMES.contains(&name) {
+        return true;
+    }
+    if let Some(rest) = ENV_PREFIXES
+        .iter()
+        .find_map(|prefix| name.strip_prefix(*prefix))
+    {
+        return !is_template(rest);
+    }
+    if let Some(stem) = name.strip_suffix(b".env").filter(|stem| !stem.is_empty()) {
+        return !is_template(stem);
+    }
+    (name.starts_with(b"client_secret") && matches!(extension, Some(b"json")))
+        || (SSH_KEY_PREFIXES
             .iter()
-            .any(|prefix| lower.starts_with(prefix))
-            || matches!(lower.as_str(), ".envrc" | ".netrc" | "_netrc" | ".htpasswd")
-            || matches!(
-                Path::new(&lower).extension().and_then(OsStr::to_str),
-                Some("ppk" | "jks" | "keystore")
-            )
-    })
+            .any(|prefix| name.starts_with(prefix))
+            && !matches!(extension, Some(b"pub")))
+}
+
+/// Whether `path` is a regular file that starts with a zip signature, which is
+/// how a single-file Keynote document starts.
+fn is_keynote_document(path: &Path) -> bool {
+    if !std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file()) {
+        return false;
+    }
+    let mut signature = [0u8; 4];
+    std::fs::File::open(path)
+        .and_then(|mut file| std::io::Read::read_exact(&mut file, &mut signature))
+        .is_ok()
+        && &signature == ZIP_SIGNATURE
 }
 
 #[cfg(unix)]
@@ -822,37 +1022,149 @@ fn git_initialize_sync(project_id: String) -> Result<String, String> {
     current_branch(&root)
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitPublishPrepared {
+    /// A new commit was made.
+    pub committed: bool,
+    /// The branch has a commit to push.
+    pub has_commit: bool,
+    /// Files that were not staged because they look like secrets.
+    pub left_out: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitPublishPreflight {
+    pub tracked_secret_files: Vec<String>,
+}
+
 /// Prepare the project for the explicit Publish to GitHub action. This is the
 /// sole convenience that initializes and commits all files in one operation;
 /// background save, compile, and assistant flows never call it.
 #[tauri::command]
-pub async fn git_prepare_publish(project_id: String, message: String) -> Result<bool, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
+pub async fn git_prepare_publish(
+    project_id: String,
+    message: String,
+    allow_tracked_secrets: Option<Vec<String>>,
+) -> Result<GitPublishPrepared, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<GitPublishPrepared, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
         let root = project_root(&project_id)?;
-        if !root.join(".git").exists() {
-            initialize_new_repo(&root)?;
-        }
-        stage_all(&root)?;
-        commit_index(&root, &message)
+        prepare_publish_at(&root, &message, &allow_tracked_secrets.unwrap_or_default())
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
+/// Stage and commit everything for Publish to GitHub, creating the repository
+/// when the project has none. Files that [`looks_like_secret`] are never
+/// staged and come back in `left_out`. When the history already holds such
+/// files, pushing the branch would upload them, so nothing changes unless the
+/// user approved every one of them by name.
+fn prepare_publish_at(
+    root: &PathBuf,
+    message: &str,
+    approved: &[String],
+) -> Result<GitPublishPrepared, String> {
+    if !root.join(".git").exists() {
+        initialize_new_repo(root)?;
+    } else {
+        let unapproved: Vec<String> = secret_files_in_history(root)?
+            .into_iter()
+            .filter(|path| !approved.contains(path))
+            .collect();
+        if !unapproved.is_empty() {
+            return Err(crate::app_error::AppError::new("git.tracked_secret_files")
+                .param("files", first_files(&unapproved))
+                .into());
+        }
+    }
+    let left_out = stage_all_except_secrets(root)?;
+    let committed = commit_index(root, message)?;
+    Ok(GitPublishPrepared {
+        committed,
+        has_commit: has_head(root),
+        left_out,
+    })
+}
+
+/// The first five paths, then `(+N)` for the rest, so an error parameter
+/// stays short and carries no English words.
+fn first_files(files: &[String]) -> String {
+    let mut text = files
+        .iter()
+        .take(5)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+    if files.len() > 5 {
+        text.push_str(&format!(" (+{})", files.len() - 5));
+    }
+    text
+}
+
 #[tauri::command]
-pub async fn git_publish_preflight(project_id: String) -> Result<(), String> {
+pub async fn git_publish_preflight(project_id: String) -> Result<GitPublishPreflight, String> {
     tauri::async_runtime::spawn_blocking(move || git_publish_preflight_sync(&project_id))
         .await
         .map_err(|error| error.to_string())?
 }
 
-fn git_publish_preflight_sync(project_id: &str) -> Result<(), String> {
+fn git_publish_preflight_sync(project_id: &str) -> Result<GitPublishPreflight, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let root = project_root(project_id)?;
-    if root.join(".git").exists() {
-        return Ok(());
+    publish_preflight_at(&root)
+}
+
+/// What Publish to GitHub must ask about before it creates a repository on
+/// GitHub: a project inside another repository is refused, and files in the
+/// branch history that look like secrets are listed for the user to approve.
+fn publish_preflight_at(root: &PathBuf) -> Result<GitPublishPreflight, String> {
+    if !root.join(".git").exists() {
+        refuse_nested_repository(root)?;
+        return Ok(GitPublishPreflight {
+            tracked_secret_files: Vec::new(),
+        });
     }
-    refuse_nested_repository(&root)
+    Ok(GitPublishPreflight {
+        tracked_secret_files: secret_files_in_history(root)?,
+    })
+}
+
+/// Paths added by any commit reachable from HEAD, merges included, whose names
+/// look like secrets. Pushing the branch uploads all of them, even ones
+/// deleted since. Only names are judged, so a Keynote `.key` file counts too.
+/// Sorted and without repeats.
+fn secret_files_in_history(root: &PathBuf) -> Result<Vec<String>, String> {
+    if !has_head(root) {
+        return Ok(Vec::new());
+    }
+    let output = run_git_read_only(
+        root,
+        &[
+            "-c",
+            "log.diffMerges=separate",
+            "--no-replace-objects",
+            "log",
+            "--no-show-signature",
+            "--no-renames",
+            "--root",
+            "-m",
+            "--diff-filter=A",
+            "--name-only",
+            "--format=",
+            "-z",
+            "HEAD",
+            "--",
+        ],
+    )?;
+    let secrets: BTreeSet<String> = git_listing(output)?
+        .iter()
+        .filter(|path| judge_name(path) != NameVerdict::NotSecret)
+        .map(|path| String::from_utf8_lossy(path).into_owned())
+        .collect();
+    Ok(secrets.into_iter().collect())
 }
 
 #[tauri::command]
@@ -2314,6 +2626,124 @@ fn stage_all(root: &PathBuf) -> Result<(), String> {
     ok_or_err(run_git(root, &["add", "-A"])?)
 }
 
+/// Stage every change for Publish to GitHub except files that
+/// [`looks_like_secret`], and return those files as project-relative paths.
+/// They are left out through exclude pathspecs for this one `git add`, so no
+/// project file or exclude rule changes, their content is never hashed, and
+/// they stay visible as untracked, or keep their committed version, for the
+/// user to stage on purpose. Anything secret-looking already in the index,
+/// such as a file staged earlier, is unstaged again.
+fn stage_all_except_secrets(root: &PathBuf) -> Result<Vec<String>, String> {
+    ensure_private_exclude(root, Excludes::StateFolder)?;
+    let status = run_git_read_only(
+        root,
+        &[
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--no-renames",
+        ],
+    )?;
+    let mut left_out = BTreeSet::new();
+    for record in git_listing(status)? {
+        if record.len() < 4 || record[2] != b' ' || record.ends_with(b"/") {
+            continue;
+        }
+        let (x, y, path) = (record[0], record[1], &record[3..]);
+        // `add -A` would stage the worktree side. A deletion is kept, so a
+        // tracked secret can still be removed.
+        let staged_by_add = is_unmerged_status(x, y) || (y != b' ' && y != b'D');
+        if staged_by_add && looks_like_secret(root, path) {
+            left_out.insert(path.to_vec());
+        }
+    }
+    let mut pathspecs = vec![b".".to_vec()];
+    pathspecs.extend(
+        left_out
+            .iter()
+            .map(|path| [b":(exclude,literal)".as_slice(), path].concat()),
+    );
+    run_git_with_pathspecs(root, &["add", "-A"], &pathspecs)?;
+    let staged: Vec<Vec<u8>> = staged_paths(root)?
+        .into_iter()
+        .filter(|path| looks_like_secret(root, path))
+        .collect();
+    if !staged.is_empty() {
+        run_git_with_pathspecs(root, &["--literal-pathspecs", "reset", "-q"], &staged)?;
+    }
+    left_out.extend(staged);
+    Ok(left_out
+        .into_iter()
+        .map(|path| String::from_utf8_lossy(&path).into_owned())
+        .collect())
+}
+
+/// Paths the next commit would add, change or retype, or every index entry
+/// before the first commit.
+fn staged_paths(root: &PathBuf) -> Result<Vec<Vec<u8>>, String> {
+    let output = if has_head(root) {
+        run_git_read_only(
+            root,
+            &[
+                "diff-index",
+                "--cached",
+                "--name-only",
+                "-z",
+                "--no-renames",
+                "--diff-filter=AMT",
+                "HEAD",
+                "--",
+            ],
+        )?
+    } else {
+        run_git_read_only(root, &["ls-files", "-z", "--cached"])?
+    };
+    git_listing(output)
+}
+
+/// Run Git with `pathspecs` read from a temporary file, NUL-separated, so a
+/// path with a newline, quotes or bytes that are not Unicode reaches Git as it
+/// is and the list never meets a command-line length limit. The file is
+/// written and closed before Git opens it.
+fn run_git_with_pathspecs(
+    root: &PathBuf,
+    args: &[&str],
+    pathspecs: &[Vec<u8>],
+) -> Result<(), String> {
+    let folder = tempfile::tempdir()
+        .map_err(|error| format!("could not prepare the file list for Git: {error}"))?;
+    let list = folder.path().join("pathspecs");
+    let contents: Vec<u8> = pathspecs
+        .iter()
+        .flat_map(|pathspec| pathspec.iter().copied().chain([0]))
+        .collect();
+    std::fs::write(&list, contents)
+        .map_err(|error| format!("could not prepare the file list for Git: {error}"))?;
+    let mut from_file = OsString::from("--pathspec-from-file=");
+    from_file.push(&list);
+    let args = [args, &["--pathspec-file-nul"]].concat();
+    ok_or_err(run_configured_git(root, &args, true, |command| {
+        command.arg(from_file);
+    })?)
+}
+
+/// The entries of a `-z` listing. Git ends each one with a NUL, so a listing
+/// that ends otherwise was cut at the output limit and is refused rather than
+/// checked in part.
+fn git_listing(output: std::process::Output) -> Result<Vec<Vec<u8>>, String> {
+    let listing = output.stdout.clone();
+    ok_or_err(output)?;
+    if listing.last().is_some_and(|byte| *byte != 0) {
+        return Err("Git listed too many files to check for secrets".into());
+    }
+    Ok(listing
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+        .map(<[u8]>::to_vec)
+        .collect())
+}
+
 fn unstage_all(root: &PathBuf) -> Result<(), String> {
     let out = if has_head(root) {
         run_git(root, &["reset", "-q", "HEAD", "--", "."])?
@@ -3424,7 +3854,6 @@ mod tests {
             "cert.p12",
             "cert.pfx",
             "id_rsa",
-            "id_rsa.pub",
             "id_dsa",
             "id_ecdsa",
             "id_ed25519",
@@ -3436,6 +3865,7 @@ mod tests {
             "credentials",
             "credentials.json",
             "Credentials.JSON",
+            "secrets",
             "secrets.json",
             ".htpasswd",
             "putty.ppk",
@@ -3482,9 +3912,12 @@ mod tests {
             "env.bib",
             "latexmkrc",
             "monkey.png",
+            "id_rsa.pub",
+            ".env.example",
         ] {
             write(&root, name, "x\n");
         }
+        write(&root, "talk.key", "PK\u{3}\u{4}\u{14}\u{0}keynote");
         assert!(ensure_repository(&root).unwrap());
 
         assert_eq!(
@@ -4195,16 +4628,18 @@ mod tests {
         std::fs::create_dir(&publish_project).unwrap();
         write(&publish_project, "main.tex", "publish me\n");
         assert!(
-            super::git_prepare_publish(publish_id.into(), "Publish project".into())
+            super::git_prepare_publish(publish_id.into(), "Publish project".into(), None)
                 .await
                 .unwrap()
+                .committed
         );
         assert!(super::git_is_initialized(publish_id.into()).await.unwrap());
         assert_eq!(super::git_log(publish_id.into()).await.unwrap().len(), 1);
         assert!(
-            !super::git_prepare_publish(publish_id.into(), "No changes".into())
+            !super::git_prepare_publish(publish_id.into(), "No changes".into(), None)
                 .await
                 .unwrap()
+                .committed
         );
     }
 
@@ -5440,9 +5875,10 @@ mod tests {
         write(&project, "main.tex", "nested\n");
 
         let initialized = super::git_initialize(project_id.into()).await.unwrap_err();
-        let published = super::git_prepare_publish(project_id.into(), "Initial commit".into())
-            .await
-            .unwrap_err();
+        let published =
+            super::git_prepare_publish(project_id.into(), "Initial commit".into(), None)
+                .await
+                .unwrap_err();
 
         for error in [initialized, published] {
             let envelope: serde_json::Value =
@@ -5473,9 +5909,10 @@ mod tests {
         assert!(!project.join(".git").exists());
 
         ok_or_err(run_git(&project, &["init", "--quiet"]).unwrap()).unwrap();
-        super::git_publish_preflight(project_id.into())
+        let preflight = super::git_publish_preflight(project_id.into())
             .await
             .unwrap();
+        assert!(preflight.tracked_secret_files.is_empty());
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -5489,10 +5926,459 @@ mod tests {
         std::fs::create_dir_all(&project).unwrap();
         write(&project, "main.tex", "standalone\n");
 
-        super::git_publish_preflight(project_id.into())
+        let preflight = super::git_publish_preflight(project_id.into())
             .await
             .unwrap();
+        assert!(preflight.tracked_secret_files.is_empty());
         assert!(!project.join(".git").exists());
+    }
+
+    const PEM: &str = "-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----\n";
+    /// The start of a single-file Keynote document, which is a zip archive.
+    const KEYNOTE: &[u8] = b"PK\x03\x04\x14\x00\x00\x00keynote";
+
+    fn write_file(root: &Path, relative: &str, content: impl AsRef<[u8]>) {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    /// The NUL-separated paths a Git listing prints, as text.
+    fn listed(root: &Path, args: &[&str]) -> Vec<String> {
+        super::git_listing(run_git(&root.to_path_buf(), args).unwrap())
+            .unwrap()
+            .iter()
+            .map(|path| String::from_utf8_lossy(path).into_owned())
+            .collect()
+    }
+
+    fn sorted_status(root: &Path) -> Vec<String> {
+        let mut status = listed(
+            root,
+            &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        );
+        status.sort();
+        status
+    }
+
+    fn commit_everything(root: &Path, message: &str) {
+        let root = root.to_path_buf();
+        ok_or_err(run_git(&root, &["add", "-A"]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["commit", "--quiet", "-m", message]).unwrap()).unwrap();
+    }
+
+    /// Whether the object store holds the current content of `relative`.
+    fn is_stored(root: &Path, relative: &str) -> bool {
+        let hash = git_text(root, &["hash-object", "--", relative]);
+        run_git(&root.to_path_buf(), &["cat-file", "-e", &hash])
+            .unwrap()
+            .status
+            .success()
+    }
+
+    /// The `files` parameter of a `git.tracked_secret_files` refusal.
+    fn refused_files(error: &str) -> String {
+        let envelope: serde_json::Value = serde_json::from_str(
+            error
+                .strip_prefix(crate::app_error::PREFIX)
+                .unwrap_or_else(|| panic!("{error}")),
+        )
+        .unwrap();
+        assert_eq!(envelope["code"], "git.tracked_secret_files", "{error}");
+        envelope["params"]["files"].as_str().unwrap().to_string()
+    }
+
+    /// Run this thread's Git spawns without the machine's global and system
+    /// Git configuration or its default excludes file. A test that publishes a
+    /// folder with no `.git` yet uses this, because [`without_global_excludes`]
+    /// needs a repository to configure.
+    fn without_global_config() -> super::testing::InheritedEnvOverride {
+        let empty = temp_dir("no-global-config");
+        super::testing::inherit_git_env(vec![
+            (
+                "GIT_CONFIG_GLOBAL".into(),
+                empty.join("missing-global-config").into_os_string(),
+            ),
+            ("GIT_CONFIG_NOSYSTEM".into(), "1".into()),
+            ("XDG_CONFIG_HOME".into(), empty.into_os_string()),
+        ])
+    }
+
+    #[test]
+    fn publishing_leaves_secret_files_out_of_a_new_repository() {
+        let _config = without_global_config();
+        let root = temp_dir("publish-new-secrets");
+        write_file(&root, "main.tex", "\\documentclass{article}\n");
+        write_file(&root, ".env", "API_KEY=abc\n");
+        write_file(&root, "analysis/.env.local", "TOKEN=abc\n");
+        write_file(&root, "deploy/server.pem", PEM);
+        write_file(&root, "id_ed25519", "-----BEGIN OPENSSH PRIVATE KEY-----\n");
+        write_file(&root, "prod.env", "DB_PASSWORD=abc\n");
+        write_file(&root, ".oleafly/state.json", "{}\n");
+
+        let prepared = super::prepare_publish_at(&root, "Initial commit", &[]).unwrap();
+        without_global_excludes(&root);
+
+        assert!(prepared.committed);
+        assert!(prepared.has_commit);
+        assert_eq!(listed(&root, &["ls-files", "-z"]), ["main.tex"]);
+        assert_eq!(
+            prepared.left_out,
+            [
+                ".env",
+                "analysis/.env.local",
+                "deploy/server.pem",
+                "id_ed25519",
+                "prod.env"
+            ]
+        );
+        assert_eq!(
+            sorted_status(&root),
+            [
+                "?? .env",
+                "?? analysis/.env.local",
+                "?? deploy/server.pem",
+                "?? id_ed25519",
+                "?? prod.env"
+            ],
+            "the left-out files stay visible as untracked"
+        );
+        assert!(!root.join(".gitignore").exists());
+        let exclude = std::fs::read_to_string(root.join(".git/info/exclude")).unwrap();
+        let rules: Vec<&str> = exclude
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect();
+        assert_eq!(rules, super::private_exclude_lines().collect::<Vec<_>>());
+        assert!(!is_stored(&root, ".env"), "nothing secret was hashed");
+    }
+
+    #[test]
+    fn publishing_keeps_templates_public_keys_and_keynote_files() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        let files: [(&str, &[u8]); 18] = [
+            (".env.example", b"API_KEY=\n"),
+            (".env.sample", b"API_KEY=\n"),
+            (".env.template", b"API_KEY=\n"),
+            (".env.local.example", b"API_KEY=\n"),
+            ("example.env", b"API_KEY=\n"),
+            ("id_ed25519.pub", b"ssh-ed25519 AAAAC3Nz t@t\n"),
+            (".latexmkrc", b"$pdf_mode = 1;\n"),
+            ("latexmkrc", b"$pdf_mode = 1;\n"),
+            (".gitignore", b"*.bak\n"),
+            ("refs.bib", b"@article{key,}\n"),
+            ("figures/plot.png", b"\x89PNG\r\n\x1a\n"),
+            ("environment.yml", b"name: paper\n"),
+            ("keys.tex", b"keys\n"),
+            ("credentials.tex", b"credentials\n"),
+            (".env/pyvenv.cfg", b"home = /usr/bin\n"),
+            ("talk.key", KEYNOTE),
+            ("old.key/Index.zip", KEYNOTE),
+            ("data.json", br#"{"samples": [1, 2, 3]}"#),
+        ];
+        for (name, content) in files {
+            write_file(&root, name, content);
+        }
+
+        let prepared = super::prepare_publish_at(&root, "Initial commit", &[]).unwrap();
+
+        assert!(prepared.committed);
+        assert!(prepared.left_out.is_empty(), "{:?}", prepared.left_out);
+        let mut expected: Vec<&str> = files.iter().map(|(name, _)| *name).collect();
+        expected.sort();
+        let mut tracked = listed(&root, &["ls-files", "-z"]);
+        tracked.sort();
+        assert_eq!(tracked, expected);
+    }
+
+    #[test]
+    fn every_secret_name_is_left_out_in_any_case_or_folder() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "\\documentclass{article}\n");
+        let mut secrets: Vec<(String, Vec<u8>)> = Vec::new();
+        for name in [
+            ".ENV",
+            ".Env.Production",
+            ".env-local",
+            ".ENV_prod",
+            "Server.PEM",
+            "ID_RSA",
+            "id_ed25519_sk",
+            "Credentials.JSON",
+            "kaggle.json",
+            ".Renviron",
+            "_netrc",
+            ".pgpass",
+            "PgPass.CONF",
+            ".my.cnf",
+            "secrets",
+            "secrets.toml",
+            "token.pickle",
+            "client_secret_1.apps.googleusercontent.com.json",
+            "cert.P12",
+            "AuthKey_X.p8",
+        ] {
+            secrets.push((format!("nested/deeper/{name}"), b"secret\n".to_vec()));
+        }
+        secrets.push(("nested/deeper/server.key".into(), PEM.into()));
+        secrets.push((".private/notes.md".into(), b"confidential\n".to_vec()));
+        secrets.push(("secrets/token.txt".into(), b"token\n".to_vec()));
+        secrets.push(("infra/.aws/config".into(), b"[default]\n".to_vec()));
+        secrets.push(("infra/.kube/config".into(), b"users: []\n".to_vec()));
+        for (path, content) in &secrets {
+            write_file(&root, path, content);
+        }
+        let mut expected: Vec<String> = secrets.into_iter().map(|(path, _)| path).collect();
+        expected.sort();
+
+        let prepared = super::prepare_publish_at(&root, "Initial commit", &[]).unwrap();
+
+        assert_eq!(prepared.left_out, expected);
+        assert_eq!(listed(&root, &["ls-files", "-z"]), ["main.tex"]);
+    }
+
+    #[test]
+    fn publishing_an_existing_repository_leaves_new_secrets_out() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "first\n");
+        commit_everything(&root, "first");
+        let exclude = root.join(".git").join("info").join("exclude");
+        let before = std::fs::read_to_string(&exclude).unwrap_or_default();
+        write_file(&root, ".env", "API_KEY=abc\n");
+        write_file(&root, "main.tex", "second\n");
+
+        let prepared = super::prepare_publish_at(&root, "Publish", &[]).unwrap();
+
+        assert!(prepared.committed);
+        assert!(prepared.has_commit);
+        assert_eq!(prepared.left_out, [".env"]);
+        assert_eq!(git_text(&root, &["show", "HEAD:main.tex"]), "second");
+        assert_eq!(
+            listed(&root, &["ls-tree", "-r", "-z", "--name-only", "HEAD"]),
+            ["main.tex"]
+        );
+        let after = std::fs::read_to_string(&exclude).unwrap();
+        let added = after
+            .strip_prefix(before.as_str())
+            .unwrap_or_else(|| panic!("the exclude file was rewritten:\n{before}\n---\n{after}"));
+        assert_eq!(added.trim(), ".oleafly/");
+    }
+
+    #[test]
+    fn publishing_unstages_secrets_the_user_staged_or_marked() {
+        for with_head in [false, true] {
+            let root = temp_repo();
+            without_global_excludes(&root);
+            write_file(&root, "main.tex", "first\n");
+            if with_head {
+                commit_everything(&root, "first");
+                write_file(&root, "main.tex", "second\n");
+            }
+            write_file(&root, ".env", "API_KEY=abc\n");
+            write_file(&root, ".env.local", "TOKEN=never-hashed\n");
+            stage_paths(&root, &[".env".into()]).unwrap();
+            ok_or_err(run_git(&root, &["add", "-N", "--", ".env.local"]).unwrap()).unwrap();
+
+            let prepared = super::prepare_publish_at(&root, "Publish", &[]).unwrap();
+
+            assert!(prepared.committed, "with a HEAD: {with_head}");
+            assert_eq!(
+                prepared.left_out,
+                [".env", ".env.local"],
+                "with a HEAD: {with_head}"
+            );
+            assert_eq!(
+                sorted_status(&root),
+                ["?? .env", "?? .env.local"],
+                "with a HEAD: {with_head}"
+            );
+            assert_eq!(
+                listed(&root, &["ls-tree", "-r", "-z", "--name-only", "HEAD"]),
+                ["main.tex"]
+            );
+            assert!(
+                !is_stored(&root, ".env.local"),
+                "the marked file's content was never hashed (with a HEAD: {with_head})"
+            );
+        }
+    }
+
+    #[test]
+    fn publishing_refuses_secret_files_already_in_history() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "first\n");
+        write_file(&root, ".env", "API_KEY=abc\n");
+        write_file(&root, "deploy/server.key", PEM);
+        write_file(&root, "notes.txt", "notes\n");
+        commit_everything(&root, "first");
+        // A secret name that arrives by rename is added too.
+        ok_or_err(run_git(&root, &["mv", "notes.txt", "deploy/.env"]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["rm", "--cached", "-q", "--", ".env"]).unwrap()).unwrap();
+        ok_or_err(run_git(&root, &["commit", "--quiet", "-m", "forget"]).unwrap()).unwrap();
+        let history = [".env", "deploy/.env", "deploy/server.key"].map(String::from);
+        let head = git_text(&root, &["rev-parse", "HEAD"]);
+        let index = std::fs::read(root.join(".git").join("index")).unwrap();
+
+        let error = super::prepare_publish_at(&root, "Publish", &[]).unwrap_err();
+
+        assert_eq!(refused_files(&error), history.join(", "));
+        assert_eq!(git_text(&root, &["rev-parse", "HEAD"]), head);
+        assert_eq!(
+            std::fs::read(root.join(".git").join("index")).unwrap(),
+            index
+        );
+        assert_eq!(
+            super::publish_preflight_at(&root)
+                .unwrap()
+                .tracked_secret_files,
+            history
+        );
+        let error = super::prepare_publish_at(&root, "Publish", &history[..2]).unwrap_err();
+        assert_eq!(refused_files(&error), "deploy/server.key");
+
+        let prepared = super::prepare_publish_at(&root, "Publish", &history).unwrap();
+
+        assert!(!prepared.committed);
+        assert!(prepared.has_commit);
+        assert_eq!(prepared.left_out, [".env"]);
+        assert_eq!(git_text(&root, &["rev-parse", "HEAD"]), head);
+    }
+
+    #[test]
+    fn history_scan_sees_secrets_added_in_a_merge() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "first\n");
+        commit_everything(&root, "first");
+        ok_or_err(run_git(&root, &["checkout", "-q", "-b", "side"]).unwrap()).unwrap();
+        write_file(&root, "side.tex", "side\n");
+        commit_everything(&root, "side");
+        ok_or_err(run_git(&root, &["checkout", "-q", "main"]).unwrap()).unwrap();
+        write_file(&root, "other.tex", "other\n");
+        commit_everything(&root, "other");
+        ok_or_err(run_git(&root, &["merge", "-q", "--no-commit", "--no-ff", "side"]).unwrap())
+            .unwrap();
+        write_file(&root, "evil.pem", PEM);
+        commit_everything(&root, "merge");
+        ok_or_err(run_git(&root, &["config", "log.diffMerges", "off"]).unwrap()).unwrap();
+
+        assert_eq!(
+            super::publish_preflight_at(&root)
+                .unwrap()
+                .tracked_secret_files,
+            ["evil.pem"]
+        );
+    }
+
+    #[test]
+    fn allowing_tracked_secrets_still_does_not_stage_their_new_content() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "first\n");
+        write_file(&root, ".env", "API_KEY=old\n");
+        commit_everything(&root, "first");
+        write_file(&root, "main.tex", "second\n");
+        write_file(&root, ".env", "API_KEY=new\n");
+
+        let prepared = super::prepare_publish_at(&root, "Publish", &[".env".into()]).unwrap();
+
+        assert!(prepared.committed);
+        assert_eq!(git_text(&root, &["show", "HEAD:.env"]), "API_KEY=old");
+        assert_eq!(git_text(&root, &["show", "HEAD:main.tex"]), "second");
+        assert_eq!(prepared.left_out, [".env"]);
+    }
+
+    #[test]
+    fn exclude_pathspecs_survive_odd_names() {
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "we ird/[ab] {c}.key", PEM);
+        write_file(&root, "we ird/[ab].tex", "odd\n");
+        write_file(&root, "données/clé.pem", PEM);
+        write_file(&root, "données/résumé.tex", "résumé\n");
+        write_file(&root, "论文/.ENV", "API_KEY=abc\n");
+        let mut expected = vec![
+            "we ird/[ab] {c}.key".to_string(),
+            "données/clé.pem".to_string(),
+            "论文/.ENV".to_string(),
+        ];
+        #[cfg(unix)]
+        {
+            write_file(&root, "line\nbreak*?.pem", PEM);
+            expected.push("line\nbreak*?.pem".into());
+        }
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::ffi::OsStrExt;
+            std::fs::write(root.join(std::ffi::OsStr::from_bytes(b"caf\xe9.pem")), PEM).unwrap();
+            expected.push("caf\u{fffd}.pem".into());
+        }
+        expected.sort();
+
+        let prepared = super::prepare_publish_at(&root, "Publish", &[]).unwrap();
+
+        assert_eq!(prepared.left_out, expected);
+        assert_eq!(
+            listed(&root, &["ls-files", "-z"]),
+            ["données/résumé.tex", "we ird/[ab].tex"]
+        );
+    }
+
+    #[test]
+    fn nothing_to_publish_when_every_file_is_a_secret() {
+        let _config = without_global_config();
+        let root = temp_dir("publish-only-secrets");
+        write_file(&root, ".env", "API_KEY=abc\n");
+
+        let prepared = super::prepare_publish_at(&root, "Initial commit", &[]).unwrap();
+
+        assert!(!prepared.committed);
+        assert!(!prepared.has_commit);
+        assert_eq!(prepared.left_out, [".env"]);
+    }
+
+    #[test]
+    fn a_listing_cut_at_the_output_limit_is_refused() {
+        let mut cut = run_git(&temp_repo(), &["ls-files", "-z"]).unwrap();
+        cut.stdout = b"main.tex\0.env\n... output truncated".to_vec();
+        assert!(super::git_listing(cut).is_err());
+    }
+
+    #[test]
+    fn pathspec_environment_is_cleared() {
+        let variables = [
+            "GIT_LITERAL_PATHSPECS",
+            "GIT_GLOB_PATHSPECS",
+            "GIT_NOGLOB_PATHSPECS",
+            "GIT_ICASE_PATHSPECS",
+        ];
+        let mut command = Command::new("git");
+        for variable in variables {
+            command.env(variable, "1");
+        }
+        super::clear_inherited_git_env(&mut command);
+        let envs: Vec<_> = command.get_envs().collect();
+        for variable in variables {
+            assert!(
+                envs.contains(&(std::ffi::OsStr::new(variable), None)),
+                "{variable} is removed: {envs:?}"
+            );
+        }
+
+        let root = temp_repo();
+        without_global_excludes(&root);
+        write_file(&root, "main.tex", "first\n");
+        write_file(&root, ".env", "API_KEY=abc\n");
+        let _inherited =
+            super::testing::inherit_git_env(vec![("GIT_LITERAL_PATHSPECS".into(), "1".into())]);
+
+        assert_eq!(super::stage_all_except_secrets(&root).unwrap(), [".env"]);
+        assert_eq!(listed(&root, &["ls-files", "-z"]), ["main.tex"]);
     }
 
     #[test]

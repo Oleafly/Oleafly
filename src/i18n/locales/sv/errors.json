@@ -62,7 +62,8 @@
   "git": {
     "remote_exists": "Projektet är redan länkat till {{remote}}.",
     "nested_repository": "Projektet ligger i ett annat Git-repositorium, så Oleafly skapar inget separat repositorium här.",
-    "not_installed": "Git är inte installerat på den här datorn. Installera Git och försök igen."
+    "not_installed": "Git är inte installerat på den här datorn. Installera Git och försök igen.",
+    "tracked_secret_files": "Publiceringen stoppades eftersom filer i projektets Git-historik kan innehålla nycklar eller lösenord: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Fullständig åtkomst aktiverades inte."

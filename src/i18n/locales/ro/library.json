@@ -387,7 +387,18 @@
     "linked": "Legat de {{remote}} și trimis.",
     "pushNeedsPull": "Legat de {{remote}}, dar trimiterea are nevoie întâi de o aducere: {{detail}}",
     "replaceRemotePrompt": "Acest proiect este legat de {{remote}}. Înlocuiești această legătură?",
-    "replaceRemote": "Înlocuiește legătura"
+    "replaceRemote": "Înlocuiește legătura",
+    "trackedSecretsPrompt_one": "Acest fișier poate conține chei sau parole și este deja în istoricul Git al proiectului: {{files}}. Publicarea încarcă acest istoric, așa că GitHub l-ar primi și el.",
+    "trackedSecretsPrompt_few": "Aceste fișiere pot conține chei sau parole și sunt deja în istoricul Git al proiectului: {{files}}. Publicarea încarcă acest istoric, așa că GitHub le-ar primi și el.",
+    "trackedSecretsPrompt_other": "Aceste fișiere pot conține chei sau parole și sunt deja în istoricul Git al proiectului: {{files}}. Publicarea încarcă acest istoric, așa că GitHub le-ar primi și el.",
+    "publishAnyway": "Publică oricum",
+    "leftOutSecrets_one": "Omis pentru că poate conține chei sau parole: {{files}}. Fișierul este încă în folderul proiectului. Ca să-l publici, pregătește-l și comite-l în Control al versiunilor.",
+    "leftOutSecrets_few": "Omise pentru că pot conține chei sau parole: {{files}}. Fișierele sunt încă în folderul proiectului. Ca să publici unul dintre ele, pregătește-l și comite-l în Control al versiunilor.",
+    "leftOutSecrets_other": "Omise pentru că pot conține chei sau parole: {{files}}. Fișierele sunt încă în folderul proiectului. Ca să publici unul dintre ele, pregătește-l și comite-l în Control al versiunilor.",
+    "moreFiles_one": "{{files}} și încă {{more}}",
+    "moreFiles_few": "{{files}} și încă {{more}}",
+    "moreFiles_other": "{{files}} și încă {{more}}",
+    "nothingToPublish": "Nu s-a trimis nimic, pentru că proiectul nu are încă nicio comitere."
   },
   "deadlines": {
     "title": "Termene limită pentru conferințe",

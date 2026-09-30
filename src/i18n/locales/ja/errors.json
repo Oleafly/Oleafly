@@ -62,7 +62,8 @@
   "git": {
     "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
     "nested_repository": "このプロジェクトは別の Git リポジトリの中にあるため、Oleafly はここに別のリポジトリを作成しません。",
-    "not_installed": "このコンピュータには Git がインストールされていません。Git をインストールしてから、もう一度お試しください。"
+    "not_installed": "このコンピュータには Git がインストールされていません。Git をインストールしてから、もう一度お試しください。",
+    "tracked_secret_files": "このプロジェクトの Git 履歴にあるファイルに鍵やパスワードが含まれている可能性があるため、公開を中止しました: {{files}}"
   },
   "approvals": {
     "full_access_declined": "フルアクセスは有効になりませんでした。"

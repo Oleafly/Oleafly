@@ -387,7 +387,18 @@
     "linked": "Enlazado y subido a {{remote}}.",
     "pushNeedsPull": "Se enlazó con {{remote}}, pero antes de subir hay que descargar los cambios: {{detail}}",
     "replaceRemotePrompt": "Este proyecto está enlazado con {{remote}}. ¿Quieres reemplazar ese enlace?",
-    "replaceRemote": "Reemplazar enlace"
+    "replaceRemote": "Reemplazar enlace",
+    "trackedSecretsPrompt_one": "Este archivo puede contener claves o contraseñas y ya está en el historial de Git de este proyecto: {{files}}. Al publicar se sube ese historial, así que GitHub también lo recibiría.",
+    "trackedSecretsPrompt_many": "Estos archivos pueden contener claves o contraseñas y ya están en el historial de Git de este proyecto: {{files}}. Al publicar se sube ese historial, así que GitHub también los recibiría.",
+    "trackedSecretsPrompt_other": "Estos archivos pueden contener claves o contraseñas y ya están en el historial de Git de este proyecto: {{files}}. Al publicar se sube ese historial, así que GitHub también los recibiría.",
+    "publishAnyway": "Publicar de todos modos",
+    "leftOutSecrets_one": "Se omitió porque puede contener claves o contraseñas: {{files}}. Sigue en la carpeta del proyecto. Para publicarlo, prepáralo y confírmalo en Control de versiones.",
+    "leftOutSecrets_many": "Se omitieron porque pueden contener claves o contraseñas: {{files}}. Siguen en la carpeta del proyecto. Para publicar uno, prepáralo y confírmalo en Control de versiones.",
+    "leftOutSecrets_other": "Se omitieron porque pueden contener claves o contraseñas: {{files}}. Siguen en la carpeta del proyecto. Para publicar uno, prepáralo y confírmalo en Control de versiones.",
+    "moreFiles_one": "{{files}} y {{more}} más",
+    "moreFiles_many": "{{files}} y {{more}} más",
+    "moreFiles_other": "{{files}} y {{more}} más",
+    "nothingToPublish": "No se subió nada porque este proyecto aún no tiene confirmaciones."
   },
   "deadlines": {
     "title": "Fechas límite de congresos",

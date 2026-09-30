@@ -380,7 +380,15 @@
     "linked": "Tilknyttet og pushet til {{remote}}.",
     "pushNeedsPull": "Tilknyttet {{remote}}, men der skal pulles, før der kan pushes: {{detail}}",
     "replaceRemotePrompt": "Projektet er tilknyttet {{remote}}. Vil du erstatte tilknytningen?",
-    "replaceRemote": "Erstat tilknytning"
+    "replaceRemote": "Erstat tilknytning",
+    "trackedSecretsPrompt_one": "Denne fil kan indeholde nøgler eller adgangskoder og er allerede i projektets Git-historik: {{files}}. Når du udgiver, uploades historikken, så GitHub ville også få den.",
+    "trackedSecretsPrompt_other": "Disse filer kan indeholde nøgler eller adgangskoder og er allerede i projektets Git-historik: {{files}}. Når du udgiver, uploades historikken, så GitHub ville også få dem.",
+    "publishAnyway": "Udgiv alligevel",
+    "leftOutSecrets_one": "Udeladt, fordi den kan indeholde nøgler eller adgangskoder: {{files}}. Den ligger stadig i projektmappen. Hvis du vil udgive den, skal du lægge den i staging og committe den i Versionsstyring.",
+    "leftOutSecrets_other": "Udeladt, fordi de kan indeholde nøgler eller adgangskoder: {{files}}. De ligger stadig i projektmappen. Hvis du vil udgive en af dem, skal du lægge den i staging og committe den i Versionsstyring.",
+    "moreFiles_one": "{{files}} og {{more}} til",
+    "moreFiles_other": "{{files}} og {{more}} til",
+    "nothingToPublish": "Der blev ikke pushet noget, fordi projektet endnu ikke har nogen commits."
   },
   "deadlines": {
     "title": "Konferencefrister",

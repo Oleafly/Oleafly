@@ -14,7 +14,7 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
@@ -757,6 +757,17 @@ export interface GitPullResult {
     conflicts: GitConflict[];
     state: ProjectStateChanged;
 }
+export interface GitPublishPrepared {
+    committed: boolean;
+    /** The branch has a commit to push. */
+    hasCommit: boolean;
+    /** Project-relative paths not staged because they look like secrets. */
+    leftOut: string[];
+}
+export interface GitPublishPreflight {
+    /** Secret-looking paths already in the branch history, which a push uploads. */
+    trackedSecretFiles: string[];
+}
 export interface GitFileChange {
     path: string;
     status: string;
@@ -936,8 +947,12 @@ export interface BackendPort {
   refreshDeadlines: () => Promise<void>;
   gitIsInitialized: (projectId: string) => Promise<boolean>;
   gitInitialize: (projectId: string) => Promise<string>;
-  gitPreparePublish: (projectId: string, message: string) => Promise<boolean>;
-  gitPublishPreflight: (projectId: string) => Promise<void>;
+  gitPreparePublish: (
+    projectId: string,
+    message: string,
+    options?: { allowTrackedSecrets?: string[] },
+  ) => Promise<GitPublishPrepared>;
+  gitPublishPreflight: (projectId: string) => Promise<GitPublishPreflight>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   exportPdf: (projectId: string, dest: string) => Promise<void>;

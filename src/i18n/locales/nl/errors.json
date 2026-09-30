@@ -62,7 +62,8 @@
   "git": {
     "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
     "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan.",
-    "not_installed": "Git is niet geïnstalleerd op deze computer. Installeer Git en probeer het opnieuw."
+    "not_installed": "Git is niet geïnstalleerd op deze computer. Installeer Git en probeer het opnieuw.",
+    "tracked_secret_files": "Publiceren gestopt omdat bestanden in de Git-geschiedenis van dit project sleutels of wachtwoorden kunnen bevatten: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Volledige toegang is niet ingeschakeld."

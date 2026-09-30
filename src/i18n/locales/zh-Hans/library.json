@@ -373,7 +373,12 @@
     "linked": "已关联并推送到 {{remote}}。",
     "pushNeedsPull": "已关联 {{remote}}，但推送前需要先拉取：{{detail}}。",
     "replaceRemotePrompt": "此项目当前关联的是 {{remote}}。要替换这个关联吗？",
-    "replaceRemote": "替换关联"
+    "replaceRemote": "替换关联",
+    "trackedSecretsPrompt_other": "这些文件可能包含密钥或密码，并且已在此项目的 Git 历史中：{{files}}。发布会上传这段历史，因此 GitHub 也会收到它们。",
+    "publishAnyway": "仍然发布",
+    "leftOutSecrets_other": "以下文件可能包含密钥或密码，已被排除：{{files}}。它们仍在项目文件夹中。如需发布其中一个，请在源代码管理中暂存并提交它。",
+    "moreFiles_other": "{{files}}，另有 {{more}} 个",
+    "nothingToPublish": "此项目还没有提交，因此没有推送任何内容。"
   },
   "deadlines": {
     "title": "会议截止日期",

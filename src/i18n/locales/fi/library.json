@@ -380,7 +380,15 @@
     "linked": "Linkitettiin ja työnnettiin kohteeseen {{remote}}.",
     "pushNeedsPull": "Linkitettiin kohteeseen {{remote}}, mutta työntö vaatii ensin noudon: {{detail}}",
     "replaceRemotePrompt": "Tämä projekti on linkitetty kohteeseen {{remote}}. Korvataanko linkki?",
-    "replaceRemote": "Korvaa linkki"
+    "replaceRemote": "Korvaa linkki",
+    "trackedSecretsPrompt_one": "Tämä tiedosto voi sisältää avaimia tai salasanoja, ja se on jo projektin Git-historiassa: {{files}}. Julkaiseminen lähettää historian, joten myös GitHub saisi sen.",
+    "trackedSecretsPrompt_other": "Nämä tiedostot voivat sisältää avaimia tai salasanoja, ja ne ovat jo projektin Git-historiassa: {{files}}. Julkaiseminen lähettää historian, joten myös GitHub saisi ne.",
+    "publishAnyway": "Julkaise silti",
+    "leftOutSecrets_one": "Jätettiin pois, koska se voi sisältää avaimia tai salasanoja: {{files}}. Se on yhä projektikansiossa. Jos haluat julkaista sen, valmistele ja vahvista se Versionhallinnassa.",
+    "leftOutSecrets_other": "Jätettiin pois, koska ne voivat sisältää avaimia tai salasanoja: {{files}}. Ne ovat yhä projektikansiossa. Jos haluat julkaista niistä jonkin, valmistele ja vahvista se Versionhallinnassa.",
+    "moreFiles_one": "{{files}} ja {{more}} muu",
+    "moreFiles_other": "{{files}} ja {{more}} muuta",
+    "nothingToPublish": "Mitään ei työnnetty, koska projektissa ei ole vielä commiteja."
   },
   "deadlines": {
     "title": "Konferenssien määräajat",
