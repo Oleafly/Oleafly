@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each CLI agent in Settings > AI > Agents has a Program row. It shows the
+  program Oleafly found and where, and you can choose another file or type
+  its location (#84). Test starts the agent in an empty folder before
+  anything is saved, and if it fails it says why in one sentence with one
+  thing to try next. The assistant's setup card now has a Set up button that
+  opens the right agent in Settings.
+- After an agent or the Oleafly assistant changes files, a line under its
+  reply says how many. Review shows each change, Undo puts a file back and
+  Redo brings the change back. For this, Oleafly keeps a copy of the project
+  from before each turn in its own data folder, never in your project (#84).
+  Build output such as `.aux` and `.log` files is listed apart and left out
+  of Undo all.
+- Permission requests from CLI agents show the change the agent wants to
+  make before you allow it.
+- The CLI agent home has research starting points: Literature sweep, Related
+  work, Citation audit, Manuscript review, Reproducibility audit, Figure
+  audit, Git review and Reference cleanup. They fill in the message and wait
+  for you to send it. A skill you pick is sent with its instructions, so
+  agents without Oleafly's tools, such as Pi, can use it.
+- Export a CLI agent conversation as Markdown or JSON from the history menu.
+  Conversations also record the Git commit they started from.
+- When Git isn't installed, Source Control says so and explains how to get it
+  on your system instead of showing buttons that fail.
+
+### Changed
+
+- A project Oleafly creates or imports now starts with one Git commit of its
+  files, called "Create project", so the Git panel shows real differences
+  from the start. Git hooks and commit signing never run for it, and it is
+  skipped for projects over 100 MB or with files that usually hold passwords
+  or keys, such as `.env`.
+- Oleafly now finds CLI agents installed with npm, pnpm, Scoop, winget and
+  similar tools on Windows, on any drive, and sees programs installed after
+  it started. It also tells the Pi bridge where Pi is. The Pi bridge is now
+  pi-acp 0.0.34, which handles folders with spaces on Windows.
+- Agent setup no longer tells you a program is missing from your PATH. It
+  says what Oleafly found and why it can't use it, such as a PowerShell
+  script where a `.cmd` or `.exe` is needed.
+
+### Fixed
+
+- On Windows, installing an agent bridge failed with `EISDIR: illegal
+  operation on a directory, lstat 'D:'` on current Node.js versions, and a
+  bridge that did install could not start (#84). Oleafly no longer passes
+  Node.js paths in the `\\?\` form.
+- On macOS, agents installed in folders only your shell knows about, such as
+  `~/.local/bin` or an nvm folder, were missed when Oleafly was opened from
+  the Dock or Finder.
+- One very large edit from an agent, such as a whole `.bib` file, no longer
+  ends the conversation.
+- The agent picker no longer pushes the assistant panel sideways when the
+  panel is narrow and the agent has a long name.
+
 ## [0.4.3] - 2026-09-27
 
 ### Added
