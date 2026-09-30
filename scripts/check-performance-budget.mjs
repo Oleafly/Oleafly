@@ -90,7 +90,10 @@ const limits = {
   // catalogs to the entry; every other interface language is its own lazy
   // locale-<tag> chunk, counted separately below because at most one of them
   // ever loads. Keep the combined graph below this ceiling.
-  totalJavaScript: 18_600_000,
+  // +24 KB for the changed-settings markers, the settings schema and the
+  // Changed settings view, 22 KB of it in the lazy SettingsModal chunk: the
+  // combined graph measures 18.60 MB on Linux and 18.62 MB on Windows.
+  totalJavaScript: 18_700_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice
