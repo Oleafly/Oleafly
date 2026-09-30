@@ -69,7 +69,7 @@ import {
 } from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
 import { describeError } from "@/lib/app-error";
-import { cn } from "@/lib/utils";
+import { cn, isMac, isWindows } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 
 type GitGraphCommit = GitCommit;
@@ -802,6 +802,13 @@ export function SourceControl() {
         </div>
       </div>
     );
+  if (snapshot.gitAvailable === false)
+    return (
+      <div className="flex h-full flex-col bg-sidebar">
+        <Header branch="" remote={null} busy={busy} onRefresh={refresh} />
+        <GitMissingGuide />
+      </div>
+    );
   if (snapshot?.initialized === false)
     return (
       <div className="flex h-full flex-col bg-sidebar">
@@ -1312,6 +1319,69 @@ export function SourceControl() {
           void refresh();
         }}
       />
+    </div>
+  );
+}
+
+type HostOs = "windows" | "mac" | "linux";
+const HOST_OS: HostOs = isWindows ? "windows" : isMac ? "mac" : "linux";
+const GIT_FOR_WINDOWS_URL = "https://git-scm.com/downloads/win";
+const MAC_TOOLS_COMMAND = "xcode-select --install";
+
+/** Shown instead of Source Control when no usable Git is installed: how to
+ * get Git on this operating system, with at most one action. */
+export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
+  const { t } = useTranslation(["shell"]);
+  const [copied, setCopied] = useState(false);
+  const copyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(MAC_TOOLS_COMMAND);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 text-center">
+      <GitBranch aria-hidden className="size-8 text-muted-foreground/60" />
+      <p className="text-xs font-medium">
+        {t(($) => $.shell.sourceControl.gitMissing.title)}
+      </p>
+      {os === "windows" ? (
+        <>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t(($) => $.shell.sourceControl.gitMissing.windows)}
+          </p>
+          <Button size="sm" onClick={() => void open(GIT_FOR_WINDOWS_URL)}>
+            {t(($) => $.shell.sourceControl.gitMissing.download)}
+          </Button>
+        </>
+      ) : null}
+      {os === "mac" ? (
+        <>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t(($) => $.shell.sourceControl.gitMissing.mac)}
+          </p>
+          <code className="select-all rounded bg-muted px-2 py-1 font-mono text-[11px]">
+            {MAC_TOOLS_COMMAND}
+          </code>
+          <Button size="sm" variant="outline" onClick={() => void copyCommand()}>
+            {copied ? (
+              <Check aria-hidden className="size-3.5" />
+            ) : (
+              <Copy aria-hidden className="size-3.5" />
+            )}
+            {copied
+              ? t(($) => $.shell.sourceControl.gitMissing.copied)
+              : t(($) => $.shell.sourceControl.gitMissing.copyCommand)}
+          </Button>
+        </>
+      ) : null}
+      {os === "linux" ? (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {t(($) => $.shell.sourceControl.gitMissing.linux)}
+        </p>
+      ) : null}
     </div>
   );
 }

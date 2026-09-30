@@ -128,6 +128,11 @@
   "sourceControl": {
     "changes": "Heading over files that are modified but not staged",
     "commit": "Button that records the staged changes",
+    "gitMissing": {
+      "download": "Button that opens the Git for Windows download page. Keep the product name Git for Windows verbatim.",
+      "mac": "Shown above the command xcode-select --install. Terminal is the name of the macOS app; keep it verbatim.",
+      "windows": "Git for Windows is a product name; keep it verbatim."
+    },
     "pullShort": "Short button text for fetching commits from the remote",
     "pushShort": "Short button text for sending commits to the remote",
     "remote": "Heading over the Git remote repository settings",

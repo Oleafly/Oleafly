@@ -4060,7 +4060,7 @@ fn create_markdown_project_in(
         )
     })?;
     if coordinate_worktree {
-        initialize_git_for_project_quietly(&project_id);
+        initialize_git_for_new_project(&project_id);
     }
     Ok(project_id)
 }
@@ -4679,7 +4679,7 @@ pub fn create_project(name: String) -> Result<String, String> {
             },
         )
     })?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -4899,7 +4899,7 @@ fn create_project_from_ad_hoc_blocking(
         return Err(error);
     }
     let project_id = reservation.publish_staged(&staging)?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -4998,7 +4998,7 @@ fn create_project_from_pdf_conversion_blocking(
         return Err(error);
     }
     let project_id = reservation.publish_staged(&staging)?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -5038,7 +5038,7 @@ fn create_typst_project_in(
         )
     })?;
     if coordinate_worktree {
-        initialize_git_for_project_quietly(&project_id);
+        initialize_git_for_new_project(&project_id);
     }
     Ok(project_id)
 }
@@ -5138,7 +5138,7 @@ fn import_overleaf_project_blocking_with(
         write_meta_at(&dir.join("project.json"), &meta)?;
         finalize(&project_id)
     })?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -5337,6 +5337,13 @@ fn git_auto_init_enabled() -> bool {
 }
 
 fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
+    initialize_git(project_id, false)
+}
+
+/// Create the repository for a managed, trusted project while the setting is
+/// on. With `first_commit`, a repository created here also gets one commit of
+/// the project's files. Returns whether a repository was created.
+fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> {
     if !git_auto_init_enabled() {
         return Ok(false);
     }
@@ -5347,22 +5354,55 @@ fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
         return Ok(false);
     }
     let dir = location.root;
-    if dir.join(".git").exists() {
+    // A missing Git is logged once per session by the probe itself.
+    if dir.join(".git").exists() || !crate::git::git_available() {
         return Ok(false);
     }
     let Some(_worktree) = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(project_id)?
     else {
         return Ok(false);
     };
-    crate::git::ensure_repository(&dir)
+    if !crate::git::ensure_repository(&dir)? {
+        return Ok(false);
+    }
+    if first_commit {
+        match crate::git::commit_baseline(&dir) {
+            Ok(crate::git::Baseline::TooLarge(bytes)) => log_git_setup(format!(
+                "Skipping the first Git commit for project {project_id:?}: its files add up to {bytes} bytes"
+            )),
+            Ok(_) => {}
+            Err(error) => log_git_setup(format!(
+                "Skipping the first Git commit for project {project_id:?}: {error}"
+            )),
+        }
+    }
+    Ok(true)
+}
+
+fn log_git_setup(message: String) {
+    #[cfg(debug_assertions)]
+    eprintln!("{message}");
+    let _ = append_app_log(message);
 }
 
 pub(crate) fn initialize_git_for_project_quietly(project_id: &str) {
     if let Err(error) = initialize_git_for_project(project_id) {
-        let message = format!("Skipping Git initialization for project {project_id:?}: {error}");
-        #[cfg(debug_assertions)]
-        eprintln!("{message}");
-        let _ = append_app_log(message);
+        log_git_setup(format!(
+            "Skipping Git initialization for project {project_id:?}: {error}"
+        ));
+    }
+}
+
+/// Give a project Oleafly has just created or imported a Git repository with
+/// one first commit of its files, so Source Control and research tasks have a
+/// version to compare against. Only creation and import paths call this;
+/// opening a project never commits. Failures are logged and never fail the
+/// creation.
+pub(crate) fn initialize_git_for_new_project(project_id: &str) {
+    if let Err(error) = initialize_git(project_id, true) {
+        log_git_setup(format!(
+            "Skipping Git initialization for project {project_id:?}: {error}"
+        ));
     }
 }
 
@@ -5415,7 +5455,7 @@ fn create_image_project_in(
         )
     })?;
     if coordinate_worktree {
-        initialize_git_for_project_quietly(&project_id);
+        initialize_git_for_new_project(&project_id);
     }
     Ok(project_id)
 }
@@ -5468,7 +5508,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
             },
         )
     })?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -6187,11 +6227,9 @@ async fn create_project_from_pandoc_source(
     }
     let project_id = reservation.publish_staged(&staging)?;
     let git_project_id = project_id.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        initialize_git_for_project_quietly(&git_project_id)
-    })
-    .await
-    .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || initialize_git_for_new_project(&git_project_id))
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(project_id)
 }
 
@@ -6548,7 +6586,7 @@ pub fn create_project_from_template(
             },
         )
     })?;
-    initialize_git_for_project_quietly(&project_id);
+    initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
@@ -7149,7 +7187,7 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
         })();
         duplicated?;
         let created = reservation.commit();
-        initialize_git_for_project_quietly(&created);
+        initialize_git_for_new_project(&created);
         Ok(created)
     })
     .await
@@ -10277,6 +10315,18 @@ mod tests {
         crate::paths::project_dir(project_id).unwrap().join(".git")
     }
 
+    fn git_output(root: &std::path::Path, args: &[&str]) -> String {
+        let mut command = std::process::Command::new("git");
+        crate::git::clear_inherited_git_env(&mut command);
+        let output = command.current_dir(root).args(args).output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+
     #[test]
     fn created_projects_start_as_git_repositories_unless_the_setting_is_off() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -10297,20 +10347,25 @@ mod tests {
         let diagram = create_diagram_project("Figure".into(), "\\draw (0,0);".into()).unwrap();
 
         for project_id in [&latex, &converted, &imported, &markdown, &typst, &diagram] {
-            let git = git_dir_of(project_id);
-            assert!(git.is_dir(), "{project_id} should start as a repository");
+            let root = crate::paths::project_dir(project_id).unwrap();
             assert!(
-                !git.join("refs")
-                    .join("heads")
-                    .read_dir()
-                    .unwrap()
-                    .any(|_| true),
-                "{project_id} must not receive an automatic commit"
+                root.join(".git").is_dir(),
+                "{project_id} should start as a repository"
             );
-            assert!(!crate::paths::project_dir(project_id)
-                .unwrap()
-                .join(".gitignore")
-                .exists());
+            assert_eq!(
+                git_output(&root, &["log", "--format=%s"]),
+                "Create project",
+                "{project_id} starts with exactly one commit"
+            );
+            assert_eq!(
+                git_output(&root, &["status", "--porcelain"]),
+                "",
+                "{project_id} has every file in its first commit"
+            );
+            assert!(git_output(&root, &["ls-files"])
+                .lines()
+                .all(|path| !path.starts_with(".oleafly/")));
+            assert!(!root.join(".gitignore").exists());
         }
 
         write_git_auto_init(false);
@@ -10376,6 +10431,27 @@ mod tests {
         drop(restricted);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_project_is_still_created_when_git_is_missing() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("git-missing-create");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        write_git_auto_init(true);
+        let missing = data
+            .join("no-git")
+            .join(if cfg!(windows) { "git.exe" } else { "git" });
+        let git = crate::git::testing::use_git_program(missing);
+
+        let project_id = super::create_project("No Git".into()).unwrap();
+
+        drop(git);
+        let root = crate::paths::project_dir(&project_id).unwrap();
+        assert!(root.join("main.tex").is_file());
+        assert!(!root.join(".git").exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]

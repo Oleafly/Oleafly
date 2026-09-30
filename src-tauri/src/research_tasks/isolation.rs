@@ -379,6 +379,9 @@ fn run_git(
     arguments: &[String],
     cancel: &CancellationToken,
 ) -> Result<Option<std::process::Output>, String> {
+    if !crate::git::git_available() {
+        return Ok(None);
+    }
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

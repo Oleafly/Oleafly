@@ -535,7 +535,7 @@ pub(crate) fn copy_folder_into_library(
         left_out = plan.left_out;
         Ok(())
     })?;
-    crate::project::initialize_git_for_project_quietly(&copied);
+    crate::project::initialize_git_for_new_project(&copied);
     Ok(CopiedIntoLibrary {
         project_id: copied,
         left_out,

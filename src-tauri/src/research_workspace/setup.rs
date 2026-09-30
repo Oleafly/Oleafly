@@ -351,7 +351,7 @@ fn create_at(
         .map_err(|error| format!("could not encode project metadata: {error}"))?;
     crate::sandbox::atomic_write(&reservation.path.join("project.json"), &metadata)?;
     let project_id = reservation.commit();
-    crate::project::initialize_git_for_project_quietly(&project_id);
+    crate::project::initialize_git_for_new_project(&project_id);
     Ok(project_id)
 }
 
