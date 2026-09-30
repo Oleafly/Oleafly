@@ -246,9 +246,11 @@ fn extract_host_slice(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
+        // Owner only: the copy lives in this user's app folder and only this
+        // user runs it.
         staged
             .as_file()
-            .set_permissions(std::fs::Permissions::from_mode(0o755))?;
+            .set_permissions(std::fs::Permissions::from_mode(0o700))?;
     }
     staged.persist(&thin).map_err(|error| error.error)?;
     Ok(Some(dir))
@@ -1325,7 +1327,7 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
             let mode = std::fs::metadata(&thin).unwrap().permissions().mode();
-            assert_eq!(mode & 0o777, 0o755);
+            assert_eq!(mode & 0o777, 0o700);
         }
 
         let long_ago = std::time::SystemTime::now() - UNUSED_GRACE;

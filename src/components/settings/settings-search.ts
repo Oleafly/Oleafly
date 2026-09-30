@@ -180,13 +180,15 @@ export function normalizeSearchText(value: string, locale?: string): string {
 }
 
 export function cleanCatalogText(value: string): string {
-  return value
-    .replace(/\{\{[^{}]*\}\}/g, " ")
-    .replace(/<\/?[A-Za-z][\w-]*\s*\/?>/g, "")
-    // One pass can leave a tag behind ("<scr<b>ipt>"), so no "<" survives.
-    .replace(/</g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  let text = value.replace(/\{\{[^{}]*\}\}/g, " ");
+  // Repeat until nothing changes: one pass can leave a tag behind
+  // ("<scr<b>ipt>" becomes "<script>").
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<\/?[A-Za-z][\w-]*\s*\/?>/g, "");
+  } while (text !== previous);
+  return text.replace(/\s+/g, " ").trim();
 }
 
 function keyHasWord(key: string, words: ReadonlySet<string>): boolean {
