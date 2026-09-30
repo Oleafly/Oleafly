@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_wait;
 use tokio::io::AsyncWriteExt;
 
 fn context(root: &Path) -> TaskRunContext {
@@ -578,7 +579,7 @@ fn event_log() -> (Arc<Mutex<Vec<TaskRuntimeEvent>>>, TaskEventSink) {
 }
 
 async fn bounded_wait(mut ready: impl FnMut() -> bool) {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
         while !ready() {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -943,7 +944,7 @@ async fn acp_adapter_runs_confined_tools_and_replays_the_durable_transcript() {
     let fixture = AcpFixture::new("complete").await;
     let (events, sink) = event_log();
     let outcome = tokio::time::timeout(
-        Duration::from_secs(20),
+        test_wait::CHILD_PATIENCE,
         fixture
             .adapter
             .run(fixture.context(), CancellationToken::new(), sink),
@@ -1050,7 +1051,7 @@ async fn acp_adapter_rejects_incomplete_and_failed_turns_but_keeps_the_transcrip
     ] {
         let fixture = AcpFixture::new(scenario).await;
         let error = tokio::time::timeout(
-            Duration::from_secs(15),
+            test_wait::CHILD_PATIENCE,
             fixture
                 .adapter
                 .run(fixture.context(), CancellationToken::new(), event_log().1),
@@ -1090,6 +1091,16 @@ async fn acp_adapter_cancellation_stops_child_writes_before_returning() {
         std::fs::read_to_string(&heartbeat).is_ok_and(|text| text.lines().count() >= 3)
     })
     .await;
+    // The parent writes child.pid after the fork, so heartbeats do not prove it
+    // is written, and the cancel kills the parent. Read it before cancelling.
+    #[cfg(target_os = "macos")]
+    let child = test_wait::read_until(
+        &fixture.workspace.join("analysis/child.pid"),
+        test_wait::CHILD_PATIENCE,
+        test_wait::pid,
+    )
+    .await
+    .expect("the fixture did not record its child's pid");
     tokio::time::timeout(
         Duration::from_secs(5),
         fixture.adapter.cancel("session".into()),
@@ -1108,10 +1119,6 @@ async fn acp_adapter_cancellation_stops_child_writes_before_returning() {
     assert_eq!(std::fs::read(&heartbeat).unwrap(), settled);
     #[cfg(target_os = "macos")]
     {
-        let child = std::fs::read_to_string(fixture.workspace.join("analysis/child.pid"))
-            .unwrap()
-            .parse::<i32>()
-            .unwrap();
         bounded_wait(|| unsafe { libc::kill(child, 0) } != 0).await;
     }
     let sessions = fixture.adapter.runtime.list("project").unwrap();

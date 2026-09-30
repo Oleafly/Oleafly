@@ -1975,19 +1975,23 @@ mod probe_tests {
 
     #[tokio::test]
     async fn a_silent_provider_blocks_on_timeout() {
+        // The provider stays silent far longer than the probe waits, so a probe
+        // that ignored its timeout could not finish inside the bound below,
+        // however slow the machine is.
+        let silence = crate::test_wait::CHILD_PATIENCE;
         let started = std::time::Instant::now();
         let (probe, _) = probe_against(
             StatusCode::OK,
             SSE,
             &tool_call_stream("ping", "{}"),
-            Duration::from_secs(3),
+            silence,
             Duration::from_millis(300),
         )
         .await;
 
         assert_eq!(probe.verdict, ProbeVerdict::Blocked);
         assert_eq!(probe.reason, PROBE_TIMEOUT_REASON);
-        assert!(started.elapsed() < Duration::from_secs(3));
+        assert!(started.elapsed() < silence);
     }
 
     #[test]
