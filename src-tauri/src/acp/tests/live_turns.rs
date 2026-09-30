@@ -298,7 +298,7 @@ async fn an_oversized_tool_update_keeps_only_its_identity() {
 
 fn slow_finish(delay: Duration) -> ReviewHooks {
     ReviewHooks {
-        turn_begin: Arc::new(|_, _| TurnBegin {
+        turn_begin: Arc::new(|_, _, _| TurnBegin {
             snapshot_id: Some("snap-1".into()),
             unavailable: None,
         }),
