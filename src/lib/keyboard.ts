@@ -89,5 +89,5 @@ export function isAltGraphCharacter(event: KeyboardEvent): boolean {
   if (typeof event.getModifierState !== "function" || !event.getModifierState("AltGraph")) {
     return false;
   }
-  return /^Win/.test(os) || (!event.ctrlKey && !event.metaKey);
+  return os.startsWith("Win") || (!event.ctrlKey && !event.metaKey);
 }
