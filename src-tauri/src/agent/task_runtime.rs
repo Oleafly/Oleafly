@@ -26,7 +26,7 @@ const MAX_FILE_BYTES: usize = 1024 * 1024;
 const MAX_OUTPUT_BYTES: usize = 48 * 1024;
 const MAX_FILES: usize = 5_000;
 const MAX_SCAN_ENTRIES: usize = 20_000;
-const MAX_SKILL_BYTES: usize = 192 * 1024;
+pub(crate) const MAX_SKILL_BYTES: usize = 192 * 1024;
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -758,7 +758,23 @@ fn skill_read_paths(context: &TaskRunContext) -> Vec<PathBuf> {
     skill_read_paths_in(&root, pack.as_deref(), context)
 }
 
-fn skill_section(record: &crate::skills::SkillRecord) -> String {
+/// Who reads a skill's instructions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SkillAudience {
+    /// A research task: its tools run bundled scripts and read skill files.
+    Task,
+    /// A CLI agent in a conversation: it reads the skill folder with its own
+    /// tools, so no Oleafly tool names and no bundled scripts are mentioned.
+    CliAgent,
+}
+
+pub(crate) fn skill_section(
+    record: &crate::skills::SkillRecord,
+    audience: SkillAudience,
+) -> String {
+    if audience == SkillAudience::CliAgent {
+        return cli_skill_section(record);
+    }
     let mut section = format!("\n\nSelected skill: {}\n", record.name);
     if !record.dir.is_empty() {
         section.push_str(&format!(
@@ -789,6 +805,32 @@ fn skill_section(record: &crate::skills::SkillRecord) -> String {
     section
 }
 
+fn cli_skill_section(record: &crate::skills::SkillRecord) -> String {
+    let mut section = format!("Selected skill: {}\n", record.name);
+    if !record.dir.is_empty() {
+        let folder = oleafly_core::plain_path(Path::new(&record.dir));
+        section.push_str(&format!(
+            "Skill folder: {}\nRelative paths in the instructions below are inside that folder.\n",
+            folder.display()
+        ));
+        let references: Vec<&str> = record
+            .files
+            .iter()
+            .filter(|file| !file.path.starts_with("scripts/"))
+            .map(|file| file.path.as_str())
+            .collect();
+        if !references.is_empty() {
+            section.push_str(&format!(
+                "Supporting files in that folder: {}\n",
+                references.join(", ")
+            ));
+        }
+    }
+    section.push('\n');
+    section.push_str(&record.instructions);
+    section
+}
+
 fn skill_prompt_in(
     root: &Path,
     pack: Option<&Path>,
@@ -796,7 +838,7 @@ fn skill_prompt_in(
 ) -> Result<String, String> {
     let mut prompt = String::new();
     for skill in selected_skills(root, pack, context)? {
-        prompt.push_str(&skill_section(&skill));
+        prompt.push_str(&skill_section(&skill, SkillAudience::Task));
         if prompt.len() > MAX_SKILL_BYTES {
             return Err(
                 "The selected skills exceed this task's context limit. Select fewer skills.".into(),

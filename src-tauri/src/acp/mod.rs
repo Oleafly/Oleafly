@@ -1,10 +1,15 @@
 mod catalog;
 pub mod commands;
+mod export;
+mod permission_view;
 mod protocol;
 mod redact;
+mod review;
 mod runtime;
+mod skill_block;
 mod store;
 mod task_launch;
+mod transcript;
 pub mod types;
 
 pub use runtime::{AcpRuntime, PermissionDelegate};

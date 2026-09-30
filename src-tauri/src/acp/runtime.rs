@@ -1,8 +1,11 @@
 use super::{
-    catalog,
-    protocol::{Connection, Incoming},
+    catalog, export, permission_view,
+    protocol::{Connection, Incoming, RpcError},
     redact::Redactor,
+    review::{self, ReviewHooks},
+    skill_block::PromptSkill,
     store::Store,
+    transcript,
     types::{
         new_id, now_ms, AcpEvent, AgentDefinition, AgentStatus, Capabilities, EventPage,
         ImagePrompt, PermissionRequest, SessionControls, SessionRecord, SessionSnapshot,
@@ -34,6 +37,8 @@ struct LiveState {
     replaying: bool,
     cancelled: bool,
     bytes: usize,
+    /// Latest content of this turn's tool calls, joined to permission requests.
+    tool_calls: HashMap<String, permission_view::ToolCallView>,
 }
 
 struct TaskTemp(PathBuf);
@@ -119,10 +124,18 @@ pub struct AcpRuntime {
     owner_epochs: Mutex<HashMap<String, u64>>,
     startup: Mutex<StartupState>,
     startup_count: watch::Sender<usize>,
+    review: ReviewHooks,
 }
 
 impl AcpRuntime {
     pub fn new(root: PathBuf) -> Result<Arc<Self>, String> {
+        Self::with_review_hooks(root, ReviewHooks::default())
+    }
+
+    pub(crate) fn with_review_hooks(
+        root: PathBuf,
+        review: ReviewHooks,
+    ) -> Result<Arc<Self>, String> {
         let store = Store::open(&root)?;
         let (events, _) = broadcast::channel(2048);
         Ok(Arc::new(Self {
@@ -136,6 +149,7 @@ impl AcpRuntime {
             owner_epochs: Mutex::new(HashMap::new()),
             startup: Mutex::new(StartupState::default()),
             startup_count: watch::channel(0).0,
+            review,
         }))
     }
 
@@ -205,6 +219,14 @@ impl AcpRuntime {
     }
     pub fn events(&self, id: &str, after: u64, limit: usize) -> Result<EventPage, String> {
         self.store.events(id, after, limit)
+    }
+    /// Every stored event of a conversation, oldest first.
+    pub fn events_all(&self, id: &str) -> Result<Vec<AcpEvent>, String> {
+        self.store.events_all(id)
+    }
+    /// Writes a saved conversation as pretty JSON to a path the user chose.
+    pub fn export_session(&self, id: &str, destination: &str) -> Result<(), String> {
+        export::write_export(&self.store, id, destination)
     }
     pub fn list(&self, project_id: &str) -> Result<Vec<SessionRecord>, String> {
         self.store.list(Some(project_id), 200)
@@ -362,6 +384,11 @@ impl AcpRuntime {
                 return Err(reason);
             }
         }
+        let (start_revision, start_dirty) = if options.task_id.is_none() {
+            review::start_revision(&self.review, &root).await
+        } else {
+            (None, None)
+        };
         let time = now_ms();
         let record = SessionRecord {
             id: new_id(),
@@ -382,8 +409,8 @@ impl AcpRuntime {
             auth_methods: Vec::new(),
             error: None,
             last_sequence: 0,
-            start_revision: None,
-            start_dirty: None,
+            start_revision,
+            start_dirty,
         };
         self.connect(
             record,
@@ -552,6 +579,7 @@ impl AcpRuntime {
                 replaying: true,
                 cancelled: false,
                 bytes,
+                tool_calls: HashMap::new(),
             }),
             connection,
             operation: AsyncMutex::new(()),
@@ -814,7 +842,21 @@ impl AcpRuntime {
         text: String,
         images: Vec<ImagePrompt>,
     ) -> Result<SessionSnapshot, String> {
-        if text.trim().is_empty() && images.is_empty() {
+        self.prompt_with_skill(id, text, images, None).await
+    }
+
+    /// Sends one turn. With `skill`, its instructions follow the user's text
+    /// as a second text block. Interactive turns are bracketed by a
+    /// before-turn copy so the changes the agent made can be reviewed.
+    pub async fn prompt_with_skill(
+        self: &Arc<Self>,
+        id: &str,
+        text: String,
+        images: Vec<ImagePrompt>,
+        skill: Option<PromptSkill>,
+    ) -> Result<SessionSnapshot, String> {
+        let has_text = !text.trim().is_empty();
+        if !has_text && images.is_empty() && skill.is_none() {
             return Err("Write a message before sending.".into());
         }
         if text.len() > 256 * 1024 || images.len() > 4 {
@@ -836,7 +878,13 @@ impl AcpRuntime {
         if !images.is_empty() && !record.capabilities.image {
             return Err("This agent does not accept images.".into());
         }
-        let mut prompt = vec![json!({"type":"text","text":text})];
+        let mut prompt = Vec::new();
+        if has_text || skill.is_none() {
+            prompt.push(json!({"type":"text","text":text}));
+        }
+        if let Some(skill) = &skill {
+            prompt.push(json!({"type":"text","text":skill.block}));
+        }
         for image in &images {
             if !matches!(
                 image.mime_type.as_str(),
@@ -868,21 +916,47 @@ impl AcpRuntime {
             state.record.status = SessionStatus::Running;
             state.record.error = None;
             state.cancelled = false;
+            state.tool_calls.clear();
             if state.record.last_sequence <= 1 {
-                state.record.title = session
-                    .redactor
-                    .text(text.trim())
-                    .chars()
-                    .take(80)
-                    .collect();
+                let title = if has_text {
+                    text.trim()
+                } else {
+                    skill.as_ref().map_or("", |skill| skill.name.as_str())
+                };
+                state.record.title = session.redactor.text(title).chars().take(80).collect();
             }
-            self.emit_locked(&session, &mut state, "user_message", json!({"text":text,"images":images.iter().map(|v| json!({"mimeType":v.mime_type})).collect::<Vec<_>>()}))?;
+            let mut user = json!({"text":text,"images":images.iter().map(|v| json!({"mimeType":v.mime_type})).collect::<Vec<_>>()});
+            if let Some(skill) = &skill {
+                user["skill"] = json!({"id":skill.id,"name":skill.name});
+            }
+            self.emit_locked(&session, &mut state, "user_message", user)?;
         }
-        let result = session
-            .connection
-            .request("session/prompt", params, PROMPT_TIMEOUT)
-            .await;
+        let turn_copy = if review::takes_turn_copy(
+            session.task_temp.is_some(),
+            record.parent_session_id.as_deref(),
+        ) {
+            let label = self
+                .definition(&record.agent_id)
+                .map(|definition| definition.name)
+                .unwrap_or_else(|_| record.agent_id.clone());
+            Some(review::begin_turn(&self.review, &record.project_id, &label).await)
+        } else {
+            None
+        };
+        let cancelled_during_copy = session.state.lock().is_ok_and(|state| state.cancelled);
+        let result = if cancelled_during_copy {
+            Err(RpcError::local("The turn was cancelled."))
+        } else {
+            session
+                .connection
+                .request("session/prompt", params, PROMPT_TIMEOUT)
+                .await
+        };
         self.expire_permissions(&session).await;
+        let changes = match &turn_copy {
+            Some(begin) => review::finish_turn(&self.review, &record.project_id, begin).await,
+            None => None,
+        };
         let closed = session.connection.is_closed();
         let live_status = if closed {
             SessionStatus::Disconnected
@@ -941,6 +1015,12 @@ impl AcpRuntime {
                         serde_json::to_value(usage).map_err(|e| e.to_string())?,
                     )?;
                 }
+            }
+            if let Some(changes) = changes.filter(review::worth_reporting) {
+                let data = review::turn_changes_event(state.record.turn_id.as_deref(), &changes);
+                // The card is extra information: failing to store it never
+                // fails the turn.
+                let _ = self.emit_locked(&session, &mut state, "turn_changes", data);
             }
             let authenticating = status == SessionStatus::AuthRequired;
             state.record.status = status;
@@ -1258,11 +1338,19 @@ impl AcpRuntime {
         kind: &str,
         data: Value,
     ) -> Result<(), String> {
-        let data = session.redactor.value(&data);
+        // `turn_changes` is built by Oleafly from project paths; redacting it
+        // would mangle file names such as `sk-learn-results.csv`.
+        let data = if kind == "turn_changes" {
+            data
+        } else {
+            transcript::bound_event(session.redactor.value(&data))
+        };
         let bytes = serde_json::to_vec(&data).map_err(|e| e.to_string())?.len();
-        if bytes > 256 * 1024
-            || (state.bytes + bytes > MAX_SESSION_BYTES
-                && !matches!(kind, "turn_complete" | "status" | "permission_resolved"))
+        if state.bytes + bytes > MAX_SESSION_BYTES
+            && !matches!(
+                kind,
+                "turn_complete" | "status" | "permission_resolved" | "turn_changes"
+            )
         {
             session.connection.request_stop();
             return Err(
@@ -1329,6 +1417,9 @@ impl AcpRuntime {
                             break;
                         }
                     }
+                    Incoming::DroppedUpdate { bytes } => {
+                        runtime.note_dropped_update(&session, bytes)
+                    }
                     Incoming::Barrier(sender) => {
                         let _ = sender.send(());
                     }
@@ -1358,6 +1449,26 @@ impl AcpRuntime {
         });
     }
 
+    /// Records that an update too large to keep was skipped, so the transcript
+    /// shows why a tool call has no output.
+    fn note_dropped_update(&self, session: &LiveSession, bytes: usize) {
+        if let Ok(mut state) = session.state.lock() {
+            if !state.replaying
+                && matches!(
+                    state.record.status,
+                    SessionStatus::Running | SessionStatus::Cancelling
+                )
+            {
+                let _ = self.emit_locked(
+                    session,
+                    &mut state,
+                    "diagnostics",
+                    json!({"droppedUpdate":{"bytes":bytes}}),
+                );
+            }
+        }
+    }
+
     async fn handle_message(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -1378,7 +1489,10 @@ impl AcpRuntime {
                         self.emit_locked(session, &mut state, "usage", serde_json::to_value(usage).map_err(|e| e.to_string())?)?;
                     },
                     "agent_message_chunk" | "agent_thought_chunk" | "tool_call" | "tool_call_update" | "plan" | "available_commands_update" => {
-                        if matches!(state.record.status, SessionStatus::Running | SessionStatus::Cancelling) { self.emit_locked(session, &mut state, kind, update.clone())?; }
+                        if matches!(state.record.status, SessionStatus::Running | SessionStatus::Cancelling) {
+                            if matches!(kind, "tool_call" | "tool_call_update") { permission_view::track(&mut state.tool_calls, update); }
+                            self.emit_locked(session, &mut state, kind, update.clone())?;
+                        }
                     },
                     _ => {},
                 }
@@ -1405,6 +1519,19 @@ impl AcpRuntime {
             return session.connection.send(json!({"jsonrpc":"2.0","id":value["id"],"result":{"outcome":{"outcome":"cancelled"}}})).await.map_err(|e| e.to_string());
         }
         session.redactor.validate_metadata_ids(&params["options"])?;
+        let remembered = params["toolCall"]["toolCallId"].as_str().and_then(|id| {
+            session
+                .state
+                .lock()
+                .ok()
+                .and_then(|state| state.tool_calls.get(id).cloned())
+        });
+        let (kind, locations, diffs) = permission_view::permission_view(
+            Path::new(&record.project_path),
+            remembered.as_ref(),
+            &params["toolCall"],
+            &session.redactor,
+        );
         let request = PermissionRequest {
             id: new_id(),
             session_id: record.id.clone(),
@@ -1431,9 +1558,9 @@ impl AcpRuntime {
                 })
                 .unwrap_or_default(),
             expires_at: now_ms() + PERMISSION_TIMEOUT_MS,
-            kind: None,
-            locations: Vec::new(),
-            diffs: Vec::new(),
+            kind,
+            locations,
+            diffs,
         };
         let delegate = session
             .delegate

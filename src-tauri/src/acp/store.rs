@@ -200,6 +200,22 @@ impl Store {
         Ok(EventPage { events, has_more })
     }
 
+    /// Every stored event of a session, oldest first.
+    pub fn events_all(&self, id: &str) -> Result<Vec<AcpEvent>, String> {
+        let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
+        let mut statement = db
+            .prepare("SELECT event FROM events WHERE session_id=?1 ORDER BY sequence")
+            .map_err(|e| e.to_string())?;
+        let values = statement
+            .query_map([id], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        values
+            .map(|v| {
+                serde_json::from_str(&v.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+            })
+            .collect()
+    }
+
     pub fn agents(&self) -> Result<Vec<AgentDefinition>, String> {
         let db = self.db.lock().map_err(|_| "ACP storage is unavailable.")?;
         let mut statement = db
