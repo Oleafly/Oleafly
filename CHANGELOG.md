@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Conversations also record the Git commit they started from.
 - When Git isn't installed, Source Control says so and explains how to get it
   on your system instead of showing buttons that fail.
+- Each Reset button in Settings shows a small dot when something it would
+  reset is not at its default.
 
 ### Changed
 
@@ -81,6 +83,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recent Xcode tools, so pdfLaTeX projects with a bibliography didn't compile.
   Oleafly now runs the copy of Biber built for your Mac's processor.
 - The plan approval card no longer covers the end of the assistant's reply.
+- On Linux, the terminal could fail with "Unable to spawn /bin/zsh" when
+  zsh wasn't installed and Oleafly was started without `$SHELL` set, as some
+  desktop launchers do. The terminal and agent commands now use the first
+  shell that exists: `$SHELL`, then your account's shell, then `/bin/sh`.
 - On Windows, installing an agent bridge failed with `EISDIR: illegal
   operation on a directory, lstat 'D:'` on current Node.js versions, and a
   bridge that did install could not start (#84). Oleafly no longer passes
@@ -99,6 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrong size, Oleafly puts it back when the window is focused, resized or
   moves to a display with a different scale, and writes a line to the app
   log.
+- Resetting Appearance now turns Math preview back on right away. Before, it
+  stayed off until you restarted Oleafly.
 
 ## [0.4.3] - 2026-09-27
 

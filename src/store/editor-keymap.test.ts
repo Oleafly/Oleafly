@@ -6,6 +6,7 @@ import {
   EDITOR_KEY_DEFINITIONS,
   editorKeyFromEvent,
   editorKeyLabel,
+  editorKeysDifferFromDefaults,
   editorKeyTokens,
   isValidEditorKey,
   mergeEditorKeys,
@@ -154,6 +155,18 @@ describe("useEditorKeymapStore", () => {
 
     store.resetAll();
     expect(useEditorKeymapStore.getState().keys).toEqual({ ...EDITOR_KEY_DEFAULTS });
+  });
+
+  it("tells when any key differs from its default", () => {
+    useEditorKeymapStore.getState().resetAll();
+    const differs = () => editorKeysDifferFromDefaults(useEditorKeymapStore.getState().keys);
+    expect(differs()).toBe(false);
+
+    useEditorKeymapStore.getState().setKey("deleteLine", "");
+    expect(differs()).toBe(true);
+
+    useEditorKeymapStore.getState().resetAll();
+    expect(differs()).toBe(false);
   });
 
   it("refuses an invalid key without changing the stored bindings", () => {

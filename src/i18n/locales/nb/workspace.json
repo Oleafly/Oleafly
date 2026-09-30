@@ -194,6 +194,11 @@
       "start": "Kunne ikke starte shell"
     },
     "limitReached": "Lukk en terminal for å åpne en ny",
+    "links": {
+      "openFile": "{{modifier}}-klikk for å åpne",
+      "openUrl": "{{modifier}}-klikk for å åpne i nettleseren din",
+      "openUrlFailed": "Kunne ikke åpne lenken."
+    },
     "newTerminal": "Ny terminal",
     "settings": "Terminalinnstillinger",
     "starting": "Starter prosjektets shell…",

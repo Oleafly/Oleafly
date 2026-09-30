@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Auf Standards zurücksetzen",
+    "changed": "Einige Einstellungen hier weichen von den Standards ab.",
     "confirmDescription": "Setzt die Einstellungen für {{sectionName}} auf die Standards zurück. Andere Einstellungen bleiben unverändert.",
     "confirmTitle": "Einstellungen für {{sectionName}} zurücksetzen?",
     "description": "Setzt die Einstellungen für {{sectionName}} auf die Standards zurück.",

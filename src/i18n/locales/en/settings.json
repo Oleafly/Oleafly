@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Reset to defaults",
+    "changed": "Some settings here differ from their defaults.",
     "confirmDescription": "Restore {{sectionName}} preferences to their defaults. Other settings will stay unchanged.",
     "confirmTitle": "Reset {{sectionName}} settings?",
     "description": "Restore {{sectionName}} preferences to their defaults.",

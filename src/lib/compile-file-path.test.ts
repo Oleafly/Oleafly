@@ -49,6 +49,22 @@ describe("resolveCompilePath", () => {
     expect(resolve("úvod")).toBe("kapitoly/úvod.tex");
   });
 
+  it("leaves extensionless names alone when the caller turns off the TeX fallback", () => {
+    const resolve = compilePathResolver(project, { implicitTex: false });
+    expect(resolve("kapitoly/úvod")).toBeNull();
+    expect(resolve("methods")).toBeNull();
+    expect(resolve("sections/methods.tex")).toBe("sections/methods.tex");
+  });
+
+  it("matches no longer paths when the caller turns off project-suffix matching", () => {
+    const resolve = compilePathResolver(project, { longerPaths: false });
+    expect(resolve("/Users/me/thesis/cast/a/intro.tex")).toBeNull();
+    expect(resolve("other/sections/methods.tex")).toBeNull();
+    expect(resolve("sections/methods.tex")).toBe("sections/methods.tex");
+    expect(resolve("a/intro.tex")).toBe("cast/a/intro.tex");
+    expect(resolve("methods.tex")).toBe("sections/methods.tex");
+  });
+
   it("does not match files outside the project", () => {
     const resolve = compilePathResolver(project);
     expect(resolve("/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls")).toBeNull();

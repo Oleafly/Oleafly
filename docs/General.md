@@ -43,6 +43,12 @@ dot before the title and tints the tab while it is active. Titles and colors are
 saved per project, so a terminal slot reopens with the name and color it had.
 Shift+F10 or the context menu key opens the menu when a tab has focus.
 
+File paths and web addresses in terminal output are links. Hover one to see
+where it points, and ⌘-click it (Ctrl-click on Windows and Linux) to open it. A
+source file opens in the editor at the line and column the output gives. PDFs
+and images open in their viewer tab, and web addresses open in your browser.
+Only relative paths that match a project file get a link for now.
+
 <div align="center">
   <img src="assets/readme/project-terminal.png" alt="Oleafly terminal opened beside a manuscript project" width="100%" />
 </div>

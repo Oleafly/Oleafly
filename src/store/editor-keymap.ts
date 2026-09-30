@@ -174,6 +174,12 @@ const defaults = Object.fromEntries(
 
 export const EDITOR_KEY_DEFAULTS: Readonly<EditorKeyBindings> = defaults;
 
+export function editorKeysDifferFromDefaults(keys: EditorKeyBindings): boolean {
+  return EDITOR_KEY_DEFINITIONS.some(
+    ({ id }) => keys[id] !== defaults[id] && !sameEditorKey(keys[id], defaults[id]),
+  );
+}
+
 const STORAGE_KEY = "oleafly.editorKeymap";
 
 export function mergeEditorKeys(raw: unknown): EditorKeyBindings {

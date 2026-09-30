@@ -198,6 +198,11 @@
       "start": "Impossibile avviare la shell"
     },
     "limitReached": "Chiudi un terminale per aprirne un altro",
+    "links": {
+      "openFile": "{{modifier}}-clic per aprire",
+      "openUrl": "{{modifier}}-clic per aprire nel tuo browser",
+      "openUrlFailed": "Impossibile aprire il collegamento."
+    },
     "newTerminal": "Nuovo terminale",
     "settings": "Impostazioni del terminale",
     "starting": "Avvio della shell del progetto…",

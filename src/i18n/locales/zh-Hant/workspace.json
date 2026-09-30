@@ -190,6 +190,11 @@
       "start": "shell 無法啟動"
     },
     "limitReached": "關閉一個終端機才能再開新的",
+    "links": {
+      "openFile": "按住 {{modifier}} 並按一下即可開啟",
+      "openUrl": "按住 {{modifier}} 並按一下即可在瀏覽器中開啟",
+      "openUrlFailed": "無法開啟連結。"
+    },
     "newTerminal": "新增終端機",
     "settings": "終端機設定",
     "starting": "正在啟動專案 shell…",

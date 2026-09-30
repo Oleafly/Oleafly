@@ -397,6 +397,11 @@ export function ProofreadingDictionarySection() {
   const setHarperEnabledRules = useSettingsStore(
     (state) => state.setHarperEnabledRules,
   );
+  const rulesChanged = useSettingsStore(
+    (state) =>
+      state.harperDisabledRules.length > 0 ||
+      state.harperEnabledRules.length > 0,
+  );
   const activeProjectId = useFilesStore((state) => state.projectId);
   const projects = useFilesStore((state) => state.projects);
   const [query, setQuery] = useState("");
@@ -458,6 +463,13 @@ export function ProofreadingDictionarySection() {
     return t(($) => $.settings.proofreading.clear.descriptionFallback);
   };
   const clearDescription = clearDescriptionFor();
+  // Everything the section's Reset clears: every word list and both rule lists.
+  const changed =
+    rulesChanged ||
+    global.length > 0 ||
+    [ignored, suppressed].some((scopes) =>
+      Object.values(scopes).some((words) => words.length > 0),
+    );
 
   return (
     <div className="space-y-4 text-sm">
@@ -631,6 +643,7 @@ export function ProofreadingDictionarySection() {
         confirmationDescription={t(
           ($) => $.settings.proofreading.reset.confirmationDescription,
         )}
+        changed={changed}
       />
       <ConfirmationDialog
         open={clearTarget !== null}

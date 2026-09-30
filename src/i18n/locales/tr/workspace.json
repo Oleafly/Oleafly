@@ -194,6 +194,11 @@
       "start": "Proje shell'i başlatılamadı"
     },
     "limitReached": "Başka bir terminal açmak için birini kapatın",
+    "links": {
+      "openFile": "Açmak için {{modifier}}+tıklayın",
+      "openUrl": "Tarayıcınızda açmak için {{modifier}}+tıklayın",
+      "openUrlFailed": "Bağlantı açılamadı."
+    },
     "newTerminal": "Yeni terminal",
     "settings": "Terminal ayarları",
     "starting": "Proje shell'i başlatılıyor…",

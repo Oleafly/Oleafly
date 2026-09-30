@@ -251,12 +251,40 @@ fn spawn_login_probe() {
 /// database (a GUI launch may leave `$SHELL` unset).
 #[cfg(unix)]
 fn login_shell() -> Option<PathBuf> {
-    if let Some(shell) = std::env::var_os("SHELL")
+    env_shell().or_else(account_shell)
+}
+
+/// The shell a terminal or a command runs in: the first of `$SHELL` and the
+/// account's shell that exists, else `/bin/sh`. Minimal Linux installs have
+/// no zsh, and a desktop launch can leave `$SHELL` unset or naming a shell
+/// that was since removed.
+#[cfg(unix)]
+pub(crate) fn user_shell() -> PathBuf {
+    first_existing_shell([env_shell(), account_shell()], Path::is_file)
+}
+
+#[cfg(unix)]
+fn first_existing_shell(
+    candidates: [Option<PathBuf>; 2],
+    exists: impl Fn(&Path) -> bool,
+) -> PathBuf {
+    candidates
+        .into_iter()
+        .flatten()
+        .find(|shell| exists(shell))
+        .unwrap_or_else(|| PathBuf::from("/bin/sh"))
+}
+
+#[cfg(unix)]
+fn env_shell() -> Option<PathBuf> {
+    std::env::var_os("SHELL")
         .map(PathBuf::from)
         .filter(|shell| shell.is_absolute())
-    {
-        return Some(shell);
-    }
+}
+
+/// The account's shell from the password database.
+#[cfg(unix)]
+fn account_shell() -> Option<PathBuf> {
     use std::os::unix::ffi::OsStrExt;
     let mut record = std::mem::MaybeUninit::<libc::passwd>::uninit();
     let mut buffer = vec![0u8; 16 * 1024];
