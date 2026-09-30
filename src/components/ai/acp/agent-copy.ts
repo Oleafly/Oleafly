@@ -9,7 +9,11 @@ export function cliLabel(agent: AcpAgentStatus): string {
 
 /** The last segment of a Windows or POSIX path. */
 export function fileName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+  const parts = path.split(/[\\/]/);
+  for (let index = parts.length - 1; index >= 0; index--) {
+    if (parts[index]) return parts[index];
+  }
+  return path;
 }
 
 export function isPowerShellScript(path: string): boolean {

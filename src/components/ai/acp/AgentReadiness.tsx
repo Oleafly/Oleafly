@@ -47,6 +47,9 @@ export function useBridgeInstall() {
   return { installing, install };
 }
 
+/** A POSIX shell closes a single-quoted string, adds an escaped quote and reopens it. */
+const POSIX_ESCAPED_QUOTE = String.raw`'\''`;
+
 /**
  * The shell line that starts a CLI by its absolute path: PowerShell on Windows
  * (the in-app terminal's shell there), a POSIX shell elsewhere. The path is
@@ -54,7 +57,7 @@ export function useBridgeInstall() {
  */
 export function signInCommandLine(path: string, windows: boolean = isWindows): string {
   if (windows) return `& '${path.replaceAll(/['‘’‚‛]/g, (quote) => quote + quote)}'`;
-  return `'${path.replaceAll("'", String.raw`'\''`)}'`;
+  return `'${path.replaceAll("'", POSIX_ESCAPED_QUOTE)}'`;
 }
 
 /**
