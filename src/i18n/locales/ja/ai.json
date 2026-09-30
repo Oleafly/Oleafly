@@ -740,8 +740,7 @@
     "projectSubtitle": "「{{project}}」で作業中",
     "noOutput": "モデルから出力が返りませんでした。設定 → AI アシスタントを確認してください。",
     "planMissing": "承認するプランはまだありません。アシスタントにプランを頼むか、プランをオフにしてください。",
-    "planUnchanged": "プランは変わっていません。",
-    "usePlanFromReply": "これをプランにする"
+    "planUnchanged": "プランは変わっていません。"
   },
   "followUps": {
     "steered": "実行中のやり取りに差し込みました: {{summary}}",

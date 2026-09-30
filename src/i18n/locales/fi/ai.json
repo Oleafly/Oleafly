@@ -751,8 +751,7 @@
     "projectSubtitle": "Työn alla \"{{project}}\"",
     "noOutput": "Malli ei palauttanut tulostetta. Tarkista Asetukset → Tekoälyavustaja.",
     "planMissing": "Hyväksyttävää suunnitelmaa ei vielä ole. Pyydä avustajalta suunnitelma tai ota suunnittelutila pois päältä.",
-    "planUnchanged": "Suunnitelma ei muuttunut.",
-    "usePlanFromReply": "Käytä suunnitelmana"
+    "planUnchanged": "Suunnitelma ei muuttunut."
   },
   "followUps": {
     "steered": "Ohjattiin käynnissä olevaan vuoroon: {{summary}}",

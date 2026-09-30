@@ -751,8 +751,7 @@
     "projectSubtitle": "\"{{project}}\" üzerinde çalışılıyor",
     "noOutput": "Model hiçbir çıktı döndürmedi. Ayarlar → Yapay zeka asistanı bölümüne bakın.",
     "planMissing": "Henüz onaylanacak bir plan yok. Asistandan bir plan isteyin veya Plan'ı kapatın.",
-    "planUnchanged": "Plan değişmedi.",
-    "usePlanFromReply": "Bunu plan olarak kullan"
+    "planUnchanged": "Plan değişmedi."
   },
   "followUps": {
     "steered": "Çalışan tura yönlendirildi: {{summary}}",

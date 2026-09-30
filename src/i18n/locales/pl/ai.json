@@ -773,8 +773,7 @@
     "projectSubtitle": "Praca nad projektem \"{{project}}\"",
     "noOutput": "Model nie zwrócił żadnych danych. Sprawdź Ustawienia → Asystent AI.",
     "planMissing": "Nie ma jeszcze planu do zatwierdzenia. Poproś asystenta o plan albo wyłącz Plan.",
-    "planUnchanged": "Plan się nie zmienił.",
-    "usePlanFromReply": "Użyj tego jako planu"
+    "planUnchanged": "Plan się nie zmienił."
   },
   "followUps": {
     "steered": "Skierowano do trwającej tury: {{summary}}",

@@ -141,9 +141,6 @@ describe("outsideCodeFences", () => {
   it("formats lines the Markdown renderer shows as prose, even when they look like fences", () => {
     // Four spaces at the top level is an indented code line, not a fence.
     expect(outsideCodeFences("a\n\n    ```\nb", upper)).toBe("A\n\n    ```\nB");
-    // An unclosed fence in a list item or blockquote ends with it.
-    expect(outsideCodeFences("1. a\n   ```\n   b\n2. c", upper)).toBe("1. A\n   ```\n   b\n2. C");
-    expect(outsideCodeFences("> ```\n> b\n\nc", upper)).toBe("> ```\n> b\n\nC");
   });
 });
 

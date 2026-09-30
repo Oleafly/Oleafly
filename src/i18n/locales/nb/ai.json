@@ -751,8 +751,7 @@
     "projectSubtitle": "Jobber med \"{{project}}\"",
     "noOutput": "Modellen ga ingenting tilbake. Se Innstillinger → AI-assistent.",
     "planMissing": "Det finnes ingen plan å godkjenne ennå. Be assistenten om en, eller slå av Plan.",
-    "planUnchanged": "Planen er uendret.",
-    "usePlanFromReply": "Bruk dette som plan"
+    "planUnchanged": "Planen er uendret."
   },
   "followUps": {
     "steered": "Styrt inn i innlegget som kjører: {{summary}}",

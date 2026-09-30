@@ -762,8 +762,7 @@
     "projectSubtitle": "Trabajando en \"{{project}}\"",
     "noOutput": "El modelo no devolvió nada. Revisa Ajustes → Asistente de IA.",
     "planMissing": "Todavía no hay ningún plan que aprobar. Pídele uno al asistente o desactiva Plan.",
-    "planUnchanged": "El plan no ha cambiado.",
-    "usePlanFromReply": "Usar como plan"
+    "planUnchanged": "El plan no ha cambiado."
   },
   "followUps": {
     "steered": "Se redirigió el turno en marcha: {{summary}}",

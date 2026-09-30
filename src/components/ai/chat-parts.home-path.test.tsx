@@ -5,7 +5,6 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { usePersonalDetailsStore } from "@/store/personal-details";
 import { AgentStatusPill, MessageItem, ReasoningBlock } from "./chat-parts";
-import { lastNumberedList, planTodos } from "./plan-from-reply";
 
 const REPLY = [
   'I updated /Users/ada/.oleafly/projects/p/main.tex; the old copy is at "/Users/ada/.oleafly/projects/p/old.tex".',
@@ -58,18 +57,16 @@ describe("home paths in chat messages", () => {
     await waitFor(() => expect(container.textContent).toContain("Open /Users/ada/notes"));
   });
 
-  it("shows a text plan's home paths in the plan card as the bubble does, and keeps the plan raw", async () => {
+  it("shows a plan's home paths in the plan card as the bubble does", async () => {
     const reply = [
       "Here is the plan:",
       "1. Edit `/Users/ada/.oleafly/projects/p/main.tex`",
       "2. Compile /Users/ada/.oleafly/projects/p",
     ].join("\n");
-    const todos = planTodos(lastNumberedList(reply));
-    // The model gets the plan back as written, so the stored steps keep the real path.
-    expect(todos.map((todo) => todo.content)).toEqual([
+    const todos = [
       "Edit /Users/ada/.oleafly/projects/p/main.tex",
       "Compile /Users/ada/.oleafly/projects/p",
-    ]);
+    ].map((content, index) => ({ id: `${index}`, content, status: "pending" as const }));
 
     const { container } = render(
       <>
@@ -99,20 +96,12 @@ describe("home paths in chat messages", () => {
     expect(card.innerHTML).not.toContain("/Users/ada");
   });
 
-  it("shows home paths in a step with a folded description as ~, on Windows too", () => {
+  it("shows Windows home paths in the plan card as ~", () => {
     setDisplayHomes([String.raw`C:\Users\ada`]);
-    const reply = [
-      "Plan:",
-      String.raw`1. Edit C:\Users\ada\paper\main_v2.tex`,
-      "   Rename the intro.",
-      "2. Compile",
-      String.raw`   The PDF goes to C:\Users\ada\paper\out.pdf`,
-    ].join("\r\n");
-    const todos = planTodos(lastNumberedList(reply));
-    expect(todos.map((todo) => todo.content)).toEqual([
+    const todos = [
       String.raw`Edit C:\Users\ada\paper\main_v2.tex: Rename the intro.`,
       String.raw`Compile: The PDF goes to C:\Users\ada\paper\out.pdf`,
-    ]);
+    ].map((content, index) => ({ id: `${index}`, content, status: "pending" as const }));
 
     render(
       <AgentStatusPill

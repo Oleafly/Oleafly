@@ -751,8 +751,7 @@
     "projectSubtitle": "Working on \"{{project}}\"",
     "noOutput": "The model returned no output. Check Settings → AI Assistant.",
     "planMissing": "No plan to approve yet. Ask the assistant for one, or turn Plan off.",
-    "planUnchanged": "The plan is unchanged.",
-    "usePlanFromReply": "Use this as the plan"
+    "planUnchanged": "The plan is unchanged."
   },
   "followUps": {
     "steered": "Steered into the running turn: {{summary}}",

@@ -762,8 +762,7 @@
     "projectSubtitle": "Stai lavorando su \"{{project}}\"",
     "noOutput": "Il modello non ha restituito nessun output. Controlla in Impostazioni → Assistente AI.",
     "planMissing": "Non c'è ancora un piano da approvare. Chiedine uno all'assistente oppure disattiva Piano.",
-    "planUnchanged": "Il piano non è cambiato.",
-    "usePlanFromReply": "Usa come piano"
+    "planUnchanged": "Il piano non è cambiato."
   },
   "followUps": {
     "steered": "Indirizzato nel turno in corso: {{summary}}",

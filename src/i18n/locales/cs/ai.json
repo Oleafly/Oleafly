@@ -773,8 +773,7 @@
     "projectSubtitle": "Pracuje se na projektu „{{project}}“",
     "noOutput": "Model nevrátil žádný výstup. Zkontrolujte Nastavení → Asistent AI.",
     "planMissing": "Zatím není žádný plán ke schválení. Požádejte o něj asistenta, nebo vypněte režim plánu.",
-    "planUnchanged": "Plán se nezměnil.",
-    "usePlanFromReply": "Použít jako plán"
+    "planUnchanged": "Plán se nezměnil."
   },
   "followUps": {
     "steered": "Nasměrováno do probíhajícího tahu: {{summary}}",

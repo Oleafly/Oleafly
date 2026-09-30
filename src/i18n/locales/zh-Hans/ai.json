@@ -740,8 +740,7 @@
     "projectSubtitle": "正在处理“{{project}}”",
     "noOutput": "模型未返回任何输出。请检查设置 → AI 助手。",
     "planMissing": "还没有可批准的计划。请让助手先提出一个计划，或关闭“计划”。",
-    "planUnchanged": "计划没有变化。",
-    "usePlanFromReply": "将此作为计划"
+    "planUnchanged": "计划没有变化。"
   },
   "followUps": {
     "steered": "已插入正在进行的轮次：{{summary}}。",

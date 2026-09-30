@@ -1,3 +1,5 @@
+import { scanFences } from "@/lib/code-fences";
+
 export interface ReleaseNotesSection {
   heading: string;
   body: string;
@@ -45,34 +47,6 @@ export function inAppReleaseNotes(notes: string | undefined): string {
   return lines.join("\n").trim();
 }
 
-interface Fence {
-  char: string;
-  length: number;
-}
-
-function fenceRun(line: string): { fence: Fence; rest: string } | null {
-  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-  if (!match) return null;
-  return { fence: { char: match[1][0], length: match[1].length }, rest: match[2] };
-}
-
-/** CommonMark: a backtick fence's info string may not contain a backtick. */
-function openingFence(line: string): Fence | null {
-  const run = fenceRun(line);
-  if (!run || (run.fence.char === "`" && run.rest.includes("`"))) return null;
-  return run.fence;
-}
-
-function closesFence(line: string, open: Fence): boolean {
-  const run = fenceRun(line);
-  return (
-    run !== null &&
-    run.fence.char === open.char &&
-    run.fence.length >= open.length &&
-    run.rest.trim() === ""
-  );
-}
-
 function sectionHeading(line: string): string | null {
   const marker = /^#{2,3}[ \t]/.exec(line);
   if (!marker) return null;
@@ -87,15 +61,15 @@ function isTopLevelItem(line: string): boolean {
 export function outlineReleaseNotes(body: string): ReleaseNotesOutline {
   const lead: string[] = [];
   const sections: { heading: string; lines: string[]; items: number }[] = [];
-  let fence: Fence | null = null;
-  for (const line of body.replaceAll("\r\n", "\n").split("\n")) {
+  const text = body.replaceAll("\r\n", "\n");
+  const fences = scanFences(text);
+  let lineFrom = 0;
+  for (const line of text.split("\n")) {
     const current = sections[sections.length - 1];
-    const opening: Fence | null = fence ? null : openingFence(line);
-    if (fence) {
-      if (closesFence(line, fence)) fence = null;
-    } else if (opening) {
-      fence = opening;
-    } else {
+    // From where the line starts, so an item that opens with a fence counts.
+    const inFence = fences.some((fence) => fence.from <= lineFrom && fence.to >= lineFrom);
+    lineFrom += line.length + 1;
+    if (!inFence) {
       const heading = sectionHeading(line);
       if (heading) {
         sections.push({ heading, lines: [], items: 0 });

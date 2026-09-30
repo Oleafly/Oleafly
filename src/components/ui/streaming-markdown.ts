@@ -1,4 +1,12 @@
 import { scanMathExpressions } from "@oleafly/editor/math-source";
+import {
+  continuationContainerLine,
+  lineInsideFence,
+  openingContainerLine,
+  scanFences,
+  type OpenContainer,
+  type SourceRange,
+} from "@/lib/code-fences";
 
 const MAX_RICH_TAIL_LENGTH = 6_000;
 
@@ -18,129 +26,6 @@ export interface StreamingMarkdownPartition {
 export interface StreamingMarkdownState extends StreamingMarkdownPartition {
   overflowed: boolean;
   source: string;
-}
-
-interface SourceRange {
-  from: number;
-  to: number;
-  complete: boolean;
-}
-
-interface ContainerLine {
-  content: string;
-  offset: number;
-  quoteDepth: number;
-  listIndent: number;
-}
-
-interface OpenContainer {
-  quoteDepth: number;
-  listIndent: number;
-}
-
-function stripQuotePrefix(line: string) {
-  let offset = 0;
-  let quoteDepth = 0;
-  while (true) {
-    const quote = /^[ \t]{0,3}>[ \t]?/u.exec(line.slice(offset));
-    if (!quote) break;
-    offset += quote[0].length;
-    quoteDepth++;
-  }
-  return { offset, quoteDepth };
-}
-
-function openingContainerLine(line: string): ContainerLine {
-  const quote = stripQuotePrefix(line);
-  let offset = quote.offset;
-  let listIndent = 0;
-  const list = /^[ \t]{0,3}(?:[*+-]|\d{1,9}[.)])[ \t]{1,4}(?=\S|$)/u.exec(
-    line.slice(offset),
-  );
-  if (list) {
-    offset += list[0].length;
-    listIndent = list[0].length;
-  }
-  return {
-    content: line.slice(offset),
-    offset,
-    quoteDepth: quote.quoteDepth,
-    listIndent,
-  };
-}
-
-function continuationContainerLine(
-  line: string,
-  container: OpenContainer,
-): ContainerLine | null {
-  const quote = stripQuotePrefix(line);
-  if (quote.quoteDepth !== container.quoteDepth) return null;
-  let offset = quote.offset;
-  if (container.listIndent > 0) {
-    const indent = /^[ \t]+/u.exec(line.slice(offset))?.[0].length ?? 0;
-    if (indent < container.listIndent) return null;
-    offset += container.listIndent;
-  }
-  return {
-    content: line.slice(offset),
-    offset,
-    quoteDepth: quote.quoteDepth,
-    listIndent: container.listIndent,
-  };
-}
-
-interface OpenFence {
-  char: "`" | "~";
-  from: number;
-  length: number;
-  container: OpenContainer;
-}
-
-function fenceCloses(line: string, open: OpenFence): boolean {
-  const logical = continuationContainerLine(line, open.container);
-  const close = logical
-    ? /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u.exec(logical.content)
-    : null;
-  return close?.[1].startsWith(open.char) === true && close[1].length >= open.length;
-}
-
-function fenceOpensAt(line: string, lineFrom: number): OpenFence | null {
-  const logical = openingContainerLine(line);
-  const start = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u.exec(logical.content);
-  if (!start || (start[1].startsWith("`") && start[2].includes("`"))) return null;
-  return {
-    char: start[1][0] as "`" | "~",
-    from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
-    length: start[1].length,
-    container: logical,
-  };
-}
-
-function scanFences(source: string): SourceRange[] {
-  const ranges: SourceRange[] = [];
-  let open: OpenFence | null = null;
-  let lineFrom = 0;
-
-  while (lineFrom <= source.length) {
-    const lineBreak = source.indexOf("\n", lineFrom);
-    const lineTo = lineBreak < 0 ? source.length : lineBreak;
-    const line = source.slice(lineFrom, lineTo).replace(/\r$/u, "");
-
-    if (open) {
-      if (fenceCloses(line, open)) {
-        ranges.push({ from: open.from, to: lineTo, complete: true });
-        open = null;
-      }
-    } else {
-      open = fenceOpensAt(line, lineFrom);
-    }
-
-    if (lineBreak < 0) break;
-    lineFrom = lineBreak + 1;
-  }
-
-  if (open) ranges.push({ from: open.from, to: source.length, complete: false });
-  return ranges;
 }
 
 interface OpenFlowMath {
@@ -166,14 +51,6 @@ function flowMathOpensAt(line: string, lineFrom: number): OpenFlowMath | null {
     length: start[1].length,
     container: logical,
   };
-}
-
-function lineInsideFence(
-  fences: readonly SourceRange[],
-  lineFrom: number,
-  lineTo: number,
-): boolean {
-  return fences.some((fence) => fence.from < lineTo && fence.to >= lineFrom);
 }
 
 function scanFlowMath(source: string, fences: readonly SourceRange[]): SourceRange[] {

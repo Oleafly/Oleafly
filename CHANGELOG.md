@@ -16,9 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   menu, blurs personal details for screenshots: your home folder in paths,
   account names, commit authors, and sizes and totals. Hover or focus a
   blurred item to read it. It lasts until you quit.
-- When a model in Plan mode answers without a plan, a note says so. If the
-  reply has a numbered list, "Use this as the plan" turns it into the plan
-  card for you to approve.
+- When a model in Plan mode answers without a plan, a note says so.
 - Each CLI agent in Settings > AI > Agents has a Program row. It shows the
   program Oleafly found and where, and you can choose another file or type
   its location (#84). Test starts the agent in an empty folder before

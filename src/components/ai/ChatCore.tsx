@@ -5,7 +5,6 @@ import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
-import { lastNumberedList, planTodos, replyEndsWithQuestion } from "./plan-from-reply";
 import { PlanNote } from "./PlanNote";
 import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
 import {
@@ -150,13 +149,7 @@ import {
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import {
-  useChatsStore,
-  type ChatMessage,
-  type ChatPlanNote,
-  type ChatTurnChanges,
-  type StoredChat,
-} from "@/store/chats";
+import { useChatsStore, type ChatMessage, type ChatTurnChanges, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
@@ -382,45 +375,23 @@ export function planModeHint(): string {
 
 export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
 export const PLAN_MODE_PLANNING_PROMPT =
-  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. If you cannot call update_todos, write a line that says \"Plan:\" and then the plan as one numbered list instead. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
+  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
 export const PLAN_MODE_REVISION_LINE =
   "The user asked for changes to the current plan. Apply the feedback by calling update_todos with the revised numbered plan as pending items, reply with a short summary of what changed, then stop and wait for approval again.";
-// For a turn without update_todos (a model without tool calling, or the tool
-// turned off): the note under the reply lets the user make its last numbered
-// list the plan (plan-from-reply.ts), so ask for one list, written last.
-export const PLAN_MODE_TEXT_PLANNING_PROMPT =
-  "Plan mode: this is a planning turn. Do not edit files, compile, or run commands yet. Write a line that says \"Plan:\", then the plan as one numbered list, one item per file or section to touch, each item on its own line starting with its number. Then add a short summary without another numbered list, stop, and wait for the user to approve the plan. Do not start the work. If you need the user to choose something before you can plan, ask the question and stop without writing a plan. Mention that the user can turn Plan off to work without a plan.";
-export const PLAN_MODE_TEXT_REVISION_LINE =
-  "The user asked for changes to the current plan. Say briefly what changed, then write a line that says \"Plan:\" and the full revised plan as one numbered list, then stop and wait for approval again.";
 
 export type PlanTurn = "planning" | "revision" | "execution";
 
-export function planModeExecutionPrompt(
-  todos: readonly AgentTodo[],
-  checklistTool = true,
-): string {
+export function planModeExecutionPrompt(todos: readonly AgentTodo[]): string {
   const items = todos
     .filter((todo) => todo.status !== "cancelled")
     .map((todo, index) => `${index + 1}. ${todo.content}`);
-  const checklistLine = checklistTool
-    ? " Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done."
-    : "";
-  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order.${checklistLine} Stay within the approved plan and tell the user if something needs to change.`;
+  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order. Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done. Stay within the approved plan and tell the user if something needs to change.`;
 }
 
-/** `checklistTool` says whether update_todos is offered in this turn. */
-export function planTurnPrompt(
-  turn: PlanTurn,
-  todos: readonly AgentTodo[],
-  checklistTool = true,
-): string {
-  if (turn === "execution") return planModeExecutionPrompt(todos, checklistTool);
-  const planning = checklistTool ? PLAN_MODE_PLANNING_PROMPT : PLAN_MODE_TEXT_PLANNING_PROMPT;
-  if (turn === "revision") {
-    const revision = checklistTool ? PLAN_MODE_REVISION_LINE : PLAN_MODE_TEXT_REVISION_LINE;
-    return `${planning}\n${revision}`;
-  }
-  return planning;
+export function planTurnPrompt(turn: PlanTurn, todos: readonly AgentTodo[]): string {
+  if (turn === "execution") return planModeExecutionPrompt(todos);
+  if (turn === "revision") return `${PLAN_MODE_PLANNING_PROMPT}\n${PLAN_MODE_REVISION_LINE}`;
+  return PLAN_MODE_PLANNING_PROMPT;
 }
 
 export function resolveResponseInstructions(
@@ -2326,8 +2297,6 @@ USER_CUSTOM_INSTRUCTIONS`
     let tools: ToolSet = enabledTools;
     if (chatOnly) tools = {};
     else if (planGated) tools = planModeTools(enabledTools);
-    // Without update_todos the model cannot write or tick off a checklist.
-    const checklistTool = "update_todos" in tools;
     const runSkillCatalog =
       !chatOnly && isToolEnabled(enabledToolsForRun, "load_skill")
         ? skillCatalogPrompt(runSkills)
@@ -2399,7 +2368,6 @@ ${sandboxedCustom}`;
       ? `\n\n${planTurnPrompt(
           planTurn,
           runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
-          checklistTool,
         )}`
       : "";
     const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${skillCatalogBlock}${requestedSkillSuffix}\n\n${approvalPostureLine(runApprovalMode)}${planTurnBlock}`;
@@ -2434,10 +2402,6 @@ ${sandboxedCustom}`;
     };
 
     let planApproved = false;
-    // The whole reply across steps, for reading a plan the model wrote as
-    // text. outcome.text only holds the last step.
-    let runReplyText = "";
-    let runReplyStepStart = 0;
     let runStoppedAtCap = false;
     let activeAssistantId = assistantMsg.id;
     try {
@@ -2520,9 +2484,6 @@ ${sandboxedCustom}`;
         };
         activeAssistantId = nextAssistant.id;
         stepContent = "";
-        // The plan note lands on the new bubble, so only its text counts.
-        runReplyText = "";
-        runReplyStepStart = 0;
         stepBlocks = [];
         reasoningStartedAt = null;
         const next = [...messagesRef.current, steeredUser, nextAssistant];
@@ -2676,9 +2637,6 @@ ${sandboxedCustom}`;
           onThinking: (label) => setRunThinking(label),
           onStep: (step) => {
             usageSteps = step + 1;
-            // Each step's text starts a new paragraph for the plan reader.
-            if (runReplyText && !runReplyText.endsWith("\n\n")) runReplyText += "\n\n";
-            runReplyStepStart = runReplyText.length;
             if (runRequestId && runIsCurrent()) markRunSteerable(runRequestId);
             updateRunLast((m) => {
               stepContent = m.content ?? "";
@@ -2688,17 +2646,14 @@ ${sandboxedCustom}`;
           },
           onRetry: (attempt, max) => {
             setRunThinking(`Connection issue, retrying (${attempt}/${max})…`);
-            runReplyText = runReplyText.slice(0, runReplyStepStart);
             updateRunLast((m) => ({
               ...m,
               content: stepContent,
               reasoningBlocks: stepBlocks,
             }));
           },
-          onText: (chunk) => {
-            runReplyText += chunk;
-            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk }));
-          },
+          onText: (chunk) =>
+            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk })),
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
@@ -2870,43 +2825,15 @@ ${sandboxedCustom}`;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
-      // A planning turn that wrote no checklist gets a note under the reply.
-      // Nothing becomes a plan on its own: the note offers the reply's last
-      // numbered list, and the user picks it. A clarifying question with no
-      // list gets no note, since the user answers it.
+      // A planning turn that wrote no checklist gets a note under the reply,
+      // unless the reply ends in a question for the user to answer.
       if (runChatId && planTodosAtStart && runEndedCleanly && !runStoppedAtCap) {
         const checklist = useAgentTodoStore.getState().todosForChat(runChatId);
-        const modelWroteChecklist = checklist !== planTodosAtStart && checklist.length > 0;
-        const steps = modelWroteChecklist ? null : lastNumberedList(runReplyText);
-        if (steps && (steps.length > 0 || !replyEndsWithQuestion(runReplyText))) {
-          const planNote: ChatPlanNote = {
-            kind: checklist.length > 0 ? "unchanged" : "missing",
-            steps,
-          };
+        if (checklist === planTodosAtStart || checklist.length === 0) {
+          const planNote = checklist.length > 0 ? "unchanged" : "missing";
           // Same tier as the streamed text, so it lands on the finished reply.
-          updateRunLastText((m) => ({ ...m, planNote }));
-        }
-      }
-      // An approved plan run without update_todos had no way to tick items
-      // off, so a clean finish settles them. Otherwise the pill would keep
-      // showing "Step 0 of N" after the work is done.
-      if (
-        runChatId &&
-        planTurn === "execution" &&
-        !checklistTool &&
-        runEndedCleanly &&
-        !runStoppedAtCap
-      ) {
-        const todoStore = useAgentTodoStore.getState();
-        if (todoStore.activeChatId === runChatId) {
-          todoStore.setTodos(
-            todoStore
-              .todosForChat(runChatId)
-              .map((todo) =>
-                todo.status === "pending" || todo.status === "in_progress"
-                  ? { ...todo, status: "completed" }
-                  : todo,
-              ),
+          updateRunLastText((m) =>
+            /\?[*_)"'\s]*$/.test(m.content ?? "") ? m : { ...m, planNote },
           );
         }
       }
@@ -3026,28 +2953,6 @@ ${sandboxedCustom}`;
   const revisePlan = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
   }, []);
-
-  // "Use this as the plan": the reply's numbered list becomes the plan,
-  // awaiting approval like one written with update_todos.
-  const adoptReplyPlan = useCallback(
-    (message: ChatMessage) => {
-      const steps = message.planNote?.steps ?? [];
-      if (!activeChatId || !message.id || steps.length === 0) return;
-      if (streaming || activeChatRun()) return;
-      const todoStore = useAgentTodoStore.getState();
-      if ((todoStore.activeChatId ?? todoStore.viewChatId) !== activeChatId) return;
-      todoStore.setTodos(planTodos(steps));
-      usePlanApprovalStore.getState().setStatus(activeChatId, "awaiting");
-      setMessages((current) => {
-        const next = current.map((item) =>
-          item.id === message.id ? { ...item, planNote: undefined } : item,
-        );
-        useChatsStore.getState().saveMessages(activeChatId, next);
-        return next;
-      });
-    },
-    [activeChatId, setMessages, streaming],
-  );
 
   let lastAssistantIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
@@ -3561,17 +3466,7 @@ ${sandboxedCustom}`;
                     renderExtras={({ live, isLatestAssistant, msg }) => (
                       <>
                         {msg.role === "assistant" && msg.planNote && !live && (
-                          <PlanNote
-                            note={msg.planNote}
-                            onUse={
-                              isLatestAssistant &&
-                              planMode &&
-                              !streaming &&
-                              msg.planNote.steps.length > 0
-                                ? () => adoptReplyPlan(msg)
-                                : undefined
-                            }
-                          />
+                          <PlanNote note={msg.planNote} />
                         )}
                         {msg.role === "assistant" &&
                           isLatestAssistant &&

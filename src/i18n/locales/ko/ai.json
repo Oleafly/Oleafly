@@ -740,8 +740,7 @@
     "projectSubtitle": "\"{{project}}\" 작업 중",
     "noOutput": "모델이 아무 출력도 내놓지 않았습니다. 설정 → AI 어시스턴트를 확인하세요.",
     "planMissing": "아직 승인할 계획이 없습니다. 어시스턴트에게 계획을 요청하거나 계획 모드를 끄세요.",
-    "planUnchanged": "계획이 바뀌지 않았습니다.",
-    "usePlanFromReply": "이 내용을 계획으로 사용"
+    "planUnchanged": "계획이 바뀌지 않았습니다."
   },
   "followUps": {
     "steered": "실행 중인 차례에 반영했습니다: {{summary}}",

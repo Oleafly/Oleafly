@@ -751,8 +751,7 @@
     "projectSubtitle": "Arbeitet an „{{project}}“",
     "noOutput": "Das Modell hat keine Ausgabe geliefert. Prüfen Sie Einstellungen → KI-Assistent.",
     "planMissing": "Noch kein Plan zum Freigeben. Bitten Sie den Assistenten um einen oder schalten Sie Plan aus.",
-    "planUnchanged": "Der Plan ist unverändert.",
-    "usePlanFromReply": "Als Plan verwenden"
+    "planUnchanged": "Der Plan ist unverändert."
   },
   "followUps": {
     "steered": "In den laufenden Beitrag eingelenkt: {{summary}}",

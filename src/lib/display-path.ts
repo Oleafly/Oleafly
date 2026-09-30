@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { markdownLines } from "@/lib/markdown-fences";
+import { scanFences } from "@/lib/code-fences";
 import { displayHomes } from "@/lib/tauri";
 
 /**
@@ -109,23 +109,17 @@ export function homeRelativeText(text: string, home: string | null | undefined):
  * `markdown` with `format` applied to everything except fenced code blocks.
  * Chat replies show home paths as `~`, but a code block keeps the real path:
  * its Copy code button copies what is shown, and a `~` inside quotes does not
- * expand in a shell. Fences come from the scanner the plan reader also uses
- * (markdown-fences.ts), so both agree on which lines are code. A fence that
- * is still open (a reply that is streaming) runs to the end.
+ * expand in a shell. A fence that is still open (a reply that is streaming)
+ * runs to the end.
  */
 export function outsideCodeFences(markdown: string, format: (prose: string) => string): string {
   let out = "";
-  let prose = "";
-  for (const line of markdownLines(markdown)) {
-    if (line.fence === null) {
-      prose += line.text + line.eol;
-      continue;
-    }
-    if (prose) out += format(prose);
-    prose = "";
-    out += line.text + line.eol;
+  let from = 0;
+  for (const fence of scanFences(markdown)) {
+    out += format(markdown.slice(from, fence.from)) + markdown.slice(fence.from, fence.to);
+    from = fence.to;
   }
-  return prose ? out + format(prose) : out;
+  return out + format(markdown.slice(from));
 }
 
 let homes: readonly string[] = [];

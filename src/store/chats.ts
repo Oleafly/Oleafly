@@ -56,13 +56,9 @@ export interface SubagentEntry {
 
 /**
  * The note under a plan-mode reply that left no new plan. "missing": there is
- * no plan yet. "unchanged": a revision kept the plan as it was. `steps` is the
- * reply's last numbered list, which the user can make the plan.
+ * no plan yet. "unchanged": a revision kept the plan as it was.
  */
-export interface ChatPlanNote {
-  kind: "missing" | "unchanged";
-  steps: string[];
-}
+export type ChatPlanNote = "missing" | "unchanged";
 
 export interface ChatMessage {
   id?: string;

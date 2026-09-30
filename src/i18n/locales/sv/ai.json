@@ -751,8 +751,7 @@
     "projectSubtitle": "Arbetar med \"{{project}}\"",
     "noOutput": "Modellen gav ingen utdata. Kontrollera Inställningar → AI-assistent.",
     "planMissing": "Det finns ingen plan att godkänna än. Be assistenten om en, eller stäng av Plan.",
-    "planUnchanged": "Planen är oförändrad.",
-    "usePlanFromReply": "Använd det här som plan"
+    "planUnchanged": "Planen är oförändrad."
   },
   "followUps": {
     "steered": "Styrd in i den pågående turen: {{summary}}",

@@ -751,8 +751,7 @@
     "projectSubtitle": "Bezig met \"{{project}}\"",
     "noOutput": "Het model gaf geen uitvoer terug. Kijk bij Instellingen → AI-assistent.",
     "planMissing": "Er is nog geen plan om goed te keuren. Vraag de assistent om een plan of zet Plan uit.",
-    "planUnchanged": "Het plan is niet gewijzigd.",
-    "usePlanFromReply": "Dit als plan gebruiken"
+    "planUnchanged": "Het plan is niet gewijzigd."
   },
   "followUps": {
     "steered": "Bijgestuurd in de lopende beurt: {{summary}}",
