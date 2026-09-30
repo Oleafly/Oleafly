@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ interface ResetToDefaultsProps {
   onReset: () => void;
   disabled?: boolean;
   confirmationDescription?: string;
+  /** Something this button would reset differs from its default. */
+  changed?: boolean;
 }
 
 export function ResetToDefaults({
@@ -16,9 +18,11 @@ export function ResetToDefaults({
   onReset,
   disabled = false,
   confirmationDescription,
+  changed = false,
 }: Readonly<ResetToDefaultsProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const changedHintId = useId();
 
   const description = t(($) => $.settings.reset.description, { sectionName });
 
@@ -28,14 +32,27 @@ export function ResetToDefaults({
         <div>
           <p className="text-sm">{t(($) => $.settings.reset.label)}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
+          {changed && (
+            <p id={changedHintId} hidden>
+              {t(($) => $.settings.reset.changed)}
+            </p>
+          )}
         </div>
         <Button
           variant="secondary"
           size="sm"
-          className="shrink-0"
+          className="relative shrink-0"
           disabled={disabled}
+          aria-describedby={changed ? changedHintId : undefined}
           onClick={() => setConfirmationOpen(true)}
         >
+          {changed && (
+            <span
+              aria-hidden
+              data-testid="reset-changed-dot"
+              className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary forced-color-adjust-none forced-colors:bg-[CanvasText]"
+            />
+          )}
           <RotateCcw className="size-3.5" />
           {t(($) => $.settings.reset.button)}
         </Button>

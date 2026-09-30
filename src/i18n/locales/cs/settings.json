@@ -1445,6 +1445,7 @@
   },
   "reset": {
     "button": "Obnovit výchozí",
+    "changed": "Některá nastavení v této části se liší od výchozích hodnot.",
     "confirmDescription": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty. Ostatní nastavení zůstanou beze změny.",
     "confirmTitle": "Obnovit výchozí nastavení v části {{sectionName}}?",
     "description": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty.",

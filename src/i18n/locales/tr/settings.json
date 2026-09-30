@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Varsayılanlara sıfırla",
+    "changed": "Buradaki bazı ayarlar varsayılanlarından farklı.",
     "confirmDescription": "{{sectionName}} tercihlerini varsayılanlarına döndürür. Diğer ayarlar değişmeden kalır.",
     "confirmTitle": "{{sectionName}} ayarları sıfırlansın mı?",
     "description": "{{sectionName}} tercihlerini varsayılanlarına döndürür.",

@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
-import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
+import {
+  sectionDiffersFromDefaults,
+  useSettingsStore,
+  type DefaultLatexEngine,
+} from "@/store/settings";
 import { TexPackagesSection } from "./TexPackagesSection";
 import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
 import { ensurePandoc } from "@/features/pandoc";
@@ -126,6 +130,7 @@ export function EngineSection() {
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
   const resetEnginePreferences = useSettingsStore((s) => s.resetEnginePreferences);
+  const engineChanged = useSettingsStore((s) => sectionDiffersFromDefaults("engine", s));
   const installPhase = useEngineStore((s) => s.installPhase);
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [distros, setDistros] = useState<TexDistribution[]>([]);
@@ -361,6 +366,7 @@ export function EngineSection() {
       <ResetToDefaults
         sectionName={t(($) => $.settings.engine.sectionName)}
         onReset={resetEnginePreferences}
+        changed={engineChanged}
       />
     </Tabs>
   );

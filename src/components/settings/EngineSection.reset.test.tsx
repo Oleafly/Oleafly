@@ -37,7 +37,9 @@ describe("Engines reset", () => {
 
     render(<EngineSection />);
 
-    fireEvent.click(screen.getByRole("button", { name: enSettings.reset.button }));
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
+    expect(reset).toHaveAccessibleDescription(enSettings.reset.changed);
+    fireEvent.click(reset);
 
     const confirmation = screen.getByRole("alertdialog", {
       name: enSettings.reset.confirmTitle.replace(
@@ -59,6 +61,7 @@ describe("Engines reset", () => {
 
     expect(useSettingsStore.getState().defaultLatexEngine).toBe("tectonic");
     expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("tectonic");
+    expect(reset).not.toHaveAccessibleDescription();
     expect(useEngineStore.getState()).toMatchObject({
       info: engineInfo,
       installed: ["biblatex", "fontspec"],

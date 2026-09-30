@@ -11,6 +11,7 @@ import {
   sameShortcutBinding,
   SHORTCUT_DEFINITIONS,
   shortcutLabel,
+  shortcutsDifferFromDefaults,
   type ShortcutBinding,
   type ShortcutId,
   useShortcutStore,
@@ -18,6 +19,7 @@ import {
 import {
   EDITOR_KEY_DEFINITIONS,
   editorKeyFromEvent,
+  editorKeysDifferFromDefaults,
   editorKeyTokens,
   sameEditorKey,
   useEditorKeymapStore,
@@ -310,6 +312,12 @@ export function ShortcutsSection() {
   const resetBinding = useShortcutStore((state) => state.resetBinding);
   const resetAll = useShortcutStore((state) => state.resetAll);
   const resetEditorKeys = useEditorKeymapStore((state) => state.resetAll);
+  const bindingsChanged = useShortcutStore((state) =>
+    shortcutsDifferFromDefaults(state.bindings),
+  );
+  const editorKeysChanged = useEditorKeymapStore((state) =>
+    editorKeysDifferFromDefaults(state.keys),
+  );
   const [editing, setEditing] = useState<ShortcutId | null>(null);
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
@@ -496,6 +504,7 @@ export function ShortcutsSection() {
           resetAll();
           resetEditorKeys();
         }}
+        changed={bindingsChanged || editorKeysChanged}
       />
     </div>
   );
