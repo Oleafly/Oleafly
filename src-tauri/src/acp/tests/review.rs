@@ -698,6 +698,7 @@ async fn a_picked_skill_follows_the_message_as_its_own_text_block() {
         id: "claim-audit".into(),
         name: "Claim audit".into(),
         block: "Selected skill: Claim audit\nCheck every claim.".into(),
+        folder: None,
     };
     harness
         .runtime
@@ -740,6 +741,7 @@ async fn the_skill_block_counts_toward_the_message_limit() {
         id: "huge".into(),
         name: "Huge".into(),
         block: "s".repeat(protocol::MAX_FRAME),
+        folder: None,
     };
     let error = harness
         .runtime

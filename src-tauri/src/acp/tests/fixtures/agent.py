@@ -158,6 +158,19 @@ for line in sys.stdin:
             target = os.path.join(os.getcwd(), "paper.tex")
             update("tool_call", toolCallId="edit-1", title="Edit paper", kind="edit", status="pending", locations=[{"path": target}], content=[{"type": "diff", "path": target, "oldText": "Old sentence.\n", "newText": "New sentence.\npassword = " + raw_input_marker + "\n"}])
             send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": "edit-1", "title": "Edit paper"}, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
+        elif prompt.startswith("ask-permission:"):
+            pending_prompt = request
+            spec = json.loads(prompt[len("ask-permission:"):])
+            tool = {"toolCallId": "ask-1", "title": "Read a file", "locations": [{"path": spec["path"]}], "rawInput": {"file_path": spec["path"]}}
+            if spec.get("kind"):
+                tool["kind"] = spec["kind"]
+            send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": tool, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
+        elif prompt == "huge-edit":
+            target = os.path.join(os.getcwd(), "refs.bib")
+            update("tool_call", toolCallId="edit-big", title="Edit refs.bib", kind="edit", status="in_progress", locations=[{"path": target}])
+            update("tool_call_update", toolCallId="edit-big", status="completed", content=[{"type": "diff", "path": target, "oldText": "o" * (600 * 1024), "newText": "n" * (601 * 1024)}])
+            update("agent_message_chunk", content={"type": "text", "text": "Edited the bibliography."})
+            result(request, {"stopReason": "end_turn"})
         elif prompt == "paged-answer":
             for index in range(520):
                 update("agent_message_chunk", content={"type": "text", "text": str(index) + "|"})

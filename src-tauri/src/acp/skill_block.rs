@@ -5,7 +5,7 @@
 //! message instead of relying on `load_skill`.
 
 use crate::agent::task_runtime::{skill_section, SkillAudience, MAX_SKILL_BYTES};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A skill attached to one prompt.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,6 +14,9 @@ pub struct PromptSkill {
     pub name: String,
     /// The text block sent to the agent after the user's message.
     pub block: String,
+    /// The skill's installed folder, spelled as the block names it. The agent
+    /// may read inside it during this turn, since the block points it there.
+    pub folder: Option<PathBuf>,
 }
 
 pub(super) fn prompt_skill(
@@ -43,10 +46,14 @@ pub(super) fn prompt_skill_in(
     if block.len() > MAX_SKILL_BYTES {
         return Err("This skill is too long to send with a message.".into());
     }
+    let folder = Some(record.dir.as_str())
+        .filter(|dir| !dir.is_empty())
+        .map(|dir| oleafly_core::plain_path(Path::new(dir)));
     Ok(PromptSkill {
         id: record.id,
         name: record.name,
         block,
+        folder,
     })
 }
 
@@ -74,6 +81,18 @@ mod tests {
         let skill = prompt_skill_in(data.path(), None, "project", "claim-audit").unwrap();
         assert_eq!(skill.id, "claim-audit");
         assert_eq!(skill.name, "Claim audit");
+        let named = skill.folder.clone().unwrap();
+        assert!(skill
+            .block
+            .contains(&format!("Skill folder: {}\n", named.display())));
+        assert_eq!(
+            named.canonicalize().unwrap(),
+            data.path()
+                .join("skills")
+                .join("claim-audit")
+                .canonicalize()
+                .unwrap()
+        );
         let folder = oleafly_core::plain_path(
             &data
                 .path()

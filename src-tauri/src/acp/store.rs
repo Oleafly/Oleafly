@@ -123,6 +123,23 @@ impl Store {
         tx.commit().map_err(|e| e.to_string())
     }
 
+    /// The highest stored event sequence of a session (0 without events).
+    pub fn last_sequence(&self, id: &str) -> Result<u64, String> {
+        let sequence: Option<i64> = self
+            .db
+            .lock()
+            .map_err(|_| "ACP storage is unavailable.")?
+            .query_row(
+                "SELECT MAX(sequence) FROM events WHERE session_id=?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(sequence
+            .and_then(|value| u64::try_from(value).ok())
+            .unwrap_or(0))
+    }
+
     pub fn get(&self, id: &str) -> Result<SessionRecord, String> {
         let value: Option<String> = self
             .db

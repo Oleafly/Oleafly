@@ -25,6 +25,9 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const PROMPT_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const PERMISSION_TIMEOUT_MS: u64 = 120_000;
 const CANCEL_GRACE: Duration = Duration::from_secs(10);
+/// How long a closed session stays registered while its last turn finishes
+/// (the before-turn copy's own hooks are bounded at 10 s each).
+const RELEASE_WAIT: Duration = Duration::from_secs(25);
 const MAX_SESSION_BYTES: usize = 64 * 1024 * 1024;
 
 struct PendingPermission {
@@ -39,6 +42,8 @@ struct LiveState {
     bytes: usize,
     /// Latest content of this turn's tool calls, joined to permission requests.
     tool_calls: HashMap<String, permission_view::ToolCallView>,
+    /// The folder of the skill attached to the running turn.
+    skill_folder: Option<PathBuf>,
 }
 
 struct TaskTemp(PathBuf);
@@ -498,9 +503,18 @@ impl AcpRuntime {
             if session.owner != owner {
                 return Err("This ACP session belongs to another window or task.".into());
             }
-            return Err("This ACP session is already connected.".into());
+            if !session.connection.is_closed() {
+                return Err("This ACP session is already connected.".into());
+            }
+            // The agent is gone but its last turn may still be saving events.
+            self.release_when_idle(&session).await;
+            if self.get_live(id).await.is_ok() {
+                return Err("This ACP session is already connected.".into());
+            }
         }
         let mut record = self.store.get(id)?;
+        // Continue after every saved event, even when the stored record lags.
+        record.last_sequence = record.last_sequence.max(self.store.last_sequence(id)?);
         crate::trust::require_trusted(
             &record.project_id,
             crate::trust::Capability::ExternalAgents,
@@ -622,6 +636,7 @@ impl AcpRuntime {
                 cancelled: false,
                 bytes,
                 tool_calls: HashMap::new(),
+                skill_folder: None,
             }),
             connection,
             operation: AsyncMutex::new(()),
@@ -962,6 +977,7 @@ impl AcpRuntime {
             state.record.error = None;
             state.cancelled = false;
             state.tool_calls.clear();
+            state.skill_folder = skill.as_ref().and_then(|skill| skill.folder.clone());
             if state.record.last_sequence <= 1 {
                 let title = if has_text {
                     text.trim()
@@ -1068,6 +1084,7 @@ impl AcpRuntime {
                 let _ = self.emit_locked(&session, &mut state, "turn_changes", data);
             }
             let authenticating = status == SessionStatus::AuthRequired;
+            state.skill_folder = None;
             state.record.status = status;
             state.record.error = message.clone();
             error = message;
@@ -1148,7 +1165,15 @@ impl AcpRuntime {
                 json!({"status":"cancelled"}),
             )
         })();
-        self.release_live(&session).await;
+        if session.operation.try_lock().is_ok() {
+            self.release_live(&session).await;
+        } else {
+            // The turn is still finishing (its before-turn copy can take
+            // seconds): keep the session registered until it has saved its
+            // last events, so it cannot be reconnected underneath it.
+            let runtime = self.clone();
+            tokio::spawn(async move { runtime.release_when_idle(&session).await });
+        }
         cancelling.and(cancelled)
     }
 
@@ -1183,8 +1208,16 @@ impl AcpRuntime {
                 )?;
             }
         }
-        self.release_live(&session).await;
+        self.release_when_idle(&session).await;
         Ok(())
+    }
+
+    /// Releases a closed session once no turn, sign-in or model change still
+    /// holds it (bounded by [`RELEASE_WAIT`]), so a reconnect never builds a
+    /// second copy of the session while the old turn still appends events.
+    async fn release_when_idle(&self, session: &Arc<LiveSession>) {
+        let _idle = tokio::time::timeout(RELEASE_WAIT, session.operation.lock()).await;
+        self.release_live(session).await;
     }
 
     async fn release_live(&self, session: &Arc<LiveSession>) {
@@ -1471,6 +1504,7 @@ impl AcpRuntime {
                     Incoming::Disconnected => break,
                 }
             }
+            drop(incoming);
             if let Some(runtime) = weak.upgrade() {
                 runtime.expire_permissions(&session).await;
                 if let Ok(mut state) = session.state.lock() {
@@ -1489,7 +1523,7 @@ impl AcpRuntime {
                         );
                     }
                 }
-                runtime.release_live(&session).await;
+                runtime.release_when_idle(&session).await;
             }
         });
     }
@@ -1556,21 +1590,37 @@ impl AcpRuntime {
     ) -> Result<(), String> {
         let params = &value["params"];
         let record = self.copy_record(session)?;
-        let allowed = (session.owner.is_some() || session.task_temp.is_some())
+        let (remembered, skill_folder) = {
+            let state = session
+                .state
+                .lock()
+                .map_err(|_| "The ACP session is unavailable.")?;
+            (
+                params["toolCall"]["toolCallId"]
+                    .as_str()
+                    .and_then(|id| state.tool_calls.get(id).cloned()),
+                state.skill_folder.clone(),
+            )
+        };
+        let in_turn = (session.owner.is_some() || session.task_temp.is_some())
             && record.status == SessionStatus::Running
-            && params["sessionId"].as_str() == record.native_session_id.as_deref()
+            && params["sessionId"].as_str() == record.native_session_id.as_deref();
+        let in_project = in_turn
             && permission_paths_allowed(Path::new(&record.project_path), &params["toolCall"]);
-        if !allowed {
+        // The skill block sends the agent to the skill's own folder, which is
+        // never inside the project: reading there is allowed for that turn.
+        let skill_read = in_turn
+            && !in_project
+            && skill_folder.as_deref().is_some_and(|folder| {
+                let kind = params["toolCall"]["kind"]
+                    .as_str()
+                    .or_else(|| remembered.as_ref().and_then(|call| call.kind.as_deref()));
+                skill_read_allowed(folder, kind, &params["toolCall"])
+            });
+        if !in_project && !skill_read {
             return session.connection.send(json!({"jsonrpc":"2.0","id":value["id"],"result":{"outcome":{"outcome":"cancelled"}}})).await.map_err(|e| e.to_string());
         }
         session.redactor.validate_metadata_ids(&params["options"])?;
-        let remembered = params["toolCall"]["toolCallId"].as_str().and_then(|id| {
-            session
-                .state
-                .lock()
-                .ok()
-                .and_then(|state| state.tool_calls.get(id).cloned())
-        });
         let (kind, locations, diffs) = permission_view::permission_view(
             Path::new(&record.project_path),
             remembered.as_ref(),
@@ -1612,16 +1662,16 @@ impl AcpRuntime {
             .lock()
             .map(|value| *value)
             .unwrap_or_default();
-        let automatic = session.task_temp.is_some() || delegate == PermissionDelegate::AutoAllow;
-        let auto_option = if automatic {
-            request
-                .options
-                .iter()
-                .find(|option| option.kind == "allow_once")
-                .map(|option| option.option_id.clone())
-        } else {
-            None
-        };
+        let allow_once = request
+            .options
+            .iter()
+            .find(|option| option.kind == "allow_once")
+            .map(|option| option.option_id.clone());
+        // A skill read without an "allow once" choice goes to the card.
+        let automatic = session.task_temp.is_some()
+            || delegate == PermissionDelegate::AutoAllow
+            || (skill_read && allow_once.is_some());
+        let auto_option = if automatic { allow_once } else { None };
         let permission_id = request.id.clone();
         {
             let mut state = session
@@ -1840,13 +1890,77 @@ static LAUNCH_ROOTS: Mutex<Option<HashMap<PathBuf, PathBuf>>> = Mutex::new(None)
 /// The folder an agent starts in for `canonical`: the user's own
 /// drive-letter path when it leads to the same folder (a mapped network
 /// drive stays `Z:\thesis` instead of `\\server\share\thesis`, which cmd.exe
-/// cannot use), otherwise the canonical root as a plain path.
+/// cannot use), otherwise [`default_launch_root`].
 pub(super) fn launch_root_from(original: Option<&Path>, canonical: &Path) -> PathBuf {
     original
         .filter(|original| original.is_absolute())
         .filter(|original| original.canonicalize().is_ok_and(|real| real == canonical))
         .map(crate::program_locator::child_path)
-        .unwrap_or_else(|| crate::program_locator::child_path(canonical))
+        .filter(|root| !crate::program_locator::network_folder(root))
+        .unwrap_or_else(|| default_launch_root(canonical))
+}
+
+/// The canonical root as a plain path. Project paths are stored canonical,
+/// so a project opened from a mapped drive arrives as `\\server\share\...`;
+/// it is spelled through the mapped drive that leads to it when there is one.
+fn default_launch_root(canonical: &Path) -> PathBuf {
+    let plain = crate::program_locator::child_path(canonical);
+    if !crate::program_locator::network_folder(&plain) {
+        return plain;
+    }
+    path_through_alias(canonical, &mapped_network_drives()).unwrap_or(plain)
+}
+
+/// `canonical` spelled through the first alias whose canonical target is
+/// closest above it. Each alias is `(alias, canonical target)`.
+pub(crate) fn path_through_alias(
+    canonical: &Path,
+    aliases: &[(PathBuf, PathBuf)],
+) -> Option<PathBuf> {
+    aliases
+        .iter()
+        .rev()
+        .filter_map(|(alias, target)| {
+            let rest = canonical.strip_prefix(target).ok()?;
+            let path = if rest.as_os_str().is_empty() {
+                alias.clone()
+            } else {
+                alias.join(rest)
+            };
+            Some((target.components().count(), path))
+        })
+        .max_by_key(|(depth, _)| *depth)
+        .map(|(_, path)| path)
+}
+
+/// Mapped network drives as `(X:\, canonical target)`.
+#[cfg(windows)]
+fn mapped_network_drives() -> Vec<(PathBuf, PathBuf)> {
+    use std::os::windows::ffi::OsStrExt as _;
+    use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives};
+    const DRIVE_REMOTE: u32 = 4;
+    let present = unsafe { GetLogicalDrives() };
+    (0..26u8)
+        .filter(|index| present & (1 << index) != 0)
+        .filter_map(|index| {
+            let drive = PathBuf::from(format!("{}:\\", char::from(b'A' + index)));
+            let wide: Vec<u16> = drive
+                .as_os_str()
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect();
+            if unsafe { GetDriveTypeW(wide.as_ptr()) } != DRIVE_REMOTE {
+                return None;
+            }
+            let target = drive.canonicalize().ok()?;
+            Some((drive, target))
+        })
+        .collect()
+}
+
+#[cfg(not(windows))]
+fn mapped_network_drives() -> Vec<(PathBuf, PathBuf)> {
+    Vec::new()
 }
 
 /// Records the project folder as the user opened it, so agents start there
@@ -1866,14 +1980,23 @@ pub(super) fn register_launch_root(canonical: &Path, root: &Path) {
     }
 }
 
-/// The launch root recorded for a canonical project root (the plain path
-/// when none was recorded).
+/// The launch root recorded for a canonical project root, or
+/// [`default_launch_root`] when none was recorded (delegated and task
+/// sessions). A network root's lookup is remembered, since permission checks
+/// ask for it on every request.
 pub(super) fn launch_root_for(canonical: &Path) -> PathBuf {
-    LAUNCH_ROOTS
+    if let Some(root) = LAUNCH_ROOTS
         .lock()
         .ok()
         .and_then(|roots| roots.as_ref()?.get(canonical).cloned())
-        .unwrap_or_else(|| crate::program_locator::child_path(canonical))
+    {
+        return root;
+    }
+    let root = default_launch_root(canonical);
+    if crate::program_locator::network_folder(&crate::program_locator::child_path(canonical)) {
+        register_launch_root(canonical, &root);
+    }
+    root
 }
 
 pub(super) fn equivalent_path_prefixes(
@@ -1906,68 +2029,89 @@ fn lexical_path_within(path: &Path, root: &Path) -> bool {
         })
 }
 
-pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
-    let paths = tool["locations"]
+/// Every path a permission request names: its locations and the usual path
+/// fields of its raw input.
+fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
+    tool["locations"]
         .as_array()
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(|value| value["path"].as_str())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    paths
         .into_iter()
+        .flatten()
+        .filter_map(|value| value["path"].as_str())
         .chain(
             ["path", "file_path", "filePath", "cwd", "directory"]
                 .iter()
                 .filter_map(|key| tool["rawInput"][key].as_str()),
         )
-        .all(|path| {
+}
+
+pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
+    let spelled = launch_root_for(root);
+    permission_paths(tool).all(|path| path_within(root, &spelled, Path::new(path)))
+}
+
+/// Whether a request only reads inside the skill folder attached to the
+/// turn (`folder` as the skill block names it): its kind is `read` or
+/// `search` and it names at least one path, every one absolute and really
+/// inside the folder (links out of it do not count).
+pub(super) fn skill_read_allowed(folder: &Path, kind: Option<&str>, tool: &Value) -> bool {
+    if !matches!(kind, Some("read" | "search")) {
+        return false;
+    }
+    let Ok(root) = folder.canonicalize() else {
+        return false;
+    };
+    let spelled = crate::program_locator::child_path(folder);
+    let mut paths = permission_paths(tool).peekable();
+    paths.peek().is_some()
+        && paths.all(|path| {
             let path = Path::new(path);
-            if path
-                .components()
-                .any(|part| matches!(part, Component::ParentDir))
-            {
-                return false;
-            }
-            let candidate = if path.is_absolute() {
-                path.to_path_buf()
-            } else {
-                root.join(path)
-            };
-            let mut existing = candidate.as_path();
-            while !existing.exists() {
-                let Some(parent) = existing.parent() else {
-                    return false;
-                };
-                existing = parent;
-            }
-            if !existing
-                .canonicalize()
-                .is_ok_and(|path| path.starts_with(root))
-            {
-                return false;
-            }
-            // The agent was started in the launch root (for example a mapped
-            // drive letter), so its paths may use that spelling.
-            if lexical_path_within(&candidate, root)
-                || lexical_path_within(&candidate, &launch_root_for(root))
-            {
-                return true;
-            }
-            #[cfg(windows)]
-            {
-                let Some(expanded) = oleafly_core::long_path_name(existing) else {
-                    return false;
-                };
-                candidate
-                    .strip_prefix(existing)
-                    .is_ok_and(|suffix| lexical_path_within(&expanded.join(suffix), root))
-            }
-            #[cfg(not(windows))]
-            false
+            path.is_absolute() && path_within(&root, &spelled, path)
         })
+}
+
+/// Whether `path` (relative ones are joined to `root`) leads inside the
+/// canonical `root`, spelled either as `root` or as `spelled`.
+fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
+    if path
+        .components()
+        .any(|part| matches!(part, Component::ParentDir))
+    {
+        return false;
+    }
+    let candidate = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    let mut existing = candidate.as_path();
+    while !existing.exists() {
+        let Some(parent) = existing.parent() else {
+            return false;
+        };
+        existing = parent;
+    }
+    if !existing
+        .canonicalize()
+        .is_ok_and(|path| path.starts_with(root))
+    {
+        return false;
+    }
+    // The agent was started in the launch root (for example a mapped drive
+    // letter), so its paths may use that spelling.
+    if lexical_path_within(&candidate, root) || lexical_path_within(&candidate, spelled) {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        let Some(expanded) = oleafly_core::long_path_name(existing) else {
+            return false;
+        };
+        candidate
+            .strip_prefix(existing)
+            .is_ok_and(|suffix| lexical_path_within(&expanded.join(suffix), root))
+    }
+    #[cfg(not(windows))]
+    false
 }
 
 pub fn prompt_usage(value: &Value) -> Option<UsageCounters> {

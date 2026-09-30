@@ -145,6 +145,15 @@ pub enum Frame {
     DroppedUpdate {
         bytes: usize,
     },
+    /// An oversized tool call update that was read, with everything but the
+    /// tool call's identity and status dropped, so the call still ends.
+    TruncatedUpdate {
+        bytes: usize,
+        /// The `session/update` notification with only `sessionId` and the
+        /// update's `sessionUpdate`, `toolCallId`, `status`, `kind` and
+        /// `title`, marked `truncated`.
+        message: Value,
+    },
 }
 
 pub struct Connection {
@@ -171,6 +180,17 @@ async fn pump_agent_frames(
                     .send(Incoming::DroppedUpdate { bytes })
                     .await
                     .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
+            Frame::TruncatedUpdate { bytes, message } => {
+                if incoming.send(Incoming::Message(message)).await.is_err()
+                    || incoming
+                        .send(Incoming::DroppedUpdate { bytes })
+                        .await
+                        .is_err()
                 {
                     break;
                 }
@@ -223,8 +243,9 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
 }
 
 /// Reads the next agent message. A `session/update` notification between
-/// 1 MiB and 16 MiB is read in full and dropped; every other message over
-/// 1 MiB, and anything over 16 MiB, is an error.
+/// 1 MiB and 16 MiB is read in full and its content dropped (a tool call
+/// update keeps its identity and status); every other message over 1 MiB,
+/// and anything over 16 MiB, is an error.
 pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Frame>, RpcError> {
@@ -234,27 +255,100 @@ pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
     if bytes.len() <= MAX_FRAME {
         return parse_envelope(&bytes).map(|value| Some(Frame::Message(value)));
     }
-    if is_update_notification(&bytes) {
-        return Ok(Some(Frame::DroppedUpdate { bytes: bytes.len() }));
+    match oversized_update(&bytes) {
+        Some(Some(message)) => Ok(Some(Frame::TruncatedUpdate {
+            bytes: bytes.len(),
+            message,
+        })),
+        Some(None) => Ok(Some(Frame::DroppedUpdate { bytes: bytes.len() })),
+        None => Err(RpcError::local(
+            "The agent sent an ACP message larger than 1 MiB.",
+        )),
     }
-    Err(RpcError::local(
-        "The agent sent an ACP message larger than 1 MiB.",
-    ))
+}
+
+/// A string field of an oversized update; any other value is ignored.
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum LooseText {
+    Text(String),
+    Other(serde::de::IgnoredAny),
+}
+
+impl LooseText {
+    fn text(field: Option<Self>, limit: usize) -> Option<String> {
+        match field? {
+            Self::Text(text) if !text.is_empty() && text.len() <= limit => Some(text),
+            _ => None,
+        }
+    }
 }
 
 /// Checks the envelope of an oversized frame without building its payload.
-fn is_update_notification(bytes: &[u8]) -> bool {
+/// `None`: not an update notification. `Some(None)`: an update that is only
+/// counted. `Some(Some(message))`: a tool call update cut to its identity.
+fn oversized_update(bytes: &[u8]) -> Option<Option<Value>> {
     #[derive(serde::Deserialize)]
     struct Envelope {
         jsonrpc: Option<String>,
         method: Option<String>,
         id: Option<serde::de::IgnoredAny>,
     }
-    serde_json::from_slice::<Envelope>(bytes).is_ok_and(|envelope| {
-        envelope.jsonrpc.as_deref() == Some("2.0")
-            && envelope.method.as_deref() == Some("session/update")
-            && envelope.id.is_none()
-    })
+    #[derive(serde::Deserialize)]
+    struct Identity {
+        params: Option<Params>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Params {
+        #[serde(rename = "sessionId")]
+        session_id: Option<LooseText>,
+        update: Option<Update>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Update {
+        #[serde(rename = "sessionUpdate")]
+        session_update: Option<LooseText>,
+        #[serde(rename = "toolCallId")]
+        tool_call_id: Option<LooseText>,
+        status: Option<LooseText>,
+        kind: Option<LooseText>,
+        title: Option<LooseText>,
+    }
+    let envelope = serde_json::from_slice::<Envelope>(bytes).ok()?;
+    if envelope.jsonrpc.as_deref() != Some("2.0")
+        || envelope.method.as_deref() != Some("session/update")
+        || envelope.id.is_some()
+    {
+        return None;
+    }
+    // A second pass, so a params shape this reader does not expect still
+    // counts as a dropped update rather than ending the connection.
+    Some((|| {
+        let params = serde_json::from_slice::<Identity>(bytes).ok()?.params?;
+        let session_id = LooseText::text(params.session_id, 512)?;
+        let update = params.update?;
+        let kind = LooseText::text(update.session_update, 64)
+            .filter(|kind| matches!(kind.as_str(), "tool_call" | "tool_call_update"))?;
+        let tool_call_id = LooseText::text(update.tool_call_id, 512)?;
+        let mut kept = serde_json::Map::new();
+        kept.insert("sessionUpdate".into(), Value::String(kind));
+        kept.insert("toolCallId".into(), Value::String(tool_call_id));
+        for (key, field) in [
+            ("status", update.status),
+            ("kind", update.kind),
+            ("title", update.title),
+        ] {
+            if let Some(text) = LooseText::text(field, 1024) {
+                kept.insert(key.into(), Value::String(text));
+            }
+        }
+        kept.insert("truncated".into(), Value::Bool(true));
+        Some(json!({
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {"sessionId": session_id, "update": kept},
+        }))
+    })())
 }
 
 fn parse_envelope(bytes: &[u8]) -> Result<Value, RpcError> {

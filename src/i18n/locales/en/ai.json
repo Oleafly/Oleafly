@@ -510,6 +510,7 @@
     "terminalCommand": "The agent is running a terminal command.",
     "agentToolFallback": "Agent tool",
     "agentReported": "The agent reported: {{detail}}",
+    "updateTooLarge": "Part of the agent's output was too large to show ({{size}}).",
     "imageAttachmentName": "Image {{index}}",
     "agentImage": "[The agent returned an image.]",
     "setup": {
