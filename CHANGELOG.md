@@ -68,6 +68,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrong size, Oleafly puts it back when the window is focused, resized or
   moves to a display with a different scale, and writes a line to the app
   log.
+- Recording a shortcut no longer saves a character typed with AltGr, such
+  as @ from AltGr+Q on a German keyboard, or on macOS with Option. Once
+  saved, such a key made every @ you typed run the command. Shift with a
+  letter or Space is no longer accepted as an editor key either, since it only
+  types text. If you saved one of these keys before, reset that shortcut.
 
 ## [0.4.3] - 2026-09-27
 

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { EDITOR_COMMAND_IDS, type EditorCommandId } from "@oleafly/editor";
+import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
 
 export type EditorKeyId = EditorCommandId;
 
@@ -83,6 +84,9 @@ export function parseEditorKey(value: string): ParsedEditorKey | null {
     modifiers.push(modifier);
   }
   if (modifiers.length === 0 && !isFunctionKey(key)) return null;
+  // Shift with a character or Space only types text.
+  const shiftOnly = modifiers.every((modifier) => modifier === "Shift");
+  if (shiftOnly && (key.length === 1 || key === "Space")) return null;
   if (modifiers.includes("Mod") && modifiers.includes("Cmd")) return null;
   return { modifiers, key };
 }
@@ -120,7 +124,7 @@ function isApple(): boolean {
 }
 
 export function editorKeyFromEvent(event: KeyboardEvent): string | null {
-  if (["Alt", "Control", "Meta", "Shift"].includes(event.key)) return null;
+  if (isUnbindableKey(event.key) || isAltGraphCharacter(event)) return null;
   const apple = isApple();
   const modifiers: string[] = [];
   if (event.metaKey && apple) modifiers.push("Mod");

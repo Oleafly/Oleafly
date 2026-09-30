@@ -49,6 +49,14 @@ describe("parseEditorKey", () => {
     expect(isValidEditorKey("d")).toBe(false);
   });
 
+  it("rejects Shift alone with a character or Space, which only types text", () => {
+    expect(parseEditorKey("Shift-!")).toBeNull();
+    expect(parseEditorKey("Shift-a")).toBeNull();
+    expect(parseEditorKey("Shift-Space")).toBeNull();
+    expect(isValidEditorKey("Shift-Tab")).toBe(true);
+    expect(isValidEditorKey("Ctrl-Shift-u")).toBe(true);
+  });
+
   it("rejects unknown modifiers, unknown key names, duplicates and Mod with Cmd", () => {
     expect(isValidEditorKey("Hyper-d")).toBe(false);
     expect(isValidEditorKey("Mod-Nonsense")).toBe(false);
@@ -96,6 +104,65 @@ describe("editorKeyFromEvent", () => {
   it("names the space bar", () => {
     expect(editorKeyFromEvent(keyEvent({ key: " ", ctrlKey: true }))).toBe("Mod-Space");
   });
+
+  it("ignores characters typed through AltGr on Windows", () => {
+    setPlatform("Win32");
+    // Engines that report AltGr as Ctrl+Alt.
+    expect(
+      editorKeyFromEvent(
+        keyEvent({ key: "@", ctrlKey: true, altKey: true, modifierAltGraph: true }),
+      ),
+    ).toBeNull();
+    // WebView2: AltGr+Shift+4 on US-International.
+    expect(
+      editorKeyFromEvent(keyEvent({ key: "£", shiftKey: true, modifierAltGraph: true })),
+    ).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "q", ctrlKey: true, altKey: true }))).toBe(
+      "Mod-Alt-q",
+    );
+  });
+
+  it("ignores AltGr and level-four characters on Linux", () => {
+    setPlatform("Linux x86_64");
+    expect(editorKeyFromEvent(keyEvent({ key: "AltGraph", ctrlKey: true }))).toBeNull();
+    // WebKitGTK 2.54 and later report AltGraph; earlier versions do not.
+    expect(editorKeyFromEvent(keyEvent({ key: "@", modifierAltGraph: true }))).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "@" }))).toBeNull();
+    expect(
+      editorKeyFromEvent(keyEvent({ key: "¡", shiftKey: true, modifierAltGraph: true })),
+    ).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "¡", shiftKey: true }))).toBeNull();
+  });
+
+  it("records Ctrl with AltGr on Linux, where it types nothing", () => {
+    setPlatform("Linux x86_64");
+    // Ctrl+AltGr+9 on a German layout, with and without AltGraph reported.
+    expect(
+      editorKeyFromEvent(keyEvent({ key: "]", ctrlKey: true, modifierAltGraph: true })),
+    ).toBe("Mod-]");
+    expect(editorKeyFromEvent(keyEvent({ key: "]", ctrlKey: true }))).toBe("Mod-]");
+  });
+
+  it("declines Shift with a character or Space but keeps Shift with named keys", () => {
+    expect(editorKeyFromEvent(keyEvent({ key: "!", shiftKey: true }))).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "A", shiftKey: true }))).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: " ", shiftKey: true }))).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "Tab", shiftKey: true }))).toBe("Shift-Tab");
+    expect(editorKeyFromEvent(keyEvent({ key: "F5", shiftKey: true }))).toBe("Shift-F5");
+  });
+
+  it("ignores Option typing plain ASCII on macOS but keeps US Option keys", () => {
+    setPlatform("MacIntel");
+    // Option+L types @ on a German layout.
+    expect(editorKeyFromEvent(keyEvent({ key: "@", altKey: true }))).toBeNull();
+    expect(editorKeyFromEvent(keyEvent({ key: "∂", altKey: true }))).toBe("Alt-∂");
+    expect(editorKeyFromEvent(keyEvent({ key: "@", altKey: true, metaKey: true }))).toBe(
+      "Mod-Alt-@",
+    );
+    expect(editorKeyFromEvent(keyEvent({ key: "ArrowUp", altKey: true }))).toBe(
+      "Alt-ArrowUp",
+    );
+  });
 });
 
 describe("editorKeyTokens", () => {
@@ -130,6 +197,10 @@ describe("mergeEditorKeys", () => {
     expect(mergeEditorKeys({ deleteLine: "Hyper-q" }).deleteLine).toBe(
       EDITOR_KEY_DEFAULTS.deleteLine,
     );
+    expect(mergeEditorKeys({ deleteLine: "Shift-!" }).deleteLine).toBe(
+      EDITOR_KEY_DEFAULTS.deleteLine,
+    );
+    expect(EDITOR_KEY_DEFAULTS.deleteLine).toBe("Mod-d");
     expect(mergeEditorKeys(null)).toEqual({ ...EDITOR_KEY_DEFAULTS });
     expect(mergeEditorKeys("nope")).toEqual({ ...EDITOR_KEY_DEFAULTS });
   });
