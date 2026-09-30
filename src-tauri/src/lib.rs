@@ -110,6 +110,9 @@ mod terminal;
 mod tex_distro;
 mod tinytex_archive;
 mod trust;
+// Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+#[cfg(any(target_os = "macos", test))]
+mod webview_frame;
 mod worktree_lock;
 
 use state::AppState;
@@ -139,6 +142,8 @@ where
 }
 
 fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    #[cfg(target_os = "macos")]
+    webview_frame::on_window_event(window, event);
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         use tauri::{Emitter, Manager};
         if window.state::<updater::UpdateState>().installing() {
@@ -344,6 +349,13 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
 
+    // Lets AppKit, not Tauri's scale-converting resize, size the webviews
+    // of the main, preview and update windows (issue #169).
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(webview_frame::plugin());
+    }
+
     #[cfg(not(target_os = "windows"))]
     {
         builder = builder
@@ -523,6 +535,8 @@ pub fn run() {
             trust::trust_folder,
             trust::revoke_folder_trust,
             trust::debug_answer_next_confirmation,
+            #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
+            webview_frame::debug_webview_frame,
             folder_status::project_folder_status,
             skills::skills_list,
             skills::skills_add,

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On macOS, Oleafly no longer shrinks into the top-left quarter of the
+  screen in full screen after the Mac wakes from sleep, which happened
+  mostly with a Retina external display (#169). macOS now keeps the page the
+  size of the main, preview and update windows. If it still ends up the
+  wrong size, Oleafly puts it back when the window is focused, resized or
+  moves to a display with a different scale, and writes a line to the app
+  log.
+
 ## [0.4.3] - 2026-09-27
 
 ### Added
