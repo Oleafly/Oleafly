@@ -8,6 +8,7 @@ import {
   type ResearchChatActions,
 } from "@/lib/chat-activity";
 import { logError } from "@/lib/log";
+import { openProjectLocation } from "@/lib/open-location";
 import { readResearchRootFile } from "@/lib/research-workspace";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
@@ -71,20 +72,7 @@ async function openProjectArtifact(projectId: string, target: ProjectResearchArt
   if (settings.viewMode === "pdf") settings.setViewMode("split");
   const line = target.line;
   if (!line || !Number.isInteger(line) || line < 1) return;
-  await revealLine(projectId, path, line).catch((error: unknown) =>
+  await openProjectLocation({ path, line }).catch((error: unknown) =>
     logError("reveal research result line", error),
   );
-}
-
-async function revealLine(projectId: string, path: string, line: number): Promise<void> {
-  const editor = await import("@/components/editor/cm/controller");
-  const abort = new AbortController();
-  const timeout = setTimeout(() => abort.abort(), 4_000);
-  try {
-    const ready = await editor.waitForEditorDocument(path, abort.signal);
-    const current = useFilesStore.getState();
-    if (ready && current.projectId === projectId && current.activePath === path) editor.gotoLine(line);
-  } finally {
-    clearTimeout(timeout);
-  }
 }

@@ -50,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Linux, the terminal could fail with "Unable to spawn /bin/zsh" when
+  zsh wasn't installed and Oleafly was started without `$SHELL` set, as some
+  desktop launchers do. The terminal and agent commands now use the first
+  shell that exists: `$SHELL`, then your account's shell, then `/bin/sh`.
 - On Windows, installing an agent bridge failed with `EISDIR: illegal
   operation on a directory, lstat 'D:'` on current Node.js versions, and a
   bridge that did install could not start (#84). Oleafly no longer passes

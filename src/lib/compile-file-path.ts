@@ -1,4 +1,4 @@
-function normalizeCompilePath(path: string): string {
+export function normalizeCompilePath(path: string): string {
   return path
     .replaceAll("\\", "/")
     .split("/")
@@ -11,7 +11,8 @@ function basename(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
-function lookupVariants(path: string): string[] {
+function lookupVariants(path: string, implicitTex: boolean): string[] {
+  if (!implicitTex) return [path];
   return /\.[^./]+$/.test(basename(path)) ? [path] : [path, `${path}.tex`];
 }
 
@@ -48,8 +49,15 @@ function uniqueMatch(
   return undefined;
 }
 
+/**
+ * `implicitTex` retries an extensionless name as `name.tex`, the way TeX logs
+ * name `\input` files. `longerPaths` maps a path that ends in a project path,
+ * such as an absolute path in a TeX log, onto that file. Callers reading
+ * other tools' output turn both off.
+ */
 export function compilePathResolver(
   candidates: readonly string[],
+  { implicitTex = true, longerPaths = true }: { implicitTex?: boolean; longerPaths?: boolean } = {},
 ): (path: string) => string | null {
   const known = [...new Set(candidates)].map(
     (candidate): KnownPath => [candidate, normalizeCompilePath(candidate)],
@@ -57,8 +65,9 @@ export function compilePathResolver(
   return (path) => {
     const wanted = normalizeCompilePath(path);
     if (!wanted) return null;
-    const variants = lookupVariants(wanted);
-    const direct = exactMatch(known, variants) ?? containingMatch(known, variants);
+    const variants = lookupVariants(wanted, implicitTex);
+    const direct =
+      exactMatch(known, variants) ?? (longerPaths ? containingMatch(known, variants) : undefined);
     if (direct !== undefined) return direct;
     const nested = uniqueMatch(known, variants, (name, variant) => name.endsWith(`/${variant}`));
     if (nested !== undefined) return nested;

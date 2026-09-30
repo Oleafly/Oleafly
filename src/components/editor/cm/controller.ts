@@ -27,6 +27,7 @@ export {
   wrapSelection,
   focusEditor,
   editorFind,
+  revealEditorRange,
   waitForEditorDocument,
 } from "@oleafly/editor";
 

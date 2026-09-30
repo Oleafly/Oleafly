@@ -202,6 +202,11 @@
       "start": "Nie udało się uruchomić powłoki shell"
     },
     "limitReached": "Zamknij jeden terminal, aby otworzyć kolejny",
+    "links": {
+      "openFile": "Kliknij z klawiszem {{modifier}}, aby otworzyć",
+      "openUrl": "Kliknij z klawiszem {{modifier}}, aby otworzyć w przeglądarce",
+      "openUrlFailed": "Nie udało się otworzyć linku."
+    },
     "newTerminal": "Nowy terminal",
     "settings": "Ustawienia terminala",
     "starting": "Uruchamianie powłoki shell projektu…",

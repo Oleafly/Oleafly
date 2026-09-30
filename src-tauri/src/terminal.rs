@@ -448,8 +448,7 @@ fn default_shell() -> CommandBuilder {
     let mut cmd = CommandBuilder::new("powershell.exe");
     #[cfg(not(windows))]
     let mut cmd = {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        let mut cmd = CommandBuilder::new(shell);
+        let mut cmd = CommandBuilder::new(crate::program_locator::user_shell());
         cmd.arg("-l");
         cmd
     };
