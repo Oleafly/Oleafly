@@ -221,8 +221,8 @@
       "content": "Konfigurerede samtaler viser her forbrug af kørsler og tokens samt anslåede omkostninger, når tallene findes."
     },
     "restore": {
-      "title": "Gendan projektets tilstand",
-      "content": "Efter en AI-redigering kan et kontrolpunkt gendanne projektets filer uden at fjerne samtalen."
+      "title": "Gennemgå agentens ændringer",
+      "content": "Når en tur ændrer filer, kan du åbne »Gennemgå« og se hver ændring. »Fortryd« sætter en fil tilbage, og »Gentag« bringer ændringen tilbage."
     }
   },
   "diagram": {

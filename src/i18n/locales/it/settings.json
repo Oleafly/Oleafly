@@ -12,7 +12,6 @@
       "checkingDescription": "Può volerci un momento mentre Oleafly controlla gli strumenti da riga di comando su questo computer.",
       "checkingInstalled": "Controllo degli agenti installati",
       "checkingTitle": "Ricerca degli agenti da riga di comando",
-      "cliNotOnPath": "{{command}} non è stato trovato nel tuo PATH.",
       "cliPathLabel": "Rilevato in",
       "cliTitle": "Strumento da riga di comando",
       "copySignInCommand": "Copia il comando di accesso",
@@ -66,7 +65,59 @@
       "sectionLabel": "Agenti ACP",
       "signInCommandLabel": "Comando di accesso",
       "versionLabel": "Versione",
-      "updateBridge": "Aggiorna il bridge"
+      "updateBridge": "Aggiorna il bridge",
+      "program": {
+        "label": "Programma",
+        "bridgeLabel": "Programma {{cli}}",
+        "notFound": "Non trovato su questo computer",
+        "bridgeDefault": "Il bridge usa una propria copia.",
+        "source": {
+          "auto": "Trovato automaticamente",
+          "override": "Scelto da te",
+          "managed": "Installato da Oleafly"
+        },
+        "choose": "Scegli…",
+        "test": "Prova",
+        "testing": "Prova in corso",
+        "saving": "Salvataggio",
+        "useAutomatic": "Usa il rilevamento automatico",
+        "useAnyway": "Usa comunque",
+        "inputLabel": "Posizione del programma {{name}}",
+        "pathPlaceholder": "Per esempio, {{example}}",
+        "saved": "Salvato. Oleafly userà questo programma.",
+        "skippedTitle": "File ignorati da Oleafly",
+        "skippedReason": {
+          "notFound": "Mancante",
+          "isDirectory": "Cartella",
+          "notExecutable": "Non avviabile",
+          "unsupportedScript": "Tipo di script non supportato",
+          "guiProgram": "App desktop",
+          "interpreter": "Shell o runtime",
+          "networkPath": "Posizione di rete"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} si è avviato e ha risposto.",
+          "readyNoVersion": "{{name}} si è avviato e ha risposto.",
+          "notFound": "Nessun file in {{path}}.",
+          "isDirectory": "{{path}} è una cartella. Scegli il file del programma al suo interno.",
+          "powershellScript": "Gli script PowerShell non si possono avviare. Scegli {{command}}.cmd o {{command}}.exe.",
+          "unsupportedScript": "Oleafly non può avviare {{file}} direttamente. Scegli {{command}}.exe.",
+          "notExecutable": "{{path}} non è un programma che Oleafly può avviare.",
+          "guiProgram": "{{path}} è un'app desktop. Scegli il programma da riga di comando.",
+          "interpreter": "{{path}} è una shell o un runtime di script. Scegli il programma {{name}} vero e proprio.",
+          "networkPath": "{{path}} si trova in una posizione di rete. Scegli un programma su questo computer.",
+          "cliMissing": "Oleafly non è riuscito a eseguire {{cli}}. Scegli il programma {{cli}}.",
+          "bridgeMissing": "Il bridge per {{name}} non è ancora installato.",
+          "nodeMissing": "{{name}} ha bisogno di Node.js e Oleafly non l'ha trovato.",
+          "nodeTooOld": "{{name}} ha bisogno di una versione più recente di Node.js.",
+          "startFailed": "Non è stato possibile avviare {{name}}.",
+          "timeout": "{{name}} si è avviato ma non ha risposto in tempo.",
+          "exited": "{{name}} si è fermato prima di rispondere.",
+          "notAcp": "{{name}} si è avviato, ma Oleafly non ha capito la sua risposta."
+        },
+        "getNode": "Scarica Node.js",
+        "copyDetails": "Copia i dettagli"
+      }
     },
     "approvals": {
       "file": {
@@ -990,7 +1041,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "I progetti nuovi e quelli aperti ricevono un repository Git, così il pannello Git può tenere traccia delle modifiche. Oleafly non esegue mai commit da solo.",
+      "description": "I progetti nuovi e quelli aperti ricevono un repository Git, così il pannello Git può tenere traccia delle modifiche. Di solito un nuovo progetto parte con un commit dei suoi file. Dopo, Oleafly esegue commit solo quando lo chiedi tu.",
       "label": "Inizializza Git per ogni progetto"
     },
     "config": {

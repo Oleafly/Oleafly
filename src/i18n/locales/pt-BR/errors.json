@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Este projeto já está vinculado a {{remote}}.",
-    "nested_repository": "Este projeto está dentro de outro repositório Git, então o Oleafly não vai criar um repositório separado aqui."
+    "nested_repository": "Este projeto está dentro de outro repositório Git, então o Oleafly não vai criar um repositório separado aqui.",
+    "not_installed": "O Git não está instalado neste computador. Instale o Git e tente de novo."
   },
   "approvals": {
     "full_access_declined": "O acesso total não foi ativado."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Este histórico de pontos de verificação vem de um projeto da sua biblioteca do Oleafly, então não pode ser usado com uma pasta aberta no próprio local.",
     "folder_history_for_library": "Este histórico de pontos de verificação vem de uma pasta aberta no próprio local, então não pode ser usado com um projeto da sua biblioteca do Oleafly.",
     "restore_path_blocked": "O Oleafly não pode restaurar {{path}} porque há um link ou outra coisa que não é um arquivo no lugar. Mova-o e tente de novo."
+  },
+  "acp": {
+    "program": {
+      "not_found": "O Oleafly não encontrou esse programa.",
+      "is_directory": "Isso é uma pasta. Escolha o arquivo do programa dentro dela.",
+      "not_executable": "Esse arquivo não pode ser iniciado como programa.",
+      "unsupported_script": "Scripts do PowerShell não podem ser iniciados. Escolha o arquivo .cmd ou .exe com o mesmo nome.",
+      "needs_exe": "Este agente não pode usar um arquivo .cmd. Escolha o arquivo .exe dele.",
+      "gui_program": "Isso é um aplicativo para desktop. Escolha o programa que você executa em um terminal.",
+      "interpreter": "Esse programa executa outros programas. Escolha o programa do próprio agente.",
+      "network_path": "Escolha um programa neste computador, não em um local de rede.",
+      "unknown_agent": "O Oleafly não conhece este agente.",
+      "declined": "O programa não foi alterado.",
+      "check_running": "Já há um teste deste agente em andamento.",
+      "main_window": "Altere os programas dos agentes pela janela principal."
+    }
   }
 }

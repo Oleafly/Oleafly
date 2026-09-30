@@ -221,8 +221,8 @@
       "content": "Bij ingestelde gesprekken zie je hier het verbruik aan runs, tokens en geschatte kosten, als dat beschikbaar is."
     },
     "restore": {
-      "title": "Projectstaat herstellen",
-      "content": "Na een AI-bewerking kan een checkpoint de projectbestanden herstellen zonder het gesprek te verwijderen."
+      "title": "Wijzigingen van de agent bekijken",
+      "content": "Als een beurt bestanden wijzigt, open je “Bekijken” om elke wijziging te zien. “Ongedaan maken” zet een bestand terug en “Opnieuw” brengt de wijziging terug."
     }
   },
   "diagram": {

@@ -19,8 +19,7 @@
     },
     "bridgeSource": {
       "notInstalled": "The ACP bridge for this agent is not installed",
-      "managed": "Oleafly installed and updates this agent's bridge",
-      "onPath": "The bridge was found on the system PATH rather than installed by Oleafly"
+      "managed": "Oleafly installed and updates this agent's bridge"
     },
     "agentReported": "Labels the CLI agent's own raw diagnostic output, which is interpolated verbatim",
     "updateTooLarge": "Muted note under a CLI agent's tool call when the agent sent one update over 1 MiB (usually a whole-file diff) that was not kept, so the tool shows no output. {{size}} is a formatted size such as 1.2 MB",

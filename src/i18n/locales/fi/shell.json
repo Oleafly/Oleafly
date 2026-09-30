@@ -813,6 +813,15 @@
     "enterTitle": "Kirjoita commitin otsikko",
     "finishMergeToCommit": "Viimeistele yhdistäminen ennen vahvistamista.",
     "fetch": "Nouda",
+    "gitMissing": {
+      "copied": "Kopioitu",
+      "copyCommand": "Kopioi komento",
+      "download": "Lataa Git for Windows",
+      "linux": "Versionhallinta tarvitsee Gitin. Asenna git-paketti paketinhallinnalla ja päivitä sitten tämä paneeli.",
+      "mac": "Versionhallinta tarvitsee Gitin. Asenna Applen komentorivityökalut, joihin Git sisältyy, ajamalla tämä komento Terminal-sovelluksessa. Päivitä sitten tämä paneeli.",
+      "title": "Gitiä ei ole asennettu",
+      "windows": "Versionhallinta tarvitsee Gitin. Asenna Git for Windows ja käynnistä sitten Oleafly uudelleen."
+    },
     "graph": "Kaavio",
     "commitCount_one": "{{count}} commit",
     "commitCount_other": "{{count}} commitia",

@@ -429,21 +429,25 @@
       "namedHeadline": "{{agent}} が許可を求めています",
       "headline": "エージェントが許可を求めています",
       "expired": "この要求は期限切れです。エージェントにもう一度試すよう伝えてください。",
-      "dismiss": "閉じる"
+      "dismiss": "閉じる",
+      "diff": {
+        "showChange": "変更を表示",
+        "hideChange": "変更を隠す",
+        "large": "{{path}} への大きな変更です。やり取りが終わったあとで確認してください。",
+        "label": "{{path}} への変更案",
+        "loading": "変更を読み込んでいます…"
+      }
     },
     "readiness": {
       "managedBridge": "Oleafly がブリッジ {{version}} をインストールしました。",
-      "bridgeOnPath": "PATH 上にブリッジが見つかりました。",
       "bridgeMissingWithCli": "{{cli}} が {{path}} に見つかりました。接続するには ACP ブリッジ {{version}} をインストールしてください。",
       "bridgeMissing": "このエージェントに接続するには、ACP ブリッジ {{version}} をインストールしてください。",
-      "cliMissing": "{{cli}} が PATH にありません。インストールしてから {{command}} を実行してください。",
       "cliNotFound": "このエージェントのコマンドラインツールが見つかりませんでした。",
       "unavailable": "このエージェントはこのコンピュータでは動かせません。"
     },
     "bridgeSource": {
       "notInstalled": "未インストール",
-      "managed": "Oleafly が管理",
-      "onPath": "PATH 上"
+      "managed": "Oleafly が管理"
     },
     "installing": "インストール中",
     "installBridge": "ブリッジをインストール",
@@ -496,8 +500,49 @@
     "terminalCommand": "エージェントがターミナルのコマンドを実行しています。",
     "agentToolFallback": "エージェントのツール",
     "agentReported": "エージェントの報告: {{detail}}",
+    "updateTooLarge": "エージェントの出力の一部が大きすぎるため、表示できませんでした（{{size}}）。",
     "imageAttachmentName": "画像 {{index}}",
-    "agentImage": "[エージェントが画像を返しました。]"
+    "agentImage": "[エージェントが画像を返しました。]",
+    "setup": {
+      "cliNotFound": "Oleafly はこのコンピュータで {{cli}} を見つけられませんでした。",
+      "rejected": {
+        "powershellScript": "{{file}} が見つかりましたが、PowerShell スクリプトは起動できません。{{name}}.cmd か {{name}}.exe を選んでください。",
+        "script": "{{file}} が見つかりましたが、Oleafly はこれを直接起動できません。{{name}}.exe を選んでください。",
+        "isDirectory": "{{file}} という名前のフォルダが見つかりました。{{name}} のプログラムファイルを選んでください。",
+        "notExecutable": "{{file}} が見つかりましたが、Oleafly が起動できるプログラムではありません。",
+        "guiProgram": "{{file}} が見つかりましたが、これはデスクトップアプリです。{{name}} のコマンドラインツールを選んでください。",
+        "networkPath": "{{file}} がネットワーク上の場所で見つかりました。このコンピュータ上のコピーを選んでください。"
+      },
+      "foundOnComputer": "このコンピュータで見つかりました。",
+      "usingChosen": "選択したプログラムを使用しています。",
+      "bridgeSourceFound": "このコンピュータで検出",
+      "setUp": "{{name}} をセットアップ",
+      "backgroundTasks": "バックグラウンドタスク: {{reason}}",
+      "cliMissingNextStep": "{{cli}} をインストールするか、インストール先を選んでください。",
+      "installUnavailable": "Oleafly はこのコンピュータにこのブリッジをインストールできません。",
+      "builtIn": "組み込み",
+      "showAgent": "表示"
+    },
+    "export": {
+      "menuItem": "会話を書き出す…",
+      "saved": "会話を書き出しました",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "会話",
+      "project": "プロジェクト",
+      "agent": "エージェント",
+      "model": "モデル",
+      "modelManaged": "エージェントが選択",
+      "startRevision": "開始時のコミット",
+      "uncommitted": "{{revision}}（未コミットの変更あり）",
+      "started": "開始日時",
+      "updated": "最終更新日時",
+      "you": "あなた",
+      "skill": "スキル: {{name}}",
+      "tool": "ツール: {{name}}",
+      "changedFiles": "変更されたファイル",
+      "moreFiles_other": "ほか {{count}} 件のファイル"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI エージェント",
@@ -721,5 +766,60 @@
     "preSubmission": "投稿の準備を整える",
     "slides": "この論文を発表用にまとめる",
     "recompile": "再コンパイルしてエラーを確認する"
+  },
+  "turnChanges": {
+    "ariaLabel": "このやり取りで変更されたファイル",
+    "changed_other": "{{count}} 件のファイルを変更",
+    "buildOnly": "ビルドファイルが更新されました",
+    "review": "レビュー",
+    "undoAll": "すべて元に戻す",
+    "redoAll": "すべてやり直す",
+    "undo": "元に戻す",
+    "redo": "やり直す",
+    "undoFile": "{{path}} を元に戻す",
+    "redoFile": "{{path}} をやり直す",
+    "kind": {
+      "added": "追加",
+      "modified": "変更",
+      "deleted": "削除"
+    },
+    "undone": "元に戻し済み",
+    "editedAfter": "このやり取りのあとに変更されました",
+    "alsoEdited": "このやり取りの間に、あなたもこのファイルを編集しました",
+    "committed": "{{commit}} でコミット済み",
+    "buildFiles": "ビルドファイルが更新されました",
+    "moreFiles_other": "一覧にないファイルがほかに {{count}} 件あります",
+    "skipped_other": "{{count}} 件のファイルはやり取りの前にコピーできなかったため、元に戻せません。",
+    "overlapped": "別のエージェントが同時にファイルを変更しました。ファイルを 1 つずつ元に戻してください。",
+    "expired": "このやり取りは、もう元に戻せません。",
+    "waitForRun": "エージェントの処理が終わると元に戻せるようになります。",
+    "unavailable": {
+      "tooLarge": "このやり取りは元に戻せません。プロジェクトが大きすぎてコピーできません。",
+      "tooManyFiles": "このやり取りは元に戻せません。プロジェクトのファイルが多すぎます。",
+      "timeout": "このやり取りは元に戻せません。プロジェクトのコピーに時間がかかりすぎました。",
+      "error": "このやり取りは元に戻せません。プロジェクトをコピーできませんでした。"
+    },
+    "previewLoading": "変更を読み込んでいます…",
+    "previewFailed": "この変更を読み込めませんでした。",
+    "binary": "このファイルはテキストではないため、変更を表示できません。",
+    "tooLarge": "この変更は大きすぎるため、ここには表示できません。",
+    "diffLabel": "{{path}} への変更",
+    "undid_other": "{{count}} 件のファイルの変更を元に戻しました。",
+    "redid_other": "{{count}} 件のファイルの変更をやり直しました。",
+    "skippedEdited": "一部のファイルはこのやり取りのあとに変更されていたため、Oleafly はそのままにしました。",
+    "skippedFailed": "一部のファイルを書き込めませんでした。",
+    "undoFailed": "変更を元に戻せませんでした。作業内容を保存してから、もう一度お試しください。",
+    "redoFailed": "変更をやり直せませんでした。作業内容を保存してから、もう一度お試しください。"
+  },
+  "presets": {
+    "literatureSweep": "文献調査",
+    "relatedWork": "関連研究",
+    "citationAudit": "引用チェック",
+    "manuscriptReview": "原稿レビュー",
+    "reproducibilityAudit": "再現性チェック",
+    "figureAudit": "図のチェック",
+    "gitReview": "Git レビュー",
+    "referenceCleanup": "参考文献の整理",
+    "removeSkill": "スキル {{name}} を削除"
   }
 }

@@ -221,8 +221,8 @@
       "content": "Samtaler som er satt opp for det, viser kjøringer, tokener og anslått kostnad her når tallene finnes."
     },
     "restore": {
-      "title": "Gjenopprett prosjekttilstanden",
-      "content": "Etter en AI-endring kan et sjekkpunkt gjenopprette prosjektfilene uten å fjerne samtalen."
+      "title": "Gå gjennom agentens endringer",
+      "content": "Når et innlegg endrer filer, åpner du Gå gjennom for å se hver endring. Angre setter en fil tilbake, og Gjør om henter endringen tilbake."
     }
   },
   "diagram": {

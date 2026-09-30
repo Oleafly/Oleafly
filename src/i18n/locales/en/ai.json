@@ -447,17 +447,14 @@
     },
     "readiness": {
       "managedBridge": "Bridge {{version}} installed by Oleafly.",
-      "bridgeOnPath": "Bridge found on PATH.",
       "bridgeMissingWithCli": "{{cli}} found at {{path}}. Install the ACP bridge {{version}} to connect.",
       "bridgeMissing": "Install the ACP bridge {{version}} to connect this agent.",
-      "cliMissing": "{{cli}} is not on your PATH. Install it, then run {{command}}.",
       "cliNotFound": "This agent's command line tool was not found.",
       "unavailable": "This agent cannot run on this computer."
     },
     "bridgeSource": {
       "notInstalled": "Not installed",
-      "managed": "Managed by Oleafly",
-      "onPath": "On PATH"
+      "managed": "Managed by Oleafly"
     },
     "installing": "Installing",
     "installBridge": "Install bridge",
@@ -825,7 +822,7 @@
     "undid_other": "Undid {{count}} files.",
     "redid_one": "Redid {{count}} file.",
     "redid_other": "Redid {{count}} files.",
-    "skippedEdited": "Some files changed after this turn, so they were left as they are.",
+    "skippedEdited": "Some files changed after this turn, so Oleafly left them alone.",
     "skippedFailed": "Some files couldn't be written.",
     "undoFailed": "Couldn't undo the changes. Save your work and try again.",
     "redoFailed": "Couldn't redo the changes. Save your work and try again."

@@ -859,7 +859,7 @@ fn resolve_launch(
     if let Some(launch) = existing_npm_launch(definition, &args, node) {
         return Ok(launch);
     }
-    Err("The agent is not installed. Install the pinned version, or choose its program in Settings.".into())
+    Err("This agent isn't installed yet. Install it, or choose its program in Settings.".into())
 }
 
 /// Environment for a non-sandboxed agent: Node.js first on the search path;
