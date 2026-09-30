@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Conversations also record the Git commit they started from.
 - When Git isn't installed, Source Control says so and explains how to get it
   on your system instead of showing buttons that fail.
+- Each Reset button in Settings shows a small dot when something it would
+  reset is not at its default.
 
 ### Changed
 
@@ -68,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrong size, Oleafly puts it back when the window is focused, resized or
   moves to a display with a different scale, and writes a line to the app
   log.
+- Resetting Appearance now turns Math preview back on right away. Before, it
+  stayed off until you restarted Oleafly.
 
 ## [0.4.3] - 2026-09-27
 

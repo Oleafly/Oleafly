@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
+  budgetGet,
   budgetSet,
   getConfig,
   setConfig,
@@ -246,6 +247,24 @@ export function AISection() {
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
   const ollamaHost = probeHost ?? (savedOllamaHost || DEFAULT_OLLAMA_HOST);
   const queryClient = useQueryClient();
+  // Same query as ProjectBudget, so saving or resetting the budget updates both.
+  const projectBudget = useQuery({
+    queryKey: ["project-budget", projectId],
+    queryFn: () => budgetGet(projectId ?? ""),
+    enabled: !!projectId,
+    meta: { silent: true },
+  });
+  // Only a turned-off model counts. Reset also restores built-in models that a
+  // model list refresh dropped, but the user did not choose that. Skill choices
+  // are left out: checking them would load every skill each time this opens.
+  const preferencesChanged =
+    configLoaded &&
+    (Boolean(cfg.ai_system_prompt) ||
+      cfg.ai_pdf_capture === false ||
+      Object.values(cfg.ai_provider_models).some((models) =>
+        models.some((model) => !model.enabled),
+      ) ||
+      projectBudget.data != null);
   const ollamaQuery = useQuery({
     queryKey: ["ollama-models", ollamaHost],
     queryFn: () => listOllamaModels(ollamaHost),
@@ -836,6 +855,7 @@ export function AISection() {
             : t(($) => $.settings.ai.section.reset.confirmWithoutProject)
         }
         onReset={() => void resetAssistantPreferences()}
+        changed={preferencesChanged}
       />
     </div>
   );

@@ -27,6 +27,7 @@ import {
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
+  sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
   type TerminalColorThemeId,
   type TerminalCursorStyle,
@@ -1206,7 +1207,10 @@ export function AppearanceSection() {
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );
-  const { setPreference } = useTheme();
+  const appearanceChanged = useSettingsStore((state) =>
+    sectionDiffersFromDefaults("appearance", state),
+  );
+  const { preference, setPreference } = useTheme();
   const tabRefs = useRef<
     Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
   >({});
@@ -1280,6 +1284,7 @@ export function AppearanceSection() {
           resetAppearancePreferences();
           setPreference("system");
         }}
+        changed={appearanceChanged || preference !== "system"}
       />
     </div>
   );

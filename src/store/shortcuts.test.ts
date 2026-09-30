@@ -189,6 +189,18 @@ describe("shortcut bindings", () => {
     });
   });
 
+  it("tells when any binding differs from its default", async () => {
+    const { shortcutsDifferFromDefaults, useShortcutStore } = await import("@/store/shortcuts");
+    const differs = () => shortcutsDifferFromDefaults(useShortcutStore.getState().bindings);
+    expect(differs()).toBe(false);
+
+    useShortcutStore.getState().setBinding("recompile", { key: "r", mod: true });
+    expect(differs()).toBe(true);
+
+    useShortcutStore.getState().resetAll();
+    expect(differs()).toBe(false);
+  });
+
   it("merges stored bindings with defaults and survives malformed storage", async () => {
     localStorage.setItem(
       "oleafly.shortcuts",

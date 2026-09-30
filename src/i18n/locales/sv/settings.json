@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Återställ till standard",
+    "changed": "Vissa inställningar här skiljer sig från standard.",
     "confirmDescription": "Återställ inställningarna för {{sectionName}} till standard. Övriga inställningar lämnas oförändrade.",
     "confirmTitle": "Vill du återställa inställningarna för {{sectionName}}?",
     "description": "Återställ inställningarna för {{sectionName}} till standard.",

@@ -1445,6 +1445,7 @@
   },
   "reset": {
     "button": "Przywróć domyślne",
+    "changed": "Niektóre ustawienia w tej sekcji różnią się od domyślnych.",
     "confirmDescription": "Przywróć domyślne preferencje sekcji {{sectionName}}. Pozostałe ustawienia nie zmienią się.",
     "confirmTitle": "Zresetować ustawienia sekcji {{sectionName}}?",
     "description": "Przywróć domyślne preferencje sekcji {{sectionName}}.",

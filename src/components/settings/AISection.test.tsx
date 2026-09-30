@@ -67,6 +67,7 @@ const mockInvoke = vi.mocked(invoke);
 let skillsFixture: SkillEntry[] = [];
 let configFixture: AppConfig;
 let failSkillReset = false;
+let budgetFixture: number | null = null;
 let listedModels: ProviderModel[] = [];
 
 function providerUpdated(provider: string): string {
@@ -189,6 +190,7 @@ function resetHarness() {
   skillsFixture = [];
   configFixture = configuredAiConfig();
   failSkillReset = false;
+  budgetFixture = null;
   listedModels = [];
   captured.providersTab = null;
   captured.dialog = null;
@@ -224,6 +226,7 @@ function resetHarness() {
           }
         : undefined;
     }
+    if (command === "budget_get_cmd") return budgetFixture;
     if (command === "budget_set_cmd") return undefined;
     throw new Error(`Unexpected command: ${command}`);
   });
@@ -401,6 +404,34 @@ describe("AISection", () => {
     }
   });
 
+  it("marks Reset only while an assistant preference or the budget is set", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_system_prompt: "",
+      ai_pdf_capture: true,
+      // A refreshed list that dropped the built-in models is not a user change.
+      ai_provider_models: {
+        anthropic: [
+          { id: "claude-live-preview", name: "Claude Live Preview", enabled: true, source: "fetched" },
+        ],
+      },
+    };
+    useFilesStore.setState({ projectId: "project-budget" });
+    const { unmount } = renderSection();
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
+    await waitFor(() => expect(reset).toBeEnabled());
+    expect(reset).not.toHaveAccessibleDescription();
+    unmount();
+
+    budgetFixture = 25;
+    renderSection();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: enSettings.reset.button }),
+      ).toHaveAccessibleDescription(enSettings.reset.changed),
+    );
+  });
+
   it("resets only AI Assistant preferences after confirmation", async () => {
     const user = userEvent.setup();
     useSettingsStore.getState().setLatexTools(true);
@@ -446,9 +477,11 @@ describe("AISection", () => {
       expect(mockInvoke).toHaveBeenCalledWith("get_config"),
     );
 
-    await user.click(
-      screen.getByRole("button", { name: enSettings.reset.button }),
+    const sectionReset = screen.getByRole("button", { name: enSettings.reset.button });
+    await waitFor(() =>
+      expect(sectionReset).toHaveAccessibleDescription(enSettings.reset.changed),
     );
+    await user.click(sectionReset);
     const confirmation = screen.getByRole("alertdialog");
     expect(confirmation).toHaveTextContent(enSettings.ai.section.reset.confirmWithProject);
 
@@ -568,6 +601,7 @@ describe("AISection", () => {
     expect(
       await screen.findByText(enSettings.ai.section.messages.preferencesReset),
     ).toBeInTheDocument();
+    expect(sectionReset).not.toHaveAccessibleDescription();
   });
 
   it("keeps reset disabled until the persisted AI configuration loads", async () => {

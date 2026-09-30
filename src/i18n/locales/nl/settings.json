@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Terugzetten naar standaardwaarden",
+    "changed": "Sommige instellingen hier wijken af van de standaardwaarden.",
     "confirmDescription": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden. De overige instellingen blijven ongewijzigd.",
     "confirmTitle": "Instellingen van {{sectionName}} resetten?",
     "description": "Herstel de voorkeuren van {{sectionName}} naar de standaardwaarden.",

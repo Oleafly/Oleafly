@@ -1429,6 +1429,7 @@
   },
   "reset": {
     "button": "Resetează la valorile implicite",
+    "changed": "Unele setări din această secțiune diferă de valorile implicite.",
     "confirmDescription": "Readu preferințele din {{sectionName}} la valorile implicite. Celelalte setări rămân neschimbate.",
     "confirmTitle": "Resetezi setările din {{sectionName}}?",
     "description": "Readu preferințele din {{sectionName}} la valorile implicite.",

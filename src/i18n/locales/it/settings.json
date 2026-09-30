@@ -1429,6 +1429,7 @@
   },
   "reset": {
     "button": "Ripristina i valori predefiniti",
+    "changed": "Alcune impostazioni di questa sezione sono diverse dai valori predefiniti.",
     "confirmDescription": "Riporta le preferenze di {{sectionName}} ai valori predefiniti. Le altre impostazioni restano invariate.",
     "confirmTitle": "Vuoi reimpostare le impostazioni di {{sectionName}}?",
     "description": "Riporta le preferenze di {{sectionName}} ai valori predefiniti.",
