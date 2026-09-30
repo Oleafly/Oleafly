@@ -3511,6 +3511,8 @@ pub fn existing_compiled_pdf_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    use crate::test_wait;
 
     #[test]
     fn bibliography_discovery_leaves_cloud_placeholders_alone() {
@@ -4132,15 +4134,21 @@ mod tests {
     #[tokio::test]
     async fn exited_compiler_cannot_hang_on_inherited_output_pipes() {
         let root = tempfile::tempdir().unwrap().keep();
-        let marker = root.join("descendant-survived");
-        let script = format!("(sleep 1.6; touch '{}') & exit 0", marker.display());
+        let pid_path = root.join("descendant.pid");
+        // The descendant holds the pipes for twice the elapsed bound below, so
+        // a supervisor that waited for them to close would miss that bound.
+        let script = format!(
+            "sleep {} & printf '%s' \"$!\" > '{}'; exit 0",
+            (2 * test_wait::CHILD_PATIENCE).as_secs(),
+            pid_path.display()
+        );
         let started = std::time::Instant::now();
         let (log, code) = run_supervised_process(
             Path::new("/bin/sh"),
             &["-c".into(), script],
             &root,
             None,
-            std::time::Duration::from_secs(5),
+            test_wait::CHILD_PATIENCE,
             None,
         )
         .await
@@ -4148,9 +4156,23 @@ mod tests {
 
         assert_eq!(code, Some(-1));
         assert!(log.contains("kept output pipes open"), "{log}");
-        assert!(started.elapsed() < std::time::Duration::from_secs(3));
-        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-        assert!(!marker.exists(), "the inherited-pipe descendant survived");
+        assert!(started.elapsed() < test_wait::CHILD_PATIENCE);
+        let pid = test_wait::read_until(&pid_path, test_wait::CHILD_PATIENCE, test_wait::pid)
+            .await
+            .expect("the shell must record its background descendant's process id");
+        let stopped = tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
+            while unsafe { libc::kill(pid, 0) } == 0 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .is_ok();
+        if !stopped {
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
+        }
+        assert!(stopped, "the inherited-pipe descendant survived");
         let _ = std::fs::remove_dir_all(root);
     }
 

@@ -12,7 +12,6 @@
       "checkingDescription": "Это может занять немного времени, пока Oleafly проверяет программы командной строки на этом компьютере.",
       "checkingInstalled": "Проверяем установленных агентов",
       "checkingTitle": "Ищем агентов командной строки",
-      "cliNotOnPath": "{{command}} не найден в вашем PATH.",
       "cliPathLabel": "Обнаружен по пути",
       "cliTitle": "Программа командной строки",
       "copySignInCommand": "Копировать команду входа",
@@ -66,7 +65,59 @@
       "sectionLabel": "Агенты ACP",
       "signInCommandLabel": "Команда входа",
       "versionLabel": "Версия",
-      "updateBridge": "Обновить мост"
+      "updateBridge": "Обновить мост",
+      "program": {
+        "label": "Программа",
+        "bridgeLabel": "Программа {{cli}}",
+        "notFound": "Не найдена на этом компьютере",
+        "bridgeDefault": "Мост использует собственную копию.",
+        "source": {
+          "auto": "Найдена автоматически",
+          "override": "Выбрана вами",
+          "managed": "Установлена Oleafly"
+        },
+        "choose": "Выбрать…",
+        "test": "Проверить",
+        "testing": "Проверяем",
+        "saving": "Сохраняем",
+        "useAutomatic": "Использовать автоматический поиск",
+        "useAnyway": "Всё равно использовать",
+        "inputLabel": "Расположение {{name}}",
+        "pathPlaceholder": "Например, {{example}}",
+        "saved": "Сохранено. Oleafly будет использовать эту программу.",
+        "skippedTitle": "Файлы, пропущенные Oleafly",
+        "skippedReason": {
+          "notFound": "Отсутствует",
+          "isDirectory": "Папка",
+          "notExecutable": "Нельзя запустить",
+          "unsupportedScript": "Тип скрипта не поддерживается",
+          "guiProgram": "Настольное приложение",
+          "interpreter": "Shell или среда выполнения",
+          "networkPath": "Сетевое расположение"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} запустился и ответил.",
+          "readyNoVersion": "{{name}} запустился и ответил.",
+          "notFound": "Файл не найден: {{path}}.",
+          "isDirectory": "{{path}} является папкой. Выберите файл программы внутри неё.",
+          "powershellScript": "Скрипты PowerShell запускать нельзя. Выберите {{command}}.cmd или {{command}}.exe.",
+          "unsupportedScript": "Oleafly не может запустить {{file}} напрямую. Выберите {{command}}.exe.",
+          "notExecutable": "{{path}} не является программой, которую Oleafly может запустить.",
+          "guiProgram": "{{path}} является настольным приложением. Выберите программу командной строки.",
+          "interpreter": "{{path}} является shell или средой выполнения скриптов. Выберите саму программу {{name}}.",
+          "networkPath": "{{path}} находится в сетевом расположении. Выберите программу на этом компьютере.",
+          "cliMissing": "Oleafly не удалось запустить {{cli}}. Выберите программу {{cli}}.",
+          "bridgeMissing": "Мост для {{name}} ещё не установлен.",
+          "nodeMissing": "Для {{name}} нужен Node.js, но Oleafly не удалось его найти.",
+          "nodeTooOld": "Для {{name}} нужна более новая версия Node.js.",
+          "startFailed": "Не удалось запустить {{name}}.",
+          "timeout": "{{name}} запустился, но не ответил вовремя.",
+          "exited": "{{name}} завершил работу, не ответив.",
+          "notAcp": "{{name}} запустился, но Oleafly не удалось понять его ответ."
+        },
+        "getNode": "Скачать Node.js",
+        "copyDetails": "Копировать подробности"
+      }
     },
     "approvals": {
       "file": {
@@ -996,7 +1047,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Новые и открытые проекты получают репозиторий Git, чтобы панель Git могла отслеживать изменения. Oleafly никогда не делает коммиты сам.",
+      "description": "Новые и открытые проекты получают репозиторий Git, чтобы панель Git могла отслеживать изменения. Новый проект обычно начинается с одного коммита с его файлами. После этого Oleafly делает коммиты только по вашей просьбе.",
       "label": "Инициализировать Git для каждого проекта"
     },
     "config": {

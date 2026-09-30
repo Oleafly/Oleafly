@@ -106,6 +106,9 @@ describe("tour registry", () => {
       "ai-restore",
     ]);
     expect(tourRegistry.ai.steps.every((step) => step.kind === "informational")).toBe(true);
+    expect(tourRegistry.ai.steps.find((step) => step.id === "ai-restore")?.target).toBe(
+      '[data-tour="ai-turn-changes"]',
+    );
     expect(tourRegistry.ai.steps[0].target).toBe('[data-tour="ai-assistant-header"]');
     expect(tourRegistry.ai.steps[0].spotlightTarget).toBe('[data-tour="ai-assistant"]');
     expect(tourRegistry.ai.steps[0].placement).toBe("bottom");

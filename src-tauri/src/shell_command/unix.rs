@@ -19,6 +19,7 @@ const MAX_PACKAGED_BYTES: u64 = 4 * 1024;
 const LOCAL_BIN: &str = ".local/bin";
 const SYSTEM_BIN: &str = "/usr/local/bin";
 const SHELL_PATH_TIMEOUT: Duration = Duration::from_secs(3);
+const LOGIN_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 const PATH_MARKER: &str = "__OLEAFLY_PATH__";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -443,6 +444,12 @@ pub(crate) fn shell_path(shell: Option<&Path>, start: ShellStart) -> Vec<PathBuf
     shell_path_within(shell, start, SHELL_PATH_TIMEOUT)
 }
 
+/// The login shell's `PATH`, for the program locator's background probe.
+/// Nothing waits for it, so slow startup files (nvm, conda) get more time.
+pub(crate) fn login_shell_path(shell: Option<&Path>) -> Vec<PathBuf> {
+    shell_path_within(shell, ShellStart::Login, LOGIN_PROBE_TIMEOUT)
+}
+
 fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration) -> Vec<PathBuf> {
     let Some(shell) = shell.filter(|shell| shell.is_absolute()) else {
         return Vec::new();
@@ -461,6 +468,10 @@ fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration)
     command
         .args(flags)
         .args(["-c", &format!("echo {PATH_MARKER}; printenv PATH")])
+        // An AppImage's own library folder must not leak into the user's shell.
+        .env_remove("APPDIR")
+        .env_remove("APPIMAGE")
+        .env_remove("LD_LIBRARY_PATH")
         .stdin(std::process::Stdio::null())
         .stdout(stdout)
         .stderr(std::process::Stdio::null());

@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Otwórz folder",
       "inside": "Wybierz folder w {{name}}"
+    },
+    "agentProgram": {
+      "title": "Użyć tego programu?",
+      "message": "Oleafly będzie uruchamiać {{path}} za każdym razem, gdy użyjesz {{name}}. Wybieraj tylko programy, którym ufasz.",
+      "confirm": "Użyj programu",
+      "pickTitle": "Wybierz program dla {{name}}",
+      "filter": "Programy"
     }
   },
   "errors": {

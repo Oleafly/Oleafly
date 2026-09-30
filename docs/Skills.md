@@ -232,9 +232,16 @@ and script commands, and refuses a skill the project has turned off.
 that knows which project you have open, so it is the one that respects the
 switches.
 
+Picking a skill in the CLI agent assistant is the third. The skill shows as a
+chip above the message, and when you send it, Oleafly adds the skill's
+instructions and a list of its files to the message itself. That works for
+agents that ignore the MCP bridge, such as Pi. For that turn only, the agent
+may read files inside that skill's folder without asking; any other read
+outside the project is still refused.
+
 There is no slash command in the CLI agent composer. Typing `/some-skill`
-there sends those characters to the agent as text. Ask for the skill by name
-instead, or leave the agent to find it through `list_skills`.
+there sends those characters to the agent as text. Pick the skill, ask for it
+by name, or leave the agent to find it through `list_skills`.
 
 ## Skills in research tasks
 

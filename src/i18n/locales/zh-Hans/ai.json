@@ -429,21 +429,25 @@
       "namedHeadline": "{{agent}} 需要权限",
       "headline": "该代理需要权限。",
       "expired": "该请求已过期。请让代理重试。",
-      "dismiss": "忽略"
+      "dismiss": "忽略",
+      "diff": {
+        "showChange": "显示更改",
+        "hideChange": "隐藏更改",
+        "large": "对 {{path}} 的更改较大。请在本轮结束后审阅。",
+        "label": "对 {{path}} 的建议更改",
+        "loading": "正在加载更改…"
+      }
     },
     "readiness": {
       "managedBridge": "桥接程序 {{version}} 已由 Oleafly 安装。",
-      "bridgeOnPath": "已在 PATH 中找到桥接程序。",
       "bridgeMissingWithCli": "已在 {{path}} 找到 {{cli}}。请安装 ACP 桥接程序 {{version}} 以建立连接。",
       "bridgeMissing": "请安装 ACP 桥接程序 {{version}} 以连接该代理。",
-      "cliMissing": "{{cli}} 不在你的 PATH 中。请先安装，然后运行 {{command}}。",
       "cliNotFound": "未找到该代理的命令行工具。",
       "unavailable": "该代理无法在这台电脑上运行。"
     },
     "bridgeSource": {
       "notInstalled": "未安装",
-      "managed": "由 Oleafly 管理",
-      "onPath": "位于 PATH"
+      "managed": "由 Oleafly 管理"
     },
     "installing": "正在安装",
     "installBridge": "安装桥接程序",
@@ -496,8 +500,49 @@
     "terminalCommand": "代理正在运行终端命令。",
     "agentToolFallback": "代理工具",
     "agentReported": "代理报告：{{detail}}。",
+    "updateTooLarge": "代理的部分输出过大，无法显示（{{size}}）。",
     "imageAttachmentName": "图片 {{index}}",
-    "agentImage": "[代理返回了一张图片。]"
+    "agentImage": "[代理返回了一张图片。]",
+    "setup": {
+      "cliNotFound": "Oleafly 未能在这台电脑上找到 {{cli}}。",
+      "rejected": {
+        "powershellScript": "找到了 {{file}}，但无法启动 PowerShell 脚本。请选择 {{name}}.cmd 或 {{name}}.exe。",
+        "script": "找到了 {{file}}，但 Oleafly 无法直接启动它。请选择 {{name}}.exe。",
+        "isDirectory": "找到了名为 {{file}} 的文件夹。请选择 {{name}} 的程序文件。",
+        "notExecutable": "找到了 {{file}}，但它不是 Oleafly 能启动的程序。",
+        "guiProgram": "找到了 {{file}}，但它是桌面应用。请选择 {{name}} 命令行工具。",
+        "networkPath": "在网络位置上找到了 {{file}}。请选择这台电脑上的副本。"
+      },
+      "foundOnComputer": "已在这台电脑上找到。",
+      "usingChosen": "正在使用你选择的程序。",
+      "bridgeSourceFound": "在这台电脑上找到",
+      "setUp": "设置 {{name}}",
+      "backgroundTasks": "后台任务：{{reason}}",
+      "cliMissingNextStep": "请安装 {{cli}}，或选择它的安装位置。",
+      "installUnavailable": "Oleafly 无法在这台电脑上安装此桥接程序。",
+      "builtIn": "内置",
+      "showAgent": "显示"
+    },
+    "export": {
+      "menuItem": "导出对话…",
+      "saved": "已导出对话",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "对话",
+      "project": "项目",
+      "agent": "代理",
+      "model": "模型",
+      "modelManaged": "由代理选择",
+      "startRevision": "起始提交",
+      "uncommitted": "{{revision}}（含未提交的更改）",
+      "started": "开始时间",
+      "updated": "最后更新",
+      "you": "你",
+      "skill": "技能：{{name}}",
+      "tool": "工具：{{name}}",
+      "changedFiles": "已更改的文件",
+      "moreFiles_other": "以及另外 {{count}} 个文件"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI 代理",
@@ -724,5 +769,60 @@
     "preSubmission": "为投稿做好准备。",
     "slides": "把这篇论文变成一场学术报告。",
     "recompile": "重新编译并检查错误。"
+  },
+  "turnChanges": {
+    "ariaLabel": "本轮中更改的文件",
+    "changed_other": "已更改 {{count}} 个文件",
+    "buildOnly": "已更新构建文件",
+    "review": "审阅",
+    "undoAll": "全部撤销",
+    "redoAll": "全部重做",
+    "undo": "撤销",
+    "redo": "重做",
+    "undoFile": "撤销 {{path}}",
+    "redoFile": "重做 {{path}}",
+    "kind": {
+      "added": "已添加",
+      "modified": "已修改",
+      "deleted": "已删除"
+    },
+    "undone": "已撤销",
+    "editedAfter": "本轮之后又有更改",
+    "alsoEdited": "你在本轮进行期间也编辑了此文件",
+    "committed": "已在 {{commit}} 中提交",
+    "buildFiles": "已更新构建文件",
+    "moreFiles_other": "另有 {{count}} 个文件未列出",
+    "skipped_other": "有 {{count}} 个文件未能在本轮开始前复制，因此无法撤销。",
+    "overlapped": "另一个代理同时更改了文件。请逐个撤销文件。",
+    "expired": "本轮已无法再撤销。",
+    "waitForRun": "代理完成后即可撤销。",
+    "unavailable": {
+      "tooLarge": "本轮无法撤销：项目过大，无法复制。",
+      "tooManyFiles": "本轮无法撤销：项目文件过多。",
+      "timeout": "本轮无法撤销：复制项目耗时过长。",
+      "error": "本轮无法撤销：无法复制项目。"
+    },
+    "previewLoading": "正在加载更改…",
+    "previewFailed": "无法加载此更改。",
+    "binary": "此文件不是文本文件，无法显示更改。",
+    "tooLarge": "此更改过大，无法在此显示。",
+    "diffLabel": "对 {{path}} 的更改",
+    "undid_other": "已撤销 {{count}} 个文件的更改。",
+    "redid_other": "已重做 {{count}} 个文件的更改。",
+    "skippedEdited": "部分文件在本轮之后又有更改，因此 Oleafly 没有改动它们。",
+    "skippedFailed": "部分文件无法写入。",
+    "undoFailed": "无法撤销这些更改。请保存你的工作后重试。",
+    "redoFailed": "无法重做这些更改。请保存你的工作后重试。"
+  },
+  "presets": {
+    "literatureSweep": "文献检索",
+    "relatedWork": "相关工作",
+    "citationAudit": "引用核查",
+    "manuscriptReview": "稿件审阅",
+    "reproducibilityAudit": "可复现性核查",
+    "figureAudit": "图片核查",
+    "gitReview": "Git 审阅",
+    "referenceCleanup": "参考文献整理",
+    "removeSkill": "移除技能 {{name}}"
   }
 }

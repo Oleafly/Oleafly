@@ -7,6 +7,7 @@ mod agent_exec;
 // sites land with the session/tool restructure.
 #[allow(dead_code)]
 mod agent_server;
+mod agent_turns;
 mod ai_model_metadata;
 mod ai_model_registry;
 mod app_error;
@@ -70,6 +71,7 @@ mod pandoc_citations;
 mod paths;
 mod proc;
 mod process_identity;
+mod program_locator;
 mod project;
 mod project_availability;
 mod project_grants;
@@ -108,6 +110,8 @@ mod system_integration;
 mod template_packs;
 mod templates;
 mod terminal;
+#[cfg(test)]
+mod test_wait;
 mod tex_distro;
 mod tinytex_archive;
 mod trust;
@@ -188,6 +192,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             let _ = handle.emit("project-availability", event);
         }));
     }
+    program_locator::start_background_probe();
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
     agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
     agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
@@ -452,6 +457,20 @@ pub fn run() {
             acp::commands::acp_sessions,
             acp::commands::acp_snapshot,
             acp::commands::acp_events,
+            // CLI agent setup (#84)
+            acp::commands::acp_check_agent,
+            acp::commands::acp_pick_agent_program,
+            acp::commands::acp_set_agent_program,
+            // CLI agent conversations (#84)
+            acp::commands::acp_session_export,
+            acp::commands::acp_session_events_all,
+            // Agent turn review (#84)
+            agent_turns::agent_turn_begin,
+            agent_turns::agent_turn_finish,
+            agent_turns::agent_turn_status,
+            agent_turns::agent_turn_preview,
+            agent_turns::agent_turn_revert,
+            agent_turns::agent_turn_redo,
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_cancel_all,

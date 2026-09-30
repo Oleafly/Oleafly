@@ -217,7 +217,7 @@ describe("ACP assistant acceptance", () => {
     typeMessage(ui.getByLabelText("Message CLI agent"), "Check the linked evidence");
     fireEvent.click(ui.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(ui.getByRole("button", { name: "Stop" })).toBeEnabled());
-    expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", "Check the linked evidence", []);
+    expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", "Check the linked evidence", [], null);
     const request = permission();
     await publish(
       event(2, "agent_thought_chunk", { content: { type: "text", text: "I will compare the sample sizes." } }),
@@ -319,7 +319,7 @@ describe("ACP assistant acceptance", () => {
     const start = await ui.findByTestId("acp-start-conversation");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
     expect(ui.queryByTestId("assistant-home-cards")).not.toBeInTheDocument();
-    expect(ui.queryByTestId("assistant-home-chips")).not.toBeInTheDocument();
+    expect(ui.getAllByTestId("acp-quick-start")[0]).toHaveTextContent("Literature sweep");
     expect(ui.queryByRole("tablist")).not.toBeInTheDocument();
     const roster = ui.getByTestId("agent-picker-row");
     const rosterNames = [...roster.querySelectorAll("button")].map((node) => node.getAttribute("aria-label"));
@@ -334,7 +334,7 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(start).toBeEnabled());
     fireEvent.click(start);
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("Research CLI is ready in this project");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
@@ -358,7 +358,7 @@ describe("ACP assistant acceptance", () => {
     });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
-    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
+    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready");
 
     fireEvent.click(ui.getByTestId("agent-picker-other"));
 
@@ -435,7 +435,7 @@ describe("ACP assistant acceptance", () => {
       pending.resolve({ session: session("new"), permissions: [] });
     });
     await waitFor(() => expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument());
-    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
+    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready");
   });
 
   it("saves the open file before the agent reads it, and holds the prompt when saving fails", async () => {
@@ -492,7 +492,7 @@ describe("ACP assistant acceptance", () => {
     const ui = render(<AcpWorkspace />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
     const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
-    expect(names).toEqual(["Conversation saved · fixture"]);
+    expect(names).toEqual(["Export conversation…", "Conversation saved · Research CLI"]);
   });
 
   it("opens a saved conversation from the header menu after disconnecting the current one", async () => {
@@ -502,7 +502,7 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
     await chooseMenuItem(
       ui.getByRole("button", { name: "Saved conversations" }),
-      "Earlier review · fixture",
+      "Earlier review · Research CLI",
     );
     await waitFor(() => expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved"));
     await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBe("other"));

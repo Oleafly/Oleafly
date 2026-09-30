@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiSettingsDestination } from "./ai-settings-navigation";
+import { aiAgentsTarget, aiSettingsDestination } from "./ai-settings-navigation";
 
 describe("AI settings navigation", () => {
   it("routes approval links to the project rules on the Providers tab", () => {
@@ -20,5 +20,12 @@ describe("AI settings navigation", () => {
 
   it("routes assistant MCP links to the MCP tab", () => {
     expect(aiSettingsDestination("ai-mcp")).toEqual({ tab: "mcp" });
+  });
+  it("opens the agents tab on one agent's card for a per-agent link", () => {
+    expect(aiSettingsDestination("ai-agents")).toEqual({ tab: "agents" });
+    expect(aiSettingsDestination("ai-agents:pi")).toEqual({ tab: "agents", agentId: "pi" });
+    expect(aiSettingsDestination("ai-agents:")).toEqual({ tab: "agents" });
+    expect(aiSettingsDestination(aiAgentsTarget("claude"))).toEqual({ tab: "agents", agentId: "claude" });
+    expect(aiAgentsTarget()).toBe("ai-agents");
   });
 });

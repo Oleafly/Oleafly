@@ -15,6 +15,25 @@
         "registered": "Disabled button state meaning this agent is already registered",
         "search": "Button that submits the ACP registry search query",
         "searching": "Busy label on the registry search button while the search runs"
+      },
+      "program": {
+        "label": "Row label for the executable file Oleafly starts for this agent",
+        "bridgeLabel": "Row label for the vendor command line tool the bridge should use; {{cli}} is a product name",
+        "source": {
+          "auto": "Oleafly found the program by searching this computer",
+          "override": "The user picked this program file",
+          "managed": "Oleafly downloaded and installed this program"
+        },
+        "choose": "Button that opens a file picker to choose the agent's program file",
+        "test": "Button that starts the agent briefly to check that it answers",
+        "useAutomatic": "Button that forgets the chosen file and goes back to searching for the program",
+        "useAnyway": "Button that saves the chosen file even though the check failed",
+        "skippedTitle": "Collapsed list of files with the right name that Oleafly could not start",
+        "check": {
+          "ready": "Success message after the check; {{version}} is the agent's version number",
+          "notAcp": "The program started but did not speak the agent protocol Oleafly uses"
+        },
+        "copyDetails": "Button that copies the technical error output to the clipboard"
       }
     },
     "approvals": {

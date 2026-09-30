@@ -221,8 +221,8 @@
       "content": "Määritetyissä keskusteluissa näkyvät täällä ajojen, tokenien ja arvioitujen kustannusten tiedot, kun ne ovat saatavilla."
     },
     "restore": {
-      "title": "Palauta projektin tila",
-      "content": "Tekoälyn tekemän muokkauksen jälkeen tarkistuspiste voi palauttaa projektitiedostot poistamatta keskustelua."
+      "title": "Tarkista agentin muutokset",
+      "content": "Kun vuoro muuttaa tiedostoja, avaa Tarkista, niin näet jokaisen muutoksen. Kumoa palauttaa tiedoston ennalleen, ja Tee uudelleen tuo muutoksen takaisin."
     }
   },
   "diagram": {

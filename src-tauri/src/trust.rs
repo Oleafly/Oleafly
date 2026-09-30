@@ -1048,7 +1048,7 @@ pub async fn debug_answer_next_confirmation(answer: bool) -> Result<(), String> 
     Ok(())
 }
 
-async fn native_confirm<R: tauri::Runtime>(
+pub(crate) async fn native_confirm<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     title: &str,
     message: String,

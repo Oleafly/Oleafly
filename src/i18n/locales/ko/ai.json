@@ -429,21 +429,25 @@
       "namedHeadline": "{{agent}}에 권한이 필요합니다",
       "headline": "에이전트에 권한이 필요합니다",
       "expired": "이 요청은 만료되었습니다. 에이전트에게 다시 시도하도록 요청하세요.",
-      "dismiss": "닫기"
+      "dismiss": "닫기",
+      "diff": {
+        "showChange": "변경 사항 보기",
+        "hideChange": "변경 사항 숨기기",
+        "large": "{{path}}에 대한 큰 변경입니다. 이번 차례가 끝난 뒤 검토하세요.",
+        "label": "{{path}}에 대한 제안된 변경",
+        "loading": "변경 사항을 불러오는 중…"
+      }
     },
     "readiness": {
       "managedBridge": "Oleafly가 설치한 브리지 {{version}}입니다.",
-      "bridgeOnPath": "PATH에서 브리지를 찾았습니다.",
       "bridgeMissingWithCli": "{{path}}에서 {{cli}}을(를) 찾았습니다. 연결하려면 ACP 브리지 {{version}}을(를) 설치하세요.",
       "bridgeMissing": "이 에이전트를 연결하려면 ACP 브리지 {{version}}을(를) 설치하세요.",
-      "cliMissing": "{{cli}}이(가) PATH에 없습니다. 설치한 다음 {{command}}을(를) 실행하세요.",
       "cliNotFound": "이 에이전트의 명령줄 도구를 찾지 못했습니다.",
       "unavailable": "이 에이전트는 이 컴퓨터에서 실행할 수 없습니다."
     },
     "bridgeSource": {
       "notInstalled": "설치 안 됨",
-      "managed": "Oleafly가 관리",
-      "onPath": "PATH에 있음"
+      "managed": "Oleafly가 관리"
     },
     "installing": "설치하는 중",
     "installBridge": "브리지 설치",
@@ -496,8 +500,49 @@
     "terminalCommand": "에이전트가 터미널 명령을 실행하고 있습니다.",
     "agentToolFallback": "에이전트 도구",
     "agentReported": "에이전트가 알렸습니다: {{detail}}",
+    "updateTooLarge": "에이전트 출력의 일부가 너무 커서 표시하지 못했습니다({{size}}).",
     "imageAttachmentName": "이미지 {{index}}",
-    "agentImage": "[에이전트가 이미지를 반환했습니다.]"
+    "agentImage": "[에이전트가 이미지를 반환했습니다.]",
+    "setup": {
+      "cliNotFound": "Oleafly가 이 컴퓨터에서 {{cli}}을(를) 찾지 못했습니다.",
+      "rejected": {
+        "powershellScript": "{{file}}을(를) 찾았지만 PowerShell 스크립트는 실행할 수 없습니다. {{name}}.cmd 또는 {{name}}.exe를 선택하세요.",
+        "script": "{{file}}을(를) 찾았지만 Oleafly가 직접 실행할 수 없습니다. {{name}}.exe를 선택하세요.",
+        "isDirectory": "이름이 {{file}}인 폴더를 찾았습니다. {{name}} 프로그램 파일을 선택하세요.",
+        "notExecutable": "{{file}}을(를) 찾았지만 Oleafly가 실행할 수 있는 프로그램이 아닙니다.",
+        "guiProgram": "{{file}}을(를) 찾았지만 데스크톱 앱입니다. {{name}} 명령줄 도구를 선택하세요.",
+        "networkPath": "네트워크 위치에서 {{file}}을(를) 찾았습니다. 이 컴퓨터에 있는 사본을 선택하세요."
+      },
+      "foundOnComputer": "이 컴퓨터에서 찾았습니다.",
+      "usingChosen": "선택한 프로그램을 사용하고 있습니다.",
+      "bridgeSourceFound": "이 컴퓨터에서 찾음",
+      "setUp": "{{name}} 설정",
+      "backgroundTasks": "백그라운드 작업: {{reason}}",
+      "cliMissingNextStep": "{{cli}}을(를) 설치하거나 설치된 위치를 선택하세요.",
+      "installUnavailable": "Oleafly가 이 컴퓨터에 이 브리지를 설치할 수 없습니다.",
+      "builtIn": "기본 제공",
+      "showAgent": "보기"
+    },
+    "export": {
+      "menuItem": "대화 내보내기…",
+      "saved": "대화를 내보냈습니다",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "대화",
+      "project": "프로젝트",
+      "agent": "에이전트",
+      "model": "모델",
+      "modelManaged": "에이전트가 선택",
+      "startRevision": "시작 시점 커밋",
+      "uncommitted": "{{revision}}(커밋하지 않은 변경 사항 있음)",
+      "started": "시작 시각",
+      "updated": "마지막 업데이트",
+      "you": "나",
+      "skill": "스킬: {{name}}",
+      "tool": "도구: {{name}}",
+      "changedFiles": "변경된 파일",
+      "moreFiles_other": "외 파일 {{count}}개"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI 에이전트",
@@ -724,5 +769,60 @@
     "preSubmission": "제출할 수 있게 준비해 주세요",
     "slides": "이 논문을 발표 자료로 만들어 주세요",
     "recompile": "다시 컴파일하고 오류를 확인해 주세요"
+  },
+  "turnChanges": {
+    "ariaLabel": "이번 차례에서 변경된 파일",
+    "changed_other": "파일 {{count}}개 변경됨",
+    "buildOnly": "빌드 파일 업데이트됨",
+    "review": "검토",
+    "undoAll": "모두 실행 취소",
+    "redoAll": "모두 다시 실행",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "undoFile": "{{path}} 실행 취소",
+    "redoFile": "{{path}} 다시 실행",
+    "kind": {
+      "added": "추가됨",
+      "modified": "수정됨",
+      "deleted": "삭제됨"
+    },
+    "undone": "실행 취소됨",
+    "editedAfter": "이번 차례 이후에 변경됨",
+    "alsoEdited": "이번 차례 중에 이 파일을 직접 편집했습니다",
+    "committed": "{{commit}}에 커밋됨",
+    "buildFiles": "빌드 파일 업데이트됨",
+    "moreFiles_other": "목록에 없는 파일이 {{count}}개 더 있습니다",
+    "skipped_other": "이번 차례 전에 파일 {{count}}개를 복사하지 못해 실행 취소로 되돌릴 수 없습니다.",
+    "overlapped": "다른 에이전트가 같은 시간에 파일을 변경했습니다. 파일을 하나씩 실행 취소하세요.",
+    "expired": "이번 차례는 더 이상 실행 취소할 수 없습니다.",
+    "waitForRun": "에이전트 작업이 끝나면 실행 취소할 수 있습니다.",
+    "unavailable": {
+      "tooLarge": "이번 차례는 실행 취소할 수 없습니다. 프로젝트가 너무 커서 복사할 수 없습니다.",
+      "tooManyFiles": "이번 차례는 실행 취소할 수 없습니다. 프로젝트에 파일이 너무 많습니다.",
+      "timeout": "이번 차례는 실행 취소할 수 없습니다. 프로젝트를 복사하는 데 시간이 너무 오래 걸렸습니다.",
+      "error": "이번 차례는 실행 취소할 수 없습니다. 프로젝트를 복사하지 못했습니다."
+    },
+    "previewLoading": "변경 사항을 불러오는 중…",
+    "previewFailed": "이 변경 사항을 불러오지 못했습니다.",
+    "binary": "이 파일은 텍스트가 아니어서 변경 사항을 표시할 수 없습니다.",
+    "tooLarge": "이 변경 사항은 너무 커서 여기에 표시할 수 없습니다.",
+    "diffLabel": "{{path}} 변경 사항",
+    "undid_other": "파일 {{count}}개의 변경 사항을 실행 취소했습니다.",
+    "redid_other": "파일 {{count}}개의 변경 사항을 다시 실행했습니다.",
+    "skippedEdited": "일부 파일은 이번 차례 이후에 변경되어 Oleafly가 그대로 두었습니다.",
+    "skippedFailed": "일부 파일을 쓰지 못했습니다.",
+    "undoFailed": "변경 사항을 실행 취소하지 못했습니다. 작업을 저장한 뒤 다시 시도하세요.",
+    "redoFailed": "변경 사항을 다시 실행하지 못했습니다. 작업을 저장한 뒤 다시 시도하세요."
+  },
+  "presets": {
+    "literatureSweep": "문헌 조사",
+    "relatedWork": "관련 연구",
+    "citationAudit": "인용 점검",
+    "manuscriptReview": "원고 검토",
+    "reproducibilityAudit": "재현성 점검",
+    "figureAudit": "그림 점검",
+    "gitReview": "Git 검토",
+    "referenceCleanup": "참고 문헌 정리",
+    "removeSkill": "스킬 {{name}} 제거"
   }
 }

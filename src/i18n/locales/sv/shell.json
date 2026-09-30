@@ -842,6 +842,15 @@
     "enterTitle": "Ange en rubrik för incheckningen",
     "finishMergeToCommit": "Slutför sammanslagningen innan du checkar in.",
     "fetch": "Hämta",
+    "gitMissing": {
+      "copied": "Kopierat",
+      "copyCommand": "Kopiera kommandot",
+      "download": "Ladda ner Git for Windows",
+      "linux": "Versionshanteringen behöver Git. Installera paketet git med din pakethanterare och uppdatera sedan den här panelen.",
+      "mac": "Versionshanteringen behöver Git. Kör det här kommandot i Terminal för att installera Apples kommandoradsverktyg, som innehåller Git, och uppdatera sedan den här panelen.",
+      "title": "Git är inte installerat",
+      "windows": "Versionshanteringen behöver Git. Installera Git for Windows och starta sedan om Oleafly."
+    },
     "graph": "Graf",
     "commitCount_one": "{{count}} incheckning",
     "commitCount_other": "{{count}} incheckningar",

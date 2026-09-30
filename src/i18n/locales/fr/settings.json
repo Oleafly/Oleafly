@@ -12,7 +12,6 @@
       "checkingDescription": "Cela peut prendre un moment pendant qu'Oleafly examine les outils en ligne de commande de cet ordinateur.",
       "checkingInstalled": "Vérification des agents installés",
       "checkingTitle": "Recherche d'agents en ligne de commande",
-      "cliNotOnPath": "{{command}} est introuvable dans votre PATH.",
       "cliPathLabel": "Détecté dans",
       "cliTitle": "Outil en ligne de commande",
       "copySignInCommand": "Copier la commande de connexion",
@@ -66,7 +65,59 @@
       "sectionLabel": "Agents ACP",
       "signInCommandLabel": "Commande de connexion",
       "versionLabel": "Version",
-      "updateBridge": "Mettre à jour le pont"
+      "updateBridge": "Mettre à jour le pont",
+      "program": {
+        "label": "Programme",
+        "bridgeLabel": "Programme {{cli}}",
+        "notFound": "Introuvable sur cet ordinateur",
+        "bridgeDefault": "Le pont utilise sa propre copie.",
+        "source": {
+          "auto": "Trouvé automatiquement",
+          "override": "Choisi par vous",
+          "managed": "Installé par Oleafly"
+        },
+        "choose": "Choisir…",
+        "test": "Tester",
+        "testing": "Test en cours",
+        "saving": "Enregistrement",
+        "useAutomatic": "Utiliser la détection automatique",
+        "useAnyway": "Utiliser quand même",
+        "inputLabel": "Emplacement du programme {{name}}",
+        "pathPlaceholder": "Par exemple, {{example}}",
+        "saved": "Enregistré. Oleafly utilisera ce programme.",
+        "skippedTitle": "Fichiers ignorés par Oleafly",
+        "skippedReason": {
+          "notFound": "Introuvable",
+          "isDirectory": "Dossier",
+          "notExecutable": "Impossible à lancer",
+          "unsupportedScript": "Type de script non pris en charge",
+          "guiProgram": "Application de bureau",
+          "interpreter": "Shell ou environnement d'exécution",
+          "networkPath": "Emplacement réseau"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} a démarré et a répondu.",
+          "readyNoVersion": "{{name}} a démarré et a répondu.",
+          "notFound": "Aucun fichier à l'emplacement {{path}}.",
+          "isDirectory": "{{path}} est un dossier. Choisissez le fichier du programme qu'il contient.",
+          "powershellScript": "Les scripts PowerShell ne peuvent pas être lancés. Choisissez {{command}}.cmd ou {{command}}.exe.",
+          "unsupportedScript": "Oleafly ne peut pas lancer {{file}} directement. Choisissez {{command}}.exe.",
+          "notExecutable": "{{path}} n'est pas un programme qu'Oleafly peut lancer.",
+          "guiProgram": "{{path}} est une application de bureau. Choisissez le programme en ligne de commande.",
+          "interpreter": "{{path}} est un shell ou un environnement d'exécution de scripts. Choisissez le programme {{name}} lui-même.",
+          "networkPath": "{{path}} se trouve sur un emplacement réseau. Choisissez un programme sur cet ordinateur.",
+          "cliMissing": "Oleafly n'a pas pu exécuter {{cli}}. Choisissez le programme {{cli}}.",
+          "bridgeMissing": "Le pont pour {{name}} n'est pas encore installé.",
+          "nodeMissing": "{{name}} a besoin de Node.js, et Oleafly ne l'a pas trouvé.",
+          "nodeTooOld": "{{name}} a besoin d'une version plus récente de Node.js.",
+          "startFailed": "{{name}} n'a pas pu être lancé.",
+          "timeout": "{{name}} a démarré mais n'a pas répondu à temps.",
+          "exited": "{{name}} s'est arrêté avant de répondre.",
+          "notAcp": "{{name}} a démarré, mais Oleafly n'a pas compris sa réponse."
+        },
+        "getNode": "Obtenir Node.js",
+        "copyDetails": "Copier les détails"
+      }
     },
     "approvals": {
       "file": {
@@ -990,7 +1041,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Les projets créés et ouverts reçoivent un dépôt Git pour que le panneau Git suive les modifications. Oleafly ne valide jamais de lui-même.",
+      "description": "Les projets créés et ouverts reçoivent un dépôt Git pour que le panneau Git suive les modifications. Un nouveau projet démarre en général avec un commit de ses fichiers. Ensuite, Oleafly ne valide que lorsque vous le demandez.",
       "label": "Initialiser Git pour chaque projet"
     },
     "config": {

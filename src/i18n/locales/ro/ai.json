@@ -443,21 +443,25 @@
       "namedHeadline": "{{agent}} are nevoie de permisiune",
       "headline": "Agentul are nevoie de permisiune",
       "expired": "Această cerere a expirat. Cere-i agentului să încerce din nou.",
-      "dismiss": "Închide"
+      "dismiss": "Închide",
+      "diff": {
+        "showChange": "Arată modificarea",
+        "hideChange": "Ascunde modificarea",
+        "large": "Modificare mare în {{path}}. Verific-o după acest schimb.",
+        "label": "Modificare propusă în {{path}}",
+        "loading": "Se încarcă modificarea…"
+      }
     },
     "readiness": {
       "managedBridge": "Puntea {{version}} a fost instalată de Oleafly.",
-      "bridgeOnPath": "Puntea a fost găsită în PATH.",
       "bridgeMissingWithCli": "{{cli}} a fost găsit la {{path}}. Instalează puntea ACP {{version}} ca să te poți conecta.",
       "bridgeMissing": "Instalează puntea ACP {{version}} ca să conectezi acest agent.",
-      "cliMissing": "{{cli}} nu se află în PATH. Instalează-l, apoi rulează {{command}}.",
       "cliNotFound": "Instrumentul de linie de comandă al acestui agent nu a fost găsit.",
       "unavailable": "Acest agent nu poate rula pe acest computer."
     },
     "bridgeSource": {
       "notInstalled": "Neinstalată",
-      "managed": "Gestionată de Oleafly",
-      "onPath": "În PATH"
+      "managed": "Gestionată de Oleafly"
     },
     "installing": "Se instalează",
     "installBridge": "Instalează puntea",
@@ -510,8 +514,51 @@
     "terminalCommand": "Agentul rulează o comandă în terminal.",
     "agentToolFallback": "Instrument al agentului",
     "agentReported": "Agentul a raportat: {{detail}}",
+    "updateTooLarge": "O parte din rezultatul agentului era prea mare pentru a fi afișată ({{size}}).",
     "imageAttachmentName": "Imaginea {{index}}",
-    "agentImage": "[Agentul a returnat o imagine.]"
+    "agentImage": "[Agentul a returnat o imagine.]",
+    "setup": {
+      "cliNotFound": "Oleafly nu a găsit {{cli}} pe acest computer.",
+      "rejected": {
+        "powershellScript": "S-a găsit {{file}}, dar scripturile PowerShell nu pot fi pornite. Alege {{name}}.cmd sau {{name}}.exe.",
+        "script": "S-a găsit {{file}}, dar Oleafly nu îl poate porni direct. Alege {{name}}.exe.",
+        "isDirectory": "S-a găsit un folder numit {{file}}. Alege fișierul programului {{name}}.",
+        "notExecutable": "S-a găsit {{file}}, dar nu este un program pe care Oleafly îl poate porni.",
+        "guiProgram": "S-a găsit {{file}}, dar este o aplicație desktop. Alege instrumentul de linie de comandă {{name}}.",
+        "networkPath": "S-a găsit {{file}} într-o locație din rețea. Alege o copie de pe acest computer."
+      },
+      "foundOnComputer": "Găsit pe acest computer.",
+      "usingChosen": "Se folosește programul ales de tine.",
+      "bridgeSourceFound": "Găsită pe acest computer",
+      "setUp": "Configurează {{name}}",
+      "backgroundTasks": "Sarcini în fundal: {{reason}}",
+      "cliMissingNextStep": "Instalează {{cli}} sau alege unde este instalat.",
+      "installUnavailable": "Oleafly nu poate instala această punte pe acest computer.",
+      "builtIn": "Inclus",
+      "showAgent": "Arată"
+    },
+    "export": {
+      "menuItem": "Exportă conversația…",
+      "saved": "Conversația a fost exportată",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Conversație",
+      "project": "Proiect",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Ales de agent",
+      "startRevision": "Comiterea de pornire",
+      "uncommitted": "{{revision}} cu modificări necomise",
+      "started": "Data începerii",
+      "updated": "Ultima actualizare",
+      "you": "Tu",
+      "skill": "Abilitate: {{name}}",
+      "tool": "Instrument: {{name}}",
+      "changedFiles": "Fișiere modificate",
+      "moreFiles_one": "și încă {{count}} fișier",
+      "moreFiles_few": "și încă {{count}} fișiere",
+      "moreFiles_other": "și încă {{count}} de fișiere"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agent din linia de comandă",
@@ -744,5 +791,70 @@
     "preSubmission": "Pregătește-o pentru trimitere",
     "slides": "Transformă lucrarea aceasta într-o prezentare",
     "recompile": "Recompilează și caută erori"
+  },
+  "turnChanges": {
+    "ariaLabel": "Fișiere modificate în acest schimb",
+    "changed_one": "{{count}} fișier modificat",
+    "changed_few": "{{count}} fișiere modificate",
+    "changed_other": "{{count}} de fișiere modificate",
+    "buildOnly": "Fișiere de compilare actualizate",
+    "review": "Verifică",
+    "undoAll": "Anulează tot",
+    "redoAll": "Refă tot",
+    "undo": "Anulează",
+    "redo": "Refă",
+    "undoFile": "Anulează {{path}}",
+    "redoFile": "Refă {{path}}",
+    "kind": {
+      "added": "Adăugat",
+      "modified": "Modificat",
+      "deleted": "Șters"
+    },
+    "undone": "Anulat",
+    "editedAfter": "Modificat după acest schimb",
+    "alsoEdited": "Ai modificat și tu acest fișier în timpul schimbului",
+    "committed": "Comis în {{commit}}",
+    "buildFiles": "Fișiere de compilare actualizate",
+    "moreFiles_one": "Încă {{count}} fișier nu apare în listă",
+    "moreFiles_few": "Încă {{count}} fișiere nu apar în listă",
+    "moreFiles_other": "Încă {{count}} de fișiere nu apar în listă",
+    "skipped_one": "{{count}} fișier nu a putut fi copiat înainte de acest schimb, așa că nu poate fi pus la loc cu Anulează.",
+    "skipped_few": "{{count}} fișiere nu au putut fi copiate înainte de acest schimb, așa că nu pot fi puse la loc cu Anulează.",
+    "skipped_other": "{{count}} de fișiere nu au putut fi copiate înainte de acest schimb, așa că nu pot fi puse la loc cu Anulează.",
+    "overlapped": "Un alt agent a modificat fișiere în același timp. Anulează fișierele unul câte unul.",
+    "expired": "Anularea nu mai este disponibilă pentru acest schimb.",
+    "waitForRun": "Poți anula după ce agentul termină.",
+    "unavailable": {
+      "tooLarge": "Anularea nu este disponibilă pentru acest schimb: proiectul este prea mare pentru a fi copiat.",
+      "tooManyFiles": "Anularea nu este disponibilă pentru acest schimb: proiectul are prea multe fișiere.",
+      "timeout": "Anularea nu este disponibilă pentru acest schimb: copierea proiectului a durat prea mult.",
+      "error": "Anularea nu este disponibilă pentru acest schimb: proiectul nu a putut fi copiat."
+    },
+    "previewLoading": "Se încarcă modificarea…",
+    "previewFailed": "Modificarea nu a putut fi încărcată.",
+    "binary": "Acest fișier nu conține text, așa că modificarea nu poate fi afișată.",
+    "tooLarge": "Această modificare este prea mare pentru a fi afișată aici.",
+    "diffLabel": "Modificare în {{path}}",
+    "undid_one": "Modificarea a fost anulată pentru {{count}} fișier.",
+    "undid_few": "Modificările au fost anulate pentru {{count}} fișiere.",
+    "undid_other": "Modificările au fost anulate pentru {{count}} de fișiere.",
+    "redid_one": "Modificarea a fost refăcută pentru {{count}} fișier.",
+    "redid_few": "Modificările au fost refăcute pentru {{count}} fișiere.",
+    "redid_other": "Modificările au fost refăcute pentru {{count}} de fișiere.",
+    "skippedEdited": "Unele fișiere s-au modificat după acest schimb, așa că Oleafly nu le-a atins.",
+    "skippedFailed": "Unele fișiere nu au putut fi scrise.",
+    "undoFailed": "Modificările nu au putut fi anulate. Salvează-ți munca și încearcă din nou.",
+    "redoFailed": "Modificările nu au putut fi refăcute. Salvează-ți munca și încearcă din nou."
+  },
+  "presets": {
+    "literatureSweep": "Explorarea literaturii",
+    "relatedWork": "Lucrări înrudite",
+    "citationAudit": "Auditul citărilor",
+    "manuscriptReview": "Recenzia manuscrisului",
+    "reproducibilityAudit": "Auditul reproductibilității",
+    "figureAudit": "Auditul figurilor",
+    "gitReview": "Verificare Git",
+    "referenceCleanup": "Curățarea referințelor",
+    "removeSkill": "Elimină abilitatea {{name}}"
   }
 }

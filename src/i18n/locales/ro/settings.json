@@ -12,7 +12,6 @@
       "checkingDescription": "Poate dura un moment, cât timp Oleafly verifică instrumentele de linie de comandă de pe acest computer.",
       "checkingInstalled": "Se verifică agenții instalați",
       "checkingTitle": "Se caută agenți din linia de comandă",
-      "cliNotOnPath": "{{command}} nu a fost găsit în PATH.",
       "cliPathLabel": "Detectat la",
       "cliTitle": "Instrument de linie de comandă",
       "copySignInCommand": "Copiază comanda de autentificare",
@@ -66,7 +65,59 @@
       "sectionLabel": "Agenți ACP",
       "signInCommandLabel": "Comandă de autentificare",
       "versionLabel": "Versiune",
-      "updateBridge": "Actualizează puntea"
+      "updateBridge": "Actualizează puntea",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "Programul {{cli}}",
+        "notFound": "Nu a fost găsit pe acest computer",
+        "bridgeDefault": "Puntea folosește propria copie.",
+        "source": {
+          "auto": "Găsit automat",
+          "override": "Ales de tine",
+          "managed": "Instalat de Oleafly"
+        },
+        "choose": "Alege…",
+        "test": "Testează",
+        "testing": "Se testează",
+        "saving": "Se salvează",
+        "useAutomatic": "Folosește detectarea automată",
+        "useAnyway": "Folosește oricum",
+        "inputLabel": "Locația pentru {{name}}",
+        "pathPlaceholder": "De exemplu, {{example}}",
+        "saved": "Salvat. Oleafly va folosi acest program.",
+        "skippedTitle": "Fișiere omise de Oleafly",
+        "skippedReason": {
+          "notFound": "Lipsește",
+          "isDirectory": "Folder",
+          "notExecutable": "Nu poate fi pornit",
+          "unsupportedScript": "Tip de script neacceptat",
+          "guiProgram": "Aplicație desktop",
+          "interpreter": "Shell sau mediu de rulare",
+          "networkPath": "Locație din rețea"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} a pornit și a răspuns.",
+          "readyNoVersion": "{{name}} a pornit și a răspuns.",
+          "notFound": "Nu există niciun fișier la {{path}}.",
+          "isDirectory": "{{path}} este un folder. Alege fișierul programului din el.",
+          "powershellScript": "Scripturile PowerShell nu pot fi pornite. Alege {{command}}.cmd sau {{command}}.exe.",
+          "unsupportedScript": "Oleafly nu poate porni direct {{file}}. Alege {{command}}.exe.",
+          "notExecutable": "{{path}} nu este un program pe care Oleafly îl poate porni.",
+          "guiProgram": "{{path}} este o aplicație desktop. Alege programul de linie de comandă.",
+          "interpreter": "{{path}} este un shell sau un mediu de rulare pentru scripturi. Alege chiar programul {{name}}.",
+          "networkPath": "{{path}} se află într-o locație din rețea. Alege un program de pe acest computer.",
+          "cliMissing": "Oleafly nu a putut rula {{cli}}. Alege programul {{cli}}.",
+          "bridgeMissing": "Puntea pentru {{name}} nu este încă instalată.",
+          "nodeMissing": "{{name}} are nevoie de Node.js, iar Oleafly nu l-a găsit.",
+          "nodeTooOld": "{{name}} are nevoie de o versiune mai nouă de Node.js.",
+          "startFailed": "{{name}} nu a putut fi pornit.",
+          "timeout": "{{name}} a pornit, dar nu a răspuns la timp.",
+          "exited": "{{name}} s-a oprit înainte să răspundă.",
+          "notAcp": "{{name}} a pornit, dar Oleafly nu i-a înțeles răspunsul."
+        },
+        "getNode": "Descarcă Node.js",
+        "copyDetails": "Copiază detaliile"
+      }
     },
     "approvals": {
       "file": {
@@ -990,7 +1041,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Proiectele noi și cele deschise primesc un depozit Git, ca panoul Git să poată urmări modificările. Oleafly nu comite niciodată din proprie inițiativă.",
+      "description": "Proiectele noi și cele deschise primesc un depozit Git, ca panoul Git să poată urmări modificările. De obicei, un proiect nou începe cu o comitere a fișierelor lui. După aceea, Oleafly comite doar când îi ceri.",
       "label": "Inițializează Git pentru fiecare proiect"
     },
     "config": {

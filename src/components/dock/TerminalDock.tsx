@@ -405,6 +405,7 @@ export function TerminalDock({
               visible={visible && tab.id === activeId}
               active={tab.id === activeId}
               autoStart={tab.autoStart}
+              initialInput={sessions[tab.id] ? undefined : tab.initialInput}
               onExit={() => closeTab(tab.id)}
               onStarted={() =>
                 useFolderAccessStore.getState().noteTerminalStarted(projectId, tab.id)

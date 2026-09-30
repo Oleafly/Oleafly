@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
-    "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan."
+    "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan.",
+    "not_installed": "Git is niet geïnstalleerd op deze computer. Installeer Git en probeer het opnieuw."
   },
   "approvals": {
     "full_access_declined": "Volledige toegang is niet ingeschakeld."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "Deze checkpointgeschiedenis komt uit een project in je Oleafly-bibliotheek en kan daarom niet worden gebruikt met een map die op zijn eigen locatie is geopend.",
     "folder_history_for_library": "Deze checkpointgeschiedenis komt uit een map die op zijn eigen locatie is geopend en kan daarom niet worden gebruikt met een project in je Oleafly-bibliotheek.",
     "restore_path_blocked": "Oleafly kan {{path}} niet terugzetten, omdat er een link of iets anders dat geen bestand is in de weg staat. Verplaats het en probeer het opnieuw."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly kon dat programma niet vinden.",
+      "is_directory": "Dat is een map. Kies het programmabestand erin.",
+      "not_executable": "Dat bestand kan niet als programma worden gestart.",
+      "unsupported_script": "PowerShell-scripts kunnen niet worden gestart. Kies het .cmd- of .exe-bestand met dezelfde naam.",
+      "needs_exe": "Deze agent kan geen .cmd-bestand gebruiken. Kies het .exe-bestand.",
+      "gui_program": "Dat is een desktop-app. Kies het programma dat je in een terminal uitvoert.",
+      "interpreter": "Dat programma voert andere programma's uit. Kies het programma van de agent zelf.",
+      "network_path": "Kies een programma op deze computer, niet op een netwerklocatie.",
+      "unknown_agent": "Oleafly kent deze agent niet.",
+      "declined": "Het programma is niet gewijzigd.",
+      "check_running": "Er loopt al een test voor deze agent.",
+      "main_window": "Wijzig de programma's van agents in het hoofdvenster."
+    }
   }
 }

@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "폴더 열기",
       "inside": "{{name}} 안의 폴더 선택"
+    },
+    "agentProgram": {
+      "title": "이 프로그램을 사용할까요?",
+      "message": "{{name}}을(를) 사용할 때마다 Oleafly가 {{path}}을(를) 실행합니다. 신뢰할 수 있는 프로그램만 선택하세요.",
+      "confirm": "프로그램 사용",
+      "pickTitle": "{{name}} 프로그램 선택",
+      "filter": "프로그램"
     }
   },
   "errors": {

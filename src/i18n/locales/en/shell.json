@@ -842,6 +842,15 @@
     "enterTitle": "Enter a commit title",
     "finishMergeToCommit": "Complete the merge before committing.",
     "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Copied",
+      "copyCommand": "Copy command",
+      "download": "Download Git for Windows",
+      "linux": "Source Control needs Git. Install the git package with your package manager, then refresh this panel.",
+      "mac": "Source Control needs Git. Run this command in Terminal to install Apple's command line tools, which include Git, then refresh this panel.",
+      "title": "Git isn't installed",
+      "windows": "Source Control needs Git. Install Git for Windows, then restart Oleafly."
+    },
     "graph": "Graph",
     "commitCount_one": "{{count}} commit",
     "commitCount_other": "{{count}} commits",

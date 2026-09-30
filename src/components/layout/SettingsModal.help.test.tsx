@@ -66,7 +66,8 @@ describe("Settings Help & About support callout", () => {
       "p-4",
     );
     expect(aboutSection).toContainElement(aboutHeading);
-    expect(screen.getByText("v0.3.6")).toBeInTheDocument();
+    // The version arrives from an async call after the heading renders.
+    expect(await screen.findByText("v0.3.6")).toBeInTheDocument();
     expect(
       screen.getByText(/Write, compile, proofread, manage citations/),
     ).toBeInTheDocument();

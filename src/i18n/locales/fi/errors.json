@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
-    "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota."
+    "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota.",
+    "not_installed": "Gitiä ei ole asennettu tälle koneelle. Asenna Git ja yritä uudelleen."
   },
   "approvals": {
     "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "Tämä tarkistuspistehistoria on peräisin Oleafly-kirjastosi projektista, joten sitä ei voi käyttää sijainnissaan avatun kansion kanssa.",
     "folder_history_for_library": "Tämä tarkistuspistehistoria on peräisin sijainnissaan avatusta kansiosta, joten sitä ei voi käyttää Oleafly-kirjastosi projektin kanssa.",
     "restore_path_blocked": "Oleafly ei voi palauttaa kohdetta {{path}}, koska sen paikalla on linkki tai jokin muu, joka ei ole tiedosto. Siirrä se pois ja yritä uudelleen."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly ei löytänyt kyseistä ohjelmaa.",
+      "is_directory": "Valitsemasi kohde on kansio. Valitse sen sisällä oleva ohjelmatiedosto.",
+      "not_executable": "Tiedostoa ei voi käynnistää ohjelmana.",
+      "unsupported_script": "PowerShell-skriptejä ei voi käynnistää. Valitse samanniminen .cmd- tai .exe-tiedosto.",
+      "needs_exe": "Tämä agentti ei voi käyttää .cmd-tiedostoa. Valitse sen .exe-tiedosto.",
+      "gui_program": "Valitsemasi ohjelma on työpöytäsovellus. Valitse ohjelma, jota ajetaan päätteessä.",
+      "interpreter": "Valitsemasi ohjelma suorittaa muita ohjelmia. Valitse agentin oma ohjelma.",
+      "network_path": "Valitse ohjelma tältä koneelta, ei verkkosijainnista.",
+      "unknown_agent": "Oleafly ei tunne tätä agenttia.",
+      "declined": "Ohjelmaa ei vaihdettu.",
+      "check_running": "Tämän agentin testi on jo käynnissä.",
+      "main_window": "Vaihda agenttien ohjelmia pääikkunasta."
+    }
   }
 }

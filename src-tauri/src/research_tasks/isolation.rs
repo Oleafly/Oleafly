@@ -379,6 +379,9 @@ fn run_git(
     arguments: &[String],
     cancel: &CancellationToken,
 ) -> Result<Option<std::process::Output>, String> {
+    if !crate::git::git_available() {
+        return Ok(None);
+    }
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -388,7 +391,7 @@ fn run_git(
         .map_err(|error| format!("could not create a Git output file: {error}"))?;
     let mut stderr = tempfile::tempfile()
         .map_err(|error| format!("could not create a Git error file: {error}"))?;
-    let mut command = tokio::process::Command::new("git");
+    let mut command = tokio::process::Command::new(crate::git::git_program());
     for variable in crate::git::GIT_REPOSITORY_ENV {
         command.env_remove(variable);
     }
@@ -716,7 +719,7 @@ fn excluded_path(path: &str) -> bool {
     })
 }
 
-fn is_sensitive_component(component: &str) -> bool {
+pub(crate) fn is_sensitive_component(component: &str) -> bool {
     let lower = component.to_ascii_lowercase();
     lower == ".private"
         || lower == ".env"

@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Abrir uma pasta",
       "inside": "Escolha uma pasta dentro de {{name}}"
+    },
+    "agentProgram": {
+      "title": "Usar este programa?",
+      "message": "O Oleafly vai iniciar {{path}} sempre que você usar {{name}}. Só escolha programas em que você confia.",
+      "confirm": "Usar programa",
+      "pickTitle": "Escolha o programa para {{name}}",
+      "filter": "Programas"
     }
   },
   "errors": {

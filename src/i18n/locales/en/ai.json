@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} needs permission",
       "headline": "The agent needs permission",
       "expired": "This request expired. Ask the agent to try again.",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "diff": {
+        "showChange": "Show change",
+        "hideChange": "Hide change",
+        "large": "Large change to {{path}}. Review it after the turn.",
+        "label": "Proposed change to {{path}}",
+        "loading": "Loading the change…"
+      }
     },
     "readiness": {
       "managedBridge": "Bridge {{version}} installed by Oleafly.",
-      "bridgeOnPath": "Bridge found on PATH.",
       "bridgeMissingWithCli": "{{cli}} found at {{path}}. Install the ACP bridge {{version}} to connect.",
       "bridgeMissing": "Install the ACP bridge {{version}} to connect this agent.",
-      "cliMissing": "{{cli}} is not on your PATH. Install it, then run {{command}}.",
       "cliNotFound": "This agent's command line tool was not found.",
       "unavailable": "This agent cannot run on this computer."
     },
     "bridgeSource": {
       "notInstalled": "Not installed",
-      "managed": "Managed by Oleafly",
-      "onPath": "On PATH"
+      "managed": "Managed by Oleafly"
     },
     "installing": "Installing",
     "installBridge": "Install bridge",
@@ -503,8 +507,50 @@
     "terminalCommand": "The agent is running a terminal command.",
     "agentToolFallback": "Agent tool",
     "agentReported": "The agent reported: {{detail}}",
+    "updateTooLarge": "Part of the agent's output was too large to show ({{size}}).",
     "imageAttachmentName": "Image {{index}}",
-    "agentImage": "[The agent returned an image.]"
+    "agentImage": "[The agent returned an image.]",
+    "setup": {
+      "cliNotFound": "Oleafly couldn't find {{cli}} on this computer.",
+      "rejected": {
+        "powershellScript": "Found {{file}}, but PowerShell scripts can't be started. Choose {{name}}.cmd or {{name}}.exe.",
+        "script": "Found {{file}}, but Oleafly can't start it directly. Choose {{name}}.exe.",
+        "isDirectory": "Found a folder named {{file}}. Choose the {{name}} program file.",
+        "notExecutable": "Found {{file}}, but it isn't a program Oleafly can start.",
+        "guiProgram": "Found {{file}}, but it's a desktop app. Choose the {{name}} command line tool.",
+        "networkPath": "Found {{file}} on a network location. Choose a copy on this computer."
+      },
+      "foundOnComputer": "Found on this computer.",
+      "usingChosen": "Using the program you chose.",
+      "bridgeSourceFound": "Found on this computer",
+      "setUp": "Set up {{name}}",
+      "backgroundTasks": "Background tasks: {{reason}}",
+      "cliMissingNextStep": "Install {{cli}}, or choose where it's installed.",
+      "installUnavailable": "Oleafly can't install this bridge on this computer.",
+      "builtIn": "Built in",
+      "showAgent": "Show"
+    },
+    "export": {
+      "menuItem": "Export conversation…",
+      "saved": "Conversation exported",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Conversation",
+      "project": "Project",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Chosen by the agent",
+      "startRevision": "Started at commit",
+      "uncommitted": "{{revision}} with uncommitted changes",
+      "started": "Started",
+      "updated": "Last updated",
+      "you": "You",
+      "skill": "Skill: {{name}}",
+      "tool": "Tool: {{name}}",
+      "changedFiles": "Changed files",
+      "moreFiles_one": "and {{count}} more file",
+      "moreFiles_other": "and {{count}} more files"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI agent",
@@ -734,5 +780,65 @@
     "preSubmission": "Get it ready to submit",
     "slides": "Turn this paper into a talk",
     "recompile": "Recompile and check for errors"
+  },
+  "turnChanges": {
+    "ariaLabel": "Files changed in this turn",
+    "changed_one": "Changed {{count}} file",
+    "changed_other": "Changed {{count}} files",
+    "buildOnly": "Build files updated",
+    "review": "Review",
+    "undoAll": "Undo all",
+    "redoAll": "Redo all",
+    "undo": "Undo",
+    "redo": "Redo",
+    "undoFile": "Undo {{path}}",
+    "redoFile": "Redo {{path}}",
+    "kind": {
+      "added": "Added",
+      "modified": "Modified",
+      "deleted": "Deleted"
+    },
+    "undone": "Undone",
+    "editedAfter": "Changed after this turn",
+    "alsoEdited": "You also edited this file during the turn",
+    "committed": "Committed in {{commit}}",
+    "buildFiles": "Build files updated",
+    "moreFiles_one": "{{count}} more file isn't listed",
+    "moreFiles_other": "{{count}} more files aren't listed",
+    "skipped_one": "{{count}} file couldn't be copied before the turn, so Undo can't put it back.",
+    "skipped_other": "{{count}} files couldn't be copied before the turn, so Undo can't put them back.",
+    "overlapped": "Another agent changed files at the same time. Undo files one by one.",
+    "expired": "Undo is no longer available for this turn.",
+    "waitForRun": "Undo is available when the agent finishes.",
+    "unavailable": {
+      "tooLarge": "Undo isn't available for this turn: the project is too large to copy.",
+      "tooManyFiles": "Undo isn't available for this turn: the project has too many files.",
+      "timeout": "Undo isn't available for this turn: copying the project took too long.",
+      "error": "Undo isn't available for this turn: the project couldn't be copied."
+    },
+    "previewLoading": "Loading the change…",
+    "previewFailed": "Couldn't load this change.",
+    "binary": "This file isn't text, so the change can't be shown.",
+    "tooLarge": "This change is too large to show here.",
+    "diffLabel": "Change to {{path}}",
+    "undid_one": "Undid {{count}} file.",
+    "undid_other": "Undid {{count}} files.",
+    "redid_one": "Redid {{count}} file.",
+    "redid_other": "Redid {{count}} files.",
+    "skippedEdited": "Some files changed after this turn, so Oleafly left them alone.",
+    "skippedFailed": "Some files couldn't be written.",
+    "undoFailed": "Couldn't undo the changes. Save your work and try again.",
+    "redoFailed": "Couldn't redo the changes. Save your work and try again."
+  },
+  "presets": {
+    "literatureSweep": "Literature sweep",
+    "relatedWork": "Related work",
+    "citationAudit": "Citation audit",
+    "manuscriptReview": "Manuscript review",
+    "reproducibilityAudit": "Reproducibility audit",
+    "figureAudit": "Figure audit",
+    "gitReview": "Git review",
+    "referenceCleanup": "Reference cleanup",
+    "removeSkill": "Remove skill {{name}}"
   }
 }

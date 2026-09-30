@@ -17,12 +17,15 @@ export function InlineDiffPreview({
   className,
   // 1-based; fallback scroll target if merge chunks aren't available yet.
   scrollToLine,
+  // When set, the diff's scroller is keyboard-focusable under this name.
+  ariaLabel,
 }: Readonly<{
   path: string;
   oldText: string;
   newText: string;
   className?: string;
   scrollToLine?: number;
+  ariaLabel?: string;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +66,10 @@ export function InlineDiffPreview({
       ],
       parent: host,
     });
+    if (ariaLabel) {
+      view.scrollDOM.tabIndex = 0;
+      view.scrollDOM.setAttribute("aria-label", ariaLabel);
+    }
 
     const scrollToChange = () => {
       const chunks = getChunks(view.state)?.chunks;
@@ -95,7 +102,7 @@ export function InlineDiffPreview({
       view.destroy();
       host.innerHTML = "";
     };
-  }, [path, oldText, newText, scrollToLine]);
+  }, [path, oldText, newText, scrollToLine, ariaLabel]);
 
   return (
     <div

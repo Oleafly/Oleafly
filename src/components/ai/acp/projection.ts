@@ -1,9 +1,11 @@
 import type { AcpEvent } from "@/lib/acp";
-import type { ChatMessage, ToolEntry } from "@/store/chats";
+import { turnChangesFrom } from "@/lib/agent-turns";
+import type { ChatMessage, ToolDiff, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { i18n } from "@/i18n";
 import { splitAgentNotices } from "@/lib/chat-activity";
 import { displayPath, displayText } from "@/lib/display-path";
+import { formatBytes } from "@/lib/format-bytes";
 
 type Data = Record<string, unknown>;
 type Row = { id: string; turn: string | null; kind: string; msg: ChatMessage; raw?: string };
@@ -47,10 +49,31 @@ function toolOutput(data: Data): string {
     const value = object(entry);
     // Command and read results name files too (`pwd`, `ls`, a Read of a path).
     if (value.type === "content") return displayText(text(object(value.content).text));
-    if (value.type === "diff") return `${displayPath(text(value.path))}\n${text(value.oldText)}\n→\n${text(value.newText)}`;
     if (value.type === "terminal") return i18n.t(($) => $.ai.acp.terminalCommand);
     return "";
   }).filter(Boolean).join("\n");
+}
+
+function optionalText(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+/** ACP `diff` blocks, kept whole so the tool card can show a real diff. */
+function toolDiffs(data: Data): ToolDiff[] | undefined {
+  if (!Array.isArray(data.content)) return undefined;
+  const diffs = data.content.flatMap((entry: unknown): ToolDiff[] => {
+    const value = object(entry);
+    if (value.type !== "diff" || !text(value.path)) return [];
+    const truncated = value.truncated === true;
+    // The card shows the path, so a file outside the project reads `~/…`.
+    return [{
+      path: displayPath(text(value.path)),
+      oldText: truncated ? null : optionalText(value.oldText),
+      newText: truncated ? null : optionalText(value.newText),
+      truncated,
+    }];
+  });
+  return diffs.length > 0 ? diffs : undefined;
 }
 
 function chunkText(content: Data): string {
@@ -139,7 +162,9 @@ function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
     name: displayText(text(data.title)) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
     status: toolStatus(data.status, previous?.status),
     output: data.content ? toolOutput(data) : previous?.output,
+    diffs: data.content ? toolDiffs(data) : previous?.diffs,
   };
+  if (!tool.diffs) delete tool.diffs;
   if (index === undefined) {
     state.tools.set(key, state.rows.length);
     appendRow(state, event, "tool", { role: "assistant", content: "", toolCalls: [tool] });
@@ -158,7 +183,8 @@ function planContent(entries: readonly unknown[]): string {
     .join("\n");
 }
 
-function applyDiagnostics(state: ProjectionState, event: AcpEvent) {
+/** Adds the row a diagnostics event explains itself with; false when it shows nothing. */
+function applyDiagnostics(state: ProjectionState, event: AcpEvent): boolean {
   const detail = displayText(text(event.data.stderr));
   if (detail) {
     appendRow(
@@ -169,7 +195,19 @@ function applyDiagnostics(state: ProjectionState, event: AcpEvent) {
         i18n.t(($) => $.ai.acp.agentReported, { detail: value }),
       ),
     );
+    return true;
   }
+  // The runtime skipped an update over 1 MiB (a whole-file diff, say).
+  const dropped = object(event.data.droppedUpdate).bytes;
+  if (typeof dropped === "number" && Number.isFinite(dropped) && dropped > 0) {
+    appendRow(state, event, "notice", {
+      role: "assistant",
+      content: "",
+      notices: [i18n.t(($) => $.ai.acp.updateTooLarge, { size: formatBytes(dropped) })],
+    });
+    return true;
+  }
+  return false;
 }
 
 function failRunningTools(row: Row) {
@@ -204,15 +242,49 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   }
 }
 
+function userSkill(value: unknown): ChatMessage["skill"] {
+  const skill = object(value);
+  const id = text(skill.id);
+  return id ? { id, name: text(skill.name) || id } : undefined;
+}
+
+/**
+ * Hangs a turn's file changes on the last assistant row of that turn (or the
+ * turn's last row when the agent said nothing). Never adds a row.
+ */
+function applyTurnChanges(state: ProjectionState, event: AcpEvent) {
+  const turnChanges = turnChangesFrom(event.data);
+  const turn = text(event.data.turnId) || event.turnId;
+  if (!turnChanges) return;
+  let target = -1;
+  for (let index = state.rows.length - 1; index >= 0; index--) {
+    const row = state.rows[index];
+    if (row.turn !== turn) continue;
+    if (target < 0) target = index;
+    if (row.msg.role === "assistant") {
+      target = index;
+      break;
+    }
+  }
+  if (target < 0) return;
+  state.rows[target].msg = { ...state.rows[target].msg, turnChanges };
+}
+
 function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
   const data = event.data;
   if (event.kind === "user_message") {
+    const skill = userSkill(data.skill);
     appendRow(state, event, "user", {
       role: "user",
       content: text(data.text),
       attachments: imageAttachments(data.images),
+      ...(skill ? { skill } : {}),
     });
     return true;
+  }
+  if (event.kind === "turn_changes") {
+    applyTurnChanges(state, event);
+    return false;
   }
   if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
     return applyChunk(state, event);
@@ -224,10 +296,7 @@ function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
     appendRow(state, event, "plan", { role: "assistant", content: planContent(data.entries) });
     return true;
   }
-  if (event.kind === "diagnostics") {
-    applyDiagnostics(state, event);
-    return true;
-  }
+  if (event.kind === "diagnostics") return applyDiagnostics(state, event);
   if (event.kind === "turn_complete" || event.kind === "status") applyTurnEnd(state, event);
   return true;
 }

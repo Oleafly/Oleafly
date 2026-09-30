@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Deschide un folder",
       "inside": "Alege un folder din {{name}}"
+    },
+    "agentProgram": {
+      "title": "Folosești acest program?",
+      "message": "Oleafly va porni {{path}} de fiecare dată când folosești {{name}}. Alege doar programe în care ai încredere.",
+      "confirm": "Folosește programul",
+      "pickTitle": "Alege programul pentru {{name}}",
+      "filter": "Programe"
     }
   },
   "errors": {

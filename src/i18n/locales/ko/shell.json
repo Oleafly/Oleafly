@@ -824,6 +824,15 @@
     "enterTitle": "커밋 제목을 입력하세요",
     "finishMergeToCommit": "커밋하기 전에 병합을 마치세요.",
     "fetch": "가져오기",
+    "gitMissing": {
+      "copied": "복사됨",
+      "copyCommand": "명령 복사",
+      "download": "Git for Windows 다운로드",
+      "linux": "소스 관리에는 Git이 필요합니다. 패키지 관리자로 git 패키지를 설치한 다음 이 패널을 새로 고치세요.",
+      "mac": "소스 관리에는 Git이 필요합니다. Terminal 앱에서 이 명령을 실행해 Git이 포함된 Apple 명령줄 도구를 설치한 다음 이 패널을 새로 고치세요.",
+      "title": "Git이 설치되어 있지 않습니다",
+      "windows": "소스 관리에는 Git이 필요합니다. Git for Windows를 설치한 다음 Oleafly를 다시 시작하세요."
+    },
     "graph": "그래프",
     "commitCount_other": "커밋 {{count}}개",
     "initialize": "저장소 초기화",

@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "이 프로젝트는 이미 {{remote}}에 연결되어 있습니다.",
-    "nested_repository": "이 프로젝트는 다른 Git 저장소 안에 있으므로 Oleafly가 여기에 별도의 저장소를 만들지 않습니다."
+    "nested_repository": "이 프로젝트는 다른 Git 저장소 안에 있으므로 Oleafly가 여기에 별도의 저장소를 만들지 않습니다.",
+    "not_installed": "이 컴퓨터에 Git이 설치되어 있지 않습니다. Git을 설치한 뒤 다시 시도하세요."
   },
   "approvals": {
     "full_access_declined": "전체 접근 권한이 활성화되지 않았습니다."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "이 체크포인트 기록은 Oleafly 라이브러리의 프로젝트에서 온 것이라 원래 위치에서 연 폴더에는 사용할 수 없습니다.",
     "folder_history_for_library": "이 체크포인트 기록은 원래 위치에서 연 폴더에서 온 것이라 Oleafly 라이브러리의 프로젝트에는 사용할 수 없습니다.",
     "restore_path_blocked": "{{path}} 위치에 링크 등 파일이 아닌 항목이 있어 Oleafly가 복원할 수 없습니다. 해당 항목을 옮긴 뒤 다시 시도하세요."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly가 해당 프로그램을 찾지 못했습니다.",
+      "is_directory": "폴더입니다. 폴더 안의 프로그램 파일을 선택하세요.",
+      "not_executable": "이 파일은 프로그램으로 실행할 수 없습니다.",
+      "unsupported_script": "PowerShell 스크립트는 실행할 수 없습니다. 이름이 같은 .cmd 또는 .exe 파일을 선택하세요.",
+      "needs_exe": "이 에이전트는 .cmd 파일을 사용할 수 없습니다. .exe 파일을 선택하세요.",
+      "gui_program": "데스크톱 앱입니다. 터미널에서 실행하는 프로그램을 선택하세요.",
+      "interpreter": "이 프로그램은 다른 프로그램을 실행하는 프로그램입니다. 에이전트 자체의 프로그램을 선택하세요.",
+      "network_path": "네트워크 위치가 아닌 이 컴퓨터에 있는 프로그램을 선택하세요.",
+      "unknown_agent": "Oleafly가 알지 못하는 에이전트입니다.",
+      "declined": "프로그램을 변경하지 않았습니다.",
+      "check_running": "이 에이전트의 테스트가 이미 실행 중입니다.",
+      "main_window": "에이전트 프로그램은 주 창에서 변경하세요."
+    }
   }
 }

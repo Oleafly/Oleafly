@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "Dieses Projekt ist bereits mit {{remote}} verknüpft.",
-    "nested_repository": "Dieses Projekt liegt in einem anderen Git-Repository, daher legt Oleafly hier kein eigenes an."
+    "nested_repository": "Dieses Projekt liegt in einem anderen Git-Repository, daher legt Oleafly hier kein eigenes an.",
+    "not_installed": "Git ist auf diesem Computer nicht installiert. Installieren Sie Git und versuchen Sie es dann erneut."
   },
   "approvals": {
     "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "Dieser Checkpoint-Verlauf stammt aus einem Projekt in Ihrer Oleafly-Bibliothek und kann daher nicht mit einem direkt an seinem Speicherort geöffneten Ordner verwendet werden.",
     "folder_history_for_library": "Dieser Checkpoint-Verlauf stammt aus einem direkt an seinem Speicherort geöffneten Ordner und kann daher nicht mit einem Projekt in Ihrer Oleafly-Bibliothek verwendet werden.",
     "restore_path_blocked": "Oleafly kann {{path}} nicht wiederherstellen, weil dort ein Link oder etwas anderes liegt, das keine Datei ist. Verschieben Sie es und versuchen Sie es erneut."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly hat dieses Programm nicht gefunden.",
+      "is_directory": "Das ist ein Ordner. Wählen Sie die Programmdatei darin.",
+      "not_executable": "Diese Datei lässt sich nicht als Programm starten.",
+      "unsupported_script": "PowerShell-Skripte lassen sich nicht starten. Wählen Sie die .cmd- oder .exe-Datei mit demselben Namen.",
+      "needs_exe": "Dieser Agent kann keine .cmd-Datei verwenden. Wählen Sie seine .exe-Datei.",
+      "gui_program": "Das ist eine Desktop-App. Wählen Sie das Programm, das Sie in einem Terminal ausführen.",
+      "interpreter": "Dieses Programm führt andere Programme aus. Wählen Sie das eigene Programm des Agenten.",
+      "network_path": "Wählen Sie ein Programm auf diesem Computer, nicht an einem Netzwerkspeicherort.",
+      "unknown_agent": "Oleafly kennt diesen Agenten nicht.",
+      "declined": "Das Programm wurde nicht geändert.",
+      "check_running": "Für diesen Agenten läuft bereits ein Test.",
+      "main_window": "Ändern Sie die Programme der Agenten im Hauptfenster."
+    }
   }
 }

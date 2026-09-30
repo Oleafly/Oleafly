@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} izin istiyor",
       "headline": "Ajan izin istiyor",
       "expired": "Bu isteğin süresi doldu. Ajandan yeniden denemesini isteyin.",
-      "dismiss": "Kapat"
+      "dismiss": "Kapat",
+      "diff": {
+        "showChange": "Değişikliği göster",
+        "hideChange": "Değişikliği gizle",
+        "large": "{{path}} dosyasında büyük bir değişiklik var. Tur bittikten sonra inceleyin.",
+        "label": "{{path}} dosyası için önerilen değişiklik",
+        "loading": "Değişiklik yükleniyor…"
+      }
     },
     "readiness": {
       "managedBridge": "Köprü {{version}}, Oleafly tarafından kuruldu.",
-      "bridgeOnPath": "Köprü PATH üzerinde bulundu.",
       "bridgeMissingWithCli": "{{cli}}, {{path}} konumunda bulundu. Bağlanmak için ACP köprüsü {{version}} sürümünü kurun.",
       "bridgeMissing": "Bu ajanı bağlamak için ACP köprüsü {{version}} sürümünü kurun.",
-      "cliMissing": "{{cli}} PATH üzerinde değil. Kurun, sonra {{command}} komutunu çalıştırın.",
       "cliNotFound": "Bu ajanın komut satırı aracı bulunamadı.",
       "unavailable": "Bu ajan bu bilgisayarda çalışamaz."
     },
     "bridgeSource": {
       "notInstalled": "Kurulu değil",
-      "managed": "Oleafly tarafından yönetiliyor",
-      "onPath": "PATH üzerinde"
+      "managed": "Oleafly tarafından yönetiliyor"
     },
     "installing": "Kuruluyor",
     "installBridge": "Köprüyü kur",
@@ -503,8 +507,50 @@
     "terminalCommand": "Ajan bir terminal komutu çalıştırıyor.",
     "agentToolFallback": "Ajan aracı",
     "agentReported": "Ajanın bildirdiği: {{detail}}",
+    "updateTooLarge": "Ajan çıktısının bir bölümü gösterilemeyecek kadar büyüktü ({{size}}).",
     "imageAttachmentName": "Görsel {{index}}",
-    "agentImage": "[Ajan bir görsel döndürdü.]"
+    "agentImage": "[Ajan bir görsel döndürdü.]",
+    "setup": {
+      "cliNotFound": "Oleafly bu bilgisayarda {{cli}} aracını bulamadı.",
+      "rejected": {
+        "powershellScript": "{{file}} bulundu, ancak PowerShell betikleri başlatılamaz. {{name}}.cmd veya {{name}}.exe dosyasını seçin.",
+        "script": "{{file}} bulundu, ancak Oleafly bunu doğrudan başlatamaz. {{name}}.exe dosyasını seçin.",
+        "isDirectory": "{{file}} adlı bir klasör bulundu. {{name}} program dosyasını seçin.",
+        "notExecutable": "{{file}} bulundu, ancak Oleafly'nin başlatabileceği bir program değil.",
+        "guiProgram": "{{file}} bulundu, ancak bu bir masaüstü uygulaması. {{name}} komut satırı aracını seçin.",
+        "networkPath": "{{file}} bir ağ konumunda bulundu. Bu bilgisayardaki bir kopyayı seçin."
+      },
+      "foundOnComputer": "Bu bilgisayarda bulundu.",
+      "usingChosen": "Seçtiğiniz program kullanılıyor.",
+      "bridgeSourceFound": "Bu bilgisayarda bulundu",
+      "setUp": "{{name}} ajanını ayarla",
+      "backgroundTasks": "Arka plan görevleri: {{reason}}",
+      "cliMissingNextStep": "{{cli}} aracını kurun veya kurulu olduğu yeri seçin.",
+      "installUnavailable": "Oleafly bu köprüyü bu bilgisayara kuramaz.",
+      "builtIn": "Yerleşik",
+      "showAgent": "Göster"
+    },
+    "export": {
+      "menuItem": "Konuşmayı dışa aktar…",
+      "saved": "Konuşma dışa aktarıldı",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Konuşma",
+      "project": "Proje",
+      "agent": "Ajan",
+      "model": "Model",
+      "modelManaged": "Ajan tarafından seçildi",
+      "startRevision": "Başlangıç işlemesi",
+      "uncommitted": "{{revision}}, işlenmemiş değişikliklerle",
+      "started": "Başlangıç",
+      "updated": "Son güncelleme",
+      "you": "Siz",
+      "skill": "Beceri: {{name}}",
+      "tool": "Araç: {{name}}",
+      "changedFiles": "Değişen dosyalar",
+      "moreFiles_one": "ve {{count}} dosya daha",
+      "moreFiles_other": "ve {{count}} dosya daha"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI ajanı",
@@ -734,5 +780,65 @@
     "preSubmission": "Gönderime hazır hale getir",
     "slides": "Bu makaleyi bir sunuma dönüştür",
     "recompile": "Yeniden derle ve hataları denetle"
+  },
+  "turnChanges": {
+    "ariaLabel": "Bu turda değişen dosyalar",
+    "changed_one": "{{count}} dosya değiştirildi",
+    "changed_other": "{{count}} dosya değiştirildi",
+    "buildOnly": "Derleme dosyaları güncellendi",
+    "review": "İncele",
+    "undoAll": "Tümünü geri al",
+    "redoAll": "Tümünü yinele",
+    "undo": "Geri al",
+    "redo": "Yinele",
+    "undoFile": "{{path}} dosyasındaki değişikliği geri al",
+    "redoFile": "{{path}} dosyasındaki değişikliği yinele",
+    "kind": {
+      "added": "Eklendi",
+      "modified": "Değiştirildi",
+      "deleted": "Silindi"
+    },
+    "undone": "Geri alındı",
+    "editedAfter": "Bu turdan sonra değişti",
+    "alsoEdited": "Bu dosyayı tur sırasında siz de düzenlediniz",
+    "committed": "{{commit}} olarak işlendi",
+    "buildFiles": "Derleme dosyaları güncellendi",
+    "moreFiles_one": "{{count}} dosya daha listelenmedi",
+    "moreFiles_other": "{{count}} dosya daha listelenmedi",
+    "skipped_one": "{{count}} dosya tur öncesinde kopyalanamadığı için Geri al ile eski haline getirilemez.",
+    "skipped_other": "{{count}} dosya tur öncesinde kopyalanamadığı için Geri al ile eski haline getirilemez.",
+    "overlapped": "Başka bir ajan aynı anda dosyaları değiştirdi. Dosyaları tek tek geri alın.",
+    "expired": "Bu tur için geri alma artık kullanılamıyor.",
+    "waitForRun": "Ajan bitirdiğinde geri alabilirsiniz.",
+    "unavailable": {
+      "tooLarge": "Bu tur için geri alma kullanılamıyor: proje kopyalanamayacak kadar büyük.",
+      "tooManyFiles": "Bu tur için geri alma kullanılamıyor: projede çok fazla dosya var.",
+      "timeout": "Bu tur için geri alma kullanılamıyor: projenin kopyalanması çok uzun sürdü.",
+      "error": "Bu tur için geri alma kullanılamıyor: proje kopyalanamadı."
+    },
+    "previewLoading": "Değişiklik yükleniyor…",
+    "previewFailed": "Bu değişiklik yüklenemedi.",
+    "binary": "Bu dosya metin olmadığı için değişiklik gösterilemiyor.",
+    "tooLarge": "Bu değişiklik burada gösterilemeyecek kadar büyük.",
+    "diffLabel": "{{path}} dosyasındaki değişiklik",
+    "undid_one": "{{count}} dosyadaki değişiklik geri alındı.",
+    "undid_other": "{{count}} dosyadaki değişiklik geri alındı.",
+    "redid_one": "{{count}} dosyadaki değişiklik yinelendi.",
+    "redid_other": "{{count}} dosyadaki değişiklik yinelendi.",
+    "skippedEdited": "Bazı dosyalar bu turdan sonra değiştiği için Oleafly onlara dokunmadı.",
+    "skippedFailed": "Bazı dosyalar yazılamadı.",
+    "undoFailed": "Değişiklikler geri alınamadı. Çalışmanızı kaydedip yeniden deneyin.",
+    "redoFailed": "Değişiklikler yinelenemedi. Çalışmanızı kaydedip yeniden deneyin."
+  },
+  "presets": {
+    "literatureSweep": "Geniş literatür taraması",
+    "relatedWork": "İlgili çalışmalar",
+    "citationAudit": "Atıf denetimi",
+    "manuscriptReview": "Metin incelemesi",
+    "reproducibilityAudit": "Yinelenebilirlik denetimi",
+    "figureAudit": "Şekil denetimi",
+    "gitReview": "Git incelemesi",
+    "referenceCleanup": "Kaynakça temizliği",
+    "removeSkill": "{{name}} becerisini kaldır"
   }
 }

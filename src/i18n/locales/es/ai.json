@@ -443,21 +443,25 @@
       "namedHeadline": "{{agent}} necesita permiso",
       "headline": "El agente necesita permiso",
       "expired": "Esta petición caducó. Pide al agente que lo intente otra vez.",
-      "dismiss": "Descartar"
+      "dismiss": "Descartar",
+      "diff": {
+        "showChange": "Mostrar el cambio",
+        "hideChange": "Ocultar el cambio",
+        "large": "Cambio grande en {{path}}. Revísalo después del turno.",
+        "label": "Cambio propuesto en {{path}}",
+        "loading": "Cargando el cambio…"
+      }
     },
     "readiness": {
       "managedBridge": "Puente {{version}} instalado por Oleafly.",
-      "bridgeOnPath": "Puente encontrado en el PATH.",
       "bridgeMissingWithCli": "{{cli}} se encontró en {{path}}. Instala el puente de ACP {{version}} para conectar.",
       "bridgeMissing": "Instala el puente de ACP {{version}} para conectar este agente.",
-      "cliMissing": "{{cli}} no está en tu PATH. Instálalo y luego ejecuta {{command}}.",
       "cliNotFound": "No se encontró la herramienta de línea de comandos de este agente.",
       "unavailable": "Este agente no puede funcionar en este equipo."
     },
     "bridgeSource": {
       "notInstalled": "No instalado",
-      "managed": "Gestionado por Oleafly",
-      "onPath": "En el PATH"
+      "managed": "Gestionado por Oleafly"
     },
     "installing": "Instalando",
     "installBridge": "Instalar el puente",
@@ -510,8 +514,51 @@
     "terminalCommand": "El agente está ejecutando un comando en el terminal.",
     "agentToolFallback": "Herramienta del agente",
     "agentReported": "El agente informó: {{detail}}",
+    "updateTooLarge": "Parte de la salida del agente era demasiado grande para mostrarla ({{size}}).",
     "imageAttachmentName": "Imagen {{index}}",
-    "agentImage": "[El agente devolvió una imagen.]"
+    "agentImage": "[El agente devolvió una imagen.]",
+    "setup": {
+      "cliNotFound": "Oleafly no encontró {{cli}} en este equipo.",
+      "rejected": {
+        "powershellScript": "Se encontró {{file}}, pero los scripts de PowerShell no se pueden iniciar. Elige {{name}}.cmd o {{name}}.exe.",
+        "script": "Se encontró {{file}}, pero Oleafly no puede iniciarlo directamente. Elige {{name}}.exe.",
+        "isDirectory": "Se encontró una carpeta llamada {{file}}. Elige el archivo del programa {{name}}.",
+        "notExecutable": "Se encontró {{file}}, pero no es un programa que Oleafly pueda iniciar.",
+        "guiProgram": "Se encontró {{file}}, pero es una aplicación de escritorio. Elige la herramienta de línea de comandos {{name}}.",
+        "networkPath": "Se encontró {{file}} en una ubicación de red. Elige una copia en este equipo."
+      },
+      "foundOnComputer": "Encontrado en este equipo.",
+      "usingChosen": "Usando el programa que elegiste.",
+      "bridgeSourceFound": "Encontrado en este equipo",
+      "setUp": "Configurar {{name}}",
+      "backgroundTasks": "Tareas en segundo plano: {{reason}}",
+      "cliMissingNextStep": "Instala {{cli}} o elige dónde está instalado.",
+      "installUnavailable": "Oleafly no puede instalar este puente en este equipo.",
+      "builtIn": "Incluido",
+      "showAgent": "Mostrar"
+    },
+    "export": {
+      "menuItem": "Exportar la conversación…",
+      "saved": "Conversación exportada",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Conversación",
+      "project": "Proyecto",
+      "agent": "Agente",
+      "model": "Modelo",
+      "modelManaged": "Elegido por el agente",
+      "startRevision": "Commit de inicio",
+      "uncommitted": "{{revision}} con cambios sin confirmar",
+      "started": "Inicio",
+      "updated": "Última actualización",
+      "you": "Tú",
+      "skill": "Habilidad: {{name}}",
+      "tool": "Herramienta: {{name}}",
+      "changedFiles": "Archivos modificados",
+      "moreFiles_one": "y {{count}} archivo más",
+      "moreFiles_many": "y {{count}} archivos más",
+      "moreFiles_other": "y {{count}} archivos más"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agente de línea de comandos",
@@ -744,5 +791,70 @@
     "preSubmission": "Déjalo listo para enviar",
     "slides": "Convierte este artículo en una charla",
     "recompile": "Recompila y busca errores"
+  },
+  "turnChanges": {
+    "ariaLabel": "Archivos modificados en este turno",
+    "changed_one": "{{count}} archivo modificado",
+    "changed_many": "{{count}} archivos modificados",
+    "changed_other": "{{count}} archivos modificados",
+    "buildOnly": "Archivos de compilación actualizados",
+    "review": "Revisar",
+    "undoAll": "Deshacer todo",
+    "redoAll": "Rehacer todo",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "undoFile": "Deshacer {{path}}",
+    "redoFile": "Rehacer {{path}}",
+    "kind": {
+      "added": "Añadido",
+      "modified": "Modificado",
+      "deleted": "Eliminado"
+    },
+    "undone": "Deshecho",
+    "editedAfter": "Modificado después de este turno",
+    "alsoEdited": "También editaste este archivo durante el turno",
+    "committed": "Confirmado en {{commit}}",
+    "buildFiles": "Archivos de compilación actualizados",
+    "moreFiles_one": "No se muestra {{count}} archivo más",
+    "moreFiles_many": "No se muestran {{count}} archivos más",
+    "moreFiles_other": "No se muestran {{count}} archivos más",
+    "skipped_one": "No se pudo copiar {{count}} archivo antes del turno, así que Deshacer no puede devolverlo a como estaba.",
+    "skipped_many": "No se pudieron copiar {{count}} archivos antes del turno, así que Deshacer no puede devolverlos a como estaban.",
+    "skipped_other": "No se pudieron copiar {{count}} archivos antes del turno, así que Deshacer no puede devolverlos a como estaban.",
+    "overlapped": "Otro agente cambió archivos al mismo tiempo. Deshaz los cambios archivo por archivo.",
+    "expired": "Deshacer ya no está disponible para este turno.",
+    "waitForRun": "Deshacer estará disponible cuando el agente termine.",
+    "unavailable": {
+      "tooLarge": "Deshacer no está disponible para este turno: el proyecto es demasiado grande para copiarlo.",
+      "tooManyFiles": "Deshacer no está disponible para este turno: el proyecto tiene demasiados archivos.",
+      "timeout": "Deshacer no está disponible para este turno: copiar el proyecto tardó demasiado.",
+      "error": "Deshacer no está disponible para este turno: no se pudo copiar el proyecto."
+    },
+    "previewLoading": "Cargando el cambio…",
+    "previewFailed": "No se pudo cargar este cambio.",
+    "binary": "Este archivo no es de texto, así que no se puede mostrar el cambio.",
+    "tooLarge": "Este cambio es demasiado grande para mostrarlo aquí.",
+    "diffLabel": "Cambio en {{path}}",
+    "undid_one": "Cambio deshecho en {{count}} archivo.",
+    "undid_many": "Cambios deshechos en {{count}} archivos.",
+    "undid_other": "Cambios deshechos en {{count}} archivos.",
+    "redid_one": "Cambio rehecho en {{count}} archivo.",
+    "redid_many": "Cambios rehechos en {{count}} archivos.",
+    "redid_other": "Cambios rehechos en {{count}} archivos.",
+    "skippedEdited": "Algunos archivos cambiaron después de este turno, así que Oleafly no los tocó.",
+    "skippedFailed": "No se pudieron escribir algunos archivos.",
+    "undoFailed": "No se pudieron deshacer los cambios. Guarda tu trabajo e inténtalo de nuevo.",
+    "redoFailed": "No se pudieron rehacer los cambios. Guarda tu trabajo e inténtalo de nuevo."
+  },
+  "presets": {
+    "literatureSweep": "Rastreo bibliográfico",
+    "relatedWork": "Trabajo relacionado",
+    "citationAudit": "Auditoría de citas",
+    "manuscriptReview": "Revisión del manuscrito",
+    "reproducibilityAudit": "Auditoría de reproducibilidad",
+    "figureAudit": "Auditoría de figuras",
+    "gitReview": "Revisión de Git",
+    "referenceCleanup": "Limpieza de referencias",
+    "removeSkill": "Quitar la habilidad {{name}}"
   }
 }

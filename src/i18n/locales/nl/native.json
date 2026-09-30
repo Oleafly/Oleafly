@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Een map openen",
       "inside": "Kies een map in {{name}}"
+    },
+    "agentProgram": {
+      "title": "Dit programma gebruiken?",
+      "message": "Oleafly start {{path}} telkens als je {{name}} gebruikt. Kies alleen programma's die je vertrouwt.",
+      "confirm": "Programma gebruiken",
+      "pickTitle": "Kies het programma voor {{name}}",
+      "filter": "Programma's"
     }
   },
   "errors": {

@@ -221,8 +221,8 @@
       "content": "U nastavených konverzací se tu zobrazí běhy, tokeny a odhadované náklady, pokud jsou k dispozici."
     },
     "restore": {
-      "title": "Obnovení stavu projektu",
-      "content": "Po úpravě od AI můžete ze záchytného bodu obnovit soubory projektu, aniž byste přišli o konverzaci."
+      "title": "Kontrola změn agenta",
+      "content": "Když tah změní soubory, klikněte na Zkontrolovat a projděte si každou změnu. Vrátit zpět změnu v souboru zruší a Znovu provést ji znovu použije."
     }
   },
   "diagram": {

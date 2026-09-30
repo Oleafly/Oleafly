@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "Ten projekt jest już powiązany z {{remote}}.",
-    "nested_repository": "Ten projekt znajduje się w innym repozytorium Git, więc Oleafly nie utworzy tu osobnego repozytorium."
+    "nested_repository": "Ten projekt znajduje się w innym repozytorium Git, więc Oleafly nie utworzy tu osobnego repozytorium.",
+    "not_installed": "Git nie jest zainstalowany na tym komputerze. Zainstaluj Git i spróbuj ponownie."
   },
   "approvals": {
     "full_access_declined": "Pełny dostęp nie został włączony."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "Ta historia punktów kontrolnych pochodzi z projektu w Twojej bibliotece Oleafly, więc nie można jej użyć z folderem otwartym w jego lokalizacji.",
     "folder_history_for_library": "Ta historia punktów kontrolnych pochodzi z folderu otwartego w jego lokalizacji, więc nie można jej użyć z projektem w Twojej bibliotece Oleafly.",
     "restore_path_blocked": "Oleafly nie może przywrócić {{path}}, ponieważ w tym miejscu jest link lub coś innego, co nie jest plikiem. Przenieś to i spróbuj ponownie."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly nie może znaleźć tego programu.",
+      "is_directory": "To jest folder. Wybierz plik programu, który się w nim znajduje.",
+      "not_executable": "Tego pliku nie można uruchomić jako programu.",
+      "unsupported_script": "Skryptów PowerShell nie można uruchamiać. Wybierz plik .cmd lub .exe o tej samej nazwie.",
+      "needs_exe": "Ten agent nie może używać pliku .cmd. Wybierz jego plik .exe.",
+      "gui_program": "To jest aplikacja desktopowa. Wybierz program uruchamiany w terminalu.",
+      "interpreter": "Ten program uruchamia inne programy. Wybierz własny program agenta.",
+      "network_path": "Wybierz program na tym komputerze, a nie w lokalizacji sieciowej.",
+      "unknown_agent": "Oleafly nie zna tego agenta.",
+      "declined": "Program nie został zmieniony.",
+      "check_running": "Test tego agenta już trwa.",
+      "main_window": "Zmieniaj programy agentów w oknie głównym."
+    }
   }
 }

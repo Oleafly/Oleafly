@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} trenger tillatelse",
       "headline": "Agenten trenger tillatelse",
       "expired": "Denne forespørselen utløp. Be agenten prøve igjen.",
-      "dismiss": "Lukk"
+      "dismiss": "Lukk",
+      "diff": {
+        "showChange": "Vis endringen",
+        "hideChange": "Skjul endringen",
+        "large": "Stor endring i {{path}}. Gå gjennom den etter innlegget.",
+        "label": "Foreslått endring i {{path}}",
+        "loading": "Laster inn endringen…"
+      }
     },
     "readiness": {
       "managedBridge": "Bro {{version}} er installert av Oleafly.",
-      "bridgeOnPath": "Fant broen på PATH.",
       "bridgeMissingWithCli": "Fant {{cli}} i {{path}}. Installer ACP-broen {{version}} for å koble til.",
       "bridgeMissing": "Installer ACP-broen {{version}} for å koble til denne agenten.",
-      "cliMissing": "{{cli}} ligger ikke på PATH. Installer den, og kjør {{command}}.",
       "cliNotFound": "Fant ikke kommandolinjeverktøyet til denne agenten.",
       "unavailable": "Denne agenten kan ikke kjøre på denne maskinen."
     },
     "bridgeSource": {
       "notInstalled": "Ikke installert",
-      "managed": "Administrert av Oleafly",
-      "onPath": "På PATH"
+      "managed": "Administrert av Oleafly"
     },
     "installing": "Installerer",
     "installBridge": "Installer broen",
@@ -503,8 +507,50 @@
     "terminalCommand": "Agenten kjører en terminalkommando.",
     "agentToolFallback": "Agentverktøy",
     "agentReported": "Agenten meldte: {{detail}}",
+    "updateTooLarge": "En del av utdataene fra agenten var for store til å vises ({{size}}).",
     "imageAttachmentName": "Bilde {{index}}",
-    "agentImage": "[Agenten returnerte et bilde.]"
+    "agentImage": "[Agenten returnerte et bilde.]",
+    "setup": {
+      "cliNotFound": "Oleafly fant ikke {{cli}} på denne maskinen.",
+      "rejected": {
+        "powershellScript": "Fant {{file}}, men PowerShell-skript kan ikke startes. Velg {{name}}.cmd eller {{name}}.exe.",
+        "script": "Fant {{file}}, men Oleafly kan ikke starte den direkte. Velg {{name}}.exe.",
+        "isDirectory": "Fant en mappe som heter {{file}}. Velg programfilen til {{name}}.",
+        "notExecutable": "Fant {{file}}, men det er ikke et program Oleafly kan starte.",
+        "guiProgram": "Fant {{file}}, men det er en skrivebordsapp. Velg kommandolinjeverktøyet {{name}}.",
+        "networkPath": "Fant {{file}} på en nettverksplassering. Velg en kopi på denne maskinen."
+      },
+      "foundOnComputer": "Funnet på denne maskinen.",
+      "usingChosen": "Bruker programmet du valgte.",
+      "bridgeSourceFound": "Funnet på denne maskinen",
+      "setUp": "Sett opp {{name}}",
+      "backgroundTasks": "Bakgrunnsoppgaver: {{reason}}",
+      "cliMissingNextStep": "Installer {{cli}}, eller velg hvor det er installert.",
+      "installUnavailable": "Oleafly kan ikke installere denne broen på denne maskinen.",
+      "builtIn": "Innebygd",
+      "showAgent": "Vis"
+    },
+    "export": {
+      "menuItem": "Eksporter samtalen…",
+      "saved": "Samtalen er eksportert",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Samtale",
+      "project": "Prosjekt",
+      "agent": "Agent",
+      "model": "Modell",
+      "modelManaged": "Valgt av agenten",
+      "startRevision": "Startet ved commit",
+      "uncommitted": "{{revision}} med endringer som ikke er committet",
+      "started": "Startet",
+      "updated": "Sist oppdatert",
+      "you": "Du",
+      "skill": "Ferdighet: {{name}}",
+      "tool": "Verktøy: {{name}}",
+      "changedFiles": "Endrede filer",
+      "moreFiles_one": "og {{count}} fil til",
+      "moreFiles_other": "og {{count}} filer til"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI-agent",
@@ -734,5 +780,65 @@
     "preSubmission": "Gjør det klart til innsending",
     "slides": "Gjør denne artikkelen om til et foredrag",
     "recompile": "Kompiler på nytt og se etter feil"
+  },
+  "turnChanges": {
+    "ariaLabel": "Filer som ble endret i dette innlegget",
+    "changed_one": "Endret {{count}} fil",
+    "changed_other": "Endret {{count}} filer",
+    "buildOnly": "Kompileringsfiler oppdatert",
+    "review": "Gå gjennom",
+    "undoAll": "Angre alle",
+    "redoAll": "Gjør om alle",
+    "undo": "Angre",
+    "redo": "Gjør om",
+    "undoFile": "Angre {{path}}",
+    "redoFile": "Gjør om {{path}}",
+    "kind": {
+      "added": "Lagt til",
+      "modified": "Endret",
+      "deleted": "Slettet"
+    },
+    "undone": "Angret",
+    "editedAfter": "Endret etter dette innlegget",
+    "alsoEdited": "Du redigerte også denne filen mens innlegget kjørte",
+    "committed": "Committet i {{commit}}",
+    "buildFiles": "Kompileringsfiler oppdatert",
+    "moreFiles_one": "{{count}} fil til vises ikke",
+    "moreFiles_other": "{{count}} filer til vises ikke",
+    "skipped_one": "{{count}} fil kunne ikke kopieres før innlegget, så den kan ikke settes tilbake med Angre.",
+    "skipped_other": "{{count}} filer kunne ikke kopieres før innlegget, så de kan ikke settes tilbake med Angre.",
+    "overlapped": "En annen agent endret filer samtidig. Angre filene én og én.",
+    "expired": "Du kan ikke lenger angre dette innlegget.",
+    "waitForRun": "Du kan angre når agenten er ferdig.",
+    "unavailable": {
+      "tooLarge": "Angre er ikke tilgjengelig for dette innlegget: prosjektet er for stort til å kopieres.",
+      "tooManyFiles": "Angre er ikke tilgjengelig for dette innlegget: prosjektet har for mange filer.",
+      "timeout": "Angre er ikke tilgjengelig for dette innlegget: det tok for lang tid å kopiere prosjektet.",
+      "error": "Angre er ikke tilgjengelig for dette innlegget: prosjektet kunne ikke kopieres."
+    },
+    "previewLoading": "Laster inn endringen…",
+    "previewFailed": "Kunne ikke laste inn denne endringen.",
+    "binary": "Denne filen er ikke tekst, så endringen kan ikke vises.",
+    "tooLarge": "Denne endringen er for stor til å vises her.",
+    "diffLabel": "Endring i {{path}}",
+    "undid_one": "Angret {{count}} fil.",
+    "undid_other": "Angret {{count}} filer.",
+    "redid_one": "Gjorde om {{count}} fil.",
+    "redid_other": "Gjorde om {{count}} filer.",
+    "skippedEdited": "Noen filer ble endret etter dette innlegget, så Oleafly lot dem være.",
+    "skippedFailed": "Noen filer kunne ikke skrives.",
+    "undoFailed": "Kunne ikke angre endringene. Lagre arbeidet ditt og prøv igjen.",
+    "redoFailed": "Kunne ikke gjøre om endringene. Lagre arbeidet ditt og prøv igjen."
+  },
+  "presets": {
+    "literatureSweep": "Litteraturgjennomgang",
+    "relatedWork": "Relatert arbeid",
+    "citationAudit": "Sjekk av siteringer",
+    "manuscriptReview": "Vurdering av manuset",
+    "reproducibilityAudit": "Sjekk av reproduserbarhet",
+    "figureAudit": "Sjekk av figurer",
+    "gitReview": "Git-gjennomgang",
+    "referenceCleanup": "Opprydding i referanser",
+    "removeSkill": "Fjern ferdigheten {{name}}"
   }
 }

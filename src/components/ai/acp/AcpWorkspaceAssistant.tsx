@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Loader2, Paperclip, Plus, Square, X } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ArrowUp, Loader2, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -17,23 +17,31 @@ import { useResearchChatActions } from "@/components/ai/use-research-chat-action
 import { MessageList } from "@/components/ai/MessageList";
 import {
   acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
-  acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpSession,
+  acpReconnect, acpSetModel, acpUsable, type AcpAgentStatus, type AcpImage, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
-import { useSkills, type SkillEntry } from "@/lib/skills";
+import { isSkillAvailable, useSkills, type SkillEntry } from "@/lib/skills";
+import { cliResearchPresets, type ResearchPreset } from "@/lib/research-presets";
+import { gitIsInitialized } from "@/lib/tauri";
+import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { SaveFlushError, useFilesStore } from "@/store/files";
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
-import { BridgeInstallCard } from "./AgentReadiness";
+import { BridgeInstallCard, openAgentSignInTerminal } from "./AgentReadiness";
+import { terminalLimitMessage } from "@/store/terminals";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
+
+const CleanLibraryDialog = lazy(() =>
+  import("@/components/layout/CleanLibraryDialog").then((module) => ({ default: module.CleanLibraryDialog })),
+);
 
 const EMPTY_EVENTS: never[] = [];
 const EMPTY_PERMISSIONS: never[] = [];
@@ -83,18 +91,26 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const skillsQuery = useSkills(projectId);
   const skills = skillsQuery.data ?? [];
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerSkill = composer?.skill ?? null;
+  const [cleanLibraryOpen, setCleanLibraryOpen] = useState(false);
+  const [gitRepository, setGitRepository] = useState(false);
   const setDraft = useCallback((value: string) => setComposer(projectId, { draft: value }), [projectId, setComposer]);
+  const focusComposer = useCallback(() => {
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+  }, []);
+  // A picked skill travels with the next message as a chip; the agent gets its
+  // instructions inline, so it works for agents without Oleafly's tools (Pi).
   const pickSkill = useCallback(
     (skill: SkillEntry) => {
-      setComposer(projectId, { draft: `Use the "${skill.name}" skill: ` });
-      requestAnimationFrame(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        textarea.focus({ preventScroll: true });
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-      });
+      setComposer(projectId, { skill: { id: skill.id, name: skill.name } });
+      focusComposer();
     },
-    [projectId, setComposer],
+    [focusComposer, projectId, setComposer],
   );
   const chooseAgent = (nextAgentId: string) => {
     const state = useAcpSessionsStore.getState();
@@ -104,7 +120,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const open = openId ? state.sessions[openId] : undefined;
     if (!openId || !open || open.agentId === nextAgentId) return;
     const ready = state.catalog.some(
-      (value) => value.definition.id === nextAgentId && value.installed,
+      (value) => value.definition.id === nextAgentId && acpUsable(value),
     );
     void perform(async () => {
       if (ready) {
@@ -132,6 +148,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const setImages = useCallback((value: AcpAttachment[]) => setComposer(projectId, { images: value }), [projectId, setComposer]);
 
   useEffect(() => {
+    let current = true;
+    setGitRepository(false);
+    gitIsInitialized(projectId)
+      .then((initialized) => { if (current) setGitRepository(initialized); })
+      .catch(() => {});
+    return () => { current = false; };
+  }, [projectId]);
+
+  useEffect(() => {
     let disposed = false;
     let detach: (() => void) | undefined;
     setError(null);
@@ -155,7 +180,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
-    const preferred = catalog.find((agent) => agent.installed) ?? catalog[0];
+    const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
 
@@ -182,7 +207,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       return;
     }
     const beforeSequence = session.lastSequence;
-    const clearComposer = () => setComposer(projectId, { draft: "", images: [] });
+    const clearComposer = () => setComposer(projectId, { draft: "", images: [], skill: null });
     setError(null); setSending(true); nearBottomRef.current = true;
     try {
       await flushOpenFilesToDisk(projectId, "save before agent prompt");
@@ -192,7 +217,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       return;
     }
     try {
-      useAcpSessionsStore.getState().setSnapshot(await acpPrompt(projectId, activeId, message, attachments.map((value) => value.image)));
+      useAcpSessionsStore.getState().setSnapshot(await acpPrompt(projectId, activeId, message, attachments.map((value) => value.image), composerSkill?.id ?? null));
       clearComposer();
     } catch (error_) {
       await useAcpSessionsStore.getState().resync(projectId, activeId).catch(() => {});
@@ -227,14 +252,55 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const canSend = session?.status === "ready" && !busy && (!!draft.trim() || images.length > 0);
   const composerDisabled = session?.status !== "ready" || sending;
-  const canStart = !!selectedAgent?.installed && !busy && !running;
+  const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
   const start = () => void perform(async () => {
     if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
   });
 
+  // A preset fills the composer and starts a conversation when none is open.
+  // It never sends: the researcher reads and adjusts the prompt first.
+  const pickPreset = (preset: ResearchPreset) => {
+    if (preset.action === "clean-library") {
+      setCleanLibraryOpen(true);
+      return;
+    }
+    const presetSkill = preset.skillId
+      ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
+      : undefined;
+    setComposer(projectId, {
+      draft: preset.prompt,
+      skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null,
+    });
+    focusComposer();
+    if (!session && canStart && !starting) start();
+  };
+  const quickStarts = cliResearchPresets({ gitRepository }).map((preset) => ({
+    id: preset.id,
+    label: preset.label,
+    icon: preset.icon,
+    onSelect: () => pickPreset(preset),
+  }));
+  const firstUnavailableKey = messages.find((entry) => entry.msg.turnChanges?.unavailable)?.key ?? null;
+
   const conversationBody = () =>
     messages.length > 0 ? (
-      <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
+      <MessageList
+        actions={researchChatActions}
+        messages={messages}
+        chatId={activeId}
+        scrollRef={scrollRef}
+        nearBottomRef={nearBottomRef}
+        renderExtras={({ key, msg }) =>
+          msg.turnChanges ? (
+            <TurnChangesCard
+              projectId={projectId}
+              changes={msg.turnChanges}
+              showUnavailable={key === firstUnavailableKey}
+              className="mt-1.5"
+            />
+          ) : null
+        }
+      />
     ) : (
       <AssistantHome
         before={
@@ -246,6 +312,8 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         }
         skills={skills}
         showSkills={!!session}
+        showQuickStarts
+        quickStarts={quickStarts}
         onPickSkill={pickSkill}
         onOpenSkills={openSkillsSettings}
         quickStartTestId="acp-quick-start"
@@ -319,14 +387,24 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
   <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
   <div className="flex flex-wrap gap-2">
-    {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); })}>{method.name}</Button>)}
+    {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => {
+      // A terminal method signs in interactively: run the located CLI in the project terminal.
+      const cliPath = method.kind === "terminal" ? catalog.find((agent) => agent.definition.id === session.agentId)?.cli?.path : null;
+      if (cliPath) {
+        if (!openAgentSignInTerminal(projectId, cliPath)) {
+          setError(terminalLimitMessage());
+        }
+        return;
+      }
+      void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); });
+    }}>{method.name}</Button>)}
     <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnectAfterSignIn)}</Button>
   </div>
 </div>}
 {session && ["disconnected", "cancelled", "failed"].includes(session.status) && <div className="border-t border-border p-3 text-xs">
   {canReconnect(session) ? <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnect)}</Button> : <p>{noResumeHint(session)}</p>}
 </div>}
-{permissions.length > 0 && <div className="max-h-64 space-y-2 overflow-y-auto border-t border-border p-3">
+{permissions.length > 0 && <div className="max-h-[60vh] space-y-2 overflow-y-auto border-t border-border p-3">
   {permissions.map((request) => <PermissionCard key={request.id} request={request} agentName={selectedAgent?.definition.name ?? session?.agentId} onChoose={choosePermission} />)}
 </div>}
     </>
@@ -342,7 +420,11 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         </Tooltip>
       )}
       {session ? (
-        <SessionStatusPill session={session} busy={busy} />
+        <SessionStatusPill
+          session={session}
+          agentName={catalog.find((value) => value.definition.id === session.agentId)?.definition.name ?? session.agentId}
+          busy={busy}
+        />
       ) : (
         <Button
           type="button"
@@ -432,7 +514,19 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       />
     </div>
     <form className="p-3 pt-1" onSubmit={(event) => { event.preventDefault(); void send(); }}>
-      {images.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
+      {(images.length > 0 || composerSkill) && <div className="mb-2 flex flex-wrap gap-1.5">
+        {composerSkill && (
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            data-testid="acp-skill-chip"
+            aria-label={t(($) => $.ai.presets.removeSkill, { name: composerSkill.name })}
+            onClick={() => setComposer(projectId, { skill: null })}
+          >
+            <Sparkles className="size-3" /> {composerSkill.name} <X className="size-3" />
+          </Button>
+        )}
         {images.map((value, index) => (
           <Button key={value.id} type="button" variant="outline" size="xs" aria-label={t(($) => $.ai.acp.removeImage, { name: value.name })} onClick={() => setImages(images.filter((_, position) => position !== index))}>
             {value.name} <X className="size-3" />
@@ -471,6 +565,11 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         </div>
       </div>
     </form>
+    {cleanLibraryOpen && (
+      <Suspense fallback={null}>
+        <CleanLibraryDialog open onClose={() => setCleanLibraryOpen(false)} />
+      </Suspense>
+    )}
   </section>;
 }
 
@@ -506,7 +605,7 @@ function sessionStatusLabel(status: AcpSession["status"]): string {
   }
 }
 
-function SessionStatusPill({ session, busy }: Readonly<{ session: AcpSession; busy: boolean }>) {
+function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: AcpSession; agentName: string; busy: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <span
@@ -523,7 +622,7 @@ function SessionStatusPill({ session, busy }: Readonly<{ session: AcpSession; bu
         {busy
           ? t(($) => $.ai.acp.connecting)
           : t(($) => $.ai.acp.sessionStatusPill, {
-              agent: session.agentId,
+              agent: agentName,
               status: sessionStatusLabel(session.status),
             })}
       </span>

@@ -12,7 +12,6 @@
       "checkingDescription": "This can take a moment while Oleafly checks the command line tools on this computer.",
       "checkingInstalled": "Checking installed agents",
       "checkingTitle": "Looking for command line agents",
-      "cliNotOnPath": "{{command}} was not found on your PATH.",
       "cliPathLabel": "Detected at",
       "cliTitle": "Command line tool",
       "copySignInCommand": "Copy sign-in command",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP agents",
       "signInCommandLabel": "Sign-in command",
       "versionLabel": "Version",
-      "updateBridge": "Update bridge"
+      "updateBridge": "Update bridge",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "{{cli}} program",
+        "notFound": "Not found on this computer",
+        "bridgeDefault": "The bridge uses its own copy.",
+        "source": {
+          "auto": "Found automatically",
+          "override": "Chosen by you",
+          "managed": "Installed by Oleafly"
+        },
+        "choose": "Choose…",
+        "test": "Test",
+        "testing": "Testing",
+        "saving": "Saving",
+        "useAutomatic": "Use automatic detection",
+        "useAnyway": "Use anyway",
+        "inputLabel": "Location of {{name}}",
+        "pathPlaceholder": "For example, {{example}}",
+        "saved": "Saved. Oleafly will use this program.",
+        "skippedTitle": "Files Oleafly skipped",
+        "skippedReason": {
+          "notFound": "Missing",
+          "isDirectory": "Folder",
+          "notExecutable": "Can't be started",
+          "unsupportedScript": "Script type not supported",
+          "guiProgram": "Desktop app",
+          "interpreter": "Shell or runtime",
+          "networkPath": "Network location"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} started and answered.",
+          "readyNoVersion": "{{name}} started and answered.",
+          "notFound": "No file at {{path}}.",
+          "isDirectory": "{{path}} is a folder. Choose the program file inside it.",
+          "powershellScript": "PowerShell scripts can't be started. Choose {{command}}.cmd or {{command}}.exe.",
+          "unsupportedScript": "Oleafly can't start {{file}} directly. Choose {{command}}.exe.",
+          "notExecutable": "{{path}} isn't a program Oleafly can start.",
+          "guiProgram": "{{path}} is a desktop app. Choose the command line program.",
+          "interpreter": "{{path}} is a shell or script runtime. Choose the {{name}} program itself.",
+          "networkPath": "{{path}} is on a network location. Choose a program on this computer.",
+          "cliMissing": "Oleafly couldn't run {{cli}}. Choose the {{cli}} program.",
+          "bridgeMissing": "The bridge for {{name}} isn't installed yet.",
+          "nodeMissing": "{{name}} needs Node.js, and Oleafly couldn't find it.",
+          "nodeTooOld": "{{name}} needs a newer version of Node.js.",
+          "startFailed": "{{name}} couldn't be started.",
+          "timeout": "{{name}} started but didn't answer in time.",
+          "exited": "{{name}} stopped before it answered.",
+          "notAcp": "{{name}} started, but Oleafly couldn't understand its reply."
+        },
+        "getNode": "Get Node.js",
+        "copyDetails": "Copy details"
+      }
     },
     "approvals": {
       "file": {
@@ -984,7 +1035,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own.",
+      "description": "New and opened projects get a Git repository so the Git panel can track changes. A new project usually starts with one commit of its files. After that, Oleafly commits only when you ask.",
       "label": "Initialise Git for every project"
     },
     "config": {

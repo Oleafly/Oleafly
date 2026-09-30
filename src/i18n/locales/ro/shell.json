@@ -860,6 +860,15 @@
     "enterTitle": "Introdu un titlu de comitere",
     "finishMergeToCommit": "Încheie îmbinarea înainte să comiți.",
     "fetch": "Adu",
+    "gitMissing": {
+      "copied": "Copiat",
+      "copyCommand": "Copiază comanda",
+      "download": "Descarcă Git for Windows",
+      "linux": "Controlul versiunilor are nevoie de Git. Instalează pachetul git cu managerul de pachete, apoi reîmprospătează acest panou.",
+      "mac": "Controlul versiunilor are nevoie de Git. Rulează această comandă în Terminal ca să instalezi instrumentele de linie de comandă Apple, care includ Git, apoi reîmprospătează acest panou.",
+      "title": "Git nu este instalat",
+      "windows": "Controlul versiunilor are nevoie de Git. Instalează Git for Windows, apoi repornește Oleafly."
+    },
     "graph": "Graf",
     "commitCount_one": "{{count}} comitere",
     "commitCount_few": "{{count}} comiteri",

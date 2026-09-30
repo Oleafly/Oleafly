@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Åpne en mappe",
       "inside": "Velg en mappe i {{name}}"
+    },
+    "agentProgram": {
+      "title": "Vil du bruke dette programmet?",
+      "message": "Oleafly starter {{path}} hver gang du bruker {{name}}. Velg bare programmer du stoler på.",
+      "confirm": "Bruk programmet",
+      "pickTitle": "Velg programmet for {{name}}",
+      "filter": "Programmer"
     }
   },
   "errors": {

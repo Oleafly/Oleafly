@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "打开文件夹",
       "inside": "选择 {{name}} 中的文件夹"
+    },
+    "agentProgram": {
+      "title": "要使用此程序吗？",
+      "message": "每次使用 {{name}} 时，Oleafly 都会启动 {{path}}。请只选择你信任的程序。",
+      "confirm": "使用程序",
+      "pickTitle": "选择 {{name}} 的程序",
+      "filter": "程序"
     }
   },
   "errors": {

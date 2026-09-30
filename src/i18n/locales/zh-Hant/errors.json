@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "此專案已連結到 {{remote}}。",
-    "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。"
+    "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。",
+    "not_installed": "這台電腦上沒有安裝 Git。請安裝 Git，然後再試一次。"
   },
   "approvals": {
     "full_access_declined": "未啟用完整存取權。"
@@ -116,5 +117,21 @@
     "library_history_for_folder": "此檢查點記錄來自你 Oleafly 專案庫中的專案，因此無法用於在原位置開啟的資料夾。",
     "folder_history_for_library": "此檢查點記錄來自在原位置開啟的資料夾，因此無法用於你 Oleafly 專案庫中的專案。",
     "restore_path_blocked": "{{path}} 所在位置有連結或其他非檔案的項目，Oleafly 無法還原。請先移走該項目再重試。"
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly 找不到該程式。",
+      "is_directory": "這是資料夾。請選擇其中的程式檔案。",
+      "not_executable": "該檔案無法作為程式啟動。",
+      "unsupported_script": "無法啟動 PowerShell 指令碼。請選擇同名的 .cmd 或 .exe 檔案。",
+      "needs_exe": "這個代理程式無法使用 .cmd 檔案。請選擇它的 .exe 檔案。",
+      "gui_program": "這是桌面應用程式。請選擇你在終端機中執行的程式。",
+      "interpreter": "該程式是用來執行其他程式的。請選擇代理程式本身。",
+      "network_path": "請選擇這台電腦上的程式，而不是網路位置上的程式。",
+      "unknown_agent": "Oleafly 無法識別這個代理程式。",
+      "declined": "程式未變更。",
+      "check_running": "這個代理程式的測試已在執行中。",
+      "main_window": "請在主視窗中變更代理程式所用的程式。"
+    }
   }
 }

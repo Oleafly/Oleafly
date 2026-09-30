@@ -221,8 +221,8 @@
       "content": "Yapılandırılmış konuşmalar, veri bulunduğunda çalıştırma, token ve tahmini maliyet kullanımını burada gösterir."
     },
     "restore": {
-      "title": "Proje durumunu geri yükleyin",
-      "content": "Yapay zekanın yaptığı bir düzenlemeden sonra bir kontrol noktası, konuşmayı silmeden proje dosyalarını geri yükleyebilir."
+      "title": "Ajan değişikliklerini inceleyin",
+      "content": "Bir tur dosyaları değiştirdiğinde her değişikliği görmek için İncele'yi açın. Geri al bir dosyayı eski haline getirir, Yinele ise değişikliği geri getirir."
     }
   },
   "diagram": {

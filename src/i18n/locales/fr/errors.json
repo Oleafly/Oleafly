@@ -64,7 +64,8 @@
   },
   "git": {
     "remote_exists": "Ce projet est déjà lié à {{remote}}.",
-    "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n'y crée pas de dépôt distinct."
+    "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n'y crée pas de dépôt distinct.",
+    "not_installed": "Git n'est pas installé sur cet ordinateur. Installez Git, puis réessayez."
   },
   "approvals": {
     "full_access_declined": "L'accès complet n'a pas été activé."
@@ -116,5 +117,21 @@
     "library_history_for_folder": "Cet historique de points de contrôle provient d'un projet de votre bibliothèque Oleafly, il ne peut donc pas être utilisé avec un dossier ouvert sur place.",
     "folder_history_for_library": "Cet historique de points de contrôle provient d'un dossier ouvert sur place, il ne peut donc pas être utilisé avec un projet de votre bibliothèque Oleafly.",
     "restore_path_blocked": "Oleafly ne peut pas restaurer {{path}}, car un lien ou un autre élément qui n'est pas un fichier se trouve à cet endroit. Déplacez-le, puis réessayez."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly n'a pas trouvé ce programme.",
+      "is_directory": "C'est un dossier. Choisissez le fichier du programme qu'il contient.",
+      "not_executable": "Ce fichier ne peut pas être lancé comme programme.",
+      "unsupported_script": "Les scripts PowerShell ne peuvent pas être lancés. Choisissez le fichier .cmd ou .exe du même nom.",
+      "needs_exe": "Cet agent ne peut pas utiliser un fichier .cmd. Choisissez son fichier .exe.",
+      "gui_program": "C'est une application de bureau. Choisissez le programme que vous lancez dans un terminal.",
+      "interpreter": "Ce programme sert à lancer d'autres programmes. Choisissez le programme de l'agent lui-même.",
+      "network_path": "Choisissez un programme sur cet ordinateur, pas sur un emplacement réseau.",
+      "unknown_agent": "Oleafly ne connaît pas cet agent.",
+      "declined": "Le programme n'a pas été changé.",
+      "check_running": "Un test de cet agent est déjà en cours.",
+      "main_window": "Modifiez les programmes des agents depuis la fenêtre principale."
+    }
   }
 }

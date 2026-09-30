@@ -26,7 +26,7 @@ const MAX_FILE_BYTES: usize = 1024 * 1024;
 const MAX_OUTPUT_BYTES: usize = 48 * 1024;
 const MAX_FILES: usize = 5_000;
 const MAX_SCAN_ENTRIES: usize = 20_000;
-const MAX_SKILL_BYTES: usize = 192 * 1024;
+pub(crate) const MAX_SKILL_BYTES: usize = 192 * 1024;
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -758,7 +758,23 @@ fn skill_read_paths(context: &TaskRunContext) -> Vec<PathBuf> {
     skill_read_paths_in(&root, pack.as_deref(), context)
 }
 
-fn skill_section(record: &crate::skills::SkillRecord) -> String {
+/// Who reads a skill's instructions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SkillAudience {
+    /// A research task: its tools run bundled scripts and read skill files.
+    Task,
+    /// A CLI agent in a conversation: it reads the skill folder with its own
+    /// tools, so no Oleafly tool names and no bundled scripts are mentioned.
+    CliAgent,
+}
+
+pub(crate) fn skill_section(
+    record: &crate::skills::SkillRecord,
+    audience: SkillAudience,
+) -> String {
+    if audience == SkillAudience::CliAgent {
+        return cli_skill_section(record);
+    }
     let mut section = format!("\n\nSelected skill: {}\n", record.name);
     if !record.dir.is_empty() {
         section.push_str(&format!(
@@ -789,6 +805,32 @@ fn skill_section(record: &crate::skills::SkillRecord) -> String {
     section
 }
 
+fn cli_skill_section(record: &crate::skills::SkillRecord) -> String {
+    let mut section = format!("Selected skill: {}\n", record.name);
+    if !record.dir.is_empty() {
+        let folder = oleafly_core::plain_path(Path::new(&record.dir));
+        section.push_str(&format!(
+            "Skill folder: {}\nRelative paths in the instructions below are inside that folder.\n",
+            folder.display()
+        ));
+        let references: Vec<&str> = record
+            .files
+            .iter()
+            .filter(|file| !file.path.starts_with("scripts/"))
+            .map(|file| file.path.as_str())
+            .collect();
+        if !references.is_empty() {
+            section.push_str(&format!(
+                "Supporting files in that folder: {}\n",
+                references.join(", ")
+            ));
+        }
+    }
+    section.push('\n');
+    section.push_str(&record.instructions);
+    section
+}
+
 fn skill_prompt_in(
     root: &Path,
     pack: Option<&Path>,
@@ -796,7 +838,7 @@ fn skill_prompt_in(
 ) -> Result<String, String> {
     let mut prompt = String::new();
     for skill in selected_skills(root, pack, context)? {
-        prompt.push_str(&skill_section(&skill));
+        prompt.push_str(&skill_section(&skill, SkillAudience::Task));
         if prompt.len() > MAX_SKILL_BYTES {
             return Err(
                 "The selected skills exceed this task's context limit. Select fewer skills.".into(),
@@ -1934,17 +1976,15 @@ mod tests {
             .await
         });
         let pid_path = isolated.path().join("analysis/child.pid");
-        tokio::time::timeout(Duration::from_secs(5), async {
-            while !pid_path.is_file() {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
+        // The shell's `>` creates child.pid before printf writes to it, so wait
+        // for the pid itself, not for the file.
+        let pid = crate::test_wait::read_until(
+            &pid_path,
+            crate::test_wait::CHILD_PATIENCE,
+            crate::test_wait::pid,
+        )
         .await
-        .unwrap();
-        let pid = std::fs::read_to_string(&pid_path)
-            .unwrap()
-            .parse::<i32>()
-            .unwrap();
+        .expect("the command must record its background child's process id");
         token.cancel();
         let result = tokio::time::timeout(Duration::from_secs(5), task)
             .await
@@ -2016,7 +2056,7 @@ int main(void) {
     pid_t grandchild = fork();
     if (grandchild == 0) {
         close(0); close(1); close(2);
-        usleep(300000);
+        for (int tick = 0; tick < 6000 && access("analysis/release", F_OK) != 0; tick++) usleep(10000);
         int marker = open("analysis/survived", O_WRONLY | O_CREAT, 0600);
         if (marker >= 0) { write(marker, "survived", 8); close(marker); }
         _exit(0);
@@ -2053,10 +2093,21 @@ int main(void) {
             .unwrap()
             .parse::<i32>()
             .unwrap();
-        tokio::time::sleep(Duration::from_millis(450)).await;
+        // The grandchild writes its marker only once released, and release is
+        // created only after the command was reported finished.
+        std::fs::write(analysis.join("release"), "").unwrap();
+        let gone = tokio::time::timeout(crate::test_wait::CHILD_PATIENCE, async {
+            while unsafe { libc::kill(pid, 0) } == 0 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .is_ok();
         let survived = analysis.join("survived").exists();
-        unsafe {
-            libc::kill(pid, libc::SIGKILL);
+        if !gone {
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
         }
         assert_eq!(report, "-1 1 -1 1 78");
         assert!(

@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} tarvitsee luvan",
       "headline": "Agentti tarvitsee luvan",
       "expired": "Tämä pyyntö vanheni. Pyydä agenttia yrittämään uudelleen.",
-      "dismiss": "Sulje"
+      "dismiss": "Sulje",
+      "diff": {
+        "showChange": "Näytä muutos",
+        "hideChange": "Piilota muutos",
+        "large": "Suuri muutos tiedostoon {{path}}. Tarkista se vuoron jälkeen.",
+        "label": "Ehdotettu muutos tiedostoon {{path}}",
+        "loading": "Ladataan muutosta…"
+      }
     },
     "readiness": {
       "managedBridge": "Oleaflyn asentama silta {{version}}.",
-      "bridgeOnPath": "Silta löytyi PATH-polusta.",
       "bridgeMissingWithCli": "{{cli}} löytyi polusta {{path}}. Asenna ACP-silta {{version}}, niin yhteys onnistuu.",
       "bridgeMissing": "Asenna ACP-silta {{version}}, niin tämän agentin voi yhdistää.",
-      "cliMissing": "{{cli}} ei ole PATH-polussa. Asenna se ja aja sitten {{command}}.",
       "cliNotFound": "Tämän agentin komentorivityökalua ei löytynyt.",
       "unavailable": "Tämä agentti ei voi toimia tällä koneella."
     },
     "bridgeSource": {
       "notInstalled": "Ei asennettu",
-      "managed": "Oleaflyn hallinnoima",
-      "onPath": "PATH-polussa"
+      "managed": "Oleaflyn hallinnoima"
     },
     "installing": "Asennetaan",
     "installBridge": "Asenna silta",
@@ -503,8 +507,50 @@
     "terminalCommand": "Agentti suorittaa päätekomentoa.",
     "agentToolFallback": "Agentin työkalu",
     "agentReported": "Agentti ilmoitti: {{detail}}",
+    "updateTooLarge": "Osa agentin tulosteesta oli liian suuri näytettäväksi ({{size}}).",
     "imageAttachmentName": "Kuva {{index}}",
-    "agentImage": "[Agentti palautti kuvan.]"
+    "agentImage": "[Agentti palautti kuvan.]",
+    "setup": {
+      "cliNotFound": "Oleafly ei löytänyt ohjelmaa {{cli}} tältä koneelta.",
+      "rejected": {
+        "powershellScript": "Löytyi tiedosto {{file}}, mutta PowerShell-skriptejä ei voi käynnistää. Valitse {{name}}.cmd tai {{name}}.exe.",
+        "script": "Löytyi tiedosto {{file}}, mutta Oleafly ei voi käynnistää sitä suoraan. Valitse {{name}}.exe.",
+        "isDirectory": "Löytyi kansio nimeltä {{file}}. Valitse ohjelman {{name}} ohjelmatiedosto.",
+        "notExecutable": "Löytyi tiedosto {{file}}, mutta se ei ole ohjelma, jonka Oleafly voi käynnistää.",
+        "guiProgram": "Löytyi tiedosto {{file}}, mutta se on työpöytäsovellus. Valitse komentorivityökalu {{name}}.",
+        "networkPath": "Tiedosto {{file}} löytyi verkkosijainnista. Valitse kopio, joka on tällä koneella."
+      },
+      "foundOnComputer": "Löytyi tältä koneelta.",
+      "usingChosen": "Käytetään valitsemaasi ohjelmaa.",
+      "bridgeSourceFound": "Löytyi tältä koneelta",
+      "setUp": "Määritä {{name}}",
+      "backgroundTasks": "Taustatehtävät: {{reason}}",
+      "cliMissingNextStep": "Asenna {{cli}} tai valitse, mihin se on asennettu.",
+      "installUnavailable": "Oleafly ei voi asentaa tätä siltaa tälle koneelle.",
+      "builtIn": "Sisäänrakennettu",
+      "showAgent": "Näytä"
+    },
+    "export": {
+      "menuItem": "Vie keskustelu…",
+      "saved": "Keskustelu viety",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Keskustelu",
+      "project": "Projekti",
+      "agent": "Agentti",
+      "model": "Malli",
+      "modelManaged": "Agentin valitsema",
+      "startRevision": "Aloitettu commitista",
+      "uncommitted": "{{revision}} ja vahvistamattomat muutokset",
+      "started": "Aloitettu",
+      "updated": "Viimeksi päivitetty",
+      "you": "Sinä",
+      "skill": "Taito: {{name}}",
+      "tool": "Työkalu: {{name}}",
+      "changedFiles": "Muuttuneet tiedostot",
+      "moreFiles_one": "ja {{count}} muu tiedosto",
+      "moreFiles_other": "ja {{count}} muuta tiedostoa"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Komentoriviagentti",
@@ -734,5 +780,65 @@
     "preSubmission": "Saata se lähetysvalmiiksi",
     "slides": "Tee tästä artikkelista esitys",
     "recompile": "Käännä uudelleen ja tarkista virheet"
+  },
+  "turnChanges": {
+    "ariaLabel": "Tässä vuorossa muuttuneet tiedostot",
+    "changed_one": "{{count}} tiedosto muuttui",
+    "changed_other": "{{count}} tiedostoa muuttui",
+    "buildOnly": "Käännöstiedostot päivitettiin",
+    "review": "Tarkista",
+    "undoAll": "Kumoa kaikki",
+    "redoAll": "Tee kaikki uudelleen",
+    "undo": "Kumoa",
+    "redo": "Tee uudelleen",
+    "undoFile": "Kumoa muutos: {{path}}",
+    "redoFile": "Tee muutos uudelleen: {{path}}",
+    "kind": {
+      "added": "Lisätty",
+      "modified": "Muokattu",
+      "deleted": "Poistettu"
+    },
+    "undone": "Kumottu",
+    "editedAfter": "Muuttunut tämän vuoron jälkeen",
+    "alsoEdited": "Muokkasit myös tätä tiedostoa vuoron aikana",
+    "committed": "Vahvistettu commitissa {{commit}}",
+    "buildFiles": "Käännöstiedostot päivitettiin",
+    "moreFiles_one": "{{count}} muu tiedosto ei näy luettelossa",
+    "moreFiles_other": "{{count}} muuta tiedostoa ei näy luettelossa",
+    "skipped_one": "{{count}} tiedoston kopiointi ei onnistunut ennen vuoroa, joten sitä ei voi palauttaa kumoamalla.",
+    "skipped_other": "{{count}} tiedoston kopiointi ei onnistunut ennen vuoroa, joten niitä ei voi palauttaa kumoamalla.",
+    "overlapped": "Toinen agentti muutti tiedostoja samaan aikaan. Kumoa tiedostot yksi kerrallaan.",
+    "expired": "Tämän vuoron muutoksia ei voi enää kumota.",
+    "waitForRun": "Voit kumota muutokset, kun agentti on valmis.",
+    "unavailable": {
+      "tooLarge": "Tämän vuoron muutoksia ei voi kumota: projekti on liian suuri kopioitavaksi.",
+      "tooManyFiles": "Tämän vuoron muutoksia ei voi kumota: projektissa on liikaa tiedostoja.",
+      "timeout": "Tämän vuoron muutoksia ei voi kumota: projektin kopiointi kesti liian kauan.",
+      "error": "Tämän vuoron muutoksia ei voi kumota: projektia ei voitu kopioida."
+    },
+    "previewLoading": "Ladataan muutosta…",
+    "previewFailed": "Tätä muutosta ei voitu ladata.",
+    "binary": "Tämä tiedosto ei ole tekstiä, joten muutosta ei voi näyttää.",
+    "tooLarge": "Tämä muutos on liian suuri näytettäväksi tässä.",
+    "diffLabel": "Muutos tiedostoon {{path}}",
+    "undid_one": "Muutos kumottiin {{count}} tiedostosta.",
+    "undid_other": "Muutokset kumottiin {{count}} tiedostosta.",
+    "redid_one": "Muutos tehtiin uudelleen {{count}} tiedostoon.",
+    "redid_other": "Muutokset tehtiin uudelleen {{count}} tiedostoon.",
+    "skippedEdited": "Jotkin tiedostot muuttuivat tämän vuoron jälkeen, joten Oleafly jätti ne ennalleen.",
+    "skippedFailed": "Joitakin tiedostoja ei voitu kirjoittaa.",
+    "undoFailed": "Muutoksia ei voitu kumota. Tallenna työsi ja yritä uudelleen.",
+    "redoFailed": "Muutoksia ei voitu tehdä uudelleen. Tallenna työsi ja yritä uudelleen."
+  },
+  "presets": {
+    "literatureSweep": "Kirjallisuuskartoitus",
+    "relatedWork": "Aiempi tutkimus",
+    "citationAudit": "Viitteiden tarkastus",
+    "manuscriptReview": "Käsikirjoituksen arviointi",
+    "reproducibilityAudit": "Toistettavuuden tarkastus",
+    "figureAudit": "Kuvien tarkastus",
+    "gitReview": "Git-tarkistus",
+    "referenceCleanup": "Lähdeluettelon siivous",
+    "removeSkill": "Poista taito {{name}}"
   }
 }

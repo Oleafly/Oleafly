@@ -429,21 +429,25 @@
       "namedHeadline": "{{agent}} 需要權限",
       "headline": "代理程式需要權限",
       "expired": "這個請求已過期。請讓代理程式再試一次。",
-      "dismiss": "關閉"
+      "dismiss": "關閉",
+      "diff": {
+        "showChange": "顯示變更",
+        "hideChange": "隱藏變更",
+        "large": "對 {{path}} 的變更較大。請在這一輪結束後審閱。",
+        "label": "對 {{path}} 的建議變更",
+        "loading": "正在載入變更…"
+      }
     },
     "readiness": {
       "managedBridge": "橋接程式 {{version}} 已由 Oleafly 安裝。",
-      "bridgeOnPath": "已在 PATH 中找到橋接程式。",
       "bridgeMissingWithCli": "已在 {{path}} 找到 {{cli}}。請安裝 ACP 橋接程式 {{version}} 以建立連線。",
       "bridgeMissing": "請安裝 ACP 橋接程式 {{version}} 以連線這個代理程式。",
-      "cliMissing": "{{cli}} 不在你的 PATH 中。請先安裝，然後執行 {{command}}。",
       "cliNotFound": "找不到這個代理程式的命令列工具。",
       "unavailable": "這個代理程式無法在這台電腦上執行。"
     },
     "bridgeSource": {
       "notInstalled": "未安裝",
-      "managed": "由 Oleafly 管理",
-      "onPath": "位於 PATH"
+      "managed": "由 Oleafly 管理"
     },
     "installing": "安裝中",
     "installBridge": "安裝橋接程式",
@@ -496,8 +500,49 @@
     "terminalCommand": "代理程式正在執行終端機指令。",
     "agentToolFallback": "代理工具",
     "agentReported": "代理程式回報：{{detail}}",
+    "updateTooLarge": "代理程式的部分輸出太大，無法顯示（{{size}}）。",
     "imageAttachmentName": "影像 {{index}}",
-    "agentImage": "[代理程式傳回了一張影像。]"
+    "agentImage": "[代理程式傳回了一張影像。]",
+    "setup": {
+      "cliNotFound": "Oleafly 在這台電腦上找不到 {{cli}}。",
+      "rejected": {
+        "powershellScript": "找到了 {{file}}，但無法啟動 PowerShell 指令碼。請選擇 {{name}}.cmd 或 {{name}}.exe。",
+        "script": "找到了 {{file}}，但 Oleafly 無法直接啟動它。請選擇 {{name}}.exe。",
+        "isDirectory": "找到了名為 {{file}} 的資料夾。請選擇 {{name}} 的程式檔案。",
+        "notExecutable": "找到了 {{file}}，但它不是 Oleafly 能啟動的程式。",
+        "guiProgram": "找到了 {{file}}，但它是桌面應用程式。請選擇 {{name}} 命令列工具。",
+        "networkPath": "在網路位置上找到了 {{file}}。請選擇這台電腦上的副本。"
+      },
+      "foundOnComputer": "已在這台電腦上找到。",
+      "usingChosen": "正在使用你選擇的程式。",
+      "bridgeSourceFound": "在這台電腦上找到",
+      "setUp": "設定 {{name}}",
+      "backgroundTasks": "背景任務：{{reason}}",
+      "cliMissingNextStep": "請安裝 {{cli}}，或選擇它的安裝位置。",
+      "installUnavailable": "Oleafly 無法在這台電腦上安裝這個橋接程式。",
+      "builtIn": "內建",
+      "showAgent": "顯示"
+    },
+    "export": {
+      "menuItem": "匯出對話…",
+      "saved": "已匯出對話",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "對話",
+      "project": "專案",
+      "agent": "代理程式",
+      "model": "模型",
+      "modelManaged": "由代理程式選擇",
+      "startRevision": "起始提交",
+      "uncommitted": "{{revision}}（含未提交的變更）",
+      "started": "開始時間",
+      "updated": "最後更新",
+      "you": "你",
+      "skill": "技能：{{name}}",
+      "tool": "工具：{{name}}",
+      "changedFiles": "已變更的檔案",
+      "moreFiles_other": "以及另外 {{count}} 個檔案"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI 代理程式",
@@ -724,5 +769,60 @@
     "preSubmission": "把它準備好投稿",
     "slides": "把這篇論文變成一場演講",
     "recompile": "重新編譯並檢查錯誤"
+  },
+  "turnChanges": {
+    "ariaLabel": "這一輪中變更的檔案",
+    "changed_other": "已變更 {{count}} 個檔案",
+    "buildOnly": "已更新建置檔案",
+    "review": "審閱",
+    "undoAll": "全部復原",
+    "redoAll": "全部重做",
+    "undo": "復原",
+    "redo": "重做",
+    "undoFile": "復原 {{path}}",
+    "redoFile": "重做 {{path}}",
+    "kind": {
+      "added": "已新增",
+      "modified": "已修改",
+      "deleted": "已刪除"
+    },
+    "undone": "已復原",
+    "editedAfter": "這一輪之後又有變更",
+    "alsoEdited": "你在這一輪進行期間也編輯了這個檔案",
+    "committed": "已在 {{commit}} 中提交",
+    "buildFiles": "已更新建置檔案",
+    "moreFiles_other": "另有 {{count}} 個檔案未列出",
+    "skipped_other": "有 {{count}} 個檔案未能在這一輪開始前複製，因此無法復原。",
+    "overlapped": "另一個代理程式同時變更了檔案。請逐一復原檔案。",
+    "expired": "這一輪已無法再復原。",
+    "waitForRun": "代理程式完成後即可復原。",
+    "unavailable": {
+      "tooLarge": "這一輪無法復原：專案太大，無法複製。",
+      "tooManyFiles": "這一輪無法復原：專案檔案太多。",
+      "timeout": "這一輪無法復原：複製專案花費的時間太長。",
+      "error": "這一輪無法復原：無法複製專案。"
+    },
+    "previewLoading": "正在載入變更…",
+    "previewFailed": "無法載入這項變更。",
+    "binary": "這個檔案不是文字檔，無法顯示變更。",
+    "tooLarge": "這項變更太大，無法在這裡顯示。",
+    "diffLabel": "對 {{path}} 的變更",
+    "undid_other": "已復原 {{count}} 個檔案的變更。",
+    "redid_other": "已重做 {{count}} 個檔案的變更。",
+    "skippedEdited": "部分檔案在這一輪之後又有變更，因此 Oleafly 沒有動它們。",
+    "skippedFailed": "部分檔案無法寫入。",
+    "undoFailed": "無法復原這些變更。請儲存你的工作，然後再試一次。",
+    "redoFailed": "無法重做這些變更。請儲存你的工作，然後再試一次。"
+  },
+  "presets": {
+    "literatureSweep": "文獻檢索",
+    "relatedWork": "相關研究",
+    "citationAudit": "引用查核",
+    "manuscriptReview": "稿件審閱",
+    "reproducibilityAudit": "可重現性查核",
+    "figureAudit": "圖片查核",
+    "gitReview": "Git 審閱",
+    "referenceCleanup": "參考文獻整理",
+    "removeSkill": "移除技能 {{name}}"
   }
 }

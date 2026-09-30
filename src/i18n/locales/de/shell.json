@@ -842,6 +842,15 @@
     "enterTitle": "Geben Sie einen Commit-Titel ein",
     "finishMergeToCommit": "Schließen Sie den Merge ab, bevor Sie committen.",
     "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Kopiert",
+      "copyCommand": "Befehl kopieren",
+      "download": "Git for Windows herunterladen",
+      "linux": "Die Versionsverwaltung braucht Git. Installieren Sie das Paket git mit Ihrer Paketverwaltung und aktualisieren Sie dann diesen Bereich.",
+      "mac": "Die Versionsverwaltung braucht Git. Führen Sie diesen Befehl in der App Terminal aus, um die Kommandozeilenwerkzeuge von Apple zu installieren, die Git enthalten, und aktualisieren Sie dann diesen Bereich.",
+      "title": "Git ist nicht installiert",
+      "windows": "Die Versionsverwaltung braucht Git. Installieren Sie Git for Windows und starten Sie Oleafly dann neu."
+    },
     "graph": "Graph",
     "commitCount_one": "{{count}} Commit",
     "commitCount_other": "{{count}} Commits",

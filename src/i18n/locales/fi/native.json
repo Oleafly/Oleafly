@@ -79,6 +79,13 @@
     "openFolder": {
       "title": "Avaa kansio",
       "inside": "Valitse kansio kohteesta {{name}}"
+    },
+    "agentProgram": {
+      "title": "Käytetäänkö tätä ohjelmaa?",
+      "message": "Oleafly käynnistää ohjelman {{path}} aina, kun käytät agenttia {{name}}. Valitse vain ohjelmia, joihin luotat.",
+      "confirm": "Käytä ohjelmaa",
+      "pickTitle": "Valitse ohjelma agentille {{name}}",
+      "filter": "Ohjelmat"
     }
   },
   "errors": {

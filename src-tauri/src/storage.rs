@@ -1106,6 +1106,7 @@ fn complete_cleanup_job_locked(
         return Ok(());
     }
     crate::checkpoints::remove_project_checkpoint_data(&expected.project_id)?;
+    crate::agent_turns::remove_project(&expected.project_id);
     clear_cleanup_job(path, expected)
 }
 
@@ -1547,6 +1548,9 @@ mod tests {
         std::fs::write(project.join("main.tex"), b"source").unwrap();
         let checkpoint_store = crate::paths::checkpoint_store_dir(project_id).unwrap();
         oleafly_history::Store::open(&checkpoint_store).unwrap();
+        let turns = directory.path().join("agent-turns").join(project_id);
+        let turn = crate::agent_turns::begin(project_id, "Test agent");
+        assert!(turn.snapshot_id.is_some(), "{turn:?}");
 
         let recycle_id = recycle_project_directory(
             &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
@@ -1555,6 +1559,7 @@ mod tests {
         .unwrap();
         assert!(!project.exists());
         assert!(checkpoint_store.exists());
+        assert!(turns.is_dir());
         let listed = list_recycled_projects_sync().unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].id, recycle_id);
@@ -1578,6 +1583,7 @@ mod tests {
         permanently_delete_recycled_project_sync(&recycle_id).unwrap();
         assert!(list_recycled_projects_sync().unwrap().is_empty());
         assert!(!checkpoint_store.exists());
+        assert!(!turns.exists());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

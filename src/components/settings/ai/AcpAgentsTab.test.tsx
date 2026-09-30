@@ -9,9 +9,14 @@ const { restore } = await vi.hoisted(async () => {
 vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
   acpCatalog: vi.fn(), acpRegister: vi.fn(), acpInstall: vi.fn(), acpRegistrySearch: vi.fn(), acpRemoveAgent: vi.fn(), acpStart: vi.fn(),
+  acpCheckAgent: vi.fn(), acpPickAgentProgram: vi.fn(), acpSetAgentProgram: vi.fn(),
 }));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 
-import { acpCatalog, acpInstall, acpRegister, acpRegistrySearch, acpRemoveAgent, acpStart, type AcpAgentStatus } from "@/lib/acp";
+import {
+  acpCatalog, acpCheckAgent, acpInstall, acpPickAgentProgram, acpRegister, acpRegistrySearch, acpRemoveAgent,
+  acpSetAgentProgram, acpStart, type AcpAgentStatus, type AcpCliStatus,
+} from "@/lib/acp";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
@@ -20,6 +25,7 @@ import { initializeI18n } from "@/i18n";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import { AcpAgentsTab } from "./AcpAgentsTab";
 
 await initializeI18n({
@@ -431,9 +437,16 @@ describe("ACP agent setup acceptance", () => {
     const ui = render(<AcpAgentsTab />);
     const card = await ui.findByTestId("acp-agent-card-codex");
     expect(card).toHaveTextContent("CLI not found");
-    expect(card).toHaveTextContent("Codex is not on your PATH");
+    expect(card).toHaveTextContent("Oleafly couldn't find Codex on this computer.");
+    expect(card).not.toHaveTextContent("PATH");
     fireEvent.click(within(card).getByRole("button", { expanded: false }));
-    expect(within(card).getByTestId("acp-agent-install-codex")).toBeDisabled();
+    const install = within(card).getByTestId("acp-agent-install-codex");
+    expect(install).toBeDisabled();
+    const reasonId = install.getAttribute("aria-describedby");
+    expect(reasonId).toBeTruthy();
+    expect(card.querySelector(`[id="${reasonId}"]`)).toHaveTextContent(
+      "Install Node.js 22 or newer to run this agent.",
+    );
   });
 
   it("does not offer bridge installation when the vendor CLI is the bridge", async () => {
@@ -479,5 +492,165 @@ describe("ACP agent setup acceptance", () => {
     expect(
       within(card).getByRole("button", { name: copy.openTerminal }),
     ).toBeInTheDocument();
+  });
+});
+
+const piCli: AcpCliStatus = {
+  command: "pi", displayName: "Pi", path: null, version: null, signInCommand: "pi", source: null, rejected: [],
+};
+const PICKED = "D:\\Tools\\Agents\\Pi\\pi.exe";
+const TASKS_ON_WINDOWS = "Isolated CLI agent tasks are not available on Windows yet. Use the agent in the assistant instead.";
+
+function pi(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
+  return agent("pi", {
+    definition: { ...agent().definition, id: "pi", name: "Pi", version: "0.0.34", builtin: true },
+    platform: "windows-x86_64", installed: true, managed: true, cliRequired: true, cli: piCli,
+    signInHint: "Run pi in your terminal and sign in with /login, then reconnect.",
+    taskUnavailableReason: TASKS_ON_WINDOWS,
+    ...overrides,
+  });
+}
+
+const program = copy.program;
+const setupCopy = enAi.acp.setup;
+
+describe("CLI agent program setup", () => {
+  it("puts the setup step first and keeps the background task limit on its own line", async () => {
+    catalog = [pi({ cli: { ...piCli, rejected: [{ path: "C:\\Users\\Ada\\AppData\\Roaming\\npm\\pi.ps1", reason: "unsupported_script" }] } })];
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await ui.findByTestId("acp-agent-card-pi");
+    expect(card).toHaveTextContent("Found pi.ps1, but PowerShell scripts can't be started. Choose pi.cmd or pi.exe.");
+    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    const nextStep = within(card).getByRole("region", { name: copy.nextStepTitle });
+    const lines = Array.from(nextStep.querySelectorAll("p")).map((node) => node.textContent);
+    expect(lines[0]).toBe(setupCopy.cliMissingNextStep.replace("{{cli}}", "Pi"));
+    expect(lines).toContain(setupCopy.backgroundTasks.replace("{{reason}}", TASKS_ON_WINDOWS));
+    expect(within(card).getByTestId("acp-agent-program-pi")).toBeInTheDocument();
+    expect(within(card).getByRole("textbox", { name: program.inputLabel.replace("{{name}}", "Pi") })).toBeInTheDocument();
+    expect(card).not.toHaveTextContent("PATH");
+  });
+
+  it("tests a chosen program, saves it, and shows the agent as ready", async () => {
+    catalog = [pi()];
+    const saved = pi({ programOverride: PICKED, cli: { ...piCli, path: PICKED, source: "override", version: "0.81.2" } });
+    vi.mocked(acpPickAgentProgram).mockResolvedValue(PICKED);
+    vi.mocked(acpCheckAgent).mockResolvedValue({ ok: true, code: "ready", detail: null, program: PICKED, version: "0.81.2", agentName: "pi-acp" });
+    vi.mocked(acpSetAgentProgram).mockResolvedValue(saved);
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "pi");
+    expect(card).toHaveTextContent("CLI not found");
+
+    fireEvent.click(within(card).getByRole("button", { name: program.choose }));
+
+    expect(await within(card).findByRole("status")).toHaveTextContent("Pi 0.81.2 started and answered.");
+    expect(acpCheckAgent).toHaveBeenCalledExactlyOnceWith("pi", PICKED);
+    expect(acpSetAgentProgram).toHaveBeenCalledExactlyOnceWith("pi", PICKED);
+    expect(card).toHaveTextContent("Ready");
+    expect(within(card).getByTestId("acp-agent-program-pi")).toHaveTextContent(program.source.override);
+    expect(useAcpSessionsStore.getState().catalog[0]).toEqual(saved);
+  });
+
+  it("installs the bridge a failed test asked for and then tests the same file again", async () => {
+    const found = { ...piCli, path: "/usr/local/bin/pi" };
+    catalog = [pi({ installed: false, managed: false, executable: null, cli: found })];
+    vi.mocked(acpPickAgentProgram).mockResolvedValue("/opt/pi/bin/pi");
+    vi.mocked(acpCheckAgent)
+      .mockResolvedValueOnce({ ok: false, code: "bridge_missing", detail: null, program: "/opt/pi/bin/pi", version: null, agentName: null })
+      .mockResolvedValueOnce({ ok: true, code: "ready", detail: null, program: "/opt/pi/bin/pi", version: "0.81.2", agentName: null });
+    vi.mocked(acpInstall).mockImplementation(async () => {
+      catalog = [pi({ cli: found })];
+      return catalog[0];
+    });
+    vi.mocked(acpSetAgentProgram).mockResolvedValue(pi({ programOverride: "/opt/pi/bin/pi", cli: { ...found, path: "/opt/pi/bin/pi" } }));
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "pi");
+    fireEvent.click(within(card).getByRole("button", { name: program.choose }));
+    const result = await within(card).findByTestId("acp-agent-program-result-pi");
+    fireEvent.click(within(result).getByRole("button", { name: copy.installBridge }));
+    fireEvent.click(within(await ui.findByRole("dialog")).getByRole("button", { name: copy.install.confirm }));
+
+    expect(await within(card).findByRole("status")).toHaveTextContent("Pi 0.81.2 started and answered.");
+    expect(acpInstall).toHaveBeenCalledExactlyOnceWith("pi");
+    expect(acpCheckAgent).toHaveBeenLastCalledWith("pi", "/opt/pi/bin/pi");
+    expect(acpSetAgentProgram).toHaveBeenCalledExactlyOnceWith("pi", "/opt/pi/bin/pi");
+  });
+
+  it("keeps the bridged vendor CLI choice inside the bridge details", async () => {
+    catalog = [
+      agent("claude", {
+        definition: { ...agent().definition, id: "claude", name: "Claude Code", builtin: true },
+        installed: true, managed: true,
+        cli: { command: "claude", displayName: "Claude Code", path: "/usr/local/bin/claude", version: "2.1.258", signInCommand: "claude auth login" },
+      }),
+    ];
+    const ui = render(<AcpAgentsTab />);
+    const card = await expandAgent(ui, "claude");
+    expect(within(card).queryByTestId("acp-agent-program-claude")).not.toBeInTheDocument();
+    fireEvent.click(within(card).getByTestId("acp-agent-bridge-details-claude-toggle"));
+    const row = within(card).getByTestId("acp-agent-program-claude");
+    expect(row).toHaveTextContent(program.bridgeLabel.replace("{{cli}}", "Claude Code"));
+    expect(row).toHaveTextContent(program.bridgeDefault);
+  });
+
+  it("keeps multi-line install errors readable and copyable", async () => {
+    catalog = [agent("fixture", { installed: false })];
+    const failure = "npm error code EISDIR\nnpm error syscall lstat\nnpm error path D:";
+    vi.mocked(acpInstall).mockRejectedValue(failure);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const ui = render(<AcpAgentsTab />);
+    await expandAgent(ui);
+    fireEvent.click(ui.getByTestId("acp-agent-install-fixture"));
+    const dialog = await ui.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: copy.install.confirm }));
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toBe(failure);
+    expect(alert).toHaveClass("whitespace-pre-wrap");
+    fireEvent.click(within(dialog).getByRole("button", { name: program.copyDetails }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(failure));
+  });
+
+  it("shows a registry entry for a built-in agent as built in and opens its card", async () => {
+    catalog = [pi({ cli: { ...piCli, path: "/usr/local/bin/pi" } })];
+    const definition = { ...agent().definition, id: "pi-acp", name: "pi ACP" };
+    vi.mocked(acpRegistrySearch).mockResolvedValue([
+      { id: "pi-acp", name: "pi ACP", description: "ACP adapter for pi", version: "0.0.34", definition, reason: null, builtinId: "pi" },
+    ]);
+    const ui = render(<AcpAgentsTab />);
+    const card = await ui.findByTestId("acp-agent-card-pi");
+    openSection(ui, "registry");
+    fill(ui.getByLabelText(copy.registry.searchLabel), "pi");
+    fireEvent.click(ui.getByRole("button", { name: copy.registry.search }));
+    const show = await ui.findByRole("button", { name: setupCopy.showAgent });
+    expect(ui.getByText(setupCopy.builtIn)).toBeInTheDocument();
+    expect(ui.queryByRole("button", { name: copy.registry.register })).not.toBeInTheDocument();
+    fireEvent.click(show);
+    await waitFor(() => expect(within(card).getAllByRole("button")[0]).toHaveAttribute("aria-expanded", "true"));
+    expect(acpRegister).not.toHaveBeenCalled();
+  });
+
+  it("expands and scrolls to the agent a deep link names once the list arrives", async () => {
+    const check = deferred<AcpAgentStatus[]>();
+    vi.mocked(acpCatalog).mockReturnValueOnce(check.promise);
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    const ui = render(<AcpAgentsTab focusAgentId="pi" focusToken={1} />);
+    await act(async () => check.resolve([agent(), pi()]));
+    const card = await ui.findByTestId("acp-agent-card-pi");
+    await waitFor(() => expect(within(card).getAllByRole("button")[0]).toHaveAttribute("aria-expanded", "true"));
+    expect(within(ui.getByTestId("acp-agent-card-fixture")).getAllByRole("button")[0]).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(card);
+    scrollIntoView.mockRestore();
+  });
+
+  it("reports a deep link as handled once, so the host can drop it", async () => {
+    vi.mocked(acpCatalog).mockResolvedValueOnce([agent(), pi()]);
+    const onFocusHandled = vi.fn();
+    const ui = render(<AcpAgentsTab focusAgentId="pi" focusToken={3} onFocusHandled={onFocusHandled} />);
+    await ui.findByTestId("acp-agent-card-pi");
+    expect(onFocusHandled).toHaveBeenCalledExactlyOnceWith(3);
+    ui.rerender(<AcpAgentsTab focusAgentId="pi" focusToken={3} onFocusHandled={() => onFocusHandled("new callback")} />);
+    await act(async () => {});
+    expect(onFocusHandled).toHaveBeenCalledTimes(1);
   });
 });
