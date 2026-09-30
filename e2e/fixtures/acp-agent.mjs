@@ -106,6 +106,18 @@ if (process.argv.includes("--child")) {
               ],
             },
           });
+        } else if (prompt.startsWith("edit ")) {
+          // "edit <relative path> <line>" appends a line to a project file,
+          // the way a CLI agent writes to disk with its own tools.
+          const [, relative, ...words] = prompt.split(" ");
+          const target = join(projectRoot, relative);
+          const before = existsSync(target) ? readFileSync(target, "utf8") : null;
+          const after = `${before ?? ""}${words.join(" ")}\n`;
+          writeFileSync(target, after);
+          const editId = `e2e-edit-${turn}`;
+          update("tool_call", { toolCallId: editId, title: `Edit ${relative}`, kind: "edit", status: "in_progress", locations: [{ path: target }] });
+          update("tool_call_update", { toolCallId: editId, status: "completed", content: [{ type: "diff", path: target, oldText: before, newText: after }] });
+          finish(request, `ACP fixture edited ${relative}`);
         } else if (prompt.startsWith("wait ") || prompt.startsWith("wait-ignore-cancel ")) {
           const child = spawn(process.execPath, [process.argv[1], "--child"], { stdio: "ignore" });
           child.once("spawn", () => {

@@ -36,7 +36,7 @@ export function PermissionCard({
   };
   return (
     <AiChrome borderVariant="animated" contentClassName="p-3.5">
-      <fieldset aria-label={t(($) => $.ai.acp.permission.ariaLabel)} className="flex flex-col gap-3">
+      <fieldset aria-label={t(($) => $.ai.acp.permission.ariaLabel)} className="flex min-w-0 flex-col gap-3">
         <div className="flex items-start gap-2.5">
           <span
             aria-hidden
