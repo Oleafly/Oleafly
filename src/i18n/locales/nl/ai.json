@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} heeft toestemming nodig",
       "headline": "De agent heeft toestemming nodig",
       "expired": "Dit verzoek is verlopen. Vraag de agent het opnieuw te proberen.",
-      "dismiss": "Sluiten"
+      "dismiss": "Sluiten",
+      "diff": {
+        "showChange": "Wijziging tonen",
+        "hideChange": "Wijziging verbergen",
+        "large": "Grote wijziging in {{path}}. Bekijk die na de beurt.",
+        "label": "Voorgestelde wijziging in {{path}}",
+        "loading": "Wijziging laden…"
+      }
     },
     "readiness": {
       "managedBridge": "Bridge {{version}} is door Oleafly geïnstalleerd.",
-      "bridgeOnPath": "Bridge gevonden op PATH.",
       "bridgeMissingWithCli": "{{cli}} gevonden in {{path}}. Installeer de ACP-bridge {{version}} om te verbinden.",
       "bridgeMissing": "Installeer de ACP-bridge {{version}} om deze agent te verbinden.",
-      "cliMissing": "{{cli}} staat niet op je PATH. Installeer het en voer daarna {{command}} uit.",
       "cliNotFound": "De opdrachtregeltool van deze agent is niet gevonden.",
       "unavailable": "Deze agent kan niet op deze computer draaien."
     },
     "bridgeSource": {
       "notInstalled": "Niet geïnstalleerd",
-      "managed": "Beheerd door Oleafly",
-      "onPath": "Op PATH"
+      "managed": "Beheerd door Oleafly"
     },
     "installing": "Installeren",
     "installBridge": "Bridge installeren",
@@ -503,8 +507,50 @@
     "terminalCommand": "De agent voert een terminalopdracht uit.",
     "agentToolFallback": "Agenttool",
     "agentReported": "De agent meldde: {{detail}}",
+    "updateTooLarge": "Een deel van de uitvoer van de agent was te groot om te tonen ({{size}}).",
     "imageAttachmentName": "Afbeelding {{index}}",
-    "agentImage": "[De agent heeft een afbeelding teruggegeven.]"
+    "agentImage": "[De agent heeft een afbeelding teruggegeven.]",
+    "setup": {
+      "cliNotFound": "Oleafly kon {{cli}} niet vinden op deze computer.",
+      "rejected": {
+        "powershellScript": "{{file}} gevonden, maar PowerShell-scripts kunnen niet worden gestart. Kies {{name}}.cmd of {{name}}.exe.",
+        "script": "{{file}} gevonden, maar Oleafly kan dit bestand niet rechtstreeks starten. Kies {{name}}.exe.",
+        "isDirectory": "Een map met de naam {{file}} gevonden. Kies het programmabestand van {{name}}.",
+        "notExecutable": "{{file}} gevonden, maar dat is geen programma dat Oleafly kan starten.",
+        "guiProgram": "{{file}} gevonden, maar dat is een desktop-app. Kies de opdrachtregeltool van {{name}}.",
+        "networkPath": "{{file}} gevonden op een netwerklocatie. Kies een kopie op deze computer."
+      },
+      "foundOnComputer": "Gevonden op deze computer.",
+      "usingChosen": "Het programma dat je hebt gekozen wordt gebruikt.",
+      "bridgeSourceFound": "Gevonden op deze computer",
+      "setUp": "{{name}} instellen",
+      "backgroundTasks": "Achtergrondtaken: {{reason}}",
+      "cliMissingNextStep": "Installeer {{cli}} of kies waar het is geïnstalleerd.",
+      "installUnavailable": "Oleafly kan deze bridge niet op deze computer installeren.",
+      "builtIn": "Ingebouwd",
+      "showAgent": "Tonen"
+    },
+    "export": {
+      "menuItem": "Gesprek exporteren…",
+      "saved": "Gesprek geëxporteerd",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Gesprek",
+      "project": "Project",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Gekozen door de agent",
+      "startRevision": "Gestart bij commit",
+      "uncommitted": "{{revision}} met wijzigingen die nog niet zijn gecommit",
+      "started": "Gestart",
+      "updated": "Laatst bijgewerkt",
+      "you": "Jij",
+      "skill": "Vaardigheid: {{name}}",
+      "tool": "Tool: {{name}}",
+      "changedFiles": "Gewijzigde bestanden",
+      "moreFiles_one": "en nog {{count}} bestand",
+      "moreFiles_other": "en nog {{count}} bestanden"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI-agent",
@@ -731,5 +777,65 @@
     "preSubmission": "Maak het klaar om in te zenden",
     "slides": "Maak van dit artikel een presentatie",
     "recompile": "Compileer opnieuw en controleer op fouten"
+  },
+  "turnChanges": {
+    "ariaLabel": "Bestanden die in deze beurt zijn gewijzigd",
+    "changed_one": "{{count}} bestand gewijzigd",
+    "changed_other": "{{count}} bestanden gewijzigd",
+    "buildOnly": "Buildbestanden bijgewerkt",
+    "review": "Bekijken",
+    "undoAll": "Alles ongedaan maken",
+    "redoAll": "Alles opnieuw toepassen",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw",
+    "undoFile": "Wijziging in {{path}} ongedaan maken",
+    "redoFile": "Wijziging in {{path}} opnieuw toepassen",
+    "kind": {
+      "added": "Toegevoegd",
+      "modified": "Gewijzigd",
+      "deleted": "Verwijderd"
+    },
+    "undone": "Ongedaan gemaakt",
+    "editedAfter": "Gewijzigd na deze beurt",
+    "alsoEdited": "Je hebt dit bestand tijdens de beurt ook bewerkt",
+    "committed": "Gecommit in {{commit}}",
+    "buildFiles": "Buildbestanden bijgewerkt",
+    "moreFiles_one": "Nog {{count}} bestand staat niet in de lijst",
+    "moreFiles_other": "Nog {{count}} bestanden staan niet in de lijst",
+    "skipped_one": "{{count}} bestand kon voor de beurt niet worden gekopieerd, dus dat kan niet ongedaan worden gemaakt.",
+    "skipped_other": "{{count}} bestanden konden voor de beurt niet worden gekopieerd, dus die kunnen niet ongedaan worden gemaakt.",
+    "overlapped": "Een andere agent wijzigde tegelijk bestanden. Maak de bestanden één voor één ongedaan.",
+    "expired": "Deze beurt kan niet meer ongedaan worden gemaakt.",
+    "waitForRun": "Ongedaan maken kan zodra de agent klaar is.",
+    "unavailable": {
+      "tooLarge": "Deze beurt kan niet ongedaan worden gemaakt: het project is te groot om te kopiëren.",
+      "tooManyFiles": "Deze beurt kan niet ongedaan worden gemaakt: het project heeft te veel bestanden.",
+      "timeout": "Deze beurt kan niet ongedaan worden gemaakt: het kopiëren van het project duurde te lang.",
+      "error": "Deze beurt kan niet ongedaan worden gemaakt: het project kon niet worden gekopieerd."
+    },
+    "previewLoading": "Wijziging laden…",
+    "previewFailed": "Kon deze wijziging niet laden.",
+    "binary": "Dit bestand is geen tekst, dus de wijziging kan niet worden getoond.",
+    "tooLarge": "Deze wijziging is te groot om hier te tonen.",
+    "diffLabel": "Wijziging in {{path}}",
+    "undid_one": "Wijziging in {{count}} bestand ongedaan gemaakt.",
+    "undid_other": "Wijzigingen in {{count}} bestanden ongedaan gemaakt.",
+    "redid_one": "Wijziging in {{count}} bestand opnieuw toegepast.",
+    "redid_other": "Wijzigingen in {{count}} bestanden opnieuw toegepast.",
+    "skippedEdited": "Sommige bestanden zijn na deze beurt gewijzigd, dus Oleafly heeft ze niet aangeraakt.",
+    "skippedFailed": "Sommige bestanden konden niet worden geschreven.",
+    "undoFailed": "Kon de wijzigingen niet ongedaan maken. Sla je werk op en probeer het opnieuw.",
+    "redoFailed": "Kon de wijzigingen niet opnieuw toepassen. Sla je werk op en probeer het opnieuw."
+  },
+  "presets": {
+    "literatureSweep": "Literatuurverkenning",
+    "relatedWork": "Verwant werk",
+    "citationAudit": "Citatiecontrole",
+    "manuscriptReview": "Manuscriptbeoordeling",
+    "reproducibilityAudit": "Reproduceerbaarheidscontrole",
+    "figureAudit": "Figurencontrole",
+    "gitReview": "Git-review",
+    "referenceCleanup": "Referenties opschonen",
+    "removeSkill": "Vaardigheid {{name}} verwijderen"
   }
 }

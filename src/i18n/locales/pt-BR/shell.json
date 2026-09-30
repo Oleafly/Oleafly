@@ -833,6 +833,15 @@
     "enterTitle": "Digite um título de commit",
     "finishMergeToCommit": "Conclua a mesclagem antes de fazer o commit.",
     "fetch": "Buscar",
+    "gitMissing": {
+      "copied": "Copiado",
+      "copyCommand": "Copiar o comando",
+      "download": "Baixar o Git for Windows",
+      "linux": "O controle de versão precisa do Git. Instale o pacote git com o seu gerenciador de pacotes e depois atualize este painel.",
+      "mac": "O controle de versão precisa do Git. Execute este comando no Terminal para instalar as ferramentas de linha de comando da Apple, que incluem o Git, e depois atualize este painel.",
+      "title": "O Git não está instalado",
+      "windows": "O controle de versão precisa do Git. Instale o Git for Windows e depois reinicie o Oleafly."
+    },
     "graph": "Grafo",
     "commitCount_one": "{{count}} commit",
     "commitCount_many": "{{count}} commits",

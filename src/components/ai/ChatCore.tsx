@@ -33,6 +33,7 @@ import {
   agentThreadArchive,
   agentThreadClaimPrewarmed,
   agentThreadFork,
+  type AgentMessage,
 } from "@/lib/agent-backend";
 import { launchBrowser } from "@/lib/browser-window";
 import {
@@ -65,6 +66,15 @@ import {
   X,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
+import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
+import { agentTurnBegin, agentTurnFinish, type TurnBegin } from "@/lib/agent-turns";
+import {
+  closeLeftoverBuiltInTurns,
+  forgetOpenBuiltInTurn,
+  rememberOpenBuiltInTurn,
+} from "@/components/ai/turns/open-built-in-turns";
+import { presetPrompt, RESEARCH_PRESET_PROMPTS } from "@/lib/research-presets";
+import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
@@ -138,7 +148,7 @@ import {
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
+import { useChatsStore, type ChatMessage, type ChatTurnChanges, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
@@ -243,6 +253,18 @@ export function steerRunAlreadyEnded(error: unknown): boolean {
   return text.startsWith("no active run ");
 }
 
+function steerQueuedFollowUp(
+  runId: string,
+  message: AgentMessage,
+  chatId: string,
+  followUpId: string,
+) {
+  return agentSteer(runId, message).then((result) => {
+    if (result?.status === "run_finished") return;
+    useAgentTurnsStore.getState().markSteered(chatId, followUpId);
+  });
+}
+
 function figureCodeOf(args: unknown): string | undefined {
   if (!args || typeof args !== "object") return undefined;
   const code = (args as { code?: unknown }).code;
@@ -262,28 +284,28 @@ function chatSuggestions(): ChatSuggestion[] {
     {
       id: "literature-sweep",
       label: i18n.t(($) => $.ai.suggestions.literatureSweep),
-      send: "/oleafly-literature-sweep Build an annotated reading list for this project's research question",
+      send: presetPrompt(RESEARCH_PRESET_PROMPTS.literatureSweep, "oleafly-literature-sweep"),
       icon: Search,
       skillId: "oleafly-literature-sweep",
     },
     {
       id: "related-work",
       label: i18n.t(($) => $.ai.suggestions.relatedWork),
-      send: "/oleafly-related-work Draft the related work section from the reading list and the bibliography",
+      send: presetPrompt(RESEARCH_PRESET_PROMPTS.relatedWork, "oleafly-related-work"),
       icon: BookOpen,
       skillId: "oleafly-related-work",
     },
     {
       id: "verify-claims",
       label: i18n.t(($) => $.ai.suggestions.verifyClaims),
-      send: "/oleafly-verify-claims Audit the claims in this manuscript against their cited sources",
+      send: presetPrompt(RESEARCH_PRESET_PROMPTS.citationAudit, "oleafly-verify-claims"),
       icon: ClipboardCheck,
       skillId: "oleafly-verify-claims",
     },
     {
       id: "review-manuscript",
       label: i18n.t(($) => $.ai.suggestions.reviewManuscript),
-      send: "/oleafly-review-manuscript Review the full manuscript and write the report",
+      send: presetPrompt(RESEARCH_PRESET_PROMPTS.manuscriptReview, "oleafly-review-manuscript"),
       icon: Glasses,
       skillId: "oleafly-review-manuscript",
     },
@@ -388,6 +410,76 @@ const CODE_EDIT_TOOLS = new Set([
   "insert_figure",
   "set_main_doc",
 ]);
+
+const BUILT_IN_TURN_LABEL = "Oleafly assistant";
+
+function noTurnChanges(unavailable: TurnBegin["unavailable"]): ChatTurnChanges {
+  return { snapshotId: null, files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable };
+}
+
+/**
+ * Saves open editors, then takes the before-turn copy. Unsaved edits must be
+ * on disk first, or Undo would treat the user's typing as the assistant's.
+ * When the save fails the turn runs without Undo.
+ */
+async function beginBuiltInTurn(projectId: string): Promise<TurnBegin | null> {
+  try {
+    await flushOpenFilesToDisk(projectId, "save before assistant run");
+  } catch {
+    return null;
+  }
+  // A turn a reload of this window left open would mark this one overlapped.
+  await closeLeftoverBuiltInTurns();
+  try {
+    const begun = await agentTurnBegin(projectId, BUILT_IN_TURN_LABEL);
+    if (begun.snapshotId) rememberOpenBuiltInTurn(projectId, begun.snapshotId);
+    return begun;
+  } catch (error) {
+    void logError("agent turn begin", error);
+    return { snapshotId: null, unavailable: "error" };
+  }
+}
+
+async function finishBuiltInTurn(
+  projectId: string | null,
+  begun: TurnBegin | null,
+  toolPaths: readonly string[],
+  committed: Readonly<Record<string, string>>,
+): Promise<ChatTurnChanges | null> {
+  if (!projectId || !begun) return null;
+  if (!begun.snapshotId) return begun.unavailable ? noTurnChanges(begun.unavailable) : null;
+  const snapshotId = begun.snapshotId;
+  try {
+    // insert_figure edits the open editor; its text reaches the disk with the
+    // next save, which must land before the comparison, not in the next turn.
+    await flushOpenFilesToDisk(projectId, "save after assistant run").catch(() => undefined);
+    const changes = await agentTurnFinish(projectId, snapshotId, [...toolPaths]);
+    if (changes.files.length + changes.moreFiles === 0 && !changes.unavailable) return null;
+    // A committed file may be one of the unlisted ones; keep it so Undo all
+    // does not ask for every file.
+    const committedHere = Object.fromEntries(
+      Object.entries(committed).filter(
+        ([path]) => changes.moreFiles > 0 || changes.files.some((file) => file.path === path),
+      ),
+    );
+    return Object.keys(committedHere).length > 0 ? { ...changes, committed: committedHere } : changes;
+  } catch (error) {
+    void logError("agent turn finish", error);
+    return noTurnChanges("error");
+  } finally {
+    forgetOpenBuiltInTurn(snapshotId);
+  }
+}
+
+function toolWrittenPaths(args: unknown, output: Record<string, unknown> | null): string[] {
+  const values = [
+    ...(args && typeof args === "object" ? ["path", "from", "to"].map((key) => (args as Record<string, unknown>)[key]) : []),
+    output?.path,
+    // insert_figure's saved PNG.
+    output?.figure,
+  ];
+  return values.filter((value): value is string => typeof value === "string" && value.length > 0);
+}
 
 const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
 export const FIGURE_TOOLS = ["preview_figure", "insert_figure", "load_image"];
@@ -591,6 +683,10 @@ export function blockedModelMessage(reason: string): string {
     : i18n.t(($) => $.ai.models.blocked);
 }
 
+function gitStatusOrNull(projectId: string) {
+  return gitStatus(projectId).catch(() => null);
+}
+
 function stillAddedAt(path: string) {
   return (entry: GitFileChange) =>
     entry.path === path && (entry.status === "?" || entry.status === "A");
@@ -760,6 +856,12 @@ export function ChatCore() {
 
   useEffect(() => {
     prefetchMarkdownRenderer();
+  }, []);
+
+  useEffect(() => {
+    // Close turns a reload of this window left open, before any agent begins
+    // a new one in the same project.
+    void closeLeftoverBuiltInTurns();
   }, []);
 
   useEffect(() => {
@@ -1010,7 +1112,7 @@ export function ChatCore() {
   const availableMcpToolsets = useMemo(
     () =>
       createMcpRuntimeToolsets(mcpAgentToolsQuery.data ?? [], {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         isActive: () => false,
         onImage: () => {},
         projectId: () => null,
@@ -1030,7 +1132,7 @@ export function ChatCore() {
       toolsets: registry.aiToolsets,
       mode: "chat",
       createOpts: {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         onImage: () => {},
         runId: () => null,
       },
@@ -1763,7 +1865,7 @@ export function ChatCore() {
     const capacitySkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const capacityAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         isActive: () => false,
         onImage: () => {},
         projectId: () => null,
@@ -1779,7 +1881,7 @@ export function ChatCore() {
           toolsets: registry.aiToolsets,
           mode: "chat",
           createOpts: {
-            confirm: async () => false,
+            confirm: () => Promise.resolve(false),
             onImage: () => {},
             runId: () => null,
           },
@@ -1845,6 +1947,8 @@ export function ChatCore() {
     const runPendingImages: string[] = [];
     let runChatId: string | null = null;
     let trackedTurnId: string | null = null;
+    let builtInTurn: TurnBegin | null = null;
+    const turnToolPaths = new Set<string>();
     let commitTracking = Promise.resolve();
     let queueCommitReconciliation: (commitId?: string | null) => Promise<void> = () =>
       Promise.resolve();
@@ -2271,6 +2375,7 @@ ${sandboxedCustom}`;
     let activeAssistantId = assistantMsg.id;
     try {
       if (turnSetupError) throw turnSetupError;
+      if (runProjectId && runChatId) builtInTurn = await beginBuiltInTurn(runProjectId);
       if (runChatId) {
         const trackingChatId = runChatId;
         const trackingTurnId = clientTurnId;
@@ -2290,7 +2395,7 @@ ${sandboxedCustom}`;
               if (!turn) return;
               const nextOid = commitId ?? (await gitHeadOid(runProjectId));
               if (!nextOid || nextOid === turn.headOid) return;
-              const workingChanges = await gitStatus(runProjectId).catch(() => null);
+              const workingChanges = await gitStatusOrNull(runProjectId);
               const committedContents: Record<string, string> = {};
               await Promise.all(
                 Object.keys(turn.changedFiles).map(async (path) => {
@@ -2443,6 +2548,9 @@ ${sandboxedCustom}`;
             call.name === "create_file")
         ) {
           recordWrittenFile(call, record);
+        }
+        if (record?.success === true && CODE_EDIT_TOOLS.has(call.name)) {
+          for (const path of toolWrittenPaths(call.args, record)) turnToolPaths.add(path);
         }
         if (call.name === "compile" && record?.success === true) assistantOutputs.openPdf();
         if (
@@ -2685,6 +2793,24 @@ ${sandboxedCustom}`;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
+      const committedByPath: Record<string, string> = {};
+      const trackedTurn = runChatId
+        ? agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), runChatId)
+        : null;
+      for (const file of trackedTurn?.turnId === trackedTurnId ? trackedTurn?.committedFiles ?? [] : []) {
+        if (file.commitId) committedByPath[file.path] = file.commitId;
+      }
+      const turnChanges = await finishBuiltInTurn(runProjectId, builtInTurn, [...turnToolPaths], committedByPath);
+      if (turnChanges) {
+        const attach = (message: ChatMessage) =>
+          message.id === activeAssistantId ? { ...message, turnChanges } : message;
+        if (runIsCurrent()) {
+          updateRunLast(attach);
+        } else if (runChatId) {
+          const saved = useChatsStore.getState().byId(runChatId)?.messages;
+          if (saved) useChatsStore.getState().saveMessages(runChatId, saved.map(attach));
+        }
+      }
       if (runChatId) {
         useAgentTodoStore
           .getState()
@@ -2812,11 +2938,14 @@ ${sandboxedCustom}`;
     (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
   const agentStatusActive =
     streaming || planApprovalStatus !== "planning" || agentTodosOpen;
+  // Live file counts ride the pill only while the run is going; afterwards the
+  // turn review card under the answer is the one place that lists changed files.
   const agentStatusPillVisible =
     agentStatusActive &&
-    (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || agentFilesChanged);
-  const agentRunSummaryVisible =
-    !agentStatusActive && (agentTodosActive.length > 0 || agentFilesChanged);
+    (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || (streaming && agentFilesChanged));
+  const agentRunSummaryVisible = !agentStatusActive && agentTodosActive.length > 0;
+  const firstUnavailableTurnId =
+    messages.find((message) => message.role === "assistant" && message.turnChanges?.unavailable)?.id ?? null;
   let lastUserIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "user") {
@@ -2998,7 +3127,9 @@ ${sandboxedCustom}`;
       data-tour-has-usage={hasUsage ? "true" : "false"}
       data-tour-has-restore={
         renderedMessages.some(
-          ({ msg }) => msg.role === "assistant" && Boolean(msg.checkpointOid),
+          ({ msg }) =>
+            msg.role === "assistant" &&
+            (msg.turnChanges?.files.length ?? 0) + (msg.turnChanges?.moreFiles ?? 0) > 0,
         )
           ? "true"
           : "false"
@@ -3242,11 +3373,19 @@ ${sandboxedCustom}`;
                             <div className="mt-1.5 px-1">
                               <AgentRunSummary
                                 todos={agentTodos}
-                                turn={agentFileChangeTurn}
+                                turn={null}
                                 plan={lastTurnWasPlanExecution}
                               />
                             </div>
                           )}
+                        {msg.role === "assistant" && msg.turnChanges && !live && projectId && (
+                          <TurnChangesCard
+                            projectId={projectId}
+                            changes={msg.turnChanges}
+                            showUnavailable={msg.id === firstUnavailableTurnId}
+                            className="mx-1 mt-1.5"
+                          />
+                        )}
                         {msg.role === "assistant" &&
                           msg.checkpointOid &&
                           msg.toolCalls?.some(
@@ -3323,7 +3462,7 @@ ${sandboxedCustom}`;
               <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
                 <AgentStatusPill
                   todos={agentTodos}
-                  turn={agentFileChangeTurn}
+                  turn={streaming ? agentFileChangeTurn : null}
                   approval={
                     planApprovalStatus === "planning"
                       ? undefined
@@ -3403,12 +3542,7 @@ ${sandboxedCustom}`;
                                     ),
                                   ])[0];
                                   if (!message) return;
-                                  return agentSteer(runId, message).then((result) => {
-                                    if (result?.status === "run_finished") return;
-                                    useAgentTurnsStore
-                                      .getState()
-                                      .markSteered(chatId, item.id);
-                                  });
+                                  return steerQueuedFollowUp(runId, message, chatId, item.id);
                                 })
                                 .catch((error: unknown) => {
                                   if (steerRunAlreadyEnded(error)) return;

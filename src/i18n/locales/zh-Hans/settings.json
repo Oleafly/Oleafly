@@ -12,7 +12,6 @@
       "checkingDescription": "Oleafly 正在检查此电脑上的命令行工具，这可能需要一点时间。",
       "checkingInstalled": "正在检查已安装的代理",
       "checkingTitle": "正在查找命令行代理",
-      "cliNotOnPath": "在 PATH 中找不到 {{command}}。",
       "cliPathLabel": "检测位置",
       "cliTitle": "命令行工具",
       "copySignInCommand": "复制登录命令",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP 代理",
       "signInCommandLabel": "登录命令",
       "versionLabel": "版本",
-      "updateBridge": "更新桥接"
+      "updateBridge": "更新桥接",
+      "program": {
+        "label": "程序",
+        "bridgeLabel": "{{cli}} 程序",
+        "notFound": "未在这台电脑上找到",
+        "bridgeDefault": "桥接程序使用自带的副本。",
+        "source": {
+          "auto": "自动检测到",
+          "override": "由你选择",
+          "managed": "由 Oleafly 安装"
+        },
+        "choose": "选择…",
+        "test": "测试",
+        "testing": "正在测试",
+        "saving": "正在保存",
+        "useAutomatic": "使用自动检测",
+        "useAnyway": "仍然使用",
+        "inputLabel": "{{name}} 的位置",
+        "pathPlaceholder": "例如：{{example}}",
+        "saved": "已保存。Oleafly 将使用此程序。",
+        "skippedTitle": "Oleafly 跳过的文件",
+        "skippedReason": {
+          "notFound": "不存在",
+          "isDirectory": "文件夹",
+          "notExecutable": "无法启动",
+          "unsupportedScript": "不支持的脚本类型",
+          "guiProgram": "桌面应用",
+          "interpreter": "shell 或运行时",
+          "networkPath": "网络位置"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} 已启动并作出响应。",
+          "readyNoVersion": "{{name}} 已启动并作出响应。",
+          "notFound": "在 {{path}} 找不到文件。",
+          "isDirectory": "{{path}} 是文件夹。请选择其中的程序文件。",
+          "powershellScript": "无法启动 PowerShell 脚本。请选择 {{command}}.cmd 或 {{command}}.exe。",
+          "unsupportedScript": "Oleafly 无法直接启动 {{file}}。请选择 {{command}}.exe。",
+          "notExecutable": "{{path}} 不是 Oleafly 能启动的程序。",
+          "guiProgram": "{{path}} 是桌面应用。请选择命令行程序。",
+          "interpreter": "{{path}} 是 shell 或脚本运行时。请选择 {{name}} 程序本身。",
+          "networkPath": "{{path}} 位于网络位置。请选择这台电脑上的程序。",
+          "cliMissing": "Oleafly 无法运行 {{cli}}。请选择 {{cli}} 程序。",
+          "bridgeMissing": "{{name}} 的桥接程序尚未安装。",
+          "nodeMissing": "{{name}} 需要 Node.js，但 Oleafly 找不到它。",
+          "nodeTooOld": "{{name}} 需要较新版本的 Node.js。",
+          "startFailed": "无法启动 {{name}}。",
+          "timeout": "{{name}} 已启动，但未能及时响应。",
+          "exited": "{{name}} 在响应前就已停止。",
+          "notAcp": "{{name}} 已启动，但 Oleafly 无法理解它的回复。"
+        },
+        "getNode": "获取 Node.js",
+        "copyDetails": "复制详细信息"
+      }
     },
     "approvals": {
       "file": {
@@ -994,7 +1045,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "新建和打开的项目都会创建 Git 仓库，以便 Git 面板跟踪更改。Oleafly 绝不会自行提交。",
+      "description": "新建和打开的项目都会创建 Git 仓库，以便 Git 面板跟踪更改。新项目通常会先有一次包含其文件的提交。此后，Oleafly 只会在你要求时提交。",
       "label": "为每个项目初始化 Git"
     },
     "config": {

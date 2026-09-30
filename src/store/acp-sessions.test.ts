@@ -252,7 +252,7 @@ describe("ACP controlled conversation selectors", () => {
     fireEvent.submit(form);
     await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("The image data is invalid."));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledTimes(2));
-    expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Keep this unsent question", [expect.objectContaining({ mimeType: "image/png" })]);
+    expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Keep this unsent question", [expect.objectContaining({ mimeType: "image/png" })], null);
     expect(message.value).toBe("Keep this unsent question");
     expect(ui.getByRole("button", { name: "Remove figure.png" })).toBeInTheDocument();
   });
@@ -271,7 +271,7 @@ describe("ACP controlled conversation selectors", () => {
     const form = message.closest("form");
     if (!form) throw new Error("The message form is missing.");
     fireEvent.submit(form);
-    await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Already sent", []));
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Already sent", [], null));
     await waitFor(() => expect(message.value).toBe(""));
     expect(useAcpSessionsStore.getState().events.first).toContainEqual(expect.objectContaining({ kind: "user_message" }));
   });

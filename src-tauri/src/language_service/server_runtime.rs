@@ -2344,7 +2344,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "needs the pinned texlab in src-tauri/binaries and latexmk with Perl on PATH"]
     async fn pinned_texlab_never_runs_a_project_latexmkrc_behind_the_shim() {
-        async fn latexmkrc_ran(launch: &ServerLaunch) -> bool {
+        async fn latexmkrc_ran(launch: &ServerLaunch, patience: Duration) -> bool {
             use tokio::io::AsyncWriteExt;
             let project = temp_dir("sentinel-project");
             let sentinel = project.join("sentinel");
@@ -2385,7 +2385,10 @@ mod tests {
                     .unwrap();
             }
             stdin.flush().await.unwrap();
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            // texlab starts latexmk on its own schedule, and killing the group
+            // before latexmk forks `touch` would hide a run. `touch` leaves the
+            // sentinel empty, so any read that succeeds means it ran.
+            let _ = crate::test_wait::read_until(&sentinel, patience, |_| Some(())).await;
             let _ = child.start_kill();
             let _ = child.wait().await;
             drop(containment);
@@ -2418,8 +2421,8 @@ mod tests {
             search_path: None,
             working_directory: shimmed.working_directory.clone(),
         };
-        assert!(latexmkrc_ran(&unshimmed).await);
-        assert!(!latexmkrc_ran(&shimmed).await);
+        assert!(latexmkrc_ran(&unshimmed, crate::test_wait::CHILD_PATIENCE).await);
+        assert!(!latexmkrc_ran(&shimmed, Duration::from_secs(5)).await);
         std::fs::remove_dir_all(app_data).unwrap();
     }
 

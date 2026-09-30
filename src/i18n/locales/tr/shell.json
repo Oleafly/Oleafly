@@ -816,6 +816,15 @@
     "enterTitle": "Bir işleme başlığı girin",
     "finishMergeToCommit": "İşlemeden önce birleştirmeyi tamamlayın.",
     "fetch": "Getir",
+    "gitMissing": {
+      "copied": "Kopyalandı",
+      "copyCommand": "Komutu kopyala",
+      "download": "Git for Windows'u indir",
+      "linux": "Kaynak Denetimi için Git gerekiyor. Paket yöneticinizle git paketini kurun, sonra bu paneli yenileyin.",
+      "mac": "Kaynak Denetimi için Git gerekiyor. Git'i de içeren Apple komut satırı araçlarını kurmak için bu komutu Terminal uygulamasında çalıştırın, sonra bu paneli yenileyin.",
+      "title": "Git kurulu değil",
+      "windows": "Kaynak Denetimi için Git gerekiyor. Git for Windows'u kurun, sonra Oleafly'yi yeniden başlatın."
+    },
     "graph": "Grafik",
     "commitCount_one": "{{count}} işleme",
     "commitCount_other": "{{count}} işleme",

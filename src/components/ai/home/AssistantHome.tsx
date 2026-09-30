@@ -84,6 +84,7 @@ function AssistantHomeView({
   quickStarts,
   quickStartTestId = "chat-suggestion",
   showSkills = true,
+  showQuickStarts = showSkills,
   before,
   children,
 }: Readonly<{
@@ -96,6 +97,8 @@ function AssistantHomeView({
   quickStarts?: readonly HomeQuickStart[];
   quickStartTestId?: string;
   showSkills?: boolean;
+  /** Quick starts can show before skills do (the CLI home has no session yet). */
+  showQuickStarts?: boolean;
   before?: ReactNode;
   children?: ReactNode;
 }>) {
@@ -128,7 +131,7 @@ function AssistantHomeView({
   const sliderRef = useRef<HTMLDivElement>(null);
   const groupIcon = GROUP_ICONS[active?.key ?? "user"] ?? Sparkles;
   const shelf: ShelfEntry[] = [
-    ...chips.map((skill) => ({
+    ...(showSkills ? chips : []).map((skill) => ({
       key: `skill:${skill.id}`,
       testId: `assistant-home-chip-${skill.id}`,
       label: skill.name,
@@ -139,7 +142,7 @@ function AssistantHomeView({
       locked: skillLocked(skill),
       onSelect: () => pick(skill),
     })),
-    ...(quickStarts ?? []).map((start) => ({
+    ...(showQuickStarts ? quickStarts ?? [] : []).map((start) => ({
       key: `start:${start.id}`,
       testId: quickStartTestId,
       label: start.label,
@@ -150,7 +153,7 @@ function AssistantHomeView({
     })),
   ];
 
-  const marquee = useMarquee(sliderRef, showSkills && shelf.length > 1);
+  const marquee = useMarquee(sliderRef, shelf.length > 1);
 
   return (
     <div
@@ -253,7 +256,7 @@ function AssistantHomeView({
         </div>
       ) : null}
 
-      {showSkills && shelf.length > 0 ? (
+      {shelf.length > 0 ? (
         <div className="relative w-full">
           <div
             ref={sliderRef}

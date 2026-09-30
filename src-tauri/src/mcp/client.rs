@@ -3251,6 +3251,7 @@ pub async fn mcp_server_remove<R: tauri::Runtime>(
 mod tests {
     use super::*;
     use crate::config::{AppConfig, McpServerConfig, McpServerTransport};
+    use crate::test_wait;
     use std::collections::BTreeMap;
     use std::collections::VecDeque;
     use std::future::Future;
@@ -5023,7 +5024,9 @@ mod tests {
             "const lines=readline.createInterface({input:process.stdin});",
             "lines.on('line',(line)=>{",
             "const message=JSON.parse(line);",
-            "if(message.method==='server/discover'){setTimeout(()=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{resultType:'complete',supportedVersions:['2026-07-28'],capabilities:{tools:{}}}})+'\\n'),2100);}",
+            // The probe's clock starts at spawn, so the delay is timed from
+            // node's own start rather than from the discover line.
+            "if(message.method==='server/discover'){setTimeout(()=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{resultType:'complete',supportedVersions:['2026-07-28'],capabilities:{tools:{}}}})+'\\n'),Math.max(0,2100-performance.now()));}",
             "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{resultType:'complete',tools:[{name:'slow_stdio_search',inputSchema:{type:'object'}}]}})+'\\n');}",
             "});"
         );
@@ -5773,7 +5776,8 @@ mod tests {
         let mut execution = RemoteTransport::new_with_timeout(
             &url,
             &BTreeMap::new(),
-            Duration::from_millis(250),
+            // Only a ceiling: the reply arrives after about 75 ms.
+            test_wait::CHILD_PATIENCE,
             McpConnectionError::ToolTimeout,
         )
         .unwrap();
@@ -5803,9 +5807,10 @@ mod tests {
         use axum::{Json, Router};
         use std::sync::{Arc, Mutex};
 
-        #[derive(Clone, Default)]
+        #[derive(Clone)]
         struct TestState {
             methods: Arc<Mutex<Vec<String>>>,
+            deadline: tokio::time::Instant,
         }
 
         async fn handler(
@@ -5846,7 +5851,7 @@ mod tests {
                 }))
                 .into_response(),
                 "tools/call" => {
-                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    tokio::time::sleep_until(state.deadline - Duration::from_millis(900)).await;
                     Json(serde_json::json!({
                         "jsonrpc": "2.0",
                         "id": message["id"],
@@ -5858,12 +5863,18 @@ mod tests {
             }
         }
 
-        async fn delete_handler() -> StatusCode {
-            tokio::time::sleep(Duration::from_millis(450)).await;
+        async fn delete_handler(State(state): State<TestState>) -> StatusCode {
+            tokio::time::sleep_until(state.deadline + Duration::from_millis(100)).await;
             StatusCode::NO_CONTENT
         }
 
-        let state = TestState::default();
+        // Production caps the session DELETE at 1 s, so the call must land in
+        // the deadline's last second for cleanup to cross it.
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+        let state = TestState {
+            methods: Arc::default(),
+            deadline,
+        };
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let app = Router::new()
@@ -5878,8 +5889,6 @@ mod tests {
                 headers: BTreeMap::new(),
             },
         };
-        let started = tokio::time::Instant::now();
-        let deadline = started + Duration::from_millis(500);
 
         let result = connect_server_and_call_until(
             server,

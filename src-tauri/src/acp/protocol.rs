@@ -14,6 +14,9 @@ use tokio::{
 };
 
 pub const MAX_FRAME: usize = 1024 * 1024;
+/// Largest `session/update` notification that is read and then dropped rather
+/// than ending the connection. Pi sends a whole-file diff in one update.
+pub const MAX_DROPPED_UPDATE: usize = 16 * 1024 * 1024;
 const MAX_PENDING: usize = 32;
 const MAX_STDERR_TAIL: usize = 8 * 1024;
 const MAX_TAIL_LINES: usize = 20;
@@ -126,8 +129,31 @@ impl std::fmt::Display for RpcError {
 #[derive(Debug)]
 pub enum Incoming {
     Message(Value),
+    /// A `session/update` notification larger than [`MAX_FRAME`] was skipped.
+    DroppedUpdate {
+        bytes: usize,
+    },
     Barrier(oneshot::Sender<()>),
     Disconnected,
+}
+
+/// One newline-delimited message read from an agent.
+#[derive(Debug)]
+pub enum Frame {
+    Message(Value),
+    /// An oversized `session/update` notification that was read and dropped.
+    DroppedUpdate {
+        bytes: usize,
+    },
+    /// An oversized tool call update that was read, with everything but the
+    /// tool call's identity and status dropped, so the call still ends.
+    TruncatedUpdate {
+        bytes: usize,
+        /// The `session/update` notification with only `sessionId` and the
+        /// update's `sessionUpdate`, `toolCallId`, `status`, `kind` and
+        /// `title`, marked `truncated`.
+        message: Value,
+    },
 }
 
 pub struct Connection {
@@ -139,6 +165,20 @@ pub struct Connection {
     stderr: StderrTail,
 }
 
+/// The outcome of a request, read from the agent's response to it.
+fn rpc_response(value: &Value) -> Result<Value, RpcError> {
+    if value.get("error").is_some() {
+        Err(RpcError {
+            code: value["error"]["code"].as_i64().unwrap_or(-32603),
+            message: rpc_error_message(&value["error"]),
+        })
+    } else if let Some(result) = value.get("result") {
+        Ok(result.clone())
+    } else {
+        Err(RpcError::local("The agent returned an invalid response."))
+    }
+}
+
 async fn pump_agent_frames(
     stdout: tokio::process::ChildStdout,
     pending: Pending,
@@ -146,7 +186,31 @@ async fn pump_agent_frames(
     stop: watch::Sender<bool>,
 ) {
     let mut reader = BufReader::new(stdout);
-    while let Ok(Some(value)) = read_frame(&mut reader).await {
+    while let Ok(Some(frame)) = read_agent_frame(&mut reader).await {
+        let value = match frame {
+            Frame::Message(value) => value,
+            Frame::DroppedUpdate { bytes } => {
+                if incoming
+                    .send(Incoming::DroppedUpdate { bytes })
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
+            Frame::TruncatedUpdate { bytes, message } => {
+                if incoming.send(Incoming::Message(message)).await.is_err()
+                    || incoming
+                        .send(Incoming::DroppedUpdate { bytes })
+                        .await
+                        .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
+        };
         if value.get("method").is_none() {
             if let Some(id) = value["id"].as_u64() {
                 let sender = pending.lock().ok().and_then(|mut map| map.remove(&id));
@@ -157,17 +221,7 @@ async fn pump_agent_frames(
                     {
                         break;
                     }
-                    let response = if value.get("error").is_some() {
-                        Err(RpcError {
-                            code: value["error"]["code"].as_i64().unwrap_or(-32603),
-                            message: rpc_error_message(&value["error"]),
-                        })
-                    } else if let Some(result) = value.get("result") {
-                        Ok(result.clone())
-                    } else {
-                        Err(RpcError::local("The agent returned an invalid response."))
-                    };
-                    let _ = sender.send(response);
+                    let _ = sender.send(rpc_response(&value));
                 }
             }
         } else if incoming.send(Incoming::Message(value)).await.is_err() {
@@ -181,9 +235,142 @@ async fn pump_agent_frames(
     let _ = stop.send(true);
 }
 
+/// Reads one message of at most [`MAX_FRAME`] bytes.
+#[cfg(test)]
 pub async fn read_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Value>, RpcError> {
+    match read_frame_bytes(reader, MAX_FRAME).await? {
+        Some(bytes) => parse_envelope(&bytes).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Reads the next agent message. A `session/update` notification between
+/// 1 MiB and 16 MiB is read in full and its content dropped (a tool call
+/// update keeps its identity and status); every other message over 1 MiB,
+/// and anything over 16 MiB, is an error.
+pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+) -> Result<Option<Frame>, RpcError> {
+    let Some(bytes) = read_frame_bytes(reader, MAX_DROPPED_UPDATE).await? else {
+        return Ok(None);
+    };
+    if bytes.len() <= MAX_FRAME {
+        return parse_envelope(&bytes).map(|value| Some(Frame::Message(value)));
+    }
+    match oversized_update(&bytes) {
+        Some(Some(message)) => Ok(Some(Frame::TruncatedUpdate {
+            bytes: bytes.len(),
+            message,
+        })),
+        Some(None) => Ok(Some(Frame::DroppedUpdate { bytes: bytes.len() })),
+        None => Err(RpcError::local(
+            "The agent sent an ACP message larger than 1 MiB.",
+        )),
+    }
+}
+
+/// A string field of an oversized update; any other value is ignored.
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum LooseText {
+    Text(String),
+    Other(serde::de::IgnoredAny),
+}
+
+impl LooseText {
+    fn text(field: Option<Self>, limit: usize) -> Option<String> {
+        match field? {
+            Self::Text(text) if !text.is_empty() && text.len() <= limit => Some(text),
+            _ => None,
+        }
+    }
+}
+
+/// Checks the envelope of an oversized frame without building its payload.
+/// `None`: not an update notification. `Some(None)`: an update that is only
+/// counted. `Some(Some(message))`: a tool call update cut to its identity.
+fn oversized_update(bytes: &[u8]) -> Option<Option<Value>> {
+    #[derive(serde::Deserialize)]
+    struct Envelope {
+        jsonrpc: Option<String>,
+        method: Option<String>,
+        id: Option<serde::de::IgnoredAny>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Identity {
+        params: Option<Params>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Params {
+        #[serde(rename = "sessionId")]
+        session_id: Option<LooseText>,
+        update: Option<Update>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Update {
+        #[serde(rename = "sessionUpdate")]
+        session_update: Option<LooseText>,
+        #[serde(rename = "toolCallId")]
+        tool_call_id: Option<LooseText>,
+        status: Option<LooseText>,
+        kind: Option<LooseText>,
+        title: Option<LooseText>,
+    }
+    let envelope = serde_json::from_slice::<Envelope>(bytes).ok()?;
+    if envelope.jsonrpc.as_deref() != Some("2.0")
+        || envelope.method.as_deref() != Some("session/update")
+        || envelope.id.is_some()
+    {
+        return None;
+    }
+    // A second pass, so a params shape this reader does not expect still
+    // counts as a dropped update rather than ending the connection.
+    Some((|| {
+        let params = serde_json::from_slice::<Identity>(bytes).ok()?.params?;
+        let session_id = LooseText::text(params.session_id, 512)?;
+        let update = params.update?;
+        let kind = LooseText::text(update.session_update, 64)
+            .filter(|kind| matches!(kind.as_str(), "tool_call" | "tool_call_update"))?;
+        let tool_call_id = LooseText::text(update.tool_call_id, 512)?;
+        let mut kept = serde_json::Map::new();
+        kept.insert("sessionUpdate".into(), Value::String(kind));
+        kept.insert("toolCallId".into(), Value::String(tool_call_id));
+        for (key, field) in [
+            ("status", update.status),
+            ("kind", update.kind),
+            ("title", update.title),
+        ] {
+            if let Some(text) = LooseText::text(field, 1024) {
+                kept.insert(key.into(), Value::String(text));
+            }
+        }
+        kept.insert("truncated".into(), Value::Bool(true));
+        Some(json!({
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {"sessionId": session_id, "update": kept},
+        }))
+    })())
+}
+
+fn parse_envelope(bytes: &[u8]) -> Result<Value, RpcError> {
+    let value: Value = serde_json::from_slice(bytes)
+        .map_err(|_| RpcError::local("The agent sent invalid ACP JSON."))?;
+    if value["jsonrpc"] != "2.0" || !value.is_object() {
+        return Err(RpcError::local(
+            "The agent sent an invalid JSON-RPC envelope.",
+        ));
+    }
+    Ok(value)
+}
+
+/// Reads one non-blank line of at most `limit` bytes.
+async fn read_frame_bytes<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<Option<Vec<u8>>, RpcError> {
     let mut bytes = Vec::new();
     loop {
         let available = reader
@@ -199,10 +386,12 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
         }
         let newline = available.iter().position(|b| *b == b'\n');
         let count = newline.map(|v| v + 1).unwrap_or(available.len());
-        if bytes.len() + count > MAX_FRAME {
-            return Err(RpcError::local(
-                "The agent sent an ACP message larger than 1 MiB.",
-            ));
+        if bytes.len() + count > limit {
+            return Err(RpcError::local(if limit > MAX_FRAME {
+                "The agent sent an ACP message larger than 16 MiB."
+            } else {
+                "The agent sent an ACP message larger than 1 MiB."
+            }));
         }
         bytes.extend_from_slice(&available[..count]);
         reader.consume(count);
@@ -211,14 +400,7 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
                 bytes.clear();
                 continue;
             }
-            let value: Value = serde_json::from_slice(&bytes)
-                .map_err(|_| RpcError::local("The agent sent invalid ACP JSON."))?;
-            if value["jsonrpc"] != "2.0" || !value.is_object() {
-                return Err(RpcError::local(
-                    "The agent sent an invalid JSON-RPC envelope.",
-                ));
-            }
-            return Ok(Some(value));
+            return Ok(Some(bytes));
         }
     }
 }
@@ -233,8 +415,13 @@ impl Connection {
             .stderr(Stdio::piped())
             .kill_on_drop(true);
         crate::proc::isolate_process_tree(&mut command);
-        let mut child = command.spawn().map_err(|_| {
-            "The agent could not be started. Check its installation and executable permissions."
+        let program = command.as_std().get_program().to_owned();
+        let mut child = command.spawn().map_err(|error| {
+            format!(
+                "The agent could not be started. Check its installation and executable permissions. ({:?}: {})",
+                error.kind(),
+                std::path::Path::new(&program).display()
+            )
         })?;
         let pid = child.id().ok_or("The agent process has no ID.")?;
         let guard = match crate::proc::contain_process_tree(pid) {

@@ -12,7 +12,6 @@
       "checkingDescription": "Oleafly がこのコンピュータのコマンドラインツールを調べるため、少し時間がかかることがあります。",
       "checkingInstalled": "インストール済みのエージェントを確認しています",
       "checkingTitle": "コマンドラインのエージェントを探しています",
-      "cliNotOnPath": "{{command}} は PATH に見つかりませんでした。",
       "cliPathLabel": "検出場所",
       "cliTitle": "コマンドラインツール",
       "copySignInCommand": "サインインのコマンドをコピー",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP エージェント",
       "signInCommandLabel": "サインインのコマンド",
       "versionLabel": "バージョン",
-      "updateBridge": "ブリッジを更新"
+      "updateBridge": "ブリッジを更新",
+      "program": {
+        "label": "プログラム",
+        "bridgeLabel": "{{cli}} のプログラム",
+        "notFound": "このコンピュータに見つかりません",
+        "bridgeDefault": "ブリッジは独自のコピーを使用します。",
+        "source": {
+          "auto": "自動で検出",
+          "override": "手動で選択",
+          "managed": "Oleafly がインストール"
+        },
+        "choose": "選択…",
+        "test": "テスト",
+        "testing": "テスト中",
+        "saving": "保存中",
+        "useAutomatic": "自動検出を使用",
+        "useAnyway": "このまま使用",
+        "inputLabel": "{{name}} の場所",
+        "pathPlaceholder": "例: {{example}}",
+        "saved": "保存しました。Oleafly はこのプログラムを使用します。",
+        "skippedTitle": "Oleafly がスキップしたファイル",
+        "skippedReason": {
+          "notFound": "見つかりません",
+          "isDirectory": "フォルダ",
+          "notExecutable": "起動できません",
+          "unsupportedScript": "未対応のスクリプト形式",
+          "guiProgram": "デスクトップアプリ",
+          "interpreter": "shell またはランタイム",
+          "networkPath": "ネットワーク上の場所"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} が起動し、応答しました。",
+          "readyNoVersion": "{{name}} が起動し、応答しました。",
+          "notFound": "{{path}} にファイルがありません。",
+          "isDirectory": "{{path}} はフォルダです。中にあるプログラムファイルを選んでください。",
+          "powershellScript": "PowerShell スクリプトは起動できません。{{command}}.cmd か {{command}}.exe を選んでください。",
+          "unsupportedScript": "Oleafly は {{file}} を直接起動できません。{{command}}.exe を選んでください。",
+          "notExecutable": "{{path}} は Oleafly が起動できるプログラムではありません。",
+          "guiProgram": "{{path}} はデスクトップアプリです。コマンドラインのプログラムを選んでください。",
+          "interpreter": "{{path}} は shell またはスクリプトのランタイムです。{{name}} のプログラム本体を選んでください。",
+          "networkPath": "{{path}} はネットワーク上の場所にあります。このコンピュータ上のプログラムを選んでください。",
+          "cliMissing": "Oleafly は {{cli}} を実行できませんでした。{{cli}} のプログラムを選んでください。",
+          "bridgeMissing": "{{name}} のブリッジはまだインストールされていません。",
+          "nodeMissing": "{{name}} には Node.js が必要ですが、Oleafly は見つけられませんでした。",
+          "nodeTooOld": "{{name}} には新しいバージョンの Node.js が必要です。",
+          "startFailed": "{{name}} を起動できませんでした。",
+          "timeout": "{{name}} は起動しましたが、時間内に応答しませんでした。",
+          "exited": "{{name}} は応答する前に停止しました。",
+          "notAcp": "{{name}} は起動しましたが、Oleafly はその応答を理解できませんでした。"
+        },
+        "getNode": "Node.js を入手",
+        "copyDetails": "詳細をコピー"
+      }
     },
     "approvals": {
       "file": {
@@ -994,7 +1045,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "新しく作ったプロジェクトや開いたプロジェクトに Git リポジトリを用意し、Git パネルで変更を追えるようにします。Oleafly が自分からコミットすることはありません。",
+      "description": "新しく作ったプロジェクトや開いたプロジェクトに Git リポジトリを用意し、Git パネルで変更を追えるようにします。新しいプロジェクトは通常、ファイルをまとめた 1 件のコミットから始まります。その後は、指示したときだけ Oleafly がコミットします。",
       "label": "すべてのプロジェクトで Git を初期化する"
     },
     "config": {

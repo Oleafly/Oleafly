@@ -12,7 +12,6 @@
       "checkingDescription": "Det kan tage et øjeblik, mens Oleafly tjekker kommandolinjeværktøjerne på denne computer.",
       "checkingInstalled": "Tjekker installerede agenter",
       "checkingTitle": "Leder efter kommandolinjeagenter",
-      "cliNotOnPath": "{{command}} blev ikke fundet i din PATH.",
       "cliPathLabel": "Fundet i",
       "cliTitle": "Kommandolinjeværktøj",
       "copySignInCommand": "Kopier login-kommandoen",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP-agenter",
       "signInCommandLabel": "Login-kommando",
       "versionLabel": "Version",
-      "updateBridge": "Opdater broen"
+      "updateBridge": "Opdater broen",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "{{cli}}-program",
+        "notFound": "Ikke fundet på denne computer",
+        "bridgeDefault": "Broen bruger sin egen kopi.",
+        "source": {
+          "auto": "Fundet automatisk",
+          "override": "Valgt af dig",
+          "managed": "Installeret af Oleafly"
+        },
+        "choose": "Vælg…",
+        "test": "Test",
+        "testing": "Tester",
+        "saving": "Gemmer",
+        "useAutomatic": "Brug automatisk registrering",
+        "useAnyway": "Brug alligevel",
+        "inputLabel": "Placering af {{name}}",
+        "pathPlaceholder": "For eksempel {{example}}",
+        "saved": "Gemt. Oleafly bruger dette program.",
+        "skippedTitle": "Filer, som Oleafly sprang over",
+        "skippedReason": {
+          "notFound": "Mangler",
+          "isDirectory": "Mappe",
+          "notExecutable": "Kan ikke startes",
+          "unsupportedScript": "Scripttypen understøttes ikke",
+          "guiProgram": "Skrivebordsapp",
+          "interpreter": "Shell eller runtime",
+          "networkPath": "Netværksplacering"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} startede og svarede.",
+          "readyNoVersion": "{{name}} startede og svarede.",
+          "notFound": "Der er ingen fil i {{path}}.",
+          "isDirectory": "{{path}} er en mappe. Vælg programfilen i den.",
+          "powershellScript": "PowerShell-scripts kan ikke startes. Vælg {{command}}.cmd eller {{command}}.exe.",
+          "unsupportedScript": "Oleafly kan ikke starte {{file}} direkte. Vælg {{command}}.exe.",
+          "notExecutable": "{{path}} er ikke et program, Oleafly kan starte.",
+          "guiProgram": "{{path}} er en skrivebordsapp. Vælg kommandolinjeprogrammet.",
+          "interpreter": "{{path}} er en shell eller en runtime til scripts. Vælg selve programmet til {{name}}.",
+          "networkPath": "{{path}} ligger på en netværksplacering. Vælg et program på denne computer.",
+          "cliMissing": "Oleafly kunne ikke køre {{cli}}. Vælg {{cli}}-programmet.",
+          "bridgeMissing": "Broen til {{name}} er ikke installeret endnu.",
+          "nodeMissing": "{{name}} kræver Node.js, og Oleafly kunne ikke finde det.",
+          "nodeTooOld": "{{name}} kræver en nyere version af Node.js.",
+          "startFailed": "{{name}} kunne ikke startes.",
+          "timeout": "{{name}} startede, men svarede ikke i tide.",
+          "exited": "{{name}} stoppede, før det svarede.",
+          "notAcp": "{{name}} startede, men Oleafly kunne ikke forstå svaret."
+        },
+        "getNode": "Hent Node.js",
+        "copyDetails": "Kopier detaljerne"
+      }
     },
     "approvals": {
       "file": {
@@ -1001,7 +1052,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Nye og åbnede projekter får et Git-arkiv, så Git-panelet kan følge ændringerne. Oleafly committer aldrig af sig selv.",
+      "description": "Nye og åbnede projekter får et Git-arkiv, så Git-panelet kan følge ændringerne. Et nyt projekt starter som regel med én commit af sine filer. Derefter committer Oleafly kun, når du beder om det.",
       "label": "Klargør Git til alle projekter"
     },
     "config": {

@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Este proyecto ya está enlazado con {{remote}}.",
-    "nested_repository": "Este proyecto está dentro de otro repositorio Git, así que Oleafly no creará uno aparte aquí."
+    "nested_repository": "Este proyecto está dentro de otro repositorio Git, así que Oleafly no creará uno aparte aquí.",
+    "not_installed": "Git no está instalado en este equipo. Instala Git y vuelve a intentarlo."
   },
   "approvals": {
     "full_access_declined": "No se activó el acceso completo."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Este historial de puntos de control viene de un proyecto de tu biblioteca de Oleafly, así que no se puede usar con una carpeta abierta en su ubicación.",
     "folder_history_for_library": "Este historial de puntos de control viene de una carpeta abierta en su ubicación, así que no se puede usar con un proyecto de tu biblioteca de Oleafly.",
     "restore_path_blocked": "Oleafly no puede restaurar {{path}} porque hay un enlace u otra cosa que no es un archivo en su lugar. Muévelo e inténtalo de nuevo."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly no encontró ese programa.",
+      "is_directory": "Eso es una carpeta. Elige el archivo del programa que hay dentro.",
+      "not_executable": "Ese archivo no se puede iniciar como programa.",
+      "unsupported_script": "Los scripts de PowerShell no se pueden iniciar. Elige el archivo .cmd o .exe con el mismo nombre.",
+      "needs_exe": "Este agente no puede usar un archivo .cmd. Elige su archivo .exe.",
+      "gui_program": "Eso es una aplicación de escritorio. Elige el programa que ejecutas en un terminal.",
+      "interpreter": "Ese programa ejecuta otros programas. Elige el programa propio del agente.",
+      "network_path": "Elige un programa de este equipo, no de una ubicación de red.",
+      "unknown_agent": "Oleafly no conoce este agente.",
+      "declined": "No se cambió el programa.",
+      "check_running": "Ya hay una prueba de este agente en marcha.",
+      "main_window": "Cambia los programas de los agentes desde la ventana principal."
+    }
   }
 }

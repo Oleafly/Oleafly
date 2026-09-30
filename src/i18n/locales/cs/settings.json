@@ -12,7 +12,6 @@
       "checkingDescription": "Chvíli to potrvá, než Oleafly zkontroluje nástroje příkazové řádky v tomto počítači.",
       "checkingInstalled": "Kontrolují se nainstalovaní agenti",
       "checkingTitle": "Hledají se agenti pro příkazovou řádku",
-      "cliNotOnPath": "{{command}} nebyl nalezen ve vaší proměnné PATH.",
       "cliPathLabel": "Nalezeno v",
       "cliTitle": "Nástroj příkazové řádky",
       "copySignInCommand": "Kopírovat přihlašovací příkaz",
@@ -66,7 +65,59 @@
       "sectionLabel": "Agenti ACP",
       "signInCommandLabel": "Přihlašovací příkaz",
       "versionLabel": "Verze",
-      "updateBridge": "Aktualizovat most"
+      "updateBridge": "Aktualizovat most",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "Program {{cli}}",
+        "notFound": "V tomto počítači nenalezeno",
+        "bridgeDefault": "Most používá vlastní kopii.",
+        "source": {
+          "auto": "Nalezeno automaticky",
+          "override": "Vybráno vámi",
+          "managed": "Nainstalováno aplikací Oleafly"
+        },
+        "choose": "Vybrat…",
+        "test": "Otestovat",
+        "testing": "Testuje se",
+        "saving": "Ukládá se",
+        "useAutomatic": "Použít automatické zjišťování",
+        "useAnyway": "Přesto použít",
+        "inputLabel": "Umístění programu {{name}}",
+        "pathPlaceholder": "Například {{example}}",
+        "saved": "Uloženo. Oleafly bude používat tento program.",
+        "skippedTitle": "Soubory přeskočené aplikací Oleafly",
+        "skippedReason": {
+          "notFound": "Chybí",
+          "isDirectory": "Složka",
+          "notExecutable": "Nelze spustit",
+          "unsupportedScript": "Nepodporovaný typ skriptu",
+          "guiProgram": "Desktopová aplikace",
+          "interpreter": "Shell nebo běhové prostředí",
+          "networkPath": "Síťové umístění"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} se spustil a odpověděl.",
+          "readyNoVersion": "{{name}} se spustil a odpověděl.",
+          "notFound": "V umístění {{path}} není žádný soubor.",
+          "isDirectory": "{{path}} je složka. Vyberte soubor programu, který je v ní.",
+          "powershellScript": "Skripty PowerShell nelze spustit. Vyberte {{command}}.cmd nebo {{command}}.exe.",
+          "unsupportedScript": "Oleafly nemůže soubor {{file}} spustit přímo. Vyberte {{command}}.exe.",
+          "notExecutable": "{{path}} není program, který Oleafly umí spustit.",
+          "guiProgram": "{{path}} je desktopová aplikace. Vyberte program pro příkazovou řádku.",
+          "interpreter": "{{path}} je shell nebo běhové prostředí skriptů. Vyberte samotný program {{name}}.",
+          "networkPath": "{{path}} je v síťovém umístění. Vyberte program v tomto počítači.",
+          "cliMissing": "Oleafly nemůže spustit {{cli}}. Vyberte program {{cli}}.",
+          "bridgeMissing": "Most pro {{name}} ještě není nainstalován.",
+          "nodeMissing": "{{name}} potřebuje Node.js, ale Oleafly ho nemůže najít.",
+          "nodeTooOld": "{{name}} potřebuje novější verzi Node.js.",
+          "startFailed": "{{name}} se nepodařilo spustit.",
+          "timeout": "{{name}} se spustil, ale neodpověděl včas.",
+          "exited": "{{name}} se ukončil dřív, než odpověděl.",
+          "notAcp": "{{name}} se spustil, ale Oleafly jeho odpovědi nerozumí."
+        },
+        "getNode": "Stáhnout Node.js",
+        "copyDetails": "Kopírovat podrobnosti"
+      }
     },
     "approvals": {
       "file": {
@@ -1015,7 +1066,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Nové i otevřené projekty dostanou repozitář Git, aby panel Git mohl sledovat změny. Oleafly nikdy necommituje sám od sebe.",
+      "description": "Nové i otevřené projekty dostanou repozitář Git, aby panel Git mohl sledovat změny. Nový projekt obvykle začíná jedním commitem svých souborů. Potom Oleafly commituje jen tehdy, když o to požádáte.",
       "label": "Inicializovat Git pro každý projekt"
     },
     "config": {

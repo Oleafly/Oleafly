@@ -450,21 +450,25 @@
       "namedHeadline": "{{agent}} potrzebuje zgody",
       "headline": "Agent potrzebuje zgody",
       "expired": "To żądanie wygasło. Poproś agenta, aby spróbował ponownie.",
-      "dismiss": "Odrzuć"
+      "dismiss": "Odrzuć",
+      "diff": {
+        "showChange": "Pokaż zmianę",
+        "hideChange": "Ukryj zmianę",
+        "large": "Duża zmiana w {{path}}. Przejrzyj ją po zakończeniu tury.",
+        "label": "Proponowana zmiana w {{path}}",
+        "loading": "Wczytywanie zmiany…"
+      }
     },
     "readiness": {
       "managedBridge": "Mostek {{version}} zainstalowany przez Oleafly.",
-      "bridgeOnPath": "Mostek znaleziony w PATH.",
       "bridgeMissingWithCli": "Znaleziono {{cli}} w {{path}}. Zainstaluj mostek ACP {{version}}, aby się połączyć.",
       "bridgeMissing": "Zainstaluj mostek ACP {{version}}, aby połączyć tego agenta.",
-      "cliMissing": "{{cli}} nie znajduje się w PATH. Zainstaluj go, a potem uruchom {{command}}.",
       "cliNotFound": "Nie znaleziono narzędzia wiersza poleceń tego agenta.",
       "unavailable": "Ten agent nie może działać na tym komputerze."
     },
     "bridgeSource": {
       "notInstalled": "Niezainstalowany",
-      "managed": "Zarządzany przez Oleafly",
-      "onPath": "W PATH"
+      "managed": "Zarządzany przez Oleafly"
     },
     "installing": "Instalowanie",
     "installBridge": "Zainstaluj mostek",
@@ -517,8 +521,52 @@
     "terminalCommand": "Agent uruchamia polecenie w terminalu.",
     "agentToolFallback": "Narzędzie agenta",
     "agentReported": "Agent zgłosił: {{detail}}",
+    "updateTooLarge": "Część danych wyjściowych agenta była za duża, aby ją pokazać ({{size}}).",
     "imageAttachmentName": "Obraz {{index}}",
-    "agentImage": "[Agent zwrócił obraz.]"
+    "agentImage": "[Agent zwrócił obraz.]",
+    "setup": {
+      "cliNotFound": "Oleafly nie może znaleźć {{cli}} na tym komputerze.",
+      "rejected": {
+        "powershellScript": "Znaleziono {{file}}, ale skryptów PowerShell nie można uruchamiać. Wybierz {{name}}.cmd lub {{name}}.exe.",
+        "script": "Znaleziono {{file}}, ale Oleafly nie może uruchomić go bezpośrednio. Wybierz {{name}}.exe.",
+        "isDirectory": "Znaleziono folder o nazwie {{file}}. Wybierz plik programu {{name}}.",
+        "notExecutable": "Znaleziono {{file}}, ale nie jest to program, który Oleafly może uruchomić.",
+        "guiProgram": "Znaleziono {{file}}, ale to aplikacja desktopowa. Wybierz narzędzie wiersza poleceń {{name}}.",
+        "networkPath": "Znaleziono {{file}} w lokalizacji sieciowej. Wybierz kopię na tym komputerze."
+      },
+      "foundOnComputer": "Znaleziono na tym komputerze.",
+      "usingChosen": "Używany jest program wybrany przez Ciebie.",
+      "bridgeSourceFound": "Znaleziony na tym komputerze",
+      "setUp": "Skonfiguruj {{name}}",
+      "backgroundTasks": "Zadania w tle: {{reason}}",
+      "cliMissingNextStep": "Zainstaluj {{cli}} lub wskaż, gdzie jest zainstalowany.",
+      "installUnavailable": "Oleafly nie może zainstalować tego mostka na tym komputerze.",
+      "builtIn": "Wbudowany",
+      "showAgent": "Pokaż"
+    },
+    "export": {
+      "menuItem": "Eksportuj rozmowę…",
+      "saved": "Wyeksportowano rozmowę",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Rozmowa",
+      "project": "Projekt",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Wybrany przez agenta",
+      "startRevision": "Rozpoczęto na commicie",
+      "uncommitted": "{{revision}} z niezatwierdzonymi zmianami",
+      "started": "Rozpoczęto",
+      "updated": "Ostatnia aktualizacja",
+      "you": "Ty",
+      "skill": "Umiejętność: {{name}}",
+      "tool": "Narzędzie: {{name}}",
+      "changedFiles": "Zmienione pliki",
+      "moreFiles_one": "i jeszcze {{count}} plik",
+      "moreFiles_few": "i jeszcze {{count}} pliki",
+      "moreFiles_many": "i jeszcze {{count}} plików",
+      "moreFiles_other": "i jeszcze {{count}} pliku"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agent CLI",
@@ -751,5 +799,75 @@
     "preSubmission": "Przygotuj to do zgłoszenia",
     "slides": "Zamień ten artykuł w wystąpienie",
     "recompile": "Skompiluj ponownie i sprawdź błędy"
+  },
+  "turnChanges": {
+    "ariaLabel": "Pliki zmienione w tej turze",
+    "changed_one": "Zmieniono {{count}} plik",
+    "changed_few": "Zmieniono {{count}} pliki",
+    "changed_many": "Zmieniono {{count}} plików",
+    "changed_other": "Zmieniono {{count}} pliku",
+    "buildOnly": "Zaktualizowano pliki kompilacji",
+    "review": "Przejrzyj",
+    "undoAll": "Cofnij wszystko",
+    "redoAll": "Ponów wszystko",
+    "undo": "Cofnij",
+    "redo": "Ponów",
+    "undoFile": "Cofnij zmiany w {{path}}",
+    "redoFile": "Ponów zmiany w {{path}}",
+    "kind": {
+      "added": "Dodano",
+      "modified": "Zmieniono",
+      "deleted": "Usunięto"
+    },
+    "undone": "Cofnięto",
+    "editedAfter": "Zmieniono po tej turze",
+    "alsoEdited": "Ten plik był edytowany także przez Ciebie w trakcie tury",
+    "committed": "Zatwierdzono w {{commit}}",
+    "buildFiles": "Zaktualizowano pliki kompilacji",
+    "moreFiles_one": "Jeszcze {{count}} plik nie jest wymieniony",
+    "moreFiles_few": "Jeszcze {{count}} pliki nie są wymienione",
+    "moreFiles_many": "Jeszcze {{count}} plików nie jest wymienionych",
+    "moreFiles_other": "Jeszcze {{count}} pliku nie jest wymienione",
+    "skipped_one": "Nie udało się skopiować {{count}} pliku przed turą, więc nie da się cofnąć jego zmian.",
+    "skipped_few": "Nie udało się skopiować {{count}} plików przed turą, więc nie da się cofnąć ich zmian.",
+    "skipped_many": "Nie udało się skopiować {{count}} plików przed turą, więc nie da się cofnąć ich zmian.",
+    "skipped_other": "Nie udało się skopiować {{count}} pliku przed turą, więc nie da się cofnąć ich zmian.",
+    "overlapped": "Inny agent zmieniał pliki w tym samym czasie. Cofaj pliki pojedynczo.",
+    "expired": "Cofanie nie jest już dostępne dla tej tury.",
+    "waitForRun": "Cofanie będzie dostępne, gdy agent skończy.",
+    "unavailable": {
+      "tooLarge": "Cofanie nie jest dostępne dla tej tury: projekt jest za duży, aby go skopiować.",
+      "tooManyFiles": "Cofanie nie jest dostępne dla tej tury: projekt ma za dużo plików.",
+      "timeout": "Cofanie nie jest dostępne dla tej tury: kopiowanie projektu trwało za długo.",
+      "error": "Cofanie nie jest dostępne dla tej tury: nie udało się skopiować projektu."
+    },
+    "previewLoading": "Wczytywanie zmiany…",
+    "previewFailed": "Nie udało się wczytać tej zmiany.",
+    "binary": "Ten plik nie jest tekstowy, więc nie można pokazać zmiany.",
+    "tooLarge": "Ta zmiana jest za duża, aby ją tu pokazać.",
+    "diffLabel": "Zmiana w {{path}}",
+    "undid_one": "Cofnięto zmiany w {{count}} pliku.",
+    "undid_few": "Cofnięto zmiany w {{count}} plikach.",
+    "undid_many": "Cofnięto zmiany w {{count}} plikach.",
+    "undid_other": "Cofnięto zmiany w {{count}} pliku.",
+    "redid_one": "Ponowiono zmiany w {{count}} pliku.",
+    "redid_few": "Ponowiono zmiany w {{count}} plikach.",
+    "redid_many": "Ponowiono zmiany w {{count}} plikach.",
+    "redid_other": "Ponowiono zmiany w {{count}} pliku.",
+    "skippedEdited": "Niektóre pliki zmieniły się po tej turze, więc Oleafly zostawił je bez zmian.",
+    "skippedFailed": "Nie udało się zapisać niektórych plików.",
+    "undoFailed": "Nie udało się cofnąć zmian. Zapisz swoją pracę i spróbuj ponownie.",
+    "redoFailed": "Nie udało się ponowić zmian. Zapisz swoją pracę i spróbuj ponownie."
+  },
+  "presets": {
+    "literatureSweep": "Przeszukanie literatury",
+    "relatedWork": "Prace pokrewne",
+    "citationAudit": "Kontrola cytowań",
+    "manuscriptReview": "Recenzja maszynopisu",
+    "reproducibilityAudit": "Kontrola odtwarzalności",
+    "figureAudit": "Kontrola rysunków",
+    "gitReview": "Przegląd zmian w Git",
+    "referenceCleanup": "Porządkowanie bibliografii",
+    "removeSkill": "Usuń umiejętność {{name}}"
   }
 }

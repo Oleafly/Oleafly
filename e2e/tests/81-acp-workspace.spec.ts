@@ -167,7 +167,7 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
       10_000,
     );
     await clickHeaderAction(page, "New conversation");
-    await expect(assistant).toContainText(`${fixture.agentId} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
     await work(fixture);
   } finally {
     try {
@@ -322,7 +322,7 @@ test("Stop reaps the child process of an agent that ignores cancellation", async
     const pids = fixturePids(fixture.pidFile);
     expect(pids.every(processAlive)).toBe(true);
     await tauriPage.click('button[aria-label="Stop"]');
-    await expect(assistant).toContainText(`${fixture.agentId} · cancelled`, { timeout: 60_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · cancelled`, { timeout: 60_000 });
     await waitHost(() => pids.every((pid) => !processAlive(pid)), "Stop left an ACP fixture process running");
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
     expect(stopped.session.status).toBe("cancelled");
@@ -343,7 +343,7 @@ test("Stop ends the turn and leaves a compliant agent connected", async ({ tauri
     await expect(assistant).toContainText("ACP fixture waiting for cancellation.", { timeout: 20_000 });
     await waitHost(() => fixturePids(fixture.pidFile).length === 2, "the fixture did not start its child process");
     await tauriPage.click('button[aria-label="Stop"]');
-    await expect(assistant).toContainText(`${fixture.agentId} · ready`, { timeout: 30_000 });
+    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ready`, { timeout: 30_000 });
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
     await expect(assistant.getByText("Reconnect to conversation", { exact: true })).toHaveCount(0);
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
@@ -360,5 +360,50 @@ test("Agent setup opens the CLI agents tab in settings", async ({ tauriPage }) =
     await expect(tauriPage.locator('[data-testid="ai-settings-tab-agents"]')).toBeVisible({ timeout: 20_000 });
     await expect(tauriPage.locator(`[data-testid="acp-agent-card-${fixture.agentId}"]`)).toBeVisible({ timeout: 20_000 });
     await tauriPage.press("body", "Escape");
+  });
+});
+
+function projectFileIncludes(fixture: AgentFixture, path: string, needle: string, expected: boolean) {
+  return `import("/src/lib/tauri.ts").then(({ readFileContent }) => readFileContent(${scriptValue(fixture.projectId)}, ${scriptValue(path)})).then((text) => text.includes(${scriptValue(needle)}) === ${expected})`;
+}
+
+test("an agent's edit shows as a turn change that can be reviewed, undone and redone", async ({ tauriPage }) => {
+  test.setTimeout(150_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const assistant = tauriPage.locator(assistantSelector);
+    const marker = `% agent edit ${fixture.run}`;
+    await sendPrompt(tauriPage, `edit main.tex ${marker}`);
+    await expect(assistant).toContainText("ACP fixture edited main.tex", { timeout: 30_000 });
+    await tauriPage.waitForFunction(projectFileIncludes(fixture, "main.tex", marker, true), 20_000);
+
+    const card = assistant.locator('[data-testid="turn-changes"]');
+    await expect(card).toContainText("Changed 1 file", { timeout: 30_000 });
+    await card.getByText("Review", { exact: true }).click();
+    await expect(card).toContainText("main.tex", { timeout: 20_000 });
+
+    await tauriPage.click('button[aria-label="Undo main.tex"]');
+    await tauriPage.waitForFunction(projectFileIncludes(fixture, "main.tex", marker, false), 20_000);
+    await expect(card).toContainText("Undone", { timeout: 20_000 });
+
+    await tauriPage.click('button[aria-label="Redo main.tex"]');
+    await tauriPage.waitForFunction(projectFileIncludes(fixture, "main.tex", marker, true), 20_000);
+  });
+});
+
+test("a long agent name never pushes the assistant panel sideways", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    // The selected agent's name widens the picker row; the panel must scroll the row, not itself.
+    await tauriPage.click(`[data-testid="agent-picker-${fixture.agentId}"]`);
+    const overflow = await tauriPage.evaluate<string[]>(`(() => {
+      const section = document.querySelector(${scriptValue(assistantSelector)});
+      const found = [];
+      for (let node = section; node && node !== document.body; node = node.parentElement) {
+        if (node.scrollLeft !== 0) found.push(node.tagName + " scrolled " + node.scrollLeft);
+      }
+      if (section && section.scrollWidth > section.clientWidth + 1) found.push("section overflows by " + (section.scrollWidth - section.clientWidth));
+      return found;
+    })()`);
+    expect(overflow).toEqual([]);
   });
 });

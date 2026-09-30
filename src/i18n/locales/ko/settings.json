@@ -12,7 +12,6 @@
       "checkingDescription": "Oleafly가 이 컴퓨터의 명령줄 도구를 확인하는 동안 잠시 걸릴 수 있습니다.",
       "checkingInstalled": "설치된 에이전트를 확인하는 중",
       "checkingTitle": "명령줄 에이전트를 찾는 중",
-      "cliNotOnPath": "PATH에서 {{command}}을(를) 찾지 못했습니다.",
       "cliPathLabel": "찾은 위치",
       "cliTitle": "명령줄 도구",
       "copySignInCommand": "로그인 명령 복사",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP 에이전트",
       "signInCommandLabel": "로그인 명령",
       "versionLabel": "버전",
-      "updateBridge": "브리지 업데이트"
+      "updateBridge": "브리지 업데이트",
+      "program": {
+        "label": "프로그램",
+        "bridgeLabel": "{{cli}} 프로그램",
+        "notFound": "이 컴퓨터에서 찾을 수 없음",
+        "bridgeDefault": "브리지가 자체 사본을 사용합니다.",
+        "source": {
+          "auto": "자동으로 찾음",
+          "override": "직접 선택함",
+          "managed": "Oleafly가 설치함"
+        },
+        "choose": "선택…",
+        "test": "테스트",
+        "testing": "테스트하는 중",
+        "saving": "저장하는 중",
+        "useAutomatic": "자동 감지 사용",
+        "useAnyway": "그래도 사용",
+        "inputLabel": "{{name}} 위치",
+        "pathPlaceholder": "예: {{example}}",
+        "saved": "저장했습니다. Oleafly가 이 프로그램을 사용합니다.",
+        "skippedTitle": "Oleafly가 건너뛴 파일",
+        "skippedReason": {
+          "notFound": "없음",
+          "isDirectory": "폴더",
+          "notExecutable": "실행할 수 없음",
+          "unsupportedScript": "지원되지 않는 스크립트 형식",
+          "guiProgram": "데스크톱 앱",
+          "interpreter": "shell 또는 런타임",
+          "networkPath": "네트워크 위치"
+        },
+        "check": {
+          "ready": "{{name}} {{version}}이(가) 실행되어 응답했습니다.",
+          "readyNoVersion": "{{name}}이(가) 실행되어 응답했습니다.",
+          "notFound": "{{path}}에 파일이 없습니다.",
+          "isDirectory": "{{path}}은(는) 폴더입니다. 폴더 안의 프로그램 파일을 선택하세요.",
+          "powershellScript": "PowerShell 스크립트는 실행할 수 없습니다. {{command}}.cmd 또는 {{command}}.exe를 선택하세요.",
+          "unsupportedScript": "Oleafly가 {{file}}을(를) 직접 실행할 수 없습니다. {{command}}.exe를 선택하세요.",
+          "notExecutable": "{{path}}은(는) Oleafly가 실행할 수 있는 프로그램이 아닙니다.",
+          "guiProgram": "{{path}}은(는) 데스크톱 앱입니다. 명령줄 프로그램을 선택하세요.",
+          "interpreter": "{{path}}은(는) shell 또는 스크립트 런타임입니다. {{name}} 프로그램 자체를 선택하세요.",
+          "networkPath": "{{path}}은(는) 네트워크 위치에 있습니다. 이 컴퓨터에 있는 프로그램을 선택하세요.",
+          "cliMissing": "Oleafly가 {{cli}}을(를) 실행하지 못했습니다. {{cli}} 프로그램을 선택하세요.",
+          "bridgeMissing": "{{name}} 브리지가 아직 설치되지 않았습니다.",
+          "nodeMissing": "{{name}}에는 Node.js가 필요하지만 Oleafly가 찾지 못했습니다.",
+          "nodeTooOld": "{{name}}에는 더 새로운 버전의 Node.js가 필요합니다.",
+          "startFailed": "{{name}}을(를) 실행하지 못했습니다.",
+          "timeout": "{{name}}이(가) 실행되었지만 제시간에 응답하지 않았습니다.",
+          "exited": "{{name}}이(가) 응답하기 전에 멈췄습니다.",
+          "notAcp": "{{name}}이(가) 실행되었지만 Oleafly가 응답을 이해하지 못했습니다."
+        },
+        "getNode": "Node.js 받기",
+        "copyDetails": "세부 정보 복사"
+      }
     },
     "approvals": {
       "file": {
@@ -994,7 +1045,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "새로 만들거나 여는 프로젝트에 Git 저장소를 두어 Git 패널이 변경 사항을 추적할 수 있게 합니다. Oleafly가 스스로 커밋하지는 않습니다.",
+      "description": "새로 만들거나 여는 프로젝트에 Git 저장소를 두어 Git 패널이 변경 사항을 추적할 수 있게 합니다. 새 프로젝트는 보통 파일을 담은 커밋 하나로 시작합니다. 그 뒤로는 요청할 때만 Oleafly가 커밋합니다.",
       "label": "모든 프로젝트에 Git 초기화"
     },
     "config": {

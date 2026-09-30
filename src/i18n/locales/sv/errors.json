@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Projektet är redan länkat till {{remote}}.",
-    "nested_repository": "Projektet ligger i ett annat Git-repositorium, så Oleafly skapar inget separat repositorium här."
+    "nested_repository": "Projektet ligger i ett annat Git-repositorium, så Oleafly skapar inget separat repositorium här.",
+    "not_installed": "Git är inte installerat på den här datorn. Installera Git och försök igen."
   },
   "approvals": {
     "full_access_declined": "Fullständig åtkomst aktiverades inte."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Den här kontrollpunktshistoriken kommer från ett projekt i ditt Oleafly-bibliotek, så den kan inte användas med en mapp som du öppnat där den ligger.",
     "folder_history_for_library": "Den här kontrollpunktshistoriken kommer från en mapp som du öppnat där den ligger, så den kan inte användas med ett projekt i ditt Oleafly-bibliotek.",
     "restore_path_blocked": "Oleafly kan inte återställa {{path}} eftersom en länk eller något annat som inte är en fil är i vägen. Flytta det och försök igen."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly hittade inte det programmet.",
+      "is_directory": "Det är en mapp. Välj programfilen i den.",
+      "not_executable": "Filen kan inte startas som ett program.",
+      "unsupported_script": "PowerShell-skript kan inte startas. Välj .cmd- eller .exe-filen med samma namn.",
+      "needs_exe": "Den här agenten kan inte använda en .cmd-fil. Välj dess .exe-fil.",
+      "gui_program": "Det är en skrivbordsapp. Välj programmet du kör i en terminal.",
+      "interpreter": "Det programmet kör andra program. Välj agentens eget program.",
+      "network_path": "Välj ett program på den här datorn, inte på en nätverksplats.",
+      "unknown_agent": "Oleafly känner inte till den här agenten.",
+      "declined": "Programmet ändrades inte.",
+      "check_running": "Ett test av den här agenten körs redan.",
+      "main_window": "Byt agentprogram från huvudfönstret."
+    }
   }
 }

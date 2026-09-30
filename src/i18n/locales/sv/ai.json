@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} behöver behörighet",
       "headline": "Agenten behöver behörighet",
       "expired": "Den här begäran har gått ut. Be agenten försöka igen.",
-      "dismiss": "Stäng"
+      "dismiss": "Stäng",
+      "diff": {
+        "showChange": "Visa ändringen",
+        "hideChange": "Dölj ändringen",
+        "large": "Stor ändring i {{path}}. Granska den efter turen.",
+        "label": "Föreslagen ändring i {{path}}",
+        "loading": "Läser in ändringen…"
+      }
     },
     "readiness": {
       "managedBridge": "Brygga {{version}} installerad av Oleafly.",
-      "bridgeOnPath": "Bryggan hittades i PATH.",
       "bridgeMissingWithCli": "{{cli}} hittades i {{path}}. Installera ACP-bryggan {{version}} för att ansluta.",
       "bridgeMissing": "Installera ACP-bryggan {{version}} för att ansluta den här agenten.",
-      "cliMissing": "{{cli}} finns inte i din PATH. Installera det och kör sedan {{command}}.",
       "cliNotFound": "Den här agentens kommandoradsverktyg hittades inte.",
       "unavailable": "Den här agenten kan inte köras på den här datorn."
     },
     "bridgeSource": {
       "notInstalled": "Inte installerad",
-      "managed": "Hanteras av Oleafly",
-      "onPath": "I PATH"
+      "managed": "Hanteras av Oleafly"
     },
     "installing": "Installerar",
     "installBridge": "Installera bryggan",
@@ -503,8 +507,50 @@
     "terminalCommand": "Agenten kör ett terminalkommando.",
     "agentToolFallback": "Agentverktyg",
     "agentReported": "Agenten rapporterade: {{detail}}",
+    "updateTooLarge": "En del av agentens utdata var för stor för att visas ({{size}}).",
     "imageAttachmentName": "Bild {{index}}",
-    "agentImage": "[Agenten returnerade en bild.]"
+    "agentImage": "[Agenten returnerade en bild.]",
+    "setup": {
+      "cliNotFound": "Oleafly hittade inte {{cli}} på den här datorn.",
+      "rejected": {
+        "powershellScript": "Hittade {{file}}, men PowerShell-skript kan inte startas. Välj {{name}}.cmd eller {{name}}.exe.",
+        "script": "Hittade {{file}}, men Oleafly kan inte starta den direkt. Välj {{name}}.exe.",
+        "isDirectory": "Hittade en mapp som heter {{file}}. Välj programfilen för {{name}}.",
+        "notExecutable": "Hittade {{file}}, men det är inte ett program som Oleafly kan starta.",
+        "guiProgram": "Hittade {{file}}, men det är en skrivbordsapp. Välj kommandoradsverktyget för {{name}}.",
+        "networkPath": "Hittade {{file}} på en nätverksplats. Välj en kopia på den här datorn."
+      },
+      "foundOnComputer": "Hittades på den här datorn.",
+      "usingChosen": "Använder programmet du valde.",
+      "bridgeSourceFound": "Hittades på den här datorn",
+      "setUp": "Konfigurera {{name}}",
+      "backgroundTasks": "Bakgrundsuppgifter: {{reason}}",
+      "cliMissingNextStep": "Installera {{cli}} eller välj var det är installerat.",
+      "installUnavailable": "Oleafly kan inte installera den här bryggan på den här datorn.",
+      "builtIn": "Inbyggd",
+      "showAgent": "Visa"
+    },
+    "export": {
+      "menuItem": "Exportera konversationen…",
+      "saved": "Konversationen har exporterats",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Konversation",
+      "project": "Projekt",
+      "agent": "Agent",
+      "model": "Modell",
+      "modelManaged": "Vald av agenten",
+      "startRevision": "Startade vid incheckning",
+      "uncommitted": "{{revision}} med ändringar som inte har checkats in",
+      "started": "Startad",
+      "updated": "Senast uppdaterad",
+      "you": "Du",
+      "skill": "Färdighet: {{name}}",
+      "tool": "Verktyg: {{name}}",
+      "changedFiles": "Ändrade filer",
+      "moreFiles_one": "och {{count}} fil till",
+      "moreFiles_other": "och {{count}} filer till"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI-agent",
@@ -731,5 +777,65 @@
     "preSubmission": "Gör det klart för inlämning",
     "slides": "Gör den här artikeln till en presentation",
     "recompile": "Kompilera om och leta efter fel"
+  },
+  "turnChanges": {
+    "ariaLabel": "Filer som ändrades under den här turen",
+    "changed_one": "{{count}} fil ändrad",
+    "changed_other": "{{count}} filer ändrade",
+    "buildOnly": "Byggfiler uppdaterade",
+    "review": "Granska",
+    "undoAll": "Ångra alla",
+    "redoAll": "Gör om alla",
+    "undo": "Ångra",
+    "redo": "Gör om",
+    "undoFile": "Ångra {{path}}",
+    "redoFile": "Gör om {{path}}",
+    "kind": {
+      "added": "Tillagd",
+      "modified": "Ändrad",
+      "deleted": "Borttagen"
+    },
+    "undone": "Ångrad",
+    "editedAfter": "Ändrad efter den här turen",
+    "alsoEdited": "Du redigerade också den här filen under turen",
+    "committed": "Incheckad i {{commit}}",
+    "buildFiles": "Byggfiler uppdaterade",
+    "moreFiles_one": "{{count}} fil till visas inte",
+    "moreFiles_other": "{{count}} filer till visas inte",
+    "skipped_one": "{{count}} fil kunde inte kopieras före turen, så den går inte att ångra.",
+    "skipped_other": "{{count}} filer kunde inte kopieras före turen, så de går inte att ångra.",
+    "overlapped": "En annan agent ändrade filer samtidigt. Ångra filerna en i taget.",
+    "expired": "Den här turen går inte längre att ångra.",
+    "waitForRun": "Du kan ångra när agenten är klar.",
+    "unavailable": {
+      "tooLarge": "Den här turen går inte att ångra: projektet är för stort för att kopieras.",
+      "tooManyFiles": "Den här turen går inte att ångra: projektet har för många filer.",
+      "timeout": "Den här turen går inte att ångra: det tog för lång tid att kopiera projektet.",
+      "error": "Den här turen går inte att ångra: projektet kunde inte kopieras."
+    },
+    "previewLoading": "Läser in ändringen…",
+    "previewFailed": "Det gick inte att läsa in ändringen.",
+    "binary": "Filen är inte text, så ändringen kan inte visas.",
+    "tooLarge": "Ändringen är för stor för att visas här.",
+    "diffLabel": "Ändring i {{path}}",
+    "undid_one": "Ångrade ändringen i {{count}} fil.",
+    "undid_other": "Ångrade ändringarna i {{count}} filer.",
+    "redid_one": "Gjorde om ändringen i {{count}} fil.",
+    "redid_other": "Gjorde om ändringarna i {{count}} filer.",
+    "skippedEdited": "Vissa filer ändrades efter den här turen, så Oleafly lät dem vara.",
+    "skippedFailed": "Vissa filer kunde inte skrivas.",
+    "undoFailed": "Det gick inte att ångra ändringarna. Spara ditt arbete och försök igen.",
+    "redoFailed": "Det gick inte att göra om ändringarna. Spara ditt arbete och försök igen."
+  },
+  "presets": {
+    "literatureSweep": "Litteratursökning",
+    "relatedWork": "Relaterat arbete",
+    "citationAudit": "Citeringsgranskning",
+    "manuscriptReview": "Manusgranskning",
+    "reproducibilityAudit": "Reproducerbarhetsgranskning",
+    "figureAudit": "Figurgranskning",
+    "gitReview": "Git-granskning",
+    "referenceCleanup": "Rensning av referenser",
+    "removeSkill": "Ta bort färdigheten {{name}}"
   }
 }

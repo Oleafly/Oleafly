@@ -12,7 +12,6 @@
       "checkingDescription": "Oleafly bu bilgisayardaki komut satırı araçlarını denetlerken bu biraz sürebilir.",
       "checkingInstalled": "Kurulu ajanlar denetleniyor",
       "checkingTitle": "Komut satırı ajanları aranıyor",
-      "cliNotOnPath": "{{command}} PATH üzerinde bulunamadı.",
       "cliPathLabel": "Bulunduğu yer",
       "cliTitle": "Komut satırı aracı",
       "copySignInCommand": "Oturum açma komutunu kopyala",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP ajanları",
       "signInCommandLabel": "Oturum açma komutu",
       "versionLabel": "Sürüm",
-      "updateBridge": "Köprüyü güncelle"
+      "updateBridge": "Köprüyü güncelle",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "{{cli}} programı",
+        "notFound": "Bu bilgisayarda bulunamadı",
+        "bridgeDefault": "Köprü kendi kopyasını kullanır.",
+        "source": {
+          "auto": "Otomatik bulundu",
+          "override": "Sizin seçtiğiniz",
+          "managed": "Oleafly tarafından kuruldu"
+        },
+        "choose": "Seç…",
+        "test": "Test et",
+        "testing": "Test ediliyor",
+        "saving": "Kaydediliyor",
+        "useAutomatic": "Otomatik algılamayı kullan",
+        "useAnyway": "Yine de kullan",
+        "inputLabel": "{{name}} konumu",
+        "pathPlaceholder": "Örneğin, {{example}}",
+        "saved": "Kaydedildi. Oleafly bu programı kullanacak.",
+        "skippedTitle": "Oleafly'nin atladığı dosyalar",
+        "skippedReason": {
+          "notFound": "Eksik",
+          "isDirectory": "Klasör",
+          "notExecutable": "Başlatılamıyor",
+          "unsupportedScript": "Betik türü desteklenmiyor",
+          "guiProgram": "Masaüstü uygulaması",
+          "interpreter": "Shell veya çalışma ortamı",
+          "networkPath": "Ağ konumu"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} başladı ve yanıt verdi.",
+          "readyNoVersion": "{{name}} başladı ve yanıt verdi.",
+          "notFound": "{{path}} konumunda dosya yok.",
+          "isDirectory": "{{path}} bir klasör. İçindeki program dosyasını seçin.",
+          "powershellScript": "PowerShell betikleri başlatılamaz. {{command}}.cmd veya {{command}}.exe dosyasını seçin.",
+          "unsupportedScript": "Oleafly {{file}} dosyasını doğrudan başlatamaz. {{command}}.exe dosyasını seçin.",
+          "notExecutable": "{{path}}, Oleafly'nin başlatabileceği bir program değil.",
+          "guiProgram": "{{path}} bir masaüstü uygulaması. Komut satırı programını seçin.",
+          "interpreter": "{{path}} bir shell veya betik çalışma ortamı. Doğrudan {{name}} programını seçin.",
+          "networkPath": "{{path}} bir ağ konumunda. Bu bilgisayardaki bir programı seçin.",
+          "cliMissing": "Oleafly {{cli}} aracını çalıştıramadı. {{cli}} programını seçin.",
+          "bridgeMissing": "{{name}} için köprü henüz kurulmadı.",
+          "nodeMissing": "{{name}} için Node.js gerekiyor, ancak Oleafly Node.js'i bulamadı.",
+          "nodeTooOld": "{{name}} için daha yeni bir Node.js sürümü gerekiyor.",
+          "startFailed": "{{name}} başlatılamadı.",
+          "timeout": "{{name}} başladı, ancak zamanında yanıt vermedi.",
+          "exited": "{{name}} yanıt vermeden durdu.",
+          "notAcp": "{{name}} başladı, ancak Oleafly yanıtını anlayamadı."
+        },
+        "getNode": "Node.js'i indir",
+        "copyDetails": "Ayrıntıları kopyala"
+      }
     },
     "approvals": {
       "file": {
@@ -1001,7 +1052,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Yeni ve açılan projelere, Git panelinin değişiklikleri izleyebilmesi için bir Git deposu eklenir. Oleafly kendiliğinden hiçbir zaman işleme yapmaz.",
+      "description": "Yeni ve açılan projelere, Git panelinin değişiklikleri izleyebilmesi için bir Git deposu eklenir. Yeni bir proje genellikle dosyalarını içeren tek bir işlemeyle başlar. Bundan sonra Oleafly yalnızca siz istediğinizde işleme yapar.",
       "label": "Her proje için Git'i başlat"
     },
     "config": {

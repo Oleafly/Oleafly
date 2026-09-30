@@ -4,6 +4,7 @@ import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
 import { agentThreadDelete } from "@/lib/agent-backend";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useAgentTurnsStore } from "@/store/agent-turns";
+import type { TurnChanges } from "@/lib/agent-turns";
 
 export interface ToolEntry {
   id?: string;
@@ -15,6 +16,23 @@ export interface ToolEntry {
   // For gated edits: whether the user approved or rejected the change. Left a
   // persistent trace in the chat after the approval prompt is dismissed.
   approval?: "approved" | "rejected";
+  // File changes a CLI agent reported for this tool call (ACP `diff` blocks).
+  diffs?: ToolDiff[];
+}
+
+export interface ToolDiff {
+  path: string;
+  oldText: string | null;
+  newText: string | null;
+  // The text was too large to keep in the conversation.
+  truncated?: boolean;
+}
+
+// The files an agent turn changed, as the turn review card shows them.
+// `committed` maps a path to the commit the built-in assistant made for it
+// during the turn; those files get no Undo.
+export interface ChatTurnChanges extends TurnChanges {
+  committed?: Record<string, string>;
 }
 
 // Only the name + media type are persisted (never the bytes) to protect
@@ -42,12 +60,17 @@ export interface ChatMessage {
   content: string;
   createdAt?: number;
   subagents?: SubagentEntry[];
+  // Legacy: chats saved before per-turn Undo existed can still restore this.
   checkpointOid?: string;
   checkpointRestored?: boolean;
+  // Files changed by the turn that ended with this message.
+  turnChanges?: ChatTurnChanges;
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
   steered?: boolean;
   skillId?: string;
+  // A skill sent alongside a CLI agent message (shown as a chip).
+  skill?: { id: string; name: string };
   mentions?: string[];
   notices?: string[];
   // Legacy single-block chain-of-thought; still read for chats persisted

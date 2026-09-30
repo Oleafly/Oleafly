@@ -12,7 +12,6 @@
       "checkingDescription": "Może to chwilę potrwać, bo Oleafly sprawdza narzędzia wiersza poleceń na tym komputerze.",
       "checkingInstalled": "Sprawdzanie zainstalowanych agentów",
       "checkingTitle": "Szukanie agentów wiersza poleceń",
-      "cliNotOnPath": "Nie znaleziono {{command}} w zmiennej PATH.",
       "cliPathLabel": "Wykryto w",
       "cliTitle": "Narzędzie wiersza poleceń",
       "copySignInCommand": "Kopiuj polecenie logowania",
@@ -66,7 +65,59 @@
       "sectionLabel": "Agenci ACP",
       "signInCommandLabel": "Polecenie logowania",
       "versionLabel": "Wersja",
-      "updateBridge": "Zaktualizuj mostek"
+      "updateBridge": "Zaktualizuj mostek",
+      "program": {
+        "label": "Program",
+        "bridgeLabel": "Program {{cli}}",
+        "notFound": "Nie znaleziono na tym komputerze",
+        "bridgeDefault": "Mostek używa własnej kopii.",
+        "source": {
+          "auto": "Znaleziony automatycznie",
+          "override": "Wybrany przez Ciebie",
+          "managed": "Zainstalowany przez Oleafly"
+        },
+        "choose": "Wybierz…",
+        "test": "Testuj",
+        "testing": "Testowanie",
+        "saving": "Zapisywanie",
+        "useAutomatic": "Użyj automatycznego wykrywania",
+        "useAnyway": "Użyj mimo to",
+        "inputLabel": "Lokalizacja programu {{name}}",
+        "pathPlaceholder": "Na przykład {{example}}",
+        "saved": "Zapisano. Oleafly będzie używać tego programu.",
+        "skippedTitle": "Pliki pominięte przez Oleafly",
+        "skippedReason": {
+          "notFound": "Brak pliku",
+          "isDirectory": "Folder",
+          "notExecutable": "Nie można uruchomić",
+          "unsupportedScript": "Nieobsługiwany typ skryptu",
+          "guiProgram": "Aplikacja desktopowa",
+          "interpreter": "Shell lub środowisko uruchomieniowe",
+          "networkPath": "Lokalizacja sieciowa"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} uruchomił się i odpowiedział.",
+          "readyNoVersion": "{{name}} uruchomił się i odpowiedział.",
+          "notFound": "Brak pliku: {{path}}.",
+          "isDirectory": "{{path}} to folder. Wybierz plik programu, który się w nim znajduje.",
+          "powershellScript": "Skryptów PowerShell nie można uruchamiać. Wybierz {{command}}.cmd lub {{command}}.exe.",
+          "unsupportedScript": "Oleafly nie może uruchomić {{file}} bezpośrednio. Wybierz {{command}}.exe.",
+          "notExecutable": "{{path}} nie jest programem, który Oleafly może uruchomić.",
+          "guiProgram": "{{path}} to aplikacja desktopowa. Wybierz program wiersza poleceń.",
+          "interpreter": "{{path}} to shell lub środowisko uruchomieniowe skryptów. Wybierz sam program {{name}}.",
+          "networkPath": "{{path}} znajduje się w lokalizacji sieciowej. Wybierz program na tym komputerze.",
+          "cliMissing": "Oleafly nie może uruchomić {{cli}}. Wybierz program {{cli}}.",
+          "bridgeMissing": "Mostek dla {{name}} nie jest jeszcze zainstalowany.",
+          "nodeMissing": "{{name}} wymaga Node.js, a Oleafly nie może go znaleźć.",
+          "nodeTooOld": "{{name}} wymaga nowszej wersji Node.js.",
+          "startFailed": "Nie udało się uruchomić {{name}}.",
+          "timeout": "{{name}} uruchomił się, ale nie odpowiedział na czas.",
+          "exited": "{{name}} zatrzymał się, zanim odpowiedział.",
+          "notAcp": "{{name}} uruchomił się, ale Oleafly nie rozumie jego odpowiedzi."
+        },
+        "getNode": "Pobierz Node.js",
+        "copyDetails": "Kopiuj szczegóły"
+      }
     },
     "approvals": {
       "file": {
@@ -1015,7 +1066,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Nowe i otwierane projekty dostają repozytorium Git, aby panel Git mógł śledzić zmiany. Oleafly nigdy nie zatwierdza zmian sam z siebie.",
+      "description": "Nowe i otwierane projekty dostają repozytorium Git, aby panel Git mógł śledzić zmiany. Nowy projekt zwykle zaczyna się od jednego commita z jego plikami. Potem Oleafly zatwierdza zmiany tylko na Twoją prośbę.",
       "label": "Inicjuj Git dla każdego projektu"
     },
     "config": {

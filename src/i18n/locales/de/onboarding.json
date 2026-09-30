@@ -221,8 +221,8 @@
       "content": "Eingerichtete Gespräche zeigen hier Läufe, Token und geschätzte Kosten, sofern verfügbar."
     },
     "restore": {
-      "title": "Projektstand wiederherstellen",
-      "content": "Nach einer Bearbeitung durch die KI kann ein Checkpoint die Projektdateien wiederherstellen, ohne das Gespräch zu entfernen."
+      "title": "Änderungen des Agenten prüfen",
+      "content": "Wenn ein Beitrag Dateien ändert, öffnen Sie „Prüfen“, um jede Änderung zu sehen. „Rückgängig“ setzt eine Datei zurück, und „Wiederholen“ bringt die Änderung zurück."
     }
   },
   "diagram": {

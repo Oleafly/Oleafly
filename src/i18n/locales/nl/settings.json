@@ -12,7 +12,6 @@
       "checkingDescription": "Dit kan even duren terwijl Oleafly de opdrachtregeltools op deze computer nakijkt.",
       "checkingInstalled": "Geïnstalleerde agents controleren",
       "checkingTitle": "Zoeken naar opdrachtregelagents",
-      "cliNotOnPath": "{{command}} is niet op je PATH gevonden.",
       "cliPathLabel": "Gevonden in",
       "cliTitle": "Opdrachtregeltool",
       "copySignInCommand": "Aanmeldopdracht kopiëren",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP-agents",
       "signInCommandLabel": "Aanmeldopdracht",
       "versionLabel": "Versie",
-      "updateBridge": "Bridge bijwerken"
+      "updateBridge": "Bridge bijwerken",
+      "program": {
+        "label": "Programma",
+        "bridgeLabel": "{{cli}}-programma",
+        "notFound": "Niet gevonden op deze computer",
+        "bridgeDefault": "De bridge gebruikt een eigen kopie.",
+        "source": {
+          "auto": "Automatisch gevonden",
+          "override": "Door jou gekozen",
+          "managed": "Geïnstalleerd door Oleafly"
+        },
+        "choose": "Kiezen…",
+        "test": "Testen",
+        "testing": "Bezig met testen",
+        "saving": "Opslaan",
+        "useAutomatic": "Automatische detectie gebruiken",
+        "useAnyway": "Toch gebruiken",
+        "inputLabel": "Locatie van {{name}}",
+        "pathPlaceholder": "Bijvoorbeeld {{example}}",
+        "saved": "Opgeslagen. Oleafly gebruikt dit programma.",
+        "skippedTitle": "Bestanden die Oleafly heeft overgeslagen",
+        "skippedReason": {
+          "notFound": "Ontbreekt",
+          "isDirectory": "Map",
+          "notExecutable": "Kan niet worden gestart",
+          "unsupportedScript": "Scripttype niet ondersteund",
+          "guiProgram": "Desktop-app",
+          "interpreter": "Shell of runtime",
+          "networkPath": "Netwerklocatie"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} is gestart en heeft geantwoord.",
+          "readyNoVersion": "{{name}} is gestart en heeft geantwoord.",
+          "notFound": "Geen bestand op {{path}}.",
+          "isDirectory": "{{path}} is een map. Kies het programmabestand erin.",
+          "powershellScript": "PowerShell-scripts kunnen niet worden gestart. Kies {{command}}.cmd of {{command}}.exe.",
+          "unsupportedScript": "Oleafly kan {{file}} niet rechtstreeks starten. Kies {{command}}.exe.",
+          "notExecutable": "{{path}} is geen programma dat Oleafly kan starten.",
+          "guiProgram": "{{path}} is een desktop-app. Kies het opdrachtregelprogramma.",
+          "interpreter": "{{path}} is een shell of runtime voor scripts. Kies het programma van {{name}} zelf.",
+          "networkPath": "{{path}} staat op een netwerklocatie. Kies een programma op deze computer.",
+          "cliMissing": "Oleafly kon {{cli}} niet uitvoeren. Kies het {{cli}}-programma.",
+          "bridgeMissing": "De bridge voor {{name}} is nog niet geïnstalleerd.",
+          "nodeMissing": "{{name}} heeft Node.js nodig en Oleafly kon het niet vinden.",
+          "nodeTooOld": "{{name}} heeft een nieuwere versie van Node.js nodig.",
+          "startFailed": "{{name}} kon niet worden gestart.",
+          "timeout": "{{name}} is gestart, maar heeft niet op tijd geantwoord.",
+          "exited": "{{name}} is gestopt voordat het antwoordde.",
+          "notAcp": "{{name}} is gestart, maar Oleafly begreep het antwoord niet."
+        },
+        "getNode": "Node.js downloaden",
+        "copyDetails": "Details kopiëren"
+      }
     },
     "approvals": {
       "file": {
@@ -1001,7 +1052,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Nieuwe en geopende projecten krijgen een Git-repository zodat het Git-paneel wijzigingen kan volgen. Oleafly commit nooit uit zichzelf.",
+      "description": "Nieuwe en geopende projecten krijgen een Git-repository zodat het Git-paneel wijzigingen kan volgen. Een nieuw project begint meestal met één commit van de bestanden. Daarna commit Oleafly alleen als je daarom vraagt.",
       "label": "Git initialiseren voor elk project"
     },
     "config": {

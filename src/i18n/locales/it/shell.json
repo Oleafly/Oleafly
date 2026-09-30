@@ -833,6 +833,15 @@
     "enterTitle": "Inserisci un titolo per il commit",
     "finishMergeToCommit": "Completa il merge prima di eseguire il commit.",
     "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Copiato",
+      "copyCommand": "Copia il comando",
+      "download": "Scarica Git for Windows",
+      "linux": "Il controllo del codice ha bisogno di Git. Installa il pacchetto git con il tuo gestore di pacchetti, poi aggiorna questo pannello.",
+      "mac": "Il controllo del codice ha bisogno di Git. Esegui questo comando in Terminal per installare gli strumenti da riga di comando di Apple, che includono Git, poi aggiorna questo pannello.",
+      "title": "Git non è installato",
+      "windows": "Il controllo del codice ha bisogno di Git. Installa Git for Windows, poi riavvia Oleafly."
+    },
     "graph": "Grafico",
     "commitCount_one": "{{count}} commit",
     "commitCount_many": "{{count}} commit",

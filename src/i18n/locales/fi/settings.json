@@ -12,7 +12,6 @@
       "checkingDescription": "Tämä voi kestää hetken, kun Oleafly tarkistaa tämän koneen komentorivityökalut.",
       "checkingInstalled": "Tarkistetaan asennettuja agentteja",
       "checkingTitle": "Etsitään komentoriviagentteja",
-      "cliNotOnPath": "{{command}} ei löytynyt PATH-polustasi.",
       "cliPathLabel": "Havaittu sijainnissa",
       "cliTitle": "Komentorivityökalu",
       "copySignInCommand": "Kopioi kirjautumiskomento",
@@ -66,7 +65,59 @@
       "sectionLabel": "ACP-agentit",
       "signInCommandLabel": "Kirjautumiskomento",
       "versionLabel": "Versio",
-      "updateBridge": "Päivitä silta"
+      "updateBridge": "Päivitä silta",
+      "program": {
+        "label": "Ohjelma",
+        "bridgeLabel": "{{cli}}-ohjelma",
+        "notFound": "Ei löytynyt tältä koneelta",
+        "bridgeDefault": "Silta käyttää omaa kopiotaan.",
+        "source": {
+          "auto": "Löydetty automaattisesti",
+          "override": "Itse valitsemasi",
+          "managed": "Oleaflyn asentama"
+        },
+        "choose": "Valitse…",
+        "test": "Testaa",
+        "testing": "Testataan",
+        "saving": "Tallennetaan",
+        "useAutomatic": "Käytä automaattista tunnistusta",
+        "useAnyway": "Käytä silti",
+        "inputLabel": "Ohjelman {{name}} sijainti",
+        "pathPlaceholder": "Esimerkiksi {{example}}",
+        "saved": "Tallennettu. Oleafly käyttää tätä ohjelmaa.",
+        "skippedTitle": "Tiedostot, jotka Oleafly ohitti",
+        "skippedReason": {
+          "notFound": "Puuttuu",
+          "isDirectory": "Kansio",
+          "notExecutable": "Ei voi käynnistää",
+          "unsupportedScript": "Skriptityyppiä ei tueta",
+          "guiProgram": "Työpöytäsovellus",
+          "interpreter": "Shell tai ajoympäristö",
+          "networkPath": "Verkkosijainti"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} käynnistyi ja vastasi.",
+          "readyNoVersion": "{{name}} käynnistyi ja vastasi.",
+          "notFound": "Sijainnissa {{path}} ei ole tiedostoa.",
+          "isDirectory": "{{path}} on kansio. Valitse sen sisällä oleva ohjelmatiedosto.",
+          "powershellScript": "PowerShell-skriptejä ei voi käynnistää. Valitse {{command}}.cmd tai {{command}}.exe.",
+          "unsupportedScript": "Oleafly ei voi käynnistää tiedostoa {{file}} suoraan. Valitse {{command}}.exe.",
+          "notExecutable": "{{path}} ei ole ohjelma, jonka Oleafly voi käynnistää.",
+          "guiProgram": "{{path}} on työpöytäsovellus. Valitse komentoriviohjelma.",
+          "interpreter": "{{path}} on shell tai skriptien ajoympäristö. Valitse itse {{name}}-ohjelma.",
+          "networkPath": "{{path}} on verkkosijainnissa. Valitse ohjelma tältä koneelta.",
+          "cliMissing": "Oleafly ei voinut suorittaa ohjelmaa {{cli}}. Valitse {{cli}}-ohjelma.",
+          "bridgeMissing": "Agentin {{name}} siltaa ei ole vielä asennettu.",
+          "nodeMissing": "{{name}} tarvitsee Node.js:n, eikä Oleafly löytänyt sitä.",
+          "nodeTooOld": "{{name}} tarvitsee uudemman Node.js-version.",
+          "startFailed": "Agenttia {{name}} ei voitu käynnistää.",
+          "timeout": "{{name}} käynnistyi, mutta ei vastannut ajoissa.",
+          "exited": "{{name}} pysähtyi ennen kuin vastasi.",
+          "notAcp": "{{name}} käynnistyi, mutta Oleafly ei ymmärtänyt sen vastausta."
+        },
+        "getNode": "Hanki Node.js",
+        "copyDetails": "Kopioi tiedot"
+      }
     },
     "approvals": {
       "file": {
@@ -1001,7 +1052,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Uudet ja avatut projektit saavat Git-repositorion, jotta Git-paneeli voi seurata muutoksia. Oleafly ei koskaan tee committeja omin päin.",
+      "description": "Uudet ja avatut projektit saavat Git-repositorion, jotta Git-paneeli voi seurata muutoksia. Uusi projekti alkaa yleensä yhdellä commitilla, jossa ovat sen tiedostot. Sen jälkeen Oleafly tekee commitin vain, kun pyydät.",
       "label": "Alusta Git jokaiselle projektille"
     },
     "config": {

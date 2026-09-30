@@ -850,6 +850,15 @@
     "enterTitle": "Wpisz tytuł commita",
     "finishMergeToCommit": "Zakończ scalanie przed zatwierdzeniem.",
     "fetch": "Pobierz zmiany",
+    "gitMissing": {
+      "copied": "Skopiowano",
+      "copyCommand": "Kopiuj polecenie",
+      "download": "Pobierz Git for Windows",
+      "linux": "Kontrola wersji wymaga programu Git. Zainstaluj pakiet git za pomocą menedżera pakietów, a potem odśwież ten panel.",
+      "mac": "Kontrola wersji wymaga programu Git. Uruchom to polecenie w aplikacji Terminal, aby zainstalować narzędzia wiersza poleceń Apple, które zawierają Git, a potem odśwież ten panel.",
+      "title": "Git nie jest zainstalowany",
+      "windows": "Kontrola wersji wymaga programu Git. Zainstaluj Git for Windows, a potem uruchom ponownie Oleafly."
+    },
     "graph": "Graf",
     "commitCount_one": "{{count}} commit",
     "commitCount_few": "{{count}} commity",

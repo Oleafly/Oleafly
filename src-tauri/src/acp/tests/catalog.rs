@@ -1,5 +1,7 @@
 use super::*;
 use crate::acp::types::BinaryDistribution;
+use crate::program_locator::{Located, ProgramKind};
+use crate::test_wait;
 use std::io::{Cursor, Write};
 
 fn binary_definition() -> AgentDefinition {
@@ -244,16 +246,32 @@ fn every_builtin_agent_has_a_vendor_cli_and_a_usable_acp_entry_point() {
 #[test]
 fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() {
     let by_id = |id: &str| builtins().into_iter().find(|value| value.id == id).unwrap();
-    let installed = |command: &str| CliStatus {
+    let installed = |command: &str, sign_in: &str| CliStatus {
         command: command.into(),
         display_name: command.into(),
         path: Some(format!("/usr/local/bin/{command}")),
         version: None,
-        sign_in_command: command.into(),
+        sign_in_command: sign_in.into(),
+        source: Some("auto".into()),
+        rejected: Vec::new(),
     };
     assert_eq!(
-        sign_in_hint(&by_id("opencode"), Some(&installed("opencode"))),
+        sign_in_hint(
+            &by_id("opencode"),
+            Some(&installed("opencode", "opencode auth login"))
+        ),
         "Run opencode auth login in your terminal, then reconnect."
+    );
+    assert_eq!(
+        sign_in_hint(
+            &by_id("pi"),
+            Some(&installed("pi", r"& 'D:\Tools\Agents\Pi\pi.cmd'"))
+        ),
+        r"Run & 'D:\Tools\Agents\Pi\pi.cmd' in your terminal and sign in with /login, then reconnect."
+    );
+    assert_eq!(
+        sign_in_hint(&by_id("pi"), None),
+        "Run pi in your terminal and sign in with /login, then reconnect."
     );
     assert_eq!(
         sign_in_hint(&by_id("kimi"), None),
@@ -427,6 +445,10 @@ fn command_distributions_reject_launchers_and_shell_syntax() {
         "uv",
         "uvx",
         "bunx",
+        "NPM",
+        "npx.CMD",
+        "Yarn.cmd",
+        "uv.exe",
     ] {
         let mut definition = binary_definition();
         definition.distribution = Distribution {
@@ -470,7 +492,8 @@ fn managed_receipts_preserve_the_pinned_version_and_arguments() {
     let definition = binary_definition();
     let executable = installed_fixture(temp.path(), &definition, false);
     let launch = resolve(temp.path(), &definition).unwrap();
-    assert_eq!(launch.executable, executable);
+    assert_eq!(launch.executable, locator::child_path(&executable));
+    assert!(!launch.executable.to_string_lossy().starts_with(r"\\?\"));
     assert_eq!(launch.args, ["--acp"]);
     assert_eq!(launch.version.as_deref(), Some("1.2.3"));
     assert!(launch.managed);
@@ -496,10 +519,17 @@ fn managed_node_receipts_put_the_script_before_agent_arguments() {
                 .map(|npx| npx.args.clone())
                 .unwrap_or_default();
             assert!(!agent_args.is_empty());
-            let expected: Vec<String> = std::iter::once(script.to_string_lossy().into_owned())
-                .chain(agent_args)
-                .collect();
+            let expected: Vec<String> =
+                std::iter::once(locator::child_path(&script).to_string_lossy().into_owned())
+                    .chain(agent_args)
+                    .collect();
             assert_eq!(launch.args, expected);
+            assert_eq!(launch.entry, Some(locator::child_path(&script)));
+            for part in std::iter::once(launch.executable.to_string_lossy().into_owned())
+                .chain(launch.args.iter().cloned())
+            {
+                assert!(!part.starts_with(r"\\?\"), "{part}");
+            }
             assert!(launch.managed);
             assert_eq!(launch.version, Some(definition.version));
         }
@@ -558,13 +588,13 @@ fn receipts_reject_executable_symlinks_outside_the_installation() {
 }
 
 #[test]
-fn discovery_requires_a_native_file_and_resolves_absolute_paths() {
+fn absolute_programs_keep_the_path_as_given_and_windows_scripts_count() {
     let temp = tempfile::tempdir().unwrap();
     let executable = temp.path().join("agent.exe");
     native_file(&executable);
     assert_eq!(
         discover(executable.to_str().unwrap()),
-        Some(executable.canonicalize().unwrap())
+        Some(executable.clone())
     );
     assert!(discover(temp.path().to_str().unwrap()).is_none());
     assert!(discover(temp.path().join("missing.exe").to_str().unwrap()).is_none());
@@ -581,7 +611,24 @@ fn discovery_requires_a_native_file_and_resolves_absolute_paths() {
     {
         let script = temp.path().join("agent.cmd");
         std::fs::write(&script, b"echo fixture").unwrap();
-        assert!(discover(script.to_str().unwrap()).is_none());
+        assert_eq!(
+            locator::locate_path(&script),
+            Ok(Located {
+                path: script.clone(),
+                kind: ProgramKind::Script
+            })
+        );
+        let powershell = temp.path().join("agent.ps1");
+        std::fs::write(&powershell, b"echo fixture").unwrap();
+        assert_eq!(
+            locator::locate_path(&powershell),
+            Err(locator::RejectReason::PowerShellScript)
+        );
+        let canonical = executable.canonicalize().unwrap();
+        assert!(!discover(canonical.to_str().unwrap())
+            .unwrap()
+            .to_string_lossy()
+            .starts_with(r"\\?\"));
     }
 }
 
@@ -605,18 +652,14 @@ async fn installed_commands_report_unmanaged_status_without_running_the_file() {
     assert_eq!(current.installed_version, None);
     assert_eq!(
         current.executable,
-        Some(
-            executable
-                .canonicalize()
-                .unwrap()
-                .to_string_lossy()
-                .into_owned()
-        )
+        Some(executable.to_string_lossy().into_owned())
     );
+    assert_eq!(current.program_override, None);
+    assert!(!current.cli_required);
     std::fs::remove_file(executable).unwrap();
     let missing = status(temp.path(), definition, false).await;
     assert!(!missing.installed);
-    assert!(missing.reason.unwrap().contains("not installed"));
+    assert!(missing.reason.unwrap().contains("isn't installed"));
 }
 
 #[tokio::test]
@@ -828,7 +871,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
     let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(&python);
     command.args(["-c", "import sys; sys.stdout.write('x' * 100000)"]);
-    let output = bounded_command(command, Duration::from_secs(5))
+    let output = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap();
     assert_eq!(output, "x".repeat(64 * 1024));
@@ -838,7 +881,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
         "-c",
         "import sys; sys.stdout.write('npm notice line\\n'); sys.stderr.write('npm error code E404\\nnpm error 404 Not Found\\n'); sys.exit(2)",
     ]);
-    let error = bounded_command(command, Duration::from_secs(5))
+    let error = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap_err();
     assert_eq!(
@@ -852,7 +895,7 @@ async fn local_install_commands_bound_output_and_report_why_the_command_failed()
 
     let mut command = tokio::process::Command::new(python);
     command.args(["-c", "import sys; sys.exit(2)"]);
-    let silent = bounded_command(command, Duration::from_secs(5))
+    let silent = bounded_command(command, test_wait::CHILD_PATIENCE)
         .await
         .unwrap_err();
     assert_eq!(silent, INSTALL_FAILED);
@@ -873,7 +916,7 @@ async fn a_verbose_failure_still_reports_its_final_lines() {
         error.contains("npm error Unsupported engine for agent@1.0.0"),
         "{error}"
     );
-    assert_eq!(error.lines().count(), 5);
+    assert_eq!(error.lines().count(), 8);
 }
 
 #[tokio::test]
@@ -891,6 +934,110 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .await
         .unwrap_err()
         .contains("timed out and was stopped"));
+}
+
+/// A CLI stand-in for `--version` probes: a shell script on unix, a batch
+/// file (started through cmd.exe, as a bridge would) on Windows.
+fn version_probe_cli(folder: &Path, stem: &str, unix: &str, windows: &str) -> Located {
+    #[cfg(windows)]
+    {
+        let _ = unix;
+        let path = folder.join(format!("{stem}.cmd"));
+        std::fs::write(&path, format!("@echo off\r\n{windows}\r\n")).unwrap();
+        Located {
+            path,
+            kind: ProgramKind::Script,
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = windows;
+        let path = folder.join(stem);
+        std::fs::write(&path, format!("#!/bin/sh\n{unix}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        Located {
+            path,
+            kind: ProgramKind::Native,
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let env = locator::child_env(&[], &[]);
+    let no_install_wording = |message: &str| {
+        let lower = message.to_lowercase();
+        assert!(
+            !lower.contains("installation") && !lower.contains("installer"),
+            "a --version probe reported installer wording: {message}"
+        );
+    };
+
+    let silent = version_probe_cli(temp.path(), "silent-cli", "exit 3", "exit /b 3");
+    let name = silent
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let error = program_version(&root, &silent, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains(&format!("{name} --version")), "{error}");
+
+    let slow = version_probe_cli(
+        temp.path(),
+        "slow-cli",
+        "sleep 20",
+        "ping -n 21 127.0.0.1 >nul",
+    );
+    let name = slow
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let error = program_version(&root, &slow, &env, Duration::from_millis(500))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains(&format!("{name} --version")), "{error}");
+    assert!(error.contains("in time"), "{error}");
+
+    let missing = Located {
+        path: temp.path().join(if cfg!(windows) {
+            "missing-cli.exe"
+        } else {
+            "missing-cli"
+        }),
+        kind: ProgramKind::Native,
+    };
+    let error = program_version(&root, &missing, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    no_install_wording(&error);
+    assert!(error.contains("missing-cli"), "{error}");
+
+    // What the CLI printed is still the detail when it printed anything.
+    let loud = version_probe_cli(
+        temp.path(),
+        "loud-cli",
+        "echo 'node: not found' >&2; exit 127",
+        "echo 'node' is not recognized 1>&2\r\nexit /b 9009",
+    );
+    let error = program_version(&root, &loud, &env, Duration::from_secs(10))
+        .await
+        .unwrap_err();
+    let printed = if cfg!(windows) {
+        "'node' is not recognized"
+    } else {
+        "node: not found"
+    };
+    assert_eq!(error.trim(), printed);
 }
 
 #[cfg(unix)]
@@ -984,8 +1131,10 @@ if (settings.fail) process.exit(2);
             ),
         );
         std::fs::write(root.join("outside"), b"outside fixture must stay unchanged").unwrap();
+        // The child test runs a whole fixture install, several Node processes
+        // in turn.
         let output = tokio::time::timeout(
-            Duration::from_secs(30),
+            test_wait::CHILD_PATIENCE * 4,
             tokio::process::Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",
@@ -1070,7 +1219,7 @@ if (settings.fail) process.exit(2);
         assert_eq!(launch.version.as_deref(), Some("1.2.3"));
         let mut command = tokio::process::Command::new(&launch.executable);
         command.args(&launch.args);
-        let output = bounded_command(command, Duration::from_secs(5))
+        let output = bounded_command(command, test_wait::CHILD_PATIENCE)
             .await
             .unwrap();
         (launch, output)
@@ -1401,9 +1550,9 @@ fn a_failed_install_reports_the_last_output_lines_and_falls_back_when_silent() {
         .map(|n| format!("line {n}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let trimmed = command_failure_message(&trailing_lines(&long), &[]);
-    assert_eq!(trimmed.lines().count(), 5);
-    assert_eq!(trimmed.lines().next().unwrap(), "line 5");
+    let trimmed = command_failure_message(&trailing_lines(&long), &PipeCapture::default());
+    assert_eq!(trimmed.lines().count(), 8);
+    assert_eq!(trimmed.lines().next().unwrap(), "line 2");
 
     assert_eq!(
         command_failure_message(&trailing_lines(""), &trailing_lines("   \n\n")),
@@ -1411,7 +1560,7 @@ fn a_failed_install_reports_the_last_output_lines_and_falls_back_when_silent() {
     );
     let wide = "x".repeat(4096);
     assert_eq!(
-        command_failure_message(&[], &trailing_lines(&wide))
+        command_failure_message(&PipeCapture::default(), &trailing_lines(&wide))
             .chars()
             .count(),
         REPORTED_LINE_CHARS
@@ -1419,26 +1568,473 @@ fn a_failed_install_reports_the_last_output_lines_and_falls_back_when_silent() {
 }
 
 #[test]
-fn windows_runtime_lookup_covers_the_installer_and_version_manager_locations() {
-    let lookup = |name: &str| -> Option<std::ffi::OsString> {
-        match name {
-            "ProgramFiles" => Some("C:\\Program Files".into()),
-            "ProgramFiles(x86)" => Some("C:\\Program Files (x86)".into()),
-            "APPDATA" => Some("C:\\Users\\tester\\AppData\\Roaming".into()),
-            "LOCALAPPDATA" => Some("C:\\Users\\tester\\AppData\\Local".into()),
-            _ => None,
-        }
-    };
+fn a_node_crash_report_keeps_the_error_line_the_tail_would_drop() {
+    let crash = "node:fs:2710\n      binding.lstat(base, false, undefined, true);\n              ^\n\nError: EISDIR: illegal operation on a directory, lstat 'D:'\n    at Object.realpathSync (node:fs:2710:25)\n    at toRealPath (node:internal/modules/helpers:62:13)\n    at Module._findPath (node:internal/modules/cjs/loader:1)\n    at resolveMainPath (node:internal/modules/run_main:1)\n    at executeUserEntryPoint (node:internal/modules/run_main:2)\n    at node:internal/main/run_main_module:36:49 {\n  errno: -4068,\n  code: 'EISDIR',\n  syscall: 'lstat',\n  path: 'D:'\n}\n\nNode.js v25.2.1\n";
+    let message = command_failure_message(&PipeCapture::default(), &trailing_lines(crash));
+    let lines: Vec<&str> = message.lines().collect();
+    assert_eq!(lines.len(), 8, "{message}");
     assert_eq!(
-        windows_runtime_directories(lookup),
+        lines[0],
+        "Error: EISDIR: illegal operation on a directory, lstat 'D:'"
+    );
+    assert!(lines.contains(&"code: 'EISDIR',"));
+    assert_eq!(lines.last(), Some(&"Node.js v25.2.1"));
+
+    let npm = "npm error code E404\n".to_string()
+        + &"npm error detail line\n".repeat(12)
+        + "npm error A complete log of this run can be found in: x.log\n";
+    let message = command_failure_message(&PipeCapture::default(), &trailing_lines(&npm));
+    assert_eq!(message.lines().next(), Some("npm error code E404"));
+    assert_eq!(message.lines().count(), 8);
+    for (line, salient) in [
+        ("TypeError: x is not a function", true),
+        ("npm ERR! code ENOENT", true),
+        ("Errors were found", false),
+        ("ErrorBoundary ready", false),
+    ] {
+        assert_eq!(salient_line(line), salient, "{line}");
+    }
+}
+
+fn vendor(id: &str) -> VendorCli {
+    vendor_cli(&builtins().into_iter().find(|agent| agent.id == id).unwrap()).unwrap()
+}
+
+fn cli(path: &Path, kind: ProgramKind, overridden: bool) -> CliProgram {
+    CliProgram {
+        located: Located {
+            path: path.to_path_buf(),
+            kind,
+        },
+        overridden,
+    }
+}
+
+#[test]
+fn bridges_learn_where_the_cli_is_only_as_they_can_use_it() {
+    let temp = tempfile::tempdir().unwrap();
+    let pi_cmd = temp.path().join("pi.cmd");
+    let pi = cli(&pi_cmd, ProgramKind::Script, false);
+    assert_eq!(
+        cli_handoff(&vendor("pi"), Some(&pi)),
+        Some(("PI_ACP_PI_COMMAND".into(), pi_cmd.clone().into_os_string()))
+    );
+    assert_eq!(cli_handoff(&vendor("pi"), None), None);
+
+    let claude_exe = temp.path().join("claude.exe");
+    assert_eq!(
+        cli_handoff(
+            &vendor("claude"),
+            Some(&cli(&claude_exe, ProgramKind::Native, false))
+        ),
+        None,
+        "Claude uses its bundled CLI unless one was chosen"
+    );
+    assert_eq!(
+        cli_handoff(
+            &vendor("claude"),
+            Some(&cli(&claude_exe, ProgramKind::Native, true))
+        ),
+        Some(("CLAUDE_CODE_EXECUTABLE".into(), claude_exe.into_os_string()))
+    );
+    let claude_cmd = temp.path().join("claude.cmd");
+    std::fs::write(&claude_cmd, "@echo off\r\n").unwrap();
+    assert_eq!(
+        cli_handoff(
+            &vendor("claude"),
+            Some(&cli(&claude_cmd, ProgramKind::Script, true))
+        ),
+        None,
+        "CLAUDE_CODE_EXECUTABLE is never a .cmd"
+    );
+    let script = temp
+        .path()
+        .join("node_modules/@anthropic-ai/claude-code/cli.js");
+    std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+    std::fs::write(&script, "").unwrap();
+    std::fs::write(
+        &claude_cmd,
+        "@SETLOCAL\r\n@node  \"%~dp0\\node_modules\\@anthropic-ai\\claude-code\\cli.js\" %*\r\n",
+    )
+    .unwrap();
+    let (name, value) = cli_handoff(
+        &vendor("claude"),
+        Some(&cli(&claude_cmd, ProgramKind::Script, true)),
+    )
+    .unwrap();
+    assert_eq!(name, "CLAUDE_CODE_EXECUTABLE");
+    assert!(PathBuf::from(value).ends_with("cli.js"));
+
+    let codex_cmd = temp.path().join("codex.cmd");
+    assert_eq!(
+        cli_handoff(
+            &vendor("codex"),
+            Some(&cli(&codex_cmd, ProgramKind::Script, false))
+        ),
+        None
+    );
+    assert_eq!(
+        cli_handoff(
+            &vendor("codex"),
+            Some(&cli(&codex_cmd, ProgramKind::Script, true))
+        ),
+        Some(("CODEX_PATH".into(), codex_cmd.into_os_string()))
+    );
+    assert_eq!(
+        cli_handoff(
+            &vendor("opencode"),
+            Some(&cli(
+                &temp.path().join("opencode"),
+                ProgramKind::Native,
+                true
+            ))
+        ),
+        None
+    );
+}
+
+#[test]
+fn node_comes_first_and_only_a_cli_the_bridge_needs_goes_before_system_folders() {
+    let node = PathBuf::from("/opt/node/bin/node");
+    let launch = Launch {
+        executable: node.clone(),
+        entry: Some(PathBuf::from("/data/agents/pi/index.js")),
+        ..Launch::default()
+    };
+    let pi = cli(
+        Path::new("/home/r/.pi/agent/bin/pi"),
+        ProgramKind::Native,
+        false,
+    );
+    let (prepend, append) =
+        search_path_folders(Some(&vendor("pi")), Some(&node), Some(&pi), &launch);
+    assert_eq!(
+        prepend,
         [
-            PathBuf::from("C:\\Program Files").join("nodejs"),
-            PathBuf::from("C:\\Program Files (x86)").join("nodejs"),
-            PathBuf::from("C:\\Users\\tester\\AppData\\Roaming").join("npm"),
-            PathBuf::from("C:\\Users\\tester\\AppData\\Local").join("nvm\\current"),
-            PathBuf::from("C:\\Users\\tester\\AppData\\Local").join("Programs\\nodejs"),
+            PathBuf::from("/opt/node/bin"),
+            PathBuf::from("/opt/node/bin"),
+            PathBuf::from("/home/r/.pi/agent/bin")
         ]
     );
-    assert!(windows_runtime_directories(|_| None).is_empty());
-    assert!(windows_runtime_directories(|_| Some(std::ffi::OsString::new())).is_empty());
+    assert!(append.is_empty());
+    let codex = cli(
+        Path::new("/tools/codex/bin/codex"),
+        ProgramKind::Native,
+        false,
+    );
+    let (prepend, append) =
+        search_path_folders(Some(&vendor("codex")), Some(&node), Some(&codex), &launch);
+    assert_eq!(prepend.last(), Some(&PathBuf::from("/opt/node/bin")));
+    assert_eq!(append, [PathBuf::from("/tools/codex/bin")]);
+    let env = launch_env(Some(&vendor("pi")), Some(&node), Some(&pi), &launch);
+    assert_eq!(env[0].0, "PATH");
+    assert!(env.iter().any(|(name, value)| name == "PI_ACP_PI_COMMAND"
+        && Path::new(value) == Path::new("/home/r/.pi/agent/bin/pi")));
+}
+
+#[test]
+fn a_recognised_windows_shim_runs_its_script_with_node_and_others_run_through_cmd() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefix = temp.path().join("npm");
+    let script = prefix.join("node_modules/opencode-ai/bin/opencode.js");
+    std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+    std::fs::write(&script, "").unwrap();
+    let shim = prefix.join("opencode.cmd");
+    std::fs::write(
+        &shim,
+        "@IF EXIST \"%~dp0\\node.exe\" (\r\n  \"%~dp0\\node.exe\"  \"%~dp0\\node_modules\\opencode-ai\\bin\\opencode.js\" %*\r\n) ELSE (\r\n  @SETLOCAL\r\n  @SET PATHEXT=%PATHEXT:;.JS;=;%\r\n  node  \"%~dp0\\node_modules\\opencode-ai\\bin\\opencode.js\" %*\r\n)\r\n",
+    )
+    .unwrap();
+    let node = temp.path().join("nodejs/node.exe");
+    let launch = launch_program(
+        Located {
+            path: shim.clone(),
+            kind: ProgramKind::Script,
+        },
+        vec!["acp".into()],
+        Some(&node),
+    );
+    assert_eq!(launch.executable, node);
+    assert_eq!(
+        launch.args,
+        [
+            prefix
+                .join("node_modules")
+                .join("opencode-ai")
+                .join("bin")
+                .join("opencode.js")
+                .to_string_lossy()
+                .into_owned(),
+            "acp".to_string()
+        ]
+    );
+    assert!(!launch.batch);
+    let other = temp.path().join("hermes.cmd");
+    std::fs::write(&other, "@\"%~dp0\\venv\\Scripts\\hermes.exe\" %*\r\n").unwrap();
+    let launch = launch_program(
+        Located {
+            path: other.clone(),
+            kind: ProgramKind::Script,
+        },
+        vec!["acp".into()],
+        Some(&node),
+    );
+    assert_eq!(launch.executable, other);
+    assert_eq!(launch.args, ["acp"]);
+    assert!(launch.batch);
+    let no_node = launch_program(
+        Located {
+            path: shim,
+            kind: ProgramKind::Script,
+        },
+        Vec::new(),
+        None,
+    );
+    assert!(no_node.batch);
+}
+
+#[test]
+fn a_chosen_program_wins_over_the_managed_install_for_agents_oleafly_starts_directly() {
+    let temp = tempfile::tempdir().unwrap();
+    let definition = binary_definition();
+    let managed = installed_fixture(temp.path(), &definition, false);
+    let chosen = temp.path().join("chosen-agent.exe");
+    native_file(&chosen);
+    assert_eq!(program_role(&definition), ProgramRole::Launch);
+    let plan = plan(temp.path(), &definition, Some(&chosen));
+    let launch = plan.launch.unwrap();
+    assert_eq!(launch.executable, chosen);
+    assert_eq!(launch.args, ["--acp"]);
+    assert!(!launch.managed);
+    let fallback = resolve(temp.path(), &definition).unwrap();
+    assert_eq!(fallback.executable, locator::child_path(&managed));
+    let missing = super::plan(
+        temp.path(),
+        &definition,
+        Some(&temp.path().join("gone.exe")),
+    );
+    assert!(missing.launch.unwrap_err().contains("Choose it again"));
+}
+
+#[test]
+fn a_chosen_cli_is_handed_to_the_bridge_and_the_bridge_stays_the_same() {
+    let temp = tempfile::tempdir().unwrap();
+    let pi = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "pi")
+        .unwrap();
+    assert_eq!(program_role(&pi), ProgramRole::Cli);
+    let script = installed_fixture(temp.path(), &pi, true);
+    // Windows starts only programs with a program extension.
+    let chosen = temp
+        .path()
+        .join("D Tools")
+        .join(format!("pi-cli{}", std::env::consts::EXE_SUFFIX));
+    std::fs::create_dir_all(chosen.parent().unwrap()).unwrap();
+    native_file(&chosen);
+    let plan = plan(temp.path(), &pi, Some(&chosen));
+    assert_eq!(
+        plan.cli,
+        Some(CliProgram {
+            located: Located {
+                path: chosen.clone(),
+                kind: ProgramKind::Native
+            },
+            overridden: true
+        })
+    );
+    if let Ok(launch) = plan.launch {
+        assert_eq!(launch.entry, Some(locator::child_path(&script)));
+        assert!(launch
+            .env
+            .iter()
+            .any(|(name, value)| name == "PI_ACP_PI_COMMAND" && Path::new(value) == chosen));
+        let path = &launch
+            .env
+            .iter()
+            .find(|(name, _)| name == "PATH")
+            .unwrap()
+            .1;
+        assert!(std::env::split_paths(path).any(|entry| entry == chosen.parent().unwrap()));
+    }
+    let gone = super::plan(temp.path(), &pi, Some(&temp.path().join("missing-pi")));
+    assert!(gone.cli.is_none());
+    assert_eq!(gone.cli_rejected[0].reason, locator::RejectReason::NotFound);
+}
+
+#[tokio::test]
+async fn status_reports_the_chosen_program_its_source_and_whether_the_cli_is_required() {
+    let temp = tempfile::tempdir().unwrap();
+    let pi = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "pi")
+        .unwrap();
+    let chosen = temp
+        .path()
+        .join(format!("pi-cli{}", std::env::consts::EXE_SUFFIX));
+    native_file(&chosen);
+    let status = status_with(
+        temp.path(),
+        pi.clone(),
+        false,
+        Some(chosen.to_string_lossy().into_owned()),
+    )
+    .await;
+    assert!(status.cli_required);
+    assert_eq!(
+        status.program_override.as_deref(),
+        Some(chosen.to_string_lossy().as_ref())
+    );
+    let cli = status.cli.unwrap();
+    assert_eq!(cli.source.as_deref(), Some("override"));
+    assert_eq!(cli.path.as_deref(), Some(chosen.to_string_lossy().as_ref()));
+    assert!(cli.sign_in_command.contains(&*chosen.to_string_lossy()));
+    let claude = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "claude")
+        .unwrap();
+    assert!(
+        !status_with(temp.path(), claude, false, None)
+            .await
+            .cli_required
+    );
+}
+
+#[test]
+fn sign_in_commands_quote_a_cli_a_terminal_cannot_find_by_name() {
+    for windows in [false, true] {
+        assert_eq!(
+            sign_in_command_for(
+                "claude auth login",
+                Some(Path::new("/x/claude")),
+                true,
+                windows
+            ),
+            "claude auth login"
+        );
+        assert_eq!(sign_in_command_for("pi", None, false, windows), "pi");
+    }
+
+    // POSIX shells: a single-quoted path, so spaces, `$` and backticks stay
+    // literal; a quote in the path closes, escapes and reopens.
+    assert_eq!(
+        sign_in_command_for(
+            "claude auth login",
+            Some(Path::new("/my tools/claude")),
+            false,
+            false
+        ),
+        "'/my tools/claude' auth login"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new("/x/$HOME/pi")), false, false),
+        "'/x/$HOME/pi'"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new("/Users/o'brien/bin/pi")), false, false),
+        r"'/Users/o'\''brien/bin/pi'"
+    );
+
+    // PowerShell (the Windows terminal): a quoted path on its own is only a
+    // string, so it needs the call operator; quotes in the path are doubled.
+    assert_eq!(
+        sign_in_command_for(
+            "claude auth login",
+            Some(Path::new(r"C:\Users\Ada\.local\bin\claude.exe")),
+            false,
+            true
+        ),
+        r"& 'C:\Users\Ada\.local\bin\claude.exe' auth login"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new(r"D:\tools\pi\pi.cmd")), false, true),
+        r"& 'D:\tools\pi\pi.cmd'"
+    );
+    assert_eq!(
+        sign_in_command_for("pi", Some(Path::new(r"D:\O'Brien\pi.cmd")), false, true),
+        r"& 'D:\O''Brien\pi.cmd'"
+    );
+    assert_eq!(
+        sign_in_command_for(
+            "pi",
+            Some(Path::new("D:\\O\u{2019}Brien\\pi.cmd")),
+            false,
+            true
+        ),
+        "& 'D:\\O\u{2019}\u{2019}Brien\\pi.cmd'"
+    );
+
+    // The command shown to the user is the form for this computer's shell.
+    let path = Path::new("/my tools/claude");
+    assert_eq!(
+        sign_in_command_text("claude auth login", Some(path), false),
+        sign_in_command_for("claude auth login", Some(path), false, cfg!(windows))
+    );
+}
+
+#[test]
+fn node_versions_parse_with_their_minor_release() {
+    assert_eq!(parse_node_version("v22.19.0\n"), Some((22, 19, 0)));
+    assert_eq!(parse_node_version("v25.2.1-nightly"), Some((25, 2, 1)));
+    assert_eq!(parse_node_version("22"), Some((22, 0, 0)));
+    assert_eq!(parse_node_version("node"), None);
+    assert!(parse_node_version("v22.18.9").unwrap() < (22, 19, 0));
+}
+
+#[test]
+fn registry_agents_that_ship_as_built_ins_are_linked_to_them() {
+    for (registry, builtin) in [
+        ("pi-acp", "pi"),
+        ("claude-acp", "claude"),
+        ("codex-acp", "codex"),
+        ("gemini", "gemini"),
+        ("opencode", "opencode"),
+        ("cline", "cline"),
+        ("kimi", "kimi"),
+        ("qoder", "qoder"),
+        ("cursor", "cursor"),
+        ("codebuddy-code", "codebuddy"),
+        ("grok-build", "grok"),
+    ] {
+        assert_eq!(registry_builtin_id(registry).as_deref(), Some(builtin));
+        assert!(builtins().iter().any(|agent| agent.id == builtin));
+    }
+    assert_eq!(registry_builtin_id("claude-code-acp"), None);
+    let entries = registry_entries(
+        br#"{"agents":[{"id":"pi-acp","name":"Pi","description":"","version":"0.0.34","distribution":{"npx":{"package":"pi-acp@0.0.34"}}},{"id":"other","name":"Other","description":"","version":"1.0.0","distribution":{"npx":{"package":"other@1.0.0"}}}]}"#,
+        "",
+    )
+    .unwrap();
+    assert_eq!(entries[0].builtin_id.as_deref(), Some("pi"));
+    assert_eq!(entries[1].builtin_id, None);
+}
+
+#[test]
+fn pi_uses_the_bridge_release_with_the_windows_launch_fix() {
+    let pi = builtins()
+        .into_iter()
+        .find(|agent| agent.id == "pi")
+        .unwrap();
+    assert_eq!(pi.distribution.npx.unwrap().package, "pi-acp@0.0.34");
+    let vendor = vendor("pi");
+    assert!(vendor.bridge_needs_cli);
+    assert_eq!(vendor.cli_env, Some("PI_ACP_PI_COMMAND"));
+}
+
+#[test]
+fn sandboxed_launches_see_resolved_paths() {
+    let temp = tempfile::tempdir().unwrap();
+    let script = temp.path().join("index.js");
+    std::fs::write(&script, "").unwrap();
+    let launch = Launch {
+        executable: temp.path().join("node"),
+        args: vec![script.to_string_lossy().into_owned(), "--acp".into()],
+        entry: Some(script.clone()),
+        ..Launch::default()
+    };
+    let resolved = launch.resolved_for_sandbox();
+    let real = script.canonicalize().unwrap();
+    assert_eq!(resolved.args[0], real.to_string_lossy());
+    assert_eq!(resolved.args[1], "--acp");
+    assert_eq!(resolved.entry, Some(real));
 }

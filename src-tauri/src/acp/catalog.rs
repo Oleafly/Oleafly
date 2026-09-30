@@ -1,12 +1,14 @@
 use super::{
     new_id, AgentDefinition, AgentStatus, CliStatus, CommandDistribution, Distribution,
-    PackageDistribution,
+    PackageDistribution, RejectedCandidate,
 };
+use crate::program_locator::{self as locator, Located, ProgramKind, Rejected};
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
+    ffi::OsString,
     io::Read,
     path::{Component, Path, PathBuf},
     process::Stdio,
@@ -26,6 +28,9 @@ pub struct RegistryEntry {
     pub version: String,
     pub definition: Option<AgentDefinition>,
     pub reason: Option<String>,
+    /// The built-in agent this registry entry corresponds to, when known.
+    #[serde(default)]
+    pub builtin_id: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -35,12 +40,43 @@ struct InstallReceipt {
     node: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Launch {
+    /// Plain path of the program to start.
     pub executable: PathBuf,
+    /// Plain paths only: a Node.js bridge's script comes first.
     pub args: Vec<String>,
     pub version: Option<String>,
     pub managed: bool,
+    /// The program is a Windows `.cmd`/`.bat` file started through cmd.exe.
+    pub batch: bool,
+    /// The JavaScript entry point when Node.js runs the agent.
+    pub entry: Option<PathBuf>,
+    /// cmd.exe runs somewhere in the agent's process tree (the agent itself,
+    /// or the CLI its bridge starts), so its working folder must not be a
+    /// network path.
+    pub needs_local_folder: bool,
+    /// Environment for a non-sandboxed launch: the search path, Windows
+    /// hardening and the hand-off of the CLI Oleafly found to the bridge.
+    pub env: Vec<(String, OsString)>,
+}
+
+impl Launch {
+    /// The same launch with symlinks resolved, for sandbox read rules
+    /// (macOS and Linux tasks only).
+    pub fn resolved_for_sandbox(&self) -> Launch {
+        let resolve = |path: &Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let mut launch = self.clone();
+        launch.executable = resolve(&self.executable);
+        if let Some(entry) = &self.entry {
+            let resolved = resolve(entry);
+            if launch.args.first().map(PathBuf::from).as_ref() == Some(entry) {
+                launch.args[0] = resolved.to_string_lossy().into_owned();
+            }
+            launch.entry = Some(resolved);
+        }
+        launch
+    }
 }
 
 struct Builtin {
@@ -105,9 +141,9 @@ const BUILTINS: &[Builtin] = &[
         id: "pi",
         name: "Pi",
         description: "Uses the agent's own CLI account and permissions.",
-        version: "0.0.33",
+        version: "0.0.34",
         dist: BuiltinDist::Bridge {
-            package: "pi-acp@0.0.33",
+            package: "pi-acp@0.0.34",
             cmd: "pi-acp",
             args: &[],
             node: 22,
@@ -497,18 +533,19 @@ fn validate_binaries(dist: &Distribution) -> Result<(), String> {
     Ok(())
 }
 
+/// Windows files an agent definition may not name: scripts that need an
+/// interpreter Oleafly would have to guess. `.cmd` and `.bat` are allowed.
 fn windows_command_script(executable: &str) -> bool {
     cfg!(windows)
         && Path::new(executable)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
             .is_some_and(|extension| {
-                matches!(
-                    extension.to_ascii_lowercase().as_str(),
-                    "cmd" | "bat" | "ps1" | "js" | "py"
-                )
+                matches!(extension.to_ascii_lowercase().as_str(), "ps1" | "js" | "py")
             })
 }
+
+const PACKAGE_LAUNCHERS: &[&str] = &["npx", "npm", "pnpm", "yarn", "uvx", "uv", "bunx"];
 
 fn validate_installed_command(dist: &Distribution) -> Result<(), String> {
     let Some(command) = &dist.command else {
@@ -522,116 +559,37 @@ fn validate_installed_command(dist: &Distribution) -> Result<(), String> {
         return Err("The executable path is invalid.".into());
     }
     if !Path::new(&command.executable).is_absolute() && !valid_command_name(&command.executable) {
-        return Err("Use an absolute executable path or a command name from PATH.".into());
+        return Err("Use an absolute program path or a program name.".into());
     }
     if windows_command_script(&command.executable) {
-        return Err("Use a native executable with argument arrays, or a pinned package, instead of a Windows command script.".into());
+        return Err(
+            "Use a program (.exe, .cmd or .bat) or a pinned package instead of a script.".into(),
+        );
     }
     let stem = Path::new(&command.executable)
         .file_stem()
         .and_then(std::ffi::OsStr::to_str)
-        .unwrap_or_default();
-    if matches!(
-        stem,
-        "npx" | "npm" | "pnpm" | "yarn" | "uvx" | "uv" | "bunx"
-    ) {
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if PACKAGE_LAUNCHERS.contains(&stem.as_str()) {
         return Err("Use a pinned package distribution instead of a package launcher.".into());
     }
     Ok(())
 }
 
 fn valid_command_name(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 100
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
-        && !value.starts_with('.')
+    locator::valid_program_name(value)
 }
 
-#[cfg(any(windows, test))]
-const WINDOWS_RUNTIME_DIRECTORIES: [(&str, &str); 5] = [
-    ("ProgramFiles", "nodejs"),
-    ("ProgramFiles(x86)", "nodejs"),
-    ("APPDATA", "npm"),
-    ("LOCALAPPDATA", "nvm\\current"),
-    ("LOCALAPPDATA", "Programs\\nodejs"),
-];
-
-#[cfg(any(windows, test))]
-fn windows_runtime_directories(
-    lookup: impl Fn(&str) -> Option<std::ffi::OsString>,
-) -> Vec<PathBuf> {
-    WINDOWS_RUNTIME_DIRECTORIES
-        .iter()
-        .filter_map(|(variable, suffix)| {
-            let root = lookup(variable)?;
-            (!root.is_empty()).then(|| PathBuf::from(root).join(suffix))
-        })
-        .collect()
-}
-
-pub fn discover(name: &str) -> Option<PathBuf> {
+/// Test helper: finds a program the way agent launches do.
+#[cfg(test)]
+pub(crate) fn discover(name: &str) -> Option<PathBuf> {
     if Path::new(name).is_absolute() {
-        return executable_path(PathBuf::from(name));
+        return locator::locate_path(Path::new(name))
+            .ok()
+            .map(|located| located.path);
     }
-    if !valid_command_name(name) {
-        return None;
-    }
-    let mut directories: Vec<PathBuf> =
-        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
-            .filter(|p| p.is_absolute())
-            .collect();
-    if let Ok(home) = crate::paths::home_dir() {
-        directories.extend([
-            home.join(".local/bin"),
-            home.join(".cargo/bin"),
-            home.join(".npm-global/bin"),
-            home.join(".bun/bin"),
-        ]);
-    }
-    #[cfg(unix)]
-    directories.extend([
-        PathBuf::from("/opt/homebrew/bin"),
-        PathBuf::from("/usr/local/bin"),
-        PathBuf::from("/usr/bin"),
-    ]);
-    #[cfg(windows)]
-    directories.extend(windows_runtime_directories(|name| std::env::var_os(name)));
-    for directory in directories {
-        if let Some(path) = executable_path(directory.join(name)) {
-            return Some(path);
-        }
-        #[cfg(windows)]
-        if let Some(path) = executable_path(directory.join(format!("{name}.exe"))) {
-            return Some(path);
-        }
-    }
-    None
-}
-
-fn executable_path(path: PathBuf) -> Option<PathBuf> {
-    let metadata = path.metadata().ok()?;
-    if !metadata.is_file() {
-        return None;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if metadata.permissions().mode() & 0o111 == 0 {
-            return None;
-        }
-    }
-    #[cfg(windows)]
-    {
-        let native = path.extension().is_some_and(|extension| {
-            extension.eq_ignore_ascii_case("exe") || extension.eq_ignore_ascii_case("com")
-        });
-        if !native {
-            return None;
-        }
-    }
-    path.canonicalize().ok()
+    locator::locate_native(name).map(|located| located.path)
 }
 
 fn receipt_dir(root: &Path, definition: &AgentDefinition) -> PathBuf {
@@ -640,6 +598,8 @@ fn receipt_dir(root: &Path, definition: &AgentDefinition) -> PathBuf {
         .join(&definition.version)
 }
 
+/// A verified install receipt. The executable is checked against the
+/// canonical install folder and returned as a plain path.
 fn read_receipt(root: &Path, definition: &AgentDefinition) -> Option<InstallReceipt> {
     let directory = receipt_dir(root, definition).canonicalize().ok()?;
     let receipt: InstallReceipt =
@@ -652,14 +612,117 @@ fn read_receipt(root: &Path, definition: &AgentDefinition) -> Option<InstallRece
         return None;
     }
     Some(InstallReceipt {
-        executable,
+        executable: locator::child_path(&executable),
         ..receipt
     })
 }
 
-pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, String> {
-    validate(definition)?;
-    let args = definition
+/// Whether the program a user chooses for this agent is its CLI (handed to
+/// the bridge) or the program Oleafly starts itself.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ProgramRole {
+    Cli,
+    Launch,
+}
+
+pub(crate) fn program_role(definition: &AgentDefinition) -> ProgramRole {
+    if vendor_cli(definition).is_some_and(|vendor| vendor.cli_env.is_some()) {
+        ProgramRole::Cli
+    } else {
+        ProgramRole::Launch
+    }
+}
+
+/// The vendor CLI Oleafly found or the user chose.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct CliProgram {
+    pub located: Located,
+    pub overridden: bool,
+}
+
+/// Everything Oleafly resolves about an agent before starting anything.
+/// Built by blocking file system searches; call it off the async runtime.
+pub(crate) struct Plan {
+    pub launch: Result<Launch, String>,
+    pub cli: Option<CliProgram>,
+    pub cli_rejected: Vec<Rejected>,
+    pub node: Option<PathBuf>,
+}
+
+const CHOSEN_PROGRAM_MISSING: &str =
+    "The program chosen for this agent is missing. Choose it again in Settings.";
+
+pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&Path>) -> Plan {
+    let vendor = vendor_cli(definition);
+    let role = program_role(definition);
+    let node = locator::locate_native("node").map(|located| located.path);
+    let launch_program = program.filter(|_| role == ProgramRole::Launch);
+    let cli_program = program.filter(|_| role == ProgramRole::Cli);
+    let (cli, cli_rejected) = match &vendor {
+        Some(vendor) => resolve_cli(vendor, cli_program, launch_program),
+        None => (None, Vec::new()),
+    };
+    let launch =
+        resolve_launch(root, definition, launch_program, node.as_deref()).map(|mut launch| {
+            // A bridge handed a `.cmd` CLI starts it through cmd.exe.
+            let script_handoff = vendor
+                .as_ref()
+                .and_then(|vendor| cli_handoff(vendor, cli.as_ref()))
+                .is_some_and(|(_, value)| {
+                    Path::new(&value).extension().is_some_and(|extension| {
+                        extension.eq_ignore_ascii_case("cmd")
+                            || extension.eq_ignore_ascii_case("bat")
+                    })
+                });
+            launch.needs_local_folder = launch.batch || script_handoff;
+            launch.env = launch_env(vendor.as_ref(), node.as_deref(), cli.as_ref(), &launch);
+            launch
+        });
+    Plan {
+        launch,
+        cli,
+        cli_rejected,
+        node,
+    }
+}
+
+fn resolve_cli(
+    vendor: &VendorCli,
+    cli_program: Option<&Path>,
+    launch_program: Option<&Path>,
+) -> (Option<CliProgram>, Vec<Rejected>) {
+    // A chosen CLI, or a chosen program that is the agent's own CLI.
+    let chosen = cli_program.or(launch_program.filter(|_| vendor.shares_bridge));
+    if let Some(program) = chosen {
+        return match locator::locate_path(program) {
+            Ok(located) => (
+                Some(CliProgram {
+                    located,
+                    overridden: true,
+                }),
+                Vec::new(),
+            ),
+            Err(reason) => (
+                None,
+                vec![Rejected {
+                    path: program.to_path_buf(),
+                    reason,
+                }],
+            ),
+        };
+    }
+    let (found, rejected) = locator::locate(vendor.command);
+    (
+        found.map(|located| CliProgram {
+            located,
+            overridden: false,
+        }),
+        rejected,
+    )
+}
+
+fn definition_args(definition: &AgentDefinition) -> Vec<String> {
+    definition
         .distribution
         .command
         .as_ref()
@@ -674,26 +737,11 @@ pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, Stri
                 .map(|v| &v.args)
         })
         .cloned()
-        .unwrap_or_default();
-    if let Some(receipt) = read_receipt(root, definition) {
-        if receipt.node {
-            let mut argv = vec![receipt.executable.to_string_lossy().into_owned()];
-            argv.extend(args);
-            return Ok(Launch {
-                executable: discover("node").ok_or("Install Node.js to run this agent.")?,
-                args: argv,
-                version: Some(receipt.version),
-                managed: true,
-            });
-        }
-        return Ok(Launch {
-            executable: receipt.executable,
-            args,
-            version: Some(receipt.version),
-            managed: true,
-        });
-    }
-    let name = definition
+        .unwrap_or_default()
+}
+
+fn definition_program_name(definition: &AgentDefinition) -> Option<String> {
+    definition
         .distribution
         .command
         .as_ref()
@@ -722,19 +770,157 @@ pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, Stri
                         .file_name()
                         .map(|v| v.to_string_lossy().into_owned())
                 })
-        });
-    if let Some(path) = name.and_then(|name| discover(&name)) {
-        return Ok(Launch {
-            executable: path,
+        })
+}
+
+/// A launch for a program found on disk. A recognised Windows package
+/// manager shim runs as `node <script>` (no cmd.exe); any other `.cmd` or
+/// `.bat` runs through cmd.exe, which Rust quotes safely.
+fn launch_program(located: Located, args: Vec<String>, node: Option<&Path>) -> Launch {
+    if located.kind == ProgramKind::Script {
+        if let Some(target) = locator::npm_shim_target(&located.path) {
+            if let Some(node) = target.node.clone().or_else(|| node.map(Path::to_path_buf)) {
+                let mut argv = vec![target.script.to_string_lossy().into_owned()];
+                argv.extend(args);
+                return Launch {
+                    executable: node,
+                    args: argv,
+                    entry: Some(target.script),
+                    ..Launch::default()
+                };
+            }
+        }
+        return Launch {
+            executable: located.path,
             args,
-            version: None,
-            managed: false,
+            batch: true,
+            ..Launch::default()
+        };
+    }
+    Launch {
+        executable: located.path,
+        args,
+        ..Launch::default()
+    }
+}
+
+/// The launch Oleafly would use with no program chosen. Blocking.
+#[cfg(test)]
+pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, String> {
+    plan(root, definition, None).launch
+}
+
+fn resolve_launch(
+    root: &Path,
+    definition: &AgentDefinition,
+    program: Option<&Path>,
+    node: Option<&Path>,
+) -> Result<Launch, String> {
+    validate(definition)?;
+    let args = definition_args(definition);
+    if let Some(program) = program {
+        let located =
+            locator::locate_path(program).map_err(|_| CHOSEN_PROGRAM_MISSING.to_string())?;
+        return Ok(launch_program(located, args, node));
+    }
+    if let Some(receipt) = read_receipt(root, definition) {
+        if receipt.node {
+            let mut argv = vec![receipt.executable.to_string_lossy().into_owned()];
+            argv.extend(args);
+            return Ok(Launch {
+                executable: node
+                    .map(Path::to_path_buf)
+                    .ok_or("Install Node.js to run this agent.")?,
+                args: argv,
+                version: Some(receipt.version),
+                managed: true,
+                entry: Some(receipt.executable),
+                ..Launch::default()
+            });
+        }
+        return Ok(Launch {
+            executable: receipt.executable,
+            args,
+            version: Some(receipt.version),
+            managed: true,
+            ..Launch::default()
         });
     }
-    if let Some(launch) = existing_npm_launch(definition, &args) {
+    let found = definition_program_name(definition).and_then(|name| {
+        if Path::new(&name).is_absolute() {
+            locator::locate_path(Path::new(&name)).ok()
+        } else {
+            locator::locate(&name).0
+        }
+    });
+    if let Some(located) = found {
+        return Ok(launch_program(located, args, node));
+    }
+    if let Some(launch) = existing_npm_launch(definition, &args, node) {
         return Ok(launch);
     }
-    Err("The agent is not installed. Install the pinned version or make its executable available on PATH.".into())
+    Err("This agent isn't installed yet. Install it, or choose its program in Settings.".into())
+}
+
+/// Environment for a non-sandboxed agent: Node.js first on the search path;
+/// the vendor CLI's folder before the rest when the bridge must find it,
+/// after it otherwise (so a CLI folder shipping its own tools cannot shadow
+/// system ones); and the CLI hand-off variable the bridge reads.
+pub(crate) fn launch_env(
+    vendor: Option<&VendorCli>,
+    node: Option<&Path>,
+    cli: Option<&CliProgram>,
+    launch: &Launch,
+) -> Vec<(String, OsString)> {
+    let (prepend, append) = search_path_folders(vendor, node, cli, launch);
+    let mut env = locator::child_env(&prepend, &append);
+    if let Some(handoff) = vendor.and_then(|vendor| cli_handoff(vendor, cli)) {
+        env.push(handoff);
+    }
+    env
+}
+
+pub(crate) fn search_path_folders(
+    vendor: Option<&VendorCli>,
+    node: Option<&Path>,
+    cli: Option<&CliProgram>,
+    launch: &Launch,
+) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let needs_cli = vendor.is_some_and(|vendor| vendor.bridge_needs_cli);
+    let mut prepend = Vec::new();
+    if launch.entry.is_some() {
+        prepend.extend(launch.executable.parent().map(Path::to_path_buf));
+    }
+    prepend.extend(node.and_then(Path::parent).map(Path::to_path_buf));
+    let cli_folder = cli.and_then(|cli| cli.located.path.parent().map(Path::to_path_buf));
+    let mut append = Vec::new();
+    if needs_cli {
+        prepend.extend(cli_folder);
+    } else {
+        append.extend(cli_folder);
+    }
+    (prepend, append)
+}
+
+/// The variable that tells a bridge where the vendor CLI is: Pi always when
+/// the CLI was found; Claude Code and Codex only when the user chose one
+/// (otherwise their bridges use the CLI they bundle). Claude's SDK cannot
+/// start a `.cmd`, so it gets a shim's script or nothing.
+pub(crate) fn cli_handoff(
+    vendor: &VendorCli,
+    cli: Option<&CliProgram>,
+) -> Option<(String, OsString)> {
+    let variable = vendor.cli_env?;
+    let cli = cli?;
+    if vendor.cli_env_needs_override && !cli.overridden {
+        return None;
+    }
+    let path = match cli.located.kind {
+        ProgramKind::Native => cli.located.path.clone(),
+        ProgramKind::Script if vendor.cli_env_accepts_script => cli.located.path.clone(),
+        ProgramKind::Script => locator::npm_shim_target(&cli.located.path)?.script,
+    };
+    Some((variable.into(), locator::child_path(&path).into_os_string()))
 }
 
 pub(super) fn npm_roots_from(
@@ -773,20 +959,23 @@ pub(super) fn npm_roots_from(
     roots
 }
 
-fn npm_global_roots() -> Vec<PathBuf> {
+fn npm_global_roots(node: Option<&Path>) -> Vec<PathBuf> {
     npm_roots_from(
-        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
-            .filter(|path| path.is_absolute()),
-        discover("node"),
+        locator::search_dirs(),
+        node.map(Path::to_path_buf),
         crate::paths::home_dir().ok(),
         std::env::var_os("APPDATA").map(PathBuf::from),
     )
 }
 
-fn existing_npm_launch(definition: &AgentDefinition, args: &[String]) -> Option<Launch> {
+fn existing_npm_launch(
+    definition: &AgentDefinition,
+    args: &[String],
+    node: Option<&Path>,
+) -> Option<Launch> {
     let package = definition.distribution.npx.as_ref()?;
     let (name, _) = package_parts(&package.package, true).ok()?;
-    for root in npm_global_roots() {
+    for root in npm_global_roots(node) {
         let package_root = root.join(name);
         let manifest_path = package_root.join("package.json");
         if manifest_path
@@ -844,31 +1033,37 @@ fn existing_npm_launch(definition: &AgentDefinition, args: &[String]) -> Option<
                 extension == "js" || extension == "mjs" || extension == "cjs"
             });
         let version = manifest["version"].as_str().map(str::to_owned);
+        let executable = locator::child_path(&executable);
         if node_script {
             let mut arguments = vec![executable.to_string_lossy().into_owned()];
             arguments.extend_from_slice(args);
             return Some(Launch {
-                executable: discover("node")?,
+                executable: node?.to_path_buf(),
                 args: arguments,
                 version,
-                managed: false,
+                entry: Some(executable),
+                ..Launch::default()
             });
         }
-        if let Some(executable) = executable_path(executable) {
-            return Some(Launch {
-                executable,
-                args: args.to_vec(),
-                version,
-                managed: false,
-            });
+        if let Ok(located) = locator::locate_path(&executable) {
+            if located.kind == ProgramKind::Native {
+                return Some(Launch {
+                    executable: located.path,
+                    args: args.to_vec(),
+                    version,
+                    ..Launch::default()
+                });
+            }
         }
     }
     None
 }
 
+/// Why this agent cannot be installed here, if it cannot. Searches the file
+/// system; call it off the async runtime.
 pub fn install_reason(definition: &AgentDefinition) -> Option<String> {
     if definition.distribution.npx.is_some() {
-        return if discover("node").is_none() || npm_cli().is_none() {
+        return if locator::locate_native("node").is_none() || npm_cli().is_none() {
             Some("Install Node.js and npm to install this agent.".into())
         } else {
             None
@@ -881,7 +1076,7 @@ pub fn install_reason(definition: &AgentDefinition) -> Option<String> {
         if package.cmd.is_none() {
             return Some("Set the Python package executable name in cmd before installing.".into());
         }
-        return if discover("uv").is_none() {
+        return if locator::locate_native("uv").is_none() {
             Some("Install uv to install this Python agent.".into())
         } else {
             None
@@ -929,12 +1124,40 @@ pub(super) fn task_unavailable_reason_for(
     None
 }
 
-#[derive(Clone)]
-struct VendorCli {
-    command: &'static str,
-    display_name: &'static str,
-    sign_in_command: &'static str,
-    shares_bridge: bool,
+#[derive(Clone, Debug)]
+pub(crate) struct VendorCli {
+    pub(crate) command: &'static str,
+    pub(crate) display_name: &'static str,
+    pub(crate) sign_in_command: &'static str,
+    pub(crate) shares_bridge: bool,
+    /// The variable the bridge reads to find the vendor CLI.
+    pub(crate) cli_env: Option<&'static str>,
+    /// Set the variable only for a CLI the user chose; otherwise the bridge
+    /// uses the CLI it bundles.
+    pub(crate) cli_env_needs_override: bool,
+    /// The bridge can start a Windows `.cmd`/`.bat` CLI.
+    pub(crate) cli_env_accepts_script: bool,
+    /// The bridge cannot work without the vendor CLI.
+    pub(crate) bridge_needs_cli: bool,
+}
+
+impl VendorCli {
+    const fn shared(
+        command: &'static str,
+        display_name: &'static str,
+        sign_in_command: &'static str,
+    ) -> Self {
+        Self {
+            command,
+            display_name,
+            sign_in_command,
+            shares_bridge: true,
+            cli_env: None,
+            cli_env_needs_override: false,
+            cli_env_accepts_script: false,
+            bridge_needs_cli: false,
+        }
+    }
 }
 
 const VENDOR_CLIS: &[(&str, VendorCli)] = &[
@@ -945,6 +1168,10 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             display_name: "Claude Code",
             sign_in_command: "claude auth login",
             shares_bridge: false,
+            cli_env: Some("CLAUDE_CODE_EXECUTABLE"),
+            cli_env_needs_override: true,
+            cli_env_accepts_script: false,
+            bridge_needs_cli: false,
         },
     ),
     (
@@ -954,16 +1181,15 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             display_name: "Codex",
             sign_in_command: "codex login",
             shares_bridge: false,
+            cli_env: Some("CODEX_PATH"),
+            cli_env_needs_override: true,
+            cli_env_accepts_script: true,
+            bridge_needs_cli: false,
         },
     ),
     (
         "gemini",
-        VendorCli {
-            command: "gemini",
-            display_name: "Gemini CLI",
-            sign_in_command: "gemini",
-            shares_bridge: true,
-        },
+        VendorCli::shared("gemini", "Gemini CLI", "gemini"),
     ),
     (
         "pi",
@@ -972,101 +1198,49 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             display_name: "Pi",
             sign_in_command: "pi",
             shares_bridge: false,
+            cli_env: Some("PI_ACP_PI_COMMAND"),
+            cli_env_needs_override: false,
+            cli_env_accepts_script: true,
+            bridge_needs_cli: true,
         },
     ),
     (
         "opencode",
-        VendorCli {
-            command: "opencode",
-            display_name: "OpenCode",
-            sign_in_command: "opencode auth login",
-            shares_bridge: true,
-        },
+        VendorCli::shared("opencode", "OpenCode", "opencode auth login"),
     ),
     (
         "openclaw",
-        VendorCli {
-            command: "openclaw",
-            display_name: "OpenClaw",
-            sign_in_command: "openclaw models auth login",
-            shares_bridge: true,
-        },
+        VendorCli::shared("openclaw", "OpenClaw", "openclaw models auth login"),
     ),
-    (
-        "cline",
-        VendorCli {
-            command: "cline",
-            display_name: "Cline",
-            sign_in_command: "cline auth",
-            shares_bridge: true,
-        },
-    ),
+    ("cline", VendorCli::shared("cline", "Cline", "cline auth")),
     (
         "hermes",
-        VendorCli {
-            command: "hermes",
-            display_name: "Hermes Agent",
-            sign_in_command: "hermes setup",
-            shares_bridge: true,
-        },
+        VendorCli::shared("hermes", "Hermes Agent", "hermes setup"),
     ),
     (
         "codebuddy",
-        VendorCli {
-            command: "codebuddy",
-            display_name: "CodeBuddy Code",
-            sign_in_command: "codebuddy",
-            shares_bridge: true,
-        },
+        VendorCli::shared("codebuddy", "CodeBuddy Code", "codebuddy"),
     ),
-    (
-        "kimi",
-        VendorCli {
-            command: "kimi",
-            display_name: "Kimi Code",
-            sign_in_command: "kimi login",
-            shares_bridge: true,
-        },
-    ),
+    ("kimi", VendorCli::shared("kimi", "Kimi Code", "kimi login")),
     (
         "grok",
-        VendorCli {
-            command: "grok",
-            display_name: "Grok Build",
-            sign_in_command: "grok login",
-            shares_bridge: true,
-        },
+        VendorCli::shared("grok", "Grok Build", "grok login"),
     ),
     (
         "cursor",
-        VendorCli {
-            command: "agent",
-            display_name: "Cursor CLI",
-            sign_in_command: "agent login",
-            shares_bridge: true,
-        },
+        VendorCli::shared("agent", "Cursor CLI", "agent login"),
     ),
     (
         "deepseek",
-        VendorCli {
-            command: "dsh",
-            display_name: "DeepSeek Harness",
-            sign_in_command: "dsh web",
-            shares_bridge: true,
-        },
+        VendorCli::shared("dsh", "DeepSeek Harness", "dsh web"),
     ),
     (
         "qoder",
-        VendorCli {
-            command: "qodercli",
-            display_name: "Qoder CLI",
-            sign_in_command: "qodercli login",
-            shares_bridge: true,
-        },
+        VendorCli::shared("qodercli", "Qoder CLI", "qodercli login"),
     ),
 ];
 
-fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
+pub(crate) fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
     VENDOR_CLIS
         .iter()
         .find(|(id, _)| *id == definition.id)
@@ -1091,98 +1265,233 @@ pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
     (!version.is_empty() && version.len() <= 40).then_some(version)
 }
 
-async fn cli_version(path: &Path) -> Option<String> {
-    let mut command = tokio::process::Command::new(path);
-    command.arg("--version");
-    let output = bounded_command(command, Duration::from_secs(5))
+/// Runs blocking file system work (program searches) off the async runtime.
+pub(crate) async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(work)
         .await
-        .ok()?;
-    parse_cli_version(&output)
+        .map_err(|_| "Oleafly stopped looking for the agent's programs unexpectedly.".to_string())
 }
 
-async fn cli_status(definition: &AgentDefinition, probe: bool) -> Option<CliStatus> {
-    let vendor = vendor_cli(definition)?;
-    let path = discover(vendor.command);
-    let version = match (&path, probe) {
-        (Some(path), true) => cli_version(path).await,
-        _ => None,
+/// An empty working folder for a probe, below the ACP data folder.
+pub(crate) fn probe_folder(root: &Path) -> Result<locator::ProbeDir, String> {
+    locator::probe_dir_in(&root.join("probe"))
+        .map_err(|_| "Oleafly couldn't create a working folder for the check.".to_string())
+}
+
+/// Runs `<program> --version` the way a bridge would start it: `.cmd` and
+/// `.bat` through Rust's cmd.exe launch, in an empty Oleafly-owned folder,
+/// with the agent's environment.
+pub(crate) async fn program_version(
+    root: &Path,
+    program: &Located,
+    env: &[(String, OsString)],
+    limit: Duration,
+) -> Result<String, String> {
+    let probe = probe_folder(root)?;
+    if program.kind == ProgramKind::Script {
+        locator::script_launch_check(&program.path, probe.path())?;
+    }
+    let mut command = tokio::process::Command::new(&program.path);
+    command
+        .arg("--version")
+        .current_dir(probe.path())
+        .envs(env.iter().map(|(name, value)| (name, value)));
+    let output = run_bounded(command, limit).await.map_err(|failure| {
+        failure.version_message(
+            &program
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy(),
+        )
+    })?;
+    parse_cli_version(&output).ok_or_else(|| "It didn't report a version.".to_string())
+}
+
+const STATUS_VERSION_LIMIT: Duration = Duration::from_secs(5);
+
+/// The sign-in command as the user would type it: the bare command when a
+/// terminal finds it by name, otherwise started by the CLI's full path.
+pub(crate) fn sign_in_command_text(sign_in: &str, path: Option<&Path>, reachable: bool) -> String {
+    sign_in_command_for(sign_in, path, reachable, cfg!(windows))
+}
+
+/// [`sign_in_command_text`] for PowerShell when `windows` is set (the shell of
+/// Oleafly's terminal and of Windows Terminal), otherwise for a POSIX shell.
+/// Matches `signInCommandLine` in `AgentReadiness.tsx`, which starts the same
+/// CLI in the in-app terminal.
+pub(crate) fn sign_in_command_for(
+    sign_in: &str,
+    path: Option<&Path>,
+    reachable: bool,
+    windows: bool,
+) -> String {
+    let Some(path) = path.filter(|_| !reachable) else {
+        return sign_in.to_string();
     };
-    Some(CliStatus {
+    let rest = sign_in
+        .split_once(' ')
+        .map(|(_, rest)| format!(" {rest}"))
+        .unwrap_or_default();
+    format!("{}{rest}", shell_program(&path.to_string_lossy(), windows))
+}
+
+/// A program path as a shell starts it. PowerShell reads a quoted path on its
+/// own as a string, so it needs the call operator; its single quotes (any of
+/// `'‘’‚‛`) are escaped by doubling. A POSIX shell gets a single-quoted path,
+/// with each `'` closed, escaped and reopened.
+fn shell_program(path: &str, windows: bool) -> String {
+    if windows {
+        let mut quoted = String::with_capacity(path.len() + 4);
+        for character in path.chars() {
+            if matches!(
+                character,
+                '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}'
+            ) {
+                quoted.push(character);
+            }
+            quoted.push(character);
+        }
+        return format!("& '{quoted}'");
+    }
+    format!("'{}'", path.replace('\'', r"'\''"))
+}
+
+fn rejected_candidates(rejected: &[Rejected]) -> Vec<RejectedCandidate> {
+    rejected
+        .iter()
+        .map(|entry| RejectedCandidate {
+            path: locator::child_path(&entry.path)
+                .to_string_lossy()
+                .into_owned(),
+            reason: entry.reason.code().into(),
+        })
+        .collect()
+}
+
+fn cli_status(
+    vendor: &VendorCli,
+    plan: &Plan,
+    reachable: bool,
+    version: Option<String>,
+) -> CliStatus {
+    let path = plan.cli.as_ref().map(|cli| cli.located.path.clone());
+    CliStatus {
         command: vendor.command.into(),
         display_name: vendor.display_name.into(),
-        path: path.map(|value| value.to_string_lossy().into_owned()),
+        path: path
+            .as_ref()
+            .map(|value| value.to_string_lossy().into_owned()),
         version,
-        sign_in_command: vendor.sign_in_command.into(),
-    })
+        sign_in_command: sign_in_command_text(vendor.sign_in_command, path.as_deref(), reachable),
+        source: plan
+            .cli
+            .as_ref()
+            .map(|cli| if cli.overridden { "override" } else { "auto" }.into()),
+        rejected: rejected_candidates(&plan.cli_rejected),
+    }
 }
 
 fn sign_in_hint(definition: &AgentDefinition, cli: Option<&CliStatus>) -> String {
+    let vendor = vendor_cli(definition);
+    let command = cli.map(|cli| cli.sign_in_command.clone()).or_else(|| {
+        vendor
+            .as_ref()
+            .map(|vendor| vendor.sign_in_command.to_string())
+    });
     if definition.id == "gemini" {
-        return "Run gemini in your terminal and finish sign-in and workspace trust, then reconnect."
-            .into();
+        return format!(
+            "Run {} in your terminal and finish sign-in and workspace trust, then reconnect.",
+            command.as_deref().unwrap_or("gemini")
+        );
     }
     if definition.id == "deepseek" {
         return "Set DEEPSEEK_API_KEY in your environment, or run dsh web and add the key under Settings, then reconnect."
             .into();
     }
     if definition.id == "pi" {
-        return "Run pi in your terminal and sign in with /login, then reconnect.".into();
+        return format!(
+            "Run {} in your terminal and sign in with /login, then reconnect.",
+            command.as_deref().unwrap_or("pi")
+        );
     }
-    let Some(vendor) = vendor_cli(definition) else {
+    let (Some(vendor), Some(command)) = (vendor, command) else {
         return "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into();
     };
     match cli.and_then(|value| value.path.as_deref()) {
-        Some(_) => format!(
-            "Run {} in your terminal, then reconnect.",
-            vendor.sign_in_command
-        ),
+        Some(_) => format!("Run {command} in your terminal, then reconnect."),
         None => format!(
-            "Install {}, run {} in your terminal, then reconnect.",
-            vendor.display_name, vendor.sign_in_command
+            "Install {}, run {command} in your terminal, then reconnect.",
+            vendor.display_name
         ),
     }
 }
 
-static NODE_MAJOR: std::sync::Mutex<Option<(PathBuf, std::time::Instant, Option<u32>)>> =
+/// A Node.js version as (major, minor, patch).
+pub(crate) type NodeVersion = (u32, u32, u32);
+
+pub(crate) fn parse_node_version(output: &str) -> Option<NodeVersion> {
+    let mut parts = output.trim().trim_start_matches('v').split('.');
+    let mut number = || -> Option<u32> {
+        let part = parts.next()?;
+        let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+        digits.parse().ok()
+    };
+    Some((number()?, number().unwrap_or(0), number().unwrap_or(0)))
+}
+
+static NODE_VERSION: std::sync::Mutex<Option<(PathBuf, std::time::Instant, Option<NodeVersion>)>> =
     std::sync::Mutex::new(None);
 
-async fn detected_node_major() -> Option<u32> {
-    let node = discover("node")?;
-    if let Ok(cache) = NODE_MAJOR.lock() {
-        if let Some((path, probed, major)) = cache.as_ref() {
-            if path == &node && probed.elapsed() < Duration::from_secs(60) {
-                return *major;
+/// `node --version` for this Node.js, cached for a minute.
+pub(crate) async fn node_version(root: &Path, node: &Path) -> Option<NodeVersion> {
+    if let Ok(cache) = NODE_VERSION.lock() {
+        if let Some((path, probed, version)) = cache.as_ref() {
+            if path == node && probed.elapsed() < Duration::from_secs(60) {
+                return *version;
             }
         }
     }
-    let mut command = tokio::process::Command::new(&node);
-    command.arg("--version");
-    let major = bounded_command(command, Duration::from_secs(5))
-        .await
-        .ok()
-        .and_then(|output| {
-            output
-                .trim()
-                .trim_start_matches('v')
-                .split('.')
-                .next()
-                .and_then(|value| value.parse::<u32>().ok())
-        });
-    if let Ok(mut cache) = NODE_MAJOR.lock() {
-        *cache = Some((node, std::time::Instant::now(), major));
+    let version = match probe_folder(root) {
+        Ok(probe) => {
+            let mut command = tokio::process::Command::new(node);
+            command.arg("--version").current_dir(probe.path());
+            run_bounded(command, STATUS_VERSION_LIMIT)
+                .await
+                .ok()
+                .and_then(|output| parse_node_version(&output))
+        }
+        Err(_) => None,
+    };
+    if let Ok(mut cache) = NODE_VERSION.lock() {
+        *cache = Some((node.to_path_buf(), std::time::Instant::now(), version));
     }
-    major
+    version
 }
 
-async fn node_major_reason(definition: &AgentDefinition) -> Option<String> {
-    let required = definition
+fn node_requirement(definition: &AgentDefinition) -> Option<u32> {
+    definition
         .distribution
         .npx
         .as_ref()
-        .and_then(|package| package.node_major)?;
-    match detected_node_major().await {
-        Some(major) if major >= required => None,
-        Some(major) => Some(format!(
+        .and_then(|package| package.node_major)
+}
+
+async fn node_major_reason(
+    root: &Path,
+    definition: &AgentDefinition,
+    node: Option<&Path>,
+) -> Option<String> {
+    let required = node_requirement(definition)?;
+    let detected = match node {
+        Some(node) => node_version(root, node).await,
+        None => None,
+    };
+    match detected {
+        Some((major, _, _)) if major >= required => None,
+        Some((major, _, _)) => Some(format!(
             "This agent needs Node.js {required} or newer. The detected version is {major}."
         )),
         None => Some(format!(
@@ -1191,52 +1500,125 @@ async fn node_major_reason(definition: &AgentDefinition) -> Option<String> {
     }
 }
 
+/// What a status needs from the file system, gathered in one blocking pass.
+struct StatusFacts {
+    plan: Plan,
+    install_reason: Option<String>,
+    reachable: bool,
+}
+
+impl StatusFacts {
+    fn gather(root: &Path, definition: &AgentDefinition, program: Option<&Path>) -> Self {
+        let plan = plan(root, definition, program);
+        let reachable = plan
+            .cli
+            .as_ref()
+            .and_then(|cli| cli.located.path.parent())
+            .is_none_or(locator::reachable_by_name);
+        Self {
+            install_reason: install_reason(definition),
+            reachable,
+            plan,
+        }
+    }
+}
+
+#[cfg(test)]
 pub async fn status(root: &Path, definition: AgentDefinition, probe: bool) -> AgentStatus {
-    let resolution = resolve(root, &definition);
-    let mut reason = install_reason(&definition);
-    if definition.distribution.command.is_some() {
-        if let Err(error) = &resolution {
+    status_with(root, definition, probe, None).await
+}
+
+/// An agent's status with the program the user chose for it, if any.
+pub async fn status_with(
+    root: &Path,
+    definition: AgentDefinition,
+    probe: bool,
+    program: Option<String>,
+) -> AgentStatus {
+    let facts = {
+        let root = root.to_path_buf();
+        let definition = definition.clone();
+        let program = program.clone();
+        blocking(move || StatusFacts::gather(&root, &definition, program.as_deref().map(Path::new)))
+            .await
+    };
+    let facts = match facts {
+        Ok(facts) => facts,
+        Err(error) => StatusFacts {
+            plan: Plan {
+                launch: Err(error),
+                cli: None,
+                cli_rejected: Vec::new(),
+                node: None,
+            },
+            install_reason: None,
+            reachable: true,
+        },
+    };
+    let vendor = vendor_cli(&definition);
+    let mut reason = facts.install_reason.clone();
+    let chosen = program.is_some() && program_role(&definition) == ProgramRole::Launch;
+    if definition.distribution.command.is_some() || chosen {
+        if let Err(error) = &facts.plan.launch {
             reason = Some(error.clone());
         }
     }
-    let resolved = resolution.ok();
-    let node_reason = node_major_reason(&definition).await;
-    if node_reason.is_some() {
+    let node_reason = node_major_reason(root, &definition, facts.plan.node.as_deref()).await;
+    // A program the user chose runs without the bridge's Node.js.
+    if node_reason.is_some() && !(chosen && facts.plan.launch.is_ok()) {
         reason = node_reason.clone();
     }
-    let cli = cli_status(&definition, probe).await;
-    let bridge_shared_with_cli = vendor_cli(&definition).is_some_and(|vendor| vendor.shares_bridge);
+    let version = match (&facts.plan.cli, probe, &facts.plan.launch) {
+        (Some(cli), true, launch) => {
+            let env = launch
+                .as_ref()
+                .map(|launch| launch.env.clone())
+                .unwrap_or_else(|_| locator::child_env(&[], &[]));
+            program_version(root, &cli.located, &env, STATUS_VERSION_LIMIT)
+                .await
+                .ok()
+        }
+        _ => None,
+    };
+    let cli = vendor
+        .as_ref()
+        .map(|vendor| cli_status(vendor, &facts.plan, facts.reachable, version));
+    let resolved = facts.plan.launch.ok();
     AgentStatus {
         platform: platform(),
         installed: resolved.is_some(),
-        executable: resolved
-            .as_ref()
-            .map(|v| v.executable.to_string_lossy().into_owned()),
+        executable: resolved.as_ref().map(|launch| {
+            launch
+                .entry
+                .as_ref()
+                .unwrap_or(&launch.executable)
+                .to_string_lossy()
+                .into_owned()
+        }),
         installed_version: resolved.as_ref().and_then(|v| v.version.clone()),
         managed: resolved.as_ref().is_some_and(|v| v.managed),
-        can_install: install_reason(&definition).is_none() && node_reason.is_none(),
+        can_install: facts.install_reason.is_none() && node_reason.is_none(),
         reason,
         sign_in_hint: Some(sign_in_hint(&definition, cli.as_ref())),
         task_unavailable_reason: task_unavailable_reason(&definition),
         cli,
-        bridge_shared_with_cli,
+        bridge_shared_with_cli: vendor.as_ref().is_some_and(|vendor| vendor.shares_bridge),
+        program_override: program,
+        cli_required: vendor
+            .as_ref()
+            .is_some_and(|vendor| vendor.bridge_needs_cli),
         definition,
     }
 }
 
-pub async fn check_node(required: u32) -> Result<(), String> {
-    let node = discover("node")
+/// Fails unless Node.js `required` or newer is installed.
+pub async fn check_node(root: &Path, required: u32) -> Result<(), String> {
+    let node = blocking(|| locator::locate_native("node"))
+        .await?
         .ok_or_else(|| format!("Install Node.js {required} or newer to run this agent."))?;
-    let mut command = tokio::process::Command::new(node);
-    command.arg("--version");
-    let output = bounded_command(command, Duration::from_secs(5)).await?;
-    let major = output
-        .trim()
-        .trim_start_matches('v')
-        .split('.')
-        .next()
-        .and_then(|v| v.parse::<u32>().ok())
-        .unwrap_or(0);
+    let major = node_version(root, &node.path)
+        .await
+        .map_or(0, |(major, _, _)| major);
     if major < required {
         return Err(format!(
             "This agent needs Node.js {required} or newer. The detected version is {major}."
@@ -1245,13 +1627,39 @@ pub async fn check_node(required: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn npm_cli() -> Option<PathBuf> {
-    if let Some(path) = discover("npm") {
-        if path.extension().is_some_and(|v| v == "js") {
-            return Some(path);
+static NODE_EXEC_PATH: std::sync::Mutex<Option<(PathBuf, std::time::Instant, Option<PathBuf>)>> =
+    std::sync::Mutex::new(None);
+
+/// The real `node` behind a shim (Volta, Scoop): `node -p process.execPath`,
+/// bounded and cached like the version probe. Blocking.
+fn node_exec_path(node: &Path) -> Option<PathBuf> {
+    if let Ok(cache) = NODE_EXEC_PATH.lock() {
+        if let Some((path, probed, real)) = cache.as_ref() {
+            if path == node && probed.elapsed() < Duration::from_secs(60) {
+                return real.clone();
+            }
         }
     }
-    let node = discover("node")?;
+    let real = locator::probe_dir().ok().and_then(|probe| {
+        let mut command = std::process::Command::new(node);
+        command
+            .args(["-p", "process.execPath"])
+            .current_dir(probe.path())
+            .stdin(Stdio::null());
+        let output =
+            crate::proc::output_contained_with_timeout(command, Duration::from_secs(5)).ok()?;
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        (output.status.success() && !text.is_empty())
+            .then(|| locator::child_path(Path::new(&text)))
+            .filter(|path| path.is_absolute() && path.is_file())
+    });
+    if let Ok(mut cache) = NODE_EXEC_PATH.lock() {
+        *cache = Some((node.to_path_buf(), std::time::Instant::now(), real.clone()));
+    }
+    real
+}
+
+fn npm_cli_near(node: &Path) -> Option<PathBuf> {
     let directory = node.parent()?;
     [
         directory.join("node_modules/npm/bin/npm-cli.js"),
@@ -1259,11 +1667,36 @@ fn npm_cli() -> Option<PathBuf> {
     ]
     .into_iter()
     .find(|v| v.is_file())
+    .map(|path| locator::child_path(&path))
+}
+
+/// npm's JavaScript entry point. Never parses `npm.cmd`: next to `npm.cmd`,
+/// through the `npm` symlink (unix), next to Node.js, then next to the real
+/// Node.js behind a version-manager shim. Blocking.
+fn npm_cli() -> Option<PathBuf> {
+    if let (Some(npm), _) = locator::locate("npm") {
+        if npm.kind == ProgramKind::Script {
+            let beside = npm
+                .path
+                .parent()
+                .map(|folder| folder.join("node_modules/npm/bin/npm-cli.js"))
+                .filter(|path| path.is_file());
+            if beside.is_some() {
+                return beside.map(|path| locator::child_path(&path));
+            }
+        } else if let Ok(target) = npm.path.canonicalize() {
+            if target.extension().is_some_and(|v| v == "js") {
+                return Some(locator::child_path(&target));
+            }
+        }
+    }
+    let node = locator::locate_native("node")?.path;
+    npm_cli_near(&node).or_else(|| npm_cli_near(&node_exec_path(&node)?))
 }
 
 const INSTALL_FAILED: &str =
     "The installation failed. Check the package, network connection and runtime requirements.";
-const REPORTED_FAILURE_LINES: usize = 5;
+const REPORTED_FAILURE_LINES: usize = 8;
 const REPORTED_LINE_CHARS: usize = 200;
 
 const PIPE_HEAD_BYTES: usize = 64 * 1024;
@@ -1273,12 +1706,34 @@ const PENDING_LINE_BYTES: usize = 8 * 1024;
 struct PipeCapture {
     head: String,
     tail: Vec<String>,
+    /// The first line that names the error (`Error: …`, `npm error …`).
+    salient: Option<String>,
+    /// The first `code …` line, such as Node's `code: 'EISDIR',`.
+    code: Option<String>,
 }
 
 #[derive(Default)]
 struct TrailingLines {
     lines: std::collections::VecDeque<String>,
     pending: Vec<u8>,
+    salient: Option<String>,
+    code: Option<String>,
+}
+
+/// `^(\w*Error\b|npm error|npm ERR!|Error:)`: the line that says what failed.
+fn salient_line(line: &str) -> bool {
+    if line.starts_with("npm error") || line.starts_with("npm ERR!") || line.starts_with("Error:") {
+        return true;
+    }
+    let word: String = line
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
+        .collect();
+    word.ends_with("Error")
+}
+
+fn code_line(line: &str) -> bool {
+    line.starts_with("code:") || line.starts_with("code ")
 }
 
 impl TrailingLines {
@@ -1302,39 +1757,78 @@ impl TrailingLines {
         if line.is_empty() {
             return;
         }
+        if self.salient.is_none() && salient_line(&line) {
+            self.salient = Some(line.clone());
+        }
+        if self.code.is_none() && code_line(&line) {
+            self.code = Some(line.clone());
+        }
         if self.lines.len() == REPORTED_FAILURE_LINES {
             self.lines.pop_front();
         }
         self.lines.push_back(line);
     }
 
-    fn finish(mut self) -> Vec<String> {
+    fn finish(mut self) -> PipeCapture {
         self.end_line();
-        self.lines.into()
+        PipeCapture {
+            head: String::new(),
+            tail: self.lines.into(),
+            salient: self.salient,
+            code: self.code,
+        }
     }
 }
 
 #[cfg(test)]
-fn trailing_lines(text: &str) -> Vec<String> {
+fn trailing_lines(text: &str) -> PipeCapture {
     let mut buffer = TrailingLines::default();
     buffer.push(text.as_bytes());
     buffer.finish()
 }
 
-fn command_failure_message(stdout: &[String], stderr: &[String]) -> String {
-    let mut lines: Vec<&String> = stdout.iter().chain(stderr.iter()).collect();
-    if lines.is_empty() {
-        return INSTALL_FAILED.into();
-    }
-    lines.drain(..lines.len().saturating_sub(REPORTED_FAILURE_LINES));
-    lines
-        .into_iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .join("\n")
+/// What a failed installation reports for this output.
+#[cfg(test)]
+fn command_failure_message(stdout: &PipeCapture, stderr: &PipeCapture) -> String {
+    CommandFailure::Failed(failure_lines(stdout, stderr)).install_message()
 }
 
-fn read_bounded_pipe<R>(mut pipe: R) -> tokio::task::JoinHandle<Result<PipeCapture, String>>
+/// At most eight lines: the line naming the error and the `code` line when
+/// the tail no longer shows them, then the last lines of output. None when
+/// the command printed nothing.
+fn failure_lines(stdout: &PipeCapture, stderr: &PipeCapture) -> Option<String> {
+    let tail: Vec<&String> = stdout.tail.iter().chain(stderr.tail.iter()).collect();
+    let mut candidates: Vec<&String> = Vec::new();
+    for line in [&stderr.salient, &stdout.salient, &stderr.code, &stdout.code]
+        .into_iter()
+        .flatten()
+    {
+        if !candidates.contains(&line) {
+            candidates.push(line);
+        }
+    }
+    let mut lead: Vec<&String> = Vec::new();
+    while lead.len() < 2 {
+        let room = REPORTED_FAILURE_LINES - lead.len();
+        let visible = &tail[tail.len().saturating_sub(room)..];
+        let Some(missing) = candidates
+            .iter()
+            .find(|line| !visible.contains(line) && !lead.contains(line))
+        else {
+            break;
+        };
+        lead.push(missing);
+    }
+    let room = REPORTED_FAILURE_LINES - lead.len();
+    let lines: Vec<&str> = lead
+        .into_iter()
+        .chain(tail[tail.len().saturating_sub(room)..].iter().copied())
+        .map(String::as_str)
+        .collect();
+    (!lines.is_empty()).then(|| lines.join("\n"))
+}
+
+fn read_bounded_pipe<R>(mut pipe: R) -> tokio::task::JoinHandle<Result<PipeCapture, &'static str>>
 where
     R: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
@@ -1347,7 +1841,7 @@ where
             let count = pipe
                 .read(&mut buffer)
                 .await
-                .map_err(|_| "The installer output could not be read.")?;
+                .map_err(|_| "The command's output could not be read.")?;
             if count == 0 {
                 break;
             }
@@ -1356,40 +1850,96 @@ where
             bytes.extend_from_slice(&chunk[..count.min(remaining)]);
             trailing.push(chunk);
         }
-        Ok::<_, String>(PipeCapture {
+        Ok::<_, &'static str>(PipeCapture {
             head: String::from_utf8_lossy(&bytes).into_owned(),
-            tail: trailing.finish(),
+            ..trailing.finish()
         })
     })
 }
 
+/// Why a bounded command gave no output to use.
+#[derive(Debug)]
+enum CommandFailure {
+    /// It could not be started: the error kind and the program.
+    NotStarted(String),
+    /// Oleafly could not contain the process or read its output.
+    Lost(&'static str),
+    /// It ran past its time limit and was stopped.
+    TimedOut,
+    /// It exited with an error: [`failure_lines`], None when it printed nothing.
+    Failed(Option<String>),
+}
+
+impl CommandFailure {
+    fn install_message(self) -> String {
+        match self {
+            Self::NotStarted(what) => {
+                format!("The installation command could not be started ({what}).")
+            }
+            Self::Lost(message) => message.into(),
+            Self::TimedOut => "The installation timed out and was stopped.".into(),
+            Self::Failed(lines) => lines.unwrap_or_else(|| INSTALL_FAILED.into()),
+        }
+    }
+
+    /// The same failure for `<file> --version`.
+    fn version_message(self, file: &str) -> String {
+        match self {
+            Self::NotStarted(what) => format!("Oleafly couldn't start {file} ({what})."),
+            Self::Lost(message) => message.into(),
+            Self::TimedOut => format!("{file} --version didn't finish in time and was stopped."),
+            Self::Failed(lines) => lines
+                .unwrap_or_else(|| format!("{file} --version failed without printing anything.")),
+        }
+    }
+}
+
+/// An installer run: its output, or why it failed in installer wording.
 async fn bounded_command(
-    mut command: tokio::process::Command,
+    command: tokio::process::Command,
     duration: Duration,
 ) -> Result<String, String> {
+    run_bounded(command, duration)
+        .await
+        .map_err(CommandFailure::install_message)
+}
+
+/// Runs a command with no input, contained, for at most `duration`, and
+/// returns the first 64 KiB of its output.
+async fn run_bounded(
+    mut command: tokio::process::Command,
+    duration: Duration,
+) -> Result<String, CommandFailure> {
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
     crate::proc::isolate_process_tree(&mut command);
-    let mut child = command
-        .spawn()
-        .map_err(|_| "The installation command could not be started.")?;
-    let guard =
-        crate::proc::contain_process_tree(child.id().ok_or("The installer has no process ID.")?)
-            .map_err(|_| "The installer process could not be contained.")?;
+    let program = command.as_std().get_program().to_owned();
+    let mut child = command.spawn().map_err(|error| {
+        CommandFailure::NotStarted(format!(
+            "{:?}: {}",
+            error.kind(),
+            Path::new(&program).display()
+        ))
+    })?;
+    let lost = CommandFailure::Lost;
+    let guard = crate::proc::contain_process_tree(
+        child.id().ok_or(lost("The command has no process ID."))?,
+    )
+    .map_err(|_| lost("The command's processes could not be contained."))?;
     let read = read_bounded_pipe(
         child
             .stdout
             .take()
-            .ok_or("The installer has no output stream.")?,
+            .ok_or(lost("The command has no output stream."))?,
     );
     let read_errors = read_bounded_pipe(
         child
             .stderr
             .take()
-            .ok_or("The installer has no error stream.")?,
+            .ok_or(lost("The command has no error stream."))?,
     );
     let exit = tokio::time::timeout(duration, child.wait()).await;
     drop(guard);
@@ -1399,17 +1949,19 @@ async fn bounded_command(
             let _ = child.kill().await;
             read.abort();
             read_errors.abort();
-            return Err("The installation timed out and was stopped.".into());
+            return Err(CommandFailure::TimedOut);
         }
     };
     let output = read
         .await
-        .map_err(|_| "The installer stopped unexpectedly.")??;
+        .map_err(|_| lost("Oleafly stopped reading the command's output unexpectedly."))?
+        .map_err(lost)?;
     let errors = read_errors
         .await
-        .unwrap_or_else(|_| Ok(PipeCapture::default()))?;
+        .unwrap_or_else(|_| Ok(PipeCapture::default()))
+        .map_err(lost)?;
     if !success {
-        return Err(command_failure_message(&output.tail, &errors.tail));
+        return Err(CommandFailure::Failed(failure_lines(&output, &errors)));
     }
     Ok(output.head)
 }
@@ -1517,9 +2069,32 @@ pub fn extract(bytes: &[u8], zip_format: bool, destination: &Path) -> Result<(),
     Ok(())
 }
 
+/// The programs an install runs, found off the async runtime.
+struct InstallTools {
+    reason: Option<String>,
+    node: Option<PathBuf>,
+    npm_cli: Option<PathBuf>,
+    uv: Option<PathBuf>,
+}
+
+impl InstallTools {
+    fn find(definition: &AgentDefinition) -> Self {
+        Self {
+            reason: install_reason(definition),
+            node: locator::locate_native("node").map(|located| located.path),
+            npm_cli: definition.distribution.npx.as_ref().and_then(|_| npm_cli()),
+            uv: locator::locate_native("uv").map(|located| located.path),
+        }
+    }
+}
+
 pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), String> {
     validate(definition)?;
-    if let Some(reason) = install_reason(definition) {
+    let tools = {
+        let definition = definition.clone();
+        blocking(move || InstallTools::find(&definition)).await?
+    };
+    if let Some(reason) = tools.reason {
         return Err(reason);
     }
     if read_receipt(root, definition).is_some() {
@@ -1547,14 +2122,14 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
     }
     let _cleanup = Cleanup(Some(temporary.clone()));
     let (relative, node) = if let Some(package) = &definition.distribution.npx {
-        check_node(package.node_major.unwrap_or(20)).await?;
+        check_node(root, package.node_major.unwrap_or(20)).await?;
         tokio::fs::write(temporary.join("package.json"), b"{\"private\":true}")
             .await
             .map_err(|_| "The package manifest could not be written.")?;
-        let mut command =
-            tokio::process::Command::new(discover("node").ok_or("Node.js was not found.")?);
+        let node = tools.node.ok_or("Node.js was not found.")?;
+        let mut command = tokio::process::Command::new(&node);
         command
-            .arg(npm_cli().ok_or("npm was not found.")?)
+            .arg(tools.npm_cli.ok_or("npm was not found.")?)
             .args([
                 "install",
                 "--ignore-scripts",
@@ -1564,10 +2139,21 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
                 "--registry=https://registry.npmjs.org",
                 "--prefix",
             ])
-            .arg(&temporary)
+            .arg(locator::child_path(&temporary))
             .arg(&package.package)
-            .current_dir(&temporary);
-        command.env("npm_config_userconfig", temporary.join("empty-npmrc"));
+            .current_dir(locator::child_path(&temporary))
+            .envs(locator::child_env(
+                &node
+                    .parent()
+                    .map(Path::to_path_buf)
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+                &[],
+            ));
+        command.env(
+            "npm_config_userconfig",
+            locator::child_path(&temporary.join("empty-npmrc")),
+        );
         bounded_command(command, Duration::from_secs(300)).await?;
         let (name, _) = package_parts(&package.package, true)?;
         let package_root = temporary.join("node_modules").join(name);
@@ -1622,7 +2208,7 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             .await
             .map_err(|_| "The Python agent directory could not be created.")?;
         let mut cleanup = Cleanup(Some(destination.clone()));
-        let mut command = tokio::process::Command::new(discover("uv").ok_or("uv was not found.")?);
+        let mut command = tokio::process::Command::new(tools.uv.ok_or("uv was not found.")?);
         command
             .args([
                 "tool",
@@ -1632,9 +2218,16 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
                 "only-system",
                 &package.package,
             ])
-            .env("UV_TOOL_DIR", destination.join("tools"))
-            .env("UV_TOOL_BIN_DIR", destination.join("bin"))
-            .current_dir(&destination);
+            .envs(locator::child_env(&[], &[]))
+            .env(
+                "UV_TOOL_DIR",
+                locator::child_path(&destination.join("tools")),
+            )
+            .env(
+                "UV_TOOL_BIN_DIR",
+                locator::child_path(&destination.join("bin")),
+            )
+            .current_dir(locator::child_path(&destination));
         bounded_command(command, Duration::from_secs(300)).await?;
         let cmd = package
             .cmd
@@ -1720,8 +2313,35 @@ pub async fn registry_search(query: &str) -> Result<Vec<RegistryEntry>, String> 
         return Err("The registry search is too long.".into());
     }
     let bytes = download(REGISTRY, 4 * 1024 * 1024).await?;
+    let query = query.to_string();
+    blocking(move || registry_entries(&bytes, &query)).await?
+}
+
+/// Registry ids of agents Oleafly already ships as built-ins.
+const REGISTRY_BUILTINS: &[(&str, &str)] = &[
+    ("pi-acp", "pi"),
+    ("claude-acp", "claude"),
+    ("codex-acp", "codex"),
+    ("gemini", "gemini"),
+    ("opencode", "opencode"),
+    ("cline", "cline"),
+    ("kimi", "kimi"),
+    ("qoder", "qoder"),
+    ("cursor", "cursor"),
+    ("codebuddy-code", "codebuddy"),
+    ("grok-build", "grok"),
+];
+
+pub(crate) fn registry_builtin_id(id: &str) -> Option<String> {
+    REGISTRY_BUILTINS
+        .iter()
+        .find(|(registry, _)| *registry == id)
+        .map(|(_, builtin)| (*builtin).to_string())
+}
+
+fn registry_entries(bytes: &[u8], query: &str) -> Result<Vec<RegistryEntry>, String> {
     let payload: Value =
-        serde_json::from_slice(&bytes).map_err(|_| "The ACP registry returned invalid JSON.")?;
+        serde_json::from_slice(bytes).map_err(|_| "The ACP registry returned invalid JSON.")?;
     let agents = payload["agents"]
         .as_array()
         .ok_or("The ACP registry has no agent list.")?;
@@ -1733,8 +2353,8 @@ pub async fn registry_search(query: &str) -> Result<Vec<RegistryEntry>, String> 
         let version = agent["version"].as_str().unwrap_or_default().to_owned();
         let definition: Result<AgentDefinition, String> = serde_json::from_value(json!({"id":id,"name":name,"description":description,"version":version,"distribution":agent["distribution"]})).map_err(|_| "This registry distribution uses fields Oleafly does not support.".into()).and_then(|definition| { validate(&definition)?; Ok(definition) });
         match definition {
-            Ok(definition) => { let reason = install_reason(&definition); RegistryEntry { id, name, description, version, definition: Some(definition), reason } },
-            Err(reason) => RegistryEntry { id, name, description, version, definition: None, reason: Some(reason) },
+            Ok(definition) => { let reason = install_reason(&definition); let builtin_id = registry_builtin_id(&id); RegistryEntry { id, name, description, version, definition: Some(definition), reason, builtin_id } },
+            Err(reason) => { let builtin_id = registry_builtin_id(&id); RegistryEntry { id, name, description, version, definition: None, reason: Some(reason), builtin_id } },
         }
     }).collect())
 }

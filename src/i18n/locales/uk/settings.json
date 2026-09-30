@@ -12,7 +12,6 @@
       "checkingDescription": "Це може зайняти мить, поки Oleafly перевіряє інструменти командного рядка на цьому комп’ютері.",
       "checkingInstalled": "Перевірка встановлених агентів",
       "checkingTitle": "Шукаємо агентів командного рядка",
-      "cliNotOnPath": "{{command}} не знайдено у вашому PATH.",
       "cliPathLabel": "Виявлено за шляхом",
       "cliTitle": "Інструмент командного рядка",
       "copySignInCommand": "Копіювати команду входу",
@@ -66,7 +65,59 @@
       "sectionLabel": "Агенти ACP",
       "signInCommandLabel": "Команда входу",
       "versionLabel": "Версія",
-      "updateBridge": "Оновити міст"
+      "updateBridge": "Оновити міст",
+      "program": {
+        "label": "Програма",
+        "bridgeLabel": "Програма {{cli}}",
+        "notFound": "Не знайдено на цьому комп’ютері",
+        "bridgeDefault": "Міст використовує власну копію.",
+        "source": {
+          "auto": "Знайдено автоматично",
+          "override": "Вибрано вами",
+          "managed": "Встановлено через Oleafly"
+        },
+        "choose": "Вибрати…",
+        "test": "Перевірити",
+        "testing": "Перевірка",
+        "saving": "Збереження",
+        "useAutomatic": "Використовувати автоматичне виявлення",
+        "useAnyway": "Однаково використовувати",
+        "inputLabel": "Розташування {{name}}",
+        "pathPlaceholder": "Наприклад, {{example}}",
+        "saved": "Збережено. Oleafly використовуватиме цю програму.",
+        "skippedTitle": "Файли, пропущені Oleafly",
+        "skippedReason": {
+          "notFound": "Відсутній",
+          "isDirectory": "Тека",
+          "notExecutable": "Не можна запустити",
+          "unsupportedScript": "Тип скрипту не підтримується",
+          "guiProgram": "Настільний застосунок",
+          "interpreter": "Shell або середовище виконання",
+          "networkPath": "Мережеве розташування"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} запустився й відповів.",
+          "readyNoVersion": "{{name}} запустився й відповів.",
+          "notFound": "Файл не знайдено: {{path}}.",
+          "isDirectory": "{{path}} є текою. Виберіть файл програми в ній.",
+          "powershellScript": "Скрипти PowerShell не можна запускати. Виберіть {{command}}.cmd або {{command}}.exe.",
+          "unsupportedScript": "Oleafly не може запустити {{file}} напряму. Виберіть {{command}}.exe.",
+          "notExecutable": "{{path}} не є програмою, яку Oleafly може запустити.",
+          "guiProgram": "{{path}} є настільним застосунком. Виберіть програму командного рядка.",
+          "interpreter": "{{path}} є shell або середовищем виконання скриптів. Виберіть саму програму {{name}}.",
+          "networkPath": "{{path}} міститься в мережевому розташуванні. Виберіть програму на цьому комп’ютері.",
+          "cliMissing": "Oleafly не вдалося запустити {{cli}}. Виберіть програму {{cli}}.",
+          "bridgeMissing": "Міст для {{name}} ще не встановлено.",
+          "nodeMissing": "{{name}} потребує Node.js, але Oleafly не вдалося його знайти.",
+          "nodeTooOld": "{{name}} потребує новішої версії Node.js.",
+          "startFailed": "Не вдалося запустити {{name}}.",
+          "timeout": "{{name}} запустився, але не відповів вчасно.",
+          "exited": "{{name}} зупинився, не відповівши.",
+          "notAcp": "{{name}} запустився, але Oleafly не вдалося зрозуміти його відповідь."
+        },
+        "getNode": "Завантажити Node.js",
+        "copyDetails": "Копіювати подробиці"
+      }
     },
     "approvals": {
       "file": {
@@ -1015,7 +1066,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "Нові та відкриті проєкти отримують репозиторій Git, щоб панель Git могла відстежувати зміни. Oleafly ніколи не робить коміти самостійно.",
+      "description": "Нові та відкриті проєкти отримують репозиторій Git, щоб панель Git могла відстежувати зміни. Новий проєкт зазвичай починається з одного коміту його файлів. Після цього Oleafly робить коміти лише на ваше прохання.",
       "label": "Ініціалізувати Git для кожного проєкту"
     },
     "config": {
