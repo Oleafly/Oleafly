@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { acpDisconnect, acpError } from "@/lib/acp";
+import { aiAgentsTarget } from "@/components/settings/ai-settings-navigation";
+import { acpDisconnect, acpError, acpUsable } from "@/lib/acp";
 import { isDelegatedSession, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 
@@ -21,10 +22,11 @@ const UsageReportDialog = lazy(() =>
   })),
 );
 
-export function openCliAgentSettings() {
+/** Opens Settings > AI > Agents, expanded on one agent's card when `agentId` is given. */
+export function openCliAgentSettings(agentId?: string) {
   const settings = useSettingsStore.getState();
   settings.setSettingsInitialSection("ai");
-  settings.setSettingsScrollTarget("ai-agents");
+  settings.setSettingsScrollTarget(aiAgentsTarget(agentId));
   settings.setSettingsOpen(true);
 }
 
@@ -40,7 +42,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
   const [busy, setBusy] = useState(false);
   const session = activeId ? allSessions[activeId] : undefined;
   const running = session?.status === "running" || session?.status === "cancelling";
-  const installed = catalog.some((agent) => agent.definition.id === agentId && agent.installed);
+  const installed = catalog.some((agent) => agent.definition.id === agentId && acpUsable(agent));
   const sessions = useMemo(
     () =>
       Object.values(allSessions)
@@ -137,7 +139,7 @@ export function AssistantShellAcpActions({ projectId }: Readonly<{ projectId?: s
           size="icon"
           className={ACTION_CLASS}
           aria-label={t(($) => $.ai.acp.agentSetup)}
-          onClick={openCliAgentSettings}
+          onClick={() => openCliAgentSettings()}
         >
           <Settings2 className="size-4" />
         </Button>

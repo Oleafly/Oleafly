@@ -504,7 +504,27 @@
     "agentToolFallback": "Agent tool",
     "agentReported": "The agent reported: {{detail}}",
     "imageAttachmentName": "Image {{index}}",
-    "agentImage": "[The agent returned an image.]"
+    "agentImage": "[The agent returned an image.]",
+    "setup": {
+      "cliNotFound": "Oleafly couldn't find {{cli}} on this computer.",
+      "rejected": {
+        "powershellScript": "Found {{file}}, but PowerShell scripts can't be started. Choose {{name}}.cmd or {{name}}.exe.",
+        "script": "Found {{file}}, but Oleafly can't start it directly. Choose {{name}}.exe.",
+        "isDirectory": "Found a folder named {{file}}. Choose the {{name}} program file.",
+        "notExecutable": "Found {{file}}, but it isn't a program Oleafly can start.",
+        "guiProgram": "Found {{file}}, but it's a desktop app. Choose the {{name}} command line tool.",
+        "networkPath": "Found {{file}} on a network location. Choose a copy on this computer."
+      },
+      "foundOnComputer": "Found on this computer.",
+      "usingChosen": "Using the program you chose.",
+      "bridgeSourceFound": "Found on this computer",
+      "setUp": "Set up {{name}}",
+      "backgroundTasks": "Background tasks: {{reason}}",
+      "cliMissingNextStep": "Install {{cli}}, or choose where it's installed.",
+      "installUnavailable": "Oleafly can't install this bridge on this computer.",
+      "builtIn": "Built in",
+      "showAgent": "Show"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI agent",

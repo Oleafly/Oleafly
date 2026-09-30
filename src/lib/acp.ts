@@ -68,10 +68,16 @@ export interface AcpAgentCheck {
 }
 export type AcpReadiness = "ready" | "bridge-missing" | "cli-missing" | "unavailable";
 export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {
+  // A bridge that cannot run without the vendor CLI (Pi) is not ready while the CLI is missing.
+  if (agent.cliRequired && !agent.cli?.path) return "cli-missing";
   if (agent.installed) return "ready";
   if (agent.cli && !agent.cli.path) return "cli-missing";
   if (agent.canInstall || agent.cli?.path) return "bridge-missing";
   return "unavailable";
+}
+/** Whether a conversation can start with this agent right now. */
+export function acpUsable(agent: AcpAgentStatus): boolean {
+  return acpReadiness(agent) === "ready";
 }
 const READINESS_LABELS: Record<AcpReadiness, () => string> = {
   ready: () => i18n.t(($) => $.core.acp.readiness.ready),

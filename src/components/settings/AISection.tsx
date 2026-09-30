@@ -191,12 +191,16 @@ export function AISection() {
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const projectId = useFilesStore((s) => s.projectId);
+  // The CLI agent card a deep link asked for; the token re-triggers a repeat link.
+  const [agentFocus, setAgentFocus] = useState<{ id: string; token: number } | null>(null);
   useEffect(() => {
     const destination = aiSettingsDestination(scrollTarget);
     if (!destination) return;
     if (destination.tab === "mcp") setMcpMounted(true);
     setTab(destination.tab);
     setScrollTarget(null);
+    const agentId = destination.agentId;
+    if (agentId) setAgentFocus((current) => ({ id: agentId, token: (current?.token ?? 0) + 1 }));
     const elementId = destination.elementId;
     if (elementId) {
       window.requestAnimationFrame(() => {
@@ -750,7 +754,11 @@ export function AISection() {
               </p>
             }
           >
-            <AcpAgentsTab projectId={projectId ?? undefined} />
+            <AcpAgentsTab
+              projectId={projectId ?? undefined}
+              focusAgentId={agentFocus?.id}
+              focusToken={agentFocus?.token}
+            />
           </Suspense>
         </TabsContent>
 
