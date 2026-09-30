@@ -13,6 +13,14 @@ If the files add up to more than 100 MB, or the commit fails for any other
 reason, the repository is left with nothing staged, the reason goes to the app
 log, and the project is created as usual.
 
+Oleafly also skips the first commit when a file looks like it holds a key or
+password, such as `.env` or `.env.local`, `*.pem`, `*.key`, `*.p12`, `*.pfx`,
+an SSH key like `id_rsa` or `id_ed25519`, `.npmrc`, or `credentials.json`. A
+secret that lands in a commit stays in the history even after you add it to
+`.gitignore`, so every file is left untracked in the Git panel for you to sort
+out, and the app log names the files that stopped the commit. Files the
+project's own `.gitignore` already covers don't count.
+
 Opening a project that has no repository yet only runs `git init`. It stages
 nothing and commits nothing. After the first commit, Oleafly commits only when
 you ask for it in the panel. Oleafly leaves the folder alone when it already
@@ -65,15 +73,18 @@ instead of offering buttons that would fail:
   commit described above.
 - Oleafly keeps its own files and common clutter out of Git through the
   repository's private exclude file (`.git/info/exclude`), and never edits the
-  project's `.gitignore`. The exclude file lists `.oleafly/`, `.DS_Store`,
+  project's `.gitignore`. In a repository Oleafly creates, the exclude file
+  lists `.oleafly/`, `.DS_Store`,
   `Thumbs.db`, `desktop.ini`, `_minted-*/`, `pythontex-files-*/`, and the TeX
   build output that other tools write next to the sources (`*.aux`, `*.log`,
   `*.out`, `*.toc`, `*.blg`, `*.bcf`, `*.run.xml`, `*.fls`, `*.fdb_latexmk`,
   `*.synctex.gz`, `*.synctex(busy)`, `*.nav`, `*.snm`, `*.vrb`, `*.lof`, `*.lot`,
   `*.idx`, `*.ilg`, `*.ind`, `*.xdv`). `.bbl` files stay visible, because arXiv
-  sources ship them as their bibliography. Missing lines are added whenever
-  Oleafly creates a repository or stages all changes, so repositories made by
-  older versions catch up. A rule in the project's own `.gitignore` still wins.
+  sources ship them as their bibliography. Oleafly adds these lines only then.
+  When you stage files in any other repository, one you made yourself or one an
+  older Oleafly version made, it adds just `.oleafly/`, so your own `.log` and
+  `.out` files stay visible and you can still stage them. A rule in the
+  project's own `.gitignore` still wins.
 - Git authentication tokens are not passed through shell command arguments.
 - The Git transport rejects helper syntax that could execute an unexpected
   command.

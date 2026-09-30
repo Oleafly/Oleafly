@@ -363,7 +363,7 @@ fn ensure_repository_with(
         true,
         &configure,
     )?)?;
-    ensure_private_exclude(&root)?;
+    ensure_private_exclude(&root, Excludes::NewRepository)?;
     ensure_git_identity_with(&root, &configure)?;
     Ok(true)
 }
@@ -415,10 +415,33 @@ fn initialize_repo(root: &PathBuf, branch: &str) -> Result<(), String> {
         &["init", "--quiet", "--initial-branch", branch],
     )?)?;
     ensure_git_identity(root)?;
-    ensure_private_exclude(root)
+    ensure_private_exclude(root, Excludes::NewRepository)
 }
 
-fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
+/// Which lines [`ensure_private_exclude`] makes sure are in a repository's
+/// private exclude file (`.git/info/exclude`).
+#[derive(Clone, Copy)]
+enum Excludes {
+    /// Only `.oleafly/`. Used when staging, which can happen in a repository
+    /// the user made: its own build outputs stay visible and stageable, and
+    /// no line written here can make Git refuse a path the user picked,
+    /// because paths inside `.oleafly` are refused before Git runs.
+    StateFolder,
+    /// Every line of [`private_exclude_lines`]. Used only when Oleafly creates
+    /// the repository itself.
+    NewRepository,
+}
+
+impl Excludes {
+    fn lines(self) -> Vec<&'static str> {
+        match self {
+            Self::StateFolder => vec![STATE_FOLDER_EXCLUDE],
+            Self::NewRepository => private_exclude_lines().collect(),
+        }
+    }
+}
+
+fn ensure_private_exclude(root: &PathBuf, excludes: Excludes) -> Result<(), String> {
     let output = run_git_read_only(root, &["rev-parse", "--git-path", "info/exclude"])?;
     let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
     ok_or_err(output)?;
@@ -444,7 +467,11 @@ fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
     let current = String::from_utf8_lossy(&current);
     let present: std::collections::HashSet<&str> = current.lines().map(str::trim).collect();
     let mut missing = String::new();
-    for line in private_exclude_lines().filter(|line| !present.contains(line)) {
+    for line in excludes
+        .lines()
+        .into_iter()
+        .filter(|line| !present.contains(line))
+    {
         missing.push_str(line);
         missing.push('\n');
     }
@@ -463,13 +490,17 @@ fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
         .map_err(|error| format!("could not update repository excludes: {error}"))
 }
 
-/// What Oleafly keeps out of every repository through its private exclude
-/// file: its own state folder, operating-system clutter, minted and PythonTeX
-/// caches, and TeX build output from tools run outside Oleafly. `.bbl` stays
-/// visible because arXiv sources ship it as their bibliography.
+/// Oleafly's own state folder, kept out of every repository Oleafly stages in.
+const STATE_FOLDER_EXCLUDE: &str = ".oleafly/";
+
+/// What Oleafly keeps out of a repository it creates, through the private
+/// exclude file: its own state folder, operating-system clutter, minted and
+/// PythonTeX caches, and TeX build output from tools run outside Oleafly.
+/// `.bbl` stays visible because arXiv sources ship it as their bibliography.
+/// A repository the user made only ever gets [`STATE_FOLDER_EXCLUDE`].
 fn private_exclude_lines() -> impl Iterator<Item = &'static str> {
     [
-        ".oleafly/",
+        STATE_FOLDER_EXCLUDE,
         ".DS_Store",
         "Thumbs.db",
         "desktop.ini",
@@ -498,13 +529,19 @@ pub(crate) enum Baseline {
     NotNeeded,
     /// The files add up to this many bytes, which is above the limit.
     TooLarge(u64),
+    /// These files usually hold keys, tokens or passwords, so nothing is
+    /// staged or committed. Paths are as Git lists them: relative to the
+    /// project, with forward slashes.
+    SecretFiles(Vec<String>),
 }
 
 /// Record every file in a repository that has no commits yet as its first
 /// commit. Hooks, signing and the fsmonitor are off for this one commit so a
-/// global setting cannot block or prompt during project creation. Above the
-/// size limit nothing is staged. When staging or committing fails, the index
-/// is emptied again.
+/// global setting cannot block or prompt during project creation. Nothing is
+/// staged above the size limit, or when a file looks like it holds a secret
+/// (a key, token or password file an imported folder brought along): once
+/// committed, it would stay in history even after the user ignores it. When
+/// staging or committing fails, the index is emptied again.
 pub(crate) fn commit_baseline(root: &Path) -> Result<Baseline, String> {
     commit_baseline_with_limit(root, BASELINE_SIZE_LIMIT)
 }
@@ -514,7 +551,22 @@ fn commit_baseline_with_limit(root: &Path, limit: u64) -> Result<Baseline, Strin
     if has_head(&root) {
         return Ok(Baseline::NotNeeded);
     }
-    let size = untracked_size(&root)?;
+    let files = untracked_files(&root)?;
+    let secrets: Vec<String> = files
+        .iter()
+        .filter(|path| holds_secret(path))
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    if !secrets.is_empty() {
+        return Ok(Baseline::SecretFiles(secrets));
+    }
+    let size = files
+        .iter()
+        .filter_map(|path| std::fs::symlink_metadata(root.join(path)).ok())
+        .filter(std::fs::Metadata::is_file)
+        .fold(0, |total: u64, metadata| {
+            total.saturating_add(metadata.len())
+        });
     if size > limit {
         return Ok(Baseline::TooLarge(size));
     }
@@ -546,18 +598,43 @@ fn commit_baseline_with_limit(root: &Path, limit: u64) -> Result<Baseline, Strin
     result
 }
 
-/// Bytes in the files `git add -A` would stage in a repository without
-/// commits, measured before anything is written to the object store.
-fn untracked_size(root: &PathBuf) -> Result<u64, String> {
+/// The files `git add -A` would stage in a repository without commits
+/// (untracked and not ignored), relative to `root`, listed before anything is
+/// written to the object store.
+fn untracked_files(root: &PathBuf) -> Result<Vec<PathBuf>, String> {
     let output = run_git_read_only(root, &["ls-files", "-z", "--others", "--exclude-standard"])?;
     let listing = output.stdout.clone();
     ok_or_err(output)?;
     Ok(listing
         .split(|byte| *byte == 0)
         .filter(|path| !path.is_empty())
-        .filter_map(|path| std::fs::symlink_metadata(root.join(path_from_git(path))).ok())
-        .filter(std::fs::Metadata::is_file)
-        .fold(0, |total, metadata| total.saturating_add(metadata.len())))
+        .map(path_from_git)
+        .collect())
+}
+
+/// Whether a project file, or a folder it sits in, has a name that usually
+/// holds keys, tokens or passwords: the names research tasks never copy
+/// (`.env*`, `*.pem`, `*.key`, `.npmrc`, `credentials.json` and so on), plus
+/// SSH and other private key files and login files.
+fn holds_secret(relative: &Path) -> bool {
+    relative.components().any(|component| {
+        let Component::Normal(name) = component else {
+            return false;
+        };
+        let name = name.to_string_lossy();
+        if crate::research_tasks::is_sensitive_component(&name) {
+            return true;
+        }
+        let lower = name.to_ascii_lowercase();
+        ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]
+            .iter()
+            .any(|prefix| lower.starts_with(prefix))
+            || matches!(lower.as_str(), ".envrc" | ".netrc" | "_netrc" | ".htpasswd")
+            || matches!(
+                Path::new(&lower).extension().and_then(OsStr::to_str),
+                Some("ppk" | "jks" | "keystore")
+            )
+    })
 }
 
 #[cfg(unix)]
@@ -1114,7 +1191,7 @@ where
         let upstream = format!("--set-upstream-to={remote_ref}");
         ok_or_err(run_git(root, &["branch", &upstream, "--", default_branch])?)?;
 
-        ensure_private_exclude(root)?;
+        ensure_private_exclude(root, Excludes::NewRepository)?;
 
         // project.json and any archive-safety normalization become one local
         // commit above the imported branch, leaving future pulls mergeable.
@@ -2175,7 +2252,7 @@ fn ok_or_err(out: std::process::Output) -> Result<(), String> {
 
 fn stage(root: &PathBuf, path: &str) -> Result<(), String> {
     validate_repo_relative_path(path)?;
-    ensure_private_exclude(root)?;
+    ensure_private_exclude(root, Excludes::StateFolder)?;
     ok_or_err(run_git(root, &["--literal-pathspecs", "add", "--", path])?)
 }
 
@@ -2208,7 +2285,7 @@ fn unstage(root: &PathBuf, path: &str) -> Result<(), String> {
 
 fn stage_paths(root: &PathBuf, paths: &[String]) -> Result<(), String> {
     validate_repo_relative_paths(paths)?;
-    ensure_private_exclude(root)?;
+    ensure_private_exclude(root, Excludes::StateFolder)?;
     let mut args = vec!["--literal-pathspecs", "add", "--"];
     args.extend(paths.iter().map(String::as_str));
     ok_or_err(run_git(root, &args)?)
@@ -2233,7 +2310,7 @@ fn unstage_paths(root: &PathBuf, paths: &[String]) -> Result<(), String> {
 }
 
 fn stage_all(root: &PathBuf) -> Result<(), String> {
-    ensure_private_exclude(root)?;
+    ensure_private_exclude(root, Excludes::StateFolder)?;
     ok_or_err(run_git(root, &["add", "-A"])?)
 }
 
@@ -3133,14 +3210,14 @@ mod tests {
     ];
 
     #[test]
-    fn private_excludes_are_added_once_and_upgrade_an_older_repository() {
+    fn new_repository_excludes_are_added_once_after_existing_lines() {
         let root = temp_repo();
         let exclude = root.join(".git").join("info").join("exclude");
         std::fs::create_dir_all(exclude.parent().unwrap()).unwrap();
         std::fs::write(&exclude, "# mine\n*.bak\n.oleafly/").unwrap();
 
-        super::ensure_private_exclude(&root).unwrap();
-        super::ensure_private_exclude(&root).unwrap();
+        super::ensure_private_exclude(&root, super::Excludes::NewRepository).unwrap();
+        super::ensure_private_exclude(&root, super::Excludes::NewRepository).unwrap();
 
         let text = std::fs::read_to_string(&exclude).unwrap();
         assert!(text.starts_with("# mine\n*.bak\n.oleafly/\n"), "{text}");
@@ -3268,6 +3345,170 @@ mod tests {
             }),
             "nothing was hashed into the object store"
         );
+    }
+
+    /// Ignore the machine's global excludes file in a test repository, so a
+    /// developer's own ignore list (which may name `.env` or `.private/`)
+    /// cannot hide the files a test expects Git to see.
+    fn without_global_excludes(root: &Path) {
+        let missing = root.join(".git").join("no-global-excludes");
+        let missing = missing.to_str().unwrap();
+        ok_or_err(
+            run_git(
+                &root.to_path_buf(),
+                &["config", "core.excludesFile", missing],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn a_new_project_with_secret_files_gets_no_first_commit() {
+        let root = temp_dir("baseline-secrets");
+        write(&root, "main.tex", "\\documentclass{article}\n");
+        write(&root, ".env", "API_KEY=abc\n");
+        write(&root, "key.pem", "-----BEGIN PRIVATE KEY-----\n");
+        std::fs::create_dir_all(root.join("analysis")).unwrap();
+        write(&root.join("analysis"), ".env.local", "TOKEN=abc\n");
+        assert!(ensure_repository(&root).unwrap());
+        without_global_excludes(&root);
+
+        let baseline = super::commit_baseline(&root);
+
+        assert!(!super::has_head(&root), "{baseline:?}");
+        assert_eq!(git_text(&root, &["ls-files", "--cached"]), "");
+        let objects = root.join(".git").join("objects");
+        assert!(
+            !std::fs::read_dir(&objects).unwrap().any(|entry| {
+                let name = entry.unwrap().file_name();
+                name.len() == 2 && name != "info" && name != "pack"
+            }),
+            "nothing was hashed into the object store"
+        );
+        let mut untracked: Vec<String> =
+            git_text(&root, &["status", "--porcelain", "--untracked-files=all"])
+                .lines()
+                .map(str::to_string)
+                .collect();
+        untracked.sort();
+        assert_eq!(
+            untracked,
+            [
+                "?? .env",
+                "?? analysis/.env.local",
+                "?? key.pem",
+                "?? main.tex"
+            ],
+            "every file stays visible in Source Control"
+        );
+        assert!(!root.join(".gitignore").exists());
+        assert_eq!(
+            baseline.unwrap(),
+            super::Baseline::SecretFiles(vec![
+                ".env".into(),
+                "analysis/.env.local".into(),
+                "key.pem".into(),
+            ])
+        );
+    }
+
+    #[test]
+    fn every_common_secret_file_name_skips_the_first_commit() {
+        for name in [
+            ".env",
+            ".env.production",
+            ".envrc",
+            "deploy.pem",
+            "server.key",
+            "cert.p12",
+            "cert.pfx",
+            "id_rsa",
+            "id_rsa.pub",
+            "id_dsa",
+            "id_ecdsa",
+            "id_ed25519",
+            ".npmrc",
+            ".pypirc",
+            ".netrc",
+            "_netrc",
+            ".git-credentials",
+            "credentials",
+            "credentials.json",
+            "Credentials.JSON",
+            "secrets.json",
+            ".htpasswd",
+            "putty.ppk",
+            "release.jks",
+            "app.keystore",
+        ] {
+            let root = temp_dir("baseline-secret-name");
+            write(&root, "main.tex", "\\documentclass{article}\n");
+            std::fs::create_dir_all(root.join("config")).unwrap();
+            write(&root.join("config"), name, "secret\n");
+            assert!(ensure_repository(&root).unwrap());
+            without_global_excludes(&root);
+
+            let baseline = super::commit_baseline(&root);
+
+            assert!(!super::has_head(&root), "{name}: {baseline:?}");
+            assert_eq!(
+                baseline.unwrap(),
+                super::Baseline::SecretFiles(vec![format!("config/{name}")]),
+                "{name}"
+            );
+        }
+        let private = temp_dir("baseline-secret-folder");
+        write(&private, "main.tex", "\\documentclass{article}\n");
+        std::fs::create_dir_all(private.join(".private")).unwrap();
+        write(&private.join(".private"), "notes.md", "confidential\n");
+        assert!(ensure_repository(&private).unwrap());
+        without_global_excludes(&private);
+        assert_eq!(
+            super::commit_baseline(&private).unwrap(),
+            super::Baseline::SecretFiles(vec![".private/notes.md".into()])
+        );
+    }
+
+    #[test]
+    fn ordinary_research_files_still_get_the_first_commit() {
+        let root = temp_dir("baseline-not-secret");
+        for name in [
+            "main.tex",
+            "environment.tex",
+            "keys.tex",
+            "credentials.tex",
+            "keynote-notes.md",
+            "env.bib",
+            "latexmkrc",
+            "monkey.png",
+        ] {
+            write(&root, name, "x\n");
+        }
+        assert!(ensure_repository(&root).unwrap());
+
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::Committed
+        );
+        assert_eq!(git_text(&root, &["status", "--porcelain"]), "");
+    }
+
+    #[test]
+    fn a_secret_file_the_project_already_ignores_does_not_block_the_first_commit() {
+        let root = temp_dir("baseline-ignored-secret");
+        write(&root, "main.tex", "\\documentclass{article}\n");
+        write(&root, ".gitignore", ".env\n");
+        write(&root, ".env", "API_KEY=abc\n");
+        assert!(ensure_repository(&root).unwrap());
+        without_global_excludes(&root);
+        ok_or_err(run_git(&root, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::Committed
+        );
+        assert_eq!(git_text(&root, &["ls-files"]), ".gitignore\nmain.tex");
     }
 
     #[cfg(unix)]
@@ -4100,6 +4341,77 @@ mod tests {
     fn status(root: &PathBuf) -> Vec<super::GitFileChange> {
         let out = run_git(root, &["status", "--porcelain"]).unwrap();
         parse_status_porcelain(&String::from_utf8_lossy(&out.stdout))
+    }
+
+    #[test]
+    fn staging_in_a_repository_the_user_made_adds_only_the_state_folder_exclude() {
+        let root = temp_repo();
+        let exclude = root.join(".git").join("info").join("exclude");
+        std::fs::create_dir_all(exclude.parent().unwrap()).unwrap();
+        std::fs::write(&exclude, "# mine\n*.bak\n").unwrap();
+        std::fs::create_dir_all(root.join("results")).unwrap();
+        write(&root.join("results"), "run.log", "log\n");
+        write(&root, "slurm-42.out", "out\n");
+        write(&root, "main.tex", "tex\n");
+
+        stage_paths(&root, &["results/run.log".to_string()]).unwrap();
+        stage(&root, "slurm-42.out").unwrap();
+        write(&root, "later.idx", "idx\n");
+        write(&root, "later.aux", "aux\n");
+        stage_all(&root).unwrap();
+
+        let mut staged: Vec<String> = git_text(&root, &["ls-files", "--cached"])
+            .lines()
+            .map(str::to_string)
+            .collect();
+        staged.sort();
+        assert_eq!(
+            staged,
+            [
+                "later.aux",
+                "later.idx",
+                "main.tex",
+                "results/run.log",
+                "slurm-42.out"
+            ]
+        );
+        assert_eq!(
+            std::fs::read_to_string(&exclude).unwrap(),
+            "# mine\n*.bak\n.oleafly/\n"
+        );
+    }
+
+    #[test]
+    fn repositories_oleafly_creates_get_the_full_exclude_list() {
+        let created = temp_dir("excludes-ensure");
+        assert!(ensure_repository(&created).unwrap());
+        let initialized = temp_dir("excludes-initialize");
+        initialize_repo(&initialized, "main").unwrap();
+        let remote = temp_repo();
+        write(&remote, "main.tex", "remote\n");
+        stage_all(&remote).unwrap();
+        assert!(commit_index(&remote, "Remote base").unwrap());
+        let imported = temp_dir("excludes-import");
+        write(&imported, "main.tex", "remote\n");
+        let remote_url = remote.to_string_lossy().into_owned();
+        attach_imported_repository_history_at(&imported, &remote_url, "main", |root, refspec| {
+            ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?)
+        })
+        .unwrap();
+
+        for root in [&created, &initialized, &imported] {
+            let text = std::fs::read_to_string(root.join(".git/info/exclude")).unwrap();
+            for line in PRIVATE_EXCLUDES
+                .iter()
+                .chain(crate::build_hygiene::BUILD_ARTIFACT_PATTERNS)
+            {
+                assert!(
+                    text.lines().any(|entry| entry.trim() == *line),
+                    "{line} is missing from {}:\n{text}",
+                    root.display()
+                );
+            }
+        }
     }
 
     #[test]
