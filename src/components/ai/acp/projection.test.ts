@@ -93,4 +93,88 @@ describe("ACP conversation projection", () => {
     expect(rows).toHaveLength(3);
     expect(rows[2].msg.content).toBe("The agent stopped before completing this turn.");
   });
+
+  it("keeps ACP diff blocks as structured changes instead of flattened text", () => {
+    const rows = projectAcpEvents([
+      event(1, "tool_call", {
+        toolCallId: "edit",
+        title: "Edit main.tex",
+        status: "completed",
+        content: [
+          { type: "content", content: { type: "text", text: "Applied the edit." } },
+          { type: "diff", path: "/paper/main.tex", oldText: "old line", newText: "new line" },
+          { type: "diff", path: "/paper/new.tex", oldText: null, newText: "fresh" },
+          { type: "diff", path: "/paper/huge.tex", truncated: true, oldSize: 900000, newSize: 900100 },
+        ],
+      }),
+    ], false);
+    const tool = rows[0].msg.toolCalls?.[0];
+    expect(tool?.output).toBe("Applied the edit.");
+    expect(tool?.diffs).toEqual([
+      { path: "/paper/main.tex", oldText: "old line", newText: "new line", truncated: false },
+      { path: "/paper/new.tex", oldText: null, newText: "fresh", truncated: false },
+      { path: "/paper/huge.tex", oldText: null, newText: null, truncated: true },
+    ]);
+  });
+
+  it("keeps the last diffs when an update carries no content", () => {
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "edit", title: "Edit", content: [{ type: "diff", path: "a.tex", oldText: "a", newText: "b" }] }),
+      event(2, "tool_call_update", { toolCallId: "edit", status: "completed" }),
+    ], false);
+    expect(rows[0].msg.toolCalls?.[0].diffs).toEqual([{ path: "a.tex", oldText: "a", newText: "b", truncated: false }]);
+  });
+
+  it("attaches turn changes to the turn's last assistant row without adding a row", () => {
+    const changes = {
+      turnId: "turn-1",
+      snapshotId: "snap-1",
+      files: [{ index: 0, path: "main.tex", change: "modified", beforeSize: 1, afterSize: 2, added: 1, removed: 0, alsoEditedHere: false, build: false }],
+      moreFiles: 0,
+      skipped: [],
+      overlapped: false,
+      unavailable: null,
+    };
+    const project = createAcpProjector();
+    const before = [
+      event(1, "user_message", { text: "Fix the intro" }),
+      event(2, "tool_call", { toolCallId: "edit", title: "Edit", status: "completed" }),
+      chunk(3, "Done."),
+    ];
+    const first = project(before, true);
+    const rows = project([...before, event(4, "turn_changes", changes), event(5, "turn_complete", { stopReason: "end_turn" })], false);
+    expect(rows).toHaveLength(3);
+    expect(rows[2].msg.turnChanges).toMatchObject({ snapshotId: "snap-1", files: [{ path: "main.tex" }] });
+    expect(rows[1].msg.turnChanges).toBeUndefined();
+    expect(rows[2]).not.toBe(first[2]);
+    expect(rows[0]).toBe(first[0]);
+  });
+
+  it("puts turn changes on the user row when the agent said nothing", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Run the script" }),
+      event(2, "turn_changes", { turnId: "turn-1", snapshotId: null, files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable: "timeout" }),
+    ], false);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.turnChanges?.unavailable).toBe("timeout");
+  });
+
+  it("keeps a turn's changes on its own turn", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "First" }),
+      chunk(2, "One."),
+      event(3, "user_message", { text: "Second" }, "turn-2"),
+      event(4, "agent_message_chunk", { content: { type: "text", text: "Two." } }, "turn-2"),
+      event(5, "turn_changes", { turnId: "turn-1", snapshotId: "late", files: [], moreFiles: 2, skipped: [], overlapped: false, unavailable: null }, "turn-1"),
+    ], false);
+    expect(rows[1].msg.turnChanges?.snapshotId).toBe("late");
+    expect(rows[3].msg.turnChanges).toBeUndefined();
+  });
+
+  it("shows the skill chip data on the user row", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Audit the claims", skill: { id: "oleafly-verify-claims", name: "Verify claims" } }),
+    ], false);
+    expect(rows[0].msg.skill).toEqual({ id: "oleafly-verify-claims", name: "Verify claims" });
+  });
 });

@@ -221,8 +221,8 @@
       "content": "Configured conversations show run, token, and estimated-cost usage here when available."
     },
     "restore": {
-      "title": "Restore project state",
-      "content": "After an AI edit, a checkpoint can restore project files without removing the conversation."
+      "title": "Review agent changes",
+      "content": "When a turn changes files, open Review to see each change. Undo puts a file back, and Redo brings the change back."
     }
   },
   "diagram": {

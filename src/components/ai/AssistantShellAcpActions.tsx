@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { BarChart3, History, Plus, Settings2 } from "lucide-react";
+import { BarChart3, Download, History, Plus, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AssistantFloatButton } from "@/components/ai/AssistantShellHeader";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { acpDisconnect, acpError } from "@/lib/acp";
 import { isDelegatedSession, useAcpSessionsStore } from "@/store/acp-sessions";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { toast } from "@/lib/toast";
+import { exportConversation } from "@/components/ai/acp/export-conversation";
 
 const UsageReportDialog = lazy(() =>
   import("@/components/usage/UsageReport").then((module) => ({
@@ -66,6 +70,21 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
       if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
     });
 
+  const agentName = (id: string) => catalog.find((agent) => agent.definition.id === id)?.definition.name ?? id;
+
+  const exportActive = () => {
+    if (!session) return;
+    void perform(async () => {
+      const saved = await exportConversation({
+        projectId,
+        session,
+        projectName: useFilesStore.getState().projectName || null,
+        agentName: agentName(session.agentId),
+      });
+      if (saved) toast.success(t(($) => $.ai.acp.export.saved));
+    });
+  };
+
   const openSaved = (selectedId: string) => {
     if (selectedId === activeId) return;
     void perform(async () => {
@@ -107,6 +126,15 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
           </DropdownMenuTrigger>
         </Tooltip>
         <DropdownMenuContent align="end" className="z-[100] max-h-72 w-72 overflow-y-auto">
+          {session && !isDelegatedSession(session) ? (
+            <>
+              <DropdownMenuItem data-testid="acp-export-conversation" onSelect={exportActive}>
+                <Download className="size-3.5" />
+                {t(($) => $.ai.acp.export.menuItem)}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuLabel>{t(($) => $.ai.acp.savedConversations)}</DropdownMenuLabel>
           {sessions.map((value) => (
             <DropdownMenuItem
@@ -116,7 +144,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
               onSelect={() => openSaved(value.id)}
             >
               <span className="min-w-0 flex-1 truncate">
-                {value.title || t(($) => $.ai.acp.untitledConversation)} · {value.agentId}
+                {value.title || t(($) => $.ai.acp.untitledConversation)} · {agentName(value.agentId)}
               </span>
             </DropdownMenuItem>
           ))}

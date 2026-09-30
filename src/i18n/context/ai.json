@@ -25,7 +25,11 @@
     "agentReported": "Labels the CLI agent's own raw diagnostic output, which is interpolated verbatim",
     "agentToolFallback": "Stands in for a CLI agent tool that reported no name",
     "imageAttachmentName": "Name shown on an image chip when the image itself carries no filename",
-    "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose"
+    "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose",
+    "export": {
+      "menuItem": "History menu item that saves the conversation as a Markdown or JSON file",
+      "uncommitted": "Export header value; {{revision}} is a short Git commit id"
+    }
   },
   "approval": {
     "reject": "Declines one pending assistant action",
@@ -213,5 +217,21 @@
     "tokens": "Total tokens for this chat",
     "lastRun": "Heading above the most recent run's numbers",
     "thisChat": "Heading above the running totals for the whole chat"
+  },
+  "turnChanges": {
+    "buildOnly": "Card heading when an agent turn only rewrote TeX build output such as .aux or .log files",
+    "undoAll": "Puts back every file the agent turn changed, except build files and files the user also edited",
+    "redoAll": "Re-applies every file that Undo all put back",
+    "undone": "Status of a file whose agent change was undone",
+    "editedAfter": "Status of a file that changed again after the agent turn, so Undo and Redo are not offered",
+    "alsoEdited": "The user saved this file in Oleafly while the agent turn was running",
+    "committed": "The assistant committed this file to Git during the turn; {{commit}} is a short commit id",
+    "overlapped": "Two agents or conversations changed files in the same project at once, so Undo all is hidden",
+    "expired": "Oleafly has deleted the copy it kept for this turn, so nothing can be undone",
+    "waitForRun": "Tooltip on a disabled Undo button while an agent turn is still running in the project"
+  },
+  "presets": {
+    "referenceCleanup": "Quick start that opens the bibliography cleanup dialog",
+    "removeSkill": "Accessible label of the x on the skill chip in the CLI agent composer"
   }
 }
