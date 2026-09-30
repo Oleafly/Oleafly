@@ -46,7 +46,8 @@ pub(crate) async fn read_until<T>(
 ) -> Option<T> {
     let deadline = Instant::now() + timeout;
     loop {
-        if let Some(value) = std::fs::read_to_string(path)
+        if let Some(value) = tokio::fs::read_to_string(path)
+            .await
             .ok()
             .and_then(|text| accept(&text))
         {
