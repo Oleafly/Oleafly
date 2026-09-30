@@ -363,7 +363,10 @@ export function SettingsSearchStatus({ count }: Readonly<{ count: number | null 
   else if (count !== null) announcement = t(($) => $.shell.settings.search.results, { count });
   return (
     <>
-      {/* Always mounted, so screen readers announce every change, including no results. */}
+      {/* Mounted from the first keystroke, before the first result arrives, so
+          screen readers announce every change, including no results. Not
+          mounted otherwise: Radix never hides a live region's ancestors, so an
+          idle one would keep Settings exposed behind a dialog opened over it. */}
       <p aria-live="polite" data-testid="settings-search-status" className="sr-only">
         {announcement}
       </p>

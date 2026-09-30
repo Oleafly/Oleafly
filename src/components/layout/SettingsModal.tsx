@@ -1317,7 +1317,9 @@ export function SettingsModal() {
             </Fragment>
             ))}
             </div>
-            <SettingsSearchStatus count={search.hits ? search.hits.length : null} />
+            {search.query !== "" && (
+              <SettingsSearchStatus count={search.hits ? search.hits.length : null} />
+            )}
           </div>
           <div className="mt-2 shrink-0 border-t pt-3">
             <DiscordJoinButton />

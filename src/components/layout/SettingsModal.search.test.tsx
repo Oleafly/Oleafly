@@ -120,12 +120,13 @@ describe("Settings search", () => {
     expect(screen.getByTestId("ai-section")).toBeInTheDocument();
   });
 
-  it("says so when nothing matches, through the live region that is always there", async () => {
+  it("says so when nothing matches, through a live region that is there before the result", async () => {
     renderSettings();
+    expect(screen.queryByTestId("settings-search-status")).toBeNull();
+    typeQuery("qqqzzzxx");
     const live = screen.getByTestId("settings-search-status");
     expect(live).toHaveAttribute("aria-live", "polite");
     expect(live).toHaveTextContent("");
-    typeQuery("qqqzzzxx");
     await waitFor(() => expect(live).toHaveTextContent(search.empty));
     expect(screen.getByTestId("settings-search-status")).toBe(live);
     expect(visibleSections()).toEqual([]);

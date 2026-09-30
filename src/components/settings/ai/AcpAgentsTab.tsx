@@ -649,6 +649,10 @@ export function AcpAgentsTab({
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
+  // Every review mounts a fresh dialog. Reopened while the last one is still
+  // animating out, Radix would reuse that content: nothing inside takes focus,
+  // and the press that reopened it counts as a press outside and closes it.
+  const [reviewKey, setReviewKey] = useState(0);
   const reviewOpener = useRef<HTMLElement | null>(null);
   const [focus, setFocus] = useState<{ id: string; token: number } | null>(null);
   const focusSeq = useRef(0);
@@ -848,6 +852,7 @@ export function AcpAgentsTab({
                   reviewOpener.current = opener;
                   setError(null);
                   setReview(definition);
+                  setReviewKey((key) => key + 1);
                 }}
                 onOpenTerminal={openTerminal}
                 onRemove={(agentId) =>
@@ -979,6 +984,7 @@ export function AcpAgentsTab({
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent
+          key={reviewKey}
           className="z-[120] max-w-md"
           overlayClassName="z-[120]"
           closeDisabled={!!busy}
