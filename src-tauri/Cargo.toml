@@ -81,7 +81,9 @@ trash = "5.2.9"
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "=2.11.1"
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "objc2-core-foundation"] }
+# Lets AppKit size the WKWebView of Oleafly's own windows (webview_frame.rs).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow"] }
 plist = "1"
 
 [target.'cfg(windows)'.dependencies]
