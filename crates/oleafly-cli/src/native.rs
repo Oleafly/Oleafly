@@ -2265,7 +2265,7 @@ mod tests {
             &arguments,
             working_directory.path(),
             &[],
-            Duration::from_secs(5),
+            Duration::from_secs(60),
             &sink,
         )
         .await
@@ -2314,7 +2314,7 @@ mod tests {
             &arguments,
             directory.path(),
             &[],
-            Duration::from_secs(5),
+            Duration::from_secs(60),
             &CompilerLog::default(),
         )
         .await

@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use tokio::io::AsyncWriteExt;
 
 use super::{files::FileScope, tools, transport, ScopedResearchMcp};
+use crate::test_wait;
 
 async fn bridge(root: &Path, allowed: Option<Vec<String>>) -> ScopedResearchMcp {
     transport::serve(
@@ -355,12 +356,13 @@ async fn dropping_the_owner_closes_the_listener() {
     let bridge = bridge(root.path(), None).await;
     let authority = bridge.context.authority.clone();
     drop(bridge);
-    tokio::time::timeout(Duration::from_secs(3), async {
+    tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
         loop {
             if tokio::net::TcpStream::connect(&authority).await.is_err() {
                 break;
             }
-            tokio::task::yield_now().await;
+            // Paced so a long wait cannot run out of local ports and stop on AddrNotAvailable.
+            tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
     .await

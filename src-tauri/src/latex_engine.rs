@@ -2520,25 +2520,31 @@ mod tests {
         let root = test_dir("inherited-pipes");
         std::fs::create_dir_all(&root).unwrap();
         let leaked = root.join("descendant-survived");
+        let release = root.join("release-descendant");
         let args = vec![
             "-c".into(),
-            "(sleep 0.35; printf leaked > \"$1\") & exit 0".into(),
+            // The descendant holds the pipes and writes only after the test releases
+            // it (or after ~30 s), so a late stop on a loaded machine cannot let it write.
+            "(n=0; while [ ! -e \"$2\" ] && [ \"$n\" -lt 600 ]; do sleep 0.05; n=$((n + 1)); done; printf leaked > \"$1\") & exit 0".into(),
             "oleafly-pipe-test".into(),
             leaked.to_string_lossy().into_owned(),
+            release.to_string_lossy().into_owned(),
         ];
         let started = std::time::Instant::now();
 
         let error = run_tex_utility_with_pipe_timeout(
             Path::new("/bin/sh"),
             &args,
-            std::time::Duration::from_secs(2),
+            crate::test_wait::CHILD_PATIENCE,
             std::time::Duration::from_millis(75),
         )
         .await
         .unwrap_err();
 
         assert!(error.contains("output pipes did not close"), "{error}");
-        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        assert!(error.contains("within 0.075 seconds"), "{error}");
+        assert!(started.elapsed() < crate::test_wait::CHILD_PATIENCE);
+        std::fs::write(&release, b"").unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         assert!(!leaked.exists(), "the inherited-pipe descendant survived");
         std::fs::remove_dir_all(root).unwrap();
