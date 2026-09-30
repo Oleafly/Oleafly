@@ -221,8 +221,8 @@
       "content": "Les conversations configurées affichent ici les exécutions, les jetons et le coût estimé, quand ces données sont disponibles."
     },
     "restore": {
-      "title": "Restaurer l'état du projet",
-      "content": "Après une modification par l'IA, un point de contrôle peut restaurer les fichiers du projet sans supprimer la conversation."
+      "title": "Relire les modifications de l'agent",
+      "content": "Quand un tour de l'agent modifie des fichiers, ouvrez Relire pour voir chaque modification. Annuler remet un fichier comme avant, et Rétablir réapplique la modification."
     }
   },
   "diagram": {

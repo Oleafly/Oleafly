@@ -136,6 +136,7 @@ async fn run_with_deadline(call: ToolCall, runner: &ToolRunner, timeout: Duratio
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Instant;
 
     fn registry_with(parallel: &[&str]) -> ToolRegistry {
@@ -224,13 +225,23 @@ mod tests {
     #[tokio::test]
     async fn parallel_tools_run_concurrently() {
         let registry = registry_with(&["fast_a", "fast_b"]);
-        let runner: ToolRunner = Arc::new(|call| {
+        // Overlap is counted, not timed: a loaded machine can stretch two
+        // concurrent 120ms sleeps past 240ms. The sleep keeps the first tool
+        // pending so a correct gate starts the second before it finishes.
+        let running = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+        let runner_peak = Arc::clone(&peak);
+        let runner: ToolRunner = Arc::new(move |call| {
+            let running = Arc::clone(&running);
+            let peak = Arc::clone(&runner_peak);
             Box::pin(async move {
+                let now_running = running.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(now_running, Ordering::SeqCst);
                 tokio::time::sleep(Duration::from_millis(120)).await;
+                running.fetch_sub(1, Ordering::SeqCst);
                 ToolOutput::text(format!("done:{}", call.id))
             })
         });
-        let started = Instant::now();
         let results = drive(
             &registry,
             vec![call("fast_a", "1"), call("fast_b", "2")],
@@ -238,7 +249,11 @@ mod tests {
             CancellationToken::new(),
         )
         .await;
-        assert!(started.elapsed() < Duration::from_millis(240));
+        assert_eq!(
+            peak.load(Ordering::SeqCst),
+            2,
+            "the parallel tools ran one after the other"
+        );
         assert_eq!(results[0].1.output, "done:1");
         assert_eq!(results[1].1.output, "done:2");
     }

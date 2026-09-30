@@ -845,6 +845,15 @@
     "enterTitle": "Zadejte název commitu",
     "finishMergeToCommit": "Před commitem dokončete sloučení.",
     "fetch": "Načíst",
+    "gitMissing": {
+      "copied": "Zkopírováno",
+      "copyCommand": "Kopírovat příkaz",
+      "download": "Stáhnout Git for Windows",
+      "linux": "Správa verzí potřebuje Git. Nainstalujte balíček git pomocí správce balíčků a pak tento panel obnovte.",
+      "mac": "Správa verzí potřebuje Git. Spuštěním tohoto příkazu v aplikaci Terminal nainstalujete nástroje příkazové řádky od Applu, které Git obsahují. Pak tento panel obnovte.",
+      "title": "Git není nainstalován",
+      "windows": "Správa verzí potřebuje Git. Nainstalujte Git for Windows a pak Oleafly restartujte."
+    },
     "graph": "Graf",
     "commitCount_one": "{{count}} commit",
     "commitCount_few": "{{count}} commity",

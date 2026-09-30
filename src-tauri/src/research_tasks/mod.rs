@@ -27,6 +27,8 @@ use model::{
 };
 use store::TaskStore;
 
+pub(crate) use isolation::is_sensitive_component;
+
 pub type TaskRuntimeFuture<T> = Pin<Box<dyn Future<Output = Result<T, String>> + Send>>;
 pub type TaskEventSink = Arc<dyn Fn(TaskRuntimeEvent) + Send + Sync>;
 
@@ -1073,6 +1075,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+    use crate::test_wait;
 
     #[tokio::test(flavor = "current_thread")]
     async fn task_storage_queries_leave_the_calling_thread_and_preserve_errors() {
@@ -1479,14 +1482,21 @@ mod tests {
         store.request_start(&second.id).unwrap();
 
         state.launch_ready().await.unwrap();
-        for _ in 0..100 {
-            if store.require(&task.id).unwrap().status == ResearchTaskStatus::AwaitingReview
-                && store.require(&second.id).unwrap().status == ResearchTaskStatus::AwaitingReview
-            {
-                break;
+        // Wait until both tasks stop running, not until they succeed, so a task
+        // that fails is reported with its real status by the asserts below.
+        let active = |id: &str| {
+            matches!(
+                store.require(id).unwrap().status,
+                ResearchTaskStatus::Queued | ResearchTaskStatus::Running
+            )
+        };
+        tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
+            while active(&task.id) || active(&second.id) {
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+        })
+        .await
+        .expect("both tasks finish running");
 
         let finished = store.require(&task.id).unwrap();
         let second_finished = store.require(&second.id).unwrap();
@@ -1540,12 +1550,13 @@ mod tests {
             .unwrap();
         store.request_start(&task.id).unwrap();
         state.launch_ready().await.unwrap();
-        for _ in 0..200 {
-            if runtime.runs.load(Ordering::SeqCst) == 1 {
-                break;
+        tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
+            while runtime.runs.load(Ordering::SeqCst) < 1 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+        })
+        .await
+        .expect("the admitted task reaches its runtime");
 
         tokio::time::timeout(Duration::from_secs(2), state.shutdown())
             .await
@@ -1582,13 +1593,13 @@ mod tests {
             assert_eq!(recovered.status, ResearchTaskStatus::Failed);
             assert!(recovered.error.unwrap().contains("update"));
             store.retry(&task.id).unwrap();
-            tokio::time::timeout(Duration::from_secs(2), async {
+            tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
                 while runtime.runs.load(Ordering::SeqCst) < 2 {
-                    tokio::task::yield_now().await;
+                    tokio::time::sleep(Duration::from_millis(10)).await;
                 }
             })
             .await
-            .unwrap();
+            .expect("queued work resumes after the failed update");
             state.shutdown().await;
         }
         std::env::remove_var("OLEAFLY_DATA_DIR");

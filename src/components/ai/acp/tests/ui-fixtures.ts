@@ -53,7 +53,11 @@ export function installUiDom() {
     scrollIntoView: { configurable: true, value: () => {} },
   });
   Object.defineProperty(dom.window, "ResizeObserver", { configurable: true, writable: true, value: ObserverStub });
-  return { dom, restore: () => {
+  return { dom, restore: async () => {
+    // React renders on setImmediate in Node. Work the last test queued, such
+    // as a promise that settled as it ended, must run while the DOM globals
+    // still exist, or it throws "window is not defined" after the file ends.
+    for (let tick = 0; tick < 10; tick++) await new Promise((resolve) => setImmediate(resolve));
     dom.window.close();
     for (const [key, descriptor] of previous) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);

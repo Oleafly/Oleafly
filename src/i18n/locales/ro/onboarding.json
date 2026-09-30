@@ -221,8 +221,8 @@
       "content": "Conversațiile configurate arată aici rulările, tokenurile și costul estimat, atunci când sunt disponibile."
     },
     "restore": {
-      "title": "Restabilește starea proiectului",
-      "content": "După o modificare făcută de AI, un punct de control poate restabili fișierele proiectului fără să șteargă conversația."
+      "title": "Verifică modificările agentului",
+      "content": "Când un schimb modifică fișiere, deschide Verifică ca să vezi fiecare modificare. Anulează readuce un fișier la forma anterioară, iar Refă aduce modificarea înapoi."
     }
   },
   "diagram": {

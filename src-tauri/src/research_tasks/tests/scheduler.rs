@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 
 use super::*;
+use crate::test_wait;
 use crate::worktree_lock::ProjectWorktreeLock;
 
 #[path = "recovery.rs"]
@@ -157,7 +158,7 @@ fn outcome(summary: &str) -> TaskRuntimeOutcome {
 }
 
 async fn next_run(receiver: &mut mpsc::UnboundedReceiver<StartedRun>) -> StartedRun {
-    tokio::time::timeout(Duration::from_secs(5), receiver.recv())
+    tokio::time::timeout(test_wait::CHILD_PATIENCE, receiver.recv())
         .await
         .expect("the scheduler did not start the expected adapter")
         .expect("the adapter start channel closed")
@@ -717,10 +718,13 @@ async fn an_orphaned_running_task_requires_recovery_before_it_can_be_retried() {
     let store = state.store().unwrap();
     let task = requested(&store, draft("paper", "Orphaned run"));
     store.claim_next().unwrap().unwrap();
-    let error = tokio::time::timeout(Duration::from_secs(2), cancel_task(&state, task.id.clone()))
-        .await
-        .expect("orphaned cancellation never returned recovery guidance")
-        .unwrap_err();
+    let error = tokio::time::timeout(
+        test_wait::CHILD_PATIENCE,
+        cancel_task(&state, task.id.clone()),
+    )
+    .await
+    .expect("orphaned cancellation never returned recovery guidance")
+    .unwrap_err();
     assert!(error.contains("runtime is no longer attached"));
     let stopping = store.require(&task.id).unwrap();
     assert_eq!(stopping.status, ResearchTaskStatus::Running);

@@ -129,6 +129,43 @@ describe("AssistantHome", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
+  it("shows quick starts before skills are available when asked to", () => {
+    const onSelect = vi.fn();
+    render(
+      <AssistantHome
+        skills={[skill("alpha"), skill("beta"), skill("gamma"), skill("delta")]}
+        onPickSkill={vi.fn()}
+        showSkills={false}
+        showQuickStarts
+        quickStartTestId="acp-quick-start"
+        quickStarts={[
+          { id: "sweep", label: "Literature sweep", onSelect },
+          { id: "figures", label: "Figure audit", onSelect: vi.fn() },
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("assistant-home-cards")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    const labels = [...screen.getByTestId("assistant-home-chips").querySelectorAll("button")].map(
+      (node) => node.textContent,
+    );
+    expect(labels).toEqual(["Literature sweep", "Figure audit"]);
+    fireEvent.click(screen.getAllByTestId("acp-quick-start")[0]);
+    expect(onSelect).toHaveBeenCalledOnce();
+  });
+
+  it("keeps quick starts hidden with the skills by default", () => {
+    render(
+      <AssistantHome
+        skills={[]}
+        onPickSkill={vi.fn()}
+        showSkills={false}
+        quickStarts={[{ id: "sweep", label: "Literature sweep", onSelect: vi.fn() }]}
+      />,
+    );
+    expect(screen.queryByTestId("assistant-home-chips")).not.toBeInTheDocument();
+  });
+
   it("drifts the slider on its own and holds still while the pointer is on it", () => {
     const frames: FrameRequestCallback[] = [];
     const raf = vi

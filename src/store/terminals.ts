@@ -35,6 +35,8 @@ export interface TerminalTab {
   title: string;
   color: TerminalColorKey | null;
   autoStart: boolean;
+  /** Typed into the shell once, when the tab's first session starts (a sign-in command). */
+  initialInput?: string;
 }
 
 interface TerminalSlot {
@@ -48,7 +50,7 @@ interface TerminalsState {
   activeId: string | null;
   counters: Record<string, number>;
   setProject: (projectId: string | null) => void;
-  addTerminal: () => TerminalTab | null;
+  addTerminal: (options?: { initialInput?: string }) => TerminalTab | null;
   closeTerminal: (id: string) => TerminalTab[];
   closeOtherTerminals: (id: string) => TerminalTab[];
   closeTerminalsToTheRight: (id: string) => TerminalTab[];
@@ -187,13 +189,14 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
         counters: { ...state.counters, [projectId]: index },
       });
     },
-    addTerminal: () => {
+    addTerminal: (options) => {
       const state = get();
       const projectId = state.projectId;
       if (!projectId) return null;
       if (state.tabs.length >= TERMINAL_LIMIT) return null;
       const index = (state.counters[projectId] ?? 0) + 1;
-      const tab = makeTab(projectId, index, true);
+      const made = makeTab(projectId, index, true);
+      const tab = options?.initialInput ? { ...made, initialInput: options.initialInput } : made;
       set({
         tabs: [...state.tabs, tab],
         activeId: tab.id,

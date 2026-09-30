@@ -450,21 +450,25 @@
       "namedHeadline": "{{agent}} potřebuje svolení",
       "headline": "Agent potřebuje svolení",
       "expired": "Tento požadavek vypršel. Požádejte agenta, ať to zkusí znovu.",
-      "dismiss": "Zavřít"
+      "dismiss": "Zavřít",
+      "diff": {
+        "showChange": "Zobrazit změnu",
+        "hideChange": "Skrýt změnu",
+        "large": "Velká změna v souboru {{path}}. Projděte si ji po skončení tahu.",
+        "label": "Navrhovaná změna v souboru {{path}}",
+        "loading": "Načítá se změna…"
+      }
     },
     "readiness": {
       "managedBridge": "Most {{version}} nainstalovaný aplikací Oleafly.",
-      "bridgeOnPath": "Most nalezen v PATH.",
       "bridgeMissingWithCli": "{{cli}} nalezeno v {{path}}. Pro připojení nainstalujte most ACP {{version}}.",
       "bridgeMissing": "Pro připojení tohoto agenta nainstalujte most ACP {{version}}.",
-      "cliMissing": "{{cli}} není ve vaší proměnné PATH. Nainstalujte jej a pak spusťte {{command}}.",
       "cliNotFound": "Nástroj příkazové řádky tohoto agenta nebyl nalezen.",
       "unavailable": "Tento agent nemůže v tomto počítači běžet."
     },
     "bridgeSource": {
       "notInstalled": "Nenainstalováno",
-      "managed": "Spravuje Oleafly",
-      "onPath": "V PATH"
+      "managed": "Spravuje Oleafly"
     },
     "installing": "Instaluje se",
     "installBridge": "Nainstalovat most",
@@ -517,8 +521,52 @@
     "terminalCommand": "Agent spouští příkaz v terminálu.",
     "agentToolFallback": "Nástroj agenta",
     "agentReported": "Agent hlásí: {{detail}}",
+    "updateTooLarge": "Část výstupu agenta byla příliš velká na zobrazení ({{size}}).",
     "imageAttachmentName": "Obrázek {{index}}",
-    "agentImage": "[Agent vrátil obrázek.]"
+    "agentImage": "[Agent vrátil obrázek.]",
+    "setup": {
+      "cliNotFound": "Oleafly v tomto počítači nemůže najít {{cli}}.",
+      "rejected": {
+        "powershellScript": "Nalezen soubor {{file}}, ale skripty PowerShell nelze spustit. Vyberte {{name}}.cmd nebo {{name}}.exe.",
+        "script": "Nalezen soubor {{file}}, ale Oleafly ho nemůže spustit přímo. Vyberte {{name}}.exe.",
+        "isDirectory": "Nalezena složka s názvem {{file}}. Vyberte soubor programu {{name}}.",
+        "notExecutable": "Nalezen soubor {{file}}, ale není to program, který Oleafly umí spustit.",
+        "guiProgram": "Nalezen soubor {{file}}, ale je to desktopová aplikace. Vyberte nástroj příkazové řádky {{name}}.",
+        "networkPath": "Soubor {{file}} byl nalezen v síťovém umístění. Vyberte kopii v tomto počítači."
+      },
+      "foundOnComputer": "Nalezeno v tomto počítači.",
+      "usingChosen": "Používá se program, který jste vybrali.",
+      "bridgeSourceFound": "Nalezeno v tomto počítači",
+      "setUp": "Nastavit {{name}}",
+      "backgroundTasks": "Úlohy na pozadí: {{reason}}",
+      "cliMissingNextStep": "Nainstalujte {{cli}} nebo vyberte, kde je nainstalován.",
+      "installUnavailable": "Oleafly nemůže tento most v tomto počítači nainstalovat.",
+      "builtIn": "Vestavěný",
+      "showAgent": "Zobrazit"
+    },
+    "export": {
+      "menuItem": "Exportovat konverzaci…",
+      "saved": "Konverzace byla exportována",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Konverzace",
+      "project": "Projekt",
+      "agent": "Agent",
+      "model": "Model",
+      "modelManaged": "Vybírá agent",
+      "startRevision": "Zahájeno na commitu",
+      "uncommitted": "{{revision}} s necommitnutými změnami",
+      "started": "Zahájeno",
+      "updated": "Naposledy aktualizováno",
+      "you": "Vy",
+      "skill": "Dovednost: {{name}}",
+      "tool": "Nástroj: {{name}}",
+      "changedFiles": "Změněné soubory",
+      "moreFiles_one": "a {{count}} další soubor",
+      "moreFiles_few": "a {{count}} další soubory",
+      "moreFiles_many": "a {{count}} dalšího souboru",
+      "moreFiles_other": "a {{count}} dalších souborů"
+    }
   },
   "agents": {
     "pickerAriaLabel": "Agent CLI",
@@ -751,5 +799,75 @@
     "preSubmission": "Připrav to k odeslání",
     "slides": "Udělej z tohoto článku přednášku",
     "recompile": "Zkompiluj znovu a zkontroluj chyby"
+  },
+  "turnChanges": {
+    "ariaLabel": "Soubory změněné v tomto tahu",
+    "changed_one": "Změněn {{count}} soubor",
+    "changed_few": "Změněny {{count}} soubory",
+    "changed_many": "Změněno {{count}} souboru",
+    "changed_other": "Změněno {{count}} souborů",
+    "buildOnly": "Soubory sestavení byly aktualizovány",
+    "review": "Zkontrolovat",
+    "undoAll": "Vrátit vše zpět",
+    "redoAll": "Znovu provést vše",
+    "undo": "Vrátit zpět",
+    "redo": "Znovu provést",
+    "undoFile": "Vrátit zpět změny v souboru {{path}}",
+    "redoFile": "Znovu provést změny v souboru {{path}}",
+    "kind": {
+      "added": "Přidáno",
+      "modified": "Upraveno",
+      "deleted": "Smazáno"
+    },
+    "undone": "Vráceno zpět",
+    "editedAfter": "Změněno po tomto tahu",
+    "alsoEdited": "Tento soubor jste během tahu upravili i vy",
+    "committed": "Commitnuto v {{commit}}",
+    "buildFiles": "Soubory sestavení byly aktualizovány",
+    "moreFiles_one": "{{count}} další soubor není uveden",
+    "moreFiles_few": "{{count}} další soubory nejsou uvedeny",
+    "moreFiles_many": "{{count}} dalšího souboru není uvedeno",
+    "moreFiles_other": "{{count}} dalších souborů není uvedeno",
+    "skipped_one": "{{count}} soubor se před tahem nepodařilo zkopírovat, takže jeho změny nelze vrátit zpět.",
+    "skipped_few": "{{count}} soubory se před tahem nepodařilo zkopírovat, takže jejich změny nelze vrátit zpět.",
+    "skipped_many": "{{count}} souboru se před tahem nepodařilo zkopírovat, takže jeho změny nelze vrátit zpět.",
+    "skipped_other": "{{count}} souborů se před tahem nepodařilo zkopírovat, takže jejich změny nelze vrátit zpět.",
+    "overlapped": "Ve stejnou dobu měnil soubory jiný agent. Vracejte soubory zpět jeden po druhém.",
+    "expired": "Pro tento tah už vrácení zpět není k dispozici.",
+    "waitForRun": "Vrácení zpět bude k dispozici, až agent skončí.",
+    "unavailable": {
+      "tooLarge": "Pro tento tah není vrácení zpět k dispozici: projekt je příliš velký na zkopírování.",
+      "tooManyFiles": "Pro tento tah není vrácení zpět k dispozici: projekt má příliš mnoho souborů.",
+      "timeout": "Pro tento tah není vrácení zpět k dispozici: kopírování projektu trvalo příliš dlouho.",
+      "error": "Pro tento tah není vrácení zpět k dispozici: projekt se nepodařilo zkopírovat."
+    },
+    "previewLoading": "Načítá se změna…",
+    "previewFailed": "Tuto změnu se nepodařilo načíst.",
+    "binary": "Tento soubor není textový, takže změnu nelze zobrazit.",
+    "tooLarge": "Tato změna je příliš velká, aby se tu dala zobrazit.",
+    "diffLabel": "Změna v souboru {{path}}",
+    "undid_one": "Vrácen zpět {{count}} soubor.",
+    "undid_few": "Vráceny zpět {{count}} soubory.",
+    "undid_many": "Vráceno zpět {{count}} souboru.",
+    "undid_other": "Vráceno zpět {{count}} souborů.",
+    "redid_one": "Znovu proveden {{count}} soubor.",
+    "redid_few": "Znovu provedeny {{count}} soubory.",
+    "redid_many": "Znovu provedeno {{count}} souboru.",
+    "redid_other": "Znovu provedeno {{count}} souborů.",
+    "skippedEdited": "Některé soubory se po tomto tahu změnily, proto je Oleafly nechal beze změny.",
+    "skippedFailed": "Některé soubory se nepodařilo zapsat.",
+    "undoFailed": "Změny se nepodařilo vrátit zpět. Uložte svou práci a zkuste to znovu.",
+    "redoFailed": "Změny se nepodařilo znovu provést. Uložte svou práci a zkuste to znovu."
+  },
+  "presets": {
+    "literatureSweep": "Průzkum literatury",
+    "relatedWork": "Související práce",
+    "citationAudit": "Prověrka citací",
+    "manuscriptReview": "Recenze rukopisu",
+    "reproducibilityAudit": "Prověrka reprodukovatelnosti",
+    "figureAudit": "Prověrka obrázků",
+    "gitReview": "Revize změn v Gitu",
+    "referenceCleanup": "Úklid referencí",
+    "removeSkill": "Odebrat dovednost {{name}}"
   }
 }

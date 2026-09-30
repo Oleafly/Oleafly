@@ -813,6 +813,15 @@
     "enterTitle": "Vul een committitel in",
     "finishMergeToCommit": "Voltooi de merge voordat je commit.",
     "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Gekopieerd",
+      "copyCommand": "Opdracht kopiëren",
+      "download": "Git for Windows downloaden",
+      "linux": "Versiebeheer heeft Git nodig. Installeer het pakket git met je pakketbeheerder en vernieuw daarna dit paneel.",
+      "mac": "Versiebeheer heeft Git nodig. Voer deze opdracht uit in Terminal om de opdrachtregeltools van Apple te installeren, waar Git bij zit, en vernieuw daarna dit paneel.",
+      "title": "Git is niet geïnstalleerd",
+      "windows": "Versiebeheer heeft Git nodig. Installeer Git for Windows en start Oleafly daarna opnieuw."
+    },
     "graph": "Grafiek",
     "commitCount_one": "{{count}} commit",
     "commitCount_other": "{{count}} commits",

@@ -221,8 +221,8 @@
       "content": "Quando disponibili, le conversazioni configurate mostrano qui esecuzioni, token e costo stimato."
     },
     "restore": {
-      "title": "Ripristina lo stato del progetto",
-      "content": "Dopo una modifica dell'AI, un checkpoint può ripristinare i file del progetto senza eliminare la conversazione."
+      "title": "Rivedi le modifiche dell'agente",
+      "content": "Quando un turno modifica dei file, apri Rivedi per vedere ogni modifica. Annulla riporta un file com'era e Ripeti riapplica la modifica."
     }
   },
   "diagram": {

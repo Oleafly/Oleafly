@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
-    "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz."
+    "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz.",
+    "not_installed": "Bu bilgisayarda Git kurulu değil. Git'i kurun, sonra yeniden deneyin."
   },
   "approvals": {
     "full_access_declined": "Tam erişim etkinleştirilmedi."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Bu kontrol noktası geçmişi Oleafly kitaplığınızdaki bir projeye ait olduğundan bulunduğu yerde açılan bir klasörle kullanılamaz.",
     "folder_history_for_library": "Bu kontrol noktası geçmişi bulunduğu yerde açılan bir klasöre ait olduğundan Oleafly kitaplığınızdaki bir projeyle kullanılamaz.",
     "restore_path_blocked": "Oleafly {{path}} öğesini geri yükleyemiyor, çünkü orada bir bağlantı veya dosya olmayan başka bir şey var. Onu taşıyıp yeniden deneyin."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly bu programı bulamadı.",
+      "is_directory": "Bu bir klasör. İçindeki program dosyasını seçin.",
+      "not_executable": "Bu dosya bir program olarak başlatılamaz.",
+      "unsupported_script": "PowerShell betikleri başlatılamaz. Aynı adlı .cmd veya .exe dosyasını seçin.",
+      "needs_exe": "Bu ajan .cmd dosyası kullanamaz. Ajanın .exe dosyasını seçin.",
+      "gui_program": "Bu bir masaüstü uygulaması. Terminalde çalıştırdığınız programı seçin.",
+      "interpreter": "Bu program başka programları çalıştırır. Ajanın kendi programını seçin.",
+      "network_path": "Ağ konumundaki değil, bu bilgisayardaki bir programı seçin.",
+      "unknown_agent": "Oleafly bu ajanı tanımıyor.",
+      "declined": "Program değiştirilmedi.",
+      "check_running": "Bu ajan için bir test zaten çalışıyor.",
+      "main_window": "Ajan programlarını ana pencereden değiştirin."
+    }
   }
 }

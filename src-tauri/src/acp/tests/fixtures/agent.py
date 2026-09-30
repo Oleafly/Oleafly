@@ -15,7 +15,8 @@ def argument(name):
     return sys.argv[index]
 
 declared_root = Path(argument("--fixture-root") or "").resolve(strict=True)
-fixture_root = Path.cwd().resolve().parent
+# Agent checks start in an empty Oleafly-owned folder rather than the project.
+fixture_root = declared_root if "--fixture-any-cwd" in sys.argv else Path.cwd().resolve().parent
 if not fixture_root.name.startswith("oleafly-acp-fixture-") or not declared_root.samefile(fixture_root):
     raise ValueError("Use an ACP harness temporary directory")
 
@@ -78,6 +79,8 @@ for line in sys.stdin:
         servers = params.get("mcpServers", [])
         if "--record-mcp-servers" in sys.argv:
             (declared_root / "mcp-servers.json").write_text(json.dumps(servers))
+        if "--record-launch" in sys.argv:
+            (declared_root / "launch.json").write_text(json.dumps({"cwd": params.get("cwd"), "processCwd": os.getcwd(), "path": os.environ.get("PATH", ""), "noCwdSearch": os.environ.get("NoDefaultCurrentDirectoryInExePath")}))
         if servers and servers[0].get("headers"):
             credential = servers[0]["headers"][0]["value"].removeprefix("Bearer ")
         if not authenticated:
@@ -98,6 +101,8 @@ for line in sys.stdin:
         result(request, {"configOptions": [{"id": "model-selector", "name": "Model", "type": "select", "category": "model", "currentValue": params["value"], "options": [{"value": "fixture-model", "name": "Fixture model"}, {"value": "fixture-second", "name": "Second model"}]}]})
     elif method == "session/prompt":
         prompt = params["prompt"][0]["text"]
+        if "--record-prompt" in sys.argv:
+            (declared_root / "prompt.json").write_text(json.dumps(params["prompt"]))
         update("agent_thought_chunk", content={"type": "text", "text": "Checking the fixture."})
         update("tool_call", toolCallId="read-1", title="Read fixture", kind="read", status="in_progress", rawInput={"password": raw_input_marker})
         update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "Read complete."}}])
@@ -140,6 +145,32 @@ for line in sys.stdin:
         elif prompt.startswith("stop:"):
             update("agent_message_chunk", content={"type": "text", "text": "Partial saved answer"})
             result(request, {"stopReason": prompt.removeprefix("stop:")})
+        elif prompt == "large-output":
+            target = os.path.join(os.getcwd(), "refs.bib")
+            update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "r" * (300 * 1024)}}, {"type": "diff", "path": target, "oldText": "o" * (150 * 1024), "newText": "n" * (151 * 1024)}])
+            result(request, {"stopReason": "end_turn"})
+        elif prompt == "huge-update":
+            update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "h" * (3 * 1024 * 1024)}}])
+            update("agent_message_chunk", content={"type": "text", "text": "After the large update"})
+            result(request, {"stopReason": "end_turn"})
+        elif prompt == "permission-diff":
+            pending_prompt = request
+            target = os.path.join(os.getcwd(), "paper.tex")
+            update("tool_call", toolCallId="edit-1", title="Edit paper", kind="edit", status="pending", locations=[{"path": target}], content=[{"type": "diff", "path": target, "oldText": "Old sentence.\n", "newText": "New sentence.\npassword = " + raw_input_marker + "\n"}])
+            send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": "edit-1", "title": "Edit paper"}, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
+        elif prompt.startswith("ask-permission:"):
+            pending_prompt = request
+            spec = json.loads(prompt[len("ask-permission:"):])
+            tool = {"toolCallId": "ask-1", "title": "Read a file", "locations": [{"path": spec["path"]}], "rawInput": {"file_path": spec["path"]}}
+            if spec.get("kind"):
+                tool["kind"] = spec["kind"]
+            send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": tool, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
+        elif prompt == "huge-edit":
+            target = os.path.join(os.getcwd(), "refs.bib")
+            update("tool_call", toolCallId="edit-big", title="Edit refs.bib", kind="edit", status="in_progress", locations=[{"path": target}])
+            update("tool_call_update", toolCallId="edit-big", status="completed", content=[{"type": "diff", "path": target, "oldText": "o" * (600 * 1024), "newText": "n" * (601 * 1024)}])
+            update("agent_message_chunk", content={"type": "text", "text": "Edited the bibliography."})
+            result(request, {"stopReason": "end_turn"})
         elif prompt == "paged-answer":
             for index in range(520):
                 update("agent_message_chunk", content={"type": "text", "text": str(index) + "|"})

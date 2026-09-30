@@ -27,7 +27,7 @@ export function AgentPickerRow({
     <fieldset
       aria-label={t(($) => $.ai.agents.pickerAriaLabel)}
       data-testid="agent-picker-row"
-      className="no-scrollbar mx-auto flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-muted/60 p-1"
+      className="no-scrollbar mx-auto flex w-fit min-w-0 max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-muted/60 p-1"
     >
       {agents.map((agent) => {
         const selected = agent.id === selectedId;

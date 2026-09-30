@@ -813,6 +813,15 @@
     "enterTitle": "Skriv en titel til din commit",
     "finishMergeToCommit": "Fuldfør fletningen, før du committer.",
     "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Kopieret",
+      "copyCommand": "Kopier kommandoen",
+      "download": "Hent Git for Windows",
+      "linux": "Versionsstyring kræver Git. Installer pakken git med din pakkehåndtering, og opdater så dette panel.",
+      "mac": "Versionsstyring kræver Git. Kør denne kommando i Terminal for at installere Apples kommandolinjeværktøjer, som indeholder Git, og opdater så dette panel.",
+      "title": "Git er ikke installeret",
+      "windows": "Versionsstyring kræver Git. Installer Git for Windows, og genstart så Oleafly."
+    },
     "graph": "Graf",
     "commitCount_one": "{{count}} commit",
     "commitCount_other": "{{count}} commits",

@@ -206,6 +206,7 @@ async fn collect_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_wait;
     use std::time::Instant;
 
     fn node(script: &str) -> Command {
@@ -240,25 +241,37 @@ mod tests {
 
     #[test]
     fn leader_exit_closes_inherited_descendant_pipes() {
-        let start = Instant::now();
+        // The leader reports when it exits, so the bound covers only what follows
+        // its exit and not Node startup, which is slow on a loaded runner.
         let output = output_contained_with_timeout(node(
-            "require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:['ignore',1,2]});process.stdout.write('leader');process.exit(0)",
-        ), Duration::from_secs(5)).unwrap();
+            "require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:['ignore',1,2]});process.stdout.write('leader');process.stderr.write('exited-at:'+Date.now());process.exit(0)",
+        ), test_wait::CHILD_PATIENCE).unwrap();
+        let returned = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        // The descendant shares stderr, so read only the leader's tagged value.
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let exited: u128 = stderr
+            .rsplit_once("exited-at:")
+            .and_then(|(_, rest)| rest.trim().parse().ok())
+            .unwrap_or_else(|| panic!("the leader never reported its exit time: {stderr:?}"));
         assert!(output.status.success());
         assert_eq!(output.stdout, b"leader");
-        assert!(start.elapsed() < Duration::from_secs(4));
+        assert!(returned.saturating_sub(exited) < 4000);
     }
 
     #[test]
     fn steady_progress_outlives_a_deadline_that_would_have_killed_it() {
-        // The idle budget includes Node startup, which is slower under emulation.
-        // Twenty reports at 100ms must keep the command alive beyond that budget.
+        // The idle budget includes Node startup, which is slow under emulation and
+        // on a loaded runner. Twenty reports at 500ms must keep the command alive
+        // for twice that budget.
         let output = output_contained_with_bounds(
             node(
                 "let n=0;const t=setInterval(()=>{process.stderr.write('sending ');\
-                 if(++n===20){clearInterval(t);process.stdout.write('done');process.exit(0)}},100)",
+                 if(++n===20){clearInterval(t);process.stdout.write('done');process.exit(0)}},500)",
             ),
-            OutputBounds::stalled_after(Duration::from_secs(1), Duration::from_secs(30)),
+            OutputBounds::stalled_after(Duration::from_secs(5), Duration::from_secs(30)),
         )
         .unwrap();
         assert!(output.status.success());
@@ -286,7 +299,7 @@ mod tests {
                 "process.stdout.write('x'.repeat(16384));\
                  process.stderr.write('why it failed');process.exit(3)",
             ),
-            OutputBounds::total(Duration::from_secs(5)),
+            OutputBounds::total(test_wait::CHILD_PATIENCE),
             1024,
         )
         .await

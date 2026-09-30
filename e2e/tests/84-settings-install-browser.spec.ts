@@ -31,6 +31,40 @@ async function setup(page: Page) {
       taskUnavailableReason: null,
       cli: null,
     };
+    // Pi on Windows: the bridge is installed, but the only `pi` on the search
+    // path is an npm PowerShell script, so the CLI counts as missing.
+    const pi = {
+      definition: {
+        id: "pi",
+        name: "Pi",
+        version: "0.0.34",
+        description: "Test bridge",
+        builtin: true,
+        distribution: { npx: { package: "pi-acp@0.0.34", args: [] } },
+      },
+      installed: true,
+      managed: true,
+      executable: "C:\\Users\\Ada\\AppData\\Roaming\\Oleafly\\acp\\pi\\pi-acp.cmd",
+      installedVersion: "0.0.34",
+      platform: "windows-x86_64",
+      canInstall: true,
+      reason: null,
+      signInHint: "Run pi in your terminal and sign in with /login, then reconnect.",
+      taskUnavailableReason:
+        "Isolated CLI agent tasks are not available on Windows yet. Use the agent in the assistant instead.",
+      bridgeSharedWithCli: false,
+      programOverride: null as string | null,
+      cliRequired: true,
+      cli: {
+        command: "pi",
+        displayName: "Pi",
+        path: null as string | null,
+        version: null as string | null,
+        signInCommand: "pi",
+        source: null as string | null,
+        rejected: [{ path: "C:\\Users\\Ada\\AppData\\Roaming\\npm\\pi.ps1", reason: "unsupported_script" }],
+      },
+    };
     Object.assign(window, {
       __settingsInstallTest: state,
       isTauri: true,
@@ -39,7 +73,16 @@ async function setup(page: Page) {
         unregisterCallback: () => {},
         invoke: async (command: string, args: Record<string, unknown> = {}) => {
           state.calls.push({ command, args });
-          if (command === "acp_catalog") return [agent];
+          if (command === "acp_catalog") return [agent, pi];
+          if (command === "acp_pick_agent_program") return "D:\\Tools\\Agents\\Pi\\pi.exe";
+          if (command === "acp_check_agent")
+            return { ok: true, code: "ready", detail: null, program: args.path, version: "0.81.2", agentName: "pi-acp" };
+          if (command === "acp_set_agent_program") {
+            const path = args.path as string | null;
+            pi.programOverride = path;
+            pi.cli = { ...pi.cli, path, version: path ? "0.81.2" : null, source: path ? "override" : null, rejected: [] };
+            return pi;
+          }
           if (command === "acp_install") {
             state.installs += 1;
             await new Promise((resolve) => setTimeout(resolve, 400));
@@ -135,6 +178,43 @@ for (const browserType of [chromium, webkit]) {
       await expect(review).toBeHidden();
       await expect(page.getByRole("status")).toContainText("Research CLI is installed");
       expect(await page.evaluate(() => (window as any).__settingsInstallTest.installs)).toBe(2);
+    } finally {
+      await browser.close();
+    }
+  });
+  test(`${browserType.name()}: a chosen Pi program is tested before it is saved`, async () => {
+    // Ignored on purpose when that Playwright browser was never downloaded on this runner.
+    test.skip(!existsSync(browserType.executablePath()), "Browser executable is not installed");
+    const browser = await browserType.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1200, height: 950 } });
+      await setup(page);
+      await page.getByTestId("settings-section-ai").click();
+      await page.getByTestId("ai-settings-tab-agents").click();
+      const card = page.getByTestId("acp-agent-card-pi");
+      await expect(card).toContainText(
+        "Found pi.ps1, but PowerShell scripts can't be started. Choose pi.cmd or pi.exe.",
+      );
+      await expect(card).toContainText("CLI not found");
+      await card.getByRole("button", { expanded: false }).click();
+      const nextStep = card.getByRole("region", { name: "Next step" });
+      await expect(nextStep.locator("p").first()).toHaveText("Install Pi, or choose where it's installed.");
+      await expect(nextStep).toContainText("Background tasks: Isolated CLI agent tasks are not available on Windows yet.");
+      await expect(card).not.toContainText("PATH");
+
+      await card.getByRole("button", { name: "Choose…" }).click();
+
+      await expect(card.getByRole("status")).toContainText("Pi 0.81.2 started and answered.");
+      await expect(card).toContainText("Chosen by you");
+      await expect(card).toContainText("D:\\Tools\\Agents\\Pi\\pi.exe");
+      await expect(card).toContainText("Ready");
+      expect(
+        await page.evaluate(() =>
+          (window as any).__settingsInstallTest.calls
+            .map((call: any) => call.command)
+            .filter((command: string) => command.startsWith("acp_") && command !== "acp_catalog"),
+        ),
+      ).toEqual(["acp_pick_agent_program", "acp_check_agent", "acp_set_agent_program"]);
     } finally {
       await browser.close();
     }

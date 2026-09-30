@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Projektet er allerede tilknyttet {{remote}}.",
-    "nested_repository": "Projektet ligger i et andet Git-repository, så Oleafly opretter ikke et separat repository her."
+    "nested_repository": "Projektet ligger i et andet Git-repository, så Oleafly opretter ikke et separat repository her.",
+    "not_installed": "Git er ikke installeret på denne computer. Installer Git, og prøv igen."
   },
   "approvals": {
     "full_access_declined": "Fuld adgang blev ikke aktiveret."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Denne kontrolpunkthistorik stammer fra et projekt i dit Oleafly-bibliotek, så den kan ikke bruges med en mappe, du har åbnet, hvor den ligger.",
     "folder_history_for_library": "Denne kontrolpunkthistorik stammer fra en mappe, du har åbnet, hvor den ligger, så den kan ikke bruges med et projekt i dit Oleafly-bibliotek.",
     "restore_path_blocked": "Oleafly kan ikke gendanne {{path}}, fordi et link eller noget andet, der ikke er en fil, er i vejen. Flyt det, og prøv igen."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly kunne ikke finde det program.",
+      "is_directory": "Det er en mappe. Vælg programfilen i den.",
+      "not_executable": "Filen kan ikke startes som et program.",
+      "unsupported_script": "PowerShell-scripts kan ikke startes. Vælg .cmd- eller .exe-filen med samme navn.",
+      "needs_exe": "Denne agent kan ikke bruge en .cmd-fil. Vælg dens .exe-fil.",
+      "gui_program": "Det er en skrivebordsapp. Vælg det program, du kører i en terminal.",
+      "interpreter": "Det program kører andre programmer. Vælg agentens eget program.",
+      "network_path": "Vælg et program på denne computer, ikke på en netværksplacering.",
+      "unknown_agent": "Oleafly kender ikke denne agent.",
+      "declined": "Programmet blev ikke ændret.",
+      "check_running": "Der kører allerede en test af denne agent.",
+      "main_window": "Skift agenternes programmer fra hovedvinduet."
+    }
   }
 }

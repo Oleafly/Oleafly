@@ -194,6 +194,7 @@ fn purge_project_data(project_id: &str) -> Result<(), String> {
     let data_root = crate::paths::oleafly_root()?;
     crate::project_grants::reset_project_grants(&data_root, project_id)?;
     crate::checkpoints::remove_project_checkpoint_data(project_id)?;
+    crate::agent_turns::remove_project(project_id);
     crate::chats::remove_project_chats(project_id)?;
     if data_root.join("library.db").is_file() {
         crate::library_db::index_project_chats(&data_root, project_id, "[]")?;
@@ -451,6 +452,12 @@ mod tests {
         let fixture = LinkedFixture::new();
         let seeded = seeded(&fixture, "thesis");
         let kept = seeded_kept(&fixture);
+        let turns = crate::paths::oleafly_root()
+            .unwrap()
+            .join("agent-turns")
+            .join(&seeded.project_id);
+        let turn = crate::agent_turns::begin(&seeded.project_id, "Test agent");
+        assert!(turn.snapshot_id.is_some(), "{turn:?}");
         let before = folder_snapshot_for_test(&seeded.folder);
         remove_folder_project(&seeded.project_id, 1_000).unwrap();
 
@@ -458,6 +465,7 @@ mod tests {
 
         assert_eq!(early, PurgeOutcome::default());
         assert!(seeded.chats.exists() && seeded.checkpoints.exists());
+        assert!(turns.is_dir());
         assert!(linked_entry(&seeded.project_id).exists());
 
         let due = purge_expired_removals(1_000 + REMOVED_RETENTION_MS).unwrap();
@@ -466,6 +474,7 @@ mod tests {
         assert!(due.failures.is_empty(), "{:?}", due.failures);
         assert!(!seeded.chats.exists());
         assert!(!seeded.checkpoints.exists());
+        assert!(!turns.exists());
         assert!(!linked_entry(&seeded.project_id).exists());
         assert_eq!(
             only_entries(&crate::paths::existing_linked_root().unwrap().unwrap()),

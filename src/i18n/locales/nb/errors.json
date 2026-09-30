@@ -61,7 +61,8 @@
   },
   "git": {
     "remote_exists": "Dette prosjektet er allerede koblet til {{remote}}.",
-    "nested_repository": "Dette prosjektet ligger i et annet Git-repositorium, så Oleafly oppretter ikke et eget repositorium her."
+    "nested_repository": "Dette prosjektet ligger i et annet Git-repositorium, så Oleafly oppretter ikke et eget repositorium her.",
+    "not_installed": "Git er ikke installert på denne maskinen. Installer Git, og prøv igjen."
   },
   "approvals": {
     "full_access_declined": "Full tilgang ble ikke slått på."
@@ -113,5 +114,21 @@
     "library_history_for_folder": "Denne sjekkpunkthistorikken kommer fra et prosjekt i Oleafly-biblioteket ditt, så den kan ikke brukes med en mappe du har åpnet der den ligger.",
     "folder_history_for_library": "Denne sjekkpunkthistorikken kommer fra en mappe du har åpnet der den ligger, så den kan ikke brukes med et prosjekt i Oleafly-biblioteket ditt.",
     "restore_path_blocked": "Oleafly kan ikke gjenopprette {{path}} fordi en lenke eller noe annet som ikke er en fil, er i veien. Flytt det og prøv igjen."
+  },
+  "acp": {
+    "program": {
+      "not_found": "Oleafly fant ikke det programmet.",
+      "is_directory": "Det er en mappe. Velg programfilen i den.",
+      "not_executable": "Den filen kan ikke startes som et program.",
+      "unsupported_script": "PowerShell-skript kan ikke startes. Velg .cmd- eller .exe-filen med samme navn.",
+      "needs_exe": "Denne agenten kan ikke bruke en .cmd-fil. Velg .exe-filen.",
+      "gui_program": "Det er en skrivebordsapp. Velg programmet du kjører i en terminal.",
+      "interpreter": "Det programmet kjører andre programmer. Velg agentens eget program.",
+      "network_path": "Velg et program på denne maskinen, ikke på en nettverksplassering.",
+      "unknown_agent": "Oleafly kjenner ikke denne agenten.",
+      "declined": "Programmet ble ikke endret.",
+      "check_running": "En test av denne agenten kjører allerede.",
+      "main_window": "Bytt agentprogrammer fra hovedvinduet."
+    }
   }
 }

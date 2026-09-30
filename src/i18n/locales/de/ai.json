@@ -436,21 +436,25 @@
       "namedHeadline": "{{agent}} braucht eine Freigabe",
       "headline": "Der Agent braucht eine Freigabe",
       "expired": "Diese Anfrage ist abgelaufen. Bitten Sie den Agenten, es erneut zu versuchen.",
-      "dismiss": "Schließen"
+      "dismiss": "Schließen",
+      "diff": {
+        "showChange": "Änderung anzeigen",
+        "hideChange": "Änderung ausblenden",
+        "large": "Große Änderung an {{path}}. Prüfen Sie sie nach dem Beitrag.",
+        "label": "Vorgeschlagene Änderung an {{path}}",
+        "loading": "Änderung wird geladen…"
+      }
     },
     "readiness": {
       "managedBridge": "Bridge {{version}} von Oleafly installiert.",
-      "bridgeOnPath": "Bridge im PATH gefunden.",
       "bridgeMissingWithCli": "{{cli}} unter {{path}} gefunden. Installieren Sie die ACP-Bridge {{version}}, um zu verbinden.",
       "bridgeMissing": "Installieren Sie die ACP-Bridge {{version}}, um diesen Agenten zu verbinden.",
-      "cliMissing": "{{cli}} liegt nicht in Ihrem PATH. Installieren Sie es und führen Sie dann {{command}} aus.",
       "cliNotFound": "Das Kommandozeilenwerkzeug dieses Agenten wurde nicht gefunden.",
       "unavailable": "Dieser Agent kann auf diesem Computer nicht laufen."
     },
     "bridgeSource": {
       "notInstalled": "Nicht installiert",
-      "managed": "Von Oleafly verwaltet",
-      "onPath": "Im PATH"
+      "managed": "Von Oleafly verwaltet"
     },
     "installing": "Wird installiert",
     "installBridge": "Bridge installieren",
@@ -503,8 +507,50 @@
     "terminalCommand": "Der Agent führt einen Befehl im Terminal aus.",
     "agentToolFallback": "Werkzeug des Agenten",
     "agentReported": "Der Agent meldet: {{detail}}",
+    "updateTooLarge": "Ein Teil der Ausgabe des Agenten war zu groß für die Anzeige ({{size}}).",
     "imageAttachmentName": "Bild {{index}}",
-    "agentImage": "[Der Agent hat ein Bild zurückgegeben.]"
+    "agentImage": "[Der Agent hat ein Bild zurückgegeben.]",
+    "setup": {
+      "cliNotFound": "Oleafly hat {{cli}} auf diesem Computer nicht gefunden.",
+      "rejected": {
+        "powershellScript": "{{file}} gefunden, aber PowerShell-Skripte lassen sich nicht starten. Wählen Sie {{name}}.cmd oder {{name}}.exe.",
+        "script": "{{file}} gefunden, aber Oleafly kann die Datei nicht direkt starten. Wählen Sie {{name}}.exe.",
+        "isDirectory": "Ordner mit dem Namen {{file}} gefunden. Wählen Sie die Programmdatei von {{name}}.",
+        "notExecutable": "{{file}} gefunden, aber das ist kein Programm, das Oleafly starten kann.",
+        "guiProgram": "{{file}} gefunden, aber das ist eine Desktop-App. Wählen Sie das Kommandozeilenwerkzeug von {{name}}.",
+        "networkPath": "{{file}} an einem Netzwerkspeicherort gefunden. Wählen Sie eine Kopie auf diesem Computer."
+      },
+      "foundOnComputer": "Auf diesem Computer gefunden.",
+      "usingChosen": "Das von Ihnen gewählte Programm wird verwendet.",
+      "bridgeSourceFound": "Auf diesem Computer gefunden",
+      "setUp": "{{name}} einrichten",
+      "backgroundTasks": "Hintergrundaufgaben: {{reason}}",
+      "cliMissingNextStep": "Installieren Sie {{cli}} oder wählen Sie aus, wo es installiert ist.",
+      "installUnavailable": "Oleafly kann diese Bridge auf diesem Computer nicht installieren.",
+      "builtIn": "Eingebaut",
+      "showAgent": "Anzeigen"
+    },
+    "export": {
+      "menuItem": "Gespräch exportieren…",
+      "saved": "Gespräch exportiert",
+      "markdown": "Markdown",
+      "json": "JSON",
+      "untitled": "Gespräch",
+      "project": "Projekt",
+      "agent": "Agent",
+      "model": "Modell",
+      "modelManaged": "Vom Agenten gewählt",
+      "startRevision": "Begonnen bei Commit",
+      "uncommitted": "{{revision}} mit nicht committeten Änderungen",
+      "started": "Begonnen",
+      "updated": "Zuletzt aktualisiert",
+      "you": "Sie",
+      "skill": "Skill: {{name}}",
+      "tool": "Werkzeug: {{name}}",
+      "changedFiles": "Geänderte Dateien",
+      "moreFiles_one": "und {{count}} weitere Datei",
+      "moreFiles_other": "und {{count}} weitere Dateien"
+    }
   },
   "agents": {
     "pickerAriaLabel": "CLI-Agent",
@@ -731,5 +777,65 @@
     "preSubmission": "Es für die Einreichung fertig machen",
     "slides": "Aus diesem Aufsatz einen Vortrag machen",
     "recompile": "Neu kompilieren und auf Fehler prüfen"
+  },
+  "turnChanges": {
+    "ariaLabel": "In diesem Beitrag geänderte Dateien",
+    "changed_one": "{{count}} Datei geändert",
+    "changed_other": "{{count}} Dateien geändert",
+    "buildOnly": "Ausgabedateien aktualisiert",
+    "review": "Prüfen",
+    "undoAll": "Alle rückgängig machen",
+    "redoAll": "Alle wiederholen",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "undoFile": "Änderung an {{path}} rückgängig machen",
+    "redoFile": "Änderung an {{path}} wiederholen",
+    "kind": {
+      "added": "Hinzugefügt",
+      "modified": "Geändert",
+      "deleted": "Gelöscht"
+    },
+    "undone": "Rückgängig gemacht",
+    "editedAfter": "Nach diesem Beitrag geändert",
+    "alsoEdited": "Sie haben diese Datei während des Beitrags ebenfalls bearbeitet",
+    "committed": "Committet in {{commit}}",
+    "buildFiles": "Ausgabedateien aktualisiert",
+    "moreFiles_one": "{{count}} weitere Datei ist nicht aufgeführt",
+    "moreFiles_other": "{{count}} weitere Dateien sind nicht aufgeführt",
+    "skipped_one": "{{count}} Datei konnte vor dem Beitrag nicht kopiert werden und lässt sich daher nicht rückgängig machen.",
+    "skipped_other": "{{count}} Dateien konnten vor dem Beitrag nicht kopiert werden und lassen sich daher nicht rückgängig machen.",
+    "overlapped": "Ein anderer Agent hat gleichzeitig Dateien geändert. Machen Sie die Dateien einzeln rückgängig.",
+    "expired": "Dieser Beitrag lässt sich nicht mehr rückgängig machen.",
+    "waitForRun": "Rückgängig machen ist möglich, sobald der Agent fertig ist.",
+    "unavailable": {
+      "tooLarge": "Dieser Beitrag lässt sich nicht rückgängig machen: Das Projekt ist zu groß zum Kopieren.",
+      "tooManyFiles": "Dieser Beitrag lässt sich nicht rückgängig machen: Das Projekt hat zu viele Dateien.",
+      "timeout": "Dieser Beitrag lässt sich nicht rückgängig machen: Das Kopieren des Projekts hat zu lange gedauert.",
+      "error": "Dieser Beitrag lässt sich nicht rückgängig machen: Das Projekt konnte nicht kopiert werden."
+    },
+    "previewLoading": "Änderung wird geladen…",
+    "previewFailed": "Diese Änderung konnte nicht geladen werden.",
+    "binary": "Diese Datei ist kein Text, daher lässt sich die Änderung nicht anzeigen.",
+    "tooLarge": "Diese Änderung ist zu groß, um sie hier anzuzeigen.",
+    "diffLabel": "Änderung an {{path}}",
+    "undid_one": "Änderung an {{count}} Datei rückgängig gemacht.",
+    "undid_other": "Änderungen an {{count}} Dateien rückgängig gemacht.",
+    "redid_one": "Änderung an {{count}} Datei wiederholt.",
+    "redid_other": "Änderungen an {{count}} Dateien wiederholt.",
+    "skippedEdited": "Einige Dateien wurden nach diesem Beitrag geändert, daher hat Oleafly sie unverändert gelassen.",
+    "skippedFailed": "Einige Dateien konnten nicht geschrieben werden.",
+    "undoFailed": "Die Änderungen konnten nicht rückgängig gemacht werden. Speichern Sie Ihre Arbeit und versuchen Sie es erneut.",
+    "redoFailed": "Die Änderungen konnten nicht wiederholt werden. Speichern Sie Ihre Arbeit und versuchen Sie es erneut."
+  },
+  "presets": {
+    "literatureSweep": "Literatursichtung",
+    "relatedWork": "Verwandte Arbeiten",
+    "citationAudit": "Zitationsprüfung",
+    "manuscriptReview": "Manuskriptbegutachtung",
+    "reproducibilityAudit": "Reproduzierbarkeitsprüfung",
+    "figureAudit": "Abbildungsprüfung",
+    "gitReview": "Git-Prüfung",
+    "referenceCleanup": "Bereinigung der Referenzen",
+    "removeSkill": "Skill {{name}} entfernen"
   }
 }
