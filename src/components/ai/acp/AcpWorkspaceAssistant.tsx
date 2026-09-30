@@ -390,7 +390,12 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => {
       // A terminal method signs in interactively: run the located CLI in the project terminal.
       const cliPath = method.kind === "terminal" ? catalog.find((agent) => agent.definition.id === session.agentId)?.cli?.path : null;
-      if (cliPath) { if (!openAgentSignInTerminal(projectId, cliPath)) setError(terminalLimitMessage()); return; }
+      if (cliPath) {
+        if (!openAgentSignInTerminal(projectId, cliPath)) {
+          setError(terminalLimitMessage());
+        }
+        return;
+      }
       void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); });
     }}>{method.name}</Button>)}
     <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnectAfterSignIn)}</Button>

@@ -143,6 +143,73 @@ function PreviewBody({ file, review }: Readonly<{ file: TurnChange; review: Turn
   );
 }
 
+function fileActionFor(undoable: boolean, commit: string | undefined, state: TurnFileState): TurnAction | null {
+  if (!undoable || commit || state === "edited") return null;
+  return state === "undone" ? "redo" : "undo";
+}
+
+function FileRowStatus({
+  file,
+  commit,
+  state,
+}: Readonly<{ file: TurnChange; commit: string | undefined; state: TurnFileState }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <>
+      <span className="shrink-0">{changeKindText(file.change)}</span>
+      {file.added !== null || file.removed !== null ? (
+        <LineCounts added={file.added ?? 0} removed={file.removed ?? 0} />
+      ) : null}
+      {commit ? (
+        <span className="shrink-0">
+          {t(($) => $.ai.turnChanges.committed, { commit: commit.slice(0, 7) })}
+        </span>
+      ) : null}
+      {!commit && state === "undone" ? <span className="shrink-0">{t(($) => $.ai.turnChanges.undone)}</span> : null}
+      {!commit && state === "edited" ? (
+        <span className="shrink-0">{t(($) => $.ai.turnChanges.editedAfter)}</span>
+      ) : null}
+    </>
+  );
+}
+
+function FileRowAction({
+  action,
+  path,
+  busy,
+  blocked,
+  pendingHere,
+  onRun,
+}: Readonly<{
+  action: TurnAction;
+  path: string;
+  busy: boolean;
+  blocked: boolean;
+  pendingHere: boolean;
+  onRun: () => void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="xs"
+      disabled={blocked}
+      aria-busy={pendingHere || undefined}
+      aria-disabled={pendingHere || undefined}
+      title={busy ? t(($) => $.ai.turnChanges.waitForRun) : undefined}
+      aria-label={
+        action === "undo"
+          ? t(($) => $.ai.turnChanges.undoFile, { path })
+          : t(($) => $.ai.turnChanges.redoFile, { path })
+      }
+      onClick={onRun}
+    >
+      {action === "undo" ? t(($) => $.ai.turnChanges.undo) : t(($) => $.ai.turnChanges.redo)}
+    </Button>
+  );
+}
+
 function FileRow({
   file,
   projectId,
@@ -168,8 +235,7 @@ function FileRow({
   const run = useTurnReviewStore((store) => store.run);
   const open = review.open === file.index;
   const previewable = !!snapshotId && undoable;
-  const action: TurnAction | null =
-    !undoable || commit || state === "edited" ? null : state === "undone" ? "redo" : "undo";
+  const action = fileActionFor(undoable, commit, state);
   const pendingHere = review.pending === file.index;
   const blocked = busy || (review.pending !== null && !pendingHere);
   const path = file.path;
@@ -195,40 +261,19 @@ function FileRow({
         ) : (
           <span className="min-w-0 flex-1 truncate px-1 font-mono text-foreground">{path}</span>
         )}
-        <span className="shrink-0">{changeKindText(file.change)}</span>
-        {file.added !== null || file.removed !== null ? (
-          <LineCounts added={file.added ?? 0} removed={file.removed ?? 0} />
-        ) : null}
-        {commit ? (
-          <span className="shrink-0">
-            {t(($) => $.ai.turnChanges.committed, { commit: commit.slice(0, 7) })}
-          </span>
-        ) : null}
-        {!commit && state === "undone" ? <span className="shrink-0">{t(($) => $.ai.turnChanges.undone)}</span> : null}
-        {!commit && state === "edited" ? (
-          <span className="shrink-0">{t(($) => $.ai.turnChanges.editedAfter)}</span>
-        ) : null}
+        <FileRowStatus file={file} commit={commit} state={state} />
         {action ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            disabled={blocked}
-            aria-busy={pendingHere || undefined}
-            aria-disabled={pendingHere || undefined}
-            title={busy ? t(($) => $.ai.turnChanges.waitForRun) : undefined}
-            aria-label={
-              action === "undo"
-                ? t(($) => $.ai.turnChanges.undoFile, { path })
-                : t(($) => $.ai.turnChanges.redoFile, { path })
-            }
-            onClick={() => {
+          <FileRowAction
+            action={action}
+            path={path}
+            busy={busy}
+            blocked={blocked}
+            pendingHere={pendingHere}
+            onRun={() => {
               if (!snapshotId || pendingHere) return;
               void run(projectId, snapshotId, action, [file.index], file.index);
             }}
-          >
-            {action === "undo" ? t(($) => $.ai.turnChanges.undo) : t(($) => $.ai.turnChanges.redo)}
-          </Button>
+          />
         ) : null}
       </div>
       {file.alsoEditedHere ? (
@@ -242,6 +287,153 @@ function FileRow({
         </div>
       ) : null}
     </li>
+  );
+}
+
+function HeaderActionButton({
+  action,
+  busy,
+  pending,
+  onRun,
+}: Readonly<{
+  action: TurnAction;
+  busy: boolean;
+  pending: TurnReview["pending"];
+  onRun: () => void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const pendingAll = pending === "all";
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="xs"
+      disabled={busy || (pending !== null && !pendingAll)}
+      aria-busy={pendingAll || undefined}
+      aria-disabled={pendingAll || undefined}
+      title={busy ? t(($) => $.ai.turnChanges.waitForRun) : undefined}
+      onClick={onRun}
+    >
+      {action === "undo" ? t(($) => $.ai.turnChanges.undoAll) : t(($) => $.ai.turnChanges.redoAll)}
+    </Button>
+  );
+}
+
+function TurnNotes({
+  changes,
+  showUnavailable,
+  expired,
+  undoable,
+}: Readonly<{
+  changes: ChatTurnChanges;
+  showUnavailable: boolean;
+  expired: boolean;
+  undoable: boolean;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <>
+      {showUnavailable && changes.unavailable ? <p className="mt-1">{turnUnavailableText(changes.unavailable)}</p> : null}
+      {changes.snapshotId && expired ? <p className="mt-1">{t(($) => $.ai.turnChanges.expired)}</p> : null}
+      {undoable && changes.overlapped ? <p className="mt-1">{t(($) => $.ai.turnChanges.overlapped)}</p> : null}
+    </>
+  );
+}
+
+function TurnFileList({
+  id,
+  buildId,
+  projectId,
+  changes,
+  source,
+  build,
+  review,
+  undoable,
+  busy,
+  onToggleBuild,
+}: Readonly<{
+  id: string;
+  buildId: string;
+  projectId: string;
+  changes: ChatTurnChanges;
+  source: readonly TurnChange[];
+  build: readonly TurnChange[];
+  review: TurnReview;
+  undoable: boolean;
+  busy: boolean;
+  onToggleBuild: () => void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const committed = changes.committed ?? {};
+  const stateOf = (file: TurnChange): TurnFileState => review.states[file.index] ?? "applied";
+  return (
+    <div id={id} className="mt-1.5 space-y-1.5">
+      {source.length > 0 ? (
+        <ul className="divide-y divide-border/60">
+          {source.map((file) => (
+            <FileRow
+              key={file.index}
+              file={file}
+              projectId={projectId}
+              snapshotId={changes.snapshotId}
+              review={review}
+              state={stateOf(file)}
+              commit={committed[file.path]}
+              undoable={undoable}
+              busy={busy}
+            />
+          ))}
+        </ul>
+      ) : null}
+      {changes.moreFiles > 0 ? (
+        <p>{t(($) => $.ai.turnChanges.moreFiles, { count: changes.moreFiles })}</p>
+      ) : null}
+      {changes.skipped.length > 0 ? (
+        <p>{t(($) => $.ai.turnChanges.skipped, { count: changes.skipped.length })}</p>
+      ) : null}
+      {build.length > 0 ? (
+        <div>
+          <button
+            type="button"
+            aria-expanded={review.buildExpanded}
+            aria-controls={buildId}
+            onClick={onToggleBuild}
+            className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-accent focus-visible:bg-accent"
+          >
+            <ChevronRight
+              aria-hidden
+              className={cn("size-3 shrink-0 transition-transform", review.buildExpanded && "rotate-90")}
+            />
+            {t(($) => $.ai.turnChanges.buildFiles)}
+          </button>
+          {review.buildExpanded ? (
+            <ul id={buildId} className="pl-6">
+              {build.map((file) => (
+                <li key={file.index} className="truncate font-mono">
+                  {file.path}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TurnOutcomeMessages({ status, failed }: Readonly<{ status: string; failed: TurnAction | null }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <>
+      <output aria-live="polite" className={cn("block", status ? "mt-1" : "sr-only")}>
+        {status}
+      </output>
+      {failed ? (
+        <p role="alert" className="mt-1 text-destructive">
+          {failed === "undo" ? t(($) => $.ai.turnChanges.undoFailed) : t(($) => $.ai.turnChanges.redoFailed)}
+        </p>
+      ) : null}
+    </>
   );
 }
 
@@ -293,8 +485,6 @@ export function TurnChangesCard({
   const source = changes.files.filter((file) => !file.build);
   const build = changes.files.filter((file) => file.build);
   const total = source.length + changes.moreFiles;
-  const committed = changes.committed ?? {};
-  const stateOf = (file: TurnChange): TurnFileState => review.states[file.index] ?? "applied";
   const header = headerActionFor(changes, source, review.states, undoable);
   const totals = lineTotals(source);
   const status = outcomeText(review.outcome);
@@ -331,90 +521,34 @@ export function TurnChangesCard({
             {t(($) => $.ai.turnChanges.review)}
           </Button>
           {header ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={busy || (review.pending !== null && !pendingAll)}
-              aria-busy={pendingAll || undefined}
-              aria-disabled={pendingAll || undefined}
-              title={busy ? t(($) => $.ai.turnChanges.waitForRun) : undefined}
-              onClick={() => {
+            <HeaderActionButton
+              action={header.action}
+              busy={busy}
+              pending={review.pending}
+              onRun={() => {
                 if (!snapshotId || pendingAll) return;
                 void run(projectId, snapshotId, header.action, header.indices, "all");
               }}
-            >
-              {header.action === "undo"
-                ? t(($) => $.ai.turnChanges.undoAll)
-                : t(($) => $.ai.turnChanges.redoAll)}
-            </Button>
+            />
           ) : null}
         </span>
       </div>
-      {showUnavailable && changes.unavailable ? <p className="mt-1">{turnUnavailableText(changes.unavailable)}</p> : null}
-      {snapshotId && review.expired ? <p className="mt-1">{t(($) => $.ai.turnChanges.expired)}</p> : null}
-      {undoable && changes.overlapped ? <p className="mt-1">{t(($) => $.ai.turnChanges.overlapped)}</p> : null}
+      <TurnNotes changes={changes} showUnavailable={showUnavailable} expired={review.expired} undoable={undoable} />
       {review.expanded ? (
-        <div id={listId} className="mt-1.5 space-y-1.5">
-          {source.length > 0 ? (
-            <ul className="divide-y divide-border/60">
-              {source.map((file) => (
-                <FileRow
-                  key={file.index}
-                  file={file}
-                  projectId={projectId}
-                  snapshotId={snapshotId}
-                  review={review}
-                  state={stateOf(file)}
-                  commit={committed[file.path]}
-                  undoable={undoable}
-                  busy={busy}
-                />
-              ))}
-            </ul>
-          ) : null}
-          {changes.moreFiles > 0 ? (
-            <p>{t(($) => $.ai.turnChanges.moreFiles, { count: changes.moreFiles })}</p>
-          ) : null}
-          {changes.skipped.length > 0 ? (
-            <p>{t(($) => $.ai.turnChanges.skipped, { count: changes.skipped.length })}</p>
-          ) : null}
-          {build.length > 0 ? (
-            <div>
-              <button
-                type="button"
-                aria-expanded={review.buildExpanded}
-                aria-controls={buildId}
-                onClick={() => toggleBuild(reviewKey)}
-                className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-accent focus-visible:bg-accent"
-              >
-                <ChevronRight
-                  aria-hidden
-                  className={cn("size-3 shrink-0 transition-transform", review.buildExpanded && "rotate-90")}
-                />
-                {t(($) => $.ai.turnChanges.buildFiles)}
-              </button>
-              {review.buildExpanded ? (
-                <ul id={buildId} className="pl-6">
-                  {build.map((file) => (
-                    <li key={file.index} className="truncate font-mono">
-                      {file.path}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        <TurnFileList
+          id={listId}
+          buildId={buildId}
+          projectId={projectId}
+          changes={changes}
+          source={source}
+          build={build}
+          review={review}
+          undoable={undoable}
+          busy={busy}
+          onToggleBuild={() => toggleBuild(reviewKey)}
+        />
       ) : null}
-      <p role="status" className={cn(status ? "mt-1" : "sr-only")}>
-        {status}
-      </p>
-      {failed ? (
-        <p role="alert" className="mt-1 text-destructive">
-          {failed === "undo" ? t(($) => $.ai.turnChanges.undoFailed) : t(($) => $.ai.turnChanges.redoFailed)}
-        </p>
-      ) : null}
+      <TurnOutcomeMessages status={status} failed={failed} />
     </fieldset>
   );
 }

@@ -165,6 +165,20 @@ pub struct Connection {
     stderr: StderrTail,
 }
 
+/// The outcome of a request, read from the agent's response to it.
+fn rpc_response(value: &Value) -> Result<Value, RpcError> {
+    if value.get("error").is_some() {
+        Err(RpcError {
+            code: value["error"]["code"].as_i64().unwrap_or(-32603),
+            message: rpc_error_message(&value["error"]),
+        })
+    } else if let Some(result) = value.get("result") {
+        Ok(result.clone())
+    } else {
+        Err(RpcError::local("The agent returned an invalid response."))
+    }
+}
+
 async fn pump_agent_frames(
     stdout: tokio::process::ChildStdout,
     pending: Pending,
@@ -207,17 +221,7 @@ async fn pump_agent_frames(
                     {
                         break;
                     }
-                    let response = if value.get("error").is_some() {
-                        Err(RpcError {
-                            code: value["error"]["code"].as_i64().unwrap_or(-32603),
-                            message: rpc_error_message(&value["error"]),
-                        })
-                    } else if let Some(result) = value.get("result") {
-                        Ok(result.clone())
-                    } else {
-                        Err(RpcError::local("The agent returned an invalid response."))
-                    };
-                    let _ = sender.send(response);
+                    let _ = sender.send(rpc_response(&value));
                 }
             }
         } else if incoming.send(Incoming::Message(value)).await.is_err() {

@@ -584,11 +584,7 @@ fn take_before(
     let trusted_before = started_ns.saturating_sub(RACY_NS);
     for (path, stat) in to_keep {
         if Instant::now() >= deadline {
-            // Keep what was hashed so the next turn gets further.
-            for (path, entry) in cache.files {
-                index.files.entry(path).or_insert(entry);
-            }
-            let _ = store.save_index(&index);
+            save_partial_index(&store, &mut index, cache.files);
             return Err(TurnUnavailable::Timeout);
         }
         let cached = cache
@@ -603,32 +599,16 @@ fn take_before(
                 (sha, stat.size)
             }
             None => {
-                let bytes = match read_limited(&location.root.join(&path), limits.max_file_bytes) {
-                    Ok(bytes) => bytes,
-                    Err(reason) => {
-                        before.insert(path, store::skipped_entry(reason, stat.size, stat.mtime));
-                        continue;
-                    }
-                };
-                let sha = store::sha256_hex(&bytes);
-                match store.put_blob(&sha, &bytes, &mut budget) {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        before.insert(
-                            path,
-                            store::skipped_entry(TurnSkipReason::StoreFull, stat.size, stat.mtime),
-                        );
-                        continue;
-                    }
-                    Err(error) => {
-                        log(format!("Could not keep a file for Undo: {error}"));
-                        before.insert(
-                            path,
-                            store::skipped_entry(TurnSkipReason::StoreFull, stat.size, stat.mtime),
-                        );
-                        continue;
-                    }
-                }
+                let file = location.root.join(&path);
+                let (sha, bytes) =
+                    match keep_file(&store, &file, limits.max_file_bytes, &mut budget) {
+                        Ok(kept) => kept,
+                        Err(reason) => {
+                            before
+                                .insert(path, store::skipped_entry(reason, stat.size, stat.mtime));
+                            continue;
+                        }
+                    };
                 if let Some(mtime) = stat.mtime.filter(|mtime| *mtime < trusted_before) {
                     index.files.insert(
                         path.clone(),
@@ -678,6 +658,35 @@ fn take_before(
         return Err(TurnUnavailable::Timeout);
     }
     Ok(snapshot.id)
+}
+
+/// Reads one file and keeps its content in the store, returning its hash and
+/// bytes.
+fn keep_file(
+    store: &Store,
+    path: &Path,
+    limit: u64,
+    budget: &mut Budget,
+) -> Result<(String, Vec<u8>), TurnSkipReason> {
+    let bytes = read_limited(path, limit)?;
+    let sha = store::sha256_hex(&bytes);
+    match store.put_blob(&sha, &bytes, budget) {
+        Ok(true) => Ok((sha, bytes)),
+        Ok(false) => Err(TurnSkipReason::StoreFull),
+        Err(error) => {
+            log(format!("Could not keep a file for Undo: {error}"));
+            Err(TurnSkipReason::StoreFull)
+        }
+    }
+}
+
+/// Saves the index with the cached entries the copy did not reach, so the
+/// next turn gets further.
+fn save_partial_index(store: &Store, index: &mut Index, cached: BTreeMap<String, IndexEntry>) {
+    for (path, entry) in cached {
+        index.files.entry(path).or_insert(entry);
+    }
+    let _ = store.save_index(index);
 }
 
 // ---------------------------------------------------------------------------
@@ -845,8 +854,6 @@ impl Comparison<'_> {
                 reason,
             })
         };
-        let trusted_after = self.finished_ns.saturating_sub(RACY_NS);
-        let trusted_before = self.snapshot.started_ns.saturating_sub(RACY_NS);
         for path in paths {
             if Instant::now() >= self.deadline {
                 return Err(TurnUnavailable::Timeout);
@@ -879,119 +886,10 @@ impl Comparison<'_> {
                 }
                 continue;
             }
-            let kept = old.and_then(|entry| entry.sha256.as_deref().map(|sha| (entry, sha)));
-            match (old, kept, new) {
-                (None, _, None) => {}
-                // Before: not kept (skipped). Report it only if it changed.
-                (Some(entry), None, new) => {
-                    if !skipped_unchanged(entry, new) {
-                        let reason = new
-                            .and_then(|new| self.after_skip_reason(new))
-                            .or(entry.skip)
-                            .unwrap_or(TurnSkipReason::Unreadable);
-                        skip(path, reason);
-                    }
-                }
-                (Some(entry), Some((_, sha)), None) => found.push(Found {
-                    before_bytes: self.counted_blob(sha, entry.size),
-                    after_bytes: Some(Vec::new()),
-                    change: stored_change(
-                        path,
-                        TurnChangeKind::Deleted,
-                        Some(kept_side(entry, sha)),
-                        None,
-                    ),
-                }),
-                (Some(_), Some(_), Some(Entry::Symlink)) => skip(path, TurnSkipReason::Symlink),
-                (Some(_), Some(_), Some(Entry::Unreadable)) => {
-                    skip(path, TurnSkipReason::Unreadable)
-                }
-                (Some(entry), Some((_, sha)), Some(Entry::File(stat))) => {
-                    let untouched = same_stat(entry.size, entry.mtime, stat)
-                        && entry.mtime.is_some_and(|mtime| mtime < trusted_before);
-                    if untouched {
-                        remember(&mut index, path, stat, sha, trusted_after);
-                        continue;
-                    }
-                    if stat.placeholder {
-                        if !same_stat(entry.size, entry.mtime, stat) {
-                            skip(path, TurnSkipReason::CloudPlaceholder);
-                        }
-                        continue;
-                    }
-                    let bytes = match self.read(path, stat) {
-                        Ok(bytes) => bytes,
-                        Err(reason) => {
-                            skip(path, reason);
-                            continue;
-                        }
-                    };
-                    let after_sha = store::sha256_hex(&bytes);
-                    if after_sha == sha {
-                        remember(&mut index, path, stat, sha, trusted_after);
-                        continue;
-                    }
-                    if let Err(reason) = self.keep(&after_sha, &bytes, &mut budget) {
-                        skip(path, reason);
-                        continue;
-                    }
-                    remember(&mut index, path, stat, &after_sha, trusted_after);
-                    found.push(Found {
-                        before_bytes: self.counted_blob(sha, entry.size),
-                        change: stored_change(
-                            path,
-                            TurnChangeKind::Modified,
-                            Some(kept_side(entry, sha)),
-                            Some(Side {
-                                size: bytes.len() as u64,
-                                mtime: stat.mtime,
-                                sha256: Some(after_sha),
-                            }),
-                        ),
-                        after_bytes: Some(bytes),
-                    });
-                }
-                (None, _, Some(Entry::Symlink)) => skip(path, TurnSkipReason::Symlink),
-                (None, _, Some(Entry::Unreadable)) => skip(path, TurnSkipReason::Unreadable),
-                (None, _, Some(Entry::File(stat))) => {
-                    // A file inside a folder that could not be read before
-                    // the turn may well have been there all along.
-                    if ancestors(path).any(|folder| unreadable_before.contains(folder)) {
-                        skip(path, TurnSkipReason::Unreadable);
-                        continue;
-                    }
-                    if stat.placeholder {
-                        skip(path, TurnSkipReason::CloudPlaceholder);
-                        continue;
-                    }
-                    let bytes = match self.read(path, stat) {
-                        Ok(bytes) => bytes,
-                        Err(reason) => {
-                            skip(path, reason);
-                            continue;
-                        }
-                    };
-                    let after_sha = store::sha256_hex(&bytes);
-                    if let Err(reason) = self.keep(&after_sha, &bytes, &mut budget) {
-                        skip(path, reason);
-                        continue;
-                    }
-                    remember(&mut index, path, stat, &after_sha, trusted_after);
-                    found.push(Found {
-                        change: stored_change(
-                            path,
-                            TurnChangeKind::Added,
-                            None,
-                            Some(Side {
-                                size: bytes.len() as u64,
-                                mtime: stat.mtime,
-                                sha256: Some(after_sha),
-                            }),
-                        ),
-                        before_bytes: Some(Vec::new()),
-                        after_bytes: Some(bytes),
-                    });
-                }
+            match self.compare(path, old, new, &unreadable_before, &mut index, &mut budget) {
+                Ok(Some(change)) => found.push(change),
+                Ok(None) => {}
+                Err(reason) => skip(path, reason),
             }
         }
         let mut changes: Vec<StoredChange> = found
@@ -1035,6 +933,140 @@ impl Comparison<'_> {
             },
             index,
         ))
+    }
+
+    /// Compares one path that is not build output. `Ok(Some(_))` is a
+    /// change to report, `Err(_)` the reason the path is skipped.
+    fn compare(
+        &self,
+        path: &str,
+        old: Option<&BeforeEntry>,
+        new: Option<&Entry>,
+        unreadable_before: &BTreeSet<&str>,
+        index: &mut Index,
+        budget: &mut Budget,
+    ) -> Result<Option<Found>, TurnSkipReason> {
+        let kept = old.and_then(|entry| entry.sha256.as_deref().map(|sha| (entry, sha)));
+        match (old, kept, new) {
+            (None, _, None) => Ok(None),
+            // Before: not kept (skipped). Report it only if it changed.
+            (Some(entry), None, new) => {
+                if skipped_unchanged(entry, new) {
+                    Ok(None)
+                } else {
+                    Err(new
+                        .and_then(|new| self.after_skip_reason(new))
+                        .or(entry.skip)
+                        .unwrap_or(TurnSkipReason::Unreadable))
+                }
+            }
+            (Some(entry), Some((_, sha)), None) => Ok(Some(Found {
+                before_bytes: self.counted_blob(sha, entry.size),
+                after_bytes: Some(Vec::new()),
+                change: stored_change(
+                    path,
+                    TurnChangeKind::Deleted,
+                    Some(kept_side(entry, sha)),
+                    None,
+                ),
+            })),
+            (Some(_), Some(_), Some(Entry::Symlink)) => Err(TurnSkipReason::Symlink),
+            (Some(_), Some(_), Some(Entry::Unreadable)) => Err(TurnSkipReason::Unreadable),
+            (Some(entry), Some((_, sha)), Some(Entry::File(stat))) => {
+                self.compare_kept(path, entry, sha, stat, index, budget)
+            }
+            (None, _, Some(Entry::Symlink)) => Err(TurnSkipReason::Symlink),
+            (None, _, Some(Entry::Unreadable)) => Err(TurnSkipReason::Unreadable),
+            (None, _, Some(Entry::File(stat))) => self
+                .compare_added(path, stat, unreadable_before, index, budget)
+                .map(Some),
+        }
+    }
+
+    /// A file whose content the copy kept and that is still a file.
+    fn compare_kept(
+        &self,
+        path: &str,
+        entry: &BeforeEntry,
+        sha: &str,
+        stat: &FileStat,
+        index: &mut Index,
+        budget: &mut Budget,
+    ) -> Result<Option<Found>, TurnSkipReason> {
+        let trusted_after = self.finished_ns.saturating_sub(RACY_NS);
+        let trusted_before = self.snapshot.started_ns.saturating_sub(RACY_NS);
+        let untouched = same_stat(entry.size, entry.mtime, stat)
+            && entry.mtime.is_some_and(|mtime| mtime < trusted_before);
+        if untouched {
+            remember(index, path, stat, sha, trusted_after);
+            return Ok(None);
+        }
+        if stat.placeholder {
+            if !same_stat(entry.size, entry.mtime, stat) {
+                return Err(TurnSkipReason::CloudPlaceholder);
+            }
+            return Ok(None);
+        }
+        let bytes = self.read(path, stat)?;
+        let after_sha = store::sha256_hex(&bytes);
+        if after_sha == sha {
+            remember(index, path, stat, sha, trusted_after);
+            return Ok(None);
+        }
+        self.keep(&after_sha, &bytes, budget)?;
+        remember(index, path, stat, &after_sha, trusted_after);
+        Ok(Some(Found {
+            before_bytes: self.counted_blob(sha, entry.size),
+            change: stored_change(
+                path,
+                TurnChangeKind::Modified,
+                Some(kept_side(entry, sha)),
+                Some(Side {
+                    size: bytes.len() as u64,
+                    mtime: stat.mtime,
+                    sha256: Some(after_sha),
+                }),
+            ),
+            after_bytes: Some(bytes),
+        }))
+    }
+
+    /// A file that was not there before the turn.
+    fn compare_added(
+        &self,
+        path: &str,
+        stat: &FileStat,
+        unreadable_before: &BTreeSet<&str>,
+        index: &mut Index,
+        budget: &mut Budget,
+    ) -> Result<Found, TurnSkipReason> {
+        // A file inside a folder that could not be read before the turn may
+        // well have been there all along.
+        if ancestors(path).any(|folder| unreadable_before.contains(folder)) {
+            return Err(TurnSkipReason::Unreadable);
+        }
+        if stat.placeholder {
+            return Err(TurnSkipReason::CloudPlaceholder);
+        }
+        let bytes = self.read(path, stat)?;
+        let after_sha = store::sha256_hex(&bytes);
+        self.keep(&after_sha, &bytes, budget)?;
+        let trusted_after = self.finished_ns.saturating_sub(RACY_NS);
+        remember(index, path, stat, &after_sha, trusted_after);
+        Ok(Found {
+            change: stored_change(
+                path,
+                TurnChangeKind::Added,
+                None,
+                Some(Side {
+                    size: bytes.len() as u64,
+                    mtime: stat.mtime,
+                    sha256: Some(after_sha),
+                }),
+            ),
+            before_bytes: Some(Vec::new()),
+            after_bytes: Some(bytes),
+        })
     }
 
     fn read(&self, path: &str, stat: &FileStat) -> Result<Vec<u8>, TurnSkipReason> {

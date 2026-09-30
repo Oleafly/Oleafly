@@ -54,7 +54,7 @@ export function useBridgeInstall() {
  */
 export function signInCommandLine(path: string, windows: boolean = isWindows): string {
   if (windows) return `& '${path.replaceAll(/['‘’‚‛]/g, (quote) => quote + quote)}'`;
-  return `'${path.replaceAll("'", "'\\''")}'`;
+  return `'${path.replaceAll("'", String.raw`'\''`)}'`;
 }
 
 /**

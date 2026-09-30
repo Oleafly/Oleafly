@@ -33,6 +33,7 @@ import {
   agentThreadArchive,
   agentThreadClaimPrewarmed,
   agentThreadFork,
+  type AgentMessage,
 } from "@/lib/agent-backend";
 import { launchBrowser } from "@/lib/browser-window";
 import {
@@ -250,6 +251,18 @@ export function steerRunAlreadyEnded(error: unknown): boolean {
   if (typeof error === "string") text = error;
   else if (error instanceof Error) text = error.message;
   return text.startsWith("no active run ");
+}
+
+function steerQueuedFollowUp(
+  runId: string,
+  message: AgentMessage,
+  chatId: string,
+  followUpId: string,
+) {
+  return agentSteer(runId, message).then((result) => {
+    if (result?.status === "run_finished") return;
+    useAgentTurnsStore.getState().markSteered(chatId, followUpId);
+  });
 }
 
 function figureCodeOf(args: unknown): string | undefined {
@@ -668,6 +681,10 @@ export function blockedModelMessage(reason: string): string {
   return trimmed
     ? i18n.t(($) => $.ai.models.blockedWithReason, { reason: trimmed })
     : i18n.t(($) => $.ai.models.blocked);
+}
+
+function gitStatusOrNull(projectId: string) {
+  return gitStatus(projectId).catch(() => null);
 }
 
 function stillAddedAt(path: string) {
@@ -1095,7 +1112,7 @@ export function ChatCore() {
   const availableMcpToolsets = useMemo(
     () =>
       createMcpRuntimeToolsets(mcpAgentToolsQuery.data ?? [], {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         isActive: () => false,
         onImage: () => {},
         projectId: () => null,
@@ -1115,7 +1132,7 @@ export function ChatCore() {
       toolsets: registry.aiToolsets,
       mode: "chat",
       createOpts: {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         onImage: () => {},
         runId: () => null,
       },
@@ -1848,7 +1865,7 @@ export function ChatCore() {
     const capacitySkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const capacityAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
-        confirm: async () => false,
+        confirm: () => Promise.resolve(false),
         isActive: () => false,
         onImage: () => {},
         projectId: () => null,
@@ -1864,7 +1881,7 @@ export function ChatCore() {
           toolsets: registry.aiToolsets,
           mode: "chat",
           createOpts: {
-            confirm: async () => false,
+            confirm: () => Promise.resolve(false),
             onImage: () => {},
             runId: () => null,
           },
@@ -2378,7 +2395,7 @@ ${sandboxedCustom}`;
               if (!turn) return;
               const nextOid = commitId ?? (await gitHeadOid(runProjectId));
               if (!nextOid || nextOid === turn.headOid) return;
-              const workingChanges = await gitStatus(runProjectId).catch(() => null);
+              const workingChanges = await gitStatusOrNull(runProjectId);
               const committedContents: Record<string, string> = {};
               await Promise.all(
                 Object.keys(turn.changedFiles).map(async (path) => {
@@ -3525,12 +3542,7 @@ ${sandboxedCustom}`;
                                     ),
                                   ])[0];
                                   if (!message) return;
-                                  return agentSteer(runId, message).then((result) => {
-                                    if (result?.status === "run_finished") return;
-                                    useAgentTurnsStore
-                                      .getState()
-                                      .markSteered(chatId, item.id);
-                                  });
+                                  return steerQueuedFollowUp(runId, message, chatId, item.id);
                                 })
                                 .catch((error: unknown) => {
                                   if (steerRunAlreadyEnded(error)) return;

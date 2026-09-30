@@ -78,9 +78,9 @@ function mutationAllowed(
   return useFilesStore.getState().projectId === projectId && allowed();
 }
 
-async function currentDiskContent(projectId: string, path: string): Promise<string> {
+function currentDiskContent(projectId: string, path: string): Promise<string> {
   const cached = useFilesStore.getState().files[path]?.content;
-  return cached ?? readFileContent(projectId, path);
+  return Promise.resolve(cached ?? readFileContent(projectId, path));
 }
 
 /** The document insertAtCursor and replaceRange edit: the file open in the editor. */

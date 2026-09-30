@@ -1554,7 +1554,7 @@ fn an_agent_in_a_trusted_folder_of_an_untrusted_repository_runs_git_restricted()
 
 fn check_definition(root: &Path, extra: &[&str]) -> AgentDefinition {
     let mut arguments = vec![String::new(), "--fixture-any-cwd".to_string()];
-    arguments.extend(extra.iter().map(|value| value.to_string()));
+    arguments.extend(extra.iter().map(ToString::to_string));
     fixture_definition(arguments, root)
 }
 

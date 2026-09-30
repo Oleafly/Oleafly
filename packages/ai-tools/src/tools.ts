@@ -316,7 +316,7 @@ export function createOleaflyTools(
       },
       // The backend intercepts the multi-agent tools before webview
       // dispatch; reaching this executor means the run is not agentic.
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     send_message: {
       description:
@@ -330,7 +330,7 @@ export function createOleaflyTools(
         required: ["agent", "message"],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     followup_task: {
       description:
@@ -344,7 +344,7 @@ export function createOleaflyTools(
         required: ["agent", "message"],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     wait_agent: {
       description:
@@ -366,7 +366,7 @@ export function createOleaflyTools(
         required: [],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     interrupt_agent: {
       description:
@@ -377,7 +377,7 @@ export function createOleaflyTools(
         required: ["agent"],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     list_agents: {
       description:
@@ -390,7 +390,7 @@ export function createOleaflyTools(
         required: [],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     close_agent: {
       description:
@@ -401,7 +401,7 @@ export function createOleaflyTools(
         required: ["agent"],
         additionalProperties: false,
       },
-      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+      execute: () => Promise.resolve({ error: "subagents are only available in agentic runs" }),
     },
     read_file: {
       description:
@@ -1265,6 +1265,15 @@ function pngDataUrlToBase64(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
+function figureLatex(code: string, caption?: string, label?: string, raw?: boolean): string {
+  const normalizedCode = normalizeFigureCode(code);
+  const captionLine = caption ? `\\caption{${caption}}\n` : "";
+  const labelLine = label ? `\\label{${label}}\n` : "";
+  return raw
+    ? normalizedCode
+    : `\\begin{figure}[htbp]\n\\centering\n${normalizedCode}\n${captionLine}${labelLine}\\end{figure}`;
+}
+
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 32_000_000;
 type ImageDimensions = {
@@ -1450,12 +1459,7 @@ export function createFigureTools(
         };
         const id = pid();
         if (!id) return { error: "No project open" };
-        const normalizedCode = normalizeFigureCode(code);
-        const captionLine = caption ? `\\caption{${caption}}\n` : "";
-        const labelLine = label ? `\\label{${label}}\n` : "";
-        const latex = raw
-          ? normalizedCode
-          : `\\begin{figure}[htbp]\n\\centering\n${normalizedCode}\n${captionLine}${labelLine}\\end{figure}`;
+        const latex = figureLatex(code, caption, label, raw);
         // Render the compiled figure so the user sees what they are approving.
         const preview = getLastFigurePreview();
         let png: string | null = null;

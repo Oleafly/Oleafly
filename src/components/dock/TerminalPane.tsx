@@ -72,6 +72,10 @@ function writeTerminalErrorOnce(
   writeTerminalError(terminal, message, error, onWritten);
 }
 
+function killTerminalSession(id: string, projectId: string): void {
+  void invoke("term_kill", { id, projectId }).catch(() => {});
+}
+
 export interface TerminalPaneProps {
   projectId: string;
   projectName?: string;
@@ -310,7 +314,7 @@ export function TerminalPane({
       .then((id) => {
         recordTerminalEvent(`open:ok:${id}`);
         if (disposed || sessionExited) {
-          void invoke("term_kill", { id, projectId }).catch(() => {});
+          killTerminalSession(id, projectId);
           return;
         }
         sessionId = id;

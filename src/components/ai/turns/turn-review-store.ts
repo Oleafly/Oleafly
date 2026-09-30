@@ -7,6 +7,7 @@ import {
   type TurnFilePreview,
   type TurnFileState,
   type TurnRevertResult,
+  type TurnStatus,
 } from "@/lib/agent-turns";
 import { useFilesStore } from "@/store/files";
 
@@ -101,6 +102,10 @@ function statesAfter(
   return next;
 }
 
+function statesOf(files: TurnStatus["files"]): Record<number, TurnFileState> {
+  return Object.fromEntries(files.map((entry) => [entry.index, entry.state]));
+}
+
 export const useTurnReviewStore = create<TurnReviewState>((set, get) => ({
   reviews: {},
   toggleExpanded: (snapshotId) =>
@@ -121,7 +126,7 @@ export const useTurnReviewStore = create<TurnReviewState>((set, get) => ({
             expired: status.expired,
             states: {
               ...review.states,
-              ...Object.fromEntries(status.files.map((entry) => [entry.index, entry.state])),
+              ...statesOf(status.files),
             },
           })),
         }));

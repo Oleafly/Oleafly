@@ -1324,7 +1324,12 @@ export function SourceControl() {
 }
 
 type HostOs = "windows" | "mac" | "linux";
-const HOST_OS: HostOs = isWindows ? "windows" : isMac ? "mac" : "linux";
+function hostOs(windows: boolean, mac: boolean): HostOs {
+  if (windows) return "windows";
+  if (mac) return "mac";
+  return "linux";
+}
+const HOST_OS: HostOs = hostOs(isWindows, isMac);
 const GIT_FOR_WINDOWS_URL = "https://git-scm.com/downloads/win";
 const MAC_TOOLS_COMMAND = "xcode-select --install";
 

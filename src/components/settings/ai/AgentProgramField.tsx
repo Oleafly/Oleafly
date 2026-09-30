@@ -139,6 +139,23 @@ function cleanTypedPath(value: string): string {
   return value.trim().replace(/^"(.*)"$/, "$1").trim();
 }
 
+type Translate = ReturnType<typeof useTranslation<["common", "settings", "ai"]>>["t"];
+
+/** The file the row shows: the override, else what was detected. The bridge row has no detected file. */
+function programPath(agent: AcpAgentStatus, placement: ProgramPlacement, override: string | null): string | null {
+  if (override) return override;
+  if (placement === "bridge") return null;
+  return agent.cli ? agent.cli.path : agent.executable;
+}
+
+/** Where the shown file came from, or null when there is none. */
+function programSource(t: Translate, agent: AcpAgentStatus, override: string | null, path: string | null): string | null {
+  if (override || agent.cli?.source === "override") return t(($) => $.settings.ai.agents.program.source.override);
+  if (path && !agent.cli && agent.managed) return t(($) => $.settings.ai.agents.program.source.managed);
+  if (path) return t(($) => $.settings.ai.agents.program.source.auto);
+  return null;
+}
+
 export function CopyDetailsButton({ text, className }: Readonly<{ text: string; className?: string }>) {
   const { t } = useTranslation(["common", "settings"]);
   const [copied, setCopied] = useState(false);
@@ -223,14 +240,8 @@ export function AgentProgramField({
   const locked = busy || disabled;
 
   const override = agent.programOverride ?? null;
-  let path: string | null;
-  if (override) path = override;
-  else if (placement === "bridge") path = null;
-  else path = cli ? cli.path : agent.executable;
-  let source: string | null = null;
-  if (override || cli?.source === "override") source = t(($) => $.settings.ai.agents.program.source.override);
-  else if (path && !cli && agent.managed) source = t(($) => $.settings.ai.agents.program.source.managed);
-  else if (path) source = t(($) => $.settings.ai.agents.program.source.auto);
+  const path = programPath(agent, placement, override);
+  const source = programSource(t, agent, override, path);
   const showInput = placement === "main" && !path;
   const command = commandName(agent, path);
   const example = isWindows ? `C:\\Tools\\${command}.exe` : `/usr/local/bin/${command}`;
@@ -458,9 +469,9 @@ function ProgramResult({
   const testId = `acp-agent-program-result-${agent.definition.id}`;
   if (phase.kind === "saved") {
     return (
-      <p role="status" data-testid={testId} className="text-xs leading-relaxed text-foreground/85">
+      <output aria-live="polite" data-testid={testId} className="block text-xs leading-relaxed text-foreground/85">
         {t(($) => $.settings.ai.agents.program.saved)}
-      </p>
+      </output>
     );
   }
   if (phase.kind === "error") {
@@ -476,10 +487,10 @@ function ProgramResult({
   if (check.ok) {
     return (
       <div data-testid={testId} className="space-y-1">
-        <p role="status" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
+        <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
           <Check aria-hidden className="mt-0.5 size-3.5 shrink-0" />
           <span>{message}</span>
-        </p>
+        </output>
         {agent.signInHint && (
           <p className="text-[11px] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
         )}

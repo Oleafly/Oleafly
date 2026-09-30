@@ -938,27 +938,7 @@ impl AcpRuntime {
         if !images.is_empty() && !record.capabilities.image {
             return Err("This agent does not accept images.".into());
         }
-        let mut prompt = Vec::new();
-        if has_text || skill.is_none() {
-            prompt.push(json!({"type":"text","text":text}));
-        }
-        if let Some(skill) = &skill {
-            prompt.push(json!({"type":"text","text":skill.block}));
-        }
-        for image in &images {
-            if !matches!(
-                image.mime_type.as_str(),
-                "image/png" | "image/jpeg" | "image/webp" | "image/gif"
-            ) || image.data.len() > 640 * 1024
-            {
-                return Err("Use a PNG, JPEG, WebP or GIF image smaller than 480 KiB.".into());
-            }
-            use base64::Engine;
-            base64::engine::general_purpose::STANDARD
-                .decode(&image.data)
-                .map_err(|_| "The image data is invalid.")?;
-            prompt.push(json!({"type":"image","mimeType":image.mime_type,"data":image.data}));
-        }
+        let prompt = prompt_blocks(&text, has_text, skill.as_ref(), &images)?;
         let params = json!({"sessionId":record.native_session_id,"prompt":prompt});
         if serde_json::to_vec(&params)
             .map_err(|e| e.to_string())?
@@ -979,11 +959,7 @@ impl AcpRuntime {
             state.tool_calls.clear();
             state.skill_folder = skill.as_ref().and_then(|skill| skill.folder.clone());
             if state.record.last_sequence <= 1 {
-                let title = if has_text {
-                    text.trim()
-                } else {
-                    skill.as_ref().map_or("", |skill| skill.name.as_str())
-                };
+                let title = turn_title(&text, has_text, skill.as_ref());
                 state.record.title = session.redactor.text(title).chars().take(80).collect();
             }
             let mut user = json!({"text":text,"images":images.iter().map(|v| json!({"mimeType":v.mime_type})).collect::<Vec<_>>()});
@@ -1030,43 +1006,13 @@ impl AcpRuntime {
                 .state
                 .lock()
                 .map_err(|_| "The ACP session is unavailable.")?;
-            let (status, stop, message) = match &result {
-                Ok(value) if !state.cancelled => match value["stopReason"]
-                    .as_str()
-                    .filter(|reason| !reason.trim().is_empty())
-                {
-                    Some(reason) => (live_status.clone(), reason.to_owned(), None),
-                    None => (
-                        live_status.clone(),
-                        "error".into(),
-                        Some("The agent did not report how this turn ended.".into()),
-                    ),
-                },
-                _ if state.cancelled => (
-                    if closed {
-                        SessionStatus::Cancelled
-                    } else {
-                        live_status.clone()
-                    },
-                    "cancelled".into(),
-                    None,
-                ),
-                Err(error) if !closed && error.auth_required() => (
-                    SessionStatus::AuthRequired,
-                    "error".into(),
-                    Some(session.redactor.text(&error.to_string())),
-                ),
-                Err(error) => (
-                    live_status.clone(),
-                    "error".into(),
-                    Some(session.redactor.text(&error.to_string())),
-                ),
-                _ => (
-                    live_status.clone(),
-                    "error".into(),
-                    Some("The agent stopped before completing this turn.".into()),
-                ),
-            };
+            let (status, stop, message) = turn_outcome(
+                &result,
+                state.cancelled,
+                closed,
+                &live_status,
+                &session.redactor,
+            );
             if let Ok(value) = &result {
                 if let Some(usage) = prompt_usage(value) {
                     self.emit_locked(
@@ -1806,6 +1752,95 @@ fn state_controls(value: &Value) -> Value {
         .or_else(|| value.get("models"))
         .cloned()
         .unwrap_or(Value::Null)
+}
+
+/// The `session/prompt` content blocks: the user's text, the skill's block
+/// and the images, each image checked before it is sent.
+fn prompt_blocks(
+    text: &str,
+    has_text: bool,
+    skill: Option<&PromptSkill>,
+    images: &[ImagePrompt],
+) -> Result<Vec<Value>, String> {
+    let mut prompt = Vec::new();
+    if has_text || skill.is_none() {
+        prompt.push(json!({"type":"text","text":text}));
+    }
+    if let Some(skill) = skill {
+        prompt.push(json!({"type":"text","text":skill.block}));
+    }
+    for image in images {
+        if !matches!(
+            image.mime_type.as_str(),
+            "image/png" | "image/jpeg" | "image/webp" | "image/gif"
+        ) || image.data.len() > 640 * 1024
+        {
+            return Err("Use a PNG, JPEG, WebP or GIF image smaller than 480 KiB.".into());
+        }
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD
+            .decode(&image.data)
+            .map_err(|_| "The image data is invalid.")?;
+        prompt.push(json!({"type":"image","mimeType":image.mime_type,"data":image.data}));
+    }
+    Ok(prompt)
+}
+
+/// The text a new session's title is made from.
+fn turn_title<'a>(text: &'a str, has_text: bool, skill: Option<&'a PromptSkill>) -> &'a str {
+    if has_text {
+        text.trim()
+    } else {
+        skill.map_or("", |skill| skill.name.as_str())
+    }
+}
+
+/// How a turn ended: the session's status, the stop reason and the error
+/// shown for it.
+fn turn_outcome(
+    result: &Result<Value, RpcError>,
+    cancelled: bool,
+    closed: bool,
+    live_status: &SessionStatus,
+    redactor: &Redactor,
+) -> (SessionStatus, String, Option<String>) {
+    match result {
+        Ok(value) if !cancelled => match value["stopReason"]
+            .as_str()
+            .filter(|reason| !reason.trim().is_empty())
+        {
+            Some(reason) => (live_status.clone(), reason.to_owned(), None),
+            None => (
+                live_status.clone(),
+                "error".into(),
+                Some("The agent did not report how this turn ended.".into()),
+            ),
+        },
+        _ if cancelled => (
+            if closed {
+                SessionStatus::Cancelled
+            } else {
+                live_status.clone()
+            },
+            "cancelled".into(),
+            None,
+        ),
+        Err(error) if !closed && error.auth_required() => (
+            SessionStatus::AuthRequired,
+            "error".into(),
+            Some(redactor.text(&error.to_string())),
+        ),
+        Err(error) => (
+            live_status.clone(),
+            "error".into(),
+            Some(redactor.text(&error.to_string())),
+        ),
+        _ => (
+            live_status.clone(),
+            "error".into(),
+            Some("The agent stopped before completing this turn.".into()),
+        ),
+    }
 }
 
 fn canonical_root(path: &Path) -> Result<PathBuf, String> {
