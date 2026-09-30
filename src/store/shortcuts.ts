@@ -70,6 +70,10 @@ const defaults = Object.fromEntries(
   SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
 ) as ShortcutBindings;
 
+export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean {
+  return SHORTCUT_DEFINITIONS.some(({ id }) => !sameShortcutBinding(bindings[id], defaults[id]));
+}
+
 function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };

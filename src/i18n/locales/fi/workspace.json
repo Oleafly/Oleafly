@@ -194,6 +194,11 @@
       "start": "Päätteen shell-prosessia ei voitu käynnistää"
     },
     "limitReached": "Sulje jokin pääte, niin voit avata uuden",
+    "links": {
+      "openFile": "Avaa {{modifier}}-napsautuksella",
+      "openUrl": "Avaa selaimessa {{modifier}}-napsautuksella",
+      "openUrlFailed": "Linkkiä ei voitu avata."
+    },
     "newTerminal": "Uusi pääte",
     "settings": "Päätteen asetukset",
     "starting": "Käynnistetään projektin shell-prosessia…",

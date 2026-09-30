@@ -6,6 +6,8 @@ import {
   TERMINAL_COLOR_THEMES,
   fileTreePathIsHidden,
   resolveTerminalColorTheme,
+  sectionDiffersFromDefaults,
+  type SettingsSection,
   useSettingsStore,
   withTerminalGlyphFallbacks,
 } from "./settings";
@@ -655,5 +657,74 @@ describe("harper rule preferences", () => {
       isFindingSuppressedHere("p", "main.tex", "Hedging:abcd1234"),
     ).toBe(false);
     clearWordsIgnoredHere();
+  });
+});
+
+describe("section reset checks", () => {
+  type Settings = ReturnType<typeof useSettingsStore.getState>;
+  type SectionReset =
+    | "resetGeneralPreferences"
+    | "resetAppearancePreferences"
+    | "resetExperimentationPreferences"
+    | "resetEnginePreferences";
+  const cases: [SettingsSection, Partial<Settings>, SectionReset][] = [
+    ["general", { uiLocalePreference: "de" }, "resetGeneralPreferences"],
+    ["general", { harperDisabledRules: ["AnA"] }, "resetGeneralPreferences"],
+    ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
+    ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
+    ["experimentation", { webBrowser: true }, "resetExperimentationPreferences"],
+    ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
+  ];
+
+  it("starts a new install with every section at its defaults", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const fresh = await import("./settings");
+    const state = fresh.useSettingsStore.getState();
+    for (const section of ["general", "appearance", "experimentation", "engine"] as const) {
+      expect(fresh.sectionDiffersFromDefaults(section, state)).toBe(false);
+    }
+  });
+
+  it("reads what a reset saved back as the defaults after a restart", async () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorMathPreview(false);
+    settings.setWebBrowser(true);
+    settings.setDefaultLatexEngine("latexmk");
+    settings.resetToDefaults();
+    vi.resetModules();
+    const restarted = await import("./settings");
+    const state = restarted.useSettingsStore.getState();
+    for (const section of ["general", "appearance", "experimentation", "engine"] as const) {
+      expect(restarted.sectionDiffersFromDefaults(section, state)).toBe(false);
+    }
+  });
+
+  it.each(cases)("%s differs after %o until its reset", (section, change, reset) => {
+    useSettingsStore.getState().resetToDefaults();
+    const differs = () => sectionDiffersFromDefaults(section, useSettingsStore.getState());
+    expect(differs()).toBe(false);
+
+    useSettingsStore.setState(change);
+    expect(differs()).toBe(true);
+
+    useSettingsStore.getState()[reset]();
+    expect(differs()).toBe(false);
+  });
+
+  it("treats a reordered list as unchanged", () => {
+    useSettingsStore.getState().resetToDefaults();
+    const patterns = useSettingsStore.getState().hiddenFilePatterns;
+    useSettingsStore.setState({ hiddenFilePatterns: [...patterns].reverse() });
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
+  });
+
+  it("restores the math preview in the live store on an appearance reset", () => {
+    useSettingsStore.getState().setEditorMathPreview(false);
+
+    useSettingsStore.getState().resetAppearancePreferences();
+
+    expect(useSettingsStore.getState().editorMathPreview).toBe(true);
+    expect(localStorage.getItem("oleafly.editor.mathPreview")).toBe("1");
   });
 });

@@ -641,13 +641,15 @@ async fn execute_command(
 }
 
 fn shell_command(command: &str) -> tokio::process::Command {
-    if cfg!(windows) {
+    #[cfg(windows)]
+    {
         let mut c = tokio::process::Command::new("cmd");
         c.arg("/C").arg(command);
         c
-    } else {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-        let mut c = tokio::process::Command::new(shell);
+    }
+    #[cfg(not(windows))]
+    {
+        let mut c = tokio::process::Command::new(crate::program_locator::user_shell());
         c.arg("-lc").arg(command);
         c
     }

@@ -68,6 +68,7 @@ import {
 import {
   useSettingsStore,
   GRAMMAR_DIALECTS,
+  sectionDiffersFromDefaults,
   type GrammarDialect,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -253,6 +254,12 @@ export function SettingsModal() {
   );
   const resetExperimentationPreferences = useSettingsStore(
     (s) => s.resetExperimentationPreferences,
+  );
+  const generalChanged = useSettingsStore((s) =>
+    sectionDiffersFromDefaults("general", s),
+  );
+  const experimentationChanged = useSettingsStore((s) =>
+    sectionDiffersFromDefaults("experimentation", s),
   );
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
@@ -698,6 +705,7 @@ export function SettingsModal() {
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={resetExperimentationPreferences}
+          changed={experimentationChanged}
         />
       </div>
     )
@@ -1209,6 +1217,7 @@ export function SettingsModal() {
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}
+          changed={generalChanged}
         />
       </div>
     )

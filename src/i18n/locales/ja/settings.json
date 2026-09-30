@@ -1397,6 +1397,7 @@
   },
   "reset": {
     "button": "既定に戻す",
+    "changed": "このセクションには既定と異なる設定があります。",
     "confirmDescription": "{{sectionName}} の設定を既定に戻します。ほかの設定は変わりません。",
     "confirmTitle": "{{sectionName}} の設定をリセットしますか？",
     "description": "{{sectionName}} の設定を既定に戻します。",

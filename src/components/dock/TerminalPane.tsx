@@ -17,6 +17,9 @@ import {
   useSettingsStore,
   withTerminalGlyphFallbacks,
 } from "@/store/settings";
+import { createTerminalLinkActions } from "./terminal-link-actions";
+import { createTerminalLinkHandler, createTerminalLinkProvider } from "./terminal-link-provider";
+import { TerminalLinkTooltip, type TerminalLinkTip } from "./TerminalLinkTooltip";
 import "@xterm/xterm/css/xterm.css";
 
 type TerminalChannelMessage =
@@ -90,6 +93,8 @@ export interface TerminalPaneProps {
 
 const MAX_HIDDEN_OUTPUT_CHARS = 256_000;
 const SCROLLBACK_LINES = 5_000;
+// Matches the app's Tooltip, so sweeping the pointer over a log stays quiet.
+const LINK_TOOLTIP_DELAY_MS = 300;
 
 /**
  * GPU renderer: much faster than the DOM renderer for busy output and it draws
@@ -147,6 +152,7 @@ export function TerminalPane({
   const [booted, setBooted] = useState(false);
   const [ended, setEnded] = useState(false);
   const [activated, setActivated] = useState(shouldStart);
+  const [linkTip, setLinkTip] = useState<TerminalLinkTip | null>(null);
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
   const terminalFontFamily = useSettingsStore((state) => state.terminalFontFamily);
   const terminalFontWeight = useSettingsStore((state) => state.terminalFontWeight);
@@ -198,6 +204,24 @@ export function TerminalPane({
     surfacedErrorsRef.current.clear();
     const appearance = appearanceRef.current;
     const theme = resolveTerminalTheme(appearance, appThemeRef.current);
+    let disposed = false;
+    let linkTipTimer: number | null = null;
+    const hideLinkTip = () => {
+      if (linkTipTimer !== null) window.clearTimeout(linkTipTimer);
+      linkTipTimer = null;
+      setLinkTip(null);
+    };
+    const linkActions = createTerminalLinkActions(projectId, {
+      hover: (info, event) => {
+        hideLinkTip();
+        const tip = { ...info, x: event.clientX, y: event.clientY };
+        linkTipTimer = window.setTimeout(() => {
+          linkTipTimer = null;
+          if (!disposed && visibleRef.current) setLinkTip(tip);
+        }, LINK_TOOLTIP_DELAY_MS);
+      },
+      leave: hideLinkTip,
+    });
     const terminal = new Terminal({
       fontSize: appearance.terminalFontSize,
       fontFamily: withTerminalGlyphFallbacks(appearance.terminalFontFamily),
@@ -211,6 +235,7 @@ export function TerminalPane({
       // number of cells, so right-aligned prompts (Powerlevel10k, Starship) line up.
       allowProposedApi: true,
       theme,
+      linkHandler: createTerminalLinkHandler(linkActions),
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -234,11 +259,14 @@ export function TerminalPane({
     }
     terminalRef.current = terminal;
     fitRef.current = fit;
+    const linkProvider = terminal.registerLinkProvider(
+      createTerminalLinkProvider(terminal, linkActions),
+    );
+    const scrollSub = terminal.onScroll(hideLinkTip);
 
     let sessionId: string | null = null;
     let sessionLive = false;
     let sessionExited = false;
-    let disposed = false;
     let resizer: ReturnType<typeof createTerminalResizer> | null = null;
     const pendingInput: string[] = [];
     const writeInput = (id: string, data: string) => {
@@ -389,6 +417,9 @@ export function TerminalPane({
       hiddenOutputLengthRef.current = 0;
       observer.disconnect();
       dataSub.dispose();
+      scrollSub.dispose();
+      linkProvider.dispose();
+      hideLinkTip();
       if (sessionId) void invoke("term_kill", { id: sessionId, projectId }).catch(() => {});
       sessionIdRef.current = null;
       terminalRef.current = null;
@@ -437,6 +468,12 @@ export function TerminalPane({
     if (!projectName || !activated) return;
     terminalRef.current?.write(`\x1b]2;${projectName} - project shell\x07`);
   }, [activated, projectName]);
+
+  // A hidden pane cannot be hovered, so its tooltip must not wait for a leave.
+  useEffect(() => {
+    if (!visible) return;
+    return () => setLinkTip(null);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -502,6 +539,7 @@ export function TerminalPane({
           <p className="text-xs">{t(($) => $.workspace.terminal.starting)}</p>
         </div>
       )}
+      {visible && linkTip && <TerminalLinkTooltip tip={linkTip} />}
     </div>
   );
 }

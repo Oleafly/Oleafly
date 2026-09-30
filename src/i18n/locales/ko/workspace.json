@@ -190,6 +190,11 @@
       "start": "shell을 시작하지 못했습니다"
     },
     "limitReached": "다른 터미널을 열려면 터미널을 하나 닫으세요",
+    "links": {
+      "openFile": "{{modifier}}+클릭하여 열기",
+      "openUrl": "{{modifier}}+클릭하여 브라우저에서 열기",
+      "openUrlFailed": "링크를 열지 못했습니다."
+    },
     "newTerminal": "새 터미널",
     "settings": "터미널 설정",
     "starting": "프로젝트 shell을 시작하는 중…",

@@ -70,6 +70,10 @@ function focusIsVisible(el: Element) {
   return keyboardModality;
 }
 
+/** The bubble's look, shared with tooltips that position themselves. */
+export const TOOLTIP_BUBBLE_CLASS =
+  "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md";
+
 // Portal to <body> and clamped to the viewport, so it's never clipped by
 // ancestor `overflow` or the window edges. Replaces native `title`.
 export function Tooltip({
@@ -257,7 +261,7 @@ export function Tooltip({
             id={tipId}
             role="tooltip"
             className={cn(
-              "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md",
+              TOOLTIP_BUBBLE_CLASS,
               // overflow-wrap anywhere: labels can carry long unbroken paths
               // (TeX bin directories), which must wrap instead of spilling
               // past the bubble.

@@ -18,6 +18,11 @@
   },
   "terminal": {
     "color": "Submenu that tints a terminal tab",
+    "links": {
+      "openFile": "Hint under a file location in the terminal tooltip. {{modifier}} is the key symbol or name: ⌘ on macOS, Ctrl elsewhere",
+      "openUrl": "Hint under a web address in the terminal tooltip. {{modifier}} is the key symbol or name: ⌘ on macOS, Ctrl elsewhere. The link opens in the system web browser",
+      "openUrlFailed": "Error toast when a web address clicked in the terminal could not be opened in the system browser"
+    },
     "tabs": "Accessible name of the terminal tab strip"
   },
   "tree": {

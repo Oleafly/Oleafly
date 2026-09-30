@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Palauta oletukset",
+    "changed": "Jotkin tämän osion asetukset poikkeavat oletuksista.",
     "confirmDescription": "Palauta osion {{sectionName}} asetukset oletuksiin. Muut asetukset säilyvät ennallaan.",
     "confirmTitle": "Palautetaanko osion {{sectionName}} asetukset?",
     "description": "Palauta osion {{sectionName}} asetukset oletuksiin.",

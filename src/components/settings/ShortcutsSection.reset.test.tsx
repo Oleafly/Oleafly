@@ -23,9 +23,9 @@ describe("Keyboard Shortcuts reset", () => {
 
     render(<ShortcutsSection />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: enSettings.reset.button }),
-    );
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
+    expect(reset).toHaveAccessibleDescription(enSettings.reset.changed);
+    fireEvent.click(reset);
 
     const confirmation = screen.getByRole("alertdialog", {
       name: enSettings.reset.confirmTitle.replace(
@@ -57,6 +57,7 @@ describe("Keyboard Shortcuts reset", () => {
       JSON.parse(localStorage.getItem("oleafly.shortcuts") ?? "{}")
         .recompile,
     ).toEqual({ key: "Enter", mod: true });
+    expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState().accentColor).toBe("#db2777");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();

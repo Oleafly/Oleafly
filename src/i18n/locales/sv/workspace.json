@@ -194,6 +194,11 @@
       "start": "Det gick inte att starta shell-sessionen"
     },
     "limitReached": "Stäng en terminal för att öppna en till",
+    "links": {
+      "openFile": "{{modifier}}-klicka för att öppna",
+      "openUrl": "{{modifier}}-klicka för att öppna i webbläsaren",
+      "openUrlFailed": "Det gick inte att öppna länken."
+    },
     "newTerminal": "Ny terminal",
     "settings": "Terminalinställningar",
     "starting": "Startar projektets shell…",

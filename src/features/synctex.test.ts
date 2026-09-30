@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentLine: vi.fn(),
   gotoRect: vi.fn(),
   openFile: vi.fn(),
+  openProjectLocation: vi.fn(async () => true),
   logError: vi.fn(),
   isCompileCheckpointCurrent: vi.fn(() => true),
   compiledSnapshot: null as null | {
@@ -66,6 +67,7 @@ vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => mocks.index },
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/open-location", () => ({ openProjectLocation: mocks.openProjectLocation }));
 vi.mock("@/store/compile", () => ({
   isCompileCheckpointCurrent: mocks.isCompileCheckpointCurrent,
   useCompileStore: {
@@ -99,6 +101,7 @@ beforeEach(() => {
     "logError",
   ] as const)
     mocks[k].mockReset();
+  mocks.openProjectLocation.mockClear();
   mocks.synctexForward.mockReset();
   mocks.synctexMapLine.mockReset().mockResolvedValue(null);
   mocks.isCompileCheckpointCurrent.mockReset().mockReturnValue(true);
@@ -345,18 +348,22 @@ describe("source locations in projects with repeated or unusual file names", () 
       { path: "kapitoly/úvod.tex", is_dir: false },
     ];
     await openFileAndGotoLine("./kapitoly/úvod", 2);
-    expect(mocks.openFile).toHaveBeenCalledWith("kapitoly/úvod.tex");
-    expect(mocks.gotoLine).toHaveBeenCalledWith(2);
+    expect(mocks.openProjectLocation).toHaveBeenCalledExactlyOnceWith({
+      path: "kapitoly/úvod.tex",
+      line: 2,
+    });
   });
 
   it("leaves the editor alone for a location in a file outside the project", async () => {
     await openFileAndGotoLine("/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls", 40);
+    expect(mocks.openProjectLocation).not.toHaveBeenCalled();
     expect(mocks.openFile).not.toHaveBeenCalled();
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
   it("still jumps within the active file for a location without a file", async () => {
     await openFileAndGotoLine(null, 5);
+    expect(mocks.openProjectLocation).not.toHaveBeenCalled();
     expect(mocks.gotoLine).toHaveBeenCalledWith(5);
   });
 });

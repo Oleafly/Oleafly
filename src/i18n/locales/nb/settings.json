@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Tilbakestill til standard",
+    "changed": "Noen innstillinger her avviker fra standard.",
     "confirmDescription": "Tilbakestill innstillingene under {{sectionName}} til standard. Andre innstillinger blir stående uendret.",
     "confirmTitle": "Tilbakestille innstillingene under {{sectionName}}?",
     "description": "Tilbakestill innstillingene under {{sectionName}} til standard.",

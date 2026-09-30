@@ -88,7 +88,11 @@ describe("Settings section resets", () => {
 
     render(<SettingsModal />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    expect(reset).toHaveAccessibleDescription(
+      "Some settings here differ from their defaults.",
+    );
+    fireEvent.click(reset);
 
     const confirmation = screen.getByRole("alertdialog", {
       name: /Reset General settings/u,
@@ -110,6 +114,7 @@ describe("Settings section resets", () => {
       within(confirmation).getByRole("button", { name: "Reset to defaults" }),
     );
 
+    expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState()).toMatchObject({
       spellcheck: true,
       harper: true,
@@ -160,7 +165,11 @@ describe("Settings section resets", () => {
     await screen.findByRole("heading", { name: "Experimentation" });
     expect(screen.queryByRole("switch", { name: "Visual editor" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    expect(reset).toHaveAccessibleDescription(
+      "Some settings here differ from their defaults.",
+    );
+    fireEvent.click(reset);
 
     const confirmation = screen.getByRole("alertdialog", {
       name: /Reset Experimentation settings/u,
@@ -176,6 +185,8 @@ describe("Settings section resets", () => {
       within(confirmation).getByRole("button", { name: "Reset to defaults" }),
     );
 
+    // General still differs (dialect), so this checks the dot follows this section.
+    expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState()).toMatchObject({
       latexTools: false,
       grammarDialect: "british",
