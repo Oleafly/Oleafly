@@ -27,6 +27,8 @@ use model::{
 };
 use store::TaskStore;
 
+pub(crate) use isolation::is_sensitive_component;
+
 pub type TaskRuntimeFuture<T> = Pin<Box<dyn Future<Output = Result<T, String>> + Send>>;
 pub type TaskEventSink = Arc<dyn Fn(TaskRuntimeEvent) + Send + Sync>;
 

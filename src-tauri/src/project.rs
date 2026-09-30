@@ -5370,6 +5370,10 @@ fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> 
             Ok(crate::git::Baseline::TooLarge(bytes)) => log_git_setup(format!(
                 "Skipping the first Git commit for project {project_id:?}: its files add up to {bytes} bytes"
             )),
+            Ok(crate::git::Baseline::SecretFiles(files)) => log_git_setup(format!(
+                "Skipping the first Git commit for project {project_id:?}: these files usually hold keys or passwords and would stay in its history: {}",
+                describe_files(&files)
+            )),
             Ok(_) => {}
             Err(error) => log_git_setup(format!(
                 "Skipping the first Git commit for project {project_id:?}: {error}"
@@ -5377,6 +5381,21 @@ fn initialize_git(project_id: &str, first_commit: bool) -> Result<bool, String> 
         }
     }
     Ok(true)
+}
+
+/// The first few paths of a list for the app log, and how many more there are.
+fn describe_files(files: &[String]) -> String {
+    const SHOWN: usize = 5;
+    let mut text = files
+        .iter()
+        .take(SHOWN)
+        .map(|file| format!("{file:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    if files.len() > SHOWN {
+        text.push_str(&format!(" and {} more", files.len() - SHOWN));
+    }
+    text
 }
 
 fn log_git_setup(message: String) {
@@ -10383,6 +10402,57 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn an_imported_folder_with_secret_files_gets_a_repository_but_no_first_commit() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("git-import-secrets");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        write_git_auto_init(true);
+        let source = data.join("thesis");
+        std::fs::create_dir_all(source.join("analysis")).unwrap();
+        std::fs::write(source.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(source.join("analysis").join(".env"), "API_KEY=abc\n").unwrap();
+        std::fs::write(source.join("deploy.pem"), "-----BEGIN PRIVATE KEY-----\n").unwrap();
+
+        let project_id =
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy()).unwrap();
+
+        let root = crate::paths::project_dir(&project_id).unwrap();
+        assert!(root.join(".git").is_dir(), "the project is a repository");
+        assert_eq!(git_output(&root, &["rev-list", "--all", "--count"]), "0");
+        // `.env` is left out of the checks below because a developer's global
+        // ignore list may hide it; `deploy.pem` alone must block the commit.
+        let status = git_output(&root, &["status", "--porcelain", "--untracked-files=all"]);
+        for path in ["deploy.pem", "main.tex", "project.json"] {
+            assert!(
+                status.lines().any(|line| line == format!("?? {path}")),
+                "{path} stays untracked and visible:\n{status}"
+            );
+        }
+        assert!(!root.join(".gitignore").exists());
+        let log = std::fs::read_to_string(data.join("app.log")).unwrap();
+        assert!(
+            log.lines()
+                .any(|line| line.contains("Skipping the first Git commit")
+                    && line.contains("keys or passwords")
+                    && line.contains("\"deploy.pem\"")),
+            "{log}"
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn describe_files_names_the_first_five_and_counts_the_rest() {
+        let files: Vec<String> = (1..=7).map(|n| format!("k{n}.pem")).collect();
+        assert_eq!(super::describe_files(&files[..1]), "\"k1.pem\"");
+        assert_eq!(
+            super::describe_files(&files),
+            "\"k1.pem\", \"k2.pem\", \"k3.pem\", \"k4.pem\", \"k5.pem\" and 2 more"
+        );
     }
 
     #[test]
