@@ -83,6 +83,16 @@ async function currentDiskContent(projectId: string, path: string): Promise<stri
   return cached ?? readFileContent(projectId, path);
 }
 
+/** The document insertAtCursor and replaceRange edit: the file open in the editor. */
+function insertTargetPathFor(files: ReturnType<typeof useFilesStore.getState>): string {
+  return files.activePath || files.mainDoc || "main.tex";
+}
+
+const insertTargetPathHost: NonNullable<AiToolsHost["insertTargetPath"]> = (projectId) => {
+  const files = useFilesStore.getState();
+  return files.projectId === projectId ? insertTargetPathFor(files) : null;
+};
+
 const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   projectId,
   text,
@@ -94,8 +104,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
     insertAtCursor(text);
     return true;
   }
-  const files = useFilesStore.getState();
-  const path = files.activePath || files.mainDoc || "main.tex";
+  const path = insertTargetPathFor(useFilesStore.getState());
   const expectedGeneration = await prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
@@ -120,8 +129,7 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
     replaceRangeInEditor(from, to, text);
     return true;
   }
-  const files = useFilesStore.getState();
-  const path = files.activePath || files.mainDoc || "main.tex";
+  const path = insertTargetPathFor(useFilesStore.getState());
   const expectedGeneration = await prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
@@ -394,6 +402,7 @@ const HOST: AiToolsHost = {
   getFigureInsertTarget,
   insertAtCursor: insertAtCursorHost,
   replaceRange: replaceRangeHost,
+  insertTargetPath: insertTargetPathHost,
   getAgentTodos: () => useAgentTodoStore.getState().todos,
   setAgentTodos: (todos) =>
     useAgentTodoStore.getState().setTodos(

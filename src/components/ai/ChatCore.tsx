@@ -67,6 +67,11 @@ import {
 import { useFilesStore } from "@/store/files";
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { agentTurnBegin, agentTurnFinish, type TurnBegin } from "@/lib/agent-turns";
+import {
+  closeLeftoverBuiltInTurns,
+  forgetOpenBuiltInTurn,
+  rememberOpenBuiltInTurn,
+} from "@/components/ai/turns/open-built-in-turns";
 import { presetPrompt, RESEARCH_PRESET_PROMPTS } from "@/lib/research-presets";
 import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
@@ -410,8 +415,12 @@ async function beginBuiltInTurn(projectId: string): Promise<TurnBegin | null> {
   } catch {
     return null;
   }
+  // A turn a reload of this window left open would mark this one overlapped.
+  await closeLeftoverBuiltInTurns();
   try {
-    return await agentTurnBegin(projectId, BUILT_IN_TURN_LABEL);
+    const begun = await agentTurnBegin(projectId, BUILT_IN_TURN_LABEL);
+    if (begun.snapshotId) rememberOpenBuiltInTurn(projectId, begun.snapshotId);
+    return begun;
   } catch (error) {
     void logError("agent turn begin", error);
     return { snapshotId: null, unavailable: "error" };
@@ -426,16 +435,26 @@ async function finishBuiltInTurn(
 ): Promise<ChatTurnChanges | null> {
   if (!projectId || !begun) return null;
   if (!begun.snapshotId) return begun.unavailable ? noTurnChanges(begun.unavailable) : null;
+  const snapshotId = begun.snapshotId;
   try {
-    const changes = await agentTurnFinish(projectId, begun.snapshotId, [...toolPaths]);
+    // insert_figure edits the open editor; its text reaches the disk with the
+    // next save, which must land before the comparison, not in the next turn.
+    await flushOpenFilesToDisk(projectId, "save after assistant run").catch(() => undefined);
+    const changes = await agentTurnFinish(projectId, snapshotId, [...toolPaths]);
     if (changes.files.length + changes.moreFiles === 0 && !changes.unavailable) return null;
+    // A committed file may be one of the unlisted ones; keep it so Undo all
+    // does not ask for every file.
     const committedHere = Object.fromEntries(
-      Object.entries(committed).filter(([path]) => changes.files.some((file) => file.path === path)),
+      Object.entries(committed).filter(
+        ([path]) => changes.moreFiles > 0 || changes.files.some((file) => file.path === path),
+      ),
     );
     return Object.keys(committedHere).length > 0 ? { ...changes, committed: committedHere } : changes;
   } catch (error) {
     void logError("agent turn finish", error);
     return noTurnChanges("error");
+  } finally {
+    forgetOpenBuiltInTurn(snapshotId);
   }
 }
 
@@ -443,6 +462,8 @@ function toolWrittenPaths(args: unknown, output: Record<string, unknown> | null)
   const values = [
     ...(args && typeof args === "object" ? ["path", "from", "to"].map((key) => (args as Record<string, unknown>)[key]) : []),
     output?.path,
+    // insert_figure's saved PNG.
+    output?.figure,
   ];
   return values.filter((value): value is string => typeof value === "string" && value.length > 0);
 }
@@ -818,6 +839,12 @@ export function ChatCore() {
 
   useEffect(() => {
     prefetchMarkdownRenderer();
+  }, []);
+
+  useEffect(() => {
+    // Close turns a reload of this window left open, before any agent begins
+    // a new one in the same project.
+    void closeLeftoverBuiltInTurns();
   }, []);
 
   useEffect(() => {
