@@ -179,12 +179,16 @@ const GIT_PROBE_DEADLINE: Duration = Duration::from_secs(10);
 /// The program every Git spawn in this module runs. Tests point it at a path
 /// that does not exist, because a PATH override cannot hide a program on
 /// Windows.
-fn git_program() -> OsString {
+/// The `git` program to start: the one the program locator finds (which also
+/// sees installs made after Oleafly started), or a bare `git` otherwise.
+pub(crate) fn git_program() -> OsString {
     #[cfg(test)]
     if let Some(program) = testing::program_override() {
         return program;
     }
-    OsString::from("git")
+    crate::program_locator::locate_native("git")
+        .map(|located| located.path.into_os_string())
+        .unwrap_or_else(|| OsString::from("git"))
 }
 
 struct GitProbe {
@@ -2112,7 +2116,6 @@ const HEAD_STATE_DEADLINE: Duration = Duration::from_secs(10);
 /// first two cases. Repository filters, hooks and the fsmonitor never run, so
 /// this is safe on a folder that is not trusted. When the status cannot be
 /// read in time the tree is reported as changed.
-#[allow(dead_code)]
 pub(crate) fn head_state(root: &Path) -> Option<(String, bool)> {
     if !is_repository_marker(&root.join(".git")) || !git_available() {
         return None;

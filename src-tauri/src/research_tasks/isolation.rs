@@ -391,7 +391,7 @@ fn run_git(
         .map_err(|error| format!("could not create a Git output file: {error}"))?;
     let mut stderr = tempfile::tempfile()
         .map_err(|error| format!("could not create a Git error file: {error}"))?;
-    let mut command = tokio::process::Command::new("git");
+    let mut command = tokio::process::Command::new(crate::git::git_program());
     for variable in crate::git::GIT_REPOSITORY_ENV {
         command.env_remove(variable);
     }

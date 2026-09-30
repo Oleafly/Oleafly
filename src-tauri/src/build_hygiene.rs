@@ -269,7 +269,6 @@ fn idle(record: &crate::linked_registry::LinkRecord, caches: &[PathBuf], now: Sy
 /// sources when they compile outside Oleafly. `*` matches any run of
 /// characters. `.bbl` is deliberately absent: arXiv e-prints ship it as their
 /// only bibliography source.
-#[allow(dead_code)]
 pub(crate) const BUILD_ARTIFACT_PATTERNS: &[&str] = &[
     "*.aux",
     "*.log",
@@ -296,7 +295,6 @@ pub(crate) const BUILD_ARTIFACT_PATTERNS: &[&str] = &[
 /// Whether the project-relative path is TeX build output: a
 /// [`BUILD_ARTIFACT_PATTERNS`] match, or `<stem>.pdf` when `<stem>.tex` exists
 /// in the same folder (`has_sibling` answers for a project-relative path).
-#[allow(dead_code)]
 pub(crate) fn is_build_artifact(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
     let normalized = relative_path.replace('\\', "/");
     let (folder, name) = match normalized.rsplit_once('/') {

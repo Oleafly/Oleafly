@@ -280,8 +280,6 @@ pub fn acp_events(
     runtime.events(&session_id, after, limit.unwrap_or(200))
 }
 
-const NOT_IMPLEMENTED: &str = "Not implemented.";
-
 /// Tests an agent program without saving it: the chosen `path`, or the
 /// program Oleafly resolves today when `path` is `None`.
 #[tauri::command]
