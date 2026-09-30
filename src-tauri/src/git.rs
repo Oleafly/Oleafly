@@ -1,6 +1,11 @@
 use serde::Serialize;
+use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock, PoisonError};
+use std::time::{Duration, Instant};
 
 use crate::config;
 use crate::paths;
@@ -138,13 +143,192 @@ fn run_configured_git_bounded(
     bounds: OutputBounds,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
-    let mut command = Command::new("git");
+    let program = git_program();
+    if !git_available_as(&program) {
+        return Err(git_not_installed());
+    }
+    let mut command = Command::new(&program);
     command.no_console().args(args).current_dir(root);
     clear_inherited_git_env(&mut command);
     command.env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
-    crate::proc::output_contained_with_bounds(command, bounds)
-        .map_err(|e| format!("failed to run git: {e}"))
+    crate::proc::output_contained_with_bounds(command, bounds).map_err(|error| {
+        // A missing working folder also fails with NotFound, so only blame
+        // Git when a fresh probe agrees that it has gone.
+        if error.kind() == std::io::ErrorKind::NotFound && root.is_dir() {
+            forget_git_probe(&program);
+            if !git_available_as(&program) {
+                return git_not_installed();
+            }
+        }
+        format!("failed to run git: {error}")
+    })
+}
+
+fn git_not_installed() -> String {
+    crate::app_error::AppError::new("git.not_installed").into()
+}
+
+/// A missing Git is probed again after this long, so installing it while
+/// Oleafly runs is noticed without a restart. A found Git stays found until a
+/// spawn cannot find it.
+const MISSING_GIT_RECHECK: Duration = Duration::from_secs(5);
+/// Bound for `git --version` and `xcode-select -p`.
+const GIT_PROBE_DEADLINE: Duration = Duration::from_secs(10);
+
+/// The program every Git spawn in this module runs. Tests point it at a path
+/// that does not exist, because a PATH override cannot hide a program on
+/// Windows.
+fn git_program() -> OsString {
+    #[cfg(test)]
+    if let Some(program) = testing::program_override() {
+        return program;
+    }
+    OsString::from("git")
+}
+
+struct GitProbe {
+    available: bool,
+    checked: Instant,
+}
+
+fn git_probes() -> &'static Mutex<HashMap<OsString, GitProbe>> {
+    static PROBES: OnceLock<Mutex<HashMap<OsString, GitProbe>>> = OnceLock::new();
+    PROBES.get_or_init(Default::default)
+}
+
+/// Whether a usable `git` program is installed. Cached, so callers may ask
+/// before every spawn.
+pub(crate) fn git_available() -> bool {
+    git_available_as(&git_program())
+}
+
+fn git_available_as(program: &OsStr) -> bool {
+    // Holding the lock while probing keeps concurrent callers to one probe.
+    let mut probes = git_probes().lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(probe) = probes.get(program) {
+        if probe.available || probe.checked.elapsed() < MISSING_GIT_RECHECK {
+            return probe.available;
+        }
+    }
+    let available = probe_git(program, developer_tools_installed);
+    probes.insert(
+        program.to_os_string(),
+        GitProbe {
+            available,
+            checked: Instant::now(),
+        },
+    );
+    drop(probes);
+    if !available {
+        note_missing_git(program);
+    }
+    available
+}
+
+fn forget_git_probe(program: &OsStr) {
+    git_probes()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .remove(program);
+}
+
+/// Write the missing program to the app log once per session.
+fn note_missing_git(program: &OsStr) {
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+    if cfg!(test) || LOGGED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let _ = crate::project::append_app_log(format!(
+        "Git is not installed or could not start ({}). Source Control stays off until it is installed.",
+        program.to_string_lossy()
+    ));
+}
+
+/// Run `program --version` the way every Git spawn runs it. On macOS the
+/// `/usr/bin/git` placeholder only offers to install Apple's developer tools,
+/// so it counts as missing, and is never started, until they are installed.
+fn probe_git(program: &OsStr, developer_tools_installed: impl FnOnce() -> bool) -> bool {
+    if resolve_program(program).is_some_and(|path| is_developer_tools_placeholder(&path))
+        && !developer_tools_installed()
+    {
+        return false;
+    }
+    let mut command = Command::new(program);
+    command
+        .no_console()
+        .arg("--version")
+        .current_dir(std::env::temp_dir());
+    clear_inherited_git_env(&mut command);
+    crate::proc::output_contained_with_bounds(command, OutputBounds::total(GIT_PROBE_DEADLINE))
+        .is_ok_and(|output| output.status.success() && output.stdout.starts_with(b"git version"))
+}
+
+/// Where a spawn of `program` would look first: the path itself when it names
+/// a folder, else the first match in the process PATH.
+fn resolve_program(program: &OsStr) -> Option<PathBuf> {
+    let path = Path::new(program);
+    if path.is_absolute() || path.components().count() > 1 {
+        return Some(path.to_path_buf());
+    }
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|folder| folder.join(program))
+        .find(|candidate| candidate.is_file())
+}
+
+fn is_developer_tools_placeholder(program: &Path) -> bool {
+    cfg!(target_os = "macos") && program == Path::new("/usr/bin/git")
+}
+
+/// Whether Apple's developer tools are installed, so the `/usr/bin/git`
+/// placeholder runs the real Git instead of asking to install them.
+fn developer_tools_installed() -> bool {
+    let mut command = Command::new("/usr/bin/xcode-select");
+    command
+        .no_console()
+        .arg("-p")
+        .current_dir(std::env::temp_dir());
+    let Ok(output) =
+        crate::proc::output_contained_with_bounds(command, OutputBounds::total(GIT_PROBE_DEADLINE))
+    else {
+        return false;
+    };
+    output.status.success()
+        && Path::new(String::from_utf8_lossy(&output.stdout).trim())
+            .join("usr")
+            .join("bin")
+            .join("git")
+            .is_file()
+}
+
+#[cfg(test)]
+pub(crate) mod testing {
+    use std::cell::RefCell;
+    use std::ffi::OsString;
+
+    thread_local! {
+        static PROGRAM: RefCell<Option<OsString>> = const { RefCell::new(None) };
+    }
+
+    /// Restores this thread's Git program when dropped.
+    pub(crate) struct GitProgramOverride(Option<OsString>);
+
+    /// Run this thread's Git spawns with `program` instead of `git`.
+    pub(crate) fn use_git_program(program: impl Into<OsString>) -> GitProgramOverride {
+        let previous = PROGRAM.with(|slot| slot.replace(Some(program.into())));
+        GitProgramOverride(previous)
+    }
+
+    pub(super) fn program_override() -> Option<OsString> {
+        PROGRAM.with(|slot| slot.borrow().clone())
+    }
+
+    impl Drop for GitProgramOverride {
+        fn drop(&mut self) {
+            let previous = self.0.take();
+            PROGRAM.with(|slot| *slot.borrow_mut() = previous);
+        }
+    }
 }
 
 /// Reach a remote without a token: public clones and pulls still transfer over
@@ -252,20 +436,135 @@ fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
             return Err("repository exclude path is not a regular file".into());
         }
     }
-    let current = std::fs::read_to_string(&exclude).unwrap_or_default();
-    if !current.lines().any(|line| line.trim() == ".oleafly/") {
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&exclude)
-            .map_err(|error| format!("could not update repository excludes: {error}"))?;
-        if !current.is_empty() && !current.ends_with('\n') {
-            writeln!(file).map_err(|error| error.to_string())?;
-        }
-        writeln!(file, ".oleafly/").map_err(|error| error.to_string())?;
+    let current = std::fs::read(&exclude).unwrap_or_default();
+    let current = String::from_utf8_lossy(&current);
+    let present: std::collections::HashSet<&str> = current.lines().map(str::trim).collect();
+    let mut missing = String::new();
+    for line in private_exclude_lines().filter(|line| !present.contains(line)) {
+        missing.push_str(line);
+        missing.push('\n');
     }
-    Ok(())
+    if missing.is_empty() {
+        return Ok(());
+    }
+    if !current.is_empty() && !current.ends_with('\n') {
+        missing.insert(0, '\n');
+    }
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&exclude)
+        .and_then(|mut file| file.write_all(missing.as_bytes()))
+        .map_err(|error| format!("could not update repository excludes: {error}"))
+}
+
+/// What Oleafly keeps out of every repository through its private exclude
+/// file: its own state folder, operating-system clutter, minted and PythonTeX
+/// caches, and TeX build output from tools run outside Oleafly. `.bbl` stays
+/// visible because arXiv sources ship it as their bibliography.
+fn private_exclude_lines() -> impl Iterator<Item = &'static str> {
+    [
+        ".oleafly/",
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        "_minted-*/",
+        "pythontex-files-*/",
+    ]
+    .into_iter()
+    .chain(
+        crate::build_hygiene::BUILD_ARTIFACT_PATTERNS
+            .iter()
+            .copied(),
+    )
+}
+
+/// Message of the first commit in a repository Oleafly creates for a new
+/// project.
+const BASELINE_MESSAGE: &str = "Create project";
+/// A new project whose files add up to more than this gets no first commit,
+/// so an imported data set is not copied into `.git` on its own.
+const BASELINE_SIZE_LIMIT: u64 = 100 * 1024 * 1024;
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Baseline {
+    Committed,
+    /// HEAD already has a commit, or there is nothing to commit.
+    NotNeeded,
+    /// The files add up to this many bytes, which is above the limit.
+    TooLarge(u64),
+}
+
+/// Record every file in a repository that has no commits yet as its first
+/// commit. Hooks, signing and the fsmonitor are off for this one commit so a
+/// global setting cannot block or prompt during project creation. Above the
+/// size limit nothing is staged. When staging or committing fails, the index
+/// is emptied again.
+pub(crate) fn commit_baseline(root: &Path) -> Result<Baseline, String> {
+    commit_baseline_with_limit(root, BASELINE_SIZE_LIMIT)
+}
+
+fn commit_baseline_with_limit(root: &Path, limit: u64) -> Result<Baseline, String> {
+    let root = root.to_path_buf();
+    if has_head(&root) {
+        return Ok(Baseline::NotNeeded);
+    }
+    let size = untracked_size(&root)?;
+    if size > limit {
+        return Ok(Baseline::TooLarge(size));
+    }
+    let hooks = format!("core.hooksPath={}", null_device());
+    let settings = [
+        "-c",
+        hooks.as_str(),
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.longpaths=true",
+        "-c",
+        "core.safecrlf=warn",
+    ];
+    let result = (|| {
+        ok_or_err(run_git(&root, &[&settings[..], &["add", "-A"]].concat())?)?;
+        if !has_staged_changes(&root) {
+            return Ok(Baseline::NotNeeded);
+        }
+        let commit = ["commit", "--quiet", "--no-verify", "-m", BASELINE_MESSAGE];
+        ok_or_err(run_git(&root, &[&settings[..], &commit].concat())?)?;
+        Ok(Baseline::Committed)
+    })();
+    if result.is_err() && !has_head(&root) {
+        let _ = unstage_all(&root);
+    }
+    result
+}
+
+/// Bytes in the files `git add -A` would stage in a repository without
+/// commits, measured before anything is written to the object store.
+fn untracked_size(root: &PathBuf) -> Result<u64, String> {
+    let output = run_git_read_only(root, &["ls-files", "-z", "--others", "--exclude-standard"])?;
+    let listing = output.stdout.clone();
+    ok_or_err(output)?;
+    Ok(listing
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .filter_map(|path| std::fs::symlink_metadata(root.join(path_from_git(path))).ok())
+        .filter(std::fs::Metadata::is_file)
+        .fold(0, |total, metadata| total.saturating_add(metadata.len())))
+}
+
+#[cfg(unix)]
+fn path_from_git(bytes: &[u8]) -> PathBuf {
+    use std::os::unix::ffi::OsStrExt;
+    PathBuf::from(OsStr::from_bytes(bytes))
+}
+
+#[cfg(not(unix))]
+fn path_from_git(bytes: &[u8]) -> PathBuf {
+    PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
 }
 
 fn is_repository_marker(candidate: &Path) -> bool {
@@ -359,6 +658,9 @@ pub struct GitWorkspaceSnapshot {
     pub conflicts: Vec<GitConflict>,
     pub branches: Vec<String>,
     pub commits: Vec<GitCommit>,
+    /// False when no usable `git` program is installed. The other fields are
+    /// then empty, and `initialized` only says whether `.git` exists.
+    pub git_available: bool,
 }
 
 #[derive(Serialize)]
@@ -1339,47 +1641,55 @@ fn branches_at(root: &PathBuf) -> Result<Vec<String>, String> {
 pub async fn git_workspace_snapshot(project_id: String) -> Result<GitWorkspaceSnapshot, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<GitWorkspaceSnapshot, String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let Some(root) = initialized_repo(&project_id)? else {
-            return Ok(GitWorkspaceSnapshot {
-                initialized: false,
-                branch: None,
-                remote: None,
-                ahead_behind: no_upstream(),
-                operation: "idle".into(),
-                changes: Vec::new(),
-                conflicts: Vec::new(),
-                branches: Vec::new(),
-                commits: Vec::new(),
-            });
-        };
-        let changes = status_at(&root)?;
-        let conflicts = changes
-            .iter()
-            .filter(|change| change.conflict)
-            .map(|change| GitConflict {
-                path: change.path.clone(),
-                status: change.status.clone(),
-            })
-            .collect();
-        Ok(GitWorkspaceSnapshot {
-            initialized: true,
-            branch: current_branch(&root).ok(),
-            remote: origin_url(&root).map(|remote| remote.map(|value| sanitize_url(&value)))?,
-            ahead_behind: ahead_behind_at(&root)?,
-            operation: if merge_in_progress(&root)? {
-                "merge"
-            } else {
-                "idle"
-            }
-            .into(),
-            changes,
-            conflicts,
-            branches: branches_at(&root)?,
-            commits: git_log_at(&root)?,
-        })
+        workspace_snapshot_at(&project_root(&project_id)?)
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+fn workspace_snapshot_at(root: &PathBuf) -> Result<GitWorkspaceSnapshot, String> {
+    let initialized = root.join(".git").exists();
+    let git_available = git_available();
+    if !initialized || !git_available {
+        return Ok(GitWorkspaceSnapshot {
+            initialized,
+            branch: None,
+            remote: None,
+            ahead_behind: no_upstream(),
+            operation: "idle".into(),
+            changes: Vec::new(),
+            conflicts: Vec::new(),
+            branches: Vec::new(),
+            commits: Vec::new(),
+            git_available,
+        });
+    }
+    let changes = status_at(root)?;
+    let conflicts = changes
+        .iter()
+        .filter(|change| change.conflict)
+        .map(|change| GitConflict {
+            path: change.path.clone(),
+            status: change.status.clone(),
+        })
+        .collect();
+    Ok(GitWorkspaceSnapshot {
+        initialized: true,
+        branch: current_branch(root).ok(),
+        remote: origin_url(root).map(|remote| remote.map(|value| sanitize_url(&value)))?,
+        ahead_behind: ahead_behind_at(root)?,
+        operation: if merge_in_progress(root)? {
+            "merge"
+        } else {
+            "idle"
+        }
+        .into(),
+        changes,
+        conflicts,
+        branches: branches_at(root)?,
+        commits: git_log_at(root)?,
+        git_available: true,
+    })
 }
 
 #[tauri::command]
@@ -1782,6 +2092,9 @@ fn git_head_oid_sync(project_id: String) -> Result<Option<String>, String> {
     let Some(root) = initialized_repo(&project_id)? else {
         return Ok(None);
     };
+    if !git_available() {
+        return Ok(None);
+    }
     let out = run_git_read_only(&root, &["rev-parse", "HEAD"])?;
     if !out.status.success() {
         return Ok(None);
@@ -1790,19 +2103,41 @@ fn git_head_oid_sync(project_id: String) -> Result<Option<String>, String> {
     Ok(if s.is_empty() { None } else { Some(s) })
 }
 
-/// Whether a usable `git` program is installed. Contract stub: the cached
-/// probe arrives with the implementation.
-#[allow(dead_code)]
-pub(crate) fn git_available() -> bool {
-    true
-}
+/// Bound for each of the two Git calls behind [`head_state`].
+const HEAD_STATE_DEADLINE: Duration = Duration::from_secs(10);
 
 /// The HEAD commit of the repository at `root` and whether the working tree has
-/// uncommitted changes. `None` when Git is missing, `root` is not a repository
-/// root, or HEAD is unborn. Contract stub: the implementation arrives later.
+/// uncommitted changes (untracked files count). `None` when Git is missing,
+/// `root` is not a repository root, or HEAD is unborn; nothing is spawned in the
+/// first two cases. Repository filters, hooks and the fsmonitor never run, so
+/// this is safe on a folder that is not trusted. When the status cannot be
+/// read in time the tree is reported as changed.
 #[allow(dead_code)]
-pub(crate) fn head_state(_root: &Path) -> Option<(String, bool)> {
-    None
+pub(crate) fn head_state(root: &Path) -> Option<(String, bool)> {
+    if !is_repository_marker(&root.join(".git")) || !git_available() {
+        return None;
+    }
+    let root = root.to_path_buf();
+    let restricted = crate::trust::restricted_git_env(&root, &|_| None);
+    let run = |args: &[&str]| {
+        run_configured_git_bounded(
+            &root,
+            args,
+            false,
+            OutputBounds::total(HEAD_STATE_DEADLINE),
+            |command| {
+                command.envs(restricted.iter().map(|(key, value)| (key, value)));
+            },
+        )
+        .ok()
+        .filter(|output| output.status.success())
+    };
+    let head = run(&["rev-parse", "--verify", "--quiet", "HEAD^{commit}"])?;
+    let oid = String::from_utf8_lossy(&head.stdout).trim().to_string();
+    validate_git_oid(&oid).ok()?;
+    let dirty = run(&["status", "--porcelain", "--untracked-files=normal"])
+        .is_none_or(|status| !status.stdout.is_empty());
+    Some((oid, dirty))
 }
 
 /// Whether the repo has a HEAD commit yet (false on a fresh repo).
@@ -2675,6 +3010,305 @@ mod tests {
             std::fs::read_to_string(root.join("main.tex")).unwrap(),
             "no git here\n"
         );
+    }
+
+    /// Point this thread's Git spawns at a program that does not exist. PATH
+    /// overrides cannot hide a program on Windows, so tests inject the path.
+    fn missing_git() -> super::testing::GitProgramOverride {
+        let program =
+            temp_dir("missing-git")
+                .join("bin")
+                .join(if cfg!(windows) { "git.exe" } else { "git" });
+        super::testing::use_git_program(program)
+    }
+
+    fn git_text(root: &Path, args: &[&str]) -> String {
+        let output = run_git(&root.to_path_buf(), args).unwrap();
+        assert!(output.status.success(), "{}", out_to_string(&output));
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn a_program_that_does_not_exist_is_not_a_usable_git() {
+        let missing = temp_dir("missing-git-probe").join("git");
+        assert!(!super::git_available_as(missing.as_os_str()));
+        assert!(super::git_available(), "the test machine has Git");
+    }
+
+    #[test]
+    fn missing_git_is_reported_as_not_installed_on_every_platform() {
+        let root = temp_dir("not-installed");
+        write(&root, "main.tex", "no git here\n");
+        let _git = missing_git();
+
+        assert!(!super::git_available());
+        let error = ensure_repository(&root).unwrap_err();
+        assert!(error.contains("\"code\":\"git.not_installed\""), "{error}");
+        let error = run_git(&root, &["status"]).unwrap_err();
+        assert!(error.contains("\"code\":\"git.not_installed\""), "{error}");
+        assert!(!root.join(".git").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "no git here\n"
+        );
+    }
+
+    #[test]
+    fn a_spawn_that_cannot_find_git_is_not_blamed_on_git_when_git_is_installed() {
+        let missing_folder = temp_dir("missing-cwd").join("gone");
+        let error = run_git(&missing_folder, &["status"]).unwrap_err();
+        assert!(!error.contains("git.not_installed"), "{error}");
+        assert!(super::git_available());
+    }
+
+    #[test]
+    fn the_workspace_snapshot_says_when_git_is_missing() {
+        let root = temp_repo();
+        write(&root, "main.tex", "draft\n");
+        {
+            let _git = missing_git();
+            let snapshot = super::workspace_snapshot_at(&root).unwrap();
+            assert!(!snapshot.git_available);
+            assert!(snapshot.initialized, "the repository is still there");
+            assert!(snapshot.changes.is_empty());
+            assert!(snapshot.commits.is_empty());
+            let json = serde_json::to_value(&snapshot).unwrap();
+            assert_eq!(json["gitAvailable"], false);
+        }
+        let snapshot = super::workspace_snapshot_at(&root).unwrap();
+        assert!(snapshot.git_available);
+        assert!(snapshot.initialized);
+        assert_eq!(snapshot.changes.len(), 1);
+        let empty = temp_dir("snapshot-no-repo");
+        let snapshot = super::workspace_snapshot_at(&empty).unwrap();
+        assert!(snapshot.git_available);
+        assert!(!snapshot.initialized);
+    }
+
+    #[test]
+    fn head_state_reports_the_commit_and_uncommitted_changes() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        assert_eq!(super::head_state(&root), None, "HEAD is unborn");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "first").unwrap());
+        let head = git_text(&root, &["rev-parse", "HEAD"]);
+
+        assert_eq!(super::head_state(&root), Some((head.clone(), false)));
+        write(&root, "main.tex", "second\n");
+        assert_eq!(super::head_state(&root), Some((head.clone(), true)));
+        write(&root, "main.tex", "first\n");
+        write(&root, "notes.md", "new\n");
+        assert_eq!(
+            super::head_state(&root),
+            Some((head.clone(), true)),
+            "an untracked file is an uncommitted change"
+        );
+        let chapter = root.join("chapter");
+        std::fs::create_dir_all(&chapter).unwrap();
+        assert_eq!(
+            super::head_state(&chapter),
+            None,
+            "a folder inside a repository is not its root"
+        );
+        let _git = missing_git();
+        assert_eq!(super::head_state(&root), None);
+    }
+
+    #[test]
+    fn only_the_macos_placeholder_git_needs_the_developer_tools() {
+        let placeholder = Path::new("/usr/bin/git");
+        assert_eq!(
+            super::is_developer_tools_placeholder(placeholder),
+            cfg!(target_os = "macos")
+        );
+        assert!(!super::is_developer_tools_placeholder(Path::new(
+            "/opt/homebrew/bin/git"
+        )));
+        assert!(!super::is_developer_tools_placeholder(Path::new(
+            "/usr/local/bin/git"
+        )));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn the_macos_placeholder_git_is_missing_without_the_developer_tools() {
+        let asked = std::cell::Cell::new(false);
+        let available = super::probe_git(std::ffi::OsStr::new("/usr/bin/git"), || {
+            asked.set(true);
+            false
+        });
+        assert!(asked.get());
+        assert!(!available, "the placeholder never runs without the tools");
+    }
+
+    const PRIVATE_EXCLUDES: [&str; 6] = [
+        ".oleafly/",
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        "_minted-*/",
+        "pythontex-files-*/",
+    ];
+
+    #[test]
+    fn private_excludes_are_added_once_and_upgrade_an_older_repository() {
+        let root = temp_repo();
+        let exclude = root.join(".git").join("info").join("exclude");
+        std::fs::create_dir_all(exclude.parent().unwrap()).unwrap();
+        std::fs::write(&exclude, "# mine\n*.bak\n.oleafly/").unwrap();
+
+        super::ensure_private_exclude(&root).unwrap();
+        super::ensure_private_exclude(&root).unwrap();
+
+        let text = std::fs::read_to_string(&exclude).unwrap();
+        assert!(text.starts_with("# mine\n*.bak\n.oleafly/\n"), "{text}");
+        for line in PRIVATE_EXCLUDES
+            .iter()
+            .chain(crate::build_hygiene::BUILD_ARTIFACT_PATTERNS)
+        {
+            assert_eq!(
+                text.lines().filter(|entry| entry.trim() == *line).count(),
+                1,
+                "{line} appears once in:\n{text}"
+            );
+        }
+        assert!(!text.lines().any(|entry| entry.trim() == "*.bbl"));
+
+        for name in ["main.tex", "main.aux", "main.bbl", "main.synctex.gz"] {
+            write(&root, name, "x\n");
+        }
+        std::fs::create_dir_all(root.join("_minted-main")).unwrap();
+        write(&root.join("_minted-main"), "code.pygtex", "x\n");
+        let mut untracked: Vec<String> =
+            git_text(&root, &["ls-files", "--others", "--exclude-standard"])
+                .lines()
+                .map(str::to_string)
+                .collect();
+        untracked.sort();
+        assert_eq!(untracked, ["main.bbl", "main.tex"]);
+    }
+
+    #[test]
+    fn a_new_repository_gets_one_first_commit_of_its_sources() {
+        let root = temp_dir("baseline");
+        write(&root, "main.tex", "\\documentclass{article}\n");
+        write(&root, "main.aux", "build output\n");
+        std::fs::create_dir_all(root.join(".oleafly")).unwrap();
+        write(&root.join(".oleafly"), "state.json", "{}\n");
+        assert!(ensure_repository(&root).unwrap());
+        ok_or_err(run_git(&root, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::Committed
+        );
+
+        assert_eq!(git_text(&root, &["log", "--format=%s"]), "Create project");
+        assert_eq!(git_text(&root, &["ls-files"]), "main.tex");
+        assert_eq!(git_text(&root, &["status", "--porcelain"]), "");
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::NotNeeded,
+            "a repository with history keeps it"
+        );
+        assert_eq!(git_text(&root, &["rev-list", "--count", "HEAD"]), "1");
+    }
+
+    #[test]
+    fn an_empty_new_repository_is_left_without_a_commit() {
+        let root = temp_dir("baseline-empty");
+        assert!(ensure_repository(&root).unwrap());
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::NotNeeded
+        );
+        assert!(!super::has_head(&root));
+    }
+
+    #[test]
+    fn a_failing_hook_or_signing_setting_does_not_block_the_first_commit() {
+        let root = temp_dir("baseline-hooks");
+        write(&root, "main.tex", "hooks\n");
+        assert!(ensure_repository(&root).unwrap());
+        let hooks = temp_dir("baseline-hooks-dir");
+        for hook in ["pre-commit", "commit-msg", "post-commit"] {
+            let path = hooks.join(hook);
+            std::fs::write(&path, "#!/bin/sh\necho ran > hook-ran\nexit 1\n").unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+        }
+        let missing_gpg = temp_dir("baseline-no-gpg").join("gpg-missing");
+        for (key, value) in [
+            ("core.hooksPath", hooks.to_str().unwrap()),
+            ("commit.gpgsign", "true"),
+            ("gpg.program", missing_gpg.to_str().unwrap()),
+        ] {
+            ok_or_err(run_git(&root, &["config", key, value]).unwrap()).unwrap();
+        }
+
+        assert_eq!(
+            super::commit_baseline(&root).unwrap(),
+            super::Baseline::Committed
+        );
+        assert!(!root.join("hook-ran").exists(), "no hook ran");
+        assert_eq!(git_text(&root, &["log", "--format=%s"]), "Create project");
+    }
+
+    #[test]
+    fn a_project_above_the_size_limit_keeps_its_files_unstaged() {
+        let root = temp_dir("baseline-large");
+        write(
+            &root,
+            "main.tex",
+            "0123456789012345678901234567890123456789\n",
+        );
+        write(
+            &root,
+            "figure.dat",
+            "0123456789012345678901234567890123456789\n",
+        );
+        assert!(ensure_repository(&root).unwrap());
+
+        assert_eq!(
+            super::commit_baseline_with_limit(&root, 64).unwrap(),
+            super::Baseline::TooLarge(82)
+        );
+        assert!(!super::has_head(&root));
+        assert_eq!(git_text(&root, &["ls-files", "--cached"]), "");
+        let objects = root.join(".git").join("objects");
+        assert!(
+            !std::fs::read_dir(&objects).unwrap().any(|entry| {
+                let name = entry.unwrap().file_name();
+                name.len() == 2 && name != "info" && name != "pack"
+            }),
+            "nothing was hashed into the object store"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_first_commit_leaves_nothing_staged() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = temp_dir("baseline-unreadable");
+        write(&root, "main.tex", "readable\n");
+        write(&root, "secret.tex", "unreadable\n");
+        let secret = root.join("secret.tex");
+        std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o000)).unwrap();
+        if std::fs::read(&secret).is_ok() {
+            // Running as root: permissions cannot make the file unreadable.
+            return;
+        }
+        assert!(ensure_repository(&root).unwrap());
+
+        assert!(super::commit_baseline(&root).is_err());
+
+        assert!(!super::has_head(&root));
+        assert_eq!(git_text(&root, &["ls-files", "--cached"]), "");
+        std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o644)).unwrap();
     }
 
     #[test]

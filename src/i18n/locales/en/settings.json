@@ -984,7 +984,7 @@
       "tokenPlaceholder": "ghp_…"
     },
     "autoInit": {
-      "description": "New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own.",
+      "description": "New and opened projects get a Git repository so the Git panel can track changes. A new project starts with one commit of its files. After that, Oleafly commits only when you ask.",
       "label": "Initialise Git for every project"
     },
     "config": {
