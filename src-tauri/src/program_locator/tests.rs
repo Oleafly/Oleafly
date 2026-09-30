@@ -1136,3 +1136,31 @@ mod windows_processes {
             .all(|dir| !dir.to_string_lossy().starts_with(r"\\?\")));
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn the_user_shell_is_the_first_one_that_exists_then_sh() {
+    let zsh = Some(PathBuf::from("/bin/zsh"));
+    let bash = Some(PathBuf::from("/bin/bash"));
+    let only_bash = |shell: &Path| shell == Path::new("/bin/bash");
+    assert_eq!(
+        first_existing_shell([zsh.clone(), bash.clone()], only_bash),
+        PathBuf::from("/bin/bash")
+    );
+    assert_eq!(
+        first_existing_shell([None, bash.clone()], only_bash),
+        PathBuf::from("/bin/bash")
+    );
+    assert_eq!(
+        first_existing_shell([zsh.clone(), bash], |_| true),
+        PathBuf::from("/bin/zsh")
+    );
+    assert_eq!(
+        first_existing_shell([zsh, None], |_| false),
+        PathBuf::from("/bin/sh")
+    );
+    assert_eq!(
+        first_existing_shell([None, None], |_| true),
+        PathBuf::from("/bin/sh")
+    );
+}
