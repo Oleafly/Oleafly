@@ -2993,28 +2993,6 @@ mod tests {
         assert!(!project.join(".git").exists());
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn ensure_repository_reports_a_missing_git_binary_without_touching_the_project() {
-        let root = temp_dir("ensure-no-git");
-        let empty_path = temp_dir("ensure-empty-path");
-        write(&root, "main.tex", "no git here\n");
-
-        let result = ensure_repository_with(&root, |command| {
-            command.env("PATH", &empty_path);
-        });
-
-        assert!(
-            result.is_err(),
-            "a missing git binary is reported, not hidden"
-        );
-        assert!(!root.join(".git").exists());
-        assert_eq!(
-            std::fs::read_to_string(root.join("main.tex")).unwrap(),
-            "no git here\n"
-        );
-    }
-
     /// Point this thread's Git spawns at a program that does not exist. PATH
     /// overrides cannot hide a program on Windows, so tests inject the path.
     fn missing_git() -> super::testing::GitProgramOverride {
