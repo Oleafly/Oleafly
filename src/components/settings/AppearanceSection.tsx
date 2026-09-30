@@ -796,6 +796,9 @@ function TerminalAppearanceTab() {
             ? t(($) => $.settings.appearance.terminal.colors.followingAppTheme)
             : t(($) => $.settings.appearance.terminal.colors.description)}
         </div>
+        {/* Each cell keeps a slot for Reset, so the swatch is not pulled out
+            from under the pointer, or from under an open color dialog, when
+            Reset appears. */}
         <div className="grid grid-cols-3 gap-3">
           <div
             data-setting-id="terminalBackground"
@@ -820,6 +823,7 @@ function TerminalAppearanceTab() {
             <ResetSettingButton
               id="terminalBackground"
               label={t(($) => $.settings.appearance.terminal.colors.backgroundAriaLabel)}
+              reserveSpace
             />
           </div>
           <div
@@ -845,6 +849,7 @@ function TerminalAppearanceTab() {
             <ResetSettingButton
               id="terminalForeground"
               label={t(($) => $.settings.appearance.terminal.colors.foregroundAriaLabel)}
+              reserveSpace
             />
           </div>
           <div
@@ -868,6 +873,7 @@ function TerminalAppearanceTab() {
             <ResetSettingButton
               id="terminalCursorColor"
               label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
+              reserveSpace
             />
           </div>
         </div>
@@ -1106,7 +1112,7 @@ function FileManagementTab() {
           <ResetSettingButton
             id="hiddenFilePatterns"
             label={t(($) => $.settings.appearance.files.hidden.title)}
-            className="-mr-1 -mt-1"
+            className="-my-1 -mr-1"
           />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">

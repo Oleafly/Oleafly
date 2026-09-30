@@ -160,5 +160,59 @@ describe("SettingRow", () => {
 
     expect(screen.queryByText(enSettings.changed.marker)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: RESET })).not.toBeInTheDocument();
+    expect(screen.getByTestId("tab-size-row").querySelector("[data-setting-reset-slot]")).toBeNull();
+  });
+
+  it("keeps the label column's width when an inline row's Reset appears", () => {
+    render(
+      <ChangedSettingsProvider>
+        <SettingRow settingId="editorTabSize" label={LABEL} description={DESCRIPTION} testId="tab-size-row">
+          <button type="button">{"4"}</button>
+        </SettingRow>
+      </ChangedSettingsProvider>,
+    );
+    const control = screen.getByRole("button", { name: "4" });
+    const actions = control.parentElement;
+    if (!actions) throw new Error("actions box is missing");
+
+    // Unchanged: an empty slot the size of Reset holds its place, so a long
+    // description does not wrap to another line when Reset shows up.
+    const slot = actions.firstElementChild;
+    expect(slot).toHaveAttribute("data-setting-reset-slot");
+    expect(slot).toHaveAttribute("aria-hidden", "true");
+    expect(slot).toHaveClass("size-7", "shrink-0");
+    expect(slot).toBeEmptyDOMElement();
+    expect(actions.childElementCount).toBe(2);
+
+    act(() => useSettingsStore.getState().setEditorTabSize(2));
+
+    const reset = screen.getByRole("button", { name: RESET });
+    expect(reset).toHaveClass("size-7", "shrink-0");
+    expect(actions.firstElementChild).toContainElement(reset);
+    expect(actions.querySelector("[data-setting-reset-slot]")).toBeNull();
+    expect(actions.childElementCount).toBe(2);
+    expect(actions.lastElementChild).toBe(control);
+
+    act(() => useSettingsStore.getState().setEditorTabSize(4));
+
+    expect(actions.firstElementChild).toHaveAttribute("data-setting-reset-slot");
+    expect(actions.childElementCount).toBe(2);
+  });
+
+  it("keeps a stacked row's header height when its Reset appears", () => {
+    useSettingsStore.getState().setEditorTabSize(2);
+    render(
+      <ChangedSettingsProvider>
+        <SettingRow settingId="editorTabSize" label={LABEL} layout="stacked">
+          <button type="button">{"2"}</button>
+        </SettingRow>
+      </ChangedSettingsProvider>,
+    );
+
+    // The 28px button sits on a 20px line: equal negative margins above and
+    // below keep it from adding height, and it stays centred on the label.
+    const reset = screen.getByRole("button", { name: RESET });
+    expect(reset).toHaveClass("-my-1");
+    expect(reset).not.toHaveClass("-mt-1");
   });
 });

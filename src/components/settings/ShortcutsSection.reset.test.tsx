@@ -121,6 +121,42 @@ describe("Keyboard Shortcuts reset", () => {
     expect(moved.parentElement?.lastElementChild).toBe(moved);
   });
 
+  it("keeps the row's size when its Reset appears, as when Reset was always shown", () => {
+    const label = enSettings.shortcuts.actions.recompile.label;
+    render(<ShortcutsSection />);
+    const row = screen.getByText(label).closest<HTMLElement>("[data-setting-id]");
+    if (!row) throw new Error("recompile row is missing");
+    const capture = within(row).getByRole("button", { name: /^Edit / });
+    const actions = capture.parentElement;
+    if (!actions) throw new Error("actions box is missing");
+
+    // A fixed minimum height and a slot the size of Reset: rows below do not
+    // move, and the description does not rewrap, when Reset comes and goes.
+    expect(actions).toHaveClass("min-h-9");
+    expect(actions.childElementCount).toBe(2);
+    const slot = actions.firstElementChild;
+    expect(slot).toHaveAttribute("data-setting-reset-slot");
+    expect(slot).toHaveAttribute("aria-hidden", "true");
+    expect(slot).toHaveClass("size-9", "shrink-0");
+
+    act(() =>
+      useShortcutStore.getState().setBinding("recompile", { key: "r", mod: true, shift: true }),
+    );
+
+    const reset = within(row).getByRole("button", {
+      name: enSettings.shortcuts.application.resetAriaLabel.replace("{{action}}", label),
+    });
+    expect(actions.childElementCount).toBe(2);
+    expect(actions.firstElementChild).toBe(reset);
+    expect(reset).toHaveClass("h-9", "w-9");
+    expect(actions.querySelector("[data-setting-reset-slot]")).toBeNull();
+
+    fireEvent.click(reset);
+
+    expect(actions.childElementCount).toBe(2);
+    expect(actions.firstElementChild).toHaveAttribute("data-setting-reset-slot");
+  });
+
   it("moves keyboard focus to the shortcut button after a row reset", async () => {
     const label = enSettings.shortcuts.actions.recompile.label;
     useShortcutStore.getState().setBinding("recompile", { key: "r", mod: true, shift: true });

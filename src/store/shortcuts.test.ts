@@ -78,6 +78,67 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("keeps waiting past AltGr on Windows, where it arrives as Ctrl+Alt", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, shortcutLabel } = await import("@/store/shortcuts");
+
+      // German, French and Polish layouts: AltGr goes down before the real key.
+      expect(
+        bindingFromEvent(keyboard("AltGraph", { ctrlKey: true, altKey: true })),
+      ).toBeNull();
+      const binding = bindingFromEvent(keyboard("K", { ctrlKey: true, altKey: true }));
+      expect(binding).toEqual({ key: "k", mod: true, shift: false, alt: true });
+      expect(binding && shortcutLabel(binding)).toBe("Ctrl+Alt+K");
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("keeps waiting past AltGr on Linux, with or without a held Ctrl", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { bindingFromEvent } = await import("@/store/shortcuts");
+
+      expect(bindingFromEvent(keyboard("AltGraph"))).toBeNull();
+      expect(bindingFromEvent(keyboard("AltGraph", { ctrlKey: true }))).toBeNull();
+      expect(
+        bindingFromEvent(keyboard("AltGraph", { ctrlKey: true, altKey: true })),
+      ).toBeNull();
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("drops a stored AltGr binding so typing @, { or [ on Windows no longer fires it", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    localStorage.setItem(
+      "oleafly.shortcuts",
+      JSON.stringify({
+        commandPalette: { key: "AltGraph", mod: true, shift: false, alt: true },
+        toggleSidebar: { key: "altgraph", mod: true, alt: true },
+        recompile: { key: "r", mod: true, alt: true },
+      }),
+    );
+    try {
+      const { matchesShortcut, useShortcutStore } = await import("@/store/shortcuts");
+      const bindings = useShortcutStore.getState().bindings;
+
+      expect(bindings.commandPalette).toEqual({ key: "k", mod: true });
+      expect(bindings.toggleSidebar).toEqual({ key: "b", mod: true });
+      expect(bindings.recompile).toEqual({ key: "r", mod: true, alt: true });
+      const altGr = keyboard("AltGraph", { ctrlKey: true, altKey: true });
+      expect(Object.values(bindings).some((binding) => matchesShortcut(altGr, binding))).toBe(
+        false,
+      );
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("records macOS Ctrl as a fixed modifier", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });

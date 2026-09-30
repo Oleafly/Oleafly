@@ -50,6 +50,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 import { AppearanceSection } from "./AppearanceSection";
+import { ChangedSettingsProvider } from "./changed-settings";
 import { ShortcutsSection } from "./ShortcutsSection";
 
 describe("Appearance settings tabs", () => {
@@ -495,6 +496,79 @@ describe("Appearance settings tabs", () => {
       terminalColorTheme: "light",
       terminalBackground: "#f8f8f8",
     });
+  });
+
+  it("keeps each terminal color swatch in place when its Reset appears", async () => {
+    const user = userEvent.setup();
+    render(
+      <ChangedSettingsProvider>
+        <AppearanceSection />
+      </ChangedSettingsProvider>,
+    );
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.terminal }));
+
+    const colors = [
+      ["terminalBackground", appearance.terminal.colors.backgroundAriaLabel, "#000000"],
+      ["terminalForeground", appearance.terminal.colors.foregroundAriaLabel, "#00ff00"],
+      ["terminalCursorColor", appearance.terminal.colors.cursorAriaLabel, "#ff0000"],
+    ] as const;
+    for (const [id, ariaLabel, value] of colors) {
+      const swatch = screen.getByLabelText(ariaLabel);
+      const cell = swatch.closest<HTMLElement>(`[data-setting-id="${id}"]`);
+      if (!cell) throw new Error(`${id} cell is missing`);
+      const label = swatch.closest("label");
+
+      // Unchanged: a slot the size of Reset keeps the label, and the swatch
+      // at its right end, the same width it has once Reset shows.
+      expect(cell.childElementCount).toBe(2);
+      expect(cell.firstElementChild).toBe(label);
+      const slot = cell.lastElementChild;
+      expect(slot).toHaveAttribute("data-setting-reset-slot");
+      expect(slot).toHaveAttribute("aria-hidden", "true");
+      expect(slot).toHaveClass("size-7", "shrink-0");
+
+      fireEvent.change(swatch, { target: { value } });
+
+      const reset = within(cell).getByRole("button", {
+        name: fill(enSettings.changed.reset, { label: ariaLabel }),
+      });
+      expect(reset).toHaveClass("size-7", "shrink-0");
+      expect(cell.childElementCount).toBe(2);
+      expect(cell.firstElementChild).toBe(label);
+      expect(cell.lastElementChild).toContainElement(reset);
+      expect(cell.querySelector("[data-setting-reset-slot]")).toBeNull();
+
+      fireEvent.click(reset);
+
+      expect(cell.childElementCount).toBe(2);
+      expect(cell.lastElementChild).toHaveAttribute("data-setting-reset-slot");
+    }
+  });
+
+  it("keeps the hidden-files header height when its Reset appears", async () => {
+    const user = userEvent.setup();
+    render(
+      <ChangedSettingsProvider>
+        <AppearanceSection />
+      </ChangedSettingsProvider>,
+    );
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.files }));
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: fill(appearance.files.hidden.removeAriaLabel, {
+          pattern: DEFAULT_HIDDEN_FILE_PATTERNS[0],
+        }),
+      }),
+    );
+
+    // The 28px button sits beside a 20px heading: equal negative margins
+    // above and below keep the header, and the input under it, from moving.
+    const reset = screen.getByRole("button", {
+      name: fill(enSettings.changed.reset, { label: appearance.files.hidden.title }),
+    });
+    expect(reset).toHaveClass("-my-1");
+    expect(reset).not.toHaveClass("-mt-1");
   });
 
   it("updates browser search and home page controls", async () => {

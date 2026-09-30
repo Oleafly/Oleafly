@@ -80,6 +80,7 @@ export function ResetSettingButton({
   label,
   className,
   wrapperClassName,
+  reserveSpace = false,
   nextFocus = rowControl,
 }: Readonly<{
   id: string;
@@ -91,12 +92,27 @@ export function ResetSettingButton({
    * out. Put ml-auto here, not in className.
    */
   wrapperClassName?: string;
+  /**
+   * Holds the button's space with an empty slot while the setting is
+   * unchanged, so the controls beside it do not move when it appears. Only
+   * inside the Settings dialog, the one place Reset can appear.
+   */
+  reserveSpace?: boolean;
   /** Where keyboard focus goes once the button leaves; the row's control by default. */
   nextFocus?: (button: HTMLElement) => HTMLElement | null;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
   const changed = useChangedSettings();
-  if (!changed?.isChanged(id)) return null;
+  if (!changed) return null;
+  if (!changed.isChanged(id)) {
+    return reserveSpace ? (
+      <span
+        aria-hidden
+        data-setting-reset-slot
+        className={cn("inline-flex size-7 shrink-0", className, wrapperClassName)}
+      />
+    ) : null;
+  }
 
   const reset = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -180,7 +196,8 @@ export function SettingRow({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">{title}</div>
-          <ResetSettingButton id={settingId} label={label} className="-mr-1 -mt-1" />
+          {/* -my-1 keeps the 28px button from making a 20px header taller. */}
+          <ResetSettingButton id={settingId} label={label} className="-my-1 -mr-1" reserveSpace />
         </div>
         {children}
       </div>
@@ -199,8 +216,10 @@ export function SettingRow({
       )}
     >
       <div>{title}</div>
+      {/* The slot keeps the label column one width, changed or not, so a
+          description does not rewrap when Reset appears. */}
       <div className="flex shrink-0 items-center gap-1">
-        <ResetSettingButton id={settingId} label={label} />
+        <ResetSettingButton id={settingId} label={label} reserveSpace />
         {children}
       </div>
     </div>

@@ -45,6 +45,36 @@ describe("ShortcutsSection editor keys", () => {
     expect(rowFor("titleCase")).toHaveTextContent(enSettings.shortcuts.editorKeys.unbound);
   });
 
+  it("keeps every row the same height whether a key is bound, unbound or changed", async () => {
+    render(<ShortcutsSection />);
+    await openEditorTab();
+
+    for (const [id, next] of [
+      ["uppercase", "Mod-Alt-8"],
+      ["titleCase", "Mod-Alt-9"],
+    ] as const) {
+      const row = rowFor(id);
+      const trigger = within(row).getByRole("button", { name: /^Edit / });
+      const actions = trigger.parentElement;
+      if (!actions) throw new Error(`${id} actions box is missing`);
+
+      // The Kbd is 32px and "Not set" is shorter, so a 36px minimum and a
+      // slot the size of Reset keep rows level and stop the rows below from
+      // moving when Reset appears.
+      expect(actions).toHaveClass("min-h-9");
+      expect(actions.childElementCount).toBe(2);
+      expect(actions.firstElementChild).toHaveAttribute("data-setting-reset-slot");
+      expect(actions.firstElementChild).toHaveClass("size-9", "shrink-0");
+
+      act(() => useEditorKeymapStore.getState().setKey(id, next));
+
+      const reset = within(row).getByRole("button", { name: /^Reset / });
+      expect(actions.childElementCount).toBe(2);
+      expect(actions.firstElementChild).toBe(reset);
+      expect(actions.querySelector("[data-setting-reset-slot]")).toBeNull();
+    }
+  });
+
   it("records a new chord and persists it", async () => {
     render(<ShortcutsSection />);
     await openEditorTab();

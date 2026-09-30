@@ -131,6 +131,11 @@ function KeyTokens({ tokens }: Readonly<{ tokens: readonly string[] }>) {
   );
 }
 
+/** Holds the place of a row's h-9 Reset button while the row is unchanged. */
+function ResetSlot() {
+  return <span aria-hidden data-setting-reset-slot className="size-9 shrink-0" />;
+}
+
 function appShortcutKey(binding: ShortcutBinding): string {
   const parts: string[] = [];
   if (binding.mod) parts.push("Mod");
@@ -270,9 +275,11 @@ function EditorKeyRows() {
                 </p>
               )}
             </div>
-            {/* Reset comes first, so the key button keeps its place when it appears. */}
-            <div className="flex shrink-0 items-center gap-2">
-              {changed && (
+            {/* Reset comes first, and an empty slot holds its place while the
+                key is unchanged, so the key button and the rows below keep
+                their places when it appears. */}
+            <div className="flex min-h-9 shrink-0 items-center gap-2">
+              {changed ? (
                 <Button
                   size="icon"
                   variant="ghost"
@@ -287,6 +294,8 @@ function EditorKeyRows() {
                 >
                   <RotateCcw data-icon="inline-start" />
                 </Button>
+              ) : (
+                <ResetSlot />
               )}
               <button
                 type="button"
@@ -310,7 +319,7 @@ function EditorKeyRows() {
                   setEditing(definition.id);
                   setError("");
                 }}
-                className="rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="rounded-md focus-visible:bg-accent"
               >
                 {active && (
                   <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
@@ -458,9 +467,11 @@ export function ShortcutsSection() {
                   </p>
                 )}
               </div>
-              {/* Reset comes first, so the shortcut button keeps its place when it appears. */}
-              <div className="flex shrink-0 items-center gap-2">
-                {changed && (
+              {/* Reset comes first, and an empty slot holds its place while the
+                  shortcut is unchanged, so nothing in the row moves when it
+                  appears. */}
+              <div className="flex min-h-9 shrink-0 items-center gap-2">
+                {changed ? (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -475,6 +486,8 @@ export function ShortcutsSection() {
                   >
                     <RotateCcw data-icon="inline-start" />
                   </Button>
+                ) : (
+                  <ResetSlot />
                 )}
                 <button
                   type="button"
@@ -495,7 +508,7 @@ export function ShortcutsSection() {
                     setEditing(definition.id);
                     setError("");
                   }}
-                  className="rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="rounded-md focus-visible:bg-accent"
                 >
                   {active ? (
                     <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">

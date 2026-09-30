@@ -69,12 +69,16 @@ const defaults = Object.fromEntries(
   SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
 ) as ShortcutBindings;
 
+// Keys that only modify another key. Recording waits past them for the real
+// key. On Windows, AltGr arrives as "AltGraph" with Ctrl and Alt held.
+const MODIFIER_KEYS = ["Shift", "Control", "Meta", "Alt", "AltGraph"];
+
 function isValidBinding(value: unknown): value is ShortcutBinding {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    typeof (value as { key?: unknown }).key === "string"
-  );
+  if (!value || typeof value !== "object") return false;
+  const key = (value as { key?: unknown }).key;
+  // An AltGr binding saved by an older build fired whenever AltGr was used
+  // to type a character, such as @, { or [. It falls back to the default.
+  return typeof key === "string" && key.toLowerCase() !== "altgraph";
 }
 
 function loadBindings(): ShortcutBindings {
@@ -143,7 +147,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   if (
     !event.metaKey &&
     !event.ctrlKey ||
-    ["Shift", "Control", "Meta", "Alt", "Tab", "Escape"].includes(event.key)
+    [...MODIFIER_KEYS, "Tab", "Escape"].includes(event.key)
   ) {
     return null;
   }
