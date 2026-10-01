@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
 
 export type ShortcutId =
   | "recompile"
@@ -74,10 +75,10 @@ export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean
 }
 
 function isValidBinding(value: unknown): value is ShortcutBinding {
+  if (!value || typeof value !== "object") return false;
+  const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
   return (
-    !!value &&
-    typeof value === "object" &&
-    typeof (value as { key?: unknown }).key === "string"
+    typeof key === "string" && key !== "" && !isUnbindableKey(key) && Boolean(mod || ctrl)
   );
 }
 
@@ -130,6 +131,7 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
 }));
 
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
+  if (isAltGraphCharacter(event)) return false;
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
@@ -145,9 +147,11 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   if (
-    !event.metaKey &&
-    !event.ctrlKey ||
-    ["Shift", "Control", "Meta", "Alt", "Tab", "Escape"].includes(event.key)
+    (!event.metaKey && !event.ctrlKey) ||
+    isUnbindableKey(event.key) ||
+    event.key === "Tab" ||
+    event.key === "Escape" ||
+    isAltGraphCharacter(event)
   ) {
     return null;
   }
