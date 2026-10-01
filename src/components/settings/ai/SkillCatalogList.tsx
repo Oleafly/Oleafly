@@ -170,6 +170,101 @@ function filterShelf(
   return { entries, domains, active, matches };
 }
 
+/** One shelf skill with its install, update or uninstall buttons. */
+function ShelfRow({
+  entry,
+  busy,
+  progress,
+  onInstall,
+  onUninstall,
+}: Readonly<{
+  entry: SkillCatalogEntry;
+  busy: boolean;
+  progress: SkillAssetProgress | undefined;
+  onInstall: (entry: SkillCatalogEntry) => void;
+  onUninstall: (entry: SkillCatalogEntry) => void;
+}>) {
+  const { t } = useTranslation(["common", "settings"]);
+  return (
+    <div
+      data-testid={`skill-shelf-row-${entry.id}`}
+      className="flex items-center gap-3 rounded-md border px-3 py-2.5"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">{entry.name}</span>
+          {entry.domain ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {entry.domain}
+            </span>
+          ) : null}
+        </div>
+        <p className="truncate text-[11px] text-muted-foreground">
+          {busy && progress
+            ? progressText(progress)
+            : `${entry.description} · ${entry.license} · ${formatBytes(entry.bytes)}`}
+        </p>
+      </div>
+      {entry.installed ? (
+        <div className="flex shrink-0 items-center gap-1.5">
+          {entry.updateAvailable ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-testid={`skill-shelf-update-${entry.id}`}
+              onClick={() => onInstall(entry)}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {t(($) => $.settings.ai.skills.catalog.update)}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid={`skill-shelf-uninstall-${entry.id}`}
+            onClick={() => onUninstall(entry)}
+            disabled={busy}
+          >
+            <Trash2 className="size-3.5" />
+            {t(($) => $.settings.ai.skills.catalog.uninstall)}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          data-testid={`skill-shelf-install-${entry.id}`}
+          onClick={() => onInstall(entry)}
+          disabled={busy}
+        >
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {t(($) => $.settings.ai.skills.catalog.install)}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** The result of the last install or uninstall. */
+function CatalogMessage({ ok, text }: Readonly<{ ok: boolean; text: string }>) {
+  return (
+    <div
+      role={ok ? "status" : "alert"}
+      aria-live="polite"
+      className={
+        ok
+          ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-600 dark:text-emerald-400"
+          : "rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive"
+      }
+    >
+      {text}
+    </div>
+  );
+}
+
 export function SkillCatalogList({
   search = "",
   hideNoMatch = false,
@@ -333,90 +428,22 @@ export function SkillCatalogList({
       ) : null}
       {!loading && matches.length > 0 ? (
         <div className="space-y-2">
-          {matches.map((entry) => {
-            const busy = busyId === entry.id;
-            const entryProgress = progress[entry.id];
-            return (
-              <div
-                key={entry.id}
-                data-testid={`skill-shelf-row-${entry.id}`}
-                className="flex items-center gap-3 rounded-md border px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{entry.name}</span>
-                    {entry.domain ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {entry.domain}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {busy && entryProgress
-                      ? progressText(entryProgress)
-                      : `${entry.description} · ${entry.license} · ${formatBytes(entry.bytes)}`}
-                  </p>
-                </div>
-                {entry.installed ? (
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {entry.updateAvailable ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        data-testid={`skill-shelf-update-${entry.id}`}
-                        onClick={() => void install(entry)}
-                        disabled={busy}
-                      >
-                        {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                        {t(($) => $.settings.ai.skills.catalog.update)}
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      data-testid={`skill-shelf-uninstall-${entry.id}`}
-                      onClick={() => void uninstall(entry)}
-                      disabled={busy}
-                    >
-                      <Trash2 className="size-3.5" />
-                      {t(($) => $.settings.ai.skills.catalog.uninstall)}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    data-testid={`skill-shelf-install-${entry.id}`}
-                    onClick={() => void install(entry)}
-                    disabled={busy}
-                  >
-                    {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                    {t(($) => $.settings.ai.skills.catalog.install)}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
+          {matches.map((entry) => (
+            <ShelfRow
+              key={entry.id}
+              entry={entry}
+              busy={busyId === entry.id}
+              progress={progress[entry.id]}
+              onInstall={(target) => void install(target)}
+              onUninstall={(target) => void uninstall(target)}
+            />
+          ))}
         </div>
       ) : null}
 
       {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
 
-      {message ? (
-        <div
-          role={message.ok ? "status" : "alert"}
-          aria-live="polite"
-          className={
-            message.ok
-              ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-600 dark:text-emerald-400"
-              : "rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive"
-          }
-        >
-          {message.text}
-        </div>
-      ) : null}
+      {message ? <CatalogMessage ok={message.ok} text={message.text} /> : null}
     </div>
   );
 }

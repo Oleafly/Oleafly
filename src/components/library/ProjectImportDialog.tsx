@@ -356,7 +356,7 @@ export function ProjectImportDialog({
         </DialogHeader>
 
         {errorMessage && <p role="alert" className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <p role="status" className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</p>}
+        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</output>}
         <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
           {view === "target" ? (
             <div className="grid gap-2">
