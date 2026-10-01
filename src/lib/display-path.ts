@@ -234,11 +234,22 @@ const PATH_PATTERN = new RegExp(
   `${PATH_START}(${HOME_PATH}|${DRIVE_PATH}|${UNC_PATH}|${POSIX_PATH})`,
   "gu",
 );
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}]+$/u;
+const TRAILING_PUNCTUATION = new Set(".,;:!?)]}");
 const EMAIL_PATTERN = new RegExp(
   String.raw`(^|[^${NAME_CHAR}.+])([${NAME_CHAR}.+]+@[\p{L}\p{N}\-]+(?:\.[\p{L}\p{N}\-]+)+)`,
   "gu",
 );
+
+/**
+ * `value` without the punctuation at its end. A loop, not a `[...]+$`
+ * pattern: the pattern tries again from each mark in a run that does not
+ * reach the end, which is quadratic on a long one.
+ */
+function withoutTrailingPunctuation(value: string): string {
+  let end = value.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(value.charAt(end - 1))) end -= 1;
+  return value.slice(0, end);
+}
 
 function escapeLiteral(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
@@ -262,7 +273,7 @@ type Range = [number, number];
 function collect(pattern: RegExp, text: string, ranges: Range[], trim = false): void {
   for (const match of text.matchAll(pattern)) {
     const lead = match[1]?.length ?? 0;
-    const body = trim ? match[2].replace(TRAILING_PUNCTUATION, "") : match[2];
+    const body = trim ? withoutTrailingPunctuation(match[2]) : match[2];
     if (!body) continue;
     const start = match.index + lead;
     ranges.push([start, start + body.length]);

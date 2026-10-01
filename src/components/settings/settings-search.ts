@@ -209,7 +209,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** A dialog, flow, sign-in step or empty state: its title is never a row on the page. */
 function isTransient(node: Record<string, unknown>, path: readonly string[]): boolean {
-  const key = path[path.length - 1] ?? "";
+  const key = path.at(-1) ?? "";
   return (
     keyHasWord(key, NOT_A_ROW_KEY_WORDS) ||
     typeof node.confirm === "string" ||
@@ -245,7 +245,7 @@ function collectText(
   out: string[],
   platform: SettingsSearchPlatform,
 ): void {
-  if (isSkippedKey(path[path.length - 1] ?? "") || onOtherPlatform(path, platform)) return;
+  if (isSkippedKey(path.at(-1) ?? "") || onOtherPlatform(path, platform)) return;
   if (typeof node === "string") {
     const text = cleanCatalogText(node);
     if (text) out.push(text);
@@ -266,7 +266,7 @@ function collectRows(
   const { locale, platform } = context;
   if (
     !isRecord(node) ||
-    isSkippedKey(path[path.length - 1] ?? "") ||
+    isSkippedKey(path.at(-1) ?? "") ||
     onOtherPlatform(path, platform) ||
     isTransient(node, path)
   ) {
@@ -327,7 +327,9 @@ export function searchTerms(query: string, locale?: string): string[] {
 }
 
 function characterBefore(text: string, index: number): string {
-  const code = text.charCodeAt(index - 1);
+  // At a low surrogate codePointAt returns that unit alone, so this asks
+  // whether the unit before `index` is a low surrogate, the end of a pair.
+  const code = text.codePointAt(index - 1) ?? 0;
   const pair = code >= 0xdc00 && code <= 0xdfff && index >= 2;
   return text.slice(pair ? index - 2 : index - 1, index);
 }

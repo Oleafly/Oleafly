@@ -116,6 +116,18 @@ describe("settings search index", () => {
     expect(matchSettingsSections(latin, [{ id: "appearance" as const, label: "Look" }], "ai")).toEqual([]);
   });
 
+  it("reads a character outside the Basic Multilingual Plane before a term as one character", () => {
+    const sections = [{ id: "appearance" as const, label: "Look" }];
+    const entry = (text: string): SettingsSearchIndex =>
+      new Map([["appearance", { text: normalizeSearchText(text), keywords: "", rows: [] }]]);
+    // A letter (U+1D400) keeps the term inside a word; an emoji or a lone
+    // surrogate does not, and a Han character is in a script without spaces.
+    expect(matchSettingsSections(entry("\u{1D400}ai budget"), sections, "ai")).toEqual([]);
+    expect(matchSettingsSections(entry("\u{1F600}ai budget"), sections, "ai")).toEqual(["appearance"]);
+    expect(matchSettingsSections(entry("\uDC00ai budget"), sections, "ai")).toEqual(["appearance"]);
+    expect(matchSettingsSections(entry("\u{20000}ai budget"), sections, "ai")).toEqual(["appearance"]);
+  });
+
   it("keeps dialog and sign-in titles out of the matching rows", () => {
     const labels = [...index.values()].flatMap((entry) => entry.rows.map((row) => row.label));
     for (const transient of [

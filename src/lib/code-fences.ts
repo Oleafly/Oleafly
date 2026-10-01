@@ -99,15 +99,57 @@ function fenceCloses(line: string, open: OpenFence): boolean {
   return close?.[1].startsWith(open.char) === true && close[1].length >= open.length;
 }
 
+const FENCE_RUN = /^[ \t]{0,3}(`{3,}|~{3,})/u;
+// The characters JavaScript treats as line ends. scanFences splits on "\n"
+// and drops a final "\r", so the others can still sit inside a line.
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/u;
+
+/**
+ * The run of three or more backticks or tildes that opens a fence on
+ * `content`, after up to three spaces or tabs, or null. A line that holds a
+ * line end opens no fence, and neither does a backtick run with a backtick
+ * after it.
+ *
+ * The rest of the line is checked in code, not with a `(.*)$` group after
+ * the run: the group and the run compete for the same characters, which
+ * takes time quadratic in the run's length on a line that does not match.
+ */
+function openingFenceRun(content: string): string | null {
+  const start = FENCE_RUN.exec(content);
+  if (!start || LINE_TERMINATOR.test(content)) return null;
+  const run = start[1];
+  if (run.startsWith("`") && content.includes("`", start[0].length)) return null;
+  return run;
+}
+
 function fenceOpensAt(logical: ContainerLine, lineFrom: number): OpenFence | null {
-  const start = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u.exec(logical.content);
-  if (!start || (start[1].startsWith("`") && start[2].includes("`"))) return null;
+  const run = openingFenceRun(logical.content);
+  if (!run) return null;
   return {
-    char: start[1][0] as "`" | "~",
-    from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
-    length: start[1].length,
+    char: run[0] as "`" | "~",
+    from: lineFrom + logical.offset + logical.content.indexOf(run),
+    length: run.length,
     container: logical,
   };
+}
+
+/** Drops the list items `line` does not continue. A blank line continues them all. */
+function leaveEndedItems(items: OpenContainer[], line: string): void {
+  if (!line.trim()) return;
+  let item = items.at(-1);
+  while (item && !continuationContainerLine(line, item)) {
+    items.pop();
+    item = items.at(-1);
+  }
+}
+
+/** The fence `line` opens outside a fence, keeping `items` up to date. */
+function fenceOpenedBy(line: string, lineFrom: number, items: OpenContainer[]): OpenFence | null {
+  leaveEndedItems(items, line);
+  const logical = openingContainerLine(line, items.at(-1));
+  const open = fenceOpensAt(logical, lineFrom);
+  if (logical.listIndent > (items.at(-1)?.listIndent ?? 0)) items.push(logical);
+  return open;
 }
 
 /**
@@ -133,12 +175,7 @@ export function scanFences(source: string): SourceRange[] {
         open = null;
       }
     } else {
-      while (items.length > 0 && line.trim() && !continuationContainerLine(line, items[items.length - 1])) {
-        items.pop();
-      }
-      const logical = openingContainerLine(line, items.at(-1));
-      open = fenceOpensAt(logical, lineFrom);
-      if (logical.listIndent > (items.at(-1)?.listIndent ?? 0)) items.push(logical);
+      open = fenceOpenedBy(line, lineFrom, items);
     }
 
     if (lineBreak < 0) break;

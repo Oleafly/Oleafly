@@ -7,11 +7,14 @@ import { useHidePersonalDetails } from "@/components/ui/private";
 import { i18n } from "@/i18n";
 import { togglePersonalDetails } from "@/store/personal-details";
 
-/** What the toggle does next: hide the details, or show them again. */
-export function personalDetailsLabel(hidden: boolean): string {
-  return hidden
-    ? i18n.t(($) => $.shell.personalDetails.show)
-    : i18n.t(($) => $.shell.personalDetails.hide);
+/** What the toggle does next while the details are hidden: show them again. */
+export function showPersonalDetailsLabel(): string {
+  return i18n.t(($) => $.shell.personalDetails.show);
+}
+
+/** What the toggle does next while the details are shown: hide them. */
+export function hidePersonalDetailsLabel(): string {
+  return i18n.t(($) => $.shell.personalDetails.hide);
 }
 
 /**
@@ -30,7 +33,7 @@ export function PersonalDetailsToggle({
 }>) {
   useTranslation(["shell"]);
   const hidden = useHidePersonalDetails();
-  const label = personalDetailsLabel(hidden);
+  const label = hidden ? showPersonalDetailsLabel() : hidePersonalDetailsLabel();
   const Icon = hidden ? EyeOff : Eye;
   return (
     <Tooltip label={label} side={side}>
@@ -57,7 +60,7 @@ export function PersonalDetailsMenuItem() {
   return (
     <DropdownMenuItem onSelect={togglePersonalDetails}>
       <Icon className="size-4" />
-      {personalDetailsLabel(hidden)}
+      {hidden ? showPersonalDetailsLabel() : hidePersonalDetailsLabel()}
     </DropdownMenuItem>
   );
 }

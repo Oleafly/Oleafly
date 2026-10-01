@@ -3,7 +3,7 @@ import rehypeKatex from "rehype-katex";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { personalParts } from "@/lib/display-path";
+import { type PersonalPart, personalParts } from "@/lib/display-path";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
 import { MarkdownBlock } from "./markdown-block";
@@ -143,33 +143,31 @@ function isKatex(node: HastNode): boolean {
   return Array.isArray(className) && className.some((name) => String(name).startsWith("katex"));
 }
 
+function personalRunNode(part: PersonalPart): HastNode {
+  if (!part.personal) return { type: "text", value: part.text };
+  return {
+    type: "element",
+    tagName: "span",
+    properties: { dataPrivate: "" },
+    children: [{ type: "text", value: part.text }],
+  };
+}
+
+/** `child` as it stands in the marked tree: a text node may split into runs. */
+function markedNodes(child: HastNode): HastNode[] {
+  if (child.type === "text" && typeof child.value === "string") {
+    const parts = personalParts(child.value);
+    return parts.some((part) => part.personal) ? parts.map(personalRunNode) : [child];
+  }
+  if (child.type === "element" && !UNMARKED_TAGS.has(child.tagName ?? "") && !isKatex(child)) {
+    markPersonalRuns(child);
+  }
+  return [child];
+}
+
 function markPersonalRuns(node: HastNode): void {
   if (!node.children) return;
-  const children: HastNode[] = [];
-  for (const child of node.children) {
-    if (child.type === "text" && typeof child.value === "string") {
-      const parts = personalParts(child.value);
-      if (parts.some((part) => part.personal)) {
-        for (const part of parts) {
-          children.push(
-            part.personal
-              ? {
-                  type: "element",
-                  tagName: "span",
-                  properties: { dataPrivate: "" },
-                  children: [{ type: "text", value: part.text }],
-                }
-              : { type: "text", value: part.text },
-          );
-        }
-        continue;
-      }
-    } else if (child.type === "element" && !UNMARKED_TAGS.has(child.tagName ?? "") && !isKatex(child)) {
-      markPersonalRuns(child);
-    }
-    children.push(child);
-  }
-  node.children = children;
+  node.children = node.children.flatMap(markedNodes);
 }
 
 /** Screenshot mode: wraps each path and account name in the prose for the blur. */

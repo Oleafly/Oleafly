@@ -118,9 +118,9 @@ function tabValue(tab: HTMLElement): string | null {
 }
 
 function tabMatches(value: string, key: string): boolean {
-  const words = value.toLowerCase().split(/[^a-z\d]+/);
+  const words = new Set(value.toLowerCase().split(/[^a-z\d]+/));
   const lowered = key.toLowerCase();
-  return words.includes(lowered) || (lowered.endsWith("s") && words.includes(lowered.slice(0, -1)));
+  return words.has(lowered) || (lowered.endsWith("s") && words.has(lowered.slice(0, -1)));
 }
 
 function pressTab(tab: HTMLElement, visited: Set<HTMLElement>) {
@@ -206,9 +206,17 @@ export function useSettingsSearch<Id extends string>({
     clearHits(containerRef.current);
   }, [containerRef]);
 
+  // Start over each time Settings opens, and when it is sent to another
+  // section (a new resetKey) while open.
+  const openedForRef = useRef<{ resetKey: unknown } | null>(null);
   useEffect(() => {
-    void resetKey;
-    if (open) reset();
+    if (!open) {
+      openedForRef.current = null;
+      return;
+    }
+    if (openedForRef.current && Object.is(openedForRef.current.resetKey, resetKey)) return;
+    openedForRef.current = { resetKey };
+    reset();
   }, [open, resetKey, reset]);
 
   useEffect(() => {
@@ -253,10 +261,13 @@ export function useSettingsSearch<Id extends string>({
     if (best && (newQuery || !currentVisible)) selectRef.current(best);
   }, [applied, currentVisible]);
 
+  // A new query drops the row the last one revealed.
+  const clearedForRef = useRef<string | null>(null);
   useEffect(() => {
+    if (clearedForRef.current === applied) return;
+    clearedForRef.current = applied;
     clearHits(containerRef.current);
     setPendingRow(null);
-    void applied;
   }, [applied, containerRef]);
 
   useEffect(() => {

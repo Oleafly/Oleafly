@@ -31,7 +31,11 @@ export function Private({
 }>) {
   const hidden = useHidePersonalDetails();
   return (
-    <span data-private="" tabIndex={hidden && focusable ? 0 : undefined} className={className}>
+    <span
+      data-private=""
+      tabIndex={hidden && focusable ? 0 : undefined} // NOSONAR - a focus stop in screenshot mode, so a keyboard user can reveal the blurred value
+      className={className}
+    >
       {children}
     </span>
   );
@@ -66,12 +70,12 @@ export function renderPersonalParts(
   return parts.map((part, index) =>
     part.personal ? (
       // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional runs of one string
-      <span key={index} data-private="">
+      <span key={index} /* NOSONAR - positional runs of one string */ data-private="">
         {part.text}
       </span>
     ) : (
       // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional runs of one string
-      <Fragment key={index}>{renderPlain(part.text)}</Fragment>
+      <Fragment key={index} /* NOSONAR - positional runs of one string */>{renderPlain(part.text)}</Fragment>
     ),
   );
 }
@@ -149,7 +153,11 @@ export function PrivateText({
   const parts = personalParts(text, values);
   if (!parts.some((part) => part.personal)) return <>{text}</>;
   return (
-    <span data-private-group="" tabIndex={focusable ? 0 : undefined} className={className}>
+    <span
+      data-private-group=""
+      tabIndex={focusable ? 0 : undefined} // NOSONAR - one focus stop in screenshot mode, so a keyboard user can reveal the blurred values
+      className={className}
+    >
       {renderPersonalParts(parts)}
     </span>
   );

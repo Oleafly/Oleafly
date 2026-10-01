@@ -52,6 +52,17 @@ describe("Markdown in screenshot mode", () => {
     expect(container.textContent).toContain("I saved it to ~/paper/main.tex");
   });
 
+  it("wraps only the path inside nested prose, and leaves math alone", () => {
+    act(() => usePersonalDetailsStore.getState().setHidden(true));
+    const { container } = render(
+      <MarkdownRenderer>{"- **Wrote ~/paper/main.tex.** Then $/opt/tex/bin$ ran."}</MarkdownRenderer>,
+    );
+    expect(marked(container)).toEqual(["~/paper/main.tex"]);
+    expect(container.querySelector("strong")?.textContent).toBe("Wrote ~/paper/main.tex.");
+    expect(container.querySelector(".katex")).not.toBeNull();
+    expect(container.textContent).toContain(" ran.");
+  });
+
   it("follows the mode when it is turned on after the reply rendered", () => {
     const { container } = render(<MarkdownRenderer>{reply}</MarkdownRenderer>);
     act(() => usePersonalDetailsStore.getState().setHidden(true));

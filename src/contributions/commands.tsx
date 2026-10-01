@@ -40,7 +40,10 @@ import { registerCommand, type AppContext } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { togglePersonalDetails, usePersonalDetailsStore } from "@/store/personal-details";
-import { personalDetailsLabel } from "@/components/layout/PersonalDetailsToggle";
+import {
+  hidePersonalDetailsLabel,
+  showPersonalDetailsLabel,
+} from "@/components/layout/PersonalDetailsToggle";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
 import { clearBuildCache } from "@/lib/tauri";
@@ -683,7 +686,10 @@ export function registerPaletteCommands() {
   palette({
     id: "palette.personal-details",
     group: () => i18n.t(($) => $.shell.commandGroups.settings),
-    label: () => personalDetailsLabel(usePersonalDetailsStore.getState().hidden),
+    label: () =>
+      usePersonalDetailsStore.getState().hidden
+        ? showPersonalDetailsLabel()
+        : hidePersonalDetailsLabel(),
     keywords: () =>
       `${i18n.t(($) => $.shell.commands.personalDetails.keywords)} ${ENGLISH_KEYWORDS.personalDetails}`,
     icon: () =>

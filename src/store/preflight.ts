@@ -118,8 +118,10 @@ function collectLabelFacts(index: ReturnType<typeof useIndexStore.getState>["ind
   const labelFiles = new Map<string, { label: string; files: Set<string> }>();
   // A reference counts for the label it points at, the way rename resolves it:
   // same engine, and for a `file#anchor` link, only a label in the named file.
-  const referenceKey = (scope: string, file: string | null, name: string) =>
-    `${scope}\0${file === null ? "*" : `=${file}`}\0${name}`;
+  const referenceKey = (scope: string, file: string | null, name: string) => {
+    const target = file === null ? "*" : `=${file}`;
+    return `${scope}\0${target}\0${name}`;
+  };
   const referencedLabels = new Set<string>();
   for (const use of index?.uses ?? []) {
     if (use.kind !== "ref") continue;

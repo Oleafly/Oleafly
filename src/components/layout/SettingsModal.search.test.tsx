@@ -295,6 +295,37 @@ describe("Settings search", () => {
     expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page");
   });
 
+  it("starts empty again when Settings is sent to another section while it is open", async () => {
+    renderSettings();
+    typeQuery("zotero");
+    await waitFor(() => expect(visibleSections()).toEqual(["settings-section-integrations"]));
+    act(() => useSettingsStore.getState().openSettingsAt("engine"));
+    expect(searchField()).toHaveValue("");
+    await waitFor(() => expect(visibleSections()).toContain("settings-section-appearance"));
+  });
+
+  it("keeps the query when Settings is sent to the section it opened on", async () => {
+    renderSettings();
+    typeQuery("zotero");
+    await waitFor(() => expect(visibleSections()).toEqual(["settings-section-integrations"]));
+    act(() => useSettingsStore.getState().openSettingsAt("general"));
+    expect(searchField()).toHaveValue("zotero");
+    expect(visibleSections()).toEqual(["settings-section-integrations"]);
+  });
+
+  it("drops the tint from the row it revealed when the query changes", async () => {
+    renderSettings();
+    await clickRow("font size", "Editor font size");
+    const target = await waitFor(() => {
+      const hit = document.querySelector("[data-settings-search-hit]");
+      expect(hit).not.toBeNull();
+      return hit as HTMLElement;
+    });
+    typeQuery("editor font");
+    await waitFor(() => expect(target).not.toHaveAttribute("data-settings-search-hit"));
+    expect(target.isConnected).toBe(true);
+  });
+
   it("shows every section while the Settings tour runs", async () => {
     renderSettings();
     typeQuery("zotero");
