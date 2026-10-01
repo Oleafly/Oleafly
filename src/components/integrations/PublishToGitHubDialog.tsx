@@ -246,6 +246,50 @@ export function PublishToGitHubDialog({
     return true;
   };
 
+  /** Run the history check; true when publishing has to stop here. */
+  const stopsForSecrets = async (
+    token: PublishActionToken,
+    prompt: Omit<SecretsPrompt, "files">,
+    approved: string[],
+  ) => {
+    const preflight = await gitPublishPreflight(token.projectId);
+    return !isCurrentAction(token) || asksAboutSecrets(token, preflight, prompt, approved);
+  };
+
+  /** Commit, link the remote, and report a project with nothing to push.
+   * Returns the files left out, or null when there is nothing to push. */
+  const commitAndLink = async (
+    token: PublishActionToken,
+    remoteUrl: string,
+    replace: boolean,
+    approved: string[],
+  ) => {
+    const prepared = await gitPreparePublish(token.projectId, "Initial commit", {
+      allowTrackedSecrets: approved,
+    });
+    if (isCurrentAction(token)) setLeftOut(prepared.leftOut);
+    await (replace ? replaceRemote : linkRemote)(token.projectId, remoteUrl);
+    if (prepared.hasCommit) return prepared.leftOut;
+    if (isCurrentAction(token)) {
+      note(token, false, t(($) => $.library.github.nothingToPublish));
+      onPublished(remoteUrl);
+    }
+    return null;
+  };
+
+  /** Report a finished publish. The dialog stays open while it names files it left out. */
+  const finishPublish = (
+    token: PublishActionToken,
+    remoteUrl: string,
+    text: string,
+    skipped: string[],
+  ) => {
+    if (!isCurrentAction(token)) return;
+    note(token, true, text);
+    onPublished(remoteUrl);
+    if (skipped.length === 0) scheduleClose(token);
+  };
+
   const publishNew = async (replace = false, approved: string[] = []) => {
     if (!projectId) return;
     if (currentRemote && !replace) {
@@ -262,30 +306,20 @@ export function PublishToGitHubDialog({
     if (!name) return note(action, false, t(($) => $.library.github.nameRequired));
     setBusy(true);
     try {
-      const preflight = await gitPublishPreflight(action.projectId);
-      if (!isCurrentAction(action)) return;
-      if (asksAboutSecrets(action, preflight, { target: "new", replace }, approved)) return;
+      if (await stopsForSecrets(action, { target: "new", replace }, approved)) return;
       const repo = await githubCreateRepo(name, isPrivate);
       // A brand-new project may have no commits yet; the remote itself stays
       // clean since auth is handled by gitPush's credential helper, not a
       // token embedded in .git/config.
-      const prepared = await gitPreparePublish(action.projectId, "Initial commit", {
-        allowTrackedSecrets: approved,
-      });
-      if (isCurrentAction(action)) setLeftOut(prepared.leftOut);
-      await (replace ? replaceRemote : linkRemote)(action.projectId, repo.clone_url);
-      if (!prepared.hasCommit) {
-        if (!isCurrentAction(action)) return;
-        note(action, false, t(($) => $.library.github.nothingToPublish));
-        onPublished(repo.clone_url);
-        return;
-      }
+      const skipped = await commitAndLink(action, repo.clone_url, replace, approved);
+      if (!skipped) return;
       await gitPush(action.projectId);
-      if (!isCurrentAction(action)) return;
-      note(action, true, t(($) => $.library.github.published, { repository: repo.full_name }));
-      onPublished(repo.clone_url);
-      // The dialog stays open while it names files it left out.
-      if (prepared.leftOut.length === 0) scheduleClose(action);
+      finishPublish(
+        action,
+        repo.clone_url,
+        t(($) => $.library.github.published, { repository: repo.full_name }),
+        skipped,
+      );
     } catch (e) {
       note(action, false, describeError(e));
     } finally {
@@ -308,20 +342,9 @@ export function PublishToGitHubDialog({
     setLeftOut([]);
     setBusy(true);
     try {
-      const preflight = await gitPublishPreflight(action.projectId);
-      if (!isCurrentAction(action)) return;
-      if (asksAboutSecrets(action, preflight, { target: "existing", replace }, approved)) return;
-      const prepared = await gitPreparePublish(action.projectId, "Initial commit", {
-        allowTrackedSecrets: approved,
-      });
-      if (isCurrentAction(action)) setLeftOut(prepared.leftOut);
-      await (replace ? replaceRemote : linkRemote)(action.projectId, remoteUrl);
-      if (!prepared.hasCommit) {
-        if (!isCurrentAction(action)) return;
-        note(action, false, t(($) => $.library.github.nothingToPublish));
-        onPublished(remoteUrl);
-        return;
-      }
+      if (await stopsForSecrets(action, { target: "existing", replace }, approved)) return;
+      const skipped = await commitAndLink(action, remoteUrl, replace, approved);
+      if (!skipped) return;
       // An existing remote may already contain commits. Let the push report
       // when its history must be pulled and reconciled first.
       try {
@@ -339,10 +362,7 @@ export function PublishToGitHubDialog({
         onPublished(remoteUrl);
         return;
       }
-      if (!isCurrentAction(action)) return;
-      note(action, true, t(($) => $.library.github.linked, { remote: remoteUrl }));
-      onPublished(remoteUrl);
-      if (prepared.leftOut.length === 0) scheduleClose(action);
+      finishPublish(action, remoteUrl, t(($) => $.library.github.linked, { remote: remoteUrl }), skipped);
     } catch (e) {
       note(action, false, describeError(e));
     } finally {
@@ -596,15 +616,12 @@ export function PublishToGitHubDialog({
               </div>
             )}
             {visibleLeftOut.length > 0 && (
-              <p
-                role="status"
-                className="shrink-0 border-t p-3 text-xs text-muted-foreground break-words"
-              >
+              <output className="block shrink-0 border-t p-3 text-xs text-muted-foreground break-words">
                 {t(($) => $.library.github.leftOutSecrets, {
                   count: visibleLeftOut.length,
                   files: fileList(visibleLeftOut),
                 })}
-              </p>
+              </output>
             )}
           </>
         )}
